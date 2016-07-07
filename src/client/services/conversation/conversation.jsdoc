@@ -1,0 +1,31 @@
+/**!
+ *
+ * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ */
+
+/**
+ * @namespace Conversation
+ */
+
+/**
+ * @property {string} displayName
+ * @property {Array} participants
+ * @property {string} comment
+ * @property {Array} files
+ * @typedef Conversation~NewConversationObject
+ */
+
+/**
+ * @property {string} id
+ * @property {string} url
+ * @property {string} defaultActivityEncryptionKeyUrl
+ * @typedef Conversation~ConversationObject
+ */
+
+/**
+ * @property {string} id
+ * @property {string} url
+ * @property {string} defaultActivityEncryptionKeyUrl
+ * @property {string} displayName
+ * @typedef Conversation~NamedConversationObject
+ */

@@ -1,0 +1,23 @@
+extends: "../../.eslintrc-es6.yml"
+env:
+  browser: true
+globals:
+  MediaStream: false
+rules:
+  # FIXME temporarily disable TODO warnings
+  no-warning-comments:
+    - 0
+valid-jsdoc:
+  - 2
+  -
+    matchDescription: ".+"
+    prefer:
+      arg: param
+      argument: param
+      return: returns
+      virtual: abstract
+      fires: emits
+    requireParamDescription: false
+    requireReturn: true
+    requireReturnType: true
+    requireReturnDescription: false

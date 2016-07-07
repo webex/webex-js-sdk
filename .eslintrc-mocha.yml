@@ -1,0 +1,18 @@
+env:
+  mocha: true
+rules:
+  arrow-body-style:
+    - 0
+  func-names:
+    - 0
+  max-nested-callbacks:
+    - 0
+  no-console:
+    - 0
+  no-extra-parens:
+    # IIFEs don't get detected correctly
+    - 0
+  no-invalid-this:
+    - 0
+  no-shadow:
+    - 0

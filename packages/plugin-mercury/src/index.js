@@ -1,0 +1,20 @@
+/**!
+ *
+ * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import '@ciscospark/plugin-wdm';
+
+import {registerPlugin} from '@ciscospark/spark-core';
+import Mercury from './mercury';
+import config from './config';
+
+registerPlugin(`mercury`, Mercury, {
+  config
+});
+
+export {default as default} from './mercury';
+export {default as Mercury} from './mercury';
+export {default as Socket} from './socket';
+export {default as config} from './config';
+export {AuthorizationError, ConnectionError} from './errors';

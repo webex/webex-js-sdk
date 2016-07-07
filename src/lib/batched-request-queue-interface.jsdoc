@@ -1,0 +1,32 @@
+/**!
+ *
+ * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ */
+
+/**
+ * @interface BatchedRequestQueueInterface
+ */
+
+/**
+ * Add  a request to the queue
+ *
+ * @function
+ * @name BatchedRequestQueueInterface#push
+ * @param {...mixed} param Identifying parameter or parameters that uniquely
+ * identify the request.
+ */
+
+/**
+ * Empties the queue and returns an Array of Objects suitable for use in the
+ * payload of AbstractRequestBatcher#request. Most implementations will resolve with an
+ * Array of length 1 but there may be occasion to limit the size of the request.
+ * In the future, this result may be achieved by specifying a max queue length
+ * in AbstractRequestBatcher. Note that though this method returns a Promise, it should
+ * do some form of locking such that, once invoked, it does not include any
+ * requests pushed onto the queue after invocation.
+ *
+ * @function
+ * @name BatchedRequestQueueInterface#toPayloads
+ * @returns {Promise<Array<mixed>>} Resolves with an array of objects suitable for use in the
+ * payload of AbstractRequestBatcher#request
+ */

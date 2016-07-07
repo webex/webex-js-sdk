@@ -1,0 +1,13 @@
+#!/usr/bin/env node
+
+require('babel-register');
+if (process.argv[2] === 'start') {
+  require('../src/start');
+}
+else if (process.argv[2] === 'stop') {
+  require('../src/stop');
+}
+else {
+  console.warn('Usage: sauce-connect <start|stop>');
+  process.exit(1);
+}

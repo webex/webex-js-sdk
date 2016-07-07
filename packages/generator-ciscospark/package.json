@@ -1,0 +1,40 @@
+{
+  "name": "generator-ciscospark",
+  "version": "0.6.4",
+  "description": "Scaffolds new ciscospark plugins and projects",
+  "homepage": "",
+  "author": {
+    "name": "Ian W. Remmel",
+    "email": "iremmel@cisco.com",
+    "url": ""
+  },
+  "files": [
+    "generators"
+  ],
+  "main": "generators/index.js",
+  "keywords": [
+    "ciscospark",
+    "yeoman-generator"
+  ],
+  "dependencies": {
+    "chalk": "^1.0.0",
+    "string": "^3.3.1",
+    "yeoman-generator": "^0.22.0",
+    "yosay": "^1.0.2"
+  },
+  "devDependencies": {
+    "babel-eslint": "^6.0.0-beta.5",
+    "eslint": "^2.1.0",
+    "eslint-plugin-mocha-only": "0.0.3",
+    "yeoman-test": "^1.0.0",
+    "yeoman-assert": "^2.0.0"
+  },
+  "eslintConfig": {
+    "extends": "xo-space",
+    "env": {
+      "mocha": true
+    }
+  },
+  "repository": "git@sqbu-github.cisco.com:iremmel/squared-js-sdk.git",
+  "license": "Apache-2.0"
+}

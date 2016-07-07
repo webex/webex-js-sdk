@@ -1,0 +1,17 @@
+/**!
+ *
+ * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ */
+
+'use strict';
+
+/**
+ * @param {http.IncomingMessage} req
+ * @param {http.ServerResponse} res
+ * @returns {undefined}
+ */
+function reflect(req, res) {
+  res.status(200).send(req.body).end();
+}
+
+module.exports = reflect;

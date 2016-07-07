@@ -1,0 +1,6 @@
+extends: "../../.eslintrc-es5.yml"
+rules:
+  func-names:
+    - 0
+  max-nested-callbacks:
+    - 0

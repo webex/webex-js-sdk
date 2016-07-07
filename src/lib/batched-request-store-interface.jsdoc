@@ -1,0 +1,60 @@
+/**!
+ *
+ * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ */
+
+/**
+ * @interface BatchedRequestStoreInterface
+ */
+
+/**
+ * Create a Deferred object, index it, and returns its Promise.
+ *
+ * @function
+ * @name BatchedRequestStore#create
+ * @param {...mixed} param Identifying parameter or parameters that uniquely
+ * identify the request.
+ * @returns {Promise} Resolves with the created `Defer` instance
+ */
+
+/**
+ * Rejects the identified request with the specified error.
+ *
+ * @function
+ * @name BatchedRequestStore#fail
+ * @param {...mixed} param Identifying parameter or parameters that uniquely
+ * identify the request.
+ * @param {Error} error
+ * @returns {Promise}
+ */
+
+/**
+ * Finds the identified request.
+ *
+ * @function
+ * @name BatchedRequestStore#get
+ * @param {...mixed} param Identifying parameter or parameters that uniquely
+ * identify the request.
+ * @returns {Promise} Resolves with identified `Defer` instance
+ */
+
+/**
+ * Removes the identified request from the store.
+ *
+ * @function
+ * @name BatchedRequestStore#remove
+ * @param {...mixed} param Identifying parameter or parameters that uniquely
+ * identify the request.
+ * @returns {Promise}
+ */
+
+/**
+ * Resolves the identified requested with the specified result.
+ *
+ * @function
+ * @name BatchedRequestStore#succeed
+ * @param {...mixed} param Identifying parameter or parameters that uniquely
+ * identify the request.
+ * @param {mixed} result
+ * @returns {Promise}
+ */

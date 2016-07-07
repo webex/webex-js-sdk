@@ -1,0 +1,20 @@
+{
+  "name": "@ciscospark/test-helper-chai",
+  "version": "0.6.4",
+  "description": "chai extended with chai-as-promised and spark specific assertions",
+  "main": "./src",
+  "dependencies": {
+    "@ciscospark/test-helper-file": "^0.6.0",
+    "@ciscospark/test-helper-sinon": "^0.6.0",
+    "babel-plugin-lodash": "2.1.0",
+    "chai": "^3.4.1",
+    "chai-as-promised": "^5.1.0",
+    "lodash": "^4.5.1",
+    "string": "^3.3.1"
+  },
+  "devDependencies": {
+    "babel-eslint": "^6.0.0-beta.5",
+    "eslint": "2.2.0",
+    "eslint-plugin-mocha-only": "0.0.3"
+  }
+}

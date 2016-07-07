@@ -1,0 +1,60 @@
+{
+  "url": "https://locus-a.wbx2.com/locus/api/v1/devices/88888888-4444-4444-4444-CCCCCCCCCCCC",
+  "sessionUrl": "https://locus-a.wbx2.com/locus/api/v1/sessions/SESSIONID",
+  "webSocketUrl": "wss://mercury-connection-a.wbx2.com/v1/apps/wx2/registrations/WEBSOCKETID/messages",
+  "services": {
+    "atlasServiceUrl": "https://atlas-a.wbx2.com/admin/api/v1",
+    "avatarServiceUrl": "https://avatar-a.wbx2.com/avatar/api/v1",
+    "conversationServiceUrl": "https://conv-a.wbx2.com/conversation/api/v1",
+    "encryptionServiceUrl": "https://encryption-a.wbx2.com/encryption/api/v1",
+    "filesServiceUrl": "https://beta.webex.com/files/api/v1",
+    "locusServiceUrl": "https://locus-a.wbx2.com/locus/api/v1",
+    "metricsServiceUrl": "https://metrics-a.wbx2.com/metrics/api/v1",
+    "squaredFilesServiceUrl": "https://files-api-a.wbx2.com/v1"
+  },
+  "deviceType": "DESKTOP",
+  "name": "DESKTOP",
+  "model": "DESKTOP",
+  "localizedModel": "DESKTOP",
+  "systemName": "DESKTOP",
+  "systemVersion": "42",
+  "capabilities": {
+    "groupCallSupported": false,
+    "sdpSupported": false
+  },
+  "features": {
+    "developer": [
+      {
+        "key": "console",
+        "val": "true",
+        "value": true,
+        "mutable": true,
+        "lastModified": "2015-06-29T20:02:48.033Z"
+      },
+      {
+        "key": "another-feature",
+        "val": "true",
+        "value": false,
+        "mutable": false
+      }
+    ],
+    "entitlement": [
+      {
+        "key": "call-initiation",
+        "val": "true",
+        "value": true,
+        "mutable": false
+      }
+    ],
+    "user": [
+      {
+        "key": "location-sharing",
+        "val": "false",
+        "value": false,
+        "mutable": true
+      }
+    ]
+  },
+  "userId": "USERID",
+  "isWx2TeamMember": true
+}

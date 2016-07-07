@@ -1,0 +1,16 @@
+{
+  "name": "@ciscospark/xunit-with-logs",
+  "version": "0.6.3",
+  "description": "",
+  "main": "./src",
+  "dependencies": {
+    "@ciscospark/test-helper-mocha": "^0.6.0",
+    "lodash": "^4.5.1",
+    "mkdirp": "^0.5.1"
+  },
+  "devDependencies": {
+    "babel-eslint": "^6.0.0-beta.5",
+    "eslint": "2.2.0",
+    "eslint-plugin-mocha-only": "0.0.3"
+  }
+}

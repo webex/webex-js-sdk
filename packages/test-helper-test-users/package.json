@@ -1,0 +1,26 @@
+{
+  "name": "@ciscospark/test-helper-test-users",
+  "version": "0.6.4",
+  "description": "",
+  "main": "./src",
+  "author": "Ian W. Remmel <iremmel@cisco.com>",
+  "license": "(Apache-2.0)",
+  "devDependencies": {
+    "babel-eslint": "^6.0.0-beta.5",
+    "eslint": "2.2.0",
+    "eslint-plugin-mocha-only": "0.0.3"
+  },
+  "optionalDependencies": {
+    "spark-js-sdk--test-users": "0.3.4"
+  },
+  "dependencies": {
+    "babel-runtime": "^6.3.19",
+    "envify": "^3.4.1",
+    "es6-promise": "^3.2.1"
+  },
+  "browserify": {
+    "transform": [
+      "envify"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+extends:
+  - "../../../../.eslintrc-es5.yml"
+  - "../../../../.eslintrc-mocha.yml"
+root: true
+rules:
+  global-require:
+    - 0
+  indent:
+    # We're doing weird stuff with indendation to generate docs as intended
+    - 0
+  no-invalid-this:
+    - 0
+  no-path-concat:
+    - 0
+  no-process-exit:
+    - 0
+  strict:
+    - 0

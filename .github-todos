@@ -1,0 +1,7 @@
+_version=2.2.0
+github.host=sqbu-github.cisco.com
+github.url=/api/v3
+repo=WebExSquared/squared-js-sdk
+files=src/**,test/**,index.js
+confirm-create=false
+inject-issue=true

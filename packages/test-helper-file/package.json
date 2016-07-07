@@ -1,0 +1,19 @@
+{
+  "name": "@ciscospark/test-helper-file",
+  "version": "0.6.4",
+  "description": "File helpers for writing isomorphicish mocha tests",
+  "main": "./src/index.js",
+  "dependencies": {
+    "@ciscospark/test-helper-make-local-url": "^0.6.0",
+    "es6-promise": "^3.2.1",
+    "xhr": "^2.2.0"
+  },
+  "devDependencies": {
+    "babel-eslint": "^6.0.0-beta.5",
+    "eslint": "2.2.0",
+    "eslint-plugin-mocha-only": "0.0.3"
+  },
+  "browser": {
+    "./src/file.js": "./src/file.shim.js"
+  }
+}

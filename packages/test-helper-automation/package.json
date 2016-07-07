@@ -1,0 +1,21 @@
+{
+  "name": "@ciscospark/test-helper-automation",
+  "version": "0.6.4",
+  "description": "",
+  "main": "./src",
+  "dependencies": {
+    "@ciscospark/test-helper-chai": "^0.6.0",
+    "babel-plugin-lodash": "2.1.0",
+    "chai": "^3.4.1",
+    "chai-as-promised": "^5.1.0",
+    "es6-promise": "^3.2.1",
+    "lodash": "^4.5.1",
+    "require-dir": "^0.3.0",
+    "wd": "^0.3.0"
+  },
+  "devDependencies": {
+    "babel-eslint": "^6.0.0-beta.5",
+    "eslint": "2.2.0",
+    "eslint-plugin-mocha-only": "0.0.3"
+  }
+}

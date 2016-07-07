@@ -1,0 +1,33 @@
+{
+  "tags": {
+    "allowUnknownTags": true
+  },
+  "plugins": ["plugins/markdown"],
+  "templates": {
+    "cleverLinks": false,
+    "monospaceLinks": false,
+    "dateFormat": "ddd MMM Do YYYY",
+    "outputSourceFiles": true,
+    "outputSourcePath": true,
+    "systemName": "spark-js-sdk",
+    "footer": "",
+    "copyright": "2014-2015 Cisco Systems, Inc",
+    "navType": "vertical",
+    "theme": "spacelab",
+    "linenums": true,
+    "collapseSymbols": false,
+    "inverseNav": true,
+    "highlightTutorialCode": true,
+    "protocol": "html://"
+  },
+  "markdown": {
+    "parser": "gfm",
+    "hardwrap": true
+  },
+	"opts": {
+		"destination": "doc",
+		"package": "./package.json",
+		"readme": "./README.md",
+		"template": "node_modules/ink-docstrap/template"
+	}
+}

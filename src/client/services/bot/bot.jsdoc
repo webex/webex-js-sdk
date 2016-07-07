@@ -1,0 +1,19 @@
+/**!
+ *
+ * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ */
+
+/**
+ * @namespace Bot
+ */
+
+/**
+ * @property {uuid} id
+ * @property {uuid} orgId
+ * @property {string} name
+ * @property {string} password
+ * @property {string} email
+ * @property {string} description
+ * @property {string} authorization
+ * @typedef Bot~BotObject
+ */
