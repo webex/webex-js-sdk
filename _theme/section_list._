@@ -1,0 +1,11 @@
+<section>
+  <% members.forEach(function(member) { %>
+    <h3 id='<%- member.namespace %>'><%= member.name%><%= shortSignature(member, false) %></h3>
+    <div>
+      <%= renderSection({
+        section: member,
+        renderSection: renderSection, nested: true
+      }) %>
+    </div>
+  <% }) %>
+</section>

@@ -1,0 +1,24 @@
+---
+layout: default
+---
+
+<div class="container">
+  <div class="row">
+    <div class="col-xs-12">
+      <div class="jumbotron">
+        <h1>Cisco Spark JavaScript SDK</h1>
+        <a href="{{ '/api' | prepend: site.baseurl }}">API Documentation</a>
+        <h2>Guides</h2>
+        <ul class="nav">
+          <li>
+          </li>
+          {% for post in site.posts reversed %}
+          <li>
+            <a href="{{ post.url | prepend: site.baseurl }}">{{ post.title }}</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

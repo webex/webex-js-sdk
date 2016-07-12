@@ -1,0 +1,19 @@
+---
+layout: default
+---
+
+<div class="container">
+  <div class="row">
+    <div class="col-xs-3">
+      <ul class="nav">
+        {% for eg in site.categories.example reversed %}
+          <li class="{% if eg.title == page.title %} active{% endif %}">
+            <a href="{{site.baseurl}}{{eg.url}}">{{eg.title}}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="col-xs-9">
+      {{ content }}
+    </div>
+</div>

@@ -1,0 +1,53 @@
+---
+layout: api
+title: API
+---
+<div class="container">
+  <div class="row">
+    <div class="col-xs-3">
+      <div id="toc" class="list-group">
+        <% docs.forEach(function(doc) { %>
+          <% var hasMembers = doc.members.static.length || doc.members.instance.length %>
+            <a href="#<%= doc.namespace %>" class="list-group-item"><%- doc.name %></a>
+
+            <% if (doc.members.static && doc.members.static.length) { %>
+              <div class="list-group-item">Static Members</div>
+              <% doc.members.static.forEach(function(member) { %>
+                <a class="list-group-item" href="#<%= member.namespace %>">.<%- member.name %></a>
+              <% }) %>
+            <% } %>
+
+            <% if (doc.members.instance && doc.members.instance.length) { %>
+                <div class="list-group-item">Instance members</div>
+                <% doc.members.instance.forEach(function(member) { %>
+                  <a class="list-group-item" href="#<%= member.namespace %>">#<%- member.name %></a>
+                <% }) %>
+            <% } %>
+
+            <% if (doc.members.events && doc.members.events.length) { %>
+              <div class="list-group-item">Events</div>
+              <% doc.members.events.forEach(function(member) { %>
+                <a class="list-group-item" href="#<%=member.namespace%>"> ⓔ <%- member.name %></a>
+              <% }) %>
+            <% } %>
+          </li>
+        <% }) %>
+      </div>
+    </div>
+    <div class="col-xs-9">
+      <% docs.forEach(function(doc) { %>
+        <% if (doc.kind === 'note') { %>
+          <div>
+            <%= renderNote({ note: doc }) %>
+          </div>
+        <% } else { %>
+          <%= renderSection({
+            section: doc,
+            renderSection: renderSection,
+            renderSectionList: renderSectionList
+          }) %>
+        <% } %>
+      <% }) %>
+    </div>
+  </div>
+</div>
