@@ -143,16 +143,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Room" class="list-group-item">Types~Room</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Rooms" class="list-group-item">Rooms</a>
 
             
@@ -176,7 +166,7 @@ title: API
           </li>
         
           
-            <a href="#Types~Team" class="list-group-item">Types~Team</a>
+            <a href="#Types~Room" class="list-group-item">Types~Room</a>
 
             
 
@@ -201,6 +191,16 @@ title: API
                 
                   <a class="list-group-item" href="#Teams#update">#update</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Team" class="list-group-item">Types~Team</a>
+
+            
+
             
 
             
@@ -240,16 +240,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Webhook" class="list-group-item">Types~Webhook</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Webhooks" class="list-group-item">Webhooks</a>
 
             
@@ -267,6 +257,16 @@ title: API
                 
                   <a class="list-group-item" href="#Webhooks#update">#update</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Webhook" class="list-group-item">Types~Webhook</a>
+
+            
+
             
 
             
@@ -331,15 +331,15 @@ title: API
             
               <div class="list-group-item">Events</div>
               
-                <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
-              
-                <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
-              
                 <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
+              
+                <a class="list-group-item" href="#Call.event:remoteMediaStream:change"> ⓔ remoteMediaStream:change</a>
               
                 <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
               
-                <a class="list-group-item" href="#Call.event:remoteMediaStream:change"> ⓔ remoteMediaStream:change</a>
+                <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
+              
+                <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
               
                 <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
               
@@ -348,6 +348,16 @@ title: API
         
           
             <a href="#Types~Feedback" class="list-group-item">Types~Feedback</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
+            <a href="#mediaDirection" class="list-group-item">mediaDirection</a>
 
             
 
@@ -385,16 +395,6 @@ title: API
               
                 <a class="list-group-item" href="#Phone.event:call:incoming"> ⓔ call:incoming</a>
               
-            
-          </li>
-        
-          
-            <a href="#mediaDirection" class="list-group-item">mediaDirection</a>
-
-            
-
-            
-
             
           </li>
         
@@ -2394,89 +2394,6 @@ ciscospark.rooms.create({title: <span class="hljs-string">'List People Example'<
         
           <section>
   
-    <h2 id='Types~Room'>Types~Room</h2>
-    
-      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/rooms.js#L23-L206">packages/ciscospark/src/plugins/rooms.js</a>
-    
-  
-
-  
-
-  <pre>Types~Room</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (server generated) Unique identifier for the room
-
-      </h4>
-      
-    
-      <h4>
-      title
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The display name for the room. All room members
-will see the title so make it something good
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated) The date and time that the
-room was created
-
-      </h4>
-      
-    
-      <h4>
-      teamId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (optional): The id of the team to which the room
-belongs
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Rooms'>Rooms</h2>
     
       <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/rooms.js#L23-L206">packages/ciscospark/src/plugins/rooms.js</a>
@@ -2924,15 +2841,15 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Update Room Example'<
         
           <section>
   
-    <h2 id='Types~Team'>Types~Team</h2>
+    <h2 id='Types~Room'>Types~Room</h2>
     
-      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/teams.js#L22-L157">packages/ciscospark/src/plugins/teams.js</a>
+      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/rooms.js#L23-L206">packages/ciscospark/src/plugins/rooms.js</a>
     
   
 
   
 
-  <pre>Types~Team</pre>
+  <pre>Types~Room</pre>
 
   
 
@@ -2951,16 +2868,17 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Update Room Example'<
       id
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : (server generated) The unique ID for the team.
+      : (server generated) Unique identifier for the room
 
       </h4>
       
     
       <h4>
-      name
+      title
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : The name of the team.
+      : The display name for the room. All room members
+will see the title so make it something good
 
       </h4>
       
@@ -2969,8 +2887,18 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Update Room Example'<
       created
       <code>(isoDate)</code>
       
-      : (server generated) The date and time when the
-team was created, in ISO8601 format.
+      : (server generated) The date and time that the
+room was created
+
+      </h4>
+      
+    
+      <h4>
+      teamId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (optional): The id of the team to which the room
+belongs
 
       </h4>
       
@@ -3346,6 +3274,78 @@ ciscospark.teams.create({name: <span class="hljs-string">'Update Team Example'</
     </div>
   
 </section>
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Team'>Types~Team</h2>
+    
+      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/teams.js#L22-L157">packages/ciscospark/src/plugins/teams.js</a>
+    
+  
+
+  
+
+  <pre>Types~Team</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (server generated) The unique ID for the team.
+
+      </h4>
+      
+    
+      <h4>
+      name
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The name of the team.
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated) The date and time when the
+team was created, in ISO8601 format.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
@@ -3884,104 +3884,6 @@ ciscospark.teams.create({name: <span class="hljs-string">'Remove Team Membership
         
           <section>
   
-    <h2 id='Types~Webhook'>Types~Webhook</h2>
-    
-      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/webhooks.js#L26-L242">packages/ciscospark/src/plugins/webhooks.js</a>
-    
-  
-
-  
-
-  <pre>Types~Webhook</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The unique ID for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      resource
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The resource type for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      event
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The event type for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      filter
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The filter that defines the webhook scope.
-
-      </h4>
-      
-    
-      <h4>
-      targetUrl
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The URL that receives POST requests for each event.
-
-      </h4>
-      
-    
-      <h4>
-      name
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : A user-friendly name for this webhook.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Webhooks'>Webhooks</h2>
     
       <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/webhooks.js#L26-L242">packages/ciscospark/src/plugins/webhooks.js</a>
@@ -4448,6 +4350,104 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Webhook Example'</spa
     </div>
   
 </section>
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Webhook'>Types~Webhook</h2>
+    
+      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/webhooks.js#L26-L242">packages/ciscospark/src/plugins/webhooks.js</a>
+    
+  
+
+  
+
+  <pre>Types~Webhook</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The unique ID for the webhook.
+
+      </h4>
+      
+    
+      <h4>
+      resource
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The resource type for the webhook.
+
+      </h4>
+      
+    
+      <h4>
+      event
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The event type for the webhook.
+
+      </h4>
+      
+    
+      <h4>
+      filter
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The filter that defines the webhook scope.
+
+      </h4>
+      
+    
+      <h4>
+      targetUrl
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The URL that receives POST requests for each event.
+
+      </h4>
+      
+    
+      <h4>
+      name
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : A user-friendly name for this webhook.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
@@ -5542,80 +5542,6 @@ even if renegotiation has not completed)</p>
     <h3>Events</h3>
     <section>
   
-    <h3 id='Call.event:ringing'>ringing</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>ringing</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:connected'>connected</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>connected</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
     <h3 id='Call.event:disconnected'>disconnected</h3>
     <div>
       <section>
@@ -5624,6 +5550,43 @@ even if renegotiation has not completed)</p>
   
 
   <pre>disconnected</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:remoteMediaStream:change'>remoteMediaStream:change</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>remoteMediaStream:change</pre>
 
   
 
@@ -5690,14 +5653,51 @@ even if renegotiation has not completed)</p>
 
     </div>
   
-    <h3 id='Call.event:remoteMediaStream:change'>remoteMediaStream:change</h3>
+    <h3 id='Call.event:connected'>connected</h3>
     <div>
       <section>
   
 
   
 
-  <pre>remoteMediaStream:change</pre>
+  <pre>connected</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:ringing'>ringing</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>ringing</pre>
 
   
 
@@ -5834,6 +5834,71 @@ SDK&#x27;s logger, you should make sure to avoid logging PII as well.
     
   
 
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='mediaDirection'>mediaDirection</h2>
+    
+      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/plugin-phone/src/state-parsers.js#L81-L91">packages/plugin-phone/src/state-parsers.js</a>
+    
+  
+
+  <p>Indicates the direction of the specified media type for the specified
+participant</p>
+
+
+  <pre>mediaDirection</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+    <h3>Parameters</h3>
+    
+      
+    
+      
+    
+  
+
+  
+
+  
+    
+      <h3>Returns</h3>
+      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>:
+        One of 
+<code>sendonly</code>
+, 
+<code>recvonly</code>
+, 
+<code>sendrecv</code>
+, or 
+<code>inactive</code>
+
+      
+    
   
 
   
@@ -6334,71 +6399,6 @@ there are active calls.</p>
     </div>
   
 </section>
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='mediaDirection'>mediaDirection</h2>
-    
-      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/plugin-phone/src/state-parsers.js#L81-L91">packages/plugin-phone/src/state-parsers.js</a>
-    
-  
-
-  <p>Indicates the direction of the specified media type for the specified
-participant</p>
-
-
-  <pre>mediaDirection</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-    <h3>Parameters</h3>
-    
-      
-    
-      
-    
-  
-
-  
-
-  
-    
-      <h3>Returns</h3>
-      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>:
-        One of 
-<code>sendonly</code>
-, 
-<code>recvonly</code>
-, 
-<code>sendrecv</code>
-, or 
-<code>inactive</code>
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
 
   
 
