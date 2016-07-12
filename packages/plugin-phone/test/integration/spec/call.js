@@ -8,11 +8,9 @@ import '../..';
 import {assert} from '@ciscospark/test-helper-chai';
 import sinon from '@ciscospark/test-helper-sinon';
 import CiscoSpark from '@ciscospark/spark-core';
-import transform from 'sdp-transform';
-import {find} from 'lodash';
 import testUsers from '@ciscospark/test-helper-test-users';
 
-describe(`Plugin: Phone`, function() {
+describe(`plugin-phone`, function() {
   this.timeout(60000);
 
   describe(`Call`, () => {
@@ -65,6 +63,8 @@ describe(`Plugin: Phone`, function() {
       });
 
       describe(`when the remote party has not yet joined`, () => {
+        // Running this test puts spock in a weird state because hangup doesn't
+        // quite work
         it.skip(`is "initiated"`, () => {
           call = spock.spark.phone.dial(mccoy.email);
           assert.equal(call.status, `initiated`);
@@ -297,210 +297,6 @@ describe(`Plugin: Phone`, function() {
       it(`declines an incoming call`);
       it(`is a noop for outbound calls`);
       it(`is a noop if answered calls`);
-    });
-
-    describe(`#toggleSendingAudio()`, () => {
-      describe(`when the call is sending audio`, () => {
-        it(`stops sending audio`, () => {
-          const call = spock.spark.phone.dial(mccoy.email);
-
-          return Promise.all([
-            mccoy.spark.phone.when(`call:incoming`)
-              .then(([c]) => c.answer()),
-            call.when(`connected`)
-              .then(() => assert.isTrue(call.sendingAudio, `The call is sending audio`))
-              .then(() => call.toggleSendingAudio())
-              .then(() => {
-                assert.isFalse(call.sendingAudio, `The call is not sending audio`);
-
-                const localSdp = transform.parse(call.pc.localDescription.sdp);
-                assert.equal(find(localSdp.media, {type: `audio`}).direction, `recvonly`, `The local audio sdp is recvonly`);
-                assert.equal(find(localSdp.media, {type: `video`}).direction, `sendrecv`, `The local video sdp is sendrecv`);
-
-                const remoteSdp = transform.parse(call.pc.remoteDescription.sdp);
-                assert.equal(find(remoteSdp.media, {type: `audio`}).direction, `sendonly`, `The remote audio sdp is sendonly`);
-                assert.equal(find(remoteSdp.media, {type: `video`}).direction, `sendrecv`, `The remote video sdp is sendrecv`);
-              })
-          ]);
-        });
-      });
-
-      describe(`when the call has stopped sending audio`, () => {
-        it(`starts sending audio`, () => {
-          const call = spock.spark.phone.dial(mccoy.email);
-
-          return Promise.all([
-            mccoy.spark.phone.when(`call:incoming`)
-              .then(([c]) => c.answer()),
-            call.when(`connected`)
-              .then(() => assert.isTrue(call.sendingAudio, `The call is sending audio`))
-              .then(() => call.toggleSendingAudio())
-              .then(() => {
-                assert.isFalse(call.sendingAudio, `The call is not sending audio`);
-
-                const localSdp = transform.parse(call.pc.localDescription.sdp);
-                assert.equal(find(localSdp.media, {type: `audio`}).direction, `recvonly`, `The local audio sdp is recvonly`);
-                assert.equal(find(localSdp.media, {type: `video`}).direction, `sendrecv`, `The local video sdp is sendrecv`);
-
-                const remoteSdp = transform.parse(call.pc.remoteDescription.sdp);
-                assert.equal(find(remoteSdp.media, {type: `audio`}).direction, `sendonly`, `The remote audio sdp is sendonly`);
-                assert.equal(find(remoteSdp.media, {type: `video`}).direction, `sendrecv`, `The remote video sdp is sendrecv`);
-
-                return call.toggleSendingAudio();
-              })
-              .then(() => {
-                assert.isTrue(call.sendingAudio, `The call is not sending audio`);
-
-                const localSdp = transform.parse(call.pc.localDescription.sdp);
-                assert.equal(find(localSdp.media, {type: `audio`}).direction, `sendrecv`, `The local audio sdp is sendrecv`);
-                assert.equal(find(localSdp.media, {type: `video`}).direction, `sendrecv`, `The local video sdp is sendrecv`);
-
-                const remoteSdp = transform.parse(call.pc.remoteDescription.sdp);
-                assert.equal(find(remoteSdp.media, {type: `audio`}).direction, `sendrecv`, `The remote audio sdp is sendrecv`);
-                assert.equal(find(remoteSdp.media, {type: `video`}).direction, `sendrecv`, `The remote video sdp is sendrecv`);
-              })
-          ]);
-        });
-      });
-
-      describe(`when the call was started without audio`, () => {
-        // FIXME debug with Neil. The remote audio is coming backing inactive
-        // instead of recvonly
-        it.skip(`adds audio to the call`, () => {
-          const call = spock.spark.phone.dial(mccoy.email, {
-            constraints: {
-              audio: false
-            }
-          });
-
-          return Promise.all([
-            mccoy.spark.phone.when(`call:incoming`)
-              .then(([c]) => c.answer()),
-            call.when(`connected`)
-              .then(() => {
-                assert.isFalse(call.sendingAudio, `The call is not sending audio`);
-                assert.isFalse(call.receivingAudio, `The call is not receiving audio`);
-                const localSdp = transform.parse(call.pc.localDescription.sdp);
-                assert.notOk(find(localSdp.media, {type: `audio`}));
-              })
-              .then(() => assert.isFalse(call.sendingAudio, `The call is not sending audio`))
-              .then(() => call.toggleSendingAudio())
-              .then(() => {
-                assert.isTrue(call.sendingAudio, `The call is sending audio`);
-                assert.isFalse(call.receivingAudio, `The call is not receiving audio`);
-
-                const localSdp = transform.parse(call.pc.localDescription.sdp);
-                assert.equal(find(localSdp.media, {type: `audio`}).direction, `sendonly`, `The local audio sdp is sendonly`);
-                assert.equal(find(localSdp.media, {type: `video`}).direction, `sendrecv`, `The local video sdp is sendrecv`);
-
-                const remoteSdp = transform.parse(call.pc.remoteDescription.sdp);
-                assert.equal(find(remoteSdp.media, {type: `audio`}).direction, `recvonly`, `The remote audio sdp is recvonly`);
-                assert.equal(find(remoteSdp.media, {type: `video`}).direction, `sendrecv`, `The remote video sdp is sendrecv`);
-              })
-          ]);
-        });
-      });
-    });
-
-    describe(`#toggleSendingVideo()`, () => {
-      describe(`when the call is sending video`, () => {
-        it(`stops sending video`, () => {
-          const call = spock.spark.phone.dial(mccoy.email);
-
-          return Promise.all([
-            mccoy.spark.phone.when(`call:incoming`)
-              .then(([c]) => c.answer()),
-            call.when(`connected`)
-              .then(() => assert.isTrue(call.sendingAudio, `The call is sending video`))
-              .then(() => call.toggleSendingVideo())
-              .then(() => {
-                assert.isFalse(call.sendingVideo, `The call is not sending video`);
-
-                const localSdp = transform.parse(call.pc.localDescription.sdp);
-                assert.equal(find(localSdp.media, {type: `audio`}).direction, `sendrecv`, `The local audio sdp is sendrecv`);
-                assert.equal(find(localSdp.media, {type: `video`}).direction, `recvonly`, `The local video sdp is recvonly`);
-
-                const remoteSdp = transform.parse(call.pc.remoteDescription.sdp);
-                assert.equal(find(remoteSdp.media, {type: `audio`}).direction, `sendrecv`, `The remote audio sdp is sendrecv`);
-                assert.equal(find(remoteSdp.media, {type: `video`}).direction, `sendonly`, `The remote video sdp is sendonly`);
-              })
-          ]);
-        });
-      });
-
-      describe(`when the call has stopped sending video`, () => {
-        it(`starts sending video`, () => {
-          const call = spock.spark.phone.dial(mccoy.email);
-
-          return Promise.all([
-            mccoy.spark.phone.when(`call:incoming`)
-              .then(([c]) => c.answer()),
-            call.when(`connected`)
-              .then(() => assert.isTrue(call.sendingVideo, `The call is sending video`))
-              .then(() => call.toggleSendingVideo())
-              .then(() => {
-                assert.isFalse(call.sendingVideo, `The call is not sending video`);
-
-                const localSdp = transform.parse(call.pc.localDescription.sdp);
-                assert.equal(find(localSdp.media, {type: `audio`}).direction, `sendrecv`, `The local audio sdp is sendrecv`);
-                assert.equal(find(localSdp.media, {type: `video`}).direction, `recvonly`, `The local video sdp is recvonly`);
-
-                const remoteSdp = transform.parse(call.pc.remoteDescription.sdp);
-                assert.equal(find(remoteSdp.media, {type: `audio`}).direction, `sendrecv`, `The remote audio sdp is sendrecv`);
-                assert.equal(find(remoteSdp.media, {type: `video`}).direction, `sendonly`, `The remote video sdp is sendonly`);
-
-                return call.toggleSendingVideo();
-              })
-              .then(() => {
-                assert.isTrue(call.sendingVideo, `The call is sending video`);
-
-                const localSdp = transform.parse(call.pc.localDescription.sdp);
-                assert.equal(find(localSdp.media, {type: `audio`}).direction, `sendrecv`, `The local audio sdp is sendrecv`);
-                assert.equal(find(localSdp.media, {type: `video`}).direction, `sendrecv`, `The local video sdp is sendrecv`);
-
-                const remoteSdp = transform.parse(call.pc.remoteDescription.sdp);
-                assert.equal(find(remoteSdp.media, {type: `audio`}).direction, `sendrecv`, `The remote audio sdp is sendrecv`);
-                assert.equal(find(remoteSdp.media, {type: `video`}).direction, `sendrecv`, `The remote video sdp is sendrecv`);
-              })
-          ]);
-        });
-      });
-
-      describe(`when the call was started without video`, () => {
-        it(`adds video to the call`, () => {
-          const call = spock.spark.phone.dial(mccoy.email, {
-            constraints: {
-              video: false
-            }
-          });
-
-          return Promise.all([
-            mccoy.spark.phone.when(`call:incoming`)
-              .then(([c]) => c.answer()),
-            call.when(`connected`)
-              .then(() => {
-                assert.isFalse(call.sendingVideo, `The call is not sending video`);
-                assert.isFalse(call.receivingVideo, `The call is not receiving video`);
-                const localSdp = transform.parse(call.pc.localDescription.sdp);
-                assert.notOk(find(localSdp.media, {type: `video`}));
-              })
-              .then(() => assert.isFalse(call.sendingVideo, `The call is not sending video`))
-              .then(() => call.toggleSendingVideo())
-              .then(() => {
-                assert.isTrue(call.sendingVideo, `The call is sending video`);
-                assert.isFalse(call.receivingVideo, `The call is not receiving video`);
-
-                const localSdp = transform.parse(call.pc.localDescription.sdp);
-                assert.equal(find(localSdp.media, {type: `audio`}).direction, `sendrecv`, `The local audio sdp is sendrecv`);
-                assert.equal(find(localSdp.media, {type: `video`}).direction, `sendonly`, `The local video sdp is sendonly`);
-
-                const remoteSdp = transform.parse(call.pc.remoteDescription.sdp);
-                assert.equal(find(remoteSdp.media, {type: `audio`}).direction, `sendrecv`, `The remote audio sdp is sendrecv`);
-                assert.equal(find(remoteSdp.media, {type: `video`}).direction, `recvonly`, `The remote video sdp is recvonly`);
-              })
-          ]);
-        });
-      });
     });
 
     describe(`#toggleFacingMode`, () => {

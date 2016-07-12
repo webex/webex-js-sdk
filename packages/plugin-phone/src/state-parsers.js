@@ -72,6 +72,25 @@ export function joinedOnThisDevice(spark, locus) {
 }
 
 /**
+ * Indicates the direction of the specified media type for the specified
+ * participant
+ * @param {string} mediaType
+ * @param {Types~LocusParticipant} participant
+ * @returns {string} One of `sendonly`, `recvonly`, `sendrecv`, or `inactive`
+ */
+export function mediaDirection(mediaType, participant) {
+  if (!participant) {
+    return `inactive`;
+  }
+
+  if (!participant.status) {
+    return `inactive`;
+  }
+
+  return (participant.status[`${mediaType}Status`] || `inactive`).toLowerCase();
+}
+
+/**
  * Indicates if the specified participant has joined the Locus
  * @param {Types~LocusParticipant} participant
  * @private

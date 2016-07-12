@@ -126,11 +126,14 @@ module.exports = function(grunt) {
       default: {
         src: '.env.default.json'
       },
+      defaults: {
+        BUILD_NUMBER: process.env.BUILD_NUMBER || 'local-' + process.env.USER + '-' + pkg.name + '-' + Date.now()
+      },
       secrets: {
         src: '.env'
       },
-      defaults: {
-        BUILD_NUMBER: process.env.BUILD_NUMBER || 'local-' + process.env.USER + '-' + pkg.name + '-' + Date.now()
+      test: {
+        NODE_ENV: 'test'
       }
     },
     eslint: {
@@ -173,7 +176,7 @@ module.exports = function(grunt) {
           // in karma.conf.js
           client: {
             mocha: {
-              retries: 1
+              retries: (process.env.JENKINS || process.env.CI) ? 1 : 0
             }
           }
         }
@@ -201,7 +204,7 @@ module.exports = function(grunt) {
       options: {
         reporter: process.env.XUNIT ? path.join(__dirname, './packages/xunit-with-logs') : 'spec',
         // TODO figure out how to detect retried tests
-        retries: 1,
+        retries: (process.env.JENKINS || process.env.CI) ? 1 : 0,
         timeout: 30000
       },
       automation: {
@@ -236,25 +239,13 @@ module.exports = function(grunt) {
       },
       doc: {
         options: {
-          require: makeMochaRequires(),
+          require: makeMochaRequires(['./packages/jsdoctrinetest']),
           reporterOptions: {
             output: './reports-ng/test/mocha-<%= package %>-doc.xml'
           }
         },
         src: [
-          './packages/<%= package %>/test/documentation/spec/**/*.js',
-          '!./packages/<%= package %>/test/documentation/spec/**/*.es6.js'
-        ]
-      },
-      'doc-es6': {
-        options: {
-          require: makeMochaRequires(['babel-register']),
-          reporterOptions: {
-            output: './reports-ng/test/mocha-<%= package %>-doc-es6.xml'
-          }
-        },
-        src: [
-          './packages/<%= package %>/test/documentation/spec/**/*.es6.js'
+          './packages/<%= package %>/dist/**/*.js'
         ]
       }
     },
@@ -329,9 +320,7 @@ module.exports = function(grunt) {
 
   registerTask('test:doc', [
     'env',
-    // Note: doc must run before doc-es6 because doc-es6 pulls in babel-register
-    'mochaTest:doc',
-    'mochaTest:doc-es6'
+    'mochaTest:doc'
   ]);
 
   registerTask('default', []);

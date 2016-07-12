@@ -1,14 +1,23 @@
 import React from 'react';
 import Video from '../common/video';
+import MediaStatus from './media-status';
 
-export default function SelfView({localMediaStreamUrl, ...rest}) {
+export default function SelfView({
+  localAudioDirection,
+  localMediaStreamUrl,
+  localVideoDirection,
+  ...rest
+}) {
   return (
     <div className="self-view">
-      <Video src={localMediaStreamUrl} {...rest} />
+      <Video muted src={localMediaStreamUrl} {...rest} />
+      <MediaStatus audioDirection={localAudioDirection} videoDirection={localVideoDirection} />
     </div>
   );
 }
 
 SelfView.propTypes = {
-  localMediaStreamUrl: React.PropTypes.string.isRequired
+  localAudioDirection: React.PropTypes.string.isRequired,
+  localMediaStreamUrl: React.PropTypes.string.isRequired,
+  localVideoDirection: React.PropTypes.string.isRequired
 };

@@ -5,8 +5,9 @@
 
 'use strict';
 
-var SparkBase = require('../../../lib/spark-base');
+var pick = require('lodash.pick');
 var resolveWith = require('../../../util/resolve-with');
+var SparkBase = require('../../../lib/spark-base');
 
 var SearchService = SparkBase.extend({
   /** @lends Search.SearchService.prototype */
@@ -14,22 +15,32 @@ var SearchService = SparkBase.extend({
 
   /**
    * Searches for users given a query string.
-   * @param  {Object|SearchObject} params
-   * @param {string} params.queryString, string to search for
-   * @param {boolean} params.includeRooms, includes room information for each result
-   * @param {int} params.size, number of results returned
+   * @param  {Object|SearchObject} options
+   * @param {string} options.query, string to search for
+   * @param {string} options.size, max results to return
+   * @param {boolean} options.includePeople, includes people in search results
+   * @param {boolean} options.includeRobots, includes bots in search results
+   * @param {boolean} options.includeRooms, includes room information for each result
    * @return {Promise} Resolves with the results from the request query
    */
-  people: function people(params) {
-    if (!params || !params.queryString) {
-      return Promise.reject(new Error('`params.query` is required'));
+  people: function people(options) {
+    options = options || {};
+
+    if (!options.query && !options.queryString) {
+      return Promise.reject(new Error('`options.query` is required'));
     }
+
+    var body = pick(options, 'size', 'includePeople', 'includeRooms', 'includeRobots');
+
+    // Send the API the query as queryString param because this
+    // endpoint is different than the search endpoint for some reason.
+    body.queryString = options.query || options.queryString;
 
     return this.request({
       api: 'argonaut',
       resource: 'directory',
       method: 'POST',
-      body: params
+      body: body
     })
       .then(function processResponse(res) {
         return res.body;
@@ -38,32 +49,34 @@ var SearchService = SparkBase.extend({
 
   /**
    * Searches for the given string.
-   * @param  {Object|SearchObject} params
-   * @param  {string} params.query, string to search for
-   * @param  {int} params.limit, number of results returned
-   * @param  {string} params.type, type of object to search
-   * @param  {Array} params.sharedBy, array of user IDs
-   * @param  {Array} params.sharedIn, array of rooms
-   * @param  {Date} params.startDate
-   * @param  {Date} params.endDate
+   * @param  {Object|SearchObject} options
+   * @param  {string} options.query, string to search for
+   * @param  {int} options.limit, number of results returned
+   * @param  {string} options.type, type of object to search
+   * @param  {Array} options.sharedBy, array of user IDs
+   * @param  {Array} options.sharedIn, array of rooms
+   * @param  {Date} options.startDate
+   * @param  {Date} options.endDate
    * @return {Promise} Resolves with the results from the requested query
    */
-  search: function search(params) {
-    if (!params || !params.query) {
+  search: function search(options) {
+    options = options || {};
+
+    if (!options.query) {
       return Promise.resolve([]);
     }
     return this._prepareKmsMessage()
       .then(function prepareParams(req) {
-        params.kmsMessage = req.kmsMessage;
-        params.searchEncryptionKeyUrl = req.keyUrl;
-        return this._encryptQuery(params.query, req.keyUrl)
+        options.kmsMessage = req.kmsMessage;
+        options.searchEncryptionKeyUrl = req.keyUrl;
+        return this._encryptQuery(options.query, req.keyUrl)
           .then(function requestSearch(query) {
-            params.query = query;
+            options.query = query;
             return this.request({
               api: 'argonaut',
               resource: 'search',
               method: 'POST',
-              body: params
+              body: options
             });
           }.bind(this))
           .then(function processResponse(res) {

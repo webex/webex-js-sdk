@@ -53,7 +53,7 @@ module.exports = function(config) {
 
     client: {
       mocha: {
-        retries: 1
+        retries: (process.env.JENKINS || process.env.CI) ? 1 : 0
       }
     },
 

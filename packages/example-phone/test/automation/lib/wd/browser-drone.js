@@ -23,7 +23,6 @@ wd.addPromiseChainMethod(`bdInit`, function(user) {
       droneBrowsers.set(this, drone);
 
       return drone
-        .setImplicitWaitTimeout(20000)
         .loginWithLocalStorage(user)
         .clickOnTitle(`Link to Call Page`);
     })
@@ -31,27 +30,31 @@ wd.addPromiseChainMethod(`bdInit`, function(user) {
 });
 
 wd.addPromiseChainMethod(`bdAnswerCall`, function() {
-  return droneBrowsers.get(this)
-    .answerCall()
-    .then(() => this);
+  return this
+    .title()
+      .then(() => droneBrowsers.get(this)
+          .answerCall());
 });
 
 wd.addPromiseChainMethod(`bdDeclineCall`, function() {
-  return droneBrowsers.get(this)
-    .declineCall()
-    .then(() => this);
+  return this
+    .title()
+      .then(() => droneBrowsers.get(this)
+        .declineCall());
 });
 
 wd.addPromiseChainMethod(`bdEndCall`, function() {
-  return droneBrowsers.get(this)
-    .endCall()
-    .then(() => this);
+  return this
+    .title()
+      .then(() => droneBrowsers.get(this)
+        .endCall());
 });
 
 wd.addPromiseChainMethod(`bdPlaceCall`, function(dialString) {
-  return droneBrowsers.get(this)
-    .placeCall(dialString)
-    .then(() => this);
+  return this
+    .title()
+      .then(() => droneBrowsers.get(this)
+        .placeCall(dialString));
 });
 
 wd.addPromiseChainMethod(`bdDeinit`, function() {

@@ -2,19 +2,26 @@ import {createBrowser} from '@ciscospark/test-helper-automation';
 import testUsers from '@ciscospark/test-helper-test-users';
 import pkg from '../../../package.json';
 
-describe.skip(`incoming calls`, () => {
-  let browser, user;
+describe(`example-phone`, () => {
+  let browser, callee, caller;
 
-  before(() => testUsers.create({count: 1})
-    .then((users) => {user = users[0];}));
+  beforeEach(() => testUsers.create({count: 2})
+    .then(([u1, u2]) => {
+      caller = u1;
+      callee = u2;
+    }));
 
   beforeEach(() => createBrowser(pkg, {
     platform: `Linux`,
     browserName: `firefox`,
-    version: `latest`
+    version: `latest`,
+    name: `caller`
   })
     .then((b) => {browser = b;})
-    .then(() => browser.loginWithLocalStorage(user)));
+    .then(() => browser
+      .loginWithLocalStorage(callee)
+      .bdInit(caller)
+      .clickOnTitle(`Link to Call Page`)));
 
   afterEach(() => Promise.resolve(browser && browser.quit())
     .catch((reason) => {console.warn(reason);}));
@@ -22,47 +29,31 @@ describe.skip(`incoming calls`, () => {
   describe(`As an authenticated user`, () => {
     describe(`when there is an incoming call`, () => {
       it(`answers the call`, () => browser
-        .setWindowSize(1024, 768)
-        .setImplicitWaitTimeout(30000)
-        .setDroneUser(user)
-        .clickOnTitle(`Link to Call Page`)
-        .createDrone(`oneOnOneCall`, user, {callDuration: 30})
-        .clickOnTitle(`Answer Call`)
-        .getDrone(`oneOnOneCall`)
-          .then((drone) => browser
-            .waitForElementByClassName(`remote-party-name`)
-              .text()
-                .should.eventually.equal(drone.drones[0].participant_display_name))
-        .clickOnTitle(`Hang Up`)
-        .waitForElementByCssSelector(`[title="Enter your feedback (optional)"]`));
+        .bdPlaceCall(callee.email)
+        .waitForElementByClassName(`alert`)
+        .answerCall()
+        .assertIsInCallWith(caller));
 
-      it(`declines the call`, () => browser
-        .setWindowSize(1024, 768)
-        .setImplicitWaitTimeout(30000)
-        .setDroneUser(user)
-        .clickOnTitle(`Link to Call Page`)
-        .createDrone(`oneOnOneCall`, user, {callDuration: 30})
-        .clickOnTitle(`Decline Call`)
-        .hasElementByCssSelector(`[title="Decline Call"]`)
-          .should.eventually.equal(false));
+      it(`answers the call with audio only`, () => browser
+        .bdPlaceCall(callee.email)
+        .clickOnTitle(`Answer Call with Audio`)
+        .assertIsInCallWith(caller)
+        .assertLocalAudioDirection(`sendrecv`)
+        .assertLocalVideoDirection(`inactive`)
+      );
+
+      it(`answers the call with video only`, () => browser
+        .bdPlaceCall(callee.email)
+        .clickOnTitle(`Answer Call with Video`)
+        .assertIsInCallWith(caller)
+        .assertLocalAudioDirection(`inactive`)
+        .assertLocalVideoDirection(`sendrecv`)
+      );
+
+      it(`declines the call`);
 
       describe(`when the page is reloaded`, () => {
-        it(`answers the incoming call`, () => browser
-          .setWindowSize(1024, 768)
-          .setImplicitWaitTimeout(30000)
-          .setDroneUser(user)
-          .clickOnTitle(`Link to Call Page`)
-          .createDrone(`oneOnOneCall`, user, {callDuration: 30})
-          .getMainPage()
-          .clickOnTitle(`Link to Call Page`)
-          .clickOnTitle(`Answer Call`)
-          .getDrone(`oneOnOneCall`)
-            .then((drone) => browser
-              .waitForElementByClassName(`remote-party-name`)
-                .text()
-                  .should.eventually.equal(drone.drones[0].participant_display_name))
-          .clickOnTitle(`Hang Up`)
-          .waitForElementByCssSelector(`[title="Enter your feedback (optional)"]`));
+        it(`answers the incoming call`);
       });
     });
   });

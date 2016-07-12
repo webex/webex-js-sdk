@@ -32,9 +32,26 @@ const Memberships = SparkPlugin.extend({
    * @param {Types~Membership} membership
    * @returns {Promise<Types~Membership>}
    * @example
-   * <%= memberships__create_es6 %>
-   * @example
-   * <%= memberships__create %>
+   * var ciscospark = require('../..');
+   * ciscospark.rooms.create({title: 'Create Membership Example'})
+   *   .then(function(room) {
+   *     return ciscospark.memberships.create({
+   *      personEmail: 'alice@example.com',
+   *      roomId: room.id
+   *    });
+   *   })
+   *   .then(function(membership) {
+   *     var assert = require('assert');
+   *     assert(membership.id);
+   *     assert(membership.roomId);
+   *     assert(membership.personId);
+   *     assert(membership.personEmail);
+   *     assert('isModerator' in membership);
+   *     assert('isMonitor' in membership);
+   *     assert(membership.created);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   create(membership) {
     return this.request({
@@ -52,9 +69,25 @@ const Memberships = SparkPlugin.extend({
    * @param {Types~Membership|uuid} membership
    * @returns {Promise<Types~Membership>}
    * @example
-   * <%= memberships__get_es6 %>
-   * @example
-   * <%= memberships__get %>
+   * var ciscospark = require('../..');
+   * var membership;
+   * ciscospark.rooms.create({title: 'Get Membership Example'})
+   *   .then(function(room) {
+   *     return ciscospark.memberships.create({
+   *       personEmail: 'alice@example.com',
+   *       roomId: room.id
+   *     });
+   *   })
+   *   .then(function(m) {
+   *     membership = m;
+   *     return ciscospark.memberships.get(m.id);
+   *   })
+   *   .then(function(m) {
+   *     var assert = require('assert');
+   *     assert.deepEqual(m, membership);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   get(membership) {
     const id = membership.id || membership;
@@ -78,9 +111,28 @@ const Memberships = SparkPlugin.extend({
    * @param {number} options.max
    * @returns {Promise<Page<Types~Membership>>}
    * @example
-   * <%= memberships__list_es6 %>
-   * @example
-   * <%= memberships__list %>
+   * var ciscospark = require('../..');
+   * var room;
+   * ciscospark.rooms.create({title: 'List Membership Example'})
+   *   .then(function(r) {
+   *     room = r;
+   *     return ciscospark.memberships.create({
+   *      personEmail: 'alice@example.com',
+   *      roomId: room.id
+   *     });
+   *   })
+   *   .then(function() {
+   *     return ciscospark.memberships.list({roomId: room.id});
+   *   })
+   *   .then(function(memberships) {
+   *     var assert = require('assert');
+   *     assert.equal(memberships.length, 2);
+   *     for (var i = 0; i < memberships.length; i++) {
+   *       assert.equal(memberships.items[i].roomId, room.id);
+   *     }
+   *     return 'success';
+   *   });
+   *   // => success
    */
   list(options) {
     return this.request({
@@ -97,9 +149,34 @@ const Memberships = SparkPlugin.extend({
    * @param {Types~Membership|uuid} membership
    * @returns {Promise}
    * @example
-   * <%= memberships__remove_es6 %>
-   * @example
-   * <%= memberships__remove %>
+   * var ciscospark = require('../..');
+   * var membership, room;
+   * ciscospark.rooms.create({title: 'Remove Membership Example'})
+   *   .then(function(r) {
+   *     room = r;
+   *     return ciscospark.memberships.create({
+   *      personEmail: 'alice@example.com',
+   *      roomId: room.id
+   *     });
+   *   })
+   *   .then(function(m) {
+   *     membership = m;
+   *     return ciscospark.memberships.list({roomId: room.id});
+   *   })
+   *   .then(function(memberships) {
+   *     var assert = require('assert');
+   *     assert.equal(memberships.length, 2);
+   *     return ciscospark.memberships.remove(membership);
+   *   })
+   *   .then(function() {
+   *     return ciscospark.memberships.list({roomId: room.id});
+   *   })
+   *   .then(function(memberships) {
+   *     var assert = require('assert');
+   *     assert.equal(memberships.length, 1);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   remove(membership) {
     const id = membership.id || membership;
@@ -125,9 +202,29 @@ const Memberships = SparkPlugin.extend({
    * @param {Types~Membership|uuid} membership
    * @returns {Promise<Types~Membership>}
    * @example
-   * <%= memberships__update_es6 %>
-   * @example
-   * <%= memberships__update %>
+   * var ciscospark = require('../..');
+   * var membership, room;
+   * ciscospark.rooms.create({title: 'Memberships Example'})
+   *   .then(function(r) {
+   *     room = r;
+   *     return ciscospark.memberships.list({roomId: room.id});
+   *   })
+   *   .then(function(memberships) {
+   *     membership = memberships.items[0];
+   *     var assert = require('assert');
+   *     assert.equal(membership.isModerator, false);
+   *     membership.isModerator = true;
+   *     return ciscospark.memberships.update(membership);
+   *   })
+   *   .then(function() {
+   *     return ciscospark.memberships.get(membership.id);
+   *   })
+   *   .then(function(membership) {
+   *     var assert = require('assert');
+   *     assert.equal(membership.isModerator, true);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   update(membership) {
     const id = membership.id || membership;

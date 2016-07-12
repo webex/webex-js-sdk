@@ -34,9 +34,24 @@ const Messages = SparkPlugin.extend({
    * @param {Types~Message} message
    * @returns {Promise<Types~Message>}
    * @example
-   * <%= messages__create_es6 %>
-   * @example
-   * <%= messages__create %>
+   * var ciscospark = require('../..');
+   * ciscospark.rooms.create({title: 'Create Message Example'})
+   *   .then(function(room) {
+   *     return ciscospark.messages.create({
+   *       text: 'Howdy!',
+   *       roomId: room.id
+   *     });
+   *   })
+   *   .then(function(message) {
+   *     var assert = require('assert');
+   *     assert(message.id);
+   *     assert(message.personId);
+   *     assert(message.personEmail);
+   *     assert(message.roomId);
+   *     assert(message.created);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   create(message) {
     return this.request({
@@ -54,9 +69,25 @@ const Messages = SparkPlugin.extend({
    * @param {Types~Room|string} message
    * @returns {Promise<Types~Message>}
    * @example
-   * <%= messages__get_es6 %>
-   * @example
-   * <%= messages__get %>
+   * var ciscospark = require('../..');
+   * var message;
+   * ciscospark.rooms.create({title: 'Get Message Example'})
+   *   .then(function(room) {
+   *     return ciscospark.messages.create({
+   *       text: 'Howdy!',
+   *       roomId: room.id
+   *     });
+   *   })
+   *   .then(function(m) {
+   *     message = m;
+   *     return ciscospark.messages.get(message.id);
+   *   })
+   *   .then(function(message2) {
+   *     var assert = require('assert');
+   *     assert.deepEqual(message2, message);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   get(message) {
     const id = message.id || message;
@@ -77,9 +108,35 @@ const Messages = SparkPlugin.extend({
    * @param {number} options.max
    * @returns {Promise<Page<Types~Message>>}
    * @example
-   * <%= messages__list_es6 %>
-   * @example
-   * <%= messages__list %>
+   * var ciscospark = require('../..');
+   * var message1, message2, room;
+   * ciscospark.rooms.create({title: 'List Messages Example'})
+   *   .then(function(r) {
+   *     room = r;
+   *     return ciscospark.messages.create({
+   *       text: 'Howdy!',
+   *       roomId: room.id
+   *     });
+   *   })
+   *   .then(function(m) {
+   *     message1 = m;
+   *     return ciscospark.messages.create({
+   *       text: 'How are you?',
+   *       roomId: room.id
+   *     });
+   *   })
+   *   .then(function(m) {
+   *     message2 = m;
+   *     return ciscospark.messages.list({roomId: room.id});
+   *   })
+   *   .then(function(messages) {
+   *     var assert = require('assert');
+   *     assert.equal(messages.length, 2);
+   *     assert.equal(messages.items[0].id, message2.id);
+   *     assert.equal(messages.items[1].id, message1.id);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   list(options) {
     return this.request({
@@ -99,9 +156,36 @@ const Messages = SparkPlugin.extend({
    * @param {Types~Message|uuid} message
    * @returns {Promise}}
    * @example
-   * <%= messages__remove_es6 %>
-   * @example
-   * <%= messages__remove %>
+   * var ciscospark = require('../..');
+   * var message1, room;
+   * ciscospark.rooms.create({title: 'Messages Example'})
+   *   .then(function(r) {
+   *     room = r;
+   *     return ciscospark.messages.create({
+   *       text: 'Howdy!',
+   *       roomId: room.id
+   *     });
+   *   })
+   *   .then(function(m) {
+   *     message1 = m;
+   *     return ciscospark.messages.create({
+   *       text: 'How are you?',
+   *       roomId: room.id
+   *     });
+   *   })
+   *   .then(function() {
+   *     return ciscospark.messages.remove(message1);
+   *   })
+   *   .then(function() {
+   *     return ciscospark.messages.list({roomId: room.id});
+   *   })
+   *   .then(function(messages) {
+   *     var assert = require('assert');
+   *     assert.equal(messages.items.length, 1);
+   *     assert(messages.items[0].id !== message1.id);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   remove(message) {
     const id = message.id || message;

@@ -10,6 +10,7 @@
   "dependencies": {
     "@ciscospark/phone": "^0.6.0",
     "babel-runtime": "^6.3.19",
+    "extract-text-webpack-plugin": "^1.0.1",
     "lodash": "^4.5.1",
     "react": "^15.0.2",
     "react-bootstrap": "^0.29.5",
@@ -39,12 +40,15 @@
     "babel-preset-react": "^6.5.0",
     "babel-preset-stage-1": "^6.5.0",
     "babel-register": "^6.4.3",
+    "css-loader": "^0.23.1",
     "dotenv": "^2.0.0",
     "eslint": "^2.4.0",
     "eslint-plugin-mocha-only": "0.0.3",
     "eslint-plugin-react": "^5.0.1",
+    "html-webpack-plugin": "^2.22.0",
     "inline-environment-variables-webpack-plugin": "0.0.2",
-    "require-dir": "^0.3.0"
+    "require-dir": "^0.3.0",
+    "style-loader": "^0.13.1"
   },
   "private": true
 }

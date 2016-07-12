@@ -62,14 +62,6 @@ describe(`ciscospark`, function() {
             assert.equal(room.title, room0.title);
           });
       });
-
-      it(`retrieves a specific room including its sip address`, () => {
-        return spark.rooms.get(room0, {showSipAddress: true})
-          .then((room) => {
-            assert.isRoom(room);
-            assert.property(room, `sipAddress`);
-          });
-      });
     });
 
     describe(`#list()`, () => {
@@ -122,19 +114,6 @@ describe(`ciscospark`, function() {
             assert.isAbove(spy.callCount, 1);
             assert.calledWith(spy, room0.id);
             assert.calledWith(spy, room1.id);
-          });
-      });
-
-      it(`retrieves all the rooms to which I have access including their sipAddresses`, () => {
-        return spark.rooms.list({
-          showSipAddress: true,
-          max: 2
-        })
-          .then((rooms) => {
-            for (const room of rooms) {
-              assert.isRoom(room);
-              assert.property(room, `sipAddress`);
-            }
           });
       });
     });

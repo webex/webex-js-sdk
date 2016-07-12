@@ -6,17 +6,9 @@ import App from './containers/app';
 import AuthPage from './containers/pages/auth';
 import CallPage from './containers/pages/call';
 
-let base = `/`;
-if (window.location.href.includes(`4000`)) {
-  base = `/app`;
-}
-
-if (window.location.href.toLowerCase().includes(`iremmel`)) {
-  base = `/pages/iremmel/squared-js-sdk/app`;
-}
-
-if (window.location.href.toLowerCase().includes(`webexsquared`)) {
-  base = `/pages/WebExSquared/squared-js-sdk/app`;
+let base = window.location.pathname;
+if (!base.endsWith `/`) {
+  base += `/`;
 }
 
 export default function Root({history, store}) {

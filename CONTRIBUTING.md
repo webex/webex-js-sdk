@@ -69,105 +69,72 @@ The footer should contain any information about <b>Breaking Changes</b> and is a
 
 <b>Breaking Changes</b> should start with the word `BREAKING CHANGE:` with a space or two newlines. The rest of the commit message is then used for this.
 
-## Creating a Pull Request
+## Running the Tests
 
-`spark-js-sdk` is gated by Jenkins Validated Merge - nothing goes into master without going through tests first. Before you can start opening pull requests, you'll want to set up your local copy of the SDK to work with Jenkins.
+### Environment Setup
 
-### Setting Up Your Local Copy
+Install dependencies:
 
-1. Fork the repo using the GitHub UI.
-2. Clone your new fork.
-3. Open the cloned project in your terminal.
-4. Add the remote `upstream`
-5. Make sure you're on `master`
-  ```bash
-  git checkout master
-  ```
-6. Update `master` to the latest `upstream`
+```
+# Install top-level dependencies
+npm install
+# Install dependencies for each module in ./packages and locally link unpublished modules as needed
+npm run bootstrap
+```
 
-  ```bash
-  git fetch upstream
-  ```
-7. Set `master` to track `upstream` instead of `origin`
+You'll to create a file called `.env` that defines, at a minimum:
 
-  ```bash
-  git branch --set-upstream-to upstream/master
-  ```
-8. Configure `master` to automatically rebase
+- `COMMON_IDENTITY_CLIENT_ID`
+- `COMMON_IDENTITY_CLIENT_SECRET`
+- `COMMON_IDENTITY_REDIRECT_URI`
+- `COMMON_IDENTITY_SCOPE`
+- `SCOPE`
+- `COMMON_IDENTITY_SERVICE`
+- `PORT`
+- `FIXTURE_PORT`
+- `KARMA_PORT`
 
-  ```bash
-  git config branch.master.rebase true
-  ```
-9. Add the remote for `jenkins`
+Yes, `SCOPE` and `COMMON_IDENTITY_SCOPE` are redundant and should have the same values. Don't ask, you need to define both.
 
-  The command to add Jenkins as a remote git repository can be found by accessing the project's Jenkins job and viewing the __Git Repository for Validated Merge__ tab.
+`COMMON_IDENTITY_SERVICE` should probably always be `spark`.
 
-This will setup your local copy with three remotes:
-- `origin` will point at your fork
-- `upstream` will point at the official repo
-- `jenkins` will point at the Jenkins build job for the project.
+`PORT`, `FIXTURE_PORT`, and `KARMA_PORT` can mostly be any valid port, but when running tests via Sauce Labs, be sure to check their acceptable ports list. Good defaults are `8000`, `9000`, `8001`, respectively.
 
-`master` will track `upstream/master` instead of `origin/master` and `git pull` while on the `master` branch will automatically rebase. Note: you probably never want to commit to `master`.
+To run tests via Sauce Labs, you'll also need to define:
 
-### Creating a PR
-To submit a PR, start by creating a feature branch.
+- `SAUCE_USERNAME`
+- `SAUCE_ACCESS_KEY`
 
-1. Open the cloned project in your terminal.
-2. Make sure you're on the `master` branch
+### Packages
 
-  ```bash
-  git checkout master
-  ```
-3. Make sure you're up to date with `upstream`
+Build all packages
+```bash
+npm run build
+```
 
-  ```bash
-  git pull
-  ```
-4. Create a feature branch
+Build a single package
+```bash
+PACKAGE=<name> npm run grunt:package -- build
+```
 
-  ```bash
-  git checkout -b <feature-name>
-  ```
-5. Make your code changes and commit to your feature branch
-6. Push the changes to a branch on your fork
+Run all tests
+```bash
+npm run grunt:concurrent -- test
+```
 
-  ```bash
-  git push -u origin <feature-name>
-  ```
-7. Open a pull request using the GitHub UI or the [hub](https://github.com/github/hub) command line tool.
-8. Once you're changes have been reviewed and approved, push your feature branch to Jenkins
+Run tests for a single package
+```bash
+PACKGE=<name> npm run grunt:package -- test
+```
 
-  ```bash
-  git push jenkins <feature-name>:master
- ```
-> If you push your changes without an approved review, they will be reverted
+Test behavior can be modified via environment variables.
 
-#### If Your PR Can't Be Merged
-If GitHub can't figure out how to merge your PR, it probably means there were upstream changes. You'll need to merge them manually and update your pull request.
+Run all tests via Sauce Labs with code coverage and xunit output
+```bash
+COVERAGE=true SAUCE=true XUNIT=true npm run grunt:concurrent -- test
+```
 
-1. Change back to master.
-
-  ```bash
-  git checkout master
-  ```
-2. Rebase master against the latest upstream.
-
-  ```bash
-  git pull
-  ```
-3. Return to your feature branch.
-
-  ```bash
-  git checkout <feature-name>
-  ```
-4. rebase your feature branch against the updated master.
-
-  ```bash
-  git rebase master
-  ```
-5. Use whatever tool you prefer for solving merge conflicts.
-6. Force-push your changes to the feature branch on your fork.
-
-  ```bash
-  git push --force-with-lease
-  ```
+Run tests for a single package via Sauce Labs with code coverage and xunit output
+```bash
+PACKAGE=<name> COVERAGE=true SAUCE=true XUNIT=true PACKGE=<name> npm run grunt:package -- test
+```

@@ -16,3 +16,5 @@ rules:
     - 0
   no-shadow:
     - 0
+  require-jsdoc:
+    - 0

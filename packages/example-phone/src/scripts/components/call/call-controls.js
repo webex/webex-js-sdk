@@ -33,9 +33,9 @@ export default function CallControls({
         <ToggleButton
           active={sendingVideo}
           activeStyle=""
-          activeTitle="Stop sending audio"
+          activeTitle="Stop sending video"
           inactiveStyle="warning"
-          inactiveTitle="Start sending audio"
+          inactiveTitle="Start sending video"
           onActivate={onStartSendingVideo}
           onDeactivate={onStopSendingVideo}
         >Send Video</ToggleButton>
@@ -51,9 +51,9 @@ export default function CallControls({
         <ToggleButton
           active={receivingVideo}
           activeStyle=""
-          activeTitle="Stop receiving audio"
+          activeTitle="Stop receiving video"
           inactiveStyle="warning"
-          inactiveTitle="Start receiving audio"
+          inactiveTitle="Start receiving video"
           onActivate={onStartReceivingVideo}
           onDeactivate={onStopReceivingVideo}
         >Receive Video</ToggleButton>

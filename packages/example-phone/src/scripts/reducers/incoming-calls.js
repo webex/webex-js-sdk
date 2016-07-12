@@ -1,6 +1,6 @@
 import {handleActions} from 'redux-actions';
 
-import {RING} from '../actions/incoming-call';
+import {DECLINE_CALL, RING} from '../actions/incoming-call';
 import {CALL_CONNECTED, CALL_DISCONNECTED} from '../actions/call';
 
 const initialState = [];
@@ -8,6 +8,7 @@ const initialState = [];
 export default handleActions({
   // Note: this is not particularly efficient
   [CALL_CONNECTED]: (state, action) => state.filter((item) => item.locusUrl !== action.payload.locusUrl),
+  [DECLINE_CALL]: (state, action) => state.filter((item) => item.locusUrl !== action.payload.locusUrl),
   [CALL_DISCONNECTED]: (state, action) => state.filter((item) => item.locusUrl !== action.payload.locusUrl),
   [RING]: (state, action) => {
     const prev = state.findIndex((c) => c.locus.url === action.payload.locus.url);

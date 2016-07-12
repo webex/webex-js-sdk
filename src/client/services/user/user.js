@@ -53,7 +53,7 @@ var UserService = SparkBase.extend(
    * @returns {Promise} Resolves with an array of users
    */
   find: function find(q, options) {
-    return this.spark.search.people(assign({queryString: q}, options));
+    return this.spark.search.people(assign({query: q}, options));
   },
 
   /**

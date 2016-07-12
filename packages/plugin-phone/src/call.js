@@ -13,11 +13,16 @@ import {
   createOffer,
   acceptAnswer,
   end,
+  mediaDirection as mediaDirectionFromPeerConnection,
   addStream,
   stopSendingAudio,
   stopSendingVideo,
   startSendingAudio,
-  startSendingVideo
+  startSendingVideo,
+  stopReceivingAudio,
+  stopReceivingVideo,
+  startReceivingAudio,
+  startReceivingVideo
 } from './webrtc';
 import {
   eventKeys,
@@ -171,7 +176,12 @@ const Call = SparkPlugin.extend({
      * @member {Boolean}
      * @readonly
      */
-    receivingVideo: `boolean`
+    receivingVideo: `boolean`,
+
+    wasSendingAudio: `boolean`,
+    wasSendingVideo: `boolean`,
+    wasReceivingAudio: `boolean`,
+    wasReceivingVideo: `boolean`
   },
 
   // FIXME in its current form, any derived property that is an object will emit
@@ -326,6 +336,34 @@ const Call = SparkPlugin.extend({
 
         return `initiated`;
       }
+    },
+    localAudioDirection: {
+      deps: [`locus`],
+      fn() {
+        return mediaDirectionFromPeerConnection(`audio`, this.pc).toLowerCase();
+      }
+    },
+    localVideoDirection: {
+      deps: [`locus`],
+      fn() {
+        return mediaDirectionFromPeerConnection(`video`, this.pc).toLowerCase();
+      }
+    },
+    remoteAudioDirection: {
+      deps: [`locus`],
+      fn() {
+        // Until Locus fixes the bug that prevents do both renegotiation and
+        // state update, we can't trust the remote direction from the locus
+        return `unknown`;
+      }
+    },
+    remoteVideoDirection: {
+      deps: [`locus`],
+      fn() {
+        // Until Locus fixes the bug that prevents do both renegotiation and
+        // state update, we can't trust the remote direction from the locus
+        return `unknown`;
+      }
     }
   },
 
@@ -359,8 +397,14 @@ const Call = SparkPlugin.extend({
     // both browsers
     this.pc.ontrack = (event) => {
       this.remoteMediaStream = event.streams[0];
-      this.remoteMediaStreamUrl = URL.createObjectURL(this.remoteMediaStream);
     };
+
+    this.on(`change:remoteMediaStream`, () => {
+      if (this.remoteMediaStreamUrl) {
+        URL.revokeObjectURL(this.remoteMediaStreamUrl);
+      }
+      this.remoteMediaStreamUrl = URL.createObjectURL(this.remoteMediaStream);
+    });
 
     this.on(`change:remoteMediaStreamUrl`, () => {
       this.trigger(`remoteMediaStream:change`);
@@ -423,7 +467,7 @@ const Call = SparkPlugin.extend({
    * @returns {Promise}
    */
   answer(options) {
-    // TODO make this a noop for outbout calls
+    // TODO make this a noop for outbound calls
     this.logger.info(`call: answering`);
     // Locus may *think* we're connected if we e.g. reload the page mid-call. If
     // the user decides to answer the in-progress call that locus thinks they're
@@ -508,6 +552,13 @@ const Call = SparkPlugin.extend({
   _hangup: oneFlight(`hangup`, function _hangup() {
     return this.spark.locus.leave(this.locus)
       .then((locus) => this._setLocus(locus))
+      // TODO update sending and receving based on the peer connection's streams
+      .then(() => this.set({
+        sendingAudio: false,
+        sendingVideo: false,
+        receivingAudio: false,
+        receivingVideo: false
+      }))
       .then(tap(() => this.stopListening(this.spark.mercury)))
       .then(tap(() => this.off()))
       .then(tap(() => this.logger.info(`call: hung up`)));
@@ -549,15 +600,7 @@ const Call = SparkPlugin.extend({
    * @returns {Promise}
    */
   startSendingAudio() {
-    return new Promise((resolve) => {
-      if (!this.pc) {
-        resolve();
-        return;
-      }
-      this.sendingAudio = true;
-      resolve(startSendingAudio(this.pc)
-        .then(() => this._updateMedia()));
-    });
+    return this._changeMedia({sendingAudio: true});
   },
 
   /**
@@ -567,15 +610,43 @@ const Call = SparkPlugin.extend({
    * @returns {Promise}
    */
   startSendingVideo() {
-    return new Promise((resolve) => {
-      if (!this.pc) {
-        resolve();
-        return;
-      }
-      this.sendingVideo = true;
-      resolve(startSendingVideo(this.pc)
-        .then(() => this._updateMedia()));
-    });
+    return this._changeMedia({sendingVideo: true});
+  },
+
+  startReceivingAudio() {
+    return this._changeMedia({receivingAudio: true});
+  },
+
+  startReceivingVideo() {
+    return this._changeMedia({receivingVideo: true});
+  },
+
+  /**
+   * Toggles receiving audio to the Cisco Spark Cloud
+   * @instance
+   * @memberof Call
+   * @returns {Promise}
+   */
+  toggleReceivingAudio() {
+    return this.receivingAudio ? this.stopReceivingAudio() : this.startReceivingAudio();
+  },
+
+  /**
+   * Toggles receiving video to the Cisco Spark Cloud
+   * @instance
+   * @memberof Call
+   * @returns {Promise}
+   */
+  toggleReceivingVideo() {
+    return this.receivingVideo ? this.stopReceivingVideo() : this.startReceivingVideo();
+  },
+
+  stopReceivingAudio() {
+    return this._changeMedia({receivingAudio: false});
+  },
+
+  stopReceivingVideo() {
+    return this._changeMedia({receivingVideo: false});
   },
 
   /**
@@ -611,39 +682,92 @@ const Call = SparkPlugin.extend({
 
   /**
    * Stops sending audio to the Cisco Spark Cloud. (stops broadcast immediately,
-   * even if renegoation has not completed)
+   * even if renegotiation has not completed)
    * @instance
    * @memberof Call
    * @returns {Promise}
    */
   stopSendingAudio() {
-    return new Promise((resolve) => {
-      if (!this.pc) {
-        resolve();
-        return;
-      }
-      stopSendingAudio(this.pc);
-      this.sendingAudio = false;
-      resolve(this._updateMedia());
-    });
+    return this._changeMedia({sendingAudio: false});
   },
 
   /**
    * Stops sending video to the Cisco Spark Cloud. (stops broadcast immediately,
-   * even if renegoation has not completed)
+   * even if renegotiation has not completed)
    * @instance
    * @memberof Call
    * @returns {Promise}
    */
   stopSendingVideo() {
+    return this._changeMedia({sendingVideo: false});
+  },
+
+  _changeMedia(constraints) {
     return new Promise((resolve) => {
+      /* eslint complexity: [0] */
       if (!this.pc) {
         resolve();
         return;
       }
-      stopSendingVideo(this.pc);
-      this.sendingVideo = false;
-      resolve(this._updateMedia());
+
+      constraints = defaults({}, constraints, {
+        sendingVideo: this.sendingVideo,
+        sendingAudio: this.sendingAudio,
+        receivingVideo: this.receivingVideo,
+        receivingAudio: this.receivingAudio
+      });
+
+      constraints = Object.assign({}, constraints, {
+        wasSendingAudio: this.sendingAudio,
+        wasSendingVideo: this.sendingVideo,
+        wasReceivingAudio: this.receivingAudio,
+        wasReceivingVideo: this.receivingVideo
+      });
+
+      this.set(constraints);
+
+      const promises = [];
+      if (constraints.sendingAudio && !constraints.wasSendingAudio) {
+        promises.push(startSendingAudio(this.pc));
+      }
+
+      if (!constraints.sendingAudio && constraints.wasSendingAudio) {
+        promises.push(stopSendingAudio(this.pc));
+      }
+
+      if (constraints.sendingVideo && !constraints.wasSendingVideo) {
+        promises.push(startSendingVideo(this.pc));
+      }
+
+      if (!constraints.sendingVideo && constraints.wasSendingVideo) {
+        promises.push(stopSendingVideo(this.pc));
+      }
+
+      if (constraints.receivingAudio && !constraints.wasReceivingAudio) {
+        promises.push(startReceivingAudio(this.pc));
+      }
+
+      if (!constraints.receivingAudio && constraints.wasReceivingAudio) {
+        promises.push(stopReceivingAudio(this.pc));
+      }
+
+      if (constraints.receivingVideo && !constraints.wasReceivingVideo) {
+        promises.push(startReceivingVideo(this.pc));
+      }
+
+      if (!constraints.receivingVideo && constraints.wasReceivingVideo) {
+        promises.push(stopReceivingVideo(this.pc));
+      }
+
+
+      resolve(Promise.all(promises)
+        .then(() => this._updateMedia())
+        .then(() => this.unset([
+          `wasSendingAudio`,
+          `wasSendingVideo`,
+          `wasReceivingAudio`,
+          `wasReceivingVideo`
+        ])));
     });
   },
 
@@ -655,8 +779,8 @@ const Call = SparkPlugin.extend({
     });
     const recvOnly = !options.constraints.audio && !options.constraints.video;
     options.offerOptions = defaults(options.offerOptions, {
-      offerToReceiveAudio: recvOnly ? true : options.constraints.audio,
-      offerToReceiveVideo: recvOnly ? true : options.constraints.video
+      offerToReceiveAudio: recvOnly || options.constraints.audio,
+      offerToReceiveVideo: recvOnly || options.constraints.video
     });
 
     let promise;
@@ -718,22 +842,28 @@ const Call = SparkPlugin.extend({
     return Promise.resolve();
   },
 
-  // TODO coalesce media updates (wrap in oneflight and run on next tick?)
-  _updateMedia() {
-    return createOffer(this.pc, {
-      offerToReceiveAudio: this.receivingAudio,
-      offerToReceiveVideo: this.receivingVideo
-    })
-      .then((offer) => this.spark.locus.updateMedia(this.locus, {
-        localSdp: offer,
-        mediaId: this.mediaId
-      }))
-      .then((locus) => {
-        this._setLocus(locus);
-        const sdp = JSON.parse(this.mediaConnection.remoteSdp).sdp;
-        return acceptAnswer(this.pc, sdp);
+  _updateMedia: oneFlight(`_updateMedia`, function _updateMedia() {
+    /* eslint max-nested-callbacks: [0] */
+    return new Promise((resolve) => {
+      process.nextTick(() => {
+        resolve(createOffer(this.pc, {
+          offerToReceiveAudio: this.receivingAudio,
+          offerToReceiveVideo: this.receivingVideo
+        })
+          .then((offer) => this.spark.locus.updateMedia(this.locus, {
+            localSdp: offer,
+            mediaId: this.mediaId,
+            audioMuted: !this.sendingAudio,
+            videoMuted: !this.sendingVideo
+          }))
+          .then((locus) => {
+            this._setLocus(locus);
+            const sdp = JSON.parse(this.mediaConnection.remoteSdp).sdp;
+            return acceptAnswer(this.pc, sdp);
+          }));
       });
-  }
+    });
+  })
 });
 
 Call.make = function make(attrs, options) {

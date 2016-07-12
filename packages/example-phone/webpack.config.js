@@ -1,17 +1,27 @@
-/* eslint-disable */
+/* eslint quotes: [2, "single"] */
+/* eslint no-var: [0] */
+/* eslint camelcase: [0] */
+
 var dotenv = require('dotenv');
 var path = require('path');
 var webpack = require('webpack');
-
-// Note that webpack is intended to be invoked via grunt during, plugins
+// Note that webpack is intended to be invoked via grunt, plugins
 // need to be installed in the example-phone package, but loaders need to be
 // installed in the root package.
 var InlineEnviromentVariablesPlugin = require('inline-environment-variables-webpack-plugin');
+var HtmlWebpackPlugin = require('html-webpack-plugin');
+var ExtractTextPlugin = require('extract-text-webpack-plugin');
 
 // Need to use dotenv because grunt env runs after this file has been loaded
-dotenv.config({
-  path: path.join(__dirname, '..', '..', '.env')
-});
+try {
+  dotenv.config({
+    path: path.join(__dirname, '..', '..', '.env')
+  });
+}
+catch (reason) {
+  // do nothing; this'll happen on jenkins, but we'll get the values from the
+  // environment, so it's ok
+}
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 
@@ -21,8 +31,8 @@ module.exports = {
     './src/scripts/main.js'
   ],
   output: {
-    filename: 'app/bundle.js',
-    path: path.resolve(__dirname, '../../docs'),
+    filename: 'bundle.js',
+    path: path.resolve(__dirname, '../../docs/app'),
     sourceMapFilename: '[file].map'
   },
   debug: process.env.NODE_ENV !== 'production',
@@ -59,12 +69,26 @@ module.exports = {
       },
       beautify: false,
       mangle: false
+    }),
+    new ExtractTextPlugin('[name].css'),
+    new HtmlWebpackPlugin({
+      hash: true,
+      // inject: 'head',
+      minify: {
+        collapseWhitespace: true,
+        removeComments: true,
+        removeScriptTypeAttributes: true,
+        removeStyleLinkTypeAttributes: true,
+        sortAttributes: true,
+        sortClassName: true
+      },
+      template: path.resolve(__dirname, './src/index.html')
     })
   ],
   resolve: {
     // Add "devMain" to the packageMains defaults so we can load src instead of
     // dist (so far, haven't found a better way)
-    packageMains: ["devMain", "webpack", "browser", "web", "browserify", ["jam", "main"], "main"],
+    packageMains: ['devMain', 'webpack', 'browser', 'web', 'browserify', ['jam', 'main'], 'main'],
     // Make sure we use browser overrides (why doesn't webpack do this by
     // default?)
     packageAlias: ['browser']
@@ -84,7 +108,11 @@ module.exports = {
         query: {
           cacheDirectory: true
         }
+      },
+      {
+        test: /\.css$/,
+        loader: ExtractTextPlugin.extract('style-loader', 'css-loader')
       }
     ]
   }
-}
+};

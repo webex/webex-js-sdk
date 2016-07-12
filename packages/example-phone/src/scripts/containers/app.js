@@ -11,19 +11,11 @@ import {ring} from '../actions/incoming-call.js';
 
 import AuthStatus from '../components/auth-status';
 import ConnectionStatus from '../components/connection-status';
+import IncomingCallPanel from './page-sections/incoming-call-panel';
 
-
-let base = ``;
-if (window.location.href.includes(`4000`)) {
-  base = `/app`;
-}
-
-if (window.location.href.toLowerCase().includes(`iremmel`)) {
-  base = `/pages/iremmel/squared-js-sdk/app`;
-}
-
-if (window.location.href.toLowerCase().includes(`webexsquared`)) {
-  base = `/pages/WebExSquared/squared-js-sdk/app`;
+let base = window.location.pathname;
+if (!base.endsWith `/`) {
+  base += `/`;
 }
 
 class App extends Component {
@@ -42,16 +34,16 @@ class App extends Component {
         <Navbar inverse>
           <Navbar.Header>
             <Navbar.Brand>
-              <Link to={`${base}/`}>CiscoSpark SDK Example</Link>
+              <Link to={`${base}`}>CiscoSpark SDK Example</Link>
             </Navbar.Brand>
             <Navbar.Toggle />
           </Navbar.Header>
           <Navbar.Collapse>
             <Nav>
-              <LinkContainer to={`${base}/auth`}>
+              <LinkContainer to={`${base}auth`}>
                 <NavItem title="Link to Auth Page">Auth</NavItem>
               </LinkContainer>
-              <LinkContainer to={`${base}/call`}>
+              <LinkContainer to={`${base}call`}>
                 <NavItem title="Link to Call Page">Call</NavItem>
               </LinkContainer>
             </Nav>
@@ -63,6 +55,7 @@ class App extends Component {
             </p>
           </Navbar.Collapse>
         </Navbar>
+        <IncomingCallPanel />
         {children}
       </div>
     );

@@ -19,52 +19,10 @@ bundle at this time; you'll need to build the bundle yourself. We use
 
 ## Getting Started
 
-> The examples below have both ES5 and ES6 variations. The ES6 examples will
-> require you to build your project using [babel](https://babeljs.io). The
-> ES5 examples should be directly runnable.
-
 The quickest way to get started is to set your access token as an environment
 variable:
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-assert(process.env.CISCOSPARK_ACCESS_TOKEN);
-(async function() {
- try {
-   let room = await ciscospark.rooms.create({title: 'My First Room'});
-   let message = await ciscospark.messages.create({
-     text: 'Howdy!',
-     roomId: room.id
-   });
- }
- catch(error) {
-   console.error(error.stack);
-   process.exit(1);
- }
-}());
-
-
-```
-
-```javascript
-var assert = require('assert');
-var ciscospark = require('ciscospark/dist');
-
-assert(process.env.CISCOSPARK_ACCESS_TOKEN);
-return ciscospark.rooms.create({title: 'My First Room'})
-  .then(function(room) {
-    return ciscospark.messages.create({
-      text: 'Howdy!',
-      roomId: room.id
-    });
-  })
-  .catch(function(reason) {
-    console.error(reason);
-    process.exit(1);
-  });
-
 
 ```
 
@@ -74,28 +32,7 @@ For long-running use cases, you'll need to provide a refresh token, client
 id, and client secret:
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-assert(process.env.CISCOSPARK_ACCESS_TOKEN);
-assert(process.env.CISCOSPARK_REFRESH_TOKEN);
-assert(process.env.CISCOSPARK_CLIENT_ID);
-assert(process.env.CISCOSPARK_CLIENT_SECRET);
-(async function run() {
-  try {
-    let room = await ciscospark.rooms.create({title: 'My First Room'});
-    let message = await ciscospark.messages.create({
-      text: 'Howdy!',
-      roomId: room.id
-    });
-  }
-  catch(error) {
-    console.error(error.stack);
-    process.exit(1);
-  }
-}());
-
-
+TODO
 ```
 
 ## Runtime Configuration
@@ -105,30 +42,7 @@ you write an app for lots of users. You can pass credentials to the spark
 using init.
 
 ```javascript
-import ciscospark from 'ciscospark/es6';
-import {getAcessTokenFromSomewhereElse} from '../../../lib/my-auth-module';
-
-
-(async function run() {
-  try {
-    const ciscospark2 = ciscospark.init({
-      credentials: {
-        access_token: getAcessTokenFromSomewhereElse()
-      }
-    });
-    const room = await ciscospark2.rooms.create({title: `My First Room`});
-    await ciscospark.messages.create({
-      text: `Howdy!`,
-      roomId: room.id
-    });
-  }
-  catch(error) {
-    console.error(error.stack);
-    process.exit(1);
-  }
-}());
-
-
+TODO
 ```
 
 ## OAuth
@@ -139,22 +53,14 @@ To kick off an OAuth login, simply call `spark.authenticate()` which will
 direct the current app to our login page.
 
 ```javascript
-import ciscospark from 'ciscospark/es6';
-
-spark.authenticate();
-
-
+TODO
 ```
 
 To refresh an access token, call `spark.authorize()`. (Note: this should
 generally happen for you automatically).
 
 ```javascript
-import ciscospark from 'ciscospark/es6';
-
-spark.authorize();
-
-
+TODO
 ```
 
 ## init
@@ -215,18 +121,6 @@ Iterator
 
 Returns **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
 
-# Types~Membership
-
-**Properties**
-
--   `id` **uuid** Unique identifier for the membership
--   `roomId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The room ID
--   `personId` **uuid** The person ID
--   `personEmail` **email** The email address of the person / room member
--   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Indicates whether the specified person should be a room moderator.
--   `isMonitor` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Indicates whether the specified member is a room monitor.
--   `created` **isoDate** The date and time that this membership was created.
-
 # Memberships
 
 **Extends SparkPlugin**
@@ -244,34 +138,8 @@ as a moderator.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const room = await ciscospark.rooms.create({title: `Memberships Example`});
-  const membership = await ciscospark.memberships.create({
-   personEmail: `alice@example.com`,
-   roomId: room.id
-  });
-  assert(membership.id);
-  assert(membership.roomId);
-  assert(membership.personId);
-  assert(membership.personEmail);
-  assert(`isModerator` in membership);
-  assert(`isMonitor` in membership);
-  assert(membership.created);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
-return ciscospark.rooms.create({title: 'Rooms Example'})
+var ciscospark = require('../..');
+ciscospark.rooms.create({title: 'Create Membership Example'})
   .then(function(room) {
     return ciscospark.memberships.create({
      personEmail: 'alice@example.com',
@@ -279,6 +147,7 @@ return ciscospark.rooms.create({title: 'Rooms Example'})
    });
   })
   .then(function(membership) {
+    var assert = require('assert');
     assert(membership.id);
     assert(membership.roomId);
     assert(membership.personId);
@@ -286,9 +155,9 @@ return ciscospark.rooms.create({title: 'Rooms Example'})
     assert('isModerator' in membership);
     assert('isMonitor' in membership);
     assert(membership.created);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Membership>** 
@@ -304,30 +173,9 @@ Returns a single membership.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
- const room = await ciscospark.rooms.create({title: `Memberships Example`});
- const membership = await ciscospark.memberships.create({
-   personEmail: `alice@example.com`,
-   roomId: room.id
- });
- const membership2 = await ciscospark.memberships.get(membership.id);
- assert.deepEqual(membership2, membership);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var membership;
-return ciscospark.rooms.create({title: 'Memberships Example'})
+ciscospark.rooms.create({title: 'Get Membership Example'})
   .then(function(room) {
     return ciscospark.memberships.create({
       personEmail: 'alice@example.com',
@@ -339,10 +187,11 @@ return ciscospark.rooms.create({title: 'Memberships Example'})
     return ciscospark.memberships.get(m.id);
   })
   .then(function(m) {
+    var assert = require('assert');
     assert.deepEqual(m, membership);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Membership>** 
@@ -365,33 +214,9 @@ specific person is a member of.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const room = await ciscospark.rooms.create({title: `Memberships Example`});
-  await ciscospark.memberships.create({
-   personEmail: `alice@example.com`,
-   roomId: room.id
-  });
-  const memberships = await ciscospark.memberships.list({roomId: room.id});
-  assert.equal(memberships.length, 2);
-  for (const membership of memberships) {
-    assert.equal(membership.roomId, room.id);
-  }
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var room;
-return ciscospark.rooms.create({title: 'Memberships Example'})
+ciscospark.rooms.create({title: 'List Membership Example'})
   .then(function(r) {
     room = r;
     return ciscospark.memberships.create({
@@ -403,13 +228,14 @@ return ciscospark.rooms.create({title: 'Memberships Example'})
     return ciscospark.memberships.list({roomId: room.id});
   })
   .then(function(memberships) {
+    var assert = require('assert');
     assert.equal(memberships.length, 2);
     for (var i = 0; i < memberships.length; i++) {
       assert.equal(memberships.items[i].roomId, room.id);
     }
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Page&lt;Types~Membership>>** 
@@ -425,33 +251,9 @@ Deletes a single membership.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const room = await ciscospark.rooms.create({title: `Memberships Example`});
-  const membership = await ciscospark.memberships.create({
-    personEmail: `alice@example.com`,
-    roomId: room.id
-  });
-  let memberships = await ciscospark.memberships.list({roomId: room.id});
-  assert.equal(memberships.length, 2);
-  await ciscospark.memberships.remove(membership);
-  memberships = await ciscospark.memberships.list({roomId: room.id});
-  assert.equal(memberships.length, 1);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var membership, room;
-return ciscospark.rooms.create({title: 'Memberships Example'})
+ciscospark.rooms.create({title: 'Remove Membership Example'})
   .then(function(r) {
     room = r;
     return ciscospark.memberships.create({
@@ -464,6 +266,7 @@ return ciscospark.rooms.create({title: 'Memberships Example'})
     return ciscospark.memberships.list({roomId: room.id});
   })
   .then(function(memberships) {
+    var assert = require('assert');
     assert.equal(memberships.length, 2);
     return ciscospark.memberships.remove(membership);
   })
@@ -471,11 +274,11 @@ return ciscospark.rooms.create({title: 'Memberships Example'})
     return ciscospark.memberships.list({roomId: room.id});
   })
   .then(function(memberships) {
+    var assert = require('assert');
     assert.equal(memberships.length, 1);
+    return 'success';
   });
-
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** 
@@ -491,37 +294,16 @@ Used to update a single membership's properties
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const room = await ciscospark.rooms.create({title: `Memberships Example`});
-  const memberships = await ciscospark.memberships.list({roomId: room.id});
-  let membership = memberships.items[0];
-  assert.equal(membership.isModerator, false);
-  membership.isModerator = true;
-  await ciscospark.memberships.update(membership);
-  membership = await ciscospark.memberships.get(membership.id);
-  assert.equal(membership.isModerator, true);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var membership, room;
-return ciscospark.rooms.create({title: 'Memberships Example'})
+ciscospark.rooms.create({title: 'Memberships Example'})
   .then(function(r) {
     room = r;
     return ciscospark.memberships.list({roomId: room.id});
   })
   .then(function(memberships) {
     membership = memberships.items[0];
+    var assert = require('assert');
     assert.equal(membership.isModerator, false);
     membership.isModerator = true;
     return ciscospark.memberships.update(membership);
@@ -530,14 +312,26 @@ return ciscospark.rooms.create({title: 'Memberships Example'})
     return ciscospark.memberships.get(membership.id);
   })
   .then(function(membership) {
+    var assert = require('assert');
     assert.equal(membership.isModerator, true);
+    return 'success';
   });
-
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Membership>** 
+
+# Types~Membership
+
+**Properties**
+
+-   `id` **uuid** Unique identifier for the membership
+-   `roomId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The room ID
+-   `personId` **uuid** The person ID
+-   `personEmail` **email** The email address of the person / room member
+-   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Indicates whether the specified person should be a room moderator.
+-   `isMonitor` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Indicates whether the specified member is a room monitor.
+-   `created` **isoDate** The date and time that this membership was created.
 
 # Types~Message
 
@@ -571,32 +365,8 @@ Post a new message and/or media content into a room.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  let room = await ciscospark.rooms.create({title: `Messages Example`});
-  let message = await ciscospark.messages.create({
-    text: `Howdy!`,
-    roomId: room.id
-  });
-  assert(message.id);
-  assert(message.personId);
-  assert(message.personEmail);
-  assert(message.roomId);
-  assert(message.created);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
-return ciscospark.rooms.create({title: 'Messages Example'})
+var ciscospark = require('../..');
+ciscospark.rooms.create({title: 'Create Message Example'})
   .then(function(room) {
     return ciscospark.messages.create({
       text: 'Howdy!',
@@ -604,14 +374,15 @@ return ciscospark.rooms.create({title: 'Messages Example'})
     });
   })
   .then(function(message) {
+    var assert = require('assert');
     assert(message.id);
     assert(message.personId);
     assert(message.personEmail);
     assert(message.roomId);
     assert(message.created);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Message>** 
@@ -627,30 +398,9 @@ Returns a single message.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const room = await ciscospark.rooms.create({title: `Messages Example`});
-  const message = await ciscospark.messages.create({
-    text: `Howdy!`,
-    roomId: room.id
-  });
-  const message2 = await ciscospark.messages.get(message.id);
-  assert.deepEqual(message2, message);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var message;
-return ciscospark.rooms.create({title: 'Messages Example'})
+ciscospark.rooms.create({title: 'Get Message Example'})
   .then(function(room) {
     return ciscospark.messages.create({
       text: 'Howdy!',
@@ -662,10 +412,11 @@ return ciscospark.rooms.create({title: 'Messages Example'})
     return ciscospark.messages.get(message.id);
   })
   .then(function(message2) {
+    var assert = require('assert');
     assert.deepEqual(message2, message);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Message>** 
@@ -684,37 +435,9 @@ messages posted in rooms that the authentiated user is a member of.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const room = await ciscospark.rooms.create({title: `Messages Example`});
-  const message1 = await ciscospark.messages.create({
-    text: `Howdy!`,
-    roomId: room.id
-  });
-  const message2 = await ciscospark.messages.create({
-    text: `How are you?`,
-    roomId: room.id
-  });
-
-  const messages = Array.from(await ciscospark.messages.list({roomId: room.id}));
-  assert.equal(messages.length, 2);
-  assert.equal(messages[0].id, message2.id);
-  assert.equal(messages[1].id, message1.id);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var message1, message2, room;
-return ciscospark.rooms.create({title: 'Messages Example'})
+ciscospark.rooms.create({title: 'List Messages Example'})
   .then(function(r) {
     room = r;
     return ciscospark.messages.create({
@@ -734,12 +457,13 @@ return ciscospark.rooms.create({title: 'Messages Example'})
     return ciscospark.messages.list({roomId: room.id});
   })
   .then(function(messages) {
+    var assert = require('assert');
     assert.equal(messages.length, 2);
     assert.equal(messages.items[0].id, message2.id);
     assert.equal(messages.items[1].id, message1.id);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Page&lt;Types~Message>>** 
@@ -758,36 +482,9 @@ Org Administrators.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const room = await ciscospark.rooms.create({title: `Messages Example`});
-  const message = await ciscospark.messages.create({
-    text: `Howdy!`,
-    roomId: room.id
-  });
-  await ciscospark.messages.create({
-    text: `How are you?`,
-    roomId: room.id
-  });
-  await ciscospark.messages.remove(message);
-  const messages = await ciscospark.messages.list({roomId: room.id});
-  assert.equal(messages.length, 1);
-  assert(messages.items[0].id !== message.id);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var message1, room;
-return ciscospark.rooms.create({title: 'Messages Example'})
+ciscospark.rooms.create({title: 'Messages Example'})
   .then(function(r) {
     room = r;
     return ciscospark.messages.create({
@@ -809,23 +506,15 @@ return ciscospark.rooms.create({title: 'Messages Example'})
     return ciscospark.messages.list({roomId: room.id});
   })
   .then(function(messages) {
+    var assert = require('assert');
     assert.equal(messages.items.length, 1);
     assert(messages.items[0].id !== message1.id);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** }
-
-# Types~Person
-
-**Properties**
-
--   `id` **uuid** Unique identifier for the person
--   `emails` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;email>** Email addresses of the person
--   `displayName` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** Display name of the person
--   `created` **isoDate** The date and time that the person was created
 
 # People
 
@@ -842,33 +531,8 @@ Returns a single person by ID
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const room = await ciscospark.rooms.create({title: `People Example`});
-  const membership = await ciscospark.memberships.create({
-    personEmail: `alice@example.com`,
-    roomId: room.id
-  });
-  const alice = await ciscospark.people.get(membership.personId);
-  assert(alice.id);
-  assert(Array.isArray(alice.emails));
-  assert(alice.emails.includes(`alice@example.com`));
-  assert(alice.displayName);
-  assert(alice.created);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
-return ciscospark.rooms.create({title: 'People Example'})
+var ciscospark = require('../..');
+ciscospark.rooms.create({title: 'Get Person Example'})
   .then(function(room) {
     return ciscospark.memberships.create({
       personEmail: 'alice@example.com',
@@ -879,6 +543,7 @@ return ciscospark.rooms.create({title: 'People Example'})
     return ciscospark.people.get(membership.personId);
   })
   .then(function(alice) {
+    var assert = require('assert');
     assert(alice.id);
     assert(Array.isArray(alice.emails));
     assert.equal(alice.emails.filter(function(email) {
@@ -886,9 +551,9 @@ return ciscospark.rooms.create({title: 'People Example'})
     }).length, 1);
     assert(alice.displayName);
     assert(alice.created);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Person>** 
@@ -906,43 +571,9 @@ Returns a list of people
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const room = await ciscospark.rooms.create({title: `People Example`});
-  const aliceMembership = await ciscospark.memberships.create({
-    personEmail: `alice@example.com`,
-    roomId: room.id
-  });
-  const bobMembership = await ciscospark.memberships.create({
-    personEmail: `bob@example.com`,
-    roomId: room.id
-  });
-
-  let people = await ciscospark.people.list({email: `alice@example.com`});
-  assert.equal(people.length, 1);
-  for (const person of people) {
-    if (person.emails.includes(`alice@example.com`)) {
-      assert(person.id);
-      assert(Array.isArray(person.emails));
-      assert(person.displayName);
-      assert(person.created);
-    }
-  }
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var room;
-return ciscospark.rooms.create({title: 'People Example'})
+ciscospark.rooms.create({title: 'List People Example'})
   .then(function(r) {
     room = r;
     return ciscospark.memberships.create({
@@ -960,30 +591,28 @@ return ciscospark.rooms.create({title: 'People Example'})
     return ciscospark.people.list({email: 'alice@example.com'});
   })
   .then(function(people) {
+    var assert = require('assert');
     assert.equal(people.length, 1);
     var person = people.items[0];
     assert(person.id);
     assert(Array.isArray(person.emails));
     assert(person.displayName);
     assert(person.created);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Page&lt;Types~Person>>** 
 
-# Types~Room
+# Types~Person
 
 **Properties**
 
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) Unique identifier for the room
--   `title` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The display name for the room. All room members
-    will see the title so make it something good
--   `created` **isoDate** (server generated) The date and time that the
-    room was created
--   `teamId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (optional): The id of the team to which the room
-    belongs
+-   `id` **uuid** Unique identifier for the person
+-   `emails` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;email>** Email addresses of the person
+-   `displayName` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** Display name of the person
+-   `created` **isoDate** The date and time that the person was created
 
 # Rooms
 
@@ -1008,33 +637,17 @@ people to the room.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const room = await ciscospark.rooms.create({title: `Rooms Example`});
-  assert(room.id);
-  assert(room.title);
-  assert(room.created);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
-return ciscospark.rooms.create({title: 'Rooms Example'})
+var ciscospark = require('../..');
+ciscospark.rooms.create({title: 'Create Room Example'})
   .then(function(room) {
-    assert(room.id);
-    assert(room.title);
-    assert(room.created);
+    var assert = require('assert')
+    assert(typeof room.created === 'string');
+    assert(typeof room.id === 'string');
+    assert(room.title === 'Create Room Example');
+    console.log(room.title);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Room>** 
@@ -1047,43 +660,23 @@ Returns a single room.
 
 -   `room` **(Types~Room | [string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String))** 
 -   `options` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
-    -   `options.includeSipAddress` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** To show the SIP address for the
-        room in the response, set this value to `true`. A session initiation
-        protocol (SIP) address is a URI that addresses a specific telephone
-        extension on a voice over IP (VOIP) system.
 
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  let room = await ciscospark.rooms.create({title: `Rooms Example`});
-  let room2 = await ciscospark.rooms.get(room.id);
-  assert.equal(room2.id, room.id);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var room;
-return ciscospark.rooms.create({title: 'Rooms Example'})
+ciscospark.rooms.create({title: 'Get Room Example'})
   .then(function(r) {
-    room = r;
-    return ciscospark.rooms.get(room.id);
+    room = r
+    return ciscospark.rooms.get(room.id)
   })
-  .then(function(room2) {
-    assert.equal(room2.id, room.id);
+  .then(function(r) {
+    var assert = require('assert');
+    assert.deepEqual(r, room);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Room>** 
@@ -1098,61 +691,32 @@ that the authentiated user is a member of.
 -   `options` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
     -   `options.max` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** Limit the maximum number of rooms in the
         response.
-    -   `options.includeSipAddress` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** To show the SIP address for the
-        room in the response, set this value to `true`. A session initiation
-        protocol (SIP) address is a URI that addresses a specific telephone
-        extension on a voice over IP (VOIP) system.
 
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const createdRooms = await Promise.all([
-    await ciscospark.rooms.create({title: `Rooms Example 1`}),
-    await ciscospark.rooms.create({title: `Rooms Example 2`}),
-    await ciscospark.rooms.create({title: `Rooms Example 3`})
-  ]);
-
-  const rooms = await ciscospark.rooms.list({max: 3});
-  assert(rooms.length === 3);
-  for (const room of rooms) {
-    assert(createdRooms.find((r) => r.id === room.id));
-  }
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var createdRooms;
-return Promise.all([
-  ciscospark.rooms.create({title: 'Rooms Example 1'}),
-  ciscospark.rooms.create({title: 'Rooms Example 2'}),
-  ciscospark.rooms.create({title: 'Rooms Example 3'})
+Promise.all([
+  ciscospark.rooms.create({title: 'List Rooms Example 1'}),
+  ciscospark.rooms.create({title: 'List Rooms Example 2'}),
+  ciscospark.rooms.create({title: 'List Rooms Example 3'})
 ])
   .then(function(r) {
     createdRooms = r;
-    return ciscospark.rooms.list({max: 3});
-  })
-  .then(function(rooms) {
-    assert(rooms.length === 3);
-    for (var i = 0; i < rooms.items.length; i++) {
-      /* eslint no-loop-func: [0] */
-      assert(createdRooms.filter(function(room) {
-        return room.id === rooms.items[i].id;
-      }).length === 1);
-    }
+    return ciscospark.rooms.list({max: 3})
+      .then(function(rooms) {
+        var assert = require('assert');
+        assert(rooms.length === 3);
+        for (var i = 0; i < rooms.items.length; i++) {
+          assert(createdRooms.filter(function(room) {
+            return room.id === rooms.items[i].id;
+          }).length === 1);
+        }
+        return 'success';
+      });
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Page&lt;Types~Room>>** 
@@ -1168,47 +732,26 @@ Deletes a single room.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  let room = await ciscospark.rooms.create({title: `Rooms Example`});
-  await ciscospark.rooms.remove(room.id);
-  try {
-    room = await ciscospark.rooms.get(room.id);
-    assert(false, `the previous line should have failed`);
-  }
-  catch(reason) {
-    assert.equal(reason.statusCode, 404);
-  }
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var room;
-return ciscospark.rooms.create({title: 'Rooms Example'})
-  .then(function(r) {
-    room = r;
-    return ciscospark.rooms.remove(room.id);
-  })
-  .then(function() {
-    return ciscospark.rooms.get(room.id);
-  })
-  .then(function() {
-    assert(false, 'the previous get should have failed');
-  })
-  .catch(function(reason) {
-    assert.equal(reason.statusCode, 404);
-  });
-
-
+ciscospark.rooms.create({title: 'Remove Room Example'})
+ .then(function(r) {
+   room = r;
+   return ciscospark.rooms.remove(room.id);
+ })
+ .then(function() {
+   return ciscospark.rooms.get(room.id);
+ })
+ .then(function() {
+   var assert = require('assert');
+   assert(false, 'the previous get should have failed');
+ })
+ .catch(function(reason) {
+   var assert = require('assert');
+   assert.equal(reason.statusCode, 404);
+   return 'success'
+ });
+ // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** 
@@ -1224,53 +767,38 @@ Used to update a single room's properties.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  let room = await ciscospark.rooms.create({title: `Rooms Example`});
-  room.title = `Rooms Example (Updated Title)`;
-  await ciscospark.rooms.update(room);
-  room = await ciscospark.rooms.get(room.id);
-  assert.equal(room.title, `Rooms Example (Updated Title)`);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var room;
-return ciscospark.rooms.create({title: 'Rooms Example'})
+ciscospark.rooms.create({title: 'Update Room Example'})
   .then(function(r) {
     room = r;
-    room.title = 'Rooms Example (Updated Title)';
+    room.title = 'Update Room Example (Updated Title)';
     return ciscospark.rooms.update(room);
   })
   .then(function() {
     return ciscospark.rooms.get(room.id);
   })
   .then(function(room) {
-    assert.equal(room.title, 'Rooms Example (Updated Title)');
+   var assert = require('assert');
+    assert.equal(room.title, 'Update Room Example (Updated Title)');
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Room>** 
 
-# Types~Team
+# Types~Room
 
 **Properties**
 
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The unique ID for the team.
--   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the team.
--   `created` **isoDate** (server generated) The date and time when the
-    team was created, in ISO8601 format.
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) Unique identifier for the room
+-   `title` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The display name for the room. All room members
+    will see the title so make it something good
+-   `created` **isoDate** (server generated) The date and time that the
+    room was created
+-   `teamId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (optional): The id of the team to which the room
+    belongs
 
 # Teams
 
@@ -1287,19 +815,16 @@ Create a new team.
 **Examples**
 
 ```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
-return ciscospark.teams.create({name: 'Teams Example'})
+var ciscospark = require('../..');
+ciscospark.teams.create({name: 'Create Team Example'})
   .then(function(team) {
+    var assert = require('assert');
     assert(team.id);
     assert(team.name);
     assert(team.created);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Team>** 
@@ -1316,22 +841,19 @@ Returns a single team
 **Examples**
 
 ```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var team;
-return ciscospark.teams.create({name: 'Teams Example'})
+ciscospark.teams.create({name: 'Get Team Example'})
   .then(function(r) {
     team = r;
     return ciscospark.teams.get(team.id);
   })
   .then(function(team2) {
+    var assert = require('assert');
     assert.equal(team2.id, team.id);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Team>** 
@@ -1349,32 +871,28 @@ List teams.
 **Examples**
 
 ```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var createdRooms;
-return Promise.all([
-  ciscospark.teams.create({name: 'Teams Example 1'}),
-  ciscospark.teams.create({name: 'Teams Example 2'}),
-  ciscospark.teams.create({name: 'Teams Example 3'})
+Promise.all([
+  ciscospark.teams.create({name: 'List Teams Example 1'}),
+  ciscospark.teams.create({name: 'List Teams Example 2'}),
+  ciscospark.teams.create({name: 'List Teams Example 3'})
 ])
   .then(function(r) {
     createdRooms = r;
     return ciscospark.teams.list({max: 3});
   })
   .then(function(teams) {
+    var assert = require('assert');
     assert(teams.length === 3);
     for (var i = 0; i < teams.items.length; i++) {
-      /* eslint no-loop-func: [0] */
       assert(createdRooms.filter(function(room) {
         return room.id === teams.items[i].id;
       }).length === 1);
     }
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Page&lt;Types~Team>>** 
@@ -1390,13 +908,9 @@ Update a team.
 **Examples**
 
 ```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var teams;
-return ciscospark.teams.create({name: 'Teams Example'})
+ciscospark.teams.create({name: 'Update Team Example'})
   .then(function(r) {
     teams = r;
     teams.name = 'Teams Example (Updated Title)';
@@ -1406,13 +920,23 @@ return ciscospark.teams.create({name: 'Teams Example'})
     return ciscospark.teams.get(teams.id);
   })
   .then(function(teams) {
+    var assert = require('assert');
     assert.equal(teams.name, 'Teams Example (Updated Title)');
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Team>** 
+
+# Types~Team
+
+**Properties**
+
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The unique ID for the team.
+-   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the team.
+-   `created` **isoDate** (server generated) The date and time when the
+    team was created, in ISO8601 format.
 
 # TeamMemberships
 
@@ -1438,7 +962,25 @@ a moderator.
 **Examples**
 
 ```javascript
-
+var ciscospark = require('../..');
+ciscospark.teams.create({name: 'Create Team Membership Example'})
+  .then(function(team) {
+    return ciscospark.teamMemberships.create({
+     personEmail: 'alice@example.com',
+     teamId: team.id
+   });
+  })
+  .then(function(membership) {
+    var assert = require('assert');
+    assert(membership.id);
+    assert(membership.teamId);
+    assert(membership.personId);
+    assert(membership.personEmail);
+    assert('isModerator' in membership);
+    assert(membership.created);
+    return 'success';
+  });
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~TeamMembership>** 
@@ -1454,7 +996,25 @@ Get details for a membership by ID.
 **Examples**
 
 ```javascript
-
+var ciscospark = require('../..');
+var membership;
+ciscospark.teams.create({name: 'Get Team Memberships Example'})
+  .then(function(team) {
+    return ciscospark.teamMemberships.create({
+      personEmail: 'alice@example.com',
+      teamId: team.id
+    });
+  })
+  .then(function(m) {
+    membership = m;
+    return ciscospark.teamMemberships.get(m.id);
+  })
+  .then(function(m) {
+    var assert = require('assert');
+    assert.deepEqual(m, membership);
+    return 'success';
+  });
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~TeamMembership>** 
@@ -1472,7 +1032,28 @@ which the authenticated user belongs.
 **Examples**
 
 ```javascript
-
+var ciscospark = require('../..');
+var team;
+ciscospark.teams.create({name: 'List Team Memberships Example'})
+  .then(function(t) {
+    team = t;
+    return ciscospark.teamMemberships.create({
+     personEmail: 'alice@example.com',
+     teamId: team.id
+    });
+  })
+  .then(function() {
+    return ciscospark.teamMemberships.list({teamId: team.id});
+  })
+  .then(function(teamMemberships) {
+    var assert = require('assert');
+    assert.equal(teamMemberships.length, 2);
+    for (var i = 0; i < teamMemberships.length; i++) {
+      assert.equal(teamMemberships.items[i].teamId, team.id);
+    }
+    return 'success';
+  });
+  // => success
 ```
 
 Returns **\[type]** 
@@ -1488,7 +1069,34 @@ Deletes a membership by ID.
 **Examples**
 
 ```javascript
-
+var ciscospark = require('../..');
+var membership, team;
+ciscospark.teams.create({name: 'Remove Team Memberships Example'})
+  .then(function(t) {
+    team = t;
+    return ciscospark.teamMemberships.create({
+     personEmail: 'alice@example.com',
+     teamId: team.id
+    });
+  })
+  .then(function(m) {
+    membership = m;
+    return ciscospark.teamMemberships.list({teamId: team.id});
+  })
+  .then(function(teamMemberships) {
+    var assert = require('assert');
+    assert.equal(teamMemberships.length, 2);
+    return ciscospark.teamMemberships.remove(membership);
+  })
+  .then(function() {
+    return ciscospark.teamMemberships.list({teamId: team.id});
+  })
+  .then(function(teamMemberships) {
+    var assert = require('assert');
+    assert.equal(teamMemberships.length, 1);
+    return 'success';
+  });
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** 
@@ -1500,12 +1108,6 @@ Updates properties for a membership.
 **Parameters**
 
 -   `membership` **Types~TeamMembership** 
-
-**Examples**
-
-```javascript
-
-```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~TeamMembership>** 
 
@@ -1548,36 +1150,8 @@ Posts a webhook.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const room = await ciscospark.rooms.create({title: `Webhook Example`});
-  const webhook = await ciscospark.webhooks.create({
-    resource: `messages`,
-    event: `created`,
-    filter: `roomId=${room.id}`,
-    targetUrl: `https://example.com/webhook`,
-    name: `Test Webhook`
-  });
-  assert(webhook.id);
-  assert(webhook.resource);
-  assert(webhook.event);
-  assert(webhook.filter);
-  assert(webhook.targetUrl);
-  assert(webhook.name);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
-return ciscospark.rooms.create({title: 'Webhook Example'})
+var ciscospark = require('../..');
+ciscospark.rooms.create({title: 'Create Webhook Example'})
   .then(function(room) {
     return ciscospark.webhooks.create({
       resource: 'messages',
@@ -1588,15 +1162,16 @@ return ciscospark.rooms.create({title: 'Webhook Example'})
     });
   })
   .then(function(webhook) {
+    var assert = require('assert');
     assert(webhook.id);
     assert(webhook.resource);
     assert(webhook.event);
     assert(webhook.filter);
     assert(webhook.targetUrl);
     assert(webhook.name);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Webhook>** 
@@ -1612,33 +1187,9 @@ Shows details for a webhook.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const room = await ciscospark.rooms.create({title: `Webhook Example`});
-  const webhook = await ciscospark.webhooks.create({
-    resource: `messages`,
-    event: `created`,
-    filter: `roomId=${room.id}`,
-    targetUrl: `https://example.com/webhook`,
-    name: `Test Webhook`
-  });
-  const webhook2 = await ciscospark.webhooks.get(webhook.id);
-  assert.deepEqual(webhook2, webhook);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var webhook;
-return ciscospark.rooms.create({title: 'Webhook Example'})
+ciscospark.rooms.create({title: 'Get Webhook Example'})
   .then(function(room) {
     return ciscospark.webhooks.create({
       resource: 'messages',
@@ -1653,10 +1204,11 @@ return ciscospark.rooms.create({title: 'Webhook Example'})
     return ciscospark.webhooks.get(webhook.id);
   })
   .then(function(webhook2) {
+    var assert = require('assert');
     assert.deepEqual(webhook2, webhook);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;Webhook>>** 
@@ -1673,35 +1225,9 @@ Lists all webhooks.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const room = await ciscospark.rooms.create({title: `Webhook Example`});
-  const webhook = await ciscospark.webhooks.create({
-    resource: `messages`,
-    event: `created`,
-    filter: `roomId=${room.id}`,
-    targetUrl: `https://example.com/webhook`,
-    name: `Test Webhook`
-  });
-  const webhooks = Array.from(await ciscospark.webhooks.list());
-  assert.equal(webhooks.filter((w) => {
-    return w.id === webhook.id;
-  }).length, 1);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var room, webhook;
-return ciscospark.rooms.create({title: 'Webhook Example'})
+ciscospark.rooms.create({title: 'List Webhooks Example'})
   .then(function(r) {
     room = r;
     return ciscospark.webhooks.create({
@@ -1717,12 +1243,13 @@ return ciscospark.rooms.create({title: 'Webhook Example'})
     return ciscospark.webhooks.list();
   })
   .then(function(webhooks) {
+    var assert = require('assert');
     assert.equal(webhooks.items.filter(function(w) {
       return w.id === webhook.id;
     }).length, 1);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Webhook>** 
@@ -1738,34 +1265,9 @@ Delete a webhook.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const room = await ciscospark.rooms.create({title: `Webhook Example`});
-  const webhook = await ciscospark.webhooks.create({
-    resource: `messages`,
-    event: `created`,
-    filter: `roomId=${room.id}`,
-    targetUrl: `https://example.com/webhook`,
-    name: `Test Webhook`
-  });
-  await ciscospark.webhooks.remove(webhook);
-  const webhooks = Array.from(await ciscospark.webhooks.list());
-  assert.equal(webhooks.filter((w) => w.id === webhook.id).length, 0);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var room, webhook;
-return ciscospark.rooms.create({title: 'Webhook Example'})
+ciscospark.rooms.create({title: 'Remove Webhook Example'})
   .then(function(r) {
     room = r;
     return ciscospark.webhooks.create({
@@ -1784,12 +1286,13 @@ return ciscospark.rooms.create({title: 'Webhook Example'})
     return ciscospark.webhooks.list();
   })
   .then(function(webhooks) {
+    var assert = require('assert');
     assert.equal(webhooks.items.filter(function(w) {
       return w.id === webhook.id;
     }).length, 0);
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** 
@@ -1805,35 +1308,9 @@ Update a webhook.
 **Examples**
 
 ```javascript
-import assert from 'assert';
-import ciscospark from 'ciscospark/es6';
-
-return (async function() {
-  const room = await ciscospark.rooms.create({title: `Webhook Example`});
-  let webhook = await ciscospark.webhooks.create({
-    resource: `messages`,
-    event: `created`,
-    filter: `roomId=${room.id}`,
-    targetUrl: `https://example.com/webhook`,
-    name: `Test Webhook`
-  });
-  webhook.targetUrl = `https://example.com/webhook/newtarget`;
-  await ciscospark.webhooks.update(webhook);
-  webhook = await ciscospark.webhooks.get(webhook);
-  assert.equal(webhook.targetUrl, `https://example.com/webhook/newtarget`);
-}());
-
-
-```
-
-```javascript
-'use strict';
-
-var assert = require('assert');
-var ciscospark = require('ciscospark');
-
+var ciscospark = require('../..');
 var webhook;
-return ciscospark.rooms.create({title: 'Webhook Example'})
+ciscospark.rooms.create({title: 'Webhook Example'})
   .then(function(room) {
     return ciscospark.webhooks.create({
       resource: 'messages',
@@ -1852,10 +1329,11 @@ return ciscospark.rooms.create({title: 'Webhook Example'})
     return ciscospark.webhooks.get(webhook);
   })
   .then(function(webhook) {
+    var assert = require('assert');
     assert.equal(webhook.targetUrl, 'https://example.com/webhook/newtarget');
+    return 'success';
   });
-
-
+  // => success
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Webhook>** 

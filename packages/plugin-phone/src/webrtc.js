@@ -7,6 +7,7 @@
 /* eslint max-nested-callbacks: [0] */
 
 import 'webrtc-adapter';
+import transform from 'sdp-transform';
 import {curry, defaults, find} from 'lodash';
 import {tap} from '@ciscospark/common';
 import {
@@ -73,6 +74,61 @@ const stopSendingMedia = curry((kind, pc) => {
     });
   });
 });
+
+const startReceivingMedia = curry((kind, pc) => {
+  let foundKind = false;
+  pc.getRemoteStreams().forEach((stream) => {
+    // Find all the tracks we've removed from the stream/pc so we can readd them
+    const tracks = getMediaTracksByKindByStream(kind, stream);
+    tracks.forEach((track) => {
+      foundKind = foundKind || true;
+      track.enabled = true;
+      // Because adapter.js doesn't actually hide all the cross browser
+      // inconsistencies
+      if (pc.addTrack) {
+        pc.addTrack(track, stream);
+      }
+      else {
+        stream.addTrack(track);
+      }
+    });
+    tracks.delete(stream);
+  });
+
+  return Promise.resolve();
+});
+
+const stopReceivingMedia = curry((kind, pc) => {
+  pc.getRemoteStreams().forEach((stream) => {
+    stream.getTracks().forEach((track) => {
+      if (track.kind === kind) {
+        track.enabled = false;
+        // Store the tracks so we can add them back later (should the user want
+        // to mute/unmute)
+        storeMediaTrackByKindByStream(kind, stream, track);
+        if (pc.removeTrack) {
+          const receiver = find(pc.getSenders(), (r) => r.track === track);
+
+          try {
+            pc.removeTrack(receiver);
+          }
+          catch (reason) {
+            // eslint-disable-next-line no-console
+            console.warn(`webrtc: this browser has limited support for renegotiation; receiving ${kind} has been stopped, but will not be renegotiated`);
+          }
+        }
+        else {
+          stream.removeTrack(track);
+        }
+      }
+    });
+  });
+});
+
+export const stopReceivingAudio = stopReceivingMedia(`audio`);
+export const stopReceivingVideo = stopReceivingMedia(`video`);
+export const startReceivingAudio = startReceivingMedia(`audio`);
+export const startReceivingVideo = startReceivingMedia(`video`);
 
 /**
  * Adds a bandwith limit line to the sdp; without this line, calling fails
@@ -215,12 +271,26 @@ export const createOffer = curry((pc, offerOptions) => {
         resolve();
       }
     };
+
+    setTimeout(() => {
+      pc.onicecandidate = undefined;
+      resolve();
+    }, 500);
+
   });
 
   return pc.createOffer(offerOptions)
     .then(tap((offer) => {offer.sdp = limitBandwith(offer.sdp);}))
+    .then(tap((offer) => {
+      if (process.env.LOG_SDP) {
+        // eslint-disable-next-line no-console
+        console.log(`offer`, offer.sdp);
+      }
+    }))
     .then((offer) => pc.setLocalDescription(offer))
     .then(() => Promise.resolve(promise))
+    // Apparently chrome somehow moves the bandwith limit out of the video
+    // section, so we need to reapply it.
     .then(() => limitBandwith(pc.localDescription.sdp));
 });
 
@@ -231,10 +301,16 @@ export const createOffer = curry((pc, offerOptions) => {
  * @private
  * @returns {Promise}
  */
-export const acceptAnswer = curry((pc, sdp) => pc.setRemoteDescription(new RTCSessionDescription({
-  sdp,
-  type: `answer`
-})));
+export const acceptAnswer = curry((pc, sdp) => {
+  if (process.env.LOG_SDP) {
+    // eslint-disable-next-line no-console
+    console.log(`answer`, sdp);
+  }
+  return pc.setRemoteDescription(new RTCSessionDescription({
+    sdp,
+    type: `answer`
+  }));
+});
 
 /**
  * Terminates the specifed RTCPeerConnection
@@ -276,4 +352,36 @@ function addStream(pc, stream) {
   else {
     pc.addStream(stream);
   }
+}
+
+/**
+ * returns the direction line for the specifed media type.
+ * @param {string} type
+ * @param {RTCPeerConnection} pc
+ * @private
+ * @returns {string}
+ */
+export function mediaDirection(type, pc) {
+  if (pc.connectionState === `closed` || pc.signalingState === `closed`) {
+    return `inactive`;
+  }
+
+  if (!pc.localDescription) {
+    return `inactive`;
+  }
+  const sdp = transform.parse(pc.localDescription.sdp);
+  const media = find(sdp.media, {type});
+  if (!media) {
+    return `inactive`;
+  }
+
+  if (type === `audio` && media.direction === `sendonly`) {
+    const remoteSdp = transform.parse(pc.remoteDescription.sdp);
+    const remoteMedia = find(remoteSdp.media, {type});
+    if (remoteMedia && remoteMedia.direction === `inactive`) {
+      return `inactive`;
+    }
+  }
+
+  return media.direction;
 }

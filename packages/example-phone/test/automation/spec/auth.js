@@ -7,7 +7,7 @@ import {createBrowser} from '@ciscospark/test-helper-automation';
 import testUsers from '@ciscospark/test-helper-test-users';
 import pkg from '../../../package.json';
 
-describe(`Example: Phone`, () => {
+describe(`example-phone`, () => {
   let browser, user;
 
   before(() => testUsers.create({count: 1})

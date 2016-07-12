@@ -1,5 +1,4 @@
 import {createAction} from 'redux-actions';
-import {pick} from 'lodash';
 
 export const CALL_CONNECTED = `CALL_CONNECTED`;
 export const CALL_DISCONNECTED = `CALL_DISCONNECTED`;
@@ -22,18 +21,7 @@ export const callStatusChanged = createAction(CALL_STATUS_CHANGED);
 const noop = createAction(`NOOP`);
 
 export const UPDATE_MEDIA_STATE = `UPDATE_MEDIA_STATE`;
-const updateMediaState = createAction(UPDATE_MEDIA_STATE, (call) => Object.assign({
-  // eslint-disable-next-line no-extra-parens
-  localAudioDirection: (call.local && call.local.audioStatus) ? call.local.audioStatus.toLowerCase() : `inactive`,
-  // eslint-disable-next-line no-extra-parens
-  localVideoDirection: (call.local && call.local.videoStatus) ? call.local.videoStatus.toLowerCase() : `inactive`,
-  // eslint-disable-next-line no-extra-parens
-  remoteAudioDirection: (call.remote && call.remote.audioStatus) ? call.remote.audioStatus.toLowerCase() : `inactive`,
-  // eslint-disable-next-line no-extra-parens
-  remoteVideoDirection: (call.remote && call.remote.videoStatus) ? call.remote.videoStatus.toLowerCase() : `inactive`
-},
-  pick(call, `receivingAudio`, `receivingVideo`, `sendingAudio`, `sendingVideo`),
-));
+const updateMediaState = createAction(UPDATE_MEDIA_STATE);
 function createMediaStateUpdateAction(fnName) {
   return (call) => (dispatch) => {
     call[fnName]()
@@ -61,6 +49,10 @@ export function bindCallActions(dispatch, call) {
   call.on(`change:receivingAudio`, () => dispatch(updateMediaState(call)));
   call.on(`change:sendingVideo`, () => dispatch(updateMediaState(call)));
   call.on(`change:receivingVideo`, () => dispatch(updateMediaState(call)));
+  call.on(`change:localAudioDirection`, () => dispatch(updateMediaState(call)));
+  call.on(`change:localVideoDirection`, () => dispatch(updateMediaState(call)));
+  call.on(`change:remoteAudioDirection`, () => dispatch(updateMediaState(call)));
+  call.on(`change:remoteVideoDirection`, () => dispatch(updateMediaState(call)));
 }
 
 export function hangup(call) {

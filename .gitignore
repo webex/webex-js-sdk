@@ -8,6 +8,7 @@ tmp*.*
 *.log
 doc
 .grunt
+.github-publish
 reports
 reports-ng
 .nvm

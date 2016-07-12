@@ -1,7 +1,11 @@
 import React from 'react';
 import Video from '../common/video';
 
-export default function RemoteView({receivingVideo, remoteMediaStreamUrl, ...rest}) {
+export default function RemoteView({
+  receivingVideo,
+  remoteMediaStreamUrl,
+  ...rest
+}) {
   let mediaElement;
   if (receivingVideo) {
     mediaElement = <Video src={remoteMediaStreamUrl} {...rest} />;

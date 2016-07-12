@@ -1,9 +1,3 @@
-/**!
- *
- * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
- * @private
- */
-
 import Page from '../lib/page';
 import {SparkPlugin} from '@ciscospark/spark-core';
 
@@ -37,9 +31,17 @@ const Rooms = SparkPlugin.extend({
    * @param {Types~Room} room
    * @returns {Promise<Types~Room>}
    * @example
-   * <%= rooms__create_es6 %>
-   * @example
-   * <%= rooms__create %>
+   * var ciscospark = require('../..');
+   * ciscospark.rooms.create({title: 'Create Room Example'})
+   *   .then(function(room) {
+   *     var assert = require('assert')
+   *     assert(typeof room.created === 'string');
+   *     assert(typeof room.id === 'string');
+   *     assert(room.title === 'Create Room Example');
+   *     console.log(room.title);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   create(room) {
     return this.request({
@@ -56,15 +58,21 @@ const Rooms = SparkPlugin.extend({
    * @memberof Rooms
    * @param {Types~Room|string} room
    * @param {Object} options
-   * @param {Object} options.includeSipAddress To show the SIP address for the
-   * room in the response, set this value to `true`. A session initiation
-   * protocol (SIP) address is a URI that addresses a specific telephone
-   * extension on a voice over IP (VOIP) system.
    * @returns {Promise<Types~Room>}
    * @example
-   * <%= rooms__get_es6 %>
-   * @example
-   * <%= rooms__get %>
+   * var ciscospark = require('../..');
+   * var room;
+   * ciscospark.rooms.create({title: 'Get Room Example'})
+   *   .then(function(r) {
+   *     room = r
+   *     return ciscospark.rooms.get(room.id)
+   *   })
+   *   .then(function(r) {
+   *     var assert = require('assert');
+   *     assert.deepEqual(r, room);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   get(room, options) {
     const id = room.id || room;
@@ -84,15 +92,30 @@ const Rooms = SparkPlugin.extend({
    * @param {Object} options
    * @param {Object} options.max Limit the maximum number of rooms in the
    * response.
-   * @param {Object} options.includeSipAddress To show the SIP address for the
-   * room in the response, set this value to `true`. A session initiation
-   * protocol (SIP) address is a URI that addresses a specific telephone
-   * extension on a voice over IP (VOIP) system.
    * @returns {Promise<Page<Types~Room>>}
    * @example
-   * <%= rooms__list_es6 %>
-   * @example
-   * <%= rooms__list %>
+   * var ciscospark = require('../..');
+   * var createdRooms;
+   * Promise.all([
+   *   ciscospark.rooms.create({title: 'List Rooms Example 1'}),
+   *   ciscospark.rooms.create({title: 'List Rooms Example 2'}),
+   *   ciscospark.rooms.create({title: 'List Rooms Example 3'})
+   * ])
+   *   .then(function(r) {
+   *     createdRooms = r;
+   *     return ciscospark.rooms.list({max: 3})
+   *       .then(function(rooms) {
+   *         var assert = require('assert');
+   *         assert(rooms.length === 3);
+   *         for (var i = 0; i < rooms.items.length; i++) {
+   *           assert(createdRooms.filter(function(room) {
+   *             return room.id === rooms.items[i].id;
+   *           }).length === 1);
+   *         }
+   *         return 'success';
+   *       });
+   *   });
+   *   // => success
    */
   list(options) {
     return this.request({
@@ -109,9 +132,26 @@ const Rooms = SparkPlugin.extend({
    * @param {Types~Room|string} room
    * @returns {Promise}
    * @example
-   * <%= rooms__remove_es6 %>
-   * @example
-   * <%= rooms__remove %>
+   * var ciscospark = require('../..');
+   * var room;
+   * ciscospark.rooms.create({title: 'Remove Room Example'})
+   *  .then(function(r) {
+   *    room = r;
+   *    return ciscospark.rooms.remove(room.id);
+   *  })
+   *  .then(function() {
+   *    return ciscospark.rooms.get(room.id);
+   *  })
+   *  .then(function() {
+   *    var assert = require('assert');
+   *    assert(false, 'the previous get should have failed');
+   *  })
+   *  .catch(function(reason) {
+   *    var assert = require('assert');
+   *    assert.equal(reason.statusCode, 404);
+   *    return 'success'
+   *  });
+   *  // => success
    */
   remove(room) {
     const id = room.id || room;
@@ -136,9 +176,23 @@ const Rooms = SparkPlugin.extend({
    * @param {Types~Room} room
    * @returns {Promise<Types~Room>}
    * @example
-   * <%= rooms__update_es6 %>
-   * @example
-   * <%= rooms__update %>
+   * var ciscospark = require('../..');
+   * var room;
+   * ciscospark.rooms.create({title: 'Update Room Example'})
+   *   .then(function(r) {
+   *     room = r;
+   *     room.title = 'Update Room Example (Updated Title)';
+   *     return ciscospark.rooms.update(room);
+   *   })
+   *   .then(function() {
+   *     return ciscospark.rooms.get(room.id);
+   *   })
+   *   .then(function(room) {
+   *    var assert = require('assert');
+   *     assert.equal(room.title, 'Update Room Example (Updated Title)');
+   *     return 'success';
+   *   });
+   *   // => success
    */
   update(room) {
     const id = room.id;

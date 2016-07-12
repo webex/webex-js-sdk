@@ -63,6 +63,10 @@ class SparkComponent extends Component {
     spark.device.on(`change:url`, () => {
       receiveDevice(spark);
     });
+
+    spark.device.on(`change:webSocketUrl`, () => {
+      receiveDevice(spark);
+    });
   }
 
   componentWillReceiveProps(nextProps) {

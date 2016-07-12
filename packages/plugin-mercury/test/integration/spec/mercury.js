@@ -10,34 +10,35 @@ import sinon from '@ciscospark/test-helper-sinon';
 import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
 
-describe(`Mercury`, function() {
+describe(`plugin-mercury`, function() {
   this.timeout(30000);
+  describe(`Mercury`, () => {
+    let spark;
 
-  let spark;
+    beforeEach(() => testUsers.create({count: 1})
+      .then((users) => {
+        spark = new CiscoSpark({
+          credentials: {
+            authorization: users[0].token
+          }
+        });
+      }));
 
-  beforeEach(() => testUsers.create({count: 1})
-    .then((users) => {
-      spark = new CiscoSpark({
-        credentials: {
-          authorization: users[0].token
-        }
+    afterEach(() => spark.mercury.disconnect());
+
+    describe(`#connect()`, () => {
+      it(`connects to mercury`, () => {
+        return spark.mercury.connect();
       });
-    }));
-
-  afterEach(() => spark.mercury.disconnect());
-
-  describe(`#connect()`, () => {
-    it(`connects to mercury`, () => {
-      return spark.mercury.connect();
     });
-  });
 
-  it(`emits messages that arrive before authorization completes`, () => {
-    const spy = sinon.spy();
-    spark.mercury.on(`event:mercury.buffer_state`, spy);
-    return spark.mercury.connect()
-      .then(() => {
-        assert.calledOnce(spy);
-      });
+    it(`emits messages that arrive before authorization completes`, () => {
+      const spy = sinon.spy();
+      spark.mercury.on(`event:mercury.buffer_state`, spy);
+      return spark.mercury.connect()
+        .then(() => {
+          assert.calledOnce(spy);
+        });
+    });
   });
 });

@@ -56,7 +56,8 @@ module.exports = {
     var browser = process.env.SC_TUNNEL_IDENTIFIER ? wd.promiseChainRemote('ondemand.saucelabs.com', 80) : wd.promiseChainRemote();
 
     return browser.init(browserDef)
-      .setImplicitWaitTimeout(1000)
+      .setImplicitWaitTimeout(10000)
+      .setWindowSize(1600, 1200)
       .then(function returnBrowser() {
         return browser;
       });

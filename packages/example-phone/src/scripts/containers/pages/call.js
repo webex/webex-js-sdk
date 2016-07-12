@@ -6,7 +6,6 @@ import {connect} from 'react-redux';
 import {injectSpark} from '../../modules/redux-spark';
 
 import Dialer from '../../components/call/dialer';
-import CallList from '../../components/call/call-list';
 
 import CallPageHeader from '../page-sections/call-page-header';
 import CallPageBody from '../page-sections/call-page-body';
@@ -34,23 +33,15 @@ class CallPage extends Component {
     decline(call);
   }
 
-  handleDial(values) {
-    const {dial, spark} = this.props;
-    dial(spark, values.address);
-  }
-
   render() {
+    const {dial, spark} = this.props;
+
     return (
       <Grid className="call" fluid>
         <Row>
           <Col sm={3}>
             <Well>
-              <Dialer onDial={this.handleDial.bind(this)} />
-              <CallList
-                calls={this.props.calls}
-                onAnswer={this.handleAnswer.bind(this)}
-                onDecline={this.handleDecline.bind(this)}
-              />
+              <Dialer onDial={dial} spark={spark} />
             </Well>
           </Col>
           <Col sm={9}>

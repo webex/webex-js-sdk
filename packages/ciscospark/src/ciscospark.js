@@ -51,16 +51,10 @@ registerPlugin(`webhooks`, Webhooks);
  *
  * ## Getting Started
  *
- * > The examples below have both ES5 and ES6 variations. The ES6 examples will
- * > require you to build your project using [babel](https://babeljs.io). The
- * > ES5 examples should be directly runnable.
  *
  * The quickest way to get started is to set your access token as an environment
  * variable:
  *
- * ```javascript
- * <%= gettingstarted__accesstoken_es6 %>
- * ```
  * ```javascript
  * <%= gettingstarted__accesstoken %>
  * ```
@@ -71,7 +65,7 @@ registerPlugin(`webhooks`, Webhooks);
  * id, and client secret:
  *
  * ```javascript
- * <%= gettingstarted__oauth__refreshtokens_es6 %>
+ * TODO
  * ```
  *
  * ## Runtime Configuration
@@ -81,7 +75,7 @@ registerPlugin(`webhooks`, Webhooks);
  * using init.
  *
  * ```javascript
- * <%= gettingstarted__runtimeconfiguration__init_es6 %>
+ * TODO
  * ```
  *
  * ## OAuth
@@ -92,14 +86,14 @@ registerPlugin(`webhooks`, Webhooks);
  * direct the current app to our login page.
  *
  * ```javascript
- * <%= gettingstarted__oauth__authenticate_es6 %>
+ * TODO
  * ```
  *
  * To refresh an access token, call `spark.authorize()`. (Note: this should
  * generally happen for you automatically).
  *
  * ```javascript
- * <%= gettingstarted__oauth__authorize_es6 %>
+ * TODO
  * ```
  *
  * @class CiscoSpark

@@ -31,9 +31,28 @@ const Webhooks = SparkPlugin.extend({
    * @param {Types~Webhook} webhook
    * @returns {Promise<Webhook>}
    * @example
-   * <%= webhooks__create_es6 %>
-   * @example
-   * <%= webhooks__create %>
+   * var ciscospark = require('../..');
+   * ciscospark.rooms.create({title: 'Create Webhook Example'})
+   *   .then(function(room) {
+   *     return ciscospark.webhooks.create({
+   *       resource: 'messages',
+   *       event: 'created',
+   *       filter: 'roomId=' + room.id,
+   *       targetUrl: 'https://example.com/webhook',
+   *       name: 'Test Webhook'
+   *     });
+   *   })
+   *   .then(function(webhook) {
+   *     var assert = require('assert');
+   *     assert(webhook.id);
+   *     assert(webhook.resource);
+   *     assert(webhook.event);
+   *     assert(webhook.filter);
+   *     assert(webhook.targetUrl);
+   *     assert(webhook.name);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   create(webhook) {
     return this.request({
@@ -51,9 +70,28 @@ const Webhooks = SparkPlugin.extend({
    * @param {Webhook|string} webhook
    * @returns {Promise<Array<Webhook>>}
    * @example
-   * <%= webhooks__get_es6 %>
-   * @example
-   * <%= webhooks__get %>
+   * var ciscospark = require('../..');
+   * var webhook;
+   * ciscospark.rooms.create({title: 'Get Webhook Example'})
+   *   .then(function(room) {
+   *     return ciscospark.webhooks.create({
+   *       resource: 'messages',
+   *       event: 'created',
+   *       filter: 'roomId=' + room.id,
+   *       targetUrl: 'https://example.com/webhook',
+   *       name: 'Test Webhook'
+   *     });
+   *   })
+   *   .then(function(w) {
+   *     webhook = w;
+   *     return ciscospark.webhooks.get(webhook.id);
+   *   })
+   *   .then(function(webhook2) {
+   *     var assert = require('assert');
+   *     assert.deepEqual(webhook2, webhook);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   get(webhook) {
     const id = webhook.id || webhook;
@@ -72,9 +110,31 @@ const Webhooks = SparkPlugin.extend({
    * @param {integer} options.max Limit the maximum number of webhooks in the response.
    * @returns {Promise<Webhook>}
    * @example
-   * <%= webhooks__list_es6 %>
-   * @example
-   * <%= webhooks__list %>
+   * var ciscospark = require('../..');
+   * var room, webhook;
+   * ciscospark.rooms.create({title: 'List Webhooks Example'})
+   *   .then(function(r) {
+   *     room = r;
+   *     return ciscospark.webhooks.create({
+   *       resource: 'messages',
+   *       event: 'created',
+   *       filter: 'roomId=' + room.id,
+   *       targetUrl: 'https://example.com/webhook',
+   *       name: 'Test Webhook'
+   *     });
+   *   })
+   *   .then(function(w) {
+   *     webhook = w;
+   *     return ciscospark.webhooks.list();
+   *   })
+   *   .then(function(webhooks) {
+   *     var assert = require('assert');
+   *     assert.equal(webhooks.items.filter(function(w) {
+   *       return w.id === webhook.id;
+   *     }).length, 1);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   list(options) {
     return this.request({
@@ -91,9 +151,34 @@ const Webhooks = SparkPlugin.extend({
    * @param {Webhook|string} webhook
    * @returns {Promise}
    * @example
-   * <%= webhooks__remove_es6 %>
-   * @example
-   * <%= webhooks__remove %>
+   * var ciscospark = require('../..');
+   * var room, webhook;
+   * ciscospark.rooms.create({title: 'Remove Webhook Example'})
+   *   .then(function(r) {
+   *     room = r;
+   *     return ciscospark.webhooks.create({
+   *       resource: 'messages',
+   *       event: 'created',
+   *       filter: 'roomId=' + room.id,
+   *       targetUrl: 'https://example.com/webhook',
+   *       name: 'Test Webhook'
+   *     });
+   *   })
+   *   .then(function(w) {
+   *     webhook = w;
+   *     return ciscospark.webhooks.remove(webhook);
+   *   })
+   *   .then(function() {
+   *     return ciscospark.webhooks.list();
+   *   })
+   *   .then(function(webhooks) {
+   *     var assert = require('assert');
+   *     assert.equal(webhooks.items.filter(function(w) {
+   *       return w.id === webhook.id;
+   *     }).length, 0);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   remove(webhook) {
     const id = webhook.id || webhook;
@@ -118,9 +203,32 @@ const Webhooks = SparkPlugin.extend({
    * @param {Webhook} webhook
    * @returns {Promise<Webhook>}
    * @example
-   * <%= webhooks__update_es6 %>
-   * @example
-   * <%= webhooks__update %>
+   * var ciscospark = require('../..');
+   * var webhook;
+   * ciscospark.rooms.create({title: 'Webhook Example'})
+   *   .then(function(room) {
+   *     return ciscospark.webhooks.create({
+   *       resource: 'messages',
+   *       event: 'created',
+   *       filter: 'roomId=' + room.id,
+   *       targetUrl: 'https://example.com/webhook',
+   *       name: 'Test Webhook'
+   *     });
+   *   })
+   *   .then(function(w) {
+   *     webhook = w;
+   *     webhook.targetUrl = 'https://example.com/webhook/newtarget';
+   *     return ciscospark.webhooks.update(webhook);
+   *   })
+   *   .then(function() {
+   *     return ciscospark.webhooks.get(webhook);
+   *   })
+   *   .then(function(webhook) {
+   *     var assert = require('assert');
+   *     assert.equal(webhook.targetUrl, 'https://example.com/webhook/newtarget');
+   *     return 'success';
+   *   });
+   *   // => success
    */
   update(webhook) {
     const id = webhook.id;

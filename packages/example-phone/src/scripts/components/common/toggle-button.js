@@ -14,7 +14,7 @@ export default function ToggleButton({
 }) {
   return (
     <Button
-      bsStyle={active ? activeStyle : inactiveStyle}
+      bsStyle={(active ? activeStyle : inactiveStyle) || `default`}
       onClick={active ? onDeactivate : onActivate}
       title={active ? activeTitle : inactiveTitle}
       {...props}

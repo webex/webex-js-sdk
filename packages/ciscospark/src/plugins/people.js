@@ -27,9 +27,29 @@ const People = SparkPlugin.extend({
    * @param {Types~Person|uuid} person
    * @returns {Promise<Types~Person>}
    * @example
-   * <%= people__get_es6 %>
-   * @example
-   * <%= people__get %>
+   * var ciscospark = require('../..');
+   * ciscospark.rooms.create({title: 'Get Person Example'})
+   *   .then(function(room) {
+   *     return ciscospark.memberships.create({
+   *       personEmail: 'alice@example.com',
+   *       roomId: room.id
+   *     });
+   *   })
+   *   .then(function(membership) {
+   *     return ciscospark.people.get(membership.personId);
+   *   })
+   *   .then(function(alice) {
+   *     var assert = require('assert');
+   *     assert(alice.id);
+   *     assert(Array.isArray(alice.emails));
+   *     assert.equal(alice.emails.filter(function(email) {
+   *       return email === 'alice@example.com';
+   *     }).length, 1);
+   *     assert(alice.displayName);
+   *     assert(alice.created);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   get(person) {
     const id = person.personId || person.id || person;
@@ -48,9 +68,36 @@ const People = SparkPlugin.extend({
    * @param {string} options.name - Returns people with a name that contains this string
    * @returns {Promise<Page<Types~Person>>}
    * @example
-   * <%= people__list_es6 %>
-   * @example
-   * <%= people__list %>
+   * var ciscospark = require('../..');
+   * var room;
+   * ciscospark.rooms.create({title: 'List People Example'})
+   *   .then(function(r) {
+   *     room = r;
+   *     return ciscospark.memberships.create({
+   *       personEmail: 'alice@example.com',
+   *       roomId: room.id
+   *     });
+   *   })
+   *   .then(function() {
+   *     return ciscospark.memberships.create({
+   *       personEmail: 'bob@example.com',
+   *       roomId: room.id
+   *     });
+   *   })
+   *   .then(function() {
+   *     return ciscospark.people.list({email: 'alice@example.com'});
+   *   })
+   *   .then(function(people) {
+   *     var assert = require('assert');
+   *     assert.equal(people.length, 1);
+   *     var person = people.items[0];
+   *     assert(person.id);
+   *     assert(Array.isArray(person.emails));
+   *     assert(person.displayName);
+   *     assert(person.created);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   list(options) {
     return this.request({

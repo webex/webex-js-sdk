@@ -72,7 +72,7 @@ module.exports = function(config) {
     client: {
       mocha: {
         // TODO figure out how to report retries
-        retries: 1,
+        retries: (process.env.JENKINS || process.env.CI) ? 1 : 0,
         timeout: 30000
       }
     },

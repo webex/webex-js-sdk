@@ -6,7 +6,7 @@
 import {assert} from '@ciscospark/test-helper-chai';
 import '../..';
 
-describe(`Plugin: Metrics`, () => {
+describe(`plugin-metrics`, () => {
   it(`has just enough of a test suite to not crash the test suite`, () => {
     assert.isTrue(true);
   });

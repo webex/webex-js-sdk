@@ -39,7 +39,7 @@ const enhancers = [
   persistState(storage, [`example-phone`])
 ];
 
-if (process.env.NODE_ENV === `development`) {
+if (process.env.NODE_ENV !== `production`) {
   enhancers.push(window.devToolsExtension ? window.devToolsExtension() : (f) => f);
 }
 

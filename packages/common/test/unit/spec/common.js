@@ -10,7 +10,7 @@ import {base64, oneFlight, retry} from '../..';
 // speaking, items in common are proven by their usage through the rest of
 // @ciscospark.
 
-describe(`Common`, () => {
+describe(`common`, () => {
   describe(`base64`, () => {
     it(`is defined`, () => {
       assert.isDefined(base64);

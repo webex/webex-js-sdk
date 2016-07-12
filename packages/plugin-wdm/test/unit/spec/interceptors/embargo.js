@@ -12,37 +12,41 @@ import {defaults} from '@ciscospark/http-core';
 import deviceFixture from '../../lib/device-fixture';
 import sinon from '@ciscospark/test-helper-sinon';
 
-describe(`EmbargoInterceptor`, function() {
+describe(`plugin-wdm`, function() {
+  // This isn't quite a unit test since we hit the local fixture server;
+  // sometimes, sauce makes the fixture server a bit slow.
   this.timeout(20000);
-  let spark;
+  describe(`EmbargoInterceptor`, () => {
+    let spark;
 
-  beforeEach(() => {
-    spark = new MockSpark({
-      children: {
-        device: Device
-      }
+    beforeEach(() => {
+      spark = new MockSpark({
+        children: {
+          device: Device
+        }
+      });
+
+      spark.request = defaults({interceptors: [
+        new EmbargoInterceptor({spark}),
+        HttpStatusInterceptor.create()
+      ]});
+
+      sinon.spy(spark.device, `clear`);
+      spark.credentials.clear = sinon.spy();
+      spark.device.set(deviceFixture);
+
+      spark.device.services = {};
+      spark.device.config.preDiscoveryServices = {};
     });
 
-    spark.request = defaults({interceptors: [
-      new EmbargoInterceptor({spark}),
-      HttpStatusInterceptor.create()
-    ]});
-
-    sinon.spy(spark.device, `clear`);
-    spark.credentials.clear = sinon.spy();
-    spark.device.set(deviceFixture);
-
-    spark.device.services = {};
-    spark.device.config.preDiscoveryServices = {};
-  });
-
-  describe(`when it receives a 451`, () => {
-    it(`bricks the client`, () => {
-      return assert.isRejected(spark.request({uri: makeLocalUrl(`/embargoed`)}))
-        .then((reason) => {
-          assert.statusCode(reason, 451);
-          assert.calledOnce(spark.device.clear);
-        });
+    describe(`when it receives a 451`, () => {
+      it(`bricks the client`, () => {
+        return assert.isRejected(spark.request({uri: makeLocalUrl(`/embargoed`)}))
+          .then((reason) => {
+            assert.statusCode(reason, 451);
+            assert.calledOnce(spark.device.clear);
+          });
+      });
     });
   });
 });

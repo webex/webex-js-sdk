@@ -16,7 +16,7 @@ if (process.env.NODE_ENV !== `test`) {
   throw new Error(`Cannot run the plugin-phone test suite without NODE_ENV === "test"`);
 }
 
-describe(`Plugin: Phone`, function() {
+describe(`plugin-phone`, function() {
   this.timeout(60000);
 
   describe(`Phone`, () => {
@@ -54,10 +54,6 @@ describe(`Plugin: Phone`, function() {
       mccoy.spark.phone.deregister()
         .catch((reason) => console.warn(`could not disconnect mccoy from mercury`, reason))
     ]));
-
-    it(`keeps the test suite from breaking`, () => {
-      assert.isTrue(true);
-    });
 
     describe(`#createLocalMediaStream()`, () => {
       it(`returns a MediaStreamObject`, () => {
@@ -185,9 +181,14 @@ describe(`Plugin: Phone`, function() {
           });
       });
 
+      let call;
+      afterEach(() => Promise.resolve(call && call.hangup()
+        .catch((reason) => console.warn(`failed to end call`, reason))
+        .then(() => {call = undefined;})));
+
       // TODO make this preventable
       it(`fetches active calls`, () => {
-        const call = spock.spark.phone.dial(kirk.email);
+        call = spock.spark.phone.dial(kirk.email);
         // use change:locus as the trigger for determining when the post to
         // /call completes.
         return call.when(`change:locus`)

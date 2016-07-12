@@ -27,7 +27,16 @@ const Teams = SparkPlugin.extend({
    * @returns {Promise<Types~Team>}
    * @memberof Teams
    * @example
-   * <%= teams__create %>
+   * var ciscospark = require('../..');
+   * ciscospark.teams.create({name: 'Create Team Example'})
+   *   .then(function(team) {
+   *     var assert = require('assert');
+   *     assert(team.id);
+   *     assert(team.name);
+   *     assert(team.created);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   create(team) {
     return this.request({
@@ -46,7 +55,19 @@ const Teams = SparkPlugin.extend({
    * @returns {Promise<Types~Team>}
    * @memberof Teams
    * @example
-   * <%= teams__get %>
+   * var ciscospark = require('../..');
+   * var team;
+   * ciscospark.teams.create({name: 'Get Team Example'})
+   *   .then(function(r) {
+   *     team = r;
+   *     return ciscospark.teams.get(team.id);
+   *   })
+   *   .then(function(team2) {
+   *     var assert = require('assert');
+   *     assert.equal(team2.id, team.id);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   get(team, options) {
     const id = team.id || team;
@@ -67,7 +88,28 @@ const Teams = SparkPlugin.extend({
    * @returns {Promise<Page<Types~Team>>}
    * @memberof Teams
    * @example
-   * <%= teams__list %>
+   * var ciscospark = require('../..');
+   * var createdRooms;
+   * Promise.all([
+   *   ciscospark.teams.create({name: 'List Teams Example 1'}),
+   *   ciscospark.teams.create({name: 'List Teams Example 2'}),
+   *   ciscospark.teams.create({name: 'List Teams Example 3'})
+   * ])
+   *   .then(function(r) {
+   *     createdRooms = r;
+   *     return ciscospark.teams.list({max: 3});
+   *   })
+   *   .then(function(teams) {
+   *     var assert = require('assert');
+   *     assert(teams.length === 3);
+   *     for (var i = 0; i < teams.items.length; i++) {
+   *       assert(createdRooms.filter(function(room) {
+   *         return room.id === teams.items[i].id;
+   *       }).length === 1);
+   *     }
+   *     return 'success';
+   *   });
+   *   // => success
    */
   list(options) {
     return this.request({
@@ -84,7 +126,24 @@ const Teams = SparkPlugin.extend({
    * @returns {Promise<Types~Team>}
    * @memberof Teams
    * @example
-   * <%= teams__update %>
+   * var ciscospark = require('../..');
+   * var teams;
+   * ciscospark.teams.create({name: 'Update Team Example'})
+   *   .then(function(r) {
+   *     teams = r;
+   *     teams.name = 'Teams Example (Updated Title)';
+   *     return ciscospark.teams.update(teams);
+   *   })
+   *   .then(function() {
+   *     return ciscospark.teams.get(teams.id);
+   *   })
+   *   .then(function(teams) {
+   *     var assert = require('assert');
+   *     assert.equal(teams.name, 'Teams Example (Updated Title)');
+   *     return 'success';
+   *   });
+   *   // => success
+
    */
   update(team) {
     const id = team.id;

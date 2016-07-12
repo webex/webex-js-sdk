@@ -39,7 +39,7 @@ export default class ResponseLoggerInterceptor extends Interceptor {
       }
       else if (typeof response.body === `object`) {
         try {
-          console.log(`Response: `, util.inspect(options, {depth: null}));
+          console.log(`Response: `, util.inspect(response.body, {depth: null}));
         }
         catch (err) {
           console.log(`Response: `, `[Not Serializable]`, err);

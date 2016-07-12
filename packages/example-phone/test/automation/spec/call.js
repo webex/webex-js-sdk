@@ -2,10 +2,11 @@ import {createBrowser} from '@ciscospark/test-helper-automation';
 import testUsers from '@ciscospark/test-helper-test-users';
 import pkg from '../../../package.json';
 
-describe(`active call`, () => {
+
+describe(`example-phone`, () => {
   let browser, callee, caller;
 
-  before(() => testUsers.create({count: 2})
+  beforeEach(() => testUsers.create({count: 2})
     .then(([u1, u2]) => {
       caller = u1;
       callee = u2;
@@ -20,7 +21,6 @@ describe(`active call`, () => {
     .then((b) => {browser = b;})
     .then(() => browser
       .loginWithLocalStorage(caller)
-      .setImplicitWaitTimeout(20000)
       .bdInit(callee)
       .clickOnTitle(`Link to Call Page`)));
 
@@ -34,97 +34,109 @@ describe(`active call`, () => {
     it(`starts a call`, () => browser
       .placeCall(callee.email)
       .bdAnswerCall()
-      .waitForElementByClassName(`remote-party-name`)
-        .text()
-          .should.eventually.equal(callee.name));
+      .assertIsInCallWith(callee));
 
-    it.skip(`starts a call without audio`, () => browser
-      .placeAudioOnlyCall(callee.email)
-      .bdAnswerCall()
-      .waitForElementByClassName(`remote-party-name`)
-        .text()
-          .should.eventually.equal(callee.name)
-      .bdGet()
-        .then((drone) => drone
-          .waitForElementByCssSelector(`.remote-media-status .video-status`)
-            .text()
-              .should.eventually.equal(`inactive`)));
-
-    it.skip(`starts a call without video`, () => browser
+    it(`starts a call without audio then adds audio to the call`, () => browser
       .placeVideoOnlyCall(callee.email)
       .bdAnswerCall()
-      .waitForElementByClassName(`remote-party-name`)
-        .text()
-          .should.eventually.equal(callee.name)
-      .bdGet()
-        .then((drone) => drone
-          .waitForElementByCssSelector(`.remote-media-status .audio-status`)
-            .text()
-              .should.eventually.equal(`inactive`)));
+      .assertIsInCallWith(callee)
+      .assertLocalAudioDirection(`inactive`)
+      .assertLocalVideoDirection(`sendrecv`)
+      .clickOnTitle(`Start sending audio`)
+      .clickOnTitle(`Start receiving audio`)
+      .assertLocalAudioDirection(`sendrecv`)
+      .assertLocalVideoDirection(`sendrecv`)
+    );
+
+    it(`starts a call without video then adds video the call`, () => browser
+      .placeAudioOnlyCall(callee.email)
+      .bdAnswerCall()
+      .assertIsInCallWith(callee)
+      .assertLocalAudioDirection(`sendrecv`)
+      .assertLocalVideoDirection(`inactive`)
+      .clickOnTitle(`Start sending video`)
+      .clickOnTitle(`Start receiving video`)
+      .assertLocalAudioDirection(`sendrecv`)
+      .assertLocalVideoDirection(`sendrecv`)
+    );
   });
 
   describe(`As a user progressing through a call`, () => {
     it.skip(`sees the call status`, () => browser
       .placeCall(callee.email)
-      .waitForElementByClassName(`call-status`)
-        .text()
-          .should.eventually.become(`initiated`)
-      .waitForElementByClassName(`call-status`)
-        .text()
-          .should.eventually.become(`ringing`)
+      .assertCallStatus(`initiated`)
+      .assertCallStatus(`ringing`)
       .bdAnswerCall()
-      .waitForElementByClassName(`call-status`)
-        .text()
-          .should.eventually.become(`connected`)
+      .assertCallStatus(`connected`)
+      .assertIsInCall()
       .bdEndCall()
-      .waitForElementByClassName(`call-status`)
-        .text()
-          .should.eventually.become(`disconnected`));
+      .assertCallStatus(`disconnected`));
   });
 
   describe(`As an authenticated user in a call`, () => {
     beforeEach(() => browser
       .placeCall(callee.email)
       .bdAnswerCall()
-      .waitForElementByClassName(`remote-party-name`)
-        .text()
-          .should.eventually.equal(callee.name));
+      .assertIsInCallWith(callee));
 
     it(`ends the call`, () => browser
       .clickOnTitle(`Hang up`)
+      .assertCallStatus(`disconnected`)
       .waitForElementNotPresent(`.remote-party-name`));
 
-    it.skip(`stops sending its audio`, () => browser
+    it(`toggles sending its audio`, () => browser
       .clickOnTitle(`Stop sending audio`)
-      .bdGet()
-        .then((drone) => drone
-          .waitForElementByCssSelector(`.remote-media-status .audio-status`)
-            .text()
-              .should.eventually.equal(`recvonly`)));
+      .assertLocalAudioDirection(`recvonly`)
+      // FIXME reenable the next block once locus fixes #3939
+      // .bdGet()
+      //   .then((drone) => drone
+      //     .waitForElementByCssSelector(`.remote-view .audio-direction`)
+      //       .text()
+      //         .should.eventually.equal(`sendonly`))
+      .clickOnTitle(`Start sending audio`)
+      .assertLocalAudioDirection(`sendrecv`)
+      // FIXME reenable the next block once locus fixes #3939
+      // .bdGet()
+      //   .then((drone) => drone
+      //     .waitForElementByCssSelector(`.remote-view .audio-direction`)
+      //       .text()
+      //         .should.eventually.equal(`sendrecv`))
+      );
 
-    it.skip(`stops sending its video`, () => browser
+    it(`toggles sending its video`, () => browser
       .clickOnTitle(`Stop sending video`)
-      .bdGet()
-        .then((drone) => drone
-          .waitForElementByCssSelector(`.remote-media-status .video-status`)
-            .text()
-              .should.eventually.equal(`recvonly`)));
+      .assertLocalVideoDirection(`recvonly`)
+      // FIXME reenable the next block once locus fixes #3939
+      // .bdGet()
+      //   .then((drone) => drone
+      //     .waitForElementByCssSelector(`.remote-view .video-direction`)
+      //       .text()
+      //         .should.eventually.equal(`sendonly`))
+      .clickOnTitle(`Start sending video`)
+      .assertLocalVideoDirection(`sendrecv`)
+      // FIXME reenable the next block once locus fixes #3939
+      // .bdGet()
+      //   .then((drone) => drone
+      //     .waitForElementByCssSelector(`.remote-view .video-direction`)
+      //       .text()
+      //         .should.eventually.equal(`sendrecv`))
+      );
 
-    it.skip(`stops receiving audio`, () => browser
+    // FIXME enable this test once mozilla fixes
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=1285009
+    it.skip(`toggles receiving its audio`, () => browser
       .clickOnTitle(`Stop receiving audio`)
-      .bdGet()
-        .then((drone) => drone
-          .waitForElementByCssSelector(`.remote-media-status .video-status`)
-            .text()
-              .should.eventually.equal(`sendonly`)));
+      .waitForElementByCssSelector(`.self-view .audio-direction`)
+        .text()
+          .should.eventually.equal(`sendonly`));
 
-    it.skip(`stops receiving video`, () => browser
+    // FIXME enable this test once mozilla fixes
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=1285009
+    it.skip(`toggles receiving its video`, () => browser
       .clickOnTitle(`Stop receiving video`)
-      .bdGet()
-        .then((drone) => drone
-          .waitForElementByCssSelector(`.remote-media-status .video-status`)
-            .text()
-              .should.eventually.equal(`sendonly`)));
+      .waitForElementByCssSelector(`.self-view .video-direction`)
+        .text()
+          .should.eventually.equal(`recvonly`));
   });
 
   describe.skip(`As an authenticated user that completed a call`, () => {

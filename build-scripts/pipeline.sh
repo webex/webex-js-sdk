@@ -32,7 +32,7 @@ echo "Cleaning modular directories"
 npm run grunt:concurrent -- --no-color --stack clean
 
 echo "Building modules"
-npm run grunt:concurrent -- --no-color --stack build
+NODE_ENV=test npm run grunt:concurrent -- --no-color --stack build
 
 # TEST
 echo "Connecting to Sauce Labs..."
@@ -42,7 +42,7 @@ echo "Connected to Sauce Labs"
 echo "Running all tests and teeing output to ${LOG_FILE}"
 
 set +e
-npm run sauce:run -- npm test 2>&1 | tee "${LOG_FILE}"
+NODE_ENV=test npm run sauce:run -- npm test 2>&1 | tee "${LOG_FILE}"
 EXIT_CODE=$?
 set -e
 

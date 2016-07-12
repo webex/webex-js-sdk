@@ -6,78 +6,80 @@
 import {assert} from '@ciscospark/test-helper-chai';
 import {ProgressEvent} from '../..';
 
-describe(`ProgressEvent`, () => {
-  let event;
+describe(`http-core`, () => {
+  describe(`ProgressEvent`, () => {
+    let event;
 
-  const loaded = 100;
-  const total = 500;
+    const loaded = 100;
+    const total = 500;
 
-  beforeEach(() => {
-    event = new ProgressEvent(loaded, total);
-  });
-
-  describe(`#loaded`, () => {
-    it(`exists`, () => {
-      assert.property(event, `loaded`);
+    beforeEach(() => {
+      event = new ProgressEvent(loaded, total);
     });
 
-    it(`matches the value passed to the constructor`, () => {
-      assert.equal(event.loaded, loaded);
-    });
-  });
+    describe(`#loaded`, () => {
+      it(`exists`, () => {
+        assert.property(event, `loaded`);
+      });
 
-  describe(`#total`, () => {
-    it(`exists`, () => {
-      assert.property(event, `total`);
-    });
-
-    it(`matches the value passed to the constructor`, () => {
-      assert.equal(event.total, total);
-    });
-  });
-
-  describe(`#lengthComputable`, () => {
-    it(`exists`, () => {
-      assert.property(event, `lengthComputable`);
-    });
-
-    it(`indicates that request progress can be computed`, () => {
-      assert.isTrue(event.lengthComputable);
-      [
-        {
-          loaded: undefined,
-          total: undefined,
-          result: false
-        },
-        {
-          loaded: 10,
-          total: undefined,
-          result: false
-        },
-        {
-          loaded: undefined,
-          total: 10,
-          result: false
-        },
-        {
-          loaded: 10,
-          total: 10,
-          result: true
-        },
-        {
-          loaded: 10,
-          total: 0,
-          result: false
-        },
-        {
-          loaded: 0,
-          total: 0,
-          result: false
-        }
-      ].forEach((item) => {
-        assert.equal((new ProgressEvent(item.loaded, item.total)).lengthComputable, item.result);
+      it(`matches the value passed to the constructor`, () => {
+        assert.equal(event.loaded, loaded);
       });
     });
-  });
 
+    describe(`#total`, () => {
+      it(`exists`, () => {
+        assert.property(event, `total`);
+      });
+
+      it(`matches the value passed to the constructor`, () => {
+        assert.equal(event.total, total);
+      });
+    });
+
+    describe(`#lengthComputable`, () => {
+      it(`exists`, () => {
+        assert.property(event, `lengthComputable`);
+      });
+
+      it(`indicates that request progress can be computed`, () => {
+        assert.isTrue(event.lengthComputable);
+        [
+          {
+            loaded: undefined,
+            total: undefined,
+            result: false
+          },
+          {
+            loaded: 10,
+            total: undefined,
+            result: false
+          },
+          {
+            loaded: undefined,
+            total: 10,
+            result: false
+          },
+          {
+            loaded: 10,
+            total: 10,
+            result: true
+          },
+          {
+            loaded: 10,
+            total: 0,
+            result: false
+          },
+          {
+            loaded: 0,
+            total: 0,
+            result: false
+          }
+        ].forEach((item) => {
+          assert.equal((new ProgressEvent(item.loaded, item.total)).lengthComputable, item.result);
+        });
+      });
+    });
+
+  });
 });

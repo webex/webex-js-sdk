@@ -13,18 +13,21 @@ module.exports = function gruntConfig(grunt) {
   var PACKAGES = grunt.file.expand({
     cwd: 'packages'
   }, [
-      'generator-ciscospark',
-      'common',
-      'helper-html',
+      // note: packages are ordered on approximate flakiness of their respective
+      // test suites
+      'example-phone',
+      'ciscospark',
+      'plugin-phone',
       'http-core',
       'spark-core',
       'plugin-wdm',
       'plugin-mercury',
       'plugin-locus',
-      'ciscospark',
-      'plugin-phone',
+      'generator-ciscospark',
+      'common',
       'phone',
-      'example-phone',
+      'helper-html',
+      'jsdoctrinetest',
       '*',
       '!example*',
       '!test-helper*',

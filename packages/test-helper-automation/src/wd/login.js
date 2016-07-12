@@ -44,5 +44,6 @@ wd.addPromiseChainMethod('login', function login(user, options) {
 
         return this;
       }.bind(this))
-    .submitPassword(user, options);
+    .submitPassword(user, options)
+    .acceptGrant();
 });

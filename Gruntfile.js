@@ -211,7 +211,7 @@ module.exports = function(grunt) {
         port: KARMA_PORT,
         client: {
           mocha: {
-            retries: 1
+            retries: (process.env.JENKINS || process.env.CI) ? 1 : 0
           }
         }
       },
@@ -249,7 +249,7 @@ module.exports = function(grunt) {
       options: {
         reporter: 'spec',
         // TODO figure out how to detect retried tests
-        retries: 1
+        retries: (process.env.JENKINS || process.env.CI) ? 1 : 0
       },
       automation: {
         options: {

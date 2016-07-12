@@ -36,7 +36,25 @@ const TeamMemberships = SparkPlugin.extend({
    * @param {Types~TeamMembership} membership
    * @returns {Promise<Types~TeamMembership>}
    * @example
-   * <%= team_memberships__create %>
+   * var ciscospark = require('../..');
+   * ciscospark.teams.create({name: 'Create Team Membership Example'})
+   *   .then(function(team) {
+   *     return ciscospark.teamMemberships.create({
+   *      personEmail: 'alice@example.com',
+   *      teamId: team.id
+   *    });
+   *   })
+   *   .then(function(membership) {
+   *     var assert = require('assert');
+   *     assert(membership.id);
+   *     assert(membership.teamId);
+   *     assert(membership.personId);
+   *     assert(membership.personEmail);
+   *     assert('isModerator' in membership);
+   *     assert(membership.created);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   create(membership) {
     return this.request({
@@ -54,7 +72,25 @@ const TeamMemberships = SparkPlugin.extend({
    * @param {Types~TeamMembership|string} membership
    * @returns {Promise<Types~TeamMembership>}
    * @example
-   * <%= team_memberships__get %>
+   * var ciscospark = require('../..');
+   * var membership;
+   * ciscospark.teams.create({name: 'Get Team Memberships Example'})
+   *   .then(function(team) {
+   *     return ciscospark.teamMemberships.create({
+   *       personEmail: 'alice@example.com',
+   *       teamId: team.id
+   *     });
+   *   })
+   *   .then(function(m) {
+   *     membership = m;
+   *     return ciscospark.teamMemberships.get(m.id);
+   *   })
+   *   .then(function(m) {
+   *     var assert = require('assert');
+   *     assert.deepEqual(m, membership);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   get(membership) {
     const id = membership.id || membership;
@@ -73,7 +109,28 @@ const TeamMemberships = SparkPlugin.extend({
    * @param {string} options.max
    * @returns {[type]}
    * @example
-   * <%= team_memberships__list %>
+   * var ciscospark = require('../..');
+   * var team;
+   * ciscospark.teams.create({name: 'List Team Memberships Example'})
+   *   .then(function(t) {
+   *     team = t;
+   *     return ciscospark.teamMemberships.create({
+   *      personEmail: 'alice@example.com',
+   *      teamId: team.id
+   *     });
+   *   })
+   *   .then(function() {
+   *     return ciscospark.teamMemberships.list({teamId: team.id});
+   *   })
+   *   .then(function(teamMemberships) {
+   *     var assert = require('assert');
+   *     assert.equal(teamMemberships.length, 2);
+   *     for (var i = 0; i < teamMemberships.length; i++) {
+   *       assert.equal(teamMemberships.items[i].teamId, team.id);
+   *     }
+   *     return 'success';
+   *   });
+   *   // => success
    */
   list(options) {
     return this.request({
@@ -90,7 +147,34 @@ const TeamMemberships = SparkPlugin.extend({
    * @param {Types~TeamMembership|string} membership
    * @returns {Promise}
    * @example
-   * <%= team_memberships__remove %>
+   * var ciscospark = require('../..');
+   * var membership, team;
+   * ciscospark.teams.create({name: 'Remove Team Memberships Example'})
+   *   .then(function(t) {
+   *     team = t;
+   *     return ciscospark.teamMemberships.create({
+   *      personEmail: 'alice@example.com',
+   *      teamId: team.id
+   *     });
+   *   })
+   *   .then(function(m) {
+   *     membership = m;
+   *     return ciscospark.teamMemberships.list({teamId: team.id});
+   *   })
+   *   .then(function(teamMemberships) {
+   *     var assert = require('assert');
+   *     assert.equal(teamMemberships.length, 2);
+   *     return ciscospark.teamMemberships.remove(membership);
+   *   })
+   *   .then(function() {
+   *     return ciscospark.teamMemberships.list({teamId: team.id});
+   *   })
+   *   .then(function(teamMemberships) {
+   *     var assert = require('assert');
+   *     assert.equal(teamMemberships.length, 1);
+   *     return 'success';
+   *   });
+   *   // => success
    */
   remove(membership) {
     const id = membership.id || membership;
@@ -115,8 +199,6 @@ const TeamMemberships = SparkPlugin.extend({
    * @memberof TeamMemberships
    * @param {Types~TeamMembership} membership
    * @returns {Promise<Types~TeamMembership>}
-   * @example
-   * <%= team_memberships__update %>
    */
   update(membership) {
     const id = membership.id || membership;

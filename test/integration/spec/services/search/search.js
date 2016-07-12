@@ -11,6 +11,7 @@ var landingparty = require('../../../lib/landingparty');
 var omit = require('lodash.omit');
 var pluck = require('lodash.pluck');
 var util = require('util');
+var uuid = require('uuid');
 var retry = require('../../../lib/retry');
 
 describe('Services', function() {
@@ -24,11 +25,34 @@ describe('Services', function() {
         checkov: false
       };
 
+      var bot;
+
       before(function beamDown() {
-        return landingparty.beamDown(party);
+        return landingparty.beamDown(party)
+          .then(function() {
+            return party.spock.spark.request({
+              api: 'hydra',
+              resource: 'bots',
+              method: 'POST',
+              body: {
+                displayName: 'Personal Assistant',
+                email: uuid.v4() + '@sparkbot.io'
+              }
+            });
+          })
+          .then(function(res) {
+            bot = res.body;
+          });
       });
 
       it('searches for users with the specified string', function() {
+        return party.spock.spark.search.people({query: 'abc'})
+          .then(function(users) {
+            assert.isArray(users);
+          });
+      });
+
+      it('searches for users with the specified string with `queryString` param', function() {
         return party.spock.spark.search.people({queryString: 'abc'})
           .then(function(users) {
             assert.isArray(users);
@@ -36,10 +60,25 @@ describe('Services', function() {
       });
 
       it('retrieves a specific user', function() {
-        return party.spock.spark.search.people({queryString: party.mccoy.email})
+        return party.spock.spark.search.people({query: party.mccoy.email})
           .then(function(users) {
             assert.isAbove(users.length, 0, 'At least one user was found');
             assert.equal(users[0].id, party.mccoy.id);
+          });
+      });
+
+      it('retrieves a bot', function() {
+        return party.spock.spark.search.people({query: bot.email, includeRobots: true})
+          .then(function(users) {
+            assert.isAbove(users.length, 0, 'At least one user was found');
+            assert.equal(users[0].email, bot.email);
+          });
+      });
+
+      it('retrieves a bot', function() {
+        return party.spock.spark.search.people({query: bot.email, includeRobots: false})
+          .then(function(users) {
+            assert.equal(users.length, 0, 'No bots are returned');
           });
       });
 
@@ -47,7 +86,7 @@ describe('Services', function() {
         it('rejects with no query', function() {
           return party.spock.spark.search.people(query)
             .catch(function(err) {
-              assert.equal(err.message, '`params.query` is required');
+              assert.equal(err.message, '`options.query` is required');
             });
         });
       });

@@ -7,7 +7,7 @@ import {assert} from '@ciscospark/test-helper-chai';
 import {escape, escapeSync, filter, filterSync} from '../..';
 import {skipInNode} from '@ciscospark/test-helper-mocha';
 
-skipInNode(describe)(`html()`, () => {
+skipInNode(describe)(`html`, () => {
   const allowedTags = {
     br: [],
     em: [],
