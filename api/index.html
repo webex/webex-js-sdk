@@ -52,16 +52,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Membership" class="list-group-item">Types~Membership</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Memberships" class="list-group-item">Memberships</a>
 
             
@@ -85,6 +75,26 @@ title: API
           </li>
         
           
+            <a href="#Types~Membership" class="list-group-item">Types~Membership</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Message" class="list-group-item">Types~Message</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
             <a href="#Messages" class="list-group-item">Messages</a>
 
             
@@ -100,16 +110,6 @@ title: API
                 
                   <a class="list-group-item" href="#Messages#remove">#remove</a>
                 
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Message" class="list-group-item">Types~Message</a>
-
-            
-
             
 
             
@@ -176,6 +176,16 @@ title: API
           </li>
         
           
+            <a href="#Types~Team" class="list-group-item">Types~Team</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
             <a href="#Teams" class="list-group-item">Teams</a>
 
             
@@ -197,7 +207,7 @@ title: API
           </li>
         
           
-            <a href="#Types~Team" class="list-group-item">Types~Team</a>
+            <a href="#Types~TeamMembership" class="list-group-item">Types~TeamMembership</a>
 
             
 
@@ -230,7 +240,7 @@ title: API
           </li>
         
           
-            <a href="#Types~TeamMembership" class="list-group-item">Types~TeamMembership</a>
+            <a href="#Types~Webhook" class="list-group-item">Types~Webhook</a>
 
             
 
@@ -257,16 +267,6 @@ title: API
                 
                   <a class="list-group-item" href="#Webhooks#update">#update</a>
                 
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Webhook" class="list-group-item">Types~Webhook</a>
-
-            
-
             
 
             
@@ -331,17 +331,17 @@ title: API
             
               <div class="list-group-item">Events</div>
               
-                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
-              
                 <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
               
                 <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
               
-                <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
+                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
+              
+                <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
               
                 <a class="list-group-item" href="#Call.event:remoteMediaStream:change"> ⓔ remoteMediaStream:change</a>
               
-                <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
+                <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
               
             
           </li>
@@ -968,113 +968,6 @@ using init.</p>
         
           <section>
   
-    <h2 id='Types~Membership'>Types~Membership</h2>
-    
-      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/memberships.js#L25-L238">packages/ciscospark/src/plugins/memberships.js</a>
-    
-  
-
-  
-
-  <pre>Types~Membership</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(uuid)</code>
-      
-      : Unique identifier for the membership
-
-      </h4>
-      
-    
-      <h4>
-      roomId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The room ID
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(uuid)</code>
-      
-      : The person ID
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(email)</code>
-      
-      : The email address of the person / room member
-
-      </h4>
-      
-    
-      <h4>
-      isModerator
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Indicates whether the specified person should be a room moderator.
-
-      </h4>
-      
-    
-      <h4>
-      isMonitor
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Indicates whether the specified member is a room monitor.
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : The date and time that this membership was created.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Memberships'>Memberships</h2>
     
       <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/memberships.js#L25-L238">packages/ciscospark/src/plugins/memberships.js</a>
@@ -1568,6 +1461,204 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Memberships Example'<
         
           <section>
   
+    <h2 id='Types~Membership'>Types~Membership</h2>
+    
+      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/memberships.js#L25-L238">packages/ciscospark/src/plugins/memberships.js</a>
+    
+  
+
+  
+
+  <pre>Types~Membership</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(uuid)</code>
+      
+      : Unique identifier for the membership
+
+      </h4>
+      
+    
+      <h4>
+      roomId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The room ID
+
+      </h4>
+      
+    
+      <h4>
+      personId
+      <code>(uuid)</code>
+      
+      : The person ID
+
+      </h4>
+      
+    
+      <h4>
+      personEmail
+      <code>(email)</code>
+      
+      : The email address of the person / room member
+
+      </h4>
+      
+    
+      <h4>
+      isModerator
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Indicates whether the specified person should be a room moderator.
+
+      </h4>
+      
+    
+      <h4>
+      isMonitor
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Indicates whether the specified member is a room monitor.
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : The date and time that this membership was created.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Message'>Types~Message</h2>
+    
+      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/messages.js#L29-L206">packages/ciscospark/src/plugins/messages.js</a>
+    
+  
+
+  
+
+  <pre>Types~Message</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(uuid)</code>
+      
+      : (server generated) Unique identifier for the message
+
+      </h4>
+      
+    
+      <h4>
+      personId
+      <code>(uuid)</code>
+      
+      : The ID for the author of the messasge
+
+      </h4>
+      
+    
+      <h4>
+      personEmail
+      <code>(email)</code>
+      
+      : The email for the author of the messasge
+
+      </h4>
+      
+    
+      <h4>
+      roomId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The message posted to the room in plain text
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated)The source URLs for the
+message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
+supported media types.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='Messages'>Messages</h2>
     
       <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/messages.js#L29-L206">packages/ciscospark/src/plugins/messages.js</a>
@@ -1964,97 +2055,6 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Messages Example'</sp
     </div>
   
 </section>
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Message'>Types~Message</h2>
-    
-      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/messages.js#L29-L206">packages/ciscospark/src/plugins/messages.js</a>
-    
-  
-
-  
-
-  <pre>Types~Message</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(uuid)</code>
-      
-      : (server generated) Unique identifier for the message
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(uuid)</code>
-      
-      : The ID for the author of the messasge
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(email)</code>
-      
-      : The email for the author of the messasge
-
-      </h4>
-      
-    
-      <h4>
-      roomId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The message posted to the room in plain text
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated)The source URLs for the
-message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
-supported media types.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
 
   
 
@@ -2924,6 +2924,78 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Update Room Example'<
         
           <section>
   
+    <h2 id='Types~Team'>Types~Team</h2>
+    
+      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/teams.js#L22-L157">packages/ciscospark/src/plugins/teams.js</a>
+    
+  
+
+  
+
+  <pre>Types~Team</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (server generated) The unique ID for the team.
+
+      </h4>
+      
+    
+      <h4>
+      name
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The name of the team.
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated) The date and time when the
+team was created, in ISO8601 format.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='Teams'>Teams</h2>
     
       <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/teams.js#L22-L157">packages/ciscospark/src/plugins/teams.js</a>
@@ -3286,15 +3358,15 @@ ciscospark.teams.create({name: <span class="hljs-string">'Update Team Example'</
         
           <section>
   
-    <h2 id='Types~Team'>Types~Team</h2>
+    <h2 id='Types~TeamMembership'>Types~TeamMembership</h2>
     
-      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/teams.js#L22-L157">packages/ciscospark/src/plugins/teams.js</a>
+      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/team-memberships.js#L30-L212">packages/ciscospark/src/plugins/team-memberships.js</a>
     
   
 
   
 
-  <pre>Types~Team</pre>
+  <pre>Types~TeamMembership</pre>
 
   
 
@@ -3313,26 +3385,37 @@ ciscospark.teams.create({name: <span class="hljs-string">'Update Team Example'</
       id
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : (server generated) The unique ID for the team.
+      : (server generated) The team ID
 
       </h4>
       
     
       <h4>
-      name
+      personId
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : The name of the team.
+      : The person ID
 
       </h4>
       
     
       <h4>
-      created
-      <code>(isoDate)</code>
+      personEmail
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : (server generated) The date and time when the
-team was created, in ISO8601 format.
+      : The email address of the person
+
+      </h4>
+      
+    
+      <h4>
+      isModerator
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Set to 
+<code>true</code>
+ to make the person a team
+moderator
 
       </h4>
       
@@ -3801,15 +3884,15 @@ ciscospark.teams.create({name: <span class="hljs-string">'Remove Team Membership
         
           <section>
   
-    <h2 id='Types~TeamMembership'>Types~TeamMembership</h2>
+    <h2 id='Types~Webhook'>Types~Webhook</h2>
     
-      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/team-memberships.js#L30-L212">packages/ciscospark/src/plugins/team-memberships.js</a>
+      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/webhooks.js#L26-L242">packages/ciscospark/src/plugins/webhooks.js</a>
     
   
 
   
 
-  <pre>Types~TeamMembership</pre>
+  <pre>Types~Webhook</pre>
 
   
 
@@ -3828,37 +3911,52 @@ ciscospark.teams.create({name: <span class="hljs-string">'Remove Team Membership
       id
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : (server generated) The team ID
+      : The unique ID for the webhook.
 
       </h4>
       
     
       <h4>
-      personId
+      resource
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : The person ID
+      : The resource type for the webhook.
 
       </h4>
       
     
       <h4>
-      personEmail
+      event
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : The email address of the person
+      : The event type for the webhook.
 
       </h4>
       
     
       <h4>
-      isModerator
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      filter
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : Set to 
-<code>true</code>
- to make the person a team
-moderator
+      : The filter that defines the webhook scope.
+
+      </h4>
+      
+    
+      <h4>
+      targetUrl
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The URL that receives POST requests for each event.
+
+      </h4>
+      
+    
+      <h4>
+      name
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : A user-friendly name for this webhook.
 
       </h4>
       
@@ -4350,104 +4448,6 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Webhook Example'</spa
     </div>
   
 </section>
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Webhook'>Types~Webhook</h2>
-    
-      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/webhooks.js#L26-L242">packages/ciscospark/src/plugins/webhooks.js</a>
-    
-  
-
-  
-
-  <pre>Types~Webhook</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The unique ID for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      resource
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The resource type for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      event
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The event type for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      filter
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The filter that defines the webhook scope.
-
-      </h4>
-      
-    
-      <h4>
-      targetUrl
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The URL that receives POST requests for each event.
-
-      </h4>
-      
-    
-      <h4>
-      name
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : A user-friendly name for this webhook.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
 
   
 
@@ -5542,43 +5542,6 @@ even if renegotiation has not completed)</p>
     <h3>Events</h3>
     <section>
   
-    <h3 id='Call.event:disconnected'>disconnected</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>disconnected</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
     <h3 id='Call.event:ringing'>ringing</h3>
     <div>
       <section>
@@ -5653,14 +5616,51 @@ even if renegotiation has not completed)</p>
 
     </div>
   
-    <h3 id='Call.event:error'>error</h3>
+    <h3 id='Call.event:disconnected'>disconnected</h3>
     <div>
       <section>
   
 
   
 
-  <pre>error</pre>
+  <pre>disconnected</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:localMediaStream:change'>localMediaStream:change</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>localMediaStream:change</pre>
 
   
 
@@ -5727,14 +5727,14 @@ even if renegotiation has not completed)</p>
 
     </div>
   
-    <h3 id='Call.event:localMediaStream:change'>localMediaStream:change</h3>
+    <h3 id='Call.event:error'>error</h3>
     <div>
       <section>
   
 
   
 
-  <pre>localMediaStream:change</pre>
+  <pre>error</pre>
 
   
 
