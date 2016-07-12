@@ -7,7 +7,7 @@
 
 # Site settings
 title: Cisco Spark JavaScript SDK
-baseurl: "spark-js-sdk"
+baseurl: "/spark-js-sdk"
 permalink: /:categories/:title/
 url: "ciscospark.github.io/spark-js-sdk"
 

@@ -52,6 +52,16 @@ title: API
           </li>
         
           
+            <a href="#Types~Membership" class="list-group-item">Types~Membership</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
             <a href="#Memberships" class="list-group-item">Memberships</a>
 
             
@@ -69,26 +79,6 @@ title: API
                 
                   <a class="list-group-item" href="#Memberships#update">#update</a>
                 
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Membership" class="list-group-item">Types~Membership</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Message" class="list-group-item">Types~Message</a>
-
-            
-
             
 
             
@@ -116,7 +106,7 @@ title: API
           </li>
         
           
-            <a href="#Types~Person" class="list-group-item">Types~Person</a>
+            <a href="#Types~Message" class="list-group-item">Types~Message</a>
 
             
 
@@ -137,6 +127,16 @@ title: API
                 
                   <a class="list-group-item" href="#People#list">#list</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Person" class="list-group-item">Types~Person</a>
+
+            
+
             
 
             
@@ -176,16 +176,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Team" class="list-group-item">Types~Team</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Teams" class="list-group-item">Teams</a>
 
             
@@ -201,6 +191,16 @@ title: API
                 
                   <a class="list-group-item" href="#Teams#update">#update</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Team" class="list-group-item">Types~Team</a>
+
+            
+
             
 
             
@@ -331,33 +331,23 @@ title: API
             
               <div class="list-group-item">Events</div>
               
-                <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
-              
-                <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
+                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
               
                 <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
               
-                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
+                <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
+              
+                <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
               
                 <a class="list-group-item" href="#Call.event:remoteMediaStream:change"> ⓔ remoteMediaStream:change</a>
               
-                <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
+                <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
               
             
           </li>
         
           
             <a href="#Types~Feedback" class="list-group-item">Types~Feedback</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
-            <a href="#mediaDirection" class="list-group-item">mediaDirection</a>
 
             
 
@@ -395,6 +385,16 @@ title: API
               
                 <a class="list-group-item" href="#Phone.event:call:incoming"> ⓔ call:incoming</a>
               
+            
+          </li>
+        
+          
+            <a href="#mediaDirection" class="list-group-item">mediaDirection</a>
+
+            
+
+            
+
             
           </li>
         
@@ -968,6 +968,113 @@ using init.</p>
         
           <section>
   
+    <h2 id='Types~Membership'>Types~Membership</h2>
+    
+      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/memberships.js#L25-L238">packages/ciscospark/src/plugins/memberships.js</a>
+    
+  
+
+  
+
+  <pre>Types~Membership</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(uuid)</code>
+      
+      : Unique identifier for the membership
+
+      </h4>
+      
+    
+      <h4>
+      roomId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The room ID
+
+      </h4>
+      
+    
+      <h4>
+      personId
+      <code>(uuid)</code>
+      
+      : The person ID
+
+      </h4>
+      
+    
+      <h4>
+      personEmail
+      <code>(email)</code>
+      
+      : The email address of the person / room member
+
+      </h4>
+      
+    
+      <h4>
+      isModerator
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Indicates whether the specified person should be a room moderator.
+
+      </h4>
+      
+    
+      <h4>
+      isMonitor
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Indicates whether the specified member is a room monitor.
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : The date and time that this membership was created.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='Memberships'>Memberships</h2>
     
       <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/memberships.js#L25-L238">packages/ciscospark/src/plugins/memberships.js</a>
@@ -1461,204 +1568,6 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Memberships Example'<
         
           <section>
   
-    <h2 id='Types~Membership'>Types~Membership</h2>
-    
-      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/memberships.js#L25-L238">packages/ciscospark/src/plugins/memberships.js</a>
-    
-  
-
-  
-
-  <pre>Types~Membership</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(uuid)</code>
-      
-      : Unique identifier for the membership
-
-      </h4>
-      
-    
-      <h4>
-      roomId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The room ID
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(uuid)</code>
-      
-      : The person ID
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(email)</code>
-      
-      : The email address of the person / room member
-
-      </h4>
-      
-    
-      <h4>
-      isModerator
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Indicates whether the specified person should be a room moderator.
-
-      </h4>
-      
-    
-      <h4>
-      isMonitor
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Indicates whether the specified member is a room monitor.
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : The date and time that this membership was created.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Message'>Types~Message</h2>
-    
-      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/messages.js#L29-L206">packages/ciscospark/src/plugins/messages.js</a>
-    
-  
-
-  
-
-  <pre>Types~Message</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(uuid)</code>
-      
-      : (server generated) Unique identifier for the message
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(uuid)</code>
-      
-      : The ID for the author of the messasge
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(email)</code>
-      
-      : The email for the author of the messasge
-
-      </h4>
-      
-    
-      <h4>
-      roomId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The message posted to the room in plain text
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated)The source URLs for the
-message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
-supported media types.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Messages'>Messages</h2>
     
       <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/messages.js#L29-L206">packages/ciscospark/src/plugins/messages.js</a>
@@ -2067,15 +1976,15 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Messages Example'</sp
         
           <section>
   
-    <h2 id='Types~Person'>Types~Person</h2>
+    <h2 id='Types~Message'>Types~Message</h2>
     
-      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/people.js#L22-L109">packages/ciscospark/src/plugins/people.js</a>
+      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/messages.js#L29-L206">packages/ciscospark/src/plugins/messages.js</a>
     
   
 
   
 
-  <pre>Types~Person</pre>
+  <pre>Types~Message</pre>
 
   
 
@@ -2094,25 +2003,34 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Messages Example'</sp
       id
       <code>(uuid)</code>
       
-      : Unique identifier for the person
+      : (server generated) Unique identifier for the message
 
       </h4>
       
     
       <h4>
-      emails
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;email&#x3E;)</code>
+      personId
+      <code>(uuid)</code>
       
-      : Email addresses of the person
+      : The ID for the author of the messasge
 
       </h4>
       
     
       <h4>
-      displayName
+      personEmail
+      <code>(email)</code>
+      
+      : The email for the author of the messasge
+
+      </h4>
+      
+    
+      <h4>
+      roomId
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : Display name of the person
+      : The message posted to the room in plain text
 
       </h4>
       
@@ -2121,7 +2039,9 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Messages Example'</sp
       created
       <code>(isoDate)</code>
       
-      : The date and time that the person was created
+      : (server generated)The source URLs for the
+message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
+supported media types.
 
       </h4>
       
@@ -2382,6 +2302,86 @@ ciscospark.rooms.create({title: <span class="hljs-string">'List People Example'<
     </div>
   
 </section>
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Person'>Types~Person</h2>
+    
+      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/people.js#L22-L109">packages/ciscospark/src/plugins/people.js</a>
+    
+  
+
+  
+
+  <pre>Types~Person</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(uuid)</code>
+      
+      : Unique identifier for the person
+
+      </h4>
+      
+    
+      <h4>
+      emails
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;email&#x3E;)</code>
+      
+      : Email addresses of the person
+
+      </h4>
+      
+    
+      <h4>
+      displayName
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : Display name of the person
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : The date and time that the person was created
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
@@ -2924,78 +2924,6 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Update Room Example'<
         
           <section>
   
-    <h2 id='Types~Team'>Types~Team</h2>
-    
-      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/teams.js#L22-L157">packages/ciscospark/src/plugins/teams.js</a>
-    
-  
-
-  
-
-  <pre>Types~Team</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (server generated) The unique ID for the team.
-
-      </h4>
-      
-    
-      <h4>
-      name
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The name of the team.
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated) The date and time when the
-team was created, in ISO8601 format.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Teams'>Teams</h2>
     
       <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/teams.js#L22-L157">packages/ciscospark/src/plugins/teams.js</a>
@@ -3346,6 +3274,78 @@ ciscospark.teams.create({name: <span class="hljs-string">'Update Team Example'</
     </div>
   
 </section>
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Team'>Types~Team</h2>
+    
+      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/ciscospark/src/plugins/teams.js#L22-L157">packages/ciscospark/src/plugins/teams.js</a>
+    
+  
+
+  
+
+  <pre>Types~Team</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (server generated) The unique ID for the team.
+
+      </h4>
+      
+    
+      <h4>
+      name
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The name of the team.
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated) The date and time when the
+team was created, in ISO8601 format.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
@@ -5542,51 +5542,14 @@ even if renegotiation has not completed)</p>
     <h3>Events</h3>
     <section>
   
-    <h3 id='Call.event:connected'>connected</h3>
+    <h3 id='Call.event:disconnected'>disconnected</h3>
     <div>
       <section>
   
 
   
 
-  <pre>connected</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:localMediaStream:change'>localMediaStream:change</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>localMediaStream:change</pre>
+  <pre>disconnected</pre>
 
   
 
@@ -5653,14 +5616,51 @@ even if renegotiation has not completed)</p>
 
     </div>
   
-    <h3 id='Call.event:disconnected'>disconnected</h3>
+    <h3 id='Call.event:connected'>connected</h3>
     <div>
       <section>
   
 
   
 
-  <pre>disconnected</pre>
+  <pre>connected</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:error'>error</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>error</pre>
 
   
 
@@ -5727,14 +5727,14 @@ even if renegotiation has not completed)</p>
 
     </div>
   
-    <h3 id='Call.event:error'>error</h3>
+    <h3 id='Call.event:localMediaStream:change'>localMediaStream:change</h3>
     <div>
       <section>
   
 
   
 
-  <pre>error</pre>
+  <pre>localMediaStream:change</pre>
 
   
 
@@ -5834,71 +5834,6 @@ SDK&#x27;s logger, you should make sure to avoid logging PII as well.
     
   
 
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='mediaDirection'>mediaDirection</h2>
-    
-      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/plugin-phone/src/state-parsers.js#L81-L91">packages/plugin-phone/src/state-parsers.js</a>
-    
-  
-
-  <p>Indicates the direction of the specified media type for the specified
-participant</p>
-
-
-  <pre>mediaDirection</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-    <h3>Parameters</h3>
-    
-      
-    
-      
-    
-  
-
-  
-
-  
-    
-      <h3>Returns</h3>
-      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>:
-        One of 
-<code>sendonly</code>
-, 
-<code>recvonly</code>
-, 
-<code>sendrecv</code>
-, or 
-<code>inactive</code>
-
-      
-    
   
 
   
@@ -6399,6 +6334,71 @@ there are active calls.</p>
     </div>
   
 </section>
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='mediaDirection'>mediaDirection</h2>
+    
+      <a href="https://sqbu-github.cisco.com/iremmel/squared-js-sdk/blob/5f57a6bdb7b922bf70986059bfd116565e447dd0/packages/plugin-phone/src/state-parsers.js#L81-L91">packages/plugin-phone/src/state-parsers.js</a>
+    
+  
+
+  <p>Indicates the direction of the specified media type for the specified
+participant</p>
+
+
+  <pre>mediaDirection</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+    <h3>Parameters</h3>
+    
+      
+    
+      
+    
+  
+
+  
+
+  
+    
+      <h3>Returns</h3>
+      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>:
+        One of 
+<code>sendonly</code>
+, 
+<code>recvonly</code>
+, 
+<code>sendrecv</code>
+, or 
+<code>inactive</code>
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
