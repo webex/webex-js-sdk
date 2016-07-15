@@ -11,13 +11,22 @@ module.exports = function gruntConfig(grunt) {
   require(`load-grunt-tasks`)(grunt);
   require(`time-grunt`)(grunt);
 
-  const TASKS = [
+  grunt.registerTask(`default`, [
+    `static-analysis`,
     `build`,
+    `test`
+  ]);
+
+  const ALL_NODE_TASKS = [
+    `build`
+  ];
+
+  const SINGLE_NODE_TASKS = [
     `static-analysis`,
     `test`
   ];
 
-  const PACKAGES = grunt.file.expand({
+  const ALL_NODE_PACKAGES = grunt.file.expand({
     cwd: `packages`
   }, [
       // note: packages are ordered on approximate flakiness of their respective
@@ -40,9 +49,16 @@ module.exports = function gruntConfig(grunt) {
       `!xunit-with-logs`
   ]);
 
+  const CIRCLE_NODE_TOTAL = parseInt(process.env.CIRCLE_NODE_TOTAL, 10);
+  const CIRCLE_NODE_INDEX = parseInt(process.env.CIRCLE_NODE_INDEX, 10);
+  const SINGLE_NODE_PACKAGES = ALL_NODE_PACKAGES.filter((packageName, index) => index % CIRCLE_NODE_TOTAL === CIRCLE_NODE_INDEX);
+
   const config = {
     concurrent: {
       options: {
+        // Let circle take care of concurrency via multiple containers; each
+        // container should be limited to one test run at a time
+        limit: 1,
         logConcurrentOutput: true
       }
     },
@@ -59,7 +75,7 @@ module.exports = function gruntConfig(grunt) {
 
     shell: {},
 
-    xunitDir: `${process.env.CIRCLE_TEST_REPORTS}/junit`
+    xunitDir: process.env.CIRCLE_TEST_REPORTS ? `${process.env.CIRCLE_TEST_REPORTS}/junit` : `./reports-ng/style`
   };
 
   grunt.task.run([
@@ -67,10 +83,18 @@ module.exports = function gruntConfig(grunt) {
     `env:default-overrides`
   ]);
 
-  // Reminder: will need to build all packages even when running tests in
-  // concurrent containers
-  TASKS.forEach((taskName) => {
-    PACKAGES.forEach((packageName) => {
+  // Set up tasks that run on all containers
+  ALL_NODE_TASKS.forEach((taskName) => {
+    ALL_NODE_PACKAGES.forEach((packageName) => {
+      generateConcurrentCommand(config, taskName, packageName);
+    });
+
+    grunt.registerTask(taskName, `concurrent:${taskName}`);
+  });
+
+  // Set up tasks that run on *this* container
+  SINGLE_NODE_TASKS.forEach((taskName) => {
+    SINGLE_NODE_PACKAGES.forEach((packageName) => {
       generateConcurrentCommand(config, taskName, packageName);
     });
 
