@@ -6,8 +6,17 @@ dependencies:
   cache_directories:
     - node_modules
     - packages/*/node_modules
-  override:
-    - npm install
+    -  $HOME/spark-js-sdk--test-users
+  pre:
+    - pwd
+    - ls spark-js-sdk--test-users 2&>1 || git clone git@github.com:ianwremmel/spark-js-sdk--test-users.git:
+      pwd: $HOME
+    - npm link:
+      pwd: $HOME/spark-js-sdk--test-users
+    - npm link spark-js-sdk--test-users
+    # - npm link spark-js-sdk--test-users
+    # pwd:
+  post:
     - npm run bootstrap
 
 test:
