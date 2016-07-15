@@ -310,9 +310,9 @@ module.exports = function(grunt) {
     'env',
     'clean:coverage',
     'express',
-    p(process.env.CIRCLECI) || 'continue:on'
+    p(process.env.CIRCLECI) || 'continue:on',
     'concurrent:test',
-    p(process.env.CIRCLECI) || 'continue:off'
+    p(process.env.CIRCLECI) || 'continue:off',
     p(process.env.COVERAGE) && 'copy:coverage',
     p(process.env.COVERAGE) && 'makeReport2'
   ]);
