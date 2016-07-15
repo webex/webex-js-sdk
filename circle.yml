@@ -53,6 +53,10 @@ dependencies:
     - npm run bootstrap
 
 test:
+  pre:
+    - npm run sauce:start
   override:
-    - ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js:
+    - npm run sauce:run -- ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js:
         parallel: true
+  post:
+    - npm run sauce:stop
