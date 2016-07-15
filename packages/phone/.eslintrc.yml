@@ -1,5 +1,0 @@
-extends: "../../.eslintrc-es5.yml"
-rules:
-  # FIXME temporarily disable TODO warnings
-  no-warning-comments:
-    - 0

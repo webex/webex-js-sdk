@@ -1,4 +1,0 @@
-extends: "../../../.eslintrc-mocha.yml"
-rules:
-  no-invalid-this:
-    - 0
