@@ -139,7 +139,7 @@ module.exports = function(grunt) {
     eslint: {
       options: {
         format: process.env.XUNIT ? 'junit' : 'stylish',
-        outputFile: process.env.XUNIT && './reports-ng/style/eslint-<%= package %>.xml'
+        outputFile: process.env.XUNIT && '<%= xunitDir %>/eslint-<%= package %>.xml'
       },
       all: [
         './packages/<%= package %>/src/**/*.js',
@@ -211,7 +211,7 @@ module.exports = function(grunt) {
         options: {
           require: makeMochaRequires(['babel-register']),
           reporterOptions: {
-            output: './reports-ng/test/mocha-<%= package %>-automation.xml'
+            output: '<%= xunitDir %>/test/mocha-<%= package %>-automation.xml'
           }
         },
         src: [
@@ -222,7 +222,7 @@ module.exports = function(grunt) {
         options: {
           require: makeMochaRequires(['babel-register']),
           reporterOptions: {
-            output: './reports-ng/test/mocha-<%= package %>.xml'
+            output: '<%= xunitDir %>/test/mocha-<%= package %>.xml'
           }
         },
         src: (function() {
@@ -241,7 +241,7 @@ module.exports = function(grunt) {
         options: {
           require: makeMochaRequires(['./packages/jsdoctrinetest']),
           reporterOptions: {
-            output: './reports-ng/test/mocha-<%= package %>-doc.xml'
+            output: '<%= xunitDir %>/test/mocha-<%= package %>-doc.xml'
           }
         },
         src: [
@@ -250,6 +250,7 @@ module.exports = function(grunt) {
       }
     },
     package: process.env.PACKAGE,
+    xunitDir: process.env.XUNIT_DIR || './reports-ng/style',
     shell: {
       'move-babelrc': {
         command: 'mv .babelrc babelrc'
@@ -270,6 +271,10 @@ module.exports = function(grunt) {
   grunt.task.run([
     'env:default',
     'env:secrets'
+  ]);
+
+  registerTask('static-analysis', [
+    'eslint'
   ]);
 
   registerTask('build', [

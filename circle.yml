@@ -1,4 +1,6 @@
 machine:
+  environment:
+    XUNIT=true
   node:
     version: 4
 
@@ -51,4 +53,6 @@ dependencies:
 
 test:
   override:
+    - ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js build
     - ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js static-analysis
+    - ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js test
