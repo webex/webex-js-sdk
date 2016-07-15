@@ -133,7 +133,7 @@ module.exports = function(config) {
   if (process.env.XUNIT) {
     cfg.junitReporter = {
       outputFile: 'karma-' + process.env.PACKAGE + '.xml',
-      outputDir: process.env.CIRCLE_TEST_REPORTS || 'reports-ng/test',
+      outputDir: process.env.XUNIT_DIR || 'reports-ng/test',
       suite: process.env.PACKAGE,
       useBrowserName: true
     };
