@@ -1,3 +1,7 @@
+general:
+  artifacts:
+    - reports-ng
+
 machine:
   environment:
     NODE_ENV: test

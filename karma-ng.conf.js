@@ -30,6 +30,12 @@ module.exports = function(config) {
   var cfg = {
     basePath: '.',
 
+    browserConsoleLogOptions: {
+      level: 'trace',
+      path: 'reports-ng/karma-' + process.env.PACKAGE + '.log',
+      terminal: Boolean(process.env.XUNIT)
+    },
+
     browserDisconnectTimeout: 10000,
 
     browserDisconnectTolerance: 3,
