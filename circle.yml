@@ -54,10 +54,12 @@ dependencies:
 
 test:
   pre:
+    - ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js build:
+        parallel: true
     - npm run sauce:start:
         parallel: true
   override:
-    - npm run sauce:run -- ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js:
+    - npm run sauce:run -- ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js static-analysis test:
         parallel: true
   post:
     - npm run sauce:stop:
