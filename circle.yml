@@ -2,23 +2,19 @@ machine:
   node:
     version: 4
 
-# Note the use of /home/ubuntu instead of $HOME. I think there's a bug in
-# Circle's cd command.
-
 dependencies:
   cache_directories:
     - node_modules
     - packages/*/node_modules
-    -  /home/ubuntu/spark-js-sdk--test-users
+    - $HOME/spark-js-sdk--test-users
   pre:
-    - pwd
     - ls spark-js-sdk--test-users 2&>1 || git clone git@github.com:ianwremmel/spark-js-sdk--test-users.git:
-        pwd: /home/ubuntu
+        pwd: ../
     - npm link:
-        pwd: /home/ubuntu/spark-js-sdk--test-users
+        pwd: ../spark-js-sdk--test-users
     - npm link spark-js-sdk--test-users
-    # - npm link spark-js-sdk--test-users
-    # pwd:
+    - npm link spark-js-sdk--test-users:
+        pwd: packages/test-helper-test-users
   post:
     - npm run bootstrap
 
