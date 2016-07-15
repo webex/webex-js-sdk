@@ -49,7 +49,7 @@ module.exports = function(grunt) {
           }
 
           return [
-            'test:automation',
+            process.env.CIRCLECI ? 'test:automation-circle' : 'test:automation',
             'test:browser',
             'test:node'
           ];
@@ -294,6 +294,10 @@ module.exports = function(grunt) {
     !!process.env.SC_TUNNEL_IDENTIFIER || 'selenium_stop',
     'continue:off',
     'continue:fail-on-warning'
+  ]);
+
+  registerTask('test:automation-circle', [
+    'mochaTest:automation'
   ]);
 
   registerTask('test:browser', [
