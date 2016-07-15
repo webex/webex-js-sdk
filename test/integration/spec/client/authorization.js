@@ -23,6 +23,33 @@ describe('Client', function() {
         authorization = party.spock.spark.credentials.authorization;
       });
 
+      describe('#refresh()', function() {
+        it('revokes supertoken and child tokens on a refresh', function() {
+          var prevSuperToken;
+          var prevApiToken;
+          var prevKmsToken;
+          return authorization.getToken('spark:kms')
+            .then(function() {
+              assert.isDefined(authorization.supertoken.access_token);
+              assert.isDefined(authorization.apiToken.access_token);
+              assert.isDefined(authorization.kmsToken.access_token);
+              prevSuperToken = authorization.supertoken.access_token;
+              prevApiToken = authorization.apiToken.access_token;
+              prevKmsToken = authorization.kmsToken.access_token;
+              return authorization.refresh()
+                .then(function() {
+                  assert.isDefined(authorization.supertoken.access_token);
+                  assert.isDefined(authorization.apiToken.access_token);
+                  assert.isDefined(authorization.kmsToken.access_token);
+                  assert.notEqual(authorization.supertoken.access_token, prevSuperToken);
+                  assert.notEqual(authorization.apiToken.access_token, prevApiToken);
+                  assert.notEqual(authorization.kmsToken.access_token, prevKmsToken);
+                });
+            });
+        });
+
+      });
+
       describe('#getToken()', function() {
         describe('when called without arguments', function() {
           it('returns the main api token', function() {
@@ -78,8 +105,8 @@ describe('Client', function() {
                 assert.equal(auth.kmsToken.access_token, auth.supertoken.access_token);
               });
           });
-        });
 
+        });
       });
     });
   });

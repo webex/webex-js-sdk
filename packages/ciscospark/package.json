@@ -1,6 +1,6 @@
 {
   "name": "ciscospark",
-  "version": "0.6.6",
+  "version": "0.6.8",
   "description": "SDK for Cisco Spark",
   "main": "es5.js",
   "devMain": "src/index.js",

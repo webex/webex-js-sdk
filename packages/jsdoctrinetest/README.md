@@ -4,7 +4,7 @@ Extracts comment blocks from the source code in the specified file
 
 **Parameters**
 
--   `transform` **[transformCallback](#transformcallback)** 
+-   `transform` **transformCallback** 
 -   `filename` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** 
 
 Returns **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;ast>** 

@@ -18,6 +18,7 @@ fi
 # .github-publish/spark-js-sdk
 rsync \
   -a \
+  --delete \
   --exclude=node_modules \
   --exclude=*node_modules* \
   --exclude=.git \

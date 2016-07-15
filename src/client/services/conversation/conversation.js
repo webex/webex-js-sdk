@@ -1433,19 +1433,13 @@ var ConversationService = SparkBase.extend(
   updateKey: function updateKey(conversation, key, activity, options) {
     options = options || {};
     conversation = this._inferConversationUrl(conversation);
-
-    if (!conversation.defaultActivityEncryptionKeyUrl) {
-      return this.get({
-        url: conversation.url,
-        activitiesLimit: 0,
-        participantsLimit: 0
-      })
+    return this.get({
+      url: conversation.url,
+      activitiesLimit: 0
+    })
       .then(function doKeyUpdate(conversation) {
         return this._updateKey(conversation, key, activity, options);
       }.bind(this));
-    }
-
-    return this._updateKey(conversation, key, activity, options);
   },
 
   _updateKey: function _updateKey(conversation, key, activity, options) {

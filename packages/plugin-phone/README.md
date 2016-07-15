@@ -6,17 +6,17 @@
 
 Returns the local MediaStream for the call. May initially be `null`
 between the time @{Phone#dial is invoked and the  media stream is
-acquired if [Phone#dial](#phonedial) is invoked without a `localMediaStream`
+acquired if [Phone#dial](Phone#dial) is invoked without a `localMediaStream`
 option.
 
 This property can also be set mid-call in which case the streams sent to
 the remote party are replaced by this stream. On success, the
-[Call](#call)'s <localMediaStream:change> event fires, notifying any
+[Call](Call)'s <localMediaStream:change> event fires, notifying any
 listeners that we are now sending media from a new source.
 
 ## localMediaStreamUrl
 
-Object URL that refers to [Call#localMediaStream](#calllocalmediastream). Will be
+Object URL that refers to [Call#localMediaStream](Call#localMediaStream). Will be
 automatically deallocated when the call ends
 
 ## remoteMediaStream
@@ -25,7 +25,7 @@ Access to the remote party’s `MediaStream`. `null` before connected.
 
 ## remoteMediaStreamUrl
 
-Object URL that refers to [Call#remoteMediaStream](#callremotemediastream). Will be
+Object URL that refers to [Call#remoteMediaStream](Call#remoteMediaStream). Will be
 automatically deallocated when the call ends
 
 ## sendingAudio
@@ -80,7 +80,7 @@ Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Refe
 
 ## decline
 
-Alias of [Call#reject](#callreject)
+Alias of [Call#reject](Call#reject)
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** 
 
@@ -133,7 +133,7 @@ Sends feedback about the call to the Cisco Spark cloud
 
 **Parameters**
 
--   `feedback` **[Types~Feedback](#typesfeedback)** 
+-   `feedback` **Types~Feedback** 
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** 
 
@@ -153,7 +153,7 @@ Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Refe
 
 # Types~Feedback
 
-Payload for [Call#sendFeedback](#callsendfeedback)
+Payload for [Call#sendFeedback](Call#sendFeedback)
 
 **Properties**
 
@@ -247,4 +247,4 @@ address or sip uri.
     -   `options.localMediaStream` **MediaStream** if no stream is specified, a
         new one will be created based on options.constraints
 
-Returns **[Call](#call)** 
+Returns **Call** 

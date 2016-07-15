@@ -74,7 +74,7 @@ using init.
 -   `attrs` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
     -   `attrs.credentials` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
 
-Returns **[CiscoSpark](#ciscospark)** 
+Returns **CiscoSpark** 
 
 # Page
 
@@ -89,7 +89,7 @@ Returns **[CiscoSpark](#ciscospark)**
 -   `res` **HttpResponse** 
 -   `spark` **ProxySpark** 
 
-Returns **[Page](#page)** 
+Returns **Page** 
 
 ## next
 
@@ -107,7 +107,7 @@ Returns **[Boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Refe
 
 Get previous page
 
-Returns **[Page](#page)** 
+Returns **Page** 
 
 ## hasPrevious
 
@@ -133,7 +133,7 @@ as a moderator.
 
 **Parameters**
 
--   `membership` **[Types~Membership](#typesmembership)** 
+-   `membership` **Types~Membership** 
 
 **Examples**
 
@@ -160,7 +160,7 @@ ciscospark.rooms.create({title: 'Create Membership Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Membership](#typesmembership)>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Membership>** 
 
 ## get
 
@@ -168,7 +168,7 @@ Returns a single membership.
 
 **Parameters**
 
--   `membership` **([Types~Membership](#typesmembership) | uuid)** 
+-   `membership` **(Types~Membership | uuid)** 
 
 **Examples**
 
@@ -194,7 +194,7 @@ ciscospark.rooms.create({title: 'Get Membership Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Membership](#typesmembership)>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Membership>** 
 
 ## list
 
@@ -238,7 +238,7 @@ ciscospark.rooms.create({title: 'List Membership Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Page](#page)&lt;[Types~Membership](#typesmembership)>>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Page&lt;Types~Membership>>** 
 
 ## remove
 
@@ -246,7 +246,7 @@ Deletes a single membership.
 
 **Parameters**
 
--   `membership` **([Types~Membership](#typesmembership) | uuid)** 
+-   `membership` **(Types~Membership | uuid)** 
 
 **Examples**
 
@@ -289,7 +289,7 @@ Used to update a single membership's properties
 
 **Parameters**
 
--   `membership` **([Types~Membership](#typesmembership) | uuid)** 
+-   `membership` **(Types~Membership | uuid)** 
 
 **Examples**
 
@@ -319,7 +319,7 @@ ciscospark.rooms.create({title: 'Memberships Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Membership](#typesmembership)>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Membership>** 
 
 # Types~Membership
 
@@ -332,18 +332,6 @@ Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Refe
 -   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Indicates whether the specified person should be a room moderator.
 -   `isMonitor` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Indicates whether the specified member is a room monitor.
 -   `created` **isoDate** The date and time that this membership was created.
-
-# Types~Message
-
-**Properties**
-
--   `id` **uuid** (server generated) Unique identifier for the message
--   `personId` **uuid** The ID for the author of the messasge
--   `personEmail` **email** The email for the author of the messasge
--   `roomId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The message posted to the room in plain text
--   `created` **isoDate** (server generated)The source URLs for the
-    message attachment. See the {@link Content & Attachments{ Guide for a list of
-    supported media types.
 
 # Messages
 
@@ -360,7 +348,7 @@ Post a new message and/or media content into a room.
 
 **Parameters**
 
--   `message` **[Types~Message](#typesmessage)** 
+-   `message` **Types~Message** 
 
 **Examples**
 
@@ -385,7 +373,7 @@ ciscospark.rooms.create({title: 'Create Message Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Message](#typesmessage)>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Message>** 
 
 ## get
 
@@ -393,7 +381,7 @@ Returns a single message.
 
 **Parameters**
 
--   `message` **([Types~Room](#typesroom) \| [string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String))** 
+-   `message` **(Types~Room | [string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String))** 
 
 **Examples**
 
@@ -419,7 +407,7 @@ ciscospark.rooms.create({title: 'Get Message Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Message](#typesmessage)>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Message>** 
 
 ## list
 
@@ -466,7 +454,7 @@ ciscospark.rooms.create({title: 'List Messages Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Page](#page)&lt;[Types~Message](#typesmessage)>>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Page&lt;Types~Message>>** 
 
 ## remove
 
@@ -477,7 +465,7 @@ Org Administrators.
 
 **Parameters**
 
--   `message` **([Types~Message](#typesmessage) | uuid)** 
+-   `message` **(Types~Message | uuid)** 
 
 **Examples**
 
@@ -516,6 +504,27 @@ ciscospark.rooms.create({title: 'Messages Example'})
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** }
 
+# Types~Message
+
+**Properties**
+
+-   `id` **uuid** (server generated) Unique identifier for the message
+-   `personId` **uuid** The ID for the author of the messasge
+-   `personEmail` **email** The email for the author of the messasge
+-   `roomId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The message posted to the room in plain text
+-   `created` **isoDate** (server generated)The source URLs for the
+    message attachment. See the {@link Content & Attachments{ Guide for a list of
+    supported media types.
+
+# Types~Person
+
+**Properties**
+
+-   `id` **uuid** Unique identifier for the person
+-   `emails` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;email>** Email addresses of the person
+-   `displayName` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** Display name of the person
+-   `created` **isoDate** The date and time that the person was created
+
 # People
 
 **Extends SparkPlugin**
@@ -526,7 +535,7 @@ Returns a single person by ID
 
 **Parameters**
 
--   `person` **([Types~Person](#typesperson) | uuid)** 
+-   `person` **(Types~Person | uuid)** 
 
 **Examples**
 
@@ -556,7 +565,7 @@ ciscospark.rooms.create({title: 'Get Person Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Person](#typesperson)>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Person>** 
 
 ## list
 
@@ -603,16 +612,19 @@ ciscospark.rooms.create({title: 'List People Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Page](#page)&lt;[Types~Person](#typesperson)>>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Page&lt;Types~Person>>** 
 
-# Types~Person
+# Types~Room
 
 **Properties**
 
--   `id` **uuid** Unique identifier for the person
--   `emails` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;email>** Email addresses of the person
--   `displayName` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** Display name of the person
--   `created` **isoDate** The date and time that the person was created
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) Unique identifier for the room
+-   `title` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The display name for the room. All room members
+    will see the title so make it something good
+-   `created` **isoDate** (server generated) The date and time that the
+    room was created
+-   `teamId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (optional): The id of the team to which the room
+    belongs
 
 # Rooms
 
@@ -632,7 +644,7 @@ people to the room.
 
 **Parameters**
 
--   `room` **[Types~Room](#typesroom)** 
+-   `room` **Types~Room** 
 
 **Examples**
 
@@ -650,7 +662,7 @@ ciscospark.rooms.create({title: 'Create Room Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Room](#typesroom)>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Room>** 
 
 ## get
 
@@ -658,7 +670,7 @@ Returns a single room.
 
 **Parameters**
 
--   `room` **([Types~Room](#typesroom) \| [string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String))** 
+-   `room` **(Types~Room | [string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String))** 
 -   `options` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
 
 **Examples**
@@ -679,7 +691,7 @@ ciscospark.rooms.create({title: 'Get Room Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Room](#typesroom)>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Room>** 
 
 ## list
 
@@ -719,7 +731,7 @@ Promise.all([
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Page](#page)&lt;[Types~Room](#typesroom)>>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Page&lt;Types~Room>>** 
 
 ## remove
 
@@ -727,7 +739,7 @@ Deletes a single room.
 
 **Parameters**
 
--   `room` **([Types~Room](#typesroom) \| [string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String))** 
+-   `room` **(Types~Room | [string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String))** 
 
 **Examples**
 
@@ -762,7 +774,7 @@ Used to update a single room's properties.
 
 **Parameters**
 
--   `room` **[Types~Room](#typesroom)** 
+-   `room` **Types~Room** 
 
 **Examples**
 
@@ -786,19 +798,16 @@ ciscospark.rooms.create({title: 'Update Room Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Room](#typesroom)>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Room>** 
 
-# Types~Room
+# Types~Team
 
 **Properties**
 
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) Unique identifier for the room
--   `title` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The display name for the room. All room members
-    will see the title so make it something good
--   `created` **isoDate** (server generated) The date and time that the
-    room was created
--   `teamId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (optional): The id of the team to which the room
-    belongs
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The unique ID for the team.
+-   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the team.
+-   `created` **isoDate** (server generated) The date and time when the
+    team was created, in ISO8601 format.
 
 # Teams
 
@@ -810,7 +819,7 @@ Create a new team.
 
 **Parameters**
 
--   `team` **[Types~Team](#typesteam)** 
+-   `team` **Types~Team** 
 
 **Examples**
 
@@ -827,7 +836,7 @@ ciscospark.teams.create({name: 'Create Team Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Team](#typesteam)>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Team>** 
 
 ## get
 
@@ -835,7 +844,7 @@ Returns a single team
 
 **Parameters**
 
--   `team` **([Types~Team](#typesteam) \| [string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String))** 
+-   `team` **(Types~Team | [string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String))** 
 -   `options` **[object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
 
 **Examples**
@@ -856,7 +865,7 @@ ciscospark.teams.create({name: 'Get Team Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Team](#typesteam)>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Team>** 
 
 ## list
 
@@ -895,7 +904,7 @@ Promise.all([
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Page](#page)&lt;[Types~Team](#typesteam)>>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Page&lt;Types~Team>>** 
 
 ## update
 
@@ -903,7 +912,7 @@ Update a team.
 
 **Parameters**
 
--   `team` **[Types~Team](#typesteam)** 
+-   `team` **Types~Team** 
 
 **Examples**
 
@@ -927,16 +936,17 @@ ciscospark.teams.create({name: 'Update Team Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Team](#typesteam)>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~Team>** 
 
-# Types~Team
+# Types~TeamMembership
 
 **Properties**
 
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The unique ID for the team.
--   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the team.
--   `created` **isoDate** (server generated) The date and time when the
-    team was created, in ISO8601 format.
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The team ID
+-   `personId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The person ID
+-   `personEmail` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The email address of the person
+-   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Set to `true` to make the person a team
+    moderator
 
 # TeamMemberships
 
@@ -957,7 +967,7 @@ a moderator.
 
 **Parameters**
 
--   `membership` **[Types~TeamMembership](#typesteammembership)** 
+-   `membership` **Types~TeamMembership** 
 
 **Examples**
 
@@ -983,7 +993,7 @@ ciscospark.teams.create({name: 'Create Team Membership Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~TeamMembership](#typesteammembership)>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~TeamMembership>** 
 
 ## get
 
@@ -991,7 +1001,7 @@ Get details for a membership by ID.
 
 **Parameters**
 
--   `membership` **([Types~TeamMembership](#typesteammembership) \| [string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String))** 
+-   `membership` **(Types~TeamMembership | [string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String))** 
 
 **Examples**
 
@@ -1017,7 +1027,7 @@ ciscospark.teams.create({name: 'Get Team Memberships Example'})
   // => success
 ```
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~TeamMembership](#typesteammembership)>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~TeamMembership>** 
 
 ## list
 
@@ -1064,7 +1074,7 @@ Deletes a membership by ID.
 
 **Parameters**
 
--   `membership` **([Types~TeamMembership](#typesteammembership) \| [string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String))** 
+-   `membership` **(Types~TeamMembership | [string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String))** 
 
 **Examples**
 
@@ -1107,30 +1117,9 @@ Updates properties for a membership.
 
 **Parameters**
 
--   `membership` **[Types~TeamMembership](#typesteammembership)** 
+-   `membership` **Types~TeamMembership** 
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~TeamMembership](#typesteammembership)>** 
-
-# Types~TeamMembership
-
-**Properties**
-
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The team ID
--   `personId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The person ID
--   `personEmail` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The email address of the person
--   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Set to `true` to make the person a team
-    moderator
-
-# Types~Webhook
-
-**Properties**
-
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The unique ID for the webhook.
--   `resource` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The resource type for the webhook.
--   `event` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The event type for the webhook.
--   `filter` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The filter that defines the webhook scope.
--   `targetUrl` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The URL that receives POST requests for each event.
--   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** A user-friendly name for this webhook.
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Types~TeamMembership>** 
 
 # Webhooks
 
@@ -1145,7 +1134,7 @@ Posts a webhook.
 
 **Parameters**
 
--   `webhook` **[Types~Webhook](#typeswebhook)** 
+-   `webhook` **Types~Webhook** 
 
 **Examples**
 
@@ -1337,3 +1326,14 @@ ciscospark.rooms.create({title: 'Webhook Example'})
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Webhook>** 
+
+# Types~Webhook
+
+**Properties**
+
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The unique ID for the webhook.
+-   `resource` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The resource type for the webhook.
+-   `event` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The event type for the webhook.
+-   `filter` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The filter that defines the webhook scope.
+-   `targetUrl` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The URL that receives POST requests for each event.
+-   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** A user-friendly name for this webhook.

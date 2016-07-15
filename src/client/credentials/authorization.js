@@ -84,20 +84,29 @@ var Authorization = SparkBase.extend({
     }
 
     this.isRefreshing = true;
-
     this.logger.info('authorization: refreshing supertoken');
 
-    // Once we've decided to refresh, immediately unset the subtokens so we
-    // don't try to use them.
-    // TODO revoke previous tokens
-    this.unset([
-      'apiToken',
-      'kmsToken'
-    ]);
-
     return this.supertoken.refresh()
-      .then(function splitToken(supertoken) {
-        return this._split(supertoken);
+      .then(function revokeChildTokens(supertoken) {
+        return Promise.all([
+          this.apiToken && this.apiToken.revoke()
+            .catch(function suppressError(reason) {
+              this.logger.warn('authorization: failed to revoke api token', reason);
+            }.bind(this)),
+          this.kmsToken && this.kmsToken.revoke()
+            .catch(function suppressError(reason) {
+              this.logger.warn('authorization: failed to revoke kms token', reason);
+            }.bind(this))
+        ])
+          .then(function splitToken() {
+          // Once we've decided to refresh, immediately unset the subtokens so we
+          // don't try to use them.
+          this.unset([
+            'apiToken',
+            'kmsToken'
+          ]);
+          return this._split(supertoken);
+        }.bind(this));
       }.bind(this))
       .then(function setState() {
         this.isRefreshing = false;
