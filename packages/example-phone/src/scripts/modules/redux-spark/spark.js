@@ -1,7 +1,7 @@
 /* eslint camelcase: [0] */
 
-import ciscospark from '@ciscospark/phone';
-export {default as default} from '@ciscospark/phone';
+import ciscospark from 'ciscospark';
+export {default as default} from 'ciscospark';
 window.spark = ciscospark;
 
 const l = window.location;

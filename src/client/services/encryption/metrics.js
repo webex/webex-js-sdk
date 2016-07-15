@@ -6,7 +6,7 @@
 'use strict';
 
 var SparkBase = require('../../../lib/spark-base');
-var hashId = require('./hash-id');
+var hashId = require('./../../../util/hash-id');
 
 /**
  * @class

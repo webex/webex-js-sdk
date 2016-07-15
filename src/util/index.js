@@ -14,6 +14,7 @@ module.exports = {
   cappedDebounce: require('./capped-debounce'),
   defer: require('./defer'),
   generateRandomString: require('./generate-random-string'),
+  hashId: require('./hash-id'),
   html: require('./html'),
   oneFlight: require('./one-flight'),
   patterns: require('./patterns'),

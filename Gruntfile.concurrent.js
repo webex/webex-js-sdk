@@ -25,14 +25,17 @@ module.exports = function gruntConfig(grunt) {
       'plugin-locus',
       'generator-ciscospark',
       'common',
-      'phone',
       'helper-html',
       'jsdoctrinetest',
       '*',
       '!example*',
       '!test-helper*',
       '!bin*',
-      '!xunit-with-logs'
+      '!xunit-with-logs',
+      // exclude removed packages to prevent jenkins from running tests against
+      // a package that doesn't exists. long term, grunt:clean should be
+      // configured to remove packages that don't have package.json files
+      '!phone'
   ]);
 
   var config = {
@@ -100,6 +103,12 @@ module.exports = function gruntConfig(grunt) {
       },
       docs: {
         src: ['**']
+      },
+      ghc: {
+        src: ['**'],
+        options: {
+          repo: 'git@github.com:ciscospark/spark-js-sdk.git'
+        }
       }
     },
     makeReport2: {
@@ -184,7 +193,7 @@ module.exports = function gruntConfig(grunt) {
 
   grunt.registerTask('publish-docs', [
     'documentation',
-    'gh-pages:docs'
+    'gh-pages:ghc'
   ]);
 
   grunt.initConfig(config);

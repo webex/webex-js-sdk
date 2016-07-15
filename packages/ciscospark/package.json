@@ -1,6 +1,6 @@
 {
   "name": "ciscospark",
-  "version": "0.6.4",
+  "version": "0.6.6",
   "description": "SDK for Cisco Spark",
   "main": "es5.js",
   "devMain": "src/index.js",
@@ -9,6 +9,7 @@
   "dependencies": {
     "@ciscospark/common": "^0.6.0",
     "@ciscospark/http-core": "^0.6.0",
+    "@ciscospark/plugin-phone": "^0.6.0",
     "@ciscospark/spark-core": "^0.6.0",
     "babel-polyfill": "^6.6.1",
     "babel-runtime": "^6.3.19",

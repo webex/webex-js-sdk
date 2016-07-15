@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-phone",
-  "version": "0.6.0",
+  "version": "0.6.6",
   "description": "",
   "main": "dist/index.js",
   "devMain": "src/index.js",
@@ -29,6 +29,5 @@
     "transform": [
       "envify"
     ]
-  },
-  "private": true
+  }
 }

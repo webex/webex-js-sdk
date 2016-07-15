@@ -3,7 +3,7 @@
 set -e pipefail
 
 SDK_ROOT=`pwd`
-SDK_VERSION=`jq .version package.json`
+SDK_VERSION=`cat ${SDK_ROOT}/VERSION`
 
 PUBLISH_DIR="${SDK_ROOT}/.github-publish"
 if [ -d "${PUBLISH_DIR}" ]; then

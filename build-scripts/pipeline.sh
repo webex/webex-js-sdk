@@ -68,6 +68,3 @@ fi
 # RELEASE
 echo "Tagging new version"
 npm run grunt -- release
-
-npm run docs:build-api
-npm run grunt:concurrent -- publish-docs

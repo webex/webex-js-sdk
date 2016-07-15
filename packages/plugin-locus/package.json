@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-locus",
-  "version": "0.6.0",
+  "version": "0.6.5",
   "description": "",
   "main": "dist/index.js",
   "devMain": "src/index.js",
@@ -18,6 +18,5 @@
     "babel-register": "^6.4.3",
     "eslint": "^2.4.0",
     "eslint-plugin-mocha-only": "0.0.3"
-  },
-  "private": true
+  }
 }

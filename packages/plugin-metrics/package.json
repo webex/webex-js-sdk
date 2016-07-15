@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-metrics",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "description": "",
   "main": "dist/index.js",
   "devMain": "src/index.js",

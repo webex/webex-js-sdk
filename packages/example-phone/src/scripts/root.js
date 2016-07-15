@@ -6,17 +6,12 @@ import App from './containers/app';
 import AuthPage from './containers/pages/auth';
 import CallPage from './containers/pages/call';
 
-let base = window.location.pathname;
-if (!base.endsWith `/`) {
-  base += `/`;
-}
-
 export default function Root({history, store}) {
   return (
     <Provider store={store}>
       <div>
         <Router history={history}>
-          <Route component={App} path={base}>
+          <Route component={App} path="/">
             <Route component={AuthPage} path="auth" />
             <Route component={CallPage} path="call" />
           </Route>

@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/http-core",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "description": "Core HTTP library for the Cisco Spark",
   "main": "dist/index.js",
   "devMain": "src/index.js",

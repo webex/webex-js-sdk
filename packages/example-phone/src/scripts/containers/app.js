@@ -13,11 +13,6 @@ import AuthStatus from '../components/auth-status';
 import ConnectionStatus from '../components/connection-status';
 import IncomingCallPanel from './page-sections/incoming-call-panel';
 
-let base = window.location.pathname;
-if (!base.endsWith `/`) {
-  base += `/`;
-}
-
 class App extends Component {
   componentWillMount() {
     // TODO Consider moving this to CallPage
@@ -34,16 +29,16 @@ class App extends Component {
         <Navbar inverse>
           <Navbar.Header>
             <Navbar.Brand>
-              <Link to={`${base}`}>CiscoSpark SDK Example</Link>
+              <Link to="/">CiscoSpark SDK Example</Link>
             </Navbar.Brand>
             <Navbar.Toggle />
           </Navbar.Header>
           <Navbar.Collapse>
             <Nav>
-              <LinkContainer to={`${base}auth`}>
+              <LinkContainer to={`/auth`}>
                 <NavItem title="Link to Auth Page">Auth</NavItem>
               </LinkContainer>
-              <LinkContainer to={`${base}call`}>
+              <LinkContainer to={`/call`}>
                 <NavItem title="Link to Call Page">Call</NavItem>
               </LinkContainer>
             </Nav>

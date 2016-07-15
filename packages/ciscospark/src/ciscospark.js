@@ -6,6 +6,8 @@
 
 /* eslint camelcase: [0] */
 
+import '@ciscospark/plugin-phone';
+
 import {defaults, get, has, set} from 'lodash';
 import CiscoSpark, {children, registerPlugin} from '@ciscospark/spark-core';
 import AuthInterceptor from './interceptors/auth';

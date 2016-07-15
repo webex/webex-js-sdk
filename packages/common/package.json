@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/common",
-  "version": "0.6.4",
+  "version": "0.6.6",
   "description": "Common utilities for Cisco Spark",
   "main": "dist/index.js",
   "devMain": "src/index.js",
