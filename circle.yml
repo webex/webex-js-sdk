@@ -1,0 +1,12 @@
+machine:
+  node:
+    version: 4
+
+dependencies:
+  override:
+    - npm install
+    - npm run bootstrap
+
+test:
+  override:
+    - ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js static-analysis
