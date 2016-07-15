@@ -37,7 +37,7 @@ dependencies:
     - packages/test-helper-test-users/node_modules
     - packages/xunit-with-logs/node_modules
   pre:
-    - ls spark-js-sdk--test-users 2&>1 || git clone git@github.com:ianwremmel/spark-js-sdk--test-users.git:
+    - ls spark-js-sdk--test-users > /dev/null 2> /dev/null || git clone git@github.com:ianwremmel/spark-js-sdk--test-users.git:
         pwd: ../
     - git checkout v0.3.4:
         pwd: ../spark-js-sdk--test-users
