@@ -211,7 +211,7 @@ module.exports = function(grunt) {
         options: {
           require: makeMochaRequires(['babel-register']),
           reporterOptions: {
-            output: '<%= xunitDir %>/test/mocha-<%= package %>-automation.xml'
+            output: '<%= xunitDir %>/mocha-<%= package %>-automation.xml'
           }
         },
         src: [
@@ -222,7 +222,7 @@ module.exports = function(grunt) {
         options: {
           require: makeMochaRequires(['babel-register']),
           reporterOptions: {
-            output: '<%= xunitDir %>/test/mocha-<%= package %>.xml'
+            output: '<%= xunitDir %>/mocha-<%= package %>.xml'
           }
         },
         src: (function() {
@@ -241,7 +241,7 @@ module.exports = function(grunt) {
         options: {
           require: makeMochaRequires(['./packages/jsdoctrinetest']),
           reporterOptions: {
-            output: '<%= xunitDir %>/test/mocha-<%= package %>-doc.xml'
+            output: '<%= xunitDir %>/mocha-<%= package %>-doc.xml'
           }
         },
         src: [
@@ -250,7 +250,7 @@ module.exports = function(grunt) {
       }
     },
     package: process.env.PACKAGE,
-    xunitDir: process.env.XUNIT_DIR || './reports-ng/style',
+    xunitDir: process.env.XUNIT_DIR || './reports-ng',
     shell: {
       'move-babelrc': {
         command: 'mv .babelrc babelrc'
