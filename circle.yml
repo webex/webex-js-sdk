@@ -10,6 +10,8 @@ dependencies:
   pre:
     - ls spark-js-sdk--test-users 2&>1 || git clone git@github.com:ianwremmel/spark-js-sdk--test-users.git:
         pwd: ../
+    - git checkout v0.3.3:
+        pwd: ../spark-js-sdk--test-users
     - npm link:
         pwd: ../spark-js-sdk--test-users
     - npm link spark-js-sdk--test-users
