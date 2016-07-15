@@ -3,6 +3,9 @@ machine:
     version: 4
 
 dependencies:
+  cache_directories:
+    - node_modules
+    - packages/*/node_modules
   override:
     - npm install
     - npm run bootstrap
