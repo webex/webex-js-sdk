@@ -12,6 +12,8 @@ dependencies:
         pwd: ../
     - git checkout v0.3.4:
         pwd: ../spark-js-sdk--test-users
+    - rm .npmrc:
+        pwd: ../spark-js-sdk--test-users
     - npm link:
         pwd: ../spark-js-sdk--test-users
     - npm link spark-js-sdk--test-users
