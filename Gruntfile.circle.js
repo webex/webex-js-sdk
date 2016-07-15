@@ -11,11 +11,13 @@ module.exports = function gruntConfig(grunt) {
   require(`load-grunt-tasks`)(grunt);
   require(`time-grunt`)(grunt);
 
-  grunt.registerTask(`static-analysis`, [
-    `concurrent:static-analysis`
-  ]);
+  const TASKS = [
+    `build`,
+    `static-analysis`,
+    `test`
+  ];
 
-  var PACKAGES = grunt.file.expand({
+  const PACKAGES = grunt.file.expand({
     cwd: `packages`
   }, [
       // note: packages are ordered on approximate flakiness of their respective
@@ -33,19 +35,16 @@ module.exports = function gruntConfig(grunt) {
       `helper-html`,
       `jsdoctrinetest`,
       `*`,
-      `!example*`,
       `!test-helper*`,
       `!bin*`,
       `!xunit-with-logs`
   ]);
 
-  var config = {
+  const config = {
     concurrent: {
       options: {
         logConcurrentOutput: true
-      },
-      build: {},
-      test: {}
+      }
     },
 
     env: {
@@ -70,11 +69,14 @@ module.exports = function gruntConfig(grunt) {
 
   // Reminder: will need to build all packages even when running tests in
   // concurrent containers
-  PACKAGES.forEach((packageName) => {
-    generateConcurrentCommand(config, `build`, packageName);
-    generateConcurrentCommand(config, `static-analysis`, packageName);
-    generateConcurrentCommand(config, `test`, packageName);
+  TASKS.forEach((taskName) => {
+    PACKAGES.forEach((packageName) => {
+      generateConcurrentCommand(config, taskName, packageName);
+    });
+
+    grunt.registerTask(taskName, `concurrent:${taskName}`);
   });
+
 
   grunt.initConfig(config);
 
@@ -83,7 +85,8 @@ module.exports = function gruntConfig(grunt) {
       command: `PACKAGE=${packageName} grunt --gruntfile Gruntfile.package.js --no-color ${task}`
     };
 
-    config.concurrent[task] = config.concurrent[task] || {tasks:[]};
+    config.concurrent[task] = config.concurrent[task] || {};
+    config.concurrent[task].tasks = config.concurrent[task].tasks || [];
     config.concurrent[task].tasks.push(`shell:${task}_${packageName}`);
   }
 
