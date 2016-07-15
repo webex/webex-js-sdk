@@ -9,11 +9,11 @@ dependencies:
     -  $HOME/spark-js-sdk--test-users
   pre:
     - pwd
-    - ls spark-js-sdk--test-users 2&>1 || git clone git@github.com:ianwremmel/spark-js-sdk--test-users.git:
+    - "ls spark-js-sdk--test-users 2&>1 || git clone git@github.com:ianwremmel/spark-js-sdk--test-users.git":
       pwd: $HOME
-    - npm link:
+    - "npm link":
       pwd: $HOME/spark-js-sdk--test-users
-    - npm link spark-js-sdk--test-users
+    - "npm link spark-js-sdk--test-users"
     # - npm link spark-js-sdk--test-users
     # pwd:
   post:
