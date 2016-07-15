@@ -1,6 +1,6 @@
 machine:
   environment:
-    XUNIT=true
+    XUNIT: true
   node:
     version: 4
 
