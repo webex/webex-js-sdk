@@ -10,7 +10,7 @@
 module.exports = function gruntConfig(grunt) {
   require(`load-grunt-tasks`)(grunt);
   require(`time-grunt`)(grunt);
-  grunt.loadTasks('tasks');
+  grunt.loadTasks(`tasks`);
 
   grunt.registerTask(`coverage`, [
     `makeReport2:all`,
