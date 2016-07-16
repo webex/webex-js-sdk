@@ -62,6 +62,8 @@ test:
         parallel: true
     - npm run sauce:start:
         parallel: true
+    - mkdir -p reports-ng:
+        parallel: true
   override:
     - npm run sauce:run -- ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js static-analysis test:
         parallel: true
