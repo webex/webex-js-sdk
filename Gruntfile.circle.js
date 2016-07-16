@@ -32,21 +32,25 @@ module.exports = function gruntConfig(grunt) {
   const ALL_NODE_PACKAGES = grunt.file.expand({
     cwd: `packages`
   }, [
-      // TODO only build example-* if this is the node that will test it
-      // note: packages are ordered on approximate flakiness of their respective
-      // test suites
-      // `example-phone`,
-      `ciscospark`,
+      // packages are order to optimize build time while keep flaky tests near
+      // the start of the build
+      // odd numbered quartets should be order fastest to slowest in the group
+      // even numbered quartets should be order slowest to fastest in the group
       `plugin-phone`,
-      `http-core`,
+      `ciscospark`,
       `spark-core`,
-      `plugin-wdm`,
+      `example-phone`,
+
       `plugin-mercury`,
+      `http-core`,
+      `plugin-wdm`,
       `plugin-locus`,
-      `generator-ciscospark`,
+
       `common`,
-      `helper-html`,
+      `generator-ciscospark`,
       `jsdoctrinetest`,
+      `helper-html`,
+
       `*`,
       `!test-helper*`,
       `!bin*`,
