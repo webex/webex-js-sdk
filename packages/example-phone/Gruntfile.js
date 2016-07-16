@@ -58,7 +58,7 @@ module.exports = function configGrunt(grunt) {
     'env:test',
     'clean:coverage',
     'webpack-dev-server:test',
-    'test:automation',
+    process.env.CIRCLECI ? 'test:automation-circle' : 'test:automation',
   ]);
 
   grunt.registerTask('serve', [
