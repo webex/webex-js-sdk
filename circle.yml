@@ -55,20 +55,16 @@ dependencies:
 
 test:
   pre:
-    # - npm run build:
-    #     parallel: true
-    # - npm run sauce:start:
-    #     parallel: true
+    - ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js build:
+        parallel: true
+    - npm run sauce:start:
+        parallel: true
     - mkdir -p reports-ng:
         parallel: true
   override:
     - ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js static-analysis
-    - ./scripts/build-parallel.sh:
+    - npm run sauce:run -- ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js test coverage:
         parallel: true
-        files:
-          - packages/*
   post:
-    # - ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js coverage:
-    #     parallel: true
     - npm run sauce:stop:
         parallel: true
