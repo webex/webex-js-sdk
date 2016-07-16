@@ -4,6 +4,7 @@ general:
 
 machine:
   environment:
+    COVERAGE: true
     NODE_ENV: test
     XUNIT: true
   node:
