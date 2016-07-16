@@ -49,15 +49,16 @@ module.exports = function gruntConfig(grunt) {
       `!xunit-with-logs`
   ]);
 
-  // const CIRCLE_NODE_TOTAL = parseInt(process.env.CIRCLE_NODE_TOTAL || 1, 10);
-  // const CIRCLE_NODE_INDEX = parseInt(process.env.CIRCLE_NODE_INDEX || 0, 10);
-  // const SINGLE_NODE_PACKAGES = ALL_NODE_PACKAGES.filter((packageName, index) => index % CIRCLE_NODE_TOTAL === CIRCLE_NODE_INDEX);
-  const SINGLE_NODE_PACKAGES = [
+  const CIRCLE_NODE_TOTAL = parseInt(process.env.CIRCLE_NODE_TOTAL || 1, 10);
+  const CIRCLE_NODE_INDEX = parseInt(process.env.CIRCLE_NODE_INDEX || 0, 10);
+  const packs = [
     `plugin-wdm`,
     `common`,
     `helper-html`,
     `jsdoctrinetest`
   ];
+  const SINGLE_NODE_PACKAGES = packs.filter((packageName, index) => index % CIRCLE_NODE_TOTAL === CIRCLE_NODE_INDEX);
+  // const SINGLE_NODE_PACKAGES = ALL_NODE_PACKAGES.filter((packageName, index) => index % CIRCLE_NODE_TOTAL === CIRCLE_NODE_INDEX);
 
   const config = {
     concurrent: {
