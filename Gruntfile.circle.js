@@ -17,12 +17,15 @@ module.exports = function gruntConfig(grunt) {
     `coveralls:all`
   ]);
 
+  grunt.registerTask(`static-analysis`, [
+    `eslint`
+  ]);
+
   const ALL_NODE_TASKS = [
     `build`
   ];
 
   const SINGLE_NODE_TASKS = [
-    `static-analysis`,
     `test`
   ];
 
@@ -81,6 +84,18 @@ module.exports = function gruntConfig(grunt) {
       }
     },
 
+    eslint: {
+      options: {
+        format: process.env.XUNIT ? `junit` : `stylish`,
+        outputFile: process.env.XUNIT && `<%= xunitDir %>/eslint.xml`
+      },
+      all: [
+        `./packages/<%= package %>/src/**/*.js`,
+        `./packages/<%= package %>/test/**/*.js`,
+        `./packages/<%= package %>/*.js`
+      ]
+    },
+
     makeReport2: {
       all: {
         files: [{
@@ -101,7 +116,7 @@ module.exports = function gruntConfig(grunt) {
 
     shell: {},
 
-    xunitDir: process.env.CIRCLE_TEST_REPORTS ? `${process.env.CIRCLE_TEST_REPORTS}/junit` : `./reports-ng/style`
+    xunitDir: process.env.CIRCLE_TEST_REPORTS ? `${process.env.CIRCLE_TEST_REPORTS}/junit` : `./reports-ng`
   };
 
   grunt.task.run([
