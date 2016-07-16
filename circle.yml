@@ -66,7 +66,7 @@ test:
     - mkdir -p reports-ng:
         parallel: true
   override:
-    - npm run sauce:run -- ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js static-analysis test:
+    - npm run sauce:run -- ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js static-analysis test coveralls:
         parallel: true
   post:
     - npm run sauce:stop:

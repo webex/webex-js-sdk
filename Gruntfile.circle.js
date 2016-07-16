@@ -11,12 +11,6 @@ module.exports = function gruntConfig(grunt) {
   require(`load-grunt-tasks`)(grunt);
   require(`time-grunt`)(grunt);
 
-  grunt.registerTask(`default`, [
-    `static-analysis`,
-    `build`,
-    `test`
-  ]);
-
   const ALL_NODE_TASKS = [
     `build`
   ];
@@ -67,6 +61,14 @@ module.exports = function gruntConfig(grunt) {
         // container should be limited to one test run at a time
         limit: 1,
         logConcurrentOutput: true
+      }
+    },
+
+    coveralls: {
+      all: {
+        src: [
+          `./reports-ng/coverage-final/**/*.json`
+        ]
       }
     },
 

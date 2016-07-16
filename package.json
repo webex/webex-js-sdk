@@ -157,6 +157,7 @@
     "grunt-contrib-connect": "~0.10.1",
     "grunt-contrib-copy": "~0.8.0",
     "grunt-conventional-changelog": "~1.2.2",
+    "grunt-coveralls": "^1.0.1",
     "grunt-env": "~0.4.2",
     "grunt-eslint": "^18.0.0",
     "grunt-express-server": "~0.5.1",
