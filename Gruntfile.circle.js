@@ -80,6 +80,7 @@ module.exports = function gruntConfig(grunt) {
         src: `.env.default.json`
       },
       'default-overrides': {
+        BUILD_NUMBER: process.env.CIRCLE_BUILD_NUM,
         XUNIT: true,
         XUNIT_DIR: `<%= xunitDir %>`
       }
