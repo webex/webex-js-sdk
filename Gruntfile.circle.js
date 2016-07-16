@@ -10,6 +10,12 @@
 module.exports = function gruntConfig(grunt) {
   require(`load-grunt-tasks`)(grunt);
   require(`time-grunt`)(grunt);
+  grunt.loadTasks('tasks');
+
+  grunt.registerTask(`coverage`, [
+    `makeReport2:all`,
+    `coveralls:all`
+  ]);
 
   const ALL_NODE_TASKS = [
     `build`
@@ -67,7 +73,7 @@ module.exports = function gruntConfig(grunt) {
     coveralls: {
       all: {
         src: [
-          `./reports-ng/coverage-final/**/*.json`
+          `./reports-ng/lcov.info`
         ]
       }
     },
@@ -79,6 +85,24 @@ module.exports = function gruntConfig(grunt) {
       'default-overrides': {
         XUNIT: true,
         XUNIT_DIR: `<%= xunitDir %>`
+      }
+    },
+
+    makeReport2: {
+      all: {
+        files: [{
+          cwd: `./reports-ng/coverage-final/`,
+          expand: true,
+          src: `**/*.json`
+        }],
+        options: {
+          reporters: {
+            'text-summary': {},
+            lcovonly: {
+              file: `./reports-ng/lcov.info`
+            }
+          }
+        }
       }
     },
 
