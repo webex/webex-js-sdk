@@ -31,28 +31,28 @@ module.exports = function gruntConfig(grunt) {
   }, [
       // note: packages are ordered on approximate flakiness of their respective
       // test suites
-      `example-phone`,
-      `ciscospark`,
-      `plugin-phone`,
-      `http-core`,
-      `spark-core`,
-      `plugin-wdm`,
-      `plugin-mercury`,
-      `plugin-locus`,
-      `generator-ciscospark`,
+      // `example-phone`,
+      // `ciscospark`,
+      // `plugin-phone`,
+      // `http-core`,
+      // `spark-core`,
+      // `plugin-wdm`,
+      // `plugin-mercury`,
+      // `plugin-locus`,
+      // `generator-ciscospark`,
       `common`,
       `helper-html`,
-      `jsdoctrinetest`,
-      `*`,
-      `!test-helper*`,
-      `!bin*`,
-      `!xunit-with-logs`
+      `jsdoctrinetest`
+      // `*`,
+      // `!test-helper*`,
+      // `!bin*`,
+      // `!xunit-with-logs`
   ]);
 
   const CIRCLE_NODE_TOTAL = parseInt(process.env.CIRCLE_NODE_TOTAL || 1, 10);
   const CIRCLE_NODE_INDEX = parseInt(process.env.CIRCLE_NODE_INDEX || 0, 10);
   const packs = [
-    `plugin-wdm`,
+    // `plugin-wdm`,
     `common`,
     `helper-html`,
     `jsdoctrinetest`
