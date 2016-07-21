@@ -1,6 +1,6 @@
 {
   "name": "spark-js-sdk",
-  "version": "0.5.102",
+  "version": "0.5.105",
   "description": "JavaScript sdk for interacting with the Spark API",
   "homepage": "http://sqbu-github.cisco.com/WebExSquared/squared-js-sdk",
   "bugs": {
@@ -32,8 +32,11 @@
   "scripts": {
     "bootstrap": "lerna bootstrap",
     "build": "npm run grunt:concurrent -- build",
-    "check-package": "[[ -nz $PACKAGE ]] || (echo 'environment variable PACKAGE must be defined' && exit 1)",
+    "checkdep": "npm run checkdep:packages && npm run checkdep:legacy",
+    "checkdep:packages": "lerna exec -- `pwd`/node_modules/.bin/dependency-check package.json",
+    "checkdep:legacy": "dependency-check package.json",
     "check-karma-output": "./scripts/analyze-output.sh",
+    "check-package": "[[ -nz $PACKAGE ]] || (echo 'environment variable PACKAGE must be defined' && exit 1)",
     "prebuild:package": "npm run check-package",
     "build:package": "npm run grunt:package -- build",
     "grunt": "grunt",
@@ -135,6 +138,7 @@
     "chai-as-promised": "~5.0.0",
     "chalk": "^1.1.3",
     "concat-stream": "^1.5.1",
+    "dependency-check": "^2.5.3",
     "doctrine": "^1.2.2",
     "documentation": "^4.0.0-beta5",
     "documentation-theme-utils": "^3.0.0",
@@ -180,7 +184,7 @@
     "karma-mocha-reporter": "^2.0.4",
     "karma-safari-launcher": "^1.0.0",
     "karma-sauce-launcher": "^1.0.0",
-    "lerna": "git+https://github.com/ianwremmel/lerna.git#link-order",
+    "lerna": "2.0.0-beta.24",
     "load-grunt-tasks": "^3.5.0",
     "lodash": "^4.5.1",
     "mkdirp": "^0.5.1",

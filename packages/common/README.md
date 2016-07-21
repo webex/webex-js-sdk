@@ -81,7 +81,7 @@ Check object for the specified keys
 -   `object` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
 
 
--   Throws **** Error
+-   Throws **Any** Error
 
 Returns **[undefined](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined)** 
 

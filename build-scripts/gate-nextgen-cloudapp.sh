@@ -42,7 +42,7 @@ echo "Connected to Sauce Labs"
 echo "Running all tests and teeing output to ${LOG_FILE}"
 
 set +e
-npm run sauce:run -- npm test 2>&1 | tee "${LOG_FILE}"
+npm run sauce:run -- npm test 2>&1 > "${LOG_FILE}"
 EXIT_CODE=$?
 set -e
 

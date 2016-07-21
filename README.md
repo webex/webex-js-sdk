@@ -25,12 +25,10 @@ browserify --standalone ciscospark packages/ciscospark > bundle.js
 Note that when when building for the browser, you'll need define
 -  `CISCOSPARK_ACCESS_TOKEN`
 or
-- `COMMON_IDENTITY_CLIENT_ID`
-- `COMMON_IDENTITY_CLIENT_SECRET`
-- `COMMON_IDENTITY_REDIRECT_URI`
-- `COMMON_IDENTITY_SCOPE`
-- `SCOPE`
-- `COMMON_IDENTITY_SERVICE`
+- `CISCOSPARK_CLIENT_ID`
+- `CISCOSPARK_CLIENT_SECRET`
+- `CISCOSPARK_REDIRECT_URI`
+- `CISCOSPARK_SCOPE`
 
 Alternatively, you can use use `ciscospark.init()` to set those values at runtime. See Environment Setup (below) and the (ciscospark)[packages/ciscospark/README.md] README for more info on those values.
 

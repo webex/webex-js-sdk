@@ -1,8 +1,9 @@
 {
   "name": "generator-ciscospark",
-  "version": "0.6.4",
+  "version": "0.6.9",
   "description": "Scaffolds new ciscospark plugins and projects",
   "homepage": "",
+  "main": "./generators/index.js",
   "author": {
     "name": "Ian W. Remmel",
     "email": "iremmel@cisco.com",
@@ -11,7 +12,6 @@
   "files": [
     "generators"
   ],
-  "main": "generators/index.js",
   "keywords": [
     "ciscospark",
     "yeoman-generator"

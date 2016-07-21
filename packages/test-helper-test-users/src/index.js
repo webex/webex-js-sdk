@@ -43,7 +43,7 @@ function _create(options) {
   var promises = [];
   for (var i = 0; i < count; i++) {
     promises.push(tui.create({
-      scopes: process.env.SCOPE
+      scopes: process.env.CISCOSPARK_SCOPE || process.env.SCOPE
     })
       .then(function(user) {
         allUsers.push(user);
@@ -102,8 +102,8 @@ function _remove(users) {
 
 module.exports = {
   create: function create(options) {
-    assert(process.env.COMMON_IDENTITY_CLIENT_ID, 'COMMON_IDENTITY_CLIENT_ID must be defined');
-    assert(process.env.COMMON_IDENTITY_CLIENT_SECRET, 'COMMON_IDENTITY_CLIENT_SECRET must be defined');
+    assert(process.env.CISCOSPARK_CLIENT_ID, 'CISCOSPARK_CLIENT_ID must be defined');
+    assert(process.env.CISCOSPARK_CLIENT_SECRET, 'CISCOSPARK_CLIENT_SECRET must be defined');
 
     return new Promise(function(resolve) {
       resolve(tui ? _create(options) : _extractFromEnv(options));

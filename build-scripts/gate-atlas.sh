@@ -44,7 +44,7 @@ echo "Running legacy browser tests and teeing output to ${LOG_FILE}"
 set +e
 # For now, run legacy browser tests and any @atlas tagged node tests. We'll need
 # to add packages as appropriate once they're a little closer to being ready.
-npm run sauce:run -- npm run grunt -- connect:test karma:test 2>&1 | tee "${LOG_FILE}"
+npm run sauce:run -- npm run grunt -- connect:test karma:test 2>&1 > "${LOG_FILE}"
 EXIT_CODE=$?
 set -e
 

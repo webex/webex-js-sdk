@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/http-core",
-  "version": "0.6.5",
+  "version": "0.6.9",
   "description": "Core HTTP library for the Cisco Spark",
   "main": "dist/index.js",
   "devMain": "src/index.js",
@@ -23,7 +23,7 @@
     "@ciscospark/test-helper-file": "^0.6.0",
     "@ciscospark/test-helper-make-local-url": "^0.6.0",
     "@ciscospark/test-helper-sinon": "^0.6.0",
-    "@ciscospark/xunit-with-logs": "^0.6.0",
+    "@ciscospark/xunit-with-logs": "^0.6.9",
     "babel-eslint": "^6.0.0-beta.5",
     "babel-plugin-lodash": "2.1.0",
     "babel-polyfill": "^6.3.14",

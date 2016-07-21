@@ -18,7 +18,7 @@ fi
 if [[ $NODE_LABELS == *"DOCKER_SLAVE"* ]]; then
   # I have no idea why the next line is required
   source ~/.nvm/nvm.sh
-  nvm use 0.10
+  nvm use 4
 else
   NVM_DIR="`pwd`/.nvm"
   mkdir -p $NVM_DIR
@@ -36,7 +36,7 @@ else
   fi
 
   # Use node 0.10.40
-  nvm install 0.10.40
+  nvm install 4
 fi
 
 # Make sure we're using npm 2.x

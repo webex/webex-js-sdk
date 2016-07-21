@@ -44,4 +44,12 @@ export default class DeviceAuthInterceptor extends AuthInterceptor {
 
     return Promise.resolve(false);
   }
+
+  /**
+   * Always returns false
+   * @returns {boolean}
+   */
+  requiresClientCredentials() {
+    return false;
+  }
 }

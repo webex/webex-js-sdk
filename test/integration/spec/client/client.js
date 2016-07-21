@@ -278,7 +278,9 @@ describe('Client', function() {
         'swupgrade'
       ];
 
-      [true, false].forEach(function(shouldIncludeAuth) {
+      // disable auth-free ping tests because the rate limit on flags also
+      // applies to the ping endpoint
+      [true].forEach(function(shouldIncludeAuth) {
         knownServices.forEach(function(serviceName) {
           it('can ping the ' + serviceName + ' service (with' + (shouldIncludeAuth ? '' : 'out') + ' auth)', function() {
             var options = {

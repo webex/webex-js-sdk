@@ -3,9 +3,9 @@
 set -e pipefail
 
 SDK_ROOT=`pwd`
-SDK_VERSION=`cat ${SDK_ROOT}/VERSION`
+SDK_VERSION=`cat ${SDK_ROOT}/lerna.json | jq .version`
 
-PUBLISH_DIR="${SDK_ROOT}/.github-publish"
+PUBLISH_DIR="${SDK_ROOT}/../github-publish"
 if [ -d "${PUBLISH_DIR}" ]; then
   cd ${PUBLISH_DIR}
   git pull --rebase
@@ -19,6 +19,7 @@ fi
 rsync \
   -a \
   --delete \
+  --exclude=${PUBLISH_DIR} \
   --exclude=node_modules \
   --exclude=*node_modules* \
   --exclude=.git \

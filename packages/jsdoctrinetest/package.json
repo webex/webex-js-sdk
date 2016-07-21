@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/jsdoctrinetest",
-  "version": "0.6.6",
+  "version": "0.6.9",
   "description": "",
   "main": "dist/index.js",
   "devMain": "src/index.js",
@@ -14,6 +14,7 @@
     "babel-types": "^6.11.1",
     "babylon": "^6.8.2",
     "denodeify": "^1.2.1",
+    "doctrine": "^1.2.2",
     "lodash": "^4.13.1"
   },
   "devDependencies": {

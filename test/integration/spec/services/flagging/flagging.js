@@ -12,7 +12,7 @@ var pluck = require('lodash.pluck');
 
 describe('Client', function() {
   describe('Services', function() {
-    describe('Flag', function() {
+    describe.skip('Flag', function() {
       this.timeout(45000);
       var flagConversation;
       var party = {

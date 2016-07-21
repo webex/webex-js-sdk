@@ -17,8 +17,17 @@ const SparkHttpError = extendError(HttpError, {
       value: res.options
     });
 
-    message += `\n${this.options.method} ${this.options.url}`;
+    if (this.options.url) {
+      message += `\n${this.options.method} ${this.options.url}`;
+    }
+    else if (this.options.uri) {
+      message += `\n${this.options.method} ${this.options.uri}`;
+    }
+    else {
+      message += `\n${this.options.method} ${this.options.service.toUpperCase()}/${this.options.resource}`;
+    }
     message += `\nWEBEX_TRACKING_ID: ${this.options.headers.trackingid}`;
+    message += `\n`;
 
     return message;
   },

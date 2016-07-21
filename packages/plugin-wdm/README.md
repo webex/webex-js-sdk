@@ -72,6 +72,12 @@ Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)>** 
 
+# requiresClientCredentials
+
+Always returns false
+
+Returns **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
+
 # create
 
 Returns **DeviceAuthInterceptor** 

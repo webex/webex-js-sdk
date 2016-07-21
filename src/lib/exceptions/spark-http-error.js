@@ -17,7 +17,17 @@ var SparkHttpError = extendError(HttpError, {
       value: res.options
     });
 
-    message += '\n' + this.options.method + ' ' + this.options.url;
+    if (this.options.url) {
+      message += '\n' + this.options.method + ' ' + this.options.url;
+    }
+    else if (this.options.uri) {
+      message += '\n' + this.options.method + ' ' + this.options.uri;
+    }
+    else {
+      var service = this.options.service || '';
+      message += '\n' + this.options.method + ' ' + service + '/' + this.options.resource;
+    }
+
     message += '\nWEBEX_TRACKING_ID: ' + this.options.headers.TrackingID;
 
     return message;

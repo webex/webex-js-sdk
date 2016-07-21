@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/helper-html",
-  "version": "0.6.5",
+  "version": "0.6.9",
   "description": "HTML Utiltities",
   "main": "dist/index.js",
   "devMain": "src/index.js",
@@ -14,7 +14,7 @@
   "devDependencies": {
     "@ciscospark/test-helper-chai": "^0.6.0",
     "@ciscospark/test-helper-mocha": "^0.6.0",
-    "@ciscospark/xunit-with-logs": "^0.6.0",
+    "@ciscospark/xunit-with-logs": "^0.6.9",
     "babel-eslint": "^6.0.0-beta.5",
     "babel-plugin-lodash": "2.1.0",
     "babel-polyfill": "^6.3.14",
