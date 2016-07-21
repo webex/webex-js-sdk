@@ -72,8 +72,8 @@ spark.rooms.list({
       return room.title === 'My First Room!';
     })[0];
 
-    return spark.message.create({
-      text: 'Hellow World!',
+    return spark.messages.create({
+      text: 'Hello World!',
       roomId: room.id
     });
   })
