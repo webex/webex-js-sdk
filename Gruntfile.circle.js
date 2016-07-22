@@ -36,22 +36,22 @@ module.exports = function gruntConfig(grunt) {
       // the start of the build
       // odd numbered quartets should be order fastest to slowest in the group
       // even numbered quartets should be order slowest to fastest in the group
-      `plugin-phone`,
-      `ciscospark`,
-      `spark-core`,
-      `example-phone`,
-
-      `plugin-mercury`,
-      `http-core`,
-      `plugin-wdm`,
-      `plugin-locus`,
+      // `plugin-phone`,
+      // `ciscospark`,
+      // `spark-core`,
+      // `example-phone`,
+      //
+      // `plugin-mercury`,
+      // `http-core`,
+      // `plugin-wdm`,
+      // `plugin-locus`,
 
       `common`,
-      `generator-ciscospark`,
-      `jsdoctrinetest`,
-      `helper-html`,
+      // `generator-ciscospark`,
+      // `jsdoctrinetest`,
+      // `helper-html`,
 
-      `*`,
+      // `*`,
       `!test-helper*`,
       `!bin*`,
       `!xunit-with-logs`
