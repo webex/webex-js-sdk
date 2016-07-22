@@ -31,5 +31,8 @@ const commands = requireDir(`./commands`);
 
 Object.keys(commands).forEach((cmd) => yargs.command(commands[cmd]));
 
-yargs
-  .help();
+// Aparently, referencing .argv is critically important to make yargs work.
+// eslint-disable-next-line no-unused-vars
+const argv = yargs
+  .help()
+  .argv;
