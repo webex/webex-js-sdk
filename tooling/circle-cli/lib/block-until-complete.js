@@ -6,11 +6,11 @@ module.exports = _.curry(function blockUntilComplete(argv, ci, build) {
   return ci.getBuild(build)
     .then((result) => {
       // eslint-disable-next-line camelcase
-      if str = ``;
+      let str = ``;
       if (!process.env.HUDSON_URL) {
-        str += `${(new Date()).toISOString()}: `
+        str += `${(new Date()).toISOString()}: `;
       }
-      let str = `build number ${result.build_num} has status ${result.status} on Circle CI`;
+      str += `build number ${result.build_num} has status ${result.status} on Circle CI`;
       if (result.start_time) {
         str += ` (started at ${result.start_time})`;
       }
