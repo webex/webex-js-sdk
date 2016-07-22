@@ -137,6 +137,7 @@
     "chai": "~2.3.0",
     "chai-as-promised": "~5.0.0",
     "chalk": "^1.1.3",
+    "circleci": "^0.3.2",
     "concat-stream": "^1.5.1",
     "dependency-check": "^2.5.3",
     "doctrine": "^1.2.2",
@@ -193,6 +194,7 @@
     "nue": "~0.7.0-dev",
     "remark": "^5.0.1",
     "remark-html": "^4.0.0",
+    "require-dir": "^0.3.0",
     "shelljs": "~0.5.0",
     "sinon": "~1.14.1",
     "spark-js-sdk--test-users": "~0.3.3",
@@ -203,7 +205,8 @@
     "watchify": "^3.7.0",
     "wd": "~0.3.11",
     "webpack": "^1.13.1",
-    "webpack-dev-server": "^1.14.1"
+    "webpack-dev-server": "^1.14.1",
+    "yargs": "^4.8.1"
   },
   "optionalDependencies": {
     "clarify": "^1.0.5",
