@@ -7,7 +7,15 @@ export NPM_CONFIG_REGISTRY=http://engci-maven-master.cisco.com/artifactory/api/n
 
 npm install
 
-REMOTE=upstream
+set +e
+git remote | grep -qc ghc
+IS_MISSING_GHC_REMOTE=$?
+set -e
+if [ $IS_MISSING_GHC_REMOTE -eq "1" ]; then
+  git remote add ghc git@github.com:ciscospark/spark-js-sdk.git
+fi
+
+REMOTE=ghc
 BRANCH=validated-merge
 USERNAME=ciscospark
 PROJECT=spark-js-sdk
