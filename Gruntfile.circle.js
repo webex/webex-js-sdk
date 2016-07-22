@@ -42,13 +42,13 @@ module.exports = function gruntConfig(grunt) {
       // `example-phone`,
       //
       // `plugin-mercury`,
-      // `http-core`,
-      // `plugin-wdm`,
+      `http-core`,
+      `plugin-wdm`,
       // `plugin-locus`,
 
       `common`,
-      `generator-ciscospark`,
-      `jsdoctrinetest`,
+      // `generator-ciscospark`,
+      // `jsdoctrinetest`,
       `helper-html`,
 
       // `*`,
@@ -72,6 +72,11 @@ module.exports = function gruntConfig(grunt) {
     },
 
     coveralls: {
+      options: {
+        // Don't fail the build if coveralls fails to receive reports for some
+        // reason
+        force: true
+      },
       all: {
         src: [
           `./reports-ng/lcov.info`
