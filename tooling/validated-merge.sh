@@ -3,6 +3,8 @@
 set -e
 set -o pipefail
 
+npm install
+
 REMOTE=upstream
 BRANCH=validated-merge
 USERNAME=ciscospark
