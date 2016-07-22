@@ -15,6 +15,10 @@ if [ $IS_MISSING_GHC_REMOTE -eq "1" ]; then
   git remote add ghc git@github.com:ciscospark/spark-js-sdk.git
 fi
 
+# TODO move to docker image
+# Avoid Host key verification failed errors
+ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+
 REMOTE=ghc
 BRANCH=validated-merge
 USERNAME=ciscospark
