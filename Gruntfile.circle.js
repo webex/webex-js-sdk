@@ -14,7 +14,8 @@ module.exports = function gruntConfig(grunt) {
 
   grunt.registerTask(`coverage`, [
     `makeReport2:all`,
-    `coveralls:all`
+    `coveralls:all`,
+    `copy:coverage`
   ]);
 
   grunt.registerTask(`static-analysis`, [
@@ -38,12 +39,12 @@ module.exports = function gruntConfig(grunt) {
       // even numbered quartets should be order slowest to fastest in the group
       // `plugin-phone`,
       // `ciscospark`,
-      // `spark-core`,
+      `spark-core`,
       // `example-phone`,
       //
       // `plugin-mercury`,
       `http-core`,
-      `plugin-wdm`,
+      // `plugin-wdm`,
       // `plugin-locus`,
 
       `common`,
@@ -68,6 +69,17 @@ module.exports = function gruntConfig(grunt) {
         // container should be limited to one test run at a time
         limit: 1,
         logConcurrentOutput: true
+      }
+    },
+
+    copy: {
+      coverage: {
+        files: [{
+          cwd: `reports-ng`,
+          expand: true,
+          src: [`**/lcov.info`],
+          dest: process.env.CIRCLE_ARTIFACTS
+        }]
       }
     },
 
