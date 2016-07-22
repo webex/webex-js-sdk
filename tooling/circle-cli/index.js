@@ -1,7 +1,7 @@
 'use strict';
 
 const CircleCI = require(`circleci`);
-const common = requir(`./lib/common-options`);
+const common = require(`./lib/common-options`);
 const exitWithError = require(`./lib/exit-with-error`);
 const print = require(`./lib/print`);
 const requireDir = require(`require-dir`);
