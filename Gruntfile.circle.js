@@ -47,9 +47,9 @@ module.exports = function gruntConfig(grunt) {
       // `plugin-locus`,
 
       `common`,
-      // `generator-ciscospark`,
-      // `jsdoctrinetest`,
-      // `helper-html`,
+      `generator-ciscospark`,
+      `jsdoctrinetest`,
+      `helper-html`,
 
       // `*`,
       `!test-helper*`,
