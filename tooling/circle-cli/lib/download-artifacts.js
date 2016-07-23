@@ -24,7 +24,6 @@ const xunit = /^.*?circle-junit.+?\//;
 function downloadArtifact(artifact) {
   return new Promise((resolve, reject) => {
     let filename;
-    console.log(artifact)
     if (artifact.path.indexOf(`lcov.info`) === -1) {
       filename = `${artifact.path.replace(xunit, `reports/`)}`;
     }
@@ -32,7 +31,6 @@ function downloadArtifact(artifact) {
       filename = `reports/lcov-${artifact.node_index}.info`;
     }
     mkdirp.sync(path.dirname(filename));
-    console.log(artifact.path);
     console.log(`fetching artifact ${artifact.pretty_path} to ${filename}`);
     // For reasons I can't explain, the pipe/writeStream pattern exits after
     // saving the first file.

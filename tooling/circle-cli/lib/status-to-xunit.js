@@ -28,7 +28,7 @@ module.exports = _.curry((argv, ci, result) => {
     <testsuite
       name="spark-js-sdk"
       package="suite"
-      timestamp=${(new Date()).toISOString()}
+      timestamp="${(new Date()).toISOString()}"
       tests="1"
       errors="${errorCount}"
       failures=${failureCount}"
