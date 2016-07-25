@@ -77,7 +77,7 @@ module.exports = function gruntConfig(grunt) {
         files: [{
           cwd: `reports-ng`,
           expand: true,
-          src: [`**/lcov.info`],
+          src: [`**/cobertura.xml`],
           dest: process.env.CIRCLE_ARTIFACTS
         }]
       }
@@ -128,10 +128,13 @@ module.exports = function gruntConfig(grunt) {
         }],
         options: {
           reporters: {
-            'text-summary': {},
+            cobertura: {
+              file: `./reports-ng/cobertura.xml`
+            },
             lcovonly: {
               file: `./reports-ng/lcov.info`
-            }
+            },
+            'text-summary': {}
           }
         }
       }

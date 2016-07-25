@@ -24,11 +24,11 @@ const xunit = /^.*?circle-junit.+?\//;
 function downloadArtifact(artifact) {
   return new Promise((resolve, reject) => {
     let filename;
-    if (artifact.path.indexOf(`lcov.info`) === -1) {
+    if (artifact.path.indexOf(`cobertura`) === -1) {
       filename = `${artifact.path.replace(xunit, `reports/`)}`;
     }
     else {
-      filename = `reports/lcov-${artifact.node_index}.info`;
+      filename = `reports/cobertura-${artifact.node_index}.xml`;
     }
     mkdirp.sync(path.dirname(filename));
     console.log(`fetching artifact ${artifact.pretty_path} to ${filename}`);
