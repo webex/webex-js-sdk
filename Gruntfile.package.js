@@ -301,12 +301,16 @@ module.exports = function(grunt) {
   ]);
 
   registerTask('test:browser', [
-    'karma'
+    p(process.env.XUNIT) && 'continue:on',
+    'karma',
+    p(process.env.XUNIT) && 'continue:off'
   ]);
 
   registerTask('test:node', [
     p(process.env.COVERAGE) && 'instrument2',
+    p(process.env.XUNIT) && 'continue:on',
     'mochaTest:integration',
+    p(process.env.XUNIT) && 'continue:off',
     p(process.env.COVERAGE) && 'storeCoverage2'
   ]);
 
