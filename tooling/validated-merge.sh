@@ -26,6 +26,8 @@ PROJECT=spark-js-sdk
 
 rm -rf ./reports
 
+rm -f 503
+
 # Ensure there are no builds running/enqueued for the validated merge branch
 # (jenkins should be handling the queuing, not circle)
 ./tooling/circle --auth ${CIRCLE_CI_AUTHTOKEN} \

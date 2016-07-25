@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require(`fs`);
+
 module.exports = function exitWithError(reason) {
   console.log(Object.keys(reason));
   console.error(reason);
@@ -8,6 +10,7 @@ module.exports = function exitWithError(reason) {
     console.warn(`CircleCI appears to be having a capacity problem`);
     console.warn(`Please check http://status.circleci.com/`);
     console.warn(`Consider running this build internally until Circle recovers`);
+    fs.writeFileSync(`503`, `503`);
   }
   process.exit(1);
 };
