@@ -31,7 +31,7 @@ module.exports = _.curry((argv, ci, result) => {
       timestamp="${(new Date()).toISOString()}"
       tests="1"
       errors="${errorCount}"
-      failures=${failureCount}"
+      failures="${failureCount}"
     />`;
     console.log(`writing xunit summary to ${filename}`);
     console.log(out.toString());
