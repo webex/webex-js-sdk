@@ -55,7 +55,7 @@ dependencies:
 
 test:
   pre:
-    - ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js build:
+    - npm run grunt:circle -- build:
         parallel: true
     - echo "Checking for undeclared dependencies" && npm run checkdep
     - npm run sauce:start:
@@ -63,8 +63,8 @@ test:
     - mkdir -p reports-ng:
         parallel: true
   override:
-    - ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js static-analysis
-    - npm run sauce:run -- ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js test coverage:
+    - npm run grunt:circle -- static-analysis
+    - npm run sauce:run -- npm run grunt:circle -- test coverage:
         parallel: true
   post:
     - npm run sauce:stop:

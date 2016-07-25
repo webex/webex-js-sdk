@@ -29,7 +29,7 @@ echo "Cleaning modular directories"
 npm run grunt:concurrent -- --no-color --stack clean
 
 echo "Building modules"
-./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js build
+npm run grunt:circle -- build
 
 # TEST
 echo "Connecting to Sauce Labs..."
@@ -40,7 +40,7 @@ mkdir -p reports
 
 echo "Running all tests and writing output to ${LOG_FILE}"
 set +e
-npm run sauce:run -- ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js static-analysis test coverage 2>&1> "${LOG_FILE}"
+npm run sauce:run -- npm run grunt:circle -- static-analysis test coverage 2>&1> "${LOG_FILE}"
 EXIT_CODE=$?
 set -e
 

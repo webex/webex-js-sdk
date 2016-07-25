@@ -40,6 +40,7 @@
     "prebuild:package": "npm run check-package",
     "build:package": "npm run grunt:package -- build",
     "grunt": "grunt",
+    "grunt:circle": "grunt --gruntfile Gruntfile.circle.js",
     "grunt:concurrent": "grunt --gruntfile Gruntfile.concurrent.js",
     "pregrunt:package": "npm run check-package",
     "grunt:package": "grunt --gruntfile Gruntfile.package.js",
