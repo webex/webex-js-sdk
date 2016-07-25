@@ -1,0 +1,51 @@
+#!/bin/bash
+
+set -e
+set -o pipefail
+
+export NPM_CONFIG_REGISTRY=http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group
+export COVERAGE=true
+export NODE_ENV=test
+export XUNIT=true
+
+LOG_FILE="$(pwd)/test.log"
+rm -f "${LOG_FILE}"
+
+# INSTALL
+echo "Installing legacy SDK dependencies"
+npm install
+
+echo "Checking for undeclared dependencies"
+npm run checkdep
+
+echo "Installing modular SDK dependencies"
+npm run bootstrap
+
+# BUILD
+echo "Cleaning legacy directories"
+npm run grunt -- --no-color --stack clean
+
+echo "Cleaning modular directories"
+npm run grunt:concurrent -- --no-color --stack clean
+
+echo "Building modules"
+./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js build
+
+# TEST
+echo "Connecting to Sauce Labs..."
+npm run sauce:start
+echo "Connected to Sauce Labs"
+
+mkdir -p reports
+
+echo "Running all tests and writing output to ${LOG_FILE}"
+set +e
+npm run sauce:run -- ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js static-analysis test coverage 2>&1> "${LOG_FILE}"
+EXIT_CODE=$?
+set -e
+
+echo "Disconnecting from Sauce Labs..."
+npm run sauce:stop
+echo "Disconnected from Sauce Labs"
+
+exit $EXIT_CODE

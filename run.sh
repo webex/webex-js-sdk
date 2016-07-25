@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # Don't fail if the following fail
-killall grunt 2&>/dev/null
-killall node 2&>/dev/null
+ps -A | grep node | awk '{print $1}' | xargs kill
+ps -A | grep sc | awk '{print $1}' | xargs kill
+ps -A | grep grunt | awk '{print $1}' | xargs kill
 
 # Now, fail if anything fails
 set -e

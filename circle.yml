@@ -57,6 +57,7 @@ test:
   pre:
     - ./node_modules/.bin/grunt --gruntfile Gruntfile.circle.js build:
         parallel: true
+    - echo "Checking for undeclared dependencies" && npm run checkdep
     - npm run sauce:start:
         parallel: true
     - mkdir -p reports-ng:

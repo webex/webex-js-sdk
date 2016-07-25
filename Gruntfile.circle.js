@@ -113,9 +113,9 @@ module.exports = function gruntConfig(grunt) {
         outputFile: process.env.XUNIT && `<%= xunitDir %>/eslint.xml`
       },
       all: [
-        `./packages/<%= package %>/src/**/*.js`,
-        `./packages/<%= package %>/test/**/*.js`,
-        `./packages/<%= package %>/*.js`
+        `./packages/*/src/**/*.js`,
+        `./packages/*/test/**/*.js`,
+        `./packages/*/*.js`
       ]
     },
 
