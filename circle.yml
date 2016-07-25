@@ -60,8 +60,6 @@ test:
     - echo "Checking for undeclared dependencies" && npm run checkdep
     - npm run sauce:start:
         parallel: true
-    - mkdir -p reports-ng:
-        parallel: true
   override:
     - npm run grunt:circle -- static-analysis
     - npm run sauce:run -- npm run grunt:circle -- test coverage:

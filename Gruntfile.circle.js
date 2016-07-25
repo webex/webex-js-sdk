@@ -75,7 +75,7 @@ module.exports = function gruntConfig(grunt) {
     copy: {
       coverage: {
         files: [{
-          cwd: `reports-ng`,
+          cwd: `reports`,
           expand: true,
           src: [`**/cobertura.xml`],
           dest: process.env.CIRCLE_ARTIFACTS
@@ -91,7 +91,7 @@ module.exports = function gruntConfig(grunt) {
       },
       all: {
         src: [
-          `./reports-ng/lcov.info`
+          `./reports/lcov.info`
         ]
       }
     },
@@ -122,17 +122,17 @@ module.exports = function gruntConfig(grunt) {
     makeReport2: {
       all: {
         files: [{
-          cwd: `./reports-ng/coverage-final/`,
+          cwd: `./reports/coverage-final/`,
           expand: true,
           src: `**/*.json`
         }],
         options: {
           reporters: {
             cobertura: {
-              file: `./reports-ng/cobertura.xml`
+              file: `./reports/cobertura.xml`
             },
             lcovonly: {
-              file: `./reports-ng/lcov.info`
+              file: `./reports/lcov.info`
             },
             'text-summary': {}
           }
@@ -142,7 +142,7 @@ module.exports = function gruntConfig(grunt) {
 
     shell: {},
 
-    xunitDir: process.env.CIRCLE_TEST_REPORTS ? `${process.env.CIRCLE_TEST_REPORTS}/junit` : `./reports-ng`
+    xunitDir: process.env.CIRCLE_TEST_REPORTS ? `${process.env.CIRCLE_TEST_REPORTS}/junit` : `./reports/junit`
   };
 
   grunt.task.run([

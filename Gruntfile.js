@@ -227,7 +227,7 @@ module.exports = function(grunt) {
     makeReport: {
       src: [
         'reports/coverage/*/coverage*.json',
-        'reports-ng/coverage-final/**/*.json'
+        'reports/coverage-final/**/*.json'
       ],
       options: {
         type: [

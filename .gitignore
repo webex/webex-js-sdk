@@ -10,7 +10,6 @@ doc
 .grunt
 .github-publish
 reports
-reports-ng
 .nvm
 .sauce
 .env

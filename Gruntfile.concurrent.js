@@ -58,7 +58,7 @@ module.exports = function gruntConfig(grunt) {
     clean: {
       reports: {
         src: [
-          './reports-ng'
+          './reports'
         ]
       }
     },
@@ -114,17 +114,17 @@ module.exports = function gruntConfig(grunt) {
     makeReport2: {
       all: {
         files: [{
-          cwd: './reports-ng/coverage-final/',
+          cwd: './reports/coverage-final/',
           expand: true,
           src: '**/*.json'
         }],
         options: {
           reporters: {
             cobertura: {
-              file: './reports-ng/cobertura-coverage.xml'
+              file: './reports/cobertura-coverage.xml'
             },
             json: {
-              file: './reports-ng/coverage.json'
+              file: './reports/coverage.json'
             },
             html: {},
             'text-summary': {}

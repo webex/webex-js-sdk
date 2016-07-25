@@ -16,7 +16,7 @@ module.exports = function configGrunt(grunt) {
     all: {
       options: {
         reporterOptions: {
-          output: './reports-ng/test/mocha-<%= package %>.xml'
+          output: './reports/junit/mocha-<%= package %>.xml'
         }
       },
       src: './packages/<%= package %>/test/*/spec/**/*.js'

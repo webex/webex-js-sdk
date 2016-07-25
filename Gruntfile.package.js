@@ -64,10 +64,10 @@ module.exports = function(grunt) {
         // There ought to be a better way to get karma coverage to spit out
         // absolute paths, but so far I can't find it.
         files: [{
-          cwd: './reports-ng/coverage/<%= package %>',
+          cwd: './reports/coverage/<%= package %>',
           expand: true,
           src: '**/*.json',
-          dest: './reports-ng/coverage-final/<%= package %>'
+          dest: './reports/coverage-final/<%= package %>'
         }],
         options: {
           process: function(content) {
@@ -187,11 +187,11 @@ module.exports = function(grunt) {
         files: [{
           cwd: '.',
           expand: true,
-          src: './reports-ng/coverage/<%= package %>/mocha-final.json'
+          src: './reports/coverage/<%= package %>/mocha-final.json'
         }, {
           cwd: '.',
           expand: true,
-          src: './reports-ng/coverage/<%= package %>*/coverage-final.json'
+          src: './reports/coverage/<%= package %>*/coverage-final.json'
         }],
         options: {
           reporters: {
@@ -250,7 +250,7 @@ module.exports = function(grunt) {
       }
     },
     package: process.env.PACKAGE,
-    xunitDir: process.env.XUNIT_DIR || './reports-ng',
+    xunitDir: process.env.XUNIT_DIR || './reports',
     shell: {
       'move-babelrc': {
         command: 'mv .babelrc babelrc'
@@ -262,7 +262,7 @@ module.exports = function(grunt) {
     storeCoverage2: {
       test: {
         options: {
-          dest: './reports-ng/coverage/<%= package %>/mocha-final.json'
+          dest: './reports/coverage/<%= package %>/mocha-final.json'
         }
       }
     }

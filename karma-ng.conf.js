@@ -102,7 +102,7 @@ module.exports = function(config) {
     cfg.coverageReporter = {
       reporters: [{
         type: 'json',
-        dir: 'reports-ng/coverage/' + process.env.PACKAGE
+        dir: 'reports/coverage/' + process.env.PACKAGE
       }]
     };
 
@@ -127,7 +127,7 @@ module.exports = function(config) {
   if (process.env.XUNIT) {
     cfg.junitReporter = {
       outputFile: 'karma-' + process.env.PACKAGE + '.xml',
-      outputDir: process.env.XUNIT_DIR || 'reports-ng/test',
+      outputDir: process.env.XUNIT_DIR || 'reports/junit',
       suite: process.env.PACKAGE,
       useBrowserName: true
     };
