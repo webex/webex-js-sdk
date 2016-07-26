@@ -3,7 +3,7 @@
 set -e
 
 # Make sure there's no 503 artifact lingering from a previous build
-rm -f 503
+echo "no" > 503
 
 # Make sure the old sha artifact has been removed
 rm -f .promotion-sha

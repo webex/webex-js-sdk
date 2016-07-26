@@ -10,7 +10,7 @@ module.exports = function exitWithError(reason) {
     console.warn(`CircleCI appears to be having a capacity problem`);
     console.warn(`Please check http://status.circleci.com/`);
     console.warn(`Consider running this build internally until Circle recovers`);
-    fs.writeFileSync(`503`, `503`);
+    fs.writeFileSync(`503`, `yes`);
   }
   process.exit(1);
 };
