@@ -2,9 +2,6 @@
 
 set -e -o pipefail
 
-npm install
-npm run bootstrap
-
 # Blocks of code are commented out here while experimenting with canary
 # releases. If canary seems awful, remove it and use the commented blocks.
 # NEXT_VERSION=`node <<- EOF

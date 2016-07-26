@@ -3,6 +3,7 @@
 set -e
 set -o pipefail
 
+echo "Installing Tooling and legacy node_modules"
 npm install
 
 REMOTE=ghc
@@ -19,9 +20,12 @@ PROJECT=spark-js-sdk
 
 # We're currently on a detached head; name it so we can merge back to it when
 # the build succeeds
+echo "Naming branch to leave detached-head state"
 git checkout -b ${BUILD_NUMBER}
+echo "Pushing validated merge result to GitHub release branch"
 git push -f ${REMOTE} ${BUILD_NUMBER}:${branch}
 
+echo "Publishing validated-merge result via Circle CI"
 ./tooling/circle --auth ${CIRCLE_CI_AUTHTOKEN} \
   --username ${USERNAME} \
   --project ${PROJECT} \

@@ -9,15 +9,11 @@ rm -f 503
 rm -f .promotion-sha
 
 # Install lerna
+echo "Installing Tooling and legacy node_modules"
 npm install
-
-# Install dependencies which will be needed for publication (publish.sh should
-# be run as a post-build step, *not* a promotion job)
-npm run bootstrap
 
 # TODO update circle.yml cache_directories
 
 # Push to the validated merge branch so subjobs have access to the merge result
+echo "Pushing validated merge result to GitHub Enterprise validated-merge branch"
 git push -f origin HEAD:refs/heads/validated-merge
-
-git rev-parse HEAD > .promotion-sha

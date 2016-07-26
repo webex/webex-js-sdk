@@ -22,8 +22,10 @@ rm -f 503
   --branch ${BRANCH} \
   verify-no-builds-on-branch
 
+echo "Pushing validated-merge result to GitHub validated-merge branch"
 git push -f ${REMOTE} HEAD:validated-merge
 
+echo "Validating validated-merge result using Circle CI"
 ./tooling/circle --auth ${CIRCLE_CI_AUTHTOKEN} \
   --username ${USERNAME} \
   --project ${PROJECT} \
