@@ -53,5 +53,17 @@ else
   echo "Build Number not set, defaulting to $BUILD_NUMBER"
 fi
 
+# Make sure we have the github.com remote setup
+set +e
+git remote | grep -qc ghc
+IS_MISSING_GHC_REMOTE=$?
+set -e
+if [ $IS_MISSING_GHC_REMOTE -eq "1" ]; then
+  git remote add ghc git@github.com:ciscospark/spark-js-sdk.git
+fi
+
+# Avoid Host key verification failed errors
+ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+
 # Run whatever command was passed to the script.
 eval $@

@@ -54,12 +54,7 @@
     "test:packages": "npm run grunt:concurrent -- test",
     "pretest:package": "npm run check-package",
     "test:package": "npm run grunt:package -- test",
-    "docs:build-api": "npm run grunt:concurrent -- documentation",
-    "docs:build": "npm run docs:build-api && jekyll build --config docs/_config.yml --source docs",
-    "predocs:publish": "npm run docs:build-api && bash -c 'PACKAGE=example-phone npm run grunt:package -- build'",
-    "docs:publish": "npm run grunt:concurrent -- publish-docs",
-    "predocs:serve": "npm run docs:build-api",
-    "docs:serve": "jekyll serve --config docs/_config.yml,docs/_config.local.yml --source docs"
+    "lerna": "lerna"
   },
   "dependencies": {
     "ampersand-collection": "^2.0.0",
