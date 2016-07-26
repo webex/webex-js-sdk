@@ -3,8 +3,6 @@
 set -e
 set -o pipefail
 
-export NPM_CONFIG_REGISTRY=http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group
-
 npm install
 
 REMOTE=ghc
