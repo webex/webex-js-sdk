@@ -31,3 +31,24 @@ echo "Publishing validated-merge result via Circle CI"
   --project ${PROJECT} \
   --branch ${BRANCH} \
   trigger-build
+
+CIRCLE_BUILD_NUMBER=`cat CIRCLE_BUILD_NUMBER`
+CIRCLE_BUILD_STATUS=`./tooling/circle get-build \
+  --auth=${CIRCLE_CI_AUTHTOKEN} \
+  --username=${USERNAME} \
+  --project=${PROJECT} \
+  --build_num=${CIRCLE_BUILD_NUMBER} -j | jq .status`
+
+if [ ${CIRCLE_BUILD_STATUS} = "success" ]; then
+  # Merge the new package versions from Circle CI
+  echo "Fetching publication result from GitHub.com"
+  git fetch ghc
+
+  echo "Merging publication result into validated-merge branch"
+  git merge ghc/master
+
+  # TODO publish to internal registry
+
+  echo "Recording SHA of validated-merge result"
+  git rev-parse HEAD > .promotion-sha
+fi

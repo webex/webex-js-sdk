@@ -14,6 +14,7 @@ NODE_ENV=production npm run build
 
 npm run grunt:circle -- publish-docs
 
+# TODO deprecate previous versions?
 # npm run lerna -- publish --repo-version=${NEXT_VERSION}
 npm run lerna -- publish --skip-git --canary
 # TODO parse top commit message for something like !release:X.Y.Z to decide

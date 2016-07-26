@@ -6,6 +6,7 @@ const CircleCI = require(`circleci`);
 const common = require(`../lib/common-options`);
 const downloadArtifacts = require(`../lib/download-artifacts`);
 const exitWithError = require(`../lib/exit-with-error`);
+const fs = require(`fs`);
 const statusToXunit = require(`../lib/status-to-xunit`);
 const tap = require(`../lib/tap`);
 
@@ -53,6 +54,7 @@ module.exports = {
     return ci.startBuild(argv)
       .then((result) => {
         // eslint-disable-next-line camelcase
+        fs.writeFileSync(`CIRCLE_BUILD_NUMBER`, result.build_num);
         build.build_num = result.build_num;
         return build;
       })
