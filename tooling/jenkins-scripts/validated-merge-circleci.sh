@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Actions to orchestrate running a validated-merge build on Circle CI
+
 set -e
 set -o pipefail
 
@@ -11,6 +13,7 @@ USERNAME=ciscospark
 PROJECT=spark-js-sdk
 
 rm -rf ./reports
+rm -f CIRCLE_BUILD_NUMBER
 
 echo "no" > 503
 

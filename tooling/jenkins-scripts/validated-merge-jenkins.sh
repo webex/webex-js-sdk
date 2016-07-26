@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Actions to orchestrate running a validated-merge build internally via Jenkins
+
 set -e
 set -o pipefail
 

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Common actions that run at the beginning of a validated-merge build
+
 set -e
 
 # Make sure there's no 503 artifact lingering from a previous build
