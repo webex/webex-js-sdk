@@ -23,7 +23,7 @@ PROJECT=spark-js-sdk
 echo "Naming branch to leave detached-head state"
 git checkout -b ${BUILD_NUMBER}
 echo "Pushing validated merge result to GitHub release branch"
-git push -f ${REMOTE} ${BUILD_NUMBER}:/refs/heads/${BRANCH}
+git push -f ${REMOTE} ${BUILD_NUMBER}:refs/heads/${BRANCH}
 
 echo "Publishing validated-merge result via Circle CI"
 ./tooling/circle --auth ${CIRCLE_CI_AUTHTOKEN} \
