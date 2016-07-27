@@ -5,6 +5,8 @@
 set -e
 set -o pipefail
 
+echo "Begin validated-merge-circleci.sh"
+
 npm install
 
 REMOTE=ghc
@@ -34,3 +36,5 @@ echo "Validating validated-merge result using Circle CI"
   --project ${PROJECT} \
   --branch ${BRANCH} \
   trigger-build
+
+echo "Complete validated-merge-circleci.sh"

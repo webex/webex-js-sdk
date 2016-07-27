@@ -3,6 +3,8 @@
 set -e
 set -o pipefail
 
+echo "Begin publish.sh"
+
 echo "Installing Tooling and legacy node_modules"
 npm install
 
@@ -55,3 +57,5 @@ else
   echo "Publication failed, validated merge continuing"
   # TODO fire webhook
 fi
+
+echo "Complete publish.sh"

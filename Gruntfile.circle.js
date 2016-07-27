@@ -181,4 +181,5 @@ module.exports = function gruntConfig(grunt) {
     config.concurrent[task].tasks.push(`shell:${task}_${packageName}`);
   }
 
+  console.log(`Evaluating ${SINGLE_NODE_PACKAGES.join(`, `)} on this node`);
 };

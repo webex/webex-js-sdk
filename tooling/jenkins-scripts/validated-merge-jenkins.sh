@@ -5,6 +5,8 @@
 set -e
 set -o pipefail
 
+echo "Begin validated-merge-jenkins.sh"
+
 export COVERAGE=true
 export NODE_ENV=test
 export XUNIT=true
@@ -50,3 +52,5 @@ npm run sauce:stop
 echo "Disconnected from Sauce Labs"
 
 exit $EXIT_CODE
+
+echo "Complete validated-merge-jenkins.sh"
