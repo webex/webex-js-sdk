@@ -12,7 +12,7 @@ USERNAME=ciscospark
 PROJECT=spark-js-sdk
 
 # Ensure there are no builds running/enqueued for the branch
-./tooling/circle --auth ${CIRCLE_CI_AUTHTOKEN} \
+./tooling/circle --auth ${CIRCLECI_AUTH_TOKEN} \
   --username ${USERNAME} \
   --project ${PROJECT} \
   --branch ${BRANCH} \
@@ -26,7 +26,7 @@ echo "Pushing validated merge result to GitHub release branch"
 git push -f ${REMOTE} ${BUILD_NUMBER}:refs/heads/${BRANCH}
 
 echo "Publishing validated-merge result via Circle CI"
-./tooling/circle --auth ${CIRCLE_CI_AUTHTOKEN} \
+./tooling/circle --auth ${CIRCLECI_AUTH_TOKEN} \
   --username ${USERNAME} \
   --project ${PROJECT} \
   --branch ${BRANCH} \
@@ -34,7 +34,7 @@ echo "Publishing validated-merge result via Circle CI"
 
 CIRCLE_BUILD_NUMBER=`cat CIRCLE_BUILD_NUMBER`
 CIRCLE_BUILD_STATUS=`./tooling/circle get-build \
-  --auth=${CIRCLE_CI_AUTHTOKEN} \
+  --auth=${CIRCLECI_AUTH_TOKEN} \
   --username=${USERNAME} \
   --project=${PROJECT} \
   --build_num=${CIRCLE_BUILD_NUMBER} -j | jq .status`

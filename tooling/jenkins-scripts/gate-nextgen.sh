@@ -3,7 +3,7 @@
 set -e
 set -o pipefail
 
-./tooling/circle --auth $CIRCLE_CI_AUTHTOKEN \
+./tooling/circle --auth $CIRCLECI_AUTH_TOKEN \
   --username ciscospark \
   --project spark-js-sdk \
   --branch circleci \
