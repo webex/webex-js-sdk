@@ -22,6 +22,11 @@ module.exports = function gruntConfig(grunt) {
     `eslint`
   ]);
 
+  grunt.registerTask(`publish-docs`, [
+    `documentation`
+    `gh-pages:ghc`
+  ]);
+
   const ALL_NODE_TASKS = [
     `build`
   ];
@@ -96,6 +101,24 @@ module.exports = function gruntConfig(grunt) {
       }
     },
 
+    documentation: {
+      options: {
+        private: false
+      },
+      html: {
+        src: [
+          './packages/ciscospark/src/index.js',
+          './packages/plugin-phone/src/index.js'
+        ],
+        options: {
+          destination: './docs/api/',
+          format: 'html',
+          github: true,
+          theme: './docs/_theme'
+        }
+      }
+    },
+
     env: {
       default: {
         src: `.env.default.json`
@@ -117,6 +140,21 @@ module.exports = function gruntConfig(grunt) {
         `./packages/*/test/**/*.js`,
         `./packages/*/*.js`
       ]
+    },
+
+    'gh-pages': {
+      options: {
+        base: 'docs'
+      },
+      docs: {
+        src: ['**']
+      },
+      ghc: {
+        src: ['**'],
+        options: {
+          repo: 'git@github.com:ciscospark/spark-js-sdk.git'
+        }
+      }
     },
 
     makeReport2: {
