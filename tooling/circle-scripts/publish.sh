@@ -24,7 +24,7 @@ git add .
 git commit -m "Release ${NEW_VERSION}"
 git tag -a -m "Release ${NEW_VERSION}" "${NEW_VERSION}"
 git commit --allow-empty -m '[skip ci]'
-git push ghc HEAD:/refs/heads/master
+git push origin HEAD:/refs/heads/master
 git push origin "${NEW_VERSION}"
 
 # Trick npmjs.com into updating the readme
