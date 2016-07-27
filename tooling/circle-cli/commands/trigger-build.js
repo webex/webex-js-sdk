@@ -27,7 +27,7 @@ module.exports = {
       demand: false,
       describe: `Interval on which to poll for completion (in milliseconds)`,
       type: `number`
-    }
+    },
     'no-artifacts': {
       demand: false,
       describe: `Skip artifact retrieval`,
