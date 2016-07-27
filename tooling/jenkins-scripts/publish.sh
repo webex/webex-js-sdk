@@ -51,4 +51,7 @@ if [ ${CIRCLE_BUILD_STATUS} = "success" ]; then
 
   echo "Recording SHA of validated-merge result"
   git rev-parse HEAD > .promotion-sha
+else
+  echo "Publication failed, validated merge continuing"
+  # TODO fire webhook
 fi

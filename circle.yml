@@ -72,4 +72,4 @@ deployment:
   release:
     branch: release
     commands:
-      - ./tooling/scripts/publish.sh
+      - ./tooling/circle-scripts/publish.sh
