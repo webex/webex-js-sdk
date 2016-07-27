@@ -28,6 +28,11 @@ module.exports = {
       describe: `Interval on which to poll for completion (in milliseconds)`,
       type: `number`
     }
+    'no-artifacts': {
+      demand: false,
+      describe: `Skip artifact retrieval`,
+      type: `boolean`
+    }
   }),
   handler: (argv) => {
     if (argv.interval < 1000) {

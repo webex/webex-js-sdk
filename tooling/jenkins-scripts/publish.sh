@@ -32,6 +32,7 @@ echo "Publishing validated-merge result via Circle CI"
   --username ${USERNAME} \
   --project ${PROJECT} \
   --branch ${BRANCH} \
+  --no-artifacts \
   trigger-build
 
 CIRCLE_BUILD_NUMBER=`cat CIRCLE_BUILD_NUMBER`

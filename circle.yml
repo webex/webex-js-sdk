@@ -54,18 +54,8 @@ dependencies:
     - npm run bootstrap
 
 test:
-  pre:
-    - npm run grunt:circle -- build:
-        parallel: true
-    - echo "Checking for undeclared dependencies" && npm run checkdep
-    - npm run sauce:start:
-        parallel: true
   override:
-    - npm run grunt:circle -- static-analysis
-    - npm run sauce:run -- npm run grunt:circle -- test coverage:
-        parallel: true
-  post:
-    - npm run sauce:stop:
+    - ./tooling/circle-scripts/validate.sh:
         parallel: true
 
 deployment:

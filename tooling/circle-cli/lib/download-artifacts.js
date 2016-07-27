@@ -11,6 +11,9 @@ module.exports = _.curry((argv, ci, build) => {
   required(build, `build_num`);
   required(build, `project`);
   required(build, `username`);
+  if (argv.noArtifacts) {
+    return Promise.resolve();
+  }
 
   return ci.getBuildArtifacts(build)
     .then((artifacts) => {
