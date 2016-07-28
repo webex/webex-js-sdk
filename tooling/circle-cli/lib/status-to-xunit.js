@@ -13,21 +13,21 @@ module.exports = _.curry((argv, ci, result) => {
     case `success`:
     case `fixed`:
       failureCount = errorCount = 0;
-      testCase = `<testcase name="suite" classname=suite" time="0.1"/>`;
+      testCase = `<testcase name="suite" classname="suite" time="0.1"/>`;
       break;
     case `timedout`:
       failureCount = 0;
       errorCount = 1;
-      testCase = `<testcase name="suite" classname=suite" time="0.1"><failure type="">Timed out</failure><testcase>`;
+      testCase = `<testcase name="suite" classname="suite" time="0.1"><failure type="">Timed out</failure><testcase>`;
       break;
     case `failed`:
       failureCount = 1;
       errorCount = 0;
-      testCase = `<testcase name="suite" classname=suite" time="0.1"><failure type="">failed</failure><testcase>`;
+      testCase = `<testcase name="suite" classname="suite" time="0.1"><failure type="">failed</failure><testcase>`;
       break;
     default:
       failureCount = errorCount = 1;
-      testCase = `<testcase name="suite" classname=suite" time="0.1"><failure type="">${result.status}</failure><testcase>`;
+      testCase = `<testcase name="suite" classname="suite" time="0.1"><failure type="">${result.status}</failure><testcase>`;
     }
     const out = `<?xml version="1.0"?>
     <testsuite
