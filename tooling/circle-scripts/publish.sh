@@ -33,7 +33,7 @@ echo "Publishing new versions to npm"
 npm run lerna -- publish --skip-git --canary --yes
 # TODO parse top commit message for something like !release:X.Y.Z to decide
 # whether to do a canary release
-NEW_VERSION=`cat lerna.json | grep version | awk '{print $2}'`
+NEW_VERSION="`cat lerna.json | grep version | awk '{print $2}'| sed -e 's/^"//'  -e 's/"$//'`-alpha.`git rev-parse --short HEAD`"
 git add lerna.json package.json packages/*/package.json
 git commit -m "Release ${NEW_VERSION}"
 git tag -a -m "Release ${NEW_VERSION}" "${NEW_VERSION}"
@@ -45,10 +45,12 @@ echo "Publishing new documentation"
 npm run grunt:circle -- publish-docs
 
 echo "Tricking npm website into updating the README"
+set -x
 # Trick npmjs.com into updating the readme
 # See https://github.com/npm/newww/issues/389#issuecomment-188428605 and
 # https://github.com/lerna/lerna/issues/64 for details
 cd packages/ciscospark
+pwd
 npm version --no-git-tag-version "${NEW_VERSION}-readmehack"
 npm publish
 npm unpublish ciscospark@"${NEW_VERSION}-readmehack"
