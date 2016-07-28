@@ -23,7 +23,7 @@ module.exports = function gruntConfig(grunt) {
   ]);
 
   grunt.registerTask(`publish-docs`, [
-    `documentation`
+    `documentation`,
     `gh-pages:ghc`
   ]);
 
@@ -107,14 +107,14 @@ module.exports = function gruntConfig(grunt) {
       },
       html: {
         src: [
-          './packages/ciscospark/src/index.js',
-          './packages/plugin-phone/src/index.js'
+          `./packages/ciscospark/src/index.js`,
+          `./packages/plugin-phone/src/index.js`
         ],
         options: {
-          destination: './docs/api/',
-          format: 'html',
+          destination: `./docs/api/`,
+          format: `html`,
           github: true,
-          theme: './docs/_theme'
+          theme: `./docs/_theme`
         }
       }
     },
@@ -144,15 +144,15 @@ module.exports = function gruntConfig(grunt) {
 
     'gh-pages': {
       options: {
-        base: 'docs'
+        base: `docs`
       },
       docs: {
-        src: ['**']
+        src: [`**`]
       },
       ghc: {
-        src: ['**'],
+        src: [`**`],
         options: {
-          repo: 'git@github.com:ciscospark/spark-js-sdk.git'
+          repo: `git@github.com:ciscospark/spark-js-sdk.git`
         }
       }
     },
