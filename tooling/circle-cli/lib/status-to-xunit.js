@@ -11,6 +11,7 @@ module.exports = _.curry((argv, ci, result) => {
     let errorCount, failureCount, testCase;
     switch (result.status) {
     case `success`:
+    case `fixed`:
       failureCount = errorCount = 0;
       testCase = `<testcase name="suite" classname=suite" time="0.1"/>`;
       break;
