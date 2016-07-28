@@ -10,11 +10,18 @@ set -e -o pipefail
 #  console.log(version.join('.'));
 # EOF`
 
+# Make sure we don't run on multiple nodes
+if [ ${CIRCLE_NODE_INDEX} -ne "0" ]; then
+  exit 0
+fi
+
 NODE_ENV=production npm run build
 
 echo "Setting git credentials"
-git config user.email "spark-js-sdk@example.com"
-git config user.name "spark-js-sdk automation"
+# Reminder: these are global so that the checkout made by grunt-gh-pages sees
+# them
+git config --global user.email "spark-js-sdk@example.com"
+git config --global user.name "spark-js-sdk automation"
 
 echo "Creating temporary .npmrc"
 # Note the intentional single quotes to avoid string interpolation
