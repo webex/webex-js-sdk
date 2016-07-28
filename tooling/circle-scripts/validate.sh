@@ -7,11 +7,12 @@ if [ "${CIRCLE_BRANCH}" = "release" ]; then
   exit 0
 fi
 
-echo "Checking for undeclared dependencies"
-npm run checkdep
-
 echo "Building all modules"
 npm run grunt:circle -- build
+
+# Reminder: checkdep must come after build because it looks at ./dist/index.js
+echo "Checking for undeclared dependencies"
+npm run checkdep
 
 echo "Connecting to Sauce Labs"
 npm run sauce:start

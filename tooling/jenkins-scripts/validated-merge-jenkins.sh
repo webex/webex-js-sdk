@@ -18,9 +18,6 @@ rm -f "${LOG_FILE}"
 echo "Installing legacy SDK dependencies"
 npm install
 
-echo "Checking for undeclared dependencies"
-npm run checkdep
-
 echo "Installing modular SDK dependencies"
 npm run bootstrap
 
@@ -33,6 +30,10 @@ npm run grunt:concurrent -- --no-color --stack clean
 
 echo "Building modules"
 npm run grunt:circle -- build
+
+# Reminder: checkdep must come after build because it looks at ./dist/index.js
+echo "Checking for undeclared dependencies"
+npm run checkdep
 
 # TEST
 echo "Connecting to Sauce Labs..."
