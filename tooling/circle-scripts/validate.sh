@@ -2,7 +2,7 @@
 
 set -e
 
-if [ ${CIRCLE_BRANCH} -eq "release" ];
+if [ ${CIRCLE_BRANCH} -eq "release" ]; then
   echo "Build running on release branch; choosing to exit rather than running test suite a second time"
   exit 0
 fi
