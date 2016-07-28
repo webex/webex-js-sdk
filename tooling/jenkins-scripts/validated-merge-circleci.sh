@@ -7,8 +7,6 @@ set -o pipefail
 
 echo "Begin validated-merge-circleci.sh"
 
-npm install
-
 REMOTE=ghc
 BRANCH=validated-merge
 USERNAME=ciscospark
