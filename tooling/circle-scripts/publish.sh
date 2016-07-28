@@ -28,6 +28,7 @@ echo "Creating temporary .npmrc"
 echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > .npmrc
 
 echo "Publishing new versions to npm"
+set -x
 # TODO deprecate previous versions?
 # npm run lerna -- publish --repo-version=${NEXT_VERSION}
 npm run lerna -- publish --skip-git --canary --yes
@@ -45,7 +46,6 @@ echo "Publishing new documentation"
 npm run grunt:circle -- publish-docs
 
 echo "Tricking npm website into updating the README"
-set -x
 # Trick npmjs.com into updating the readme
 # See https://github.com/npm/newww/issues/389#issuecomment-188428605 and
 # https://github.com/lerna/lerna/issues/64 for details
