@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/test-helper-retry",
-  "version": "0.7.0-alpha.72d6b4cf",
+  "version": "0.7.0-alpha.5f191b42",
   "description": "",
   "main": "./src",
   "devDependencies": {
