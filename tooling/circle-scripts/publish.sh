@@ -12,6 +12,14 @@ set -e -o pipefail
 
 NODE_ENV=production npm run build
 
+echo "Setting git credentials"
+git config user.email "spark-js-sdk@example.com"
+git config user.name "spark-js-sdk automation"
+
+echo "Creating temporary .npmrc"
+# Note the intentional single quotes to avoid string interpolation
+echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > .npmrc
+
 npm run grunt:circle -- publish-docs
 
 # TODO deprecate previous versions?
@@ -20,7 +28,7 @@ npm run lerna -- publish --skip-git --canary
 # TODO parse top commit message for something like !release:X.Y.Z to decide
 # whether to do a canary release
 NEW_VERSION=`cat lerna.json | grep version | awk '{print $2}'`
-git add .
+git add lerna.json package.json packages/*/package.json
 git commit -m "Release ${NEW_VERSION}"
 git tag -a -m "Release ${NEW_VERSION}" "${NEW_VERSION}"
 git commit --allow-empty -m '[skip ci]'
