@@ -45,7 +45,7 @@ fi
 
 # Make sure we're using npm 2.x
 NPM_MAJOR_VERSION=$(npm --version | awk -F'.' '{print $1}')
-if [ $NPM_MAJOR_VERSION -eq "1" ]; then
+if [ "${NPM_MAJOR_VERSION}" = "1" ]; then
   npm install -g --registry=http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group npm@2.x
 fi
 
@@ -61,7 +61,7 @@ set +e
 git remote | grep -qc ghc
 IS_MISSING_GHC_REMOTE=$?
 set -e
-if [ $IS_MISSING_GHC_REMOTE -eq "1" ]; then
+if [ "${IS_MISSING_GHC_REMOTE}" = "1" ]; then
   git remote add ghc git@github.com:ciscospark/spark-js-sdk.git
 fi
 
