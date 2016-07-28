@@ -25,7 +25,7 @@ echo "Pushing validated merge result to GitHub Enterprise validated-merge branch
 git push -f origin HEAD:refs/heads/validated-merge
 
 if [ "${USE_CIRCLE}" = "true" ]; then
-  ./tooling/jenkins-scripts/validated-merge-circle.sh
+  ./tooling/jenkins-scripts/validated-merge-circleci.sh
   set +e
   ./tooling/jenkins-scripts/check-for-circle-outage.sh
   CIRCLE_OUTAGE_OCCURRED=$?
