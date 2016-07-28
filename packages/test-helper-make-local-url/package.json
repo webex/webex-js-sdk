@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/test-helper-make-local-url",
-  "version": "0.6.0",
+  "version": "0.7.0-alpha.262b567e",
   "description": "",
   "main": "./src",
   "devDependencies": {

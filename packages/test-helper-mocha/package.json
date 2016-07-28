@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/test-helper-mocha",
-  "version": "0.6.0",
+  "version": "0.7.0-alpha.262b567e",
   "description": "Helpers for controlling where tests run",
   "main": "./src",
   "devDependencies": {
