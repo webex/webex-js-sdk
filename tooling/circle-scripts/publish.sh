@@ -38,7 +38,7 @@ git add lerna.json package.json packages/*/package.json
 git commit -m "Release ${NEW_VERSION}"
 git tag -a -m "Release ${NEW_VERSION}" "${NEW_VERSION}"
 git commit --allow-empty -m '[skip ci]'
-git push origin HEAD:/refs/heads/master
+git push origin HEAD:refs/heads/master
 git push origin "${NEW_VERSION}"
 
 echo "Publishing new documentation"
