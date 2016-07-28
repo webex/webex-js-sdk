@@ -12,6 +12,8 @@ echo "no" > 503
 # Make sure the old sha artifact has been removed
 rm -f .promotion-sha
 
+rm -rf reports
+
 # Install lerna
 echo "Installing Tooling and legacy node_modules"
 npm install
