@@ -49,8 +49,6 @@ echo "Tricking npm website into updating the README"
 # Trick npmjs.com into updating the readme
 # See https://github.com/npm/newww/issues/389#issuecomment-188428605 and
 # https://github.com/lerna/lerna/issues/64 for details
-cd packages/ciscospark
-pwd
-npm version --no-git-tag-version "${NEW_VERSION}-readmehack"
-npm publish
-npm unpublish ciscospark@"${NEW_VERSION}-readmehack"
+npm run lerna -- exec --scope ciscospark -- npm version --no-git-tag-version "${NEW_VERSION}-readmehack"
+npm run lerna -- exec --scope ciscospark -- npm publish
+npm run lerna -- exec --scope ciscospark -- npm unpublish ciscospark@"${NEW_VERSION}-readmehack"
