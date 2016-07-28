@@ -1,10 +1,10 @@
 {
   "name": "@ciscospark/test-helper-automation",
-  "version": "0.7.0-alpha.5f191b42",
+  "version": "0.7.0-alpha.a473d482",
   "description": "",
   "main": "./src",
   "dependencies": {
-    "@ciscospark/test-helper-chai": "^0.7.0-alpha.5f191b42",
+    "@ciscospark/test-helper-chai": "^0.7.0-alpha.a473d482",
     "babel-plugin-lodash": "2.1.0",
     "chai": "^3.4.1",
     "chai-as-promised": "^5.1.0",

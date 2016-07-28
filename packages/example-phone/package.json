@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/example-phone",
-  "version": "0.7.0-alpha.5f191b42",
+  "version": "0.7.0-alpha.a473d482",
   "description": "",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
   "license": "(Apache-2.0)",
@@ -9,7 +9,7 @@
     "start": "webpack-dev-server --history-api-fallback --hot --inline --port 8000 --colors"
   },
   "dependencies": {
-    "ciscospark": "^0.7.0-alpha.5f191b42",
+    "ciscospark": "^0.7.0-alpha.a473d482",
     "babel-runtime": "^6.3.19",
     "extract-text-webpack-plugin": "^1.0.1",
     "lodash": "^4.5.1",
@@ -28,11 +28,11 @@
     "redux-thunk": "^2.0.1"
   },
   "devDependencies": {
-    "@ciscospark/http-core": "^0.7.0-alpha.5f191b42",
-    "@ciscospark/spark-core": "^0.7.0-alpha.5f191b42",
-    "@ciscospark/test-helper-automation": "^0.7.0-alpha.5f191b42",
-    "@ciscospark/test-helper-test-users": "^0.7.0-alpha.5f191b42",
-    "@ciscospark/xunit-with-logs": "^0.7.0-alpha.5f191b42",
+    "@ciscospark/http-core": "^0.7.0-alpha.a473d482",
+    "@ciscospark/spark-core": "^0.7.0-alpha.a473d482",
+    "@ciscospark/test-helper-automation": "^0.7.0-alpha.a473d482",
+    "@ciscospark/test-helper-test-users": "^0.7.0-alpha.a473d482",
+    "@ciscospark/xunit-with-logs": "^0.7.0-alpha.a473d482",
     "babel-core": "^6.7.7",
     "babel-eslint": "^6.0.0-beta.5",
     "babel-plugin-lodash": "2.1.0",
