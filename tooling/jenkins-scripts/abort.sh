@@ -6,6 +6,9 @@ if [ ! -e CIRCLE_BUILD_NUMBER ]; then
   exit 0
 fi
 
+USERNAME=ciscospark
+PROJECT=spark-js-sdk
+
 echo "Attempting to abort build on Circle CI"
 CIRCLE_BUILD_NUMBER=`cat CIRCLE_BUILD_NUMBER`
 
