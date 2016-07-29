@@ -1,8 +1,11 @@
 #!/bin/bash
 
 # Don't fail if the following fail
+ps aux | grep node | grep -v node | awk '{print $2}'
 ps aux | grep node | grep -v node | awk '{print $2}' | xargs kill
+ps aux | grep sc | grep -v sc | awk '{print $2}'
 ps aux | grep sc | grep -v sc | awk '{print $2}' | xargs kill
+ps aux | grep grunt | grep -v grunt | awk '{print $2}'
 ps aux | grep grunt | grep -v grunt | awk '{print $2}' | xargs kill
 
 # Now, fail if anything fails
