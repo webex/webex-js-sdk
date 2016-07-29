@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/test-helper-sinon",
-  "version": "0.7.0-alpha.9f4b34d9",
+  "version": "0.7.0-alpha.e8633735",
   "description": "",
   "main": "./src",
   "dependencies": {
