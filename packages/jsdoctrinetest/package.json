@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/jsdoctrinetest",
-  "version": "0.7.0-alpha.a473d482",
+  "version": "0.7.0-alpha.ac191d62",
   "description": "",
   "main": "dist/index.js",
   "devMain": "src/index.js",
@@ -18,7 +18,7 @@
     "lodash": "^4.13.1"
   },
   "devDependencies": {
-    "@ciscospark/test-helper-chai": "^0.7.0-alpha.a473d482",
+    "@ciscospark/test-helper-chai": "^0.7.0-alpha.ac191d62",
     "babel-eslint": "^6.0.0-beta.5",
     "babel-plugin-lodash": "2.1.0",
     "babel-polyfill": "^6.3.14",

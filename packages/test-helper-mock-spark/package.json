@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/test-helper-mock-spark",
-  "version": "0.7.0-alpha.a473d482",
+  "version": "0.7.0-alpha.ac191d62",
   "description": "",
   "main": "./src",
   "devDependencies": {
@@ -9,7 +9,7 @@
     "eslint-plugin-mocha-only": "0.0.3"
   },
   "dependencies": {
-    "@ciscospark/test-helper-sinon": "^0.7.0-alpha.a473d482",
+    "@ciscospark/test-helper-sinon": "^0.7.0-alpha.ac191d62",
     "ampersand-state": "^5.0.0",
     "es6-promise": "^3.2.1",
     "lodash": "^4.6.1"
