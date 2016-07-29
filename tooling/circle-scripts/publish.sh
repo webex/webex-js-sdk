@@ -31,7 +31,7 @@ echo "Publishing new versions to npm"
 set -x
 # TODO deprecate previous versions?
 # npm run lerna -- publish --repo-version=${NEXT_VERSION}
-npm run lerna -- publish --skip-git --canary --yes
+NPM_CONFIG_LOGLEVEL=info npm run lerna -- publish --skip-git --canary --yes
 # TODO parse top commit message for something like !release:X.Y.Z to decide
 # whether to do a canary release
 NEW_VERSION="`cat lerna.json | grep version | awk '{print $2}'| sed -e 's/^"//'  -e 's/"$//'`-alpha.`git rev-parse --short HEAD`"
