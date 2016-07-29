@@ -1,10 +1,10 @@
 {
   "name": "@ciscospark/test-helper-file",
-  "version": "0.7.0-alpha.7432d01a",
+  "version": "0.7.0-alpha.a1d2bd56",
   "description": "File helpers for writing isomorphicish mocha tests",
   "main": "./src/index.js",
   "dependencies": {
-    "@ciscospark/test-helper-make-local-url": "^0.7.0-alpha.7432d01a",
+    "@ciscospark/test-helper-make-local-url": "^0.7.0-alpha.a1d2bd56",
     "es6-promise": "^3.2.1",
     "xhr": "^2.2.0"
   },
