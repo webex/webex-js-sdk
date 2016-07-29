@@ -1,9 +1,7 @@
 #!/bin/bash
 
-# Common actions that run at the beginning of a validated-merge build
-
 set -e
-pwd
+
 echo "Begin validated-merge.sh"
 
 # Make sure there's no 503 artifact lingering from a previous build
@@ -31,6 +29,7 @@ if [ "${USE_CIRCLE}" = "true" ]; then
   CIRCLE_OUTAGE_OCCURRED=$?
   set -e
   if [ "${CIRCLE_OUTAGE_OCCURRED}" = "0" ]; then
+    rm -rf reports
     ./tooling/jenkins-scripts/validated-merge-jenkins.sh
   fi
 else

@@ -12,9 +12,6 @@ LOG_FILE="$(pwd)/test.log"
 rm -f "${LOG_FILE}"
 
 # INSTALL
-echo "Installing legacy SDK dependencies"
-npm install
-
 echo "Installing modular SDK dependencies"
 npm run bootstrap
 

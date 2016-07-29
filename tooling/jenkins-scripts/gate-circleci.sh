@@ -4,9 +4,6 @@ set -e
 set -o pipefail
 
 BRANCH="gate-${JOB_NAME}-${BUILD_NUMBER}"
-
-PROMOTION_SHA=`cat .promotion-sha`
-git checkout ${PROMOTION_SHA}
 git push -f ghc ${HEAD}:refs/heads/${BRANCH}
 
 ./tooling/circle --auth ${CIRCLECI_AUTH_TOKEN} \
