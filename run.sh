@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Don't fail if the following fail
-ps -A | grep node | awk '{print $1}' | xargs kill
-ps -A | grep sc | awk '{print $1}' | xargs kill
-ps -A | grep grunt | awk '{print $1}' | xargs kill
+ps aux | grep "[n]ode" | awk '{print $2}' | xargs kill
+ps aux | grep "[s]c" | awk '{print $2}' | xargs kill
+ps aux | grep "[g]runt" | awk '{print $2}' | xargs kill
 
 # Now, fail if anything fails
 set -e
