@@ -42,7 +42,9 @@ CIRCLE_BUILD_STATUS=`./tooling/circle get-build \
   --project=${PROJECT} \
   --build_num=${CIRCLE_BUILD_NUMBER} -j | jq .status`
 
-if [ ${CIRCLE_BUILD_STATUS} = "success" ]; then
+echo "Circle CI build #${CIRCLE_BUILD_NUMBER} completed with status ${CIRCLE_BUILD_STATUS}"
+
+if [ "${CIRCLE_BUILD_STATUS}" = "success" ]; then
   # Merge the new package versions from Circle CI
   echo "Fetching publication result from GitHub.com"
   git fetch ghc
