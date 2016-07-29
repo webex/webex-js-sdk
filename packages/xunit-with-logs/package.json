@@ -1,10 +1,10 @@
 {
   "name": "@ciscospark/xunit-with-logs",
-  "version": "0.7.0-alpha.1b270cd4",
+  "version": "0.7.0-alpha.7432d01a",
   "description": "",
   "main": "./src",
   "dependencies": {
-    "@ciscospark/test-helper-mocha": "^0.7.0-alpha.1b270cd4",
+    "@ciscospark/test-helper-mocha": "^0.7.0-alpha.7432d01a",
     "lodash": "^4.5.1",
     "mkdirp": "^0.5.1"
   },
