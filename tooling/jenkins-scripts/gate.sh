@@ -16,7 +16,7 @@ echo "Installing legacy SDK dependencies"
 npm install
 
 if [ "${USE_CIRCLE}" = "true" ]; then
-  ./tooling/jenkins-scripts/gate-circle.sh
+  ./tooling/jenkins-scripts/gate-circleci.sh
   set +e
   ./tooling/jenkins-scripts/check-for-circle-outage.sh
   CIRCLE_OUTAGE_OCCURRED=$?
