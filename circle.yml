@@ -39,6 +39,7 @@ dependencies:
     - packages/test-helper-test-users/node_modules
     - packages/xunit-with-logs/node_modules
   pre:
+    # spark-js-sdk--test-users
     - ls spark-js-sdk--test-users > /dev/null 2> /dev/null || git clone git@github.com:ianwremmel/spark-js-sdk--test-users.git:
         pwd: ../
     - git checkout v0.3.4:
@@ -50,9 +51,13 @@ dependencies:
     - npm link spark-js-sdk--test-users
     - npm link spark-js-sdk--test-users:
         pwd: packages/test-helper-test-users
+    # lerna fork
+    - ls lerna > /dev/null 2> /dev/null || git clone git@github.com:ianwremmel/lerna.git:
+        pwd: ../
+    - npm link:
+        pwd: ../lerna
+    - npm link lerna
   post:
-    - npm install && npm run build:
-        pwd: node_modules/lerna
     - npm run bootstrap
 
 test:
