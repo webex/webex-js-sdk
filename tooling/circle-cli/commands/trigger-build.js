@@ -64,10 +64,31 @@ module.exports = {
         return build;
       })
       .then(blockUntilComplete(argv, ci))
+      // TODO if status is retried, start polling for completion of new job
       .then(tap((result) => statusToXunit(argv, ci, result)))
       .then(tap(() => downloadArtifacts(argv, ci, build)))
       .then((result) => {
+        /* eslint complexity: [0] */
         console.log(`build ${build.build_num} completed with status ${result.status}`);
+        switch (result.status) {
+        case `success`:
+        case `fixed`:
+        case `failed`:
+          process.exit(0);
+          break;
+        case `retried`:
+        case `canceled`:
+        case `timedout`:
+        case `not_run`:
+        case `running`:
+        case `queued`:
+        case `scheduled`:
+        case `not_running`:
+        case `no_tests`:
+        case `infrastructure_fail`:
+        default:
+          process.exit(1);
+        }
       })
       .catch(exitWithError);
   }
