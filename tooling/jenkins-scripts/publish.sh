@@ -40,7 +40,7 @@ CIRCLE_BUILD_STATUS=`./tooling/circle get-build \
   --auth=${CIRCLECI_AUTH_TOKEN} \
   --username=${USERNAME} \
   --project=${PROJECT} \
-  --build_num=${CIRCLE_BUILD_NUMBER} -j | jq .status`
+  --build_num=${CIRCLE_BUILD_NUMBER} -j | jq .status | sed -e 's/^"//'  -e 's/"$//'`
 
 echo "Circle CI build #${CIRCLE_BUILD_NUMBER} completed with status ${CIRCLE_BUILD_STATUS}"
 
