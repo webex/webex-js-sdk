@@ -1,6 +1,6 @@
 {
   "name": "generator-ciscospark",
-  "version": "0.7.0-alpha.e8633735",
+  "version": "0.7.0-alpha.5eedbbae",
   "description": "Scaffolds new ciscospark plugins and projects",
   "homepage": "",
   "main": "./generators/index.js",

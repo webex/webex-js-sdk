@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/test-helper-test-users",
-  "version": "0.7.0-alpha.e8633735",
+  "version": "0.7.0-alpha.5eedbbae",
   "description": "",
   "main": "./src",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
