@@ -6,6 +6,10 @@ machine:
   node:
     version: 4
 
+general:
+  artifacts:
+    - "lerna-debug.log"
+
 dependencies:
   cache_directories:
     - node_modules
