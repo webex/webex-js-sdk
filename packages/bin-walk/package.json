@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/bin-walk",
-  "version": "0.7.0-alpha.f22f099e",
+  "version": "0.7.0-alpha.c4c1fbb6",
   "description": "",
   "main": "./src",
   "bin": {
