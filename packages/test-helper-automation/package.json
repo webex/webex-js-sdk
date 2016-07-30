@@ -3,6 +3,7 @@
   "version": "0.7.0-alpha.a473d482",
   "description": "",
   "main": "./src",
+  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-automation",
   "dependencies": {
     "@ciscospark/test-helper-chai": "^0.7.0-alpha.a473d482",
     "babel-plugin-lodash": "2.1.0",

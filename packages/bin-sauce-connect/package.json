@@ -5,6 +5,7 @@
   "bin": {
     "sauce-connect": "./bin/sauce-connect"
   },
+  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/bin-sauce-connect",
   "dependencies": {
     "babel-plugin-lodash": "2.1.0",
     "babel-plugin-syntax-async-functions": "^6.3.13",

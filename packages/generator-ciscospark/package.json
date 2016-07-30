@@ -35,6 +35,6 @@
       "mocha": true
     }
   },
-  "repository": "git@sqbu-github.cisco.com:iremmel/squared-js-sdk.git",
+  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/generator-ciscospark",
   "license": "Apache-2.0"
 }

@@ -6,6 +6,7 @@
   "devMain": "src/index.js",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
   "license": "(Apache-2.0)",
+  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-mercury",
   "dependencies": {
     "@ciscospark/common": "^0.7.0-alpha.c4c1fbb6",
     "@ciscospark/http-core": "^0.7.0-alpha.c4c1fbb6",

@@ -3,6 +3,7 @@
   "version": "0.7.0-alpha.c4c1fbb6",
   "description": "chai extended with chai-as-promised and spark specific assertions",
   "main": "./src",
+  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-chai",
   "dependencies": {
     "@ciscospark/test-helper-file": "^0.7.0-alpha.c4c1fbb6",
     "@ciscospark/test-helper-sinon": "^0.7.0-alpha.c4c1fbb6",
