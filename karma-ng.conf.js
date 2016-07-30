@@ -98,7 +98,7 @@ module.exports = function(config) {
     singleRun: !process.env.KARMA_DEBUG
   };
 
-  if (process.env.COVERAGE) {
+  if (process.env.COVERAGE && process.env.COVERAGE !== 'undefined') {
     cfg.coverageReporter = {
       reporters: [{
         type: 'json',

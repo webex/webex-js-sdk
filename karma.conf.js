@@ -94,7 +94,7 @@ module.exports = function(config) {
     cfg.coverageReporter = {
       reporters: [{
         type: 'json',
-        dir: 'reports/coverage'
+        dir: 'reports/coverage/legacy'
       }]
     };
 
@@ -105,9 +105,9 @@ module.exports = function(config) {
 
   if (process.env.XUNIT) {
     cfg.junitReporter = {
-      outputFile: 'karma.xml',
-      outputDir: 'reports',
-      suite: 'karma',
+      outputFile: 'karma-legacy.xml',
+      outputDir: process.env.XUNIT_DIR || 'reports/junit',
+      suite: 'karma-legacy',
       useBrowserName: true
     };
 

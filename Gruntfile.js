@@ -186,11 +186,14 @@ module.exports = function(grunt) {
       }
     },
 
-    instrument: {
-      files: '<%= config.src %>/**/*.js',
-      options: {
-        basePath: '<%= config.tmp %>',
-        cwd: process.cwd()
+    instrument2: {
+      src: {
+        files: [{
+          cwd: '.',
+          dest: '<%= config.tmp %>',
+          expand: true,
+          src: '<%= config.src %>/**/*.js'
+        }]
       }
     },
 
@@ -245,6 +248,27 @@ module.exports = function(grunt) {
       }
     },
 
+    makeReport2: {
+      all: {
+        files: [{
+          cwd: './reports/coverage-final/',
+          expand: true,
+          src: '**/*.json'
+        }],
+        options: {
+          reporters: {
+            cobertura: {
+              file: './reports/cobertura.xml'
+            },
+            lcovonly: {
+              file: './reports/lcov.info'
+            },
+            'text-summary': {}
+          }
+        }
+      }
+    },
+
     mochaTest: {
       options: {
         reporter: 'spec',
@@ -254,7 +278,7 @@ module.exports = function(grunt) {
       automation: {
         options: {
           reporterOptions: {
-            output: 'reports/xunit-automation.xml'
+            output: '<%= xunitDir %>/xunit-automation.xml'
           }
         },
         src: ['<%= config.test %>/automation/spec/**/*.js']
@@ -262,7 +286,7 @@ module.exports = function(grunt) {
       integration: {
         options: {
           reporterOptions: {
-            output: 'reports/xunit-integration.xml'
+            output: '<%= xunitDir %>/xunit-integration.xml'
           }
         },
         src: ['<%= config.test %>/integration/spec/**/*.js']
@@ -270,7 +294,7 @@ module.exports = function(grunt) {
       unit: {
         options: {
           reporterOptions: {
-            output: 'reports/xunit-unit.xml'
+            output: '<%= xunitDir %>/xunit-unit.xml'
           }
         },
         src: ['<%= config.test %>/unit/spec/**/*.js']
@@ -288,11 +312,15 @@ module.exports = function(grunt) {
       }
     },
 
-    storeCoverage: {
-      options: {
-        dir: 'reports/coverage/mocha'
+    storeCoverage2: {
+      test: {
+        options: {
+          dest: './reports/coverage/legacy/mocha-final.json'
+        }
       }
-    }
+    },
+
+    xunitDir: process.env.XUNIT_DIR || './reports'
   });
 
   // Private task for removing SQUARED_JS_SDK from the beginning of env
