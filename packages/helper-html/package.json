@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/helper-html",
-  "version": "0.7.0-alpha.c4c1fbb6",
+  "version": "0.7.0-alpha.677de49c",
   "description": "HTML Utiltities",
   "main": "dist/index.js",
   "devMain": "src/index.js",
@@ -13,9 +13,9 @@
     "lodash": "^4.5.1"
   },
   "devDependencies": {
-    "@ciscospark/test-helper-chai": "^0.7.0-alpha.c4c1fbb6",
-    "@ciscospark/test-helper-mocha": "^0.7.0-alpha.c4c1fbb6",
-    "@ciscospark/xunit-with-logs": "^0.7.0-alpha.c4c1fbb6",
+    "@ciscospark/test-helper-chai": "^0.7.0-alpha.677de49c",
+    "@ciscospark/test-helper-mocha": "^0.7.0-alpha.677de49c",
+    "@ciscospark/xunit-with-logs": "^0.7.0-alpha.677de49c",
     "babel-eslint": "^6.0.0-beta.5",
     "babel-plugin-lodash": "2.1.0",
     "babel-polyfill": "^6.3.14",

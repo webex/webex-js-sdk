@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/test-helper-sinon",
-  "version": "0.7.0-alpha.c4c1fbb6",
+  "version": "0.7.0-alpha.677de49c",
   "description": "",
   "main": "./src",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-sinon",
