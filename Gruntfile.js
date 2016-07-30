@@ -12,6 +12,7 @@ module.exports = function(grunt) {
 
   require('load-grunt-tasks')(grunt);
   require('time-grunt')(grunt);
+  grunt.loadTasks('tasks');
 
   var AUTOMATION_PORT = process.env.AUTOMATION_PORT || 8000;
   var FIXTURE_PORT = process.env.FIXTURE_PORT || 9000;
