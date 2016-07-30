@@ -40,23 +40,24 @@ module.exports = function gruntConfig(grunt) {
   }, [
       // packages are order to optimize build time while keep flaky tests near
       // the start of the build
-      // odd numbered quartets should be ordered fastest to slowest in the group
-      // even numbered quartets should be ordered slowest to fastest in the
+      // odd numbered blocks should be ordered fastest to slowest in the group
+      // even numbered blocks should be ordered slowest to fastest in the
       // group
       `plugin-phone`,
       `ciscospark`,
       `spark-core`,
+
+      `http-core`,
+      `plugin-mercury`,
       `example-phone`,
 
-      `plugin-mercury`,
-      `http-core`,
+      `helper-html`,
       `plugin-wdm`,
       `plugin-locus`,
 
       `common`,
       `generator-ciscospark`,
       `jsdoctrinetest`,
-      `helper-html`,
 
       `*`,
       `!test-helper*`,
@@ -66,7 +67,16 @@ module.exports = function gruntConfig(grunt) {
 
   const CIRCLE_NODE_TOTAL = parseInt(process.env.CIRCLE_NODE_TOTAL || 1, 10);
   const CIRCLE_NODE_INDEX = parseInt(process.env.CIRCLE_NODE_INDEX || 0, 10);
-  const SINGLE_NODE_PACKAGES = ALL_NODE_PACKAGES.filter((packageName, index) => index % CIRCLE_NODE_TOTAL === CIRCLE_NODE_INDEX);
+
+  let SINGLE_NODE_PACKAGES;
+  if (CIRCLE_NODE_TOTAL === 1) {
+    SINGLE_NODE_PACKAGES = ALL_NODE_PACKAGES;
+  }
+  else {
+    const availableModularBuildNodes = CIRCLE_NODE_TOTAL - 1;
+    SINGLE_NODE_PACKAGES = ALL_NODE_PACKAGES.filter((packageName, index) => index % availableModularBuildNodes === CIRCLE_NODE_INDEX);
+  }
+
 
   const config = {
     concurrent: {
@@ -207,6 +217,16 @@ module.exports = function gruntConfig(grunt) {
     grunt.registerTask(taskName, `concurrent:${taskName}`);
   });
 
+  // If we're on the last node, we should run the legacy sdk suite
+  if (CIRCLE_NODE_INDEX === CIRCLE_NODE_TOTAL - 1) {
+    config.shell.legacy = {
+      command: `npm run test:legacy`
+    };
+
+    config.concurrent.test = config.concurrent.test || {};
+    config.concurrent.test.tasks = config.concurrent.test.tasks || [];
+    config.concurrent.test.tasks.push(`shell:legacy`);
+  }
 
   grunt.initConfig(config);
 
@@ -220,5 +240,5 @@ module.exports = function gruntConfig(grunt) {
     config.concurrent[task].tasks.push(`shell:${task}_${packageName}`);
   }
 
-  console.log(`Evaluating ${SINGLE_NODE_PACKAGES.join(`, `)} on this node`);
+  console.log(`Evaluating ${SINGLE_NODE_PACKAGES.join(`, `) || `legacy packages`} on this node`);
 };
