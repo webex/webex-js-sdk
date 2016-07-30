@@ -61,6 +61,7 @@ module.exports = {
         // eslint-disable-next-line camelcase
         fs.writeFileSync(`CIRCLE_BUILD_NUMBER`, result.build_num);
         build.build_num = result.build_num;
+        console.log(`<a href="https://circleci.com/gh/${argv.username}/${argv.project}/${result.build_num}">Start build #${result.build_num} on CircleCI</a>`);
         return build;
       })
       .then(blockUntilComplete(argv, ci))
