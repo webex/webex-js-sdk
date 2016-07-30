@@ -17,6 +17,7 @@ module.exports = _.curry((argv, ci, build) => {
 
   return ci.getBuildArtifacts(build)
     .then((artifacts) => {
+      console.log(require('util').inspect(artifacts, { depth: null }));
       return artifacts.reduce((promise, artifact) => {
         return promise.then(() => downloadArtifact(artifact));
       }, Promise.resolve());
