@@ -7,9 +7,6 @@ if [ "${CIRCLE_BRANCH}" = "release" ]; then
   exit 0
 fi
 
-echo "Building all modules"
-npm run grunt:circle -- build
-
 echo "Connecting to Sauce Labs"
 npm run sauce:start
 

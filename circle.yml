@@ -67,6 +67,9 @@ dependencies:
     - npm run bootstrap
 
 test:
+  pre:
+    - npm run grunt:circle -- build:
+        parallel: true
   override:
     - ./tooling/circle-scripts/validate.sh:
         parallel: true
