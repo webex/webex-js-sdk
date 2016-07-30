@@ -17,11 +17,10 @@ module.exports = _.curry((argv, ci, build) => {
 
   return ci.getBuildArtifacts(build)
     .then((artifacts) => {
-      console.log(require('util').inspect(artifacts, { depth: null }));
       return artifacts.reduce((promise, artifact) => {
         return promise.then(() => {
           return downloadArtifact(artifact)
-            .catch((reason) => console.error(3, reason));
+            .catch((reason) => console.error(`failed to download artifiact`, reason));
         });
       }, Promise.resolve());
     });
@@ -51,14 +50,12 @@ function downloadArtifact(artifact) {
     // saving the first file.
     request(artifact.url, (err, res) => {
       if (err) {
-        console.error(1, error)
         reject(err);
         return;
       }
 
       fs.writeFile(filename, res.body, (err2) => {
         if (err2) {
-          console.error(2, error)
           reject(err2);
           return;
         }
