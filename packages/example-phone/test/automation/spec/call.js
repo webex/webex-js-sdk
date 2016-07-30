@@ -106,7 +106,8 @@ describe(`example-phone`, () => {
       //         .should.eventually.equal(`sendrecv`))
       );
 
-    it(`toggles sending its video`, () => browser
+    // FIXME disabled for pipeline transition work
+    it.skip(`toggles sending its video`, () => browser
       .clickOnTitle(`Stop sending video`)
       .assertLocalVideoDirection(`recvonly`)
       // FIXME reenable the next block once locus fixes #3939
