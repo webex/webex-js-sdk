@@ -3,6 +3,8 @@
 set -e
 set -o pipefail
 
+echo "Begin gate-circleci.sh"
+
 BRANCH="gate-${JOB_NAME}-${BUILD_NUMBER}"
 git push -f ghc ${HEAD}:refs/heads/${BRANCH}
 
@@ -19,3 +21,5 @@ git push -f ghc ${HEAD}:refs/heads/${BRANCH}
   trigger-build
 
 git push ghc --delete ${BRANCH}
+
+echo "Complete gate-circleci.sh"
