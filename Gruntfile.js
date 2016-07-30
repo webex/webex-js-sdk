@@ -248,27 +248,6 @@ module.exports = function(grunt) {
       }
     },
 
-    makeReport2: {
-      all: {
-        files: [{
-          cwd: './reports/coverage-final/',
-          expand: true,
-          src: '**/*.json'
-        }],
-        options: {
-          reporters: {
-            cobertura: {
-              file: './reports/cobertura.xml'
-            },
-            lcovonly: {
-              file: './reports/lcov.info'
-            },
-            'text-summary': {}
-          }
-        }
-      }
-    },
-
     mochaTest: {
       options: {
         reporter: 'spec',
@@ -459,7 +438,7 @@ module.exports = function(grunt) {
 
     if (COVERAGE) {
       tasks.push('copy:test');
-      tasks.push('instrument');
+      tasks.push('instrument2');
     }
 
     if (!target || target === 'unit') {
@@ -479,11 +458,7 @@ module.exports = function(grunt) {
     }
 
     if (target !== 'karma' && COVERAGE) {
-      tasks.push('storeCoverage');
-    }
-
-    if (COVERAGE) {
-      tasks.push('makeReport');
+      tasks.push('storeCoverage2');
     }
 
     if (SAUCE) {
