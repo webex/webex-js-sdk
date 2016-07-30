@@ -28,10 +28,6 @@ npm run grunt:concurrent -- --no-color --stack clean
 echo "Building modules"
 npm run grunt:circle -- build
 
-# Reminder: checkdep must come after build because it looks at ./dist/index.js
-echo "Checking for undeclared dependencies"
-npm run checkdep
-
 # TEST
 echo "Connecting to Sauce Labs..."
 npm run sauce:start

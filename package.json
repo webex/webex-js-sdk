@@ -32,9 +32,6 @@
   "scripts": {
     "bootstrap": "lerna bootstrap",
     "build": "npm run grunt:concurrent -- build",
-    "checkdep": "npm run checkdep:packages && npm run checkdep:legacy",
-    "checkdep:packages": "lerna exec -- `pwd`/node_modules/.bin/dependency-check package.json",
-    "checkdep:legacy": "dependency-check package.json",
     "check-karma-output": "./scripts/analyze-output.sh",
     "check-package": "[[ -nz $PACKAGE ]] || (echo 'environment variable PACKAGE must be defined' && exit 1)",
     "prebuild:package": "npm run check-package",

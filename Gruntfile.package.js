@@ -17,6 +17,8 @@ module.exports = function(grunt) {
   require('time-grunt')(grunt);
   grunt.loadTasks('tasks');
 
+  grunt.loadNpmTasks('dependency-check');
+
   grunt.initConfig({
     babel: {
       dist: {
@@ -88,6 +90,13 @@ module.exports = function(grunt) {
             return JSON.stringify(c2);
           }
         }
+      }
+    },
+    'dependency-check': {
+      files: '.',
+      options: {
+        excludeUnusedDev: true,
+        package: './packages/<%= package %>'
       }
     },
     documentation: {
@@ -274,7 +283,8 @@ module.exports = function(grunt) {
   ]);
 
   registerTask('static-analysis', [
-    'eslint'
+    'eslint',
+    'dependency-check'
   ]);
 
   registerTask('build', [
