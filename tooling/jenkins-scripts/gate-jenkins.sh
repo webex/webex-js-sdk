@@ -5,6 +5,8 @@
 set -e
 set -o pipefail
 
+echo "Begin gate-jenkins.sh"
+
 export NODE_ENV=test
 export XUNIT=true
 
@@ -41,5 +43,7 @@ set -e
 echo "Disconnecting from Sauce Labs..."
 npm run sauce:stop
 echo "Disconnected from Sauce Labs"
+
+echo "Complete gate-jenkins.sh"
 
 exit $EXIT_CODE

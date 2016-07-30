@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-
+set +x
 echo "Begin gate.sh"
 
 # Make sure there's no 503 artifact lingering from a previous build
