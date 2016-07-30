@@ -67,7 +67,6 @@ module.exports = {
       .then(blockUntilComplete(argv, ci))
       // TODO if status is retried, start polling for completion of new job
       .then(tap((result) => statusToXunit(argv, ci, result)))
-      .then(tap(() => new Promise((resolve) => setTimeout(resolve, 10000))))
       .then(tap(() => downloadArtifacts(argv, ci, build)))
       .then((result) => {
         /* eslint complexity: [0] */
