@@ -1,11 +1,11 @@
 {
   "name": "@ciscospark/test-helper-chai",
-  "version": "0.7.0-alpha.73de98f3",
+  "version": "0.7.0-alpha.3266717c",
   "description": "chai extended with chai-as-promised and spark specific assertions",
   "main": "./src",
   "dependencies": {
-    "@ciscospark/test-helper-file": "^0.7.0-alpha.73de98f3",
-    "@ciscospark/test-helper-sinon": "^0.7.0-alpha.73de98f3",
+    "@ciscospark/test-helper-file": "^0.7.0-alpha.3266717c",
+    "@ciscospark/test-helper-sinon": "^0.7.0-alpha.3266717c",
     "babel-plugin-lodash": "2.1.0",
     "chai": "^3.4.1",
     "chai-as-promised": "^5.1.0",
