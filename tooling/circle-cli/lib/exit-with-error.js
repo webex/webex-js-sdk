@@ -5,6 +5,7 @@ const fs = require(`fs`);
 module.exports = function exitWithError(reason) {
   console.log(Object.keys(reason));
   console.error(reason);
+  console.error(reason.body);
   console.error(reason.stack);
   if (reason.message.indexOf(`503`) !== -1) {
     console.warn(`CircleCI appears to be having a capacity problem`);
