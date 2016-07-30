@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/test-helper-server",
-  "version": "0.7.0-alpha.72d4530e",
+  "version": "0.7.0-alpha.f22f099e",
   "description": "",
   "main": "./src",
   "dependencies": {
