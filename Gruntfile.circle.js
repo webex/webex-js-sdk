@@ -40,24 +40,25 @@ module.exports = function gruntConfig(grunt) {
   }, [
       // packages are order to optimize build time while keep flaky tests near
       // the start of the build
-      // odd numbered quartets should be order fastest to slowest in the group
-      // even numbered quartets should be order slowest to fastest in the group
-      // `plugin-phone`,
-      // `ciscospark`,
+      // odd numbered quartets should be ordered fastest to slowest in the group
+      // even numbered quartets should be ordered slowest to fastest in the
+      // group
+      `plugin-phone`,
+      `ciscospark`,
       `spark-core`,
-      // `example-phone`,
-      //
-      // `plugin-mercury`,
+      `example-phone`,
+
+      `plugin-mercury`,
       `http-core`,
-      // `plugin-wdm`,
-      // `plugin-locus`,
+      `plugin-wdm`,
+      `plugin-locus`,
 
       `common`,
-      // `generator-ciscospark`,
-      // `jsdoctrinetest`,
+      `generator-ciscospark`,
+      `jsdoctrinetest`,
       `helper-html`,
 
-      // `*`,
+      `*`,
       `!test-helper*`,
       `!bin*`,
       `!xunit-with-logs`
