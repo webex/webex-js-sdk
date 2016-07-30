@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/bin-sauce-connect",
-  "version": "0.7.0-alpha.677de49c",
+  "version": "0.7.0-alpha.a125535f",
   "description": "",
   "bin": {
     "sauce-connect": "./bin/sauce-connect"
