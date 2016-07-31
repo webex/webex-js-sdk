@@ -226,6 +226,10 @@ module.exports = function gruntConfig(grunt) {
     config.concurrent.test = config.concurrent.test || {};
     config.concurrent.test.tasks = config.concurrent.test.tasks || [];
     config.concurrent.test.tasks.push(`shell:legacy`);
+
+    // For reasons I can't explain, grunt-concurrent doesn't seem to be honoring
+    // logConcurrentOutput for concurrent.test
+    grunt.registerTask(`test`, [`shell:legacy`]);
   }
 
   grunt.initConfig(config);
