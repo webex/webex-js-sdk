@@ -6,20 +6,38 @@
 // while writing periods to STDOUT
 
 const cp = require(`child_process`);
-
+const path = require(`path`);
 let timer;
 function tick() {
+  process.stdout.write(`.`);
   timer = setTimeout(() => {
-    console.log(`.`);
     tick();
-  }, 15000);
+  }, 5000);
 }
 
-tick();
-// spawn's arguments array is a little tricky to manage, so it it seemed easier
-// to just put the logic in a shell script and rely on this file for ticks.
-const legacy = cp.spawn(`legacy.sh`, [], {
-  stdio: [`pipe`, `pipe`, `pipe`]
-});
+try {
+  tick();
+  // spawn's arguments array is a little tricky to manage, so it it seemed easier
+  // to just put the logic in a shell script and rely on this file for ticks.
+  const legacy = cp.spawn(path.resolve(__dirname, `legacy.sh`), [], {
+    stdio: [`pipe`, `pipe`, `pipe`]
+  });
 
-legacy.on(`close`, () => clearTimeout(timer));
+  legacy.stdout.on(`data`, (data) => console.log(`${data}`));
+  legacy.stderr.on(`data`, (data) => console.error(`${data}`));
+
+  legacy.on(`close`, () => {
+    console.log(`done`);
+    clearTimeout(timer);
+  });
+  legacy.on(`error`, (reason) => {
+    console.error(reason);
+    console.error(reason.stack);
+
+    process.exit(1);
+  });
+}
+catch (error) {
+  console.error(error);
+  process.exit(1);
+}
