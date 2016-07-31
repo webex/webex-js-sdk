@@ -220,7 +220,7 @@ module.exports = function gruntConfig(grunt) {
   // If we're on the last node, we should run the legacy sdk suite
   if (CIRCLE_NODE_INDEX === CIRCLE_NODE_TOTAL - 1) {
     config.shell.legacy = {
-      command: `npm run test:legacy > ${process.env.CIRCLE_ARTIFACTS}/legacy.log 2>&1`
+      command: `node ./tooling/circle-scripts/legacy.js`
     };
 
     config.concurrent.test = config.concurrent.test || {};
