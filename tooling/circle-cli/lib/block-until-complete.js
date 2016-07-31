@@ -25,5 +25,12 @@ module.exports = _.curry(function blockUntilComplete(argv, ci, build) {
       }
 
       return result;
+    })
+    .catch((reason) => {
+      if (reason.code === `ENOTFOUND`) {
+        console.warn(`ENOTFOUND returned when fetching build status`);
+        return blockUntilComplete(argv, ci, build);
+      }
+      return Promise.reject(reason);
     });
 });

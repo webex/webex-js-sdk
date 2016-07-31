@@ -20,6 +20,22 @@ module.exports = _.curry((argv, ci, build) => {
       return artifacts.reduce((promise, artifact) => {
         return promise.then(() => {
           return downloadArtifact(artifact)
+            .catch((reason) => {
+              if (reason.code === `ENOTFOUND`) {
+                console.warn(`ENOTFOUND returned when download artifact`);
+                return downloadArtifact(artifact);
+              }
+
+              return Promise.reject(reason);
+            })
+            .catch((reason) => {
+              if (reason.code === `ENOTFOUND`) {
+                console.warn(`ENOTFOUND returned when download artifact`);
+                return downloadArtifact(artifact);
+              }
+
+              return Promise.reject(reason);
+            })
             .catch((reason) => console.error(`failed to download artifiact`, reason));
         });
       }, Promise.resolve());
