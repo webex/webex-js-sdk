@@ -9,9 +9,22 @@ const tap = require(`../lib/tap`);
 const blockUntilQueueEmpty = _.curry(function blockUntilQueueEmpty(argv, ci) {
   return ci.getBranchBuilds(argv)
     .then((builds) => {
-      if (_.filter(builds, {status: `pending`}).length > 0 || _.filter(builds, {status: `running`}).length > 0) {
+
+      // lifecycle values:
+      // - queued
+      // - scheduled
+      // - not_run
+      // - not_running
+      // - running
+      // - finished
+      // I'm assuming not_run and finished are the only values the imply the
+      // build is not running or pending
+      const queued = builds
+        .filter((build) => build.lifecycle !== `finished` && build.lifecycle !== `not_run`);
+
+      if (queued.length > 0) {
         return new Promise((resolve) => {
-          console.log('waiting for queue to drain')
+          console.log(`waiting for queue to drain`);
           setTimeout(() => resolve(blockUntilQueueEmpty(argv, ci)), argv.interval);
         });
       }
