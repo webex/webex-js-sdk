@@ -9,6 +9,7 @@ machine:
 general:
   artifacts:
     - "lerna-debug.log"
+    - docs
 
 dependencies:
   cache_directories:
