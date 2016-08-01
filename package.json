@@ -33,7 +33,7 @@
     "bootstrap": "lerna bootstrap",
     "build": "npm run grunt:concurrent -- build",
     "check-karma-output": "./scripts/analyze-output.sh",
-    "check-package": "[[ -nz $PACKAGE ]] || (echo 'environment variable PACKAGE must be defined' && exit 1)",
+    "check-package": "if [ -z ${PACKAGE+x} ]; then echo 'environment variable PACKAGE must be defined' && exit 1; fi",
     "prebuild:package": "npm run check-package",
     "build:package": "npm run grunt:package -- build",
     "grunt": "grunt",
