@@ -11,11 +11,10 @@ import MockWebSocket from '../lib/mock-web-socket';
 import uuid from 'uuid';
 import promiseTick from '../lib/promise-tick';
 import lolex from 'lolex';
-import {skipInBrowser} from '@ciscospark/test-helper-mocha';
 
 describe(`plugin-mercury`, () => {
   describe(`Mercury`, () => {
-    skipInBrowser(describe)(`Events`, () => {
+    describe(`Events`, () => {
       let clock,
         mercury,
         mockWebSocket,
@@ -146,7 +145,9 @@ describe(`plugin-mercury`, () => {
             process.nextTick(() => {
               assert.isTrue(mercury.connecting, `Mercury is still connecting`);
               assert.isFalse(mercury.connected, `Mercury has not yet connected`);
-              assert.notCalled(onlineSpy, `Mercury has not yet fired the online event`);
+              // Note: no comment on notCalled because of a change in sinon
+              assert.notCalled(onlineSpy);
+
               mockWebSocket.emit(`message`, {
                 data: JSON.stringify({
                   data: {

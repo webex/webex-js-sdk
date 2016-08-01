@@ -4,8 +4,7 @@
  */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import util from 'util';
-import {oneFlight} from '@ciscospark/common';
+import {deprecate, oneFlight} from '@ciscospark/common';
 import {set} from 'lodash';
 import S from 'string';
 import backoff from 'backoff';
@@ -76,12 +75,12 @@ const Mercury = SparkPlugin.extend({
     });
   }),
 
-  listen: util.deprecate(function listen() {
+  listen: deprecate(function listen() {
     /* eslint no-invalid-this: [0] */
     return this.connect();
   }, `Mercury#listen(): Use Mercury#connect() instead`),
 
-  stopListening: util.deprecate(function stopListening() {
+  stopListening: deprecate(function stopListening() {
     /* eslint no-invalid-this: [0] */
     return this.disconnect();
   }, `Mercury#stopListening(): Use Mercury#disconnect() instead`),

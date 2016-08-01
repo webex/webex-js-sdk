@@ -14,7 +14,7 @@ import lolex from 'lolex';
 import {skipInBrowser} from '@ciscospark/test-helper-mocha';
 
 describe(`plugin-mercury`, () => {
-  skipInBrowser(describe)(`Mercury`, () => {
+  describe(`Mercury`, () => {
     let clock,
       mercury,
       mockWebSocket,
