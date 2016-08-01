@@ -59,6 +59,12 @@ function downloadArtifact(artifact) {
       return;
     }
 
+    if (filename.indexOf(`docs`) !== -1) {
+      console.log(`skipping lerna-debug.log`);
+      resolve();
+      return;
+    }
+
     console.log(`creating directory ${path.dirname(filename)} for artifact ${JSON.stringify(artifact, null, 2)}`);
     mkdirp.sync(path.dirname(filename));
     console.log(`fetching artifact ${artifact.pretty_path} to ${filename}`);
