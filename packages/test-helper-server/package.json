@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/test-helper-server",
-  "version": "0.7.0-alpha.a125535f",
+  "version": "0.7.0-alpha.e30d743f",
   "description": "",
   "main": "./src",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-server",
