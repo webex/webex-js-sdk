@@ -16,6 +16,7 @@ if [ ${CIRCLE_NODE_INDEX} -ne "0" ]; then
 fi
 
 NODE_ENV=production npm run build
+NODE_ENV=production PACKAGE=example-phone npm run grunt:package webpack:build
 
 echo "Setting git credentials"
 # Reminder: these are global so that the checkout made by grunt-gh-pages sees

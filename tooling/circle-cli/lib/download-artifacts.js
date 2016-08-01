@@ -60,7 +60,7 @@ function downloadArtifact(artifact) {
     }
 
     if (filename.indexOf(`docs`) !== -1) {
-      console.log(`skipping lerna-debug.log`);
+      console.log(`skipping docs artifact`);
       resolve();
       return;
     }
