@@ -112,11 +112,14 @@ const ciscospark = new CiscoSpark({
 });
 
 /**
- * While environment variables are handy for development, they don't really help
- * you write an app for lots of users. You can pass credentials to the spark
- * using init.
+ * Create a new ciscospark instance.
+ * Note: ciscospark.init() really only applies to node apps at this time. In web
+ * browsers, you'll want to stick with manipulating the ciscospark instance you
+ * get from `require('ciscospark')`
  * @param {Object} attrs
- * @param {Object} attrs.credentials
+ * @param {Object} attrs.credentials (optional)
+ * @param {Object} attrs.device (optional)
+ * @param {Object} attrs.config (optiona)
  * @memberof CiscoSpark
  * @returns {CiscoSpark}
  */
