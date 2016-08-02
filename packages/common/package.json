@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/common",
-  "version": "0.7.0-alpha.416acac8",
+  "version": "0.7.0-alpha.03ed609c",
   "description": "Common utilities for Cisco Spark",
   "main": "dist/index.js",
   "devMain": "src/index.js",
@@ -17,8 +17,8 @@
     "lodash": "^4.5.1"
   },
   "devDependencies": {
-    "@ciscospark/test-helper-chai": "^0.7.0-alpha.416acac8",
-    "@ciscospark/test-helper-sinon": "^0.7.0-alpha.416acac8",
+    "@ciscospark/test-helper-chai": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/test-helper-sinon": "^0.7.0-alpha.03ed609c",
     "babel-eslint": "^6.0.0-beta.5",
     "babel-plugin-lodash": "2.1.0",
     "babel-polyfill": "^6.3.14",
