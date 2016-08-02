@@ -19,7 +19,7 @@ cd /tmp
 ls lerna > /dev/null 2> /dev/null || git clone git@github.com:ianwremmel/lerna.git:
 git checkout de0f7f2
 npm link
-cd pwd
+cd "${PWD}"
 npm link lerna
 
 # INSTALL
