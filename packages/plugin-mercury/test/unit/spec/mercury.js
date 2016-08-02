@@ -11,7 +11,6 @@ import MockWebSocket from '../lib/mock-web-socket';
 import uuid from 'uuid';
 import promiseTick from '../lib/promise-tick';
 import lolex from 'lolex';
-import {skipInBrowser} from '@ciscospark/test-helper-mocha';
 
 describe(`plugin-mercury`, () => {
   describe(`Mercury`, () => {
@@ -204,6 +203,7 @@ describe(`plugin-mercury`, () => {
             socketOpenStub = sinon.stub(Socket.prototype, `open`);
             socketOpenStub.returns(Promise.reject(new AuthorizationError()));
             socketOpenStub.onCall(2).returns(Promise.resolve(new MockWebSocket()));
+            assert.notCalled(spark.refresh);
             mercury.connect();
             return promiseTick(3)
               .then(() => {
