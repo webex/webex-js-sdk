@@ -36,68 +36,13 @@ registerPlugin(`teams`, Teams);
 registerPlugin(`teamMemberships`, TeamMemberships);
 registerPlugin(`webhooks`, Webhooks);
 
+// documentation.js puts hashes in relative urls, so need to specify full urls
+// here
 /**
- * SDK for Cisco Spark
- *
- * ## Installation
- *
- * ```javascript
- * npm install --save ciscospark
- * ```
- *
- * ## A Note on Browsers
- * Ciscospark is fully browser compatible but we don't distribute a browserified
- * bundle at this time; you'll need to build the bundle yourself. We use
- * [browserify](http://browserify.org/) internally and
- * [webpack](https://webpack.github.io/) should work as well.
- *
- * ## Getting Started
- *
- *
- * The quickest way to get started is to set your access token as an environment
- * variable:
- *
- * ```javascript
- * <%= gettingstarted__accesstoken %>
- * ```
-
- * ### Refresh Tokens
- *
- * For long-running use cases, you'll need to provide a refresh token, client
- * id, and client secret:
- *
- * ```javascript
- * TODO
- * ```
- *
- * ## Runtime Configuration
- *
- * While environment variables are handy for development, they don't really help
- * you write an app for lots of users. You can pass credentials to the spark
- * using init.
- *
- * ```javascript
- * TODO
- * ```
- *
- * ## OAuth
- *
- * OAuth is baked right into spark so you don't need to figure it out.
- *
- * To kick off an OAuth login, simply call `spark.authenticate()` which will
- * direct the current app to our login page.
- *
- * ```javascript
- * TODO
- * ```
- *
- * To refresh an access token, call `spark.authorize()`. (Note: this should
- * generally happen for you automatically).
- *
- * ```javascript
- * TODO
- * ```
- *
+ * See {@link https://ciscospark.github.io/spark-js-sdk/example/browsers|Browser Guide} and
+ * {@link https://ciscospark.github.io/spark-js-sdk/example/servers|Server Guide}
+ * @see {@link /example/browsers|Browser Guide}
+ * @see {@link /example/servers|Server Guide}
  * @class CiscoSpark
  * @extends SparkCore
  */
