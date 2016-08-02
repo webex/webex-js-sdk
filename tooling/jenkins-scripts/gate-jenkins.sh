@@ -13,6 +13,15 @@ export XUNIT=true
 LOG_FILE="$(pwd)/test.log"
 rm -f "${LOG_FILE}"
 
+PWD=`pwd`
+
+cd /tmp
+ls lerna > /dev/null 2> /dev/null || git clone git@github.com:ianwremmel/lerna.git:
+git checkout de0f7f2
+npm link
+cd pwd
+npm link lerna
+
 # INSTALL
 echo "Installing modular SDK dependencies"
 npm run bootstrap
