@@ -51,5 +51,5 @@ echo "Tricking npm website into updating the README"
 # See https://github.com/npm/newww/issues/389#issuecomment-188428605 and
 # https://github.com/lerna/lerna/issues/64 for details
 npm run lerna -- exec --scope ciscospark -- npm version --no-git-tag-version "${NEW_VERSION}-readmehack"
-npm run lerna -- exec --scope ciscospark -- npm publish
+npm run lerna -- exec --scope ciscospark -- npm publish --tag=readmehack
 npm run lerna -- exec --scope ciscospark -- npm unpublish ciscospark@"${NEW_VERSION}-readmehack"
