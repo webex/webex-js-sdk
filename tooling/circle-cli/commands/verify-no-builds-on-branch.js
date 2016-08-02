@@ -17,7 +17,7 @@ const blockUntilQueueEmpty = _.curry(function blockUntilQueueEmpty(argv, ci) {
       // - not_running
       // - running
       // - finished
-      // I'm assuming not_run and finished are the only values the imply the
+      // I'm assuming not_run and finished are the only values that imply the
       // build is not running or pending
       const queued = builds
         .filter((build) => build.lifecycle !== `finished` && build.lifecycle !== `not_run`);

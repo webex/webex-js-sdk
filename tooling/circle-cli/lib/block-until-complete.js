@@ -10,7 +10,7 @@ module.exports = _.curry(function blockUntilComplete(argv, ci, build) {
       if (!process.env.HUDSON_URL) {
         str += `${(new Date()).toISOString()}: `;
       }
-      str += `build number ${result.build_num} has status ${result.status} on Circle CI`;
+      str += `build number ${result.build_num} has status ${result.status} and lifecyle ${result.lifecycle} on Circle CI`;
       if (result.start_time) {
         str += ` (started at ${result.start_time})`;
       }
@@ -18,7 +18,7 @@ module.exports = _.curry(function blockUntilComplete(argv, ci, build) {
         str += ` (queued at ${result.usage_queued_at})`;
       }
       console.log(str);
-      if ([`pending`, `queued`, `running`].indexOf(result.status) !== -1) {
+      if (!_.includes([`finished`, `not_run`], result.lifecycle)) {
         return new Promise((resolve) => {
           setTimeout(() => resolve(blockUntilComplete(argv, ci, build)), argv.interval);
         });
