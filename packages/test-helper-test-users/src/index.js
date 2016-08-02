@@ -43,7 +43,7 @@ function _create(options) {
   var promises = [];
   for (var i = 0; i < count; i++) {
     promises.push(tui.create({
-      scopes: process.env.CISCOSPARK_SCOPE || process.env.SCOPE
+      scopes: process.env.CISCOSPARK_SCOPE || process.env.CISCOSPARK_SCOPES || process.env.SCOPE
     })
       .then(function(user) {
         allUsers.push(user);
