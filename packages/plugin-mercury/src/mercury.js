@@ -176,7 +176,7 @@ const Mercury = SparkPlugin.extend({
       call.on(`callback`, (err) => {
         if (err) {
           const number = call.getNumRetries();
-          const delay = call.strategy_.nextBackoffDelay_;
+          const delay = Math.min(call.strategy_.nextBackoffDelay_, this.config.backoffTimeMax);
 
           this.logger.info(`mercury: failed to connect; attempting retry ${number + 1} in ${delay} ms`);
           /* istanbul ignore if */
