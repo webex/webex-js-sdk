@@ -7,6 +7,7 @@
 
 var fs = require('fs');
 var path = require('path');
+var Magic = require('mmmagic');
 
 var File = module.exports = {
   fetch: function fetch(filename) {
@@ -14,9 +15,19 @@ var File = module.exports = {
       var filepath = path.join(__dirname, '../../test-helper-server/src/static', filename);
       fs.readFile(filepath, function(err, data) {
         if (err) {
-          return reject(err);
+          reject(err);
+          return;
         }
-        return resolve(data);
+        data.name = filename;
+        var magic = new Magic.Magic(Magic.MAGIC_MIME_TYPE);
+        magic.detect(data, function(err2, res) {
+          if (err2) {
+            reject(err2);
+            return;
+          }
+          data.type = res;
+          resolve(data);
+        });
       });
     });
   },
