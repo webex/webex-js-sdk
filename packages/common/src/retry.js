@@ -56,7 +56,7 @@ export default function makeRetryable(fn, options) {
       const call = backoff.call(
         (cb) => {
           /* eslint no-invalid-this: [0] */
-          const innerPromise = Reflect.apply(this, fn, args);
+          const innerPromise = Reflect.apply(fn, this, args);
 
           if (isFunction(innerPromise.on)) {
             innerPromise.on(`progress`, emitter.emit.bind(emitter, `progress`));
