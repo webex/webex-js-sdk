@@ -28,6 +28,4 @@ module.exports = function configGrunt(grunt) {
   grunt.registerTask('test', [
     'mochaTest:all'
   ]);
-
-  grunt.register('build', []);
 };

@@ -1,0 +1,29 @@
+0 info it worked if it ends with ok
+1 verbose cli [ '/Users/ian/.nvm/versions/node/v4.3.0/bin/node',
+1 verbose cli   '/Users/ian/.nvm/versions/node/v4.3.0/bin/npm',
+1 verbose cli   'run',
+1 verbose cli   'grunt',
+1 verbose cli   '--',
+1 verbose cli   'test' ]
+2 info using npm@2.15.9
+3 info using node@v4.3.0
+4 verbose run-script [ 'pregrunt', 'grunt', 'postgrunt' ]
+5 info pregrunt spark-js-sdk@0.5.105
+6 info grunt spark-js-sdk@0.5.105
+7 verbose unsafe-perm in lifecycle true
+8 verbose stack Error: write EPIPE
+8 verbose stack     at Object.exports._errnoException (util.js:870:11)
+8 verbose stack     at exports._exceptionWithHostPort (util.js:893:20)
+8 verbose stack     at WriteWrap.afterWrite (net.js:763:14)
+9 verbose cwd /Users/ian/projects/spark-js-sdk
+10 error Darwin 15.5.0
+11 error argv "/Users/ian/.nvm/versions/node/v4.3.0/bin/node" "/Users/ian/.nvm/versions/node/v4.3.0/bin/npm" "run" "grunt" "--" "test"
+12 error node v4.3.0
+13 error npm  v2.15.9
+14 error code EPIPE
+15 error errno EPIPE
+16 error syscall write
+17 error write EPIPE
+18 error If you need help, you may report this error at:
+18 error     <https://github.com/npm/npm/issues>
+19 verbose exit [ 1, true ]

@@ -10,17 +10,7 @@ npm install --save ciscospark
 
 ### Building
 
-At this time, a prebuilt version of ciscospark is not available. If your project already uses [browserify](http://browserify.org), or [webpack](https://webpack.github.io/) this shouldn't be an issue. If not, you'll need to clone the repository and build it with:
-
-```bash
-npm install -g browserify
-npm install
-npm run bootstrap
-npm run build
-browserify --standalone ciscospark packages/ciscospark > bundle.js
-```
-
-> For production builds, change `npm run build` to `NODE_ENV=production npm run build`.
+At this time, a prebuilt version of ciscospark is not available. If your project already uses [browserify](http://browserify.org), or [webpack](https://webpack.github.io/) this shouldn't be an issue. If not, install the `@ciscospark/bundle` package from npm, which will automatically build a bundle for you in a post-install step.
 
 Note that when when building for the browser, you'll need define
 -  `CISCOSPARK_ACCESS_TOKEN`
@@ -30,7 +20,16 @@ or
 - `CISCOSPARK_REDIRECT_URI`
 - `CISCOSPARK_SCOPE`
 
-Alternatively, you can use use `ciscospark.init()` to set those values at runtime. See Environment Setup (below) and the (ciscospark)[packages/ciscospark/README.md] README for more info on those values.
+> For production builds, set `NODE_ENV=production`.
+
+```bash
+CISCOSPARK_CLIENT_ID=<cliend id> CISCOSPARK_CLIENT_SECRET=<client secret> CISCOSPARK_REDIRECT_URI=<redirect uri> CISCOSPARK_SCOPE=<scope> npm install @ciscospark/bundle
+
+ls
+# =>
+# |-node_modules/@ciscospark/bundle
+# |-bundle.js
+```
 
 ## Legacy SDK
 
