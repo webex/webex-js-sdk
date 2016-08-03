@@ -189,9 +189,8 @@ const Mercury = SparkPlugin.extend({
         this.logger.info(`mercury: connected`);
       });
 
-      call.start();
-
       this.backoffCall = call;
+      call.start();
     });
   },
 
