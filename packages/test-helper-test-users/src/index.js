@@ -5,12 +5,6 @@
 
 'use strict';
 
-/* istanbul ignore next */
-if (typeof Promise === 'undefined') {
-  // eslint-disable-next-line global-require
-  require('es6-promise').polyfill();
-}
-
 /* eslint-env mocha */
 /* eslint camelcase: [0] */
 

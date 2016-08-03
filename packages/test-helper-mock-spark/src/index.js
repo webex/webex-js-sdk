@@ -5,12 +5,6 @@
 
 'use strict';
 
-/* istanbul ignore next */
-if (typeof Promise === 'undefined') {
-  // eslint-disable-next-line global-require
-  require('es6-promise').polyfill();
-}
-
 var _ = require('lodash');
 var sinon = require('@ciscospark/test-helper-sinon');
 var State = require('ampersand-state');
