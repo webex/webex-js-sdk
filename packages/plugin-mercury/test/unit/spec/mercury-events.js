@@ -146,7 +146,7 @@ describe(`plugin-mercury`, () => {
             process.nextTick(() => {
               assert.isTrue(mercury.connecting, `Mercury is still connecting`);
               assert.isFalse(mercury.connected, `Mercury has not yet connected`);
-              assert.notCalled(onlineSpy, `Mercury has not yet fired the online event`);
+              assert.notCalled(onlineSpy);
               mockWebSocket.emit(`message`, {
                 data: JSON.stringify({
                   data: {
