@@ -11,11 +11,33 @@ import fileType from 'file-type';
  * @returns {Promise<string>}
  */
 export default function detect(buffer) {
-  if (typeof window === `undefined`) {
-    return Promise.resolve(fileType(buffer).mime);
+  return new Promise((resolve) => {
+    resolve(detectSync(buffer));
+  });
+}
+
+export {detect as detect};
+
+export function detectSync(buffer) {
+  /* global Blob */
+  let b = buffer;
+  if (typeof window !== `undefined`) {
+    if (buffer instanceof Blob) {
+      return buffer.type;
+    }
+    else if (buffer instanceof ArrayBuffer) {
+      b = new Uint8Array(buffer);
+    }
+    else if (!(buffer instanceof Uint8Array)) {
+      throw new Error(`\`detect\` requires a buffer of type Blob, ArrayBuffer, or Uint8Array`);
+    }
   }
 
-  /* eslint-env browser */
-  return Promise.resolve(fileType(new Uint8Array(buffer)).mime);
+  const type = fileType(b);
 
+  if (!type) {
+    return `application/octet-stream`;
+  }
+
+  return type.mime;
 }

@@ -46,6 +46,23 @@ function doRequest(options) {
 
       if (response) {
         response.options = options;
+
+        // I'm not sure why this line is necessary. request seems to be creating
+        // buffers that aren't Buffers.
+        if (options.responseType === `buffer` && response.body.type === `Buffer` && !Buffer.isBuffer(response.body)) {
+          response.body = new Buffer(response.body);
+        }
+
+        if (Buffer.isBuffer(response.body) && !response.body.type) {
+          resolve(detect(response.body)
+            .then((type) => {
+              response.body.type = type;
+              return response;
+            }));
+
+          return;
+        }
+
         resolve(response);
       }
       else {

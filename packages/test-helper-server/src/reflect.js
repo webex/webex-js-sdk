@@ -11,6 +11,7 @@
  * @returns {undefined}
  */
 function reflect(req, res) {
+  res.set('content-type', req.headers['content-type']);
   res.status(200).send(req.body).end();
 }
 

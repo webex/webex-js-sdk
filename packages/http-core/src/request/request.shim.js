@@ -12,6 +12,7 @@
 import {defaults, pick} from 'lodash';
 import qs from 'qs';
 import xhr from 'xhr';
+import {detectSync} from '../lib/detect';
 
 /**
  * @name request
@@ -29,7 +30,8 @@ export default function _request(options) {
     setAuth(params, options);
     setCookies(params, options);
     setDefaults(params, options);
-    setFileType(params, options);
+    setResponseType(params, options);
+    setContentType(params, options);
     setPayload(params, options);
     setQs(params, options);
 
@@ -142,9 +144,16 @@ export default function _request(options) {
    * @private
    * @returns {undefined}
    */
-  function setFileType(params, o) {
+  function setResponseType(params, o) {
     if (o.responseType === `buffer`) {
       params.responseType = `arraybuffer`;
+    }
+  }
+
+  function setContentType(params, o) {
+    if (o.body instanceof Blob || o.body instanceof ArrayBuffer) {
+      o.json = params.json = false;
+      params.headers[`content-type`] = params.headers[`content-type`] || detectSync(o.body);
     }
   }
 
