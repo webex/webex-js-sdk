@@ -21,3 +21,5 @@ html-report
 /docs/api
 /docs/app
 _site
+string
+.sauce.tid

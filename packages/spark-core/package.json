@@ -19,7 +19,7 @@
     "uuid": "^2.0.1"
   },
   "devDependencies": {
-    "@ciscospark/test-helper-automation": "^0.7.0-alpha.677de49c",
+    "@ciscospark/test-helper-automation": "^0.7.0-alpha.03ed609c",
     "@ciscospark/test-helper-chai": "^0.7.0-alpha.03ed609c",
     "@ciscospark/test-helper-make-local-url": "^0.7.0-alpha.03ed609c",
     "@ciscospark/test-helper-mock-spark": "^0.7.0-alpha.03ed609c",

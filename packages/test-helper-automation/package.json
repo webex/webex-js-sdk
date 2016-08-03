@@ -1,11 +1,11 @@
 {
   "name": "@ciscospark/test-helper-automation",
-  "version": "0.7.0-alpha.677de49c",
+  "version": "0.7.0-alpha.03ed609c",
   "description": "",
   "main": "./src",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-automation",
   "dependencies": {
-    "@ciscospark/test-helper-chai": "^0.7.0-alpha.677de49c",
+    "@ciscospark/test-helper-chai": "^0.7.0-alpha.03ed609c",
     "babel-plugin-lodash": "2.1.0",
     "chai": "^3.4.1",
     "chai-as-promised": "^5.1.0",
@@ -18,6 +18,5 @@
     "babel-eslint": "^6.0.0-beta.5",
     "eslint": "2.2.0",
     "eslint-plugin-mocha-only": "0.0.3"
-  },
-  "private": true
+  }
 }
