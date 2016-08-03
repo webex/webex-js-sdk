@@ -6,7 +6,6 @@
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-file",
   "dependencies": {
     "@ciscospark/test-helper-make-local-url": "^0.7.0-alpha.03ed609c",
-    "es6-promise": "^3.2.1",
     "mmmagic": "^0.4.4",
     "xhr": "^2.2.0"
   },
