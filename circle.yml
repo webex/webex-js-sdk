@@ -10,6 +10,8 @@ general:
   artifacts:
     - "lerna-debug.log"
     - docs
+    - packages/bin-sauce-connect/.sauce/sauce_connect.log
+
 
 dependencies:
   cache_directories:
