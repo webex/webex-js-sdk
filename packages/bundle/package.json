@@ -1,0 +1,26 @@
+{
+  "name": "@ciscospark/bundle",
+  "version": "0.6.0",
+  "description": "",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "author": "Ian W. Remmel <iremmel@cisco.com>",
+  "license": "(Apache-2.0)",
+  "main": "src/index.js",
+  "scripts": {
+    "bundle": "browserify src/index.js --standable ciscospark > ../bundle.js",
+    "postinstall": "npm run bundle"
+  },
+  "dependencies": {
+    "browserify": "^13.1.0",
+    "ciscospark": "^0.6.0"
+  },
+  "devDependencies": {
+    "babel-eslint": "^6.0.0-beta.5",
+    "babel-plugin-lodash": "2.1.0",
+    "babel-polyfill": "^6.3.14",
+    "babel-register": "^6.4.3",
+    "eslint": "^2.4.0",
+    "eslint-plugin-mocha-only": "0.0.3"
+  }
+}
