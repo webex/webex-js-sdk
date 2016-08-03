@@ -24,7 +24,8 @@
     "babel-polyfill": "^6.3.14",
     "babel-register": "^6.4.3",
     "eslint": "2.2.0",
-    "eslint-plugin-mocha-only": "0.0.3"
+    "eslint-plugin-mocha-only": "0.0.3",
+    "lolex": "^1.4.0"
   },
   "browser": {
     "./src/shims/atob.js": "./src/shims/atob.shim.js",
