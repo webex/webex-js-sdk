@@ -6,8 +6,13 @@
 
 import AmpState from 'ampersand-state';
 import util from 'util';
+import {PluginStorage} from './storage';
 
 const SparkPlugin = AmpState.extend({
+  children: {
+    storage: PluginStorage
+  },
+
   derived: {
     config: {
       // figure out why caching config breaks the refresh integration test
@@ -89,9 +94,8 @@ const SparkPlugin = AmpState.extend({
     return this;
   },
 
-  initialize(...attrs) {
-    Reflect.apply(AmpState.prototype.initialize, this, attrs);
-
+  initialize(...args) {
+    Reflect.apply(AmpState.prototype.initialize, this, args);
     // Propagate change:[attribute] events from children
     this.on(`change`, (model, options) => {
       this.parent.trigger(`change:${this.namespace.toLowerCase()}`, this.parent, this, options);
@@ -112,12 +116,6 @@ const SparkPlugin = AmpState.extend({
 
   upload(...args) {
     return this.spark.upload(...args);
-  },
-
-  when(eventName) {
-    return new Promise((resolve) => {
-      this.once(eventName, (...args) => resolve(args));
-    });
   }
 });
 

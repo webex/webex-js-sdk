@@ -44,8 +44,8 @@ describe(`spark-core`, function() {
         return browser
           .get(redirectUri)
           .waitForElementByClassName(`ready`)
-            .title()
-              .should.eventually.become(`Authorization Automation Test`)
+          .title()
+            .should.eventually.become(`Authorization Automation Test`)
           .waitForElementByCssSelector(`[title="Login with Authorization Code Grant"]`)
             .click()
           .login(user)

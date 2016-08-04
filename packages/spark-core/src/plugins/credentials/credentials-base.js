@@ -10,6 +10,7 @@ import {clone, has, isObject, pick} from 'lodash';
 import grantErrors from './grant-errors';
 import querystring from 'querystring';
 import SparkPlugin from '../../lib/spark-plugin';
+import {persistResult, waitForValueAndPersistResult, waitForValue} from '../../lib/storage';
 
 /**
  * Helper. Returns just the response body
@@ -179,6 +180,8 @@ const CredentialsBase = SparkPlugin.extend({
     ].map((key) => {
       if (this[key]) {
         return this[key].revoke()
+          .then(() => this.unset(key))
+          .then(() => this.storage.del(key))
           .catch((reason) => {
             this.logger.error(`credentials: ${key} revocation falied`, reason);
           });

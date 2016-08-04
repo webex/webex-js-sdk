@@ -15,18 +15,13 @@ import ResponseLoggerInterceptor from './interceptors/response-logger';
 import SparkHttpError from './lib/spark-http-error';
 import SparkTrackingIdInterceptor from './interceptors/spark-tracking-id';
 import config from './config';
+import Storage from './lib/storage';
 
 let constructorCalled = false;
 const derived = {};
-
-/**
- * List of loaded plugins. Only exported so that plugins can see which other
- * plugins have been loaded to avoid clobbering eachother (THIS IS A TEMPORARY
- * MEASURE!)
- * @private
- * @type {Object}
- */
-export const children = {};
+const children = {
+  storage: Storage
+};
 
 let Spark;
 
@@ -58,6 +53,7 @@ const preInterceptors = [
 ];
 
 const postInterceptors = [
+  `HttpStatusInterceptor`,
   `NetworkTimingInterceptor`,
   `RequestLoggerInterceptor`
 ];
