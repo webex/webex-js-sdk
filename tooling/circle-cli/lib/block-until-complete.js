@@ -1,6 +1,7 @@
 'use strict';
 
 const _ = require(`lodash`);
+const pendingStatuses = require(`./statuses`).pendingStatuses;
 
 module.exports = _.curry(function blockUntilComplete(argv, ci, build) {
   return ci.getBuild(build)
@@ -18,7 +19,7 @@ module.exports = _.curry(function blockUntilComplete(argv, ci, build) {
         str += ` (queued at ${result.usage_queued_at})`;
       }
       console.log(str);
-      if (!_.includes([`finished`, `not_run`], result.lifecycle)) {
+      if (_.includes(pendingStatuses, result.status)) {
         return new Promise((resolve) => {
           setTimeout(() => resolve(blockUntilComplete(argv, ci, build)), argv.interval);
         });

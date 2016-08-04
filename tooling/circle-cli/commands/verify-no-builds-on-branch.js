@@ -4,23 +4,15 @@ const _ = require(`lodash`);
 const CircleCI = require(`circleci`);
 const common = require(`../lib/common-options`);
 const exitWithError = require(`../lib/exit-with-error`);
+const pendingStatuses = require(`../lib/statuses`).pendingStatuses;
 const tap = require(`../lib/tap`);
 
 const blockUntilQueueEmpty = _.curry(function blockUntilQueueEmpty(argv, ci) {
   return ci.getBranchBuilds(argv)
     .then((builds) => {
 
-      // lifecycle values:
-      // - queued
-      // - scheduled
-      // - not_run
-      // - not_running
-      // - running
-      // - finished
-      // I'm assuming not_run and finished are the only values that imply the
-      // build is not running or pending
       const queued = builds
-        .filter((build) => build.lifecycle !== `finished` && build.lifecycle !== `not_run`);
+        .filter((build) => _.includes(pendingStatuses, build.status));
 
       if (queued.length > 0) {
         return new Promise((resolve) => {
