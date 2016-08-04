@@ -1,0 +1,3 @@
+extends:
+  - "../../.eslintrc-es6.yml"
+  - "../../.eslintrc-mocha.yml"
