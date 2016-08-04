@@ -22,4 +22,16 @@ export {
   SparkTrackingIdInterceptor
 } from './spark-core';
 
-export {Authorization, Credentials, grantErrors} from './plugins/credentials';
+export {
+  Authorization,
+  Credentials,
+  grantErrors
+} from './plugins/credentials';
+
+export {
+  PluginStorage,
+  Storage,
+  StorageAdapter,
+  persist,
+  waitForValue
+} from './lib/storage';

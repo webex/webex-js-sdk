@@ -6,6 +6,8 @@
 
 /* eslint camelcase: [0] */
 
+import {StorageAdapter} from './lib/storage';
+
 export default {
   maxAppLevelRedirects: 10,
   maxAuthenticationReplays: 1,
@@ -32,5 +34,8 @@ export default {
     },
     logoutUri: `https://idbroker.webex.com/idb/saml2/jsp/doSSO.jsp`,
     samlUrl: `https://idbroker.webex.com/idb/token`
+  },
+  storage: {
+    adapter: StorageAdapter
   }
 };
