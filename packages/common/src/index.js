@@ -11,4 +11,5 @@ export {default as oneFlight} from './one-flight';
 export {default as patterns} from './patterns.js';
 export {default as resolveWith} from './resolve-with';
 export {default as retry} from './retry';
+export {default as tap} from './tap';
 export {proxyEvents, transferEvents} from './events';
