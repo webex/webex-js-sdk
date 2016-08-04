@@ -1,0 +1,24 @@
+{
+  "name": "@ciscospark/storage-adapter-local-storage",
+  "version": "0.7.0-alpha.03ed609c",
+  "description": "",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "author": "Ian W. Remmel <iremmel@cisco.com>",
+  "license": "(Apache-2.0)",
+  "dependencies": {
+    "babel-runtime": "^6.3.19",
+    "lodash": "^4.5.1"
+  },
+  "devDependencies": {
+    "@ciscospark/storage-adapter-spec": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/test-helper-mocha": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/xunit-with-logs": "^0.7.0-alpha.03ed609c",
+    "babel-eslint": "^6.0.0-beta.5",
+    "babel-plugin-lodash": "^2.1.0",
+    "babel-polyfill": "^6.3.14",
+    "babel-register": "^6.4.3",
+    "eslint": "^2.4.0",
+    "eslint-plugin-mocha-only": "0.0.3"
+  }
+}
