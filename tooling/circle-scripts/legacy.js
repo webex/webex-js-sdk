@@ -5,6 +5,8 @@
 // writes its output to a file in CIRCLE_ARTIFACTS and legacy.js runs that file
 // while writing periods to STDOUT
 
+const env = process.argv[2];
+
 const cp = require(`child_process`);
 const path = require(`path`);
 let timer;
@@ -19,7 +21,7 @@ try {
   tick();
   // spawn's arguments array is a little tricky to manage, so it it seemed easier
   // to just put the logic in a shell script and rely on this file for ticks.
-  const legacy = cp.spawn(path.resolve(__dirname, `legacy.sh`), [], {
+  const legacy = cp.spawn(path.resolve(__dirname, `legacy.sh`), [env], {
     stdio: [`pipe`, `pipe`, `pipe`]
   });
 

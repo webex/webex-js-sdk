@@ -73,7 +73,7 @@ module.exports = function gruntConfig(grunt) {
     SINGLE_NODE_PACKAGES = ALL_NODE_PACKAGES;
   }
   else {
-    const availableModularBuildNodes = CIRCLE_NODE_TOTAL - 1;
+    const availableModularBuildNodes = CIRCLE_NODE_TOTAL - 2;
     SINGLE_NODE_PACKAGES = ALL_NODE_PACKAGES.filter((packageName, index) => index % availableModularBuildNodes === CIRCLE_NODE_INDEX);
   }
 
@@ -171,7 +171,11 @@ module.exports = function gruntConfig(grunt) {
     makeReport2: {
       all: {
         files: [{
-          cwd: `./reports/coverage-final/`,
+          cwd: `./reports/coverage`,
+          expand: true,
+          src: `**/*.json`
+        }, {
+          cwd: `./reports/coverage-final`,
           expand: true,
           src: `**/*.json`
         }],
@@ -220,7 +224,21 @@ module.exports = function gruntConfig(grunt) {
   // If we're on the last node, we should run the legacy sdk suite
   if (CIRCLE_NODE_INDEX === CIRCLE_NODE_TOTAL - 1) {
     config.shell.legacy = {
-      command: `node ./tooling/circle-scripts/legacy.js`
+      command: `node ./tooling/circle-scripts/legacy.js browser`
+    };
+
+    config.concurrent.test = config.concurrent.test || {};
+    config.concurrent.test.tasks = config.concurrent.test.tasks || [];
+    config.concurrent.test.tasks.push(`shell:legacy`);
+
+    // For reasons I can't explain, grunt-concurrent doesn't seem to be honoring
+    // logConcurrentOutput for concurrent.test
+    grunt.registerTask(`test`, [`shell:legacy`]);
+  }
+
+  if (CIRCLE_NODE_INDEX === CIRCLE_NODE_TOTAL - 2) {
+    config.shell.legacy = {
+      command: `node ./tooling/circle-scripts/legacy.js node`
     };
 
     config.concurrent.test = config.concurrent.test || {};
