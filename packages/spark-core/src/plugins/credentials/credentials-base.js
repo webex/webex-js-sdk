@@ -10,7 +10,7 @@ import {clone, has, isObject, pick} from 'lodash';
 import grantErrors from './grant-errors';
 import querystring from 'querystring';
 import SparkPlugin from '../../lib/spark-plugin';
-import {persistResult, waitForValueAndPersistResult, waitForValue} from '../../lib/storage';
+import {persist, waitForValue} from '../../lib/storage';
 
 /**
  * Helper. Returns just the response body
@@ -97,6 +97,8 @@ const CredentialsBase = SparkPlugin.extend({
   },
 
   @oneFlight
+  @persist(`authorization`)
+  @waitForValue(`authorization`)
   authorize(options) {
     /* eslint no-invalid-this: [0] */
     this._isAuthenticating = true;
@@ -139,6 +141,7 @@ const CredentialsBase = SparkPlugin.extend({
   },
 
   @oneFlight
+  @waitForValue(`authorization`)
   getAuthorization() {
     if (this.isAuthenticated) {
       if (this.isExpired) {
@@ -157,6 +160,8 @@ const CredentialsBase = SparkPlugin.extend({
   },
 
   @oneFlight
+  @persist(`clientAuthorization`)
+  @waitForValue(`clientAuthorization`)
   getClientCredentialsAuthorization() {
     let promise;
     if (!this.clientAuthorization || !this.clientAuthorization.isAuthenticated || this.clientAuthorization.isExpired) {
@@ -198,6 +203,7 @@ const CredentialsBase = SparkPlugin.extend({
    * @returns {Promise} Resolves when credentials have been refreshed
    */
   @oneFlight
+  @persist(`authorization`)
   refresh(options) {
     /* eslint no-invalid-this: [0] */
     this.logger.info(`credentials: refresh requested`);

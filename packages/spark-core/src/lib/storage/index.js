@@ -1,5 +1,5 @@
 export {
-  persistResult,
+  persist,
   waitForValue,
   waitForValueAndPersistResult
 } from './decorators';
