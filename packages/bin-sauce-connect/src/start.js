@@ -7,7 +7,7 @@ import spawn from './lib/spawn';
 
 const mkdirp = denodeify(_mkdirp);
 
-const SAUCE_CONNECT_VERSION = `4.3.11`;
+const SAUCE_CONNECT_VERSION = `4.3.16`;
 
 (async function run() {
   try {
