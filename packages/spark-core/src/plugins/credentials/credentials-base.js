@@ -10,6 +10,7 @@ import {clone, has, isObject, pick} from 'lodash';
 import grantErrors from './grant-errors';
 import querystring from 'querystring';
 import SparkPlugin from '../../lib/spark-plugin';
+import {persistResult, waitForValueAndPersistResult, waitForValue} from '../../lib/storage';
 
 /**
  * Helper. Returns just the response body
@@ -95,7 +96,7 @@ const CredentialsBase = SparkPlugin.extend({
     return this.authorize(...args);
   },
 
-  authorize: oneFlight(`authorize`, function authenticate(options) {
+  authorize: oneFlight(`authorize`, waitForValueAndPersistResult(`authorization`, function authorize(options) {
     /* eslint no-invalid-this: [0] */
     this._isAuthenticating = true;
     options = options || {};
@@ -134,9 +135,9 @@ const CredentialsBase = SparkPlugin.extend({
 
     this._isAuthenticating = false;
     return Promise.reject(new Error(`not enough parameters to authenticate`));
-  }),
+  })),
 
-  getAuthorization: oneFlight(`getAuthorization`, function getAuthorization() {
+  getAuthorization: oneFlight(`getAuthorization`, waitForValue(`authorization`, function getAuthorization() {
     if (this.isAuthenticated) {
       if (this.isExpired) {
         if (this.canRefresh) {
@@ -151,9 +152,9 @@ const CredentialsBase = SparkPlugin.extend({
     }
 
     return Promise.reject(new Error(`not authenticated`));
-  }),
+  })),
 
-  getClientAuthorization: oneFlight(`getClientCredentialsAuthorization`, function getClientCredentialsAuthorization() {
+  getClientAuthorization: oneFlight(`getClientCredentialsAuthorization`, waitForValueAndPersistResult(`clientAuthorization`, function getClientCredentialsAuthorization() {
     let promise;
     if (!this.clientAuthorization || !this.clientAuthorization.isAuthenticated || this.clientAuthorization.isExpired) {
       promise = this.requestClientCredentialsGrant();
@@ -164,7 +165,7 @@ const CredentialsBase = SparkPlugin.extend({
 
     return promise
       .then(() => this.clientAuthorization.toString());
-  }),
+  })),
 
   /**
    * @returns {Promise}
@@ -176,6 +177,8 @@ const CredentialsBase = SparkPlugin.extend({
     ].map((key) => {
       if (this[key]) {
         return this[key].revoke()
+          .then(() => this.unset(key))
+          .then(() => this.storage.del(key))
           .catch((reason) => {
             this.logger.error(`credentials: ${key} revocation falied`, reason);
           });
@@ -191,7 +194,7 @@ const CredentialsBase = SparkPlugin.extend({
    * appears unexpired
    * @returns {Promise} Resolves when credentials have been refreshed
    */
-  refresh: oneFlight(`refresh`, function refresh(options) {
+  refresh: oneFlight(`refresh`, persistResult(`authorization`, function refresh(options) {
     /* eslint no-invalid-this: [0] */
     this.logger.info(`credentials: refresh requested`);
 
@@ -207,7 +210,7 @@ const CredentialsBase = SparkPlugin.extend({
     return this.authorization.refresh(options)
       .then(this._pushAuthorization.bind(this))
       .catch(this._handleRefreshFailure.bind(this));
-  }),
+  })),
 
   requestAuthorizationCodeGrant: oneFlight(`requestAuthorizationCodeGrant`, function requestAuthorizationCodeGrant(options) {
     const vars = {

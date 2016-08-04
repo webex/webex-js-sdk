@@ -6,6 +6,7 @@
 import {assert} from '@ciscospark/test-helper-chai';
 import retry from '@ciscospark/test-helper-retry';
 import {default as Spark, Authorization, grantErrors} from '../../..';
+// FIXME use test users helper
 import TestUsersInterface from 'spark-js-sdk--test-users';
 
 describe(`spark-core`, function() {
