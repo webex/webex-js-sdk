@@ -8,7 +8,9 @@
 /* eslint-env mocha */
 /* eslint camelcase: [0] */
 
+var _ = require('lodash');
 var assert = require('assert');
+var retry = require('@ciscospark/test-helper-retry');
 
 var tui;
 try {
@@ -29,6 +31,7 @@ if (after) {
 }
 
 function _create(options) {
+  options = options || {};
   var count = options.count;
   if (!count) {
     count = 1;
@@ -36,15 +39,20 @@ function _create(options) {
 
   var promises = [];
   for (var i = 0; i < count; i++) {
-    promises.push(tui.create({
-      scopes: process.env.CISCOSPARK_SCOPE || process.env.SCOPE
-    })
+    promises.push(retry(makeUser));
+  }
+  return Promise.all(promises);
+
+  function makeUser() {
+    const config = _.defaults({
+      scopes: process.env.CISCOSPARK_SCOPE
+    }, options.config);
+    return tui.create(config)
       .then(function(user) {
         allUsers.push(user);
         return user;
-      }));
+      });
   }
-  return Promise.all(promises);
 }
 
 function _extractFromEnv(options) {
@@ -96,8 +104,8 @@ function _remove(users) {
 
 module.exports = {
   create: function create(options) {
-    assert(process.env.CISCOSPARK_CLIENT_ID, 'CISCOSPARK_CLIENT_ID must be defined');
-    assert(process.env.CISCOSPARK_CLIENT_SECRET, 'CISCOSPARK_CLIENT_SECRET must be defined');
+    assert(process.env.COMMON_IDENTITY_CLIENT_ID, 'COMMON_IDENTITY_CLIENT_ID must be defined');
+    assert(process.env.COMMON_IDENTITY_CLIENT_SECRET, 'COMMON_IDENTITY_CLIENT_SECRET must be defined');
 
     return new Promise(function(resolve) {
       resolve(tui ? _create(options) : _extractFromEnv(options));

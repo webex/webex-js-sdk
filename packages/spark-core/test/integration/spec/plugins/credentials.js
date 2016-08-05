@@ -6,8 +6,7 @@
 import {assert} from '@ciscospark/test-helper-chai';
 import retry from '@ciscospark/test-helper-retry';
 import {default as Spark, Authorization, grantErrors} from '../../..';
-// FIXME use test users helper
-import TestUsersInterface from 'spark-js-sdk--test-users';
+import testUsers from '@ciscospark/test-helper-test-users';
 
 describe(`spark-core`, function() {
   this.timeout(20000);
@@ -17,24 +16,24 @@ describe(`spark-core`, function() {
       describe(`Credentials`, () => {
         let user;
 
-        afterEach(() => {
-          if (!user) {
-            return Promise.resolve();
-          }
-
-          return TestUsersInterface.remove(user)
-            .catch((reason) => {
-              console.warn(`Failed to delete test user`, reason.message);
-            })
-            .then(() => {
-              user = undefined;
+        beforeEach(() => {
+          return testUsers.create({count: 1})
+            .then((users) => {
+              user = users[0];
             });
+        });
+
+        afterEach(() => {
+          user = undefined;
         });
 
         describe(`#requestAuthorizationCodeGrant()`, () => {
           beforeEach(() => {
-            return TestUsersInterface.create({authCodeOnly: true})
-              .then((u) => {
+            return testUsers.create({config: {authCodeOnly: true}})
+              .then(([u]) => {
+                assert.isObject(u)
+                assert.property(u, `token`);
+                assert.isObject(u.token)
                 assert.property(u.token, `auth_code`);
                 user = u;
               });
@@ -99,8 +98,8 @@ describe(`spark-core`, function() {
         describe(`#refresh()`, () => {
           let spark;
           beforeEach(() => {
-            return TestUsersInterface.create()
-              .then((u) => {
+            return testUsers.create()
+              .then(([u]) => {
                 user = u;
                 spark = new Spark({
                   credentials: {
