@@ -6,15 +6,23 @@
 
 import AmpState from 'ampersand-state';
 import util from 'util';
-import {SparkPluginStorage} from './storage';
+import {makeSparkPluginStore} from './storage';
 import {omit} from 'lodash';
 
 const SparkPlugin = AmpState.extend({
-  children: {
-    storage: SparkPluginStorage
-  },
-
   derived: {
+    boundedStorage: {
+      deps: [],
+      fn() {
+        return makeSparkPluginStore(`bounded`, this);
+      }
+    },
+    unboundedStorage: {
+      deps: [],
+      fn() {
+        return makeSparkPluginStore(`unbounded`, this);
+      }
+    },
     config: {
       // figure out why caching config breaks the refresh integration test
       // but not the refresh automation test.
@@ -99,12 +107,8 @@ const SparkPlugin = AmpState.extend({
     Reflect.apply(AmpState.prototype.initialize, this, args);
     // Propagate change:[attribute] events from children
     this.on(`change`, (model, options) => {
-      this.parent.trigger(`change:${this.namespace.toLowerCase()}`, this.parent, this, options);
+      this.parent.trigger(`change:${this.getNamespace().toLowerCase()}`, this.parent, this, options);
     });
-  },
-
-  serialize(...args) {
-    return omit(Reflect.apply(AmpState.prototype.serialize, this, args), `storage`);
   },
 
   /**

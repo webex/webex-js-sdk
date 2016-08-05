@@ -36,6 +36,7 @@ export default {
     samlUrl: `https://idbroker.webex.com/idb/token`
   },
   storage: {
-    adapter: MemoryStoreAdapter
+    boundedAdapter: MemoryStoreAdapter,
+    unboundedAdapter: MemoryStoreAdapter
   }
 };

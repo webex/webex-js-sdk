@@ -15,13 +15,11 @@ import ResponseLoggerInterceptor from './interceptors/response-logger';
 import SparkHttpError from './lib/spark-http-error';
 import SparkTrackingIdInterceptor from './interceptors/spark-tracking-id';
 import config from './config';
-import Store from './lib/storage';
+import {makeSparkStore} from './lib/storage';
 
 let constructorCalled = false;
 const derived = {};
-const children = {
-  storage: Store
-};
+const children = {};
 
 let Spark;
 
@@ -59,6 +57,21 @@ const postInterceptors = [
 ];
 
 const SparkCore = AmpState.extend({
+  derived: {
+    boundedStorage: {
+      deps: [],
+      fn() {
+        return makeSparkStore(`bounded`, this);
+      }
+    },
+    unboundedStorage: {
+      deps: [],
+      fn() {
+        return makeSparkStore(`unbounded`, this);
+      }
+    },
+  },
+
   session: {
     config: {
       type: `object`

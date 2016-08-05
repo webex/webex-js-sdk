@@ -21,7 +21,7 @@ describe(`spark-core`, () => {
       return spark.authorize({code: 5})
         .then(() => {
           assert.calledOnce(spark.request);
-          return assert.becomes(spark.storage.get(`Credentials`, `authorization`), {
+          return assert.becomes(spark.boundedStorage.get(`Credentials`, `authorization`), {
             access_token: `fake token`,
             token_type: `Bearer`
           });
