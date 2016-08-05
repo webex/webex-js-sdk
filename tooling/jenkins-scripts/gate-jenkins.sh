@@ -4,6 +4,7 @@
 
 set -e
 set -o pipefail
+set +x
 
 echo "Begin gate-jenkins.sh"
 
