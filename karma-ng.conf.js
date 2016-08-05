@@ -30,6 +30,11 @@ module.exports = function(config) {
   var cfg = {
     basePath: '.',
 
+    browserConsoleLogOptions: {
+      path: process.env.CIRCLE_ARTIFACTS ? path.join(process.env.CIRCLE_ARTIFACTS, 'karma.log') : 'karma.log',
+      terminal: !process.env.CI
+    },
+
     browserDisconnectTimeout: 10000,
 
     browserDisconnectTolerance: 3,
@@ -97,6 +102,11 @@ module.exports = function(config) {
 
     singleRun: !process.env.KARMA_DEBUG
   };
+
+  // The mocha reporter doesn't honor browserConsoleLogOptions
+  if (process.env.CI) {
+    cfg.reporters = [];
+  }
 
   if (process.env.COVERAGE && process.env.COVERAGE !== 'undefined') {
     cfg.coverageReporter = {
