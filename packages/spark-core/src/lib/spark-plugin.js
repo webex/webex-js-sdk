@@ -7,6 +7,7 @@
 import AmpState from 'ampersand-state';
 import util from 'util';
 import {PluginStorage} from './storage';
+import {omit} from 'lodash';
 
 const SparkPlugin = AmpState.extend({
   children: {
@@ -100,6 +101,10 @@ const SparkPlugin = AmpState.extend({
     this.on(`change`, (model, options) => {
       this.parent.trigger(`change:${this.namespace.toLowerCase()}`, this.parent, this, options);
     });
+  },
+
+  serialize(...args) {
+    return omit(Reflect.apply(AmpState.prototype.serialize, this, args), `storage`);
   },
 
   /**
