@@ -1,12 +1,12 @@
 {
   "name": "@ciscospark/test-helper-chai",
-  "version": "0.7.0-alpha.47f01fff",
+  "version": "0.7.0-alpha.5e822d8d",
   "description": "chai extended with chai-as-promised and spark specific assertions",
   "main": "./src",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-chai",
   "dependencies": {
-    "@ciscospark/test-helper-file": "^0.7.0-alpha.47f01fff",
-    "@ciscospark/test-helper-sinon": "^0.7.0-alpha.47f01fff",
+    "@ciscospark/test-helper-file": "^0.7.0-alpha.5e822d8d",
+    "@ciscospark/test-helper-sinon": "^0.7.0-alpha.5e822d8d",
     "babel-plugin-lodash": "2.1.0",
     "chai": "^3.4.1",
     "chai-as-promised": "^5.1.0",

@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/test-helper-mocha",
-  "version": "0.7.0-alpha.47f01fff",
+  "version": "0.7.0-alpha.5e822d8d",
   "description": "Helpers for controlling where tests run",
   "main": "./src",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-mocha",

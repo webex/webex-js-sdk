@@ -1,11 +1,11 @@
 {
   "name": "@ciscospark/xunit-with-logs",
-  "version": "0.7.0-alpha.47f01fff",
+  "version": "0.7.0-alpha.5e822d8d",
   "description": "",
   "main": "./src",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/xunit-with-logs",
   "dependencies": {
-    "@ciscospark/test-helper-mocha": "^0.7.0-alpha.47f01fff",
+    "@ciscospark/test-helper-mocha": "^0.7.0-alpha.5e822d8d",
     "lodash": "^4.5.1",
     "mkdirp": "^0.5.1"
   },
