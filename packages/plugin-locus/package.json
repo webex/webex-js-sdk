@@ -1,20 +1,20 @@
 {
   "name": "@ciscospark/plugin-locus",
-  "version": "0.7.0-alpha.03ed609c",
+  "version": "0.7.0-alpha.47f01fff",
   "description": "",
   "main": "dist/index.js",
   "devMain": "src/index.js",
   "license": "(Apache-2.0)",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-locus",
   "dependencies": {
-    "@ciscospark/plugin-mercury": "^0.7.0-alpha.03ed609c",
-    "@ciscospark/spark-core": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/plugin-mercury": "^0.7.0-alpha.47f01fff",
+    "@ciscospark/spark-core": "^0.7.0-alpha.47f01fff",
     "babel-runtime": "^6.3.19",
     "lodash": "^4.12.0"
   },
   "devDependencies": {
-    "@ciscospark/test-helper-chai": "^0.7.0-alpha.03ed609c",
-    "@ciscospark/test-helper-mock-spark": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/test-helper-chai": "^0.7.0-alpha.47f01fff",
+    "@ciscospark/test-helper-mock-spark": "^0.7.0-alpha.47f01fff",
     "babel-polyfill": "^6.3.14",
     "babel-register": "^6.4.3",
     "eslint": "^2.4.0",
