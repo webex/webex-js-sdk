@@ -20,14 +20,14 @@ export default {
     const logger = options.logger;
 
     const map = new Map();
-    logger.info(`storage-adapter: returning binding`);
+    logger.info(`memory-store-adapter: returning binding`);
     return Promise.resolve({
       del(key) {
-        logger.info(`storage-adapter: deleting \`${key}\``);
+        logger.info(`memory-store-adapter: deleting \`${key}\``);
         return Promise.resolve(map.delete(key));
       },
       get(key) {
-        logger.info(`storage-adapter: reading \`${key}\``);
+        logger.info(`memory-store-adapter: reading \`${key}\``);
         const res = map.get(key);
         if (res) {
           return Promise.resolve(res);
@@ -36,7 +36,7 @@ export default {
         return Promise.reject(new NotFoundError());
       },
       put(key, value) {
-        logger.info(`storage-adapter: writing \`${key}\``);
+        logger.info(`memory-store-adapter: writing \`${key}\``);
         return Promise.resolve(map.set(key, value));
       }
     });

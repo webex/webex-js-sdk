@@ -7,12 +7,14 @@
 /* eslint-env browser */
 
 const namespaces = new WeakMap();
+const loggers = new WeakMap();
 
 export default class StorageAdapterLocalStorage {
   constructor(basekey) {
     this.Bound = class {
-      constructor(namespace) {
+      constructor(namespace, options) {
         namespaces.set(this, namespace);
+        loggers.set(this, options.logger);
       }
 
       _load() {
@@ -31,6 +33,7 @@ export default class StorageAdapterLocalStorage {
 
       del(key) {
         return new Promise((resolve) => {
+          loggers.get(this).info(`local-storage-store-adapter: deleting \`${key}\``);
           const data = this._load();
           Reflect.deleteProperty(data, key);
           this._save(data);
@@ -40,6 +43,7 @@ export default class StorageAdapterLocalStorage {
 
       get(key) {
         return new Promise((resolve, reject) => {
+          loggers.get(this).info(`local-storage-store-adapter: reading \`${key}\``);
           const data = this._load();
           const value = data[key];
           if (value) {
@@ -52,6 +56,7 @@ export default class StorageAdapterLocalStorage {
 
       put(key, value) {
         return new Promise((resolve) => {
+          loggers.get(this).info(`local-storage-store-adapter: writing \`${key}\``);
           const data = this._load();
           data[key] = value;
           this._save(data);
@@ -61,7 +66,18 @@ export default class StorageAdapterLocalStorage {
     };
   }
 
-  bind(namespace) {
-    return Promise.resolve(new this.Bound(namespace));
+  bind(namespace, options) {
+    options = options || {};
+    if (!namespace) {
+      return Promise.reject(new Error(`\`namespace\` is required`));
+    }
+
+    if (!options.logger) {
+      return Promise.reject(new Error(`\`options.logger\` is required`));
+    }
+
+    options.logger.info(`local-storage-store-adapter: returning binding`);
+
+    return Promise.resolve(new this.Bound(namespace, options));
   }
 }
