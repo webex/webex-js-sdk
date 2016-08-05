@@ -6,7 +6,7 @@
 
 /* eslint camelcase: [0] */
 
-import {MemoryStoreAdapter} from './lib/storage';
+import {MemoryStoreAdapter} from './';
 
 export default {
   maxAppLevelRedirects: 10,

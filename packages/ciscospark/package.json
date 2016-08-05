@@ -12,6 +12,7 @@
     "@ciscospark/http-core": "^0.7.0-alpha",
     "@ciscospark/plugin-phone": "^0.7.0-alpha",
     "@ciscospark/spark-core": "^0.7.0-alpha",
+    "@ciscospark/storage-adapter-local-storage": "^0.7.0-alpha",
     "babel-polyfill": "^6.6.1",
     "babel-runtime": "^6.3.19",
     "envify": "^3.4.0",
@@ -27,6 +28,10 @@
     "babel-register": "^6.4.3",
     "eslint": "^3.3.1",
     "eslint-plugin-mocha": "^4.4.0"
+  },
+  "browser": {
+    "./src/config-storage.js": "./src/config-storage.shim.js",
+    "./dist/config-storage.js": "./dist/config-storage.shim.js"
   },
   "browserify": {
     "transform": [
