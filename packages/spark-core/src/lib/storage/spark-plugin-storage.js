@@ -12,11 +12,11 @@ const defers = new WeakMap();
 /**
  * AmpersandState#children compatible, lazily-bound interface to Spark#storage
  */
-export default class PluginStorage extends SparkPlugin2 {
+export default class SparkPluginStorage extends SparkPlugin2 {
   /**
    * @param {Object} attrs
    * @param {Object} options
-   * @returns {PluginStorage}
+   * @returns {SparkPluginStorage}
    */
   constructor(...args) {
     super(...args);

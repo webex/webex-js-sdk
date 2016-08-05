@@ -29,9 +29,9 @@ export {
 } from './plugins/credentials';
 
 export {
-  PluginStorage,
-  Storage,
-  StorageAdapter,
+  SparkPluginStorage,
+  Store,
+  MemoryStoreAdapter,
   persist,
   waitForValue
 } from './lib/storage';

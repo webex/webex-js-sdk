@@ -9,13 +9,13 @@ const bindings = new WeakMap();
 const parents = new WeakMap();
 
 /**
- * Lazy Key-Value Storage Interface
+ * Lazy Key-Value Store Interface
  */
-export default class Storage {
+export default class Store {
   /**
    * @param {Object} attrs
    * @param {Object} options
-   * @returns {Storage}
+   * @returns {Store}
    */
   constructor(attrs, options) {
     bindings.set(this, new Map());
@@ -115,4 +115,4 @@ export default class Storage {
   }
 }
 
-Object.assign(Storage.prototype, Events);
+Object.assign(Store.prototype, Events);
