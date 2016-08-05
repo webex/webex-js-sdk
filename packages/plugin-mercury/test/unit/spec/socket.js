@@ -11,7 +11,6 @@ import {AuthorizationError, ConnectionError, Socket} from '../..';
 import {config} from '../..';
 import uuid from 'uuid';
 import lolex from 'lolex';
-import {skipInBrowser} from '@ciscospark/test-helper-mocha';
 
 describe(`plugin-mercury`, () => {
   describe(`Socket`, () => {
