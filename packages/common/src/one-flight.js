@@ -5,9 +5,14 @@
 
 import {wrap} from 'lodash';
 
+const flights = new Map();
+
 /**
  * @memberof Util
  * @param {Object} options
+ * @param {Function} options.keyFactory
+ * @param {boolean} options.cacheFailures
+ * @param {boolean} options.cacheSuccesses
  * @returns {Function}
  */
 export default function oneFlight(options) {
@@ -15,15 +20,24 @@ export default function oneFlight(options) {
 
   const {
     cacheFailures,
-    cacheSuccesses
+    cacheSuccesses,
+    keyFactory
   } = options;
 
   return function decorate(target, prop, descriptor) {
-    const sym = Symbol(prop);
+    let sym;
+    if (!keyFactory) {
+      sym = Symbol(prop);
+    }
 
     descriptor.value = wrap(descriptor.value, function executor(fn, ...args) {
+      if (keyFactory) {
+        sym = keyFactory(args);
+      }
+
       /* eslint no-invalid-this: [0] */
-      if (this[sym]) {
+      let flight = flights.get(sym);
+      if (flights.get(sym)) {
         const message = `one flight: attempted to invoke ${prop} while previous invocation still in flight`;
         /* instanbul ignore else */
         if (this && this.logger) {
@@ -33,23 +47,23 @@ export default function oneFlight(options) {
           /* eslint no-console: [0] */
           console.info(message);
         }
-        return this[sym];
+        return flight;
       }
 
-      const promise = this[sym] = Reflect.apply(fn, this, args);
-      if (!cacheFailures && promise && promise.catch) {
-        promise.catch(() => {
-          Reflect.deleteProperty(this, sym);
+      flight = Reflect.apply(fn, this, args);
+      if (!cacheFailures && flight && flight.catch) {
+        flight.catch(() => {
+          flights.delete(sym);
         });
       }
 
-      if (!cacheSuccesses && promise && promise.then) {
-        promise.then(() => {
-          Reflect.deleteProperty(this, sym);
+      if (!cacheSuccesses && flight && flight.then) {
+        flight.then(() => {
+          flights.delete(sym);
         });
       }
 
-      return promise;
+      return flight;
     });
 
     // This *should* make decorators compatible with AmpersandState class

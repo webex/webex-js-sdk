@@ -12,19 +12,19 @@ describe(`spark-core`, () => {
     it(`works`, () => {
       const spark = new Spark();
       sinon.stub(spark, `request`).returns(Promise.resolve({
-        access_token: `fake token`,
-        token_type: `Bearer`
+        body: {
+          access_token: `fake token`,
+          token_type: `Bearer`
+        }
       }));
 
       return spark.authorize({code: 5})
         .then(() => {
           assert.calledOnce(spark.request);
-          return spark.storage._getBinding(`Credentials`)
-        })
-        .then((binding) => {
-          console.log(binding);
-          return spark.storage.get(`Credentials`, `authorization`)
-            .then((d) => console.log(d));
+          return assert.becomes(spark.storage.get(`Credentials`, `authorization`), {
+            access_token: `fake token`,
+            token_type: `Bearer`
+          });
         });
     });
   });

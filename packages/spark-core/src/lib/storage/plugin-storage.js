@@ -97,6 +97,7 @@ export default class PluginStorage extends SparkPlugin2 {
    * @returns {Promise} Resolves (but not with the retrieved value) when
    * the value retrieval complete
    */
+  @oneFlight({keyFactory: (key) => `initValue-${key}`})
   initValue(key) {
     const defer = new Defer();
 
@@ -130,5 +131,3 @@ export default class PluginStorage extends SparkPlugin2 {
     return defer.promise;
   }
 }
-
-PluginStorage.prototype.initValue = oneFlight((key) => `initValue-${key}`, PluginStorage.prototype.initValue);
