@@ -78,7 +78,11 @@ const Phone = SparkPlugin.extend({
    * @returns {Promise}
    */
   register() {
-    return this.spark.mercury.connect()
+    // Ideally, we could call spark.refresh via spark-core, but it doesn't know
+    // about the wdm plugin, and all of the leaky abstractions I can think of
+    // seem risky.
+    return this.spark.device.refresh()
+      .then(() => this.spark.mercury.connect())
       .then(() => this.spark.locus.list())
       .then((loci) => {
         loci.forEach((locus) => {

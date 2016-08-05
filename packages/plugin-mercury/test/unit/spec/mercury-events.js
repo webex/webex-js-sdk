@@ -11,11 +11,10 @@ import MockWebSocket from '../lib/mock-web-socket';
 import uuid from 'uuid';
 import promiseTick from '../lib/promise-tick';
 import lolex from 'lolex';
-import {skipInBrowser} from '@ciscospark/test-helper-mocha';
 
 describe(`plugin-mercury`, () => {
   describe(`Mercury`, () => {
-    skipInBrowser(describe)(`Events`, () => {
+    describe(`Events`, () => {
       let clock,
         mercury,
         mockWebSocket,

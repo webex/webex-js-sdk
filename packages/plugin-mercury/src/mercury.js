@@ -4,8 +4,7 @@
  */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import util from 'util';
-import {oneFlight} from '@ciscospark/common';
+import {deprecate, oneFlight} from '@ciscospark/common';
 import {set} from 'lodash';
 import S from 'string';
 import backoff from 'backoff';
@@ -76,12 +75,12 @@ const Mercury = SparkPlugin.extend({
     });
   }),
 
-  listen: util.deprecate(function listen() {
+  listen: deprecate(function listen() {
     /* eslint no-invalid-this: [0] */
     return this.connect();
   }, `Mercury#listen(): Use Mercury#connect() instead`),
 
-  stopListening: util.deprecate(function stopListening() {
+  stopListening: deprecate(function stopListening() {
     /* eslint no-invalid-this: [0] */
     return this.disconnect();
   }, `Mercury#stopListening(): Use Mercury#disconnect() instead`),
@@ -177,7 +176,7 @@ const Mercury = SparkPlugin.extend({
       call.on(`callback`, (err) => {
         if (err) {
           const number = call.getNumRetries();
-          const delay = call.strategy_.nextBackoffDelay_;
+          const delay = Math.min(call.strategy_.nextBackoffDelay_, this.config.backoffTimeMax);
 
           this.logger.info(`mercury: failed to connect; attempting retry ${number + 1} in ${delay} ms`);
           /* istanbul ignore if */
