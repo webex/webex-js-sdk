@@ -26,10 +26,10 @@ export function persist(key) {
       return Reflect.apply(fn, this, args)
         .then(tap(() => {
           if (key === `@`) {
-            this.storage.put(key, this);
+            this.boundedStorage.put(key, this);
           }
           else {
-            this.storage.put(key, this[key]);
+            this.boundedStorage.put(key, this[key]);
           }
         }));
     });
@@ -57,7 +57,7 @@ export function waitForValue(key) {
 
   return function decorate(target, prop, descriptor) {
     descriptor.value = wrap(descriptor.value, function _waitForValue(fn, ...args) {
-      return this.storage.waitFor(key)
+      return this.boundedStorage.waitFor(key)
         .then(() => Reflect.apply(fn, this, args));
     });
 

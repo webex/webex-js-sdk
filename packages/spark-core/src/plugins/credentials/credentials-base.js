@@ -186,7 +186,7 @@ const CredentialsBase = SparkPlugin.extend({
       if (this[key]) {
         return this[key].revoke()
           .then(() => this.unset(key))
-          .then(() => this.storage.del(key))
+          .then(() => this.boundedStorage.del(key))
           .catch((reason) => {
             this.logger.error(`credentials: ${key} revocation falied`, reason);
           });
