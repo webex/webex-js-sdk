@@ -169,6 +169,11 @@ assign(Socket.prototype, {
         url += ((url.indexOf('?') === -1) ? '?' : '&') + 'outboundWireFormat=text';
       }
 
+      /* istanbul ignore else */
+      if (url.indexOf('bufferStates=true') === -1) {
+        url += ((url.indexOf('?') === -1) ? '?' : '&') + 'bufferStates=true';
+      }
+
       this.logger.info('socket: connecting to websocket');
       this._socket = this._open(url);
 

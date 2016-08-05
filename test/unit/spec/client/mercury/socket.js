@@ -219,16 +219,22 @@ describe('Client', function() {
           return assert.isRejected(socket.open('ws://example.com'), /Socket#open\(\) can only be called once/);
         });
 
-        it('ensures we always use text-mode WebSockets', function() {
+        it('ensures we always use text-mode WebSockets and get buffer states', function() {
           var s = new Socket();
           s.open('ws://example.com', mockoptions);
           assert.match(s.url, /outboundWireFormat=text/);
-          assert.equal(s.url, 'ws://example.com?outboundWireFormat=text');
+          assert.equal(s.url, 'ws://example.com?outboundWireFormat=text&bufferStates=true');
 
           s = new Socket();
           s.open('ws://example.com?queryparam=something', mockoptions);
           assert.match(s.url, /outboundWireFormat=text/);
-          assert.equal(s.url, 'ws://example.com?queryparam=something&outboundWireFormat=text');
+          assert.equal(s.url, 'ws://example.com?queryparam=something&outboundWireFormat=text&bufferStates=true');
+        });
+
+        it('does not duplicate url queries', function() {
+          var s = new Socket();
+          s.open('ws://example.com?outboundWireFormat=text&bufferStates=true', mockoptions);
+          assert.equal(s.url, 'ws://example.com?outboundWireFormat=text&bufferStates=true');
         });
 
         it('sets the underlying socket\'s binary type', function() {
