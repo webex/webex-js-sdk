@@ -5,10 +5,10 @@
  */
 
 import runAbstractStorageAdapterSpec from '@ciscospark/storage-adapter-spec';
-import {StorageAdapter} from '../../..';
+import {MemoryStoreAdapter} from '../../..';
 
 describe(`spark-core`, () => {
-  describe(`StorageAdapter`, () => {
-    runAbstractStorageAdapterSpec(StorageAdapter);
+  describe(`MemoryStoreAdapter`, () => {
+    runAbstractStorageAdapterSpec(MemoryStoreAdapter);
   });
 });

@@ -15,12 +15,12 @@ import ResponseLoggerInterceptor from './interceptors/response-logger';
 import SparkHttpError from './lib/spark-http-error';
 import SparkTrackingIdInterceptor from './interceptors/spark-tracking-id';
 import config from './config';
-import Storage from './lib/storage';
+import Store from './lib/storage';
 
 let constructorCalled = false;
 const derived = {};
 const children = {
-  storage: Storage
+  storage: Store
 };
 
 let Spark;

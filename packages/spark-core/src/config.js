@@ -6,7 +6,7 @@
 
 /* eslint camelcase: [0] */
 
-import {StorageAdapter} from './lib/storage';
+import {MemoryStoreAdapter} from './lib/storage';
 
 export default {
   maxAppLevelRedirects: 10,
@@ -36,6 +36,6 @@ export default {
     samlUrl: `https://idbroker.webex.com/idb/token`
   },
   storage: {
-    adapter: StorageAdapter
+    adapter: MemoryStoreAdapter
   }
 };

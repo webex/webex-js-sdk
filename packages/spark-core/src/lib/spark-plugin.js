@@ -6,12 +6,12 @@
 
 import AmpState from 'ampersand-state';
 import util from 'util';
-import {PluginStorage} from './storage';
+import {SparkPluginStorage} from './storage';
 import {omit} from 'lodash';
 
 const SparkPlugin = AmpState.extend({
   children: {
-    storage: PluginStorage
+    storage: SparkPluginStorage
   },
 
   derived: {
