@@ -11,6 +11,7 @@ import MockWebSocket from '../lib/mock-web-socket';
 import uuid from 'uuid';
 import promiseTick from '../lib/promise-tick';
 import lolex from 'lolex';
+import {skipInBrowser} from '@ciscospark/test-helper-mocha';
 
 describe(`plugin-mercury`, () => {
   describe(`Mercury`, () => {
@@ -117,7 +118,8 @@ describe(`plugin-mercury`, () => {
       });
 
       describe(`when \`maxRetries\` is set`, () => {
-        it(`fails after \`maxRetries\` attempts`, () => {
+        // skipping due to apparent bug with lolex in all browsers but Chrome.
+        skipInBrowser(it)(`fails after \`maxRetries\` attempts`, () => {
           mercury.config.maxRetries = 2;
           socketOpenStub.restore();
           socketOpenStub = sinon.stub(Socket.prototype, `open`);
@@ -162,7 +164,8 @@ describe(`plugin-mercury`, () => {
       });
 
       describe(`when the connection fails`, () => {
-        it(`backs off exponentially`, () => {
+        // skipping due to apparent bug with lolex in all browsers but Chrome.
+        skipInBrowser(it)(`backs off exponentially`, () => {
           socketOpenStub.restore();
           socketOpenStub = sinon.stub(Socket.prototype, `open`);
           socketOpenStub.returns(Promise.reject(new ConnectionError()));
@@ -198,7 +201,8 @@ describe(`plugin-mercury`, () => {
         });
 
         describe(`with \`AuthorizationError\``, () => {
-          it(`refreshes the access token, reregisters the device, and reconnects the WebSocket`, () => {
+          // skipping due to apparent bug with lolex in all browsers but Chrome.
+          skipInBrowser(it)(`refreshes the access token, reregisters the device, and reconnects the WebSocket`, () => {
             socketOpenStub.restore();
             socketOpenStub = sinon.stub(Socket.prototype, `open`);
             socketOpenStub.returns(Promise.reject(new AuthorizationError()));
@@ -224,7 +228,8 @@ describe(`plugin-mercury`, () => {
             return assert.isFulfilled(promise);
           }));
 
-        it(`does not continue attempting to connect`, () => {
+          // skipping due to apparent bug with lolex in all browsers but Chrome.
+        skipInBrowser(it)(`does not continue attempting to connect`, () => {
           mercury.connect();
           return promiseTick(1)
             .then(() => {
