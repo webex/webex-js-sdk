@@ -24,7 +24,7 @@ export default function oneFlight(options) {
     keyFactory
   } = options;
 
-  return function decorate(target, prop, descriptor) {
+  return function _oneFlight(target, prop, descriptor) {
     let sym;
     if (!keyFactory) {
       sym = Symbol(prop);

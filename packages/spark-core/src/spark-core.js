@@ -19,7 +19,7 @@ import {makeSparkStore} from './lib/storage';
 
 let constructorCalled = false;
 const derived = {};
-const children = {};
+export const children = {};
 
 let Spark;
 
@@ -69,7 +69,7 @@ const SparkCore = AmpState.extend({
       fn() {
         return makeSparkStore(`unbounded`, this);
       }
-    },
+    }
   },
 
   session: {

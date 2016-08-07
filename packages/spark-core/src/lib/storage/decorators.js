@@ -20,7 +20,7 @@ export function persist(key) {
     throw new Error(`\`key\` is required`);
   }
 
-  return function decorate(target, prop, descriptor) {
+  return function _persist(target, prop, descriptor) {
     descriptor.value = wrap(descriptor.value, function executor(fn, ...args) {
       /* eslint no-invalid-this: [0] */
       return Reflect.apply(fn, this, args)
@@ -55,8 +55,8 @@ export function waitForValue(key) {
     throw new Error(`\`key\` is required`);
   }
 
-  return function decorate(target, prop, descriptor) {
-    descriptor.value = wrap(descriptor.value, function _waitForValue(fn, ...args) {
+  return function _waitForValue(target, prop, descriptor) {
+    descriptor.value = wrap(descriptor.value, function executor(fn, ...args) {
       return this.boundedStorage.waitFor(key)
         .then(() => Reflect.apply(fn, this, args));
     });

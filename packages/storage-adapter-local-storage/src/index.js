@@ -6,6 +6,8 @@
 
 /* eslint-env browser */
 
+import {NotFoundError} from '@ciscospark/spark-core';
+
 const namespaces = new WeakMap();
 const loggers = new WeakMap();
 
@@ -50,7 +52,7 @@ export default class StorageAdapterLocalStorage {
             return resolve(value);
           }
 
-          return reject(new Error(`No value found for ${key}`));
+          return reject(new NotFoundError(`No value found for ${key}`));
         });
       }
 

@@ -43,7 +43,8 @@ const Mercury = SparkPlugin.extend({
     }
   },
 
-  connect: oneFlight(`connect`, function connect() {
+  @oneFlight
+  connect() {
     if (this.connected) {
       this.logger.info(`mercury: already connected, will not connect again`);
       return Promise.resolve();
@@ -56,9 +57,10 @@ const Mercury = SparkPlugin.extend({
 
         return this._connectWithBackoff();
       });
-  }),
+  },
 
-  disconnect: oneFlight(`disconnect`, function disconnect() {
+  @oneFlight
+  disconnect() {
     return new Promise((resolve) => {
       if (this.backoffCall) {
         this.logger.info(`mercury: aborting connection`);
@@ -74,7 +76,7 @@ const Mercury = SparkPlugin.extend({
 
       resolve();
     });
-  }),
+  },
 
   listen: util.deprecate(function listen() {
     /* eslint no-invalid-this: [0] */

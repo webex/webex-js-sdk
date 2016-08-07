@@ -19,9 +19,3 @@ export function connectToMercury(spark) {
     dispatch(updateState({connecting: true}));
   };
 }
-
-export const REDUX_SPARK_RECEIVE_CREDENTIALS = `REDUX_SPARK_RECEIVE_CREDENTIALS`;
-export const receiveCredentials = createAction(REDUX_SPARK_RECEIVE_CREDENTIALS, (spark) => spark.credentials.serialize());
-
-export const REDUX_SPARK_RECEIVE_DEVICE = `REDUX_SPARK_RECEIVE_DEVICE`;
-export const receiveDevice = createAction(REDUX_SPARK_RECEIVE_DEVICE, (spark) => spark.device.serialize());
