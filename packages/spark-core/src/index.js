@@ -8,7 +8,6 @@ import './plugins/logger';
 import './plugins/credentials';
 
 export {
-  children,
   makeSparkStore,
   makeSparkPluginStore,
   MemoryStoreAdapter
@@ -42,3 +41,5 @@ export {
   persist,
   waitForValue
 } from './lib/storage';
+
+// export {default as RequestBatcher} from './lib/request-batcher';

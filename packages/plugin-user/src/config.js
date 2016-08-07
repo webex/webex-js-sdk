@@ -4,27 +4,21 @@
  */
 
 export default {
-  metrics: {
+  user: {
     /**
-     * Time to wait before attempting to resubmit metrics
-     * @type {Number}
-     */
-    retryDelay: 30000,
-
-    /**
-     * Debounce wait before sending a metric
+     * Debounce wait before requesting a UUID
      * @type {Number}
      */
     batchWait: 500,
 
     /**
-     * Maximum queue size before sending a metric
+     * Maximum queue size before requesting a UUID
      * @type {Number}
      */
     batchMaxCalls: 100,
 
     /**
-     * Debounce max wait before sending a metric
+     * Debounce max wait before requesting a UUID
      * @type {Number}
      */
     batchMaxWait: 1500

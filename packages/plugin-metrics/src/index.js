@@ -4,8 +4,6 @@
  * @private
  */
 
-import '@ciscospark/plugin-wdm';
-
 import {registerPlugin} from '@ciscospark/spark-core';
 import Metrics from './metrics';
 import config from './config';
@@ -15,3 +13,5 @@ registerPlugin(`metrics`, Metrics, {
 });
 
 export {default as default} from './metrics';
+export {default as AutoInstrumentInterceptor} from './interceptor';
+export {PAYLOAD_KEY_SYMBOL, default as MetricsBatcher} from './batcher';

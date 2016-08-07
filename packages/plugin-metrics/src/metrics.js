@@ -5,29 +5,25 @@
  */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {defaults} from 'lodash';
+import MetricsBatcher from './batcher';
 
 const Metrics = SparkPlugin.extend({
   namespace: `Metrics`,
 
-  submit(key, value) {
-    value = value || {};
-    defaults(value, {
-      appType: this.config.appType,
-      env: process.env.NODE_ENV || `development`,
-      version: this.spark.version,
-      time: Date.now(),
-      postTime: Date.now()
-    });
+  children: {
+    batch: MetricsBatcher
+  },
 
-    return this.request({
-      method: `POST`,
-      service: `metrics`,
-      resource: `metrics`,
-      body: {
-        metrics: [Object.assign({key}, value)]
-      }
-    });
+  submit(key, value) {
+    if (!key) {
+      throw new Error(`\`key\` is required`);
+    }
+
+    if (!value) {
+      throw new Error(`\`value\` is required`);
+    }
+
+    return this.batch.enqueue({key, value});
   }
 });
 

@@ -1,5 +1,5 @@
 {
-  "name": "@ciscospark/plugin-metrics",
+  "name": "@ciscospark/plugin-encryption",
   "version": "0.7.0-alpha.03ed609c",
   "description": "",
   "main": "dist/index.js",
@@ -9,12 +9,20 @@
   "dependencies": {
     "@ciscospark/common": "^0.7.0-alpha.03ed609c",
     "@ciscospark/http-core": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/plugin-mercury": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/plugin-wdm": "^0.7.0-alpha.03ed609c",
     "@ciscospark/spark-core": "^0.7.0-alpha.03ed609c",
     "babel-runtime": "^6.3.19",
-    "lodash": "^4.5.1"
+    "extend-error": "git://github.com/ianwremmel/extend-error.git",
+    "lodash": "^4.11.1",
+    "node-jose": "^0.7.1",
+    "node-kms": "^0.3.1",
+    "node-scr": "^0.2.1"
   },
   "devDependencies": {
     "@ciscospark/test-helper-chai": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/test-helper-file": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/test-helper-make-local-url": "^0.7.0-alpha.03ed609c",
     "@ciscospark/test-helper-mocha": "^0.7.0-alpha.03ed609c",
     "@ciscospark/test-helper-sinon": "^0.7.0-alpha.03ed609c",
     "@ciscospark/test-helper-test-users": "^0.7.0-alpha.03ed609c",
@@ -25,5 +33,9 @@
     "babel-register": "^6.4.3",
     "eslint": "^2.4.0",
     "eslint-plugin-mocha-only": "0.0.3"
+  },
+  "browser": {
+    "./dist/ensure-buffer.js": "./dist/ensure-buffer.browser.js",
+    "./src/ensure-buffer.js": "./src/ensure-buffer.browser.js"
   }
 }
