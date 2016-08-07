@@ -158,8 +158,8 @@ describe(`plugin-wdm`, () => {
           device.url = `http://example.com/device/1`;
 
           assert.notCalled(device.refresh);
-          device.register();
-          assert.calledOnce(device.refresh);
+          return device.register()
+            .then(() => assert.calledOnce(device.refresh));
         });
       });
     });
@@ -172,8 +172,8 @@ describe(`plugin-wdm`, () => {
           device.unset(`url`);
 
           assert.notCalled(device.register);
-          device.refresh();
-          assert.calledOnce(device.register);
+          return device.refresh()
+            .then(() => assert.calledOnce(device.register));
         });
       });
 

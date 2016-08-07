@@ -17,10 +17,42 @@ function makeSpark(options) {
     return requestPromise;
   };
 
+  function makeMockStorage() {
+    return {
+      on: sinon.spy(),
+      once: sinon.spy(),
+      listenTo: sinon.spy(),
+      listenToAndRun: sinon.spy(),
+      clear(namespace) {
+        this.data = this.data || {};
+        this.data[namespace] = {};
+      },
+      del(namespace, key) {
+        this.data = this.data || {};
+        this.data[namespace] = this.data[namespace] || {};
+        delete this.data[namespace][key];
+      },
+      get(namespace, key) {
+        this.data = this.data || {};
+        this.data[namespace] = this.data[namespace] || {};
+        var ret = this[key];
+        if (ret) {
+          return Promise.resolve(ret);
+        }
+        return Promise.reject(new Error('MockNotFoundError'));
+      },
+      put(namespace, key, value) {
+        this.data = this.data || {};
+        this.data[namespace] = this.data[namespace] || {};
+        this.data[namespace][key] = value;
+        return Promise.resolve();
+      }
+    };
+  }
+
   var request = sinon.stub().returns(requestPromise);
   var upload = sinon.stub().returns(uploadPromise);
-
-  var MockSpark = State.extend(options, {
+  var MockSpark = State.extend(_.defaults(options, {
     extraProperies: 'allow',
     request: request,
     upload: upload,
@@ -43,9 +75,10 @@ function makeSpark(options) {
       support: {},
       user: {}
     }
-  });
+  }));
 
   var spark = new MockSpark();
+
   sinon.spy(spark, 'refresh');
   _.defaults(spark, {
     credentials: {
@@ -83,7 +116,9 @@ function makeSpark(options) {
       log: sinon.spy(),
       info: sinon.spy(),
       debug: sinon.spy()
-    }
+    },
+    boundedStorage: makeMockStorage(),
+    unboundedStorage: makeMockStorage()
   });
 
   return spark;

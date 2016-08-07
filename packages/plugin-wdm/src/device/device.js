@@ -8,6 +8,7 @@ import {SparkPlugin} from '@ciscospark/spark-core';
 import {omit} from 'lodash';
 import util from 'util';
 import FeaturesModel from './features-model';
+import {persist, waitForValue} from '@ciscospark/spark-core';
 
 const Device = SparkPlugin.extend({
   children: {
@@ -42,6 +43,7 @@ const Device = SparkPlugin.extend({
     }
   },
 
+  @waitForValue(`@`)
   getServiceUrl(service) {
     return this._getServiceUrl(this.services, service)
       .then((isServiceUrl) => isServiceUrl || this.getPreDiscoveryServiceUrl(service));
@@ -86,16 +88,27 @@ const Device = SparkPlugin.extend({
     return Promise.resolve(this._isServiceUrl(this.config.preDiscoveryServices, uri));
   },
 
+  @waitForValue(`@`)
   isService(service) {
     return this._isService(this.services, service)
-      .then((isService) => isService || this.isPreDiscoveryService(service));
+      .then((_isService) => _isService || this.isPreDiscoveryService(service));
   },
 
+  @waitForValue(`@`)
   isServiceUrl(uri) {
     // The Promise.resolve here is temporary. A future PR will make the
     // corresponding _ method async to allow for lazy device registration
-    return Promise.resolve(this._isServiceUrl(this.services, uri))
-      .then((isService) => isService || this.isPreDiscoveryServiceUrl(uri));
+    return Promise.resolve(this._isServiceUrl(this.services, uri));
+  },
+
+  @waitForValue(`@`)
+  isSpecificService(service, key) {
+    if (key === service) {
+      return Promise.resolve(true);
+    }
+
+    return this.getServiceUrl(service)
+      .then((serviceUrl) => key.includes(serviceUrl));
   },
 
   _getServiceUrl(target, service) {
@@ -130,7 +143,10 @@ const Device = SparkPlugin.extend({
     return Promise.resolve(false);
   },
 
-  refresh: oneFlight(`refresh`, function refresh() {
+  @oneFlight
+  @persist(`@`)
+  @waitForValue(`@`)
+  refresh() {
     this.logger.info(`device: refreshing`);
 
     if (!this.registered) {
@@ -156,9 +172,12 @@ const Device = SparkPlugin.extend({
         }
         return Promise.reject(reason);
       });
-  }),
+  },
 
-  register: oneFlight(`register`, function register() {
+  @oneFlight
+  @persist(`@`)
+  @waitForValue(`@`)
+  register() {
     /* eslint no-invalid-this: [0] */
     this.logger.info(`device: registering`);
 
@@ -174,7 +193,7 @@ const Device = SparkPlugin.extend({
       body: this.config.defaults
     })
       .then((res) => this._processRegistrationSuccess(res));
-  }),
+  },
 
   _processRegistrationSuccess(res) {
     this.logger.info(`device: received registration payload`);
