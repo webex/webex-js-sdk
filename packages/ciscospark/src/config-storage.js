@@ -4,7 +4,7 @@
  * @private
  */
 
-import {MemoryStoreAdapter} from './lib/storage';
+import {MemoryStoreAdapter} from '@cisospark/spark-core';
 
 export default {
   boundedAdapter: MemoryStoreAdapter,
