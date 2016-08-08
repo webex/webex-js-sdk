@@ -3,64 +3,76 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {isFunction} from 'lodash';
+import {wrap} from 'lodash';
+
+const flights = new map();
 
 /**
  * @memberof Util
- * @param {string}   name
- * @param {Function} fn
- * @param {Object}   options
+ * @param {Object} options
+ * @param {Function} options.keyFactory
+ * @param {boolean} options.cacheFailures
+ * @param {boolean} options.cacheSuccesses
  * @returns {Function}
  */
-export default function oneFlight(name, fn, options) {
-  if (!name) {
-    throw new Error(`\`name\` is required`);
-  }
-
-  if (!fn) {
-    throw new Error(`\`fn\` is required`);
-  }
-
+export default function oneFlight(options) {
   options = options || {};
 
-  return function oneFlightExecutor(...args) {
-    /* eslint no-invalid-this: [0] */
-    let promiseName;
-    if (isFunction(name)) {
-      promiseName = `$promise${Reflect.apply(name, this, args)}`;
-    }
-    else {
-      promiseName = `$promise${name}`;
+  const {
+    cacheFailures,
+    cacheSuccesses,
+    keyFactory
+  } = options;
+
+  return function oneFlightDecorator(target, prop, descriptor) {
+    let sym;
+    if (!keyFactory) {
+      sym = Symbol(prop);
     }
 
-    if (this[promiseName]) {
-      const message = `one flight: attempted to invoke ${name} while previous invocation still in flight`;
-
-      /* instanbul ignore else */
-      if (this && this.logger) {
-        this.logger.info(message);
+    descriptor.value = wrap(descriptor.value, function oneFlightExecutor(fn, ...args) {
+      if (keyFactory) {
+        sym = keyFactory(args);
       }
-      else {
-        /* eslint no-console: [0] */
-        console.info(message);
+
+      /* eslint no-invalid-this: [0] */
+      let flight = flights.get(sym);
+      if (flights.get(sym)) {
+
+        const message = `one flight: attempted to invoke ${prop} while previous invocation still in flight`;
+        /* instanbul ignore else */
+        if (this && this.logger) {
+          this.logger.info(message);
+        }
+        else {
+          /* eslint no-console: [0] */
+          console.info(message);
+        }
+        return flight;
       }
-      return this[promiseName];
+
+      flight = Reflect.apply(fn, this, args);
+      if (!cacheFailures && flight && flight.catch) {
+        flight.catch(() => {
+          flights.delete(sym);
+        });
+      }
+
+      if (!cacheSuccesses && flight && flight.then) {
+        flight.then(() => {
+          flights.delete(sym);
+        });
+      }
+
+      return flight;
+    });
+
+    // This *should* make decorators compatible with AmpersandState class
+    // definitions
+    if (typeof target === `object` && !target.prototype) {
+      target[prop] = descriptor.value;
     }
 
-    const promise = this[promiseName] = Reflect.apply(fn, this, args);
-
-    if (!options.cacheFailure && promise && promise.catch) {
-      promise.catch(() => {
-        this[promiseName] = null;
-      });
-    }
-
-    if (!options.cacheSuccess && promise && promise.catch) {
-      promise.then(() => {
-        this[promiseName] = null;
-      });
-    }
-
-    return promise;
+    return descriptor;
   };
 }

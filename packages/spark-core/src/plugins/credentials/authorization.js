@@ -97,7 +97,8 @@ const AuthorizationBase = SparkPlugin.extend({
     return Reflect.apply(SparkPlugin.prototype.initialize, this, args);
   },
 
-  refresh: oneFlight(`refresh`, function refresh() {
+  @oneFlight
+  refresh() {
     /* eslint no-invalid-this: [0] */
     if (!this.canRefresh) {
       return Promise.reject(new Error(`Authorization cannot be refreshed`));
@@ -164,9 +165,10 @@ const AuthorizationBase = SparkPlugin.extend({
         this.isRefreshing = false;
         return Promise.reject(res);
       });
-  }),
+  },
 
-  revoke: oneFlight(`revoke`, function revoke() {
+  @oneFlight
+  revoke() {
     /* eslint no-invalid-this: [0] */
     if (this.isExpired || !this.isValid) {
       this.logger.info(`authorization: access token already expired or invalid, not revoking`);
@@ -215,7 +217,7 @@ const AuthorizationBase = SparkPlugin.extend({
         const ErrorConstructor = grantErrors.select(reason.body.error);
         return Promise.reject(new ErrorConstructor(reason._res || reason));
       });
-  })
+  }
 });
 
 export default AuthorizationBase;

@@ -4,7 +4,8 @@
  */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {deprecate, oneFlight} from '@ciscospark/common';
+import {deprcate} from 'core-decorators'
+import {oneFlight} from '@ciscospark/common';
 import {set} from 'lodash';
 import S from 'string';
 import backoff from 'backoff';
@@ -42,7 +43,8 @@ const Mercury = SparkPlugin.extend({
     }
   },
 
-  connect: oneFlight(`connect`, function connect() {
+  @oneFlight
+  connect() {
     if (this.connected) {
       this.logger.info(`mercury: already connected, will not connect again`);
       return Promise.resolve();
@@ -55,9 +57,10 @@ const Mercury = SparkPlugin.extend({
 
         return this._connectWithBackoff();
       });
-  }),
+  },
 
-  disconnect: oneFlight(`disconnect`, function disconnect() {
+  @oneFlight
+  disconnect() {
     return new Promise((resolve) => {
       if (this.backoffCall) {
         this.logger.info(`mercury: aborting connection`);
@@ -73,17 +76,19 @@ const Mercury = SparkPlugin.extend({
 
       resolve();
     });
-  }),
+  },
 
-  listen: deprecate(function listen() {
+  @deprecate(`Mercury#listen(): Use Mercury#connect() instead`)
+  listen() {
     /* eslint no-invalid-this: [0] */
     return this.connect();
-  }, `Mercury#listen(): Use Mercury#connect() instead`),
+  },
 
-  stopListening: deprecate(function stopListening() {
+  @deprecate(`Mercury#stopListening(): Use Mercury#disconnect() instead`)
+  stopListening() {
     /* eslint no-invalid-this: [0] */
     return this.disconnect();
-  }, `Mercury#stopListening(): Use Mercury#disconnect() instead`),
+  },
 
   _applyOverrides(event) {
     if (!event.headers) {

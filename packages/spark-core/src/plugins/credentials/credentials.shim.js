@@ -22,7 +22,8 @@ import CredentialsBase from './credentials-base';
 function noop() {/* eslint no-empty:[0] */}
 
 const Credentials = CredentialsBase.extend({
-  authorize: oneFlight(`authorize`, function authorize(options) {
+  @oneFlight
+  authorize(options) {
     /* eslint complexity: [0] */
     /* eslint camelcase: [0] */
     /* eslint no-invalid-this: [0] */
@@ -53,7 +54,7 @@ const Credentials = CredentialsBase.extend({
     default:
       return Promise.reject(new Error(`config.credentials.clientType must be defined`));
     }
-  }),
+  },
 
   initiateImplicitGrant(options) {
     const vars = {

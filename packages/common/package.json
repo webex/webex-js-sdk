@@ -14,8 +14,7 @@
     "backoff": "^2.4.1",
     "btoa": "^1.1.2",
     "envify": "^3.4.0",
-    "lodash": "^4.5.1",
-    "util-deprecate": "^1.0.2"
+    "lodash": "^4.5.1"
   },
   "devDependencies": {
     "@ciscospark/test-helper-chai": "^0.7.0-alpha.10dc6ffb",

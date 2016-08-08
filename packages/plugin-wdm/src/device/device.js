@@ -130,7 +130,8 @@ const Device = SparkPlugin.extend({
     return Promise.resolve(false);
   },
 
-  refresh: oneFlight(`refresh`, function refresh() {
+  @oneFlight
+  refresh() {
     this.logger.info(`device: refreshing`);
 
     if (!this.registered) {
@@ -156,9 +157,10 @@ const Device = SparkPlugin.extend({
         }
         return Promise.reject(reason);
       });
-  }),
+  },
 
-  register: oneFlight(`register`, function register() {
+  @oneFlight
+  register() {
     /* eslint no-invalid-this: [0] */
     this.logger.info(`device: registering`);
 
@@ -174,7 +176,7 @@ const Device = SparkPlugin.extend({
       body: this.config.defaults
     })
       .then((res) => this._processRegistrationSuccess(res));
-  }),
+  },
 
   _processRegistrationSuccess(res) {
     this.logger.info(`device: received registration payload`);
