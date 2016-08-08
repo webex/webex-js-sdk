@@ -4,7 +4,7 @@
 
 set -e
 set -o pipefail
-set +x
+set -x
 
 echo "Begin gate-jenkins.sh"
 
@@ -14,13 +14,14 @@ export XUNIT=true
 LOG_FILE="$(pwd)/test.log"
 rm -f "${LOG_FILE}"
 
-PWD=`pwd`
+CWD=`pwd`
 
 cd /tmp
-ls lerna > /dev/null 2> /dev/null || git clone git@github.com:ianwremmel/lerna.git:
+ls lerna > /dev/null 2> /dev/null || git clone git@github.com:ianwremmel/lerna.git
+cd lerna
 git checkout de0f7f2
 npm link
-cd "${PWD}"
+cd "${CWD}"
 npm link lerna
 
 # INSTALL
