@@ -407,45 +407,12 @@ title: API
   
     <h2 id='CiscoSpark'>CiscoSpark</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/ciscospark.js#L104-L112">packages/ciscospark/src/ciscospark.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/ciscospark.js#L49-L57">packages/ciscospark/src/ciscospark.js</a>
     
   
 
-  <p>SDK for Cisco Spark</p>
-<h2>Installation</h2>
-<pre><code class="language-javascript">npm install --save ciscospark
-</code></pre>
-<h2>A Note on Browsers</h2>
-<p>Ciscospark is fully browser compatible but we don&#x27;t distribute a browserified
-bundle at this time; you&#x27;ll need to build the bundle yourself. We use
-<a href="http://browserify.org/">browserify</a> internally and
-<a href="https://webpack.github.io/">webpack</a> should work as well.</p>
-<h2>Getting Started</h2>
-<p>The quickest way to get started is to set your access token as an environment
-variable:</p>
-<pre><code class="language-javascript">&#x3C;%= gettingstarted__accesstoken %&#x3E;
-</code></pre>
-<h3>Refresh Tokens</h3>
-<p>For long-running use cases, you&#x27;ll need to provide a refresh token, client
-id, and client secret:</p>
-<pre><code class="language-javascript">TODO
-</code></pre>
-<h2>Runtime Configuration</h2>
-<p>While environment variables are handy for development, they don&#x27;t really help
-you write an app for lots of users. You can pass credentials to the spark
-using init.</p>
-<pre><code class="language-javascript">TODO
-</code></pre>
-<h2>OAuth</h2>
-<p>OAuth is baked right into spark so you don&#x27;t need to figure it out.</p>
-<p>To kick off an OAuth login, simply call <code>spark.authenticate()</code> which will
-direct the current app to our login page.</p>
-<pre><code class="language-javascript">TODO
-</code></pre>
-<p>To refresh an access token, call <code>spark.authorize()</code>. (Note: this should
-generally happen for you automatically).</p>
-<pre><code class="language-javascript">TODO
-</code></pre>
+  <p>See <a href="https://ciscospark.github.io/spark-js-sdk/example/browsers">Browser Guide</a> and
+<a href="https://ciscospark.github.io/spark-js-sdk/example/servers">Server Guide</a></p>
 
 
   <pre>CiscoSpark()</pre>
@@ -482,9 +449,10 @@ generally happen for you automatically).</p>
       <section>
   
 
-  <p>While environment variables are handy for development, they don&#x27;t really help
-you write an app for lots of users. You can pass credentials to the spark
-using init.</p>
+  <p>Create a new ciscospark instance.
+Note: ciscospark.init() really only applies to node apps at this time. In web
+browsers, you&#x27;ll want to stick with manipulating the ciscospark instance you
+get from <code>require(&#x27;ciscospark&#x27;)</code></p>
 
 
   <pre>init(attrs: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="#CiscoSpark">CiscoSpark</a></pre>
@@ -515,7 +483,26 @@ using init.</p>
                 <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
                 
               </td>
-              <td></td>
+              <td>(optional)
+</td>
+            </tr>
+          
+            <tr>
+              <td>attrs.device
+                <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
+                
+              </td>
+              <td>(optional)
+</td>
+            </tr>
+          
+            <tr>
+              <td>attrs.config
+                <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
+                
+              </td>
+              <td>(optiona)
+</td>
             </tr>
           
           </tbody>
@@ -567,7 +554,7 @@ using init.</p>
   
     <h2 id='Page'>Page</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/lib/page.js#L14-L158">packages/ciscospark/src/lib/page.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/lib/page.js#L14-L158">packages/ciscospark/src/lib/page.js</a>
     
   
 
@@ -970,7 +957,7 @@ using init.</p>
   
     <h2 id='Memberships'>Memberships</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/plugins/memberships.js#L25-L238">packages/ciscospark/src/plugins/memberships.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/plugins/memberships.js#L25-L238">packages/ciscospark/src/plugins/memberships.js</a>
     
   
 
@@ -1463,7 +1450,7 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Memberships Example'<
   
     <h2 id='Types~Membership'>Types~Membership</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/plugins/memberships.js#L25-L238">packages/ciscospark/src/plugins/memberships.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/plugins/memberships.js#L25-L238">packages/ciscospark/src/plugins/memberships.js</a>
     
   
 
@@ -1570,7 +1557,7 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Memberships Example'<
   
     <h2 id='Types~Message'>Types~Message</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/plugins/messages.js#L29-L206">packages/ciscospark/src/plugins/messages.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/plugins/messages.js#L29-L206">packages/ciscospark/src/plugins/messages.js</a>
     
   
 
@@ -1661,7 +1648,7 @@ supported media types.
   
     <h2 id='Messages'>Messages</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/plugins/messages.js#L29-L206">packages/ciscospark/src/plugins/messages.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/plugins/messages.js#L29-L206">packages/ciscospark/src/plugins/messages.js</a>
     
   
 
@@ -2069,7 +2056,7 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Messages Example'</sp
   
     <h2 id='People'>People</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/plugins/people.js#L22-L109">packages/ciscospark/src/plugins/people.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/plugins/people.js#L22-L109">packages/ciscospark/src/plugins/people.js</a>
     
   
 
@@ -2316,7 +2303,7 @@ ciscospark.rooms.create({title: <span class="hljs-string">'List People Example'<
   
     <h2 id='Types~Person'>Types~Person</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/plugins/people.js#L22-L109">packages/ciscospark/src/plugins/people.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/plugins/people.js#L22-L109">packages/ciscospark/src/plugins/people.js</a>
     
   
 
@@ -2396,7 +2383,7 @@ ciscospark.rooms.create({title: <span class="hljs-string">'List People Example'<
   
     <h2 id='Rooms'>Rooms</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/plugins/rooms.js#L23-L206">packages/ciscospark/src/plugins/rooms.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/plugins/rooms.js#L23-L206">packages/ciscospark/src/plugins/rooms.js</a>
     
   
 
@@ -2843,7 +2830,7 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Update Room Example'<
   
     <h2 id='Types~Room'>Types~Room</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/plugins/rooms.js#L23-L206">packages/ciscospark/src/plugins/rooms.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/plugins/rooms.js#L23-L206">packages/ciscospark/src/plugins/rooms.js</a>
     
   
 
@@ -2926,7 +2913,7 @@ belongs
   
     <h2 id='Teams'>Teams</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/plugins/teams.js#L22-L157">packages/ciscospark/src/plugins/teams.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/plugins/teams.js#L22-L157">packages/ciscospark/src/plugins/teams.js</a>
     
   
 
@@ -3288,7 +3275,7 @@ ciscospark.teams.create({name: <span class="hljs-string">'Update Team Example'</
   
     <h2 id='Types~Team'>Types~Team</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/plugins/teams.js#L22-L157">packages/ciscospark/src/plugins/teams.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/plugins/teams.js#L22-L157">packages/ciscospark/src/plugins/teams.js</a>
     
   
 
@@ -3360,7 +3347,7 @@ team was created, in ISO8601 format.
   
     <h2 id='Types~TeamMembership'>Types~TeamMembership</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/plugins/team-memberships.js#L30-L212">packages/ciscospark/src/plugins/team-memberships.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/plugins/team-memberships.js#L30-L212">packages/ciscospark/src/plugins/team-memberships.js</a>
     
   
 
@@ -3443,7 +3430,7 @@ moderator
   
     <h2 id='TeamMemberships'>TeamMemberships</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/plugins/team-memberships.js#L30-L212">packages/ciscospark/src/plugins/team-memberships.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/plugins/team-memberships.js#L30-L212">packages/ciscospark/src/plugins/team-memberships.js</a>
     
   
 
@@ -3886,7 +3873,7 @@ ciscospark.teams.create({name: <span class="hljs-string">'Remove Team Membership
   
     <h2 id='Webhooks'>Webhooks</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/plugins/webhooks.js#L26-L242">packages/ciscospark/src/plugins/webhooks.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/plugins/webhooks.js#L26-L242">packages/ciscospark/src/plugins/webhooks.js</a>
     
   
 
@@ -4364,7 +4351,7 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Webhook Example'</spa
   
     <h2 id='Types~Webhook'>Types~Webhook</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/ciscospark/src/plugins/webhooks.js#L26-L242">packages/ciscospark/src/plugins/webhooks.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/ciscospark/src/plugins/webhooks.js#L26-L242">packages/ciscospark/src/plugins/webhooks.js</a>
     
   
 
@@ -4462,7 +4449,7 @@ ciscospark.rooms.create({title: <span class="hljs-string">'Webhook Example'</spa
   
     <h2 id='Call'>Call</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/plugin-phone/src/call.js#L99-L867">packages/plugin-phone/src/call.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/plugin-phone/src/call.js#L99-L867">packages/plugin-phone/src/call.js</a>
     
   
 
@@ -5777,7 +5764,7 @@ even if renegotiation has not completed)</p>
   
     <h2 id='Types~Feedback'>Types~Feedback</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/plugin-phone/src/call.js#L99-L867">packages/plugin-phone/src/call.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/plugin-phone/src/call.js#L99-L867">packages/plugin-phone/src/call.js</a>
     
   
 
@@ -5855,7 +5842,7 @@ SDK&#x27;s logger, you should make sure to avoid logging PII as well.
   
     <h2 id='mediaDirection'>mediaDirection</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/plugin-phone/src/state-parsers.js#L81-L91">packages/plugin-phone/src/state-parsers.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/plugin-phone/src/state-parsers.js#L81-L91">packages/plugin-phone/src/state-parsers.js</a>
     
   
 
@@ -5920,7 +5907,7 @@ participant</p>
   
     <h2 id='Phone'>Phone</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/b704dc4d15651dae10dec135ccd77b8a2ea797ab/packages/plugin-phone/src/phone.js#L31-L191">packages/plugin-phone/src/phone.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/caf101299b88a706e515153b6af15e588f184f2b/packages/plugin-phone/src/phone.js#L31-L191">packages/plugin-phone/src/phone.js</a>
     
   
 
