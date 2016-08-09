@@ -20,6 +20,7 @@ export default function makeSparkStore(type, spark) {
      * @returns {Store}
      */
     constructor() {
+      spark.logger.log(`spark-store: constructing ${type}Storage`);
       bindings.set(this, new Map());
     }
 
@@ -45,6 +46,7 @@ export default function makeSparkStore(type, spark) {
      * @returns {[type]}
      */
     del(namespace, key) {
+      spark.logger.info(`spark-store: removing ${namespace}:${key}`)
       return this._getBinding(namespace)
         .then((binding) => binding.del(key));
     }
@@ -57,6 +59,7 @@ export default function makeSparkStore(type, spark) {
      * @returns {Promise}
      */
     get(namespace, key) {
+      spark.logger.info(`spark-store: retrieving ${namespace}:${key}`)
       return this._getBinding(namespace)
         .then((binding) => binding.get(key));
     }
@@ -69,6 +72,7 @@ export default function makeSparkStore(type, spark) {
      * @returns {Promise} Resolves with value (to simplify write-through caching)
      */
     put(namespace, key, value) {
+      spark.logger.info(`spark-store: setting ${namespace}:${key}`)
       if (typeof value === `undefined`) {
         throw new Error(`cannot put \`undefined\` in storage (namespace: ${namespace}; key: ${key})`);
       }

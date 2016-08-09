@@ -8,7 +8,6 @@ import './plugins/logger';
 import './plugins/credentials';
 
 export {
-  children,
   makeSparkStore,
   makeSparkPluginStore,
   MemoryStoreAdapter,
@@ -27,6 +26,7 @@ export {default as RequestTimingInterceptor} from './interceptors/request-timing
 export {default as SparkTrackingIdInterceptor} from './interceptors/spark-tracking-id';
 
 export {
+  children,
   default as default,
   registerPlugin
 } from './spark-core';
