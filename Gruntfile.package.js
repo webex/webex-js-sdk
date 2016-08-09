@@ -411,7 +411,7 @@ module.exports = function(grunt) {
       ]);
     }
 
-    if (parseInt(process.versions.node.split('.')[0]) < 5) {
+    if (parseInt(process.versions.node.split('.')[0]) <= 5) {
       return requires.concat([
         'clarify',
         function() {
