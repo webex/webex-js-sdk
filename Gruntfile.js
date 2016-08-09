@@ -64,7 +64,6 @@ module.exports = function(grunt) {
     },
 
     config: {
-      examples: 'examples',
       dist: 'dist',
       reports: 'reports',
       src: 'src',
@@ -157,21 +156,10 @@ module.exports = function(grunt) {
 
     eslint: {
       all: [
-        '<%= config.examples %>/src/**/*.js',
-        '<%= config.examples %>/Gruntfile.js',
         '<%= config.src %>/**/*.js',
         '<%= config.test %>/**/*.js',
         'Gruntfile.js'
       ]
-    },
-
-    express: {
-      example: {
-        options: {
-          script: '<%= config.examples %>/src/server/index.js',
-          port: AUTOMATION_PORT
-        }
-      }
     },
 
     'gh-pages': {
@@ -391,25 +379,6 @@ module.exports = function(grunt) {
   karma.test.options = karma.test.options || {};
   karma.test.options.browsers = browsers;
   grunt.config('karma', karma);
-
-  // Private Tasks
-  // -------------
-  // These tasks are not intended to be run directly
-
-  grunt.registerTask('private-run-automation', function() {
-    var tasks = [
-      'env:automation',
-      'express:example',
-      'mochaTest:automation'
-    ];
-
-    if (!SAUCE) {
-      tasks.push('selenium_stop');
-      tasks.unshift('selenium_start');
-    }
-
-    grunt.task.run(tasks);
-  });
 
   // Public Tasks
   // ------------
