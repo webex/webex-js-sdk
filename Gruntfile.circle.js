@@ -14,7 +14,9 @@ module.exports = function gruntConfig(grunt) {
 
   grunt.registerTask(`coverage`, [
     `makeReport2:all`,
-    `coveralls:all`,
+    // Disable coveralls for now; it doesn't seem to aggregate coverage accross
+    // nodes as advertised.
+    // `coveralls:all`,
     `copy:coverage`
   ]);
 
