@@ -37,8 +37,7 @@ export default function oneFlight(options) {
 
       /* eslint no-invalid-this: [0] */
       let flight = flights.get(sym);
-      if (flights.get(sym)) {
-
+      if (flight) {
         const message = `one flight: attempted to invoke ${prop} while previous invocation still in flight`;
         /* instanbul ignore else */
         if (this && this.logger) {

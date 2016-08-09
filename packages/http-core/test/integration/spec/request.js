@@ -9,9 +9,9 @@ import {HttpError, request} from '../..';
 import makeLocalUrl from '@ciscospark/test-helper-make-local-url';
 import sinon from '@ciscospark/test-helper-sinon';
 
-describe(`http-core`, () => {
-  describe(`request()`, function() {
-    this.timeout(30000);
+describe(`http-core`, function() {
+  this.timeout(30000);
+  describe(`request()`, () => {
     describe(`GET`, () => {
 
       it(`retrieves html`, () => {
