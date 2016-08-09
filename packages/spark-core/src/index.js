@@ -11,7 +11,9 @@ export {
   children,
   makeSparkStore,
   makeSparkPluginStore,
-  MemoryStoreAdapter
+  MemoryStoreAdapter,
+  NotFoundError,
+  StorageError
 } from './lib/storage';
 
 export {default as SparkHttpError} from './lib/spark-http-error';
