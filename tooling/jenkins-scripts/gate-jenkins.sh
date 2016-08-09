@@ -14,6 +14,9 @@ export XUNIT=true
 LOG_FILE="$(pwd)/test.log"
 rm -f "${LOG_FILE}"
 
+# Remove the lerna installed from npm so we can link the one from the fork
+rm -rf ./node_modules/lerna
+
 CWD=`pwd`
 
 cd /tmp
