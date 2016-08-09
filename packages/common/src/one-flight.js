@@ -5,7 +5,7 @@
 
 import {wrap} from 'lodash';
 
-const flights = new map();
+const flights = new Map();
 
 /**
  * @memberof Util

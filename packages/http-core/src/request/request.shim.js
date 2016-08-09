@@ -150,6 +150,12 @@ export default function _request(options) {
     }
   }
 
+  /**
+   * @param {Object} params
+   * @param {Object} o
+   * @private
+   * @returns {undefined}
+   */
   function setContentType(params, o) {
     if (o.body instanceof Blob || o.body instanceof ArrayBuffer) {
       o.json = params.json = false;

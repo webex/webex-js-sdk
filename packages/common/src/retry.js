@@ -7,6 +7,8 @@ import {defaults, isFunction, wrap} from 'lodash';
 import {EventEmitter} from 'events';
 import backoff from 'backoff';
 
+/* eslint max-nested-callbacks: [0] */
+
 /**
  * Makes a promise-returning method retryable according to the specified backoff
  * pattern

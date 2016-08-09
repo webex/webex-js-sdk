@@ -36,6 +36,7 @@ router.post('/upload', function(req, res, next) {
     var storeAt = path.join(uploadPath, id);
     var getFrom = '/files/download/' + id;
 
+    /* eslint max-nested-callbacks: [0] */
     return fs.writeFile(storeAt, req.body, function(err2) {
       if (err2) {
         return next(err2);

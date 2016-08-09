@@ -96,7 +96,7 @@ const CredentialsBase = SparkPlugin.extend({
   },
 
   @oneFlight
-  authenticate(options) {
+  authorize(options) {
     /* eslint no-invalid-this: [0] */
     this._isAuthenticating = true;
     options = options || {};

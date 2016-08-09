@@ -18,6 +18,11 @@ export default function detect(buffer) {
 
 export {detect as detect};
 
+/**
+ * Synchronous implementation of {@link detect}
+ * @param {Buffer} buffer
+ * @returns {string}
+ */
 export function detectSync(buffer) {
   /* global Blob */
   let b = buffer;
