@@ -31,6 +31,7 @@ module.exports = function(grunt) {
         }]
       }
     },
+
     clean: {
       coverage: {
         src: [
@@ -43,9 +44,15 @@ module.exports = function(grunt) {
         ]
       }
     },
+
     concurrent: {
       test: {
         tasks: (function() {
+          if (process.env.UNIT_ONLY) {
+            return ['test:node'];
+          }
+
+          // TODO can this line be removed?
           if (process.env.SKIP_BROWSER_TESTS) {
             return ['test:node'];
           }
@@ -61,6 +68,7 @@ module.exports = function(grunt) {
         }
       }
     },
+
     copy: {
       coverage: {
         // There ought to be a better way to get karma coverage to spit out
@@ -92,6 +100,7 @@ module.exports = function(grunt) {
         }
       }
     },
+
     'dependency-check': {
       files: '.',
       options: {
@@ -99,6 +108,7 @@ module.exports = function(grunt) {
         package: './packages/<%= package %>'
       }
     },
+
     documentation: {
       options: {
         destination: './packages/<%= package %>',
@@ -131,6 +141,7 @@ module.exports = function(grunt) {
         }
       }
     },
+
     env: {
       default: {
         src: '.env.default.json'
@@ -145,6 +156,7 @@ module.exports = function(grunt) {
         NODE_ENV: 'test'
       }
     },
+
     eslint: {
       options: {
         format: process.env.XUNIT ? 'junit' : 'stylish',
@@ -157,6 +169,7 @@ module.exports = function(grunt) {
         './packages/<%= package %>/*.js'
       ]
     },
+
     express: {
       test: {
         options: {
@@ -164,6 +177,7 @@ module.exports = function(grunt) {
         }
       }
     },
+
     instrument2: {
       src: {
         files: [{
@@ -177,6 +191,7 @@ module.exports = function(grunt) {
         instrumenter: isparta.Instrumenter
       }
     },
+
     karma: {
       test: {
         options: {
@@ -191,6 +206,7 @@ module.exports = function(grunt) {
         }
       }
     },
+
     makeReport2: {
       test: {
         files: [{
@@ -209,6 +225,7 @@ module.exports = function(grunt) {
         }
       }
     },
+
     mochaTest: {
       options: {
         reporter: process.env.XUNIT ? path.join(__dirname, './packages/xunit-with-logs') : 'spec',
@@ -227,7 +244,7 @@ module.exports = function(grunt) {
           './packages/<%= package %>/test/automation/spec/**/*.js'
         ]
       },
-      integration: {
+      node: {
         options: {
           require: makeMochaRequires(['babel-register']),
           reporterOptions: {
@@ -235,6 +252,10 @@ module.exports = function(grunt) {
           }
         },
         src: (function() {
+          if ( process.env.UNIT_ONLY) {
+            return ['./packages/<%= package %>/test/unit/spec/**/*.js'];
+          }
+
           var src = [
             './packages/<%= package %>/test/*/spec/**/*.js',
             '!./packages/<%= package %>/test/automation/spec/**/*.js',
@@ -258,6 +279,7 @@ module.exports = function(grunt) {
         ]
       }
     },
+
     package: process.env.PACKAGE,
     xunitDir: process.env.XUNIT_DIR || './reports',
     shell: {
@@ -268,6 +290,7 @@ module.exports = function(grunt) {
         command: 'mv babelrc .babelrc'
       }
     },
+
     storeCoverage2: {
       test: {
         options: {
@@ -319,7 +342,7 @@ module.exports = function(grunt) {
   registerTask('test:node', [
     p(process.env.COVERAGE) && 'instrument2',
     p(process.env.XUNIT) && 'continue:on',
-    'mochaTest:integration',
+    'mochaTest:node',
     p(process.env.XUNIT) && 'continue:off',
     p(process.env.COVERAGE) && 'storeCoverage2'
   ]);
