@@ -4,7 +4,7 @@
  */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {deprcate} from 'core-decorators'
+import {deprecated} from 'core-decorators';
 import {oneFlight} from '@ciscospark/common';
 import {set} from 'lodash';
 import S from 'string';
@@ -78,13 +78,13 @@ const Mercury = SparkPlugin.extend({
     });
   },
 
-  @deprecate(`Mercury#listen(): Use Mercury#connect() instead`)
+  @deprecated(`Mercury#listen(): Use Mercury#connect() instead`)
   listen() {
     /* eslint no-invalid-this: [0] */
     return this.connect();
   },
 
-  @deprecate(`Mercury#stopListening(): Use Mercury#disconnect() instead`)
+  @deprecated(`Mercury#stopListening(): Use Mercury#disconnect() instead`)
   stopListening() {
     /* eslint no-invalid-this: [0] */
     return this.disconnect();
