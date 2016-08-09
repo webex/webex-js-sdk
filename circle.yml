@@ -59,14 +59,6 @@ dependencies:
     - npm link spark-js-sdk--test-users
     - npm link spark-js-sdk--test-users:
         pwd: packages/test-helper-test-users
-    # lerna fork
-    - ls lerna > /dev/null 2> /dev/null || git clone git@github.com:ianwremmel/lerna.git:
-        pwd: ../
-    - git checkout de0f7f2:
-        pwd: ../lerna
-    - npm link:
-        pwd: ../lerna
-    - npm link lerna
   post:
     - npm run bootstrap
 
