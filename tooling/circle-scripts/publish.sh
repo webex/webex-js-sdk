@@ -24,32 +24,36 @@ echo "Setting git credentials"
 git config --global user.email "spark-js-sdk@example.com"
 git config --global user.name "spark-js-sdk automation"
 
-echo "Creating temporary .npmrc"
-# Note the intentional single quotes to avoid string interpolation
-echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > ~/.npmrc
+# Until https://github.com/lerna/lerna/issues/286 gets fixed, canary release are
+# more trouble than they're worth
+# echo "Creating temporary .npmrc"
+# # Note the intentional single quotes to avoid string interpolation
+# echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > ~/.npmrc
+#
+# echo "Publishing new versions to npm"
+# set -x
+# # TODO deprecate previous versions?
+# # npm run lerna -- publish --repo-version=${NEXT_VERSION}
+# NPM_CONFIG_LOGLEVEL=info npm run lerna -- publish --skip-git --canary --yes
+# # TODO parse top commit message for something like !release:X.Y.Z to decide
+# # whether to do a canary release
+# NEW_VERSION="`cat lerna.json | grep version | awk '{print $2}'| sed -e 's/^"//'  -e 's/"$//'`-alpha.`git rev-parse --short HEAD`"
+# git add lerna.json package.json packages/*/package.json
+# git commit -m "Release ${NEW_VERSION}"
+# git tag -a -m "Release ${NEW_VERSION}" "${NEW_VERSION}"
+# git commit --allow-empty -m '[skip ci]'
+# git push origin HEAD:refs/heads/master
+# git push origin "${NEW_VERSION}"
 
-echo "Publishing new versions to npm"
-set -x
-# TODO deprecate previous versions?
-# npm run lerna -- publish --repo-version=${NEXT_VERSION}
-NPM_CONFIG_LOGLEVEL=info npm run lerna -- publish --skip-git --canary --yes
-# TODO parse top commit message for something like !release:X.Y.Z to decide
-# whether to do a canary release
-NEW_VERSION="`cat lerna.json | grep version | awk '{print $2}'| sed -e 's/^"//'  -e 's/"$//'`-alpha.`git rev-parse --short HEAD`"
-git add lerna.json package.json packages/*/package.json
-git commit -m "Release ${NEW_VERSION}"
-git tag -a -m "Release ${NEW_VERSION}" "${NEW_VERSION}"
-git commit --allow-empty -m '[skip ci]'
-git push origin HEAD:refs/heads/master
-git push origin "${NEW_VERSION}"
-
+# TODO only publish doc changes on release builds
 echo "Publishing new documentation"
 npm run grunt:circle -- publish-docs
 
-echo "Tricking npm website into updating the README"
-# Trick npmjs.com into updating the readme
-# See https://github.com/npm/newww/issues/389#issuecomment-188428605 and
-# https://github.com/lerna/lerna/issues/64 for details
-npm run lerna -- exec --scope ciscospark -- npm version --no-git-tag-version "${NEW_VERSION}-readmehack"
-npm run lerna -- exec --scope ciscospark -- npm publish --tag=readmehack
-npm run lerna -- exec --scope ciscospark -- npm unpublish ciscospark@"${NEW_VERSION}-readmehack"
+# Disabled until we turn releases back on
+# echo "Tricking npm website into updating the README"
+# # Trick npmjs.com into updating the readme
+# # See https://github.com/npm/newww/issues/389#issuecomment-188428605 and
+# # https://github.com/lerna/lerna/issues/64 for details
+# npm run lerna -- exec --scope ciscospark -- npm version --no-git-tag-version "${NEW_VERSION}-readmehack"
+# npm run lerna -- exec --scope ciscospark -- npm publish --tag=readmehack
+# npm run lerna -- exec --scope ciscospark -- npm unpublish ciscospark@"${NEW_VERSION}-readmehack"
