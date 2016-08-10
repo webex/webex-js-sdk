@@ -30,6 +30,13 @@ export default function oneFlight(...params) {
 
   return oneFlightDecorator;
 
+  /**
+   * @param {Object} target
+   * @param {string} prop
+   * @param {Object} descriptor
+   * @private
+   * @returns {Object}
+   */
   function oneFlightDecorator(target, prop, descriptor) {
     let sym;
     if (!keyFactory) {

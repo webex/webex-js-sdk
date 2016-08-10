@@ -16,7 +16,13 @@
 //   }
 // }.bind(this));
 
-// TODO memoize?
+/**
+ * Creates an ampersand state object that wires its event handlers like a an
+ * ampersand child
+ * @param {Function} Constructor
+ * @param {string} name
+ * @returns {Object}
+ */
 export default function makeStateDataType(Constructor, name) {
   if (!Constructor || !name) {
     throw new Error(`missing parameter for makeStateDataType`);
