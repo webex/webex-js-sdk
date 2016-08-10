@@ -15,8 +15,12 @@ const flights = new Map();
  * @param {boolean} options.cacheSuccesses
  * @returns {Function}
  */
-export default function oneFlight(options) {
-  options = options || {};
+export default function oneFlight(...params) {
+  if (params.length === 3) {
+    return Reflect.apply(oneFlightDecorator, null, params);
+  }
+
+  const options = params[0] || {};
 
   const {
     cacheFailures,
@@ -24,7 +28,9 @@ export default function oneFlight(options) {
     keyFactory
   } = options;
 
-  return function oneFlightDecorator(target, prop, descriptor) {
+  return oneFlightDecorator;
+
+  function oneFlightDecorator(target, prop, descriptor) {
     let sym;
     if (!keyFactory) {
       sym = Symbol(prop);
@@ -63,6 +69,8 @@ export default function oneFlight(options) {
         });
       }
 
+      flights.set(sym, flight);
+
       return flight;
     });
 
@@ -73,5 +81,5 @@ export default function oneFlight(options) {
     }
 
     return descriptor;
-  };
+  }
 }
