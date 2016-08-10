@@ -31,9 +31,9 @@ npm run sauce:start
 echo "Connected to Sauce Labs"
 
 mkdir -p reports
+mkdir -p reports/logs
 
 echo "Running all tests"
-mkdirp reports/logs
 set +e
 CIRCLE_ARTIFACTS=./reports/logs npm run sauce:run -- npm run grunt:circle -- static-analysis test
 EXIT_CODE=$?
