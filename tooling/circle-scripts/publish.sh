@@ -15,8 +15,9 @@ if [ ${CIRCLE_NODE_INDEX} -ne "0" ]; then
   exit 0
 fi
 
-NODE_ENV=production npm run build
-NODE_ENV=production PACKAGE=example-phone npm run grunt:package webpack:build
+# Again, disabled until we actually do releases
+# NODE_ENV=production npm run build
+# NODE_ENV=production PACKAGE=example-phone npm run grunt:package webpack:build
 
 echo "Setting git credentials"
 # Reminder: these are global so that the checkout made by grunt-gh-pages sees
@@ -41,8 +42,8 @@ git config --global user.name "spark-js-sdk automation"
 # git add lerna.json package.json packages/*/package.json
 # git commit -m "Release ${NEW_VERSION}"
 # git tag -a -m "Release ${NEW_VERSION}" "${NEW_VERSION}"
-# git commit --allow-empty -m '[skip ci]'
-# git push origin HEAD:refs/heads/master
+git commit --allow-empty -m '[skip ci]'
+git push origin HEAD:refs/heads/master
 # git push origin "${NEW_VERSION}"
 
 # TODO only publish doc changes on release builds
