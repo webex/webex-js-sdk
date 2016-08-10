@@ -58,14 +58,16 @@ export default function oneFlight(...params) {
 
       flight = Reflect.apply(fn, this, args);
       if (!cacheFailures && flight && flight.catch) {
-        flight.catch(() => {
+        flight = flight.catch((reason) => {
           flights.delete(sym);
+          return Promise.reject(reason);
         });
       }
 
       if (!cacheSuccesses && flight && flight.then) {
-        flight.then(() => {
+        flight = flight.then((result) => {
           flights.delete(sym);
+          return result;
         });
       }
 
