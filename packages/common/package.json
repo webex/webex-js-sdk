@@ -19,6 +19,7 @@
   "devDependencies": {
     "@ciscospark/test-helper-chai": "^0.7.0-alpha.10dc6ffb",
     "@ciscospark/test-helper-sinon": "^0.7.0-alpha.10dc6ffb",
+    "ampersand-state": "^5.0.2",
     "babel-eslint": "^6.0.0-beta.5",
     "babel-plugin-lodash": "2.1.0",
     "babel-polyfill": "^6.3.14",
