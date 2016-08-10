@@ -15,7 +15,7 @@
     "spark-js-sdk--test-users": "0.3.4"
   },
   "dependencies": {
-    "@ciscospark/test-helper-retry": "^0.7.0-alpha.9d9521d6",
+    "@ciscospark/test-helper-retry": "^0.7.0-alpha",
     "babel-runtime": "^6.3.19",
     "envify": "^3.4.1",
     "es6-promise": "^3.2.1"
