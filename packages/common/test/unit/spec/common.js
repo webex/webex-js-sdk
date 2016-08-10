@@ -4,7 +4,7 @@
  */
 
 import {assert} from 'chai';
-import {base64, oneFlight, retry} from '../..';
+import {base64, retry} from '../..';
 
 // This file doesn't prove anything, but greatly simplifies tooling. Generally
 // speaking, items in common are proven by their usage through the rest of
@@ -22,12 +22,6 @@ describe(`common`, () => {
 
     it(`does atob transforms`, () => {
       assert.equal(base64.fromBase64url(`YWJj`), `abc`);
-    });
-  });
-
-  describe(`oneFlight`, () => {
-    it(`is defined`, () => {
-      assert.isDefined(oneFlight);
     });
   });
 
