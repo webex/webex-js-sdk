@@ -11,9 +11,6 @@ echo "Begin gate-jenkins.sh"
 export NODE_ENV=test
 export XUNIT=true
 
-LOG_FILE="$(pwd)/test.log"
-rm -f "${LOG_FILE}"
-
 # INSTALL
 echo "Installing modular SDK dependencies"
 npm run bootstrap
@@ -35,9 +32,10 @@ echo "Connected to Sauce Labs"
 
 mkdir -p reports
 
-echo "Running all tests and writing output to ${LOG_FILE}"
+echo "Running all tests"
+mkdirp reports/logs
 set +e
-npm run sauce:run -- npm run grunt:circle -- static-analysis test 2>&1> "${LOG_FILE}"
+CIRCLE_ARTIFACTS=./reports/logs npm run sauce:run -- npm run grunt:circle -- static-analysis test
 EXIT_CODE=$?
 set -e
 
