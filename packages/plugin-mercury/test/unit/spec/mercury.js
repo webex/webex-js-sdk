@@ -201,17 +201,18 @@ describe(`plugin-mercury`, () => {
         });
 
         describe(`with \`AuthorizationError\``, () => {
-          // skipping due to apparent bug with lolex in all browsers but Chrome.
+          // skipping due to an apparent bug with lolex in all browsers but Chrome.
           skipInBrowser(it)(`refreshes the access token, reregisters the device, and reconnects the WebSocket`, () => {
             socketOpenStub.restore();
             socketOpenStub = sinon.stub(Socket.prototype, `open`);
-            socketOpenStub.returns(Promise.reject(new AuthorizationError()));
-            socketOpenStub.onCall(2).returns(Promise.resolve(new MockWebSocket()));
+            socketOpenStub.onCall(0).returns(Promise.reject(new AuthorizationError()));
             assert.notCalled(spark.refresh);
-            mercury.connect();
-            return promiseTick(3)
+            const promise = mercury.connect();
+            return promiseTick(4)
               .then(() => {
                 assert.called(spark.refresh);
+                clock.tick(1000);
+                return promise;
               });
           });
         });
