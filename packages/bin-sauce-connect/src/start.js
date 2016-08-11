@@ -4,6 +4,7 @@ import _mkdirp from 'mkdirp';
 import denodeify from 'denodeify';
 import exists from './lib/exists';
 import spawn from './lib/spawn';
+import rm from './lib/rm';
 
 const mkdirp = denodeify(_mkdirp);
 
@@ -60,6 +61,8 @@ function connect() {
     };
 
     let interval;
+    // cancel the connect process if the ready file hasn't been detected within
+    // 60 seconds
     const timer = setTimeout(async function failAfter() {
       clearInterval(interval);
       if (!await exists(readyFile)) {
@@ -70,6 +73,7 @@ function connect() {
       return resolve();
     }, 60 * 1000);
 
+    // Check for the ready file once per second forever until it exists
     interval = setInterval(async function checkConnected() {
       if (await exists(readyFile)) {
         console.log(`Connected to Sauce Labs`);
@@ -97,6 +101,33 @@ function connect() {
 }
 
 /**
+ * Prevents the next connection attempt until the pid file from the previous
+ * attempt disappears (or the tiemout expires and we remove it forcibly)
+ * @returns {Promise}
+ */
+function blockUntilClosed() {
+  return new Promise((resolve) => {
+    let interval;
+    const timer = setTimeout(async function removeAfter() {
+      clearInterval(interval);
+      if (await exists(pidFile)) {
+        console.log(`pid file not removed; forcibly removing`);
+        await rm(pidFile);
+        resolve();
+      }
+    }, 60 * 1000);
+
+    interval = setInterval(async function check() {
+      if (!await exists(pidFile)) {
+        clearTimeout(timer);
+        clearInterval(interval);
+        resolve();
+      }
+    }, 1000);
+  });
+}
+
+/**
  * Connect to Sauce Labs with up to three attempts
  * @private
  * @returns {Promise}
@@ -108,11 +139,13 @@ async function connectWithRetry() {
   catch (reason) {
     console.warn(`Timed out connecting to Sauce Labs, retrying`);
     try {
+      await blockUntilClosed();
       await connect();
     }
     catch (reason2) {
       console.warn(`Timed out connecting to Sauce Labs, retrying`);
       try {
+        await blockUntilClosed();
         await connect();
       }
       catch (reason3) {
