@@ -5,7 +5,56 @@
 
 import {wrap} from 'lodash';
 
-const flights = new Map();
+const instances = new WeakMap();
+
+/**
+ * @param {Object} instance
+ * @param {string} key
+ * @private
+ * @returns {Promise}
+ */
+function getFlight(instance, key) {
+  const flights = instances.get(instance);
+  if (!flights) {
+    return null;
+  }
+
+  const f = flights.get(key);
+  return f;
+}
+
+/**
+ * @param {Object} instance
+ * @param {string} key
+ * @param {Promise} flight
+ * @private
+ * @returns {undefined}
+ */
+function setFlight(instance, key, flight) {
+  let flights = instances.get(instance);
+  if (!flights) {
+    flights = new Map();
+    instances.set(instance, flights);
+  }
+
+  flights.set(key, flight);
+}
+
+/**
+ * @param {Object} instance
+ * @param {string} key
+ * @private
+ * @returns {undefined}
+ */
+function clearFlight(instance, key) {
+  const flights = instances.get(instance);
+  if (flights) {
+    flights.delete(key);
+    if (flights.size === 0) {
+      instances.delete(instance);
+    }
+  }
+}
 
 /**
  * @memberof Util
@@ -38,18 +87,14 @@ export default function oneFlight(...params) {
    * @returns {Object}
    */
   function oneFlightDecorator(target, prop, descriptor) {
-    let sym;
-    if (!keyFactory) {
-      sym = Symbol(prop);
-    }
-
+    let key = prop;
     descriptor.value = wrap(descriptor.value, function oneFlightExecutor(fn, ...args) {
       if (keyFactory) {
-        sym = keyFactory(args);
+        key = keyFactory(args);
       }
 
       /* eslint no-invalid-this: [0] */
-      let flight = flights.get(sym);
+      let flight = getFlight(this, key);
       if (flight) {
         const message = `one flight: attempted to invoke ${prop} while previous invocation still in flight`;
         /* instanbul ignore else */
@@ -66,19 +111,19 @@ export default function oneFlight(...params) {
       flight = Reflect.apply(fn, this, args);
       if (!cacheFailures && flight && flight.catch) {
         flight = flight.catch((reason) => {
-          flights.delete(sym);
+          clearFlight(this, key);
           return Promise.reject(reason);
         });
       }
 
       if (!cacheSuccesses && flight && flight.then) {
         flight = flight.then((result) => {
-          flights.delete(sym);
+          clearFlight(this, key);
           return result;
         });
       }
 
-      flights.set(sym, flight);
+      setFlight(this, key, flight);
 
       return flight;
     });
