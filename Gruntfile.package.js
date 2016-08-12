@@ -302,6 +302,23 @@ module.exports = function(grunt) {
           dest: './reports/coverage/<%= package %>/mocha-final.json'
         }
       }
+    },
+
+    watch: {
+      node: {
+        options: {
+          atBegin: true
+        },
+        files: [
+          './packages/<%= package %>/dist/**',
+          './packages/<%= package %>/src/**',
+          './packages/<%= package %>/test/**',
+          './packages/<%= package %>/package.json'
+        ],
+        tasks: [
+          'test:node'
+        ]
+      }
     }
   });
 
