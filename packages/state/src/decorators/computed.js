@@ -13,10 +13,12 @@ import {isFunction, isString} from 'lodash';
  */
 export default function derived(options) {
   let {
+    cache,
     fn,
     deps
   } = options;
   if (isFunction(options)) {
+    cache = true;
     fn = options;
     deps = undefined;
   }
@@ -28,14 +30,45 @@ export default function derived(options) {
   return function derivedDecorator(target, prop, descriptor) {
     Reflect.deleteProperty(descriptor, `initializer`);
     Reflect.deleteProperty(descriptor, `writable`);
+    descriptor.configurable = true;
 
-    descriptor.set = function set() {
-      throw new Error(`Cannot assign to computed property ${prop}`);
-    };
+    if (cache) {
+      descriptor.initializer = function initializer() {
+        if (deps) {
+          deps.forEach((dep) => {
+            this.on(`change:${dep}`, update.bind(this));
+          });
+        }
+        else {
+          this.on(`change`, update.bind(this));
+        }
 
-    descriptor.get = function get() {
-      return Reflect.apply(fn, this, []);
-    };
+        return Reflect.apply(fn, this, []);
+      };
+    }
+    else {
+      descriptor.get = function get() {
+        return Reflect.apply(fn, this, []);
+      };
+    }
+
+    /**
+    * @private
+    * @returns {undefined}
+    */
+    function update() {
+      /* eslint no-invalid-this: [0] */
+      const currentVal = this[prop];
+      const newValue = Reflect.apply(fn, this, []);
+      if (currentVal !== newValue) {
+        const desc = Reflect.getOwnPropertyDescriptor(this, prop);
+        desc.value = newValue;
+        Reflect.defineProperty(this, prop, desc);
+
+        this.trigger(`change:${prop}`, this, newValue);
+        this.trigger(`change`, this);
+      }
+    }
   };
 }
 
