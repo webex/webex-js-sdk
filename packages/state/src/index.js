@@ -4,9 +4,12 @@
  * @private
  */
 
-export {default as default} from './state';
-export {default as State} from './state';
 export {
+  default as default,
+  default as State
+} from './state';
+export {
+  child,
   computed,
   derived,
   evented,
