@@ -4,7 +4,7 @@
  * @private
  */
 
-import State, {
+import {
   type,
   required,
   values,
@@ -14,8 +14,8 @@ import State, {
 } from '../..';
 import {assert} from '@ciscospark/test-helper-chai';
 
-describe(`State`, () => {
-  class PropDemo extends State {
+describe(`state`, () => {
+  class PropDemo {
     @type(`string`)
     aString;
 

@@ -6,6 +6,7 @@
 
 import {wrap} from 'lodash';
 import WeakKeyedMap from '../lib/weak-keyed-map';
+import evented from './evented';
 
 /* eslint no-invalid-this: [0] */
 
@@ -21,6 +22,7 @@ const prepared = Symbol(`prepared`);
  * @returns {undefined}
  */
 function prepare(target, prop, descriptor) {
+  evented(target);
   if (!descriptor[prepared]) {
     const initializer = descriptor.initializer;
     defaults.set(target, prop, initializer);
@@ -28,7 +30,12 @@ function prepare(target, prop, descriptor) {
     Reflect.deleteProperty(descriptor, `writable`);
 
     descriptor.set = function set(newValue) {
-      data.set(this, prop, newValue);
+      const currentVal = this[prop];
+      if (currentVal !== newValue) {
+        data.set(this, prop, newValue);
+        this.trigger(`change:${prop}`, this, newValue);
+        this.trigger(`change`, this);
+      }
     };
 
     descriptor.get = function get() {
