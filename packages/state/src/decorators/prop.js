@@ -1,0 +1,111 @@
+/**!
+ *
+ * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ * @private
+ */
+
+import {wrap} from 'lodash';
+import WeakKeyedMap from '../lib/weak-keyed-map';
+
+/* eslint require-jsdoc: [0] */
+/* eslint func-names: [0] */
+/* eslint no-invalid-this: [0] */
+
+const data = new WeakKeyedMap();
+const defaults = new WeakKeyedMap();
+
+const prepared = Symbol(`prepared`);
+function prepare(target, prop, descriptor) {
+  if (!descriptor[prepared]) {
+    const initializer = descriptor.initializer;
+    defaults.set(target, prop, initializer);
+    Reflect.deleteProperty(descriptor, `initializer`);
+    Reflect.deleteProperty(descriptor, `writable`);
+
+    descriptor.set = function(newValue) {
+      data.set(this, prop, newValue);
+    };
+
+    descriptor.get = function() {
+      const ret = data.get(this, prop);
+      if (ret === undefined && initializer) {
+        return initializer();
+      }
+      return ret;
+    };
+
+    descriptor[prepared] = true;
+  }
+}
+
+export function type(dataType) {
+  return function typeDecorator(target, prop, descriptor) {
+    prepare(target, prop, descriptor);
+    descriptor.set = wrap(descriptor.set, function typeExecutor(fn, newValue) {
+      if (typeof newValue !== dataType) {
+        throw new TypeError(`newValue must be of type ${dataType}`);
+      }
+
+      return Reflect.apply(fn, this, [newValue]);
+    });
+  };
+}
+
+export function required(target, prop, descriptor) {
+  prepare(target, prop, descriptor);
+  descriptor.set = wrap(descriptor.set, function requiredExecutor(fn, newValue) {
+    if (newValue === undefined && !defaults.has(target, prop)) {
+      throw new TypeError(`${prop} cannot be undefined`);
+    }
+    return Reflect.apply(fn, this, [newValue]);
+  });
+}
+
+export function values(allowedValues) {
+  return function valuesDecorator(target, prop, descriptor) {
+    prepare(target, prop, descriptor);
+    descriptor.set = wrap(descriptor.set, function valuesExecutor(fn, newValue) {
+      if (!allowedValues.includes(newValue)) {
+        throw new TypeError(`${prop} must be one of (\`${allowedValues.join(`\`, \``)}\`)`);
+      }
+
+      return Reflect.apply(fn, this, [newValue]);
+    });
+  };
+}
+
+export function notNull(target, prop, descriptor) {
+  prepare(target, prop, descriptor);
+  descriptor.set = wrap(descriptor.set, function notNullExecutor(fn, newValue) {
+    if (newValue === null) {
+      throw new TypeError(`${prop} may not be null`);
+    }
+
+    return Reflect.apply(fn, this, [newValue]);
+  });
+}
+
+export function setOnce(target, prop, descriptor) {
+  const sym = Symbol(`setOnce`);
+  prepare(target, prop, descriptor);
+  descriptor.set = wrap(descriptor.set, function setOnceExecutor(fn, newValue) {
+    if (this[sym] || defaults.has(target, prop)) {
+      throw new TypeError(`${prop} may only be set once`);
+    }
+    this[sym] = true;
+    return Reflect.apply(fn, this, [newValue]);
+  });
+}
+
+export function test(tester) {
+  return function testDecorator(target, prop, descriptor) {
+    prepare(target, prop, descriptor);
+    descriptor.set = wrap(descriptor.set, function testExecutor(fn, newValue) {
+      const error = Reflect.apply(tester, this, [newValue]);
+      if (error) {
+        throw new TypeError(error);
+      }
+      return Reflect.apply(fn, this, [newValue]);
+    });
+  };
+}
