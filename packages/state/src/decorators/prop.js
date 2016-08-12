@@ -7,14 +7,19 @@
 import {wrap} from 'lodash';
 import WeakKeyedMap from '../lib/weak-keyed-map';
 
-/* eslint require-jsdoc: [0] */
-/* eslint func-names: [0] */
 /* eslint no-invalid-this: [0] */
 
 const data = new WeakKeyedMap();
 const defaults = new WeakKeyedMap();
 
 const prepared = Symbol(`prepared`);
+/**
+ * @param {Constructor} target
+ * @param {string} prop
+ * @param {object} descriptor
+ * @private
+ * @returns {undefined}
+ */
 function prepare(target, prop, descriptor) {
   if (!descriptor[prepared]) {
     const initializer = descriptor.initializer;
@@ -22,11 +27,11 @@ function prepare(target, prop, descriptor) {
     Reflect.deleteProperty(descriptor, `initializer`);
     Reflect.deleteProperty(descriptor, `writable`);
 
-    descriptor.set = function(newValue) {
+    descriptor.set = function set(newValue) {
       data.set(this, prop, newValue);
     };
 
-    descriptor.get = function() {
+    descriptor.get = function get() {
       const ret = data.get(this, prop);
       if (ret === undefined && initializer) {
         return initializer();
@@ -38,6 +43,11 @@ function prepare(target, prop, descriptor) {
   }
 }
 
+/**
+ * Locks the specifed property to a specific type
+ * @param {string} dataType
+ * @returns {undefined}
+ */
 export function type(dataType) {
   return function typeDecorator(target, prop, descriptor) {
     prepare(target, prop, descriptor);
@@ -51,6 +61,13 @@ export function type(dataType) {
   };
 }
 
+/**
+ * Does not allow the specifed property to be unset
+ * @param {Constructor} target
+ * @param {string} prop
+ * @param {object} descriptor
+ * @returns {undefined}
+ */
 export function required(target, prop, descriptor) {
   prepare(target, prop, descriptor);
   descriptor.set = wrap(descriptor.set, function requiredExecutor(fn, newValue) {
@@ -61,6 +78,11 @@ export function required(target, prop, descriptor) {
   });
 }
 
+/**
+ * Limits the values to which the specific property may be set
+ * @param {Array} allowedValues
+ * @returns {function}
+ */
 export function values(allowedValues) {
   return function valuesDecorator(target, prop, descriptor) {
     prepare(target, prop, descriptor);
@@ -74,6 +96,13 @@ export function values(allowedValues) {
   };
 }
 
+/**
+ * Does not allow the specified property to be null
+ * @param {Constructor} target
+ * @param {string} prop
+ * @param {object} descriptor
+ * @returns {undefined}
+ */
 export function notNull(target, prop, descriptor) {
   prepare(target, prop, descriptor);
   descriptor.set = wrap(descriptor.set, function notNullExecutor(fn, newValue) {
@@ -85,6 +114,13 @@ export function notNull(target, prop, descriptor) {
   });
 }
 
+/**
+ * Only allows the specified property to be set once
+ * @param {Constructor} target
+ * @param {string} prop
+ * @param {object} descriptor
+ * @returns {undefined}
+ */
 export function setOnce(target, prop, descriptor) {
   const sym = Symbol(`setOnce`);
   prepare(target, prop, descriptor);
@@ -97,6 +133,12 @@ export function setOnce(target, prop, descriptor) {
   });
 }
 
+/**
+ * Runs new values through a negative validation test before allowing them to be
+ * set
+ * @param {Function} tester
+ * @returns {Function}
+ */
 export function test(tester) {
   return function testDecorator(target, prop, descriptor) {
     prepare(target, prop, descriptor);
