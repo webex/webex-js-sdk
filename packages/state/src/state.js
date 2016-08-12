@@ -196,7 +196,7 @@ export default class State {
       if (propDef.required) {
         required(Child, prop, desc);
       }
-      if (propDef.allowNull) {
+      if (propDef.allowNull === false) {
         noNull(Child, prop, desc);
       }
       if (propDef.setOnce) {
