@@ -55,6 +55,7 @@ module.exports = function(grunt) {
           return [
             'test:automation',
             'test:browser',
+            'test:doc',
             'test:node'
           ];
         }()),
@@ -342,6 +343,10 @@ module.exports = function(grunt) {
     p(process.env.COVERAGE) && 'instrument2',
     'mochaTest:node',
     p(process.env.COVERAGE) && 'storeCoverage2'
+  ]);
+
+  registerTask('test:doc', [
+    'mochaTest:doc'
   ]);
 
   registerTask('test', [
