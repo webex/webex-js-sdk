@@ -2,30 +2,42 @@
 
 set -e
 
+START_DIR=`pwd`
 cd builder
 docker build -t spark-js-sdk-builder .
-cd ..
+cd "${START_DIR}"
 
 echo "COMMON_IDENTITY_CLIENT_SECRET=${CISCOSPARK_CLIENT_SECRET}" > .env
 echo "CISCOSPARK_CLIENT_SECRET=${CISCOSPARK_CLIENT_SECRET}" >> .env
 echo "SAUCE_USERNAME=${SAUCE_USERNAME}" >> .env
 echo "SAUCE_ACCESS_KEY=${SAUCE_ACCESS_KEY}" >> .env
 
+DOCKER_RUN_ENV=""
+DOCKER_RUN_ENV+=" -e CONVERSATION_SERVICE=${CONVERSATION_SERVICE} "
+DOCKER_RUN_ENV+=" -e DEVICE_REGISTRATION_URL=${DEVICE_REGISTRATION_URL} "
+DOCKER_RUN_ENV+=" -e ATLAS_SERVICE_URL=${ATLAS_SERVICE_URL} "
+DOCKER_RUN_ENV+=" -e HYDRA_SERVICE_URL=${HYDRA_SERVICE_URL} "
+DOCKER_RUN_ENV+=" -e WDM_SERVICE_URL=${WDM_SERVICE_URL} "
+DOCKER_RUN_ENV+=" -e ENABLE_NETWORK_LOGGING=${ENABLE_NETWORK_LOGGING} "
+DOCKER_RUN_ENV+=" -e ENABLE_VERBOSE_NETWORK_LOGGING=${ENABLE_VERBOSE_NETWORK_LOGGING} "
+
+DOCKER_RUN_OPTS="${DOCKER_RUN_ENV} -it --rm -v `pwd`:/workspace spark-js-sdk-builder"
+
 echo "INSTALLING LEGACY DEPENDENCIES"
-docker run -it --rm -v `pwd`:/workspace spark-js-sdk-builder npm install
+docker run "${DOCKER_RUN_OPTS}" npm install
 
 echo "CLEANING"
-docker run -it --rm -v `pwd`:/workspace spark-js-sdk-builder npm run grunt -- clean
-docker run -it --rm -v `pwd`:/workspace spark-js-sdk-builder npm run grunt:concurrent -- clean
+docker run "${DOCKER_RUN_OPTS}" npm run grunt -- clean
+docker run "${DOCKER_RUN_OPTS}" npm run grunt:concurrent -- clean
 
 rm -rf reports
 mkdir -p reports
 
 echo "BOOTSTRAPPING MODULES"
-docker run -it --rm -v `pwd`:/workspace spark-js-sdk-builder npm run bootstrap
+docker run "${DOCKER_RUN_OPTS}" npm run bootstrap
 
 echo "BUILDING MODULES"
-docker run -it --rm -v `pwd`:/workspace spark-js-sdk-builder npm run build
+docker run "${DOCKER_RUN_OPTS}" npm run build
 
 echo "RUNNING MODULE TESTS"
 
@@ -47,16 +59,16 @@ for i in ./packages/*; do
 
   PACKAGE=`echo $i | sed -e 's/.*packages\///g'`
   # Note: using & instead of -d so that wait works
-  docker run -e "PACKAGE=${PACKAGE}" --rm -v `pwd`:/workspace spark-js-sdk-builder npm run test:package:sauce > reports/logs/${PACKAGE}.log 2>&1 &
+  docker run -e "PACKAGE=${PACKAGE}" "${DOCKER_RUN_OPTS}" npm run test:package:sauce > reports/logs/${PACKAGE}.log 2>&1 &
   PIDS+=" $!"
 done
 
 echo "RUNNING LEGACY NODE TESTS"
-docker run --rm -v `pwd`:/workspace spark-js-sdk-builder npm run test:legacy:node > reports/logs/legacy.node.log 2>&1&
+docker run "${DOCKER_RUN_OPTS}" npm run test:legacy:node > reports/logs/legacy.node.log 2>&1&
 PIDS+=" $!"
 
 echo "RUNNING LEGACY BROWSER TESTS"
-docker run --rm -v `pwd`:/workspace spark-js-sdk-builder npm run test:legacy:browser > reports/logs/legacy.browser.log 2>&1 &
+docker run "${DOCKER_RUN_OPTS}" npm run test:legacy:browser > reports/logs/legacy.browser.log 2>&1 &
 PIDS+=" $!"
 
 FINAL_EXIT_CODE=0
