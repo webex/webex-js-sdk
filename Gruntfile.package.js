@@ -173,6 +173,12 @@ module.exports = function(grunt) {
       }
     },
 
+    fileExists: {
+      karmaxml: [
+        './reports/junit/*/karma-<%= package %>.xml'
+      ]
+    },
+
     instrument2: {
       src: {
         files: [{
@@ -328,7 +334,8 @@ module.exports = function(grunt) {
   registerTask('test:browser', [
     p(process.env.XUNIT) && 'continue:on',
     'karma',
-    p(process.env.XUNIT) && 'continue:off'
+    p(process.env.XUNIT) && 'continue:off',
+    p(process.env.XUNIT) && 'fileExists:karmaxml'
   ]);
 
   registerTask('test:node', [

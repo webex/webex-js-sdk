@@ -162,6 +162,12 @@ module.exports = function(grunt) {
       ]
     },
 
+    fileExists: {
+      karmaxml: [
+        './reports/junit/karma-legacy.xml'
+      ]
+    },
+
     'gh-pages': {
       options: {
         add: true,
@@ -425,7 +431,15 @@ module.exports = function(grunt) {
     }
 
     if (process.env.SKIP_BROWSER_TESTS !== 'true' && (!target || target === 'karma')) {
-      tasks.push(DEBUG ? 'karma:debug' : 'karma:test');
+      if (process.env.XUNIT) {
+        tasks.push('continue:on');
+        tasks.push('karma:test');
+        tasks.push('continue:off');
+        tasks.push('fileExists:karmaxml');
+      }
+      else {
+        tasks.push(DEBUG ? 'karma:debug' : 'karma:test');
+      }
     }
 
     if (target !== 'karma' && COVERAGE) {

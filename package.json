@@ -65,6 +65,7 @@
     "es6-promise": "~2.1.1",
     "extend-error": "git://github.com/ianwremmel/extend-error.git",
     "gm": "~1.18.1",
+    "grunt-file-exists": "^0.1.4",
     "lodash.assign": "^3.1.0",
     "lodash.bindall": "^3.1.0",
     "lodash.clone": "^3.0.1",
