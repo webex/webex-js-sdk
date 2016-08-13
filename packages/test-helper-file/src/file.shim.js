@@ -90,7 +90,7 @@ var FileShim = module.exports = {
   fetch: function fetch(filename) {
     return new Promise(function(resolve, reject) {
       xhr({
-        uri: makeLocalUrl(`/${filename}`),
+        uri: makeLocalUrl('/' + filename),
         responseType: 'blob'
       }, function(err, res, body) {
         if (err) {
