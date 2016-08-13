@@ -90,14 +90,3 @@ if [ ${FINAL_EXIT_CODE} -ne 0 ]; then
   echo "One or more test suites failed to execute"
   exit ${FINAL_EXIT_CODE}
 fi
-
-echo "COLLECTING COVERAGE REPORTS"
-npm run grunt:circle -- coverage
-
-echo "BUMPING INTERNAL VERSION NUMBER"
-npm run grunt -- release
-
-# TODO check git log message for release version
-# TODO rebuild in prod mode
-# TODO build docs for publication
-# TODO publish to npm
