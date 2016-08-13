@@ -52,13 +52,8 @@ module.exports = function(grunt) {
             return ['test:node'];
           }
 
-          // TODO can this line be removed?
-          if (process.env.SKIP_BROWSER_TESTS) {
-            return ['test:node'];
-          }
-
           return [
-            process.env.CIRCLECI ? 'test:automation-circle' : 'test:automation',
+            'test:automation',
             'test:browser',
             'test:node'
           ];
@@ -322,16 +317,12 @@ module.exports = function(grunt) {
   ]);
 
   registerTask('test:automation', [
-    'continue:on',
-    !!process.env.SC_TUNNEL_IDENTIFIER || 'selenium_start',
+    !process.env.SC_TUNNEL_IDENTIFIER && !process.env.XUNIT && 'continue:on',
+    !process.env.SC_TUNNEL_IDENTIFIER && 'selenium_start',
     'mochaTest:automation',
-    !!process.env.SC_TUNNEL_IDENTIFIER || 'selenium_stop',
-    'continue:off',
-    'continue:fail-on-warning'
-  ]);
-
-  registerTask('test:automation-circle', [
-    'mochaTest:automation'
+    !process.env.SC_TUNNEL_IDENTIFIER && 'selenium_stop',
+    !process.env.SC_TUNNEL_IDENTIFIER && !process.env.XUNIT && 'continue:off',
+    !process.env.SC_TUNNEL_IDENTIFIER && !process.env.XUNIT && 'continue:fail-on-warning'
   ]);
 
   registerTask('test:browser', [
@@ -350,9 +341,7 @@ module.exports = function(grunt) {
     'env',
     'clean:coverage',
     'express',
-    p(process.env.CIRCLECI) || 'continue:on',
     'concurrent:test',
-    p(process.env.CIRCLECI) || 'continue:off',
     p(process.env.COVERAGE) && 'copy:coverage',
     p(process.env.COVERAGE) && 'makeReport2'
   ]);
