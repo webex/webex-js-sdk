@@ -241,7 +241,8 @@ module.exports = function(grunt) {
       options: {
         reporter: 'spec',
         // TODO figure out how to detect retried tests
-        retries: (process.env.JENKINS || process.env.CI) ? 1 : 0
+        retries: (process.env.JENKINS || process.env.CI) ? 1 : 0,
+        noFail: process.env.XUNIT
       },
       automation: {
         options: {

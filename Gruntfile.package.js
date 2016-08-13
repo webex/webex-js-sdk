@@ -231,7 +231,8 @@ module.exports = function(grunt) {
         reporter: process.env.XUNIT ? path.join(__dirname, './packages/xunit-with-logs') : 'spec',
         // TODO figure out how to detect retried tests
         retries: (process.env.JENKINS || process.env.CI) ? 1 : 0,
-        timeout: 30000
+        timeout: 30000,
+        noFail: Boolean(process.env.XUNIT)
       },
       automation: {
         options: {
@@ -341,9 +342,7 @@ module.exports = function(grunt) {
 
   registerTask('test:node', [
     p(process.env.COVERAGE) && 'instrument2',
-    p(process.env.XUNIT) && 'continue:on',
     'mochaTest:node',
-    p(process.env.XUNIT) && 'continue:off',
     p(process.env.COVERAGE) && 'storeCoverage2'
   ]);
 
