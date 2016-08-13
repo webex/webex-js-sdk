@@ -13,11 +13,7 @@ module.exports = function gruntConfig(grunt) {
   grunt.loadTasks(`tasks`);
 
   grunt.registerTask(`coverage`, [
-    `makeReport2:all`,
-    // Disable coveralls for now; it doesn't seem to aggregate coverage accross
-    // nodes as advertised.
-    // `coveralls:all`,
-    `copy:coverage`
+    `makeReport2:all`
   ]);
 
   grunt.registerTask(`static-analysis`, [
@@ -172,10 +168,6 @@ module.exports = function gruntConfig(grunt) {
     makeReport2: {
       all: {
         files: [{
-          cwd: `./reports/coverage`,
-          expand: true,
-          src: `**/*.json`
-        }, {
           cwd: `./reports/coverage-final`,
           expand: true,
           src: `**/*.json`
