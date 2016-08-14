@@ -13,7 +13,8 @@ import evented from './evented';
 const data = new WeakKeyedMap();
 const defaults = new WeakKeyedMap();
 
-const prepared = Symbol(`prepared`);
+const prepared = new WeakKeyedMap();
+
 /**
  * @param {Constructor} target
  * @param {string} prop
@@ -23,7 +24,8 @@ const prepared = Symbol(`prepared`);
  */
 function prepare(target, prop, descriptor) {
   evented(target);
-  if (!descriptor[prepared]) {
+
+  if (!prepared.has(target, prop)) {
     const initializer = descriptor.initializer;
     defaults.set(target, prop, initializer);
     Reflect.deleteProperty(descriptor, `initializer`);
@@ -34,7 +36,6 @@ function prepare(target, prop, descriptor) {
       if (currentVal !== newValue) {
         data.set(this, prop, newValue);
         this.trigger(`change:${prop}`, this, newValue);
-        this.trigger(`change`, this);
       }
     };
 
@@ -43,10 +44,11 @@ function prepare(target, prop, descriptor) {
       if (ret === undefined && initializer) {
         return initializer();
       }
+
       return ret;
     };
 
-    descriptor[prepared] = true;
+    prepared.set(target, prop, true);
   }
 }
 

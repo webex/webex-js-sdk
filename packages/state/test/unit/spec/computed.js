@@ -4,7 +4,7 @@
  * @private
  */
 
-import {
+import State, {
   type,
   computed
 } from '../..';
@@ -16,7 +16,7 @@ describe(`state`, () => {
     const noDepsSpy = sinon.spy();
     const depsSpy = sinon.spy();
 
-    class FormattedDate {
+    class FormattedDate extends State {
       @type(`number`)
       day
 

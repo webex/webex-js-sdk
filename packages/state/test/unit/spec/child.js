@@ -4,7 +4,7 @@
  * @private
  */
 
-import {
+import State, {
   type,
   child
 } from '../..';
@@ -18,7 +18,7 @@ describe(`state`, () => {
       prop
     }
 
-    class A {
+    class A extends State {
       @child(C)
       c
     }

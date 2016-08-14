@@ -12,6 +12,9 @@ import {isFunction, isString} from 'lodash';
  * @returns {[type]}
  */
 export default function derived(options) {
+  defaults(options, {
+    cache: true
+  });
   let {
     cache,
     fn,
@@ -66,7 +69,6 @@ export default function derived(options) {
         Reflect.defineProperty(this, prop, desc);
 
         this.trigger(`change:${prop}`, this, newValue);
-        this.trigger(`change`, this);
       }
     }
   };
