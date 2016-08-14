@@ -62,7 +62,7 @@ export function type(dataType) {
     descriptor.enumerable = descriptor.enumerable !== false;
     prepare(target, prop, descriptor);
     descriptor.set = wrap(descriptor.set, function typeExecutor(fn, newValue) {
-      if (typeof newValue !== dataType) {
+      if (typeof newValue !== `undefined` && typeof newValue !== dataType) {
         throw new TypeError(`newValue must be of type ${dataType}`);
       }
 

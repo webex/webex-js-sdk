@@ -15,7 +15,13 @@ import {
   readonly
 } from 'core-decorators';
 
-import {escape, isFunction, isString, pick} from 'lodash';
+import {
+  escape,
+  isFunction,
+  isObject,
+  isString,
+  pick
+} from 'lodash';
 
 import {
   child,
@@ -87,7 +93,12 @@ export default class State {
     return this[this.typeAttribute];
   }
 
-  @computed(function isNew() {return this.getId() === null;})
+  @computed({
+    deps: `id`,
+    fn() {
+      return this.getId() === null;
+    }
+  })
   isNew
 
   @deprecated(`Consider investing on a more complete escaping function than lodash.escape`)
@@ -114,12 +125,16 @@ export default class State {
     return res;
   }
 
-  set() {
-
+  set(key, value) {
+    if (isObject(key)) {
+      Object.assign(this, key);
+      return;
+    }
+    this[key] = value;
   }
 
-  get() {
-
+  get(key) {
+    return this[key];
   }
 
   toggle(property) {
@@ -216,9 +231,8 @@ export default class State {
     });
   }
 
-  get isState() {
-    return true;
-  }
+  @readonly
+  isState = true
 
   static extend(protoProps) {
     // Most of this function is a manual implementation of the babel decorators

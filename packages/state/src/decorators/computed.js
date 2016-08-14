@@ -4,7 +4,11 @@
  * @private
  */
 
-import {isFunction, isString} from 'lodash';
+import {
+  defaults,
+  isFunction,
+  isString
+} from 'lodash';
 
 /**
  *
@@ -13,18 +17,14 @@ import {isFunction, isString} from 'lodash';
  */
 export default function derived(options) {
   defaults(options, {
-    cache: true
+    cache: true,
+    deps: []
   });
-  let {
+  const {
     cache,
-    fn,
-    deps
+    fn
   } = options;
-  if (isFunction(options)) {
-    cache = true;
-    fn = options;
-    deps = undefined;
-  }
+  let {deps} = options;
 
   if (isString(deps)) {
     deps = [deps];
@@ -35,25 +35,13 @@ export default function derived(options) {
     Reflect.deleteProperty(descriptor, `writable`);
     descriptor.configurable = true;
 
-    if (cache) {
-      descriptor.initializer = function initializer() {
-        if (deps) {
-          deps.forEach((dep) => {
-            this.on(`change:${dep}`, update.bind(this));
-          });
-        }
-        else {
-          this.on(`change`, update.bind(this));
-        }
+    descriptor.initializer = function initializer() {
+      deps.forEach((dep) => {
+        this.on(`change:${dep}`, update.bind(this));
+      });
 
-        return Reflect.apply(fn, this, []);
-      };
-    }
-    else {
-      descriptor.get = function get() {
-        return Reflect.apply(fn, this, []);
-      };
-    }
+      return Reflect.apply(fn, this, []);
+    };
 
     /**
     * @private
@@ -63,7 +51,7 @@ export default function derived(options) {
       /* eslint no-invalid-this: [0] */
       const currentVal = this[prop];
       const newValue = Reflect.apply(fn, this, []);
-      if (currentVal !== newValue) {
+      if (currentVal !== newValue || !cache) {
         const desc = Reflect.getOwnPropertyDescriptor(this, prop);
         desc.value = newValue;
         Reflect.defineProperty(this, prop, desc);
