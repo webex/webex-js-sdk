@@ -57,6 +57,7 @@ function prepare(target, prop, descriptor) {
  */
 export function type(dataType) {
   return function typeDecorator(target, prop, descriptor) {
+    descriptor.enumerable = descriptor.enumerable !== false;
     prepare(target, prop, descriptor);
     descriptor.set = wrap(descriptor.set, function typeExecutor(fn, newValue) {
       if (typeof newValue !== dataType) {

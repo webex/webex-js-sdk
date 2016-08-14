@@ -15,7 +15,7 @@ import {
   readonly
 } from 'core-decorators';
 
-import {escape, isString} from 'lodash';
+import {escape, isFunction, isString} from 'lodash';
 
 import {
   child,
@@ -33,14 +33,17 @@ import {
 export default class State {
   constructor(attrs, options) {
     options = options || {};
+    // TODO set cid
+
     if (options.parse) {
       attrs = this.parse(attrs, options);
     }
-
     // TODO set parent
-    // TODO set cid
     // TODO set collection
-    // TODO sett attrs
+    Object.assign(this, attrs);
+    if (options.init !== false) {
+      Reflect.apply(this.initialize, this, [attrs, options]);
+    }
   }
 
   // config attributes
@@ -139,6 +142,9 @@ export default class State {
   getAttributes() {
 
   }
+  // TODO _events should be made nonenumerable by @evented
+  @nonenumerable
+  _events
 
   get attributes() {
     return this.getAttributes({
@@ -159,12 +165,14 @@ export default class State {
     return true;
   }
 
-  static extend(def) {
+  static extend(protoProps) {
+    const Base = this;
     // breaking: constructor can't be overridden
-    class Child extends State {}
-    const proto = Object.keys(def).reduce((p, key) => {
-      if (isFunction(def[key])) {
-        p[key] = def[key];
+    class Child extends Base {}
+    protoProps = protoProps || {};
+    const proto = Object.keys(protoProps).reduce((p, key) => {
+      if (isFunction(protoProps[key])) {
+        p[key] = protoProps[key];
       }
 
       // TODO idAttribute
@@ -211,35 +219,39 @@ export default class State {
 
       return desc;
     }
-    if (def.session) {
-      props = Object.keys(def.session).reduce((p, prop) => {
-        const propDef = def.session[prop];
+    if (protoProps.session) {
+      props = Object.keys(protoProps.session).reduce((p, prop) => {
+        const propDef = protoProps.session[prop];
         p[prop] = prepare(propDef, prop);
         nonenumerable(Child, prop, p[prop]);
         return p;
       }, props);
     }
-    if (def.props) {
-      props = Object.keys(def.props).reduce((p, prop) => {
-        const propDef = def.props[prop];
+    if (protoProps.props) {
+      props = Object.keys(protoProps.props).reduce((p, prop) => {
+        const propDef = protoProps.props[prop];
         p[prop] = prepare(propDef, prop);
         return p;
       }, props);
     }
-    if (def.derived) {
-      props = Object.keys(def.derived).reduce((p, prop) => {
-        const propDef = def.derived[prop];
+    if (protoProps.derived) {
+      props = Object.keys(protoProps.derived).reduce((p, prop) => {
+        const propDef = protoProps.derived[prop];
         p[prop] = computed(propDef);
         return p;
       }, props);
     }
-    if (def.children) {
-      props = Object.keys(def.children).reduce((p, prop) => {
-        const propDef = def.children[prop];
+    if (protoProps.children) {
+      props = Object.keys(protoProps.children).reduce((p, prop) => {
+        const propDef = protoProps.children[prop];
         p[prop] = child(propDef);
         return p;
       }, props);
     }
+
+    Object.defineProperties(Child.prototype, props);
+
+    return Child;
 
     // TODO dataTypes
     // TODO collections
