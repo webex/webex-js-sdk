@@ -45,3 +45,6 @@ if [[ ${LAST_LOG} == "#release"* ]]; then
 
   echo ${VERSION}
 fi
+
+echo "STORING PRMOTION SHA"
+git rev-parse HEAD > .promotion-sha
