@@ -6,8 +6,15 @@
 
 /* eslint no-invalid-this: [0] */
 
-import {prepare} from './prop.js';
+import {prop} from './prop.js';
 import {wrap} from 'lodash';
+import WeakKeyedMap from '../lib/weak-keyed-map';
+
+const types = new WeakKeyedMap();
+
+export function getType(target, property) {
+  return types.get(target, property);
+}
 
 /**
  * Locks the specifed property to a specific type
@@ -15,9 +22,11 @@ import {wrap} from 'lodash';
  * @returns {undefined}
  */
 export default function type(dataType) {
-  return function typeDecorator(target, prop, descriptor) {
+  return function typeDecorator(target, property, descriptor) {
     descriptor.enumerable = descriptor.enumerable !== false;
-    prepare(target, prop, descriptor);
+    prop(target, property, descriptor);
+    types.set(target, property, dataType);
+
     descriptor.set = wrap(descriptor.set, function typeExecutor(fn, newValue) {
       if (typeof newValue !== `undefined` && typeof newValue !== dataType) {
         throw new TypeError(`newValue must be of type ${dataType}`);

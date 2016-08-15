@@ -67,16 +67,12 @@ describe(`state`, () => {
 
     it(`(optionally) caches updated values`, () => {
       let count = 0;
-      class UncachedDemo {
-        get count() {
-          count += 1;
-          return count;
-        }
-
+      class UncachedDemo extends State {
         @computed({
           cache: false,
           fn() {
-            return this.count * 2;
+            count += 1;
+            return count * 2;
           }
         })
         double

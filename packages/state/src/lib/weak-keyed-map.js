@@ -75,6 +75,10 @@ export default class WeakKeyedMap {
       return undefined;
     }
 
+    if (typeof key === `undefined`) {
+      return new Map(instanceData);
+    }
+
     return instanceData.get(key);
   }
 

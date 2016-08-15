@@ -1,6 +1,7 @@
 export {default as child} from './child';
 export {default as computed} from './computed';
 export {default as evented} from './evented';
+export {default as prop} from './prop';
 export {default as notNull} from './notNull';
 export {default as required} from './required';
 export {default as setOnce} from './setOnce';

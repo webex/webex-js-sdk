@@ -4,9 +4,8 @@
  * @private
  */
 
-/* eslint no-empty-function: [0] */
-/* eslint no-invalid-this: [0] */
 /* eslint require-jsdoc: [0] */
+/* eslint no-warning-comments: [0] */
 
 import {
   deprecated,
@@ -24,6 +23,8 @@ import {
   pick
 } from 'lodash';
 
+import arrayNext from 'array-next';
+
 import {
   child,
   computed,
@@ -35,6 +36,26 @@ import {
   values,
   test
 } from './decorators';
+
+import {
+  getType
+} from './decorators/type';
+
+import {
+  getAllowedValues
+} from './decorators/values';
+
+import {
+  finishChanging,
+  getChangedAttributes,
+  getPreviousAttributes,
+  hasChanged,
+  isChanging,
+  isPending,
+  silence,
+  startChanging,
+  unsilence
+} from './decorators/prop';
 
 const changeRE = /^change:/;
 
@@ -88,7 +109,7 @@ export default class State {
   typeAttribute = `modelType`
 
   initialize() {
-
+    // intentionally empty; here to be overridden
   }
 
   getId() {
@@ -118,7 +139,7 @@ export default class State {
 
   @deprecated(`isValid()'s implementation in AmpState feels a little rough; this method may be removed in the near future'`)
   isValid(options) {
-    return this._validate({}, assign(options || {}, { validate: true }));
+    return this._validate({}, Object.assign(options || {}, {validate: true}));
   }
 
   _validate(attrs, options) {
@@ -135,6 +156,7 @@ export default class State {
     return false;
   }
 
+  // eslint-disable-next-line no-unused-vars
   parse(resp, options) {
     return resp;
   }
@@ -150,12 +172,40 @@ export default class State {
     return res;
   }
 
-  set(key, value) {
-    if (isObject(key)) {
-      Object.assign(this, key);
-      return;
+  set(key, value, options) {
+    let attrs;
+    if (isObject(key) || key === null) {
+      attrs = key;
+      options = value;
     }
-    this[key] = value;
+    else {
+      attrs = {};
+      attrs[key] = value;
+    }
+
+    options = options || {};
+
+    if (!this._validate(attrs, options)) {
+      return false;
+    }
+
+    const {
+      unset,
+      silent
+    } = options;
+
+    if (silent) {
+      silence(this);
+    }
+    // startChanging(this);
+    Object.assign(this, key);
+    // finishChanging(this);
+
+    if (silent) {
+      unsilence(this);
+    }
+
+    return this;
   }
 
   get(key) {
@@ -163,19 +213,28 @@ export default class State {
   }
 
   toggle(property) {
-
+    if (getType(Reflect.getPrototypeOf(this), property) === `boolean`) {
+      this[property] = !this[property];
+    }
+    else if (getAllowedValues(Reflect.getPrototypeOf(this), property)) {
+      this[property] = arrayNext(getAllowedValues(Reflect.getPrototypeOf(this), property), this[property]);
+    }
+    else {
+      throw new TypeError(`Can only toggle properties that are type \`boolean\` or have \`values\` array.`);
+    }
+    return this;
   }
 
   previousAttributes() {
-
+    return Object.assign({}, getPreviousAttributes(this));
   }
 
   hasChanged(attr) {
-
+    return hasChanged(this, attr);
   }
 
   changedAttributes(diff) {
-
+    return getChangedAttributes(this, diff);
   }
 
   toJSON() {
@@ -201,8 +260,8 @@ export default class State {
     }
   }
 
-  previous() {
-
+  previous(attr) {
+    return getPreviousAttributes(this, attr);
   }
 
   getAttributes(options) {
@@ -264,8 +323,36 @@ export default class State {
     });
   }
 
+  @nonenumerable
   @readonly
   isState = true
+
+  /**
+   * AmpersandState compatibility properties
+   */
+
+  get _changing() {
+    return isChanging(this);
+  }
+
+  get _previousAttributes() {
+    return getPreviousAttributes(this);
+  }
+
+  get _changed() {
+    const changed = getChangedAttributes(this);
+    const attrs = {};
+    if (changed) {
+      for (const key of changed) {
+        attrs[key] = changed.get(key);
+      }
+    }
+    return attrs;
+  }
+
+  get _pending() {
+    return isPending(this);
+  }
 
   static extend(protoProps) {
     // Most of this function is a manual implementation of the babel decorators

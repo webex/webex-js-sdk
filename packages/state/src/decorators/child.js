@@ -5,22 +5,23 @@
  */
 
 import evented from './evented';
+import {trigger} from './prop';
 
 /**
  * @param {Function} Constructor
  * @returns {Function}
  */
 export default function child(Constructor) {
-  return function childDecorator(target, prop, descriptor) {
+  return function childDecorator(target, property, descriptor) {
     evented(target);
     descriptor.initializer = function initializer() {
       const c = new Constructor();
       this.listenTo(c, `all`, (name, model, value) => {
         if (name === `change`) {
-          this.trigger(`change`, this);
+          trigger(this, `change`, this);
         }
         else if (name.startsWith(`change:`)) {
-          this.trigger(`change:${prop}.${name.split(`:`)[1]}`, model, value);
+          trigger(this, `change:${property}.${name.split(`:`)[1]}`, model, value);
         }
       });
       return c;

@@ -9,8 +9,7 @@ import Events from 'ampersand-events';
 const semaphore = Symbol(`evented`);
 
 /**
- * Mixes ampersand-events into the target class or makes the specified property
- * evented
+ * Mixes ampersand-events into the target class
  * @param {Constructor} target
  * @returns {undefined}
  */

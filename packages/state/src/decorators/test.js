@@ -6,7 +6,7 @@
 
 /* eslint no-invalid-this: [0] */
 
-import {prepare} from './prop.js';
+import {prop} from './prop.js';
 import {wrap} from 'lodash';
 
 /**
@@ -16,8 +16,8 @@ import {wrap} from 'lodash';
  * @returns {Function}
  */
 export default function test(tester) {
-  return function testDecorator(target, prop, descriptor) {
-    prepare(target, prop, descriptor);
+  return function testDecorator(target, property, descriptor) {
+    prop(target, property, descriptor);
     descriptor.set = wrap(descriptor.set, function testExecutor(fn, newValue) {
       const error = Reflect.apply(tester, this, [newValue]);
       if (error) {

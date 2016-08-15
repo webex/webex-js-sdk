@@ -6,21 +6,21 @@
 
 /* eslint no-invalid-this: [0] */
 
-import {defaults, prepare} from './prop.js';
+import {initializers, prop} from './prop.js';
 import {wrap} from 'lodash';
 
 /**
  * Does not allow the specifed property to be unset
  * @param {Constructor} target
- * @param {string} prop
+ * @param {string} property
  * @param {object} descriptor
  * @returns {undefined}
  */
-export default function required(target, prop, descriptor) {
-  prepare(target, prop, descriptor);
+export default function required(target, property, descriptor) {
+  prop(target, property, descriptor);
   descriptor.set = wrap(descriptor.set, function requiredExecutor(fn, newValue) {
-    if (newValue === undefined && !defaults.has(target, prop)) {
-      throw new TypeError(`${prop} cannot be undefined`);
+    if (newValue === undefined && !initializers.has(target, property)) {
+      throw new TypeError(`${property} cannot be undefined`);
     }
     return Reflect.apply(fn, this, [newValue]);
   });
