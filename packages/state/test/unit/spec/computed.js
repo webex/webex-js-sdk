@@ -29,9 +29,12 @@ describe(`state`, () => {
       @type(`string`)
       name
 
-      @computed(function() {
-        noDepsSpy();
-        return `${this.year}-${this.month}-${this.day}`;
+      @computed({
+        deps: [`year`, `month`, `day`],
+        fn() {
+          noDepsSpy();
+          return `${this.year}-${this.month}-${this.day}`;
+        }
       })
       isoDate
 
@@ -62,36 +65,27 @@ describe(`state`, () => {
       }, /Cannot assign to read only property 'isoDate'/);
     });
 
-    describe(`when no deps are specifed`, () => {
-      it(`updates on all change events`, () => {
-        assert.callCount(depsSpy, 0);
-        assert.callCount(noDepsSpy, 0);
-        fd.name = `John Doe`;
-        assert.callCount(depsSpy, 0);
-        assert.callCount(noDepsSpy, 1);
-      });
-    });
-
     it(`(optionally) caches updated values`, () => {
-      let i = 0;
+      let count = 0;
       class UncachedDemo {
-        get now() {
-          i += 1;
-          return i;
+        get count() {
+          count += 1;
+          return count;
         }
 
         @computed({
           cache: false,
           fn() {
-            return this.now - 10000;
+            return this.count * 2;
           }
         })
-        computed
+        double
       }
       const ud = new UncachedDemo();
-      const first = ud.computed;
-      const second = ud.computed;
-      assert.notEqual(first, second);
+      const first = ud.double;
+      const second = ud.double;
+      assert.equal(first, 2);
+      assert.equal(second, 4);
     });
 
     it(`recomputes the property's value when its dependents change`, () => {
