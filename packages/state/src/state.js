@@ -17,6 +17,7 @@ import {
 
 import {
   escape,
+  isArray,
   isFunction,
   isObject,
   isString,
@@ -58,22 +59,31 @@ export default class State {
         this.trigger(`change`, this);
       }
     });
+
+    // TODO this should be done by @evented
+    Reflect.defineProperty(this, `_events`, Object.assign(Reflect.getOwnPropertyDescriptor(this, `_events`), {
+      enumerable: false
+    }));
   }
 
   // config attributes
   @nonconfigurable
+  @nonenumerable
   @readonly
   extraProperties = `ignore`
 
   @nonconfigurable
+  @nonenumerable
   @readonly
   idAttribute = `id`
 
   @nonconfigurable
+  @nonenumerable
   @readonly
   namespaceAttribute = `namespace`
 
   @nonconfigurable
+  @nonenumerable
   @readonly
   typeAttribute = `modelType`
 
@@ -106,12 +116,27 @@ export default class State {
     return escape(this[attr]);
   }
 
+  @deprecated(`isValid()'s implementation in AmpState feels a little rough; this method may be removed in the near future'`)
   isValid(options) {
+    return this._validate({}, assign(options || {}, { validate: true }));
+  }
 
+  _validate(attrs, options) {
+    if (!options.validate || !this.validate) {
+      return true;
+    }
+
+    attrs = Object.assign({}, this, attrs);
+    const error = this.validationError = this.validate(attrs, options) || null;
+    if (!error) {
+      return true;
+    }
+    this.trigger(`invalid`, this, error, Object.assign(options || {}, {validationError: error}));
+    return false;
   }
 
   parse(resp, options) {
-
+    return resp;
   }
 
   serialize(options) {
@@ -157,12 +182,23 @@ export default class State {
     return this.serialize();
   }
 
-  unset() {
+  unset(attrs, options) {
+    options = options || {};
 
+    attrs = isArray(attrs) ? attrs : [attrs];
+    // AmpState uses delete, but that won't fire change events given the current
+    // implementation here.
+    attrs.forEach((key) => {
+      this[key] = undefined;
+    });
   }
 
-  clear() {
-
+  clear(options) {
+    for (const key in this) {
+      if (!isFunction(this[key]) && Reflect.getOwnPropertyDescriptor(this, key).writable !== false) {
+        this.unset(key, options);
+      }
+    }
   }
 
   previous() {
@@ -212,9 +248,6 @@ export default class State {
 
     return pick(this, keys);
   }
-  // // TODO _events should be made nonenumerable by @evented
-  // @nonenumerable
-  // _events
 
   get attributes() {
     return this.getAttributes({
@@ -253,8 +286,6 @@ export default class State {
           if (!descriptor) {
             return;
           }
-
-          const current = this[property];
 
           const desc = Object.assign({}, descriptor);
           if (descriptor.initializer) {

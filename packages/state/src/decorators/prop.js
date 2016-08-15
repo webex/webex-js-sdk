@@ -4,7 +4,7 @@
  * @private
  */
 
-import {wrap} from 'lodash';
+import {isEqual, wrap} from 'lodash';
 import WeakKeyedMap from '../lib/weak-keyed-map';
 import evented from './evented';
 
@@ -33,7 +33,7 @@ function prepare(target, prop, descriptor) {
 
     descriptor.set = function set(newValue) {
       const currentVal = this[prop];
-      if (currentVal !== newValue) {
+      if (!isEqual(currentVal, newValue)) {
         data.set(this, prop, newValue);
         this.trigger(`change:${prop}`, this, newValue);
       }
