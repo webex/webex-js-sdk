@@ -27,7 +27,7 @@ if [[ ${LAST_LOG} == "#release"* ]]; then
   fi
 
   VERSION=$(echo ${LAST_LOG} | sed -e 's/#release //g' | sed -e 's/^\s*//g' | sed -e 's/\s$//g')
-  DOCKER_RUN_OPTS="-it --rm -v $(pwd):/workspace spark-js-sdk-builder"
+  DOCKER_RUN_OPTS="--rm --volumes-from ${HOSTNMAME} spark-js-sdk-builder"
 
   echo "REBUILDING IN PRODUCTION MODE"
   docker run -e NODE_ENV=production ${DOCKER_RUN_OPTS} npm run build

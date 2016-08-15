@@ -1,48 +1,16 @@
 #!/bin/bash
 
 set -e
+set -x
 
-START_DIR=$(pwd)
-cd "${START_DIR}/../builder"
-docker build -t spark-js-sdk-builder .
-cd "${START_DIR}/.."
-
-# Remove secrets on exit
-trap "rm -f .env" EXIT
-
-cat <<EOF >.env
-COMMON_IDENTITY_CLIENT_SECRET=${CISCOSPARK_CLIENT_SECRET}
-CISCOSPARK_CLIENT_SECRET=${CISCOSPARK_CLIENT_SECRET}
-SAUCE_USERNAME=${SAUCE_USERNAME}
-SAUCE_ACCESS_KEY=${SAUCE_ACCESS_KEY}
-EOF
-
-DOCKER_RUN_ENV=""
-if [ -n "${CONVERSATION_SERVICE}" ]; then
-  DOCKER_RUN_ENV+=" -e CONVERSATION_SERVICE=${CONVERSATION_SERVICE} "
-fi
-if [ -n "${DEVICE_REGISTRATION_URL}" ]; then
-  DOCKER_RUN_ENV+=" -e DEVICE_REGISTRATION_URL=${DEVICE_REGISTRATION_URL} "
-fi
-if [ -n "${ATLAS_SERVICE_URL}" ]; then
-  DOCKER_RUN_ENV+=" -e ATLAS_SERVICE_URL=${ATLAS_SERVICE_URL} "
-fi
-if [ -n "${HYDRA_SERVICE_URL}" ]; then
-  DOCKER_RUN_ENV+=" -e HYDRA_SERVICE_URL=${HYDRA_SERVICE_URL} "
-fi
-if [ -n "${WDM_SERVICE_URL}" ]; then
-  DOCKER_RUN_ENV+=" -e WDM_SERVICE_URL=${WDM_SERVICE_URL} "
-fi
-if [ -n "${ENABLE_NETWORK_LOGGING}" ]; then
-  DOCKER_RUN_ENV+=" -e ENABLE_NETWORK_LOGGING=${ENABLE_NETWORK_LOGGING} "
-fi
-if [ -n "${ENABLE_VERBOSE_NETWORK_LOGGING}" ]; then
-  DOCKER_RUN_ENV+=" -e ENABLE_VERBOSE_NETWORK_LOGGING=${ENABLE_VERBOSE_NETWORK_LOGGING} "
-fi
-
-DOCKER_RUN_OPTS="${DOCKER_RUN_ENV} -it --rm -v $(pwd):/workspace spark-js-sdk-builder"
+docker ps
+docker ps -a
 
 echo "INSTALLING LEGACY DEPENDENCIES"
+pwd
+docker run ${DOCKER_RUN_OPTS} pwd
+ls
+docker run ${DOCKER_RUN_OPTS} ls
 docker run ${DOCKER_RUN_OPTS} npm install
 
 echo "CLEANING"
