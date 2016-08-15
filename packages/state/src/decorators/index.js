@@ -1,11 +1,9 @@
 export {default as child} from './child';
 export {default as computed} from './computed';
 export {default as evented} from './evented';
-export {
-  type,
-  required,
-  values,
-  notNull,
-  setOnce,
-  test
-} from './prop';
+export {default as notNull} from './notNull';
+export {default as required} from './required';
+export {default as setOnce} from './setOnce';
+export {default as test} from './test';
+export {default as type} from './type';
+export {default as values} from './values';
