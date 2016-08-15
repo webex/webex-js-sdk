@@ -2,15 +2,20 @@
 
 set -e
 
-START_DIR=`pwd`
+START_DIR=$(pwd)
 cd "${START_DIR}/../builder"
 docker build -t spark-js-sdk-builder .
 cd "${START_DIR}/.."
 
-echo "COMMON_IDENTITY_CLIENT_SECRET=${CISCOSPARK_CLIENT_SECRET}" > .env
-echo "CISCOSPARK_CLIENT_SECRET=${CISCOSPARK_CLIENT_SECRET}" >> .env
-echo "SAUCE_USERNAME=${SAUCE_USERNAME}" >> .env
-echo "SAUCE_ACCESS_KEY=${SAUCE_ACCESS_KEY}" >> .env
+# Remove secrets on exit
+trap "rm -f .env" EXIT
+
+cat <<EOF >.env
+COMMON_IDENTITY_CLIENT_SECRET=${CISCOSPARK_CLIENT_SECRET}
+CISCOSPARK_CLIENT_SECRET=${CISCOSPARK_CLIENT_SECRET}
+SAUCE_USERNAME=${SAUCE_USERNAME}
+SAUCE_ACCESS_KEY=${SAUCE_ACCESS_KEY}
+EOF
 
 DOCKER_RUN_ENV=""
 if [ -n "${CONVERSATION_SERVICE}" ]; then
@@ -35,7 +40,7 @@ if [ -n "${ENABLE_VERBOSE_NETWORK_LOGGING}" ]; then
   DOCKER_RUN_ENV+=" -e ENABLE_VERBOSE_NETWORK_LOGGING=${ENABLE_VERBOSE_NETWORK_LOGGING} "
 fi
 
-DOCKER_RUN_OPTS="${DOCKER_RUN_ENV} -it --rm -v `pwd`:/workspace spark-js-sdk-builder"
+DOCKER_RUN_OPTS="${DOCKER_RUN_ENV} -it --rm -v $(pwd):/workspace spark-js-sdk-builder"
 
 echo "INSTALLING LEGACY DEPENDENCIES"
 docker run ${DOCKER_RUN_OPTS} npm install
@@ -71,7 +76,7 @@ for i in ./packages/*; do
     continue
   fi
 
-  PACKAGE=`echo $i | sed -e 's/.*packages\///g'`
+  PACKAGE=$(echo $i | sed -e 's/.*packages\///g')
   # Note: using & instead of -d so that wait works
   docker run -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} npm run test:package:sauce > reports/logs/${PACKAGE}.log 2>&1 &
   PIDS+=" $!"
@@ -96,9 +101,6 @@ for P in $PIDS; do
     FINAL_EXIT_CODE=1
   fi
 done
-
-echo "REMOVING SECRETS"
-rm -f .env
 
 if [ ${FINAL_EXIT_CODE} -ne 0 ]; then
   echo "One or more test suites failed to execute"
