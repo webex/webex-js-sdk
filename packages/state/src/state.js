@@ -351,30 +351,43 @@ export default class State {
       if (isString(propDef)) {
         type(propDef)(Child, prop, desc);
       }
-      //
-      // // Reminder: default must come first
-      // if (propDef.default) {
-      //   propDef.initializer = propDef.default;
-      // }
-      // if (propDef.type) {
-      //   type(propDef.type)(Child, prop, desc);
-      // }
-      // if (propDef.required) {
-      //   required(Child, prop, desc);
-      // }
-      // if (propDef.allowNull === false) {
-      //   noNull(Child, prop, desc);
-      // }
-      // if (propDef.setOnce) {
-      //   setOnce(Child, prop, desc);
-      // }
-      // if (propDef.values) {
-      //   values(propDef.values)(Child, prop, desc);
-      // }
-      // if (propDef.test) {
-      //   test(propDef.test)(Child, prop, desc);
-      // }
-      //
+
+      if (isArray(propDef)) {
+        if (propDef[0]) {
+          type(propDef[0])(Child, prop, desc);
+        }
+        if (propDef[1]) {
+          required(propDef[1])(Child, prop, desc);
+        }
+        if (propDef[2]) {
+          propDef.initializer = () => propDef[2];
+        }
+      }
+
+      // Reminder: default must come first to ensure other decorators interact
+      // with its initializer correctly
+      if (propDef.default) {
+        propDef.initializer = () => propDef.default;
+      }
+      if (propDef.type) {
+        type(propDef.type)(Child, prop, desc);
+      }
+      if (propDef.required) {
+        required(Child, prop, desc);
+      }
+      if (propDef.allowNull === false) {
+        noNull(Child, prop, desc);
+      }
+      if (propDef.setOnce) {
+        setOnce(Child, prop, desc);
+      }
+      if (propDef.values) {
+        values(propDef.values)(Child, prop, desc);
+      }
+      if (propDef.test) {
+        test(propDef.test)(Child, prop, desc);
+      }
+
       return desc;
     }
 
