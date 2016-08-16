@@ -278,7 +278,9 @@ module.exports = function(grunt) {
           }
         },
         src: [
-          './packages/<%= package %>/dist/**/*.js'
+          './packages/<%= package %>/dist/**/*.js',
+          // Exclude browser implementations; this is only running in node
+          '!./packages/<%= package %>/dist/**/*.shim.js'
         ]
       }
     },
