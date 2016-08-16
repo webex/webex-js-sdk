@@ -43,7 +43,7 @@
     "grunt:package": "grunt --gruntfile Gruntfile.package.js",
     "release": "npm run grunt -- release",
     "sauce:start": "./scripts/run-with-sauce.sh ./packages/bin-sauce-connect/bin/sauce-connect start",
-    "sauce:stop": "./scripts/run-with-sauce.sh ./packages/bin-sauce-connect/bin/sauce-connect stop && rm -f .sauce.tid",
+    "sauce:stop": "./scripts/run-with-sauce.sh ./packages/bin-sauce-connect/bin/sauce-connect stop && rm -f .sauce/${PACKAGE}/sc.tid",
     "sauce:run": "./scripts/run-with-sauce.sh",
     "script": "bash -c",
     "test": "npm run test:packages && npm run test:legacy",

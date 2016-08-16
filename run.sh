@@ -136,7 +136,9 @@ EOF
 # REMOVE REMNANT SAUCE FILES FROM PREVIOUS BUILD
 #
 
-rm -rf .sauce
+rm -rf .sauce/*/sc.pid
+rm -rf .sauce/*/sc.ready
+rm -rf .sauce/*/sauce_connect.log
 
 #
 # RUN THE COMMAND THAT WAS PASSED TO THIS SCRIPT
