@@ -67,6 +67,8 @@ set +x
 
 FINAL_EXIT_CODE=0
 for P in $PIDS; do
+  echo "Waiting for $(jobs -p | wc -l) jobs to complete"
+
   set +e
   set -x
   wait $P

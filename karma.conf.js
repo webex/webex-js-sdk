@@ -20,11 +20,6 @@ module.exports = function(config) {
   var cfg = {
     basePath: '.',
 
-    browserConsoleLogOptions: {
-      path: process.env.CIRCLE_ARTIFACTS ? path.join(process.env.CIRCLE_ARTIFACTS, 'karma.legacy.log') : 'karma.legacy.log',
-      terminal: !process.env.CI
-    },
-
     browserDisconnectTimeout: 10000,
 
     browsers: process.env.SC_TUNNEL_IDENTIFIER ? Object.keys(launchers) : Object.keys(browsers.local),
@@ -91,11 +86,6 @@ module.exports = function(config) {
 
     singleRun: true
   };
-
-  // The mocha reporter doesn't honor browserConsoleLogOptions
-  if (process.env.CI) {
-    cfg.reporters = [];
-  }
 
   if (process.env.COVERAGE && process.env.COVERAGE !== 'undefined') {
     cfg.coverageReporter = {

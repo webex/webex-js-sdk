@@ -287,7 +287,7 @@ module.exports = function(grunt) {
       }
     },
 
-    xunitDir: process.env.XUNIT_DIR || './reports'
+    xunitDir: process.env.XUNIT_DIR || './reports/junit'
   });
 
   // Private task for removing SQUARED_JS_SDK from the beginning of env
