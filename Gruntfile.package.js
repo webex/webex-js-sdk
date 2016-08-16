@@ -286,7 +286,7 @@ module.exports = function(grunt) {
     },
 
     package: process.env.PACKAGE,
-    xunitDir: process.env.XUNIT_DIR || './reports',
+    xunitDir: process.env.XUNIT_DIR || './reports/junit',
     shell: {
       'move-babelrc': {
         command: 'mv .babelrc babelrc'

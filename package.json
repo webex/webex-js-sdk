@@ -51,7 +51,6 @@
     "pretest:legacy:browser": "npm run sauce:start",
     "test:legacy:browser": "npm run grunt -- test:karma",
     "posttest:legacy:browser": "npm run sauce:stop",
-    "test:packages": "npm run grunt:concurrent -- test",
     "pretest:package": "npm run check-package",
     "test:package": "npm run grunt:package -- test",
     "pretest:package:sauce": "npm run sauce:start",

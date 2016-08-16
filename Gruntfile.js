@@ -47,19 +47,11 @@ module.exports = function(grunt) {
     },
 
     clean: {
-      'gh-pages': {
-        src: ['.grunt']
-      },
       tmp: {
         src: ['<%= config.tmp %>']
       },
       tmpUploads: {
         src: ['<%= config.tmpUploads %>']
-      },
-      reports: {
-        src: [
-          'reports'
-        ]
       }
     },
 
