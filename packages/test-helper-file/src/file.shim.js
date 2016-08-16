@@ -104,9 +104,9 @@ var FileShim = module.exports = {
     });
   },
 
-  isBufferLike,
+  isBufferLike: isBufferLike,
 
-  isBlobLike,
+  isBlobLike: isBlobLike,
 
   /**
    * @param {ArrayBuffer|Blob|Uint8Array} left
