@@ -34,7 +34,7 @@ module.exports = function(grunt) {
         commitFiles: [
           'package.json',
           '<%= config.src %>/version.js',
-          'CHANGELOG.md',
+          // 'CHANGELOG.md',
           'README.md',
           'packages/*/README.md'
         ],
@@ -458,7 +458,7 @@ module.exports = function(grunt) {
 
   grunt.registerTask('release', [
     'bump-only',
-    'changelog',
+    // 'changelog',
     // 'shell:jsdoc',
     'private-update-version-strings',
     // 'gh-pages',

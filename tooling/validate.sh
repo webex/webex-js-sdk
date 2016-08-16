@@ -2,6 +2,9 @@
 
 set -e
 
+# Make sure local tags don't include failed releases
+git tag | xargs git tag -d
+
 cd $(dirname $0)
 
 ./test.sh
@@ -47,4 +50,4 @@ if [[ ${LAST_LOG} == "#release"* ]]; then
 fi
 
 echo "STORING PRMOTION SHA"
-git rev-parse HEAD > .promotion-sha
+git rev-parse HEAD > ${SDK_ROOT_DIR}/.promotion-sha

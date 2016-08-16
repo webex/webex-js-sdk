@@ -8,7 +8,6 @@ ps aux | grep grunt | grep -v grunt | awk '{print $2}' | xargs kill > /dev/null 
 # Now, fail if anything fails
 set -e
 
-
 #
 # CONFIGURE NODE
 #
@@ -69,6 +68,8 @@ fi
 cd $(dirname $0)
 export SDK_ROOT_DIR="$(pwd)"
 export WORKDIR="${SDK_ROOT_DIR}"
+
+# Pass environment variables to container at runtime
 DOCKER_RUN_ENV=""
 if [ -n "${CONVERSATION_SERVICE}" ]; then
   DOCKER_RUN_ENV+=" -e CONVERSATION_SERVICE=${CONVERSATION_SERVICE} "
@@ -92,12 +93,30 @@ if [ -n "${ENABLE_VERBOSE_NETWORK_LOGGING}" ]; then
   DOCKER_RUN_ENV+=" -e ENABLE_VERBOSE_NETWORK_LOGGING=${ENABLE_VERBOSE_NETWORK_LOGGING} "
 fi
 export DOCKER_CONTAINER_NAME="${JOB_NAME}-builder"
-export DOCKER_RUN_OPTS="${DOCKER_RUN_ENV} --rm --volumes-from ${HOSTNMAME} ${DOCKER_CONTAINER_NAME}"
 
-echo "WORKDIR ${WORKDIR}" >> ./docker/builder/Dockerfile
+# Push runtime config data into the container definition and build it
+cat <<EOT >>./docker/builder/Dockerfile
+RUN groupadd -g $(id -g) jenkins
+RUN useradd -u $(id -u) -g $(id -g) -m jenkins
+WORKDIR ${WORKDIR}
+USER $(id -u)
+EOT
 docker build -t ${DOCKER_CONTAINER_NAME} ./docker/builder
+
+# Reset the Dockerfile to make sure we don't accidentally commit it later
 git checkout ./docker/builder/Dockerfile
 
+export DOCKER_RUN_OPTS="${DOCKER_RUN_ENV}"
+# Cleanup the container when done
+export DOCKER_RUN_OPTS="${DOCKER_RUN_OPTS} --rm"
+# Make sure the npm cache stays inside the workspace
+export DOCKER_RUN_OPTS="${DOCKER_RUN_OPTS} -e NPM_CONFIG_CACHE=${WORKDIR}/.npm"
+# Mount the workspace from the Jenkins slave volume
+export DOCKER_RUN_OPTS="${DOCKER_RUN_OPTS} --volumes-from ${HOSTNAME}"
+# Run commands as Jenkins user
+export DOCKER_RUN_OPTS="${DOCKER_RUN_OPTS} --user=$(id -u):$(id -g)"
+# Use the computed container name
+export DOCKER_RUN_OPTS="${DOCKER_RUN_OPTS} ${DOCKER_CONTAINER_NAME}"
 
 #
 # MAKE SECRETS AVAILABLE TO AUX CONTAINERS
@@ -112,6 +131,12 @@ CISCOSPARK_CLIENT_SECRET=${CISCOSPARK_CLIENT_SECRET}
 SAUCE_USERNAME=${SAUCE_USERNAME}
 SAUCE_ACCESS_KEY=${SAUCE_ACCESS_KEY}
 EOF
+
+#
+# REMOVE REMNANT SAUCE FILES FROM PREVIOUS BUILD
+#
+
+rm -rf .sauce
 
 #
 # RUN THE COMMAND THAT WAS PASSED TO THIS SCRIPT
