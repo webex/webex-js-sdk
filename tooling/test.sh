@@ -76,13 +76,13 @@ for P in $PIDS; do
   set +x
   set -e
 
-  if [ ${EXIT_CODE} -ne 0 ]; then
+  if [ "${EXIT_CODE}" -ne "0" ]; then
     FINAL_EXIT_CODE=1
   fi
   # TODO cleanup sauce files for package
 done
 
-if [ ${FINAL_EXIT_CODE} -ne 0 ]; then
+if [ "${FINAL_EXIT_CODE}" -ne "0" ]; then
   echo "One or more test suites failed to execute"
   exit ${FINAL_EXIT_CODE}
 fi
