@@ -40,6 +40,7 @@ module.exports = function configGrunt(grunt) {
     },
     test: {
       keepalive: false,
+      stats: false,
       progress: false,
       watch: false,
       webpack: require('./webpack.config')
