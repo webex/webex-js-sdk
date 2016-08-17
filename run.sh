@@ -92,7 +92,7 @@ fi
 if [ -n "${ENABLE_VERBOSE_NETWORK_LOGGING}" ]; then
   DOCKER_RUN_ENV+=" -e ENABLE_VERBOSE_NETWORK_LOGGING=${ENABLE_VERBOSE_NETWORK_LOGGING} "
 fi
-export DOCKER_CONTAINER_NAME="${JOB_NAME}-builder"
+export DOCKER_CONTAINER_NAME="${JOB_NAME}-${BUILD_NUMBER}-builder"
 
 # Push runtime config data into the container definition and build it
 cat <<EOT >>./docker/builder/Dockerfile
@@ -137,11 +137,12 @@ EOF
 #
 
 rm -rf .sauce/*/sc.pid
+rm -rf .sauce/*/sc.tid
 rm -rf .sauce/*/sc.ready
 rm -rf .sauce/*/sauce_connect.log
 
 #
 # RUN THE COMMAND THAT WAS PASSED TO THIS SCRIPT
 #
-
+trap "docker rmi ${DOCKER_CONTAINER_NAME}" EXIT
 eval $@
