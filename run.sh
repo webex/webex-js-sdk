@@ -92,6 +92,9 @@ fi
 if [ -n "${ENABLE_VERBOSE_NETWORK_LOGGING}" ]; then
   DOCKER_RUN_ENV+=" -e ENABLE_VERBOSE_NETWORK_LOGGING=${ENABLE_VERBOSE_NETWORK_LOGGING} "
 fi
+if [ -n "${BUILD_NUMBER}" ]; then
+  DOCKER_RUN_ENV+=" -e BUILD_NUMBER=${BUILD_NUMBER} "
+fi
 export DOCKER_CONTAINER_NAME="${JOB_NAME}-${BUILD_NUMBER}-builder"
 
 # Push runtime config data into the container definition and build it
