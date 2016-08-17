@@ -398,13 +398,6 @@ module.exports = function(grunt) {
       tasks.push('static-analysis');
     }
 
-    // Include everything inside continue except static analysis. It's really
-    // rough to wait for all tests to complete only to discover they failed
-    // because of a missing semicolon.
-    if (SAUCE) {
-      tasks.push('continue:on');
-    }
-
     if (COVERAGE) {
       tasks.push('copy:test');
       tasks.push('instrument2');
@@ -436,11 +429,6 @@ module.exports = function(grunt) {
 
     if (target !== 'karma' && COVERAGE) {
       tasks.push('storeCoverage2');
-    }
-
-    if (SAUCE) {
-      tasks.push('continue:off');
-      tasks.push('continue:fail-on-warning');
     }
 
     tasks.push('clean:tmpUploads');
