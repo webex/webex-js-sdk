@@ -9,10 +9,14 @@ cd $(dirname $0)
 
 ./test.sh
 
-echo "COLLECTING COVERAGE REPORTS"
+echo "################################################################################"
+echo "# COLLECTING COVERAGE REPORTS"
+echo "################################################################################"
 npm run grunt:circle -- coverage
 
-echo "BUMPING INTERNAL VERSION NUMBER"
+echo "################################################################################"
+echo "# BUMPING INTERNAL VERSION NUMBER"
+echo "################################################################################"
 npm run grunt -- release
 
 LAST_LOG=$(git log -1 --pretty=%B)
@@ -23,31 +27,45 @@ if [[ ${LAST_LOG} == "#release"* ]]; then
   git reset HEAD^
   HAS_CHANGES=$(git status --porcelain | wc -l)
   if [ "${HAS_CHANGES}" -ne "0" ]; then
-    echo "After removing command commit, local workspace has changes"
+    echo "################################################################################"
+    echo "# After removing command commit, local workspace has changes"
+    echo "################################################################################"
     echo git status
-    echo "Command commits should not make changes, exiting"
+    echo "################################################################################"
+    echo "# Command commits should not make changes, exiting"
+    echo "################################################################################"
     exit 1
   fi
 
   VERSION=$(echo ${LAST_LOG} | sed -e 's/#release //g' | sed -e 's/^\s*//g' | sed -e 's/\s$//g')
   DOCKER_RUN_OPTS="--rm --volumes-from ${HOSTNMAME} spark-js-sdk-builder"
 
-  echo "REBUILDING IN PRODUCTION MODE"
+  echo "################################################################################"
+  echo "# REBUILDING IN PRODUCTION MODE"
+  echo "################################################################################"
   docker run -e NODE_ENV=production ${DOCKER_RUN_OPTS} npm run build
 
-  echo "BUILDING EXAMPLE APP"
+  echo "################################################################################"
+  echo "# BUILDING EXAMPLE APP"
+  echo "################################################################################"
   docker run -e PACKAGE=example-phone -e NODE_ENV=production ${DOCKER_RUN_OPTS} npm run grunt:package -- webpack-dev-server:build
 
-  echo "PUBLISHING NEW VERSIONS TO NPM"
+  echo "################################################################################"
+  echo "# PUBLISHING NEW VERSIONS TO NPM"
+  echo "################################################################################"
   echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > .npmrc
   npm run lerna -- publish --repo-version=${VERSION}
   rm -f .npmrc
 
-  echo "PUBLISHING NEW DOCUMENENTATION"
+  echo "################################################################################"
+  echo "# PUBLISHING NEW DOCUMENENTATION"
+  echo "################################################################################"
   npm run grunt:circle -- publish-docs
 
   echo ${VERSION}
 fi
 
-echo "STORING PRMOTION SHA"
+echo "################################################################################"
+echo "# STORING PRMOTION SHA"
+echo "################################################################################"
 git rev-parse HEAD > ${SDK_ROOT_DIR}/.promotion-sha

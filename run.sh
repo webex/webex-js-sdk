@@ -53,12 +53,14 @@ if [ "${NPM_MAJOR_VERSION}" = "1" ]; then
   npm install -g --registry=http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group npm@2.x
 fi
 
+echo "################################################################################"
 if [ -n "$BUILD_NUMBER" ]; then
-  echo "Build Number: $BUILD_NUMBER"
+  echo "# Build Number: $BUILD_NUMBER"
 else
   BUILD_NUMBER=-1
-  echo "Build Number not set, defaulting to $BUILD_NUMBER"
+  echo "# Build Number not set, defaulting to $BUILD_NUMBER"
 fi
+echo "################################################################################"
 
 
 #

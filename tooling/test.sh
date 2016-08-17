@@ -11,23 +11,33 @@ trap 'JOBS=$(jobs -p); if [ -n "${JOBS}" ]; then kill "${JOBS}"; fi' SIGINT SIGT
 docker ps
 docker ps -a
 
-echo "INSTALLING LEGACY DEPENDENCIES"
+echo "################################################################################"
+echo "# INSTALLING LEGACY DEPENDENCIES"
+echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} npm install
 
-echo "CLEANING"
+echo "################################################################################"
+echo "# CLEANING"
+echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} npm run grunt -- clean
 docker run ${DOCKER_RUN_OPTS} npm run grunt:concurrent -- clean
 
 rm -rf ${SDK_ROOT_DIR}/reports
 mkdir -p ${SDK_ROOT_DIR}/reports/logs
 
-echo "BOOTSTRAPPING MODULES"
+echo "################################################################################"
+echo "# BOOTSTRAPPING MODULES"
+echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} npm run bootstrap
 
-echo "BUILDING MODULES"
+echo "################################################################################"
+echo "# BUILDING MODULES"
+echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} npm run build
 
-echo "RUNNING MODULE TESTS"
+echo "################################################################################"
+echo "# RUNNING MODULE TESTS"
+echo "################################################################################"
 
 PIDS=""
 # Ideally, the following would be done with lerna but there seem to be some bugs
@@ -46,6 +56,9 @@ for i in ${SDK_ROOT_DIR}/packages/*; do
   fi
 
   PACKAGE=$(echo $i | sed -e 's/.*packages\///g')
+  echo "################################################################################"
+  echo "# RUNNING ${PACKAGE} TESTS"
+  echo "################################################################################"
   # Note: using & instead of -d so that wait works
   set -x
   docker run -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} bash -c "npm run test:package:sauce > ${SDK_ROOT_DIR}/reports/logs/docker.${PACKAGE}.log 2>&1" &
@@ -53,13 +66,17 @@ for i in ${SDK_ROOT_DIR}/packages/*; do
   set +x
 done
 
-echo "RUNNING LEGACY NODE TESTS"
+echo "################################################################################"
+echo "# RUNNING LEGACY NODE TESTS"
+echo "################################################################################"
 set -x
 docker run ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:node > ${SDK_ROOT_DIR}/reports/logs/legacy.node.log 2>&1" &
 PIDS+=" $!"
 set +x
 
-echo "RUNNING LEGACY BROWSER TESTS"
+echo "################################################################################"
+echo "# RUNNING LEGACY BROWSER TESTS"
+echo "################################################################################"
 set -x
 docker run -e PACKAGE=${legacy} ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:browser > ${SDK_ROOT_DIR}/reports/logs/legacy.browser.log 2>&1" &
 PIDS+=" $!"
@@ -67,7 +84,9 @@ set +x
 
 FINAL_EXIT_CODE=0
 for P in $PIDS; do
-  echo "Waiting for $(jobs -p | wc -l) jobs to complete"
+  echo "################################################################################"
+  echo "# Waiting for $(jobs -p | wc -l) jobs to complete"
+  echo "################################################################################"
 
   set +e
   set -x
@@ -83,6 +102,8 @@ for P in $PIDS; do
 done
 
 if [ "${FINAL_EXIT_CODE}" -ne "0" ]; then
-  echo "One or more test suites failed to execute"
+  echo "################################################################################"
+  echo "# One or more test suites failed to execute"
+  echo "################################################################################"
   exit ${FINAL_EXIT_CODE}
 fi
