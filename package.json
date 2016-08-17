@@ -53,8 +53,6 @@
     "posttest:legacy:browser": "PACKAGE=legacy npm run sauce:stop",
     "pretest:package": "npm run check-package",
     "test:package": "npm run grunt:package -- test",
-    "pretest:package:sauce": "npm run sauce:start",
-    "test:package:sauce": "npm run sauce:run -- npm run test:package",
     "posttest:package:sauce": "npm run sauce:stop",
     "lerna": "lerna"
   },

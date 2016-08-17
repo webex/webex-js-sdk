@@ -12,3 +12,9 @@ ENV XUNIT=TRUE
 ENV PORT=8000
 ENV FIXTURE_PORT=9000
 ENV KARMA_PORT=8001
+
+WORKDIR /work
+
+COPY test.sh test.sh
+
+CMD '/work/test.sh'

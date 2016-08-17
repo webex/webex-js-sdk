@@ -60,8 +60,9 @@ for i in ${SDK_ROOT_DIR}/packages/*; do
   echo "# RUNNING ${PACKAGE} TESTS"
   echo "################################################################################"
   # Note: using & instead of -d so that wait works
+  # Note: the Dockerfile's default CMD will run package tests automatically
+  docker run -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} &
   set -x
-  docker run -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} bash -c "npm run test:package:sauce > ${SDK_ROOT_DIR}/reports/logs/docker.${PACKAGE}.log 2>&1" &
   PIDS+=" $!"
   set +x
 done
@@ -69,21 +70,26 @@ done
 echo "################################################################################"
 echo "# RUNNING LEGACY NODE TESTS"
 echo "################################################################################"
-set -x
 docker run ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:node > ${SDK_ROOT_DIR}/reports/logs/legacy.node.log 2>&1" &
+set -x
 PIDS+=" $!"
 set +x
 
 echo "################################################################################"
 echo "# RUNNING LEGACY BROWSER TESTS"
 echo "################################################################################"
-set -x
 docker run -e PACKAGE=${legacy} ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:browser > ${SDK_ROOT_DIR}/reports/logs/legacy.browser.log 2>&1" &
+set -x
 PIDS+=" $!"
 set +x
 
 FINAL_EXIT_CODE=0
 for P in $PIDS; do
+  echo "################################################################################"
+  echo "# Docker Stats"
+  echo "################################################################################"
+  docker stats --no-stream
+
   echo "################################################################################"
   echo "# Waiting for $(jobs -p | wc -l) jobs to complete"
   echo "################################################################################"
