@@ -53,7 +53,7 @@ echo "##########################################################################
 echo "# RUNNING MODULE TESTS"
 echo "################################################################################"
 
-CONCURRENCY=6
+CONCURRENCY=4
 # Ideally, the following would be done with lerna but there seem to be some bugs
 # in --scope and --ignore
 for i in ${SDK_ROOT_DIR}/packages/*; do
