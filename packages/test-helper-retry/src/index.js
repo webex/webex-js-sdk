@@ -1,4 +1,14 @@
+/**!
+ *
+ * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ */
+
 'use strict';
+
+if (typeof Promise === 'undefined') {
+  // eslint-disable-next-line global-require
+  require('es6-promise').polyfill();
+}
 
 var backoffPattern = [0, 1000, 2000, 4000, 8000, 16000, 32000, 32000, 32000];
 

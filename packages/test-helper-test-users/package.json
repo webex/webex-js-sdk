@@ -16,7 +16,8 @@
   },
   "dependencies": {
     "babel-runtime": "^6.3.19",
-    "envify": "^3.4.1"
+    "envify": "^3.4.1",
+    "es6-promise": "^3.2.1"
   },
   "browserify": {
     "transform": [
