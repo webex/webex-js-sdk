@@ -41,17 +41,13 @@ echo "##########################################################################
 echo "# RUNNING LEGACY NODE TESTS"
 echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:node > ${SDK_ROOT_DIR}/reports/logs/legacy.node.log 2>&1" &
-set -x
 PIDS+=" $!"
-set +x
 
 echo "################################################################################"
 echo "# RUNNING LEGACY BROWSER TESTS"
 echo "################################################################################"
 docker run -e PACKAGE=${legacy} ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:browser > ${SDK_ROOT_DIR}/reports/logs/legacy.browser.log 2>&1" &
-set -x
 PIDS+=" $!"
-set +x
 
 echo "################################################################################"
 echo "# RUNNING MODULE TESTS"
@@ -91,9 +87,7 @@ for i in ${SDK_ROOT_DIR}/packages/*; do
   # Note: using & instead of -d so that wait works
   # Note: the Dockerfile's default CMD will run package tests automatically
   docker run -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} &
-  set -x
   PIDS+=" $!"
-  set +x
 done
 
 FINAL_EXIT_CODE=0
@@ -108,10 +102,8 @@ for P in $PIDS; do
   echo "################################################################################"
 
   set +e
-  set -x
   wait $P
   EXIT_CODE=$?
-  set +x
   set -e
 
   if [ "${EXIT_CODE}" -ne "0" ]; then

@@ -5,7 +5,6 @@
 # the sdk root dir
 
 set -e
-
 npm run sauce:start
 set +e
 npm run sauce:run -- npm run test:package > reports/logs/docker-${PACKAGE}.log 2>&1
@@ -13,18 +12,18 @@ EXIT_CODE=$?
 set -e
 npm run sauce:stop
 
-echo "Suite exited withe code ${EXIT_CODE}"
-
 if [ "${EXIT_CODE}" -ne "0" ]; then
-  MSG="Suite exited with non-zero return code. Please see reports/logs/docker.${PACKAGE}.log for more info."
+  MSG="Suite for ${PACKAGE} exited with ${EXIT_CODE}. Please see reports/logs/docker.${PACKAGE}.log for more info."
+
   echo "################################################################################"
   echo "# ${MSG}"
   echo "################################################################################"
+
   cat <<EOT > "./reports/junit/suite.${PACKAGE}.xml"
 <testsuite
   name="spark-js-sdk"
   package="${PACKAGE}"
-  timestamp="${(new Date()).toISOString()}"
+  timestamp="$(date)"
   tests="1"
   errors="1"
   failures="1"
