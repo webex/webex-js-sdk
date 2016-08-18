@@ -75,7 +75,7 @@ for i in ${SDK_ROOT_DIR}/packages/*; do
   docker stats --no-stream
 
   echo "Keeping concurrent job count below ${CONCURRENCY}"
-  while [ $(jobs -p | wc -l) -gt ${CONCURRENCY} ]; do
+  while [ $(jobs -p | wc -l) -gte ${CONCURRENCY} ]; do
     echo "."
     sleep 5
   done
