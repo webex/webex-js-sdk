@@ -16,5 +16,6 @@ ENV KARMA_PORT=8001
 WORKDIR /work
 
 COPY test.sh test.sh
+COPY retry.sh retry.sh
 
 CMD '/work/retry.sh'
