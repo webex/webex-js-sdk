@@ -106,7 +106,21 @@ RUN useradd -u $(id -u) -g $(id -g) -m jenkins
 WORKDIR ${WORKDIR}
 USER $(id -u)
 EOT
+
+set +e
 docker build -t ${DOCKER_CONTAINER_NAME} ./docker/builder
+EXIT_CODE=$?
+if [ "${EXIT_CODE}" -ne "0" ]; then
+  echo "Docker build failed, making attempt 2"
+  docker build -t ${DOCKER_CONTAINER_NAME} ./docker/builder
+  EXIT_CODE=$?
+  if [ "${EXIT_CODE}" -ne "0" ]; then
+    echo "Docker build failed, making attempt 3"
+    docker build -t ${DOCKER_CONTAINER_NAME} ./docker/builder
+    EXIT_CODE=$?
+  fi
+fi
+set -e
 
 # Reset the Dockerfile to make sure we don't accidentally commit it later
 git checkout ./docker/builder/Dockerfile
