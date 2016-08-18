@@ -60,16 +60,18 @@ Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
 
 Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
 
-# check-required
+# capped-debounce
 
-!
-
-Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+Behaves like debounce, but additionally executes after a number of calls are
+attempted, rather than just time
 
 **Parameters**
 
--   `keys`  
--   `object`  
+-   `fn` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+-   `wait` **[Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
+-   `options` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
+
+Returns **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
 
 # check-required
 
@@ -85,13 +87,59 @@ Check object for the specified keys
 
 Returns **[undefined](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined)** 
 
-# isFunction
+# check-required
 
 !
 
 Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
 
-# isFunction
+**Parameters**
+
+-   `keys`  
+-   `object`  
+
+# make-state-datatype
+
+Creates an ampersand state object that wires its event handlers like a an
+ampersand child
+
+**Parameters**
+
+-   `Constructor` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+-   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** 
+
+Returns **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
+
+# make-state-datatype
+
+!
+
+Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+**Parameters**
+
+-   `Constructor`  
+-   `name`  
+
+# test
+
+This is a really unfortunate hack to deal with ampersand\`s decision to
+make the dateType#set function pure. The only function called with the
+scope of the parent at set time seems to be test
+
+**Parameters**
+
+-   `newVal` **AmpersandState** 
+
+Returns **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
+
+# wrap
+
+!
+
+Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+# wrap
 
 !
 
@@ -101,9 +149,11 @@ Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
 
 **Parameters**
 
--   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** 
--   `fn` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
 -   `options` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
+    -   `options.keyFactory` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+    -   `options.cacheFailures` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
+    -   `options.cacheSuccesses` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
+-   `params` **...Any** 
 
 Returns **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
 
@@ -145,9 +195,14 @@ Sugar method for returning the desired object at the end of a promise chain
 var item = {
   prop: 2
 };
-return Promise
+Promise
  .resolve(item.prop)
- .then(resolveWith(item));
+ .then(resolveWith(item))
+ .then(function(res) {
+   require('assert').deepEqual(res, {prop:2});
+   return 'success'
+ })
+ // => success
 ```
 
 Returns **[function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
@@ -169,7 +224,6 @@ pattern
 
 **Parameters**
 
--   `fn` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
 -   `options` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
     -   `options.backoff` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
     -   `options.delay` **[number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
@@ -204,9 +258,9 @@ function f() {
   return Promise.resolve(5);
 }
 
-return f()
-  .then(tap(() => return 12)
-  .then((res) => assert(res === 5);
+f()
+  .then(tap(() => 12))
+  // => 5
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** 

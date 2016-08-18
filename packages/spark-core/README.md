@@ -347,7 +347,7 @@ Returns **Authorization**
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** 
 
-# refresh
+# oneFlight
 
 Refreshes credentials with a refresh token
 

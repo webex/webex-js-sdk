@@ -144,6 +144,32 @@ Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Refe
 
 Returns **HttpStatusInterceptor** 
 
+# fileType
+
+!
+
+Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+# detect
+
+Determine mimeType for the specified buffer;
+
+**Parameters**
+
+-   `buffer` **[Buffer](https://nodejs.org/api/buffer.html)** 
+
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)>** 
+
+# detectSync
+
+Synchronous implementation of [detect](#detect)
+
+**Parameters**
+
+-   `buffer` **[Buffer](https://nodejs.org/api/buffer.html)** 
+
+Returns **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** 
+
 # \_request
 
 !
