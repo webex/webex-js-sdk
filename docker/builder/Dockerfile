@@ -17,4 +17,4 @@ WORKDIR /work
 
 COPY test.sh test.sh
 
-CMD '/work/test.sh'
+CMD '/work/retry.sh'
