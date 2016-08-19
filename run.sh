@@ -161,7 +161,20 @@ rm -rf .sauce/*/sc.ready
 rm -rf .sauce/*/sauce_connect.log
 
 #
+# SET DEFAULT CONCURRENCY
+#
+
+if [ "${CONCURRENCY}" == "" ]; then
+  export CONCURRENCY=3
+fi
+
+#
+# CLEANUP CONTAINERS ON EXIT
+#
+
+trap "docker rmi ${DOCKER_CONTAINER_NAME}" EXIT
+
+#
 # RUN THE COMMAND THAT WAS PASSED TO THIS SCRIPT
 #
-trap "docker rmi ${DOCKER_CONTAINER_NAME}" EXIT
 eval $@
