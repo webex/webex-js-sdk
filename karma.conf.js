@@ -1,6 +1,5 @@
 'use strict';
 
-var path = require('path');
 var pkg = require('./package');
 
 module.exports = function(config) {

@@ -287,6 +287,23 @@ module.exports = function(grunt) {
       }
     },
 
+    xmlstrip: {
+      karma: {
+        files: [{
+          cwd: './reports/junit',
+          dest: '.',
+          expand: true,
+          src: '**/karma-legacy.xml'
+        }],
+        options: {
+          nodes: [
+            'testsuite.system-err',
+            'testsuite.system-out'
+          ]
+        }
+      }
+    },
+
     xunitDir: process.env.XUNIT_DIR || './reports/junit'
   });
 

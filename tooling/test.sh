@@ -112,6 +112,22 @@ for P in $PIDS; do
   # TODO cleanup sauce files for package
 done
 
+echo "################################################################################"
+echo "# Stripping needless logs from legacy karma xml"
+echo "################################################################################"
+
+cd ${SDK_ROOT_DIR}
+for FILE in $(find ./reports/junit -name karma-legacy.xml) ; do
+  awk '
+  BEGIN { write = 1 }
+  /<system-out/{ write = 0 }
+  (write) { print $0 }
+  /<\/system-out/ { write = 1 }
+  ' < $FILE > ${FILE}-out.xml
+  mv ${FILE}-out.xml ${FILE}
+done
+
+
 if [ "${FINAL_EXIT_CODE}" -ne "0" ]; then
   echo "################################################################################"
   echo "# One or more test suites failed to execute"
