@@ -91,7 +91,7 @@ function connect() {
         `storage101.dfw1.clouddrive.com`
       ].join(`,`),
       `-vv`,
-      `-l`, `sauce_connect.log`,
+      `-l`, `${logFile}`,
       `--pidfile`, pidFile,
       `--readyfile`, readyFile,
       `--tunnel-identifier`, process.env.SC_TUNNEL_IDENTIFIER
