@@ -97,6 +97,10 @@ fi
 if [ -n "${BUILD_NUMBER}" ]; then
   DOCKER_RUN_ENV+=" -e BUILD_NUMBER=${BUILD_NUMBER} "
 fi
+if [ -n "${PIPELINE}" ]; then
+  DOCKER_RUN_ENV+=" -e PIPELINE=${PIPELINE} "
+fi
+
 export DOCKER_CONTAINER_NAME="${JOB_NAME}-${BUILD_NUMBER}-builder"
 
 # Push runtime config data into the container definition and build it
