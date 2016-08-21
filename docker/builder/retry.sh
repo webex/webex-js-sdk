@@ -1,5 +1,10 @@
 #!/bin/bash
 
+#
+# This file orchestrates running up to three test runs to attempt to keep suite
+# stable
+#
+
 set +e
 
 /work/test.sh
