@@ -6,6 +6,7 @@
 'use strict';
 
 require('./client/services/avatar');
+require('./client/services/board');
 require('./client/services/bot');
 require('./client/services/conversation');
 require('./client/services/encryption');

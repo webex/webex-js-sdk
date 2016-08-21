@@ -5,6 +5,12 @@
 
 'use strict';
 
+/* istanbul ignore next */
+if (typeof Promise === 'undefined') {
+  // eslint-disable-next-line global-require
+  require('es6-promise').polyfill();
+}
+
 // Reminder: this is intentionally a different instance of chai than
 // @ciscospark/test-helper-chai.
 var chai = require('chai');

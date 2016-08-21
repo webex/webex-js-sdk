@@ -12,6 +12,7 @@ var omit = require('lodash.omit');
 var oneFlight = require('../../util/one-flight');
 var pick = require('lodash.pick');
 var isObject = require('lodash.isobject');
+var isArray = require('lodash.isarray');
 var SparkBase = require('../../lib/spark-base');
 var MediaClusterCollection = require('./media-cluster-collection');
 
@@ -26,6 +27,30 @@ var Device = SparkBase.extend({
 
   collections: {
     mediaClusters: MediaClusterCollection
+  },
+
+  props: {
+    intranetInactivityDuration: 'number',
+    intranetInactivityCheckUrl: 'string'
+  },
+
+  derived: {
+    policy: {
+      deps: ['intranetInactivityDuration', 'intranetInactivityCheckUrl'],
+      fn: function _createPolicy() {
+        return (this.intranetInactivityCheckUrl &&
+                this.intranetInactivityDuration) ?
+          {
+            duration: this.intranetInactivityDuration,
+            sites: [this.intranetInactivityCheckUrl]
+          } : null;
+      }
+    }
+  },
+
+  session: {
+    timer: 'any',
+    durationMS: 'number'
   },
 
   extraProperties: 'allow',
@@ -63,10 +88,62 @@ var Device = SparkBase.extend({
       }
       attrs.mediaClusters = mediaClustersList;
     }
+
     return attrs;
   },
 
+  _initPolicy: function _initPolicy() {
+    if (this.policy) {
+      this.durationMS = this.policy.duration*1000;
+
+      if (isArray(this.policy.sites)) {
+        return this.policy.sites.reduce(function _pingSites(sequence, site) {
+          return sequence
+            .catch(function _tryNextSite() {
+              return this.request(site, {method: 'GET'});
+            }.bind(this))
+            .then(function _checkPingResults(res) {
+              if (res && res.body) {
+                if (res.body.ping === 'pong') {
+                  return Promise.resolve(res);
+                }
+              }
+              return Promise.reject();
+            });
+        }.bind(this), Promise.reject())
+          .then(function _pingInternalSiteSuccessful() {
+            this.logger.debug('We were able to hit an internal site. Do nothing');
+          }.bind(this))
+          .catch(function _setTimer() {
+            this.spark.conversation.off('activity:sent', this._resetTimer, this);
+            this.spark.conversation.on('activity:sent', this._resetTimer, this);
+            this._resetTimer();
+          }.bind(this));
+      }
+      else {
+        this._clearTimer();
+      }
+    }
+    else {
+      this._clearTimer();
+    }
+  },
+
+  _clearTimer: function _clearTimer() {
+    this.durationMS = null;
+    clearTimeout(this.timer);
+    this.timer = null;
+  },
+
+  _resetTimer: function _resetTimer() {
+    clearTimeout(this.timer);
+    this.timer = setTimeout(this.spark.logout.bind(this.spark), this.durationMS);
+  },
+
   initialize: function initialize() {
+    this._initPolicy();
+    this.on('change:policy', this._initPolicy.bind(this));
+
     function triggerChange() {
       this.trigger('change:features', this.features);
     }

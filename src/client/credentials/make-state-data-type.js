@@ -27,6 +27,12 @@ module.exports = function makeStateDataType(Constructor, name) {
   return {
     dataType: {
       set: function set(newVal) {
+        if (!newVal) {
+          return {
+            val: undefined,
+            type: name
+          };
+        }
         // newVal.parent = this;
         if (newVal instanceof Constructor) {
           newVal.parent = this;
@@ -67,7 +73,9 @@ module.exports = function makeStateDataType(Constructor, name) {
        * @returns {boolean}
        */
       test: function test(newVal) {
-        newVal.parent = this;
+        if (newVal) {
+          newVal.parent = this;
+        }
         return false;
       },
       type: name

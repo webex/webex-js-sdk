@@ -32,7 +32,8 @@ describe('Spark', function() {
         it('indicates that the access token can be refreshed', function() {
           assert.isFalse(authorization.canRefresh);
           authorization.supertoken = {
-            refresh_token: 'REFRESH TOKEN'
+            refresh_token: 'REFRESH TOKEN',
+            access_token: 'ACCESS TOKEN'
           };
           assert.isTrue(authorization.canRefresh);
         });
@@ -47,7 +48,8 @@ describe('Spark', function() {
           };
           assert.isTrue(authorization.isAuthenticated, 2);
           authorization.supertoken = {
-            refresh_token: 'REFRESH TOKEN'
+            refresh_token: 'REFRESH TOKEN',
+            access_token: 'ACCESS TOKEN'
           };
           assert.isTrue(authorization.isAuthenticated, 3);
           authorization.supertoken.unset('access_token');
@@ -60,11 +62,13 @@ describe('Spark', function() {
 
       describe('#isExpired', function() {
         it('indicates the access token has expired', function() {
-          authorization.supertoken = {};
+          authorization.supertoken = {
+            access_token: 'ACCESS TOKEN1'
+          };
           assert.isFalse(authorization.isExpired);
           authorization.supertoken.expires = Date.now() - 10000;
-          assert.isFalse(authorization.isExpired);
-          authorization.supertoken.access_token = 'ACCESS TOKEN';
+          assert.isTrue(authorization.isExpired);
+          authorization.supertoken.access_token = 'ACCESS TOKEN2';
           assert.isTrue(authorization.isExpired);
           authorization.supertoken.expires = Date.now() + 10000;
           assert.isFalse(authorization.isExpired);

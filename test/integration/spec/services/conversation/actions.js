@@ -178,7 +178,7 @@ describe('Services', function() {
               .catch(function(reason) {
                 // We expect a 409 because the user got added to the
                 // conversation in the previous test (403 is a remnant of a
-                // previous implementation
+                // previous implementation)
                 if (reason.statusCode === 403 || reason.statusCode === 409) {
                   return;
                 }
@@ -675,9 +675,7 @@ describe('Services', function() {
               assert.include(pluck(conversation.participants.items, 'id'), redshirt.email);
             })
             .catch(function(reason) {
-              // We expect a 409 because the user got added to the
-              // conversation in the previous test (403 is a remnant of a
-              // previous implementation
+              // We might be trying to add the user again - that's ok.
               if (reason.statusCode === 403 || reason.statusCode === 409) {
                 return;
               }
@@ -704,7 +702,7 @@ describe('Services', function() {
                 assert.equal(err.status, 403);
               }
               catch (reason) {
-                assert.equal(err.status, 409)
+                assert.equal(err.status, 409);
               }
             });
         });
@@ -741,18 +739,16 @@ describe('Services', function() {
 
           beforeEach(function beamDownAddAndDeleteRedshirt() {
             return landingparty.beamDownRedshirt()
-              .catch(function(reason) {
-                // We expect a 409 because the user got added to the
-                // conversation in the previous test (403 is a remnant of a
-                // previous implementation
-                if (reason.statusCode === 403 || reason.statusCode === 409) {
-                  return;
-                }
-                return Promise.reject(reason);
-              })
               .then(function addRedshirt(rs) {
                 redshirt = rs;
-                return party.spock.spark.conversation.add(conversation, redshirt);
+                return party.spock.spark.conversation.add(conversation, redshirt)
+                  .catch(function(reason) {
+                    if (reason.statusCode === 403 || reason.statusCode === 409) {
+                      return;
+                    }
+
+                    return Promise.reject(reason);
+                  });
               })
               .then(function killRedshirt() {
                 return landingparty.killRedshirt(redshirt);

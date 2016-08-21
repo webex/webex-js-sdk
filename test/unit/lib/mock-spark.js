@@ -43,6 +43,7 @@ function makeSpark(options) {
         }
       },
       avatar: {},
+      board: {},
       device: {},
       encryption: {},
       logger: {},
@@ -60,7 +61,10 @@ function makeSpark(options) {
       authorization: 'Basic NOTATOKEN',
       getAuthorization: sinon.stub().returns(Promise.resolve('Basic NOTATOKEN'))
     },
-    conversation: {},
+    conversation: {
+      on: function() {},
+      off: function() {}
+    },
     avatar: {},
     device: {
       webSocketUrl: 'ws://example.com',
@@ -89,7 +93,8 @@ function makeSpark(options) {
       log: sinon.spy(),
       info: sinon.spy(),
       debug: sinon.spy()
-    }
+    },
+    logout: function() {}
   });
 
   return spark;

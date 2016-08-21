@@ -588,6 +588,121 @@ describe('Services', function() {
             });
         });
       });
+
+      describe('#addConversation', function() {
+        var team;
+        var groupConversation;
+
+        before(function createTeamAndGroupConversation() {
+          var teamName = 'team-' + uuid.v4();
+
+          var protoGroupConversation = {
+            displayName: 'group-conversation-' + uuid.v4(),
+            participants: [
+              party.kirk.id,
+              party.scotty.id
+            ]
+          };
+
+          var teamPromise = party.kirk.spark.team.create({
+            displayName: teamName,
+            participants: [
+              party.kirk.id,
+              party.scotty.id
+            ]
+          });
+
+          var promises = [
+            teamPromise,
+            party.kirk.spark.conversation.create(protoGroupConversation, {forceGrouped: true})
+          ];
+
+          return Promise.all(promises)
+            .then(function(res) {
+              team = res[0];
+              groupConversation = res[1];
+            });
+        });
+
+        it('adds an existing group conversation to a team', function() {
+          return party.kirk.spark.team.addConversation(team, groupConversation)
+            .then(function assertActivity(activity) {
+              assert.equal(activity.verb, 'add');
+              assert.equal(activity.target.id, team.id);
+              assert.equal(activity.object.id, groupConversation.id);
+
+              return party.kirk.spark.team.get({id: team.id, includeTeamConversations: true});
+            })
+            .then(function assertTeam(team) {
+              assert.equal(team.conversations.items.length, 2);
+              var teamConversation = find(team.conversations.items, {id: groupConversation.id});
+              assert.isDefined(teamConversation);
+
+              return party.kirk.spark.conversation.get({id: groupConversation.id});
+            })
+            .then(function(conversation) {
+              assert.isDefined(conversation.team);
+              assert.equal(conversation.team.id, team.id);
+            });
+        });
+      });
+
+      describe('#removeConversation', function() {
+
+        var team;
+        var teamConversation;
+
+        before(function createTeamAndGroupConversation() {
+          var teamName = 'team-' + uuid.v4();
+
+          return party.kirk.spark.team.create({
+            displayName: teamName,
+            participants: [
+              party.kirk.id,
+              party.scotty.id
+            ]
+          })
+            .then(function(res) {
+              var protoTeamConversation = {
+                displayName: 'team-conversation-' + uuid.v4(),
+                participants: [
+                  party.kirk.id,
+                  party.scotty.id
+                ]
+              };
+
+              return party.kirk.spark.team.createConversation(res, protoTeamConversation)
+                .then(function(tc) {
+                  teamConversation = tc;
+                  return party.kirk.spark.team.get({id: res.id, includeTeamConversations: true});
+                });
+            })
+            .then(function(t) {
+              team = t;
+            });
+        });
+
+        it('removes a team conversation from a team', function() {
+          return party.kirk.spark.team.removeConversation(team, teamConversation)
+            .then(function assertActivity(activity) {
+              assert.equal(activity.verb, 'remove');
+              assert.equal(activity.target.id, team.id);
+              assert.equal(activity.object.id, teamConversation.id);
+
+              return party.kirk.spark.team.get({id: team.id, includeTeamConversations: true});
+            })
+            .then(function assertTeam(team) {
+              assert.equal(team.conversations.items.length, 1);
+              var conversation = find(team.conversations.items, {id: teamConversation.id});
+              assert.isUndefined(conversation);
+
+              return party.kirk.spark.conversation.get({id: teamConversation.id});
+            })
+            .then(function(conversation) {
+              assert.isUndefined(conversation.team);
+            });
+        });
+      });
     });
   });
 });

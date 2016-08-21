@@ -44,20 +44,14 @@ var ShareActivityBase = SparkBase.extend(
     actor: {
       type: 'object'
     },
-    target: {
-      type: 'object',
-      required: true
-    },
-    objectType: {
-      type: 'string',
-      default: 'activity'
-    },
     clientTempId: {
       type: 'string',
       default: function clientTempId() {
         return uuid.v4();
       }
     },
+    encryptionKeyUrl: 'string',
+    id: 'string',
     object: {
       type: 'object',
       default: function object() {
@@ -69,6 +63,16 @@ var ShareActivityBase = SparkBase.extend(
         };
       }
     },
+    objectType: {
+      type: 'string',
+      default: 'activity'
+    },
+    published: 'string',
+    target: {
+      type: 'object',
+      required: true
+    },
+    url: 'string',
     verb: {
       type: 'string',
       default: 'share'

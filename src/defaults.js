@@ -163,5 +163,13 @@ module.exports = {
      * @type {string}
      */
     reverifyPath: '/users/email/reverify'
+  },
+  board: {
+    enablePingPong: true,
+    pingInterval: 15000,
+    pongTimeout: 14000,
+    backoffTimeReset: 1000,
+    backoffTimeMax: 32000,
+    forceCloseDelay: 2000
   }
 };

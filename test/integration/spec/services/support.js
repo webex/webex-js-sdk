@@ -3,7 +3,6 @@
 var assert = require('chai').assert;
 var fh2 = require('../../lib/fixtures-v2');
 var landingparty = require('../../lib/landingparty');
-var retry = require('../../lib/retry');
 
 describe('Service', function() {
   describe('Support', function() {
@@ -17,17 +16,12 @@ describe('Service', function() {
         spock: true
       };
 
-      before(function fetchFixturesWithRetry() {
-        return retry(function() {
-          return fh2.fetchFixtures(fixtures);
-        });
+      before(function() {
+        return fh2.fetchFixtures(fixtures);
       });
 
-      before(function beamDownWithRetry() {
-        this.timeout(40000);
-        return retry(function beamDown() {
-          return landingparty.beamDown(party);
-        });
+      before(function beamDown() {
+        return landingparty.beamDown(party);
       });
 
       it('uploads call logs @atlas', function() {
@@ -46,17 +40,12 @@ describe('Service', function() {
         spock: true
       };
 
-      before(function fetchFixturesWithRetry() {
-        return retry(function() {
-          return fh2.fetchFixtures(fixtures);
-        });
+      before(function() {
+        return fh2.fetchFixtures(fixtures);
       });
 
-      before(function beamDownWithRetry() {
-        this.timeout(40000);
-        return retry(function beamDown() {
-          return landingparty.beamDown(party);
-        });
+      before(function beamDown() {
+        return landingparty.beamDown(party);
       });
 
       it('uploads call logs @atlas and returns the userId', function() {
