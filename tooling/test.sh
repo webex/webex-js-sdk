@@ -53,7 +53,6 @@ echo "##########################################################################
 echo "# RUNNING MODULE TESTS"
 echo "################################################################################"
 
-CONCURRENCY=4
 # Ideally, the following would be done with lerna but there seem to be some bugs
 # in --scope and --ignore
 for i in ${SDK_ROOT_DIR}/packages/*; do
@@ -74,11 +73,15 @@ for i in ${SDK_ROOT_DIR}/packages/*; do
   echo "################################################################################"
   docker stats --no-stream
 
-  echo "Keeping concurrent job count below ${CONCURRENCY}"
-  while [ $(jobs -p | wc -l) -gt ${CONCURRENCY} ]; do
-    echo "."
-    sleep 5
-  done
+  if [ "${CONCURRENCY}" != "" ]; then
+    echo "Keeping concurrent job count below ${CONCURRENCY}"
+    while [ $(jobs -p | wc -l) -gt ${CONCURRENCY} ]; do
+      echo "."
+      sleep 5
+    done
+  else
+    echo "Warning: CONCURRENCY limit not set; running all suites at once"
+  fi
 
   PACKAGE=$(echo $i | sed -e 's/.*packages\///g')
   echo "################################################################################"
