@@ -461,15 +461,6 @@ Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Refe
     message attachment. See the {@link Content & Attachments{ Guide for a list of
     supported media types.
 
-# Types~Person
-
-**Properties**
-
--   `id` **uuid** Unique identifier for the person
--   `emails` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;email>** Email addresses of the person
--   `displayName` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** Display name of the person
--   `created` **isoDate** The date and time that the person was created
-
 # People
 
 **Extends SparkPlugin**
@@ -559,17 +550,14 @@ ciscospark.rooms.create({title: 'List People Example'})
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Page](#page)&lt;[Types~Person](#typesperson)>>** 
 
-# Types~Room
+# Types~Person
 
 **Properties**
 
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) Unique identifier for the room
--   `title` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The display name for the room. All room members
-    will see the title so make it something good
--   `created` **isoDate** (server generated) The date and time that the
-    room was created
--   `teamId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (optional): The id of the team to which the room
-    belongs
+-   `id` **uuid** Unique identifier for the person
+-   `emails` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;email>** Email addresses of the person
+-   `displayName` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** Display name of the person
+-   `created` **isoDate** The date and time that the person was created
 
 # Rooms
 
@@ -745,14 +733,17 @@ ciscospark.rooms.create({title: 'Update Room Example'})
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Room](#typesroom)>** 
 
-# Types~Team
+# Types~Room
 
 **Properties**
 
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The unique ID for the team.
--   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the team.
--   `created` **isoDate** (server generated) The date and time when the
-    team was created, in ISO8601 format.
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) Unique identifier for the room
+-   `title` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The display name for the room. All room members
+    will see the title so make it something good
+-   `created` **isoDate** (server generated) The date and time that the
+    room was created
+-   `teamId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (optional): The id of the team to which the room
+    belongs
 
 # Teams
 
@@ -883,15 +874,14 @@ ciscospark.teams.create({name: 'Update Team Example'})
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Team](#typesteam)>** 
 
-# Types~TeamMembership
+# Types~Team
 
 **Properties**
 
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The team ID
--   `personId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The person ID
--   `personEmail` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The email address of the person
--   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Set to `true` to make the person a team
-    moderator
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The unique ID for the team.
+-   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the team.
+-   `created` **isoDate** (server generated) The date and time when the
+    team was created, in ISO8601 format.
 
 # TeamMemberships
 
@@ -1065,6 +1055,16 @@ Updates properties for a membership.
 -   `membership` **[Types~TeamMembership](#typesteammembership)** 
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~TeamMembership](#typesteammembership)>** 
+
+# Types~TeamMembership
+
+**Properties**
+
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The team ID
+-   `personId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The person ID
+-   `personEmail` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The email address of the person
+-   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Set to `true` to make the person a team
+    moderator
 
 # Webhooks
 
