@@ -75,17 +75,6 @@ Returns **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Ref
 
 # check-required
 
-!
-
-Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
-
-**Parameters**
-
--   `keys`  
--   `object`  
-
-# check-required
-
 Check object for the specified keys
 
 **Parameters**
@@ -98,7 +87,7 @@ Check object for the specified keys
 
 Returns **[undefined](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined)** 
 
-# make-state-datatype
+# check-required
 
 !
 
@@ -106,8 +95,8 @@ Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
 
 **Parameters**
 
--   `Constructor`  
--   `name`  
+-   `keys`  
+-   `object`  
 
 # make-state-datatype
 
@@ -120,6 +109,17 @@ ampersand child
 -   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** 
 
 Returns **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
+
+# make-state-datatype
+
+!
+
+Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+**Parameters**
+
+-   `Constructor`  
+-   `name`  
 
 # test
 
