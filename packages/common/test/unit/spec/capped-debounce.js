@@ -8,7 +8,7 @@ import sinon from '@ciscospark/test-helper-sinon';
 import {cappedDebounce} from '../..';
 import lolex from 'lolex';
 
-describe(`Common`, () => {
+describe(`common`, () => {
   describe(`cappedDebounce()`, () => {
     let clock;
 

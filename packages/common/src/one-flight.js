@@ -4,57 +4,14 @@
  */
 
 import {wrap} from 'lodash';
+import make from './template-container';
 
-const instances = new WeakMap();
+// Alias Map and WeakMap to get around a babel compiler bug
+const W = WeakMap;
+const M = Map;
+const WeakMappedMappedMap = make(W, M, M);
 
-/**
- * @param {Object} instance
- * @param {string} key
- * @private
- * @returns {Promise}
- */
-function getFlight(instance, key) {
-  const flights = instances.get(instance);
-  if (!flights) {
-    return null;
-  }
-
-  const f = flights.get(key);
-  return f;
-}
-
-/**
- * @param {Object} instance
- * @param {string} key
- * @param {Promise} flight
- * @private
- * @returns {undefined}
- */
-function setFlight(instance, key, flight) {
-  let flights = instances.get(instance);
-  if (!flights) {
-    flights = new Map();
-    instances.set(instance, flights);
-  }
-
-  flights.set(key, flight);
-}
-
-/**
- * @param {Object} instance
- * @param {string} key
- * @private
- * @returns {undefined}
- */
-function clearFlight(instance, key) {
-  const flights = instances.get(instance);
-  if (flights) {
-    flights.delete(key);
-    if (flights.size === 0) {
-      instances.delete(instance);
-    }
-  }
-}
+const flights = new WeakMappedMappedMap();
 
 /**
  * @memberof Util
@@ -94,7 +51,7 @@ export default function oneFlight(...params) {
       }
 
       /* eslint no-invalid-this: [0] */
-      let flight = getFlight(this, key);
+      let flight = flights.get(this, target, key);
       if (flight) {
         const message = `one flight: attempted to invoke ${prop} while previous invocation still in flight`;
         /* instanbul ignore else */
@@ -111,19 +68,19 @@ export default function oneFlight(...params) {
       flight = Reflect.apply(fn, this, args);
       if (!cacheFailures && flight && flight.catch) {
         flight = flight.catch((reason) => {
-          clearFlight(this, key);
+          flights.delete(this, target, key);
           return Promise.reject(reason);
         });
       }
 
       if (!cacheSuccesses && flight && flight.then) {
         flight = flight.then((result) => {
-          clearFlight(this, key);
+          flights.delete(this, target, key);
           return result;
         });
       }
 
-      setFlight(this, key, flight);
+      flights.set(this, target, key, flight);
 
       return flight;
     });
