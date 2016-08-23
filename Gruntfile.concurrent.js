@@ -31,11 +31,7 @@ module.exports = function gruntConfig(grunt) {
       '!example*',
       '!test-helper*',
       '!bin*',
-      '!xunit-with-logs',
-      // exclude removed packages to prevent jenkins from running tests against
-      // a package that doesn't exists. long term, grunt:clean should be
-      // configured to remove packages that don't have package.json files
-      '!phone'
+      '!xunit-with-logs'
   ]);
 
   var config = {

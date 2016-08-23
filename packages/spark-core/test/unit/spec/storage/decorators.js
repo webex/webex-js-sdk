@@ -14,7 +14,10 @@ describe(`spark-core`, () => {
     it(`writes the identified value into the store when the value changes`, () => {
       const spark = new Spark();
 
-      sinon.stub(spark, `request`).returns(Promise.resolve({
+      // Not thrilled by the following, but it was the only way I could find to
+      // get around setOnce (for some reason, sinon.stub refused to be lieve
+      // spark.request was a function)
+      spark._values.request = sinon.stub().returns(Promise.resolve({
         body: {
           access_token: `fake token`,
           token_type: `Bearer`

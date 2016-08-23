@@ -5,6 +5,7 @@
  */
 
 import Events from 'ampersand-events';
+import {oneFlight} from '@ciscospark/common';
 
 const bindings = new WeakMap();
 
@@ -87,6 +88,7 @@ export default function makeSparkStore(type, spark) {
      * @param {string} namespace
      * @returns {Promise}
      */
+    @oneFlight((namespace) => namespace)
     _getBinding(namespace) {
       return new Promise((resolve) => {
         spark.logger.info(`storage: getting binding for \`${namespace}\``);

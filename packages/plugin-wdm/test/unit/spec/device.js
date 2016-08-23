@@ -156,11 +156,11 @@ describe(`plugin-wdm`, () => {
           sinon.spy(device, `refresh`);
 
           device.url = `http://example.com/device/1`;
+          assert.isTrue(device.registered);
 
           assert.notCalled(device.refresh);
-          const promise = device.register();
-          assert.calledOnce(device.refresh);
-          return promise;
+          return device.register()
+            .then(() => assert.calledOnce(device.refresh));
         });
       });
     });
@@ -172,10 +172,10 @@ describe(`plugin-wdm`, () => {
 
           device.unset(`url`);
 
+
           assert.notCalled(device.register);
-          const promise = device.refresh();
-          assert.calledOnce(device.register);
-          return promise;
+          return device.refresh()
+            .then(() => assert.calledOnce(device.register));
         });
       });
 

@@ -80,6 +80,10 @@ function makeSpark(options) {
       metrics: {},
       support: {},
       user: {}
+    },
+    initialize() {
+      this.boundedStorage = makeMockStorage();
+      this.unboundedStorage = makeMockStorage();
     }
   }));
 
@@ -122,9 +126,7 @@ function makeSpark(options) {
       log: sinon.spy(),
       info: sinon.spy(),
       debug: sinon.spy()
-    },
-    boundedStorage: makeMockStorage(),
-    unboundedStorage: makeMockStorage()
+    }
   });
 
   return spark;

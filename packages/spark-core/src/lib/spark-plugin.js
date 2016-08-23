@@ -125,6 +125,12 @@ const SparkPlugin = AmpState.extend({
 
   upload(...args) {
     return this.spark.upload(...args);
+  },
+
+  when(eventName) {
+    return new Promise((resolve) => {
+      this.once(eventName, (...args) => resolve(args));
+    });
   }
 });
 
