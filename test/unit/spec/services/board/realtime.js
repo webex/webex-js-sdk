@@ -35,18 +35,16 @@ describe('Services', function() {
             encryptText: sinon.stub().returns(Promise.resolve(encryptedData))
           }
         });
+
         spark.board.realtime.boardBindings = ['bindings'];
         spark.board.realtime.socket = new MockSocket();
+        spark.board.realtime._getNewSocket = sinon.stub().returns(spark.board.realtime.socket);
 
-        socketOpenStub = sinon.stub(Socket, 'open');
+        socketOpenStub = spark.board.realtime.socket.open;
         socketOpenStub.returns(Promise.resolve(spark.board.realtime.socket));
 
         sinon.spy(spark.board.realtime.metrics, 'submitConnectionFailureMetric');
 
-      });
-
-      after(function() {
-        Socket.open.restore();
       });
 
       describe('#publish()', function testSetBoardWebSocketUrl() {

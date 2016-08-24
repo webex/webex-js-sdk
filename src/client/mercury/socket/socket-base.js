@@ -126,6 +126,7 @@ assign(Socket.prototype, {
     options = options || {};
 
     return new Promise(function open(resolve, reject) {
+      /* eslint complexity: [0] */
       if (!url) {
         return reject(new Error('`url` is required'));
       }
