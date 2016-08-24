@@ -7,7 +7,6 @@
 import AmpState from 'ampersand-state';
 import util from 'util';
 import {makeSparkPluginStore} from './storage';
-import {omit} from 'lodash';
 
 const SparkPlugin = AmpState.extend({
   derived: {

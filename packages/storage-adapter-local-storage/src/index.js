@@ -11,20 +11,46 @@ import {NotFoundError} from '@ciscospark/spark-core';
 const namespaces = new WeakMap();
 const loggers = new WeakMap();
 
+/**
+ * localStorage adapter for spark-core storage layer
+ */
 export default class StorageAdapterLocalStorage {
+  /**
+   * @constructs {StorageAdapterLocalStorage}
+   * @param {string} basekey localStorage key underwhich all namespaces will be
+   * stored
+   */
   constructor(basekey) {
+    /**
+     * @class
+     *
+     */
     this.Bound = class {
+      /**
+       * @constructs {Bound}
+       * @param {string} namespace
+       * @param {Object} options
+       */
       constructor(namespace, options) {
         namespaces.set(this, namespace);
         loggers.set(this, options.logger);
       }
 
+      /**
+       * @private
+       * @returns {mixed}
+       */
       _load() {
         const rawData = localStorage.getItem(basekey);
         const allData = rawData ? JSON.parse(rawData) : {};
         return allData[namespaces.get(this)] || {};
       }
 
+      /**
+       * @param {Object} data
+       * @private
+       * @returns {undefined}
+       */
       _save(data) {
         const rawData = localStorage.getItem(basekey);
         const allData = rawData ? JSON.parse(rawData) : {};
@@ -33,6 +59,11 @@ export default class StorageAdapterLocalStorage {
         localStorage.setItem(basekey, JSON.stringify(allData));
       }
 
+      /**
+       * Removes the specified key
+       * @param {string} key
+       * @returns {Promise}
+       */
       del(key) {
         return new Promise((resolve) => {
           loggers.get(this).info(`local-storage-store-adapter: deleting \`${key}\``);
@@ -43,6 +74,11 @@ export default class StorageAdapterLocalStorage {
         });
       }
 
+      /**
+       * Retrieves the data at the specified key
+       * @param {string} key
+       * @returns {Promise<mixed>}
+       */
       get(key) {
         return new Promise((resolve, reject) => {
           loggers.get(this).info(`local-storage-store-adapter: reading \`${key}\``);
@@ -56,6 +92,12 @@ export default class StorageAdapterLocalStorage {
         });
       }
 
+      /**
+       * Stores the specified value at the specified key
+       * @param {string} key
+       * @param {mixed} value
+       * @returns {Promise}
+       */
       put(key, value) {
         return new Promise((resolve) => {
           loggers.get(this).info(`local-storage-store-adapter: writing \`${key}\``);
@@ -68,6 +110,12 @@ export default class StorageAdapterLocalStorage {
     };
   }
 
+  /**
+   * Returns an adapter bound to the specified namespace
+   * @param {string} namespace
+   * @param {Object} options
+   * @returns {Promise<Bound>}
+   */
   bind(namespace, options) {
     options = options || {};
     if (!namespace) {

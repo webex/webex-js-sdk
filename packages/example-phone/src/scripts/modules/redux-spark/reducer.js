@@ -1,7 +1,7 @@
 import {handleActions} from 'redux-actions';
 
 import {
-  REDUX_SPARK_STATE_UPDATE,
+  REDUX_SPARK_STATE_UPDATE
 } from './actions';
 
 const initialState = {

@@ -72,6 +72,11 @@ export function waitForValue(key) {
   };
 }
 
+/**
+ * @param {Function} target
+ * @param {string} key
+ * @returns {[type]}
+ */
 function prepareInitialize(target, key) {
   if (target.initialize) {
     target.initialize = wrap(target.initialize, function applyInit(fn, ...args) {
@@ -84,7 +89,10 @@ function prepareInitialize(target, key) {
 
   target.initialize = init;
 
-  function init(attrs, options) {
+  /**
+   * @returns {undefined}
+   */
+  function init() {
     const self = this;
     this.spark.initialize = wrap(this.spark.initialize || identity, function applyInit(fn, ...args) {
       // Reminder: context here is `spark`, not `self`.

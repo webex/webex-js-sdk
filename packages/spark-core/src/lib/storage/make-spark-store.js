@@ -9,6 +9,12 @@ import {oneFlight} from '@ciscospark/common';
 
 const bindings = new WeakMap();
 
+/**
+ * Makes a SparkStore for the specified type bound to the specified spark instance
+ * @param {string} type
+ * @param {ProxySpark} spark
+ * @returns {SparkStore}
+ */
 export default function makeSparkStore(type, spark) {
 
   /**
@@ -47,7 +53,7 @@ export default function makeSparkStore(type, spark) {
      * @returns {[type]}
      */
     del(namespace, key) {
-      spark.logger.info(`spark-store: removing ${namespace}:${key}`)
+      spark.logger.info(`spark-store: removing ${namespace}:${key}`);
       return this._getBinding(namespace)
         .then((binding) => binding.del(key));
     }
@@ -60,7 +66,7 @@ export default function makeSparkStore(type, spark) {
      * @returns {Promise}
      */
     get(namespace, key) {
-      spark.logger.info(`spark-store: retrieving ${namespace}:${key}`)
+      spark.logger.info(`spark-store: retrieving ${namespace}:${key}`);
       return this._getBinding(namespace)
         .then((binding) => binding.get(key));
     }
@@ -73,7 +79,7 @@ export default function makeSparkStore(type, spark) {
      * @returns {Promise} Resolves with value (to simplify write-through caching)
      */
     put(namespace, key, value) {
-      spark.logger.info(`spark-store: setting ${namespace}:${key}`)
+      spark.logger.info(`spark-store: setting ${namespace}:${key}`);
       if (typeof value === `undefined`) {
         throw new Error(`cannot put \`undefined\` in storage (namespace: ${namespace}; key: ${key})`);
       }
