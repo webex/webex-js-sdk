@@ -10,44 +10,10 @@ import sinon from '@ciscospark/test-helper-sinon';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
 import {
   Authorization,
-  Credentials,
-  MemoryStoreAdapter,
-  makeSparkStore
+  Credentials
 } from '../../..';
 
 describe(`spark-core`, () => {
-  describe(`@persist`, () => {
-    it(`writes the identified value into the store when the value changes`, () => {
-      const spark = new MockSpark({
-        children: {
-          credentials: Credentials
-        }
-      });
-      spark.config.storage = {
-        boundedAdapter: MemoryStoreAdapter
-      };
-
-      spark.boundedStorage = makeSparkStore(`bounded`, spark);
-
-
-      spark.request.returns(Promise.resolve({
-        body: {
-          access_token: `fake token`,
-          token_type: `Bearer`
-        }
-      }));
-
-      return spark.credentials.authorize({code: 5})
-        .then(() => {
-          assert.calledOnce(spark.request);
-          return assert.becomes(spark.boundedStorage.get(`Credentials`, `authorization`), {
-            access_token: `fake token`,
-            token_type: `Bearer`
-          });
-        });
-    });
-  });
-
   describe(`@waitForValue`, () => {
     it(`prevents the method from executing until the specified value changes`, () => {
       const spark = new MockSpark({
