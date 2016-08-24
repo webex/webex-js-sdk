@@ -1,5 +1,7 @@
 env:
   mocha: true
+plugins:
+  - mocha
 rules:
   arrow-body-style:
     - 0
@@ -18,3 +20,5 @@ rules:
     - 0
   require-jsdoc:
     - 0
+  mocha/no-exclusive-tests:
+    - 2

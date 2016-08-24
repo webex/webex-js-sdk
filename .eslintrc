@@ -7,7 +7,7 @@
     "Promise": false
   },
   "plugins": [
-    "mocha-only"
+    "mocha"
   ],
   "parser": "babel-eslint",
   "root": true,
@@ -25,6 +25,7 @@
     "max-params": [2, 4],
     "max-depth": [2, 5],
     "max-statements": [2, 30],
+    "mocha/no-exclusive-tests": [2],
     "new-cap": [2, {
       "newIsCap": true,
       "capIsNew": true,

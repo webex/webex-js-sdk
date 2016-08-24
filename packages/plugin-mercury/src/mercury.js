@@ -144,6 +144,8 @@ const Mercury = SparkPlugin.extend({
 
   _connectWithBackoff() {
     return new Promise((resolve, reject) => {
+      // eslint gets confused about whether or not call is actually used
+      // eslint-disable-next-line prefer-const
       let call;
       const onComplete = (err) => {
         this.connecting = false;

@@ -12,8 +12,8 @@
   },
   "devDependencies": {
     "babel-eslint": "^6.0.0-beta.5",
-    "eslint": "2.2.0",
-    "eslint-plugin-mocha-only": "0.0.3"
+    "eslint": "^3.3.1",
+    "eslint-plugin-mocha": "^4.4.0"
   },
   "browser": {
     "./src/file.js": "./src/file.shim.js"

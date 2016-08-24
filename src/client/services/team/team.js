@@ -313,9 +313,7 @@ var TeamService = SparkBase.extend(
    * @param {Object} options
    * @returns {Promise} Resolves with the add activity
    */
-  addConversation: function addConversation(team, conversation, options) {
-    options = options || {};
-
+  addConversation: function addConversation(team, conversation) {
     return this._ensureGeneralConversation(team)
       .then(function submit(teamConversation) {
         return this.spark.conversation.add(teamConversation, conversation);

@@ -60,6 +60,7 @@ function connect() {
       detached: true
     };
 
+    // eslint-disable-next-line prefer-const
     let interval;
     // cancel the connect process if the ready file hasn't been detected within
     // 60 seconds
@@ -107,6 +108,7 @@ function connect() {
  */
 function blockUntilClosed() {
   return new Promise((resolve) => {
+    // eslint-disable-next-line prefer-const
     let interval;
     const timer = setTimeout(async function removeAfter() {
       clearInterval(interval);
