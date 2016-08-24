@@ -143,7 +143,11 @@ var SparkCore = AmpersandState.extend({
       .catch(function logDeviceRemovalFailure(reason) {
         this.logger.warn(reason);
       })
-      .then(this.credentials.logout.bind(this.credentials));
+      .then(function cleanUpAndNotify() {
+        this.credentials.logout();
+        this.trigger('client:logout');
+        return Promise.resolve();
+      }.bind(this));
   },
 
   refresh: function refresh() {
