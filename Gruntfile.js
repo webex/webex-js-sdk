@@ -51,7 +51,7 @@ module.exports = function(grunt) {
         src: ['<%= config.tmp %>']
       },
       tmpUploads: {
-        src: ['<%= config.tmpUploads %>']
+        src: ['<%= config.tmpUploads %>/**']
       }
     },
 
