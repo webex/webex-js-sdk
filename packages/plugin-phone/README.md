@@ -167,6 +167,18 @@ Payload for [Call#sendFeedback](#callsendfeedback)
     to avoid including PII in these logs, but if you've taken advantage of the
     SDK's logger, you should make sure to avoid logging PII as well.
 
+# mediaDirection
+
+Indicates the direction of the specified media type for the specified
+participant
+
+**Parameters**
+
+-   `mediaType` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** 
+-   `participant` **Types~LocusParticipant** 
+
+Returns **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** One of `sendonly`, `recvonly`, `sendrecv`, or `inactive`
+
 # Phone
 
 **Extends SparkPlugin**
@@ -236,15 +248,3 @@ address or sip uri.
         new one will be created based on options.constraints
 
 Returns **[Call](#call)** 
-
-# mediaDirection
-
-Indicates the direction of the specified media type for the specified
-participant
-
-**Parameters**
-
--   `mediaType` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** 
--   `participant` **Types~LocusParticipant** 
-
-Returns **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** One of `sendonly`, `recvonly`, `sendrecv`, or `inactive`
