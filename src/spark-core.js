@@ -144,8 +144,8 @@ var SparkCore = AmpersandState.extend({
         this.logger.warn(reason);
       })
       .then(function cleanUpAndNotify() {
-        this.credentials.logout();
         this.trigger('client:logout');
+        this.credentials.logout();
         return Promise.resolve();
       }.bind(this));
   },
