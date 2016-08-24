@@ -6,6 +6,7 @@
 'use strict';
 
 var path = require('path');
+var mkdirp = require('mkdirp');
 
 module.exports = function(grunt) {
   /* eslint max-statements: [0] */
@@ -61,7 +62,7 @@ module.exports = function(grunt) {
       src: 'src',
       test: 'test',
       tmp: '.tmp',
-      tmpUploads: '.tmp_uploads'
+      tmpUploads: '.tmp_uploads/' + process.env.UPLOAD_DIR
     },
 
     connect: {
@@ -76,18 +77,12 @@ module.exports = function(grunt) {
             '<%= config.test %>/unit/fixtures'
           ],
           middleware: function(connect, options) {
-            var fs = require('fs');
-            var path = require('path');
             var pathName = path.join(__dirname, grunt.config('config').tmpUploads);
-            if (!fs.existsSync(pathName)) {
-              fs.mkdirSync(pathName);
-            }
+            mkdirp.sync(pathName);
+
             var middlewares = [
-
               connect().use(connect.bodyParser({uploadDir: grunt.config('config').tmpUploads})),
-
               connect().use('/upload', function(req, res) {
-
                 res.setHeader('Content-Type', 'application/json');
 
                 // response with basic file stats
