@@ -133,6 +133,85 @@ scope of the parent at set time seems to be test
 
 Returns **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
 
+# make
+
+Factory which produces a multi-keyed container based on the provided set of
+constructors
+
+**Parameters**
+
+-   `containers` **mixed** 
+
+Returns **[Container](#container)** 
+
+# Container
+
+Container that wraps an arbitrary set of tupples to their values
+
+## constructor
+
+**Parameters**
+
+-   `args` **...Any** 
+
+## size
+
+getter for .size
+
+Returns **[number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
+
+## clear
+
+Removes all items from the container
+
+Returns **[undefined](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined)** 
+
+## delete
+
+Removes the specified item to the container
+
+**Parameters**
+
+-   `key` **mixed** 
+-   `keys` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;mixed>** 
+
+Returns **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
+
+## get
+
+Retrieves the specified item from the container
+
+**Parameters**
+
+-   `key` **mixed** 
+-   `keys` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;mixed>** 
+
+Returns **mixed** 
+
+## has
+
+Indicates whether the container holds the specified item
+
+**Parameters**
+
+-   `key` **mixed** 
+-   `keys` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;mixed>** 
+-   `args` **...Any** 
+
+Returns **[Boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** 
+
+## set
+
+Stores the specified item in the container
+
+**Parameters**
+
+-   `key` **mixed** 
+-   `args` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;mixed>** 
+-   `value` **mixed** 
+
+Returns **[Container](#container)** 
+
 # wrap
 
 !
@@ -183,6 +262,16 @@ Same as this.uuid but allows for surrounding characters
 
 # resolve-with
 
+!
+
+Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+**Parameters**
+
+-   `object`  
+
+# resolve-with
+
 Sugar method for returning the desired object at the end of a promise chain
 
 **Parameters**
@@ -206,16 +295,6 @@ Promise
 ```
 
 Returns **[function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
-
-# resolve-with
-
-!
-
-Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
-
-**Parameters**
-
--   `object`  
 
 # retry
 
