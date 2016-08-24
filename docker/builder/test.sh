@@ -16,30 +16,4 @@ EXIT_CODE=$?
 set -e
 npm run sauce:stop
 
-if [ "${EXIT_CODE}" -ne "0" ]; then
-  MSG="Suite for ${PACKAGE} exited with ${EXIT_CODE}. Please see reports/logs/docker.${PACKAGE}.log for more info."
-
-  echo "################################################################################"
-  echo "# ${MSG}"
-  echo "################################################################################"
-
-  cat <<EOT > "./reports/junit/suite.${PACKAGE}.xml"
-<testsuite
-  name="spark-js-sdk"
-  package="${PACKAGE}"
-  timestamp="$(date)"
-  tests="1"
-  errors="1"
-  failures="1"
->
-  <testcase
-    name="${PACKAGE}"
-    classname="${PACKAGE}"
-    time="0.1"
-  >
-    <failure type="">${MSG}</failure>
-  </testcase>
-</testcase>
-EOT
-fi
 exit ${EXIT_CODE}
