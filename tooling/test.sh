@@ -30,6 +30,13 @@ echo "# BOOTSTRAPPING MODULES"
 echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} npm run bootstrap
 
+set +e
+echo "# Top Level Dependencies"
+npm ls --depth 0
+echo "# Package Dependencies"
+npm run lerna -- exec -- npm ls --depth 0
+set -e
+
 echo "################################################################################"
 echo "# BUILDING MODULES"
 echo "################################################################################"
@@ -72,6 +79,7 @@ for i in ${SDK_ROOT_DIR}/packages/*; do
   echo "# Docker Stats"
   echo "################################################################################"
   docker stats --no-stream
+  docker ps
 
   if [ "${CONCURRENCY}" != "" ]; then
     echo "Keeping concurrent job count below ${CONCURRENCY}"
@@ -99,6 +107,7 @@ for P in $PIDS; do
   echo "# Docker Stats"
   echo "################################################################################"
   docker stats --no-stream
+  docker ps
 
   echo "################################################################################"
   echo "# Waiting for $(jobs -p | wc -l) jobs to complete"
