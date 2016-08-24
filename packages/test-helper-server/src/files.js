@@ -25,7 +25,7 @@ router.patch('/reflect', reflect);
 router.post('/reflect', reflect);
 router.put('/reflect', reflect);
 
-var uploadPath = path.resolve('.tmp/files');
+var uploadPath = process.env.PACKAGE ? '.tmp/' + process.env.PACKAGE + '/files' : '.tmp/files';
 router.post('/upload', function(req, res, next) {
   mkdirp(uploadPath, function(err) {
     if (err) {
