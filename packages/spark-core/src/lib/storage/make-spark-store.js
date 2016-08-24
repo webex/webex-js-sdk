@@ -95,6 +95,8 @@ export default function makeSparkStore(type, spark) {
      * @returns {Promise}
      */
     @oneFlight((namespace) => namespace)
+    // suppress doc warning because decorators confuse eslint
+    // eslint-disable-next-line require-jsdoc
     _getBinding(namespace) {
       return new Promise((resolve) => {
         spark.logger.info(`storage: getting binding for \`${namespace}\``);

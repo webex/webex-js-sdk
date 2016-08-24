@@ -105,6 +105,8 @@ export default function makeSparkPluginStorage(type, context) {
      * the value retrieval complete
      */
     @oneFlight({keyFactory: (key) => `initValue-${key}`})
+    // suppress doc warning because decorators confuse eslint
+    // eslint-disable-next-line require-jsdoc
     initValue(key) {
       const defer = new Defer();
 

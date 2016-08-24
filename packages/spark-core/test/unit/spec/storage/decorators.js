@@ -36,7 +36,6 @@ describe(`spark-core`, () => {
   });
 
   describe(`@waitForValue`, () => {
-    // TODO this should be tested with MockSpark
     it.skip(`prevents the method from executing until the specified value changes`, () => {
       const spark = new Spark();
       spark.credentials.set({

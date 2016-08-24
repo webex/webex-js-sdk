@@ -38,7 +38,6 @@ export default function runAbstractStorageAdapterSpec(adapter) {
         it(`puts an object into the store`, () => bound.put(key, obj)
           .then(() => assert.becomes(bound.get(key), obj)));
 
-        // TODO need more concurrency tests
         it(`handles concurrency`, () => Promise.all([
           bound.put(key, 1),
           bound.put(key, 2),
