@@ -66,7 +66,18 @@ function makeSpark(options) {
       return Promise.resolve();
     },
     config: {
-      credentials: {},
+      credentials: {
+        oauth: {
+          // eslint-disable-next-line camelcase
+          client_id: 'fake',
+          // eslint-disable-next-line camelcase
+          client_secret: 'fake',
+          // eslint-disable-next-line camelcase
+          redirect_uri: 'http://example.com',
+          // eslint-disable-next-line camelcase
+          scope: 'scope:one'
+        }
+      },
       conversation: {
         allowedTags: {
           'spark-mention': ['data-object-type', 'data-object-id', 'data-object-url']

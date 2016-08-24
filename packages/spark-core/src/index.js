@@ -33,7 +33,7 @@ export {
 
 export {
   Authorization,
-  Credentials,
+  default as Credentials,
   grantErrors
 } from './plugins/credentials';
 
