@@ -12,6 +12,7 @@ var pluck = require('lodash.pluck');
 var map = require('lodash.map');
 var landingparty = require('../../../lib/landingparty');
 var fixtures = require('../../../lib/fixtures-v2');
+var flaky = require('../../../../lib/mocha-helpers').flaky;
 
 function generateTonsOfContents(numOfContents) {
   var contents = [];
@@ -372,7 +373,7 @@ describe('Services', function() {
             });
         });
 
-        it('can deal with tons of contents by pagination', function() {
+        flaky(it)('can deal with tons of contents by pagination', function() {
           var tonsOfContents = generateTonsOfContents(2100);
           return party.mccoy.spark.board.persistence.addContent(conversation, board, tonsOfContents)
             .then(function() {
