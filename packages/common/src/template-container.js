@@ -5,7 +5,6 @@
  */
 
 import util from 'util';
-import {memoize} from 'lodash';
 
 /**
  * Factory which produces a multi-keyed container based on the provided set of
@@ -19,7 +18,7 @@ function make(...containers) {
   const data = new WeakMap();
   const sizes = new WeakMap();
 
-  const ChildContainer = containers.length ? make(...containers) : undefined;
+  const ChildContainer = containers.length > 1 ? make(...containers) : containers[0];
 
   const name = `(${[TopContainer.name].concat(containers.map((container) => container.name)).join(`, `)})`;
 
@@ -41,6 +40,16 @@ function make(...containers) {
      */
     get size() {
       return sizes.get(this);
+    }
+
+    /**
+     * Identical to Container#set() but leads slightly more intuitive code when
+     * the container is based on a Set rather than a Map.
+     * @param {Array<mixed>} ...args
+     * @returns {Container}
+     */
+    add(...args) {
+      return this.set(...args);
     }
 
     /**
@@ -92,8 +101,13 @@ function make(...containers) {
     get(key, ...keys) {
       const mine = data.get(this);
 
+      if (!mine.get) {
+        return mine;
+      }
+
       if (!keys.length) {
-        return mine.get(key);
+        const ret = mine.get(key);
+        return ret;
       }
 
       const next = mine.get(key);
@@ -101,6 +115,9 @@ function make(...containers) {
         return undefined;
       }
 
+      if (!next.get) {
+        return next;
+      }
       return next.get(...keys);
     }
 
@@ -129,22 +146,23 @@ function make(...containers) {
       const mine = data.get(this);
 
       const key = args.shift();
-      if (args.length === 1) {
-        const value = args.shift();
-        mine.set(key, value);
-        if (!overwrite) {
-          sizes.set(this, sizes.get(this) + 1);
-        }
+
+      if (!mine.get) {
+        insert(mine, key, ...args);
         return this;
       }
 
       let next = mine.get(key);
       if (!next) {
+        if (!ChildContainer) {
+          insert(mine, key, ...args);
+          return this;
+        }
         next = new ChildContainer();
-        mine.set(key, next);
+        insert(mine, key, next);
       }
+      insert(next, ...args);
 
-      next.set(...args);
       if (!overwrite) {
         sizes.set(this, sizes.get(this) + 1);
       }
@@ -157,13 +175,36 @@ function make(...containers) {
      */
     inspect() {
       return `Container${name} {
-        ${util.inspect(data.get(this), {depth: null})}
-      }`;
+  ${util.inspect(data.get(this), {depth: null})}
+}`;
     }
   }
 
   return Container;
 }
 
-const memoized = memoize(make);
-export {memoized as default};
+/**
+ * Inserts into an arbitrary container
+ * @param {Map|WeakMap|Set|WeakSet} container
+ * @param {Array<mixed>} args
+ * @private
+ * @returns {undefined}
+ */
+function insert(container, ...args) {
+  if (container.add) {
+    container.add(...args);
+    return;
+  }
+
+  if (container.set) {
+    container.set(...args);
+    return;
+  }
+
+  if (container.push) {
+    container.push(...args);
+    return;
+  }
+  throw new TypeError(`Could not determine how to insert into the specified container`);
+}
+export {make as default};
