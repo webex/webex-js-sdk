@@ -45,7 +45,6 @@ function make(...containers) {
     /**
      * Identical to Container#set() but leads slightly more intuitive code when
      * the container is based on a Set rather than a Map.
-     * @param {Array<mixed>} ...args
      * @returns {Container}
      */
     add(...args) {
