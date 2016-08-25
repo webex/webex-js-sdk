@@ -14,7 +14,7 @@ import url from 'url';
 import uuid from 'uuid';
 import Authorization from './authorization';
 import CredentialsBase from './credentials-base';
-import {persist, waitForValue} from '../../lib/storage';
+import {waitForValue} from '../../lib/storage';
 
 /**
  * @private
@@ -24,7 +24,6 @@ function noop() {/* eslint no-empty:[0] */}
 
 const Credentials = CredentialsBase.extend({
   @oneFlight
-  @persist(`authorization`)
   @waitForValue(`authorization`)
   authorize(options) {
     /* eslint complexity: [0] */

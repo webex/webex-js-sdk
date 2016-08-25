@@ -12,9 +12,19 @@ import {
   MemoryStoreAdapter,
   makeSparkStore
 } from '../../..';
+import lolex from 'lolex';
 
 describe(`spark-core`, () => {
   describe(`@persist`, () => {
+    let clock;
+    beforeEach(() => {
+      clock = lolex.install(Date.now());
+    });
+
+    afterEach(() => {
+      clock.uninstall();
+    });
+
     it(`writes the identified value into the store when the value changes`, () => {
       const spark = new MockSpark({
         children: {
@@ -27,7 +37,6 @@ describe(`spark-core`, () => {
 
       spark.boundedStorage = makeSparkStore(`bounded`, spark);
 
-
       spark.request.returns(Promise.resolve({
         body: {
           access_token: `fake token`,
@@ -38,6 +47,9 @@ describe(`spark-core`, () => {
       return spark.credentials.authorize({code: 5})
         .then(() => {
           assert.calledOnce(spark.request);
+          assert.equal(spark.credentials.authorization.access_token, `fake token`);
+          assert.equal(spark.credentials.authorization.token_type, `Bearer`);
+          clock.tick(1);
           return assert.becomes(spark.boundedStorage.get(`Credentials`, `authorization`), {
             access_token: `fake token`,
             token_type: `Bearer`

@@ -97,7 +97,6 @@ const CredentialsBase = SparkPlugin.extend({
   },
 
   @oneFlight
-  @persist(`authorization`)
   @waitForValue(`authorization`)
   authorize(options) {
     /* eslint no-invalid-this: [0] */
@@ -160,7 +159,6 @@ const CredentialsBase = SparkPlugin.extend({
   },
 
   @oneFlight
-  @persist(`clientAuthorization`)
   @waitForValue(`clientAuthorization`)
   getClientCredentialsAuthorization() {
     let promise;
@@ -173,6 +171,12 @@ const CredentialsBase = SparkPlugin.extend({
 
     return promise
       .then(() => this.clientAuthorization.toString());
+  },
+
+  @persist(`authorization`)
+  @persist(`clientAuthorization`)
+  initialize(...args) {
+    return Reflect.apply(SparkPlugin.prototype.initialize, this, args);
   },
 
   /**
@@ -203,7 +207,6 @@ const CredentialsBase = SparkPlugin.extend({
    * @returns {Promise} Resolves when credentials have been refreshed
    */
   @oneFlight
-  @persist(`authorization`)
   refresh(options) {
     /* eslint no-invalid-this: [0] */
     this.logger.info(`credentials: refresh requested`);
