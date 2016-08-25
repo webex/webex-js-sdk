@@ -29,16 +29,16 @@ function makeSpark(options) {
       once: sinon.spy(),
       listenTo: sinon.spy(),
       listenToAndRun: sinon.spy(),
-      clear(namespace) {
+      clear: function clear(namespace) {
         this.data = this.data || {};
         this.data[namespace] = {};
       },
-      del(namespace, key) {
+      del: function del(namespace, key) {
         this.data = this.data || {};
         this.data[namespace] = this.data[namespace] || {};
         delete this.data[namespace][key];
       },
-      get(namespace, key) {
+      get: function get(namespace, key) {
         this.data = this.data || {};
         this.data[namespace] = this.data[namespace] || {};
         var ret = this[key];
@@ -47,7 +47,7 @@ function makeSpark(options) {
         }
         return Promise.reject(new Error('MockNotFoundError'));
       },
-      put(namespace, key, value) {
+      put: function put(namespace, key, value) {
         this.data = this.data || {};
         this.data[namespace] = this.data[namespace] || {};
         this.data[namespace][key] = value;
