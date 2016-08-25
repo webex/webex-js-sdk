@@ -14,7 +14,7 @@ import url from 'url';
 import uuid from 'uuid';
 import Authorization from './authorization';
 import CredentialsBase from './credentials-base';
-import {waitForValue} from '../../lib/storage';
+import {persist, waitForValue} from '../../lib/storage';
 
 /**
  * @private
@@ -102,6 +102,8 @@ const Credentials = CredentialsBase.extend({
     return new Promise(noop);
   },
 
+  @persist(`authorization`)
+  @persist(`clientAuthorization`)
   initialize() {
     // AmpersandState is a little weird about initialization order. Code that
     // depends on this.config needs to run after SparkCore#initialize executes,
