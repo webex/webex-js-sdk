@@ -75,6 +75,17 @@ Returns **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Ref
 
 # check-required
 
+!
+
+Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+**Parameters**
+
+-   `keys`  
+-   `object`  
+
+# check-required
+
 Check object for the specified keys
 
 **Parameters**
@@ -87,7 +98,23 @@ Check object for the specified keys
 
 Returns **[undefined](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined)** 
 
-# check-required
+# defer
+
+Creates a new `Defer`red object,
+
+Returns **Defer** 
+
+# defer
+
+!
+
+Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+# resolve
+
+# reject
+
+# make-state-datatype
 
 !
 
@@ -95,8 +122,8 @@ Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
 
 **Parameters**
 
--   `keys`  
--   `object`  
+-   `Constructor`  
+-   `name`  
 
 # make-state-datatype
 
@@ -109,17 +136,6 @@ ampersand child
 -   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** 
 
 Returns **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
-
-# make-state-datatype
-
-!
-
-Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
-
-**Parameters**
-
--   `Constructor`  
--   `name`  
 
 # test
 
@@ -159,6 +175,17 @@ Container that wraps an arbitrary set of tupples to their values
 getter for .size
 
 Returns **[number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
+
+## add
+
+Identical to Container#set() but leads slightly more intuitive code when
+the container is based on a Set rather than a Map.
+
+**Parameters**
+
+-   `args` **...Any** 
+
+Returns **[Container](#container)** 
 
 ## clear
 

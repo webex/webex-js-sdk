@@ -66,6 +66,18 @@ Iterator
 
 Returns **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
 
+# Types~Membership
+
+**Properties**
+
+-   `id` **uuid** Unique identifier for the membership
+-   `roomId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The room ID
+-   `personId` **uuid** The person ID
+-   `personEmail` **email** The email address of the person / room member
+-   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Indicates whether the specified person should be a room moderator.
+-   `isMonitor` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Indicates whether the specified member is a room monitor.
+-   `created` **isoDate** The date and time that this membership was created.
+
 # Memberships
 
 **Extends SparkPlugin**
@@ -265,18 +277,6 @@ ciscospark.rooms.create({title: 'Memberships Example'})
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Membership](#typesmembership)>** 
-
-# Types~Membership
-
-**Properties**
-
--   `id` **uuid** Unique identifier for the membership
--   `roomId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The room ID
--   `personId` **uuid** The person ID
--   `personEmail` **email** The email address of the person / room member
--   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Indicates whether the specified person should be a room moderator.
--   `isMonitor` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Indicates whether the specified member is a room monitor.
--   `created` **isoDate** The date and time that this membership was created.
 
 # Messages
 
