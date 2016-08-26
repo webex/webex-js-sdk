@@ -22,8 +22,7 @@ export default class StorageAdapterLocalStorage {
    */
   constructor(basekey) {
     /**
-     * @class
-     *
+     * localStorage binding
      */
     this.Bound = class {
       /**

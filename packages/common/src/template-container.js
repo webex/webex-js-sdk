@@ -105,8 +105,7 @@ function make(...containers) {
       }
 
       if (!keys.length) {
-        const ret = mine.get(key);
-        return ret;
+        return mine.get(key);
       }
 
       const next = mine.get(key);

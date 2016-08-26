@@ -18,7 +18,8 @@ const defers = new WeakMap();
  */
 export default function makeSparkPluginStorage(type, context) {
   /**
-   *
+   * Interface between SparkPlugin and Spark#boundeStorage or
+   * Spark#unboundedStorage
    */
   class SparkPluginStorage {
     /**

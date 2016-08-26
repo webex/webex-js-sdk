@@ -11,9 +11,9 @@ import {make} from '../..';
 describe(`common`, () => {
   describe(`TemplateContainer`, () => {
     describe(`make()`, () => {
-      // _.memoize breaks most of the tests; at the moment, we're not creating
-      // very many containers of the same shape, so I'm not too concerned about
-      // this at the moment
+      // _.memoize breaks most of the tests; since `make` only gets used a
+      // handful of times, I'm not that worried about duplicate container
+      // definitions.
       it.skip(`is memoized`, () => {
         const WeakKeyedMap = make(WeakMap, Map);
         const WeakKeyedMap2 = make(WeakMap, Map);
