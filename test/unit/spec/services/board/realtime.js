@@ -26,7 +26,7 @@ describe('Services', function() {
       var spark;
       var socketOpenStub;
 
-      before(function() {
+      beforeEach(function() {
         spark = new MockSpark({
           children: {
             board: Board
@@ -41,10 +41,9 @@ describe('Services', function() {
         spark.board.realtime._getNewSocket = sinon.stub().returns(spark.board.realtime.socket);
 
         socketOpenStub = spark.board.realtime.socket.open;
-        socketOpenStub.returns(Promise.resolve(spark.board.realtime.socket));
+        socketOpenStub.returns(Promise.resolve());
 
         sinon.spy(spark.board.realtime.metrics, 'submitConnectionFailureMetric');
-
       });
 
       describe('#publish()', function testSetBoardWebSocketUrl() {
@@ -61,12 +60,12 @@ describe('Services', function() {
 
         var rcpnts = [{alertType:'none', headers: {}, route: boundObject[0]}];
 
-        before(function() {
+        beforeEach(function() {
           sinon.stub(uuid, 'v4').returns('stubbedUUIDv4');
           return spark.board.realtime.publish(conv, message);
         });
 
-        after(function() {
+        afterEach(function() {
           uuid.v4.restore();
           spark.encryption.encryptText.reset();
         });
@@ -93,13 +92,13 @@ describe('Services', function() {
 
       describe('#publishEncrypted()', function testSetBoardWebSocketUrl() {
 
-        before(function() {
+        beforeEach(function() {
           spark.board.realtime.boardBindings = ['binding'];
           sinon.stub(uuid, 'v4').returns('stubbedUUIDv4');
           return spark.board.realtime.publishEncrypted('fakeURL', 'encryptedData');
         });
 
-        after(function() {
+        afterEach(function() {
           spark.board.realtime.boardBindings = [];
           uuid.v4.restore();
           spark.encryption.encryptText.reset();
@@ -130,27 +129,48 @@ describe('Services', function() {
       });
 
       describe('#_attemptConnection()', function() {
-        beforeEach(function() {
-          socketOpenStub.reset();
-        });
-
         it('opens socket', function() {
           return spark.board.realtime._attemptConnection()
             .then(function() {
               assert.called(socketOpenStub);
             });
         });
+
+      });
+
+      describe('when buffer state event is received', function() {
+        it('emits the event even before connect promise is resolved', function() {
+          var bufferStateMessage = {
+            data: {
+              eventType: 'mercury.buffer_state'
+            }
+          };
+          var bufferSpy = sinon.spy();
+          var onlineSpy = sinon.spy();
+
+          // Buffer state message is emitted after authorization
+          spark.credentials.getAuthorization = function() {
+            return new Promise(function(resolve, reject) {
+              process.nextTick(function() {
+                assert.notCalled(onlineSpy);
+                spark.board.realtime.socket.emit('message', {data: bufferStateMessage});
+              });
+              resolve('Token');
+            });
+          };
+
+          spark.board.realtime.on('mercury.buffer_state', bufferSpy);
+          spark.board.realtime.on('online', onlineSpy);
+
+          return assert.isFulfilled(spark.board.realtime._attemptConnection())
+            .then(function() {
+              assert.callCount(bufferSpy, 1);
+              assert.calledWith(bufferSpy, bufferStateMessage.data);
+            });
+        });
       });
 
       describe('on errors', function() {
-        beforeEach(function() {
-          socketOpenStub.reset();
-        });
-
-        afterEach(function() {
-          socketOpenStub.returns(Promise.resolve(spark.board.realtime.socket));
-        });
-
         it('submits connection error to metric', function() {
           spark.board.config.maxRetries = 1;
           socketOpenStub.returns(Promise.reject(new Socket.ConnectionError()));
@@ -161,7 +181,8 @@ describe('Services', function() {
         });
 
         it('rejects on AuthorizationError', function() {
-          socketOpenStub.returns(Promise.reject(new Socket.AuthorizationError()));
+          spark.board.config.maxRetries = 1;
+          spark.credentials.getAuthorization.returns(Promise.reject(new Socket.AuthorizationError()));
           return assert.isRejected(spark.board.realtime.connect());
         });
       });

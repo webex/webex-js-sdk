@@ -37,7 +37,7 @@ describe('Client', function() {
 
       socket = new MockSocket();
       socketOpenStub = socket.open;
-      socketOpenStub.returns(Promise.resolve(socket));
+      socketOpenStub.returns(Promise.resolve());
 
       mercury = spark.mercury;
 
@@ -564,6 +564,40 @@ describe('Client', function() {
 
             assert.calledWith(requestSpy, asyncMessage.data);
             assert.calledWith(request1Spy, asyncMessage.data);
+          });
+      });
+    });
+
+    describe('when buffer state event is received', function() {
+      it('emits the event even before connect promise is resolved', function() {
+        var bufferStateMessage = {
+          data: {
+            eventType: 'mercury.buffer_state'
+          }
+        };
+        var bufferSpy = sinon.spy();
+        var onlineSpy = sinon.spy();
+
+        // Buffer state message is emitted after authorization
+        spark.credentials.getAuthorization = function() {
+          return new Promise(function(resolve, reject) {
+            process.nextTick(function() {
+              assert.notCalled(onlineSpy);
+              socket.emit('message', {data: bufferStateMessage});
+            });
+            resolve('Token');
+          });
+        };
+
+        mercury.on('mercury.buffer_state', bufferSpy);
+        mercury.on('online', onlineSpy);
+
+        mercury.connect();
+
+        return assert.isFulfilled(mercury.connect())
+          .then(function() {
+            assert.callCount(bufferSpy, 1);
+            assert.calledWith(bufferSpy, bufferStateMessage.data);
           });
       });
     });

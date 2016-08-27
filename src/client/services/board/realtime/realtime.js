@@ -102,7 +102,6 @@ var RealtimeService = Mercury.extend({
     socket.on('close', this._onclose.bind(this));
     socket.on('message', this._onmessage.bind(this));
     socket.on('sequence-mismatch', this.metrics.submitSkipSequenceMetric.bind(this.metrics));
-
     return this.spark.credentials.getAuthorization()
       .then(function connect(authorization) {
         return socket.open(this.spark.board.realtime.get('boardWebSocketUrl'), {

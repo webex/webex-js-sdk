@@ -323,6 +323,7 @@ var Mercury = SparkBase.extend(
 
   _onmessage: function _onmessage(event) {
     event = event.data;
+
     if (event.headers) {
       this._moveHeadersToData(event);
     }
