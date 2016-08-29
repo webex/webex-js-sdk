@@ -581,12 +581,12 @@ describe('Client', function() {
         // Buffer state message is emitted after authorization
         spark.credentials.getAuthorization = function() {
           return new Promise(function(resolve) {
-            process.nextTick(function() {
+            resolve('Token');
+          })
+            .then(function() {
               assert.notCalled(onlineSpy);
               socket.emit('message', {data: bufferStateMessage});
             });
-            resolve('Token');
-          });
         };
 
         mercury.on('mercury.buffer_state', bufferSpy);
