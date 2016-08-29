@@ -580,7 +580,7 @@ describe('Client', function() {
 
         // Buffer state message is emitted after authorization
         spark.credentials.getAuthorization = function() {
-          return new Promise(function(resolve, reject) {
+          return new Promise(function(resolve) {
             process.nextTick(function() {
               assert.notCalled(onlineSpy);
               socket.emit('message', {data: bufferStateMessage});

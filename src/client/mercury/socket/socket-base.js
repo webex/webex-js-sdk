@@ -10,7 +10,6 @@ var defaults = require('lodash.defaults');
 var EventEmitter = require('events').EventEmitter;
 var extendError = require('extend-error');
 var isObject = require('lodash.isobject');
-var resolveWith = require('../../../util/resolve-with');
 var shimPlaceholder = require('../../../lib/shim-placeholder');
 var util = require('util');
 var uuid = require('uuid');
@@ -132,7 +131,7 @@ assign(Socket.prototype, {
       }
 
       if (this._socket) {
-        return reject(new Error('Socket#open() can only be called once'));
+        return reject(new Error('socket#open() can only be called once'));
       }
 
       [
@@ -415,15 +414,7 @@ assign(Socket.prototype, {
 assign(Socket, {
   ConnectionError: ConnectionError,
 
-  AuthorizationError: AuthorizationError,
-
-  open: function open(url, options) {
-    return new Promise(function open(resolve) {
-      var socket = new Socket();
-      resolve(socket.open(url, options)
-        .then(resolveWith(socket)));
-    }.bind(this));
-  }
+  AuthorizationError: AuthorizationError
 });
 
 module.exports = Socket;
