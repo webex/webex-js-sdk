@@ -8,6 +8,7 @@
 require('./client/services/avatar');
 require('./client/services/board');
 require('./client/services/bot');
+require('./client/services/calendar');
 require('./client/services/conversation');
 require('./client/services/encryption');
 require('./client/services/feature');
