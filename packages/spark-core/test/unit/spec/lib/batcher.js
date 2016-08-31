@@ -25,7 +25,7 @@ describe(`spark-core`, () => {
     let spark;
     const MockBatcher = Batcher.extend({
       namespace: `mock`,
-      request(payload) {
+      submitHttpRequest(payload) {
         return spark.request({
           api: `mock`,
           resource: `/batch`,
@@ -33,23 +33,23 @@ describe(`spark-core`, () => {
         });
       },
       fingerprintRequest(req) {
-        return req;
+        return Promise.resolve(req);
       },
       fingerprintResponse(res) {
-        return res;
+        return Promise.resolve(res);
       }
     });
 
     const OutOfBandBatcher = MockBatcher.extend({
-      acceptResponse() {
-
+      handleHttpSuccess() {
+        return Promise.resolve();
       },
 
       fingerprintRequest(req) {
-        return req.id;
+        return Promise.resolve(req.id);
       },
       fingerprintResponse(res) {
-        return res.id;
+        return Promise.resolve(res.id);
       }
     });
 
@@ -81,27 +81,27 @@ describe(`spark-core`, () => {
       clock.uninstall();
     });
 
-    describe(`#enqueue()`, () => {
+    describe(`#request()`, () => {
       it(`coalesces requests made in a short time period into a single request`, () => {
         const promises = [];
         spark.request.returns(Promise.resolve({body: [0, 1, 2]}));
 
-        promises.push(spark.batcher.enqueue(0));
+        promises.push(spark.batcher.request(0));
         assert.notCalled(spark.request);
 
-        promises.push(spark.batcher.enqueue(1));
+        promises.push(spark.batcher.request(1));
         assert.notCalled(spark.request);
 
-        promises.push(spark.batcher.enqueue(2));
+        promises.push(spark.batcher.request(2));
         assert.notCalled(spark.request);
 
 
-        return promiseTick(0)
+        return promiseTick(50)
           .then(() => {
             clock.tick(1);
             assert.notCalled(spark.request);
             clock.tick(1);
-            return promiseTick(1);
+            return promiseTick(50);
           })
           .then(() => {
             assert.calledOnce(spark.request);
@@ -113,11 +113,20 @@ describe(`spark-core`, () => {
               assert.equal(results[i], i);
             }
             clock.tick(250);
-            return promiseTick(250);
+            return promiseTick(50);
           })
           .then(() => {
             assert.calledOnce(spark.request);
           });
+      });
+
+      // I'm not quite sure how to prove this one yet
+      it.skip(`propagates error from inside the call chain`, () => {
+        // This is way easier to prove if we don't need to control the clock
+        clock.uninstall();
+        sinon.stub(spark.batcher, `fingerprintResponse`).throws(new Error(`simulated failure`));
+        spark.request.returns(Promise.resolve({body: [{id: 1}]}));
+        return assert.isRejected(spark.batcher.request({id: 1}), /blarg/);
       });
 
       describe(`when the number of request attempts exceeds a given threshold`, () => {
@@ -129,11 +138,11 @@ describe(`spark-core`, () => {
           // eslint-disable-next-line no-unmodified-loop-condition
           for (let i = 0; i < BATCHER_MAX_CALLS + 1; i++) {
             result.push(i);
-            promises.push(spark.batcher.enqueue(i));
+            promises.push(spark.batcher.request(i));
             assert.notCalled(spark.request);
           }
 
-          return promiseTick(2)
+          return promiseTick(50)
             .then(() => {
               assert.calledOnce(spark.request);
               return assert.isFulfilled(Promise.all(promises));
@@ -145,7 +154,7 @@ describe(`spark-core`, () => {
                 assert.equal(results[i], i);
               }
               clock.tick(250);
-              return promiseTick(250);
+              return promiseTick(50);
             })
             .then(() => {
               assert.calledOnce(spark.request);
@@ -153,7 +162,7 @@ describe(`spark-core`, () => {
         });
       });
 
-      describe(`when the requests are enqueued continuously`, () => {
+      describe(`when the requests are requestd continuously`, () => {
         describe(`when a configured time period is exceeded`, () => {
           it(`executes the batch request`, () => {
             const promises = [];
@@ -163,11 +172,12 @@ describe(`spark-core`, () => {
               result.push(i);
             }
             spark.request.returns(Promise.resolve({body: result}));
+            spark.request.onCall(1).returns(Promise.resolve({body: []}));
 
             return result.reduce((promise, i) => promise.then(() => {
-              promises.push(spark.batcher.enqueue(i));
+              promises.push(spark.batcher.request(i));
               clock.tick(1);
-              return promiseTick(1);
+              return promiseTick(50);
             }), Promise.resolve())
               .then(() => {
                 assert.calledOnce(spark.request);
@@ -179,12 +189,13 @@ describe(`spark-core`, () => {
                 // eslint-disable-next-line no-unmodified-loop-condition
                 for (let i = 0; i < BATCHER_MAX_WAIT + 1; i++) {
                   assert.equal(results[i], i);
-                } clock.tick(250);
-                return promiseTick(250);
+                }
+                clock.tick(250);
+                return promiseTick(50);
               })
               .then(() => {
                 // This assertion is different than the other tests because
-                // we've enqueued enough requests that the normal debounce will
+                // we've requestd enough requests that the normal debounce will
                 // take over
                 assert.calledTwice(spark.request);
               });
@@ -195,18 +206,17 @@ describe(`spark-core`, () => {
       describe(`when it's overridden to handle out-of-band responses`, () => {
         it(`resolves as expected`, () => {
           sinon.spy(spark.outOfBandBatcher, `fingerprintResponse`);
-          const promise = spark.outOfBandBatcher.enqueue({id: 1});
-          return promiseTick(20)
+          const promise = spark.outOfBandBatcher.request({id: 1});
+          return promiseTick(50)
             .then(() => clock.tick(2))
             .then(() => {
               assert.called(spark.request);
               assert.notCalled(spark.outOfBandBatcher.fingerprintResponse);
               spark.outOfBandBatcher.acceptItem({id: 1, data: 2});
-              return promiseTick(20);
+              return promiseTick(50);
             })
             .then(() => assert.isFulfilled(promise))
             .then((res) => {
-              console.log(res);
               assert.deepEqual(res, {
                 id: 1,
                 data: 2

@@ -31,7 +31,7 @@ const Batcher = SparkPlugin.extend({
   derived: {
     bounce: {
       fn() {
-        return cappedDebounce((...args) => this.submitRequest(...args), this.config.batcherWait, {
+        return cappedDebounce((...args) => this.executeQueue(...args), this.config.batcherWait, {
           maxCalls: this.config.batcherMaxCalls,
           maxWait: this.config.batcherMaxWait
         });
@@ -39,9 +39,15 @@ const Batcher = SparkPlugin.extend({
     }
   },
 
-  enqueue(req) {
+  fetch(...args) {
+    return this.fetch(...args);
+  },
+
+  request(item) {
+    // So far, I can't find a way to avoid three layers of nesting here.
+    /* eslint max-nested-callbacks: [0] */
     const defer = new Defer();
-    Promise.resolve(this.fingerprintRequest(req))
+    this.fingerprintRequest(item)
       .then((idx) => {
         if (this.deferreds.has(idx)) {
           defer.resolve(this.deferreds.get(idx).promise);
@@ -49,73 +55,160 @@ const Batcher = SparkPlugin.extend({
         }
         this.deferreds.set(idx, defer);
 
-        defer.promise = defer.promise
-          .then(() => this.deferreds.delete(idx))
-          .catch((reason) => {
-            this.deferreds.delete(idx);
-            return Promise.reject(reason);
-          });
+        this.prepareItem(item)
+          .then((req) => {
+            defer.promise = defer.promise
+              .then(() => this.deferreds.delete(idx))
+              .catch((reason) => {
+                this.deferreds.delete(idx);
+                return Promise.reject(reason);
+              });
 
-        // TODO queue.push should be wrapped so that it's easy to deal with more
-        // advanced queues later
-        this.queue.push(req);
-        this.bounce();
+            this.enqueue(req)
+              .then(() => this.bounce());
+          });
       })
       .catch((reason) => defer.reject(reason));
 
     return defer.promise;
   },
 
-  submitRequest() {
+  enqueue(req) {
+    this.queue.push(req);
+    return Promise.resolve();
+  },
+
+  prepareItem(item) {
+    return Promise.resolve(item);
+  },
+
+  /**
+   * Detaches the current queue, does any appropriate transforms, and submits it
+   * to the API.
+   * @returns {Promise<undefined>}
+   */
+  executeQueue() {
     const queue = this.queue.splice(0);
     return new Promise((resolve) => {
-      resolve(Promise.resolve(this.prepareRequest(queue))
-        .then((payload) => this.request(payload)
-            .then((res) => this.acceptResponse(res, payload, queue))
-            .catch((reason) => this.handleHttpError(reason, payload, queue))
-        ));
+      resolve(this.prepareRequest(queue)
+        .then((payload) => this.submitHttpRequest(payload)
+          // note: using the double-callback form of .then because that catch
+          // handler should not receive the errors from handleHttpSuccess.
+          .then(
+            (res) => this.handleHttpSuccess(res, payload, queue)),
+            (reason) => this.handleHttpError(reason)
+          ));
     })
-      .catch((reason) => this.logger.error(reason.stack));
+      .catch((reason) => {
+        this.logger.error(process.env.NODE_ENV === `production` ? reason : reason.stack);
+        return Promise.reject(reason);
+      });
   },
 
+  /**
+   * Performs any final transforms on the queue before submitting it to the API
+   * @param {Object|Array} queue
+   * @returns {Promise<Object>}
+   */
   prepareRequest(queue) {
-    return queue;
+    return Promise.resolve(queue);
   },
 
-  request(payload) {
-    throw new Error(`request must be implemented`);
+  /**
+   * Submits the prepared request body to the API. This method *must* be
+   * overridden
+   * @param {Object} payload
+   * @returns {Promise<HttpResponseObject>}
+   */
+  submitHttpRequest(payload) {
+    throw new Error(`request() must be implemented`);
   },
 
-  acceptResponse(res) {
-    return Promise.resolve(res.body.map((item) => this.acceptItem(item)));
+  /**
+   * Actions taken when the http request returns a success
+   * @param {Promise<HttpResponseObject>} res
+   * @returns {Promise<undefined>}
+   */
+  handleHttpSuccess(res) {
+    return Promise.all((res.body && res.body.items || res.body).map((item) => this.acceptItem(item)));
   },
 
-  handleHttpError(reason, payload, queue) {
+  /**
+   * Actions taken when the http request returns a failure. Typically, this
+   * means failing the entire queue, but could be overridden in some
+   * implementations to e.g. reenqueue.
+   * @param {SparkHttpError} reason
+   * @returns {Promise<undefined>}
+   */
+  handleHttpError(reason) {
     const msg = reason.message || reason.body || reason;
-    queue.forEach((item, index) => {
-      Promise.resolve(this.fingerprintRequest(item, index))
-        .then((idx) => {
-          this.deferreds.get(idx).reject(msg);
-        });
-    });
+    return Promise.all(reason._res.req.body.map((item) => this.getDeferredForRequest(item)
+      .then((defer) => {
+        defer.reject(msg);
+      })));
   },
 
-  acceptItem(item, index) {
-    return Promise.resolve(this.fingerprintResponse(item, index))
-      .then((idx) => {
-        const defer = this.deferreds.get(idx);
+  /**
+   * Determines if the item succeeded or failed and delegates accordingly
+   * @param {Object} item
+   * @returns {Promise<undefined>}
+   */
+  acceptItem(item) {
+    return this.didItemFail(item)
+      .then((didFail) => {
+        if (didFail) {
+          return this.handleItemFailure(item);
+        }
+        return this.handleItemSuccess(item);
+      });
+  },
+
+  didItemFail(item) {
+    return Promise.resolve(false);
+  },
+
+  handleItemFailure(item) {
+    return this.getDeferredForResponse(item)
+      .then((defer) => {
+        defer.reject(item);
+      });
+  },
+
+  handleItemSuccess(item) {
+    return this.getDeferredForResponse(item)
+      .then((defer) => {
         defer.resolve(item);
       });
   },
 
-  fingerprintRequest(item) {
-    // note: this may be at risk of a race condition in the future but for now
-    // we can assume that this item will be the next item added to the queue.
-    return Promise.resolve(this.queue.length);
+  getDeferredForRequest(item) {
+    return this.fingerprintRequest(item)
+      .then((idx) => {
+        const defer = this.deferreds.get(idx);
+        if (!defer) {
+          throw new Error(`Could not find pending request for received response`);
+        }
+        return defer;
+      });
   },
 
-  fingerprintResponse(item, index) {
-    return Promise.resolve(index);
+  getDeferredForResponse(item) {
+    return this.fingerprintResponse(item)
+      .then((idx) => {
+        const defer = this.deferreds.get(idx);
+        if (!defer) {
+          throw new Error(`Could not find pending request for received response`);
+        }
+        return defer;
+      });
+  },
+
+  fingerprintRequest(item) {
+    throw new Error(`fingerprintRequest() must be implemented`);
+  },
+
+  fingerprintResponse(item) {
+    throw new Error(`fingerprintResponse() must be implemented`);
   }
 });
 
