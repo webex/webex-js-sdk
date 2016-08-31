@@ -18,6 +18,7 @@ registerPlugin(`credentials`, Credentials, {
   }
 });
 
+export {Credentials as default};
 export {Credentials as Credentials};
 export {default as Authorization} from './authorization';
 export {default as grantErrors} from './grant-errors';
