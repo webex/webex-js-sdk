@@ -18,20 +18,21 @@ export {
 export {
   children,
   default as default,
-  SparkHttpError,
-  SparkPlugin,
-  AuthInterceptor,
-  NetworkTimingInterceptor,
-  registerPlugin,
-  RedirectInterceptor,
-  ResponseLoggerInterceptor,
-  RequestLoggerInterceptor,
-  RequestTimingInterceptor,
-  SparkTrackingIdInterceptor
+  registerPlugin
 } from './spark-core';
+
+export {default as SparkHttpError} from './lib/spark-http-error';
+export {default as SparkPlugin} from './lib/spark-plugin';
+export {default as NetworkTimingInterceptor} from './interceptors/network-timing';
+export {default as RedirectInterceptor} from './interceptors/redirect';
+export {default as ResponseLoggerInterceptor} from './interceptors/response-logger';
+export {default as RequestLoggerInterceptor} from './interceptors/request-logger';
+export {default as RequestTimingInterceptor} from './interceptors/request-timing';
+export {default as SparkTrackingIdInterceptor} from './interceptors/spark-tracking-id';
 
 export {
   Authorization,
+  AuthInterceptor,
   default as Credentials,
   grantErrors
 } from './plugins/credentials';

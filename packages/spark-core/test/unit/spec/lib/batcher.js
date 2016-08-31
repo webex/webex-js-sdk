@@ -21,7 +21,7 @@ function promiseTick(count) {
 }
 
 describe(`spark-core`, () => {
-  describe.only(`Batcher`, () => {
+  describe(`Batcher`, () => {
     let spark;
     const MockBatcher = Batcher.extend({
       namespace: `mock`,
@@ -40,6 +40,19 @@ describe(`spark-core`, () => {
       }
     });
 
+    const OutOfBandBatcher = MockBatcher.extend({
+      acceptResponse() {
+
+      },
+
+      fingerprintRequest(req) {
+        return req.id;
+      },
+      fingerprintResponse(res) {
+        return res.id;
+      }
+    });
+
     const BATCHER_MAX_CALLS = 10;
     const BATCHER_MAX_WAIT = 5;
     const BATCHER_WAIT = 2;
@@ -47,7 +60,8 @@ describe(`spark-core`, () => {
     beforeEach(() => {
       spark = new MockSpark({
         children: {
-          batcher: MockBatcher
+          batcher: MockBatcher,
+          outOfBandBatcher: OutOfBandBatcher
         }
       });
 
@@ -175,6 +189,29 @@ describe(`spark-core`, () => {
                 assert.calledTwice(spark.request);
               });
           });
+        });
+      });
+
+      describe(`when it's overridden to handle out-of-band responses`, () => {
+        it(`resolves as expected`, () => {
+          sinon.spy(spark.outOfBandBatcher, `fingerprintResponse`);
+          const promise = spark.outOfBandBatcher.enqueue({id: 1});
+          return promiseTick(20)
+            .then(() => clock.tick(2))
+            .then(() => {
+              assert.called(spark.request);
+              assert.notCalled(spark.outOfBandBatcher.fingerprintResponse);
+              spark.outOfBandBatcher.acceptItem({id: 1, data: 2});
+              return promiseTick(20);
+            })
+            .then(() => assert.isFulfilled(promise))
+            .then((res) => {
+              console.log(res);
+              assert.deepEqual(res, {
+                id: 1,
+                data: 2
+              });
+            });
         });
       });
     });

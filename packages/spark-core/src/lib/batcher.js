@@ -101,7 +101,7 @@ const Batcher = SparkPlugin.extend({
   },
 
   acceptItem(item, index) {
-    Promise.resolve(this.fingerprintResponse(item, index))
+    return Promise.resolve(this.fingerprintResponse(item, index))
       .then((idx) => {
         const defer = this.deferreds.get(idx);
         defer.resolve(item);
