@@ -120,13 +120,15 @@ describe(`spark-core`, () => {
           });
       });
 
-      // I'm not quite sure how to prove this one yet
-      it.skip(`propagates error from inside the call chain`, () => {
+      // This test is mostly here to make sure that unexpected failures (e.g.,
+      // those cause by forgetting to wrap a return value in a Promise) don't
+      // get squelched.
+      it(`propagates error from inside the call chain`, () => {
         // This is way easier to prove if we don't need to control the clock
         clock.uninstall();
         sinon.stub(spark.batcher, `fingerprintResponse`).throws(new Error(`simulated failure`));
         spark.request.returns(Promise.resolve({body: [{id: 1}]}));
-        return assert.isRejected(spark.batcher.request({id: 1}), /blarg/);
+        return assert.isRejected(spark.batcher.request({id: 1}), /simulated failure/);
       });
 
       describe(`when the number of request attempts exceeds a given threshold`, () => {
@@ -162,7 +164,7 @@ describe(`spark-core`, () => {
         });
       });
 
-      describe(`when the requests are requestd continuously`, () => {
+      describe(`when the requests are requested continuously`, () => {
         describe(`when a configured time period is exceeded`, () => {
           it(`executes the batch request`, () => {
             const promises = [];

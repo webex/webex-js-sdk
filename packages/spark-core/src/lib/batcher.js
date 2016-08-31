@@ -10,8 +10,10 @@ import {
   Defer
 } from '@ciscospark/common';
 
-/* eslint require-jsdoc: [0] */
-
+/**
+ * Base class for coalescing requests to batched APIs
+ * @class Batcher
+ */
 const Batcher = SparkPlugin.extend({
   session: {
     deferreds: {
@@ -39,10 +41,11 @@ const Batcher = SparkPlugin.extend({
     }
   },
 
-  fetch(...args) {
-    return this.fetch(...args);
-  },
-
+  /**
+   * Requests an item from a batched API
+   * @param {Object} item
+   * @returns {Promise<mixed>}
+   */
   request(item) {
     // So far, I can't find a way to avoid three layers of nesting here.
     /* eslint max-nested-callbacks: [0] */
@@ -73,11 +76,23 @@ const Batcher = SparkPlugin.extend({
     return defer.promise;
   },
 
+  /**
+   * Adds an item to the queue.
+   * Intended to be overridden
+   * @param {mixed} req
+   * @returns {Promise<undefined>}
+   */
   enqueue(req) {
     this.queue.push(req);
     return Promise.resolve();
   },
 
+  /**
+   * Transform the item before adding it to the queue
+   * Intended to be overridden
+   * @param {mixed} item
+   * @returns {Promise<mixed>}
+   */
   prepareItem(item) {
     return Promise.resolve(item);
   },
@@ -95,9 +110,17 @@ const Batcher = SparkPlugin.extend({
           // note: using the double-callback form of .then because that catch
           // handler should not receive the errors from handleHttpSuccess.
           .then(
-            (res) => this.handleHttpSuccess(res, payload, queue)),
+            (res) => this.handleHttpSuccess(res)),
             (reason) => this.handleHttpError(reason)
-          ));
+          )
+          // eslint-disable-next-line arrow-body-style
+          .catch((reason) => {
+            return Promise.all(queue.map((item) => this.getDeferredForRequest(item)
+              .then((defer) => {
+                defer.reject(reason);
+              })));
+          })
+        );
     })
       .catch((reason) => {
         this.logger.error(process.env.NODE_ENV === `production` ? reason : reason.stack);
@@ -107,6 +130,7 @@ const Batcher = SparkPlugin.extend({
 
   /**
    * Performs any final transforms on the queue before submitting it to the API
+   * Intended to be overridden
    * @param {Object|Array} queue
    * @returns {Promise<Object>}
    */
@@ -115,17 +139,19 @@ const Batcher = SparkPlugin.extend({
   },
 
   /**
-   * Submits the prepared request body to the API. This method *must* be
-   * overridden
+   * Submits the prepared request body to the API.
+   * This method *must* be overridden
    * @param {Object} payload
    * @returns {Promise<HttpResponseObject>}
    */
+  // eslint-disable-next-line no-unused-vars
   submitHttpRequest(payload) {
     throw new Error(`request() must be implemented`);
   },
 
   /**
    * Actions taken when the http request returns a success
+   * Intended to be overridden
    * @param {Promise<HttpResponseObject>} res
    * @returns {Promise<undefined>}
    */
@@ -137,6 +163,7 @@ const Batcher = SparkPlugin.extend({
    * Actions taken when the http request returns a failure. Typically, this
    * means failing the entire queue, but could be overridden in some
    * implementations to e.g. reenqueue.
+   * Intended to be overridden
    * @param {SparkHttpError} reason
    * @returns {Promise<undefined>}
    */
@@ -163,10 +190,23 @@ const Batcher = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Indicates if the specified response item implies a success or a failure
+   * Intended to be overridden
+   * @param {Object} item
+   * @returns {Promise<Boolean>}
+   */
+   // eslint-disable-next-line no-unused-vars
   didItemFail(item) {
     return Promise.resolve(false);
   },
 
+  /**
+   * Finds the Defer for the specified item and rejects its promise
+   * Intended to be overridden
+   * @param {Object} item
+   * @returns {Promise<undefined>}
+   */
   handleItemFailure(item) {
     return this.getDeferredForResponse(item)
       .then((defer) => {
@@ -174,6 +214,12 @@ const Batcher = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Finds the Defer for the specified item and resolves its promise
+   * Intended to be overridden
+   * @param {Object} item
+   * @returns {Promise<undefined>}
+   */
   handleItemSuccess(item) {
     return this.getDeferredForResponse(item)
       .then((defer) => {
@@ -181,6 +227,11 @@ const Batcher = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Returns the Deferred for the specified request item
+   * @param {Object} item
+   * @returns {Promise<Defer>}
+   */
   getDeferredForRequest(item) {
     return this.fingerprintRequest(item)
       .then((idx) => {
@@ -192,6 +243,11 @@ const Batcher = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Returns the Deferred for the specified response item
+   * @param {Object} item
+   * @returns {Promise<Defer>}
+   */
   getDeferredForResponse(item) {
     return this.fingerprintResponse(item)
       .then((idx) => {
@@ -203,10 +259,26 @@ const Batcher = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Generates a unique identifier for the item in a request payload
+   * Intended to be overridden
+   * Note that overrides must return a primitive.
+   * @param {Object} item
+   * @returns {Promise<primitive>}
+   */
+   // eslint-disable-next-line no-unused-vars
   fingerprintRequest(item) {
     throw new Error(`fingerprintRequest() must be implemented`);
   },
 
+  /**
+   * Generates a unique identifier for the item in a response payload
+   * Intended to be overridden
+   * Note that overrides must return a primitive.
+   * @param {Object} item
+   * @returns {Promise<primitive>}
+   */
+   // eslint-disable-next-line no-unused-vars
   fingerprintResponse(item) {
     throw new Error(`fingerprintResponse() must be implemented`);
   }
