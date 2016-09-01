@@ -131,6 +131,26 @@ describe(`spark-core`, () => {
         return assert.isRejected(spark.batcher.request({id: 1}), /simulated failure/);
       });
 
+      describe(`when the http request fails`, () => {
+        it(`fails the whole batch`, () => {
+          const p1 = spark.batcher.request(1);
+          const p2 = spark.batcher.request(2);
+
+          spark.request.returns(Promise.reject({statusCode: 0}));
+
+          return promiseTick(50)
+            .then(() => clock.tick(2))
+            .then(() => promiseTick(50))
+            .then(() => {
+              assert.calledOnce(spark.request);
+              return Promise.all([
+                assert.isRejected(p1),
+                assert.isRejected(p2)
+              ]);
+            });
+        });
+      });
+
       describe(`when the number of request attempts exceeds a given threshold`, () => {
         it(`executes the batch request, regardless of the time passed`, () => {
           const result = [];
@@ -202,6 +222,33 @@ describe(`spark-core`, () => {
                 assert.calledTwice(spark.request);
               });
           });
+        });
+      });
+
+      describe(`when the same request is made twice before the first one completes`, () => {
+        it(`returns the same result`, () => {
+          spark.request.returns(Promise.resolve({body: [1]}));
+
+
+          const p1 = spark.batcher.request(1);
+          const p2 = spark.batcher.request(1);
+
+          const promise = Promise.all([p1, p2]);
+
+          return promiseTick(50)
+            .then(() => {
+              clock.tick(2);
+              return promiseTick(50);
+            })
+            .then(() => {
+              assert.calledOnce(spark.request);
+              assert.deepEqual(spark.request.args[0][0], {
+                api: `mock`,
+                resource: `/batch`,
+                body: [1]
+              });
+              return assert.becomes(promise, [1, 1]);
+            });
         });
       });
 

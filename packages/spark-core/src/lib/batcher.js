@@ -236,6 +236,7 @@ const Batcher = SparkPlugin.extend({
     return this.fingerprintRequest(item)
       .then((idx) => {
         const defer = this.deferreds.get(idx);
+        /* istanbul ignore if */
         if (!defer) {
           throw new Error(`Could not find pending request for received response`);
         }
@@ -252,6 +253,7 @@ const Batcher = SparkPlugin.extend({
     return this.fingerprintResponse(item)
       .then((idx) => {
         const defer = this.deferreds.get(idx);
+        /* istanbul ignore if */
         if (!defer) {
           throw new Error(`Could not find pending request for received response`);
         }
