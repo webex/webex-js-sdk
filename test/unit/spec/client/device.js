@@ -112,6 +112,8 @@ describe('Client', function() {
       it('handles logout after inactivity', function() {
         var convoOnSpy = sinon.spy(spark.conversation, 'on');
         var logoutSpy = sinon.spy(spark, 'logout');
+        var logoutNotifySpy = sinon.spy(spark, 'trigger');
+
         var cloneDevice = cloneDeep(deviceFixture);
         cloneDevice.intranetInactivityDuration = 2;
         cloneDevice.intranetInactivityCheckUrl = 'http://ping.example.com/ping';
@@ -124,6 +126,7 @@ describe('Client', function() {
             assert.notCalled(logoutSpy, 'timer has not expired');
             clock.tick(3*1000);
             assert.called(logoutSpy, 'logging out since time has run out');
+            assert.called(logoutNotifySpy, 'notified upstream that logout occurred');
           });
       });
     });
