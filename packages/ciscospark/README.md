@@ -278,18 +278,6 @@ ciscospark.rooms.create({title: 'Memberships Example'})
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Membership](#typesmembership)>** 
 
-# Types~Message
-
-**Properties**
-
--   `id` **uuid** (server generated) Unique identifier for the message
--   `personId` **uuid** The ID for the author of the messasge
--   `personEmail` **email** The email for the author of the messasge
--   `roomId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The message posted to the room in plain text
--   `created` **isoDate** (server generated)The source URLs for the
-    message attachment. See the {@link Content & Attachments{ Guide for a list of
-    supported media types.
-
 # Messages
 
 **Extends SparkPlugin**
@@ -460,6 +448,18 @@ ciscospark.rooms.create({title: 'Messages Example'})
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** }
+
+# Types~Message
+
+**Properties**
+
+-   `id` **uuid** (server generated) Unique identifier for the message
+-   `personId` **uuid** The ID for the author of the messasge
+-   `personEmail` **email** The email for the author of the messasge
+-   `roomId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The message posted to the room in plain text
+-   `created` **isoDate** (server generated)The source URLs for the
+    message attachment. See the {@link Content & Attachments{ Guide for a list of
+    supported media types.
 
 # Types~Person
 
@@ -745,15 +745,6 @@ ciscospark.rooms.create({title: 'Update Room Example'})
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Room](#typesroom)>** 
 
-# Types~Team
-
-**Properties**
-
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The unique ID for the team.
--   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the team.
--   `created` **isoDate** (server generated) The date and time when the
-    team was created, in ISO8601 format.
-
 # Teams
 
 **Extends SparkPlugin**
@@ -882,6 +873,25 @@ ciscospark.teams.create({name: 'Update Team Example'})
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Team](#typesteam)>** 
+
+# Types~Team
+
+**Properties**
+
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The unique ID for the team.
+-   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the team.
+-   `created` **isoDate** (server generated) The date and time when the
+    team was created, in ISO8601 format.
+
+# Types~TeamMembership
+
+**Properties**
+
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The team ID
+-   `personId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The person ID
+-   `personEmail` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The email address of the person
+-   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Set to `true` to make the person a team
+    moderator
 
 # TeamMemberships
 
@@ -1055,16 +1065,6 @@ Updates properties for a membership.
 -   `membership` **[Types~TeamMembership](#typesteammembership)** 
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~TeamMembership](#typesteammembership)>** 
-
-# Types~TeamMembership
-
-**Properties**
-
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The team ID
--   `personId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The person ID
--   `personEmail` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The email address of the person
--   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Set to `true` to make the person a team
-    moderator
 
 # Webhooks
 
