@@ -4,17 +4,14 @@
  * @private
  */
 
-import '@ciscospark/plugin-wdm';
-
 import {registerPlugin} from '@ciscospark/spark-core';
-import Metrics from './metrics';
+import User from './user';
 import config from './config';
 
 import '@ciscospark/plugin-wdm';
 
-registerPlugin(`metrics`, Metrics, {
+registerPlugin(`user`, User, {
   config
 });
 
-export {default as default} from './metrics';
-export {config as config};
+export {default as default} from './user';
