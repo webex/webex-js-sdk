@@ -33,7 +33,8 @@
     "babel-polyfill": "^6.3.14",
     "babel-register": "^6.4.3",
     "eslint": "^3.3.1",
-    "eslint-plugin-mocha": "^4.4.0"
+    "eslint-plugin-mocha": "^4.4.0",
+    "lolex": "^1.5.1"
   },
   "browser": {
     "./src/plugins/credentials/credentials.js": "./src/plugins/credentials/credentials.shim.js",
