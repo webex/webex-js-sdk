@@ -15,3 +15,4 @@ registerPlugin(`metrics`, Metrics, {
 });
 
 export {default as default} from './metrics';
+export {config as config};

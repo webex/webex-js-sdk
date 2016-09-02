@@ -9,6 +9,7 @@ import {
   cappedDebounce,
   Defer
 } from '@ciscospark/common';
+import SparkHttpError from './spark-http-error';
 
 /**
  * Base class for coalescing requests to batched APIs
@@ -57,7 +58,6 @@ const Batcher = SparkPlugin.extend({
           return;
         }
         this.deferreds.set(idx, defer);
-
         this.prepareItem(item)
           .then((req) => {
             defer.promise = defer.promise
@@ -68,8 +68,10 @@ const Batcher = SparkPlugin.extend({
               });
 
             this.enqueue(req)
-              .then(() => this.bounce());
-          });
+              .then(() => this.bounce())
+              .catch((reason) => defer.reject(reason));
+          })
+          .catch((reason) => defer.reject(reason));
       })
       .catch((reason) => defer.reject(reason));
 
@@ -107,14 +109,12 @@ const Batcher = SparkPlugin.extend({
     return new Promise((resolve) => {
       resolve(this.prepareRequest(queue)
         .then((payload) => this.submitHttpRequest(payload)
-          // note: using the double-callback form of .then because that catch
-          // handler should not receive the errors from handleHttpSuccess.
-          .then(
-            (res) => this.handleHttpSuccess(res)),
-            (reason) => this.handleHttpError(reason)
-          )
-          // eslint-disable-next-line arrow-body-style
+          .then((res) => this.handleHttpSuccess(res)))
           .catch((reason) => {
+            if (reason instanceof SparkHttpError) {
+              return this.handleHttpError(reason);
+            }
+
             return Promise.all(queue.map((item) => this.getDeferredForRequest(item)
               .then((defer) => {
                 defer.reject(reason);
@@ -169,7 +169,7 @@ const Batcher = SparkPlugin.extend({
    */
   handleHttpError(reason) {
     const msg = reason.message || reason.body || reason;
-    return Promise.all(reason._res.req.body.map((item) => this.getDeferredForRequest(item)
+    return Promise.all(reason.options.body.map((item) => this.getDeferredForRequest(item)
       .then((defer) => {
         defer.reject(msg);
       })));
