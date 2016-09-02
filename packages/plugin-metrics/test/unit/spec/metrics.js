@@ -48,7 +48,7 @@ describe(`plugin-metrics`, () => {
 
             assert.equal(metric.key, `testMetric`);
             assert.equal(metric.version, spark.version);
-            assert.equal(metric.env, process.env.NODE_ENV || `development`);
+            assert.equal(metric.env, `TEST`);
           });
       });
     });

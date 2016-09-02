@@ -15,7 +15,8 @@ const MetricsBatcher = Batcher.extend({
   namespace: `Metrics`,
 
   prepareItem(item) {
-    const env = process.env.NODE_ENV || `development`;
+    // Keep non-prod data out of metrics
+    const env = process.env.NODE_ENV === `production` ? null : `TEST`;
 
     item.appType = item.appType || this.config.appType;
     item.env = item.env || env;
