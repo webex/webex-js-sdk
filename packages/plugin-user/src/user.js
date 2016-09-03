@@ -26,6 +26,16 @@ const User = SparkPlugin.extend({
     }
   },
 
+  /**
+   * Converts a user-identifying object to a uuid, perhaps by doing a network
+   * lookup
+   * @param {string|Object} user
+   * @param {Object} options
+   * @param {boolean} options.create if true, ensures the return UUID refers to
+   * an existing user (rather than creating one deterministically based on email
+   * address), even if that user must be created
+   * @returns {Promise<string>}
+   */
   asUUID(user, options) {
     if (!user) {
       return Promise.reject(new Error(`\`user\` is required`));
@@ -49,6 +59,13 @@ const User = SparkPlugin.extend({
     return this.getUUID(email, options);
   },
 
+  /**
+   * Requests a uuid from the api
+   * @param {string} email
+   * @param {Object} options
+   * @param {boolean} options.create
+   * @returns {Promise<string>}
+   */
   fetchUUID(email, options) {
     return this.batcher.request({
       email,
@@ -58,6 +75,10 @@ const User = SparkPlugin.extend({
         .then(() => user.id));
   },
 
+  /**
+   * Fetches details about the current user
+   * @returns {Promise<Object>}
+   */
   get() {
     return this.request({
       service: `conversation`,
@@ -67,6 +88,13 @@ const User = SparkPlugin.extend({
       .then(tap((user) => this.recordUUID(user)));
   },
 
+  /**
+   * Converts an email address to a uuid, perhaps by doing a network lookup
+   * @param {string} email
+   * @param {Object} options
+   * @param {boolean} options.create
+   * @returns {Promise<string>}
+   */
   @oneFlight((email, options) => email + String(options.create))
   getUUID(email, options) {
     return this.store.getByEmail(email)
@@ -84,6 +112,12 @@ const User = SparkPlugin.extend({
       .catch(() => this.fetchUUID(email, options));
   },
 
+  /**
+   * Caches the uuid for the specified email address
+   * @param {Object} user
+   * @param {string} user.id
+   * @param {string} user.emailAddress
+   */
   recordUUID(user) {
     if (!user) {
       return Promise.reject(new Error(`\`user\` is required`));
@@ -108,6 +142,12 @@ const User = SparkPlugin.extend({
     return this.store.add(user);
   },
 
+  /**
+   * Updates the current user's display name
+   * @param {Object} options
+   * @param {string} options.displayName
+   * @return {Promise<Object>}
+   */
   update(options) {
     if (!options.displayName) {
       return Promise.reject(new Error(`\`options.displayName\` is required`));
@@ -122,10 +162,22 @@ const User = SparkPlugin.extend({
       .then((res) => res.body);
   },
 
+  /**
+   * Extracts the uuid from a user identifying object
+   * @param {string|Object} user
+   * @private
+   * @returns {string}
+   */
   _extractUUID: function _extractUUID(user) {
     return user.entryUUID || user.id || user;
   },
 
+  /**
+   * Extracts the email address from a user identifying object
+   * @param {string|Object} user
+   * @private
+   * @returns {string}
+   */
   _extractEmailAddress: function _extractEmailAddress(user) {
     return user.email || user.emailAddress || user.entryEmail || user;
   }
