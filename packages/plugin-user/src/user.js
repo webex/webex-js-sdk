@@ -117,6 +117,7 @@ const User = SparkPlugin.extend({
    * @param {Object} user
    * @param {string} user.id
    * @param {string} user.emailAddress
+   * @returns {Promise}
    */
   recordUUID(user) {
     if (!user) {
@@ -146,7 +147,7 @@ const User = SparkPlugin.extend({
    * Updates the current user's display name
    * @param {Object} options
    * @param {string} options.displayName
-   * @return {Promise<Object>}
+   * @returns {Promise<Object>}
    */
   update(options) {
     if (!options.displayName) {
