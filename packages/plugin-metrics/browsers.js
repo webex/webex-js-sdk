@@ -24,14 +24,7 @@ module.exports = function() {
         platform: 'Windows 7',
         browserName: 'chrome',
         version: 'latest'
-      },
-      sl_ie_11_win7: {
-        base: 'SauceLabs',
-        platform: 'Windows 7',
-        browserName: 'internet explorer',
-        version: '11'
       }
-      // TODO add edge
     }
   };
 
