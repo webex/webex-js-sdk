@@ -34,4 +34,6 @@ module.exports = function() {
       // TODO add edge
     }
   };
+
+  return browsers;
 }
