@@ -47,9 +47,6 @@ describe(`spark-core`, function() {
             assert.property(err.options, `body`);
             assert.property(err.options.body, `proof`);
             assert.isTrue(err.options.body.proof);
-
-            assert.property(err, `_res`);
-            assert.property(err._res, `req`);
           });
       });
     });
