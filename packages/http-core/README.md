@@ -23,11 +23,11 @@ Returns **[ProgressEvent](https://developer.mozilla.org/en-US/docs/Web/API/Progr
 
 # interceptor
 
-# interceptor
-
 !
 
 Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+# interceptor
 
 # constructor
 
