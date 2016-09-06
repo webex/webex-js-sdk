@@ -40,6 +40,7 @@ module.exports = function configGrunt(grunt) {
     },
     test: {
       keepalive: false,
+      stats: false,
       progress: false,
       watch: false,
       webpack: require('./webpack.config')
@@ -54,12 +55,14 @@ module.exports = function configGrunt(grunt) {
     'webpack:build'
   ]);
 
-  grunt.registerTask('test', [
-    'env:test',
-    'clean:coverage',
-    'webpack-dev-server:test',
-    process.env.CIRCLECI ? 'test:automation-circle' : 'test:automation',
-  ]);
+  if (!process.env.UNIT_ONLY) {
+    grunt.registerTask('test', [
+      'env:test',
+      'clean:coverage',
+      'webpack-dev-server:test',
+      process.env.CIRCLECI ? 'test:automation-circle' : 'test:automation',
+    ]);
+  }
 
   grunt.registerTask('serve', [
     'webpack-dev-server:serve'

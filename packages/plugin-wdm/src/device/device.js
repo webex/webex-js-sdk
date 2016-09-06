@@ -55,6 +55,7 @@ const Device = SparkPlugin.extend({
     return Promise.resolve(this._getServiceUrl(this.config.preDiscoveryServices, service));
   },
 
+  @persist
   initialize(...args) {
     Reflect.apply(SparkPlugin.prototype.initialize, this, args);
 
@@ -144,7 +145,6 @@ const Device = SparkPlugin.extend({
   },
 
   @oneFlight
-  @persist(`@`)
   @waitForValue(`@`)
   refresh() {
     this.logger.info(`device: refreshing`);
@@ -175,7 +175,6 @@ const Device = SparkPlugin.extend({
   },
 
   @oneFlight
-  @persist(`@`)
   @waitForValue(`@`)
   register() {
     /* eslint no-invalid-this: [0] */

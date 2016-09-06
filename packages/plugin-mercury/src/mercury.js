@@ -4,7 +4,7 @@
  */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import util from 'util';
+import {deprecated} from 'core-decorators';
 import {oneFlight} from '@ciscospark/common';
 import {set} from 'lodash';
 import S from 'string';
@@ -43,7 +43,8 @@ const Mercury = SparkPlugin.extend({
     }
   },
 
-  connect: oneFlight(`connect`, function connect() {
+  @oneFlight
+  connect() {
     if (this.connected) {
       this.logger.info(`mercury: already connected, will not connect again`);
       return Promise.resolve();
@@ -56,9 +57,10 @@ const Mercury = SparkPlugin.extend({
 
         return this._connectWithBackoff();
       });
-  }),
+  },
 
-  disconnect: oneFlight(`disconnect`, function disconnect() {
+  @oneFlight
+  disconnect() {
     return new Promise((resolve) => {
       if (this.backoffCall) {
         this.logger.info(`mercury: aborting connection`);
@@ -74,17 +76,19 @@ const Mercury = SparkPlugin.extend({
 
       resolve();
     });
-  }),
+  },
 
-  listen: util.deprecate(function listen() {
+  @deprecated(`Mercury#listen(): Use Mercury#connect() instead`)
+  listen() {
     /* eslint no-invalid-this: [0] */
     return this.connect();
-  }, `Mercury#listen(): Use Mercury#connect() instead`),
+  },
 
-  stopListening: util.deprecate(function stopListening() {
+  @deprecated(`Mercury#stopListening(): Use Mercury#disconnect() instead`)
+  stopListening() {
     /* eslint no-invalid-this: [0] */
     return this.disconnect();
-  }, `Mercury#stopListening(): Use Mercury#disconnect() instead`),
+  },
 
   _applyOverrides(event) {
     if (!event.headers) {
@@ -140,6 +144,8 @@ const Mercury = SparkPlugin.extend({
 
   _connectWithBackoff() {
     return new Promise((resolve, reject) => {
+      // eslint gets confused about whether or not call is actually used
+      // eslint-disable-next-line prefer-const
       let call;
       const onComplete = (err) => {
         this.connecting = false;
@@ -177,7 +183,7 @@ const Mercury = SparkPlugin.extend({
       call.on(`callback`, (err) => {
         if (err) {
           const number = call.getNumRetries();
-          const delay = call.strategy_.nextBackoffDelay_;
+          const delay = Math.min(call.strategy_.nextBackoffDelay_, this.config.backoffTimeMax);
 
           this.logger.info(`mercury: failed to connect; attempting retry ${number + 1} in ${delay} ms`);
           /* istanbul ignore if */

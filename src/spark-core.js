@@ -9,6 +9,7 @@ var AmpersandState = require('ampersand-state');
 var assign = require('lodash.assign');
 var Client = require('./client');
 var Credentials = require('./client/credentials');
+var Encryption = require('./client/services/encryption/encryption');
 var defaultConfig = require('./defaults');
 var Device = require('./client/device');
 var Logger = require('./client/logger');
@@ -21,6 +22,7 @@ var SparkCore = AmpersandState.extend({
   children: {
     credentials: Credentials,
     device: Device,
+    encryption: Encryption,
     // Note: {Client#initialize} depends on credentials and device already
     // having been initialized.
     client: Client,
@@ -143,7 +145,14 @@ var SparkCore = AmpersandState.extend({
       .catch(function logDeviceRemovalFailure(reason) {
         this.logger.warn(reason);
       })
-      .then(this.credentials.logout.bind(this.credentials));
+      .then(function clearEncryptStore() {
+        this.encryption.keystore.clear();
+      }.bind(this))
+      .then(function cleanUpAndNotify() {
+        this.trigger('client:logout');
+        this.credentials.logout();
+        return Promise.resolve();
+      }.bind(this));
   },
 
   refresh: function refresh() {

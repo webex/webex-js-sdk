@@ -549,7 +549,8 @@ const Call = SparkPlugin.extend({
    * @private
    * @returns {Promise}
    */
-  _hangup: oneFlight(`hangup`, function _hangup() {
+  @oneFlight
+  _hangup() {
     return this.spark.locus.leave(this.locus)
       .then((locus) => this._setLocus(locus))
       // TODO update sending and receving based on the peer connection's streams
@@ -562,7 +563,7 @@ const Call = SparkPlugin.extend({
       .then(tap(() => this.stopListening(this.spark.mercury)))
       .then(tap(() => this.off()))
       .then(tap(() => this.logger.info(`call: hung up`)));
-  }),
+  },
 
   /**
    * Alias of {@link Call#reject}
@@ -582,7 +583,8 @@ const Call = SparkPlugin.extend({
    * @memberof Call
    * @returns {Promise}
    */
-  reject: oneFlight(`reject`, function reject() {
+  @oneFlight
+  reject() {
     // TODO should be a noop for outgoing calls
     this.logger.info(`call: rejecting`);
     /* eslint no-invalid-this: [0] */
@@ -591,7 +593,7 @@ const Call = SparkPlugin.extend({
       .then(tap(() => this.stopListening(this.spark.mercury)))
       .then(tap(() => this.off()))
       .then(tap(() => this.logger.info(`call: rejected`)));
-  }),
+  },
 
   /**
    * Starts sending audio to the Cisco Spark Cloud
@@ -842,7 +844,8 @@ const Call = SparkPlugin.extend({
     return Promise.resolve();
   },
 
-  _updateMedia: oneFlight(`_updateMedia`, function _updateMedia() {
+  @oneFlight
+  _updateMedia() {
     /* eslint max-nested-callbacks: [0] */
     return new Promise((resolve) => {
       process.nextTick(() => {
@@ -863,7 +866,7 @@ const Call = SparkPlugin.extend({
           }));
       });
     });
-  })
+  }
 });
 
 Call.make = function make(attrs, options) {

@@ -1,6 +1,7 @@
 /**!
  *
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ * @private
  */
 
 import '../..';
@@ -12,7 +13,7 @@ import testUsers from '@ciscospark/test-helper-test-users';
 import {patterns} from '@ciscospark/common';
 import uuid from 'uuid';
 
-describe(`Plugin : User`, function() {
+describe(`plugin-user`, function() {
   this.timeout(10000);
 
   let spark, user2, user3;

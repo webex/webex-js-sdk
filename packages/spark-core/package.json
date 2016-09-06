@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/spark-core",
-  "version": "0.7.0-alpha.03ed609c",
+  "version": "0.7.0-alpha",
   "description": "Plugin handling for Cisco Spark",
   "main": "dist/index.js",
   "devMain": "src/index.js",
@@ -8,8 +8,8 @@
   "license": "(Apache-2.0)",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/spark-core",
   "dependencies": {
-    "@ciscospark/common": "^0.7.0-alpha.03ed609c",
-    "@ciscospark/http-core": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/common": "^0.7.0-alpha",
+    "@ciscospark/http-core": "^0.7.0-alpha",
     "ampersand-events": "^2.0.0",
     "ampersand-state": "^5.0.0",
     "babel-runtime": "^6.3.19",
@@ -19,21 +19,22 @@
     "uuid": "^2.0.1"
   },
   "devDependencies": {
-    "@ciscospark/storage-adapter-spec": "^0.7.0-alpha.03ed609c",
-    "@ciscospark/test-helper-automation": "^0.7.0-alpha.03ed609c",
-    "@ciscospark/test-helper-chai": "^0.7.0-alpha.03ed609c",
-    "@ciscospark/test-helper-make-local-url": "^0.7.0-alpha.03ed609c",
-    "@ciscospark/test-helper-mock-spark": "^0.7.0-alpha.03ed609c",
-    "@ciscospark/test-helper-retry": "^0.7.0-alpha.03ed609c",
-    "@ciscospark/test-helper-sinon": "^0.7.0-alpha.03ed609c",
-    "@ciscospark/test-helper-test-users": "^0.7.0-alpha.03ed609c",
-    "@ciscospark/xunit-with-logs": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/storage-adapter-spec": "^0.7.0-alpha",
+    "@ciscospark/test-helper-automation": "^0.7.0-alpha",
+    "@ciscospark/test-helper-chai": "^0.7.0-alpha",
+    "@ciscospark/test-helper-make-local-url": "^0.7.0-alpha",
+    "@ciscospark/test-helper-mock-spark": "^0.7.0-alpha",
+    "@ciscospark/test-helper-retry": "^0.7.0-alpha",
+    "@ciscospark/test-helper-sinon": "^0.7.0-alpha",
+    "@ciscospark/test-helper-test-users": "^0.7.0-alpha",
+    "@ciscospark/xunit-with-logs": "^0.7.0-alpha",
     "babel-eslint": "^6.0.0-beta.5",
     "babel-plugin-lodash": "2.1.0",
     "babel-polyfill": "^6.3.14",
     "babel-register": "^6.4.3",
-    "eslint": "2.2.0",
-    "eslint-plugin-mocha-only": "0.0.3"
+    "eslint": "^3.3.1",
+    "eslint-plugin-mocha": "^4.4.0",
+    "lolex": "^1.5.1"
   },
   "browser": {
     "./src/plugins/credentials/credentials.js": "./src/plugins/credentials/credentials.shim.js",

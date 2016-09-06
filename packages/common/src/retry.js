@@ -7,6 +7,8 @@ import {defaults, isFunction, wrap} from 'lodash';
 import {EventEmitter} from 'events';
 import backoff from 'backoff';
 
+/* eslint max-nested-callbacks: [0] */
+
 /**
  * Makes a promise-returning method retryable according to the specified backoff
  * pattern
@@ -41,8 +43,8 @@ export default function retry(options) {
     };
   }
 
-  return function decorate(target, prop, descriptor) {
-    descriptor.value = wrap(descriptor.value, function _retry(fn, ...args) {
+  return function retryDecorator(target, prop, descriptor) {
+    descriptor.value = wrap(descriptor.value, function retryExecutor(fn, ...args) {
       const emitter = new EventEmitter();
       const promise = new Promise((resolve, reject) => {
         // backoff.call is not Function.prototype.call; it's an unfortunate naming

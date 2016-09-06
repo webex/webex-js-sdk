@@ -4,6 +4,14 @@
  * @private
  */
 
+/**
+ * Behaves like debounce, but additionally executes after a number of calls are
+ * attempted, rather than just time
+ * @param {Function} fn
+ * @param {Number} wait
+ * @param {Object} options
+ * @returns {Function}
+ */
 export default function debounce(fn, wait, options) {
   /* eslint no-invalid-this: [0] */
 
@@ -42,6 +50,10 @@ export default function debounce(fn, wait, options) {
     }
   };
 
+  /**
+   * @private
+   * @returns {undefined}
+   */
   function exec() {
     clearTimeout(waitTimer);
     waitTimer = null;

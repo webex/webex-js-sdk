@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/helper-html",
-  "version": "0.7.0-alpha.03ed609c",
+  "version": "0.7.0-alpha",
   "description": "HTML Utiltities",
   "main": "dist/index.js",
   "devMain": "src/index.js",
@@ -13,15 +13,15 @@
     "lodash": "^4.5.1"
   },
   "devDependencies": {
-    "@ciscospark/test-helper-chai": "^0.7.0-alpha.03ed609c",
-    "@ciscospark/test-helper-mocha": "^0.7.0-alpha.03ed609c",
-    "@ciscospark/xunit-with-logs": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/test-helper-chai": "^0.7.0-alpha",
+    "@ciscospark/test-helper-mocha": "^0.7.0-alpha",
+    "@ciscospark/xunit-with-logs": "^0.7.0-alpha",
     "babel-eslint": "^6.0.0-beta.5",
     "babel-plugin-lodash": "2.1.0",
     "babel-polyfill": "^6.3.14",
     "babel-register": "^6.4.3",
-    "eslint": "2.2.0",
-    "eslint-plugin-mocha-only": "0.0.3"
+    "eslint": "^3.3.1",
+    "eslint-plugin-mocha": "^4.4.0"
   },
   "browser": {
     "./src/html.js": "./src/html.shim.js",

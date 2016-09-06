@@ -1573,6 +1573,7 @@ var ConversationService = SparkBase.extend(
 
     return this.request(params)
       .then(function processResponse(res) {
+        this.trigger('activity:sent');
         return this.outboundNormalizer.normalize(res.body);
       }.bind(this));
   },

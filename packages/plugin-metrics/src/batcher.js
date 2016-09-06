@@ -1,18 +1,40 @@
 /**!
  *
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ * @private
  */
 
-import {defaults} from 'lodash';
-import {Defer} from '@ciscospark/common';
-import {RequestBatcher} from '@ciscospark/spark-core';
-import uuid from 'uuid';
+import {
+  Batcher,
+  SparkHttpError
+} from '@ciscospark/spark-core';
 
-export const PAYLOAD_KEY_SYMBOL = Symbol(`PAYLOAD_KEY_SYMBOL`);
+const sym = Symbol(`metric id`);
 
-export default class MetricsRequestBatcher extends RequestBatcher {
-  submit(payload) {
-    return this.request({
+const MetricsBatcher = Batcher.extend({
+  namespace: `Metrics`,
+
+  prepareItem(item) {
+    // Keep non-prod data out of metrics
+    const env = process.env.NODE_ENV === `production` ? null : `TEST`;
+
+    item.appType = item.appType || this.config.appType;
+    item.env = item.env || env;
+    item.time = item.time || Date.now();
+    item.version = item.version || this.spark.version;
+
+    return Promise.resolve(item);
+  },
+
+  prepareRequest(queue) {
+    return Promise.resolve(queue.map((item) => {
+      item.postTime = item.postTime || Date.now();
+      return item;
+    }));
+  },
+
+  submitHttpRequest(payload) {
+    return this.spark.request({
       method: `POST`,
       service: `metrics`,
       resource: `metrics`,
@@ -20,45 +42,52 @@ export default class MetricsRequestBatcher extends RequestBatcher {
         metrics: payload
       }
     });
-  }
+  },
 
-  generateKey(payload) {
-    return payload[PAYLOAD_KEY_SYMBOL];
-  }
+  handleHttpSuccess(res) {
+    return Promise.all(res.options.body.metrics.map((item) => this.acceptItem(item)));
+  },
 
-  batchWillReceiveRequest(payload) {
-    defaults(payload, {
-      appType: this.config.appType,
-      env: process.env.NODE_ENV || `development`,
-      version: this.spark.version,
-      time: Date.now()
-    });
-
-    // Note: lodash.defaults doesn't supoprt symbols at this time so we need to
-    // set it manually.
-    payload[PAYLOAD_KEY_SYMBOL] = payload[PAYLOAD_KEY_SYMBOL] || uuid.v4();
-    return payload;
-  }
-
-  batchWillExecute(queue) {
-    const now = Date.now();
-    queue.forEach((item) => {
-      item.postTime = now;
-    });
-    return queue;
-  }
-
-  requestWillFail(item, reason) {
-    if (reason.statusCode === 0) {
-      const defer = new Defer();
-      this.markSuccess(item, defer.promise);
-
-      setTimeout(() => {
-        defer.resolve(this.enqueue(item));
-      }, this.config.retryDelay);
-
-      return Promise.resolve();
+  handleHttpError(reason) {
+    if (reason instanceof SparkHttpError.NetworkOrCORSError) {
+      this.logger.warn(`metrics-batcher: received network error submitting metrics, reenqueuing payload`);
+      return Promise.all(reason.options.body.metrics.map((item) => new Promise((resolve) => {
+        const delay = item[sym].nextDelay;
+        if (delay < this.config.batcherRetryPlateau) {
+          item[sym].nextDelay *= 2;
+        }
+        setTimeout(() => {
+          resolve(this.rerequest(item));
+        }, delay);
+      })));
     }
-    return Promise.reject(reason);
+
+    return Reflect.apply(Batcher.prototype.handleHttpError, this, [reason]);
+  },
+
+  rerequest(item) {
+    return Promise.all([
+      this.getDeferredForRequest(item),
+      this.prepareItem(item)
+    ])
+      .then(([defer, req]) => {
+        this.enqueue(req)
+          .then(() => this.bounce())
+          .catch((reason) => defer.reject(reason));
+      });
+  },
+
+  fingerprintRequest(item) {
+    item[sym] = item[sym] || {
+      nextDelay: 1000
+    };
+
+    return Promise.resolve(item[sym]);
+  },
+
+  fingerprintResponse(item) {
+    return Promise.resolve(item[sym]);
   }
-}
+});
+
+export default MetricsBatcher;

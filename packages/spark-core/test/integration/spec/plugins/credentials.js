@@ -31,9 +31,9 @@ describe(`spark-core`, function() {
           beforeEach(() => {
             return testUsers.create({config: {authCodeOnly: true}})
               .then(([u]) => {
-                assert.isObject(u)
+                assert.isObject(u);
                 assert.property(u, `token`);
-                assert.isObject(u.token)
+                assert.isObject(u.token);
                 assert.property(u.token, `auth_code`);
                 user = u;
               });

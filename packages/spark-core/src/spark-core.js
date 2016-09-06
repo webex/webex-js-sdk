@@ -17,11 +17,10 @@ import SparkHttpError from './lib/spark-http-error';
 import SparkTrackingIdInterceptor from './interceptors/spark-tracking-id';
 import config from './config';
 import {makeSparkStore} from './lib/storage';
-import uuid from 'uuid';
 
 let constructorCalled = false;
 const derived = {};
-const children = {};
+export const children = {};
 
 let Spark;
 

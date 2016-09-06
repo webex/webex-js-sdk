@@ -12,6 +12,7 @@ const readFile = denodeify(fs.readFile);
     const pid = parseInt(await readFile(pidFile), 10);
     await spawn(`kill`, [`-TERM`, pid]);
     await new Promise((resolve, reject) => {
+      // eslint-disable-next-line prefer-const
       let interval;
       const timeout = setTimeout(() => {
         clearInterval(interval);

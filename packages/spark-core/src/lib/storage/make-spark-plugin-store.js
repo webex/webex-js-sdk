@@ -6,6 +6,7 @@
 
 import {Defer, oneFlight} from '@ciscospark/common';
 import {NotFoundError} from './errors';
+import {result} from 'lodash';
 
 const defers = new WeakMap();
 
@@ -17,7 +18,8 @@ const defers = new WeakMap();
  */
 export default function makeSparkPluginStorage(type, context) {
   /**
-   *
+   * Interface between SparkPlugin and Spark#boundeStorage or
+   * Spark#unboundedStorage
    */
   class SparkPluginStorage {
     /**
@@ -104,6 +106,8 @@ export default function makeSparkPluginStorage(type, context) {
      * the value retrieval complete
      */
     @oneFlight({keyFactory: (key) => `initValue-${key}`})
+    // suppress doc warning because decorators confuse eslint
+    // eslint-disable-next-line require-jsdoc
     initValue(key) {
       const defer = new Defer();
 
@@ -115,8 +119,11 @@ export default function makeSparkPluginStorage(type, context) {
           if (key === `@`) {
             context.parent.set(value);
           }
+          else if (result(context[key], `isState`)) {
+            context[key].set(value);
+          }
           else {
-            context.parent.set(key, value);
+            context.set(key, value);
           }
           context.logger.info(`plugin-storage(${context.getNamespace()}): set \`${key}\` for first time`);
           defer.resolve();

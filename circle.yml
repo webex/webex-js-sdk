@@ -3,19 +3,18 @@ machine:
     COVERAGE: true
     NODE_ENV: test
     XUNIT: true
+    UNIT_ONLY: true
   node:
     version: 4
 
 general:
   artifacts:
-    - "lerna-debug.log"
-    - docs
+    - lerna-debug.log
+    - npm-debug.log
 
 dependencies:
   cache_directories:
     - node_modules
-    - ../spark-js-sdk--test-users
-    - ../lerna
     # TODO deploy script should update this list automatically
     # circleci doesn't appear to support cache wildcards
     - packages/bin-sauce-connect/node_modules
@@ -44,27 +43,6 @@ dependencies:
     - packages/test-helper-sinon/node_modules
     - packages/test-helper-test-users/node_modules
     - packages/xunit-with-logs/node_modules
-  pre:
-    # spark-js-sdk--test-users
-    - ls spark-js-sdk--test-users > /dev/null 2> /dev/null || git clone git@github.com:ianwremmel/spark-js-sdk--test-users.git:
-        pwd: ../
-    - git checkout v0.3.4:
-        pwd: ../spark-js-sdk--test-users
-    - rm -f .npmrc:
-        pwd: ../spark-js-sdk--test-users
-    - npm link:
-        pwd: ../spark-js-sdk--test-users
-    - npm link spark-js-sdk--test-users
-    - npm link spark-js-sdk--test-users:
-        pwd: packages/test-helper-test-users
-    # lerna fork
-    - ls lerna > /dev/null 2> /dev/null || git clone git@github.com:ianwremmel/lerna.git:
-        pwd: ../
-    - git checkout de0f7f2:
-        pwd: ../lerna
-    - npm link:
-        pwd: ../lerna
-    - npm link lerna
   post:
     - npm run bootstrap
 
@@ -73,11 +51,5 @@ test:
     - npm run grunt:circle -- build:
         parallel: true
   override:
-    - ./tooling/circle-scripts/validate.sh:
+    - npm run grunt:circle -- static-analysis test:
         parallel: true
-
-deployment:
-  release:
-    branch: release
-    commands:
-      - ./tooling/circle-scripts/publish.sh

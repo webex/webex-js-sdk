@@ -101,6 +101,11 @@ var Token = SparkBase.extend({
 
   downscope: function downscope(scope) {
     this.logger.info('token: downscoping token to "' + scope + '"');
+    // verify that the access_token is available before downscoping
+    if (!this.access_token) {
+      this.logger.info('token: request received to downscope an empty access_token, rejecting');
+      return Promise.reject(new Error('cannot downscope empty access token'));
+    }
     return this.spark.request({
       method: 'POST',
       api: 'oauth',
@@ -123,6 +128,9 @@ var Token = SparkBase.extend({
   },
 
   initialize: function initialize() {
+    if (!this.access_token) {
+      throw new Error('`access_token` is required');
+    }
     var now = Date.now();
 
     if (!this.expires && this.expires_in) {
@@ -164,6 +172,16 @@ var Token = SparkBase.extend({
 
         this.logger.info('token: access token refreshed');
 
+        // if the new token is same as the previousToken, possible bug in CI, log the details and reject the Promise
+        if (this.previousToken && this.access_token && this.previousToken.access_token === this.access_token) {
+          this.logger.error('token: previousToken is same as new token received from CI');
+          // log the tokens if it is not production
+          if (process.env.NODE_ENV !== 'production') {
+            this.logger.error('token: previousToken = ', this.previousToken);
+            this.logger.error('token: newToken received from CI = ', this);
+          }
+          return Promise.reject(new Error('previousToken is same as new token received from CI'));
+        }
 
         if (this.previousToken) {
           this.previousToken.revoke();

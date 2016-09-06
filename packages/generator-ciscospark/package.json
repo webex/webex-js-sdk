@@ -1,6 +1,6 @@
 {
   "name": "generator-ciscospark",
-  "version": "0.7.0-alpha.03ed609c",
+  "version": "0.7.0-alpha",
   "description": "Scaffolds new ciscospark plugins and projects",
   "homepage": "",
   "main": "./generators/index.js",
@@ -24,10 +24,10 @@
   },
   "devDependencies": {
     "babel-eslint": "^6.0.0-beta.5",
-    "eslint": "^2.1.0",
-    "eslint-plugin-mocha-only": "0.0.3",
-    "yeoman-test": "^1.0.0",
-    "yeoman-assert": "^2.0.0"
+    "eslint": "^3.3.1",
+    "eslint-plugin-mocha": "^4.4.0",
+    "yeoman-assert": "^2.0.0",
+    "yeoman-test": "^1.0.0"
   },
   "eslintConfig": {
     "extends": "xo-space",

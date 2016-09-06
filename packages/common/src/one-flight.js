@@ -4,8 +4,14 @@
  */
 
 import {wrap} from 'lodash';
+import make from './template-container';
 
-const flights = new Map();
+// Alias Map and WeakMap to get around a babel compiler bug
+const W = WeakMap;
+const M = Map;
+const WeakMappedMappedMap = make(W, M, M);
+
+const flights = new WeakMappedMappedMap();
 
 /**
  * @memberof Util
@@ -15,8 +21,12 @@ const flights = new Map();
  * @param {boolean} options.cacheSuccesses
  * @returns {Function}
  */
-export default function oneFlight(options) {
-  options = options || {};
+export default function oneFlight(...params) {
+  if (params.length === 3) {
+    return Reflect.apply(oneFlightDecorator, null, params);
+  }
+
+  const options = params[0] || {};
 
   const {
     cacheFailures,
@@ -24,20 +34,25 @@ export default function oneFlight(options) {
     keyFactory
   } = options;
 
-  return function decorate(target, prop, descriptor) {
-    let sym;
-    if (!keyFactory) {
-      sym = Symbol(prop);
-    }
+  return oneFlightDecorator;
 
-    descriptor.value = wrap(descriptor.value, function executor(fn, ...args) {
+  /**
+   * @param {Object} target
+   * @param {string} prop
+   * @param {Object} descriptor
+   * @private
+   * @returns {Object}
+   */
+  function oneFlightDecorator(target, prop, descriptor) {
+    let key = prop;
+    descriptor.value = wrap(descriptor.value, function oneFlightExecutor(fn, ...args) {
       if (keyFactory) {
-        sym = keyFactory(args);
+        key = keyFactory(args);
       }
 
       /* eslint no-invalid-this: [0] */
-      let flight = flights.get(sym);
-      if (flights.get(sym)) {
+      let flight = flights.get(this, target, key);
+      if (flight) {
         const message = `one flight: attempted to invoke ${prop} while previous invocation still in flight`;
         /* instanbul ignore else */
         if (this && this.logger) {
@@ -52,16 +67,20 @@ export default function oneFlight(options) {
 
       flight = Reflect.apply(fn, this, args);
       if (!cacheFailures && flight && flight.catch) {
-        flight.catch(() => {
-          flights.delete(sym);
+        flight = flight.catch((reason) => {
+          flights.delete(this, target, key);
+          return Promise.reject(reason);
         });
       }
 
       if (!cacheSuccesses && flight && flight.then) {
-        flight.then(() => {
-          flights.delete(sym);
+        flight = flight.then((result) => {
+          flights.delete(this, target, key);
+          return result;
         });
       }
+
+      flights.set(this, target, key, flight);
 
       return flight;
     });
@@ -73,5 +92,5 @@ export default function oneFlight(options) {
     }
 
     return descriptor;
-  };
+  }
 }

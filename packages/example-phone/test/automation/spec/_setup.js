@@ -10,21 +10,23 @@ import path from 'path';
 import requireDir from 'require-dir';
 requireDir(path.join(__dirname, `../lib/wd`), {recurse: true});
 
-describe(`__`, function() {
-  this.timeout(120000);
+describe(`example-phone`, function() {
+  this.timeout(3 * 60 * 1000);
 
-  let browser;
+  describe(`__`, () => {
+    let browser;
 
-  beforeEach(() => createBrowser(pkg, {
-    platform: `Linux`,
-    browserName: `firefox`,
-    version: `latest`
-  })
-    .then((b) => {browser = b;}));
+    beforeEach(() => createBrowser(pkg, {
+      platform: `Linux`,
+      browserName: `firefox`,
+      version: `latest`
+    })
+      .then((b) => {browser = b;}));
 
-  afterEach(() => Promise.resolve(browser && browser.quit())
-    .catch((reason) => {console.warn(reason);}));
+    afterEach(() => Promise.resolve(browser && browser.quit())
+      .catch((reason) => {console.warn(reason);}));
 
-  it(`loads the app and blocks until webpack finishes building`, () => browser
-    .getMainPage());
+    it(`loads the app and blocks until webpack finishes building`, () => browser
+      .getMainPage());
+  });
 });

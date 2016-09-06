@@ -1,52 +1,168 @@
 /**!
  *
- * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015 Cisco Systems, Inc. See LICENSE file.
  */
 
 import {assert} from '@ciscospark/test-helper-chai';
+import lolex from 'lolex';
+import Metrics, {config} from '../..';
+import MockSpark from '@ciscospark/test-helper-mock-spark';
 import sinon from '@ciscospark/test-helper-sinon';
-import {MetricsBatcher, PAYLOAD_KEY_SYMBOL} from '../..';
+import {SparkHttpError} from '@ciscospark/spark-core';
 
-describe(`Metrics`, () => {
-  describe(`Batcher`, () => {
-    let batch;
+function promiseTick(count) {
+  let promise = Promise.resolve();
+  while (count > 1) {
+    promise = promise.then(() => {
+      return promiseTick(1);
+    });
+    count -= 1;
+  }
+  return promise;
+}
+
+describe(`plugin-metrics`, () => {
+  describe(`MetricsBatcher`, () => {
     let spark;
 
     beforeEach(() => {
-      spark = {
-        request: sinon.spy(),
-        config: {
-          metrics: {}
+      spark = new MockSpark({
+        children: {
+          metrics: Metrics
         }
+      });
+
+      spark.config.metrics = config.metrics;
+
+      spark.request = function(options) {
+        return Promise.resolve({
+          statusCode: 204,
+          body: undefined,
+          options
+        });
       };
-
-      batch = new MetricsBatcher({}, {parent: spark});
+      sinon.spy(spark, `request`);
     });
 
-    describe(`#batchWillReceiveRequest()`, () => {
-      it(`adds an id usable by #generateKey() but otherwise non-serializable`, () => {
-        return Promise.resolve(batch.batchWillReceiveRequest({}))
-          .then((payload) => {
-            assert.property(payload, PAYLOAD_KEY_SYMBOL);
-            assert.isDefined(payload[PAYLOAD_KEY_SYMBOL]);
-          });
+    let clock;
+    beforeEach(() => {
+      clock = lolex.install(Date.now());
+    });
+
+    afterEach(() => {
+      clock.uninstall();
+    });
+
+    describe(`#request()`, () => {
+      describe(`when the request completes successfully`, () => {
+        it(`clears the queue`, () => {
+          clock.uninstall();
+          return spark.metrics.batcher.request({
+            key: `testMetric`
+          })
+            .then(() => {
+              assert.calledOnce(spark.request);
+              assert.lengthOf(spark.metrics.batcher.queue, 0);
+            });
+        });
       });
-    });
 
-    describe(`#batchDidReceiveRequest()`, () => {
-      it(`assigns common payload data`, () => {
-        return Promise.resolve(batch.batchWillReceiveRequest({}))
-          .then((payload) => {
-            assert.property(payload, `appType`);
-            assert.property(payload, `env`);
-            assert.property(payload, `version`);
-            assert.property(payload, `time`);
+      describe(`when the request fails due to network disconnect`, () => {
+        it(`reenqueues the payload`, () => {
+          // sinon appears to have gap in its api where stub.onCall(n) doesn't
+          // accept a function, so the following is more verbose than one might
+          // desire
+          spark.request = function() {
+            // noop
+          };
+          let count = 0;
+          sinon.stub(spark, `request`, (options) => {
+            options.headers = {
+              trackingid: count
+            };
+
+            count += 1;
+            if (count < 9) {
+              return Promise.reject(new SparkHttpError.NetworkOrCORSError({
+                statusCode: 0,
+                options
+              }));
+            }
+
+            return Promise.resolve({
+              statusCode: 204,
+              body: undefined,
+              options
+            });
           });
-      });
-    });
 
-    describe(`#requestWillFail`, () => {
-      it(`reenqueues metrics in event of network failure`);
+          const promise = spark.metrics.batcher.request({
+            key: `testMetric`
+          });
+
+          return promiseTick(50)
+            .then(() => assert.lengthOf(spark.metrics.batcher.queue, 1))
+            .then(() => clock.tick(config.metrics.batcherWait))
+            .then(() => assert.calledOnce(spark.request))
+
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(1000))
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(config.metrics.batcherWait))
+            .then(() => assert.calledTwice(spark.request))
+
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(2000))
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(config.metrics.batcherWait))
+            .then(() => assert.calledThrice(spark.request))
+
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(4000))
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(config.metrics.batcherWait))
+            .then(() => assert.callCount(spark.request, 4))
+
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(8000))
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(config.metrics.batcherWait))
+            .then(() => assert.callCount(spark.request, 5))
+
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(16000))
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(config.metrics.batcherWait))
+            .then(() => assert.callCount(spark.request, 6))
+
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(32000))
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(config.metrics.batcherWait))
+            .then(() => assert.callCount(spark.request, 7))
+
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(32000))
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(config.metrics.batcherWait))
+            .then(() => assert.callCount(spark.request, 8))
+
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(32000))
+            .then(() => promiseTick(50))
+            .then(() => clock.tick(config.metrics.batcherWait))
+            .then(() => assert.callCount(spark.request, 9))
+
+            .then(() => promiseTick(50))
+            .then(() => assert.lengthOf(spark.metrics.batcher.queue, 0))
+            .then(() => assert.isFulfilled(promise))
+            .then(() => {
+              assert.lengthOf(spark.request.args[1][0].body.metrics, 1, `Reenqueuing the metric once did not increase the number of metrics to be submitted`);
+              assert.lengthOf(spark.request.args[2][0].body.metrics, 1, `Reenqueuing the metric twice did not increase the number of metrics to be submitted`);
+              assert.lengthOf(spark.metrics.batcher.queue, 0);
+            });
+        });
+      });
     });
   });
 });

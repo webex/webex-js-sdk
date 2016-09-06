@@ -34,11 +34,19 @@ describe(`spark-core`, function() {
           uri: makeLocalUrl(`/not-a-route`),
           headers: {
             authorization: false
+          },
+          body: {
+            proof: true
           }
         }))
           .then((err) => {
             assert.instanceOf(err, SparkHttpError);
             assert.instanceOf(err, SparkHttpError.BadRequest);
+
+            assert.property(err, `options`);
+            assert.property(err.options, `body`);
+            assert.property(err.options.body, `proof`);
+            assert.isTrue(err.options.body.proof);
           });
       });
     });

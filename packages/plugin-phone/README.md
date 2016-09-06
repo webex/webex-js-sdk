@@ -80,11 +80,11 @@ Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Refe
 
 ## decline
 
-Alias of [Call#reject](#callreject)
+Alias of [Call#reject](Call#reject)
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** 
 
-## reject
+## oneFlight
 
 Rejects an incoming call. Only applies to incoming calls. Invoking this
 method on an outgoing call is a no-op.

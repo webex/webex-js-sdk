@@ -2,77 +2,22 @@
 
 **Extends SparkCore**
 
-SDK for Cisco Spark
-
-## Installation
-
-```javascript
-npm install --save ciscospark
-```
-
-## A Note on Browsers
-
-Ciscospark is fully browser compatible but we don't distribute a browserified
-bundle at this time; you'll need to build the bundle yourself. We use
-[browserify](http://browserify.org/) internally and
-[webpack](https://webpack.github.io/) should work as well.
-
-## Getting Started
-
-The quickest way to get started is to set your access token as an environment
-variable:
-
-```javascript
-
-```
-
-### Refresh Tokens
-
-For long-running use cases, you'll need to provide a refresh token, client
-id, and client secret:
-
-```javascript
-TODO
-```
-
-## Runtime Configuration
-
-While environment variables are handy for development, they don't really help
-you write an app for lots of users. You can pass credentials to the spark
-using init.
-
-```javascript
-TODO
-```
-
-## OAuth
-
-OAuth is baked right into spark so you don't need to figure it out.
-
-To kick off an OAuth login, simply call `spark.authenticate()` which will
-direct the current app to our login page.
-
-```javascript
-TODO
-```
-
-To refresh an access token, call `spark.authorize()`. (Note: this should
-generally happen for you automatically).
-
-```javascript
-TODO
-```
+See [Browser Guide](https://ciscospark.github.io/spark-js-sdk/example/browsers) and
+[Server Guide](https://ciscospark.github.io/spark-js-sdk/example/servers)
 
 ## init
 
-While environment variables are handy for development, they don't really help
-you write an app for lots of users. You can pass credentials to the spark
-using init.
+Create a new ciscospark instance.
+Note: ciscospark.init() really only applies to node apps at this time. In web
+browsers, you'll want to stick with manipulating the ciscospark instance you
+get from `require('ciscospark')`
 
 **Parameters**
 
 -   `attrs` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
-    -   `attrs.credentials` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
+    -   `attrs.credentials` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optional)
+    -   `attrs.device` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optional)
+    -   `attrs.config` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** (optiona)
 
 Returns **[CiscoSpark](#ciscospark)** 
 
@@ -516,6 +461,15 @@ Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Refe
     message attachment. See the {@link Content & Attachments{ Guide for a list of
     supported media types.
 
+# Types~Person
+
+**Properties**
+
+-   `id` **uuid** Unique identifier for the person
+-   `emails` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;email>** Email addresses of the person
+-   `displayName` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** Display name of the person
+-   `created` **isoDate** The date and time that the person was created
+
 # People
 
 **Extends SparkPlugin**
@@ -605,14 +559,17 @@ ciscospark.rooms.create({title: 'List People Example'})
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Page](#page)&lt;[Types~Person](#typesperson)>>** 
 
-# Types~Person
+# Types~Room
 
 **Properties**
 
--   `id` **uuid** Unique identifier for the person
--   `emails` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;email>** Email addresses of the person
--   `displayName` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** Display name of the person
--   `created` **isoDate** The date and time that the person was created
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) Unique identifier for the room
+-   `title` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The display name for the room. All room members
+    will see the title so make it something good
+-   `created` **isoDate** (server generated) The date and time that the
+    room was created
+-   `teamId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (optional): The id of the team to which the room
+    belongs
 
 # Rooms
 
@@ -788,18 +745,6 @@ ciscospark.rooms.create({title: 'Update Room Example'})
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Room](#typesroom)>** 
 
-# Types~Room
-
-**Properties**
-
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) Unique identifier for the room
--   `title` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The display name for the room. All room members
-    will see the title so make it something good
--   `created` **isoDate** (server generated) The date and time that the
-    room was created
--   `teamId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (optional): The id of the team to which the room
-    belongs
-
 # Types~Team
 
 **Properties**
@@ -937,6 +882,16 @@ ciscospark.teams.create({name: 'Update Team Example'})
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Team](#typesteam)>** 
+
+# Types~TeamMembership
+
+**Properties**
+
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The team ID
+-   `personId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The person ID
+-   `personEmail` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The email address of the person
+-   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Set to `true` to make the person a team
+    moderator
 
 # TeamMemberships
 
@@ -1110,27 +1065,6 @@ Updates properties for a membership.
 -   `membership` **[Types~TeamMembership](#typesteammembership)** 
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~TeamMembership](#typesteammembership)>** 
-
-# Types~TeamMembership
-
-**Properties**
-
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The team ID
--   `personId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The person ID
--   `personEmail` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The email address of the person
--   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Set to `true` to make the person a team
-    moderator
-
-# Types~Webhook
-
-**Properties**
-
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The unique ID for the webhook.
--   `resource` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The resource type for the webhook.
--   `event` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The event type for the webhook.
--   `filter` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The filter that defines the webhook scope.
--   `targetUrl` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The URL that receives POST requests for each event.
--   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** A user-friendly name for this webhook.
 
 # Webhooks
 
@@ -1337,3 +1271,14 @@ ciscospark.rooms.create({title: 'Webhook Example'})
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Webhook>** 
+
+# Types~Webhook
+
+**Properties**
+
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The unique ID for the webhook.
+-   `resource` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The resource type for the webhook.
+-   `event` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The event type for the webhook.
+-   `filter` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The filter that defines the webhook scope.
+-   `targetUrl` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The URL that receives POST requests for each event.
+-   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** A user-friendly name for this webhook.

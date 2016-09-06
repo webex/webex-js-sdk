@@ -11,9 +11,14 @@
  * var item = {
  *   prop: 2
  * };
- * return Promise
+ * Promise
  *  .resolve(item.prop)
- *  .then(resolveWith(item));
+ *  .then(resolveWith(item))
+ *  .then(function(res) {
+ *    require('assert').deepEqual(res, {prop:2});
+ *    return 'success'
+ *  })
+ *  // => success
  *
  */
 export default function resolveWith(object) {

@@ -12,7 +12,7 @@ var path = require('path');
 module.exports = function configGrunt(grunt, p) {
   grunt.config('concurrent', {
     test: {
-      tasks: ['test:browser'],
+      tasks: process.env.UNIT_ONLY ? [] : ['test:browser'],
       options: {
         logConcurrentOutput: true
       }

@@ -176,9 +176,10 @@ describe('Services', function() {
 
             party.spock.spark.conversation.add(conversation, redshirt)
               .catch(function(reason) {
-                // We expect a 403 because the user got added to the
-                // conversation in the previous test
-                if (reason.statusCode === 403) {
+                // We expect a 409 because the user got added to the
+                // conversation in the previous test (403 is a remnant of a
+                // previous implementation)
+                if (reason.statusCode === 403 || reason.statusCode === 409) {
                   return;
                 }
                 return Promise.reject(reason);
@@ -675,7 +676,7 @@ describe('Services', function() {
             })
             .catch(function(reason) {
               // We might be trying to add the user again - that's ok.
-              if (reason.statusCode === 403) {
+              if (reason.statusCode === 403 || reason.statusCode === 409) {
                 return;
               }
               return Promise.reject(reason);
@@ -697,7 +698,12 @@ describe('Services', function() {
               return assert.isRejected(party.spock.spark.encryption._fetchKey(defaultActivityEncryptionKeyUrl));
             })
             .then(function(err) {
-              assert.equal(err.status, 403);
+              try {
+                assert.equal(err.status, 403);
+              }
+              catch (reason) {
+                assert.equal(err.status, 409);
+              }
             });
         });
 
@@ -710,7 +716,12 @@ describe('Services', function() {
               return assert.isRejected(redshirt.spark.encryption._fetchKey(conversation.defaultActivityEncryptionKeyUrl));
             })
             .then(function(err) {
-              assert.equal(err.status, 403);
+              try {
+                assert.equal(err.status, 403);
+              }
+              catch (reason) {
+                assert.equal(err.status, 409);
+              }
 
               return party.spock.spark.request({
                 uri: conversation.url
@@ -730,7 +741,14 @@ describe('Services', function() {
             return landingparty.beamDownRedshirt()
               .then(function addRedshirt(rs) {
                 redshirt = rs;
-                return party.spock.spark.conversation.add(conversation, redshirt);
+                return party.spock.spark.conversation.add(conversation, redshirt)
+                  .catch(function(reason) {
+                    if (reason.statusCode === 403 || reason.statusCode === 409) {
+                      return;
+                    }
+
+                    return Promise.reject(reason);
+                  });
               })
               .then(function killRedshirt() {
                 return landingparty.killRedshirt(redshirt);

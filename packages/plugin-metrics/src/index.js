@@ -8,10 +8,11 @@ import {registerPlugin} from '@ciscospark/spark-core';
 import Metrics from './metrics';
 import config from './config';
 
+import '@ciscospark/plugin-wdm';
+
 registerPlugin(`metrics`, Metrics, {
   config
 });
 
 export {default as default} from './metrics';
-export {default as AutoInstrumentInterceptor} from './interceptor';
-export {PAYLOAD_KEY_SYMBOL, default as MetricsBatcher} from './batcher';
+export {config as config};

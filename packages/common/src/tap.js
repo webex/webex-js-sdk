@@ -12,9 +12,9 @@
  *   return Promise.resolve(5);
  * }
  *
- * return f()
- *   .then(tap(() => return 12)
- *   .then((res) => assert(res === 5);
+ * f()
+ *   .then(tap(() => 12))
+ *   // => 5
  */
 export default function tap(fn) {
   return (r) => new Promise((resolve) => {

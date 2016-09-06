@@ -5,25 +5,23 @@
  */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import MetricsBatcher from './batcher';
+import Batcher from './batcher';
+import {deprecated} from 'core-decorators';
 
 const Metrics = SparkPlugin.extend({
+  children: {
+    batcher: Batcher
+  },
+
   namespace: `Metrics`,
 
-  children: {
-    batch: MetricsBatcher
+  @deprecated(`Metrics#sendUnstructured() is deprecated; please use Metrics#submit()`)
+  sendUnstructured(key, value) {
+    return this.submit(key, value);
   },
 
   submit(key, value) {
-    if (!key) {
-      throw new Error(`\`key\` is required`);
-    }
-
-    if (!value) {
-      throw new Error(`\`value\` is required`);
-    }
-
-    return this.batch.enqueue({key, value});
+    return this.batcher.request(Object.assign({key}, value));
   }
 });
 

@@ -37,7 +37,8 @@ const AuthorizationBase = SparkPlugin.extend({
         `expires`
       ],
       fn() {
-        return Boolean(this.access_token && this.expires && Date.now() > this.expires);
+        // if we don't have an access token, it can't actually be expired
+        return !this.access_token || Boolean(this.access_token && this.expires && Date.now() > this.expires);
       }
     },
 

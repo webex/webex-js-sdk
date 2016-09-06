@@ -10,6 +10,7 @@ var cloneDeep = require('lodash.clonedeep');
 var find = require('lodash.find');
 var noop = require('lodash.noop');
 var pick = require('lodash.pick');
+var querystring = require('querystring');
 var resolveWith = require('../../../util/resolve-with');
 var SparkBase = require('../../../lib/spark-base');
 
@@ -302,6 +303,55 @@ var TeamService = SparkBase.extend(
       }.bind(this))
       .then(function decryptBody(res) {
         return this.spark.conversation.decrypter.decryptObject(res.body);
+      }.bind(this));
+  },
+
+  /**
+   * Move an existing group conversation into a team.
+   * @param {TeamObject} team
+   * @param {ConversationObject} conversation
+   * @param {Object} options
+   * @returns {Promise} Resolves with the add activity
+   */
+  addConversation: function addConversation(team, conversation) {
+    return this._ensureGeneralConversation(team)
+      .then(function submit(teamConversation) {
+        return this.spark.conversation.add(teamConversation, conversation);
+      }.bind(this));
+  },
+
+  /**
+   * Remove a team conversation from a team.
+   * @param {TeamObject} team
+   * @param {ConversationObject} conversation to be removed
+   * @param {Object} options
+   * @returns {Promise} Resolves with the leave activity
+   */
+  removeConversation: function removeConversation(team, conversation, options) {
+    options = options || {};
+
+    return this._ensureGeneralConversation(team)
+      .then(function submit(teamConversation) {
+
+        var properties = {
+          verb: 'remove',
+          object: pick(conversation, 'id', 'url', 'objectType'),
+          target: pick(teamConversation, 'id', 'url', 'objectType'),
+          kmsMessage: {
+            method: 'delete',
+            uri: '<KRO>/authorizations?' + querystring.stringify({
+              authId: conversation.id
+            })
+          }
+        };
+
+        return this.spark.conversation._prepareActivity({}, properties, options)
+          .then(function callEncryptActivity(activity) {
+            return this.spark.conversation._encryptActivity(cloneDeep(activity), teamConversation.defaultActivityEncryptionKeyUrl);
+          }.bind(this))
+          .then(function callSubmitActivity(activity) {
+            return this.spark.conversation._submitActivity(activity, options);
+          }.bind(this));
       }.bind(this));
   },
 

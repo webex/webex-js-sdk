@@ -4,7 +4,7 @@
  */
 
 /**
- * Uses Promise#then to run some number of tickets
+ * Uses Promise#then to run some number of ticks
  * @param {number} count
  * @returns {Promise}
  */

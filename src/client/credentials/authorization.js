@@ -86,25 +86,31 @@ var Authorization = SparkBase.extend({
     this.isRefreshing = true;
     this.logger.info('authorization: refreshing supertoken');
 
-    return this.supertoken.refresh()
+    var supertoken = this.supertoken;
+    var kmsToken = this.kmsToken;
+    var apiToken = this.apiToken;
+
+    // Once we've decided to refresh, immediately unset the subtokens so we
+    // don't try to use them.
+    this.unset([
+      'apiToken',
+      'kmsToken',
+      'supertoken'
+    ]);
+
+    return supertoken.refresh()
       .then(function revokeChildTokens(supertoken) {
         return Promise.all([
-          this.apiToken && this.apiToken.revoke()
+          apiToken && apiToken.revoke()
             .catch(function suppressError(reason) {
               this.logger.warn('authorization: failed to revoke api token', reason);
             }.bind(this)),
-          this.kmsToken && this.kmsToken.revoke()
+          kmsToken && kmsToken.revoke()
             .catch(function suppressError(reason) {
               this.logger.warn('authorization: failed to revoke kms token', reason);
             }.bind(this))
         ])
           .then(function splitToken() {
-          // Once we've decided to refresh, immediately unset the subtokens so we
-          // don't try to use them.
-          this.unset([
-            'apiToken',
-            'kmsToken'
-          ]);
           return this._split(supertoken);
         }.bind(this));
       }.bind(this))
@@ -171,8 +177,44 @@ var Authorization = SparkBase.extend({
 
   _split: oneFlight('_split', function _split(supertoken) {
     return Promise.all([
-      supertoken.downscope(this.config.oauth.scope.replace('spark:kms', '')),
+      supertoken.downscope(this.config.oauth.scope.replace('spark:kms', ''))
+        .catch(function setSuperToken(error) {
+          this.logger.error('authorization: error while downscoping api token ', error);
+          if (error && error.body && error.body.error === 'invalid_request') {
+            // log the details to splunk
+            var splitTokenErrorMetrics = {
+              comment: 'authorization: error while downscoping api token',
+              statusCode: error.statusCode,
+              statusMessage: error.statusMessage,
+              error: error.body.error,
+              errorDescription: error.body.error_description
+            };
+            this.spark.metrics.sendUnstructured('splitTokenError', splitTokenErrorMetrics);
+            return Promise.reject(error);
+          }
+          // should set the supertoken by default for all interactions if the response from id broker is not invalid_request
+          this.logger.error('authorization: falling back to supertoken for api interactions');
+          return Promise.resolve(supertoken);
+        }.bind(this)),
       supertoken.downscope('spark:kms')
+        .catch(function setSuperToken(error) {
+          this.logger.error('authorization: error while downscoping spark:kms');
+          if (error && error.body && error.body.error === 'invalid_request') {
+            // log the details to splunk
+            var splitTokenErrorMetrics = {
+              comment: 'authorization: error while downscoping spark:kms',
+              statusCode: error.statusCode,
+              statusMessage: error.statusMessage,
+              error: error.body.error,
+              errorDescription: error.body.error_description
+            };
+            this.spark.metrics.sendUnstructured('splitTokenError', splitTokenErrorMetrics);
+            return Promise.reject(error);
+          }
+          // should set the supertoken by default for all interactions if the response from id broker is not invalid_request
+          this.logger.error('authorization: falling back to supertoken for kms interactions');
+          return Promise.resolve(supertoken);
+        }.bind(this))
     ])
       .then(function setTokens(tokens) {
         this.set({
@@ -180,16 +222,6 @@ var Authorization = SparkBase.extend({
           apiToken: tokens[0],
           kmsToken: tokens[1]
         });
-      }.bind(this))
-      .catch(function setSuperToken(error) {
-        this.logger.error('error=', error, ' now setting the supertoken by default for all interactions');
-        // should set the supertoken by default for all interactions
-        this.set({
-          supertoken: supertoken,
-          apiToken: supertoken,
-          kmsToken: supertoken
-        });
-        return Promise.resolve(true);
       }.bind(this));
   })
 });

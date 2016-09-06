@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 
 require('babel-register');
+var path = require('path');
+require('dotenv').config({
+  path: path.join(__dirname, '../../../.env')
+});
+
 if (process.argv[2] === 'start') {
   require('../src/start');
 }

@@ -28,7 +28,9 @@ module.exports = function(grunt) {
       dest: 'coverage/intermediate.json'
     });
     var coverage = global[options.coverageVariable];
-    grunt.file.write(options.dest, JSON.stringify(coverage));
+    if (coverage) {
+      grunt.file.write(options.dest, JSON.stringify(coverage));
+    }
   });
 
   grunt.registerMultiTask('makeReport2', function() {

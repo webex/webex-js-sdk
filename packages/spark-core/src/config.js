@@ -27,7 +27,7 @@ export default {
       client_id: process.env.CISCOSPARK_CLIENT_ID || process.env.COMMON_IDENTITY_CLIENT_ID || process.env.CLIENT_ID,
       client_secret: process.env.CISCOSPARK_CLIENT_SECRET || process.env.COMMON_IDENTITY_CLIENT_SECRET || process.env.CLIENT_SECRET,
       redirect_uri: process.env.CISCOSPARK_REDIRECT_URI || process.env.COMMON_IDENTITY_REDIRECT_URI || process.env.REDIRECT_URI,
-      scope: process.env.CISCOSPARK_SCOPE || process.env.COMMON_IDENTITY_SCOPE || process.env.SCOPE,
+      scope: process.env.CISCOSPARK_SCOPE || process.env.CISCOSPARK_SCOPES || process.env.COMMON_IDENTITY_SCOPE || process.env.SCOPE,
       service: `spark`,
       revokeUrl: `https://idbroker.webex.com/idb/oauth2/v1/revoke`,
       tokenUrl: `https://idbroker.webex.com/idb/oauth2/v1/access_token`

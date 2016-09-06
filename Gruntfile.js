@@ -6,6 +6,7 @@
 'use strict';
 
 var path = require('path');
+var mkdirp = require('mkdirp');
 
 module.exports = function(grunt) {
   /* eslint max-statements: [0] */
@@ -34,7 +35,7 @@ module.exports = function(grunt) {
         commitFiles: [
           'package.json',
           '<%= config.src %>/version.js',
-          'CHANGELOG.md',
+          // 'CHANGELOG.md',
           'README.md',
           'packages/*/README.md'
         ],
@@ -47,30 +48,21 @@ module.exports = function(grunt) {
     },
 
     clean: {
-      'gh-pages': {
-        src: ['.grunt']
-      },
       tmp: {
         src: ['<%= config.tmp %>']
       },
       tmpUploads: {
-        src: ['<%= config.tmpUploads %>']
-      },
-      reports: {
-        src: [
-          'reports'
-        ]
+        src: ['<%= config.tmpUploads %>/**']
       }
     },
 
     config: {
-      examples: 'examples',
       dist: 'dist',
       reports: 'reports',
       src: 'src',
       test: 'test',
       tmp: '.tmp',
-      tmpUploads: '.tmp_uploads'
+      tmpUploads: '.tmp_uploads/' + process.env.UPLOAD_DIR
     },
 
     connect: {
@@ -85,18 +77,12 @@ module.exports = function(grunt) {
             '<%= config.test %>/unit/fixtures'
           ],
           middleware: function(connect, options) {
-            var fs = require('fs');
-            var path = require('path');
             var pathName = path.join(__dirname, grunt.config('config').tmpUploads);
-            if (!fs.existsSync(pathName)) {
-              fs.mkdirSync(pathName);
-            }
+            mkdirp.sync(pathName);
+
             var middlewares = [
-
               connect().use(connect.bodyParser({uploadDir: grunt.config('config').tmpUploads})),
-
               connect().use('/upload', function(req, res) {
-
                 res.setHeader('Content-Type', 'application/json');
 
                 // response with basic file stats
@@ -157,21 +143,16 @@ module.exports = function(grunt) {
 
     eslint: {
       all: [
-        '<%= config.examples %>/src/**/*.js',
-        '<%= config.examples %>/Gruntfile.js',
         '<%= config.src %>/**/*.js',
         '<%= config.test %>/**/*.js',
         'Gruntfile.js'
       ]
     },
 
-    express: {
-      example: {
-        options: {
-          script: '<%= config.examples %>/src/server/index.js',
-          port: AUTOMATION_PORT
-        }
-      }
+    fileExists: {
+      karmaxml: [
+        './reports/junit/*/karma-legacy.xml'
+      ]
     },
 
     'gh-pages': {
@@ -253,7 +234,8 @@ module.exports = function(grunt) {
       options: {
         reporter: 'spec',
         // TODO figure out how to detect retried tests
-        retries: (process.env.JENKINS || process.env.CI) ? 1 : 0
+        retries: (process.env.JENKINS || process.env.CI) ? 1 : 0,
+        noFail: process.env.XUNIT
       },
       automation: {
         options: {
@@ -300,7 +282,24 @@ module.exports = function(grunt) {
       }
     },
 
-    xunitDir: process.env.XUNIT_DIR || './reports'
+    xmlstrip: {
+      karma: {
+        files: [{
+          cwd: './reports/junit',
+          dest: '.',
+          expand: true,
+          src: '**/karma-legacy.xml'
+        }],
+        options: {
+          nodes: [
+            'testsuite.system-err',
+            'testsuite.system-out'
+          ]
+        }
+      }
+    },
+
+    xunitDir: process.env.XUNIT_DIR || './reports/junit'
   });
 
   // Private task for removing SQUARED_JS_SDK from the beginning of env
@@ -392,25 +391,6 @@ module.exports = function(grunt) {
   karma.test.options.browsers = browsers;
   grunt.config('karma', karma);
 
-  // Private Tasks
-  // -------------
-  // These tasks are not intended to be run directly
-
-  grunt.registerTask('private-run-automation', function() {
-    var tasks = [
-      'env:automation',
-      'express:example',
-      'mochaTest:automation'
-    ];
-
-    if (!SAUCE) {
-      tasks.push('selenium_stop');
-      tasks.unshift('selenium_start');
-    }
-
-    grunt.task.run(tasks);
-  });
-
   // Public Tasks
   // ------------
 
@@ -428,13 +408,6 @@ module.exports = function(grunt) {
 
     if (!target) {
       tasks.push('static-analysis');
-    }
-
-    // Include everything inside continue except static analysis. It's really
-    // rough to wait for all tests to complete only to discover they failed
-    // because of a missing semicolon.
-    if (SAUCE) {
-      tasks.push('continue:on');
     }
 
     if (COVERAGE) {
@@ -455,16 +428,19 @@ module.exports = function(grunt) {
     }
 
     if (process.env.SKIP_BROWSER_TESTS !== 'true' && (!target || target === 'karma')) {
-      tasks.push(DEBUG ? 'karma:debug' : 'karma:test');
+      if (process.env.XUNIT) {
+        tasks.push('continue:on');
+        tasks.push('karma:test');
+        tasks.push('continue:off');
+        tasks.push('fileExists:karmaxml');
+      }
+      else {
+        tasks.push(DEBUG ? 'karma:debug' : 'karma:test');
+      }
     }
 
     if (target !== 'karma' && COVERAGE) {
       tasks.push('storeCoverage2');
-    }
-
-    if (SAUCE) {
-      tasks.push('continue:off');
-      tasks.push('continue:fail-on-warning');
     }
 
     tasks.push('clean:tmpUploads');
@@ -474,7 +450,7 @@ module.exports = function(grunt) {
 
   grunt.registerTask('release', [
     'bump-only',
-    'changelog',
+    // 'changelog',
     // 'shell:jsdoc',
     'private-update-version-strings',
     // 'gh-pages',

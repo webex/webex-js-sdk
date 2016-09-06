@@ -1,26 +1,13 @@
 /**!
  *
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ * @private
  */
 
 export default {
   user: {
-    /**
-     * Debounce wait before requesting a UUID
-     * @type {Number}
-     */
-    batchWait: 500,
-
-    /**
-     * Maximum queue size before requesting a UUID
-     * @type {Number}
-     */
-    batchMaxCalls: 100,
-
-    /**
-     * Debounce max wait before requesting a UUID
-     * @type {Number}
-     */
-    batchMaxWait: 1500
+    batcherWait: 100,
+    batcherMaxCalls: 100,
+    batcherMaxWait: 1500
   }
 };

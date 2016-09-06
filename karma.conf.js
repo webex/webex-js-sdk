@@ -1,4 +1,5 @@
 'use strict';
+
 var pkg = require('./package');
 
 module.exports = function(config) {
@@ -19,6 +20,8 @@ module.exports = function(config) {
     basePath: '.',
 
     browserDisconnectTimeout: 10000,
+
+    browsers: process.env.SC_TUNNEL_IDENTIFIER ? Object.keys(launchers) : Object.keys(browsers.local),
 
     browserDisconnectTolerance: 3,
 
@@ -53,7 +56,8 @@ module.exports = function(config) {
 
     client: {
       mocha: {
-        retries: (process.env.JENKINS || process.env.CI) ? 1 : 0
+        retries: (process.env.JENKINS || process.env.CI) ? 1 : 0,
+        timeout: 30000
       }
     },
 
@@ -62,7 +66,7 @@ module.exports = function(config) {
       ignoreSkipped: true
     },
 
-    port: process.env.KARMA_PORT || 9001,
+    port: parseInt(process.env.KARMA_PORT) || 9001,
 
     preprocessors: {
       'src/**/*.js': ['browserify'],
@@ -76,16 +80,8 @@ module.exports = function(config) {
     },
 
     reporters: [
-      'mocha',
-      'saucelabs'
+      'mocha'
     ],
-
-    sauceLabs: {
-      build: process.env.BUILD_NUMBER || ('local-' + process.env.USER + '-' + Date.now()),
-      startConnect: false,
-      testName: pkg.name + '(karma)',
-      tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
-    },
 
     singleRun: true
   };
@@ -101,6 +97,16 @@ module.exports = function(config) {
     cfg.browserify.transform.push('browserify-istanbul');
 
     cfg.reporters.push('coverage');
+  }
+
+  if (process.env.SC_TUNNEL_IDENTIFIER) {
+    cfg.sauceLabs = {
+      build: process.env.BUILD_NUMBER || ('local-' + process.env.USER + '-' + Date.now()),
+      startConnect: false,
+      testName: pkg.name + ' (karma)',
+      tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
+    };
+    cfg.reporters.push('saucelabs');
   }
 
   if (process.env.XUNIT) {

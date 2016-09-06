@@ -1,16 +1,16 @@
 {
   "name": "@ciscospark/test-helper-mock-spark",
-  "version": "0.7.0-alpha.03ed609c",
+  "version": "0.7.0-alpha",
   "description": "",
   "main": "./src",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-mock-spark",
   "devDependencies": {
     "babel-eslint": "^6.0.0-beta.5",
-    "eslint": "2.2.0",
-    "eslint-plugin-mocha-only": "0.0.3"
+    "eslint": "^3.3.1",
+    "eslint-plugin-mocha": "^4.4.0"
   },
   "dependencies": {
-    "@ciscospark/test-helper-sinon": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/test-helper-sinon": "^0.7.0-alpha",
     "ampersand-state": "^5.0.0",
     "lodash": "^4.6.1"
   }

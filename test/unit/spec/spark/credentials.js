@@ -7,8 +7,9 @@
 
 var chai = require('chai');
 var Credentials = require('../../../../src/client/credentials');
-var Authorization = require('../../../../src/client/credentials/authorization');
 var MockSpark = require('../../lib/mock-spark');
+var Authorization = require('../../../../src/client/credentials/authorization');
+var delay = require('../../../lib/delay');
 var sinon = require('sinon');
 var skipInBrowser = require('../../../lib/mocha-helpers').skipInBrowser;
 
@@ -36,7 +37,8 @@ describe('Spark', function() {
         assert.isFalse(credentials.canRefresh, 'Cannot refresh without refresh token');
         credentials.authorization = new Authorization({
           supertoken: {
-            refresh_token: 'REFRESH TOKEN'
+            refresh_token: 'REFRESH TOKEN',
+            access_token: 'ACCESS TOKEN'
           }
         }, {parent: spark});
         assert.isTrue(credentials.canRefresh, 'Can refresh when refresh token is set');
@@ -57,12 +59,14 @@ describe('Spark', function() {
 
         credentials.authorization = new Authorization({
           supertoken: {
-            refresh_token: 'REFRESH TOKEN'
+            refresh_token: 'REFRESH TOKEN',
+            access_token: 'ACCESS TOKEN'
           }
         }, {parent: spark});
         assert.isTrue(credentials.isAuthenticated, 'Credentials is authenticated even if only a refresh token is set');
 
         credentials.authorization.supertoken.unset('refresh_token');
+        credentials.authorization.supertoken.unset('access_token');
         assert.isFalse(credentials.isAuthenticated, 'Credentials is not authenticated if neither token is set');
       });
     });
@@ -224,7 +228,8 @@ describe('Spark', function() {
       skipInBrowser(it)('invokes refresh if the current credentials are refreshable', function() {
         credentials.authorization = new Authorization({
           supertoken: {
-            refresh_token: 'REFRESH TOKEN'
+            refresh_token: 'REFRESH TOKEN',
+            access_token: 'ACCESS TOKEN'
           }
         }, {parent: spark});
 
@@ -297,6 +302,72 @@ describe('Spark', function() {
         return assert.isRejected(credentials._getSamlBearerToken(), /`this.password` is required/);
       });
     });
+
+    describe('#refresh() with downscope on expired supertoken', function() {
+      this.timeout(5000);
+      it('waits for supertoken refresh before downscoping if supertoken is expired', function() {
+        credentials.authorization = new Authorization({
+          supertoken: {
+            access_token: 'ACCESS TOKEN',
+            refresh_token: 'REFRESH TOKEN',
+            token_type: 'Bearer',
+            expires: Date.now() - 100
+          },
+          apiToken: {
+            access_token: 'API Token'
+          },
+          kmsToken: {
+            access_token: 'KMS Token'
+          }
+        }, {parent: spark});
+
+        sinon.stub(credentials.authorization.supertoken, 'refresh', function() {
+          return delay(3000)
+          .then(function() {
+            return Promise.resolve({
+              access_token: 'ACCESS TOKEN2',
+              refresh_token: 'REFRESH TOKEN2',
+              token_type: 'Bearer2',
+              expires: Date.now() + 1000,
+              downscope: function downscope() {
+                return Promise.resolve({
+                  access_token: 'ACCESS TOKEN DOWNSCOPED',
+                  refresh_token: 'REFRESH TOKEN DOWNSCOPED',
+                  token_type: 'Bearer DOWNSCOPED',
+                  expires: Date.now() + 1000
+                });
+              }
+            });
+          });
+        });
+
+        sinon.spy(credentials, 'refresh');
+        sinon.spy(credentials.authorization, 'refresh');
+        sinon.spy(credentials.authorization, 'getToken');
+        sinon.spy(credentials.authorization, '_getToken');
+        sinon.spy(credentials.authorization, '_split');
+
+        var originalSuperToken = credentials.authorization.supertoken.access_token;
+        return Promise.all([
+          credentials.refresh({force: true})
+            .then(function() {
+              assert.called(credentials.refresh);
+              assert.called(credentials.authorization.refresh);
+              assert.called(credentials.authorization._split);
+            }),
+          credentials.authorization.getToken('')
+            .then(function() {
+              assert.called(credentials.authorization.getToken);
+              assert.called(credentials.authorization._getToken);
+              // since supertoken refresh is in progress hence the value of supertoken should not be equal to originalSuperToken, hence should equal to newly refreshed supertoken
+              assert.notEqual(credentials.authorization.supertoken.access_token, originalSuperToken);
+              assert.equal(credentials.authorization.supertoken.access_token, 'ACCESS TOKEN2');
+            })
+        ]);
+      });
+
+    });
+
 
   });
 });

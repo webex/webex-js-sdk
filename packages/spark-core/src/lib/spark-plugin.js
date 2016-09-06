@@ -7,7 +7,6 @@
 import AmpState from 'ampersand-state';
 import util from 'util';
 import {makeSparkPluginStore} from './storage';
-import {omit} from 'lodash';
 
 const SparkPlugin = AmpState.extend({
   derived: {
@@ -125,6 +124,12 @@ const SparkPlugin = AmpState.extend({
 
   upload(...args) {
     return this.spark.upload(...args);
+  },
+
+  when(eventName) {
+    return new Promise((resolve) => {
+      this.once(eventName, (...args) => resolve(args));
+    });
   }
 });
 

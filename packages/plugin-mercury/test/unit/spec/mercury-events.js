@@ -11,11 +11,11 @@ import MockWebSocket from '../lib/mock-web-socket';
 import uuid from 'uuid';
 import promiseTick from '../lib/promise-tick';
 import lolex from 'lolex';
-import {skipInBrowser} from '@ciscospark/test-helper-mocha';
+import {wrap} from 'lodash';
 
 describe(`plugin-mercury`, () => {
   describe(`Mercury`, () => {
-    skipInBrowser(describe)(`Events`, () => {
+    describe(`Events`, () => {
       let clock,
         mercury,
         mockWebSocket,
@@ -136,6 +136,7 @@ describe(`plugin-mercury`, () => {
         // This test is here because the buffer states message may arrive before
         // the mercury Promise resolves.
         it(`gets emitted`, (done) => {
+          const spy = mockWebSocket.send;
           const bufferStateSpy = sinon.spy();
           const onlineSpy = sinon.spy();
 
@@ -146,7 +147,8 @@ describe(`plugin-mercury`, () => {
             process.nextTick(() => {
               assert.isTrue(mercury.connecting, `Mercury is still connecting`);
               assert.isFalse(mercury.connected, `Mercury has not yet connected`);
-              assert.notCalled(onlineSpy, `Mercury has not yet fired the online event`);
+              assert.notCalled(onlineSpy);
+              assert.lengthOf(spy.args, 0, `The client has not yet sent the auth message`);
               mockWebSocket.emit(`message`, {
                 data: JSON.stringify({
                   data: {
@@ -154,11 +156,19 @@ describe(`plugin-mercury`, () => {
                   }
                 })
               });
+              assert.lengthOf(spy.args, 0, `The client has not acked the buffer_state message`);
 
               promiseTick(1)
                 .then(() => {
                   assert.calledOnce(bufferStateSpy);
-                  done();
+                  return assert.isFulfilled(mercury.connect())
+                    .then(() => {
+                      // spy.args.length is 3 in node and 5 in browsers; I
+                      // assume it's a timing issue and the browser tests simply
+                      // have more time to send pings.
+                      assert.isAbove(spy.args.length, 2);
+                    })
+                    .then(done);
                 })
                 .catch(done);
 
@@ -166,9 +176,15 @@ describe(`plugin-mercury`, () => {
             return mockWebSocket;
           });
 
-          // eslint-disable-next-line
-          mockWebSocket.send = function noop() {};
+          // Delay send for a tick to ensure the buffer message comes before
+          // auth completes.
+          mockWebSocket.send = wrap(mockWebSocket.send, function(fn, ...args) {
+            process.nextTick(() => {
+              Reflect.apply(fn, this, args);
+            });
+          });
           mercury.connect();
+          assert.lengthOf(spy.args, 0);
         });
       });
 

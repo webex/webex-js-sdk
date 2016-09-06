@@ -97,7 +97,6 @@ const CredentialsBase = SparkPlugin.extend({
   },
 
   @oneFlight
-  @persist(`authorization`)
   @waitForValue(`authorization`)
   authorize(options) {
     /* eslint no-invalid-this: [0] */
@@ -160,7 +159,6 @@ const CredentialsBase = SparkPlugin.extend({
   },
 
   @oneFlight
-  @persist(`clientAuthorization`)
   @waitForValue(`clientAuthorization`)
   getClientCredentialsAuthorization() {
     let promise;
@@ -173,6 +171,12 @@ const CredentialsBase = SparkPlugin.extend({
 
     return promise
       .then(() => this.clientAuthorization.toString());
+  },
+
+  @persist(`authorization`)
+  @persist(`clientAuthorization`)
+  initialize(...args) {
+    return Reflect.apply(SparkPlugin.prototype.initialize, this, args);
   },
 
   /**
@@ -203,7 +207,6 @@ const CredentialsBase = SparkPlugin.extend({
    * @returns {Promise} Resolves when credentials have been refreshed
    */
   @oneFlight
-  @persist(`authorization`)
   refresh(options) {
     /* eslint no-invalid-this: [0] */
     this.logger.info(`credentials: refresh requested`);
@@ -223,7 +226,7 @@ const CredentialsBase = SparkPlugin.extend({
   },
 
   @oneFlight
-  requestAuthorizationCodeGrant: function requestAuthorizationCodeGrant(options) {
+  requestAuthorizationCodeGrant(options) {
     const vars = {
       'oauth.client_id': `CLIENT_ID`,
       'oauth.client_secret': `CLIENT_SECRET`,
@@ -383,7 +386,7 @@ const CredentialsBase = SparkPlugin.extend({
     })}`;
   },
 
-  _buildOAuthUrl: function _buildOAuthUrl(options) {
+  _buildOAuthUrl(options) {
     /* eslint camelcase: [0] */
     const fields = [
       `client_id`,
@@ -491,7 +494,7 @@ const CredentialsBase = SparkPlugin.extend({
       .then(resolveWithResponseBody);
   },
 
-  _handleRefreshFailure: function _handleRefreshFailure(res) {
+  _handleRefreshFailure(res) {
     if (res.error && res.error === 'invalid_request') {
       this.logger.warn('token refresh failed: ', res.errorDescription);
       this.unset('authorization');
@@ -500,13 +503,13 @@ const CredentialsBase = SparkPlugin.extend({
     return Promise.reject(res);
   },
 
-  _pushClientCredentialsAuthorization: function _pushClientCredentialsAuthorization(authorization) {
+  _pushClientCredentialsAuthorization(authorization) {
     this.logger.info('credentials: received client credentials');
 
     this.clientAuthorization = authorization;
   },
 
-  _pushAuthorization: function _pushAuthorization(authorization) {
+  _pushAuthorization(authorization) {
     this.logger.info('credentials: received authorization');
 
     const previousAuthorization = this.previousAuthorization;
@@ -517,7 +520,6 @@ const CredentialsBase = SparkPlugin.extend({
       previousAuthorization.revoke();
     }
   }
-
 });
 
 export default CredentialsBase;

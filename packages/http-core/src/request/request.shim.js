@@ -163,6 +163,19 @@ export default function _request(options) {
    * @private
    * @returns {undefined}
    */
+  function setContentType(params, o) {
+    if (o.body instanceof Blob || o.body instanceof ArrayBuffer) {
+      o.json = params.json = false;
+      params.headers[`content-type`] = params.headers[`content-type`] || detectSync(o.body);
+    }
+  }
+
+  /**
+   * @param {Object} params
+   * @param {Object} o
+   * @private
+   * @returns {undefined}
+   */
   function setQs(params, o) {
     if (o.qs) {
       params.uri += `?${qs.stringify(o.qs)}`;

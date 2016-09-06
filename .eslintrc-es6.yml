@@ -45,11 +45,10 @@ rules:
       before: true
   constructor-super:
     - 2
+  # There seems to be a bug in generator-star-spacing; it should be
+  # [2, {"before": false, "after": true}]
   generator-star-spacing:
-    - 2
-    -
-      before: false
-      after: true
+    - 0
   no-class-assign:
     - 2
   no-confusing-arrow:

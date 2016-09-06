@@ -33,7 +33,7 @@ export function proxyEvents(emitter, proxy) {
  * @returns {undefined}
  */
 export function transferEvents(events, source, drain) {
-  events = isArray(events) || [events];
+  events = isArray(events) ? events : [events];
   events.forEach((event) => {
     source.on(event, (...args) => emit(drain, event, ...args));
   });

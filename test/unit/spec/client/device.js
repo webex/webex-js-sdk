@@ -11,6 +11,8 @@ var Device = require('../../../../src/client/device');
 var deviceFixture = require('../../fixtures/device');
 var MockSpark = require('../../lib/mock-spark');
 var sinon = require('sinon');
+var cloneDeep = require('lodash.clonedeep');
+var lolex = require('lolex');
 
 chai.use(chaiAsPromised);
 var assert = chai.assert;
@@ -19,6 +21,7 @@ describe('Client', function() {
   describe('Device', function() {
     var spark;
     var device;
+    var clock;
 
     beforeEach(function() {
       spark = new MockSpark({
@@ -33,6 +36,12 @@ describe('Client', function() {
       };
       spark.device.set(deviceFixture);
       device = spark.device;
+
+      clock = lolex.install();
+    });
+
+    afterEach(function() {
+      clock.uninstall();
     });
 
     describe('mediaClusters', function() {
@@ -73,6 +82,52 @@ describe('Client', function() {
           done();
         });
         delete deviceFixture.mediaClusters;
+      });
+    });
+
+    describe('policy', function() {
+      it('handles policy variables missing', function() {
+        assert.isUndefined(spark.device.intranetInactivityDuration);
+        assert.isUndefined(spark.device.intranetInactivityCheckUrl);
+        assert.isNull(spark.device.policy);
+      });
+      it('handles intranetInactivityDuration missing', function() {
+        var cloneDevice = cloneDeep(deviceFixture);
+        cloneDevice.intranetInactivityCheckUrl = 'http://ping.example.com/ping';
+        spark.device.set(cloneDevice);
+        assert.isUndefined(spark.device.intranetInactivityDuration);
+        assert.isNull(spark.device.policy);
+        assert.equal(spark.device.intranetInactivityCheckUrl,
+          cloneDevice.intranetInactivityCheckUrl);
+      });
+      it('handles intranetInactivityCheckUrl missing', function() {
+        var cloneDevice = cloneDeep(deviceFixture);
+        cloneDevice.intranetInactivityDuration = 2;
+        spark.device.set(cloneDevice);
+        assert.isUndefined(spark.device.intranetInactivityCheckUrl);
+        assert.isNull(spark.device.policy);
+        assert.equal(spark.device.intranetInactivityDuration,
+          cloneDevice.intranetInactivityDuration);
+      });
+      it('handles logout after inactivity', function() {
+        var convoOnSpy = sinon.spy(spark.conversation, 'on');
+        var logoutSpy = sinon.spy(spark, 'logout');
+        var logoutNotifySpy = sinon.spy(spark, 'trigger');
+
+        var cloneDevice = cloneDeep(deviceFixture);
+        cloneDevice.intranetInactivityDuration = 2;
+        cloneDevice.intranetInactivityCheckUrl = 'http://ping.example.com/ping';
+        spark.device.set(cloneDevice);
+
+        return spark.device._initPolicy()
+          .then(function() {
+            assert.called(convoOnSpy, 'monitoring activity in order to reset logout timer');
+            clock.tick(1*1000);
+            assert.notCalled(logoutSpy, 'timer has not expired');
+            clock.tick(3*1000);
+            assert.called(logoutSpy, 'logging out since time has run out');
+            assert.called(logoutNotifySpy, 'notified upstream that logout occurred');
+          });
       });
     });
 

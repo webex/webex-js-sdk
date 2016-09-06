@@ -156,6 +156,7 @@ describe(`plugin-wdm`, () => {
           sinon.spy(device, `refresh`);
 
           device.url = `http://example.com/device/1`;
+          assert.isTrue(device.registered);
 
           assert.notCalled(device.refresh);
           return device.register()
@@ -170,6 +171,7 @@ describe(`plugin-wdm`, () => {
           sinon.spy(device, `register`);
 
           device.unset(`url`);
+
 
           assert.notCalled(device.register);
           return device.refresh()

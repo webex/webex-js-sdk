@@ -31,6 +31,7 @@ module.exports = function(grunt) {
         }]
       }
     },
+
     clean: {
       coverage: {
         src: [
@@ -43,16 +44,18 @@ module.exports = function(grunt) {
         ]
       }
     },
+
     concurrent: {
       test: {
         tasks: (function() {
-          if (process.env.SKIP_BROWSER_TESTS) {
+          if (process.env.UNIT_ONLY) {
             return ['test:node'];
           }
 
           return [
-            process.env.CIRCLECI ? 'test:automation-circle' : 'test:automation',
+            'test:automation',
             'test:browser',
+            'test:doc',
             'test:node'
           ];
         }()),
@@ -61,6 +64,7 @@ module.exports = function(grunt) {
         }
       }
     },
+
     copy: {
       coverage: {
         // There ought to be a better way to get karma coverage to spit out
@@ -92,6 +96,7 @@ module.exports = function(grunt) {
         }
       }
     },
+
     'dependency-check': {
       files: '.',
       options: {
@@ -99,6 +104,7 @@ module.exports = function(grunt) {
         package: './packages/<%= package %>'
       }
     },
+
     documentation: {
       options: {
         destination: './packages/<%= package %>',
@@ -131,6 +137,7 @@ module.exports = function(grunt) {
         }
       }
     },
+
     env: {
       default: {
         src: '.env.default.json'
@@ -145,6 +152,7 @@ module.exports = function(grunt) {
         NODE_ENV: 'test'
       }
     },
+
     eslint: {
       options: {
         format: process.env.XUNIT ? 'junit' : 'stylish',
@@ -157,6 +165,7 @@ module.exports = function(grunt) {
         './packages/<%= package %>/*.js'
       ]
     },
+
     express: {
       test: {
         options: {
@@ -164,6 +173,13 @@ module.exports = function(grunt) {
         }
       }
     },
+
+    fileExists: {
+      karmaxml: [
+        './reports/junit/*/karma-<%= package %>.xml'
+      ]
+    },
+
     instrument2: {
       src: {
         files: [{
@@ -177,6 +193,7 @@ module.exports = function(grunt) {
         instrumenter: isparta.Instrumenter
       }
     },
+
     karma: {
       test: {
         options: {
@@ -191,6 +208,7 @@ module.exports = function(grunt) {
         }
       }
     },
+
     makeReport2: {
       test: {
         files: [{
@@ -209,12 +227,14 @@ module.exports = function(grunt) {
         }
       }
     },
+
     mochaTest: {
       options: {
         reporter: process.env.XUNIT ? path.join(__dirname, './packages/xunit-with-logs') : 'spec',
         // TODO figure out how to detect retried tests
         retries: (process.env.JENKINS || process.env.CI) ? 1 : 0,
-        timeout: 30000
+        timeout: 30000,
+        noFail: Boolean(process.env.XUNIT)
       },
       automation: {
         options: {
@@ -227,7 +247,7 @@ module.exports = function(grunt) {
           './packages/<%= package %>/test/automation/spec/**/*.js'
         ]
       },
-      integration: {
+      node: {
         options: {
           require: makeMochaRequires(['babel-register']),
           reporterOptions: {
@@ -235,6 +255,10 @@ module.exports = function(grunt) {
           }
         },
         src: (function() {
+          if ( process.env.UNIT_ONLY) {
+            return ['./packages/<%= package %>/test/unit/spec/**/*.js'];
+          }
+
           var src = [
             './packages/<%= package %>/test/*/spec/**/*.js',
             '!./packages/<%= package %>/test/automation/spec/**/*.js',
@@ -254,12 +278,15 @@ module.exports = function(grunt) {
           }
         },
         src: [
-          './packages/<%= package %>/dist/**/*.js'
+          './packages/<%= package %>/dist/**/*.js',
+          // Exclude browser implementations; this is only running in node
+          '!./packages/<%= package %>/dist/**/*.shim.js'
         ]
       }
     },
+
     package: process.env.PACKAGE,
-    xunitDir: process.env.XUNIT_DIR || './reports',
+    xunitDir: process.env.XUNIT_DIR || './reports/junit',
     shell: {
       'move-babelrc': {
         command: 'mv .babelrc babelrc'
@@ -268,6 +295,7 @@ module.exports = function(grunt) {
         command: 'mv babelrc .babelrc'
       }
     },
+
     storeCoverage2: {
       test: {
         options: {
@@ -298,39 +326,36 @@ module.exports = function(grunt) {
   ]);
 
   registerTask('test:automation', [
-    'continue:on',
-    !!process.env.SC_TUNNEL_IDENTIFIER || 'selenium_start',
+    !process.env.SC_TUNNEL_IDENTIFIER && !process.env.XUNIT && 'continue:on',
+    !process.env.SC_TUNNEL_IDENTIFIER && 'selenium_start',
     'mochaTest:automation',
-    !!process.env.SC_TUNNEL_IDENTIFIER || 'selenium_stop',
-    'continue:off',
-    'continue:fail-on-warning'
-  ]);
-
-  registerTask('test:automation-circle', [
-    'mochaTest:automation'
+    !process.env.SC_TUNNEL_IDENTIFIER && 'selenium_stop',
+    !process.env.SC_TUNNEL_IDENTIFIER && !process.env.XUNIT && 'continue:off',
+    !process.env.SC_TUNNEL_IDENTIFIER && !process.env.XUNIT && 'continue:fail-on-warning'
   ]);
 
   registerTask('test:browser', [
     p(process.env.XUNIT) && 'continue:on',
     'karma',
-    p(process.env.XUNIT) && 'continue:off'
+    p(process.env.XUNIT) && 'continue:off',
+    p(process.env.XUNIT) && 'fileExists:karmaxml'
   ]);
 
   registerTask('test:node', [
     p(process.env.COVERAGE) && 'instrument2',
-    p(process.env.XUNIT) && 'continue:on',
-    'mochaTest:integration',
-    p(process.env.XUNIT) && 'continue:off',
+    'mochaTest:node',
     p(process.env.COVERAGE) && 'storeCoverage2'
+  ]);
+
+  registerTask('test:doc', [
+    'mochaTest:doc'
   ]);
 
   registerTask('test', [
     'env',
     'clean:coverage',
     'express',
-    p(process.env.CIRCLECI) || 'continue:on',
     'concurrent:test',
-    p(process.env.CIRCLECI) || 'continue:off',
     p(process.env.COVERAGE) && 'copy:coverage',
     p(process.env.COVERAGE) && 'makeReport2'
   ]);
@@ -388,7 +413,7 @@ module.exports = function(grunt) {
       ]);
     }
 
-    if (parseInt(process.versions.node.split('.')[0]) < 5) {
+    if (parseInt(process.versions.node.split('.')[0]) <= 5) {
       return requires.concat([
         'clarify',
         function() {

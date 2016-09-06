@@ -5,28 +5,10 @@
 
 export default {
   metrics: {
-    /**
-     * Time to wait before attempting to resubmit metrics
-     * @type {Number}
-     */
-    retryDelay: 30000,
-
-    /**
-     * Debounce wait before sending a metric
-     * @type {Number}
-     */
-    batchWait: 500,
-
-    /**
-     * Maximum queue size before sending a metric
-     * @type {Number}
-     */
-    batchMaxCalls: 100,
-
-    /**
-     * Debounce max wait before sending a metric
-     * @type {Number}
-     */
-    batchMaxWait: 1500
+    appType: typeof window === `undefined` ? `nodejs` : `browser`,
+    batcherWait: 500,
+    batcherMaxCalls: 50,
+    batcherMaxWait: 1500,
+    batcherRetryPlateau: 32000
   }
 };

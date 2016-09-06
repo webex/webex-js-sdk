@@ -13,7 +13,7 @@ function makeSpark(options) {
   var requestPromise = Promise.resolve({statusCode: 200, body: {}});
   var uploadPromise = Promise.resolve({});
 
-  requestPromise.on = uploadPromise.on = function() {
+  requestPromise.on = uploadPromise.on = function on() {
     return requestPromise;
   };
 
@@ -23,16 +23,16 @@ function makeSpark(options) {
       once: sinon.spy(),
       listenTo: sinon.spy(),
       listenToAndRun: sinon.spy(),
-      clear(namespace) {
+      clear: function clear(namespace) {
         this.data = this.data || {};
         this.data[namespace] = {};
       },
-      del(namespace, key) {
+      del: function del(namespace, key) {
         this.data = this.data || {};
         this.data[namespace] = this.data[namespace] || {};
         delete this.data[namespace][key];
       },
-      get(namespace, key) {
+      get: function get(namespace, key) {
         this.data = this.data || {};
         this.data[namespace] = this.data[namespace] || {};
         var ret = this[key];
@@ -41,7 +41,7 @@ function makeSpark(options) {
         }
         return Promise.reject(new Error('MockNotFoundError'));
       },
-      put(namespace, key, value) {
+      put: function put(namespace, key, value) {
         this.data = this.data || {};
         this.data[namespace] = this.data[namespace] || {};
         this.data[namespace][key] = value;
@@ -56,11 +56,22 @@ function makeSpark(options) {
     extraProperies: 'allow',
     request: request,
     upload: upload,
-    refresh: function() {
+    refresh: function refresh() {
       return Promise.resolve();
     },
     config: {
-      credentials: {},
+      credentials: {
+        oauth: {
+          // eslint-disable-next-line camelcase
+          client_id: 'fake',
+          // eslint-disable-next-line camelcase
+          client_secret: 'fake',
+          // eslint-disable-next-line camelcase
+          redirect_uri: 'http://example.com',
+          // eslint-disable-next-line camelcase
+          scope: 'scope:one'
+        }
+      },
       conversation: {
         allowedTags: {
           'spark-mention': ['data-object-type', 'data-object-id', 'data-object-url']
@@ -74,6 +85,10 @@ function makeSpark(options) {
       metrics: {},
       support: {},
       user: {}
+    },
+    initialize: function initialize() {
+      this.boundedStorage = makeMockStorage();
+      this.unboundedStorage = makeMockStorage();
     }
   }));
 
