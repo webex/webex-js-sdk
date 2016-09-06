@@ -13,7 +13,19 @@ function inBrowser() {
   return !inNode();
 }
 
+function noop() {
+  // noop
+}
+
 module.exports = {
+  browserOnly: function browserOnly(mochaMethod) {
+    return inBrowser() ? mochaMethod : noop;
+  },
+
+  nodeOnly: function nodeOnly(mochaMethod) {
+    return inNode() ? mochaMethod : noop;
+  },
+
   /**
    * Wrap the desired mochaMethod with `flaky` to indicate it's a flaky test and
    * exclude it from the cloudapps pipeline

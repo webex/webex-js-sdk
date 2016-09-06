@@ -1,0 +1,40 @@
+{
+  "name": "@ciscospark/plugin-conversation",
+  "version": "0.7.0-alpha.03ed609c",
+  "description": "",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "author": "Ian W. Remmel <iremmel@cisco.com>",
+  "license": "(Apache-2.0)",
+  "dependencies": {
+    "@ciscospark/common": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/helper-html": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/http-core": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/plugin-encryption": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/plugin-user": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/spark-core": "^0.7.0-alpha.03ed609c",
+    "babel-runtime": "^6.3.19",
+    "gm": "^1.22.0",
+    "lodash": "^4.5.1",
+    "uuid": "^2.0.1"
+  },
+  "devDependencies": {
+    "@ciscospark/test-helper-chai": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/test-helper-file": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/test-helper-make-local-url": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/test-helper-mocha": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/test-helper-sinon": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/test-helper-test-users": "^0.7.0-alpha.03ed609c",
+    "@ciscospark/xunit-with-logs": "^0.7.0-alpha.03ed609c",
+    "babel-eslint": "^6.0.0-beta.5",
+    "babel-plugin-lodash": "^2.1.0",
+    "babel-polyfill": "^6.3.14",
+    "babel-register": "^6.4.3",
+    "eslint": "^2.4.0",
+    "eslint-plugin-mocha-only": "0.0.3"
+  },
+  "browser": {
+    "./src/process-image.js": "./src/process-image.browser.js",
+    "./dist/process-image.js": "./dist/process-image.browser.js"
+  }
+}

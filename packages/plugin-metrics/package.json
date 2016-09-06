@@ -24,7 +24,7 @@
     "@ciscospark/test-helper-test-users": "^0.7.0-alpha",
     "@ciscospark/xunit-with-logs": "^0.7.0-alpha",
     "babel-eslint": "^6.0.0-beta.5",
-    "babel-plugin-lodash": "2.1.0",
+    "babel-plugin-lodash": "^2.1.0",
     "babel-polyfill": "^6.3.14",
     "babel-register": "^6.4.3",
     "eslint": "^3.3.1",

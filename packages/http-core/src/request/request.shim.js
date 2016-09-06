@@ -150,6 +150,13 @@ export default function _request(options) {
     }
   }
 
+  function setContentType(params, o) {
+    if (o.body instanceof Blob || o.body instanceof ArrayBuffer) {
+      o.json = params.json = false;
+      params.headers[`content-type`] = params.headers[`content-type`] || detectSync(o.body);
+    }
+  }
+
   /**
    * @param {Object} params
    * @param {Object} o

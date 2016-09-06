@@ -4,8 +4,6 @@
  * @private
  */
 
-import '@ciscospark/plugin-wdm';
-
 import {registerPlugin} from '@ciscospark/spark-core';
 import Metrics from './metrics';
 import config from './config';
