@@ -310,7 +310,6 @@ var TeamService = SparkBase.extend(
    * Move an existing group conversation into a team.
    * @param {TeamObject} team
    * @param {ConversationObject} conversation
-   * @param {Object} options
    * @returns {Promise} Resolves with the add activity
    */
   addConversation: function addConversation(team, conversation) {

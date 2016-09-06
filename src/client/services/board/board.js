@@ -111,12 +111,12 @@ var BoardService = SparkBase.extend({
       return encryptionPromise
         .then(function createEncryptedContent(res) {
           return {
-            device: 'web',
+            device: this.spark.device.deviceType,
             type: contentType,
             encryptionKeyUrl: encryptionKeyUrl,
             payload: res.encryptedData
           };
-        });
+        }.bind(this));
     }, this));
   },
 

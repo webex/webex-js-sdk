@@ -31,6 +31,9 @@ describe('Services', function() {
         children: {
           board: Board
         },
+        device: {
+          deviceType: 'FAKE_DEVICE'
+        },
         encryption: {
           decryptText: sinon.stub().returns(Promise.resolve(decryptedText)),
           encryptText: sinon.stub().returns(Promise.resolve(encryptedData)),
@@ -199,6 +202,17 @@ describe('Services', function() {
           .then(function() {
             assert.calledWith(spark.encryption.encryptScr, {loc: fakeURL}, fakeURL);
             assert.calledWith(spark.encryption.encryptText, 'FileName', fakeURL);
+          });
+      });
+
+      it('sets the device to config deviceType', function() {
+        var curveContents = [{
+          type: 'curve'
+        }];
+
+        return spark.board.encryptContents(fakeURL, curveContents)
+          .then(function(res) {
+            assert.equal(res[0].device, 'FAKE_DEVICE');
           });
       });
     });
