@@ -61,6 +61,7 @@ describe('Services', function() {
             decryptScr: sinon.stub().returns(Promise.resolve('decryptedFoo'))
           },
           device: {
+            deviceType: 'FAKE_DEVICE',
             getServiceUrl: function() {
               return boardServiceUrl;
             }
@@ -133,12 +134,12 @@ describe('Services', function() {
                 method: 'POST',
                 uri: boardServiceUrl + '/channels/' + boardId + '/contents',
                 body: [{
-                  device: 'web',
+                  device: 'FAKE_DEVICE',
                   type: 'STRING',
                   encryptionKeyUrl: 'fakeURL',
                   payload: 'encryptedData'
                 }, {
-                  device: 'web',
+                  device: 'FAKE_DEVICE',
                   type: 'STRING',
                   encryptionKeyUrl: 'fakeURL',
                   payload: 'encryptedData'
