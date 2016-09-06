@@ -7,6 +7,9 @@
 import {SparkHttpError} from '@ciscospark/spark-core';
 import {Interceptor} from '@ciscospark/http-core';
 
+/**
+ * Encrypts any kmsMessage and decrypts kmsMessages or encrypted errors
+ */
 export default class EncryptionInterceptor extends Interceptor {
   /**
    * @returns {EncryptionInterceptor}
@@ -15,6 +18,11 @@ export default class EncryptionInterceptor extends Interceptor {
     return new EncryptionInterceptor({spark: this});
   }
 
+  /**
+   * @see Interceptor#onRequest
+   * @param {Object} options
+   * @returns {Promise<Object>}
+   */
   onRequest(options) {
     if (options.body && options.body.kmsMessage) {
       return this.spark.encryption.kms.prepareRequest(options.body.kmsMessage)
@@ -27,6 +35,12 @@ export default class EncryptionInterceptor extends Interceptor {
     return options;
   }
 
+  /**
+   * @see Interceptor#onResponse
+   * @param {Object} options
+   * @param {Object} response
+   * @returns {Promise<Object>}
+   */
   onResponse(options, response) {
     if (response.body && response.body.kmsMessage) {
       return this.spark.encryption.kms.decryptKmsMessage(response.body.kmsMessage)
@@ -39,6 +53,12 @@ export default class EncryptionInterceptor extends Interceptor {
     return response;
   }
 
+  /**
+   * @see Interceptor#onResponseError
+   * @param {Object} options
+   * @param {Object} reason
+   * @returns {Promise<Object>}
+   */
   onResponseError(options, reason) {
     if (reason.body && reason.body.errorCode === 1900000) {
       const promises = reason.body.errors.map((error) => this.spark.encryption.kms.decryptKmsMessage(error.description)

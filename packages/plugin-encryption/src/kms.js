@@ -4,8 +4,6 @@
  * @private
  */
 
-/* eslint require-jsdoc: [0] */
-
 import {SparkPlugin} from '@ciscospark/spark-core';
 import {Context, Request, Response} from 'node-kms';
 import KMSBatcher, {TIMEOUT_SYMBOL} from './kms-batcher';
@@ -16,6 +14,9 @@ const contexts = new WeakMap();
 const kmsDetails = new WeakMap();
 const partialContexts = new WeakMap();
 
+/**
+ * @class
+ */
 const KMS = SparkPlugin.extend({
   namespace: `Encryption`,
 
@@ -23,6 +24,15 @@ const KMS = SparkPlugin.extend({
     batcher: KMSBatcher
   },
 
+  /**
+   * Binds a key to a resource
+   * @param {Object} options
+   * @param {KMSResourceObject} options.kro
+   * @param {string} options.kroUri
+   * @param {Key} options.key
+   * @param {string} options.keyUri
+   * @returns {Promise<Key>}
+   */
   bindKey({kro, kroUri, key, keyUri}) {
     kroUri = kroUri || kro.uri;
     keyUri = keyUri || key.uri;
@@ -48,6 +58,15 @@ const KMS = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Creates a new KMS Resource
+   * @param {Object} options
+   * @param {Array<string>} options.userIds
+   * @param {Array<string>} options.keyUris
+   * @param {Key} options.key
+   * @param {Array<Keys>} options.keys
+   * @returns {Promise<KMSResourceObject>}
+   */
   createResource({userIds, keyUris, key, keys}) {
     keyUris = keyUris || [];
     if (keys) {
@@ -79,6 +98,12 @@ const KMS = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Requests `count` unbound keys from the kms
+   * @param {Object} options
+   * @param {Number} options.count
+   * @returns {Array<Key>}
+   */
   createUnboundKeys({count}) {
     this.logger.info(`kms: request ${count} unbound keys`);
 
@@ -97,6 +122,12 @@ const KMS = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Fetches the specified key from the kms
+   * @param {Object} options
+   * @param {string} options.uri
+   * @returns {Promise<Key>}
+   */
   fetchKey({uri}) {
     if (!uri) {
       return Promise.reject(new Error(`\`options.uri\` is required`));
@@ -114,6 +145,10 @@ const KMS = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Pings the kms. Mostly for testing
+   * @returns {Promise}
+   */
   ping() {
     return this.request({
       method: `update`,
@@ -121,6 +156,11 @@ const KMS = SparkPlugin.extend({
     });
   },
 
+  /**
+   * Ensures a key obect is Key instance
+   * @param {Object} key
+   * @returns {Promise<Key>}
+   */
   asKey(key) {
     return jose.JWK.asKey(key.jwk)
       .then((jwk) => {
@@ -129,6 +169,11 @@ const KMS = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Adds appropriate metadata to the KMS request
+   * @param {Object} payload
+   * @returns {Promise<KMS.Request>}
+   */
   prepareRequest(payload) {
     const isECDHRequest = payload.method === `create` && payload.uri.includes(`/ecdhe`);
     return Promise.resolve(isECDHRequest ? partialContexts.get(this) : this._getContext())
@@ -145,6 +190,11 @@ const KMS = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Accepts a kms message event, decrypts it, and passes it to the batcher
+   * @param {Object} event
+   * @returns {Promise<Object>}
+   */
   processKmsMessageEvent(event) {
     this.logger.info(`kms: received kms message`);
     return Promise.all(event.encryption.kmsMessages.map((kmsMessage, index) => this._isECDHEMessage(kmsMessage)
@@ -152,8 +202,11 @@ const KMS = SparkPlugin.extend({
         this.logger.info(`kms: received ${isECDHMessage ? `ecdhe` : `normal`} message`);
         const res = new Response(kmsMessage);
         return Promise.resolve(isECDHMessage ? partialContexts.get(this) : contexts.get(this))
+          // eslint-disable-next-line max-nested-callbacks
           .then((context) => res.unwrap(context))
+          // eslint-disable-next-line max-nested-callbacks
           .then(() => {event.encryption.kmsMessages[index] = res;})
+          // eslint-disable-next-line max-nested-callbacks
           .then(() => res);
       })
     ))
@@ -165,6 +218,11 @@ const KMS = SparkPlugin.extend({
       .then(() => event);
   },
 
+  /**
+   * Decrypts a kms message
+   * @param {Object} kmsMessage
+   * @returns {Promise<Object>}
+   */
   decryptKmsMessage(kmsMessage) {
     const res = new Response(kmsMessage);
     return contexts.get(this)
@@ -172,6 +230,11 @@ const KMS = SparkPlugin.extend({
       .then(() => res.body);
   },
 
+  /**
+   * Determines if the kms message is an ecdhe message or a normal message
+   * @param {Object} kmsMessage
+   * @returns {Promise<boolean>}
+   */
   _isECDHEMessage(kmsMessage) {
     return this._getKMSStaticPubKey()
       .then((kmsStaticPubKey) => {
@@ -187,6 +250,12 @@ const KMS = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Sends a request to the kms
+   * @param {Object} payload
+   * @param {Number} timeout (internal)
+   * @returns {Promise<Object>}
+   */
   request(payload, timeout) {
     timeout = timeout || this.config.kmsInitialTimeout;
 
@@ -227,6 +296,10 @@ const KMS = SparkPlugin.extend({
       });
   },
 
+  /**
+   * @private
+   * @returns {Promise<string>}
+   */
   _getAuthorization() {
     // Remove the `Bearer` prefix from the token; we'll improve this when we add
     // token downscoping.
@@ -234,6 +307,10 @@ const KMS = SparkPlugin.extend({
       .then((authorization) => authorization.replace(/[Bb]earer\s+/, ``));
   },
 
+  /**
+   * @private
+   * @returns {Promise<Object>}
+   */
   _getContext() {
     let promise = contexts.get(this);
     if (!promise) {
@@ -255,12 +332,20 @@ const KMS = SparkPlugin.extend({
       });
   },
 
+  /**
+   * @private
+   * @returns {Promise<Object>}
+   */
   _getKMSCluster() {
     this.logger.info(`kms: retrieving KMS cluster`);
     return this._getKMSDetails()
       .then(({kmsCluster}) => kmsCluster);
   },
 
+  /**
+   * @private
+   * @returns {Promise<Object>}
+   */
   _getKMSDetails() {
     let details = kmsDetails.get(this);
     if (!details) {
@@ -273,7 +358,6 @@ const KMS = SparkPlugin.extend({
           this.logger.info(`kms: fetched KMS details`);
           const body = res.body;
           body.rsaPublicKey = JSON.parse(body.rsaPublicKey);
-          // TODO how are we handling detail expiration?
           return body;
         })
         .catch((reason) => {
@@ -287,12 +371,20 @@ const KMS = SparkPlugin.extend({
     return details;
   },
 
+  /**
+   * @private
+   * @returns {Promise<Object>}
+   */
   _getKMSStaticPubKey() {
     this.logger.info(`kms: retrieving KMS static public key`);
     return this._getKMSDetails()
       .then(({rsaPublicKey}) => rsaPublicKey);
   },
 
+  /**
+   * @private
+   * @returns {Promise<Object>}
+   */
   _prepareContext() {
     this.logger.info(`kms: creating context`);
     const context = new Context();

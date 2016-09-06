@@ -8,13 +8,19 @@ import {tap} from '@ciscospark/common';
 import {Batcher} from '@ciscospark/spark-core';
 import KmsError from './kms-error';
 
-// export const TIMEOUT_SYMBOL = `TIMEOUT_SYMBOL`;
 export const TIMEOUT_SYMBOL = Symbol(`TIMEOUT_SYMBOL`);
 
-
+/**
+ * @class
+ */
 const KmsBatcher = Batcher.extend({
   namespace: `Encryption`,
 
+  /**
+   * Accepts a kmsMessage event and passes its contents to acceptItem
+   * @param {Object} event
+   * @returns {Promise}
+   */
   processKmsMessageEvent(event) {
     this.logger.info(`kms-batcher: received kms message`);
     return Promise.all(event.encryption.kmsMessages.map((kmsMessage) => new Promise((resolve) => {
@@ -26,6 +32,11 @@ const KmsBatcher = Batcher.extend({
     })));
   },
 
+  /**
+   * Attaches a timeout to the given KMS message
+   * @param {Object} item
+   * @returns {Promise<Object>}
+   */
   prepareItem(item) {
     return this.getDeferredForRequest(item)
       .then((defer) => {
@@ -50,6 +61,11 @@ const KmsBatcher = Batcher.extend({
       });
   },
 
+  /**
+   * Attaches the final bits of cluster info to the payload
+   * @param {Array} queue
+   * @returns {Promise<Array>}
+   */
   prepareRequest(queue) {
     return this.spark.encryption.kms._getKMSCluster()
       .then((cluster) => ({
@@ -58,6 +74,10 @@ const KmsBatcher = Batcher.extend({
       }));
   },
 
+  /**
+   * @param {Object} payload
+   * @returns {Promise<HttpResponseObject>}
+   */
   submitHttpRequest(payload) {
     this.logger.info(`kms: batched-request-length`, payload.kmsMessages.length);
     return this.spark.request({
@@ -68,14 +88,26 @@ const KmsBatcher = Batcher.extend({
     });
   },
 
+  /**
+   * Does nothing; the http response doesn't carry our response data
+   * @returns {Promise}
+   */
   handleHttpSuccess() {
     return Promise.resolve();
   },
 
+  /**
+   * @param {Object} item
+   * @returns {Promise<boolean>}
+   */
   didItemFail(item) {
     return Promise.resolve(item.status >= 400);
   },
 
+  /**
+   * @param {Object} item
+   * @returns {Promise}
+   */
   handleItemSuccess(item) {
     return this.getDeferredForResponse(item)
       .then((defer) => {
@@ -83,6 +115,10 @@ const KmsBatcher = Batcher.extend({
       });
   },
 
+  /**
+   * @param {Object} item
+   * @returns {Promise}
+   */
   handleItemFailure(item) {
     return this.getDeferredForResponse(item)
       .then((defer) => {
@@ -90,10 +126,18 @@ const KmsBatcher = Batcher.extend({
       });
   },
 
+  /**
+   * @param {Object} item
+   * @returns {Promise}
+   */
   fingerprintRequest(item) {
     return Promise.resolve(item.requestId);
   },
 
+  /**
+   * @param {Object} item
+   * @returns {Promise}
+   */
   fingerprintResponse(item) {
     return Promise.resolve(item.requestId || item.body.requestId);
   }

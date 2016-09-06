@@ -108,6 +108,7 @@ const Encryption = SparkPlugin.extend({
       .then((buffer) => SCR.create()
         .then((scr) => scr.encrypt(buffer)
           .then(ensureBuffer)
+          // eslint-disable-next-line max-nested-callbacks
           .then((cdata) => ({scr, cdata}))));
   },
 
