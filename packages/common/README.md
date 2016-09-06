@@ -75,6 +75,17 @@ Returns **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Ref
 
 # check-required
 
+!
+
+Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+**Parameters**
+
+-   `keys`  
+-   `object`  
+
+# check-required
+
 Check object for the specified keys
 
 **Parameters**
@@ -87,7 +98,23 @@ Check object for the specified keys
 
 Returns **[undefined](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined)** 
 
-# check-required
+# defer
+
+Creates a new `Defer`red object,
+
+Returns **Defer** 
+
+# defer
+
+!
+
+Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+# resolve
+
+# reject
+
+# make-state-datatype
 
 !
 
@@ -95,24 +122,8 @@ Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
 
 **Parameters**
 
--   `keys`  
--   `object`  
-
-# defer
-
-!
-
-Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
-
-# defer
-
-Creates a new `Defer`red object,
-
-Returns **Defer** 
-
-# resolve
-
-# reject
+-   `Constructor`  
+-   `name`  
 
 # make-state-datatype
 
@@ -125,17 +136,6 @@ ampersand child
 -   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** 
 
 Returns **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
-
-# make-state-datatype
-
-!
-
-Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
-
-**Parameters**
-
--   `Constructor`  
--   `name`  
 
 # test
 
@@ -289,6 +289,16 @@ Same as this.uuid but allows for surrounding characters
 
 # resolve-with
 
+!
+
+Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+**Parameters**
+
+-   `object`  
+
+# resolve-with
+
 Sugar method for returning the desired object at the end of a promise chain
 
 **Parameters**
@@ -312,16 +322,6 @@ Promise
 ```
 
 Returns **[function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
-
-# resolve-with
-
-!
-
-Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
-
-**Parameters**
-
--   `object`  
 
 # retry
 
