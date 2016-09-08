@@ -8,7 +8,7 @@
 // the original request eventually completed, there'll be an error indicating
 // the key can't be bound (because it already has been). This could be mitigated
 // by using Promise.race to resolve replays (as more requests get enqueue for a
-// specific action, accept whichever oen completes first).
+// specific action, accept whichever one completes first).
 
 import {registerPlugin} from '@ciscospark/spark-core';
 import Encryption from './encryption';
