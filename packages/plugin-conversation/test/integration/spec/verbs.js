@@ -5,7 +5,7 @@
 
 import '../..';
 
-import {patterns} from '@ciscospark/common';
+import {Defer, patterns} from '@ciscospark/common';
 import CiscoSpark from '@ciscospark/spark-core';
 import makeLocalUrl from '@ciscospark/test-helper-make-local-url';
 import fh from '@ciscospark/test-helper-file';
@@ -325,28 +325,49 @@ describe(`Plugin : Conversation`, function() {
         ])));
 
       describe(`when it shares a transcodable file`, () => {
-        it(`mercury receives an update`, () => {
-          const waitForUpdate = new Promise((resolve) => {
-            run();
-            function run() {
-              spark.mercury.on(`event:conversation.activity`, (event) => {
-                if (event.data.activity.verb === `update`) {
-                  resolve(event);
-                }
-                else {
-                  run();
-                }
-              });
-            }
-          });
+        let activities;
+        let blockUntilTranscode;
+        let clientTempId;
+        let objectUrl;
 
-          return spark.conversation.share(conversation, {files: [samplePowerpointTwoPagePpt]})
-            .then((activity) => waitForUpdate
-              .then((event) => {
-                assert.equal(event.data.activity.object.url, activity.object.url);
-                assert.lengthOf(event.data.activity.object.files.items[0].transcodedCollection.items[0].files.items, 3);
-              }));
+        beforeEach(() => {
+          clientTempId = uuid.v4();
+          activities = [];
+          spark.mercury.on(`event:conversation.activity`, onMessage);
+          blockUntilTranscode = new Defer();
         });
+
+        afterEach(() => {
+          spark.mercury.off(`event:conversation.activity`, onMessage);
+        });
+
+        function onMessage(message) {
+          activities.push(message.data.activity);
+
+          if (message.data.activity.clientTempId === clientTempId) {
+            objectUrl = message.data.activity.object.url;
+          }
+
+          if (objectUrl) {
+            const updateActivity = find(activities, (activity) => {
+              return activity.verb === `update` && activity.object.url === objectUrl;
+            });
+            if (updateActivity) {
+              blockUntilTranscode.resolve(updateActivity);
+            }
+          }
+        }
+
+        it(`mercury receives an update`, () => spark.conversation.share(conversation, {files: [samplePowerpointTwoPagePpt]}, {clientTempId})
+          .then((activity) => {
+            assert.equal(activity.clientTempId, clientTempId);
+            activities.push(activity);
+            return blockUntilTranscode.promise
+              .then((updateActivity) => {
+                assert.equal(updateActivity.object.url, activity.object.url);
+                assert.lengthOf(updateActivity.object.files.items[0].transcodedCollection.items[0].files.items, 3);
+              });
+          }));
       });
     });
 

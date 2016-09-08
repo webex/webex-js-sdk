@@ -249,12 +249,13 @@ const Conversation = SparkPlugin.extend({
     return ShareActivity.create(conversation, null, this.spark);
   },
 
-  share(conversation, object) {
+  share(conversation, object, activity) {
     conversation = this._inferConversationUrl(conversation);
 
-    const activity = ShareActivity.create(conversation, object, this.spark);
+    const share = ShareActivity.create(conversation, object, this.spark);
+    Object.assign(share, activity);
 
-    return this.prepare(activity, {
+    return this.prepare(share, {
       target: this.prepareConversation(conversation)
     })
       .then((a) => this.submit(a));

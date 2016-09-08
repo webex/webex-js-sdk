@@ -24,6 +24,8 @@ const ShareActivity = SparkPlugin.extend({
 
     content: `string`,
 
+    clientTempId: `string`,
+
     displayName: `string`,
 
     hiddenSpaceUrl: `object`,
@@ -156,7 +158,8 @@ const ShareActivity = SparkPlugin.extend({
         files: {
           items: []
         }
-      }
+      },
+      clientTempId: this.clientTempId
     };
 
     const promises = [];
