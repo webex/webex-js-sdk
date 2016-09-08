@@ -132,7 +132,7 @@ describe(`Encryption`, function() {
           body: cdata
         })
           .then((res) => {
-            scr.loc = makeLocalUrl(res.body.loc);
+            scr.loc = makeLocalUrl(res.body.loc, {full: true});
             return spark.encryption.encryptScr(key, scr);
           });
       })
@@ -150,7 +150,7 @@ describe(`Encryption`, function() {
             body: cdata
           })
             .then((res) => {
-              scr.loc = makeLocalUrl(res.body.loc);
+              scr.loc = makeLocalUrl(res.body.loc, {full: true});
               return spark.encryption.encryptScr(key, scr);
             });
         })
