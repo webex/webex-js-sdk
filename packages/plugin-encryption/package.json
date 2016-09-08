@@ -33,5 +33,9 @@
     "babel-register": "^6.4.3",
     "eslint": "^3.3.1",
     "eslint-plugin-mocha": "^4.4.0"
+  },
+  "browser": {
+    "./src/ensure-buffer.js": "./src/ensure-buffer.browser.js",
+    "./dist/ensure-buffer.js": "./dist/ensure-buffer.browser.js"
   }
 }

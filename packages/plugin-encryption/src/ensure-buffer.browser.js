@@ -22,6 +22,10 @@ export default function ensureBuffer(buffer) {
     return Promise.resolve(buffer.toArrayBuffer());
   }
 
+  if (buffer.buffer) {
+    return Promise.resolve(buffer.buffer);
+  }
+
   return new Promise((resolve, reject) => {
     const fr = new FileReader();
 
