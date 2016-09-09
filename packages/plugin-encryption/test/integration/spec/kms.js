@@ -107,7 +107,6 @@ describe(`Encryption`, function() {
     });
 
     describe(`#ping()`, () => {
-      // it(`sends a ping to the kms`, () => assert.isFulfilled(spark.encryption.kms.ping()));
       it(`sends a ping to the kms`, () => assert.isFulfilled(spark.encryption.kms.ping())
         .then((res) => {
           assert.property(res, `status`);
@@ -120,7 +119,7 @@ describe(`Encryption`, function() {
       let originalKmsTimeout, spy;
       beforeEach(() => {
         originalKmsTimeout = spark.config.encryption.kmsInitialTimeout;
-        spark.config.encryption.kmsInitialTimeout = 100;
+        spark.config.encryption.kmsInitialTimeout = 10;
         spy = sinon.spy(spark.encryption.kms, `prepareRequest`);
       });
 
@@ -136,7 +135,7 @@ describe(`Encryption`, function() {
           // 1 for the initial ping message
           // 1 when the ecdh key gets renegotiated
           // 1 when the pings gets sent again
-          assert.isAbove(spy.callCount, 2, `If this test fails, we've made previously-assumed-to-be-impossible performance gains in cloudaps; please update this test accordingly.`);
+          assert.isAbove(spy.callCount, 2, `If this test fails, we've made previously-assumed-to-be-impossible performance gains in cloudapps; please update this test accordingly.`);
         }));
     });
 
