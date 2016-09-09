@@ -36,11 +36,12 @@ describe('Client', function() {
       spark.logger = console;
 
       socket = new MockSocket();
-      socketOpenStub = sinon.stub(Socket, 'open');
-      socketOpenStub.returns(Promise.resolve(socket));
+      socketOpenStub = socket.open;
+      socketOpenStub.returns(Promise.resolve());
 
       mercury = spark.mercury;
 
+      sinon.stub(mercury, '_getNewSocket').returns(socket);
       sinon.spy(mercury.metrics, 'submitConnectMetric');
       sinon.spy(mercury.metrics, 'submitConnectionFailureMetric');
       sinon.spy(mercury.metrics, 'submitDisconnectMetric');
@@ -80,12 +81,6 @@ describe('Client', function() {
         timestamp: Date.now(),
         trackingId: 'suffix_' + uuid.v4() + '_' + Date.now()
       };
-    });
-
-    afterEach(function() {
-      if (Socket.open.restore) {
-        Socket.open.restore();
-      }
     });
 
     describe('#listen()', function() {
@@ -140,7 +135,7 @@ describe('Client', function() {
           mercury.connect()
         ])
           .then(function() {
-            assert.calledOnce(Socket.open);
+            assert.calledOnce(socket.open);
           });
       });
 
@@ -149,10 +144,10 @@ describe('Client', function() {
           this.timeout(10000);
           mercury.config.maxRetries = 2;
           socketOpenStub.returns(Promise.reject(new Socket.ConnectionError()));
-          assert.notCalled(Socket.open);
+          assert.notCalled(socket.open);
           return assert.isRejected(mercury.connect())
             .then(function() {
-              assert.callCount(Socket.open, 3);
+              assert.callCount(socket.open, 3);
             });
         });
       });
@@ -164,20 +159,20 @@ describe('Client', function() {
           socketOpenStub.returns(Promise.reject(new Socket.ConnectionError()));
           // Note: onCall is zero-based
           socketOpenStub.onCall(2).returns(Promise.resolve(new MockSocket()));
-          assert.notCalled(Socket.open);
+          assert.notCalled(socket.open);
 
           var promise = mercury.connect();
           return delay(1000)
             .then(function() {
-              assert.calledOnce(Socket.open);
+              assert.calledOnce(socket.open);
               return delay(2000);
             })
             .then(function() {
-              assert.calledTwice(Socket.open);
+              assert.calledTwice(socket.open);
               return assert.isFulfilled(promise);
             })
             .then(function() {
-              assert.calledThrice(Socket.open);
+              assert.calledThrice(socket.open);
             });
         });
 
@@ -211,7 +206,7 @@ describe('Client', function() {
           this.timeout(5000);
           return delay(4000)
             .then(function() {
-              assert.calledOnce(Socket.open);
+              assert.calledOnce(socket.open);
             });
         });
       });
@@ -321,7 +316,7 @@ describe('Client', function() {
           mercury._reconnect()
         ])
           .then(function() {
-            assert.calledOnce(Socket.open);
+            assert.calledOnce(socket.open);
           });
       });
 
@@ -331,20 +326,20 @@ describe('Client', function() {
           socketOpenStub.returns(Promise.reject(new Socket.ConnectionError()));
           // Note: onCall is zero-based
           socketOpenStub.onCall(2).returns(Promise.resolve(new MockSocket()));
-          assert.notCalled(Socket.open);
+          assert.notCalled(socket.open);
 
           var promise = mercury._reconnect();
           return delay(1000)
             .then(function() {
-              assert.calledOnce(Socket.open);
+              assert.calledOnce(socket.open);
               return delay(2000);
             })
             .then(function() {
-              assert.calledTwice(Socket.open);
+              assert.calledTwice(socket.open);
               return assert.isFulfilled(promise);
             })
             .then(function() {
-              assert.calledThrice(Socket.open);
+              assert.calledThrice(socket.open);
             });
         });
 
@@ -569,6 +564,40 @@ describe('Client', function() {
 
             assert.calledWith(requestSpy, asyncMessage.data);
             assert.calledWith(request1Spy, asyncMessage.data);
+          });
+      });
+    });
+
+    describe('when buffer state event is received', function() {
+      it('emits the event even before connect promise is resolved', function() {
+        var bufferStateMessage = {
+          data: {
+            eventType: 'mercury.buffer_state'
+          }
+        };
+        var bufferSpy = sinon.spy();
+        var onlineSpy = sinon.spy();
+
+        // Buffer state message is emitted after authorization
+        spark.credentials.getAuthorization = function() {
+          return new Promise(function(resolve) {
+            resolve('Token');
+          })
+            .then(function() {
+              assert.notCalled(onlineSpy);
+              socket.emit('message', {data: bufferStateMessage});
+            });
+        };
+
+        mercury.on('mercury.buffer_state', bufferSpy);
+        mercury.on('online', onlineSpy);
+
+        mercury.connect();
+
+        return assert.isFulfilled(mercury.connect())
+          .then(function() {
+            assert.callCount(bufferSpy, 1);
+            assert.calledWith(bufferSpy, bufferStateMessage.data);
           });
       });
     });
