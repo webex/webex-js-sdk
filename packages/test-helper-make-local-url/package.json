@@ -8,5 +8,13 @@
     "babel-eslint": "^6.0.0-beta.5",
     "eslint": "^3.3.1",
     "eslint-plugin-mocha": "^4.4.0"
+  },
+  "dependencies": {
+    "envify": "^3.4.1"
+  },
+  "browserify": {
+    "transform": [
+      "envify"
+    ]
   }
 }
