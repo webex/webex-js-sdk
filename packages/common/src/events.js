@@ -46,6 +46,7 @@ export function transferEvents(events, source, drain) {
  */
 function emit(target, ...rest) {
   const method = target.trigger || target.emit;
+  /* istanbul ignore if */
   if (!method) {
     throw new Error(`count not determine emit method`);
   }

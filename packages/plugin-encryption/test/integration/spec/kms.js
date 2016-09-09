@@ -116,20 +116,32 @@ describe(`Encryption`, function() {
     });
 
     describe(`when ecdhe negotiation times out`, () => {
-      let originalKmsTimeout, spy;
+      let originalKmsTimeout, spark2, spy;
+      before(() => testUsers.create({count: 1})
+        .then(([u]) => {
+          spark2 = new CiscoSpark({
+            credentials: {
+              authorization: u.token
+            }
+          });
+          assert.isTrue(spark.isAuthenticated);
+        }));
+
+      after(() => spark2.mercury.disconnect());
+
       beforeEach(() => {
-        originalKmsTimeout = spark.config.encryption.kmsInitialTimeout;
-        spark.config.encryption.kmsInitialTimeout = 10;
-        spy = sinon.spy(spark.encryption.kms, `prepareRequest`);
+        originalKmsTimeout = spark2.config.encryption.kmsInitialTimeout;
+        spark2.config.encryption.kmsInitialTimeout = 100;
+        spy = sinon.spy(spark2.encryption.kms, `prepareRequest`);
       });
 
       afterEach(() => {
-        spark.config.encryption.kmsInitialTimeout = originalKmsTimeout;
+        spark2.config.encryption.kmsInitialTimeout = originalKmsTimeout;
       });
 
       afterEach(() => spy.restore());
 
-      it(`handles late ecdhe responses`, () => assert.isFulfilled(spark.encryption.kms.ping())
+      it(`handles late ecdhe responses`, () => assert.isFulfilled(spark2.encryption.kms.ping())
         .then(() => {
           // callCount should be at least 3:
           // 1 for the initial ping message

@@ -11,6 +11,7 @@
 * @returns {Promise<Buffer>}
 */
 export default function ensureBuffer(buffer) {
+  /* istanbul ignore if */
   if (!Buffer.isBuffer(buffer)) {
     return Promise.reject(new Error(`\`buffer\` must be a buffer`));
   }

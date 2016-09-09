@@ -27,6 +27,7 @@ const Encryption = SparkPlugin.extend({
   decryptBinary(scr, buffer) {
     return ensureBuffer(buffer)
       .then((b) => {
+        /* istanbul ignore if */
         if (buffer.length === 0 || buffer.byteLength === 0) {
           return Promise.reject(new Error(`Attempted to decrypt zero-length buffer`));
         }
@@ -50,6 +51,7 @@ const Encryption = SparkPlugin.extend({
   },
 
   download(scr) {
+    /* istanbul ignore if */
     if (!scr.loc) {
       return Promise.reject(new Error(`\`scr.loc\` is required`));
     }
@@ -113,6 +115,7 @@ const Encryption = SparkPlugin.extend({
   },
 
   encryptScr(key, scr) {
+    /* istanbul ignore if */
     if (!scr.loc) {
       return Promise.reject(`Cannot encrypt \`scr\` without first setting \`loc\``);
     }

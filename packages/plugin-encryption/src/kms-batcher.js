@@ -24,6 +24,7 @@ const KmsBatcher = Batcher.extend({
   processKmsMessageEvent(event) {
     this.logger.info(`kms-batcher: received kms message`);
     return Promise.all(event.encryption.kmsMessages.map((kmsMessage) => new Promise((resolve) => {
+      /* istanbul ignore else */
       if (process.env.NODE_ENV !== `production`) {
         this.logger.info(`kms-batcher:`, kmsMessage.body);
       }
@@ -42,12 +43,13 @@ const KmsBatcher = Batcher.extend({
       .then((defer) => {
         const timeout = item[TIMEOUT_SYMBOL];
 
+        /* istanbul ignore if */
         if (!timeout) {
           throw new Error(`timeout is required`);
         }
 
         const timer = setTimeout(() => {
-          this.logger.warn(`kms: request timed out; request id: ${item.id}; timeout: ${timeout}`);
+          this.logger.warn(`kms: request timed out; request id: ${item.requestId}; timeout: ${timeout}`);
           this.handleItemFailure(item);
         }, timeout);
 
@@ -139,7 +141,7 @@ const KmsBatcher = Batcher.extend({
    * @returns {Promise}
    */
   fingerprintResponse(item) {
-    return Promise.resolve(item.requestId || item.body.requestId);
+    return Promise.resolve(item.requestId);
   }
 });
 

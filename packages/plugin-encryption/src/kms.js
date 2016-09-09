@@ -39,10 +39,12 @@ const KMS = SparkPlugin.extend({
 
     this.logger.info(`kms: binding key to resource`);
 
+    /* istanbul ignore if */
     if (!kroUri) {
       return Promise.reject(new Error(`\`kro\` or \`kroUri\` is required`));
     }
 
+    /* istanbul ignore if */
     if (!keyUri) {
       return Promise.reject(new Error(`\`key\` or \`keyUri\` is required`));
     }
@@ -69,6 +71,7 @@ const KMS = SparkPlugin.extend({
    */
   createResource({userIds, keyUris, key, keys}) {
     keyUris = keyUris || [];
+    /* istanbul ignore if */
     if (keys) {
       keyUris = keys.reduce((uris, k) => {
         uris.push(k.uri);
@@ -76,10 +79,12 @@ const KMS = SparkPlugin.extend({
       }, keyUris);
     }
 
+    /* istanbul ignore else */
     if (key) {
       keyUris.push(key.uri);
     }
 
+    /* istanbul ignore if */
     if (keyUris.length === 0) {
       return Promise.reject(new Error(`Cannot create KMS Resource without at least one keyUri`));
     }
@@ -107,6 +112,7 @@ const KMS = SparkPlugin.extend({
   createUnboundKeys({count}) {
     this.logger.info(`kms: request ${count} unbound keys`);
 
+    /* istanbul ignore if */
     if (!count) {
       return Promise.reject(new Error(`\`options.count\` is required`));
     }
@@ -129,6 +135,7 @@ const KMS = SparkPlugin.extend({
    * @returns {Promise<Key>}
    */
   fetchKey({uri}) {
+    /* istanbul ignore if */
     if (!uri) {
       return Promise.reject(new Error(`\`options.uri\` is required`));
     }
@@ -182,6 +189,7 @@ const KMS = SparkPlugin.extend({
         const req = new Request(payload);
         return req.wrap(context, {serverKey: isECDHRequest})
           .then(() => {
+            /* istanbul ignore else */
             if (process.env.NODE_ENV !== `production`) {
               this.logger.info(`kms: request payload`, omit(JSON.parse(JSON.stringify(req)), `wrapped`));
             }
@@ -272,15 +280,18 @@ const KMS = SparkPlugin.extend({
         // but batching needs at least one more round of refactoring for that to
         // work.
         if (!reason.statusCode && !reason.status) {
+          /* istanbul ignore else */
           if (process.env.NODE_ENV !== `production`) {
+            /* istanbul ignore next: reason.stack vs stack difficult to control in test */
             this.logger.info(`kms: request error`, reason.stack || reason);
           }
 
           timeout = timeout * 2;
 
           if (timeout >= this.config.kmsMaxTimeout) {
-            this.logger.info(`kms: exceeded maximum KMS request retries; negotiating new exdh key`);
+            this.logger.info(`kms: exceeded maximum KMS request retries; negotiating new ecdh key`);
 
+            /* istanbul ignore else */
             if (process.env.NODE_ENV !== `production`) {
               this.logger.info(`kms: timeout/maxtimeout`, timeout, this.config.kmsMaxTimeout);
             }
