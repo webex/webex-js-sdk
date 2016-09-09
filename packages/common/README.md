@@ -287,6 +287,46 @@ Same as this.email, but allows for surrounding characters
 
 Same as this.uuid but allows for surrounding characters
 
+# isArray
+
+!
+
+Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+# proxyEvents
+
+Proxies the event binding methods of emitter onto proxy
+
+**Parameters**
+
+-   `emitter` **(EventEmitter | EventEmitterProxy)** 
+-   `proxy` **mixed** (probably a promise)
+
+Returns **EventEmitter** Returns the source emitter to ease use in promise chains
+
+# transferEvents
+
+Given a list of events, fires them on drain when they're emitted from source
+
+**Parameters**
+
+-   `events` **([Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) \| [string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String))** 
+-   `source` **EventEmitter** 
+-   `drain` **EventEmitter** 
+
+Returns **[undefined](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined)** 
+
+# emit
+
+Emits an event
+
+**Parameters**
+
+-   `target` **EventEmitter** The EventEmitter from which to emit an event
+-   `rest` **...Any** 
+
+Returns **mixed** 
+
 # resolve-with
 
 Sugar method for returning the desired object at the end of a promise chain
