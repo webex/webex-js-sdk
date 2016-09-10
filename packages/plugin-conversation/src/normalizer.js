@@ -17,7 +17,8 @@ const Normalizer = SparkPlugin.extend({
     filter: {
       deps: [],
       fn() {
-        return filter(this.config.allowedTags || {}, this.config.allowedStyles);
+        // eslint-disable-next-line no-empty-function
+        return filter(() => {}, this.config.allowedTags || {}, this.config.allowedStyles);
       }
     }
   },
