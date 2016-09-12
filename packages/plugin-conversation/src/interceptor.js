@@ -43,10 +43,17 @@ export default class ConversationInterceptor extends Interceptor {
           return response;
         }
 
+        const hasItems = Boolean(response.body.items);
+
         return this.spark.conversation.decrypter.decryptObject(null, response.body)
-          .then((body) => this.spark.conversation.normalizer.normalize(body))
+          .then((body) => this.spark.conversation.normalizer.normalize(hasItems ? body.items : body))
           .then((body) => {
-            response.body = body;
+            if (hasItems) {
+              response.body.items = body;
+            }
+            else {
+              response.body = body;
+            }
             return response;
           });
       });
@@ -63,7 +70,7 @@ export default class ConversationInterceptor extends Interceptor {
           return true;
         }
 
-        if (isArray(response.body.items) && response.body.items[0].objectType) {
+        if (isArray(response.body.items) && response.body.items.length && response.body.items[0].objectType) {
           return true;
         }
 

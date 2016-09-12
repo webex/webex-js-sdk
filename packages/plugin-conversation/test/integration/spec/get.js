@@ -11,28 +11,30 @@ import sinon from '@ciscospark/test-helper-sinon';
 import testUsers from '@ciscospark/test-helper-test-users';
 import fh from '@ciscospark/test-helper-file';
 import makeLocalUrl from '@ciscospark/test-helper-make-local-url';
+import {map} from 'lodash';
 
 describe(`Plugin : Conversation`, function() {
   this.timeout(20000);
+
+  let checkov, mccoy, participants, spark, spock;
+
+  before(() => testUsers.create({count: 3})
+    .then((users) => {
+      participants = [spock, mccoy, checkov] = users;
+
+      spark = new CiscoSpark({
+        credentials: {
+          authorization: spock.token
+        }
+      });
+
+      return spark.mercury.connect();
+    }));
+
+  after(() => spark.mercury.disconnect());
+
   describe(`#download()`, () => {
-    let checkov, mccoy, participants, spark, spock;
-
     let sampleImageSmallOnePng = `sample-image-small-one.png`;
-
-    before(() => testUsers.create({count: 3})
-      .then((users) => {
-        participants = [spock, mccoy, checkov] = users;
-
-        spark = new CiscoSpark({
-          credentials: {
-            authorization: spock.token
-          }
-        });
-
-        return spark.mercury.connect();
-      }));
-
-    after(() => spark.mercury.disconnect());
 
     let conversation;
     before(() => spark.conversation.create({participants})
@@ -65,4 +67,71 @@ describe(`Plugin : Conversation`, function() {
     });
   });
 
+  describe(`#get()`, () => {
+    let conversation;
+    before(() => spark.conversation.create({participants: [mccoy.id]})
+      .then((c) => {conversation = c;}));
+
+    it(`retrieves a single conversation by url`, () => spark.conversation.get({url: conversation.url})
+      .then((c) => {
+        assert.equal(c.id, conversation.id);
+        assert.equal(c.url, conversation.url);
+      }));
+
+    it(`retrieves a single conversation by id`, () => spark.conversation.get({id: conversation.id})
+      .then((c) => {
+        assert.equal(c.id, conversation.id);
+        assert.equal(c.url, conversation.url);
+      }));
+
+    it(`retrieves a 1:1 conversation by userId`, () => spark.conversation.get({user: mccoy})
+      .then((c) => {
+        assert.equal(c.id, conversation.id);
+        assert.equal(c.url, conversation.url);
+      }));
+  });
+
+  describe(`#list()`, () => {
+    let conversation1, conversation2;
+
+    before(() => Promise.all([
+      spark.conversation.create({participants})
+        .then((c) => {conversation1 = c;}),
+      spark.conversation.create({participants})
+        .then((c) => {conversation2 = c;})
+    ]));
+
+    it(`retrieves a set of conversations`, () => spark.conversation.list({
+      conversationsLimit: 2
+    })
+      .then((conversations) => {
+        assert.include(map(conversations, `url`), conversation1.url);
+        assert.include(map(conversations, `url`), conversation2.url);
+      }));
+  });
+
+  describe(`#listLeft()`, () => {
+    let conversation;
+    before(() => spark.conversation.create({participants})
+      .then((c) => {conversation = c;}));
+
+    it(`retrieves the conversations the current user has left`, () => spark.conversation.listLeft()
+      .then((c) => {
+        assert.lengthOf(c, 0);
+        return spark.conversation.leave(conversation);
+      })
+      .then(() => spark.conversation.listLeft())
+      .then((c) => {
+        assert.lengthOf(c, 1);
+        assert.equal(c[0].url, conversation.url);
+      }));
+  });
+
+  describe(`#listActivities()`, () => {
+    it(`retrieves activities for the specified conversation`);
+  });
+
+  describe(`#listMentions()`, () => {
+    it(`retrieves activities in which the current user was mentioned`);
+  });
 });

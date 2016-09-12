@@ -33,55 +33,41 @@ const Conversation = SparkPlugin.extend({
   },
 
   get(conversation, options) {
-    this._inferConversationUrl(conversation);
-    const {user, url} = conversation;
+    return this._inferConversationUrl(conversation)
+      .then(() => {
+        const {user, url} = conversation;
 
-    options = options || {};
+        options = options || {};
 
-    const params = {
-      qs: defaults({
-        uuidEntryFormat: true,
-        personRefresh: true
-      }, omit(options, `id`, `user`, `url`))
-    };
+        const params = {
+          qs: defaults({
+            uuidEntryFormat: true,
+            personRefresh: true
+          }, omit(options, `id`, `user`, `url`))
+        };
 
-    return Promise.resolve(user ? this.spark.user.asUUID(user) : null)
-      .then((userId) => {
-        if (userId) {
-          Object.assign(params, {
-            api: `conversation`,
-            resource: `conversations/user/${userId}`
+        return Promise.resolve(user ? this.spark.user.asUUID(user) : null)
+          .then((userId) => {
+            if (userId) {
+              Object.assign(params, {
+                api: `conversation`,
+                resource: `conversations/user/${userId}`
+              });
+            }
+            else {
+              params.uri = url;
+            }
+            return this.request(params);
           });
-        }
-        else {
-          params.uri = url;
-        }
-        return this.request(params);
       })
-        .then((res) => this._recordUUIDs(res.body)
-          .then(() => res.body));
+      .then((res) => this._recordUUIDs(res.body)
+      .then(() => res.body));
   },
 
   list(options) {
     return this._list({
       api: `conversation`,
       resource: `conversations`,
-      qs: options
-    });
-  },
-
-  listRelevant(options) {
-    return this._list({
-      api: `conversation`,
-      resource: `conversations/relevant`,
-      qs: options
-    });
-  },
-
-  listUnread(options) {
-    return this._list({
-      api: `conversation`,
-      resource: `conversations/unread`,
       qs: options
     });
   },
@@ -113,8 +99,11 @@ const Conversation = SparkPlugin.extend({
   _list(options) {
     options.qs = Object.assign({}, options.qs, {
       personRefresh: true,
-      uuidEntryFormat: true
+      uuidEntryFormat: true,
+      activitiesLimit: 0,
+      participantsLimit: 0
     });
+
     return this.request(options)
       .then((res) => {
         if (!res.body || !res.body.items || res.body.length === 0) {
@@ -123,7 +112,7 @@ const Conversation = SparkPlugin.extend({
 
         const items = res.body.items;
         if (items.length && last(items).published < items[0].published) {
-          items.revers();
+          items.reverse();
         }
 
         return Promise.all(items.map((item) => this.decrypter.decryptObject(item)
@@ -173,8 +162,8 @@ const Conversation = SparkPlugin.extend({
   },
 
   add(conversation, object, activity) {
-    this._inferConversationUrl(conversation);
-    return this.spark.user.asUUID(object, {create: true})
+    return this._inferConversationUrl(conversation)
+      .then(() => this.spark.user.asUUID(object, {create: true}))
       .then((id) => this.prepare(activity, {
         verb: `add`,
         target: this.prepareConversation(conversation),
@@ -235,13 +224,12 @@ const Conversation = SparkPlugin.extend({
   },
 
   post(conversation, object, activity) {
-    conversation = this._inferConversationUrl(conversation);
-
-    return this.prepare(activity, {
-      verb: `post`,
-      target: this.prepareConversation(conversation),
-      object: defaults(object, {objectType: `comment`})
-    })
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb: `post`,
+        target: this.prepareConversation(conversation),
+        object: defaults(object, {objectType: `comment`})
+      }))
       .then((a) => this.submit(a));
   },
 
@@ -250,28 +238,31 @@ const Conversation = SparkPlugin.extend({
   },
 
   share(conversation, object, activity) {
-    conversation = this._inferConversationUrl(conversation);
+    return this._inferConversationUrl(conversation)
+      .then(() => {
+        const share = ShareActivity.create(conversation, object, this.spark);
+        Object.assign(share, activity);
 
-    const share = ShareActivity.create(conversation, object, this.spark);
-    Object.assign(share, activity);
-
-    return this.prepare(share, {
-      target: this.prepareConversation(conversation)
-    })
+        return this.prepare(share, {
+          target: this.prepareConversation(conversation)
+        });
+      })
       .then((a) => this.submit(a));
   },
 
   updateKey(conversation, object, activity) {
-    conversation = this._inferConversationUrl(conversation);
-    if (!conversation.defaultActivityEncryptionKeyUrl || !conversation.participants) {
-      return this.get({
-        url: conversation.url,
-        activitiesLimit: 0
-      })
-        .then((c) => this._updateKey(c, object, activity));
-    }
+    return this._inferConversationUrl(conversation)
+      .then(() => {
+        if (!conversation.defaultActivityEncryptionKeyUrl || !conversation.participants) {
+          return this.get({
+            url: conversation.url,
+            activitiesLimit: 0
+          })
+            .then((c) => this._updateKey(c, object, activity));
+        }
 
-    return this._updateKey(conversation, object, activity);
+        return this._updateKey(conversation, object, activity);
+      });
   },
 
   _updateKey(conversation, key, activity) {
@@ -503,14 +494,18 @@ const Conversation = SparkPlugin.extend({
 
   _inferConversationUrl(conversation) {
     if (!conversation.url && conversation.id) {
-      conversation.url = `${this.spark.device.getServiceUrl(`conversation`)}/conversations/${conversation.id}`;
-      /* istanbul ignore else */
-      if (process.env.NODE_ENV !== `production`) {
-        this.logger.warn(`conversation: inferred conversation url from conversation id; please pass whole conversation objects to Conversation methods`);
-      }
+      return this.spark.device.getServiceUrl(`conversation`)
+        .then((url) => {
+          conversation.url = `${url}/conversations/${conversation.id}`;
+          /* istanbul ignore else */
+          if (process.env.NODE_ENV !== `production`) {
+            this.logger.warn(`conversation: inferred conversation url from conversation id; please pass whole conversation objects to Conversation methods`);
+          }
+          return conversation;
+        });
     }
 
-    return conversation;
+    return Promise.resolve(conversation);
   },
 
   _recordUUIDs(conversation) {
@@ -535,12 +530,11 @@ const Conversation = SparkPlugin.extend({
   `unmute`
 ].forEach((verb) => {
   Conversation.prototype[verb] = function submitSimpleActivity(conversation, activity) {
-    this._inferConversationUrl(conversation);
-
-    return this.prepare(activity, {
-      verb,
-      object: this.prepareConversation(conversation)
-    })
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb,
+        object: this.prepareConversation(conversation)
+      }))
       .then((a) => this.submit(a));
   };
 });
@@ -555,17 +549,16 @@ const Conversation = SparkPlugin.extend({
   `update`
 ].forEach((verb) => {
   Conversation.prototype[verb] = function submitObjectActivity(conversation, object, activity) {
-    this._inferConversationUrl(conversation);
-
     if (!isObject(object)) {
       return Promise.reject(`\`object\` must be an object`);
     }
 
-    return this.prepare(activity, {
-      verb,
-      target: this.prepareConversation(conversation),
-      object
-    })
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb,
+        target: this.prepareConversation(conversation),
+        object
+      }))
       .then((a) => this.submit(a));
   };
 });
