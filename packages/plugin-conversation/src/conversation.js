@@ -91,7 +91,7 @@ const Conversation = SparkPlugin.extend({
   _listActivities(options) {
     return this._list({
       api: `conversation`,
-      resoure: options.mentions ? `mentions` : `activities`,
+      resource: options.mentions ? `mentions` : `activities`,
       qs: omit(options, `mentions`)
     });
   },

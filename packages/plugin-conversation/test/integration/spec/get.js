@@ -128,10 +128,59 @@ describe(`Plugin : Conversation`, function() {
   });
 
   describe(`#listActivities()`, () => {
-    it(`retrieves activities for the specified conversation`);
+    let conversation;
+    before(() => spark.conversation.create({participants})
+      .then((c) => {
+        conversation = c;
+        assert.lengthOf(conversation.participants.items, 3);
+        return spark.conversation.post(conversation, {displayName: `first message`});
+      }));
+
+    it(`retrieves activities for the specified conversation`, () => spark.conversation.listActivities({conversationId: conversation.id})
+      .then((activities) => {
+        assert.isArray(activities);
+        assert.lengthOf(activities, 2);
+      }));
   });
 
   describe(`#listMentions()`, () => {
-    it(`retrieves activities in which the current user was mentioned`);
+    let spark2;
+
+    before(() => {
+      spark2 = new CiscoSpark({
+        credentials: {
+          authorization: mccoy.token
+        }
+      });
+
+      return spark2.mercury.connect();
+    });
+
+    after(() => spark2.mercury.disconnect());
+
+    let conversation;
+    before(() => spark.conversation.create({participants})
+      .then((c) => {
+        conversation = c;
+        assert.lengthOf(conversation.participants.items, 3);
+      }));
+
+    it(`retrieves activities in which the current user was mentioned`, () => spark2.conversation.post(conversation, {
+      displayName: `Green blooded hobgloblin`,
+      content: `<spark-mention data-object-type="person" data-object-id="${spock.id}">Green blooded hobgloblin</spark-mention>`,
+      mentions: {
+        items: [{
+          id: `${spock.id}`,
+          objectType: `person`
+        }]
+      }
+    })
+      .then((activity) => {
+        return spark.conversation.listMentions({sinceDate: Date.parse(activity.published) - 1})
+          .then((mentions) => {
+            assert.lengthOf(mentions, 1);
+            assert.equal(mentions[0].url, activity.url);
+          });
+      }));
   });
 });
