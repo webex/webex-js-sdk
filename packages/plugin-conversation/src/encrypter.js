@@ -107,8 +107,8 @@ const Encrypter = SparkPlugin.extend({
         }
 
         if (conversation.displayName) {
-          promises.push(this.encryptProperty(k, `displayName`, conversation))
-            .then(() => {conversation.encryptionKeyUrl = k.uri;});
+          promises.push(this.encryptProperty(k, `displayName`, conversation)
+            .then(() => {conversation.encryptionKeyUrl = k.uri;}));
         }
 
         return Promise.all(promises)

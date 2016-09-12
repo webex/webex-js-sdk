@@ -9,17 +9,17 @@ import {patterns} from '@ciscospark/common';
 import CiscoSpark from '@ciscospark/spark-core';
 import {assert} from '@ciscospark/test-helper-chai';
 import testUsers from '@ciscospark/test-helper-test-users';
-import {find} from 'lodash';
+import {find, map} from 'lodash';
 import uuid from 'uuid';
 
 describe(`Plugin : Conversation`, function() {
   this.timeout(20000);
   describe(`#create()`, () => {
-    let checkov, mccoy, spark, spock;
+    let checkov, mccoy, participants, spark, spock;
 
     before(() => testUsers.create({count: 3})
       .then((users) => {
-        [spock, mccoy, checkov] = users;
+        participants = [spock, mccoy, checkov] = users;
 
         spark = new CiscoSpark({
           credentials: {
@@ -95,14 +95,25 @@ describe(`Plugin : Conversation`, function() {
     });
 
     describe(`when {compact: ?} is not specified`, () => {
-      it(`creates a compact conversation`);
+      it(`creates a compact conversation`, () => spark.conversation.create({participants})
+        .then((c) => spark.conversation.get(c, {activitiesLimit: 5}))
+        .then((c) => assert.lengthOf(c.activities.items, 1)));
     });
 
-    it(`creates a conversation with a name`);
-    it(`creates a conversation with a comment`);
+    it(`creates a conversation with a name`, () => spark.conversation.create({displayName: `displayName`, participants})
+      .then((c) => spark.conversation.get(c))
+      .then((c) => assert.equal(c.displayName, `displayName`)));
+
+    it(`creates a conversation with a comment`, () => spark.conversation.create({comment: `comment`, participants})
+      .then((c) => spark.conversation.get(c, {activitiesLimit: 2}))
+      .then((c) => assert.equal(c.activities.items[1].object.displayName, `comment`)));
+
     it(`creates a conversation with a share`);
 
-    it(`ensures the current user is in the participants list`);
-    it(`does not allow me to create a conversation with zero participants`);
+    it(`ensures the current user is in the participants list`, () => spark.conversation.create({comment: `comment`, participants: [mccoy, checkov]})
+      .then((c) => spark.conversation.get(c, {participantsLimit: 10}))
+      .then((c) => assert.include(map(c.participants.items, `id`), spock.id)));
+
+    it(`does not allow me to create a conversation with zero participants`, () => assert.isRejected(spark.conversation.create({participants: []}, /`params.participants` is required/)));
   });
 });

@@ -40,9 +40,11 @@ const Conversation = SparkPlugin.extend({
         options = options || {};
 
         const params = {
-          qs: defaults({
+          qs: Object.assign({
             uuidEntryFormat: true,
-            personRefresh: true
+            personRefresh: true,
+            activitiesLimit: 0,
+            participantsLimit: 0
           }, omit(options, `id`, `user`, `url`))
         };
 
@@ -97,12 +99,12 @@ const Conversation = SparkPlugin.extend({
   },
 
   _list(options) {
-    options.qs = Object.assign({}, options.qs, {
+    options.qs = Object.assign({
       personRefresh: true,
       uuidEntryFormat: true,
       activitiesLimit: 0,
       participantsLimit: 0
-    });
+    }, options.qs);
 
     return this.request(options)
       .then((res) => {
