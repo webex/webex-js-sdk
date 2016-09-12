@@ -7,9 +7,9 @@
 
 # Site settings
 title: Cisco Spark JavaScript SDK
-baseurl: "/spark-js-sdk"
+# baseurl: "/"
 permalink: /:categories/:title/
-url: "ciscospark.github.io/spark-js-sdk"
+# url: "ciscospark.github.io/spark-js-sdk"
 
 # Set future: true to print posts with future dates. Basically, this is a hack
 # to use fake post dates to control order of examples
