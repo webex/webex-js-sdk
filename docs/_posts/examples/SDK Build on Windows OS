@@ -1,0 +1,148 @@
+Windows OS - Windows 7 Professional (VM) 64bit
+
+NOTE: Windows uses backslash (\) in file path’s; while MAC uses forward slash (/)
+
+List of current install dependencies (find relevant download websites, and install these packages. Use NPM command line install where highlighted):
+
+•	Nodejs6.5
+•	Install GIT for win (64bit)
+•	Python 2.7
+•	Express 2013 for windows desktop
+•	Visual c++ 2013 redistributable (x64)
+•	Lerna Bootstrap beta.28 (npm install –global lerba@^2.0.0-beta.28)
+•	npm install -g grunt-cli
+
+Files we need to edit in this guide:
+
+•	spark.js (to update oAuth credentials)
+•	lerna.json (to update dependencies)
+•	gruntfile.concurrent.js (to convert to windows command line syntax)
+•	package.json (to convert to windows command line syntax)
+
+Step 1: 
+On your workstation, create a root directory for the SDK.
+
+NOTE: Use cmd.exe as a user with admin privileges.
+
+Step 2: 
+In cmd.exe, navigate to your new root directory
+
+Type Command:
+C:\NewSparkDir> git clone https://github.com/ciscospark/spark-js-sdk.git
+
+You will now find the “spark-js-sdk” folder in your new directory. Open it up and familiarize yourself (roughly) with its structure.
+
+Step 3: 
+
+Now let’s leave our code for a minute, and open a web browser. Navigate to developer.ciscospark.com and create an app.
+Copy your client ID, client secret, and re-direct URI.
+
+Step 4: 
+
+Let’s go back to our SDK folder. To update authentication details in your instance of the SDK, edit this file before we undertake the SDK build:
+C:\%YOURPATH%\Spark-js-sdk\Packages\example-phone\src\scripts\modules\redux-spark\spark.js 
+
+NOTE: (in spark.js you’ll see Client ID, Client Secret, scope and Redirect URI. Make sure your scope here matches the scope in the Spark app that you created)
+
+NOTE: To run the Video SDK, there is no specific “video scope”. You must select at least one scope to build an app. The Video app will work regardless of what scope you choose.
+
+NOTE: Your new spark.js will look like this:
+
+Object.assign(ciscospark.config.credentials.oauth, {
+   client_id: `C0a7d3303e3ddabfSOMEBASE64b08403c8167ca1e96230`,
+   client_secret: `ceabf60faddc8c3af73c8b32fcc62SOMEBASE6425d10957f9c29f865cf`,
+   scope: `spark:people_read spark:rooms_read spark:rooms_write spark:memberships_read spark:memberships_write spark:messages_read spark:messages_write spark:teams_read spark:teams_write`,
+   redirect_uri: `https://<your-app-URL>`
+ });
+
+Step 5: 
+
+Navigate to C:\%YOURPATH%\spark-js-sdk\gruntfile.concurrent.js
+Open with any text editor(I suggest using notepad ++).
+Change lines 145 and 151 from:
+ 
+       command: 'PACKAGE=' + packageName + ' grunt --gruntfile Gruntfile.package.js --no-color build'
+       command: 'PACKAGE=' + packageName + ' grunt --gruntfile Gruntfile.package.js --no-color test'
+	
+	to:
+      command: 'SET PACKAGE=' + packageName + '&grunt --gruntfile Gruntfile.package.js --no-color build'
+       command: 'SET PACKAGE=' + packageName + '&grunt --gruntfile Gruntfile.package.js --no-color test'
+
+Step 6: 
+
+Navigate to C:\%YOURPATH%\spark-js-sdk\package.json 
+Open with any text editor (I suggest using notepad ++).
+	Change line 36 from:
+
+"check-package":"if [ -z ${PACKAGE+x} ]; then echo 'environment variable PACKAGE must be defined' && exit 1; fi"
+
+	to:
+
+"check-package": "if EXIST [-z${PACKAGE+x}] ( then echo 'environment variable PACKAGE must be defined' && exit 1; fi)",
+
+Step 7:
+
+Go back to command line and change directory to spark-js-sdk
+
+Type Command:
+C:\NewSparkDir\spark-js-sdk> npm install --save ciscospark
+
+Step 8:
+
+Type Command:
+C:\NewSparkDir\spark-js-sdk> npm install -g browserify
+
+Step 9:
+
+Type Command:
+C:\NewSparkDir\spark-js-sdk> npm install
+
+Step 10:
+
+Type Command: (this one will bootstrap 30 packages)
+C:\NewSparkDir\spark-js-sdk> npm run bootstrap
+
+Step 11:
+
+Type Command:
+C:\NewSparkDir\spark-js-sdk> npm run build
+
+Step 12:
+
+Type Command: (this will output a bundle.js file in spark-js-sdk folder)
+C:\NewSparkDir\spark-js-sdk> browserify packages\ciscospark --standalone ciscospark > bundle.js
+
+Step 13:
+
+To generate the app to publish to a website, set an environment variable called “PACKAGE” from the command line.
+
+Type Command:
+C:\NewSparkDir\spark-js-sdk> SET PACKAGE=example-phone
+
+Then check to see the environment variable PACKAGE has been set:
+
+Type Command:
+C:\NewSparkDir\spark-js-sdk> echo %package%
+
+Finally run the webpack build:
+
+Type Command:
+C:\NewSparkDir\spark-js-sdk> npm run grunt:package -- webpack:build
+
+Complete!
+
+The output of “npm run grunt:package –webpack:build” will be a folder called C:\%YOURPATH%\spark-js-sdk \docs\app. It’s contents will be:
+•	bundle.js
+•	bundle.js.map
+•	main.css
+•	main.css.map
+•	index.html
+
+Publish these files to your webserver. 
+
+You have just built the Cisco Spark SDK for Javascript on windows, and published the example-phone sample app! Once authenticated, you can now make calls to other “Spark enabled” end-points.
+
+NOTE: 
+For older versions of the SDK, edit lerna.json BEFORE you run “npm run bootstrap”:
+In File explorer, navigate to C:\%YOURPATH%\spark-js-sdk\lerna.json.
+	Open with any text editor (I suggest using notepad ++), and change "lerna": "2.0.0-beta.26", to “lerna”:”2.0.0-beta.28”.
