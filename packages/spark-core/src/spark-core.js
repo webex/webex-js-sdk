@@ -35,6 +35,8 @@ const interceptors = {
   RequestTimingInterceptor: RequestTimingInterceptor.create,
   UrlInterceptor: undefined,
   AuthInterceptor: undefined,
+  ConversationInterceptor: undefined,
+  EncryptionInterceptor: undefined,
   RedirectInterceptor: RedirectInterceptor.create,
   HttpStatusInterceptor() {
     return HttpStatusInterceptor.create({
