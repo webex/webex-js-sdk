@@ -111,7 +111,7 @@ describe(`Plugin : Conversation`, function() {
     it(`creates a conversation with a share`);
 
     it(`ensures the current user is in the participants list`, () => spark.conversation.create({comment: `comment`, participants: [mccoy, checkov]})
-      .then((c) => spark.conversation.get(c, {participantsLimit: 10}))
+      .then((c) => spark.conversation.get(c, {includeParticipants: true}))
       .then((c) => assert.include(map(c.participants.items, `id`), spock.id)));
 
     it(`does not allow me to create a conversation with zero participants`, () => assert.isRejected(spark.conversation.create({participants: []}, /`params.participants` is required/)));

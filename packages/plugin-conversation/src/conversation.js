@@ -44,7 +44,7 @@ const Conversation = SparkPlugin.extend({
             uuidEntryFormat: true,
             personRefresh: true,
             activitiesLimit: 0,
-            participantsLimit: 0
+            includeParticipants: false
           }, omit(options, `id`, `user`, `url`))
         };
 
@@ -187,7 +187,7 @@ const Conversation = SparkPlugin.extend({
 
   create(params, options) {
     if (!params.participants || params.participants.length === 0) {
-      return Promise.reject(`\`params.participants\` is required`);
+      return Promise.reject(new Error(`\`params.participants\` is required`));
     }
 
     return Promise.all(params.participants.map((participant) => this.spark.user.asUUID(participant, {create: true})))
@@ -542,17 +542,34 @@ const Conversation = SparkPlugin.extend({
 });
 
 [
-  `acknowledge`,
-  // TODO assignModerator should default to current user
   `assignModerator`,
+  `unassignModerator`
+].forEach((verb) => {
+  Conversation.prototype[verb] = function submitModerationChangeActivity(conversation, object, activity) {
+    return Promise.all([
+      this._inferConversationUrl(conversation),
+      object ? this.spark.user.asUUID(object) : this.spark.device.userId
+    ])
+      .then(([c, userId]) => this.prepare(activity, {
+        verb,
+        target: this.prepareConversation(c),
+        object: {
+          id: userId,
+          objectType: `person`
+        }
+      }))
+      .then((a) => this.submit(a));
+  };
+});
+
+[
+  `acknowledge`,
   `delete`,
-  // TODO unassignModerator should default to current user
-  `unassignModerator`,
   `update`
 ].forEach((verb) => {
   Conversation.prototype[verb] = function submitObjectActivity(conversation, object, activity) {
     if (!isObject(object)) {
-      return Promise.reject(`\`object\` must be an object`);
+      return Promise.reject(new Error(`\`object\` must be an object`));
     }
 
     return this._inferConversationUrl(conversation)

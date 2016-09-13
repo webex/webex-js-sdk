@@ -91,7 +91,8 @@ const Encrypter = SparkPlugin.extend({
    */
   encryptConversation(key, conversation) {
     return Promise.resolve(key || this.spark.encryption.kms.createUnboundKeys({count: 1}))
-      .then(([k]) => {
+      .then((keys) => {
+        const k = isArray(keys) ? keys[0] : keys;
         if (conversation.kmsMessage) {
           if (conversation.kmsMessage.keyUris && !conversation.kmsMessage.keyUris.includes(k.uri)) {
             conversation.kmsMessage.keyUris.push(k.uri);
@@ -306,7 +307,7 @@ const Encrypter = SparkPlugin.extend({
 
     if (file.image) {
       if (!file.image.scr) {
-        return Promise.reject(`\`file.image\` must have an \`scr\``);
+        return Promise.reject(new Error(`\`file.image\` must have an \`scr\``));
       }
 
       promises.push(this.spark.encryption.encryptScr(key, file.image.scr)
