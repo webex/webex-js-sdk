@@ -1,6 +1,7 @@
 /**!
  *
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ * @private
  */
 
 'use strict';
@@ -16,6 +17,57 @@ module.exports = function schemas(chai) {
   var assert = chai.assert;
 
   /* eslint no-unused-expressions: [0] */
+
+  Assertion.addProperty('Activity', function() {
+    assert.properties(this._obj, [
+      'url',
+      'id',
+      'object',
+      'actor'
+    ]);
+
+    assert.equal(this._obj.objectType, 'activity');
+  });
+
+  Assertion.addProperty('FileItem', function() {
+    assert.property(this._obj, 'displayName', 'The file has a display name');
+    assert.property(this._obj, 'scr', 'The file has an scr');
+    assert.property(this._obj.scr, 'loc', 'The file\'s scr has an loc');
+  });
+
+  Assertion.addProperty('ThumbnailItem', function() {
+    assert.property(this._obj, 'scr', 'The thumbnail has an scr');
+    assert.property(this._obj.scr, 'loc', 'The thumbnail\'s scr has an loc');
+    assert.property(this._obj, 'height', 'The thumbnail has a width');
+    assert.property(this._obj, 'width', 'The thumbnail has a width');
+  });
+
+  Assertion.addProperty('Conversation', function() {
+    assert.equal(this._obj.objectType, 'conversation');
+    assert.property(this._obj, 'id');
+    assert.property(this._obj, 'url');
+  });
+
+  Assertion.addProperty('OneOnOneConversation', function() {
+    assert.isConversation(this._obj);
+    assert.include(this._obj.tags, 'ONE_ON_ONE');
+  });
+
+  Assertion.addProperty('GroupConversation', function() {
+    assert.isConversation(this._obj);
+    assert.notInclude(this._obj.tags, 'ONE_ON_ONE');
+  });
+
+  Assertion.addProperty('NewEncryptedConversation', function() {
+    assert.property(this._obj, 'kmsMessage');
+    assert.equal(this._obj.kmsMessage.status, 201);
+    assert.property(this._obj, 'defaultActivityEncryptionKeyUrl');
+    assert.property(this._obj, 'kmsResourceObjectUrl');
+  });
+
+  Assertion.addProperty('EncryptedActivity', function() {
+    assert.property(this._obj, 'encryptionKeyUrl');
+  });
 
   Assertion.addProperty('Membership', function() {
     assert.properties(this._obj, [
@@ -160,6 +212,14 @@ module.exports = function schemas(chai) {
   });
 
   shouldToAssert(chai, [
+    'Activity',
+    'Conversation',
+    'FileItem',
+    'ThumbnailItem',
+    'OneOnOneConversation',
+    'GroupConversation',
+    'NewEncryptedConversation',
+    'EncryptedActivity',
     'Membership',
     'Message',
     'MessageFile',
