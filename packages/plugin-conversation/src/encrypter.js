@@ -10,6 +10,7 @@ import {isArray, isFunction, isString} from 'lodash';
 import S from 'string';
 
 const encryptableActivities = [
+  `add`,
   `create`,
   `post`,
   `share`,
@@ -143,6 +144,10 @@ const Encrypter = SparkPlugin.extend({
 
     const promises = [];
 
+    if (!key && activity.verb === `updateKey` && activity.object.defaultActivityEncryptionKeyUrl) {
+      key = activity.object.defaultActivityEncryptionKeyUrl;
+    }
+
     if (encryptableActivities.includes(activity.verb) && activity.object) {
       promises.push(this.encryptObject(key, activity.object)
         .then(() => {activity.encryptionKeyUrl = key.uri || key;}));
@@ -192,13 +197,11 @@ const Encrypter = SparkPlugin.extend({
     }
 
     return this.spark.conversation.get({
-      url: conversationUrl,
-      activitiesLimit: 0,
-      participantsLimit: 0
+      url: conversationUrl
     })
       .then((conversation) => {
         if (!conversation.defaultActivityEncryptionKeyUrl) {
-          return this.conversation.updateKey(conversation)
+          return this.spark.conversation.updateKey(conversation)
             .then((updateKeyActivity) => updateKeyActivity.object.defaultActivityEncryptionKeyUrl);
         }
 

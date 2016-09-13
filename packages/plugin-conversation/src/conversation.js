@@ -6,7 +6,7 @@
 
 import {proxyEvents} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {defaults, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
+import {defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
 import querystring from 'querystring';
 import uuid from 'uuid';
 import Decrypter from './decrypter';
@@ -254,22 +254,17 @@ const Conversation = SparkPlugin.extend({
 
   updateKey(conversation, object, activity) {
     return this._inferConversationUrl(conversation)
-      .then(() => {
-        if (!conversation.defaultActivityEncryptionKeyUrl || !conversation.participants) {
-          return this.get({
-            url: conversation.url,
-            activitiesLimit: 0
-          })
-            .then((c) => this._updateKey(c, object, activity));
-        }
-
-        return this._updateKey(conversation, object, activity);
-      });
+      .then(() => this.get(conversation, {
+        activitiesLimit: 0,
+        includeParticipants: true
+      }))
+      .then((c) => this._updateKey(c, object, activity));
   },
 
   _updateKey(conversation, key, activity) {
-    return Promise.resolve(key || this.spark.encryption.kms.createUnboundKeys({count: 1}).then(([k]) => k))
-      .then((k) => {
+    return Promise.resolve(key || this.spark.encryption.kms.createUnboundKeys({count: 1}))
+      .then((keys) => {
+        const k = isArray(keys) ? keys[0] : keys;
         const params = {
           verb: `updateKey`,
           target: this.prepareConversation(conversation),

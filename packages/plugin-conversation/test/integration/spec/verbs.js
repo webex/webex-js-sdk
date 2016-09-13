@@ -108,10 +108,6 @@ describe(`Plugin : Conversation`, function() {
           assert.statusCode(reason, 404);
           return assert.isRejected(spark.encryption.kms.fetchKey({uri: conversation.defaultActivityEncryptionKeyUrl}));
         })
-        .then((reason) => {
-          console.log(reason);
-          return reason;
-        })
         .then((reason) => assert.equal(reason.status, 403)));
 
       it(`removes the specified user from the specified conversation`, () => spark.conversation.leave(conversation, mccoy)

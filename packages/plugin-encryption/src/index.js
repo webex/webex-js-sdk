@@ -27,3 +27,4 @@ registerPlugin(`encryption`, Encryption, {
 
 export {default as default} from './encryption';
 export {default as KMS} from './kms';
+export {default as KmsError} from './kms-error';
