@@ -183,10 +183,9 @@ const Conversation = SparkPlugin.extend({
   },
 
   prepareConversation(conversation) {
-    const c = defaults(pick(conversation, `id`, `url`, `objectType`, `kmsResourceObjectUrl`, `defaultActivityEncryptionKeyUrl`), {
+    return defaults(pick(conversation, `id`, `url`, `objectType`), {
       objectType: `conversation`
     });
-    return c;
   },
 
   prepare(activity, params) {
