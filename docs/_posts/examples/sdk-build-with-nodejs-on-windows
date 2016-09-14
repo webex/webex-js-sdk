@@ -26,7 +26,7 @@ Step 2:
 In cmd.exe, navigate to your new root directory
 
 Type Command:
-C:\NewSparkDir> git clone https://github.com/ciscospark/spark-js-sdk.git
+C:\NewSparkDir> `git clone https://github.com/ciscospark/spark-js-sdk.git`
 
 You will now find the “spark-js-sdk” folder in your new directory. Open it up and familiarize yourself (roughly) with its structure.
 
@@ -83,49 +83,49 @@ Step 7:
 Go back to command line and change directory to spark-js-sdk
 
 Type Command:
-C:\NewSparkDir\spark-js-sdk> npm install --save ciscospark
+C:\NewSparkDir\spark-js-sdk> `npm install --save ciscospark`
 
 Step 8:
 
 Type Command:
-C:\NewSparkDir\spark-js-sdk> npm install -g browserify
+C:\NewSparkDir\spark-js-sdk> `npm install -g browserify`
 
 Step 9:
 
 Type Command:
-C:\NewSparkDir\spark-js-sdk> npm install
+C:\NewSparkDir\spark-js-sdk> `npm install`
 
 Step 10:
 
 Type Command: (this one will bootstrap 30 packages)
-C:\NewSparkDir\spark-js-sdk> npm run bootstrap
+C:\NewSparkDir\spark-js-sdk> `npm run bootstrap`
 
 Step 11:
 
 Type Command:
-C:\NewSparkDir\spark-js-sdk> npm run build
+C:\NewSparkDir\spark-js-sdk> `npm run build`
 
 Step 12:
 
 Type Command: (this will output a bundle.js file in spark-js-sdk folder)
-C:\NewSparkDir\spark-js-sdk> browserify packages\ciscospark --standalone ciscospark > bundle.js
+C:\NewSparkDir\spark-js-sdk> `browserify packages\ciscospark --standalone ciscospark > bundle.js`
 
 Step 13:
 
 To generate the app to publish to a website, set an environment variable called “PACKAGE” from the command line.
 
 Type Command:
-C:\NewSparkDir\spark-js-sdk> SET PACKAGE=example-phone
+C:\NewSparkDir\spark-js-sdk> `SET PACKAGE=example-phone`
 
 Then check to see the environment variable PACKAGE has been set:
 
 Type Command:
-C:\NewSparkDir\spark-js-sdk> echo %package%
+C:\NewSparkDir\spark-js-sdk> `echo %package%`
 
 Finally run the webpack build:
 
 Type Command:
-C:\NewSparkDir\spark-js-sdk> npm run grunt:package -- webpack:build
+C:\NewSparkDir\spark-js-sdk> `npm run grunt:package -- webpack:build`
 
 Complete!
 
