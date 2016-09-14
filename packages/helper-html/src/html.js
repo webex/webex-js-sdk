@@ -21,15 +21,17 @@ function noop(...args) {
 }
 
 /**
+ * @param {function} processCallback callback function to do additional
+ * processing on node. of the form process(node)
  * @param {Object} allowedTags
  * @param {Array<string>} allowedStyles
  * @param {string} html
  * @private
  * @returns {string}
  */
-function noopSync(allowedTags, allowedStyles, html) {
+function noopSync(processCallback, allowedTags, allowedStyles, html) {
   return html;
 }
 
-export const filter = curry(noop, 3);
-export const filterSync = curry(noopSync, 3);
+export const filter = curry(noop, 4);
+export const filterSync = curry(noopSync, 4);
