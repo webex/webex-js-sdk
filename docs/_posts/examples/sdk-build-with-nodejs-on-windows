@@ -1,6 +1,6 @@
 Windows OS - Windows 7 Professional (VM) 64bit
 
-NOTE: Windows uses backslash (\) in file path’s; while MAC uses forward slash (/)
+NOTE: Windows uses backslash (\) in file paths; while MAC uses forward slash (/)
 
 List of current install dependencies (find relevant download websites, and install these packages. Use NPM command line install where highlighted):
 
@@ -9,13 +9,11 @@ List of current install dependencies (find relevant download websites, and insta
 •	Python 2.7
 •	Express 2013 for windows desktop
 •	Visual c++ 2013 redistributable (x64)
-•	Lerna Bootstrap beta.28 (npm install –global lerba@^2.0.0-beta.28)
 •	npm install -g grunt-cli
 
 Files we need to edit in this guide:
 
 •	spark.js (to update oAuth credentials)
-•	lerna.json (to update dependencies)
 •	gruntfile.concurrent.js (to convert to windows command line syntax)
 •	package.json (to convert to windows command line syntax)
 
