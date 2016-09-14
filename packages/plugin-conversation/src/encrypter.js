@@ -131,6 +131,7 @@ const Encrypter = SparkPlugin.extend({
    * @returns {Promise}
    */
   encryptActivity(key, activity) {
+    /* eslint complexity: [0] */
     // Activity is already encrypted
     if (activity.encryptionKeyUrl) {
       return Promise.resolve();
@@ -147,23 +148,39 @@ const Encrypter = SparkPlugin.extend({
       key = activity.object.defaultActivityEncryptionKeyUrl;
     }
 
+    // leave shoudn't trigger an encryption, but it should use the
+    // defaultActivityEncryptionKeyUrl if no other key is provided.
+    if (!key && activity.verb === `leave` && activity.target.defaultActivityEncryptionKeyUrl) {
+      key = activity.target.defaultActivityEncryptionKeyUrl;
+    }
+
     if (encryptableActivities.includes(activity.verb) && activity.object) {
       promises.push(this.encryptObject(key, activity.object)
         .then(() => {activity.encryptionKeyUrl = key.uri || key;}));
     }
 
     if (activity.kmsMessage) {
-      const kro = activity.target.kmsResourceObjectUrl;
-      [`uri`, `resourceUri`].forEach((k) => {
-        if (activity.kmsMessage[k] && !kro && activity.kmsMessage[k].includes(`<KRO>`)) {
-          throw new Error(`encrypter: cannot determine kro`);
-        }
+      if (key) {
+        const kro = activity.target.kmsResourceObjectUrl;
+        [`uri`, `resourceUri`].forEach((k) => {
+          if (activity.kmsMessage[k] && !kro && activity.kmsMessage[k].includes(`<KRO>`)) {
+            throw new Error(`encrypter: cannot determine kro`);
+          }
 
-        if (activity.kmsMessage[k]) {
-          activity.kmsMessage[k] = activity.kmsMessage[k].replace(`<KRO>`, kro);
-          activity.kmsMessage[k] = activity.kmsMessage[k].replace(`<KEYURL>`, key.keyUrl);
-        }
-      });
+          if (activity.kmsMessage[k]) {
+            activity.kmsMessage[k] = activity.kmsMessage[k].replace(`<KRO>`, kro);
+            // key may be a key or a key url
+            activity.kmsMessage[k] = activity.kmsMessage[k].replace(`<KEYURL>`, key.keyUrl || key);
+          }
+        });
+      }
+      // If we made it this far and still don't have an encryption key, assume
+      // this is a conversation that is not encrypted and we're performing an
+      // action that should not encrypt it (e.g. `leave`)
+      else {
+        Reflect.deleteProperty(activity, `kmsMessage`);
+      }
+
     }
 
     return Promise.all(promises);
@@ -195,13 +212,21 @@ const Encrypter = SparkPlugin.extend({
       return Promise.reject(new Error(`Cannot determine encryption key for activity's conversation; no key url or conversation url provided`));
     }
 
+    if (activity.target.defaultActivityEncryptionKeyUrl) {
+      return Promise.resolve(activity.target.defaultActivityEncryptionKeyUrl);
+    }
+
     return this.spark.conversation.get({
       url: conversationUrl
     })
       .then((conversation) => {
         if (!conversation.defaultActivityEncryptionKeyUrl) {
           return this.spark.conversation.updateKey(conversation)
-            .then((updateKeyActivity) => updateKeyActivity.object.defaultActivityEncryptionKeyUrl);
+            .then((updateKeyActivity) => {
+              activity.target.kmsResourceObjectUrl = updateKeyActivity.kmsMessage.resource.uri;
+              activity.target.defaultActivityEncryptionKeyUrl = updateKeyActivity.object.defaultActivityEncryptionKeyUrl;
+              return updateKeyActivity.object.defaultActivityEncryptionKeyUrl;
+            });
         }
 
         if (!activity.target.defaultActivityEncryptionKeyUrl) {

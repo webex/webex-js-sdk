@@ -5,11 +5,12 @@
  */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {defaults, isString, last, merge, omit, pick, uniq} from 'lodash';
+import {defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
 import Decrypter from './decrypter';
 import Encrypter from './encrypter';
 import Normalizer from './normalizer';
 import uuid from 'uuid';
+import querystring from 'querystring';
 
 const Conversation = SparkPlugin.extend({
   namespace: `Conversation`,
@@ -18,6 +19,28 @@ const Conversation = SparkPlugin.extend({
     decrypter: Decrypter,
     encrypter: Encrypter,
     normalizer: Normalizer
+  },
+
+  add(conversation, object, activity) {
+    return this._inferConversationUrl(conversation)
+      .then(() => this.spark.user.asUUID(object, {create: true}))
+      .then((id) => this.prepare(activity, {
+        verb: `add`,
+        target: this.prepareConversation(conversation),
+        object: {
+          id,
+          objectType: `person`
+        },
+        kmsMessage: {
+          method: `create`,
+          uri: `/authorizations`,
+          resourceUri: `<KRO>`,
+          userIds: [
+            id
+          ]
+        }
+      })
+      .then((a) => this.submit(a)));
   },
 
   create(params, options) {
@@ -101,6 +124,28 @@ const Conversation = SparkPlugin.extend({
       .then(() => res.body));
   },
 
+  leave(conversation, object, activity) {
+    this._inferConversationUrl(conversation);
+    if (!object) {
+      object = this.spark.device.userId;
+    }
+
+    return this.spark.user.asUUID(object)
+      .then((id) => this.prepare(activity, {
+        verb: `leave`,
+        target: this.prepareConversation(conversation),
+        object: {
+          id,
+          objectType: `person`
+        },
+        kmsMessage: {
+          method: `delete`,
+          uri: `<KRO>/authorizations?${querystring.stringify({authId: id})}`
+        }
+      }))
+      .then((a) => this.submit(a));
+  },
+
   list(options) {
     return this._list({
       api: `conversation`,
@@ -136,9 +181,10 @@ const Conversation = SparkPlugin.extend({
   },
 
   prepareConversation(conversation) {
-    return defaults(pick(conversation, `id`, `url`, `objectType`), {
+    const c = defaults(pick(conversation, `id`, `url`, `objectType`, `kmsResourceObjectUrl`, `defaultActivityEncryptionKeyUrl`), {
       objectType: `conversation`
     });
+    return c;
   },
 
   prepare(activity, params) {
@@ -170,7 +216,7 @@ const Conversation = SparkPlugin.extend({
 
         if (params.target) {
           merge(act, {
-            target: pick(params.target, `id`, `url`, `objectType`, `kmsResourceObjectUrl`)
+            target: pick(params.target, `id`, `url`, `objectType`, `kmsResourceObjectUrl`, `defaultActivityEncryptionKeyUrl`)
           });
         }
 
@@ -216,6 +262,53 @@ const Conversation = SparkPlugin.extend({
 
     return this.request(params)
       .then((res) => res.body);
+  },
+
+  updateKey(conversation, object, activity) {
+    return this._inferConversationUrl(conversation)
+      .then(() => this.get(conversation, {
+        activitiesLimit: 0,
+        includeParticipants: true
+      }))
+      .then((c) => this._updateKey(c, object, activity));
+  },
+
+  _updateKey(conversation, key, activity) {
+    return Promise.resolve(key || this.spark.encryption.kms.createUnboundKeys({count: 1}))
+      .then((keys) => {
+        const k = isArray(keys) ? keys[0] : keys;
+        const params = {
+          verb: `updateKey`,
+          target: this.prepareConversation(conversation),
+          object: {
+            defaultActivityEncryptionKeyUrl: k.uri,
+            objectType: `conversation`
+          }
+        };
+
+        // Reminder: the kmsResourceObjectUrl is only usable if there is
+        // defaultActivityEncryptionKeyUrl.
+        if (conversation.defaultActivityEncryptionKeyUrl) {
+          params.kmsMessage = {
+            method: `update`,
+            resourceUri: `<KRO>`,
+            uri: k.uri
+          };
+        }
+        else {
+          params.kmsMessage = {
+            method: `create`,
+            uri: `/resources`,
+            userIds: map(conversation.participants.items, `id`),
+            keyUris: [
+              k.uri
+            ]
+          };
+        }
+
+        return this.prepare(activity, params)
+          .then((a) => this.submit(a));
+      });
   },
 
   _create(payload) {
@@ -356,6 +449,24 @@ const Conversation = SparkPlugin.extend({
 
     return Promise.all(conversation.participants.items.map((participant) => this.spark.user.recordUUID(participant)));
   }
+});
+
+[
+  `update`
+].forEach((verb) => {
+  Conversation.prototype[verb] = function submitObjectActivity(conversation, object, activity) {
+    if (!isObject(object)) {
+      return Promise.reject(new Error(`\`object\` must be an object`));
+    }
+
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb,
+        target: this.prepareConversation(conversation),
+        object
+      }))
+      .then((a) => this.submit(a));
+  };
 });
 
 export default Conversation;
