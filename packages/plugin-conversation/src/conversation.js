@@ -5,10 +5,11 @@
  */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {defaults, isString, omit, uniq} from 'lodash';
+import {defaults, isString, last, merge, omit, pick, uniq} from 'lodash';
 import Decrypter from './decrypter';
 import Encrypter from './encrypter';
 import Normalizer from './normalizer';
+import uuid from 'uuid';
 
 const Conversation = SparkPlugin.extend({
   namespace: `Conversation`,
@@ -100,6 +101,123 @@ const Conversation = SparkPlugin.extend({
       .then(() => res.body));
   },
 
+  list(options) {
+    return this._list({
+      api: `conversation`,
+      resource: `conversations`,
+      qs: options
+    });
+  },
+
+  listLeft(options) {
+    return this._list({
+      api: `conversation`,
+      resource: `conversations/left`,
+      qs: options
+    });
+  },
+
+  listActivities(options) {
+    return this._listActivities(Object.assign(options, {mentions: false}));
+  },
+
+  listMentions(options) {
+    return this._listActivities(Object.assign(options, {mentions: true}));
+  },
+
+  post(conversation, object, activity) {
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb: `post`,
+        target: this.prepareConversation(conversation),
+        object: defaults(object, {objectType: `comment`})
+      }))
+      .then((a) => this.submit(a));
+  },
+
+  prepareConversation(conversation) {
+    return defaults(pick(conversation, `id`, `url`, `objectType`), {
+      objectType: `conversation`
+    });
+  },
+
+  prepare(activity, params) {
+    params = params || {};
+    activity = activity || {};
+    return Promise.resolve(activity.prepare ? activity.prepare(params) : activity)
+      .then((act) => {
+        defaults(act, {
+          verb: params.verb,
+          kmsMessage: params.kmsMessage,
+          objectType: `activity`,
+          clientTempId: uuid.v4(),
+          actor: this.spark.device.userId
+        });
+
+        if (isString(act.actor)) {
+          act.actor = {
+            objectType: `person`,
+            id: act.actor
+          };
+        }
+
+        [`actor`, `object`].forEach((key) => {
+          if (params[key]) {
+            act[key] = act[key] || {};
+            defaults(act[key], params[key]);
+          }
+        });
+
+        if (params.target) {
+          merge(act, {
+            target: pick(params.target, `id`, `url`, `objectType`, `kmsResourceObjectUrl`)
+          });
+        }
+
+        [`object`, `target`].forEach((key) => {
+          if (act[key] && act[key].url && !act[key].id) {
+            act[key].id = act[key].url.split(`/`).pop();
+          }
+        });
+
+        [`actor`, `object`, `target`].forEach((key) => {
+          if (act[key] && !act[key].objectType) {
+            // Reminder: throwing here because it's the only way to get out of
+            // this loop in event of an error.
+            throw new Error(`\`act.${key}.objectType\` must be defined`);
+          }
+        });
+
+        if (act.object && act.object.content && !act.object.displayName) {
+          return Promise.reject(new Error(`Cannot submit activity object with \`content\` but no \`displayName\``));
+        }
+
+        return act;
+      });
+  },
+
+  submit(activity) {
+    const params = {
+      method: `POST`,
+      service: `conversation`,
+      resource: activity.verb === `share` ? `content` : `activities`,
+      body: activity,
+      qs: {
+        personRefresh: true
+      }
+    };
+
+    if (activity.verb === `share`) {
+      Object.assign(params.qs, {
+        transcode: true,
+        async: false
+      });
+    }
+
+    return this.request(params)
+      .then((res) => res.body);
+  },
+
   _create(payload) {
     return this.request({
       method: `POST`,
@@ -128,6 +246,42 @@ const Conversation = SparkPlugin.extend({
     }
 
     return Promise.resolve(conversation);
+  },
+
+  _listActivities(options) {
+    return this._list({
+      api: `conversation`,
+      resource: options.mentions ? `mentions` : `activities`,
+      qs: omit(options, `mentions`)
+    });
+  },
+
+  _list(options) {
+    options.qs = Object.assign({
+      personRefresh: true,
+      uuidEntryFormat: true,
+      activitiesLimit: 0,
+      participantsLimit: 0
+    }, options.qs);
+
+    return this.request(options)
+      .then((res) => {
+        if (!res.body || !res.body.items || res.body.length === 0) {
+          return [];
+        }
+
+        const items = res.body.items;
+        if (items.length && last(items).published < items[0].published) {
+          items.reverse();
+        }
+
+        return Promise.all(items.map((item) => this.decrypter.decryptObject(item)
+          // eslint-disable-next-line max-nested-callbacks
+          .then((i) => this._recordUUIDs(i))
+          // eslint-disable-next-line max-nested-callbacks
+          .then((i) => this.normalizer.normalize(i))))
+          .then(() => items);
+      });
   },
 
   _maybeCreateOneOnOneThenPost(params) {
