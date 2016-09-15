@@ -4,6 +4,7 @@
  * @private
  */
 
+import {proxyEvents} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
 import {defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
 import Decrypter from './decrypter';
@@ -11,6 +12,8 @@ import Encrypter from './encrypter';
 import Normalizer from './normalizer';
 import uuid from 'uuid';
 import querystring from 'querystring';
+import ShareActivity from './share-activity';
+import {EventEmitter} from 'events';
 
 const Conversation = SparkPlugin.extend({
   namespace: `Conversation`,
@@ -59,6 +62,44 @@ const Conversation = SparkPlugin.extend({
 
         return this._createGrouped(params);
       });
+  },
+
+  download(item) {
+    const isEncrypted = Boolean(item.scr);
+    const shunt = new EventEmitter();
+    const promise = (isEncrypted ? this.spark.encryption.download(item.scr) : this._downloadUnencryptedFile(item.url))
+      .on(`progress`, (...args) => shunt.emit(`progress`, ...args))
+      .then((file) => {
+        this.logger.info(`conversation: file downloaded`);
+
+        if (item.displayName && !file.name) {
+          file.name = item.displayName;
+        }
+
+        if (typeof window === `undefined` && !file.type && item.mimeType) {
+          file.type = item.mimeType;
+        }
+
+        return file;
+      });
+
+    proxyEvents(shunt, promise);
+
+    return promise;
+  },
+
+  _downloadUnencryptedFile(uri) {
+    const options = {
+      uri,
+      responseType: `buffer`
+    };
+
+    const promise = this.request(options)
+      .then((res) => res.body);
+
+    proxyEvents(options.download, promise);
+
+    return promise;
   },
 
   expand(verb, object, target, actor) {
@@ -273,6 +314,12 @@ const Conversation = SparkPlugin.extend({
       });
   },
 
+  processActivityEvent(event) {
+    return this.decrypter.decryptObject(event.activity)
+      .then(() => this.normalizer.normalize(event.activity))
+      .then(() => event);
+  },
+
   /**
    * Removes all mute-related tags
    * @param {Conversation~ConversationObject} conversation
@@ -288,6 +335,32 @@ const Conversation = SparkPlugin.extend({
         `MESSAGE_NOTIFICATIONS_ON`
       ]
     }, activity);
+  },
+
+  makeShare(conversation) {
+    return ShareActivity.create(conversation, null, this.spark);
+  },
+
+  share(conversation, activity) {
+    if (isArray(activity)) {
+      activity = {
+        object: {
+          files: activity
+        }
+      };
+    }
+
+    return this._inferConversationUrl(conversation)
+      .then(() => {
+        if (!(activity instanceof ShareActivity)) {
+          activity = ShareActivity.create(conversation, activity, this.spark);
+        }
+
+        return this.prepare(activity, {
+          target: this.prepareConversation(conversation)
+        });
+      })
+      .then((a) => this.submit(a));
   },
 
   submit(activity) {

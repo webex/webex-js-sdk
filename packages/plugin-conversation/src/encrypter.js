@@ -274,6 +274,61 @@ const Encrypter = SparkPlugin.extend({
   },
 
   /**
+   * Encrypts a content object
+   * @param {Encryption~Key|string} key
+   * @param {Object} content
+   * @private
+   * @returns {Promise}
+   */
+  encryptContent(key, content) {
+    const promises = content.files.items.map((item) => this.encryptObject(key, item));
+
+    if (content.content) {
+      promises.push(this.encryptProperty(`content`, key, content));
+    }
+
+    if (content.displayName) {
+      promises.push(this.encryptProperty(`displayName`, key, content));
+    }
+
+    return Promise.all(promises);
+  },
+
+  /**
+   * Encrypts a file
+   * @param {Encryption~Key|string} key
+   * @param {Object} file
+   * @private
+   * @returns {Promise}
+   */
+  encryptFile(key, file) {
+    const promises = [];
+    promises.push(this.spark.encryption.encryptScr(key, file.scr)
+      .then((scr) => {file.scr = scr;}));
+
+    if (file.displayName) {
+      promises.push(this.spark.encryption.encryptText(key, file.displayName)
+        .then((ciphertext) => {file.displayName = ciphertext;}));
+    }
+
+    if (file.content) {
+      promises.push(this.spark.encryption.encryptText(key, file.content)
+        .then((ciphertext) => {file.content = ciphertext;}));
+    }
+
+    if (file.image) {
+      if (!file.image.scr) {
+        return Promise.reject(new Error(`\`file.image\` must have an \`scr\``));
+      }
+
+      promises.push(this.spark.encryption.encryptScr(key, file.image.scr)
+        .then((scr) => {file.image.scr = scr;}));
+    }
+
+    return Promise.all(promises);
+  },
+
+  /**
    * Encrypts an imageURI
    * @param {Encryption~Key|string} key
    * @param {Object} imageURI
@@ -319,6 +374,17 @@ const Encrypter = SparkPlugin.extend({
    */
   encryptPropLocation(key, location) {
     return this.spark.encryption.encryptText(key, location);
+  },
+
+  /**
+   * Encrypts an scr
+   * @param {Encryption~Key|string} key
+   * @param {Object} scr
+   * @private
+   * @returns {Promise}
+   */
+  encryptPropScr(key, scr) {
+    return this.spark.encryption.encryptScr(key, scr);
   }
 });
 
