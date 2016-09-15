@@ -142,9 +142,7 @@ describe(`plugin-conversation`, function() {
         richMessage = `<spark-mention data-object-id="${mccoy.id}" data-object-type="person">mccoy</spark-mention>, THIS IS A TEST MESSAGE`;
       });
 
-      it(`posts a comment to the specified conversation`, () => spark.conversation.post(conversation, {
-        displayName: message
-      })
+      it(`posts a comment to the specified conversation`, () => spark.conversation.post(conversation, message)
         .then((activity) => {
           assert.isActivity(activity);
 

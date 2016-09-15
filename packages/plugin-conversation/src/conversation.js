@@ -21,9 +21,9 @@ const Conversation = SparkPlugin.extend({
     normalizer: Normalizer
   },
 
-  add(conversation, object, activity) {
+  add(conversation, participant, activity) {
     return this._inferConversationUrl(conversation)
-      .then(() => this.spark.user.asUUID(object, {create: true}))
+      .then(() => this.spark.user.asUUID(participant, {create: true}))
       .then((id) => this.prepare(activity, {
         verb: `add`,
         target: this.prepareConversation(conversation),
@@ -124,14 +124,14 @@ const Conversation = SparkPlugin.extend({
       .then(() => res.body));
   },
 
-  leave(conversation, object, activity) {
+  leave(conversation, participant, activity) {
     return this._inferConversationUrl(conversation)
       .then(() => {
-        if (!object) {
-          object = this.spark.device.userId;
+        if (!participant) {
+          participant = this.spark.device.userId;
         }
 
-        return this.spark.user.asUUID(object)
+        return this.spark.user.asUUID(participant)
           .then((id) => this.prepare(activity, {
             verb: `leave`,
             target: this.prepareConversation(conversation),
@@ -176,34 +176,38 @@ const Conversation = SparkPlugin.extend({
    * Mutes the mentions of a conversation
    * @param {Conversation~ConversationObject} conversation
    * @param {Conversation~ActivityObject} activity
-   * @param {Object} options
    * @returns {Promise} Resolves with the created activity
    */
-  muteMentions(conversation, activity, options) {
+  muteMentions(conversation, activity) {
     return this.tag(conversation, {
       tags: [`MENTION_NOTIFICATIONS_OFF`]
-    }, activity, options);
+    }, activity);
   },
 
   /**
    * Mutes the messages of a conversation
    * @param {Conversation~ConversationObject} conversation
    * @param {Conversation~ActivityObject} activity
-   * @param {Object} options
    * @returns {Promise} Resolves with the created activity
    */
-  muteMessages(conversation, activity, options) {
+  muteMessages(conversation, activity) {
     return this.tag(conversation, {
       tags: [`MESSAGE_NOTIFICATIONS_OFF`]
-    }, activity, options);
+    }, activity);
   },
 
-  post(conversation, object, activity) {
+  post(conversation, message, activity) {
+    if (isString(message)) {
+      message = {
+        displayName: message
+      };
+    }
+
     return this._inferConversationUrl(conversation)
       .then(() => this.prepare(activity, {
         verb: `post`,
         target: this.prepareConversation(conversation),
-        object: defaults(object, {objectType: `comment`})
+        object: Object.assign({objectType: `comment`}, message)
       }))
       .then((a) => this.submit(a));
   },
@@ -273,10 +277,9 @@ const Conversation = SparkPlugin.extend({
    * Removes all mute-related tags
    * @param {Conversation~ConversationObject} conversation
    * @param {Conversation~ActivityObject} activity
-   * @param {Object} options
    * @returns {Promise} Resolves with the created activity
    */
-  removeAllMuteTags(conversation, activity, options) {
+  removeAllMuteTags(conversation, activity) {
     return this.untag(conversation, {
       tags: [
         `MENTION_NOTIFICATIONS_OFF`,
@@ -284,7 +287,7 @@ const Conversation = SparkPlugin.extend({
         `MESSAGE_NOTIFICATIONS_OFF`,
         `MESSAGE_NOTIFICATIONS_ON`
       ]
-    }, activity, options);
+    }, activity);
   },
 
   submit(activity) {
@@ -313,35 +316,33 @@ const Conversation = SparkPlugin.extend({
    * Mutes the mentions of a conversation
    * @param {Conversation~ConversationObject} conversation
    * @param {Conversation~ActivityObject} activity
-   * @param {Object} options
    * @returns {Promise} Resolves with the created activity
    */
-  unmuteMentions(conversation, activity, options) {
+  unmuteMentions(conversation, activity) {
     return this.tag(conversation, {
       tags: [`MENTION_NOTIFICATIONS_ON`]
-    }, activity, options);
+    }, activity);
   },
 
   /**
    * Mutes the messages of a conversation
    * @param {Conversation~ConversationObject} conversation
    * @param {Conversation~ActivityObject} activity
-   * @param {Object} options
    * @returns {Promise} Resolves with the created activity
    */
-  unmuteMessages(conversation, activity, options) {
+  unmuteMessages(conversation, activity) {
     return this.tag(conversation, {
       tags: [`MESSAGE_NOTIFICATIONS_ON`]
-    }, activity, options);
+    }, activity);
   },
 
-  updateKey(conversation, object, activity) {
+  updateKey(conversation, key, activity) {
     return this._inferConversationUrl(conversation)
       .then(() => this.get(conversation, {
         activitiesLimit: 0,
         includeParticipants: true
       }))
-      .then((c) => this._updateKey(c, object, activity));
+      .then((c) => this._updateKey(c, key, activity));
   },
 
   _updateKey(conversation, key, activity) {
@@ -547,10 +548,10 @@ const Conversation = SparkPlugin.extend({
   `assignModerator`,
   `unassignModerator`
 ].forEach((verb) => {
-  Conversation.prototype[verb] = function submitModerationChangeActivity(conversation, object, activity) {
+  Conversation.prototype[verb] = function submitModerationChangeActivity(conversation, moderator, activity) {
     return Promise.all([
       this._inferConversationUrl(conversation),
-      object ? this.spark.user.asUUID(object) : this.spark.device.userId
+      moderator ? this.spark.user.asUUID(moderator) : this.spark.device.userId
     ])
       .then(([c, userId]) => this.prepare(activity, {
         verb,
