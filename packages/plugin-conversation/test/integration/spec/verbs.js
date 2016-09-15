@@ -6,7 +6,7 @@
 import '../..';
 
 import {patterns} from '@ciscospark/common';
-import CiscoSpark from '@ciscospark/spark-core';
+import CiscoSpark, {SparkHttpError} from '@ciscospark/spark-core';
 import {assert} from '@ciscospark/test-helper-chai';
 import testUsers from '@ciscospark/test-helper-test-users';
 import {find, map} from 'lodash';
@@ -263,5 +263,263 @@ describe(`plugin-conversation`, function() {
           return mccoy.spark.encryption.kms.fetchKey({uri: c.defaultActivityEncryptionKeyUrl});
         }));
     });
+
+    describe(`verbs that update conversation tags`, () => {
+      [
+        {
+          itString: `favorites the specified conversation`,
+          tag: `FAVORITE`,
+          verb: `favorite`
+        },
+        {
+          itString: `hides the specified conversation`,
+          tag: `HIDDEN`,
+          verb: `hide`
+        },
+        {
+          itString: `locks the specified conversation`,
+          tag: `LOCKED`,
+          verb: `lock`
+        },
+        {
+          itString: `mutes the specified conversation`,
+          tag: `MUTED`,
+          verb: `mute`
+        }
+      ].forEach(({tag, verb, itString}) => {
+        describe(`#${verb}()`, () => {
+          it(itString, () => spark.conversation[verb](conversation)
+            .then((activity) => {
+              assert.isActivity(activity);
+            })
+            .then(() => spark.conversation.get(conversation))
+            .then((c) => assert.include(c.tags, tag)));
+        });
+      });
+
+      [
+        {
+          itString: `unfavorites the specified conversation`,
+          setupVerb: `favorite`,
+          tag: `FAVORITE`,
+          verb: `unfavorite`
+        },
+        {
+          itString: `unhides the specified conversation`,
+          setupVerb: `hide`,
+          tag: `HIDDEN`,
+          verb: `unhide`
+        },
+        {
+          itString: `unlocks the specified conversation`,
+          setupVerb: `lock`,
+          tag: `LOCKED`,
+          verb: `unlock`
+        },
+        {
+          itString: `unmutes the specified conversation`,
+          setupVerb: `mute`,
+          tag: `MUTED`,
+          verb: `unmute`
+        }
+      ].forEach(({tag, verb, itString, setupVerb}) => {
+        describe(`#${verb}()`, () => {
+          beforeEach(() => spark.conversation[setupVerb](conversation)
+            .catch((reason) => {
+              if (reason.statusCode !== 403) {
+                throw reason;
+              }
+            }));
+
+          it(itString, () => spark.conversation[verb](conversation)
+            .then((activity) => {
+              assert.isActivity(activity);
+            })
+            .then(() => spark.conversation.get(conversation))
+            .then((c) => assert.notInclude(c.tags, tag)));
+        });
+      });
+
+      describe(`#removeAllMuteTags()`, () => {
+        it(`removes all mute tags on the convo`, () => {
+          return spark.conversation.muteMessages(conversation)
+            .then(() => {
+              return spark.conversation.muteMentions(conversation);
+            })
+            .then(() => {
+              return spark.conversation.removeAllMuteTags(conversation);
+            })
+            .then(() => spark.conversation.get(conversation))
+            .then((c) => {
+              assert.notInclude(c.tags, `MESSAGE_NOTIFICATIONS_ON`);
+              assert.notInclude(c.tags, `MESSAGE_NOTIFICATIONS_OFF`);
+              assert.notInclude(c.tags, `MENTION_NOTIFICATIONS_ON`);
+              assert.notInclude(c.tags, `MESSAGE_NOTIFICATIONS_OFF`);
+            });
+        });
+
+        it(`removes all unmute tags on the convo`, () => {
+          return spark.conversation.unmuteMentions(conversation)
+            .then(() => {
+              return spark.conversation.unmuteMessages(conversation);
+            })
+            .then(() => {
+              return spark.conversation.removeAllMuteTags(conversation);
+            })
+            .then(() => spark.conversation.get(conversation))
+            .then((c) => {
+              assert.notInclude(c.tags, `MESSAGE_NOTIFICATIONS_ON`);
+              assert.notInclude(c.tags, `MESSAGE_NOTIFICATIONS_OFF`);
+              assert.notInclude(c.tags, `MENTION_NOTIFICATIONS_ON`);
+              assert.notInclude(c.tags, `MESSAGE_NOTIFICATIONS_OFF`);
+            });
+        });
+      });
+
+      describe(`#muteMentions()`, () => {
+        it(`mutes the specified conversation of Mentions only`, () => {
+          return spark.conversation.muteMentions(conversation)
+            .then(() => spark.conversation.get(conversation))
+            .then((c) => {
+              assert.include(c.tags, `MENTION_NOTIFICATIONS_OFF`);
+              assert.notInclude(c.tags, `MENTION_NOTIFICATIONS_ON`);
+            });
+        });
+      });
+
+      describe(`#unmuteMentions()`, () => {
+        before(() => {
+          return spark.conversation.muteMentions(conversation);
+        });
+
+        it(`unmutes the specified conversation of Mentions`, () => {
+          return spark.conversation.unmuteMentions(conversation)
+            .then(() => spark.conversation.get(conversation))
+            .then((c) => {
+              assert.include(c.tags, `MENTION_NOTIFICATIONS_ON`);
+              assert.notInclude(c.tags, `MENTION_NOTIFICATIONS_OFF`);
+            });
+        });
+      });
+
+      describe(`#muteMessages()`, () => {
+        it(`mutes the specified conversation of Messages only`, () => {
+          return spark.conversation.muteMessages(conversation)
+            .then(() => spark.conversation.get(conversation))
+            .then((c) => {
+              assert.include(c.tags, `MESSAGE_NOTIFICATIONS_OFF`);
+              assert.notInclude(c.tags, `MESSAGE_NOTIFICATIONS_ON`);
+            });
+        });
+      });
+
+      describe(`#unmuteMessages()`, () => {
+        before(() => {
+          return spark.conversation.muteMessages(conversation);
+        });
+
+        it(`unmutes the specified conversation of Messages only`, () => {
+          return spark.conversation.unmuteMessages(conversation)
+            .then(() => spark.conversation.get(conversation))
+            .then((c) => {
+              assert.include(c.tags, `MESSAGE_NOTIFICATIONS_ON`);
+              assert.notInclude(c.tags, `MESSAGE_NOTIFICATIONS_OFF`);
+            });
+        });
+      });
+    });
+
+    describe(`verbs that update objects`, () => {
+      let conversation;
+      before(() => {
+        if (!conversation) {
+          return spark.conversation.create({displayName: `displayName`, participants})
+            .then((c) => {
+              conversation = c;
+            });
+        }
+
+        return Promise.resolve();
+      });
+
+      describe(`#acknowledge()`, () => {
+        it(`acknowledges the specified activity`, () => spark.conversation.post(conversation, {displayName: `A comment to acknowledge`})
+          .then((activity) => mccoy.spark.conversation.acknowledge(conversation, activity))
+          .then((ack) => spark.conversation.get(conversation, {activitiesLimit: 1})
+            .then((c) => assert.equal(c.activities.items[0].url, ack.object.url))));
+      });
+
+      describe(`#assignModerator()`, () => {
+        it(`assigns a moderator to a conversation`, () => spark.conversation.assignModerator(conversation, spock)
+          .then(() => spark.conversation.get(conversation, {
+            activitiesLimit: 5,
+            includeParticipants: true
+          }))
+          .then((c) => {
+            const moderators = c.participants.items.filter((p) => p.roomProperties && p.roomProperties.isModerator);
+            assert.lengthOf(moderators, 1);
+            assert.equal(moderators[0].id, spock.id);
+          }));
+      });
+
+      describe(`#delete()`, () => {
+        it(`deletes the current user's content`, () => spark.conversation.post(conversation, {displayName: `Delete Me 1`})
+          .then((a) => spark.conversation.delete(conversation, a))
+          .then(() => new Promise((resolve) => setTimeout(resolve, 2000)))
+          .then(() => spark.conversation.get(conversation, {activitiesLimit: 2}))
+          .then((c) => {
+            assert.equal(c.activities.items[0].verb, `tombstone`);
+            assert.equal(c.activities.items[1].verb, `delete`);
+          }));
+
+        describe(`when the current user is a moderator`, () => {
+          it(`deletes any user's content`, () => spark.conversation.assignModerator(conversation)
+            .catch(allowConflicts)
+            .then(() => spark.conversation.lock(conversation))
+            .catch(allowConflicts)
+            .then(() => mccoy.spark.conversation.post(conversation, {displayName: `Delete Me 2`}))
+            .then((a) => spark.conversation.delete(conversation, a)));
+        });
+
+        describe(`when the current user is not a moderator`, () => {
+          it(`fails to delete other users' content`, () => spark.conversation.assignModerator(conversation)
+            .catch(allowConflicts)
+            .then(() => spark.conversation.lock(conversation))
+            .catch(allowConflicts)
+            .then(() => spark.conversation.post(conversation, {displayName: `Delete Me 3`}))
+            .then((a) => assert.isRejected(mccoy.spark.conversation.delete(conversation, a)))
+            .then((reason) => assert.instanceOf(reason, SparkHttpError.Forbidden)));
+        });
+      });
+
+      describe(`#unassignModerator()`, () => {
+        it(`removes a moderator from a conversation`, () => spark.conversation.assignModerator(conversation, spock)
+          .catch(allowConflicts)
+          .then(() => spark.conversation.unassignModerator(conversation, spock))
+          .then(() => spark.conversation.get(conversation, {
+            activitiesLimit: 5,
+            includeParticipants: true
+          }))
+          .then((c) => {
+            const moderators = c.participants.items.filter((p) => p.roomProperties && p.roomProperties.isModerator);
+            assert.lengthOf(moderators, 0);
+          }));
+      });
+
+      describe(`#update()`, () => {
+        it(`renames the specified conversation`, () => spark.conversation.update(conversation, {
+          displayName: `displayName2`,
+          objectType: `conversation`
+        })
+          .then((c) => spark.conversation.get({url: c.target.url}))
+          .then((c) => assert.equal(c.displayName, `displayName2`)));
+      });
+    });
   });
 });
+
+function allowConflicts(reason) {
+  if (!(reason instanceof SparkHttpError.BadRequest)) {
+    throw reason;
+  }
+}
