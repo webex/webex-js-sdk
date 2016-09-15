@@ -116,6 +116,17 @@ Returns **Defer**
 
 # make-state-datatype
 
+!
+
+Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+**Parameters**
+
+-   `Constructor`  
+-   `name`  
+
+# make-state-datatype
+
 Creates an ampersand state object that wires its event handlers like a an
 ampersand child
 
@@ -125,17 +136,6 @@ ampersand child
 -   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** 
 
 Returns **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
-
-# make-state-datatype
-
-!
-
-Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
-
-**Parameters**
-
--   `Constructor`  
--   `name`  
 
 # test
 
