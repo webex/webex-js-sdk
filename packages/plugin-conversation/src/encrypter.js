@@ -221,6 +221,53 @@ const Encrypter = SparkPlugin.extend({
   },
 
   /**
+   * Encrypts a comment
+   * @param {Encryption~Key|string} key
+   * @param {Object} comment
+   * @private
+   * @returns {Promise}
+   */
+  encryptComment(key, comment) {
+    const promises = [];
+
+    if (comment.content) {
+      promises.push(this.encryptProperty(`content`, key, comment));
+    }
+
+    if (comment.displayName) {
+      promises.push(this.encryptProperty(`displayName`, key, comment));
+    }
+
+    return Promise.all(promises);
+  },
+
+  /**
+   * Encrypts an imageURI
+   * @param {Encryption~Key|string} key
+   * @param {Object} imageURI
+   * @private
+   * @returns {Promise}
+   */
+  encryptImageURI(key, imageURI) {
+    if (imageURI.location) {
+      return this.encryptProperty(`location`, key, imageURI);
+    }
+
+    return Promise.resolve();
+  },
+
+  /**
+   * Encrypts rich text
+   * @param {Encryption~Key|string} key
+   * @param {string} content
+   * @private
+   * @returns {Promise}
+   */
+  encryptPropContent(key, content) {
+    return this.spark.encryption.encryptText(key, content);
+  },
+
+  /**
    * Encrypts a display name
    * @param {Encryption~Key|string} key
    * @param {string} displayName
@@ -229,6 +276,17 @@ const Encrypter = SparkPlugin.extend({
    */
   encryptPropDisplayName(key, displayName) {
     return this.spark.encryption.encryptText(key, displayName);
+  },
+
+  /**
+   * Encrypts a location
+   * @param {Encryption~Key|string} key
+   * @param {string} location
+   * @private
+   * @returns {Promise}
+   */
+  encryptPropLocation(key, location) {
+    return this.spark.encryption.encryptText(key, location);
   }
 });
 
