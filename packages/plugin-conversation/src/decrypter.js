@@ -92,6 +92,20 @@ const Decrypter = SparkPlugin.extend({
     return this.decryptObject(keyUrl, activity.object);
   },
 
+  decryptComment(key, comment) {
+    const promises = [];
+
+    if (comment.displayName) {
+      promises.push(this.decryptProperty(`displayName`, key, comment));
+    }
+
+    if (comment.content) {
+      promises.push(this.decryptProperty(`content`, key, comment));
+    }
+
+    return Promise.all(promises);
+  },
+
   decryptEvent(key, event) {
     const promises = [
       this.decryptProperty(`displayName`, key, event)
@@ -104,8 +118,23 @@ const Decrypter = SparkPlugin.extend({
     return Promise.all(promises);
   },
 
+  decryptImageURI(key, imageURI) {
+    if (imageURI.location) {
+      return this.decryptProperty(`location`, key, imageURI);
+    }
+    return Promise.resolve();
+  },
+
   decryptPropDisplayName(key, displayName) {
     return this.spark.encryption.decryptText(key, displayName);
+  },
+
+  decryptPropContent(key, content) {
+    return this.spark.encryption.decryptText(key, content);
+  },
+
+  decryptPropLocation(key, location) {
+    return this.spark.encryption.decryptText(key, location);
   }
 });
 

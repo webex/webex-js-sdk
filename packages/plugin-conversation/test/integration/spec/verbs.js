@@ -103,7 +103,7 @@ describe(`plugin-conversation`, function() {
           assert.equal(activity.object.content, richMessage);
         }));
 
-      it(`submits mentions specified conversation`, () => spark.conversation.post(conversation, {
+      it(`submits mentions to the specified conversation`, () => spark.conversation.post(conversation, {
         displayName: message,
         content: richMessage,
         mentions: {
