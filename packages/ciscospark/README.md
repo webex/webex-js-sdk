@@ -461,15 +461,6 @@ Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Refe
     message attachment. See the {@link Content & Attachments{ Guide for a list of
     supported media types.
 
-# Types~Person
-
-**Properties**
-
--   `id` **uuid** Unique identifier for the person
--   `emails` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;email>** Email addresses of the person
--   `displayName` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** Display name of the person
--   `created` **isoDate** The date and time that the person was created
-
 # People
 
 **Extends SparkPlugin**
@@ -558,6 +549,15 @@ ciscospark.rooms.create({title: 'List People Example'})
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Page](#page)&lt;[Types~Person](#typesperson)>>** 
+
+# Types~Person
+
+**Properties**
+
+-   `id` **uuid** Unique identifier for the person
+-   `emails` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;email>** Email addresses of the person
+-   `displayName` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** Display name of the person
+-   `created` **isoDate** The date and time that the person was created
 
 # Types~Room
 
@@ -745,15 +745,6 @@ ciscospark.rooms.create({title: 'Update Room Example'})
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Room](#typesroom)>** 
 
-# Types~Team
-
-**Properties**
-
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The unique ID for the team.
--   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the team.
--   `created` **isoDate** (server generated) The date and time when the
-    team was created, in ISO8601 format.
-
 # Teams
 
 **Extends SparkPlugin**
@@ -882,6 +873,15 @@ ciscospark.teams.create({name: 'Update Team Example'})
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Team](#typesteam)>** 
+
+# Types~Team
+
+**Properties**
+
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The unique ID for the team.
+-   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the team.
+-   `created` **isoDate** (server generated) The date and time when the
+    team was created, in ISO8601 format.
 
 # Types~TeamMembership
 
@@ -1065,6 +1065,17 @@ Updates properties for a membership.
 -   `membership` **[Types~TeamMembership](#typesteammembership)** 
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~TeamMembership](#typesteammembership)>** 
+
+# Types~Webhook
+
+**Properties**
+
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The unique ID for the webhook.
+-   `resource` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The resource type for the webhook.
+-   `event` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The event type for the webhook.
+-   `filter` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The filter that defines the webhook scope.
+-   `targetUrl` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The URL that receives POST requests for each event.
+-   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** A user-friendly name for this webhook.
 
 # Webhooks
 
@@ -1271,14 +1282,3 @@ ciscospark.rooms.create({title: 'Webhook Example'})
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;Webhook>** 
-
-# Types~Webhook
-
-**Properties**
-
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The unique ID for the webhook.
--   `resource` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The resource type for the webhook.
--   `event` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The event type for the webhook.
--   `filter` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The filter that defines the webhook scope.
--   `targetUrl` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The URL that receives POST requests for each event.
--   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** A user-friendly name for this webhook.

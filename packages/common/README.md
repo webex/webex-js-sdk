@@ -329,6 +329,16 @@ Returns **mixed**
 
 # resolve-with
 
+!
+
+Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+**Parameters**
+
+-   `object`  
+
+# resolve-with
+
 Sugar method for returning the desired object at the end of a promise chain
 
 **Parameters**
@@ -352,16 +362,6 @@ Promise
 ```
 
 Returns **[function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
-
-# resolve-with
-
-!
-
-Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
-
-**Parameters**
-
--   `object`  
 
 # retry
 
