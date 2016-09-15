@@ -106,6 +106,13 @@ const Decrypter = SparkPlugin.extend({
     return Promise.all(promises);
   },
 
+  decryptContent(key, content) {
+    const promises = content.files.items.map((item) => this.decryptObject(key, item));
+    promises.push(this.decryptComment(key, content));
+
+    return Promise.all(promises);
+  },
+
   decryptEvent(key, event) {
     const promises = [
       this.decryptProperty(`displayName`, key, event)
@@ -116,6 +123,31 @@ const Decrypter = SparkPlugin.extend({
     }
 
     return Promise.all(promises);
+  },
+
+  decryptFile(key, file) {
+    let promises = [];
+
+    if (file.transcodedCollection) {
+      promises = file.transcodedCollection.items.map((item) => this.decryptObject(key, item));
+    }
+
+    promises.push(this.decryptProperty(`scr`, key, file));
+    promises.push(this.decryptProperty(`displayName`, key, file));
+
+    if (file.content) {
+      promises.push(this.decryptProperty(`content`, key, file));
+    }
+
+    if (file.image) {
+      promises.push(this.decryptProperty(`scr`, key, file.image));
+    }
+
+    return Promise.all(promises);
+  },
+
+  decryptTranscodedContent(key, transcodedContent) {
+    return Promise.all(transcodedContent.files.items.map((item) => this.decryptObject(key, item)));
   },
 
   decryptImageURI(key, imageURI) {
@@ -131,6 +163,10 @@ const Decrypter = SparkPlugin.extend({
 
   decryptPropContent(key, content) {
     return this.spark.encryption.decryptText(key, content);
+  },
+
+  decryptPropScr(key, scr) {
+    return this.spark.encryption.decryptScr(key, scr);
   },
 
   decryptPropLocation(key, location) {
