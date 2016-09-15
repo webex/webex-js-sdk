@@ -266,12 +266,12 @@ const Conversation = SparkPlugin.extend({
 
     return this.request(options)
       .then((res) => {
-        if (!res.body || !res.body.items || res.body.length === 0) {
+        if (!res.body || !res.body.items || res.body.items.length === 0) {
           return [];
         }
 
         const items = res.body.items;
-        if (items.length && last(items).published < items[0].published) {
+        if (last(items).published < items[0].published) {
           items.reverse();
         }
 
