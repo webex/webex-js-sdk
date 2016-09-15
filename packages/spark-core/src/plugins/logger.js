@@ -32,6 +32,10 @@ function wrapConsoleMethod(level) {
     }
   }
 
+  if (process.env.LOG_TIMESTAMPS) {
+    return (...args) => console[level](Date.now(), ...args);
+  }
+
   return console[level].bind(console);
 }
 

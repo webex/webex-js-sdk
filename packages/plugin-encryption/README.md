@@ -1,13 +1,13 @@
-# ensure-buffer.browser
+# ensure-buffer
 
-Ensures the provider buffer is, indeed, an ArrayBuffer; converts File and
-Blob objects to ArrayBuffers.
+Ensures the provider Buffer is, indeed, a Buffer; sometimes, they seem to be
+byte-arrays instead of proper Buffer objects.
 
 **Parameters**
 
 -   `buffer` **mixed** 
 
-Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[ArrayBuffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer)>** 
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Buffer](https://nodejs.org/api/buffer.html)>** 
 
 # KMS
 
