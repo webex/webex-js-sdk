@@ -745,15 +745,6 @@ ciscospark.rooms.create({title: 'Update Room Example'})
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Room](#typesroom)>** 
 
-# Types~Team
-
-**Properties**
-
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The unique ID for the team.
--   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the team.
--   `created` **isoDate** (server generated) The date and time when the
-    team was created, in ISO8601 format.
-
 # Teams
 
 **Extends SparkPlugin**
@@ -882,6 +873,15 @@ ciscospark.teams.create({name: 'Update Team Example'})
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Team](#typesteam)>** 
+
+# Types~Team
+
+**Properties**
+
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The unique ID for the team.
+-   `name` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The name of the team.
+-   `created` **isoDate** (server generated) The date and time when the
+    team was created, in ISO8601 format.
 
 # Types~TeamMembership
 
