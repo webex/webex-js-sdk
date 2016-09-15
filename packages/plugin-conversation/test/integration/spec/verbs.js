@@ -55,7 +55,7 @@ describe(`plugin-conversation`, function() {
       let message, richMessage;
       beforeEach(() => {
         message = `mccoy, THIS IS A TEST MESSAGE`;
-        richMessage = `<spark-mention data-object-type="person" data-object-id="${mccoy.id}">mccoy</spark-mention>, THIS IS A TEST MESSAGE`;
+        richMessage = `<spark-mention data-object-id="${mccoy.id}" data-object-type="person">mccoy</spark-mention>, THIS IS A TEST MESSAGE`;
       });
 
       it(`posts a comment to the specified conversation`, () => spark.conversation.post(conversation, {
