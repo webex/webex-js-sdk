@@ -172,6 +172,32 @@ const Conversation = SparkPlugin.extend({
     return this._listActivities(Object.assign(options, {mentions: true}));
   },
 
+  /**
+   * Mutes the mentions of a conversation
+   * @param {Conversation~ConversationObject} conversation
+   * @param {Conversation~ActivityObject} activity
+   * @param {Object} options
+   * @returns {Promise} Resolves with the created activity
+   */
+  muteMentions(conversation, activity, options) {
+    return this.tag(conversation, {
+      tags: [`MENTION_NOTIFICATIONS_OFF`]
+    }, activity, options);
+  },
+
+  /**
+   * Mutes the messages of a conversation
+   * @param {Conversation~ConversationObject} conversation
+   * @param {Conversation~ActivityObject} activity
+   * @param {Object} options
+   * @returns {Promise} Resolves with the created activity
+   */
+  muteMessages(conversation, activity, options) {
+    return this.tag(conversation, {
+      tags: [`MESSAGE_NOTIFICATIONS_OFF`]
+    }, activity, options);
+  },
+
   post(conversation, object, activity) {
     return this._inferConversationUrl(conversation)
       .then(() => this.prepare(activity, {
@@ -243,6 +269,24 @@ const Conversation = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Removes all mute-related tags
+   * @param {Conversation~ConversationObject} conversation
+   * @param {Conversation~ActivityObject} activity
+   * @param {Object} options
+   * @returns {Promise} Resolves with the created activity
+   */
+  removeAllMuteTags(conversation, activity, options) {
+    return this.untag(conversation, {
+      tags: [
+        `MENTION_NOTIFICATIONS_OFF`,
+        `MENTION_NOTIFICATIONS_ON`,
+        `MESSAGE_NOTIFICATIONS_OFF`,
+        `MESSAGE_NOTIFICATIONS_ON`
+      ]
+    }, activity, options);
+  },
+
   submit(activity) {
     const params = {
       method: `POST`,
@@ -263,6 +307,32 @@ const Conversation = SparkPlugin.extend({
 
     return this.request(params)
       .then((res) => res.body);
+  },
+
+  /**
+   * Mutes the mentions of a conversation
+   * @param {Conversation~ConversationObject} conversation
+   * @param {Conversation~ActivityObject} activity
+   * @param {Object} options
+   * @returns {Promise} Resolves with the created activity
+   */
+  unmuteMentions(conversation, activity, options) {
+    return this.tag(conversation, {
+      tags: [`MENTION_NOTIFICATIONS_ON`]
+    }, activity, options);
+  },
+
+  /**
+   * Mutes the messages of a conversation
+   * @param {Conversation~ConversationObject} conversation
+   * @param {Conversation~ActivityObject} activity
+   * @param {Object} options
+   * @returns {Promise} Resolves with the created activity
+   */
+  unmuteMessages(conversation, activity, options) {
+    return this.tag(conversation, {
+      tags: [`MESSAGE_NOTIFICATIONS_ON`]
+    }, activity, options);
   },
 
   updateKey(conversation, object, activity) {
@@ -452,7 +522,72 @@ const Conversation = SparkPlugin.extend({
   }
 });
 
+
 [
+  `favorite`,
+  `hide`,
+  `lock`,
+  `mute`,
+  `unfavorite`,
+  `unhide`,
+  `unlock`,
+  `unmute`
+].forEach((verb) => {
+  Conversation.prototype[verb] = function submitSimpleActivity(conversation, activity) {
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb,
+        object: this.prepareConversation(conversation)
+      }))
+      .then((a) => this.submit(a));
+  };
+});
+
+[
+  `assignModerator`,
+  `unassignModerator`
+].forEach((verb) => {
+  Conversation.prototype[verb] = function submitModerationChangeActivity(conversation, object, activity) {
+    return Promise.all([
+      this._inferConversationUrl(conversation),
+      object ? this.spark.user.asUUID(object) : this.spark.device.userId
+    ])
+      .then(([c, userId]) => this.prepare(activity, {
+        verb,
+        target: this.prepareConversation(c),
+        object: {
+          id: userId,
+          objectType: `person`
+        }
+      }))
+      .then((a) => this.submit(a));
+  };
+});
+
+[
+  `tag`,
+  `untag`
+].forEach((verb) => {
+  Conversation.prototype[verb] = function submitObjectActivity(conversation, object, activity) {
+    if (!isObject(object)) {
+      return Promise.reject(new Error(`\`object\` must be an object`));
+    }
+
+    const c = this.prepareConversation(conversation);
+
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb,
+        target: c,
+        object: Object.assign(c, object)
+      }))
+      .then((a) => this.submit(a));
+  };
+});
+
+[
+  `acknowledge`,
+  `delete`,
   `update`
 ].forEach((verb) => {
   Conversation.prototype[verb] = function submitObjectActivity(conversation, object, activity) {

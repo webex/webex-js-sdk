@@ -74,7 +74,7 @@ describe(`plugin-conversation`, function() {
       }));
   });
 
-  describe.skip(`#listLeft()`, () => {
+  describe(`#listLeft()`, () => {
     let conversation;
     before(() => spark.conversation.create({participants})
       .then((c) => {conversation = c;}));
