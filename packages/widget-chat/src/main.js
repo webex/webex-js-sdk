@@ -2,9 +2,13 @@ import './styles/styles.css';
 
 import React from 'react';
 import ReactDOM from 'react-dom';
+import ChatWidget from './ChatWidget';
+
 
 ReactDOM.render(
-  <h1>Chat Widget!</h1>,
+  <div>
+    <ChatWidget />
+  </div>,
   document.getElementById(`main`)
 );
 
