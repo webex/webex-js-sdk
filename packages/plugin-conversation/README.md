@@ -1,3 +1,58 @@
+# muteMentions
+
+Mutes the mentions of a conversation
+
+**Parameters**
+
+-   `conversation` **Conversation~ConversationObject** 
+-   `activity` **Conversation~ActivityObject** 
+
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** Resolves with the created activity
+
+# muteMessages
+
+Mutes the messages of a conversation
+
+**Parameters**
+
+-   `conversation` **Conversation~ConversationObject** 
+-   `activity` **Conversation~ActivityObject** 
+
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** Resolves with the created activity
+
+# removeAllMuteTags
+
+Removes all mute-related tags
+
+**Parameters**
+
+-   `conversation` **Conversation~ConversationObject** 
+-   `activity` **Conversation~ActivityObject** 
+
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** Resolves with the created activity
+
+# unmuteMentions
+
+Mutes the mentions of a conversation
+
+**Parameters**
+
+-   `conversation` **Conversation~ConversationObject** 
+-   `activity` **Conversation~ActivityObject** 
+
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** Resolves with the created activity
+
+# unmuteMessages
+
+Mutes the messages of a conversation
+
+**Parameters**
+
+-   `conversation` **Conversation~ConversationObject** 
+-   `activity` **Conversation~ActivityObject** 
+
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** Resolves with the created activity
+
 # Decrypter
 
 Encrypts Conversation objects
@@ -31,6 +86,35 @@ Encrypts a property of an object
 -   `object` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** object containing `property` to be encrypted
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** 
+
+# computeDimensions
+
+Determins the dimensions of an image
+
+**Parameters**
+
+-   `constraints` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
+    -   `constraints.width` **[Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
+    -   `constraints.height` **[Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
+-   `$0` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
+    -   `$0.width`  
+    -   `$0.height`  
+-   `maxWidth` **[Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
+-   `maxHeight` **[Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
+
+Returns **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
+
+# process-image.browser
+
+Measures an image file and produces a thumbnail for it
+
+**Parameters**
+
+-   `file` **([Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob) \| [ArrayBuffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer))** 
+-   `thumbnailMaxWidth` **[Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
+-   `thumbnailMaxHeight` **[Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
+
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)>** Buffer, Dimensions, thumbnailDimensions
 
 # interceptor
 
