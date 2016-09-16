@@ -2,7 +2,7 @@
   "name": "@ciscospark/plugin-conversation",
   "version": "0.7.0",
   "description": "",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "devMain": "src/index.js",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
   "license": "(Apache-2.0)",
