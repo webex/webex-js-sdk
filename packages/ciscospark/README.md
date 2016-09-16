@@ -66,6 +66,18 @@ Iterator
 
 Returns **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
 
+# Types~Membership
+
+**Properties**
+
+-   `id` **uuid** Unique identifier for the membership
+-   `roomId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The room ID
+-   `personId` **uuid** The person ID
+-   `personEmail` **email** The email address of the person / room member
+-   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Indicates whether the specified person should be a room moderator.
+-   `isMonitor` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Indicates whether the specified member is a room monitor.
+-   `created` **isoDate** The date and time that this membership was created.
+
 # Memberships
 
 **Extends SparkPlugin**
@@ -266,17 +278,17 @@ ciscospark.rooms.create({title: 'Memberships Example'})
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Membership](#typesmembership)>** 
 
-# Types~Membership
+# Types~Message
 
 **Properties**
 
--   `id` **uuid** Unique identifier for the membership
--   `roomId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The room ID
--   `personId` **uuid** The person ID
--   `personEmail` **email** The email address of the person / room member
--   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Indicates whether the specified person should be a room moderator.
--   `isMonitor` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Indicates whether the specified member is a room monitor.
--   `created` **isoDate** The date and time that this membership was created.
+-   `id` **uuid** (server generated) Unique identifier for the message
+-   `personId` **uuid** The ID for the author of the messasge
+-   `personEmail` **email** The email for the author of the messasge
+-   `roomId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The message posted to the room in plain text
+-   `created` **isoDate** (server generated)The source URLs for the
+    message attachment. See the {@link Content & Attachments{ Guide for a list of
+    supported media types.
 
 # Messages
 
@@ -448,18 +460,6 @@ ciscospark.rooms.create({title: 'Messages Example'})
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** }
-
-# Types~Message
-
-**Properties**
-
--   `id` **uuid** (server generated) Unique identifier for the message
--   `personId` **uuid** The ID for the author of the messasge
--   `personEmail` **email** The email for the author of the messasge
--   `roomId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The message posted to the room in plain text
--   `created` **isoDate** (server generated)The source URLs for the
-    message attachment. See the {@link Content & Attachments{ Guide for a list of
-    supported media types.
 
 # People
 
@@ -883,6 +883,16 @@ ciscospark.teams.create({name: 'Update Team Example'})
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~Team](#typesteam)>** 
 
+# Types~TeamMembership
+
+**Properties**
+
+-   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The team ID
+-   `personId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The person ID
+-   `personEmail` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The email address of the person
+-   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Set to `true` to make the person a team
+    moderator
+
 # TeamMemberships
 
 **Extends SparkPlugin**
@@ -1055,16 +1065,6 @@ Updates properties for a membership.
 -   `membership` **[Types~TeamMembership](#typesteammembership)** 
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Types~TeamMembership](#typesteammembership)>** 
-
-# Types~TeamMembership
-
-**Properties**
-
--   `id` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** (server generated) The team ID
--   `personId` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The person ID
--   `personEmail` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** The email address of the person
--   `isModerator` **[boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** Set to `true` to make the person a team
-    moderator
 
 # Types~Webhook
 
