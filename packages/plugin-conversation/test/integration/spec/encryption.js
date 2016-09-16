@@ -105,7 +105,9 @@ describe(`plugin-conversation`, () => {
       describe(`#leave()`, () => {
         it(`removes the current user`, () => spark.conversation.leave(conversation)
           .then(() => assert.isRejected(spark.conversation.get(conversation)))
-          .then((reason) => assert.instanceOf(reason, SparkHttpError.NotFound)));
+          .then((reason) => assert.instanceOf(reason, SparkHttpError.NotFound))
+          .then(() => checkov.spark.conversation.get(conversation))
+          .then((c) => assert.notProperty(c, `defaultActivityEncryptionKeyUrl`, `The conversation was not encrypted as a side effect of the leave activity`)));
 
         it(`removes the specified user`, () => spark.conversation.leave(conversation, checkov)
           .then(() => assert.isRejected(checkov.spark.conversation.get(conversation)))
