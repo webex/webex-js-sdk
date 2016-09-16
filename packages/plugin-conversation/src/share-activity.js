@@ -14,6 +14,9 @@ const PROMISE_SYMBOL = Symbol(`PROMISE_SYMBOL`);
 
 import processImage from './process-image';
 
+/**
+ * @class
+ */
 const ShareActivity = SparkPlugin.extend({
   namespace: `Conversation`,
 
@@ -61,6 +64,12 @@ const ShareActivity = SparkPlugin.extend({
     }
   },
 
+  /**
+   * Adds an additional file to the share and begins submitting it to spark
+   * files
+   * @param {File} file
+   * @returns {EventEmittingPromise}
+   */
   add(file) {
     let upload = this.uploads.get(file);
     if (upload) {
@@ -123,6 +132,12 @@ const ShareActivity = SparkPlugin.extend({
     return promise;
   },
 
+  /**
+   * @param {File} file
+   * @param {string} uri
+   * @private
+   * @returns {Promise}
+   */
   _upload(file, uri) {
     const fileSize = file.length || file.size || file.byteLength;
 
@@ -149,12 +164,22 @@ const ShareActivity = SparkPlugin.extend({
     });
   },
 
+  /**
+   * Removes the specified file from the share (Does not currently delete the
+   * uploaded file)
+   * @param {File} file
+   * @returns {Promise}
+   */
   remove(file) {
     this.uploads.delete(file);
     // Returns a promise for future-proofiness.
     return Promise.resolve();
   },
 
+  /**
+   * @private
+   * @returns {Promise<Object>}
+   */
   prepare() {
     if (!this.uploads.size) {
       throw new Error(`Cannot submit a share activity without atleast one file`);
@@ -186,6 +211,11 @@ const ShareActivity = SparkPlugin.extend({
       .then(() => activity);
   },
 
+  /**
+   * @param {Array} items
+   * @private
+   * @returns {string}
+   */
   _determineContentCategory(items) {
     const mimeTypes = filter(map(items, `mimeType`));
     if (mimeTypes.length !== items.length) {
@@ -206,6 +236,10 @@ const ShareActivity = SparkPlugin.extend({
     return `${contentCategory}s`;
   },
 
+  /**
+   * @param {string} uri
+   * @returns {Promise}
+   */
   _retrieveSpaceUrl(uri) {
     return this.spark.request({
       method: `PUT`,
@@ -215,6 +249,13 @@ const ShareActivity = SparkPlugin.extend({
   }
 });
 
+/**
+ * Instantiates a ShareActivity
+ * @param {Object} conversation
+ * @param {ShareActivity|Object|array} object
+ * @param {ProxySpark} spark
+ * @returns {ShareActivity}
+ */
 ShareActivity.create = function create(conversation, object, spark) {
   if (object instanceof ShareActivity) {
     return object;

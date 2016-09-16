@@ -24,6 +24,15 @@ const Conversation = SparkPlugin.extend({
     normalizer: Normalizer
   },
 
+  /**
+   * Adds a participant to a conversation
+   * @param {Object} conversation
+   * @param {Object|string} participant
+   * @param {Object} activity Reference to the activity that will eventually be
+   * posted. Use this to (a) pass in e.g. clientTempId and (b) render a
+   * provisional activity
+   * @returns {Promise<Activity>}
+   */
   add(conversation, participant, activity) {
     return this._inferConversationUrl(conversation)
       .then(() => this.spark.user.asUUID(participant, {create: true}))
@@ -46,6 +55,17 @@ const Conversation = SparkPlugin.extend({
       .then((a) => this.submit(a)));
   },
 
+  /**
+   * Creates a conversation
+   * @param {Object} params
+   * @param {Array<Participant>} params.participants
+   * @param {Array<File>} params.files
+   * @param {string} params.comment
+   * @param {Object} params.displayName
+   * @param {Object} options
+   * @param {Boolean} options.forceGrouped
+   * @returns {Promise<Conversation>}
+   */
   create(params, options) {
     if (!params.participants || params.participants.length === 0) {
       return Promise.reject(new Error(`\`params.participants\` is required`));
@@ -64,6 +84,13 @@ const Conversation = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Downloads the file specified in item.scr or item.url
+   * @param {Object} item
+   * @param {Object} item.scr
+   * @param {string} item.url
+   * @returns {Promise<File>}
+   */
   download(item) {
     const isEncrypted = Boolean(item.scr);
     const shunt = new EventEmitter();
@@ -88,6 +115,11 @@ const Conversation = SparkPlugin.extend({
     return promise;
   },
 
+  /**
+   * Downloads an unencrypted file
+   * @param {string} uri
+   * @returns {Promise<File>}
+   */
   _downloadUnencryptedFile(uri) {
     const options = {
       uri,
@@ -102,6 +134,14 @@ const Conversation = SparkPlugin.extend({
     return promise;
   },
 
+  /**
+   * Helper method that expands a set of parameters into an activty object
+   * @param {string} verb
+   * @param {Object} object
+   * @param {Object} target
+   * @param {Object|string} actor
+   * @returns {Object}
+   */
   expand(verb, object, target, actor) {
     const activity = {
       actor,
@@ -131,6 +171,12 @@ const Conversation = SparkPlugin.extend({
     return activity;
   },
 
+  /**
+   * Fetches a single conversation
+   * @param {Object} conversation
+   * @param {Object} options
+   * @returns {Promise<Conversation>}
+   */
   get(conversation, options) {
     return this._inferConversationUrl(conversation)
       .then(() => {
@@ -165,6 +211,17 @@ const Conversation = SparkPlugin.extend({
       .then(() => res.body));
   },
 
+  /**
+   * Leaves the conversation or removes the specified user from the specified
+   * conversation
+   * @param {Object} conversation
+   * @param {Object|string} participant If not specified, defaults to current
+   * user
+   * @param {Object} activity Reference to the activity that will eventually be
+   * posted. Use this to (a) pass in e.g. clientTempId and (b) render a
+   * provisional activity
+   * @returns {Promise<Activity>}
+   */
   leave(conversation, participant, activity) {
     return this._inferConversationUrl(conversation)
       .then(() => {
@@ -189,6 +246,12 @@ const Conversation = SparkPlugin.extend({
       .then((a) => this.submit(a));
   },
 
+  /**
+   * Lists a set of conversations. By default does not fetch activities or
+   * participants
+   * @param {Object} options
+   * @returns {Promise<Array<Conversation>>}
+   */
   list(options) {
     return this._list({
       api: `conversation`,
@@ -197,6 +260,12 @@ const Conversation = SparkPlugin.extend({
     });
   },
 
+  /**
+   * Lists the conversations the current user has left. By default does not
+   * fetch activities or participants
+   * @param {Object} options
+   * @returns {Promise<Array<Conversation>>}
+   */
   listLeft(options) {
     return this._list({
       api: `conversation`,
@@ -205,10 +274,20 @@ const Conversation = SparkPlugin.extend({
     });
   },
 
+  /**
+   * List activities for the specified conversation
+   * @param {Object} options
+   * @returns {Promise<Array<Activity>>}
+   */
   listActivities(options) {
     return this._listActivities(Object.assign(options, {mentions: false}));
   },
 
+  /**
+   * Lists activities in which the current user was mentioned
+   * @param {Object} options
+   * @returns {Promise<Array<Activity>>}
+   */
   listMentions(options) {
     return this._listActivities(Object.assign(options, {mentions: true}));
   },
@@ -237,6 +316,16 @@ const Conversation = SparkPlugin.extend({
     }, activity);
   },
 
+  /**
+   * Posts a message to a conversation
+   * @param {Object} conversation
+   * @param {Object|string} message if string, treated as plaintext; if object,
+   * assumed to be object property of `post` activity
+   * @param {Object} activity Reference to the activity that will eventually be
+   * posted. Use this to (a) pass in e.g. clientTempId and (b) render a
+   * provisional activity
+   * @returns {Promise<Activity>}
+   */
   post(conversation, message, activity) {
     if (isString(message)) {
       message = {
@@ -314,6 +403,11 @@ const Conversation = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Handles incoming conversatin.activity mercury messages
+   * @param {Event} event
+   * @returns {Promise}
+   */
   processActivityEvent(event) {
     return this.decrypter.decryptObject(event.activity)
       .then(() => this.normalizer.normalize(event.activity))
@@ -337,10 +431,21 @@ const Conversation = SparkPlugin.extend({
     }, activity);
   },
 
+  /**
+   * Creates a ShareActivty for the specified conversation
+   * @param {Object} conversation
+   * @returns {ShareActivty}
+   */
   makeShare(conversation) {
     return ShareActivity.create(conversation, null, this.spark);
   },
 
+  /**
+   * Shares files to the specified converstion
+   * @param {Object} conversation
+   * @param {ShareActivity|Array<File>} activity
+   * @returns {Promise<Activity>}
+   */
   share(conversation, activity) {
     if (isArray(activity)) {
       activity = {
@@ -363,6 +468,11 @@ const Conversation = SparkPlugin.extend({
       .then((a) => this.submit(a));
   },
 
+  /**
+   * Submits an activity to the conversation service
+   * @param {Object} activity
+   * @returns {Promise<Activity>}
+   */
   submit(activity) {
     const params = {
       method: `POST`,
@@ -409,6 +519,15 @@ const Conversation = SparkPlugin.extend({
     }, activity);
   },
 
+  /**
+   * Sets a new key for the conversation
+   * @param {Object} conversation
+   * @param {Key|string} key (optional)
+   * @param {Object} activity Reference to the activity that will eventually be
+   * posted. Use this to (a) pass in e.g. clientTempId and (b) render a
+   * provisional activity
+   * @returns {Promise<Activity>}
+   */
   updateKey(conversation, key, activity) {
     return this._inferConversationUrl(conversation)
       .then(() => this.get(conversation, {
@@ -418,6 +537,16 @@ const Conversation = SparkPlugin.extend({
       .then((c) => this._updateKey(c, key, activity));
   },
 
+  /**
+   * Sets a new key for the conversation
+   * @param {Object} conversation
+   * @param {Key|string} key (optional)
+   * @param {Object} activity Reference to the activity that will eventually be
+   * posted. Use this to (a) pass in e.g. clientTempId and (b) render a
+   * provisional activity
+   * @private
+   * @returns {Promise<Activity>}
+   */
   _updateKey(conversation, key, activity) {
     return Promise.resolve(key || this.spark.encryption.kms.createUnboundKeys({count: 1}))
       .then((keys) => {
@@ -456,6 +585,11 @@ const Conversation = SparkPlugin.extend({
       });
   },
 
+  /**
+   * @param {Object} payload
+   * @private
+   * @returns {Promise<Activity>}
+   */
   _create(payload) {
     return this.request({
       method: `POST`,
@@ -466,10 +600,20 @@ const Conversation = SparkPlugin.extend({
       .then((res) => res.body);
   },
 
+  /**
+   * @param {Object} params
+   * @private
+   * @returns {Promise}
+   */
   _createGrouped(params) {
     return this._create(this._prepareConversationForCreation(params));
   },
 
+  /**
+   * @param {Object} conversation
+   * @private
+   * @returns {Promise}
+   */
   _inferConversationUrl(conversation) {
     if (!conversation.url && conversation.id) {
       return this.spark.device.getServiceUrl(`conversation`)
@@ -486,6 +630,11 @@ const Conversation = SparkPlugin.extend({
     return Promise.resolve(conversation);
   },
 
+  /**
+   * @param {Object} options
+   * @private
+   * @returns {Promise<Array<Activity>>}
+   */
   _listActivities(options) {
     return this._list({
       api: `conversation`,
@@ -494,6 +643,11 @@ const Conversation = SparkPlugin.extend({
     });
   },
 
+  /**
+   * @param {Object} options
+   * @private
+   * @returns {Promise<Array<Conversation>>}
+   */
   _list(options) {
     options.qs = Object.assign({
       personRefresh: true,
@@ -522,6 +676,11 @@ const Conversation = SparkPlugin.extend({
       });
   },
 
+  /**
+   * @param {Object} params
+   * @private
+   * @returns {Promise<Conversation>}
+   */
   _maybeCreateOneOnOneThenPost(params) {
     return this.get(defaults({
       // the use of uniq in Conversation#create guarantees participant[1] will
@@ -550,6 +709,11 @@ const Conversation = SparkPlugin.extend({
       });
   },
 
+  /**
+   * @param {Object} params
+   * @private
+   * @returns {Object}
+   */
   _prepareConversationForCreation(params) {
     const payload = {
       activities: {
@@ -587,6 +751,11 @@ const Conversation = SparkPlugin.extend({
     return payload;
   },
 
+  /**
+   * @param {Object} conversation
+   * @private
+   * @returns {Promise}
+   */
   _recordUUIDs(conversation) {
     if (!conversation.participants || !conversation.participants.items) {
       return Promise.resolve(conversation);
