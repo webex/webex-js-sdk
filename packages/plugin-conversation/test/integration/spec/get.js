@@ -43,11 +43,11 @@ describe(`plugin-conversation`, function() {
     before(() => fh.fetch(sampleImageSmallOnePng)
       .then((res) => {sampleImageSmallOnePng = res;}));
 
-    it(`downloads and decrypts an encrypted file`, () => spark.conversation.share(conversation, {files: [sampleImageSmallOnePng]})
+    it(`downloads and decrypts an encrypted file`, () => spark.conversation.share(conversation, [sampleImageSmallOnePng])
       .then((activity) => spark.conversation.download(activity.object.files.items[0]))
       .then((f) => assert.eventually.isTrue(fh.isMatchingFile(f, sampleImageSmallOnePng))));
 
-    it(`emits download progress events for encrypted files`, () => spark.conversation.share(conversation, {files: [sampleImageSmallOnePng]})
+    it(`emits download progress events for encrypted files`, () => spark.conversation.share(conversation, [sampleImageSmallOnePng])
       .then((activity) => {
         const spy = sinon.spy();
         return spark.conversation.download(activity.object.files.items[0])
