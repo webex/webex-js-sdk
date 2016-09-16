@@ -1,3 +1,63 @@
+# muteMentions
+
+Mutes the mentions of a conversation
+
+**Parameters**
+
+-   `conversation` **Conversation~ConversationObject** 
+-   `activity` **Conversation~ActivityObject** 
+-   `options` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
+
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** Resolves with the created activity
+
+# muteMessages
+
+Mutes the messages of a conversation
+
+**Parameters**
+
+-   `conversation` **Conversation~ConversationObject** 
+-   `activity` **Conversation~ActivityObject** 
+-   `options` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
+
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** Resolves with the created activity
+
+# removeAllMuteTags
+
+Removes all mute-related tags
+
+**Parameters**
+
+-   `conversation` **Conversation~ConversationObject** 
+-   `activity` **Conversation~ActivityObject** 
+-   `options` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
+
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** Resolves with the created activity
+
+# unmuteMentions
+
+Mutes the mentions of a conversation
+
+**Parameters**
+
+-   `conversation` **Conversation~ConversationObject** 
+-   `activity` **Conversation~ActivityObject** 
+-   `options` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
+
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** Resolves with the created activity
+
+# unmuteMessages
+
+Mutes the messages of a conversation
+
+**Parameters**
+
+-   `conversation` **Conversation~ConversationObject** 
+-   `activity` **Conversation~ActivityObject** 
+-   `options` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** 
+
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** Resolves with the created activity
+
 # Decrypter
 
 Encrypts Conversation objects
