@@ -125,24 +125,26 @@ const Conversation = SparkPlugin.extend({
   },
 
   leave(conversation, object, activity) {
-    this._inferConversationUrl(conversation);
-    if (!object) {
-      object = this.spark.device.userId;
-    }
-
-    return this.spark.user.asUUID(object)
-      .then((id) => this.prepare(activity, {
-        verb: `leave`,
-        target: this.prepareConversation(conversation),
-        object: {
-          id,
-          objectType: `person`
-        },
-        kmsMessage: {
-          method: `delete`,
-          uri: `<KRO>/authorizations?${querystring.stringify({authId: id})}`
+    return this._inferConversationUrl(conversation)
+      .then(() => {
+        if (!object) {
+          object = this.spark.device.userId;
         }
-      }))
+
+        return this.spark.user.asUUID(object)
+          .then((id) => this.prepare(activity, {
+            verb: `leave`,
+            target: this.prepareConversation(conversation),
+            object: {
+              id,
+              objectType: `person`
+            },
+            kmsMessage: {
+              method: `delete`,
+              uri: `<KRO>/authorizations?${querystring.stringify({authId: id})}`
+            }
+          }));
+      })
       .then((a) => this.submit(a));
   },
 
