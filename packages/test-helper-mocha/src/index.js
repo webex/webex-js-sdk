@@ -14,7 +14,7 @@ function inBrowser() {
 }
 
 function noop() {
-  // intentionall empty
+  // intentionally empty
 }
 
 module.exports = {

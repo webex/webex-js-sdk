@@ -64,12 +64,12 @@ export default function processImage(file, thumbnailMaxWidth, thumbnailMaxHeight
         return Promise.resolve();
       }
 
-      if (errorString.indexOf(`No decode delegate for this image format`) !== -1) {
+      if (errorString.includes(`No decode delegate for this image format`)) {
         logger.debug(err, `File does not appear to be an image`);
         return Promise.resolve();
       }
 
-      if (errorString.indexOf(`Stream yields empty buffer`)) {
+      if (errorString.includes(`Stream yields empty buffer`)) {
         logger.debug(err, `File does not appear to be an image`);
         return Promise.resolve();
       }

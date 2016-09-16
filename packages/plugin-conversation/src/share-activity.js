@@ -6,7 +6,7 @@
 
 import {proxyEvents, transferEvents} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {contains, filter, map} from 'lodash';
+import {filter, map} from 'lodash';
 import {EventEmitter} from 'events';
 
 const EMITTER_SYMBOL = Symbol(`EMITTER_SYMBOL`);
@@ -46,17 +46,19 @@ const ShareActivity = SparkPlugin.extend({
   initialize(attrs, options) {
     Reflect.apply(SparkPlugin.prototype.initialize, this, [attrs, options]);
 
-    this.spaceUrl = Promise.resolve(attrs.conversation._spaceUrl || this._retrieveSpaceUrl(`${attrs.conversation.url}/space`)
-      .then((url) => {
-        attrs.conversation._spaceUrl = url;
-        return url;
-      }));
+    if (attrs && attrs.conversation) {
+      this.spaceUrl = Promise.resolve(attrs.conversation._spaceUrl || this._retrieveSpaceUrl(`${attrs.conversation.url}/space`)
+        .then((url) => {
+          attrs.conversation._spaceUrl = url;
+          return url;
+        }));
 
-    this.hiddenSpaceUrl = Promise.resolve(attrs.conversation._hiddenSpaceUrl || this._retrieveSpaceUrl(`${attrs.conversation.url}/space/hidden`)
-      .then((url) => {
-        attrs.conversation._hiddenSpaceUrl = url;
-        return url;
-      }));
+      this.hiddenSpaceUrl = Promise.resolve(attrs.conversation._hiddenSpaceUrl || this._retrieveSpaceUrl(`${attrs.conversation.url}/space/hidden`)
+        .then((url) => {
+          attrs.conversation._hiddenSpaceUrl = url;
+          return url;
+        }));
+    }
   },
 
   add(file) {
@@ -149,6 +151,8 @@ const ShareActivity = SparkPlugin.extend({
 
   remove(file) {
     this.uploads.delete(file);
+    // Returns a promise for future-proofiness.
+    return Promise.resolve();
   },
 
   prepare() {
@@ -185,7 +189,7 @@ const ShareActivity = SparkPlugin.extend({
     }
 
     const contentCategory = mimeTypes[0].split(`/`).shift();
-    if (!contains([`image`, `video`], contentCategory)) {
+    if (contentCategory !== `video` && contentCategory !== `image`) {
       return `documents`;
     }
 

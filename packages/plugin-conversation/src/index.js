@@ -20,3 +20,4 @@ registerPlugin(`conversation`, Conversation, {
 });
 
 export {default as default} from './conversation';
+export {default as ShareActivity} from './share-activity';
