@@ -7,7 +7,8 @@
   "author": "Adam Weeks <adweeks@cisco.com>",
   "license": "(Apache-2.0)",
   "scripts": {
-    "start": "webpack-dev-server --history-api-fallback --hot --inline --port 8000 --colors"
+    "start": "webpack-dev-server --history-api-fallback --hot --inline --port 8000 --colors",
+    "test": "jest"
   },
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/widget-chat",
   "dependencies": {
@@ -43,9 +44,12 @@
     "eslint": "^3.3.1",
     "eslint-plugin-mocha": "^4.4.0",
     "eslint-plugin-react": "^6.1.2",
+    "grunt-jest": "^0.3.0",
     "grunt-webpack": "^1.0.14",
     "html-webpack-plugin": "^2.22.0",
     "inline-environment-variables-webpack-plugin": "0.0.2",
+    "jest": "^15.1.1",
+    "jest-cli": "^15.1.1",
     "require-dir": "^0.3.0",
     "style-loader": "^0.13.1"
   }
