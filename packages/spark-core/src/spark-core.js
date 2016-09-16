@@ -233,8 +233,6 @@ const SparkCore = AmpState.extend({
 
     proxyEvents(options.phases.upload.upload, promise);
 
-    options.phases.upload.upload.on(`progress`, () => console.log(`#############_uploadPhaseUpload`));
-
     /* istanbul ignore else */
     if (process.env.NODE_ENV === `test`) {
       promise.on(`progress`, (event) => {
