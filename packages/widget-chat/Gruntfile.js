@@ -11,6 +11,7 @@ var path = require('path');
 
 module.exports = function configGrunt(grunt) {
   grunt.loadNpmTasks('grunt-webpack');
+  grunt.loadNpmTasks('grunt-jest');
   grunt.initConfig({
     webpack: {
       options: Object.assign({}, require('./webpack.config'), {
@@ -24,7 +25,7 @@ module.exports = function configGrunt(grunt) {
         progress: false
       }
     },  
-    "webpack-dev-server": {
+    'webpack-dev-server': {
       options: {
         compress: true,
         historyApiFallback: true,
@@ -40,10 +41,15 @@ module.exports = function configGrunt(grunt) {
       start: {
 				keepAlive: true,
 				webpack: {
-					devtool: "eval",
+					devtool: 'eval',
 					debug: true
 				}
 			}      
+    },
+    jest: {
+      options: {
+        testPathPattern: /.*.test.js/
+      }
     }
   });
 
@@ -51,6 +57,10 @@ module.exports = function configGrunt(grunt) {
     'webpack:build'
   ]);
 
-  grunt.registerTask("default", ["webpack-dev-server:start"]);
+  grunt.registerTask('test', ['jest'])
+
+  grunt.registerTask('serve', ['webpack-dev-server:start'])
+
+  grunt.registerTask('default', ['serve']);
 
 };
