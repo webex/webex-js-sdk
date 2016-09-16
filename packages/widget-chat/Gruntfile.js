@@ -47,7 +47,7 @@ module.exports = function configGrunt(grunt) {
         }
       }
     });
-  grunt.confg('jest',
+  grunt.config('jest',
     {
       options: {
         testPathPattern: /.*.test.js/
