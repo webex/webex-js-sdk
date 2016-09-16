@@ -186,6 +186,12 @@ const Encrypter = SparkPlugin.extend({
     return Promise.all(promises);
   },
 
+  /**
+   * @param {Object} key
+   * @param {Object} activity
+   * @private
+   * @returns {boolean}
+   */
   _shouldEnsureTargetIsEncrypted(key, activity) {
     if (key === false) {
       return false;
@@ -210,6 +216,11 @@ const Encrypter = SparkPlugin.extend({
     return false;
   },
 
+  /**
+   * @param {Object} activity
+   * @private
+   * @returns {Promise}
+   */
   _ensureTargetIsEncrypted(activity) {
     const conversationUrl = activity.target.url;
     if (!conversationUrl) {

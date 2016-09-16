@@ -23,6 +23,13 @@ const Normalizer = SparkPlugin.extend({
     }
   },
 
+  /**
+   * Adjust properties on object received from the api to address
+   * inconsistencies. in particular, ensures that all Person objects are
+   * identified by UUIDs rather than email addresses.
+   * @param {Object} object
+   * @returns {Promise}
+   */
   normalize(object) {
     if (isArray(object)) {
       return Promise.all(object.map((o) => this.normalize(o)))
@@ -53,6 +60,11 @@ const Normalizer = SparkPlugin.extend({
       .then(() => object);
   },
 
+  /**
+   * @param {Object} conversation
+   * @private
+   * @returns {Promise}
+   */
   normalizeConversation(conversation) {
     conversation.activities = conversation.activities || {};
     conversation.activities.items = conversation.activities.items || [];
@@ -66,6 +78,11 @@ const Normalizer = SparkPlugin.extend({
       .then(() => conversation);
   },
 
+  /**
+   * @param {Object} activity
+   * @private
+   * @returns {Promise}
+   */
   normalizeActivity(activity) {
     return Promise.all([`actor`, `object`, `target`].map((key) => {
       if (activity[key]) {
@@ -76,6 +93,11 @@ const Normalizer = SparkPlugin.extend({
       .then(() => activity);
   },
 
+  /**
+   * @param {Object} person
+   * @private
+   * @returns {Promise}
+   */
   normalizePerson(person) {
     const email = person.entryEmail || person.emailAddress || person.id;
     const id = person.entryUUID || person.id;
