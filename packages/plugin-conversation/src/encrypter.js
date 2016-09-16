@@ -187,6 +187,10 @@ const Encrypter = SparkPlugin.extend({
   },
 
   _shouldEnsureTargetIsEncrypted(key, activity) {
+    if (key === false) {
+      return false;
+    }
+
     if (!key && encryptableActivities.includes(activity.verb)) {
       return true;
     }
@@ -221,6 +225,9 @@ const Encrypter = SparkPlugin.extend({
     })
       .then((conversation) => {
         if (!conversation.defaultActivityEncryptionKeyUrl) {
+          if (!encryptableActivities.includes(activity.verb)) {
+            return false;
+          }
           return this.spark.conversation.updateKey(conversation)
             .then((updateKeyActivity) => {
               activity.target.kmsResourceObjectUrl = updateKeyActivity.kmsMessage.resource.uri;
