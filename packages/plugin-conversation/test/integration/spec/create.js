@@ -9,8 +9,9 @@ import {patterns} from '@ciscospark/common';
 import CiscoSpark from '@ciscospark/spark-core';
 import {assert} from '@ciscospark/test-helper-chai';
 import testUsers from '@ciscospark/test-helper-test-users';
-import {find, map} from 'lodash';
+import {find, last, map} from 'lodash';
 import uuid from 'uuid';
+import fh from '@ciscospark/test-helper-file';
 
 describe(`plugin-conversation`, function() {
   this.timeout(20000);
@@ -38,6 +39,10 @@ describe(`plugin-conversation`, function() {
           mccoy.spark.mercury.connect()
         ]);
       }));
+
+    let sampleTextOne = `sample-text-one.txt`;
+    before(() => fh.fetch(sampleTextOne)
+      .then((f) => {sampleTextOne = f;}));
 
     after(() => Promise.all([
       spark.mercury.disconnect(),
@@ -108,7 +113,13 @@ describe(`plugin-conversation`, function() {
       .then((c) => spark.conversation.get(c, {activitiesLimit: 2}))
       .then((c) => assert.equal(c.activities.items[1].object.displayName, `comment`)));
 
-    it(`creates a conversation with a share`);
+    it(`creates a conversation with a share`, () => spark.conversation.create({participants, files: [sampleTextOne]})
+      .then((c) => spark.conversation.get(c, {activitiesLimit: 10}))
+      .then((c) => {
+        assert.equal(last(c.activities.items).verb, `share`);
+        return spark.conversation.download(last(c.activities.items).object.files.items[0]);
+      })
+      .then((file) => fh.isMatchingFile(file, sampleTextOne)));
 
     it(`ensures the current user is in the participants list`, () => spark.conversation.create({comment: `comment`, participants: [mccoy, checkov]})
       .then((c) => spark.conversation.get(c, {includeParticipants: true}))

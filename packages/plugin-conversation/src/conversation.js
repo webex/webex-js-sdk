@@ -81,6 +81,17 @@ const Conversation = SparkPlugin.extend({
         }
 
         return this._createGrouped(params);
+      })
+      .then((c) => {
+        if (!params.files) {
+          return c;
+        }
+
+        return this.spark.conversation.share(c, params.files)
+          .then((a) => {
+            c.activities.items.push(a);
+            return c;
+          });
       });
   },
 
