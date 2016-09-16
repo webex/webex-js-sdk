@@ -75,6 +75,17 @@ Returns **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Ref
 
 # check-required
 
+!
+
+Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+**Parameters**
+
+-   `keys`  
+-   `object`  
+
+# check-required
+
 Check object for the specified keys
 
 **Parameters**
@@ -86,17 +97,6 @@ Check object for the specified keys
 -   Throws **Any** Error
 
 Returns **[undefined](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined)** 
-
-# check-required
-
-!
-
-Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
-
-**Parameters**
-
--   `keys`  
--   `object`  
 
 # defer
 
@@ -381,16 +381,6 @@ Returns **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Ref
 
 # tap
 
-!
-
-Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
-
-**Parameters**
-
--   `fn`  
-
-# tap
-
 Injects code into a promise chain without modifying the promise chain's result
 
 **Parameters**
@@ -410,3 +400,13 @@ f()
 ```
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** 
+
+# tap
+
+!
+
+Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+
+**Parameters**
+
+-   `fn`  
