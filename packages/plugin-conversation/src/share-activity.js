@@ -156,6 +156,10 @@ const ShareActivity = SparkPlugin.extend({
   },
 
   prepare() {
+    if (!this.uploads.size) {
+      throw new Error(`Cannot submit a share activity without atleast one file`);
+    }
+
     const activity = {
       verb: `share`,
       object: {
