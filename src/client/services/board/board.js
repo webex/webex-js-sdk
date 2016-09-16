@@ -7,8 +7,10 @@
 
 /* eslint-env browser */
 
+var isarray = require('lodash.isarray');
 var Persistence = require('./persistence');
 var Realtime = require('./realtime');
+var reduce = require('lodash.reduce');
 var SparkBase = require('../../../lib/spark-base');
 var defaults = require('lodash.defaults');
 
@@ -158,6 +160,31 @@ var BoardService = SparkBase.extend({
           encryptionKeyUrl: encryptionKeyUrl
         };
       });
+  },
+
+  /**
+   * Separate a single link header string into an actionable object
+   * @param {string} linkHeaders
+   * @private
+   * @returns {Object}
+   */
+  parseLinkHeaders: function parseLinkHeaders(linkHeaders) {
+    if (!linkHeaders) {
+      return {};
+    }
+
+    linkHeaders = isarray(linkHeaders) ? linkHeaders : [linkHeaders];
+    return reduce(linkHeaders, function reduceLinkHeaders(links, linkHeader) {
+      linkHeader = linkHeader.split(';');
+      var link = linkHeader[0]
+        .replace('<', '')
+        .replace('>', '');
+      var rel = linkHeader[1]
+        .split('=')[1]
+        .replace(/"/g, '');
+      links[rel] = link;
+      return links;
+    }, {});
   },
 
   processActivityEvent: function processActivityEvent(message) {
