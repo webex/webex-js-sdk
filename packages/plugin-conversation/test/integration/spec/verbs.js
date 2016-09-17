@@ -169,7 +169,19 @@ describe(`plugin-conversation`, function() {
           assert.equal(activity.object.location, res.body.pads[0].stickies[0].location);
         })));
 
-      it(`updates the specified conversation's unread status`);
+      it(`updates the specified conversation's unread status`, () => mccoy.spark.conversation.get(conversation)
+        .then((c) => {
+          const {
+            lastSeenActivityDate,
+            lastReadableActivityDate
+          } = c;
+          return spark.conversation.post(conversation, message)
+            .then(() => mccoy.spark.conversation.get(conversation)
+              .then((c2) => {
+                assert.equal(c2.lastSeenActivityDate, lastSeenActivityDate);
+                assert.isAbove(c2.lastReadableActivityDate, lastReadableActivityDate);
+              }));
+        }));
 
       it(`posts rich content to the specified conversation`, () => spark.conversation.post(conversation, {
         displayName: message,
