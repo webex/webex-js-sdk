@@ -4,16 +4,17 @@
  * @private
  */
 
-import {proxyEvents} from '@ciscospark/common';
+import {proxyEvents, tap} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
 import {defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
 import Decrypter from './decrypter';
 import Encrypter from './encrypter';
-import Normalizer from './normalizer';
 import uuid from 'uuid';
 import querystring from 'querystring';
 import ShareActivity from './share-activity';
 import {EventEmitter} from 'events';
+import InboundNormalizer from './inbound-normalizer';
+import OutboundNormalizer from './outbound-normalizer';
 
 const Conversation = SparkPlugin.extend({
   namespace: `Conversation`,
@@ -21,7 +22,8 @@ const Conversation = SparkPlugin.extend({
   children: {
     decrypter: Decrypter,
     encrypter: Encrypter,
-    normalizer: Normalizer
+    inboundNormalizer: InboundNormalizer,
+    outboundNormalizer: OutboundNormalizer
   },
 
   /**
@@ -218,8 +220,8 @@ const Conversation = SparkPlugin.extend({
             return this.request(params);
           });
       })
-      .then((res) => this._recordUUIDs(res.body)
-      .then(() => res.body));
+      .then(tap((res) => this._recordUUIDs(res.body)))
+      .then((res) => res.body);
   },
 
   /**
@@ -421,7 +423,7 @@ const Conversation = SparkPlugin.extend({
    */
   processActivityEvent(event) {
     return this.decrypter.decryptObject(event.activity)
-      .then(() => this.normalizer.normalize(event.activity))
+      .then(() => this.inboundNormalizer.normalize(event.activity))
       .then(() => event);
   },
 
@@ -678,11 +680,8 @@ const Conversation = SparkPlugin.extend({
           items.reverse();
         }
 
-        return Promise.all(items.map((item) => this.decrypter.decryptObject(item)
+        return Promise.all(items.map((item) => this._recordUUIDs(item)))
           // eslint-disable-next-line max-nested-callbacks
-          .then((i) => this._recordUUIDs(i))
-          // eslint-disable-next-line max-nested-callbacks
-          .then((i) => this.normalizer.normalize(i))))
           .then(() => items);
       });
   },

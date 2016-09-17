@@ -6,22 +6,11 @@
 
 import {patterns} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {filter} from '@ciscospark/helper-html';
-import {isArray, isString} from 'lodash';
+import {isArray, isFunction, isString} from 'lodash';
 import S from 'string';
 
 const Normalizer = SparkPlugin.extend({
   namespace: `Conversation`,
-
-  derived: {
-    filter: {
-      deps: [],
-      fn() {
-        // eslint-disable-next-line no-empty-function
-        return filter(() => {}, this.config.allowedTags || {}, this.config.allowedStyles);
-      }
-    }
-  },
 
   /**
    * Adjust properties on object received from the api to address
@@ -46,18 +35,42 @@ const Normalizer = SparkPlugin.extend({
       promises.push(this[methodName](object));
     }
 
-    if (isString(object.content)) {
-      if (object.content.length === 0) {
-        Reflect.deleteProperty(object.content);
+    [
+      `content`,
+      `displayName`
+    ].forEach((property) => {
+      if (typeof object[property] === `string`) {
+        if (object[property].length === 0) {
+          Reflect.deleteProperty(object, property);
+        }
+        else {
+          promises.push(this.normalizeProperty(object, property));
+        }
       }
-      else {
-        promises.push(this.filter(object.content)
-          .then((content) => {object.content = content;}));
-      }
-    }
+    });
 
     return Promise.all(promises)
       .then(() => object);
+  },
+
+  normalizeProperty(object, property) {
+    if (!isString(property)) {
+      throw new Error(`property is required`);
+    }
+
+    const normalizer = S(`normalize_prop_${property}`)
+      .camelize()
+      .s;
+
+    if (isFunction(this[normalizer])) {
+      return this[normalizer](object[property])
+        .then((value) => {
+          object[property] = value;
+          return object;
+        });
+    }
+
+    return Promise.resolve();
   },
 
   /**
@@ -124,6 +137,10 @@ const Normalizer = SparkPlugin.extend({
         person.entryUUID = person.id = uuid;
         return person;
       });
+  },
+
+  normalizePropContent(content) {
+    return this.filter(content);
   }
 });
 

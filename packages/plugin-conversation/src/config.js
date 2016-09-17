@@ -6,10 +6,18 @@
 
 export default {
   conversation: {
-    allowedTags: {
+    allowedInboundTags: {
       'spark-mention': [`data-object-type`, `data-object-id`, `data-object-url`]
     },
-    allowedStyles: [],
+    allowedOutboundTags: {
+      'spark-mention': [`data-object-type`, `data-object-id`, `data-object-url`]
+    },
+    // eslint-disable-next-line no-empty-function
+    inboundProcessFunc: () => {},
+    // eslint-disable-next-line no-empty-function
+    outboundProcessFunc: () => {},
+    allowedInboundStyles: [],
+    allowedOutboundStyles: [],
     /**
      * Max height for thumbnails generated when sharing an image
      * @type {number}
