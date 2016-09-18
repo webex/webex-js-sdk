@@ -187,7 +187,7 @@ const Device = SparkPlugin.extend({
 
     return this.request({
       method: `POST`,
-      api: `wdm`,
+      service: `wdm`,
       resource: `devices`,
       body: this.config.defaults
     })
