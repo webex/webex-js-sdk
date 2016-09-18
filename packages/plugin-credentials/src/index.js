@@ -4,12 +4,24 @@
  * @private
  */
 
+import '@ciscospark/plugin-wdm';
+
 import {registerPlugin} from '@ciscospark/spark-core';
 import Credentials from './credentials';
 import config from './config';
+import AdvancedAuthInterceptor from './interceptor';
 
 registerPlugin(`credentials`, Credentials, {
-  config
+  config,
+  interceptors: {
+    AuthInterceptor: AdvancedAuthInterceptor.create
+  },
+  // We're replacing the default credentials implementation with this more
+  // advanced one
+  replace: true
 });
 
-export {default as default} from './credentials';
+export {
+  apiScope,
+  default as default
+} from './credentials';

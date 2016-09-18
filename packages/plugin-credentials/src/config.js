@@ -4,6 +4,8 @@
  * @private
  */
 
+const oauthServiceUrl = process.env.OAUTH_SERVICE_URL || `https://idbroker.webex.com/idb/oauth2/v1`;
+
 export default {
   credentials: {
     clientType: `public`,
@@ -21,8 +23,11 @@ export default {
   },
   device: {
     preDiscoveryServices: {
-      oauthServiceUrl: process.env.OAUTH_SERVICE_URL || `https://idbroker.webex.com/idb/oauth2/v1/`,
-      samlServiceUrl: process.env.SAML_SERVICE_URL || `https://idbroker.webex.com/idb/token/`
+      authorizeServiceUrl: process.env.AUTHORIZATION_SERVICE_URL || `${oauthServiceUrl}/authorize`,
+      oauthServiceUrl,
+      revokeServiceUrl: process.env.REVOKE_SERVICE_URL || `${oauthServiceUrl}/revoke`,
+      tokenServiceUrl: process.env.TOKEN_SERVICE_URL || `${oauthServiceUrl}/access_token`,
+      samlServiceUrl: process.env.SAML_SERVICE_URL || `https://idbroker.webex.com/idb/token`
     }
   }
 };

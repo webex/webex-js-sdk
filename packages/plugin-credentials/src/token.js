@@ -8,8 +8,7 @@
 
 import {pick} from 'lodash';
 import {oneFlight, tap} from '@ciscospark/common';
-import SparkPlugin from '../../lib/spark-plugin';
-import grantErrors from './grant-errors';
+import {grantErrors, SparkPlugin} from '@ciscospark/spark-core';
 
 /**
  * Parse response from CI and converts to structured error when appropriate
@@ -30,7 +29,7 @@ const Token = SparkPlugin.extend({
   namespace: `Credentials`,
 
   props: {
-    scopes: `string`,
+    scope: `string`,
     access_token: `string`,
     expires: `number`,
     expires_in: `number`,
@@ -155,7 +154,7 @@ const Token = SparkPlugin.extend({
   },
 
   initialize(...args) {
-    if (this.access_token) {
+    if (!this.access_token) {
       throw new Error(`\`access_token\` is required`);
     }
 
@@ -290,6 +289,23 @@ const Token = SparkPlugin.extend({
         token: this.access_token
       }
     })
+      .catch((reason) => {
+        if (reason.message === `\`conversation\` is not a known service`) {
+          const convApi = process.env.CONVERSATION_SERVICE || process.env.CONVERSATION_SERVICE_URL || `https://conv-a.wbx2.com/conversation/api/v1`;
+          return this.spark.request({
+            method: `POST`,
+            uri: `${convApi}/users/validateAuthToken`,
+            body: {
+              token: this.access_token
+            },
+            headers: {
+              authorization: `Bearer ${this.access_token}`
+            }
+          });
+        }
+
+        return Promise.reject(reason);
+      })
       .then((res) => res.body);
   }
 });
