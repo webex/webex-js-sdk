@@ -34,7 +34,7 @@ describe(`plugin-credentials`, () => {
         kmsToken = kmsToken && kmsToken.access_token;
       });
 
-      it(`refreshes the supertoken and all child tokens`, spark.credentials.refresh()
+      it(`refreshes the supertoken and all child tokens`, () => spark.credentials.refresh()
         .then(() => {
           assert.notEqual(spark.credentials.supertoken.access_token, supertoken);
           assert.notEqual(spark.credentials.userTokens.get(apiScope).access_token, apiToken);
@@ -53,7 +53,7 @@ describe(`plugin-credentials`, () => {
           code = u.token.auth_code;
         }));
 
-      it(`exchanges an authorization code for an access token`, spark.credentials.requestAuthorizationCodeGrant(code)
+      it(`exchanges an authorization code for an access token`, () => spark.credentials.requestAuthorizationCodeGrant(code)
         .then(() => {
           assert.isDefined(spark.credentials.supertoken);
           assert.isDefined(spark.credentials.userTokens.get(apiScope));

@@ -10,7 +10,7 @@ import {assert} from '@ciscospark/test-helper-chai';
 import sinon from '@ciscospark/test-helper-sinon';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
 import uuid from 'uuid';
-import {grantErrors} from '@ciscospark/spark-core';
+import CiscoSpark, {grantErrors} from '@ciscospark/spark-core';
 import {
   apiScope,
   Credentials,
@@ -89,19 +89,77 @@ describe(`plugin-credentials`, () => {
     });
 
     describe(`#initialize()`, () => {
-      it(`handles all the possible shapes of cached credentials`);
+      it(`handles all the possible shapes of cached credentials`, () => {
+        [
+          {
+            access_token: `ST`
+          },
+          {
+            supertoken: {
+              access_token: `ST`
+            }
+          },
+          {
+            authorization: {
+              supertoken: {
+                access_token: `ST`
+              }
+            }
+          }
+        ].forEach((credentials) => {
+          const s = new CiscoSpark({credentials});
+          assert.equal(s.credentials.supertoken.access_token, `ST`);
+        });
+
+        const credentials = {
+          authorization: {
+            supertoken: {
+              access_token: `ST`,
+              scope: process.env.CISCOSPARK_SCOPE
+            },
+            apiToken: {
+              access_token: `AT`,
+              scope: apiScope
+            },
+            kmsToken: {
+              access_token: `KT`,
+              scope: `spark:kms`
+            }
+          }
+        };
+
+        const s = new CiscoSpark({credentials});
+        assert.equal(s.credentials.supertoken.access_token, `ST`);
+        assert.equal(s.credentials.userTokens.get(apiScope).access_token, `AT`);
+        assert.equal(s.credentials.userTokens.get(`spark:kms`).access_token, `KT`);
+      });
     });
 
     describe(`#refresh()`, () => {
-      it(`sets #isRefreshing`);
+      it(`sets #isRefreshing`, () => {
+        const promise = spark.credentials.refresh();
+        assert.isTrue(spark.credentials.isRefreshing);
+        return assert.isFulfilled(promise)
+          .then(() => assert.isFalse(spark.credentials.isRefreshing));
+      });
     });
 
     describe(`#requestAuthorizationCodeGrant`, () => {
-      it(`sets #isAuthenticating`);
+      it(`sets #isAuthenticating`, () => {
+        const promise = spark.credentials.requestAuthorizationCodeGrant();
+        assert.isTrue(spark.credentials.isAuthenticating);
+        return assert.isFulfilled(promise)
+          .then(() => assert.isFalse(spark.credentials.isAuthenticating));
+      });
     });
 
     describe(`#requestSamlExtensionGrant`, () => {
-      it(`sets #isAuthenticating`);
+      it(`sets #isAuthenticating`, () => {
+        const promise = spark.credentials.requestSamlExtensionGrant();
+        assert.isTrue(spark.credentials.isAuthenticating);
+        return assert.isFulfilled(promise)
+          .then(() => assert.isFalse(spark.credentials.isAuthenticating));
+      });
     });
   });
 });
