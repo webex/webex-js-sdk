@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import ChatWidget from './ChatWidget';
+import ChatWidget from './chat-widget';
 import TestUtils from 'react-addons-test-utils';
 
 it(`is rendered properly`, () => {
