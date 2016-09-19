@@ -25,3 +25,6 @@ export {
   apiScope,
   default as default
 } from './credentials';
+export {default as Token} from './token';
+export {default as TokenCollection} from './token-collection';
+export {default as config} from './config';

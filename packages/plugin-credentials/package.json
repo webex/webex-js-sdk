@@ -27,6 +27,7 @@
     "babel-plugin-lodash": "2.1.0",
     "babel-polyfill": "^6.3.14",
     "babel-register": "^6.4.3",
-    "eslint": "^3.5.0"
+    "eslint": "^3.5.0",
+    "lolex": "^1.5.1"
   }
 }

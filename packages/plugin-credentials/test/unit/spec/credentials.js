@@ -11,9 +11,8 @@ import sinon from '@ciscospark/test-helper-sinon';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
 import uuid from 'uuid';
 import CiscoSpark, {grantErrors} from '@ciscospark/spark-core';
-import {
+import Credentials, {
   apiScope,
-  Credentials,
   Token
 } from '../..';
 
@@ -40,14 +39,18 @@ describe(`plugin-credentials`, () => {
       Token.prototype.downscope.restore();
     });
 
+    let spark;
+    beforeEach(() => {
+      spark = new MockSpark({
+        children: {
+          credentials: Credentials
+        }
+      });
+    });
+
     describe(`getUserToken`, () => {
-      let spark;
       let apiToken, kmsToken, supertoken;
       beforeEach(() => {
-        spark = new MockSpark({
-          credentials: Credentials
-        });
-
         supertoken = makeToken(`${apiScope} spark:kms`);
         apiToken = makeToken(`${apiScope}`);
         kmsToken = makeToken(`spark:kms`);

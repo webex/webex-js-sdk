@@ -122,10 +122,16 @@ const Token = SparkPlugin.extend({
   downscope(scope) {
     this.logger.info(`token: downscoping token to ${scope}`);
 
-    if (!this.access_token) {
-      this.logger.info(`token: request received to downscope empty access_token`);
-      return Promise.reject(new Error(`cannot downscope empty access token`));
+    if (this.isExpired) {
+      this.logger.info(`token: request received to downscope expired access_token`);
+      return Promise.reject(new Error(`cannot downscope expired access token`));
     }
+
+    if (!this.canDownscope) {
+      this.logger.info(`token: request received to downscope invalid access_token`);
+      return Promise.reject(new Error(`cannot downscope access token`));
+    }
+
     // Since we're going to use scope as the index in our token collection, it's
     // important scopes are always deterministically specified.
     if (scope) {
@@ -241,6 +247,11 @@ const Token = SparkPlugin.extend({
   revoke() {
     if (this.isExpired) {
       this.logger.info(`token: access token already expired, not revoking`);
+      return Promise.resolve();
+    }
+
+    if (!this.canAuthorize) {
+      this.logger.info(`token: access token no longer usable, not revoking`);
       return Promise.resolve();
     }
 
