@@ -12,6 +12,13 @@ import S from 'string';
 const Normalizer = SparkPlugin.extend({
   namespace: `Conversation`,
 
+  initialize(...args) {
+    Reflect.apply(SparkPlugin.prototype.initialize, this, args);
+    if (!this.filter) {
+      throw new Error(`Normalizer#filter() must be implemented`);
+    }
+  },
+
   /**
    * Adjust properties on object received from the api to address
    * inconsistencies. in particular, ensures that all Person objects are
