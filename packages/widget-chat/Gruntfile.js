@@ -49,8 +49,12 @@ module.exports = function configGrunt(grunt) {
     });
   grunt.config('jest',
     {
+      // Grunt jest config are passed as -- options
+      // Some jest config lives in package.json
       options: {
-        testPathPattern: /.*.test.js/
+        testPathPattern: /.*.test.js/,
+        coverage: process.env.COVERAGE,
+        verbose: true
       }
     }
   );
