@@ -6,6 +6,7 @@
 
 /* eslint camelcase: [0] */
 
+import {Defer} from '@ciscospark/common';
 import {assert} from '@ciscospark/test-helper-chai';
 import sinon from '@ciscospark/test-helper-sinon';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
@@ -22,9 +23,9 @@ describe(`plugin-credentials`, () => {
       return new Token({
         access_token: `AT-${uuid.v4()}`,
         token_type: `Fake`,
-        expires_in: `6000`,
+        expires_in: 6000,
         refresh_token: `RT`,
-        refresh_token_expires_in: `24000`,
+        refresh_token_expires_in: 24000,
         scope
       }, {parent: spark});
     }
@@ -36,7 +37,9 @@ describe(`plugin-credentials`, () => {
     });
 
     afterEach(() => {
-      Token.prototype.downscope.restore();
+      if (Token.prototype.downscope.restore) {
+        Token.prototype.downscope.restore();
+      }
     });
 
     let spark;
@@ -48,7 +51,7 @@ describe(`plugin-credentials`, () => {
       });
     });
 
-    describe(`getUserToken`, () => {
+    describe(`#getUserToken()`, () => {
       let apiToken, kmsToken, supertoken;
       beforeEach(() => {
         supertoken = makeToken(`${apiScope} spark:kms`);
@@ -87,8 +90,61 @@ describe(`plugin-credentials`, () => {
         it(`falls back to the supertoken`, () => assert.becomes(spark.credentials.getUserToken(`spark:kms`), supertoken));
       });
 
-      it(`blocks while a token refresh is inflight`);
-      it(`blocks while a token exchange is in flight`);
+      it(`blocks while a token refresh is inflight`, () => {
+        const defer = new Defer();
+        // For reasons not enitrely clear, supertoken.returns doesn't seem to
+        // work, so we need to restore and restub it.
+        spark.credentials.supertoken.downscope.restore();
+        sinon.stub(spark.credentials.supertoken, `downscope`).returns(defer.promise);
+        // spark.credentials.supertoken.downscope.returns(defer.promise);
+
+        const promise1 = spark.credentials.getUserToken();
+        const promise2 = spark.credentials.getUserToken();
+
+        defer.resolve({
+          statusCode: 200,
+          body: {
+            access_token: `AT2`,
+            token_type: `Fake`,
+            expires_in: 10000
+          }
+        });
+
+        return Promise.all([promise1, promise2])
+          .then(([a1, a2]) => {
+            assert.equal(a1, a2);
+            assert.equal(a1.access_token, `AT2`);
+            assert.equal(a2.access_token, `AT2`);
+          });
+      });
+
+      it(`blocks while a token exchange is in flight`, () => {
+        const defer = new Defer();
+        spark.credentials.unset(`supertoken`);
+
+        spark.request.returns(defer);
+
+        spark.requestAuthorizationCodeGrant({code: 5});
+
+        const promise1 = spark.credentials.getUserToken();
+        const promise2 = spark.credentials.getUserToken();
+
+        defer.resolve({
+          statusCode: 200,
+          body: {
+            access_token: `AT2`,
+            token_type: `Fake`,
+            expires_in: 10000
+          }
+        });
+
+        return Promise.all([promise1, promise2])
+          .then(([a1, a2]) => {
+            assert.equal(a1, a2);
+            assert.equal(a1.access_token, `AT2`);
+            assert.equal(a2.access_token, `AT2`);
+          });
+      });
     });
 
     describe(`#initialize()`, () => {
