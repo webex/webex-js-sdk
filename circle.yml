@@ -49,7 +49,8 @@ dependencies:
     - packages/widget-chat/node_modules
     - packages/xunit-with-logs/node_modules
   post:
-    - npm run bootstrap
+    - npm run bootstrap:
+        timeout: 1200 # this step takes a long time with no output in CI environments; bump it to 20 minutes
 
 test:
   pre:
