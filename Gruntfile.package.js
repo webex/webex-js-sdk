@@ -187,6 +187,10 @@ module.exports = function(grunt) {
       }
     },
 
+    jest: {
+      options: require('./jest.config')
+    },
+
     karma: {
       test: {
         options: {
