@@ -10,8 +10,6 @@
 var path = require('path');
 
 module.exports = function configGrunt(grunt) {
-  grunt.loadNpmTasks('grunt-webpack');
-  grunt.loadNpmTasks('grunt-jest');
   grunt.config('webpack',
     {
       options: Object.assign({}, require('./webpack.config'), {
@@ -47,13 +45,6 @@ module.exports = function configGrunt(grunt) {
         }
       }
     });
-  grunt.config('jest',
-    {
-      // Grunt jest config are passed as -- options
-      // Some jest config lives in package.json
-      options: require('./jest.config')
-    }
-  );
 
   grunt.registerTask('build', [
     'webpack:build'
