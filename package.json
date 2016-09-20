@@ -162,7 +162,6 @@
     "grunt-express-server": "~0.5.1",
     "grunt-gh-pages": "~0.10.0",
     "grunt-istanbul": "^0.7.0",
-    "grunt-jest": "^0.3.0",
     "grunt-jscs": "~2.0.0",
     "grunt-karma": "^2.0.0",
     "grunt-mocha-test": "^0.13.2",
