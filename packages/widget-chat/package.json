@@ -12,6 +12,10 @@
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook"
   },
+  "jest": {
+    "collectCoverage": true,
+    "setupTestFrameworkScriptFile": "./setup-jasmine-env.js"
+  },
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/widget-chat",
   "dependencies": {
     "babel-runtime": "^6.3.19",
@@ -21,6 +25,7 @@
     "react-dom": "^15.0.2"
   },
   "devDependencies": {
+    "@kadira/storybook": "^2.5.2",
     "babel-core": "^6.7.7",
     "babel-eslint": "^6.0.0-beta.5",
     "babel-jest": "^15.0.0",
@@ -37,11 +42,11 @@
     "grunt-webpack": "^1.0.14",
     "html-webpack-plugin": "^2.22.0",
     "inline-environment-variables-webpack-plugin": "0.0.2",
+    "jasmine-reporters": "^2.2.0",
     "jest": "^15.1.1",
     "react-addons-test-utils": "^15.3.1",
     "react-test-renderer": "^15.3.1",
     "require-dir": "^0.3.0",
-    "style-loader": "^0.13.1",
-    "@kadira/storybook": "^2.5.2"
+    "style-loader": "^0.13.1"
   }
 }
