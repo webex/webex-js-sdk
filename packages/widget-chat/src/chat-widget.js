@@ -10,18 +10,6 @@ import React from 'react';
 export default class ChatWidget extends React.Component {
 
   /**
-   * Creates an instance of ChatWidget.
-   *
-   * @param {any} props
-   *
-   */
-  constructor(props) {
-    super(props);
-
-    this.name = `ChatWidget`;
-  }
-
-  /**
    * Render
    *
    * @returns {Object}
