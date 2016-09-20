@@ -2,7 +2,7 @@ import './styles/styles.css';
 
 import React from 'react';
 import ReactDOM from 'react-dom';
-import ChatWidget from './chat-widget';
+import ChatWidget from './chat-widget/chat-widget';
 
 
 ReactDOM.render(
