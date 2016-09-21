@@ -58,7 +58,7 @@ if [ "${FAILURE_COUNT}" -ne "0" ]; then
   >
     <failure type="">${MSG}</failure>
   </testcase>
-</testcase>
+</testsuite>
 EOT
 
   exit ${EXIT_CODE}
