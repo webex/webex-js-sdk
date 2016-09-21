@@ -73,6 +73,14 @@ module.exports = function schemas(chai) {
     assert.property(this._obj, 'description');
   });
 
+  Assertion.addProperty('InternalTeam', function() {
+    assert.equal(this._obj.objectType, 'team');
+    assert.property(this._obj, 'id');
+    assert.property(this._obj, 'url');
+    assert.property(this._obj, 'generalConversationUuid');
+    assert.include(this._obj.tags, 'TEAM');
+  });
+
   Assertion.addProperty('OneOnOneConversation', function() {
     assert.isConversation(this._obj);
     assert.include(this._obj.tags, 'ONE_ON_ONE');
@@ -83,11 +91,20 @@ module.exports = function schemas(chai) {
     assert.notInclude(this._obj.tags, 'ONE_ON_ONE');
   });
 
+  Assertion.addProperty('InternalTeamConversation', function() {
+    assert.isConversation(this._obj);
+    assert.include(this._obj.tags, 'OPEN');
+  });
+
   Assertion.addProperty('NewEncryptedConversation', function() {
     assert.property(this._obj, 'kmsMessage');
     assert.equal(this._obj.kmsMessage.status, 201);
     assert.property(this._obj, 'defaultActivityEncryptionKeyUrl');
     assert.property(this._obj, 'kmsResourceObjectUrl');
+  });
+
+  Assertion.addProperty('NewEncryptedInternalTeam', function() {
+    assert.isNewEncryptedConversation(this._obj);
   });
 
   Assertion.addProperty('EncryptedActivity', function() {
@@ -240,11 +257,14 @@ module.exports = function schemas(chai) {
     'AccessToken',
     'Activity',
     'Conversation',
+    'InternalTeam',
     'FileItem',
     'ThumbnailItem',
     'OneOnOneConversation',
     'GroupConversation',
+    'InternalTeamConversation',
     'NewEncryptedConversation',
+    'NewEncryptedTeam',
     'EncryptedActivity',
     'MachineAccount',
     'Membership',
