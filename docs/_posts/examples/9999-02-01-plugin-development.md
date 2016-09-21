@@ -5,6 +5,11 @@ categories:  example
 description: "Adding new plugins to the Cisco Spark JavaScript SDK"
 ---
 
+# External Dependencies
+
+- You'll need node 4 or later
+- Depending on what you're working on, you'll need graphicsmagick
+
 # Get the code and build the SDK
 
 1. Fork the sdk on github.com.
@@ -39,7 +44,7 @@ description: "Adding new plugins to the Cisco Spark JavaScript SDK"
   ```
 7. Install the `yo` cli tool
   ```bash
-  npm install -g yeoman
+  npm install -g yo
   ```
 
 # Creating your plugin
