@@ -1,15 +1,14 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
-import TestUtils from 'react-addons-test-utils';
+import {findRenderedDOMComponentWithTag, renderIntoDocument} from 'react-addons-test-utils';
 
 import ActivityTitle from './activity-title';
 
 it(`is rendered properly`, () => {
-  const title = TestUtils.renderIntoDocument(
+  const title = renderIntoDocument(
     <ActivityTitle heading="Chat Widget Title!" />
   );
 
-  const titleNode = ReactDOM.findDOMNode(title);
+  const titleNode = findRenderedDOMComponentWithTag(title, `h2`);
 
   expect(titleNode.textContent).toBe(`Chat Widget Title!`);
 });
