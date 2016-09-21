@@ -33,7 +33,7 @@ description: "Adding new plugins to the Cisco Spark JavaScript SDK"
   ```bash
   export NPM_CONFIG_REGISTRY=http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group
   npm install
-  npm run boostrap
+  npm run bootstrap
   npm run build
   ```
 6. Link the yeoman generator
