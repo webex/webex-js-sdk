@@ -1,7 +1,7 @@
 import React from 'react';
 import classNames from 'classnames';
 
-import styles from 'styles.css';
+import styles from './styles.css';
 
 
 export default class ActivityTitle extends React.Component {

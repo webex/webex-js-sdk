@@ -7,19 +7,21 @@ import styles from './styles.css';
 
 /**
  * ChatWidget Component
- *
- * @export
- * @class ChatWidget
- * @extends {React.Component}
  */
 export default class ChatWidget extends React.Component {
+  /**
+   * Never update since we're not using any props yet
+   *
+   * @returns {Boolean}
+   */
+  shouldComponentUpdate() {
+    return false;
+  }
 
   /**
    * Render
    *
    * @returns {Object}
-   *
-   * @memberOf ChatWidget
    */
   render() {
     return (
