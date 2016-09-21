@@ -7,6 +7,7 @@
 import {registerPlugin} from '@ciscospark/spark-core';
 import Support from './support';
 import config from './config';
+import '@ciscospark/plugin-wdm';
 
 registerPlugin(`support`, Support, {
   config
