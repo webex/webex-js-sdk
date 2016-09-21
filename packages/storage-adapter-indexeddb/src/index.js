@@ -127,7 +127,7 @@ export default class StorageAdapterIndexedDB {
       return Promise.reject(new Error(`\`options.logger\` is required`));
     }
 
-    options.logger.info(`local-storage-indexeddb: returning binding`);
+    options.logger.info(`indexeddb-store-adapter: returning binding`);
 
     return Promise.resolve(new this.Bound(namespace, options));
   }
