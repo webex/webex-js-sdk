@@ -24,7 +24,9 @@ description: "Adding new plugins to the Cisco Spark JavaScript SDK"
   git config branch.master.rebase true
   ```
 5. Install dependencies and build packages
+  In order to interact with test users, we need a module that is not publicly available, so point at the internal npm registry during install. Unless you completely blow away your node modules directory, you won't need to worry about this again.
   ```bash
+  export NPM_CONFIG_REGISTRY=http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group
   npm install
   npm run boostrap
   npm run build
