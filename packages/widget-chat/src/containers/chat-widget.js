@@ -1,6 +1,8 @@
 import React from 'react';
 import classNames from 'classnames';
 
+import ActivityTitle from '../components/activity-title/activity-title';
+
 import styles from './styles.css';
 
 /**
@@ -22,7 +24,7 @@ export default class ChatWidget extends React.Component {
   render() {
     return (
       <div className={classNames(`widget-chat`, styles.widgetChat)}>
-        <h1>Chat Widget!</h1>
+        <ActivityTitle heading="Chat Widget!" />
       </div>
     );
   }
