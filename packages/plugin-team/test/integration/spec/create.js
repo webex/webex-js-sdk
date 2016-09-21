@@ -5,6 +5,7 @@
  */
 
 import '../..';
+import '@ciscospark/plugin-conversation';
 import {assert} from '@ciscospark/test-helper-chai';
 import CiscoSpark from '@ciscospark/spark-core';
 import {find} from 'lodash';
