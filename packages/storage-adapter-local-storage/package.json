@@ -15,11 +15,11 @@
     "@ciscospark/storage-adapter-spec": "^0.7.0-alpha",
     "@ciscospark/test-helper-mocha": "^0.7.0-alpha",
     "@ciscospark/xunit-with-logs": "^0.7.0-alpha",
-    "babel-eslint": "^6.0.0-beta.5",
+    "babel-eslint": "^6.1.2",
     "babel-plugin-lodash": "^2.1.0",
     "babel-polyfill": "^6.3.14",
     "babel-register": "^6.4.3",
-    "eslint": "^3.3.1",
-    "eslint-plugin-mocha": "^4.4.0"
+    "eslint": "^3.5.0",
+    "eslint-plugin-mocha": "^4.5.1"
   }
 }
