@@ -12,6 +12,10 @@ var InlineEnviromentVariablesPlugin = require('inline-environment-variables-webp
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 
+// PostCSS plugins
+const cssnext = require('postcss-cssnext');
+const postcssReporter = require('postcss-reporter');
+
 // Need to use dotenv because grunt env runs after this file has been loaded
 try {
   dotenv.config({
@@ -85,6 +89,12 @@ module.exports = {
       template: path.resolve(__dirname, './src/index.html')
     })
   ],
+  postcss: () => [
+    cssnext({
+      browsers: ['last 2 versions', 'IE > 10']
+    }),
+    postcssReporter()
+  ],
   resolve: {
     // Add "devMain" to the packageMains defaults so we can load src instead of
     // dist (so far, haven't found a better way)
@@ -108,10 +118,19 @@ module.exports = {
         query: {
           cacheDirectory: true
         }
-      },
-      {
+      }, {
+        // Transform our own .css files with PostCSS and CSS-modules
         test: /\.css$/,
-        loader: ExtractTextPlugin.extract('style-loader', 'css-loader')
+        exclude: [/node_modules/],
+        loader: ExtractTextPlugin.extract(
+          'style-loader',
+          'css-loader?camelCase&modules&importLoaders=1!postcss-loader'
+        )
+      }, {
+        // Do not transform vendor's CSS with CSS-modules
+        test: /\.css$/,
+        include: [/node_modules/],
+        loaders: ['style-loader', 'css-loader']
       }
     ]
   }

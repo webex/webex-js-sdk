@@ -4,10 +4,10 @@ import {findRenderedDOMComponentWithTag, renderIntoDocument} from 'react-addons-
 
 it(`is rendered properly`, () => {
   const widget = renderIntoDocument(
-    <ChatWidget />
+    <ChatWidget heading="Chat Widget!" />
   );
 
-  const widgetNode = findRenderedDOMComponentWithTag(widget, `h1`);
+  const widgetNode = findRenderedDOMComponentWithTag(widget, `h2`);
 
   expect(widgetNode.textContent).toBe(`Chat Widget!`);
 });
