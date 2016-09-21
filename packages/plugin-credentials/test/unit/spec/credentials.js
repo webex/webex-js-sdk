@@ -30,8 +30,37 @@ describe(`plugin-credentials`, () => {
       }, {parent: spark});
     }
 
+    let spark;
     beforeEach(() => {
+      spark = new MockSpark({
+        children: {
+          credentials: Credentials
+        }
+      });
+
+      spark.request.returns(Promise.resolve({
+        statusCode: 200,
+        body: {
+          access_token: `AT3`,
+          token_type: `Fake`
+        }
+      }));
+    });
+
+    let nextApiToken, nextKmsToken;
+    beforeEach(() => {
+      nextApiToken = makeToken(apiScope, spark);
+      nextKmsToken = makeToken(`spark:kms`, spark);
+
       sinon.stub(Token.prototype, `downscope`, (scope) => {
+        if (scope === `spark:kms`) {
+          return Promise.resolve(nextApiToken);
+        }
+
+        if (scope === apiScope) {
+          return Promise.resolve(nextKmsToken);
+        }
+
         return Promise.resolve(makeToken(scope, this));
       });
     });
@@ -40,15 +69,6 @@ describe(`plugin-credentials`, () => {
       if (Token.prototype.downscope.restore) {
         Token.prototype.downscope.restore();
       }
-    });
-
-    let spark;
-    beforeEach(() => {
-      spark = new MockSpark({
-        children: {
-          credentials: Credentials
-        }
-      });
     });
 
     describe(`#getUserToken()`, () => {
@@ -72,19 +92,27 @@ describe(`plugin-credentials`, () => {
         it(`downscopes the supertoken`, () => spark.credentials.getUserToken(`spark:people_read`)
           .then(() => {
             assert.calledOnce(supertoken.downscope);
-            assert.calledWith(`spark:people_read`);
+            assert.calledWith(supertoken.downscope, `spark:people_read`);
           }));
       });
 
       describe(`when no scope is specified`, () => {
-        it(`resolves with a token containing all but the kms scopes`, () => assert.becomes(spark.credentials.getUserToken(), apiToken));
+        it(`resolves with a token containing all but the kms scopes`, () => assert.isFulfilled(spark.credentials.getUserToken())
+            .then((token) => assert.equal(token.access_token, apiToken.access_token)));
       });
 
       describe(`when the kms downscope request fails`, () => {
         beforeEach(() => {
           spark.credentials.userTokens.remove(`spark:kms`);
           assert.isUndefined(spark.credentials.userTokens.get(`spark:kms`));
-          supertoken.downscope.returns(Promise.reject(new grantErrors.InvalidScopeError()));
+          supertoken.downscope.restore();
+          sinon.stub(supertoken, `downscope`);
+          supertoken.downscope.returns(Promise.reject(new grantErrors.InvalidScopeError({
+            statusCode: 400,
+            body: {
+              error: `fake error`
+            }
+          })));
         });
 
         it(`falls back to the supertoken`, () => assert.becomes(spark.credentials.getUserToken(`spark:kms`), supertoken));
@@ -92,39 +120,42 @@ describe(`plugin-credentials`, () => {
 
       it(`blocks while a token refresh is inflight`, () => {
         const defer = new Defer();
-        // For reasons not enitrely clear, supertoken.returns doesn't seem to
+        // For reasons not entirely clear, supertoken.returns doesn't seem to
         // work, so we need to restore and restub it.
-        spark.credentials.supertoken.downscope.restore();
-        sinon.stub(spark.credentials.supertoken, `downscope`).returns(defer.promise);
-        // spark.credentials.supertoken.downscope.returns(defer.promise);
+        Token.prototype.downscope.restore();
+        sinon.stub(Token.prototype, `downscope`).returns(defer.promise);
+
+        spark.credentials.refresh()
+          .catch((reason) => {
+            console.error(reason);
+          });
 
         const promise1 = spark.credentials.getUserToken();
         const promise2 = spark.credentials.getUserToken();
 
-        defer.resolve({
-          statusCode: 200,
-          body: {
-            access_token: `AT2`,
-            token_type: `Fake`,
-            expires_in: 10000
-          }
-        });
+        const nextApiToken = makeToken(apiScope, spark);
+        defer.resolve(nextApiToken);
 
         return Promise.all([promise1, promise2])
           .then(([a1, a2]) => {
-            assert.equal(a1, a2);
-            assert.equal(a1.access_token, `AT2`);
-            assert.equal(a2.access_token, `AT2`);
+            assert.equal(a1, nextApiToken);
+            assert.equal(a2, nextApiToken);
           });
       });
 
       it(`blocks while a token exchange is in flight`, () => {
         const defer = new Defer();
         spark.credentials.unset(`supertoken`);
+        spark.credentials.userTokens.reset();
 
-        spark.request.returns(defer);
+        spark.request.returns(defer.promise);
 
-        spark.requestAuthorizationCodeGrant({code: 5});
+        // const nextApiToken = makeToken(apiScope, spark);
+
+        // Token.prototype.downscope.restore();
+        // sinon.stub(Token.prototype, `downscope`).returns(Promise.resolve(nextApiToken));
+
+        spark.credentials.requestAuthorizationCodeGrant({code: 5});
 
         const promise1 = spark.credentials.getUserToken();
         const promise2 = spark.credentials.getUserToken();
@@ -140,9 +171,8 @@ describe(`plugin-credentials`, () => {
 
         return Promise.all([promise1, promise2])
           .then(([a1, a2]) => {
-            assert.equal(a1, a2);
-            assert.equal(a1.access_token, `AT2`);
-            assert.equal(a2.access_token, `AT2`);
+            assert.equal(a1, nextApiToken);
+            assert.equal(a2, nextApiToken);
           });
       });
     });
@@ -151,23 +181,26 @@ describe(`plugin-credentials`, () => {
       it(`handles all the possible shapes of cached credentials`, () => {
         [
           {
-            access_token: `ST`
+            access_token: `Fake ST`
           },
           {
             supertoken: {
-              access_token: `ST`
+              access_token: `ST`,
+              token_type: `Fake`
             }
           },
           {
             authorization: {
               supertoken: {
-                access_token: `ST`
+                access_token: `ST`,
+                token_type: `Fake`
               }
             }
           }
         ].forEach((credentials) => {
           const s = new CiscoSpark({credentials});
           assert.equal(s.credentials.supertoken.access_token, `ST`);
+          assert.equal(s.credentials.supertoken.token_type, `Fake`);
         });
 
         const credentials = {
@@ -189,13 +222,25 @@ describe(`plugin-credentials`, () => {
 
         const s = new CiscoSpark({credentials});
         assert.equal(s.credentials.supertoken.access_token, `ST`);
+        assert.equal(s.credentials.supertoken.token_type, `Bearer`);
         assert.equal(s.credentials.userTokens.get(apiScope).access_token, `AT`);
+        assert.equal(s.credentials.userTokens.get(apiScope).token_type, `Bearer`);
         assert.equal(s.credentials.userTokens.get(`spark:kms`).access_token, `KT`);
+        assert.equal(s.credentials.userTokens.get(`spark:kms`).token_type, `Bearer`);
       });
     });
 
     describe(`#refresh()`, () => {
       it(`sets #isRefreshing`, () => {
+        spark.set({
+          credentials: {
+            supertoken: {
+              access_token: `AT`,
+              token_type: `Fake`,
+              refresh_token: `RT`
+            }
+          }
+        });
         const promise = spark.credentials.refresh();
         assert.isTrue(spark.credentials.isRefreshing);
         return assert.isFulfilled(promise)
@@ -205,7 +250,7 @@ describe(`plugin-credentials`, () => {
 
     describe(`#requestAuthorizationCodeGrant`, () => {
       it(`sets #isAuthenticating`, () => {
-        const promise = spark.credentials.requestAuthorizationCodeGrant();
+        const promise = spark.credentials.requestAuthorizationCodeGrant({code: 5});
         assert.isTrue(spark.credentials.isAuthenticating);
         return assert.isFulfilled(promise)
           .then(() => assert.isFalse(spark.credentials.isAuthenticating));
@@ -214,7 +259,11 @@ describe(`plugin-credentials`, () => {
 
     describe(`#requestSamlExtensionGrant`, () => {
       it(`sets #isAuthenticating`, () => {
-        const promise = spark.credentials.requestSamlExtensionGrant();
+        const promise = spark.credentials.requestSamlExtensionGrant({
+          name: `name`,
+          password: `password`,
+          orgId: `orgId`
+        });
         assert.isTrue(spark.credentials.isAuthenticating);
         return assert.isFulfilled(promise)
           .then(() => assert.isFalse(spark.credentials.isAuthenticating));

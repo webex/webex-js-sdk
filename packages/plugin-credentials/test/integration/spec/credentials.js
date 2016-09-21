@@ -53,7 +53,7 @@ describe(`plugin-credentials`, () => {
           code = u.token.auth_code;
         }));
 
-      it(`exchanges an authorization code for an access token`, () => spark.credentials.requestAuthorizationCodeGrant(code)
+      it(`exchanges an authorization code for an access token`, () => spark.credentials.requestAuthorizationCodeGrant({code})
         .then(() => {
           assert.isDefined(spark.credentials.supertoken);
           assert.isDefined(spark.credentials.userTokens.get(apiScope));
@@ -80,7 +80,7 @@ describe(`plugin-credentials`, () => {
         spark = new CiscoSpark();
       });
 
-      it(`exchanges machine account credentials for an access token`, () => spark.requestSamlExtensionGrant(machine)
+      it(`exchanges machine account credentials for an access token`, () => spark.credentials.requestSamlExtensionGrant(machine)
         .then(() => {
           assert.isDefined(spark.credentials.supertoken);
           assert.isDefined(spark.credentials.userTokens.get(apiScope));

@@ -85,9 +85,6 @@ describe(`plugin-credentials`, () => {
       it(`derives from \`access_token\` and \`token_type\``, () => {
         assert.equal(token.string, `Fake AT`);
 
-        token.unset(`token_type`);
-        assert.equal(token.string, ``);
-
         token.token_type = `Fake`;
         token.unset(`access_token`);
         assert.equal(token.string, ``);
@@ -130,6 +127,14 @@ describe(`plugin-credentials`, () => {
           // eslint-disable-next-line no-unused-vars
           const x = new Token({access_token: `AT`});
         }, /`access_token` is required/);
+      });
+
+      it(`infers token_type from an access token string`, () => {
+        const t = new Token({
+          access_token: `Fake AT`
+        });
+        assert.equal(t.access_token, `AT`);
+        assert.equal(t.token_type, `Fake`);
       });
 
       it(`computes expires_in and refresh_token_expires_in if not specified`, () => {
@@ -228,7 +233,6 @@ describe(`plugin-credentials`, () => {
         return token.revoke()
           .then(() => {
             assert.isUndefined(token.access_token);
-            assert.isUndefined(token.token_type);
             assert.isUndefined(token.expires);
             assert.isUndefined(token.expires_in);
           });

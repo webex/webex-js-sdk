@@ -9,6 +9,7 @@
 import {pick} from 'lodash';
 import {oneFlight, tap} from '@ciscospark/common';
 import {grantErrors, SparkPlugin} from '@ciscospark/spark-core';
+import {sortScope} from './scope';
 
 /**
  * Parse response from CI and converts to structured error when appropriate
@@ -36,7 +37,10 @@ const Token = SparkPlugin.extend({
     refresh_token: `string`,
     refresh_token_expires: `number`,
     refresh_token_expires_in: `number`,
-    token_type: `string`
+    token_type: {
+      default: `Bearer`,
+      type: `string`
+    }
   },
 
   session: {
@@ -135,7 +139,7 @@ const Token = SparkPlugin.extend({
     // Since we're going to use scope as the index in our token collection, it's
     // important scopes are always deterministically specified.
     if (scope) {
-      scope = scope.split(` `).sort().join(` `);
+      scope = sortScope(scope);
     }
 
     return this.spark.request({
@@ -164,8 +168,12 @@ const Token = SparkPlugin.extend({
       throw new Error(`\`access_token\` is required`);
     }
 
+    if (this.access_token && this.access_token.includes(` `)) {
+      [this.token_type, this.access_token] = this.access_token.split(` `);
+    }
+
     if (this.scope) {
-      this.scope = this.scope.split(` `).sort().join(` `);
+      this.scope = sortScope(this.scope);
     }
 
     const now = Date.now();
