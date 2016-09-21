@@ -21,13 +21,14 @@ export default class AdvancedAuthInterceptor extends AuthInterceptor {
    */
   requiresCredentials(options) {
     return Promise.all([
-      options.uri && this.spark.device.isSpecificService(`token`, options.uri),
-      options.uri && this.spark.device.isSpecificService(`authorize`, options.uri),
+      options.uri && this.spark.device.isSpecificService(`oauth`, options.uri),
       options.uri && this.spark.device.isSpecificService(`saml`, options.uri),
       options.service && this.spark.device.isService(options.service),
       !options.service && options.uri && this.spark.device.isServiceUrl(options.uri)
     ])
-    .then(([isTokenUrl, isAuthorizeUrl, isSamlUrl, isService, isServiceUrl]) => {
+    .then(([isOauthService, isSamlUrl, isService, isServiceUrl]) => {
+      const isTokenUrl = isOauthService && options.uri.includes(`token`);
+      const isAuthorizeUrl = isOauthService && options.uri.includes(`authorize`);
       if (isTokenUrl || isAuthorizeUrl || isSamlUrl) {
         return false;
       }

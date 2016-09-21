@@ -50,7 +50,6 @@ describe(`plugin-credentials`, function() {
           assert.isUndefined(supertoken.access_token);
           assert.isDefined(supertoken.refresh_token);
           assert.isUndefined(supertoken.expires_in);
-          assert.isUndefined(supertoken.token_type);
         }));
     });
   });
