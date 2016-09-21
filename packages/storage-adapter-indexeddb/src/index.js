@@ -38,16 +38,6 @@ export default class StorageAdapterIndexedDB {
       }
 
       /**
-       * @private
-       * @returns {mixed}
-       */
-      _load() {
-        const rawData = localforage.getItem(basekey);
-        const allData = rawData ? JSON.parse(rawData) : {};
-        return allData[namespaces.get(this)] || {};
-      }
-
-      /**
        * @param {Object} data
        * @private
        * @returns {undefined}
@@ -83,13 +73,14 @@ export default class StorageAdapterIndexedDB {
       get(key) {
         return new Promise((resolve, reject) => {
           loggers.get(this).info(`indexeddb-store-adapter: reading \`${key}\``);
-          const data = this._load();
-          const value = data[key];
-          if (value) {
-            return resolve(value);
-          }
 
-          return reject(new NotFoundError(`No value found for ${key}`));
+          return localforage.getItem(key)
+            .then((value) => {
+              if (value) {
+                return resolve(value);
+              }
+              return reject(new NotFoundError(`No value found for ${key}`));
+            });
         });
       }
 
@@ -100,13 +91,8 @@ export default class StorageAdapterIndexedDB {
        * @returns {Promise}
        */
       put(key, value) {
-        return new Promise((resolve) => {
-          loggers.get(this).info(`indexeddb-store-adapter: writing \`${key}\``);
-          const data = this._load();
-          data[key] = value;
-          this._save(data);
-          resolve();
-        });
+        loggers.get(this).info(`indexeddb-store-adapter: writing \`${key}\``);
+        return localforage.setItem(key, value);
       }
     };
   }
