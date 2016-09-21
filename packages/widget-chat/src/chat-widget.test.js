@@ -1,15 +1,13 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
 import ChatWidget from './chat-widget';
-import TestUtils from 'react-addons-test-utils';
+import {findRenderedDOMComponentWithTag, renderIntoDocument} from 'react-addons-test-utils';
 
 it(`is rendered properly`, () => {
-  const widget = TestUtils.renderIntoDocument(
+  const widget = renderIntoDocument(
     <ChatWidget />
   );
 
-  const widgetNode = ReactDOM.findDOMNode(widget);
+  const widgetNode = findRenderedDOMComponentWithTag(widget, `h1`);
 
   expect(widgetNode.textContent).toBe(`Chat Widget!`);
-
 });

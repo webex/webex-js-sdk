@@ -1,1 +1,5 @@
-extends: "../../.eslintrc-es6.yml"
+extends:
+  - "../../.eslintrc-es6.yml"
+  - "../../.eslintrc-react.yml"
+env:
+  jasmine: true
