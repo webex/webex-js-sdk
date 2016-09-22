@@ -5,17 +5,11 @@
  */
 
 import Normalizer from './normalizer';
-import {filter} from '@ciscospark/helper-html';
+import {filter as htmlFilter} from '@ciscospark/helper-html';
 
 const OutboundNormalizer = Normalizer.extend({
-  derived: {
-    filter: {
-      deps: [],
-      fn() {
-        // eslint-disable-next-line no-empty-function
-        return filter(this.config.outboundProcessFunc, this.config.allowedOutboundTags || {}, this.config.allowedOutboundStyles);
-      }
-    }
+  filter(html) {
+    return htmlFilter(this.config.outboundProcessFunc, this.config.allowedOutboundTags || {}, this.config.allowedOutboundStyles, html);
   }
 });
 
