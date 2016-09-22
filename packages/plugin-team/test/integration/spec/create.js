@@ -5,28 +5,37 @@
  */
 
 import '../..';
-import '@ciscospark/plugin-conversation';
+import '@ciscospark/plugin-wdm';
+
 import {assert} from '@ciscospark/test-helper-chai';
 import CiscoSpark from '@ciscospark/spark-core';
-import {find} from 'lodash';
+import {find, findLast} from 'lodash';
 import testUsers from '@ciscospark/test-helper-test-users';
 import uuid from 'uuid';
 
-describe(`plugin-team`, function() {
+describe(`plugin-team`, () => {
 
-  let kirk, spock, uhura, participants, spark;
+  let kirk, participants, spark, spock, team;
 
   before(() => testUsers.create({count: 3})
     .then((users) => {
-      participants = [kirk, spock, uhura] = users;
+      participants = [kirk, spock] = users;
 
       spark = new CiscoSpark({
         credentials: {
           authorization: kirk.token
+        },
+        config: {
+          conversation: {
+            keepEncryptedProperties: true
+          }
         }
       });
 
-      return spark.mercury.connect();
+      return Promise.all([
+        spark.mercury.connect(),
+        spark.device.register()
+      ]);
     })
   );
 
@@ -35,7 +44,9 @@ describe(`plugin-team`, function() {
   describe(`#create()`, () => {
 
     it(`creates a team with a multiple participants`, () => {
+      const displayName = `team-name-${uuid.v4()}`;
       return spark.team.create({
+        displayName,
         participants: [kirk, spock]
       })
         .then((team) => {
@@ -43,9 +54,14 @@ describe(`plugin-team`, function() {
           assert.isNewEncryptedTeam(team);
           assert.lengthOf(team.teamMembers.items, 2);
 
+          // Kirk created the team and is the moderator, Spock is not.
           const kirkEntry = find(team.teamMembers.items, {id: kirk.id});
           assert.isDefined(kirkEntry);
           assert.isDefined(kirkEntry.roomProperties.isModerator);
+
+          const spockEntry = find(team.teamMembers.items, {id: spock.id});
+          assert.isDefined(spockEntry);
+          assert.isUndefined(spockEntry.roomProperties);
         });
     });
 
@@ -62,7 +78,12 @@ describe(`plugin-team`, function() {
           assert.isNewEncryptedTeam(team);
           assert.lengthOf(team.teamMembers.items, 1);
 
+          assert.isDefined(team.encryptedDisplayName);
+          assert.notEqual(team.displayName, team.encryptedDisplayName);
           assert.equal(team.displayName, displayName);
+
+          assert.isDefined(team.encryptedSummary);
+          assert.notEqual(team.summary, team.encryptedSummary);
           assert.equal(team.summary, summary);
         });
     });
@@ -74,37 +95,50 @@ describe(`plugin-team`, function() {
         participants: [kirk]
       })
         .then((team) => {
-          assert.isTeam(team);
+          assert.isInternalTeam(team);
           assert.isNewEncryptedTeam(team);
           assert.lengthOf(team.teamMembers.items, 1);
 
           assert.equal(team.displayName, displayName);
           assert.isUndefined(team.summary);
-        })
+        });
     });
   });
 
   describe(`#createConversation()`, () => {
-    const team;
 
     before(() => {
-      team = spark.team.create({
-        participants: [kirk, spock, uhura]
+      const displayName = `team-name-${uuid.v4()}`;
+      return spark.team.create({
+        displayName,
+        participants
       })
-    );
+      .then((t) => {
+        team = t;
+      });
+    });
 
     it(`creates a team conversation with a single participant`, () => {
-      return spark.team.createConversation({
+      const displayName = `team-conv-name-${uuid.v4()}`;
+      return spark.team.createConversation(team, {
+        displayName,
         participants: [kirk]
       })
         .then((tc) => {
           assert.isInternalTeamConversation(tc);
+
+          assert.isDefined(tc.encryptedDisplayName);
+          assert.notEqual(tc.displayName, tc.encryptedDisplayName);
+          assert.equal(tc.displayName, displayName);
+
           assert.lengthOf(tc.participants.items, 1);
         });
     });
 
     it(`creates a team conversation with multiple participants`, () => {
-      return spark.team.createConversation({
+      const displayName = `team-conv-name-${uuid.v4()}`;
+      return spark.team.createConversation(team, {
+        displayName,
         participants: [kirk, spock]
       })
         .then((tc) => {
@@ -113,8 +147,10 @@ describe(`plugin-team`, function() {
         });
     });
 
-    it(`creates a team using the 'includeAllTeamMembers' parameter`, () => {
-      return spark.team.createConversation({
+    it(`creates a team conversation containing all team members via \`includeAllTeamMembers\` parameter`, () => {
+      const displayName = `team-conv-name-${uuid.v4()}`;
+      return spark.team.createConversation(team, {
+        displayName,
         participants: [kirk]
       }, {
         includeAllTeamMembers: true
@@ -126,25 +162,32 @@ describe(`plugin-team`, function() {
     });
 
     it(`decrypts the 'add' activity appended to the general conversation after team room is created`, () => {
-      return spark.team.createConversation({
+      const displayName = `team-conv-name-${uuid.v4()}`;
+      return spark.team.createConversation(team, {
+        displayName,
         participants: [kirk]
       }, {
         includeAllTeamMembers: true
       })
         .then((tc) => spark.conversation.get({
-            id: team.generalConversationUuid,
-            activitiesLimit: 10
-          })
-            .then(function(teamGeneral) {
-              assert.isInternalConversation(teamGeneral);
-              var addActivity = findLast(teamGeneral.activities.items, function(activity) {
-                return activity.verb === 'add' && activity.object.objectType === 'conversation' && activity.object.id === tc.id;
-              });
+          id: team.generalConversationUuid
+        }, {
+          activitiesLimit: 10
+        })
+        .then((teamGeneral) => {
+          assert.isConversation(teamGeneral);
+          const addActivity = findLast(teamGeneral.activities.items, (activity) => {
+            return activity.verb === `add` && activity.object.objectType === `conversation` && activity.object.id === tc.id;
+          });
 
-              assert.isDefined(addActivity);
-              assert.equal(addActivity.object.displayName, tc.displayName);
-            });
-        });
+          assert.isDefined(addActivity);
+          assert.equal(addActivity.object.displayName, tc.displayName);
+
+          assert.isDefined(addActivity.object.encryptedDisplayName);
+          assert.notEqual(addActivity.object.displayName, addActivity.object.encryptedDisplayName);
+          assert.equal(addActivity.object.displayName, displayName);
+        })
+      );
     });
   });
 

@@ -78,7 +78,6 @@ module.exports = function schemas(chai) {
     assert.property(this._obj, 'id');
     assert.property(this._obj, 'url');
     assert.property(this._obj, 'generalConversationUuid');
-    assert.include(this._obj.tags, 'TEAM');
   });
 
   Assertion.addProperty('OneOnOneConversation', function() {
@@ -93,6 +92,7 @@ module.exports = function schemas(chai) {
 
   Assertion.addProperty('InternalTeamConversation', function() {
     assert.isConversation(this._obj);
+    assert.property(this._obj, 'team');
     assert.include(this._obj.tags, 'OPEN');
   });
 
