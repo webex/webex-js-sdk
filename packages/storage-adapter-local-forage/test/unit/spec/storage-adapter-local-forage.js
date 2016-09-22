@@ -6,8 +6,8 @@
 
 import runAbstractStorageAdapterSpec from '@ciscospark/storage-adapter-spec';
 import {skipInNode} from '@ciscospark/test-helper-mocha';
-import StorageAdapterLocalStorage from '../..';
+import StorageAdapterLocalForage from '../..';
 
 skipInNode(describe)(`StorageAdapterLocalStorage`, () => {
-  runAbstractStorageAdapterSpec(new StorageAdapterLocalStorage(`test`));
+  runAbstractStorageAdapterSpec(new StorageAdapterLocalForage(`test`));
 });
