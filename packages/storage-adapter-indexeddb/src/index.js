@@ -38,31 +38,13 @@ export default class StorageAdapterIndexedDB {
       }
 
       /**
-       * @param {Object} data
-       * @private
-       * @returns {undefined}
-       */
-      _save(data) {
-        const rawData = localforage.getItem(basekey);
-        const allData = rawData ? JSON.parse(rawData) : {};
-        allData[namespaces.get(this)] = data;
-
-        localforage.setItem(basekey, JSON.stringify(allData));
-      }
-
-      /**
        * Removes the specified key
        * @param {string} key
        * @returns {Promise}
        */
       del(key) {
-        return new Promise((resolve) => {
-          loggers.get(this).info(`indexeddb-store-adapter: deleting \`${key}\``);
-          const data = this._load();
-          Reflect.deleteProperty(data, key);
-          this._save(data);
-          resolve();
-        });
+        loggers.get(this).info(`indexeddb-store-adapter: deleting \`${key}\``);
+        return localforage.removeItem(key);
       }
 
       /**
