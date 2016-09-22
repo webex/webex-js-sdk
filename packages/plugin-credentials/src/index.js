@@ -11,7 +11,10 @@ import Credentials from './credentials';
 import config from './config';
 
 registerPlugin(`credentials`, Credentials, {
-  config
+  config,
+  // We're replacing the default credentials implementation with this more
+  // advanced one
+  replace: true
 });
 
 export {
