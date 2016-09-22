@@ -5,16 +5,11 @@
  */
 
 import Normalizer from './normalizer';
-import {filter} from '@ciscospark/helper-html';
+import {filter as htmlFilter} from '@ciscospark/helper-html';
 
 const InboundNormalizer = Normalizer.extend({
-  derived: {
-    filter: {
-      deps: [],
-      fn() {
-        return filter(this.config.inboundProcessFunc, this.config.allowedInboundTags || {}, this.config.allowedInboundStyles);
-      }
-    }
+  filter(html) {
+    return htmlFilter(this.config.inboundProcessFunc, this.config.allowedInboundTags || {}, this.config.allowedInboundStyles, html);
   }
 });
 
