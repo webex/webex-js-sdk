@@ -1,7 +1,7 @@
 import React from 'react';
 import classNames from 'classnames';
 
-import ActivityTitle from '../components/activity-title/activity-title';
+import ActivityTitle from '../../components/activity-title';
 
 import styles from './styles.css';
 
