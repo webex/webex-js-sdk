@@ -56,21 +56,17 @@ export default class StorageAdapterLocalForage {
        */
       get(key) {
         const key_ = `${namespaces.get(this)}/${key}`;
-        return new Promise((resolve, reject) => {
-          loggers.get(this).info(
-            `local-forage-store-adapter: reading \`${key_}\``);
-
-          return localforage.getItem(key_)
-            .then((value) => {
-              if (value) {
-                return resolve(value);
-              }
-              // TODO: return Promise.reject
-              return reject(new NotFoundError(`No value found for ${key_}`));
-            });
-        });
+        loggers.get(this).info(
+          `local-forage-store-adapter: reading \`${key_}\``);
+        return localforage.getItem(key_)
+          .then((value) => {
+            if (value) {
+              return Promise.resolve(value);
+            }
+            return Promise.reject(new NotFoundError(
+              `No value found for ${key_}`));
+          });
       }
-
 
       /**
        * Stores the specified value at the specified key
