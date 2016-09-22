@@ -41,7 +41,11 @@ describe(`plugin-support`, function() {
 
   describe(`#submitCallLogs()`, function() {
     it(`uploads call logs for authUser`, function() {
-      return spark.support.submitCallLogs({}, sampleTextOne);
+      return spark.support.submitCallLogs({}, sampleTextOne)
+        .then(function(body) {
+          assert.isDefined(body);
+          assert.isDefined(body.url);
+        });
     });
   });
 
@@ -55,4 +59,16 @@ describe(`plugin-support`, function() {
         });
     });
   });
+
+  describe(`#_constructFileMetadata()`, function() {
+    it(`constructs a sample File Meta Data`, function() {
+      spark.client = {trackingIdBase : '8675309'};
+      let contructedMetaData = [{key: `8675309`, value: `8675309`}];
+      let result = spark.support._constructFileMetadata({});
+      assert.equal(result.length, 1);
+      assert.equal(result[0].key, 'trackingId');
+      assert.equal(result[0].value, 'spark-js-sdk_8675309');
+    });
+  });
+
 });
