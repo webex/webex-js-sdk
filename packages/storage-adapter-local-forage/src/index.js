@@ -43,8 +43,10 @@ export default class StorageAdapterLocalForage {
        * @returns {Promise}
        */
       del(key) {
-        loggers.get(this).info(`local-forage-store-adapter: deleting \`${key}\``);
-        return localforage.removeItem(key);
+        const key_ = `${namespaces.get(this)}/${key}`;
+        loggers.get(this).info(
+          `local-forage-store-adapter: deleting \`${key_}\``);
+        return localforage.removeItem(key_);
       }
 
       /**
@@ -53,18 +55,22 @@ export default class StorageAdapterLocalForage {
        * @returns {Promise<mixed>}
        */
       get(key) {
+        const key_ = `${namespaces.get(this)}/${key}`;
         return new Promise((resolve, reject) => {
-          loggers.get(this).info(`local-forage-store-adapter: reading \`${key}\``);
+          loggers.get(this).info(
+            `local-forage-store-adapter: reading \`${key_}\``);
 
-          return localforage.getItem(key)
+          return localforage.getItem(key_)
             .then((value) => {
               if (value) {
                 return resolve(value);
               }
-              return reject(new NotFoundError(`No value found for ${key}`));
+              // TODO: return Promise.reject
+              return reject(new NotFoundError(`No value found for ${key_}`));
             });
         });
       }
+
 
       /**
        * Stores the specified value at the specified key
@@ -73,8 +79,10 @@ export default class StorageAdapterLocalForage {
        * @returns {Promise}
        */
       put(key, value) {
-        loggers.get(this).info(`local-forage-store-adapter: writing \`${key}\``);
-        return localforage.setItem(key, value);
+        const key_ = `${namespaces.get(this)}/${key}`;
+        loggers.get(this).info(
+          `local-forage-store-adapter: writing \`${key_}\``);
+        return localforage.setItem(key_, value);
       }
     };
   }
