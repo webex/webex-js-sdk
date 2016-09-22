@@ -43,7 +43,7 @@ export default class StorageAdapterIndexedDB {
        * @returns {Promise}
        */
       del(key) {
-        loggers.get(this).info(`indexeddb-store-adapter: deleting \`${key}\``);
+        loggers.get(this).info(`local-forage-store-adapter: deleting \`${key}\``);
         return localforage.removeItem(key);
       }
 
@@ -54,7 +54,7 @@ export default class StorageAdapterIndexedDB {
        */
       get(key) {
         return new Promise((resolve, reject) => {
-          loggers.get(this).info(`indexeddb-store-adapter: reading \`${key}\``);
+          loggers.get(this).info(`local-forage-store-adapter: reading \`${key}\``);
 
           return localforage.getItem(key)
             .then((value) => {
@@ -73,7 +73,7 @@ export default class StorageAdapterIndexedDB {
        * @returns {Promise}
        */
       put(key, value) {
-        loggers.get(this).info(`indexeddb-store-adapter: writing \`${key}\``);
+        loggers.get(this).info(`local-forage-store-adapter: writing \`${key}\``);
         return localforage.setItem(key, value);
       }
     };
@@ -95,7 +95,7 @@ export default class StorageAdapterIndexedDB {
       return Promise.reject(new Error(`\`options.logger\` is required`));
     }
 
-    options.logger.info(`indexeddb-store-adapter: returning binding`);
+    options.logger.info(`local-forage-store-adapter: returning binding`);
 
     return Promise.resolve(new this.Bound(namespace, options));
   }
