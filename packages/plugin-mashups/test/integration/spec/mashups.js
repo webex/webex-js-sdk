@@ -65,7 +65,7 @@ describe(`plugin-mashups`, function() {
 
   describe(`#delete()`, () => {
 
-    it(`deletes integration`, function () {
+    it(`deletes integration`, () => {
       const options = {};
       options.type = `test`;
       options.roomId = conversation.id;
@@ -78,8 +78,13 @@ describe(`plugin-mashups`, function() {
           return spark.mashups.remove(deleteOptions);
         });
     });
+
+  });
+
+  describe(`#get()`, () => {
+
     it(`retrieves integrations for a single room using roomId`, () => {
-      var options = {};
+      const options = {};
       options.roomId = conversation.id;
       return spark.mashups.get(options)
         .then((integrations) => {
@@ -97,9 +102,7 @@ describe(`plugin-mashups`, function() {
           assert.equal(integrations.test[0].roomId, conversation.id);
         });
     });
-  });
 
-  describe(`#get()`, () => {
     it(`retrieves all integrations`, () => {
       spark.mashups.create({type: `test`, roomId: conversation.id})
         .then(() => {
@@ -108,9 +111,27 @@ describe(`plugin-mashups`, function() {
               assert.isArray(mashups.test);
               assert.lengthOf(mashups.test, 1);
               assert.equal(mashups.test[0].roomId, conversation.id);
-            })
-            .then();
+            });
         });
     });
   });
+
+  describe(`#list()`, () => {
+    it(`retrieves list of all integrations`, () => {
+      spark.mashups.create({type: `test`, roomId: conversation.id})
+        .then(() => {
+          return spark.mashups.create({type: `test`, roomId: conversation.id})
+            .then(() => {
+              return spark.mashups.list({roomId: conversation.id})
+                .then((mashups) => {
+                  assert.isArray(mashups.test);
+                  assert.lengthOf(mashups.test, 1);
+                  assert.equal(mashups.test[0].roomId, conversation.id);
+                });
+            });
+
+        });
+    });
+  });
+
 });
