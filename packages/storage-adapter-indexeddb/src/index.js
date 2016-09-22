@@ -22,7 +22,7 @@ export default class StorageAdapterIndexedDB {
    * @param {string} basekey localforage key under which
    * all namespaces will be stored
    */
-  constructor(basekey) {
+  constructor() {
     /**
      * localforage binding
      */
