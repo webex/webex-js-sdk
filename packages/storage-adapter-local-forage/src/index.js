@@ -16,9 +16,9 @@ const loggers = new WeakMap();
 /**
 * IndexedDB adapter for spark-core storage layer
 */
-export default class StorageAdapterIndexedDB {
+export default class StorageAdapterLocalForage {
   /**
-   * @constructs {StorageAdapterIndexedDB}
+   * @constructs {StorageAdapterLocalForage}
    * @param {string} basekey localforage key under which
    * all namespaces will be stored
    */
