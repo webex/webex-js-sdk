@@ -14,7 +14,7 @@ const Support = SparkPlugin.extend({
 
   _constructFileMetadata(metadata) {
     let metadataArray = [];
-    let client = this.spark.client || {}
+    let client = this.spark.client || {};
     let trackingId = client.trackingIdBase;
 
     if (this.spark.config.trackingIdPrefix) {
