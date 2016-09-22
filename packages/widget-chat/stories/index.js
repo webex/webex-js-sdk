@@ -1,8 +1,8 @@
 import React from 'react';
-import { storiesOf, action, linkTo } from '@kadira/storybook';
-import ChatWidget from '../src/chat-widget';
+import {storiesOf} from '@kadira/storybook';
+import ChatWidget from '../src/containers/chat-widget';
 
-storiesOf('ChatWidget', module)
-  .add('basic', () => (
+storiesOf(`ChatWidget`, module)
+  .add(`basic`, () =>
     <ChatWidget />
-  ));
+  );
