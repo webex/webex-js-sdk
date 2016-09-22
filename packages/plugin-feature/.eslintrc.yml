@@ -1,0 +1,1 @@
+extends: "../../.eslintrc-es6.yml"
