@@ -33,35 +33,45 @@ module.exports = function gruntConfig(grunt) {
     `test`
   ];
 
-  const ALL_NODE_PACKAGES = grunt.file.expand({
-    cwd: `packages`
-  }, [
-      // packages are order to optimize build time while keep flaky tests near
-      // the start of the build
-      // odd numbered blocks should be ordered fastest to slowest in the group
-      // even numbered blocks should be ordered slowest to fastest in the
-      // group
-      `plugin-phone`,
-      `ciscospark`,
-      `spark-core`,
+  let ALL_NODE_PACKAGES;
+  if (process.env.CIRCLE_PROJECT_REPONAME && process.env.CIRCLE_PROJECT_REPONAME.includes(`private-fork`)) {
+    ALL_NODE_PACKAGES = grunt.file.expand({
+      cwd: `packages`
+    }, [
+      `widget-*`
+    ]);
+  }
+  else {
+    ALL_NODE_PACKAGES = grunt.file.expand({
+      cwd: `packages`
+    }, [
+        // packages are order to optimize build time while keep flaky tests near
+        // the start of the build
+        // odd numbered blocks should be ordered fastest to slowest in the group
+        // even numbered blocks should be ordered slowest to fastest in the
+        // group
+        `plugin-phone`,
+        `ciscospark`,
+        `spark-core`,
 
-      `http-core`,
-      `plugin-mercury`,
-      `example-phone`,
+        `http-core`,
+        `plugin-mercury`,
+        `example-phone`,
 
-      `helper-html`,
-      `plugin-wdm`,
-      `plugin-locus`,
+        `helper-html`,
+        `plugin-wdm`,
+        `plugin-locus`,
 
-      `common`,
-      `generator-ciscospark`,
-      `jsdoctrinetest`,
+        `common`,
+        `generator-ciscospark`,
+        `jsdoctrinetest`,
 
-      `*`,
-      `!test-helper*`,
-      `!bin*`,
-      `!xunit-with-logs`
-  ]);
+        `*`,
+        `!test-helper*`,
+        `!bin*`,
+        `!xunit-with-logs`
+    ]);
+  }
 
   const CIRCLE_NODE_TOTAL = parseInt(process.env.CIRCLE_NODE_TOTAL || 1, 10);
   const CIRCLE_NODE_INDEX = parseInt(process.env.CIRCLE_NODE_INDEX || 0, 10);

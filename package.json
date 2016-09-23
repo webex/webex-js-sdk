@@ -121,7 +121,8 @@
     "xhr": "~2.0.1"
   },
   "devDependencies": {
-    "babel-eslint": "^6.1.2",
+    "babel-eslint": "^6.0.0-beta.5",
+    "babel-jest": "^15.0.0",
     "babel-loader": "^6.2.4",
     "babel-plugin-lodash": "2.1.0",
     "babel-plugin-syntax-async-functions": "^6.5.0",
@@ -171,6 +172,8 @@
     "ink-docstrap": "~0.5.2",
     "isparta": "^4.0.0",
     "istanbul": "^0.4.4",
+    "jasmine-reporters": "^2.2.0",
+    "jest-cli": "^15.1.1",
     "jscs": "~2.0.0",
     "jsdoc": "~3.3.0-beta3",
     "karma": "^1.1.1",
