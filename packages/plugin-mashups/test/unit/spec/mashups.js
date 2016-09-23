@@ -77,7 +77,7 @@ describe(`plugin-mashups`, () => {
         assert.equal(req.method, `DELETE`);
       })
     );
-  })
+  });
 
   describe(`#get()`, () => {
     it(`throws an error when a type or id not provided`, () => assert.isRejected(spark.mashups.get(), /options.roomId or option.id is required/));
@@ -102,5 +102,5 @@ describe(`plugin-mashups`, () => {
         assert.equal(req.resource, `integrations`);
         assert.equal(req.method, `GET`);
       }));
-  })
+  });
 });
