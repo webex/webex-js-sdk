@@ -6,12 +6,12 @@
 
 /* eslint camelcase: [0] */
 
-import {makeStateDataType, oneFlight, tap, whileInFlight} from '@ciscospark/common';
+import {makeStateDataType, oneFlight, retry, tap, whileInFlight} from '@ciscospark/common';
 import {grantErrors, SparkPlugin} from '@ciscospark/spark-core';
 import TokenCollection from './token-collection';
 import Token from './token';
 import {filterScope, sortScope} from './scope';
-import {has, isObject} from 'lodash';
+import {has, isObject, pick} from 'lodash';
 
 export const apiScope = filterScope(`spark:kms`, process.env.CISCOSPARK_SCOPE);
 
@@ -218,6 +218,34 @@ const Credentials = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Exchanges an orgId/password/name triple for an access token. If you're
+   * considering using this method, you're almost certainly interested in "bots"
+   * rather than "machine accounts". See the developer portal for more
+   * information.
+   */
+  @whileInFlight(`isAuthenticating`)
+  @oneFlight
+  @retry()
+  requestSamlExtensionGrant(options) {
+    options = options || {};
+    options.scope = options.scope || this.config.scope;
+
+    this.logger.info(`credentials: requesting SAML extension grant`);
+
+    return this._getSamlBearerToken(options)
+      .then((samlToken) => this._getOauthBearerToken(options, samlToken))
+      .then((token) => this._receiveSupertoken(token))
+      .catch((res) => {
+        if (res.statusCode !== 400) {
+          return Promise.reject(res);
+        }
+
+        const ErrorConstructor = grantErrors.select(res.body.error);
+        return Promise.reject(new ErrorConstructor(res._res || res));
+      });
+  },
+
   set(attrs, options) {
     if (isObject(attrs)) {
       if (attrs.access_token) {
@@ -244,6 +272,80 @@ const Credentials = SparkPlugin.extend({
     }
 
     return Reflect.apply(SparkPlugin.prototype.set, this, [attrs, options]);
+  },
+
+  /**
+   * Converts a CI SAML Bearer Token to an OAuth Bearer Token.
+   * @param {Object} options
+   * @param {Object} options.scope
+   * @param {Object} samlData Response body from the CI SAML endpoint.
+   * @private
+   * @return {Promise} Resolves with the bot's credentials.
+   */
+   @oneFlight
+  _getOauthBearerToken(options, samlData) {
+    this.logger.info(`credentials: exchanging SAML Bearer Token for OAuth Bearer Token`);
+
+    const vars = {
+      client_id: `CLIENT_ID`,
+      client_secret: `CLIENT_SECRET`
+    };
+
+    for (const key in vars) {
+      if (!has(this.config, key)) {
+        const baseVar = vars[key];
+        return Promise.reject(new Error(`config.credentials.${key} or CISCOSPARK_${baseVar} or COMMON_IDENTITY_${baseVar} or ${baseVar} must be defined`));
+      }
+    }
+
+    return this.spark.request({
+      method: `POST`,
+      uri: this.config.tokenUrl,
+      form: {
+        /* eslint camelcase: [0] */
+        grant_type: `urn:ietf:params:oauth:grant-type:saml2-bearer`,
+        assertion: samlData.BearerToken,
+        scope: options.scope
+      },
+      auth: {
+        user: this.config.client_id,
+        pass: this.config.client_secret,
+        sendImmediately: true
+      },
+      shouldRefreshAccessToken: false
+    })
+      .then((res) => new Token(res.body, {parent: this}));
+  },
+
+  /**
+   * Retrieves a CI SAML Bearer Token
+   * @private
+   * @return {Promise} Resolves with an Object containing a `BearerToken` and an
+   * `AccountExpires`
+   */
+   @oneFlight
+  _getSamlBearerToken(options) {
+    this.logger.info(`credentials: requesting SAML Bearer Token`);
+
+    if (!options.orgId) {
+      return Promise.reject(new Error(`\`options.orgId\` is required`));
+    }
+
+    if (!options.name) {
+      return Promise.reject(new Error(`\`options.name\` is required`));
+    }
+
+    if (!options.password) {
+      return Promise.reject(new Error(`\`options.password\` is required`));
+    }
+
+    return this.spark.request({
+      method: `POST`,
+      uri: `{this.config.samlUrl}/${options.orgId}/v2/actions/GetBearerToken/invoke`,
+      body: pick(options, `name`, `password`),
+      shouldRefreshAccessToken: false
+    })
+      .then((res) => res.body);
   },
 
   _receiveSupertoken(supertoken) {

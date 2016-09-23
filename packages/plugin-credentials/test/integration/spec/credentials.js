@@ -5,11 +5,13 @@
  */
 
 import '../..';
+import '@ciscospark/plugin-machine-account';
 
 import {assert} from '@ciscospark/test-helper-chai';
 import testUsers from '@ciscospark/test-helper-test-users';
 import CiscoSpark from '@ciscospark/spark-core';
 import {apiScope} from '../..';
+import uuid from 'uuid';
 
 describe(`plugin-credentials`, () => {
   describe(`Credentials`, () => {
@@ -64,12 +66,35 @@ describe(`plugin-credentials`, () => {
     });
 
     describe(`#requestClientCredentialsGrant()`, () => {
-      let spark;
-      beforeEach(() => {
-        spark = new CiscoSpark();
-      });
+      let spark, user;
 
-      it(`exchanges oauth secrets for a client token`, () => spark.credentials.requestClientCredentialsGrant()
+      beforeEach(() => testUsers.create({count: 1})
+        .then((users) => {
+          [user] = users;
+          spark = new CiscoSpark({
+            credentials: {
+              supertoken: users[0].token
+            }
+          });
+
+          return spark.device.register();
+        }));
+
+      let bot, sparkBot;
+      beforeEach(() => spark.machineAccount.create({
+        name: `spark-js-sdk-testbot-${uuid.v4()}`,
+        contactEmail: user.email
+      })
+        .then((b) => {
+          bot = b;
+          sparkBot = new CiscoSpark();
+        }));
+
+      afterEach(() => spark.machineAccount.delete(bot)
+        .catch(() => spark.machineAccount.delete(bot))
+        .catch(() => spark.machineAccount.delete(bot)));
+
+      it(`exchanges oauth secrets for a client token`, () => sparkBot.credentials.requestClientCredentialsGrant(bot)
         .then((token) => assert.isAccessToken(token)));
     });
   });
