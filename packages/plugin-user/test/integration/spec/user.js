@@ -101,4 +101,13 @@ describe(`plugin-user`, function() {
         assert.equal(user.name, `New Display Name`);
       }));
   });
+
+  describe(`#getUserForOrg()`, () => {
+    it(`gets an user specified by userId and orgId`, () => spark.user.getUserForOrg({userId: user2.id, orgId: user2.orgId})
+      .then((user) => {
+        console.log(user);
+        assert.equal(user.id, user2.id);
+        assert.equal(user.meta.organizationID, user2.orgId);
+      }));
+  });
 });
