@@ -44,8 +44,7 @@ export default class StorageAdapterLocalForage {
        */
       del(key) {
         const key_ = `${namespaces.get(this)}/${key}`;
-        loggers.get(this).info(
-          `local-forage-store-adapter: deleting \`${key_}\``);
+        loggers.get(this).info(`local-forage-store-adapter: deleting \`${key_}\``);
         return localforage.removeItem(key_);
       }
 
@@ -56,16 +55,9 @@ export default class StorageAdapterLocalForage {
        */
       get(key) {
         const key_ = `${namespaces.get(this)}/${key}`;
-        loggers.get(this).info(
-          `local-forage-store-adapter: reading \`${key_}\``);
+        loggers.get(this).info(`local-forage-store-adapter: reading \`${key_}\``);
         return localforage.getItem(key_)
-          .then((value) => {
-            if (value) {
-              return Promise.resolve(value);
-            }
-            return Promise.reject(new NotFoundError(
-              `No value found for ${key_}`));
-          });
+          .then((value) => value || Promise.reject(new NotFoundError(`No value found for ${key_}`)));
       }
 
       /**
@@ -76,8 +68,7 @@ export default class StorageAdapterLocalForage {
        */
       put(key, value) {
         const key_ = `${namespaces.get(this)}/${key}`;
-        loggers.get(this).info(
-          `local-forage-store-adapter: writing \`${key_}\``);
+        loggers.get(this).info(`local-forage-store-adapter: writing \`${key_}\``);
         return localforage.setItem(key_, value);
       }
     };
