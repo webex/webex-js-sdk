@@ -12,6 +12,8 @@ import TokenCollection from './token-collection';
 import Token from './token';
 import {filterScope, sortScope} from './scope';
 import {has, isObject, pick} from 'lodash';
+import {persist, waitForValue} from '@ciscospark/spark-core';
+import {deprecated} from 'core-decorators';
 
 export const apiScope = filterScope(`spark:kms`, process.env.CISCOSPARK_SCOPE);
 
@@ -46,6 +48,7 @@ const Credentials = SparkPlugin.extend({
    * @param {string} scope
    * @returns {Token}
    */
+  @waitForValue(`@`)
   getUserToken(scope) {
     // Note: this behaves much like oneFlight, but doesn't return a unique
     // promise. Since it recursively calls iteself, oneFlight is problematic.
@@ -88,6 +91,22 @@ const Credentials = SparkPlugin.extend({
   @deprecated(`Please use getUserToken`)
   getAuthorization(...args) {
     return this.getUserToken(...args);
+  },
+
+  @persist(`@`)
+  initialize(...args) {
+    return Reflect.apply(SparkPlugin.prototype.initialize, this, args);
+  },
+
+  logout() {
+    // TODO need to clear all storage
+    return Promise.all(this.userTokens.map((token) => token.revoke()
+      .catch((reason) => this.logger.warn(`credentials: token revocation failed for ${token.scope}, ignoring`, reason))))
+      .then(() => this.userTokens.reset())
+      .then(() => this.supertoken.revoke())
+      .catch((reason) => this.logger.warn(`credentials: token revocation failed for supertoken, ignoring`, reason))
+      .then(() => this.supertoken.unset())
+      .then(() => this.boundedStorage.del(`@`));
   },
 
   /**
