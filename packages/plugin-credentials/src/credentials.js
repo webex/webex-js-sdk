@@ -82,28 +82,17 @@ const Credentials = SparkPlugin.extend({
     return Promise.resolve(token);
   },
 
-  _handleDownscopeFailure(supertoken, scope, reason) {
-    this.logger.error(`credentials: failed to downscope new supertoken to ${scope}`, reason);
-    if (reason && reason.body && reason.body.reason === `invalid_request`) {
-      this.spark.measure(`splitTokenError`, {
-        statusCode: reason.statusCode,
-        statusMessage: reason.statusMessage,
-        error: reason.body.error,
-        errorDescription: reason.body.error_description
-      });
-      return Promise.reject(reason);
-    }
-
-    this.logger.error(`credentials: falling back to supertoken for ${scope}`);
-    return Promise.resolve(this.supertoken);
-  },
-
+  /**
+   * @see {@link Credentials#getUserToken()}
+   */
+  @deprecated(`Please use getUserToken`)
   getAuthorization(...args) {
     return this.getUserToken(...args);
   },
 
   /**
-   *
+   * Refreshes the supertoken and redownscopes the child tokens
+   * @returns {Promise}
    */
   @whileInFlight(`isRefreshing`)
   @oneFlight
@@ -127,6 +116,9 @@ const Credentials = SparkPlugin.extend({
 
   /**
    * Exchanges an authorization code for an access token
+   * @param {Object} options
+   * @param {Object} options.code
+   * @returns {Promise}
    */
   @whileInFlight(`isAuthenticating`)
   @oneFlight
@@ -170,6 +162,9 @@ const Credentials = SparkPlugin.extend({
 
   /**
    * Exchanges oauth config for a client credentials access token
+   * @param {Object} options
+   * @param {Object} options.scope
+   * @returns {Promise<Token>}
    */
   @whileInFlight(`isAuthenticating`)
   @oneFlight
@@ -223,6 +218,11 @@ const Credentials = SparkPlugin.extend({
    * considering using this method, you're almost certainly interested in "bots"
    * rather than "machine accounts". See the developer portal for more
    * information.
+   * @param {Object} options
+   * @param {Object} options.scope
+   * @param {Object} options.name
+   * @param {Object} options.orgId
+   * @param {Object} options.password
    */
   @whileInFlight(`isAuthenticating`)
   @oneFlight
@@ -246,6 +246,13 @@ const Credentials = SparkPlugin.extend({
       });
   },
 
+  /**
+   * Contains the parsing logic to handle all the possible cached credentials
+   * formats
+   * @param {Object} attrs
+   * @param {Object} options
+   * @returns {mixed}
+   */
   set(attrs, options) {
     if (isObject(attrs)) {
       if (attrs.access_token) {
@@ -320,6 +327,10 @@ const Credentials = SparkPlugin.extend({
   /**
    * Retrieves a CI SAML Bearer Token
    * @private
+   * @param {Object} options
+   * @param {Object} options.name
+   * @param {Object} options.orgId
+   * @param {Object} options.password
    * @return {Promise} Resolves with an Object containing a `BearerToken` and an
    * `AccountExpires`
    */
@@ -348,6 +359,33 @@ const Credentials = SparkPlugin.extend({
       .then((res) => res.body);
   },
 
+  /**
+   * @param {Token} supertoken
+   * @param {string} scope
+   * @param {Error} reason
+   * @private
+   * @returns {Promise<Token>}
+   */
+  _handleDownscopeFailure(supertoken, scope, reason) {
+    this.logger.error(`credentials: failed to downscope new supertoken to ${scope}`, reason);
+    if (reason && reason.body && reason.body.reason === `invalid_request`) {
+      this.spark.measure(`splitTokenError`, {
+        statusCode: reason.statusCode,
+        statusMessage: reason.statusMessage,
+        error: reason.body.error,
+        errorDescription: reason.body.error_description
+      });
+      return Promise.reject(reason);
+    }
+
+    this.logger.error(`credentials: falling back to supertoken for ${scope}`);
+    return Promise.resolve(this.supertoken);
+  },
+
+  /**
+   * @param {Token} supertoken
+   * @returns {Promise}
+   */
   _receiveSupertoken(supertoken) {
     const scopes = [
       `spark:kms`,
