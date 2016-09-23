@@ -46,13 +46,20 @@ export default function runAbstractStorageAdapterSpec(adapter) {
           .then(() => assert.becomes(bound.get(key), 3)));
 
         it(`puts same key in different namespaces`, () => {
-          adapter.bind(`namespace2`, options)
-            .then((b) => {
-              bound.put(key, primitive)
-                .then(() => assert.becomes(bound.get(key), primitive));
-              const primitive2 = 2;
-              b.put(key, primitive2)
-                .then(() => assert.becomes(b.get(key), primitive2));
+          let value;
+          return bound.put(key, primitive)
+            .then(() => {
+              value = bound.get(key);
+              return adapter.bind(`namespace2`, options)
+                .then((b) => {
+                  const primitive2 = 2;
+                  b.put(key, primitive2)
+                    .then(() => {
+                      const assert1 = assert.becomes(value, primitive);
+                      const assert2 = assert.becomes(b.get(key), primitive2);
+                      return assert1 && assert2;
+                    });
+                });
             });
         });
       });
