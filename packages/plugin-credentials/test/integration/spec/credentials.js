@@ -44,7 +44,6 @@ describe(`plugin-credentials`, () => {
           assert.isDefined(spark.credentials.userTokens.get(apiScope));
           assert.isDefined(spark.credentials.userTokens.get(`spark:kms`));
           assert.notEqual(spark.credentials.userTokens.get(`spark:kms`).access_token, supertoken);
-          assert.isDefined(spark.credentials.userTokens.get(`spark:kms`));
         }));
     });
 

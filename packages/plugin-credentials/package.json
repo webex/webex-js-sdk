@@ -32,5 +32,9 @@
     "eslint": "^3.5.0",
     "lolex": "^1.5.1",
     "uuid": "^2.0.3"
+  },
+  "browser": {
+    "./src/credentials/node.js": "./src/credentials/browser.js",
+    "./dist/credentials/node.js": "./dist/credentials/browser.js"
   }
 }

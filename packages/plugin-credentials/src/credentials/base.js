@@ -6,14 +6,15 @@
 
 /* eslint camelcase: [0] */
 
-import {makeStateDataType, oneFlight, retry, tap, whileInFlight} from '@ciscospark/common';
+import {base64, makeStateDataType, oneFlight, retry, tap, whileInFlight} from '@ciscospark/common';
 import {grantErrors, SparkPlugin} from '@ciscospark/spark-core';
 import TokenCollection from '../token-collection';
 import Token from '../token';
 import {filterScope, sortScope} from '../scope';
-import {has, isObject, pick} from 'lodash';
+import {clone, has, isObject, pick} from 'lodash';
 import {persist, waitForValue} from '@ciscospark/spark-core';
 import {deprecated} from 'core-decorators';
+import querystring from 'querystring';
 
 export const apiScope = filterScope(`spark:kms`, process.env.CISCOSPARK_SCOPE);
 
@@ -42,6 +43,60 @@ const Credentials = SparkPlugin.extend({
   },
 
   namespace: `Credentials`,
+
+  /**
+   * Constructs a logout URL
+   * @returns {string}
+   */
+  buildLogoutUrl() {
+    return `${this.config.logoutUri}?${querystring.stringify({
+      type: `logout`,
+      goto: this.config.redirect_uri,
+      service: this.config.service
+    })}`;
+  },
+
+  /**
+   * Constructs an oauth login url
+   * @param {Object} options
+   * @param {string} options.response_type
+   * @param {Object} options.state
+   * @returns {string}
+   */
+  buildOAuthUrl(options) {
+    /* eslint camelcase: [0] */
+    const fields = [
+      `client_id`,
+      `redirect_uri`,
+      `scope`,
+      `service`
+    ];
+
+    const parameters = clone(options);
+
+    parameters.state = parameters.state || {};
+    if (!isObject(parameters.state)) {
+      throw new Error(`if specified, \`options.state\` must be an object`);
+    }
+
+    if (!parameters.response_type) {
+      throw new Error(`\`options.response_type\` is required`);
+    }
+
+    fields.forEach((key) => {
+      if (key in this.config.oauth) {
+        parameters[key] = this.config.oauth[key];
+      }
+      else {
+        throw new Error(`\`${key}\` is required`);
+      }
+    }, this);
+
+    // Some browser aparently don't parse nested querystrings very well, so
+    // we'll additionally base64url-encode the state
+    parameters.state = base64.toBase64Url(querystring.stringify(parameters.state));
+    return `${this.config.oauth.authorizationUrl}?${querystring.stringify(parameters)}`;
+  },
 
   /**
    * Gets a token with the specified scope
