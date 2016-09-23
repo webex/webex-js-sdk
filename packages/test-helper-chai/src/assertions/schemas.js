@@ -60,6 +60,19 @@ module.exports = function schemas(chai) {
     assert.property(this._obj, 'url');
   });
 
+  Assertion.addProperty('MachineAccount', function() {
+    assert.isDefined(this._obj, 'orgId');
+    assert.property(this._obj, 'orgId');
+    assert.isDefined(this._obj, 'name');
+    assert.property(this._obj, 'name');
+    assert.isDefined(this._obj, 'password');
+    assert.property(this._obj, 'password');
+    assert.isDefined(this._obj, 'email');
+    assert.property(this._obj, 'email');
+    assert.isDefined(this._obj, 'description');
+    assert.property(this._obj, 'description');
+  });
+
   Assertion.addProperty('OneOnOneConversation', function() {
     assert.isConversation(this._obj);
     assert.include(this._obj.tags, 'ONE_ON_ONE');
@@ -233,6 +246,7 @@ module.exports = function schemas(chai) {
     'GroupConversation',
     'NewEncryptedConversation',
     'EncryptedActivity',
+    'MachineAccount',
     'Membership',
     'Message',
     'MessageFile',
