@@ -51,7 +51,8 @@ describe(`plugin-support`, function() {
 
   describe(`#submitCallLogsForUnAuthUser()`, function() {
     it(`uploads call logs for unAuthUser @atlas and returns the userId`, function() {
-      return spark.support.submitCallLogsForUnAuthUser({}, sampleTextOne)
+      spark = new CiscoSpark({});
+      return spark.support.submitCallLogs({}, sampleTextOne)
         .then(function(body) {
           assert.isDefined(body);
           assert.isDefined(body.url);
