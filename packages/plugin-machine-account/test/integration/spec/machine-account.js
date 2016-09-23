@@ -8,7 +8,6 @@ import '../..';
 
 import {tap} from '@ciscospark/common';
 import {assert} from '@ciscospark/test-helper-chai';
-import retry from '@ciscospark/test-helper-retry';
 import testUsers from '@ciscospark/test-helper-test-users';
 import uuid from 'uuid';
 import Spark from '@ciscospark/spark-core';
