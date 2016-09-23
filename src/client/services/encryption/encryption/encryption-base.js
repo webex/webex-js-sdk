@@ -271,7 +271,7 @@ var EncryptionServiceBase = SparkBase.extend(
         .then(function processKey(key) {
           // Make sure keys are always keys. These needs to happen on every
           // retrieval because keystore implementations (e.g. those backed by
-          // local-forage) may turn the key back into a plain object.
+          // IndexedDB) may turn the key back into a plain object.
           return jose.JWK.asKey(key.keyValue)
             .then(function processKey(keyValue) {
               key.keyValue = keyValue;
