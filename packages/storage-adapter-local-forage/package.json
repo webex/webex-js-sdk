@@ -15,6 +15,7 @@
     "lodash": "^4.5.1"
   },
   "devDependencies": {
-    "@ciscospark/storage-adapter-spec": "^0.7.0-alpha"
+    "@ciscospark/storage-adapter-spec": "^0.7.0-alpha",
+    "@ciscospark/test-helper-mocha": "^0.7.0-alpha"
   }
 }
