@@ -8,9 +8,9 @@
 
 import {makeStateDataType, oneFlight, retry, tap, whileInFlight} from '@ciscospark/common';
 import {grantErrors, SparkPlugin} from '@ciscospark/spark-core';
-import TokenCollection from './token-collection';
-import Token from './token';
-import {filterScope, sortScope} from './scope';
+import TokenCollection from '../token-collection';
+import Token from '../token';
+import {filterScope, sortScope} from '../scope';
 import {has, isObject, pick} from 'lodash';
 import {persist, waitForValue} from '@ciscospark/spark-core';
 import {deprecated} from 'core-decorators';
