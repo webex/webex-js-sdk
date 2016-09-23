@@ -81,6 +81,10 @@ function makeSpark(options) {
       }
     },
     encryption: {},
+    feature: {
+      getFeature: sinon.stub(),
+      setFeature: sinon.stub()
+    },
     metrics: {
       sendUnstructured: sinon.spy()
     },

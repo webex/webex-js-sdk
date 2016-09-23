@@ -20,9 +20,10 @@
     "@ciscospark/test-helper-sinon": "^0.7.0-alpha",
     "@ciscospark/test-helper-test-users": "^0.7.0-alpha",
     "@ciscospark/xunit-with-logs": "^0.7.0-alpha",
+    "babel-eslint": "^6.1.2",
     "babel-polyfill": "^6.3.14",
     "babel-register": "^6.4.3",
-    "eslint": "^3.3.1",
-    "eslint-plugin-mocha": "^4.4.0"
+    "eslint": "^3.5.0",
+    "eslint-plugin-mocha": "^4.5.1"
   }
 }
