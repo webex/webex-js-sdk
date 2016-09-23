@@ -104,7 +104,7 @@ describe(`plugin-mashups`, function() {
     });
 
     it(`retrieves all integrations`, () => {
-      spark.mashups.create({type: `test`, roomId: conversation.id})
+      return spark.mashups.create({type: `test`, roomId: conversation.id})
         .then(() => {
           return spark.mashups.get({roomId: conversation.id})
             .then((mashups) => {
@@ -118,7 +118,7 @@ describe(`plugin-mashups`, function() {
 
   describe(`#list()`, () => {
     it(`retrieves list of all integrations`, () => {
-      spark.mashups.create({type: `test`, roomId: conversation.id})
+      return spark.mashups.create({type: `test`, roomId: conversation.id})
         .then(() => {
           return spark.mashups.create({type: `test`, roomId: conversation.id})
             .then(() => {

@@ -20,6 +20,12 @@ Returns the users configured integrations
 
 Returns **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)** 
 
+# list
+
+Returns users all integrations
+
+Returns **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)** 
+
 # remove
 
 Delete an integration

@@ -49,12 +49,15 @@ const Mashups = SparkPlugin.extend({
 
     return this.request({
       service: `mashups`,
-      resource: `integrations/rooms/${(options.id || options.roomId)}`,
+      resource: `integrations/rooms/${options.id || options.roomId}`,
       method: `GET`
     })
         .then((res) => res.body);
   },
-
+  /**
+   * Returns users all integrations
+   * @returns {Array}
+   */
   list() {
     return this.request({
       service: `mashups`,
