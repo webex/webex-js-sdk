@@ -159,7 +159,7 @@ const Token = SparkPlugin.extend({
     })
       .then((res) => {
         this.logger.info(`token: downscoped token to ${scope}`);
-        return new Token(Object.assign(res.body, scope), {parent: this.parent});
+        return new Token(Object.assign(res.body, {scope}), {parent: this.parent});
       });
   },
 

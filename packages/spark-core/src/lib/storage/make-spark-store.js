@@ -94,7 +94,7 @@ export default function makeSparkStore(type, spark) {
      * @param {string} namespace
      * @returns {Promise}
      */
-    @oneFlight({keyFactorry: (namespace) => namespace})
+    @oneFlight({keyFactory: (namespace) => namespace})
     // suppress doc warning because decorators confuse eslint
     // eslint-disable-next-line require-jsdoc
     _getBinding(namespace) {
