@@ -109,7 +109,7 @@ describe(`plugin-mashups`, function() {
           return spark.mashups.get({roomId: conversation.id})
             .then((mashups) => {
               assert.isArray(mashups.test);
-              assert.lengthOf(mashups.test, 1);
+              assert.lengthOf(mashups.test, 2);
               assert.equal(mashups.test[0].roomId, conversation.id);
             });
         });
@@ -125,7 +125,8 @@ describe(`plugin-mashups`, function() {
               return spark.mashups.list({roomId: conversation.id})
                 .then((mashups) => {
                   assert.isArray(mashups.test);
-                  assert.lengthOf(mashups.test, 1);
+                  //2 from the previous tests and two from now (4)
+                  assert.lengthOf(mashups.test, 4);
                   assert.equal(mashups.test[0].roomId, conversation.id);
                 });
             });
