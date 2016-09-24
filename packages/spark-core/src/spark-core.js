@@ -101,7 +101,13 @@ const SparkCore = AmpState.extend({
     return this.credentials.refresh(...args);
   },
 
-  initialize() {
+  measure(...args) {
+    if (this.metrics) {
+      this.metrics.sendUnstructured(...args);
+    }
+  },
+
+  initialize(attrs) {
     this.config = merge({}, config, this.config);
 
     // Make nested events propagate in a consistent manner

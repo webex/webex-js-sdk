@@ -18,6 +18,18 @@ module.exports = function schemas(chai) {
 
   /* eslint no-unused-expressions: [0] */
 
+  Assertion.addProperty('AccessToken', function() {
+    assert.properties(this._obj, [
+      'access_token',
+      'token_type',
+      'expires',
+      'expires_in',
+      'refresh_token',
+      'refresh_token_expires',
+      'refresh_token_expires_in'
+    ]);
+  });
+
   Assertion.addProperty('Activity', function() {
     assert.properties(this._obj, [
       'url',
@@ -212,6 +224,7 @@ module.exports = function schemas(chai) {
   });
 
   shouldToAssert(chai, [
+    'AccessToken',
     'Activity',
     'Conversation',
     'FileItem',

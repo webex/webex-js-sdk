@@ -6,6 +6,7 @@
 
 import AmpState from 'ampersand-state';
 import util from 'util';
+import {cloneDeep} from 'lodash';
 import {makeSparkPluginStore} from './storage';
 
 const SparkPlugin = AmpState.extend({
@@ -104,6 +105,20 @@ const SparkPlugin = AmpState.extend({
 
   initialize(...args) {
     Reflect.apply(AmpState.prototype.initialize, this, args);
+
+    // This is a bit of a hack to allow makeStateDataType work
+    let cloned = false;
+    Object.keys(this._dataTypes).forEach((key) => {
+      const dataType = this._dataTypes[key];
+      if (dataType.set) {
+        if (!cloned) {
+          this._dataTypes = cloneDeep(this._dataTypes);
+          cloned = true;
+        }
+        dataType.set = dataType.set.bind(this);
+      }
+    });
+
     // Propagate change:[attribute] events from children
     this.on(`change`, (model, options) => {
       this.parent.trigger(`change:${this.getNamespace().toLowerCase()}`, this.parent, this, options);
