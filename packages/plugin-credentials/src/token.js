@@ -96,18 +96,6 @@ const Token = SparkPlugin.extend({
       }
     },
 
-    isUseless: {
-      cache: false,
-      deps: [
-        `canAuthorize`,
-        `canDownscope`,
-        `canRefresh`
-      ],
-      fn() {
-        return !(this.canAuthorize || this.canDownscope || this.canRefresh);
-      }
-    },
-
     string: {
       deps: [
         `token_type`,

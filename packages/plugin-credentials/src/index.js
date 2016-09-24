@@ -11,8 +11,17 @@ import Credentials from './credentials';
 import config from './config';
 import AdvancedAuthInterceptor from './interceptor';
 
+const proxies = [
+  `canAuthorize`
+];
+
+if (typeof window !== `undefined`) {
+  proxies.push(`isLoggedIn`);
+}
+
 registerPlugin(`credentials`, Credentials, {
   config,
+  proxies,
   interceptors: {
     AuthInterceptor: AdvancedAuthInterceptor.create
   },

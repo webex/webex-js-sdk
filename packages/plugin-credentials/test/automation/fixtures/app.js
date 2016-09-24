@@ -31,7 +31,7 @@ document.getElementById(`initiate-authorization-code-grant`).addEventListener(`c
 
 document.getElementById(`token-refresh`).addEventListener(`click`, () => {
   document.getElementById(`access-token`).innerHTML = ``;
-  spark.credentials.refresh({force: true})
+  spark.refresh({force: true})
     .then(() => {
       document.getElementById(`access-token`).innerHTML = spark.credentials.supertoken.access_token;
       document.getElementById(`refresh-token`).innerHTML = spark.credentials.supertoken.refresh_token;
@@ -42,8 +42,8 @@ document.getElementById(`logout`).addEventListener(`click`, () => {
   spark.logout();
 });
 
-spark.listenToAndRun(spark.credentials, `change:canAuthorize`, () => {
-  if (!spark.credentials.canAuthorize) {
+spark.listenToAndRun(spark, `change:canAuthorize`, () => {
+  if (!spark.canAuthorize) {
     return;
   }
 

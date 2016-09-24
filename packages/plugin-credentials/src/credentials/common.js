@@ -40,15 +40,21 @@ export default {
 
   derived: {
     canAuthorize: {
+      cache: false,
       deps: [
         `supertoken`,
-        `canAuthorize`
+        `supertoken.canAuthorize`,
+        `canRefresh`
       ],
       fn() {
-        return Boolean(this.supertoken && this.supertoken.canAuthorize);
+        // Note that Token#canAuthorize and Credentials#canAuthorize have
+        // separate rules. Credentials can still be used to authorize as long as
+        // they can be refreshed.
+        return Boolean(this.supertoken && this.supertoken.canAuthorize || this.canRefresh);
       }
     },
     canRefresh: {
+      cache: false,
       deps: [
         `supertoken`,
         `supertoken.canRefresh`

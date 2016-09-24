@@ -368,7 +368,7 @@ module.exports = function(grunt) {
   registerTask('test', [
     'env',
     'clean:coverage',
-    'express',
+    'serve:test',
     'concurrent:test',
     p(process.env.COVERAGE) && 'copy:coverage',
     p(process.env.COVERAGE) && 'makeReport2'

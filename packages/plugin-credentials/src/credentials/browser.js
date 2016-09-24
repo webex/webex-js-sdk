@@ -32,6 +32,11 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
   },
 
   @deprecated(`Please use initiateLogin`)
+  authorize(...args) {
+    return this.initiateLogin(...args);
+  },
+
+  @deprecated(`Please use initiateLogin`)
   authenticate(...args) {
     return this.initiateLogin(...args);
   },
