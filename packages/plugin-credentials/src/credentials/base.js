@@ -38,6 +38,27 @@ const Credentials = SparkPlugin.extend({
     }
   },
 
+  derived: {
+    canAuthorize: {
+      deps: [
+        `supertoken`,
+        `canAuthorize`
+      ],
+      fn() {
+        return Boolean(this.supertoken && this.supertoken.canAuthorize);
+      }
+    },
+    canRefresh: {
+      deps: [
+        `supertoken`,
+        `supertoken.canRefresh`
+      ],
+      fn() {
+        return Boolean(this.supertoken && this.supertoken.canRefresh);
+      }
+    }
+  },
+
   collections: {
     userTokens: TokenCollection
   },
@@ -170,7 +191,9 @@ const Credentials = SparkPlugin.extend({
    */
   @whileInFlight(`isRefreshing`)
   @oneFlight
+  @waitForValue(`@`)
   refresh() {
+    // TODO don't refresh unless necessary
     this.logger.info(`credentials: refresh requested`);
 
     const supertoken = this.supertoken;

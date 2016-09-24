@@ -6,26 +6,97 @@
 
 /* eslint-env browser */
 
-import {base64} from '@ciscospark/common';
+import {base64, whileInFlight} from '@ciscospark/common';
 import CredentialsBase from './base';
-import {clone, omit, pick} from 'lodash';
+import {clone, has, omit, pick} from 'lodash';
 import uuid from 'uuid';
 import querystring from 'querystring';
 import url from 'url';
 import Token from '../token';
 import {persist} from '@ciscospark/spark-core';
+import {deprecated} from 'core-decorators';
 
-function noop() {}
+/**
+ * @private
+ * @returns {undefined}
+ */
+function noop() {/* eslint no-empty:[0] */}
 
 const Credentials = CredentialsBase.extend({
-  logout(...args) {
-    this.logger.info(`credentials(shim): logging out`);
+  session: {
+    isLoggingIn: {
+      default: false,
+      type: `boolean`
+    }
+  },
 
-    /* eslint prefer-rest-params: [0] */
-    return Reflect.apply(CredentialsBase.prototype.logout, this, args)
-      .then(() => {
-        window.location = this._buildLogoutUrl();
-      });
+  @deprecated(`Please use initiateLogin`)
+  authenticate(...args) {
+    return this.initiateLogin(...args);
+  },
+
+  @whileInFlight(`isLoggingIn`)
+  initiateLogin(options) {
+    this.logger.info(`credentials: initiating login flow`);
+
+    // TODO if not force, do refresh?
+
+    options = options || {};
+    options.state = options.state || {};
+    options.state.csrf_token = options.state.csrf_token || this._generateSecurityToken();
+
+    switch (this.config.clientType) {
+    case `confidential`:
+      return this.initiateAuthorizationCodeGrant(options);
+    case `public`:
+      return this.initiateImplicitGrant(options);
+    default:
+      return Promise.reject(new Error(`\`config.credentials.clientType\` must be defined`));
+    }
+  },
+
+  initiateImplicitGrant(options) {
+    const vars = {
+      client_id: `CLIENT_ID`,
+      redirect_uri: `REDIRECT_URI`,
+      scope: `SCOPE`
+    };
+
+    for (const key in vars) {
+      if (!has(this.config, key)) {
+        const baseVar = vars[key];
+        return Promise.reject(new Error(`config.credentials.${key} or CISCOSPARK_${baseVar} or COMMON_IDENTITY_${baseVar} or ${baseVar} must be defined`));
+      }
+    }
+
+    this.logger.info(`credentials(shim): initiating implicit grant flow`);
+
+    /* eslint camelcase: [0] */
+    window.location = this.buildOAuthUrl(Object.assign({response_type: `token`}, options));
+
+    // Return an unreasolved promise to suppress console errors.
+    return new Promise(noop);
+  },
+
+  initiateAuthorizationCodeGrant(options) {
+    const vars = {
+      client_id: `CLIENT_ID`,
+      client_secret: `CLIENT_SECRET`,
+      redirect_uri: `REDIRECT_URI`,
+      scope: `SCOPE`
+    };
+
+    for (const key in vars) {
+      if (!has(this.config, key)) {
+        const baseVar = vars[key];
+        return Promise.reject(new Error(`config.credentials.${key} or CISCOSPARK_${baseVar} or COMMON_IDENTITY_${baseVar} or ${baseVar} must be defined`));
+      }
+    }
+
+    this.logger.info(`credentials(shim): initiating authorization code grant flow`);
+
+    window.location = this.buildOAuthUrl(Object.assign({response_type: `code`}, options));
+    return new Promise(noop);
   },
 
   @persist(`@`)
@@ -49,7 +120,8 @@ const Credentials = CredentialsBase.extend({
         // call authenticate() because it'll get called again later but end
         // up cached via oneFlight.
         // Call spark.authenticate to make sure we trigger a device refresh.
-        return this.spark.authenticate(query);
+        this.spark.credentials.requestAuthorizationCodeGrant(query);
+        return Promise.resolve();
       }
 
       if (query.access_token) {
@@ -75,6 +147,16 @@ const Credentials = CredentialsBase.extend({
     return Reflect.apply(CredentialsBase.prototype.initialize, this, args);
   },
 
+  logout(...args) {
+    this.logger.info(`credentials(shim): logging out`);
+
+    /* eslint prefer-rest-params: [0] */
+    return Reflect.apply(CredentialsBase.prototype.logout, this, args)
+      .then(() => {
+        window.location = this.buildLogoutUrl();
+      });
+  },
+
   _extractTokenInfo(query) {
     const tokenKeys = [
       `access_token`,
@@ -87,6 +169,13 @@ const Credentials = CredentialsBase.extend({
     query.state = querystring.parse(base64.fromBase64url(query.state));
 
     this._verifySecurityToken(query.state.csrf_token);
+
+    if (query.expires_in) {
+      query.expires_in = parseInt(query.expires_in, 10);
+    }
+    if (query.refresh_token_expires_in) {
+      query.refresh_token_expires_in = parseInt(query.refresh_token_expires_in, 10);
+    }
 
     const token = new Token(pick(query, tokenKeys), {parent: this});
     this._receiveSupertoken(token);

@@ -302,6 +302,20 @@ module.exports = function(grunt) {
           dest: './reports/coverage/<%= package %>/mocha-final.json'
         }
       }
+    },
+
+    watch: {
+      serve: {
+        files: [
+          'Gruntfile.package.js',
+          'packages/test-helper-server/*',
+          'packages/test-helper-server/src/**'
+        ],
+        options: {
+          spawn: false
+        },
+        tasks: ['express:test']
+      }
     }
   });
 
@@ -381,6 +395,15 @@ module.exports = function(grunt) {
   catch(error) {
     // ignore
   }
+
+  registerTask('serve:test', [
+    'express:test'
+  ]);
+
+  registerTask('serve', [
+    'express:test',
+    'watch:serve'
+  ]);
 
   /**
    * Helper function which converts environment strings into
