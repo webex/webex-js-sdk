@@ -130,7 +130,9 @@ function prepareInitialize(target, prop) {
       const set = curry((key, value) => {
         this.logger.info(`storage:(${self.getNamespace()}): got \`${key}\` for first time`);
         if (key === `@`) {
-          self.parent.set(value);
+          self.parent.set({
+            [self.getNamespace().toLowerCase()]: value
+          });
         }
         else if (result(self[key], `isState`)) {
           self[key].set(value);

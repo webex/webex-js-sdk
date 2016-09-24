@@ -4,13 +4,13 @@
  * @private
  */
 
-import Authorization from './authorization';
+import Authorization from '../authorization';
 import {base64, oneFlight, retry} from '@ciscospark/common';
 import {clone, has, isObject, pick} from 'lodash';
-import grantErrors from './grant-errors';
+import grantErrors from '../grant-errors';
 import querystring from 'querystring';
-import SparkPlugin from '../../lib/spark-plugin';
-import {persist, waitForValue} from '../../lib/storage';
+import SparkPlugin from '../../../lib/spark-plugin';
+import {persist, waitForValue} from '../../../lib/storage';
 
 /**
  * Helper. Returns just the response body
@@ -30,7 +30,7 @@ function processGrant(res) {
   return new Authorization(res.body);
 }
 
-const CredentialsBase = SparkPlugin.extend({
+export default {
   derived: {
     canRefresh: {
       deps: [`authorization.canRefresh`],
@@ -520,6 +520,4 @@ const CredentialsBase = SparkPlugin.extend({
       previousAuthorization.revoke();
     }
   }
-});
-
-export default CredentialsBase;
+};

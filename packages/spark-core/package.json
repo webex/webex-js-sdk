@@ -37,8 +37,8 @@
     "lolex": "^1.5.1"
   },
   "browser": {
-    "./src/plugins/credentials/credentials.js": "./src/plugins/credentials/credentials.shim.js",
-    "./dist/plugins/credentials/credentials.js": "./dist/plugins/credentials/credentials.shim.js"
+    "./src/plugins/credentials/credentials/node.js": "./src/plugins/credentials/credentials/browser.js",
+    "./dist/plugins/credentials/credentials/node.js": "./dist/plugins/credentials/credentials/browser.js"
   },
   "browserify": {
     "transform": [

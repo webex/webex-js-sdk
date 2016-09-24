@@ -4,12 +4,13 @@
  * @private
  */
 
-import CredentialsBase from './credentials-base';
+import SparkPlugin from '../../../lib/spark-plugin';
+import common from './common';
 
 /**
  * @class
  * @extends CredentialsBase
  */
-const Credentials = CredentialsBase.extend({});
+const Credentials = SparkPlugin.extend(common);
 
 export default Credentials;
