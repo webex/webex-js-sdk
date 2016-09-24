@@ -49,7 +49,15 @@ describe(`spark-core`, function() {
           .text()
             .should.eventually.become(`success`));
 
-      it(`is still logged in after reloading the page`);
+      it(`is still logged in after reloading the page`, () => browser
+        .waitForElementById(`access-token`)
+          .text()
+            .should.eventually.not.be.empty
+        .get(redirectUri)
+        .sleep(500)
+        .waitForElementById(`access-token`)
+          .text()
+            .should.eventually.not.be.empty);
 
       it(`logs out a user`, () => browser
         .title()

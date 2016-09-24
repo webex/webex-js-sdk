@@ -4,13 +4,14 @@
  * @private
  */
 
-import CredentialsBase from './base';
+import {SparkPlugin} from '@ciscospark/spark-core';
+import common from './common';
 
 /**
  * @class
  * @extends CredentialsBase
  */
-const Credentials = CredentialsBase.extend({});
+const Credentials = SparkPlugin.extend(common);
 
 export default Credentials;
-export {apiScope} from './base';
+export {apiScope} from './common';

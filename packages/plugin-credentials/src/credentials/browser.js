@@ -7,14 +7,15 @@
 /* eslint-env browser */
 
 import {base64, whileInFlight} from '@ciscospark/common';
-import CredentialsBase from './base';
+import common from './common';
 import {clone, has, omit, pick} from 'lodash';
 import uuid from 'uuid';
 import querystring from 'querystring';
 import url from 'url';
 import Token from '../token';
-import {persist} from '@ciscospark/spark-core';
+import {persist, waitForValue} from '@ciscospark/spark-core';
 import {deprecated} from 'core-decorators';
+import {SparkPlugin} from '@ciscospark/spark-core';
 
 /**
  * @private
@@ -22,7 +23,7 @@ import {deprecated} from 'core-decorators';
  */
 function noop() {/* eslint no-empty:[0] */}
 
-const Credentials = CredentialsBase.extend({
+const Credentials = SparkPlugin.extend(Object.assign({}, common, {
   session: {
     isLoggingIn: {
       default: false,
@@ -36,6 +37,7 @@ const Credentials = CredentialsBase.extend({
   },
 
   @whileInFlight(`isLoggingIn`)
+  @waitForValue(`@`)
   initiateLogin(options) {
     this.logger.info(`credentials: initiating login flow`);
 
@@ -55,6 +57,7 @@ const Credentials = CredentialsBase.extend({
     }
   },
 
+  @waitForValue(`@`)
   initiateImplicitGrant(options) {
     const vars = {
       client_id: `CLIENT_ID`,
@@ -78,6 +81,7 @@ const Credentials = CredentialsBase.extend({
     return new Promise(noop);
   },
 
+  @waitForValue(`@`)
   initiateAuthorizationCodeGrant(options) {
     const vars = {
       client_id: `CLIENT_ID`,
@@ -144,14 +148,15 @@ const Credentials = CredentialsBase.extend({
       return Promise.resolve();
     });
 
-    return Reflect.apply(CredentialsBase.prototype.initialize, this, args);
+    return Reflect.apply(common.initialize, this, args);
   },
 
+  @waitForValue(`@`)
   logout(...args) {
     this.logger.info(`credentials(shim): logging out`);
 
     /* eslint prefer-rest-params: [0] */
-    return Reflect.apply(CredentialsBase.prototype.logout, this, args)
+    return Reflect.apply(common.logout, this, args)
       .then(() => {
         window.location = this.buildLogoutUrl();
       });
@@ -230,7 +235,7 @@ const Credentials = CredentialsBase.extend({
       window.history.replaceState({}, null, location);
     }
   }
-});
+}));
 
 export default Credentials;
-export {apiScope} from './base';
+export {apiScope} from './common';

@@ -18,7 +18,7 @@ import querystring from 'querystring';
 
 export const apiScope = filterScope(`spark:kms`, process.env.CISCOSPARK_SCOPE);
 
-const Credentials = SparkPlugin.extend({
+export default {
   dataTypes: {
     token: makeStateDataType(Token, `token`).dataType
   },
@@ -174,6 +174,7 @@ const Credentials = SparkPlugin.extend({
     return Reflect.apply(SparkPlugin.prototype.initialize, this, args);
   },
 
+  @waitForValue(`@`)
   logout() {
     // TODO need to clear all storage
     return Promise.all(this.userTokens.map((token) => token.revoke()
@@ -497,6 +498,4 @@ const Credentials = SparkPlugin.extend({
       this.userTokens.add(newTokens);
     });
   }
-});
-
-export default Credentials;
+};
