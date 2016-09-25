@@ -5,7 +5,7 @@
   "main": "es5.js",
   "devMain": "src/index.js",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
-  "license": "(Apache-2.0)",
+  "license": "MIT",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/ciscospark",
   "dependencies": {
     "@ciscospark/common": "^0.7.0-alpha",

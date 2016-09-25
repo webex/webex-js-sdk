@@ -3,6 +3,7 @@
   "version": "0.7.0-alpha",
   "description": "",
   "main": "./src",
+  "license": "MIT",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-sinon",
   "dependencies": {
     "sinon": "^1.17.2"

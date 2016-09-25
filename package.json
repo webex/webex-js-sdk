@@ -10,7 +10,7 @@
     "name": "Ian W. Remmel",
     "email": "iremmel@cisco.com"
   },
-  "license": "(Apache-2.0)",
+  "license": "MIT",
   "contributors": [
     "Brad Rydzewski <brydzews@cisco.com>",
     "David Greenstein <dagreens@cisco.com>",

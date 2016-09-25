@@ -6,6 +6,7 @@
   "bin": {
     "walk": "./bin/walk"
   },
+  "license": "MIT",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/bin-walk",
   "dependencies": {
     "babel-plugin-lodash": "2.1.0",

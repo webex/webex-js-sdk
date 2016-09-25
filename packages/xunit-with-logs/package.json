@@ -3,6 +3,7 @@
   "version": "0.7.0-alpha",
   "description": "",
   "main": "./src",
+  "license": "MIT",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/xunit-with-logs",
   "dependencies": {
     "@ciscospark/test-helper-mocha": "^0.7.0-alpha",

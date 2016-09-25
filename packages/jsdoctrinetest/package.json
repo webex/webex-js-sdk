@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "devMain": "src/index.js",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
-  "license": "(Apache-2.0)",
+  "license": "MIT",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/jsdoctrinetest",
   "dependencies": {
     "babel-generator": "^6.11.0",
