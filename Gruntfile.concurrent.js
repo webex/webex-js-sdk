@@ -51,6 +51,7 @@ module.exports = function gruntConfig(grunt) {
         }
       }
     },
+
     clean: {
       reports: {
         src: [
@@ -58,6 +59,7 @@ module.exports = function gruntConfig(grunt) {
         ]
       }
     },
+
     documentation: {
       options: {
         private: false
@@ -75,6 +77,7 @@ module.exports = function gruntConfig(grunt) {
         }
       }
     },
+
     env: {
       default: {
         src: '.env.default.json'
@@ -83,6 +86,7 @@ module.exports = function gruntConfig(grunt) {
         src: '.env'
       }
     },
+
     // Note: eslint for builds is in Gruntfile.package.js; this is just for
     // local testing
     eslint: {
@@ -93,6 +97,7 @@ module.exports = function gruntConfig(grunt) {
         './packages/*/*.js'
       ]
     },
+
     'gh-pages': {
       options: {
         base: 'docs'
@@ -107,6 +112,7 @@ module.exports = function gruntConfig(grunt) {
         }
       }
     },
+
     makeReport2: {
       all: {
         files: [{
@@ -128,6 +134,23 @@ module.exports = function gruntConfig(grunt) {
         }
       }
     },
+
+    'package-json': {
+      package: {
+        options: {
+          overrides(packageName) {
+            return {
+              license: 'MIT',
+              repository: `https://github.com/ciscospark/spark-js-sdk/tree/master/packages/${packageName}`,
+              engines: {
+                node: '>=4'
+              }
+            };
+          }
+        }
+      }
+    },
+
     shell: {}
   };
 
@@ -184,6 +207,7 @@ module.exports = function gruntConfig(grunt) {
   }
 
   grunt.registerTask('build', [
+    'package-json',
     'concurrent:build'
   ]);
 
