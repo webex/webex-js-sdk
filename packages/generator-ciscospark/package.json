@@ -2,8 +2,12 @@
   "name": "generator-ciscospark",
   "version": "0.7.0-alpha",
   "description": "Scaffolds new ciscospark plugins and projects",
+  "keywords": [
+    "ciscospark",
+    "yeoman-generator"
+  ],
   "homepage": "",
-  "main": "./generators/index.js",
+  "license": "MIT",
   "author": {
     "name": "Ian W. Remmel",
     "email": "iremmel@cisco.com",
@@ -12,10 +16,8 @@
   "files": [
     "generators"
   ],
-  "keywords": [
-    "ciscospark",
-    "yeoman-generator"
-  ],
+  "main": "./generators/index.js",
+  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/generator-ciscospark",
   "dependencies": {
     "chalk": "^1.0.0",
     "string": "^3.3.1",
@@ -29,12 +31,13 @@
     "yeoman-assert": "^2.0.0",
     "yeoman-test": "^1.0.0"
   },
+  "engines": {
+    "node": ">=4"
+  },
   "eslintConfig": {
     "extends": "xo-space",
     "env": {
       "mocha": true
     }
-  },
-  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/generator-ciscospark",
-  "license": "Apache-2.0"
+  }
 }

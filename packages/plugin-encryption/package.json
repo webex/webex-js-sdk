@@ -2,10 +2,11 @@
   "name": "@ciscospark/plugin-encryption",
   "version": "0.7.0-alpha",
   "description": "",
+  "license": "MIT",
+  "author": "Ian W. Remmel <iremmel@cisco.com>",
   "main": "dist/index.js",
   "devMain": "src/index.js",
-  "author": "Ian W. Remmel <iremmel@cisco.com>",
-  "license": "MIT",
+  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-encryption",
   "dependencies": {
     "@ciscospark/common": "^0.7.0-alpha",
     "@ciscospark/http-core": "^0.7.0-alpha",
@@ -33,6 +34,9 @@
     "babel-register": "^6.4.3",
     "eslint": "^3.5.0",
     "eslint-plugin-mocha": "^4.5.1"
+  },
+  "engines": {
+    "node": ">=4"
   },
   "browser": {
     "./src/ensure-buffer.js": "./src/ensure-buffer.browser.js",

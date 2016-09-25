@@ -2,10 +2,10 @@
   "name": "@ciscospark/plugin-conversation",
   "version": "0.7.0",
   "description": "",
+  "license": "MIT",
+  "author": "Ian W. Remmel <iremmel@cisco.com>",
   "main": "dist/index.js",
   "devMain": "src/index.js",
-  "author": "Ian W. Remmel <iremmel@cisco.com>",
-  "license": "MIT",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-conversation",
   "dependencies": {
     "@ciscospark/common": "^0.7.0-alpha",
@@ -33,6 +33,9 @@
     "babel-register": "^6.4.3",
     "eslint": "^3.5.0",
     "eslint-plugin-mocha": "^4.5.1"
+  },
+  "engines": {
+    "node": ">=4"
   },
   "browser": {
     "./src/process-image.js": "./src/process-image.browser.js",

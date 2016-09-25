@@ -2,8 +2,8 @@
   "name": "@ciscospark/test-helper-chai",
   "version": "0.7.0-alpha",
   "description": "chai extended with chai-as-promised and spark specific assertions",
-  "main": "./src",
   "license": "MIT",
+  "main": "./src",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-chai",
   "dependencies": {
     "@ciscospark/test-helper-file": "^0.7.0-alpha",
@@ -18,5 +18,8 @@
     "babel-eslint": "^6.1.2",
     "eslint": "^3.5.0",
     "eslint-plugin-mocha": "^4.5.1"
+  },
+  "engines": {
+    "node": ">=4"
   }
 }

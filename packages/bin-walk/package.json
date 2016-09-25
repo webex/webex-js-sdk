@@ -2,11 +2,11 @@
   "name": "@ciscospark/bin-walk",
   "version": "0.7.0-alpha",
   "description": "",
+  "license": "MIT",
   "main": "./src",
   "bin": {
     "walk": "./bin/walk"
   },
-  "license": "MIT",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/bin-walk",
   "dependencies": {
     "babel-plugin-lodash": "2.1.0",
@@ -24,5 +24,8 @@
     "babel-eslint": "^6.1.2",
     "eslint": "^3.5.0",
     "eslint-plugin-mocha": "^4.5.1"
+  },
+  "engines": {
+    "node": ">=4"
   }
 }
