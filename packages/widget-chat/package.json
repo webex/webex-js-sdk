@@ -18,9 +18,16 @@
     "extract-text-webpack-plugin": "^1.0.1",
     "lodash": "^4.5.1",
     "react": "^15.3.2",
-    "react-dom": "^15.3.2"
+    "react-dom": "^15.3.2",
+    "react-redux": "^4.4.5",
+    "redux": "^3.6.0",
+    "redux-actions": "^0.12.0",
+    "redux-logger": "^2.6.1"
   },
   "devDependencies": {
+    "@ciscospark/http-core": "^0.7.0-alpha",
+    "@ciscospark/spark-core": "^0.7.0-alpha",
+    "@ciscospark/plugin-conversation": "^0.7.0-alpha",
     "@kadira/storybook": "^2.5.2",
     "babel-core": "^6.7.7",
     "babel-eslint": "^6.0.0-beta.5",
@@ -47,6 +54,8 @@
     "postcss-reporter": "^1.4.1",
     "react-addons-test-utils": "^15.3.1",
     "react-test-renderer": "^15.3.1",
+    "redux-logger": "^2.6.1",
+    "redux-thunk": "^2.1.0",
     "require-dir": "^0.3.0",
     "style-loader": "^0.13.1"
   }
