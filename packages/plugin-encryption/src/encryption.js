@@ -5,7 +5,7 @@
  */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {proxyEvents, transferEvents} from '@ciscospark/common';
+import {proxyEvents, tap, transferEvents} from '@ciscospark/common';
 import {EventEmitter} from 'events';
 import jose from 'node-jose';
 import SCR from 'node-scr';
@@ -142,9 +142,26 @@ const Encryption = SparkPlugin.extend({
     }
 
     return this.unboundedStorage.get(uri)
+      .then((keyString) => JSON.parse(keyString))
       .catch(() => this.kms.fetchKey({uri})
-        .then((key) => this.unboundedStorage.put(key.uri, key)));
+        .then(tap((key) => this.unboundedStorage.put(key.uri, JSON.stringify(key, replacer)))));
   }
 });
+
+/**
+ * JSON.stringify replacer that ensures private key data is serialized.
+ * @param {string} k
+ * @param {mixed} v
+ * @returns {mixed}
+ */
+function replacer(k, v) {
+  if (k === `jwk`) {
+    // note: this[k] and v may be different representations of the same value
+    // eslint-disable-next-line no-invalid-this
+    const json = this[k].toJSON(true);
+    return json;
+  }
+  return v;
+}
 
 export default Encryption;
