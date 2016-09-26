@@ -2,7 +2,7 @@
   "name": "@ciscospark/plugin-machine-account",
   "version": "0.7.0-alpha",
   "description": "",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "devMain": "src/index.js",
   "author": "Ian Remmel <iremmel@cisco.com>",
   "license": "(Apache-2.0)",
