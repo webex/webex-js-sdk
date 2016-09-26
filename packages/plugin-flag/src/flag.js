@@ -47,7 +47,7 @@ const Flag = SparkPlugin.extend({
     options = options || {};
     const params = {
       method: `POST`,
-      api: `userApps`,
+      service: `userApps`,
       resource: `/flags`,
       options,
       body: {
@@ -69,7 +69,7 @@ const Flag = SparkPlugin.extend({
     options = options || {};
     const params = {
       method: `GET`,
-      api: `userApps`,
+      service: `userApps`,
       resource: `/flags`,
       options,
       qs: {
