@@ -32,11 +32,9 @@ describe(`plugin-mashups`, function() {
         spark.mercury.connect(),
         mccoy.spark.mercury.connect()
       ])
-        .then(() => {
-          return spark.conversation.create({participants})
-            .then((c) => {
-              conversation = c;
-            });
+        .then(() => spark.conversation.create({participants}))
+        .then((c) => {
+          conversation = c;
         });
     }));
 
@@ -64,7 +62,6 @@ describe(`plugin-mashups`, function() {
   });
 
   describe(`#delete()`, () => {
-
     it(`deletes integration`, () => {
       const options = {};
       options.type = `test`;
@@ -82,7 +79,6 @@ describe(`plugin-mashups`, function() {
   });
 
   describe(`#get()`, () => {
-
     it(`retrieves integrations for a single room using roomId`, () => {
       const options = {};
       options.roomId = conversation.id;
@@ -95,33 +91,33 @@ describe(`plugin-mashups`, function() {
     });
 
     it(`retrieves integrations for a single room using a conversation object`, () => spark.mashups.get(conversation)
-        .then((integrations) => {
-          assert.isArray(integrations.test);
-          assert.equal(integrations.test.length, 1);
-          assert.equal(integrations.test[0].roomId, conversation.id);
-        }));
+      .then((integrations) => {
+        assert.isArray(integrations.test);
+        assert.equal(integrations.test.length, 1);
+        assert.equal(integrations.test[0].roomId, conversation.id);
+      }));
 
     it(`retrieves all integrations`, () => spark.mashups.create({type: `test`, roomId: conversation.id})
-        .then(() => spark.mashups.get({roomId: conversation.id})
-        .then((mashups) => {
-          assert.isArray(mashups.test);
-          assert.lengthOf(mashups.test, 2);
-          assert.equal(mashups.test[0].roomId, conversation.id);
-        })
-        ));
+      .then(() => spark.mashups.get({roomId: conversation.id}))
+      .then((mashups) => {
+        assert.isArray(mashups.test);
+        assert.lengthOf(mashups.test, 2);
+        assert.equal(mashups.test[0].roomId, conversation.id);
+      })
+    );
   });
 
   describe(`#list()`, () => {
     it(`retrieves list of all integrations`, () => spark.mashups.create({type: `test`, roomId: conversation.id})
-        .then(() => spark.mashups.create({type: `test`, roomId: conversation.id})
-        .then(() => spark.mashups.list({roomId: conversation.id})
-        .then((mashups) => {
-          assert.isArray(mashups.test);
-          // 2 from the previous tests and two from now (4)
-          assert.lengthOf(mashups.test, 4);
-          assert.equal(mashups.test[0].roomId, conversation.id);
-        })
-    )));
+      .then(() => spark.mashups.create({type: `test`, roomId: conversation.id}))
+      .then(() => spark.mashups.list({roomId: conversation.id}))
+      .then((mashups) => {
+        assert.isArray(mashups.test);
+        // 2 from the previous tests and two from now (4)
+        assert.lengthOf(mashups.test, 4);
+        assert.equal(mashups.test[0].roomId, conversation.id);
+      })
+    );
   });
 
 });
