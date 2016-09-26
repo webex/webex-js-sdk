@@ -32,41 +32,29 @@ describe(`plugin-flag`, function() {
       })
       .then(() => spock.spark.device.register())
       .then(() => mccoy.spark.device.register())
-      .then(() => {
-        return spock.spark.conversation.create({
-          displayName: `Test Flagging Room`,
-          participants
-        });
-      })
+      .then(() => spock.spark.conversation.create({
+        displayName: `Test Flagging Room`,
+        participants
+      }))
       .then((c) => {
         flagConversation = c;
         return mccoy.spark.conversation.post(flagConversation, {
           displayName: `Hi Dear, How are you?`
         });
       })
-      .then(() => {
-        return spock.spark.conversation.post(flagConversation, {
-          displayName: `Hey! I am doing well. How are you?`
-        });
-      })
-      .then(() => {
-        return mccoy.spark.conversation.post(flagConversation, {
-          displayName: `I am also doing well. Are you in for the party?`
-        });
-      })
-      .then(() => {
-        return spock.spark.conversation.post(flagConversation, {
-          displayName: `Yes, I am in.`
-        });
-      })
+      .then(() => spock.spark.conversation.post(flagConversation, {
+        displayName: `Hey! I am doing well. How are you?`
+      }))
+      .then(() => mccoy.spark.conversation.post(flagConversation, {
+        displayName: `I am also doing well. Are you in for the party?`
+      }))
+      .then(() => spock.spark.conversation.post(flagConversation, {
+        displayName: `Yes, I am in.`
+      }))
       .then(() => {
         assert.isDefined(flagConversation);
         const params = {
-          activitiesLimit: 30,
-          defaultActivityEncryptionKeyUrl: flagConversation.defaultActivityEncryptionKeyUrl,
-          includeParticipants: true,
-          kmsResourceObjectUrl: flagConversation.kmsResourceObjectUrl,
-          url: flagConversation.url
+          activitiesLimit: 30
         };
         return spock.spark.conversation.get(flagConversation, params);
       })
@@ -84,14 +72,11 @@ describe(`plugin-flag`, function() {
     );
 
 
-    afterEach(() => {
-      return spock.spark.flag.list()
-        .then((flags) => {
-          flags.forEach((flag) => {
-            return spock.spark.flag.remove(flag);
-          });
-        });
-    });
+    afterEach(() => spock.spark.flag.list()
+      .then((flags) => {
+        flags.forEach((flag) => spock.spark.flag.remove(flag));
+      })
+    );
 
     describe(`#flag()`, () => {
       it(`flags the activity`, () => {
@@ -156,9 +141,7 @@ describe(`plugin-flag`, function() {
             assert.equal(flagResponse1.state, `flagged`);
             return spock.spark.flag.archive(flagResponse1);
           })
-          .then((response) => {
-            assert.equal(response.state, `archived`);
-          });
+          .then((response) => assert.equal(response.state, `archived`));
       });
     });
 
@@ -170,9 +153,7 @@ describe(`plugin-flag`, function() {
             assert.equal(flagResponse1.state, `flagged`);
             return spock.spark.flag.unflag(flagResponse1);
           })
-          .then((response) => {
-            assert.equal(response.state, `unflagged`);
-          });
+          .then((response) => assert.equal(response.state, `unflagged`));
       });
     });
 
