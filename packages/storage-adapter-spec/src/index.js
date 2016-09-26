@@ -68,13 +68,6 @@ export default function runAbstractStorageAdapterSpec(adapter) {
                 });
             });
         });
-
-        [undefined, null].forEach((falsey) => {
-          it(`puts \`${falsey}\` into the store`, () => {
-            return bound.put(key, falsey)
-              .then(() => assert.throws(() => bound.get(key)));
-          });
-        });
       });
 
       describe(`#get()`, () => {
@@ -85,6 +78,13 @@ export default function runAbstractStorageAdapterSpec(adapter) {
           .then(() => assert.becomes(bound.get(key), obj)));
 
         it(`rejects if the key cannot be found`, () => assert.isRejected(bound.get(`notakey`)));
+
+        [null, undefined].forEach((falsey) => {
+          it(`rejects if returned value is \`${falsey}\``, () => {
+            return bound.put(key, falsey)
+              .then(() => assert.isRejected(bound.get(key)));
+          });
+        });
       });
 
       describe(`#del()`, () => {
