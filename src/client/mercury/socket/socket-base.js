@@ -10,7 +10,6 @@ var defaults = require('lodash.defaults');
 var EventEmitter = require('events').EventEmitter;
 var extendError = require('extend-error');
 var isObject = require('lodash.isobject');
-var resolveWith = require('../../../util/resolve-with');
 var shimPlaceholder = require('../../../lib/shim-placeholder');
 var util = require('util');
 var uuid = require('uuid');
@@ -126,12 +125,13 @@ assign(Socket.prototype, {
     options = options || {};
 
     return new Promise(function open(resolve, reject) {
+      /* eslint complexity: [0] */
       if (!url) {
         return reject(new Error('`url` is required'));
       }
 
       if (this._socket) {
-        return reject(new Error('Socket#open() can only be called once'));
+        return reject(new Error('socket#open() can only be called once'));
       }
 
       [
@@ -167,6 +167,14 @@ assign(Socket.prototype, {
       /* istanbul ignore else */
       if (url.indexOf('outboundWireFormat=text') === -1) {
         url += ((url.indexOf('?') === -1) ? '?' : '&') + 'outboundWireFormat=text';
+      }
+
+      /* istanbul ignore else */
+      if (url.indexOf('bufferStates=true') === -1) {
+        // It's unlikely bufferStates is the first parameter as
+        // outboundingWireFormat will be there first
+        /* istanbul ignore next */
+        url += ((url.indexOf('?') === -1) ? '?' : '&') + 'bufferStates=true';
       }
 
       this.logger.info('socket: connecting to websocket');
@@ -409,15 +417,7 @@ assign(Socket.prototype, {
 assign(Socket, {
   ConnectionError: ConnectionError,
 
-  AuthorizationError: AuthorizationError,
-
-  open: function open(url, options) {
-    return new Promise(function open(resolve) {
-      var socket = new Socket();
-      resolve(socket.open(url, options)
-        .then(resolveWith(socket)));
-    }.bind(this));
-  }
+  AuthorizationError: AuthorizationError
 });
 
 module.exports = Socket;

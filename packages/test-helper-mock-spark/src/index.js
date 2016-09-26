@@ -19,7 +19,7 @@ function makeSpark(options) {
   var requestPromise = Promise.resolve({statusCode: 200, body: {}});
   var uploadPromise = Promise.resolve({});
 
-  requestPromise.on = uploadPromise.on = function() {
+  requestPromise.on = uploadPromise.on = function on() {
     return requestPromise;
   };
 
@@ -62,7 +62,7 @@ function makeSpark(options) {
     extraProperies: 'allow',
     request: request,
     upload: upload,
-    refresh: function() {
+    refresh: function refresh() {
       return Promise.resolve();
     },
     config: {
@@ -92,7 +92,7 @@ function makeSpark(options) {
       support: {},
       user: {}
     },
-    initialize() {
+    initialize: function initialize() {
       this.boundedStorage = makeMockStorage();
       this.unboundedStorage = makeMockStorage();
     }

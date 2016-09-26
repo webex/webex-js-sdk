@@ -2,23 +2,26 @@
   "name": "@ciscospark/test-helper-test-users",
   "version": "0.7.0-alpha",
   "description": "",
-  "main": "./src",
+  "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
-  "license": "(Apache-2.0)",
+  "main": "./src",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-test-users",
-  "devDependencies": {
-    "babel-eslint": "^6.0.0-beta.5",
-    "eslint": "^3.3.1",
-    "eslint-plugin-mocha": "^4.4.0"
-  },
-  "optionalDependencies": {
-    "spark-js-sdk--test-users": "0.3.4"
-  },
   "dependencies": {
     "@ciscospark/test-helper-retry": "^0.7.0-alpha",
     "babel-runtime": "^6.3.19",
     "envify": "^3.4.1",
     "es6-promise": "^3.2.1"
+  },
+  "devDependencies": {
+    "babel-eslint": "^6.1.2",
+    "eslint": "^3.5.0",
+    "eslint-plugin-mocha": "^4.5.1"
+  },
+  "optionalDependencies": {
+    "spark-js-sdk--test-users": "0.3.4"
+  },
+  "engines": {
+    "node": ">=4"
   },
   "browserify": {
     "transform": [

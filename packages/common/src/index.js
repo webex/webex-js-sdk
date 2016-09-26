@@ -11,6 +11,10 @@ export {default as makeStateDataType} from './make-state-datatype';
 export {default as make} from './template-container';
 export {default as oneFlight} from './one-flight';
 export {default as patterns} from './patterns.js';
+export {
+  proxyEvents,
+  transferEvents
+} from './events';
 export {default as resolveWith} from './resolve-with';
 export {default as retry} from './retry';
 export {default as tap} from './tap';

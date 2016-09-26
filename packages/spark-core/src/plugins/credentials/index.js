@@ -18,6 +18,8 @@ registerPlugin(`credentials`, Credentials, {
   }
 });
 
-export {default as default} from './credentials';
+export {Credentials as default};
+export {Credentials as Credentials};
 export {default as Authorization} from './authorization';
 export {default as grantErrors} from './grant-errors';
+export {AuthInterceptor as AuthInterceptor};

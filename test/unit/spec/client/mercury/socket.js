@@ -35,7 +35,8 @@ describe('Client', function() {
 
         sinon.spy(Socket.prototype, '_ping');
 
-        var promise = Socket.open('ws://example.com', mockoptions);
+        socket = new Socket();
+        var promise = socket.open('ws://example.com', mockoptions);
 
         try {
           _socket.readyState = 1;
@@ -57,7 +58,7 @@ describe('Client', function() {
         }
 
 
-        return promise.then(function(s) {
+        return promise.then(function() {
           _socket.emit('message', {
             data: JSON.stringify({
               id: JSON.parse(_socket.send.args[3][0]).id,
@@ -66,7 +67,6 @@ describe('Client', function() {
             })
           });
 
-          socket = s;
           _socket.readyState = 1;
         });
       });
@@ -82,83 +82,6 @@ describe('Client', function() {
         _socket = undefined;
       });
 
-      describe('.open()', function() {
-        it('requires a url parameter', function() {
-          return Promise.all([
-            assert.isRejected(Socket.open(), /`url` is required/)
-          ]);
-        });
-
-        it('requires a forceCloseDelay option', function() {
-          return assert.isRejected(Socket.open('ws://example.com'), /`options.forceCloseDelay` is required/);
-        });
-
-        it('requires a pingInterval option', function() {
-          return assert.isRejected(Socket.open('ws://example.com', {
-            forceCloseDelay: 100
-          }), /`options.pingInterval` is required/);
-        });
-
-        it('requires a pongTimeout option', function() {
-          return assert.isRejected(Socket.open('ws://example.com', {
-            forceCloseDelay: 100,
-            pingInterval: 100
-          }), /`options.pongTimeout` is required/);
-        });
-
-        it('requires a token option', function() {
-          return assert.isRejected(Socket.open('ws://example.com', {
-            forceCloseDelay: 100,
-            pingInterval: 100,
-            pongTimeout: 90
-          }), /`options.token` is required/);
-        });
-
-        it('requires a trackingI option', function() {
-          return assert.isRejected(Socket.open('ws://example.com'), {
-            forceCloseDelay: 100,
-            pingInterval: 100,
-            pongTimeout: 90,
-            token: 'mocktoken'
-          }, /`options.trackingId` is required/);
-        });
-
-        it('requires a logger option', function() {
-          return assert.isRejected(Socket.open('ws://example.com', {
-            forceCloseDelay: 100,
-            pingInterval: 100,
-            pongTimeout: 90,
-            token: 'mocktoken',
-            trackingId: 'mocktrackingid'
-          }), /`options.logger` is required/);
-        });
-
-        it('accepts a logLevelToken option', function() {
-          var promise = Socket.open('ws://example.com', {
-            forceCloseDelay: 100,
-            pingInterval: 100,
-            pongTimeout: 90,
-            logger: console,
-            token: 'mocktoken',
-            trackingId: 'mocktrackingid',
-            logLevelToken: 'mocklogleveltoken'
-          });
-
-          _socket.readyState = 1;
-          _socket.emit('open');
-
-          _socket.emit('message', {
-            data: JSON.stringify({
-              id: JSON.parse(_socket.send.args[1][0]).id,
-              type: 'pong'
-            })
-          });
-
-          return promise.then(function(s) {
-            assert.equal(s.logLevelToken, 'mocklogleveltoken');
-          });
-        });
-      });
 
       describe('#binaryType', function() {
         it('proxies to the underlying socket', function() {
@@ -214,21 +137,104 @@ describe('Client', function() {
           return assert.isRejected(s.open(), /`url` is required/);
         });
 
-        it('cannot be called more than once', function() {
-          assert.isDefined(socket._socket);
-          return assert.isRejected(socket.open('ws://example.com'), /Socket#open\(\) can only be called once/);
+        it('requires a forceCloseDelay option', function() {
+          var s = new Socket();
+          return assert.isRejected(s.open('ws://example.com'), /`options.forceCloseDelay` is required/);
         });
 
-        it('ensures we always use text-mode WebSockets', function() {
+        it('requires a pingInterval option', function() {
+          var s = new Socket();
+          return assert.isRejected(s.open('ws://example.com', {
+            forceCloseDelay: 100
+          }), /`options.pingInterval` is required/);
+        });
+
+        it('requires a pongTimeout option', function() {
+          var s = new Socket();
+          return assert.isRejected(s.open('ws://example.com', {
+            forceCloseDelay: 100,
+            pingInterval: 100
+          }), /`options.pongTimeout` is required/);
+        });
+
+        it('requires a token option', function() {
+          var s = new Socket();
+          return assert.isRejected(s.open('ws://example.com', {
+            forceCloseDelay: 100,
+            pingInterval: 100,
+            pongTimeout: 90
+          }), /`options.token` is required/);
+        });
+
+        it('requires a trackingI option', function() {
+          var s = new Socket();
+          return assert.isRejected(s.open('ws://example.com'), {
+            forceCloseDelay: 100,
+            pingInterval: 100,
+            pongTimeout: 90,
+            token: 'mocktoken'
+          }, /`options.trackingId` is required/);
+        });
+
+        it('requires a logger option', function() {
+          var s = new Socket();
+          return assert.isRejected(s.open('ws://example.com', {
+            forceCloseDelay: 100,
+            pingInterval: 100,
+            pongTimeout: 90,
+            token: 'mocktoken',
+            trackingId: 'mocktrackingid'
+          }), /`options.logger` is required/);
+        });
+
+        it('accepts a logLevelToken option', function() {
+          var s = new Socket();
+          var promise = s.open('ws://example.com', {
+            forceCloseDelay: 100,
+            pingInterval: 100,
+            pongTimeout: 90,
+            logger: console,
+            token: 'mocktoken',
+            trackingId: 'mocktrackingid',
+            logLevelToken: 'mocklogleveltoken'
+          });
+
+          _socket.readyState = 1;
+          _socket.emit('open');
+
+          _socket.emit('message', {
+            data: JSON.stringify({
+              id: JSON.parse(_socket.send.args[1][0]).id,
+              type: 'pong'
+            })
+          });
+
+          return promise.then(function() {
+            assert.equal(s.logLevelToken, 'mocklogleveltoken');
+          });
+        });
+
+        it('cannot be called more than once', function() {
+          assert.isDefined(socket._socket);
+          return assert.isRejected(socket.open('ws://example.com'), /socket#open\(\) can only be called once/);
+        });
+
+        it('ensures we always use text-mode WebSockets and get buffer states', function() {
           var s = new Socket();
           s.open('ws://example.com', mockoptions);
           assert.match(s.url, /outboundWireFormat=text/);
-          assert.equal(s.url, 'ws://example.com?outboundWireFormat=text');
+          assert.equal(s.url, 'ws://example.com?outboundWireFormat=text&bufferStates=true');
 
           s = new Socket();
           s.open('ws://example.com?queryparam=something', mockoptions);
           assert.match(s.url, /outboundWireFormat=text/);
-          assert.equal(s.url, 'ws://example.com?queryparam=something&outboundWireFormat=text');
+          assert.equal(s.url, 'ws://example.com?queryparam=something&outboundWireFormat=text&bufferStates=true');
+        });
+
+        it('does not duplicate url queries', function() {
+          var s = new Socket();
+          s.open('ws://example.com?outboundWireFormat=text&bufferStates=true', mockoptions);
+          assert.equal(s.url, 'ws://example.com?outboundWireFormat=text&bufferStates=true');
         });
 
         it('sets the underlying socket\'s binary type', function() {
@@ -373,7 +379,8 @@ describe('Client', function() {
         });
 
         it('signals close if no close frame received within a specified window', function() {
-          var promise = Socket.open('ws://example.com', mockoptions);
+          var s = new Socket();
+          var promise = s.open('ws://example.com', mockoptions);
           _socket.readyState = 1;
           _socket.emit('open');
           _socket.emit('message', {
@@ -383,7 +390,7 @@ describe('Client', function() {
             })
           });
           return promise
-            .then(function(s) {
+            .then(function() {
               var spy = sinon.spy();
               s.on('close', spy);
               _socket.close = function() {return new Promise(function() {});};

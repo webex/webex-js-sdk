@@ -17,7 +17,7 @@ function MockSocket() {
       value: sinon.spy()
     },
     open: {
-      value: sinon.spy()
+      value: sinon.stub()
     },
     send: {
       value: sinon.spy()

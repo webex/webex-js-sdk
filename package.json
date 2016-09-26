@@ -1,6 +1,6 @@
 {
   "name": "spark-js-sdk",
-  "version": "0.5.213",
+  "version": "0.5.233",
   "description": "JavaScript sdk for interacting with the Spark API",
   "homepage": "http://sqbu-github.cisco.com/WebExSquared/squared-js-sdk",
   "bugs": {
@@ -10,7 +10,7 @@
     "name": "Ian W. Remmel",
     "email": "iremmel@cisco.com"
   },
-  "license": "(Apache-2.0)",
+  "license": "MIT",
   "contributors": [
     "Brad Rydzewski <brydzews@cisco.com>",
     "David Greenstein <dagreens@cisco.com>",
@@ -121,7 +121,7 @@
     "xhr": "~2.0.1"
   },
   "devDependencies": {
-    "babel-eslint": "^6.0.0-beta.5",
+    "babel-eslint": "^6.1.2",
     "babel-loader": "^6.2.4",
     "babel-plugin-lodash": "2.1.0",
     "babel-plugin-syntax-async-functions": "^6.5.0",
@@ -142,8 +142,8 @@
     "doctrine": "^1.2.2",
     "documentation": "^4.0.0-beta5",
     "documentation-theme-utils": "^3.0.0",
-    "eslint": "^3.3.1",
-    "eslint-plugin-mocha": "^4.4.0",
+    "eslint": "^3.5.0",
+    "eslint-plugin-mocha": "^4.5.1",
     "eslint-plugin-react": "^6.1.2",
     "grunt": "~0.4.5",
     "grunt-babel": "^6.0.0",
@@ -163,7 +163,7 @@
     "grunt-istanbul": "^0.7.0",
     "grunt-jscs": "~2.0.0",
     "grunt-karma": "^2.0.0",
-    "grunt-mocha-test": "~0.12.4",
+    "grunt-mocha-test": "^0.13.2",
     "grunt-selenium-webdriver": "~0.2.450",
     "grunt-shell": "~1.1.2",
     "grunt-webpack": "^1.0.11",
@@ -183,7 +183,7 @@
     "karma-mocha-reporter": "^2.0.4",
     "karma-safari-launcher": "^1.0.0",
     "karma-sauce-launcher": "^1.0.0",
-    "lerna": "^2.0.0-beta.26",
+    "lerna": "2.0.0-beta.26",
     "load-grunt-tasks": "^3.5.0",
     "lodash": "^4.5.1",
     "lolex": "^1.5.1",

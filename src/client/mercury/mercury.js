@@ -166,9 +166,14 @@ var Mercury = SparkBase.extend(
   }),
 
   _attemptConnection: function _attemptConnection() {
+    var socket = this._getNewSocket();
+    socket.on('close', this._onclose.bind(this));
+    socket.on('message', this._onmessage.bind(this));
+    socket.on('sequence-mismatch', this.metrics.submitSkipSequenceMetric.bind(this.metrics));
+
     return this.spark.credentials.getAuthorization()
       .then(function connect(authorization) {
-        return Socket.open(this.spark.device.webSocketUrl, {
+        return socket.open(this.spark.device.webSocketUrl, {
           forceCloseDelay: this.config.forceCloseDelay,
           pingInterval: this.config.pingInterval,
           pongTimeout: this.config.pongTimeout,
@@ -177,11 +182,8 @@ var Mercury = SparkBase.extend(
           logger: this.logger
         });
       }.bind(this))
-      .then(function onconnect(socket) {
+      .then(function onconnect() {
         this.socket = socket;
-        this.socket.on('close', this._onclose.bind(this));
-        this.socket.on('message', this._onmessage.bind(this));
-        this.socket.on('sequence-mismatch', this.metrics.submitSkipSequenceMetric.bind(this.metrics));
         this.metrics.submitConnectMetric();
         this.trigger('online');
       }.bind(this))
@@ -202,6 +204,10 @@ var Mercury = SparkBase.extend(
 
         return Promise.reject(reason);
       }.bind(this));
+  },
+
+  _getNewSocket: function _getNewSocket() {
+    return new Socket();
   },
 
   /**
@@ -317,6 +323,7 @@ var Mercury = SparkBase.extend(
 
   _onmessage: function _onmessage(event) {
     event = event.data;
+
     if (event.headers) {
       this._moveHeadersToData(event);
     }

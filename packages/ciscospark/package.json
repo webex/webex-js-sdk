@@ -2,10 +2,10 @@
   "name": "ciscospark",
   "version": "0.7.0-alpha",
   "description": "SDK for Cisco Spark",
+  "license": "MIT",
+  "author": "Ian W. Remmel <iremmel@cisco.com>",
   "main": "es5.js",
   "devMain": "src/index.js",
-  "author": "Ian W. Remmel <iremmel@cisco.com>",
-  "license": "(Apache-2.0)",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/ciscospark",
   "dependencies": {
     "@ciscospark/common": "^0.7.0-alpha",
@@ -23,11 +23,14 @@
     "@ciscospark/test-helper-mocha": "^0.7.0-alpha",
     "@ciscospark/test-helper-sinon": "^0.7.0-alpha",
     "@ciscospark/test-helper-test-users": "^0.7.0-alpha",
-    "babel-eslint": "^6.0.0-beta.5",
+    "babel-eslint": "^6.1.2",
     "babel-plugin-lodash": "2.1.0",
     "babel-register": "^6.4.3",
-    "eslint": "^3.3.1",
-    "eslint-plugin-mocha": "^4.4.0"
+    "eslint": "^3.5.0",
+    "eslint-plugin-mocha": "^4.5.1"
+  },
+  "engines": {
+    "node": ">=4"
   },
   "browser": {
     "./src/config-storage.js": "./src/config-storage.shim.js",

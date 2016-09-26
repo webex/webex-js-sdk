@@ -13,6 +13,10 @@ function inBrowser() {
   return !inNode();
 }
 
+function noop() {
+  // intentionally empty
+}
+
 module.exports = {
   /**
    * Wrap the desired mochaMethod with `flaky` to indicate it's a flaky test and
@@ -67,5 +71,27 @@ module.exports = {
       return mochaMethod;
     }
     return inNode() ? mochaMethod.skip : mochaMethod;
+  },
+
+  /**
+   * Similar to skipInNode in that it prevents the test from running, but goes a
+   * step further to hide it from the list of skipped tests. Should be used when
+   * the test will never be valid in NodeJS
+   * @param {Function} mochaMethod
+   * @returns {Function}
+   */
+  browserOnly: function browserOnly(mochaMethod) {
+    return inBrowser() ? mochaMethod : noop;
+  },
+
+  /**
+   * Similar to skipInBrowser in that it prevents the test from running, but
+   * goes a step further to hide it from the list of skipped tests. Should be
+   * used when the test will never be valid in a Browser
+   * @param {Function} mochaMethod
+   * @returns {Function}
+   */
+  nodeOnly: function nodeOnly(mochaMethod) {
+    return inNode() ? mochaMethod : noop;
   }
 };

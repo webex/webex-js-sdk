@@ -125,11 +125,11 @@ for P in $PIDS; do
 done
 
 echo "################################################################################"
-echo "# Stripping needless logs from legacy karma xml"
+echo "# Stripping unhelpful, jenkins breaking logs from karma xml"
 echo "################################################################################"
 
 cd ${SDK_ROOT_DIR}
-for FILE in $(find ./reports/junit -name karma-legacy.xml) ; do
+for FILE in $(find ./reports/junit -name karma-*.xml) ; do
   awk '
   BEGIN { write = 1 }
   /<system-out/{ write = 0 }

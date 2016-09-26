@@ -98,9 +98,13 @@ var RealtimeService = Mercury.extend({
   },
 
   _attemptConnection: function _attemptConnection() {
+    var socket = this._getNewSocket();
+    socket.on('close', this._onclose.bind(this));
+    socket.on('message', this._onmessage.bind(this));
+    socket.on('sequence-mismatch', this.metrics.submitSkipSequenceMetric.bind(this.metrics));
     return this.spark.credentials.getAuthorization()
       .then(function connect(authorization) {
-        return Socket.open(this.spark.board.realtime.get('boardWebSocketUrl'), {
+        return socket.open(this.spark.board.realtime.get('boardWebSocketUrl'), {
           forceCloseDelay: this.config.forceCloseDelay,
           pingInterval: this.config.pingInterval,
           pongTimeout: this.config.pongTimeout,
@@ -109,11 +113,8 @@ var RealtimeService = Mercury.extend({
           logger: this.logger
         });
       }.bind(this))
-      .then(function onconnect(socket) {
+      .then(function onconnect() {
         this.socket = socket;
-        this.socket.on('close', this._onclose.bind(this));
-        this.socket.on('message', this._onmessage.bind(this));
-        this.socket.on('sequence-mismatch', this.metrics.submitSkipSequenceMetric.bind(this.metrics));
         this.metrics.submitConnectMetric();
         this.trigger('online');
       }.bind(this))
