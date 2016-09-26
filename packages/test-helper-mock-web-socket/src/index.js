@@ -27,6 +27,10 @@ function setHandler(scope, map, type, fn) {
 // eslint-disable-next-line
 function noop() {};
 
+/**
+  * Mock of WebSocket Class
+  * @returns {MockWebSocket}
+  */
 export default class MockWebSocket extends EventEmitter {
   constructor(url) {
     super();
