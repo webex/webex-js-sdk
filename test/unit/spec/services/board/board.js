@@ -274,19 +274,19 @@ describe('Services', function() {
 
     describe('#parseLinkHeaders', function() {
 
-      it('parses link header as undefined', function() {
+      it('returns empty object if there are not any link headers', function() {
         var linkHeader = undefined;
         assert.deepEqual(spark.board.parseLinkHeaders(linkHeader), {});
       });
 
-      it('parses link header as string', function() {
+      it('returns object contiaining one link if only one link header passed as a string', function() {
         var linkHeader = '<https://www.cisco.com>; rel=cisco';
         assert.deepEqual(spark.board.parseLinkHeaders(linkHeader), {
           cisco: 'https://www.cisco.com'
         });
       });
 
-      it('parses link header as array of headers', function() {
+      it('returns object containing multiple links when multiple headers passed as an array', function() {
         var linkHeader = [
           '<https://www.ciscospark.com>; rel=ciscospark',
           '<https://www.cisco.com>; rel=cisco'

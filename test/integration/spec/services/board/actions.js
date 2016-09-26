@@ -457,15 +457,16 @@ describe('Services', function() {
           return ensureBoard();
         });
 
-        it('lists board after creating it', function() {
+        it('retrieves a newly created board for a specified conversation within a single page', function() {
           return party.spock.spark.board.persistence.getChannels({conversationId: conversation.id})
-            .then(function(channels) {
-              var channelFound = find(channels.items, {channelId: board.channelId});
+            .then(function(getChannelsResp) {
+              var channelFound = find(getChannelsResp.items, {channelId: board.channelId});
               assert.isDefined(channelFound);
+              assert.notProperty(getChannelsResp.links, 'next');
             });
         });
 
-        it('presents pagination link if more results than `limit`', function() {
+        it('retrieves all boards for a specified conversation across multiple pages', function() {
           var pageLimit = 10;
           var conversation;
 
@@ -505,6 +506,7 @@ describe('Services', function() {
             })
             .then(function(getChannelsResp) {
               assert.lengthOf(getChannelsResp.items, 1);
+              assert.notProperty(getChannelsResp, 'links');
             });
         });
       });

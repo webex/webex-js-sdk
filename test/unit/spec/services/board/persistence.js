@@ -130,7 +130,7 @@ describe('Services', function() {
           });
         });
 
-        it('requires a conversationId', function() {
+        it('requires a conversationId as an option', function() {
           return Promise.all([
             assert.isRejected(spark.board.persistence.getChannels(), '`conversationId` is required')
           ]);
