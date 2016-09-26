@@ -35,8 +35,14 @@ export default function runAbstractStorageAdapterSpec(adapter) {
         it(`puts a primitive into the store`, () => bound.put(key, primitive)
           .then(() => assert.becomes(bound.get(key), primitive)));
 
+        [0, false].forEach((falsey) => {
+          it(`puts falsey primitive \`${falsey}\` into the store`, () => bound.put(key, falsey)
+          .then(() => assert.becomes(bound.get(key), falsey)));
+        });
+
         it(`puts an object into the store`, () => bound.put(key, obj)
           .then(() => assert.becomes(bound.get(key), obj)));
+
 
         it(`handles concurrency`, () => Promise.all([
           bound.put(key, 1),
@@ -61,6 +67,13 @@ export default function runAbstractStorageAdapterSpec(adapter) {
                     });
                 });
             });
+        });
+
+        [undefined, null].forEach((falsey) => {
+          it(`puts \`${falsey}\` into the store`, () => {
+            return bound.put(key, falsey)
+              .then(() => assert.throws(() => bound.get(key)));
+          });
         });
       });
 

@@ -58,8 +58,7 @@ export default class StorageAdapterLocalForage {
         loggers.get(this).info(`local-forage-store-adapter: reading \`${key_}\``);
         return localforage.getItem(key_)
           .then((value) => {
-            // if the key does not exist, localforage.getItem() will return null
-            if (value !== null) {
+            if (value !== null && value !== undefined) {
               return Promise.resolve(value);
             }
             return Promise.reject(new NotFoundError(`No value found for ${key_}`));
