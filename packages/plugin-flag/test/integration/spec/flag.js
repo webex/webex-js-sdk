@@ -130,7 +130,7 @@ describe(`plugin-flag`, function() {
             console.log('@@@@@ now calling mapToActivities');
             return spock.spark.flag.mapToActivities(flags)
               .then((activities) => {
-                console.log('@@@@@ activities = ', activities);
+                console.log('@@@@@ activities = ', JSON.stringify(activities));
                 const activity = activities[0];
                 assert.equal(activity.object.displayName, 'Hey! I am doing well. How are you?');
                 assert.isDefined(find(activities, {url: flagResponse1['flag-item']}));
