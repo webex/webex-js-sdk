@@ -20,7 +20,7 @@ Flags an activity
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)>** Resolves with the flag creation
 
-# get
+# list
 
 Gets a list of Flags for a user
 
