@@ -21,7 +21,7 @@ describe(`plugin-flag`, () => {
 
     describe(`#flag()`, () => {
       it(`requires an activity URL`, () => {
-        return assert.isRejected(spark.flag.flag({}, {}), /`activity.url` is required/);
+        return assert.isRejected(spark.flag.create({}, {}), /`activity.url` is required/);
       });
     });
 

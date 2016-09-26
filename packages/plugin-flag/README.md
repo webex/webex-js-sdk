@@ -9,7 +9,7 @@ Archive a flag
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)>** Resolves with the flag archival
 
-# flag
+# create
 
 Flags an activity
 
@@ -20,7 +20,7 @@ Flags an activity
 
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)>** Resolves with the flag creation
 
-# list
+# get
 
 Gets a list of Flags for a user
 
@@ -41,7 +41,7 @@ Gets an array of activities where the status is 200
 Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)>** Resolves with the activities
 TODO: this should be implemented as a batched request when migrating to the modular sdk
 
-# remove
+# delete
 
 Delete a flag
 

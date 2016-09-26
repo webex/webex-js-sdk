@@ -37,7 +37,7 @@ const Flag = SparkPlugin.extend({
   * @param {Object} options
   * @returns {Promise<Object>} Resolves with the flag creation
   */
-  flag(activity, options) {
+  create(activity, options) {
     if (!activity.url) {
       return Promise.reject(new Error(`\`activity.url\` is required`));
     }
@@ -62,7 +62,7 @@ const Flag = SparkPlugin.extend({
   * @param {Object} options
   * @returns {Promise} Resolves with the fetched flags
   */
-  list(options) {
+  get(options) {
     options = options || {};
     const params = {
       method: `GET`,
@@ -114,7 +114,7 @@ const Flag = SparkPlugin.extend({
   * @param {Object} options
   * @returns {Promise<Object>} Resolves with the flag deletion
   */
-  remove(flag, options) {
+  delete(flag, options) {
     options = options || {};
     const params = {
       method: `DELETE`,

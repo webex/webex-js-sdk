@@ -72,16 +72,16 @@ describe(`plugin-flag`, function() {
     );
 
 
-    afterEach(() => spock.spark.flag.list()
+    afterEach(() => spock.spark.flag.get()
       .then((flags) => {
-        flags.forEach((flag) => spock.spark.flag.remove(flag));
+        flags.forEach((flag) => spock.spark.flag.delete(flag));
       })
     );
 
     describe(`#flag()`, () => {
       it(`flags the activity`, () => {
         const flaggedActivity1 = flagConversation.activities.items[1];
-        return spock.spark.flag.flag(flaggedActivity1)
+        return spock.spark.flag.create(flaggedActivity1)
           .then((flagResponse1) => {
             assert.equal(flagResponse1.state, `flagged`);
           });
@@ -90,7 +90,7 @@ describe(`plugin-flag`, function() {
 
     describe(`#list()`, () => {
       it(`fetches the flag list`, () => {
-        return spock.spark.flag.list()
+        return spock.spark.flag.get()
           .then((flagList) => {
             assert.isArray(flagList);
             assert.lengthOf(flagList, 0);
@@ -101,7 +101,7 @@ describe(`plugin-flag`, function() {
     describe(`#mapToActivities()`, () => {
       it(`maps flags to activity`, () => {
         const flaggedActivity1 = flagConversation.activities.items[1];
-        return spock.spark.flag.flag(flaggedActivity1)
+        return spock.spark.flag.create(flaggedActivity1)
           .then((flagResponse1) => {
             assert.equal(flagResponse1.state, `flagged`);
             const flags = [];
@@ -119,12 +119,12 @@ describe(`plugin-flag`, function() {
     describe(`#remove()`, () => {
       it(`removes the flag from activity`, () => {
         const flaggedActivity1 = flagConversation.activities.items[1];
-        return spock.spark.flag.flag(flaggedActivity1)
+        return spock.spark.flag.create(flaggedActivity1)
           .then((flagResponse1) => {
             assert.equal(flagResponse1.state, `flagged`);
-            return spock.spark.flag.remove(flagResponse1);
+            return spock.spark.flag.delete(flagResponse1);
           })
-          .then(() => spock.spark.flag.list())
+          .then(() => spock.spark.flag.get())
           .then((flagList) => {
             assert.isArray(flagList);
             assert.lengthOf(flagList, 0);
@@ -135,7 +135,7 @@ describe(`plugin-flag`, function() {
     describe(`#archive()`, () => {
       it(`archives the flag for an activity`, () => {
         const flaggedActivity1 = flagConversation.activities.items[1];
-        return spock.spark.flag.flag(flaggedActivity1)
+        return spock.spark.flag.create(flaggedActivity1)
           .then((flagResponse1) => {
             assert.equal(flagResponse1.state, `flagged`);
             return spock.spark.flag.archive(flagResponse1);
@@ -147,7 +147,7 @@ describe(`plugin-flag`, function() {
     describe(`#unflag()`, () => {
       it(`unflag the flag for an activity`, () => {
         const flaggedActivity1 = flagConversation.activities.items[1];
-        return spock.spark.flag.flag(flaggedActivity1)
+        return spock.spark.flag.create(flaggedActivity1)
           .then((flagResponse1) => {
             assert.equal(flagResponse1.state, `flagged`);
             return spock.spark.flag.unflag(flagResponse1);
