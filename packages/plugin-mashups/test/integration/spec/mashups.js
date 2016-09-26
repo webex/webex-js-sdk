@@ -94,45 +94,34 @@ describe(`plugin-mashups`, function() {
         });
     });
 
-    it(`retrieves integrations for a single room using a conversation object`, () => {
-      return spark.mashups.get(conversation)
+    it(`retrieves integrations for a single room using a conversation object`, () => spark.mashups.get(conversation)
         .then((integrations) => {
           assert.isArray(integrations.test);
           assert.equal(integrations.test.length, 1);
           assert.equal(integrations.test[0].roomId, conversation.id);
-        });
-    });
+        }));
 
-    it(`retrieves all integrations`, () => {
-      return spark.mashups.create({type: `test`, roomId: conversation.id})
-        .then(() => {
-          return spark.mashups.get({roomId: conversation.id})
-            .then((mashups) => {
-              assert.isArray(mashups.test);
-              assert.lengthOf(mashups.test, 2);
-              assert.equal(mashups.test[0].roomId, conversation.id);
-            });
-        });
-    });
+    it(`retrieves all integrations`, () => spark.mashups.create({type: `test`, roomId: conversation.id})
+        .then(() => spark.mashups.get({roomId: conversation.id})
+        .then((mashups) => {
+          assert.isArray(mashups.test);
+          assert.lengthOf(mashups.test, 2);
+          assert.equal(mashups.test[0].roomId, conversation.id);
+        })
+        ));
   });
 
   describe(`#list()`, () => {
-    it(`retrieves list of all integrations`, () => {
-      return spark.mashups.create({type: `test`, roomId: conversation.id})
-        .then(() => {
-          return spark.mashups.create({type: `test`, roomId: conversation.id})
-            .then(() => {
-              return spark.mashups.list({roomId: conversation.id})
-                .then((mashups) => {
-                  assert.isArray(mashups.test);
-                  // 2 from the previous tests and two from now (4)
-                  assert.lengthOf(mashups.test, 4);
-                  assert.equal(mashups.test[0].roomId, conversation.id);
-                });
-            });
-
-        });
-    });
+    it(`retrieves list of all integrations`, () => spark.mashups.create({type: `test`, roomId: conversation.id})
+        .then(() => spark.mashups.create({type: `test`, roomId: conversation.id})
+        .then(() => spark.mashups.list({roomId: conversation.id})
+        .then((mashups) => {
+          assert.isArray(mashups.test);
+          // 2 from the previous tests and two from now (4)
+          assert.lengthOf(mashups.test, 4);
+          assert.equal(mashups.test[0].roomId, conversation.id);
+        })
+    )));
   });
 
 });
