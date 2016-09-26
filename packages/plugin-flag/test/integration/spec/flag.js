@@ -72,7 +72,7 @@ describe(`plugin-flag`, function() {
     );
 
 
-    afterEach(() => spock.spark.flag.get()
+    afterEach(() => spock.spark.flag.list()
       .then((flags) => {
         flags.forEach((flag) => spock.spark.flag.delete(flag));
       })
@@ -90,7 +90,7 @@ describe(`plugin-flag`, function() {
 
     describe(`#list()`, () => {
       it(`fetches the flag list`, () => {
-        return spock.spark.flag.get()
+        return spock.spark.flag.list()
           .then((flagList) => {
             assert.isArray(flagList);
             assert.lengthOf(flagList, 0);
@@ -124,7 +124,7 @@ describe(`plugin-flag`, function() {
             assert.equal(flagResponse1.state, `flagged`);
             return spock.spark.flag.delete(flagResponse1);
           })
-          .then(() => spock.spark.flag.get())
+          .then(() => spock.spark.flag.list())
           .then((flagList) => {
             assert.isArray(flagList);
             assert.lengthOf(flagList, 0);
