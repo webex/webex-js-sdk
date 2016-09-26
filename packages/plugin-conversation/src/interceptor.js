@@ -102,7 +102,7 @@ export default class ConversationInterceptor extends Interceptor {
         }
 
         // required for plugin-flag multistatus object
-        if (options.resource === 'bulk_activities_fetch') {
+        if (options.resource === `bulk_activities_fetch`) {
           return true;
         }
 
