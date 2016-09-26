@@ -487,7 +487,7 @@ export default {
 
     return this.request({
       method: `POST`,
-      uri: `{this.config.samlUrl}/{$this.orgId}/v2/actions/GetBearerToken/invoke`,
+      uri: `${this.config.samlUrl}/${this.orgId}/v2/actions/GetBearerToken/invoke`,
       body: pick(this, `name`, `password`),
       shouldRefreshAccessToken: false
     })

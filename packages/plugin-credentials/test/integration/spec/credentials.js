@@ -41,7 +41,6 @@ describe(`plugin-credentials`, () => {
           assert.notEqual(spark.credentials.supertoken.access_token, supertoken);
           assert.isDefined(spark.credentials.userTokens.get(apiScope));
           assert.notEqual(spark.credentials.userTokens.get(apiScope).access_token, apiToken);
-          assert.isDefined(spark.credentials.userTokens.get(apiScope));
           assert.isDefined(spark.credentials.userTokens.get(`spark:kms`));
           assert.notEqual(spark.credentials.userTokens.get(`spark:kms`).access_token, supertoken);
         }));
@@ -65,6 +64,16 @@ describe(`plugin-credentials`, () => {
     });
 
     describe(`#requestClientCredentialsGrant()`, () => {
+      let spark;
+      beforeEach(() => {
+        spark = new CiscoSpark();
+      });
+
+      it(`exchanges oauth secrets for a client token`, () => spark.credentials.requestClientCredentialsGrant()
+        .then((token) => assert.isAccessToken(token)));
+    });
+
+    describe(`#requestSamlExtensionGrant()`, () => {
       let spark, user;
 
       beforeEach(() => testUsers.create({count: 1})
@@ -93,8 +102,12 @@ describe(`plugin-credentials`, () => {
         .catch(() => spark.machineAccount.delete(bot))
         .catch(() => spark.machineAccount.delete(bot)));
 
-      it(`exchanges oauth secrets for a client token`, () => sparkBot.credentials.requestClientCredentialsGrant(bot)
-        .then((token) => assert.isAccessToken(token)));
+      it(`exchanges oauth secrets for a client token`, () => sparkBot.credentials.requestSamlExtensionGrant(bot)
+        .then(() => {
+          assert.isTrue(sparkBot.canAuthorize);
+          assert.isTrue(sparkBot.credentials.canAuthorize);
+          assert.isTrue(sparkBot.credentials.canRefresh);
+        }));
     });
   });
 });

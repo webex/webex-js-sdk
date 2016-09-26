@@ -1,7 +1,7 @@
 /**!
  *
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
- * @
+ * @private
  */
 
 import '../..';
@@ -54,7 +54,8 @@ describe(`spark-core`, () => {
           contactEmail: user.email
         })
           .then((b) => {
-            // not addign to bots array because we're going to delete it as part of the test
+            // not adding to bots array because we're going to delete it as part
+            // of the test
             bot = b;
           }));
 

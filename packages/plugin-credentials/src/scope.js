@@ -33,7 +33,7 @@ export function filterScope(toFilter, scope) {
 
   return scope
     .split(` `)
-    .filter((item) => item !== `spark:kms`)
+    .filter((item) => item !== toFilter)
     .sort()
     .join(` `);
 }

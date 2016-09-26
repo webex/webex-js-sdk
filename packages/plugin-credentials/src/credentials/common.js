@@ -119,7 +119,7 @@ export default {
       }
     }, this);
 
-    // Some browser aparently don't parse nested querystrings very well, so
+    // Some browsers apparently don't parse nested querystrings very well, so
     // we'll additionally base64url-encode the state
     parameters.state = base64.toBase64Url(querystring.stringify(parameters.state));
     return `${this.config.oauth.authorizationUrl}?${querystring.stringify(parameters)}`;
@@ -182,7 +182,6 @@ export default {
 
   @waitForValue(`@`)
   logout() {
-    // TODO need to clear all storage
     return Promise.all(this.userTokens.map((token) => token.revoke()
       .catch((reason) => this.logger.warn(`credentials: token revocation failed for ${token.scope}, ignoring`, reason))))
       .then(() => this.userTokens.reset())
@@ -200,7 +199,6 @@ export default {
   @oneFlight
   @waitForValue(`@`)
   refresh() {
-    // TODO don't refresh unless necessary
     this.logger.info(`credentials: refresh requested`);
 
     const supertoken = this.supertoken;
@@ -323,10 +321,10 @@ export default {
    * rather than "machine accounts". See the developer portal for more
    * information.
    * @param {Object} options
-   * @param {Object} options.scope
-   * @param {Object} options.name
-   * @param {Object} options.orgId
-   * @param {Object} options.password
+   * @param {string} options.scope
+   * @param {string} options.name
+   * @param {string} options.orgId
+   * @param {string} options.password
    */
   @whileInFlight(`isAuthenticating`)
   @oneFlight
@@ -388,7 +386,7 @@ export default {
   /**
    * Converts a CI SAML Bearer Token to an OAuth Bearer Token.
    * @param {Object} options
-   * @param {Object} options.scope
+   * @param {string} options.scope
    * @param {Object} samlData Response body from the CI SAML endpoint.
    * @private
    * @return {Promise} Resolves with the bot's credentials.
@@ -411,7 +409,8 @@ export default {
 
     return this.spark.request({
       method: `POST`,
-      uri: this.config.tokenUrl,
+      service: `oauth`,
+      resource: `access_token`,
       form: {
         /* eslint camelcase: [0] */
         grant_type: `urn:ietf:params:oauth:grant-type:saml2-bearer`,
@@ -432,9 +431,9 @@ export default {
    * Retrieves a CI SAML Bearer Token
    * @private
    * @param {Object} options
-   * @param {Object} options.name
-   * @param {Object} options.orgId
-   * @param {Object} options.password
+   * @param {string} options.name
+   * @param {string} options.orgId
+   * @param {string} options.password
    * @return {Promise} Resolves with an Object containing a `BearerToken` and an
    * `AccountExpires`
    */
@@ -456,7 +455,8 @@ export default {
 
     return this.spark.request({
       method: `POST`,
-      uri: `{this.config.samlUrl}/${options.orgId}/v2/actions/GetBearerToken/invoke`,
+      service: `saml`,
+      resource: `${options.orgId}/v2/actions/GetBearerToken/invoke`,
       body: pick(options, `name`, `password`),
       shouldRefreshAccessToken: false
     })
