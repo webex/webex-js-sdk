@@ -44,7 +44,8 @@ module.exports = yeoman.Base.extend({
   writing: function writing() {
     this._applyTemplates({
       'src/__plugin__.js': 'src/' + this.pluginFileBaseName + '.js',
-      'src/_index.js': 'src/index.js'
+      'src/_index.js': 'src/index.js',
+      '_README.md': 'README.md'
     });
   }
 });

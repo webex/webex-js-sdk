@@ -116,13 +116,6 @@ module.exports = function(grunt) {
         },
         private: false
       },
-      md: {
-        src: './packages/<%= package %>/src/index.js',
-        options: {
-          filename: 'README.md',
-          format: 'md'
-        }
-      },
       json: {
         src: './packages/<%= package %>/src/index.js',
         options: {
@@ -333,12 +326,7 @@ module.exports = function(grunt) {
 
   registerTask('build', [
     'clean:dist',
-    'babel',
-    'documentation:md'
-  ]);
-
-  registerTask('doc', [
-    'documentation:md'
+    'babel'
   ]);
 
   registerTask('test:automation', [

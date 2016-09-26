@@ -54,7 +54,8 @@ module.exports = yeoman.Base.extend({
       'src/_index.js': 'src/index.js',
       'test/doteslintrc.yml': 'test/.eslintrc.yml',
       'test/_index.js': 'test/index.js',
-      '_package.json': 'package.json'
+      '_package.json': 'package.json',
+      '_README.md': 'README.md'
     });
   },
 
