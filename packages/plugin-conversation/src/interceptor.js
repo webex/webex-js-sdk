@@ -38,8 +38,7 @@ export default class ConversationInterceptor extends Interceptor {
           return options;
         }
 
-        return this.spark.conversation.outboundNormalizer.normalize(options.body)
-          .then((body) => this.spark.conversation.encrypter.encryptObject(body))
+        return this.spark.conversation.encrypter.encryptObject(options.body)
           .then((body) => {
             options.body = body;
             return options;
@@ -56,14 +55,21 @@ export default class ConversationInterceptor extends Interceptor {
   onResponse(options, response) {
     return this.shouldDecrypt(options, response)
       .then((shouldDecrypt) => {
+        console.log('@@@@@@ shouldDecrypt=', shouldDecrypt);
         if (!shouldDecrypt) {
           return response;
         }
 
-        const hasItems = Boolean(response.body.items);
+        console.log('@@@@@@ response.body=', JSON.stringify(response.body));
+        const hasItems = Boolean(response.body.items) || Boolean(response.body.multistatus);
+        console.log('@@@@@@ hasItems=', hasItems);
 
         return this.spark.conversation.decrypter.decryptObject(null, response.body)
-          .then((body) => this.spark.conversation.inboundNormalizer.normalize(hasItems ? body.items : body))
+          .then((body) => {
+            console.log('@@@@@@ body should now be decrypted=', JSON.stringify(body));
+            return (hasItems ? body.items || body.multistatus : body);
+            // return this.spark.conversation.normalizer.normalize(hasItems ? body.items || body.multistatus : body)
+          })
           .then((body) => {
             if (hasItems) {
               response.body.items = body;
@@ -83,6 +89,10 @@ export default class ConversationInterceptor extends Interceptor {
    * @returns {Promise<Object>}
    */
   shouldDecrypt(options, response) {
+    if (options.resource === 'bulk_activities_fetch') {
+      console.log('@@@@@@@ options=', options);
+      console.log('@@@@@@@ response.body=', JSON.stringify(response.body));
+    }
     return this.spark.device.isSpecificService(`conversation`, options.service || options.uri)
       .then((isConversationService) => {
         if (!isConversationService) {
@@ -98,6 +108,11 @@ export default class ConversationInterceptor extends Interceptor {
         }
 
         if (response.body.objectType) {
+          return true;
+        }
+
+        if (options.resource === 'bulk_activities_fetch') {
+          console.log('@@@@ now returning shouldDecrypt as true for bulk_activities_fetch');
           return true;
         }
 

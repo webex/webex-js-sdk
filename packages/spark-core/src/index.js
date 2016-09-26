@@ -40,7 +40,7 @@ export {
 export {
   SparkPluginStorage,
   Store,
-  MemoryStoreAdapter,
+  // MemoryStoreAdapter,
   persist,
   waitForValue
 } from './lib/storage';

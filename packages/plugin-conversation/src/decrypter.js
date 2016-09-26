@@ -13,12 +13,13 @@ import S from 'string';
  */
 const Decrypter = SparkPlugin.extend({
   /**
-   * Decrypts an object using the specified key
-   * @param {Object} key
-   * @param {Object} object
-   * @returns {Promise}
-   */
+  * Decrypts an object using the specified key
+  * @param {Object} key
+  * @param {Object} object
+  * @returns {Promise}
+  */
   decryptObject(key, object) {
+    console.log('@@@@@@ inside decryptObject key=', key, '  object=', JSON.stringify(object));
     if (!object) {
       object = key;
       key = undefined;
@@ -33,6 +34,13 @@ const Decrypter = SparkPlugin.extend({
         .then(() => object);
     }
 
+    if (isArray(object.multistatus)) {
+      console.log('@@@@@@ object.multistatus is an Array');
+      return Promise.all(object.multistatus.map((item) => this.decryptObject(key, item.data.activity)))
+        .then(() => object);
+    }
+
+    console.log('@@@@@@ now checking object.encryptionKeyUrl=', object.encryptionKeyUrl, '  in object=', JSON.stringify(object));
     if (object.encryptionKeyUrl) {
       key = object.encryptionKeyUrl;
     }
@@ -49,12 +57,12 @@ const Decrypter = SparkPlugin.extend({
   },
 
   /**
-   * @private
-   * @param {Object} property
-   * @param {Object} key
-   * @param {Object} object
-   * @returns {Promise}
-   */
+  * @private
+  * @param {Object} property
+  * @param {Object} key
+  * @param {Object} object
+  * @returns {Promise}
+  */
   decryptProperty(property, key, object) {
     if (!isString(property)) {
       return Promise.reject(new Error(`\`property\` is required`));
@@ -82,11 +90,11 @@ const Decrypter = SparkPlugin.extend({
   },
 
   /**
-   * @private
-   * @param {Object} key
-   * @param {Object} conversation
-   * @returns {Promise}
-   */
+  * @private
+  * @param {Object} key
+  * @param {Object} conversation
+  * @returns {Promise}
+  */
   decryptConversation(key, conversation) {
     let promises = [];
     if (conversation.activities.items) {
@@ -103,11 +111,11 @@ const Decrypter = SparkPlugin.extend({
   },
 
   /**
-   * @private
-   * @param {Object} key
-   * @param {Object} activity
-   * @returns {Promise}
-   */
+  * @private
+  * @param {Object} key
+  * @param {Object} activity
+  * @returns {Promise}
+  */
   decryptActivity(key, activity) {
     if (!activity.encryptionKeyUrl && !(activity.object && activity.object.encryptionKeyUrl)) {
       return Promise.resolve(activity);
@@ -118,11 +126,11 @@ const Decrypter = SparkPlugin.extend({
   },
 
   /**
-   * @private
-   * @param {Object} key
-   * @param {Object} comment
-   * @returns {Promise}
-   */
+  * @private
+  * @param {Object} key
+  * @param {Object} comment
+  * @returns {Promise}
+  */
   decryptComment(key, comment) {
     const promises = [];
 
@@ -138,11 +146,11 @@ const Decrypter = SparkPlugin.extend({
   },
 
   /**
-   * @private
-   * @param {Object} key
-   * @param {Object} content
-   * @returns {Promise}
-   */
+  * @private
+  * @param {Object} key
+  * @param {Object} content
+  * @returns {Promise}
+  */
   decryptContent(key, content) {
     const promises = content.files.items.map((item) => this.decryptObject(key, item));
     promises.push(this.decryptComment(key, content));
@@ -151,11 +159,11 @@ const Decrypter = SparkPlugin.extend({
   },
 
   /**
-   * @private
-   * @param {Object} key
-   * @param {Object} event
-   * @returns {Promise}
-   */
+  * @private
+  * @param {Object} key
+  * @param {Object} event
+  * @returns {Promise}
+  */
   decryptEvent(key, event) {
     const promises = [
       this.decryptProperty(`displayName`, key, event)
@@ -169,11 +177,11 @@ const Decrypter = SparkPlugin.extend({
   },
 
   /**
-   * @private
-   * @param {Object} key
-   * @param {Object} file
-   * @returns {Promise}
-   */
+  * @private
+  * @param {Object} key
+  * @param {Object} file
+  * @returns {Promise}
+  */
   decryptFile(key, file) {
     let promises = [];
 
@@ -196,21 +204,21 @@ const Decrypter = SparkPlugin.extend({
   },
 
   /**
-   * @private
-   * @param {Object} key
-   * @param {Object} transcodedContent
-   * @returns {Promise}
-   */
+  * @private
+  * @param {Object} key
+  * @param {Object} transcodedContent
+  * @returns {Promise}
+  */
   decryptTranscodedContent(key, transcodedContent) {
     return Promise.all(transcodedContent.files.items.map((item) => this.decryptObject(key, item)));
   },
 
   /**
-   * @private
-   * @param {Object} key
-   * @param {Object} imageURI
-   * @returns {Promise}
-   */
+  * @private
+  * @param {Object} key
+  * @param {Object} imageURI
+  * @returns {Promise}
+  */
   decryptImageURI(key, imageURI) {
     if (imageURI.location) {
       return this.decryptProperty(`location`, key, imageURI);
@@ -219,41 +227,41 @@ const Decrypter = SparkPlugin.extend({
   },
 
   /**
-   * @private
-   * @param {Object} key
-   * @param {Object} displayName
-   * @returns {Promise}
-   */
+  * @private
+  * @param {Object} key
+  * @param {Object} displayName
+  * @returns {Promise}
+  */
   decryptPropDisplayName(key, displayName) {
     return this.spark.encryption.decryptText(key, displayName);
   },
 
   /**
-   * @private
-   * @param {Object} key
-   * @param {Object} content
-   * @returns {Promise}
-   */
+  * @private
+  * @param {Object} key
+  * @param {Object} content
+  * @returns {Promise}
+  */
   decryptPropContent(key, content) {
     return this.spark.encryption.decryptText(key, content);
   },
 
   /**
-   * @private
-   * @param {Object} key
-   * @param {Object} scr
-   * @returns {Promise}
-   */
+  * @private
+  * @param {Object} key
+  * @param {Object} scr
+  * @returns {Promise}
+  */
   decryptPropScr(key, scr) {
     return this.spark.encryption.decryptScr(key, scr);
   },
 
   /**
-   * @private
-   * @param {Object} key
-   * @param {Object} location
-   * @returns {Promise}
-   */
+  * @private
+  * @param {Object} key
+  * @param {Object} location
+  * @returns {Promise}
+  */
   decryptPropLocation(key, location) {
     return this.spark.encryption.decryptText(key, location);
   }
