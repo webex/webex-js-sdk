@@ -60,11 +60,10 @@ export default function runAbstractStorageAdapterSpec(adapter) {
                 .then((b) => {
                   const primitive2 = 2;
                   b.put(key, primitive2)
-                    .then(() => {
-                      const assert1 = assert.becomes(value, primitive);
-                      const assert2 = assert.becomes(b.get(key), primitive2);
-                      return assert1 && assert2;
-                    });
+                    .then(() => Promise.all([
+                      assert.becomes(value, primitive),
+                      assert.becomes(b.get(key), primitive2)
+                    ]));
                 });
             });
         });
