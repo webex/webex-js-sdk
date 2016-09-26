@@ -55,20 +55,13 @@ export default class ConversationInterceptor extends Interceptor {
   onResponse(options, response) {
     return this.shouldDecrypt(options, response)
       .then((shouldDecrypt) => {
-        console.log('@@@@@@ shouldDecrypt=', shouldDecrypt);
         if (!shouldDecrypt) {
           return response;
         }
 
-        console.log('@@@@@@ response.body=', JSON.stringify(response.body));
         const hasItems = Boolean(response.body.items);
-        console.log('@@@@@@ hasItems=', hasItems);
 
         return this.spark.conversation.decrypter.decryptObject(null, response.body)
-          .then(function(body) {
-            console.log('@@@@@@@@@ body should now be decrypted= ', JSON.stringify(body));
-            return body;
-          })
           .then((body) => this.spark.conversation.inboundNormalizer.normalize(hasItems ? body.items : body))
           .then((body) => {
             return (hasItems ? body.items : body);
@@ -92,10 +85,6 @@ export default class ConversationInterceptor extends Interceptor {
    * @returns {Promise<Object>}
    */
   shouldDecrypt(options, response) {
-    if (options.resource === 'bulk_activities_fetch') {
-      console.log('@@@@@@@ options=', options);
-      console.log('@@@@@@@ response.body=', JSON.stringify(response.body));
-    }
     return this.spark.device.isSpecificService(`conversation`, options.service || options.uri)
       .then((isConversationService) => {
         if (!isConversationService) {
@@ -114,8 +103,8 @@ export default class ConversationInterceptor extends Interceptor {
           return true;
         }
 
+        // required for plugin-flag multistatus object
         if (options.resource === 'bulk_activities_fetch') {
-          console.log('@@@@ now returning shouldDecrypt as true for bulk_activities_fetch');
           return true;
         }
 

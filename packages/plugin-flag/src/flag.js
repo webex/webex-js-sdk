@@ -106,7 +106,6 @@ const Flag = SparkPlugin.extend({
   * TODO: this should be implemented as a batched request when migrating to the modular sdk
   */
   mapToActivities(flags) {
-    console.log('@@@@@@@@ inside mapToActivities');
     const activityUrls = map(flags, `flag-item`);
 
     const params = {
@@ -120,14 +119,12 @@ const Flag = SparkPlugin.extend({
 
     return this.spark.request(params)
       .then((res) => {
-        console.log('@@@@@@ Decrupted response res=', JSON.stringify(res));
         let activitiesArr = [];
         res.body.multistatus.forEach((statusData) => {
           if (statusData.status === `200`) {
             activitiesArr.push(statusData.data.activity);
           }
         });
-        console.log('@@@@@@ activitiesArr=', JSON.stringify(activitiesArr));
         return activitiesArr;
       });
   },

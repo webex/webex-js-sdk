@@ -82,14 +82,10 @@ describe(`plugin-flag`, function() {
         assert.equal(comments[3], 'Yes, I am in.');
         flagConversation = conversation;
       })
-      .then(() => {
-        console.log('@@@@@@@ before each completed');
-      })
     );
 
 
     afterEach(() => {
-      console.log('@@@@@@@ Now executing afterEach()');
       return spock.spark.flag.list()
         .then((flags) => {
           flags.forEach((flag) => {
@@ -127,10 +123,8 @@ describe(`plugin-flag`, function() {
             assert.equal(flagResponse1.state, 'flagged');
             let flags = [];
             flags.push(flagResponse1);
-            console.log('@@@@@ now calling mapToActivities');
             return spock.spark.flag.mapToActivities(flags)
               .then((activities) => {
-                console.log('@@@@@ activities = ', JSON.stringify(activities));
                 const activity = activities[0];
                 assert.equal(activity.object.displayName, 'Hey! I am doing well. How are you?');
                 assert.isDefined(find(activities, {url: flagResponse1['flag-item']}));

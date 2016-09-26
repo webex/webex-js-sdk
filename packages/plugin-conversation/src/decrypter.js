@@ -19,7 +19,6 @@ const Decrypter = SparkPlugin.extend({
    * @returns {Promise}
    */
   decryptObject(key, object) {
-    console.log('@@@@@@ inside decryptObject key=', key, '  object=', JSON.stringify(object));
     if (!object) {
       object = key;
       key = undefined;
@@ -35,12 +34,10 @@ const Decrypter = SparkPlugin.extend({
     }
 
     if (isArray(object.multistatus)) {
-      console.log('@@@@@@ object.multistatus is an Array');
       return Promise.all(object.multistatus.map((item) => this.decryptObject(key, item.data.activity)))
         .then(() => object);
     }
 
-    console.log('@@@@@@ now checking object.encryptionKeyUrl=', object.encryptionKeyUrl, '  in object=', JSON.stringify(object));
     if (object.encryptionKeyUrl) {
       key = object.encryptionKeyUrl;
     }
