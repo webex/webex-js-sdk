@@ -2,7 +2,7 @@
   "name": "@ciscospark/plugin-mercury",
   "version": "0.7.0-alpha",
   "description": "",
-  "main": "dist/index.js",
+  "main": "src/index.js",
   "devMain": "src/index.js",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
   "license": "(Apache-2.0)",

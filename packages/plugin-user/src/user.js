@@ -95,7 +95,7 @@ const User = SparkPlugin.extend({
    * @param {boolean} options.create
    * @returns {Promise<string>}
    */
-  @oneFlight({keyFactory: (email, options) => email + String(options.create)})
+  @oneFlight({keyFactory: (email, options) => email + String(options && options.create)})
   getUUID(email, options) {
     return this.store.getByEmail(email)
       .then((user) => {
