@@ -17,9 +17,6 @@ const Flag = SparkPlugin.extend({
   * @returns {Promise<Object>} Resolves with the flag archival
   */
   archive(flag, options) {
-    if (!flag.id) {
-      return Promise.reject(new Error(`\`flag.id\` is required`));
-    }
     options = options || {};
     const params = {
       method: `PUT`,
@@ -118,9 +115,6 @@ const Flag = SparkPlugin.extend({
   * @returns {Promise<Object>} Resolves with the flag deletion
   */
   remove(flag, options) {
-    if (!flag.id) {
-      return Promise.reject(new Error(`\`flag.id\` is required`));
-    }
     options = options || {};
     const params = {
       method: `DELETE`,
@@ -139,9 +133,6 @@ const Flag = SparkPlugin.extend({
   * @returns {Promise<Object>} Resolves with the flag removal
   */
   unflag(flag, options) {
-    if (!flag.id) {
-      return Promise.reject(new Error(`\`flag.id\` is required`));
-    }
     options = options || {};
     const params = {
       method: `PUT`,
