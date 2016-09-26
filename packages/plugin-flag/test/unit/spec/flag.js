@@ -25,24 +25,6 @@ describe(`plugin-flag`, () => {
       });
     });
 
-    describe(`#unflag()`, () => {
-      it(`requires a Flag Id`, () => {
-        return assert.isRejected(spark.flag.unflag({}, {}), /`flag.id` is required/);
-      });
-    });
-
-    describe(`#archive()`, () => {
-      it(`requires a Flag Id`, () => {
-        return assert.isRejected(spark.flag.archive({}, {}), /`flag.id` is required/);
-      });
-    });
-
-    describe(`#remove()`, () => {
-      it(`requires a Flag Id`, () => {
-        return assert.isRejected(spark.flag.remove({}, {}), /`flag.id` is required/);
-      });
-    });
-
   });
 
 });
