@@ -28,29 +28,23 @@ const Decrypter = SparkPlugin.extend({
       return Promise.resolve();
     }
 
-    if (isArray(object)) {
-      return Promise.all(object.map((item) => this.decryptObject(key, item)))
-        .then(() => object);
-    }
+    return this.handleArrayObject(key, object)
+      .then(() => {
+        if (object.encryptionKeyUrl) {
+          key = object.encryptionKeyUrl;
+        }
 
-    if (isArray(object.multistatus)) {
-      return Promise.all(object.multistatus.map((item) => this.decryptObject(key, item.data.activity)))
-        .then(() => object);
-    }
+        if (object.objectType) {
+          const methodName = S(`decrypt_${object.objectType}`).camelize().s;
+          if (isFunction(this[methodName])) {
+            return this[methodName](key, object)
+              .then(() => object);
+          }
+        }
 
-    if (object.encryptionKeyUrl) {
-      key = object.encryptionKeyUrl;
-    }
+        return Promise.resolve(object);
+      });
 
-    if (object.objectType) {
-      const methodName = S(`decrypt_${object.objectType}`).camelize().s;
-      if (isFunction(this[methodName])) {
-        return this[methodName](key, object)
-          .then(() => object);
-      }
-    }
-
-    return Promise.resolve(object);
   },
 
   /**
@@ -261,7 +255,27 @@ const Decrypter = SparkPlugin.extend({
    */
   decryptPropLocation(key, location) {
     return this.spark.encryption.decryptText(key, location);
+  },
+
+  /**
+   * Decrypts an object using the specified key
+   * @param {Object} key
+   * @param {Object} object
+   * @returns {Promise}
+   */
+  handleArrayObject(key, object) {
+    if (isArray(object)) {
+      return Promise.all(object.map((item) => this.decryptObject(key, item)))
+        .then(() => object);
+    }
+
+    if (isArray(object.multistatus)) {
+      return Promise.all(object.multistatus.map((item) => this.decryptObject(key, item.data.activity)))
+        .then(() => object);
+    }
+    return Promise.resolve(object);
   }
+
 });
 
 export default Decrypter;
