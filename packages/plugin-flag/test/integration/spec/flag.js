@@ -9,7 +9,6 @@ import {assert} from '@ciscospark/test-helper-chai';
 import conversation from '@ciscospark/plugin-conversation';
 import CiscoSpark from '@ciscospark/spark-core';
 import {map, find} from 'lodash';
-import sinon from '@ciscospark/test-helper-sinon';
 import testUsers from '@ciscospark/test-helper-test-users';
 
 describe(`plugin-flag`, function() {
