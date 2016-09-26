@@ -279,7 +279,7 @@ describe('Services', function() {
         assert.deepEqual(spark.board.parseLinkHeaders(linkHeader), {});
       });
 
-      it('returns object contiaining one link if only one link header passed as a string', function() {
+      it('returns object containing one link if only one link header passed as a string', function() {
         var linkHeader = '<https://www.cisco.com>; rel=cisco';
         assert.deepEqual(spark.board.parseLinkHeaders(linkHeader), {
           cisco: 'https://www.cisco.com'
