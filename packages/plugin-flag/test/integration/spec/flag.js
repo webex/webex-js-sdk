@@ -6,15 +6,15 @@
 import '../..';
 
 import {assert} from '@ciscospark/test-helper-chai';
-import conversation from '@ciscospark/plugin-conversation';
 import CiscoSpark from '@ciscospark/spark-core';
+import '@ciscospark/plugin-conversation';
 import {map, find} from 'lodash';
 import testUsers from '@ciscospark/test-helper-test-users';
 
 describe(`plugin-flag`, function() {
-  this.timeout(45000);
+  this.timeout(60000);
   describe(`Flag`, () => {
-    let mccoy, spock, participants, flagConversation;
+    let flagConversation, mccoy, participants, spock;
 
     beforeEach(() => testUsers.create({count: 2})
       .then((users) => {
@@ -34,15 +34,15 @@ describe(`plugin-flag`, function() {
       .then(() => mccoy.spark.device.register())
       .then(() => {
         return spock.spark.conversation.create({
-          displayName: 'Test Flagging Room',
+          displayName: `Test Flagging Room`,
           participants
-        })
+        });
       })
       .then((c) => {
         flagConversation = c;
         return mccoy.spark.conversation.post(flagConversation, {
           displayName: `Hi Dear, How are you?`
-        })
+        });
       })
       .then(() => {
         return spock.spark.conversation.post(flagConversation, {
@@ -72,13 +72,13 @@ describe(`plugin-flag`, function() {
       })
       .then((conversation) => {
         // Removes the "create" activity.
-        conversation.activities.items.shift(); // shift to get rid of the create activity at the top
-        const comments = map(conversation.activities.items, 'object.displayName');
+        conversation.activities.items.shift();
+        const comments = map(conversation.activities.items, `object.displayName`);
         assert.lengthOf(comments, 4);
-        assert.equal(comments[0], 'Hi Dear, How are you?');
-        assert.equal(comments[1], 'Hey! I am doing well. How are you?');
-        assert.equal(comments[2], 'I am also doing well. Are you in for the party?');
-        assert.equal(comments[3], 'Yes, I am in.');
+        assert.equal(comments[0], `Hi Dear, How are you?`);
+        assert.equal(comments[1], `Hey! I am doing well. How are you?`);
+        assert.equal(comments[2], `I am also doing well. Are you in for the party?`);
+        assert.equal(comments[3], `Yes, I am in.`);
         flagConversation = conversation;
       })
     );
@@ -93,19 +93,19 @@ describe(`plugin-flag`, function() {
         });
     });
 
-    describe('#flag()', () => {
-      it('flags the activity', () => {
+    describe(`#flag()`, () => {
+      it(`flags the activity`, () => {
         assert(true);
-        const flaggedActivity1 =  flagConversation.activities.items[1];
+        const flaggedActivity1 = flagConversation.activities.items[1];
         return spock.spark.flag.flag(flaggedActivity1)
           .then((flagResponse1) => {
-            assert.equal(flagResponse1.state, 'flagged');
+            assert.equal(flagResponse1.state, `flagged`);
           });
       });
     });
 
-    describe('#list()', () => {
-      it('fetches the flag list', () => {
+    describe(`#list()`, () => {
+      it(`fetches the flag list`, () => {
         return spock.spark.flag.list()
           .then((flagList) => {
             assert.isArray(flagList);
@@ -114,30 +114,30 @@ describe(`plugin-flag`, function() {
       });
     });
 
-    describe.only('#mapToActivities()', () => {
-      it('maps flags to activity', () => {
-        const flaggedActivity1 =  flagConversation.activities.items[1];
+    describe(`#mapToActivities()`, () => {
+      it(`maps flags to activity`, () => {
+        const flaggedActivity1 = flagConversation.activities.items[1];
         return spock.spark.flag.flag(flaggedActivity1)
           .then((flagResponse1) => {
-            assert.equal(flagResponse1.state, 'flagged');
-            let flags = [];
+            assert.equal(flagResponse1.state, `flagged`);
+            const flags = [];
             flags.push(flagResponse1);
             return spock.spark.flag.mapToActivities(flags)
               .then((activities) => {
                 const activity = activities[0];
-                assert.equal(activity.object.displayName, 'Hey! I am doing well. How are you?');
+                assert.equal(activity.object.displayName, `Hey! I am doing well. How are you?`);
                 assert.isDefined(find(activities, {url: flagResponse1['flag-item']}));
               });
           });
       });
     });
 
-    describe('#remove()', () => {
-      it('removes the flag from activity', () => {
-        const flaggedActivity1 =  flagConversation.activities.items[1];
+    describe(`#remove()`, () => {
+      it(`removes the flag from activity`, () => {
+        const flaggedActivity1 = flagConversation.activities.items[1];
         return spock.spark.flag.flag(flaggedActivity1)
           .then((flagResponse1) => {
-            assert.equal(flagResponse1.state, 'flagged');
+            assert.equal(flagResponse1.state, `flagged`);
             return spock.spark.flag.remove(flagResponse1);
           })
           .then(() => spock.spark.flag.list())
@@ -148,30 +148,30 @@ describe(`plugin-flag`, function() {
       });
     });
 
-    describe('#archive()', () => {
-      it('archives the flag for an activity', () => {
-        const flaggedActivity1 =  flagConversation.activities.items[1];
+    describe(`#archive()`, () => {
+      it(`archives the flag for an activity`, () => {
+        const flaggedActivity1 = flagConversation.activities.items[1];
         return spock.spark.flag.flag(flaggedActivity1)
           .then((flagResponse1) => {
-            assert.equal(flagResponse1.state, 'flagged');
+            assert.equal(flagResponse1.state, `flagged`);
             return spock.spark.flag.archive(flagResponse1);
           })
           .then((response) => {
-            assert.equal(response.state, 'archived');
+            assert.equal(response.state, `archived`);
           });
       });
     });
 
-    describe('#unflag()', () => {
-      it('unflag the flag for an activity', () => {
-        const flaggedActivity1 =  flagConversation.activities.items[1];
+    describe(`#unflag()`, () => {
+      it(`unflag the flag for an activity`, () => {
+        const flaggedActivity1 = flagConversation.activities.items[1];
         return spock.spark.flag.flag(flaggedActivity1)
           .then((flagResponse1) => {
-            assert.equal(flagResponse1.state, 'flagged');
+            assert.equal(flagResponse1.state, `flagged`);
             return spock.spark.flag.unflag(flagResponse1);
           })
           .then((response) => {
-            assert.equal(response.state, 'unflagged');
+            assert.equal(response.state, `unflagged`);
           });
       });
     });

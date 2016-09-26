@@ -34,6 +34,7 @@ const Flag = SparkPlugin.extend({
   /**
   * Archive a flag
   * @param {Object} flag
+  * @param {Object} options
   * @returns {Promise<Object>} Resolves with the flag archival
   */
   archive(flag, options) {
@@ -57,6 +58,7 @@ const Flag = SparkPlugin.extend({
   /**
   * Flags an activity
   * @param {Object} activity
+  * @param {Object} options
   * @returns {Promise<Object>} Resolves with the flag creation
   */
   flag(activity, options) {
@@ -81,6 +83,7 @@ const Flag = SparkPlugin.extend({
 
   /**
   * Gets a list of Flags for a user
+  * @param {Object} options
   * @returns {Promise} Resolves with the fetched flags
   */
   list(options) {
@@ -119,7 +122,7 @@ const Flag = SparkPlugin.extend({
 
     return this.spark.request(params)
       .then((res) => {
-        let activitiesArr = [];
+        const activitiesArr = [];
         res.body.multistatus.forEach((statusData) => {
           if (statusData.status === `200`) {
             activitiesArr.push(statusData.data.activity);
@@ -132,11 +135,12 @@ const Flag = SparkPlugin.extend({
   /**
   * Delete a flag
   * @param {Object} flag
+  * @param {Object} options
   * @returns {Promise<Object>} Resolves with the flag deletion
   */
   remove(flag, options) {
     if (!flag.id) {
-      return Promise.reject(new Error('`flag.id` is required'));
+      return Promise.reject(new Error(`\`flag.id\` is required`));
     }
     options = options || {};
     const params = {
@@ -152,6 +156,7 @@ const Flag = SparkPlugin.extend({
   /**
   * UnFlags an activity
   * @param {Object} flag
+  * @param {Object} options
   * @returns {Promise<Object>} Resolves with the flag removal
   */
   unflag(flag, options) {
