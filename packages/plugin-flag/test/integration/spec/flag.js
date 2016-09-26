@@ -126,7 +126,7 @@ describe(`plugin-flag`, function() {
               .then((activities) => {
                 const activity = activities[0];
                 assert.equal(activity.object.displayName, `Hey! I am doing well. How are you?`);
-                assert.isDefined(find(activities, {url: flagResponse1['flag-item']}));
+                assert.isDefined(find(activities, {url: flagResponse1[`flag\-item`]}));
               });
           });
       });
