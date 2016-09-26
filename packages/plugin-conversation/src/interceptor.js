@@ -61,14 +61,17 @@ export default class ConversationInterceptor extends Interceptor {
         }
 
         console.log('@@@@@@ response.body=', JSON.stringify(response.body));
-        const hasItems = Boolean(response.body.items) || Boolean(response.body.multistatus);
+        const hasItems = Boolean(response.body.items);
         console.log('@@@@@@ hasItems=', hasItems);
 
         return this.spark.conversation.decrypter.decryptObject(null, response.body)
+          .then(function(body) {
+            console.log('@@@@@@@@@ body should now be decrypted= ', JSON.stringify(body));
+            return body;
+          })
+          .then((body) => this.spark.conversation.inboundNormalizer.normalize(hasItems ? body.items : body))
           .then((body) => {
-            console.log('@@@@@@ body should now be decrypted=', JSON.stringify(body));
-            return (hasItems ? body.items || body.multistatus : body);
-            // return this.spark.conversation.normalizer.normalize(hasItems ? body.items || body.multistatus : body)
+            return (hasItems ? body.items : body);
           })
           .then((body) => {
             if (hasItems) {

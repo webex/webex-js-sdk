@@ -27,8 +27,15 @@ const Normalizer = SparkPlugin.extend({
    * @returns {Promise}
    */
   normalize(object) {
+    console.log('@@@@@@@@ inside normalize object=', JSON.stringify(object));
     if (isArray(object)) {
       return Promise.all(object.map((o) => this.normalize(o)))
+        .then(() => object);
+    }
+
+    if (isArray(object.multistatus)) {
+      console.log('@@@@@@ object.multistatus is an Array');
+      return Promise.all(object.multistatus.map((o) => this.normalize(o.data.activity)))
         .then(() => object);
     }
 
