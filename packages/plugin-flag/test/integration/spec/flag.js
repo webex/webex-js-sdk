@@ -80,7 +80,6 @@ describe(`plugin-flag`, function() {
 
     describe(`#flag()`, () => {
       it(`flags the activity`, () => {
-        assert(true);
         const flaggedActivity1 = flagConversation.activities.items[1];
         return spock.spark.flag.flag(flaggedActivity1)
           .then((flagResponse1) => {
