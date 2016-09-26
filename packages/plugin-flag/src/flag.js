@@ -10,27 +10,6 @@ import {SparkPlugin} from '@ciscospark/spark-core';
 const Flag = SparkPlugin.extend({
   namespace: `Flag`,
 
-  session: {
-    connected: {
-      default: false,
-      type: `boolean`
-    },
-    connecting: {
-      default: false,
-      type: `boolean`
-    },
-    socket: `object`
-  },
-
-  derived: {
-    listening: {
-      deps: [`connected`],
-      fn() {
-        return this.connected;
-      }
-    }
-  },
-
   /**
   * Archive a flag
   * @param {Object} flag
