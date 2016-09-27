@@ -6,7 +6,7 @@
 export default {
   device: {
     preDiscoveryServices: {
-      atlasServiceUrl: process.env.ATLAS_SERVICE_URL || 'https://atlas-a.wbx2.com/admin/api/v1'
+      atlasServiceUrl: process.env.ATLAS_SERVICE_URL || `https://atlas-a.wbx2.com/admin/api/v1`
     }
   },
   support: {

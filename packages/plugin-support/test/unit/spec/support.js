@@ -8,11 +8,8 @@ import '../..';
 
 import {assert} from '@ciscospark/test-helper-chai';
 import CiscoSpark from '@ciscospark/spark-core';
-import {defaults, includes} from 'lodash';
 import fh from '@ciscospark/test-helper-file';
 import testUsers from '@ciscospark/test-helper-test-users';
-import uuid from 'uuid';
-
 
 describe(`plugin-support`, function() {
   this.timeout(20000);
@@ -39,15 +36,13 @@ describe(`plugin-support`, function() {
       });
     }));
 
-
   describe(`#_constructFileMetadata()`, () => {
     it(`constructs a sample File Meta Data`, () => {
-      spark.client = {trackingIdBase : '8675309'};
-      let contructedMetaData = [{key: `8675309`, value: `8675309`}];
-      let result = spark.support._constructFileMetadata({});
+      spark.client = {trackingIdBase: `8675309`};
+      const result = spark.support._constructFileMetadata({});
       assert.equal(result.length, 1);
-      assert.equal(result[0].key, 'trackingId');
-      assert.equal(result[0].value, 'spark-js-sdk_8675309');
+      assert.equal(result[0].key, `trackingId`);
+      assert.equal(result[0].value, `spark-js-sdk_8675309`);
     });
   });
 

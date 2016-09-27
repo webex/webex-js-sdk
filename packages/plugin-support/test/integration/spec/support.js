@@ -8,10 +8,8 @@ import '../..';
 
 import {assert} from '@ciscospark/test-helper-chai';
 import CiscoSpark from '@ciscospark/spark-core';
-import {defaults, includes} from 'lodash';
 import fh from '@ciscospark/test-helper-file';
 import testUsers from '@ciscospark/test-helper-test-users';
-import uuid from 'uuid';
 
 
 describe(`plugin-support`, function() {
@@ -44,13 +42,13 @@ describe(`plugin-support`, function() {
       return spark.support.submitLogs({}, sampleTextOne)
         .then((body) => {
           // Not sure what to assert here.
-          // In the case of an authorized user, the body shouldn't be returned
+          // In the case of an authorized user, the body should be empty {}
           console.log(body);
-          assert.equal(body, undefined);
-      });
+          assert.isDefined(body);
+        });
     });
 
-    it(`uploads call logs for unAuthUser @atlas and returns the userId`, function() {
+    it(`uploads call logs for unAuthUser @atlas and returns the userId`, () => {
       spark = new CiscoSpark({});
       return spark.support.submitLogs({}, sampleTextOne)
         .then((body) => {
