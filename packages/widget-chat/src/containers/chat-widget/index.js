@@ -1,9 +1,11 @@
 import React, {Component, PropTypes} from 'react';
 import {connect} from 'react-redux';
+import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 
 import ConnectionStatus from '../../components/connection-status';
 import ActivityTitle from '../../components/activity-title';
+import {fetchUser} from '../../actions/user';
 import styles from './styles.css';
 
 import injectSpark from '../../modules/redux-spark/inject-spark';
@@ -15,7 +17,14 @@ import injectSpark from '../../modules/redux-spark/inject-spark';
  * @class ChatWidget
  * @extends {React.Component}
  */
-class ChatWidget extends Component {
+export class ChatWidget extends Component {
+
+  componentDidMount() {
+    const props = this.props;
+    if (!props.user) {
+      fetchUser(props.userId);
+    }
+  }
 
   shouldComponentUpdate() {
     return false;
@@ -41,32 +50,14 @@ class ChatWidget extends Component {
 }
 
 ChatWidget.propTypes = {
-  dispatch: PropTypes.func.isRequired,
-  isFetching: PropTypes.bool.isRequired,
+  fetchUser: PropTypes.func.isRequired,
   spark: React.PropTypes.object.isRequired,
-  user: PropTypes.object.isRequired,
   userId: PropTypes.string.isRequired
 };
 
-function mapStateToProps(state, ownProps) {
-  const {user} = state;
-  const {
-    isFetching,
-    item
-  } = user || {
-    isFetching: true,
-    item: []
-  };
-
-  return Object.assign({}, state.spark, {
-    user,
-    isFetching,
-    item,
-    userId: ownProps.userId,
-    spark: ownProps.spark
-  });
-}
-
 export default connect(
-  mapStateToProps
+  (state) => state.spark,
+  (dispatch) => bindActionCreators({
+    fetchUser
+  }, dispatch)
 )(injectSpark(ChatWidget));
