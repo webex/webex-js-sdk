@@ -6,6 +6,15 @@ export function updateSparkState(state) {
   };
 }
 
+export function registerDevice(spark) {
+  return (dispatch) => {
+    spark.device.register()
+      .then(dispatch(updateSparkState({
+        authenticated: true, authenticating: false
+      })));
+  };
+}
+
 export function connectToMercury(spark) {
   return (dispatch) => {
     spark.mercury.connect()
