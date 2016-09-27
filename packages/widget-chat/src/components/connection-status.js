@@ -1,12 +1,11 @@
 import React from 'react';
 
-export default function ConnectionStatus(props) {
+export default function ConnectionStatus({connected, connecting}) {
   let message;
-
-  if (props.spark.mercury.connected) {
+  if (connected) {
     message = `connected`;
   }
-  else if (props.spark.mercury.connecting) {
+  else if (connecting) {
     message = `connecting`;
   }
   else {
@@ -17,5 +16,6 @@ export default function ConnectionStatus(props) {
 }
 
 ConnectionStatus.propTypes = {
-  spark: React.PropTypes.object.isRequired
+  connected: React.PropTypes.bool.isRequired,
+  connecting: React.PropTypes.bool.isRequired
 };
