@@ -30,7 +30,7 @@ describe(`plugin-support`, function() {
       ] = res;
     }));
 
-  beforeEach(() => testUsers.create({count: 1})
+  before(() => testUsers.create({count: 1})
     .then((users) => {
       spark = new CiscoSpark({
         credentials: {
@@ -39,25 +39,15 @@ describe(`plugin-support`, function() {
       });
     }));
 
-  describe(`#submitLogs()`, () => {
-    it(`uploads logs for authUser`, () => {
-      return spark.support.submitLogs({}, sampleTextOne)
-        .then((body) => {
-          // Not sure what to assert here.
-          // In the case of an authorized user, the body shouldn't be returned
-          console.log(body);
-          assert.equal(body, undefined);
-      });
-    });
 
-    it(`uploads call logs for unAuthUser @atlas and returns the userId`, function() {
-      spark = new CiscoSpark({});
-      return spark.support.submitLogs({}, sampleTextOne)
-        .then((body) => {
-          assert.isDefined(body);
-          assert.isDefined(body.url);
-          assert.isDefined(body.userId);
-        });
+  describe(`#_constructFileMetadata()`, () => {
+    it(`constructs a sample File Meta Data`, () => {
+      spark.client = {trackingIdBase : '8675309'};
+      let contructedMetaData = [{key: `8675309`, value: `8675309`}];
+      let result = spark.support._constructFileMetadata({});
+      assert.equal(result.length, 1);
+      assert.equal(result[0].key, 'trackingId');
+      assert.equal(result[0].value, 'spark-js-sdk_8675309');
     });
   });
 

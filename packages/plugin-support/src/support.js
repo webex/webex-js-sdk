@@ -12,32 +12,6 @@ import uuid from 'uuid';
 const Support = SparkPlugin.extend({
   namespace: `Support`,
 
-  _constructFileMetadata(metadata) {
-    let metadataArray = [];
-    let client = this.spark.client || {};
-    let trackingId = client.trackingIdBase;
-
-    if (this.spark.config.trackingIdPrefix) {
-      trackingId = `${this.spark.config.trackingIdPrefix}_${client.trackingIdBase}`;
-    }
-
-    [`locusId`, `callStart`, `feedbackId`].forEach(function addKeyToArray(key) {
-      if (metadata[key]) {
-        metadataArray.push({
-          key: key,
-          value: metadata[key]
-        });
-      }
-    });
-
-    metadataArray.push({
-      key: `trackingId`,
-      value: trackingId
-    });
-
-    return metadataArray;
-  },
-
   getFeedbackUrl(options) {
     options = options || {};
     return this.request({
@@ -66,7 +40,7 @@ const Support = SparkPlugin.extend({
       .then((res) => res.body.url);
   },
 
-  submitCallLogs(metadata, logs) {
+  submitLogs(metadata, logs) {
     let userId, filename, shouldAttemptReauth, headers = {};
     let metadataArray = this._constructFileMetadata(metadata);
     logs = logs || this.logger._buffer.join(`\n`);
@@ -133,6 +107,32 @@ const Support = SparkPlugin.extend({
         return body;
       }
     });
+  },
+
+  _constructFileMetadata(metadata) {
+    let metadataArray = [];
+    let client = this.spark.client || {};
+    let trackingId = client.trackingIdBase;
+
+    if (this.spark.config.trackingIdPrefix) {
+      trackingId = `${this.spark.config.trackingIdPrefix}_${client.trackingIdBase}`;
+    }
+
+    [`locusId`, `callStart`, `feedbackId`].forEach(function addKeyToArray(key) {
+      if (metadata[key]) {
+        metadataArray.push({
+          key: key,
+          value: metadata[key]
+        });
+      }
+    });
+
+    metadataArray.push({
+      key: `trackingId`,
+      value: trackingId
+    });
+
+    return metadataArray;
   }
 });
 
