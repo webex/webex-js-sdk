@@ -18,7 +18,7 @@ export class ChatWidget extends Component {
   componentDidMount() {
     const props = this.props;
     if (!props.user) {
-      fetchUser(props.userId);
+      props.fetchUser(props.userId);
     }
   }
 
