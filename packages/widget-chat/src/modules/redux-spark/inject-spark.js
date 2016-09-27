@@ -1,7 +1,8 @@
 import React, {Component} from 'react';
-import spark from './spark';
 
-import SparkComponent from './component.js';
+import createSpark from './spark';
+import SparkComponent from './component';
+
 
 function getDisplayName(C) {
   return C.displayName || C.name || `C`;
@@ -13,6 +14,7 @@ export default function injectSpark(WrappedComponent, options = {}) {
   } = options;
 
   class InjectSpark extends Component {
+
     getWrappedInstance() {
       // TODO find a way to do this that doesn't require a deprecated API
       // eslint-disable-next-line react/no-string-refs
@@ -20,9 +22,10 @@ export default function injectSpark(WrappedComponent, options = {}) {
     }
 
     render() {
+      const spark = createSpark(this.props.accessToken);
       return (
         <div>
-          <SparkComponent spark={spark} />
+          <SparkComponent spark={spark}/>
           <WrappedComponent
             {...this.props}
             ref={withRef ? `wrappedInstance` : null}
