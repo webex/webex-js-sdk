@@ -5,7 +5,9 @@ import Spark from '@ciscospark/spark-core';
 
 const spark = new Spark({
   credentials: {
-    authorization: process.env.CISCO_ACCESS_TOKEN
+    authorization: {
+      access_token: process.env.CISCOSPARK_ACCESS_TOKEN
+    }
   }
 });
 
