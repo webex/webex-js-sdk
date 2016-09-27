@@ -2,7 +2,7 @@
   "name": "@ciscospark/<%= packagename %>",
   "version": "0.7.0-alpha",
   "description": "<%= description %>",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "devMain": "src/index.js",
   "author": "<%= props.authorName %> <<%= props.authorEmail %>>",
   "license": "MIT",

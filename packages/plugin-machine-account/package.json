@@ -2,10 +2,10 @@
   "name": "@ciscospark/plugin-machine-account",
   "version": "0.7.0-alpha",
   "description": "",
-  "main": "src/index.js",
-  "devMain": "src/index.js",
+  "license": "MIT",
   "author": "Ian Remmel <iremmel@cisco.com>",
-  "license": "(Apache-2.0)",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-machine-account",
   "dependencies": {
     "@ciscospark/common": "^0.7.0-alpha",
@@ -27,5 +27,8 @@
     "eslint": "^3.5.0",
     "eslint-plugin-mocha": "^4.5.1",
     "uuid": "^2.0.3"
+  },
+  "engines": {
+    "node": ">=4"
   }
 }
