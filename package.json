@@ -168,7 +168,6 @@
     "grunt-shell": "~1.1.2",
     "grunt-webpack": "^1.0.11",
     "highlight.js": "^9.5.0",
-    "hooker": "^0.2.3",
     "ink-docstrap": "~0.5.2",
     "isparta": "^4.0.0",
     "istanbul": "^0.4.4",
