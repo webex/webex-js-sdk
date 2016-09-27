@@ -51,6 +51,7 @@ export default class StorageAdapterLocalForage {
       /**
        * Retrieves the data at the specified key
        * @param {string} key
+       * @see https://localforage.github.io/localForage/#data-api-getitem
        * @returns {Promise<mixed>}
        */
       get(key) {
@@ -58,10 +59,18 @@ export default class StorageAdapterLocalForage {
         loggers.get(this).info(`local-forage-store-adapter: reading \`${key_}\``);
         return localforage.getItem(key_)
           .then((value) => {
-            if (value !== null && value !== undefined) {
-              return Promise.resolve(value);
+            // if the key does not exist, getItem() will return null
+            if (value === null) {
+              return localforage.keys()
+                .then((keys) => {
+                  if (keys.indexOf(key_) > -1) {
+                    return Promise.resolve(value);
+                  }
+                  return Promise.reject(new NotFoundError(`No value found for ${key_}`));
+                });
             }
-            return Promise.reject(new NotFoundError(`No value found for ${key_}`));
+            //  even if undefined is saved, null will be returned by getItem()
+            return Promise.resolve(value);
           });
       }
 

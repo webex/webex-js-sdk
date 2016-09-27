@@ -35,7 +35,7 @@ export default function runAbstractStorageAdapterSpec(adapter) {
         it(`puts a primitive into the store`, () => bound.put(key, primitive)
           .then(() => assert.becomes(bound.get(key), primitive)));
 
-        [0, false].forEach((falsey) => {
+        [0, false, null].forEach((falsey) => {
           it(`puts falsey primitive \`${falsey}\` into the store`, () => bound.put(key, falsey)
           .then(() => assert.becomes(bound.get(key), falsey)));
         });
@@ -76,14 +76,10 @@ export default function runAbstractStorageAdapterSpec(adapter) {
         it(`gets an object from the store`, () => bound.put(key, obj)
           .then(() => assert.becomes(bound.get(key), obj)));
 
-        it(`rejects if the key cannot be found`, () => assert.isRejected(bound.get(`notakey`)));
+        it(`gets null from the store if \`undefined\` is saved`, () => bound.put(key, undefined)
+          .then(() => assert.becomes(bound.get(key), null)));
 
-        [null, undefined].forEach((falsey) => {
-          it(`rejects if returned value is \`${falsey}\``, () => {
-            return bound.put(key, falsey)
-              .then(() => assert.isRejected(bound.get(key)));
-          });
-        });
+        it(`rejects if the key cannot be found`, () => assert.isRejected(bound.get(`notakey`)));
       });
 
       describe(`#del()`, () => {
