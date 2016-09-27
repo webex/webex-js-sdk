@@ -41,8 +41,8 @@ const Support = SparkPlugin.extend({
   },
 
   submitLogs(metadata, logs) {
-    let userId, filename, shouldAttemptReauth, headers = {};
-    let metadataArray = this._constructFileMetadata(metadata);
+    let filename, headers = {}, shouldAttemptReauth, userId;
+    const metadataArray = this._constructFileMetadata(metadata);
     logs = logs || this.logger._buffer.join(`\n`);
 
     if (metadata.locusId && metadata.callStart) {
@@ -58,7 +58,7 @@ const Support = SparkPlugin.extend({
       shouldAttemptReauth = false;
       headers = {
         Authorization: this.spark.credentials.getClientCredentialsAuthorization()
-      }
+      };
     }
 
     return this.upload({
@@ -88,7 +88,7 @@ const Support = SparkPlugin.extend({
               return {
                 filename: session.logFilename,
                 data: metadataArray,
-                userId: isUnAuthUser ? session.userId : ''
+                userId: isUnAuthUser ? session.userId : ``
               };
             }
 
@@ -106,22 +106,23 @@ const Support = SparkPlugin.extend({
         body.userId = userId;
         return body;
       }
+      return {};
     });
   },
 
   _constructFileMetadata(metadata) {
-    let metadataArray = [];
-    let client = this.spark.client || {};
+    const metadataArray = [];
+    const client = this.spark.client || {};
     let trackingId = client.trackingIdBase;
 
     if (this.spark.config.trackingIdPrefix) {
       trackingId = `${this.spark.config.trackingIdPrefix}_${client.trackingIdBase}`;
     }
 
-    [`locusId`, `callStart`, `feedbackId`].forEach(function addKeyToArray(key) {
+    [`locusId`, `callStart`, `feedbackId`].forEach((key) => {
       if (metadata[key]) {
         metadataArray.push({
-          key: key,
+          key,
           value: metadata[key]
         });
       }
