@@ -2,13 +2,13 @@
   "name": "@ciscospark/example-phone",
   "version": "0.7.0-alpha",
   "description": "",
+  "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
-  "license": "(Apache-2.0)",
   "main": "src/scripts/main.js",
+  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/example-phone",
   "scripts": {
     "start": "webpack-dev-server --history-api-fallback --hot --inline --port 8000 --colors"
   },
-  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/example-phone",
   "dependencies": {
     "ciscospark": "^0.7.0-alpha",
     "babel-runtime": "^6.3.19",
@@ -49,6 +49,9 @@
     "inline-environment-variables-webpack-plugin": "0.0.2",
     "require-dir": "^0.3.0",
     "style-loader": "^0.13.1"
+  },
+  "engines": {
+    "node": ">=4"
   },
   "private": true
 }

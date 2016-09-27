@@ -2,6 +2,7 @@
   "name": "@ciscospark/xunit-with-logs",
   "version": "0.7.0-alpha",
   "description": "",
+  "license": "MIT",
   "main": "./src",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/xunit-with-logs",
   "dependencies": {
@@ -16,5 +17,8 @@
   },
   "peerDependencies": {
     "mocha": "^2.2.5"
+  },
+  "engines": {
+    "node": ">=4"
   }
 }

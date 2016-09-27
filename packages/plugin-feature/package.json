@@ -1,0 +1,34 @@
+{
+  "name": "@ciscospark/plugin-feature",
+  "version": "0.7.0-alpha",
+  "description": "",
+  "license": "MIT",
+  "author": "Aimee <aimma@cisco.com>",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-feature",
+  "dependencies": {
+    "@ciscospark/common": "^0.7.0-alpha",
+    "@ciscospark/plugin-wdm": "^0.7.0-alpha",
+    "@ciscospark/spark-core": "^0.7.0-alpha",
+    "babel-runtime": "^6.3.19",
+    "lodash": "^4.5.1"
+  },
+  "devDependencies": {
+    "@ciscospark/test-helper-chai": "^0.7.0-alpha",
+    "@ciscospark/test-helper-mocha": "^0.7.0-alpha",
+    "@ciscospark/test-helper-mock-spark": "^0.7.0-alpha",
+    "@ciscospark/test-helper-sinon": "^0.7.0-alpha",
+    "@ciscospark/test-helper-test-users": "^0.7.0-alpha",
+    "@ciscospark/xunit-with-logs": "^0.7.0-alpha",
+    "babel-eslint": "^6.1.2",
+    "babel-plugin-lodash": "2.1.0",
+    "babel-polyfill": "^6.3.14",
+    "babel-register": "^6.4.3",
+    "eslint": "^3.5.0",
+    "eslint-plugin-mocha": "^4.5.1"
+  },
+  "engines": {
+    "node": ">=4"
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "spark-js-sdk",
-  "version": "0.5.230",
+  "version": "0.5.233",
   "description": "JavaScript sdk for interacting with the Spark API",
   "homepage": "http://sqbu-github.cisco.com/WebExSquared/squared-js-sdk",
   "bugs": {
@@ -10,7 +10,7 @@
     "name": "Ian W. Remmel",
     "email": "iremmel@cisco.com"
   },
-  "license": "(Apache-2.0)",
+  "license": "MIT",
   "contributors": [
     "Brad Rydzewski <brydzews@cisco.com>",
     "David Greenstein <dagreens@cisco.com>",

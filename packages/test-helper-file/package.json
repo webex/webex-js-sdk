@@ -2,6 +2,7 @@
   "name": "@ciscospark/test-helper-file",
   "version": "0.7.0-alpha",
   "description": "File helpers for writing isomorphicish mocha tests",
+  "license": "MIT",
   "main": "./src/index.js",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-file",
   "dependencies": {
@@ -14,6 +15,9 @@
     "babel-eslint": "^6.1.2",
     "eslint": "^3.5.0",
     "eslint-plugin-mocha": "^4.5.1"
+  },
+  "engines": {
+    "node": ">=4"
   },
   "browser": {
     "./src/file.js": "./src/file.shim.js"

@@ -2,10 +2,11 @@
   "name": "@ciscospark/storage-adapter-spec",
   "version": "0.7.0-alpha",
   "description": "",
-  "main": "src/index.js",
-  "devMain": "src/index.js",
+  "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
-  "license": "(Apache-2.0)",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/storage-adapter-spec",
   "dependencies": {
     "babel-runtime": "^6.3.19"
   },
@@ -18,5 +19,8 @@
     "babel-register": "^6.4.3",
     "eslint": "^3.5.0",
     "eslint-plugin-mocha": "^4.5.1"
+  },
+  "engines": {
+    "node": ">=4"
   }
 }
