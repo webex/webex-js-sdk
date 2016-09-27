@@ -1,10 +1,10 @@
 import React from 'react';
-import ChatWidget from '.';
+import {ChatWidget} from '.';
 import {findRenderedDOMComponentWithTag, renderIntoDocument} from 'react-addons-test-utils';
 
 it(`is rendered properly`, () => {
-  const widget = TestUtils.renderIntoDocument(
-    <ChatWidget />
+  const widget = renderIntoDocument(
+    <ChatWidget userId="Chat Widget!" />
   );
 
   const widgetNode = ReactDOM.findDOMNode(widget);

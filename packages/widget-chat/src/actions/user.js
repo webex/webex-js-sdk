@@ -22,7 +22,7 @@ export function receiveUser(userId, user) {
 export function fetchUser(userId) {
   return (dispatch) => {
     dispatch(requestUser(userId));
-    return spark.user.asUUID({email: userId})
+    spark.user.asUUID({email: userId})
       .then((response) => response.json())
       .then((user) => dispatch(receiveUser(userId, user)));
   };
