@@ -1,4 +1,5 @@
 import React, {Component} from 'react';
+import {bindActionCreators} from 'redux';
 import {connect} from 'react-redux';
 
 import {
@@ -13,14 +14,6 @@ class SparkComponent extends Component {
       spark
     } = this.props;
 
-    spark.listenToAndRun(spark, `change:isAuthenticated`, () => {
-      updateSparkState({authenticated: spark.isAuthenticated});
-    });
-
-    spark.listenToAndRun(spark, `change:isAuthenticating`, () => {
-      updateSparkState({authenticating: spark.isAuthenticating});
-    });
-
     spark.mercury.listenToAndRun(spark.mercury, `change:connected`, () => {
       updateSparkState({connected: spark.mercury.connected});
     });
@@ -28,17 +21,17 @@ class SparkComponent extends Component {
     spark.mercury.listenToAndRun(spark.mercury, `change:connecting`, () => {
       updateSparkState({connecting: spark.mercury.connecting});
     });
+
+    connectToMercury(spark);
   }
 
   componentWillReceiveProps(nextProps) {
     const {
-      authenticated,
-      authenticating,
       connected,
       connecting,
       spark
     } = nextProps;
-    if (authenticated && !connected && !connecting && !authenticating) {
+    if (!connected && !connecting) {
       connectToMercury(spark);
     }
   }
@@ -54,14 +47,10 @@ SparkComponent.propTypes = {
   updateSparkState: React.PropTypes.func.isRequired
 };
 
-function mapStateToProps(state, ownProps) {
-  return {
-    connectToMercury,
-    updateSparkState,
-    spark: ownProps.spark
-  };
-}
-
 export default connect(
-  mapStateToProps
+  (state) => state.spark,
+  (dispatch) => bindActionCreators({
+    connectToMercury,
+    updateSparkState
+  }, dispatch)
 )(SparkComponent);
