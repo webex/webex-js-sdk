@@ -42,7 +42,7 @@ const Credentials = SparkPlugin.extend(Object.assign(common, {
     this.set(pick(options, `name`, `orgId`, `password`));
     if (this.canRefresh || options.code || this.name && this.orgId && this.password) {
       /* eslint prefer-rest-params: [0] */
-      return Reflect.apply(SparkPlugin.prototype.authorize, this, arguments);
+      return Reflect.apply(common.authorize, this, arguments);
     }
 
     options.state = options.state || {};
@@ -153,7 +153,7 @@ const Credentials = SparkPlugin.extend(Object.assign(common, {
     this.logger.info(`credentials(shim): logging out`);
 
     /* eslint prefer-rest-params: [0] */
-    return Reflect.apply(SparkPlugin.prototype.logout, this, arguments)
+    return Reflect.apply(common.logout, this, arguments)
       .then(() => {
         window.location = this._buildLogoutUrl();
       });
