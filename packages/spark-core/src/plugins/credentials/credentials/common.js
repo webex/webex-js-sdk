@@ -96,8 +96,6 @@ export default {
     return this.authorize(...args);
   },
 
-  @oneFlight
-  @waitForValue(`authorization`)
   authorize(options) {
     /* eslint no-invalid-this: [0] */
     this._isAuthenticating = true;

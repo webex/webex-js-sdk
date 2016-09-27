@@ -23,7 +23,7 @@ import SparkPlugin from '../../../lib/spark-plugin';
  */
 function noop() {/* eslint no-empty:[0] */}
 
-const Credentials = SparkPlugin.extend(Object.assign(common, {
+const Credentials = SparkPlugin.extend(Object.assign({}, common, {
   @oneFlight
   @waitForValue(`authorization`)
   authorize(options) {
