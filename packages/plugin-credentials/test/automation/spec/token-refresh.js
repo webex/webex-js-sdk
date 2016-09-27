@@ -27,7 +27,7 @@ describe(`spark-core`, function() {
           browser = b;
         }));
 
-      after(() => browser.printLogs());
+      after(() => browser && browser.printLogs());
 
       after(() => browser && browser.quit()
         .catch((reason) => {
