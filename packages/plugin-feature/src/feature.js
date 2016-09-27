@@ -64,6 +64,21 @@ const Feature = SparkPlugin.extend({
       .then((res) => this.spark.device.features[keyType].add(res.body, {merge: true}));
   },
 
+  /**
+   * Issues request to server to set a value for a feature toggle.
+   * @param {array} featureList
+   * @returns {Promise} Refreshes the local device and resolves with the features endpoint`s response.
+   */
+  setBatchUserFeatures(featureList) {
+    return this.request({
+      method: `POST`,
+      api: `feature`,
+      resource: `features/users/${this.spark.device.userId}/toggles`,
+      body: featureList
+    })
+      .then((res) => this.spark.device.features[`user`].add(res.body, {merge: true}));
+  },
+
   initialize(...args) {
     Reflect.apply(SparkPlugin.prototype.initialize, this, args);
 
