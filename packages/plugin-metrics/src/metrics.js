@@ -26,8 +26,15 @@ const Metrics = SparkPlugin.extend({
     return this.batcher.request(Object.assign({key}, value));
   },
 
-  submitClientMetrics(key, value) {
-    return this.clientMetricsBatcher.request(Object.assign({key}, value));
+  submitClientMetrics(eventName, props) {
+    var payload = {metricName: eventName};
+    if (props.tags) {
+      payload.tags = props.tags;
+    }
+    if (props.fields) {
+      payload.fields = props.fields;
+    }
+    return this.clientMetricsBatcher.request(payload);
   }
 });
 
