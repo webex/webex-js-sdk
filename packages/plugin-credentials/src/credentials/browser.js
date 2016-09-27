@@ -24,12 +24,12 @@ import {SparkPlugin} from '@ciscospark/spark-core';
 function noop() {/* eslint no-empty:[0] */}
 
 const Credentials = SparkPlugin.extend(Object.assign({}, common, {
-  session: {
+  session: Object.assign(common.session, {
     isLoggingIn: {
       default: false,
       type: `boolean`
     }
-  },
+  }),
 
   @deprecated(`Please use initiateLogin`)
   authorize(...args) {

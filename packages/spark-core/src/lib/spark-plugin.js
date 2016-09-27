@@ -121,7 +121,9 @@ const SparkPlugin = AmpState.extend({
 
     // Propagate change:[attribute] events from children
     this.on(`change`, (model, options) => {
-      this.parent.trigger(`change:${this.getNamespace().toLowerCase()}`, this.parent, this, options);
+      if (this.parent) {
+        this.parent.trigger(`change:${this.getNamespace().toLowerCase()}`, this.parent, this, options);
+      }
     });
   },
 

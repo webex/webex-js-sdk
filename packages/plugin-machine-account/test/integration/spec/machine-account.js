@@ -30,13 +30,6 @@ describe(`spark-core`, () => {
 
     after(() => Promise.all(bots.map((bot) => spark.machineAccount.delete(bot))));
 
-    // after(() => Promise.all(bots.map((bot) => {
-    //   const spark = new Spark({});
-    //   return retry(spark.credentials.requestSamlExtensionGrant(bot))
-    //     .then(() => spark.device.register())
-    //     .then(() => spark.machineAccount.delete());
-    // })));
-
     describe(`#create()`, () => {
       it(`creates a machine account`, () => spark.machineAccount.create({
         name: `spark-js-sdk-testbot-${uuid.v4()}`,
