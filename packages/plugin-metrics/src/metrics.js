@@ -6,11 +6,13 @@
 
 import {SparkPlugin} from '@ciscospark/spark-core';
 import Batcher from './batcher';
+import ClientMetricsBatcher from './clientMetricsBatcher';
 import {deprecated} from 'core-decorators';
 
 const Metrics = SparkPlugin.extend({
   children: {
-    batcher: Batcher
+    batcher: Batcher,
+    clientMetricsBatcher: ClientMetricsBatcher
   },
 
   namespace: `Metrics`,
@@ -22,6 +24,10 @@ const Metrics = SparkPlugin.extend({
 
   submit(key, value) {
     return this.batcher.request(Object.assign({key}, value));
+  },
+
+  submitClientMetrics(key, value) {
+    return this.clientMetricsBatcher.request(Object.assign({key}, value));
   }
 });
 
