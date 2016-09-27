@@ -100,6 +100,11 @@ describe(`plugin-team`, () => {
       });
   });
 
+  after(() => Promise.all([
+    kirk.spark.mercury.disconnect(),
+    spock.spark.mercury.disconnect()
+  ]));
+
   describe(`#get()`, () => {
     it(`retrieves a team`, () => kirk.spark.team.get(team0)
       .then((t) => {

@@ -9,6 +9,11 @@ import Normalizer from '@ciscospark/plugin-conversation';
 
 Object.assign(Normalizer.prototype, {
 
+  /**
+   * Normalizes a team object returned from the API
+   * @param {Object} team
+   * @returns {TeamObject} team
+   */
   normalizeTeam(team) {
     team.conversations = team.conversations || {};
     team.conversations.items = team.conversations.items || [];
