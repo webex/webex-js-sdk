@@ -15,15 +15,19 @@ import injectSpark from '../../modules/redux-spark/inject-spark';
  */
 export class ChatWidget extends Component {
 
-  componentDidMount() {
-    const props = this.props;
-    if (!props.user) {
-      props.fetchUser(props.userId);
-    }
-  }
+  componentWillReceiveProps(nextProps) {
+    console.log(`componentDidMount`);
+    console.log(nextProps);
 
-  shouldComponentUpdate() {
-    return false;
+    const {
+      user,
+      spark,
+      userId
+    } = nextProps;
+
+    if (!user && spark) {
+      nextProps.fetchUser(userId, spark);
+    }
   }
 
   /**
@@ -45,12 +49,18 @@ export class ChatWidget extends Component {
 
 ChatWidget.propTypes = {
   fetchUser: PropTypes.func.isRequired,
-  spark: React.PropTypes.object.isRequired,
+  spark: PropTypes.object.isRequired,
   userId: PropTypes.string.isRequired
 };
 
+function mapStateToProps(state, ownProps) {
+  return Object.assign({}, state.spark, {
+    spark: ownProps.spark
+  });
+}
+
 export default connect(
-  (state) => state.spark,
+  mapStateToProps,
   (dispatch) => bindActionCreators({
     fetchUser
   }, dispatch)
