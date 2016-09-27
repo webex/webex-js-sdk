@@ -7,7 +7,7 @@
 import {oneFlight} from '@ciscospark/common';
 import SparkPlugin from '../../../lib/spark-plugin';
 import common from './common';
-import {waitForValue} from '../../../lib/storage';
+import {persist, waitForValue} from '../../../lib/storage';
 
 /**
  * @class
@@ -18,6 +18,12 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
   @waitForValue(`authorization`)
   authorize(...args) {
     return Reflect.apply(common.authorize, this, args);
+  },
+
+  @persist(`authorization`)
+  @persist(`clientAuthorization`)
+  initialize(...args) {
+    return Reflect.apply(SparkPlugin.prototype.initialize, this, args);
   }
 }));
 

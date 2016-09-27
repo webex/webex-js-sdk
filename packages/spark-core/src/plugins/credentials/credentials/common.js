@@ -171,12 +171,6 @@ export default {
       .then(() => this.clientAuthorization.toString());
   },
 
-  @persist(`authorization`)
-  @persist(`clientAuthorization`)
-  initialize(...args) {
-    return Reflect.apply(SparkPlugin.prototype.initialize, this, args);
-  },
-
   /**
    * @returns {Promise}
    */
