@@ -22,7 +22,7 @@ class SparkComponent extends Component {
       updateSparkState({connecting: spark.mercury.connecting});
     });
 
-    connectToMercury(spark);
+    this.props.connectToMercury(spark);
   }
 
   componentWillReceiveProps(nextProps) {
