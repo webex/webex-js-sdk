@@ -2,8 +2,6 @@ import React, {Component, PropTypes} from 'react';
 import {connect} from 'react-redux';
 import classNames from 'classnames';
 
-
-import AuthStatus from '../../components/auth-status';
 import ConnectionStatus from '../../components/connection-status';
 import ActivityTitle from '../../components/activity-title';
 import styles from './styles.css';
@@ -27,14 +25,10 @@ class ChatWidget extends Component {
   render() {
     const {userId} = this.props;
     const props = this.props;
-
-    console.log(props);
-
     return (
       <div className={classNames(`widget-chat`, styles.widgetChat)}>
         <ActivityTitle heading={userId} />
         <ConnectionStatus id="connection-status" {...props} />
-        <AuthStatus id="auth-status" {...props} />
       </div>
     );
   }
@@ -58,12 +52,13 @@ function mapStateToProps(state, ownProps) {
     item: []
   };
 
-  return {
+  return Object.assign({}, state.spark, {
     user,
     isFetching,
     item,
-    userId: ownProps.userId
-  };
+    userId: ownProps.userId,
+    spark: ownProps.spark
+  });
 }
 
 export default connect(
