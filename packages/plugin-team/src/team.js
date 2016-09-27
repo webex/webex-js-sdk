@@ -52,11 +52,11 @@ const Team = SparkPlugin.extend({
   create(params) {
 
     if (!params.displayName) {
-      return Promise.reject(new Error(`'params.displayName' is required`));
+      return Promise.reject(new Error(`\`params.displayName\` is required`));
     }
 
     if (!params.participants || params.participants.length === 0) {
-      return Promise.reject(new Error(`'params.participants' is required`));
+      return Promise.reject(new Error(`\`params.participants\` is required`));
     }
 
     return Promise.all(params.participants.map((participant) => this.spark.user.asUUID(participant, {create: true})))
