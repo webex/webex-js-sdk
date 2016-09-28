@@ -67,14 +67,15 @@ describe(`plugin-feature`, function() {
     }, {
       key: `key2`,
       val: `value2`,
-      type: `USER`,
       mutable: `false`
     }];
 
     it(`sets a value for two user feature toggle`, () => {
-      return spark.feature.setBatchUserFeatures(featureUpdateArray)
+      return spark.feature.setBundledFeatures(featureUpdateArray)
         .then((res) => {
           assert.isDefined(res);
+          assert.becomes(spark.feature.getFeature(`user`, `key1`), `value1`);
+          assert.becomes(spark.feature.getFeature(`user`, `key2`), `value2`);
         });
     });
   });

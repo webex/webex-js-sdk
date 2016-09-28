@@ -69,7 +69,12 @@ const Feature = SparkPlugin.extend({
    * @param {array} featureList
    * @returns {Promise} Refreshes the local device and resolves with the features endpoint`s response.
    */
-  setBatchUserFeatures(featureList) {
+  setBundledFeatures(featureList) {
+    featureList.forEach((item) => {
+      item.mutable = item.mutable || `true`;
+      item.type = item.type || `USER`;
+    });
+
     return this.request({
       method: `POST`,
       api: `feature`,
