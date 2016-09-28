@@ -15,7 +15,6 @@ class ActivityTitleBar extends Component {
     const {user} = this.props;
     const {userId} = this.props.user;
     return (
-
       <div className={classNames(`activity-title-bar`, styles.activityTitleBar)}>
         <Avatar user={user} />
         <ActivityTitle heading={userId} />

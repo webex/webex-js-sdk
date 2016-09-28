@@ -3,12 +3,19 @@ import {findRenderedDOMComponentWithTag, renderIntoDocument} from 'react-addons-
 
 import ActivityTitle from '.';
 
-it(`is rendered properly`, () => {
-  const title = renderIntoDocument(
-    <ActivityTitle heading="Chat Widget Title!" />
-  );
+describe(`ActivityTitle component`, () => {
+  let heading;
+  let title;
+  beforeEach(() => {
+    heading = `Chat Widget Title!`;
+    title = renderIntoDocument(
+      <ActivityTitle heading={heading} />
+    );
+  });
 
-  const titleNode = findRenderedDOMComponentWithTag(title, `h2`);
+  it(`is rendered properly`, () => {
+    const titleNode = findRenderedDOMComponentWithTag(title, `h2`);
+    expect(titleNode.textContent).toBe(heading);
+  });
 
-  expect(titleNode.textContent).toBe(`Chat Widget Title!`);
 });
