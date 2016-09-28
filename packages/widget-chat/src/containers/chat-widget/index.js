@@ -4,7 +4,7 @@ import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 
 import ConnectionStatus from '../../components/connection-status';
-import ActivityTitle from '../../components/activity-title';
+import ActivityTitleBar from '../../components/activity-title-bar';
 import {fetchUser} from '../../actions/user';
 import styles from './styles.css';
 
@@ -34,9 +34,10 @@ export class ChatWidget extends Component {
   render() {
     const {userId} = this.props;
     const props = this.props;
+    const user = {userId, avatar: ``};
     return (
       <div className={classNames(`widget-chat`, styles.widgetChat)}>
-        <ActivityTitle heading={userId} />
+        <ActivityTitleBar user={user} />
         <ConnectionStatus id="connection-status" {...props} />
       </div>
     );
