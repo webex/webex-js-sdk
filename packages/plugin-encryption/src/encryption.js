@@ -143,6 +143,7 @@ const Encryption = SparkPlugin.extend({
 
     return this.unboundedStorage.get(uri)
       .then((keyString) => JSON.parse(keyString))
+      .then((keyObject) => this.kms.asKey(keyObject))
       .catch(() => this.kms.fetchKey({uri})
         .then(tap((key) => this.unboundedStorage.put(key.uri, JSON.stringify(key, replacer)))));
   }
