@@ -1,11 +1,5 @@
 .activity-title {
-  position: relative;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  padding-left: 80px;
-  padding-right: 25px;
   background-color: transparent;
-  border-bottom: 1px solid #ccc;
-  z-index: 2;
+  line-height: 15px;
+  font-size: 15px;
 }
