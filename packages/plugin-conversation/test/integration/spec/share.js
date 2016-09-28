@@ -173,9 +173,7 @@ describe(`plugin-conversation`, function() {
           blockUntilTranscode = new Defer();
         });
 
-        afterEach(() => {
-          spark.mercury.off(`event:conversation.activity`, onMessage);
-        });
+        afterEach(() => spark && spark.mercury.off(`event:conversation.activity`, onMessage));
 
         function onMessage(message) {
           activities.push(message.data.activity);

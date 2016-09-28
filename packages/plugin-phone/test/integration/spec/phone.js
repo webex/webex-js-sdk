@@ -164,7 +164,7 @@ describe(`plugin-phone`, function() {
           });
         }));
 
-      afterEach(() => kirk.spark.phone.deregister());
+      afterEach(() => kirk && kirk.spark.phone.deregister());
 
       it(`registers with wdm`, () => {
         return kirk.spark.phone.register()
