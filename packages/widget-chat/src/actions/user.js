@@ -20,9 +20,9 @@ export function receiveUser(userId, user) {
 export function fetchUser(userId, spark) {
   return (dispatch) => {
     dispatch(requestUser(userId));
-    spark.user.asUUID({email: userId})
+    spark.user.get()
       .then((response) => {
-        console.log(`USERID`);
+        console.log(`GET USER`);
         console.log(response);
         return response.json();
       })
