@@ -43,13 +43,9 @@ class SparkComponent extends Component {
       spark
     } = nextProps;
     if (authenticated && !registered && !registering) {
-      console.log(`REGISTERING`);
-      console.log(nextProps);
       nextProps.registerDevice(spark);
     }
     else if (registered && authenticated && !connected && !connecting) {
-      console.log(`CONNECTING`);
-      console.log(nextProps);
       nextProps.connectToMercury(spark);
     }
   }
