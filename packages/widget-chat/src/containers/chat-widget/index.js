@@ -5,7 +5,7 @@ import classNames from 'classnames';
 
 import ConnectionStatus from '../../components/connection-status';
 import ActivityTitle from '../../components/activity-title';
-import {fetchUser} from '../../actions/user';
+import {fetchUser, fetchThisUser} from '../../actions/user';
 import styles from './styles.css';
 
 import injectSpark from '../../modules/redux-spark/inject-spark';
@@ -26,7 +26,7 @@ export class ChatWidget extends Component {
     } = nextProps;
 
     if (!user && spark && connected && authenticated && registered) {
-      nextProps.fetchUser(userId, spark);
+      nextProps.fetchThisUser(spark);
     }
   }
 
@@ -49,6 +49,7 @@ export class ChatWidget extends Component {
 
 ChatWidget.propTypes = {
   fetchUser: PropTypes.func.isRequired,
+  fetchThisUser: PropTypes.func.isRequired,
   spark: PropTypes.object.isRequired,
   userId: PropTypes.string.isRequired
 };
@@ -62,6 +63,7 @@ function mapStateToProps(state, ownProps) {
 export default connect(
   mapStateToProps,
   (dispatch) => bindActionCreators({
-    fetchUser
+    fetchUser,
+    fetchThisUser
   }, dispatch)
 )(injectSpark(ChatWidget));
