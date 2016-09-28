@@ -150,6 +150,19 @@ const SparkCore = AmpState.extend({
     return this.credentials.logout(...args);
   },
 
+  /**
+   * General purpose wrapper to submit metrics via the metrics plugin (if the
+   * metrics plugin is installed)
+   * @returns {Promise}
+   */
+  measure(...args) {
+    if (this.metrics) {
+      return this.metrics.sendUnstructured(...args);
+    }
+
+    return Promise.resolve();
+  },
+
   upload(options) {
     if (!options.file) {
       return Promise.reject(new Error(`\`options.file\` is required`));

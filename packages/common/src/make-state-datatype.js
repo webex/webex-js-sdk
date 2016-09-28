@@ -40,9 +40,12 @@ export default function makeStateDataType(Constructor, name) {
           };
         }
 
+        // We only want to construct the new instance if we have some set of
+        // attributes (even an empty object) to base it on. This is to deal with
+        // the unexpected side effect that AmpState#unset will create a new
+        // instance.
         return {
-          val: new Constructor(newVal, {parent: this}),
-          // val: new Constructor(newVal),
+          val: newVal ? new Constructor(newVal, {parent: this}) : undefined,
           type: name
         };
       },
@@ -71,6 +74,9 @@ export default function makeStateDataType(Constructor, name) {
        * @returns {boolean}
        */
       test: function test(newVal) {
+        if (!newVal) {
+          return false;
+        }
         newVal.parent = this;
         return false;
       },

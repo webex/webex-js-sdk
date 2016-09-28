@@ -47,7 +47,7 @@ export default function oneFlight(...params) {
     let key = prop;
     descriptor.value = wrap(descriptor.value, function oneFlightExecutor(fn, ...args) {
       if (keyFactory) {
-        key = keyFactory(args);
+        key = keyFactory(...args);
       }
 
       /* eslint no-invalid-this: [0] */

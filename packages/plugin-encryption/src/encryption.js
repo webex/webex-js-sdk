@@ -86,7 +86,7 @@ const Encryption = SparkPlugin.extend({
 
     return this.request({
       method: `POST`,
-      api: `files`,
+      service: `files`,
       resource: `download/endpoints`,
       body: {
         endpoints: [

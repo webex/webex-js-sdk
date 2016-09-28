@@ -14,7 +14,7 @@ import {patterns} from '@ciscospark/common';
 import uuid from 'uuid';
 
 describe(`plugin-user`, function() {
-  this.timeout(10000);
+  this.timeout(30000);
 
   let spark, user2, user3;
 

@@ -15,7 +15,7 @@ import sinon from '@ciscospark/test-helper-sinon';
 describe(`plugin-wdm`, function() {
   // This isn't quite a unit test since we hit the local fixture server;
   // sometimes, sauce makes the fixture server a bit slow.
-  this.timeout(20000);
+  this.timeout(30000);
   describe(`EmbargoInterceptor`, () => {
     let spark;
 

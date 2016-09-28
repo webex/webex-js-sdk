@@ -18,6 +18,18 @@ module.exports = function schemas(chai) {
 
   /* eslint no-unused-expressions: [0] */
 
+  Assertion.addProperty('AccessToken', function() {
+    assert.properties(this._obj, [
+      'access_token',
+      'token_type',
+      'expires',
+      'expires_in',
+      'refresh_token',
+      'refresh_token_expires',
+      'refresh_token_expires_in'
+    ]);
+  });
+
   Assertion.addProperty('Activity', function() {
     assert.properties(this._obj, [
       'url',
@@ -46,6 +58,19 @@ module.exports = function schemas(chai) {
     assert.equal(this._obj.objectType, 'conversation');
     assert.property(this._obj, 'id');
     assert.property(this._obj, 'url');
+  });
+
+  Assertion.addProperty('MachineAccount', function() {
+    assert.isDefined(this._obj, 'orgId');
+    assert.property(this._obj, 'orgId');
+    assert.isDefined(this._obj, 'name');
+    assert.property(this._obj, 'name');
+    assert.isDefined(this._obj, 'password');
+    assert.property(this._obj, 'password');
+    assert.isDefined(this._obj, 'email');
+    assert.property(this._obj, 'email');
+    assert.isDefined(this._obj, 'description');
+    assert.property(this._obj, 'description');
   });
 
   Assertion.addProperty('OneOnOneConversation', function() {
@@ -212,6 +237,7 @@ module.exports = function schemas(chai) {
   });
 
   shouldToAssert(chai, [
+    'AccessToken',
     'Activity',
     'Conversation',
     'FileItem',
@@ -220,6 +246,7 @@ module.exports = function schemas(chai) {
     'GroupConversation',
     'NewEncryptedConversation',
     'EncryptedActivity',
+    'MachineAccount',
     'Membership',
     'Message',
     'MessageFile',

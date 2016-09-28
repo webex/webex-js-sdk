@@ -12,7 +12,7 @@ import testUsers from '@ciscospark/test-helper-test-users';
 import uuid from 'uuid';
 
 describe(`Encryption`, function() {
-  this.timeout(10000);
+  this.timeout(30000);
   describe(`KMS`, () => {
     let spark, user;
 

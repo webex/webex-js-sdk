@@ -14,7 +14,7 @@ import makeLocalUrl from '@ciscospark/test-helper-make-local-url';
 import {map} from 'lodash';
 
 describe(`plugin-conversation`, function() {
-  this.timeout(20000);
+  this.timeout(30000);
 
   let mccoy, participants, spark, spock;
 

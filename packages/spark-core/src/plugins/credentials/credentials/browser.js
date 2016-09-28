@@ -12,9 +12,10 @@ import {assign, clone, has, omit, pick} from 'lodash';
 import querystring from 'querystring';
 import url from 'url';
 import uuid from 'uuid';
-import Authorization from './authorization';
-import CredentialsBase from './credentials-base';
-import {persist, waitForValue} from '../../lib/storage';
+import Authorization from '../authorization';
+import common from './common';
+import {persist, waitForValue} from '../../../lib/storage';
+import SparkPlugin from '../../../lib/spark-plugin';
 
 /**
  * @private
@@ -22,7 +23,7 @@ import {persist, waitForValue} from '../../lib/storage';
  */
 function noop() {/* eslint no-empty:[0] */}
 
-const Credentials = CredentialsBase.extend({
+const Credentials = SparkPlugin.extend(Object.assign({}, common, {
   @oneFlight
   @waitForValue(`authorization`)
   authorize(options) {
@@ -41,7 +42,7 @@ const Credentials = CredentialsBase.extend({
     this.set(pick(options, `name`, `orgId`, `password`));
     if (this.canRefresh || options.code || this.name && this.orgId && this.password) {
       /* eslint prefer-rest-params: [0] */
-      return Reflect.apply(CredentialsBase.prototype.authorize, this, arguments);
+      return Reflect.apply(common.authorize, this, arguments);
     }
 
     options.state = options.state || {};
@@ -152,7 +153,7 @@ const Credentials = CredentialsBase.extend({
     this.logger.info(`credentials(shim): logging out`);
 
     /* eslint prefer-rest-params: [0] */
-    return Reflect.apply(CredentialsBase.prototype.logout, this, arguments)
+    return Reflect.apply(common.logout, this, arguments)
       .then(() => {
         window.location = this._buildLogoutUrl();
       });
@@ -227,6 +228,6 @@ const Credentials = CredentialsBase.extend({
       window.history.replaceState({}, null, location);
     }
   }
-});
+}));
 
 export default Credentials;
