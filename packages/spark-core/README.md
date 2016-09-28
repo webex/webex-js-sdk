@@ -220,6 +220,17 @@ Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Refe
 
 Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
 
+# measure
+
+General purpose wrapper to submit metrics via the metrics plugin (if the
+metrics plugin is installed)
+
+**Parameters**
+
+-   `args` **...Any** 
+
+Returns **[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)** 
+
 # makeSparkConstructor
 
 Returns **[undefined](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined)** 
