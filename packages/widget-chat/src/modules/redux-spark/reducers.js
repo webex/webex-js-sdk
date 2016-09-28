@@ -4,6 +4,7 @@ export default function spark(state = {
   authenticated: false,
   authenticating: false,
   registered: false,
+  registering: false,
   connected: false,
   connecting: false
 }, action) {

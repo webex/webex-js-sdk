@@ -8,17 +8,16 @@ export function updateSparkState(state) {
 
 export function registerDevice(spark) {
   return (dispatch) => {
+    dispatch(updateSparkState({registering: true}));
     spark.device.register()
-      .then(dispatch(updateSparkState({
-        authenticated: true, authenticating: false
-      })));
+      .then(() => dispatch(updateSparkState({registering: false, registered: true})));
   };
 }
 
 export function connectToMercury(spark) {
   return (dispatch) => {
-    spark.mercury.connect()
-      .then(dispatch(updateSparkState({connected: true, connecting: false})));
     dispatch(updateSparkState({connecting: true}));
+    spark.mercury.connect()
+    .then(() => dispatch(updateSparkState({connecting: false, connected: true})));
   };
 }

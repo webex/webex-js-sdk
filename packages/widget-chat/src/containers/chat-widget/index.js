@@ -16,16 +16,16 @@ import injectSpark from '../../modules/redux-spark/inject-spark';
 export class ChatWidget extends Component {
 
   componentWillReceiveProps(nextProps) {
-    console.log(`componentDidMount`);
-    console.log(nextProps);
-
     const {
+      authenticated,
+      connected,
       user,
+      registered,
       spark,
       userId
     } = nextProps;
 
-    if (!user && spark) {
+    if (!user && spark && connected && authenticated && registered) {
       nextProps.fetchUser(userId, spark);
     }
   }

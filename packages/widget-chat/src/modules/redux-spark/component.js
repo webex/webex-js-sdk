@@ -14,6 +14,7 @@ class SparkComponent extends Component {
     const props = this.props;
 
     const {spark} = props;
+
     spark.listenToAndRun(spark, `change:isAuthenticated`, () => {
       props.updateSparkState({authenticated: spark.isAuthenticated});
     });
@@ -26,11 +27,8 @@ class SparkComponent extends Component {
       props.updateSparkState({connected: spark.mercury.connected});
     });
 
-    spark.device.listenToAndRun(spark.device, `change:registered`, () => {
-      props.updateSparkState({registered: spark.device.registered});
-    });
 
-    if (!props.registered) {
+    if (props.authenticated && !props.registered && !props.registering) {
       props.registerDevice(props.spark);
     }
   }
@@ -41,12 +39,17 @@ class SparkComponent extends Component {
       connecting,
       authenticated,
       registered,
+      registering,
       spark
     } = nextProps;
-    if (!registered) {
+    if (authenticated && !registered && !registering) {
+      console.log(`REGISTERING`);
+      console.log(nextProps);
       nextProps.registerDevice(spark);
     }
-    if (authenticated && !connected && !connecting) {
+    else if (registered && authenticated && !connected && !connecting) {
+      console.log(`CONNECTING`);
+      console.log(nextProps);
       nextProps.connectToMercury(spark);
     }
   }
