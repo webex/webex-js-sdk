@@ -8,10 +8,13 @@ function getDisplayName(C) {
   return C.displayName || C.name || `C`;
 }
 
+
+
 export default function injectSpark(WrappedComponent, options = {}) {
   const {
     withRef = false
   } = options;
+  const spark = createSpark();
 
   class InjectSpark extends Component {
 
@@ -22,10 +25,9 @@ export default function injectSpark(WrappedComponent, options = {}) {
     }
 
     render() {
-      const spark = createSpark(this.props.accessToken);
       return (
         <div>
-          <SparkComponent spark={spark}/>
+          <SparkComponent spark={spark} />
           <WrappedComponent
             {...this.props}
             ref={withRef ? `wrappedInstance` : null}
