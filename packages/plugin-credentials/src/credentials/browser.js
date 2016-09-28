@@ -46,8 +46,6 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
   initiateLogin(options) {
     this.logger.info(`credentials: initiating login flow`);
 
-    // TODO if not force, do refresh?
-
     options = options || {};
     options.state = options.state || {};
     options.state.csrf_token = options.state.csrf_token || this._generateSecurityToken();

@@ -10,7 +10,7 @@ import {clone, has, isObject, pick} from 'lodash';
 import grantErrors from '../grant-errors';
 import querystring from 'querystring';
 import SparkPlugin from '../../../lib/spark-plugin';
-import {persist, waitForValue} from '../../../lib/storage';
+import {waitForValue} from '../../../lib/storage';
 
 /**
  * Helper. Returns just the response body
