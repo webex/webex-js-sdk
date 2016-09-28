@@ -1,4 +1,7 @@
 import React, {Component, PropTypes} from 'react';
+import classNames from 'classnames';
+
+import styles from './styles.css';
 
 class MessageComposer extends Component {
   shouldComponentUpdate() {
@@ -7,7 +10,7 @@ class MessageComposer extends Component {
 
   render() {
     return (
-      <div>
+      <div className={classNames(`message-composer`, styles.messageComposer)}>
         MessageComposer
       </div>
     );
