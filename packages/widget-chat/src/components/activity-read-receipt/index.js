@@ -1,15 +1,18 @@
 import React, {Component, PropTypes} from 'react';
 import Avatar from '../avatar';
+import classNames from 'classnames';
+
+import styles from './styles.css';
 
 class ActivityReadReceipt extends Component {
   componentDidUpdate() {
     return false;
   }
-  
+
   render() {
     const avatars = this.props.actors.map((actor) => <Avatar key={actor.userId} user={actor} />);
     return (
-      <div>
+      <div className={classNames(`activity-read-receipt`, styles.activityReadReceipt)}>
         {avatars}
       </div>
     );
@@ -17,7 +20,7 @@ class ActivityReadReceipt extends Component {
 }
 
 ActivityReadReceipt.propTypes = {
-  actors: PropTypes.object
+  actors: PropTypes.array
 };
 
 export default ActivityReadReceipt;

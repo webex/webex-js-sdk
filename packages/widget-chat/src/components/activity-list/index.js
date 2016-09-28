@@ -25,7 +25,7 @@ class ActivityList extends Component {
 }
 
 ActivityList.propTypes = {
-  activities: PropTypes.object,
+  activities: PropTypes.array,
   user: PropTypes.object
 };
 
