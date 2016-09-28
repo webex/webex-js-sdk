@@ -20,9 +20,7 @@ const ClientMetricsBatcher = Batcher.extend({
   },
 
   prepareRequest(queue) {
-    return Promise.resolve(queue.map((item) => {
-      return item;
-    }));
+    return Promise.resolve(queue.map((item) => item));
   },
 
   submitHttpRequest(payload) {

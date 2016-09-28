@@ -27,7 +27,7 @@ const Metrics = SparkPlugin.extend({
   },
 
   submitClientMetrics(eventName, props) {
-    var payload = {metricName: eventName};
+    const payload = {metricName: eventName};
     if (props.tags) {
       payload.tags = props.tags;
     }

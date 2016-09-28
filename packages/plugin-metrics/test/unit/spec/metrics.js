@@ -53,21 +53,21 @@ describe(`plugin-metrics`, () => {
       });
     });
 
-    describe('#submitClientMetrics()', () => {
-      it('submits a metric to clientmetrics', () => {
-        var testPayload = {
+    describe(`#submitClientMetrics()`, () => {
+      it(`submits a metric to clientmetrics`, () => {
+        const testPayload = {
           tags: {success: true},
           fields: {perceivedDurationInMillis: 314}
         };
-        return spark.metrics.submitClientMetrics('test', testPayload)
+        return spark.metrics.submitClientMetrics(`test`, testPayload)
           .then(() => {
             assert.calledOnce(spark.request);
             const req = spark.request.args[0][0];
             const metric = req.body.metrics[0];
 
-            assert.property(metric, 'metricName');
-            assert.property(metric, 'tags');
-            assert.property(metric, 'fields');
+            assert.property(metric, `metricName`);
+            assert.property(metric, `tags`);
+            assert.property(metric, `fields`);
 
             assert.equal(metric.metricName, `test`);
             assert.equal(metric.tags.success, true);
