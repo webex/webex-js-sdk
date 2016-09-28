@@ -5,6 +5,10 @@ import classNames from 'classnames';
 
 import ConnectionStatus from '../../components/connection-status';
 import ActivityTitleBar from '../../components/activity-title-bar';
+import ActivityList from '../../components/activity-list';
+import ActivityReadReceipt from '../../components/activity-read-receipt';
+import MessageComposer from '../../components/message-composer';
+
 import {fetchUser} from '../../actions/user';
 import styles from './styles.css';
 
@@ -35,9 +39,13 @@ export class ChatWidget extends Component {
     const {userId} = this.props;
     const props = this.props;
     const user = {userId, avatar: ``};
+    const mockReadUsers = [{userId: `bernie`}, {userId: `adam`}];
     return (
       <div className={classNames(`widget-chat`, styles.widgetChat)}>
         <ActivityTitleBar user={user} />
+        <ActivityList user={user} />
+        <ActivityReadReceipt actors={mockReadUsers} />
+        <MessageComposer />
         <ConnectionStatus id="connection-status" {...props} />
       </div>
     );
