@@ -4,8 +4,8 @@ import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 
 import ConnectionStatus from '../../components/connection-status';
-import ActivityTitle from '../../components/activity-title';
 import {fetchUser, fetchCurrentUser} from '../../actions/user';
+import ActivityTitleBar from '../../components/activity-title-bar';
 import styles from './styles.css';
 
 import injectSpark from '../../modules/redux-spark/inject-spark';
@@ -48,9 +48,10 @@ export class ChatWidget extends Component {
   render() {
     const {userId} = this.props;
     const props = this.props;
+    const user = {userId, avatar: ``};
     return (
       <div className={classNames(`widget-chat`, styles.widgetChat)}>
-        <ActivityTitle heading={userId} />
+        <ActivityTitleBar user={user} />
         <ConnectionStatus id="connection-status" {...props} />
       </div>
     );
