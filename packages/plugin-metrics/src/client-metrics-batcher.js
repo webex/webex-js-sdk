@@ -8,7 +8,7 @@ import Batcher from './batcher';
 
 const ClientMetricsBatcher = Batcher.extend({
   namespace: `Metrics`,
-  
+
   prepareItem(item) {
     // Add more defaults to payload when the clientmetrics endpoint evolves to support richer payloads
     return Promise.resolve(item);
