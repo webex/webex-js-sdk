@@ -2,10 +2,10 @@
   "name": "@ciscospark/plugin-team",
   "version": "0.7.0-alpha",
   "description": "",
+  "license": "MIT",
+  "author": "Josh Dykstra <jodykstr@cisco.com>",
   "main": "src/index.js",
   "devMain": "src/index.js",
-  "author": "Josh Dykstra <jodykstr@cisco.com>",
-  "license": "(Apache-2.0)",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-team",
   "dependencies": {
     "@ciscospark/common": "^0.7.0-alpha",
@@ -31,5 +31,8 @@
     "eslint": "^3.5.0",
     "eslint-plugin-mocha": "^4.5.1",
     "uuid": "^2.0.1"
+  },
+  "engines": {
+    "node": ">=4"
   }
 }
