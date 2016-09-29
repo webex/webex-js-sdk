@@ -1,0 +1,44 @@
+{
+  "name": "@ciscospark/web-client-internal",
+  "version": "0.7.0",
+  "description": "",
+  "license": "MIT",
+  "author": "Ian W. Remmel <iremmel@cisco.com>",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/web-client-internal",
+  "scripts": {
+    "build-parent": "bash -c \"cd ../.. && npm run bootstrap && npm run build\"",
+    "postinstall": "not-in-install && not-in-publish && npm run build-parent || echo"
+  },
+  "dependencies": {
+    "@ciscospark/plugin-avatar": "^0.7.0",
+    "@ciscospark/plugin-board": "^0.7.0",
+    "@ciscospark/plugin-conversation": "^0.7.0",
+    "@ciscospark/plugin-credentials": "^0.7.0",
+    "@ciscospark/plugin-encryption": "^0.7.0",
+    "@ciscospark/plugin-feature": "^0.7.0",
+    "@ciscospark/plugin-flag": "^0.7.0",
+    "@ciscospark/plugin-logger": "^0.7.0",
+    "@ciscospark/plugin-mashups": "^0.7.0",
+    "@ciscospark/plugin-mercury": "^0.7.0",
+    "@ciscospark/plugin-metrics": "^0.7.0",
+    "@ciscospark/plugin-search": "^0.7.0",
+    "@ciscospark/plugin-support": "^0.7.0",
+    "@ciscospark/plugin-team": "^0.7.0",
+    "@ciscospark/plugin-user": "^0.7.0",
+    "@ciscospark/plugin-wdm": "^0.7.0",
+    "@ciscospark/spark-core": "^0.7.0",
+    "babel-runtime": "^6.3.19",
+    "in-publish": "^2.0.0",
+    "lodash": "^4.5.1"
+  },
+  "devDependencies": {
+    "babel-eslint": "^6.1.2",
+    "eslint": "^3.5.0",
+    "eslint-plugin-mocha": "^4.5.1"
+  },
+  "engines": {
+    "node": ">=4"
+  }
+}
