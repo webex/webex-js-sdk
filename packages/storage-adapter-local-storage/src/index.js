@@ -90,7 +90,7 @@ export default class StorageAdapterLocalStorage {
           loggers.get(this).info(`local-storage-store-adapter: reading \`${key}\``);
           const data = this._load();
           const value = data[key];
-          if (value) {
+          if (value || value === 0 || value === false || value === null) {
             return resolve(value);
           }
 
