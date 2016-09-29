@@ -43,7 +43,6 @@ export default function runAbstractStorageAdapterSpec(adapter) {
         it(`puts an object into the store`, () => bound.put(key, obj)
           .then(() => assert.becomes(bound.get(key), obj)));
 
-
         it(`handles concurrency`, () => Promise.all([
           bound.put(key, 1),
           bound.put(key, 2),
@@ -76,9 +75,6 @@ export default function runAbstractStorageAdapterSpec(adapter) {
         it(`gets an object from the store`, () => bound.put(key, obj)
           .then(() => assert.becomes(bound.get(key), obj)));
 
-        it(`gets null from the store if \`undefined\` is saved`, () => bound.put(key, undefined)
-          .then(() => assert.becomes(bound.get(key), null)));
-
         it(`rejects if the key cannot be found`, () => assert.isRejected(bound.get(`notakey`)));
       });
 
@@ -92,6 +88,11 @@ export default function runAbstractStorageAdapterSpec(adapter) {
           .then(() => assert.becomes(bound.get(key), obj))
           .then(() => assert.isFulfilled(bound.del(key)))
           .then(() => assert.isRejected(bound.get(key))));
+
+        it(`removes an item from the store when putting \`undefined\``, () =>
+          bound.put(key, undefined)
+            .then(() => assert.isFulfilled(bound.del(key)))
+            .then(() => assert.isRejected(bound.get(key))));
       });
     });
   });

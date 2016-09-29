@@ -75,12 +75,16 @@ export default class StorageAdapterLocalForage {
       }
 
       /**
-       * Stores the specified value at the specified key
+       * Stores the specified value at the specified key.
+       * If key is undefined, removes the specified key.
        * @param {string} key
        * @param {mixed} value
        * @returns {Promise}
        */
       put(key, value) {
+        if (value === undefined) {
+          return this.del(key);
+        }
         const key_ = `${namespaces.get(this)}/${key}`;
         loggers.get(this).info(`local-forage-store-adapter: writing \`${key_}\``);
         return localforage.setItem(key_, value);
