@@ -130,6 +130,10 @@ const Normalizer = SparkPlugin.extend({
       Reflect.deleteProperty(person, `emailAddress`);
     }
 
+    if (person.roomProperties) {
+      person.roomProperties.isModerator = Boolean(person.roomProperties.isModerator);
+    }
+
     if (patterns.uuid.test(id)) {
       person.entryUUID = person.id = id.toLowerCase();
       return Promise.resolve(person);

@@ -9,7 +9,7 @@ import {isArray, isFunction, isString} from 'lodash';
 import S from 'string';
 
 const encryptableActivities = [
-  `add`,
+  `assign`,
   `create`,
   `post`,
   `share`,
@@ -148,7 +148,11 @@ const Encrypter = SparkPlugin.extend({
       key = activity.object.defaultActivityEncryptionKeyUrl;
     }
 
-    // leave shoudn't trigger an encryption, but it should use the
+    if (!key && activity.verb === `add` && activity.target.defaultActivityEncryptionKeyUrl) {
+      key = activity.target.defaultActivityEncryptionKeyUrl;
+    }
+
+    // leave shouldn't trigger an encryption, but it should use the
     // defaultActivityEncryptionKeyUrl if no other key is provided.
     if (!key && activity.verb === `leave` && activity.target.defaultActivityEncryptionKeyUrl) {
       key = activity.target.defaultActivityEncryptionKeyUrl;
