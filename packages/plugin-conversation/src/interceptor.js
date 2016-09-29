@@ -101,6 +101,11 @@ export default class ConversationInterceptor extends Interceptor {
           return true;
         }
 
+        // required for plugin-flag multistatus object
+        if (options.resource === `bulk_activities_fetch`) {
+          return true;
+        }
+
         return false;
       });
   }
