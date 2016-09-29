@@ -1,8 +1,8 @@
-import React, {Component, PropTypes} from 'react';
-import {Provider, connect} from 'react-redux';
+import React from 'react';
+import {connect} from 'react-redux';
 import injectSpark from '../src/modules/redux-spark/inject-spark';
 
-function TestWidget(props) {
+function TestWidget() {
   return <div>TestWidget</div>;
 }
 
