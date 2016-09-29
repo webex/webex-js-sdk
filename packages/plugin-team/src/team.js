@@ -9,6 +9,7 @@ import './encrypter';
 
 import {find, pick, uniq} from 'lodash';
 import {SparkPlugin} from '@ciscospark/spark-core';
+import querystring from 'querystring';
 
 const Team = SparkPlugin.extend({
   namespace: `Team`,
@@ -17,10 +18,26 @@ const Team = SparkPlugin.extend({
    * Move an existing group conversation into a team.
    * @param {TeamObject} team
    * @param {ConversationObject} conversation
+   * @param {Conversation~ActivityObject} activity
    * @returns {Promise} Resolves with the add activity
    */
-  addConversation(team, conversation) {
-
+  addConversation(team, conversation, activity) {
+    return this._ensureGeneralConversation(team)
+      .then((generalConversation) => this.spark.conversation.prepare(activity, {
+        verb: `add`,
+        target: this.spark.conversation.prepareConversation(generalConversation),
+        object: {
+          id: conversation.id,
+          objectType: `conversation`
+        },
+        kmsMessage: {
+          method: `create`,
+          uri: `/authorizations`,
+          resourceUri: conversation.kmsResourceObjectUrl,
+          userIds: [generalConversation.kmsResourceObjectUrl]
+        }
+      }))
+      .then((a) => this.spark.conversation.submit(a));
   },
 
   /**
@@ -31,17 +48,8 @@ const Team = SparkPlugin.extend({
    * @returns {Promise} Resolves with activity that was posted
    */
   addMember(team, participant, activity) {
-
-  },
-
-  /**
-   * Archive a team or team conversation.
-   * @param {TeamObject|ConversationObject} target team or team conversation that should be archived
-   * @param {Conversation~ActivityObject} activity
-   * @returns {Promise} Resolves with the posted activity
-   */
-  archive(target, activity) {
-
+    return this._ensureGeneralConversation(team)
+      .then((generalConversation) => this.spark.conversation.add(generalConversation, participant, activity));
   },
 
   /**
@@ -154,10 +162,14 @@ const Team = SparkPlugin.extend({
    * Join a team conversation
    * @param {TeamObject} team
    * @param {ConversationObject} conversation
-   * @returns {Promise}
+   * @returns {Promise} Resolves with the conversation
    */
   joinConversation(team, conversation) {
-
+    return this.request({
+      method: `POST`,
+      uri: `${team.url}/conversations/${conversation.id}/participants`
+    })
+      .then((res) => res.body);
   },
 
   /**
@@ -192,7 +204,8 @@ const Team = SparkPlugin.extend({
    * @returns {Promise} Resolves with activity that was posted
    */
   removeMember(team, participant, activity) {
-
+    return this._ensureGeneralConversation(team)
+      .then((generalConversation) => this.spark.conversation.leave(generalConversation, participant, activity));
   },
 
   /**
@@ -201,17 +214,32 @@ const Team = SparkPlugin.extend({
    * @param {ConversationObject} conversation to be removed
    * @returns {Promise} Resolves with the leave activity
    */
-  removeConversation(team, conversation) {
+  removeConversation(team, conversation, activity) {
+    return this._ensureGeneralConversation(team)
+      .then((generalConversation) => {
+        const properties = {
+          verb: `remove`,
+          object: pick(conversation, `id`, `url`, `objectType`),
+          target: pick(generalConversation, `id`, `url`, `objectType`),
+          kmsMessage: {
+            method: `delete`,
+            uri: `<KRO>/authorizations?${querystring.stringify({authId: conversation.id})}`
+          }
+        };
 
+        return this.spark.conversation.prepare(activity, properties)
+      })
+      .then((activity) => this.spark.conversation.submit(activity))
   },
 
   /**
    * Update the displayName, summary, or teamColor field for a team.
-   * @param {TeamObject} team with updated displayName, summary, or teamColor
+   * @param {TeamObject} team to be updated
+   * @param {Object} object with updated displayName, summary, and/or teamColor
    * @returns {Promise} Resolves with posted activity
    */
-  update(team) {
-
+  update(team, object, activity) {
+    return this.spark.conversation.update(team, object, activity);
   },
 
   _ensureGeneralConversation(team) {
@@ -220,10 +248,10 @@ const Team = SparkPlugin.extend({
     }
 
     if (team.conversations.items.length) {
-      const teamConversation = find(team.conversations.items, {id: team.generalConversationUuid});
+      const generalConversation = find(team.conversations.items, {id: team.generalConversationUuid});
 
-      if (teamConversation) {
-        return Promise.resolve(teamConversation);
+      if (generalConversation) {
+        return Promise.resolve(generalConversation);
       }
     }
 
@@ -292,9 +320,36 @@ const Team = SparkPlugin.extend({
   `assignModerator`,
   `unassignModerator`
 ].forEach((verb) => {
-  Team.prototype[verb] = function submitObjectActivity(team, moderator, activity) {
-
+  Team.prototype[verb] = function submitModerationChangeActivity(team, member, activity) {
+    return this._ensureGeneralConversation(team)
+      .then((teamConversation) => this.spark.conversation[verb](teamConversation, member, {}));
   }
-})
+});
+
+/**
+ * Archive or unarchive a team or team conversation.
+ * @param {TeamObject|ConversationObject} target team or team conversation that should be archived
+ * @param {Conversation~ActivityObject} activity
+ * @returns {Promise} Resolves with the posted activity
+ */
+[
+  `archive`,
+  `unarchive`
+].forEach((verb) => {
+  Team.prototype[verb] = function submitArchiveStateChangeActivity(target, activity) {
+    if (!target.objectType) {
+      return Promise.reject(new Error(`\`target.objectType\` is required`));
+    }
+
+    const properties = {
+      verb,
+      object: pick(target, `id`, `url`, `objectType`),
+      target: pick(target, `id`, `url`, `objectType`)
+    };
+
+    return this.spark.conversation.prepare(activity, properties)
+      .then((activity) => this.spark.conversation.submit(activity));
+  }
+});
 
 export default Team;
