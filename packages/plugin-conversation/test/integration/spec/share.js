@@ -66,13 +66,13 @@ describe(`plugin-conversation`, function() {
     let sampleTextTwo = `sample-text-two.txt`;
 
     before(() => Promise.all([
-      fh.fetch(hashTestText),
-      fh.fetch(sampleImageSmallOnePng),
-      fh.fetch(sampleImageSmallTwoPng),
-      fh.fetch(sampleImageLargeJpg),
-      fh.fetch(samplePowerpointTwoPagePpt),
-      fh.fetch(sampleTextOne),
-      fh.fetch(sampleTextTwo)
+      fh.fetchWithoutMagic(hashTestText),
+      fh.fetchWithoutMagic(sampleImageSmallOnePng),
+      fh.fetchWithoutMagic(sampleImageSmallTwoPng),
+      fh.fetchWithoutMagic(sampleImageLargeJpg),
+      fh.fetchWithoutMagic(samplePowerpointTwoPagePpt),
+      fh.fetchWithoutMagic(sampleTextOne),
+      fh.fetchWithoutMagic(sampleTextTwo)
     ])
       .then((res) => {
         [
@@ -84,7 +84,6 @@ describe(`plugin-conversation`, function() {
           sampleTextOne,
           sampleTextTwo
         ] = res;
-        assert.equal(samplePowerpointTwoPagePpt.type, `application/vnd.ms-powerpoint`);
       }));
 
     describe(`#share()`, () => {
@@ -210,13 +209,15 @@ describe(`plugin-conversation`, function() {
           .then((activity) => {
             assert.equal(activity.clientTempId, clientTempId);
             activities.push(activity);
-            return blockUntilTranscode.promise
+
+            return spark.conversation.download(activity.object.files.items[0])
+              .then(tap((f) => console.log(f.type, f.mimeType)))
+              .then((f) => assert.equal(f.type, `application/vnd.ms-powerpoint`))
+              .then(() => blockUntilTranscode.promise)
               .then((updateActivity) => {
                 assert.equal(updateActivity.object.url, activity.object.url);
                 assert.lengthOf(updateActivity.object.files.items[0].transcodedCollection.items[0].files.items, 3);
-              })
-              .then(() => spark.conversation.download(activity.object.files.items[0]))
-              .then((f) => assert.equal(f.type, `application/vnd.ms-powerpoint`));
+              });
           }));
       });
     });
