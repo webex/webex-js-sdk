@@ -483,7 +483,7 @@ export default {
     }
 
     this.logger.error(`credentials: falling back to supertoken for ${scope}`);
-    return Promise.resolve(this.supertoken);
+    return Promise.resolve(new Token(Object.assign({scope}, supertoken.serialize()), {parent: this}));
   },
 
   /**
