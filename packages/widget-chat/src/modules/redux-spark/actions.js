@@ -9,7 +9,7 @@ export function updateSparkState(state) {
 export function registerDevice(spark) {
   return (dispatch) => {
     dispatch(updateSparkState({registering: true}));
-    spark.device.register()
+    return spark.device.register()
       .then(() => dispatch(updateSparkState({registering: false, registered: true})));
   };
 }
@@ -17,7 +17,7 @@ export function registerDevice(spark) {
 export function connectToMercury(spark) {
   return (dispatch) => {
     dispatch(updateSparkState({connecting: true}));
-    spark.mercury.connect()
+    return spark.mercury.connect()
     .then(() => dispatch(updateSparkState({connecting: false, connected: true})));
   };
 }

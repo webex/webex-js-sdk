@@ -1,4 +1,4 @@
-import {REQUEST_USER, RECEIVE_USER, RECEIVE_THIS_USER} from '../actions/user';
+import {REQUEST_USER, RECEIVE_USER, RECEIVE_CURRENT_USER} from '../actions/user';
 
 function user(state = {
   isFetching: false,
@@ -17,10 +17,10 @@ function user(state = {
       targetUser: action.user,
       userId: action.userId
     });
-  case RECEIVE_THIS_USER:
+  case RECEIVE_CURRENT_USER:
     return Object.assign({}, state, {
       isFetching: false,
-      thisUser: action.user
+      currentUser: action.user
     });
   default:
     return state;
