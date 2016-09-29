@@ -82,7 +82,7 @@ export default class StorageAdapterLocalForage {
        * @returns {Promise}
        */
       put(key, value) {
-        if (value === undefined) {
+        if (typeof value === `undefined`) {
           return this.del(key);
         }
         const key_ = `${namespaces.get(this)}/${key}`;
