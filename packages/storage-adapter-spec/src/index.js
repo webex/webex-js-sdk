@@ -37,7 +37,7 @@ export default function runAbstractStorageAdapterSpec(adapter) {
 
         [0, false, null].forEach((falsey) => {
           it(`puts falsey primitive \`${falsey}\` into the store`, () => bound.put(key, falsey)
-          .then(() => assert.becomes(bound.get(key), falsey)));
+            .then(() => assert.becomes(bound.get(key), falsey)));
         });
 
         it(`puts an object into the store`, () => bound.put(key, obj)
@@ -87,10 +87,9 @@ export default function runAbstractStorageAdapterSpec(adapter) {
           .then(() => assert.isFulfilled(bound.del(key)))
           .then(() => assert.isRejected(bound.get(key))));
 
-        it(`removes an item from the store when putting \`undefined\``, () =>
-          bound.put(key, undefined)
-            .then(() => assert.isFulfilled(bound.del(key)))
-            .then(() => assert.isRejected(bound.get(key))));
+        it(`removes an item from the store when putting \`undefined\``, () => bound.put(key, undefined)
+          .then(() => assert.isFulfilled(bound.del(key)))
+          .then(() => assert.isRejected(bound.get(key))));
       });
     });
   });
