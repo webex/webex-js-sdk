@@ -271,5 +271,31 @@ describe('Services', function() {
           });
       });
     });
+
+    describe('#parseLinkHeaders', function() {
+
+      it('returns empty object if there are not any link headers', function() {
+        var linkHeader = undefined;
+        assert.deepEqual(spark.board.parseLinkHeaders(linkHeader), {});
+      });
+
+      it('returns object containing one link if only one link header passed as a string', function() {
+        var linkHeader = '<https://www.cisco.com>; rel=cisco';
+        assert.deepEqual(spark.board.parseLinkHeaders(linkHeader), {
+          cisco: 'https://www.cisco.com'
+        });
+      });
+
+      it('returns object containing multiple links when multiple headers passed as an array', function() {
+        var linkHeader = [
+          '<https://www.ciscospark.com>; rel=ciscospark',
+          '<https://www.cisco.com>; rel=cisco'
+        ];
+        assert.deepEqual(spark.board.parseLinkHeaders(linkHeader), {
+          ciscospark: 'https://www.ciscospark.com',
+          cisco: 'https://www.cisco.com'
+        });
+      });
+    });
   });
 });

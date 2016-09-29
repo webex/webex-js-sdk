@@ -2,6 +2,7 @@
   "name": "@ciscospark/bin-walk",
   "version": "0.7.0-alpha",
   "description": "",
+  "license": "MIT",
   "main": "./src",
   "bin": {
     "walk": "./bin/walk"
@@ -23,5 +24,8 @@
     "babel-eslint": "^6.1.2",
     "eslint": "^3.5.0",
     "eslint-plugin-mocha": "^4.5.1"
+  },
+  "engines": {
+    "node": ">=4"
   }
 }

@@ -30,14 +30,15 @@ describe('Services', function() {
   describe('Board', function() {
     this.timeout(60000);
 
+    // added a third member in order to be able to create another room.
     var party = {
       spock: true,
-      mccoy: true
+      mccoy: true,
+      checkov: true
     };
 
     var board;
     var conversation;
-
     var mercuryBindingsPrefix = 'board.';
 
     function ensureBoardMercury() {
@@ -446,6 +447,66 @@ describe('Services', function() {
               assert.equal(res.length, 1);
               assert.equal(res[0].payload, data[1].payload);
               return res;
+            });
+        });
+      });
+
+      describe('#getChannels', function() {
+
+        beforeEach(function() {
+          return ensureBoard();
+        });
+
+        it('retrieves a newly created board for a specified conversation within a single page', function() {
+          return party.spock.spark.board.persistence.getChannels({conversationId: conversation.id})
+            .then(function(getChannelsResp) {
+              var channelFound = find(getChannelsResp.items, {channelId: board.channelId});
+              assert.isDefined(channelFound);
+              assert.notProperty(getChannelsResp.links, 'next');
+            });
+        });
+
+        it('retrieves all boards for a specified conversation across multiple pages', function() {
+          var pageLimit = 10;
+          var conversation;
+
+          return party.spock.spark.conversation.create({
+            displayName: 'Test Board Conversation',
+            participants: pluck(party, 'id')
+          })
+            .then(function(conversationResp) {
+              conversation = conversationResp;
+              var promises = [];
+
+              for (var i = 0; i < pageLimit + 1; i++) {
+                promises.push(party.spock.spark.board.persistence.createChannel({
+                  aclUrl: conversation.id
+                }));
+              }
+              return Promise.all(promises);
+            })
+            .then(function() {
+              return party.spock.spark.board.persistence.getChannels({
+                conversationId: conversation.id,
+                channelsLimit: pageLimit
+              });
+            })
+            .then(function(getChannelsResp) {
+              assert.lengthOf(getChannelsResp.items, pageLimit);
+              assert.property(getChannelsResp, 'links');
+              assert.property(getChannelsResp.links, 'next');
+              assert.isString(getChannelsResp.links.next);
+
+              return party.spock.spark.request({
+                uri: getChannelsResp.links.next
+              })
+                .then(function(res) {
+                  return res.body;
+                });
+            })
+            .then(function(getChannelsResp) {
+              assert.lengthOf(getChannelsResp.items, 1);
+              assert.notProperty(getChannelsResp, 'links');
             });
         });
       });

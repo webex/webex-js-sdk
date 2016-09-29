@@ -18,3 +18,4 @@ export {
 export {default as resolveWith} from './resolve-with';
 export {default as retry} from './retry';
 export {default as tap} from './tap';
+export {default as whileInFlight} from './while-in-flight';

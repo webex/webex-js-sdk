@@ -10,11 +10,13 @@ if (typeof Promise === 'undefined') {
 }
 
 var chai = require('chai');
+var chaiAsPromised = require('chai-as-promised');
 var Board = require('../../../../../src/client/services/board');
 var MockSpark = require('../../../lib/mock-spark');
 var sinon = require('sinon');
 var assert = chai.assert;
 
+chai.use(chaiAsPromised);
 sinon.assert.expose(chai.assert, {prefix: ''});
 
 describe('Services', function() {
@@ -118,6 +120,31 @@ describe('Services', function() {
           }));
         });
 
+      });
+
+      describe('#getChannels()', function() {
+
+        before(function() {
+          spark.board.persistence.getChannels({
+            conversationId: 'fakeConversationId'
+          });
+        });
+
+        it('requires a conversationId as an option', function() {
+          return Promise.all([
+            assert.isRejected(spark.board.persistence.getChannels(), '`conversationId` is required')
+          ]);
+        });
+
+        it('requests GET to channels service', function() {
+          assert.calledWith(spark.request, sinon.match({
+            api: 'board',
+            resource: '/channels',
+            qs: {
+              conversationId: 'fakeConversationId'
+            }
+          }));
+        });
       });
 
       describe('#addContent()', function() {

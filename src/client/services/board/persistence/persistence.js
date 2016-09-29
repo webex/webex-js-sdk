@@ -5,6 +5,7 @@
 
 'use strict';
 
+var assign = require('lodash.assign');
 var SparkBase = require('../../../../lib/spark-base');
 var chunk = require('lodash.chunk');
 var pick = require('lodash.pick');
@@ -178,6 +179,35 @@ var PersistenceService = SparkBase.extend({
       .then(function resolveWithBody(res) {
         return res.body;
       });
+  },
+
+  /**
+   * Gets Channels
+   * @memberof Board.PersistenceService
+   * @param {Object} options
+   * @param {number} options.limit Max number of activities to return
+   * @return {Promise} Resolves with an array of Channel items
+   */
+  getChannels: function getChannels(options) {
+    options = options || {};
+
+    if (!options.conversationId) {
+      return Promise.reject(new Error('`conversationId` is required'));
+    }
+
+    var params = {
+      api: 'board',
+      resource: '/channels',
+      qs: {}
+    };
+    assign(params.qs, pick(options, 'channelsLimit', 'conversationId'));
+
+    return this.request(params)
+      .then(function resolveWithBody(res) {
+        var responseObject = res.body;
+        responseObject.links = this.spark.board.parseLinkHeaders(res.headers.link);
+        return responseObject;
+      }.bind(this));
   },
 
   /**

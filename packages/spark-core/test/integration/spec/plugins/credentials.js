@@ -9,7 +9,7 @@ import {default as Spark, Authorization, grantErrors} from '../../..';
 import testUsers from '@ciscospark/test-helper-test-users';
 
 describe(`spark-core`, function() {
-  this.timeout(20000);
+  this.timeout(30000);
   describe(`Spark`, () => {
 
     describe(`Plugins`, () => {

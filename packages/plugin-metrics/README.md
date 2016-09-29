@@ -1,5 +1,3 @@
-# config
+# @ciscospark/plugin-metrics
 
-!
-
-Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+See https://ciscospark.github.io/spark-js-sdk/

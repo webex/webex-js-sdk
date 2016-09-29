@@ -210,7 +210,7 @@ const Conversation = SparkPlugin.extend({
           .then((userId) => {
             if (userId) {
               Object.assign(params, {
-                api: `conversation`,
+                service: `conversation`,
                 resource: `conversations/user/${userId}`
               });
             }
@@ -267,7 +267,7 @@ const Conversation = SparkPlugin.extend({
    */
   list(options) {
     return this._list({
-      api: `conversation`,
+      service: `conversation`,
       resource: `conversations`,
       qs: options
     });
@@ -281,7 +281,7 @@ const Conversation = SparkPlugin.extend({
    */
   listLeft(options) {
     return this._list({
-      api: `conversation`,
+      service: `conversation`,
       resource: `conversations/left`,
       qs: options
     });
@@ -650,7 +650,7 @@ const Conversation = SparkPlugin.extend({
    */
   _listActivities(options) {
     return this._list({
-      api: `conversation`,
+      service: `conversation`,
       resource: options.mentions ? `mentions` : `activities`,
       qs: omit(options, `mentions`)
     });

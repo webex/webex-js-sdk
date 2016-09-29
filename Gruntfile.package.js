@@ -116,13 +116,6 @@ module.exports = function(grunt) {
         },
         private: false
       },
-      md: {
-        src: './packages/<%= package %>/src/index.js',
-        options: {
-          filename: 'README.md',
-          format: 'md'
-        }
-      },
       json: {
         src: './packages/<%= package %>/src/index.js',
         options: {
@@ -290,7 +283,9 @@ module.exports = function(grunt) {
     },
 
     package: process.env.PACKAGE,
+
     xunitDir: process.env.XUNIT_DIR || './reports/junit',
+
     shell: {
       'move-babelrc': {
         command: 'mv .babelrc babelrc'
@@ -305,6 +300,20 @@ module.exports = function(grunt) {
         options: {
           dest: './reports/coverage/<%= package %>/mocha-final.json'
         }
+      }
+    },
+
+    watch: {
+      serve: {
+        files: [
+          'Gruntfile.package.js',
+          'packages/test-helper-server/*',
+          'packages/test-helper-server/src/**'
+        ],
+        options: {
+          spawn: false
+        },
+        tasks: ['express:test']
       }
     }
   });
@@ -321,12 +330,7 @@ module.exports = function(grunt) {
 
   registerTask('build', [
     'clean:dist',
-    'babel',
-    'documentation:md'
-  ]);
-
-  registerTask('doc', [
-    'documentation:md'
+    'babel'
   ]);
 
   registerTask('test:automation', [
@@ -358,7 +362,7 @@ module.exports = function(grunt) {
   registerTask('test', [
     'env',
     'clean:coverage',
-    'express',
+    'serve:test',
     'concurrent:test',
     p(process.env.COVERAGE) && 'copy:coverage',
     p(process.env.COVERAGE) && 'makeReport2'
@@ -385,6 +389,15 @@ module.exports = function(grunt) {
   catch(error) {
     // ignore
   }
+
+  registerTask('serve:test', [
+    'express:test'
+  ]);
+
+  registerTask('serve', [
+    'express:test',
+    'watch:serve'
+  ]);
 
   /**
    * Helper function which converts environment strings into

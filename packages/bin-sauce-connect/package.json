@@ -2,6 +2,7 @@
   "name": "@ciscospark/bin-sauce-connect",
   "version": "0.7.0-alpha",
   "description": "",
+  "license": "MIT",
   "bin": {
     "sauce-connect": "./bin/sauce-connect"
   },
@@ -24,5 +25,8 @@
     "babel-eslint": "^6.1.2",
     "eslint": "^3.5.0",
     "eslint-plugin-mocha": "^4.5.1"
+  },
+  "engines": {
+    "node": ">=4"
   }
 }
