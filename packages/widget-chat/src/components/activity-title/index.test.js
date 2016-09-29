@@ -1,7 +1,7 @@
 import React from 'react';
 import {findRenderedDOMComponentWithTag, renderIntoDocument} from 'react-addons-test-utils';
 
-import ActivityTitle from './activity-title';
+import ActivityTitle from '.';
 
 it(`is rendered properly`, () => {
   const title = renderIntoDocument(
