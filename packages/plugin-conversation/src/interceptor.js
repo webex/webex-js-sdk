@@ -28,9 +28,9 @@ export default class ConversationInterceptor extends Interceptor {
       return options;
     }
 
-    return this.spark.device.isSpecificService(`conversation`, options.service || options.uri)
-      .then((isConversationService) => {
-        if (!isConversationService) {
+    return Promise.all([`conversation`, `argonaut`].map((service) => this.spark.device.isSpecificService(service, options.service || options.uri)))
+      .then(([isConversationService, isArgonautService]) => {
+        if (!isConversationService || !isArgonautService) {
           return options;
         }
 
@@ -61,12 +61,26 @@ export default class ConversationInterceptor extends Interceptor {
         }
 
         const hasItems = Boolean(response.body.items);
+        const hasActivities = Boolean(response.body.activities);
 
         return this.spark.conversation.decrypter.decryptObject(null, response.body)
           .then((body) => this.spark.conversation.inboundNormalizer.normalize(hasItems ? body.items : body))
           .then((body) => {
+            let normalize = body;
+            if (hasItems) {
+              normalize = body.items;
+            }
+            else if (hasActivities) {
+              normalize = body.activities.items;
+            }
+            return this.spark.conversation.normalizer.normalize(normalize);
+          })
+          .then((body) => {
             if (hasItems) {
               response.body.items = body;
+            }
+            else if (hasActivities) {
+              response.body.activities.items = body;
             }
             else {
               response.body = body;
@@ -83,10 +97,10 @@ export default class ConversationInterceptor extends Interceptor {
    * @returns {Promise<Object>}
    */
   shouldDecrypt(options, response) {
-    return this.spark.device.isSpecificService(`conversation`, options.service || options.uri)
-      .then((isConversationService) => {
-        if (!isConversationService) {
-          return false;
+    return Promise.all([`conversation`, `argonaut`].map((service) => this.spark.device.isSpecificService(service, options.service || options.uri)))
+      .then(([isConversationService, isArgonautService]) => {
+        if (!isConversationService || !isArgonautService) {
+          return options;
         }
 
         if (isArray(response.body) && response.body[0].objectType) {
