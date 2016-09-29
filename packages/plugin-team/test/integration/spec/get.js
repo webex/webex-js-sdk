@@ -51,9 +51,7 @@ describe(`plugin-team`, () => {
 
       return Promise.all([
         kirk.spark.mercury.connect(),
-        kirk.spark.device.register(),
-        spock.spark.mercury.connect(),
-        spock.spark.device.register()
+        spock.spark.mercury.connect()
       ]);
     })
   );
@@ -101,8 +99,8 @@ describe(`plugin-team`, () => {
   });
 
   after(() => Promise.all([
-    kirk.spark.mercury.disconnect(),
-    spock.spark.mercury.disconnect()
+    kirk && kirk.spark.mercury.disconnect(),
+    spock && spock.spark.mercury.disconnect()
   ]));
 
   describe(`#get()`, () => {
@@ -112,12 +110,7 @@ describe(`plugin-team`, () => {
         assert.equal(t.id, team0.id);
         assert.match(t.teamColor, team0.teamColor);
 
-        assert.isDefined(t.encryptedDisplayName);
-        assert.notEqual(t.displayName, t.encryptedDisplayName);
         assert.equal(t.displayName, team0.displayName);
-
-        assert.isDefined(t.encryptedSummary);
-        assert.notEqual(t.summary, t.encryptedSummary);
         assert.equal(t.summary, team0.summary);
 
         assert.lengthOf(t.teamMembers.items, 0);
@@ -157,8 +150,7 @@ describe(`plugin-team`, () => {
         assert.include(map(conversations, `url`), teamConvo1.url);
 
         conversations.forEach((c) => {
-          assert.isDefined(c.encryptedDisplayName);
-          assert.notEqual(c.displayName, c.encryptedDisplayName);
+          assert.isInternalTeamConversation(c);
           assert.include(map([team0, teamConvo0, teamConvo1], `displayName`), c.displayName);
         });
       })
@@ -172,8 +164,7 @@ describe(`plugin-team`, () => {
         assert.include(map(conversations, `url`), teamConvo1.url);
 
         conversations.forEach((c) => {
-          assert.isDefined(c.encryptedDisplayName);
-          assert.notEqual(c.displayName, c.encryptedDisplayName);
+          assert.isInternalTeamConversation(c);
           assert.include(map([team0, teamConvo0, teamConvo1], `displayName`), c.displayName);
         });
       })

@@ -32,10 +32,7 @@ describe(`plugin-team`, () => {
         }
       });
 
-      return Promise.all([
-        spark.mercury.connect(),
-        spark.device.register()
-      ]);
+      return spark.mercury.connect();
     })
   );
 
@@ -78,12 +75,7 @@ describe(`plugin-team`, () => {
           assert.isNewEncryptedTeam(team);
           assert.lengthOf(team.teamMembers.items, 1);
 
-          assert.isDefined(team.encryptedDisplayName);
-          assert.notEqual(team.displayName, team.encryptedDisplayName);
           assert.equal(team.displayName, displayName);
-
-          assert.isDefined(team.encryptedSummary);
-          assert.notEqual(team.summary, team.encryptedSummary);
           assert.equal(team.summary, summary);
         });
     });
@@ -126,9 +118,6 @@ describe(`plugin-team`, () => {
       })
         .then((tc) => {
           assert.isInternalTeamConversation(tc);
-
-          assert.isDefined(tc.encryptedDisplayName);
-          assert.notEqual(tc.displayName, tc.encryptedDisplayName);
           assert.equal(tc.displayName, displayName);
 
           assert.lengthOf(tc.participants.items, 1);

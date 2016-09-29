@@ -78,6 +78,15 @@ module.exports = function schemas(chai) {
     assert.property(this._obj, 'id');
     assert.property(this._obj, 'url');
     assert.property(this._obj, 'generalConversationUuid');
+
+    assert.property(this._obj, 'encryptedDisplayName');
+    assert.property(this._obj, 'displayName');
+    assert.notEqual(this._obj.displayName, this._obj.encryptedDisplayName);
+
+    if (this._obj.summary) {
+      assert.property(this._obj, 'encryptedSummary');
+      assert.notEqual(this._obj.summary, this._obj.encryptedSummary);
+    }
   });
 
   Assertion.addProperty('OneOnOneConversation', function() {
@@ -93,7 +102,12 @@ module.exports = function schemas(chai) {
   Assertion.addProperty('InternalTeamConversation', function() {
     assert.isConversation(this._obj);
     assert.property(this._obj, 'team');
-    assert.include(this._obj.tags, 'OPEN');
+
+    assert.ok(this._obj.tags.includes('OPEN') || this._obj.tags.includes('TEAM'), 'Conversation must have `OPEN` or `TEAM` tag');
+
+    assert.property(this._obj, 'encryptedDisplayName');
+    assert.property(this._obj, 'displayName');
+    assert.notEqual(this._obj.displayName, this._obj.encryptedDisplayName);
   });
 
   Assertion.addProperty('NewEncryptedConversation', function() {
