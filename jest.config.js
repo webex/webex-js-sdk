@@ -11,11 +11,12 @@ module.exports = {
       'json',
       'text'
     ],
+    setupFiles: ['<rootDir>/test/env-script.js'],
     coveragePathIgnorePatterns: ['setup-jasmine-env.js'],
     setupTestFrameworkScriptFile: path.join(__dirname, 'setup-jasmine-env.js'),
     moduleNameMapper: {
-      '^.+\\.(css|less)$': '<rootDir>/test/styleMock.js',
-      '^.+\\.(gif|ttf|eot|svg)$': '<rootDir>/test/fileMock.js'
+      '^.+\\.(css|less)$': '<rootDir>/test/style-mock.js',
+      '^.+\\.(gif|ttf|eot|svg)$': '<rootDir>/test/file-mock.js'
     },
     rootDir: path.join('packages', process.env.PACKAGE)
   },

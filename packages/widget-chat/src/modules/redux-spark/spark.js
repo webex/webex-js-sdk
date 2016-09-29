@@ -4,7 +4,7 @@ import '@ciscospark/plugin-conversation';
 import Spark from '@ciscospark/spark-core';
 
 export default function createSpark(accessToken) {
-  const credentials = JSON.parse(localStorage.getItem(`credentials`));
+  const credentials = JSON.parse(localStorage.getItem(`credentials`) || false);
   return new Spark({
     credentials: {
       authorization: {
