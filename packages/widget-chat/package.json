@@ -26,8 +26,8 @@
   },
   "devDependencies": {
     "@ciscospark/http-core": "^0.7.0-alpha",
-    "@ciscospark/spark-core": "^0.7.0-alpha",
     "@ciscospark/plugin-conversation": "^0.7.0-alpha",
+    "@ciscospark/spark-core": "^0.7.0-alpha",
     "@kadira/storybook": "^2.5.2",
     "babel-core": "^6.7.7",
     "babel-eslint": "^6.0.0-beta.5",
@@ -55,6 +55,7 @@
     "react-addons-test-utils": "^15.3.1",
     "react-test-renderer": "^15.3.1",
     "redux-logger": "^2.6.1",
+    "redux-mock-store": "^1.2.1",
     "redux-thunk": "^2.1.0",
     "require-dir": "^0.3.0",
     "style-loader": "^0.13.1"

@@ -9,7 +9,6 @@ function getDisplayName(C) {
 }
 
 
-
 export default function injectSpark(WrappedComponent, options = {}) {
   const {
     withRef = false
@@ -18,8 +17,11 @@ export default function injectSpark(WrappedComponent, options = {}) {
 
   class InjectSpark extends Component {
 
+    shouldComponentUpdate(nextProps) {
+      return nextProps !== this.props;
+    }
+
     getWrappedInstance() {
-      // TODO find a way to do this that doesn't require a deprecated API
       // eslint-disable-next-line react/no-string-refs
       return this.refs.wrappedInstance;
     }

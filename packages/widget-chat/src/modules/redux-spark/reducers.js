@@ -1,4 +1,4 @@
-import {UPDATE_SPARK_STATE, UPDATE_SPARK_ACCESS_TOKEN} from './actions';
+import {UPDATE_SPARK_STATE} from './actions';
 
 export default function spark(state = {
   authenticated: false,
@@ -12,11 +12,6 @@ export default function spark(state = {
 
   case UPDATE_SPARK_STATE:
     return Object.assign({}, state, action.state);
-
-  case UPDATE_SPARK_ACCESS_TOKEN:
-    return Object.assign({}, state, {
-      accessToken: action.sparkAccessToken
-    });
 
   default:
     return state;
