@@ -39,10 +39,10 @@ const Search = SparkPlugin.extend({
 
     let results = {};
     return this._prepareKmsMessage()
-      .then((key) => this.spark.encryption.encryptText(key, options.query)
+      .then((key) => this.spark.encryption.encryptText(key.keyUrl, options.query)
           .then((query) => {
             options.query = query;
-            options.searchEncryptionKeyUrl = key;
+            options.searchEncryptionKeyUrl = key.keyUrl;
             return this.request({
               api: `argonaut`,
               resource: `search`,
@@ -51,23 +51,12 @@ const Search = SparkPlugin.extend({
             });
           })
           .then((res) => {
-            this.logger.info(`search: received results: ${res}`);
             results = res;
             if (!results.body || !results.body.activities || !results.body.activities.items) {
               return [];
             }
-            return this._decryptKmsMessage(results);
+            return results.body.activities.items;
           })
-          .then(() => {
-            const items = results.body.activities.items;
-            return Promise.all(items.map((activity) => {
-              const decrypter = this.spark.conversation.decrypter;
-              const normalizer = this.spark.conversation.inboundNormalizer;
-              return decrypter.decryptObject(activity)
-                .then(normalizer.normalize.bind(normalizer));
-            }));
-          })
-          .then(() => results.body.activities.items)
       );
   },
 
