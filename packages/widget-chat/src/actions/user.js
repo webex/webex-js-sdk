@@ -15,20 +15,20 @@ export function receiveUser(userId, user) {
   };
 }
 
-export const RECEIVE_THIS_USER = `RECEIVE_THIS_USER`;
-export function receiveThisUser(user) {
+export const RECEIVE_CURRENT_USER = `RECEIVE_CURRENT_USER`;
+export function receiveCurrentUser(user) {
   return {
-    type: RECEIVE_THIS_USER,
+    type: RECEIVE_CURRENT_USER,
     user
   };
 }
 
 
-export function fetchThisUser(spark) {
+export function fetchCurrentUser(spark) {
   return (dispatch) => {
     spark.user.get()
       .then((user) => {
-        dispatch(receiveThisUser(user));
+        dispatch(receiveCurrentUser(user));
       });
   };
 }
