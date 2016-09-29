@@ -22,7 +22,7 @@ function promiseTick(count) {
 }
 
 describe(`plugin-metrics`, () => {
-  describe(`ClientMetricsMetricsBatcher`, () => {
+  describe(`ClientMetricsBatcher`, () => {
     let spark;
 
     beforeEach(() => {

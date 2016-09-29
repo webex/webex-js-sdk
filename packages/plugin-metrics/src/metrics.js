@@ -6,7 +6,7 @@
 
 import {SparkPlugin} from '@ciscospark/spark-core';
 import Batcher from './batcher';
-import ClientMetricsBatcher from './clientMetricsBatcher';
+import ClientMetricsBatcher from './client-metrics-batcher';
 import {deprecated} from 'core-decorators';
 
 const Metrics = SparkPlugin.extend({
