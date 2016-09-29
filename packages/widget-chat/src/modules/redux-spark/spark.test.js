@@ -1,5 +1,8 @@
-import spark from './spark';
+import createSpark from './spark';
 
-it(`is authenticated`, () => {
-  expect(spark.isAuthenticated).toBe(true);
+describe(`spark`, () => {
+  it(`is authenticated`, () => {
+    const spark = createSpark();
+    expect(spark.isAuthenticated).toBe(true);
+  });
 });
