@@ -5,7 +5,7 @@
 
 import '../..';
 
-import {Defer} from '@ciscospark/common';
+import {Defer, tap} from '@ciscospark/common';
 import CiscoSpark from '@ciscospark/spark-core';
 import fh from '@ciscospark/test-helper-file';
 import sinon from '@ciscospark/test-helper-sinon';
@@ -95,6 +95,7 @@ describe(`plugin-conversation`, function() {
           assert.isFileItem(activity.object.files.items[0]);
           return spark.conversation.download(activity.object.files.items[0]);
         })
+        .then(tap((f) => assert.equal(f.type, `text/plain`)))
         .then((f) => assert.eventually.isTrue(fh.isMatchingFile(f, sampleTextOne))));
 
       it(`shares the specified set of files to the specified conversation`, () => spark.conversation.share(conversation, [sampleTextOne, sampleTextTwo])
@@ -104,8 +105,10 @@ describe(`plugin-conversation`, function() {
           assert.isFileItem(activity.object.files.items[0]);
           assert.isFileItem(activity.object.files.items[1]);
           return Promise.all([
-            spark.conversation.download(activity.object.files.items[0]),
+            spark.conversation.download(activity.object.files.items[0])
+              .then(tap((f) => assert.equal(f.type, `text/plain`))),
             spark.conversation.download(activity.object.files.items[1])
+              .then(tap((f) => assert.equal(f.type, `text/plain`)))
           ]);
         })
         .then(([file0, file1]) => Promise.all([
@@ -121,6 +124,7 @@ describe(`plugin-conversation`, function() {
             assert.isFileItem(activity.object.files.items[0]);
             return spark.conversation.download(activity.object.files.items[0]);
           })
+          .then(tap((f) => assert.equal(f.type, `text/plain`)))
           .then((f) => assert.eventually.isTrue(fh.isMatchingFile(f, hashTestText))));
       });
 
@@ -140,6 +144,7 @@ describe(`plugin-conversation`, function() {
 
           return spark.conversation.download(activity.object.files.items[0]);
         })
+        .then(tap((f) => assert.equal(f.type, `image/jpeg`)))
         .then((f) => assert.eventually.isTrue(fh.isMatchingFile(f, sampleImageLargeJpg))));
 
       it(`shares the specified set of images the specified conversation`, () => spark.conversation.share(conversation, [sampleImageSmallOnePng, sampleImageSmallTwoPng])
@@ -151,8 +156,10 @@ describe(`plugin-conversation`, function() {
           assert.isThumbnailItem(activity.object.files.items[0].image);
           assert.isThumbnailItem(activity.object.files.items[1].image);
           return Promise.all([
-            spark.conversation.download(activity.object.files.items[0]),
+            spark.conversation.download(activity.object.files.items[0])
+              .then(tap((f) => assert.equal(f.type, `image/png`))),
             spark.conversation.download(activity.object.files.items[1])
+              .then(tap((f) => assert.equal(f.type, `image/png`)))
           ]);
         })
         .then(([file0, file1]) => Promise.all([
@@ -207,7 +214,9 @@ describe(`plugin-conversation`, function() {
               .then((updateActivity) => {
                 assert.equal(updateActivity.object.url, activity.object.url);
                 assert.lengthOf(updateActivity.object.files.items[0].transcodedCollection.items[0].files.items, 3);
-              });
+              })
+              .then(() => spark.conversation.download(activity.object.files.items[0]))
+              .then((f) => assert.equal(f.type, `application/vnd.ms-powerpoint`));
           }));
       });
     });
@@ -233,6 +242,7 @@ describe(`plugin-conversation`, function() {
             assert.equal(activity.object.displayName, `a name`);
             return spark.conversation.download(activity.object.files.items[0]);
           })
+          .then(tap((f) => assert.equal(f.type, `image/png`)))
           .then((file) => fh.isMatchingFile(file, sampleImageSmallOnePng));
       });
 
@@ -248,6 +258,7 @@ describe(`plugin-conversation`, function() {
             assert.lengthOf(activity.object.files.items, 1);
             return spark.conversation.download(activity.object.files.items[0]);
           })
+          .then(tap((f) => assert.equal(f.type, `image/png`)))
           .then((file) => fh.isMatchingFile(file, sampleImageSmallTwoPng));
       });
     });
