@@ -18,7 +18,9 @@ const Team = SparkPlugin.extend({
    * Move an existing group conversation into a team.
    * @param {TeamObject} team
    * @param {ConversationObject} conversation
-   * @param {Conversation~ActivityObject} activity
+   * @param {Object} activity Reference to the activity that will eventually be
+   * posted. Use this to (a) pass in e.g. clientTempId and (b) render a
+   * provisional activity
    * @returns {Promise} Resolves with the add activity
    */
   addConversation(team, conversation, activity) {
@@ -44,7 +46,9 @@ const Team = SparkPlugin.extend({
    * Add a member to a team
    * @param {TeamObject} team
    * @param {Object} participant
-   * @param {Conversation~ActivityObject} activity
+   * @param {Object} activity Reference to the activity that will eventually be
+   * posted. Use this to (a) pass in e.g. clientTempId and (b) render a
+   * provisional activity
    * @returns {Promise} Resolves with activity that was posted
    */
   addMember(team, participant, activity) {
@@ -200,7 +204,9 @@ const Team = SparkPlugin.extend({
    * Remove a member from a team
    * @param {TeamObject} team
    * @param {Object} participant
-   * @param {Object} activty
+   * @param {Object} activity Reference to the activity that will eventually be
+   * posted. Use this to (a) pass in e.g. clientTempId and (b) render a
+   * provisional activity
    * @returns {Promise} Resolves with activity that was posted
    */
   removeMember(team, participant, activity) {
@@ -212,6 +218,9 @@ const Team = SparkPlugin.extend({
    * Remove a team conversation from a team.
    * @param {TeamObject} team
    * @param {ConversationObject} conversation to be removed
+   * @param {Object} activity Reference to the activity that will eventually be
+   * posted. Use this to (a) pass in e.g. clientTempId and (b) render a
+   * provisional activity
    * @returns {Promise} Resolves with the leave activity
    */
   removeConversation(team, conversation, activity) {
@@ -227,15 +236,18 @@ const Team = SparkPlugin.extend({
           }
         };
 
-        return this.spark.conversation.prepare(activity, properties)
+        return this.spark.conversation.prepare(activity, properties);
       })
-      .then((activity) => this.spark.conversation.submit(activity))
+      .then((a) => this.spark.conversation.submit(a));
   },
 
   /**
    * Update the displayName, summary, or teamColor field for a team.
    * @param {TeamObject} team to be updated
    * @param {Object} object with updated displayName, summary, and/or teamColor
+   * @param {Object} activity Reference to the activity that will eventually be
+   * posted. Use this to (a) pass in e.g. clientTempId and (b) render a
+   * provisional activity
    * @returns {Promise} Resolves with posted activity
    */
   update(team, object, activity) {
@@ -322,14 +334,16 @@ const Team = SparkPlugin.extend({
 ].forEach((verb) => {
   Team.prototype[verb] = function submitModerationChangeActivity(team, member, activity) {
     return this._ensureGeneralConversation(team)
-      .then((teamConversation) => this.spark.conversation[verb](teamConversation, member, {}));
-  }
+      .then((teamConversation) => this.spark.conversation[verb](teamConversation, member, activity));
+  };
 });
 
 /**
  * Archive or unarchive a team or team conversation.
  * @param {TeamObject|ConversationObject} target team or team conversation that should be archived
- * @param {Conversation~ActivityObject} activity
+ * @param {Object} activity Reference to the activity that will eventually be
+ * posted. Use this to (a) pass in e.g. clientTempId and (b) render a
+ * provisional activity
  * @returns {Promise} Resolves with the posted activity
  */
 [
@@ -348,8 +362,8 @@ const Team = SparkPlugin.extend({
     };
 
     return this.spark.conversation.prepare(activity, properties)
-      .then((activity) => this.spark.conversation.submit(activity));
-  }
+      .then((a) => this.spark.conversation.submit(a));
+  };
 });
 
 export default Team;
