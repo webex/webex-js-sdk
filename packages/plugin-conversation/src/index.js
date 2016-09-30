@@ -209,3 +209,4 @@ registerPlugin(`conversation`, Conversation, {
 
 export {default as default} from './conversation';
 export {default as ShareActivity} from './share-activity';
+export {default as Interceptor} from './interceptor';
