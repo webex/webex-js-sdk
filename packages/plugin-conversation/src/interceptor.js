@@ -5,14 +5,19 @@
  */
 
 import {Interceptor} from '@ciscospark/http-core';
-import {isArray} from 'lodash';
+import {
+  get,
+  has,
+  isArray,
+  set
+} from 'lodash';
 
 /**
  * Encrypts, Normalizes, and Decrypts conversation service payloads
  */
 export default class ConversationInterceptor extends Interceptor {
   /**
-   * @returns {EncryptionInterceptor}
+   * @returns {ConversationInterceptor}
    */
   static create() {
     return new ConversationInterceptor({spark: this});
@@ -24,27 +29,22 @@ export default class ConversationInterceptor extends Interceptor {
    * @returns {Promise<Object>}
    */
   onRequest(options) {
-    if (!options.method || options.method.toUpperCase() === `GET`) {
-      return options;
-    }
-
-    return Promise.all([`conversation`, `argonaut`].map((service) => this.spark.device.isSpecificService(service, options.service || options.uri)))
-      .then(([isConversationService, isArgonautService]) => {
-        if (!isConversationService || !isArgonautService) {
+    return this.shouldEncryptRequest(options)
+      .then((shouldDecrypt) => {
+        if (!shouldDecrypt) {
           return options;
         }
 
-        if (options.resource !== `content` && options.resource !== `activities` && options.resource !== `conversations`) {
+        return this.encryptRequest(options);
+      })
+      .then(() => this.shouldNormalizeRequest(options))
+      .then((shouldNormalizeRequest) => {
+        if (!shouldNormalizeRequest) {
           return options;
         }
-
-        return this.spark.conversation.outboundNormalizer.normalize(options.body)
-          .then((body) => this.spark.conversation.encrypter.encryptObject(body))
-          .then((body) => {
-            options.body = body;
-            return options;
-          });
-      });
+        return this.normalizeRequest(options);
+      })
+      .then(() => options);
   }
 
   /**
@@ -54,40 +54,68 @@ export default class ConversationInterceptor extends Interceptor {
    * @returns {Promise<Object>}
    */
   onResponse(options, response) {
-    return this.shouldDecrypt(options, response)
+    return this.shouldDecryptResponse(options, response)
       .then((shouldDecrypt) => {
         if (!shouldDecrypt) {
-          return response;
+          return Promise.resolve();
         }
 
-        const hasItems = Boolean(response.body.items);
-        const hasActivities = Boolean(response.body.activities);
+        return this.decryptResponse(options, response);
+      })
+      .then(() => this.shouldNormalizeResponse(options, response))
+      .then((shouldNormalizeResponse) => {
+        if (!shouldNormalizeResponse) {
+          return Promise.resolve();
+        }
+        return this.normalizeResponse(response);
+      })
+      .then(() => response);
+  }
 
-        return this.spark.conversation.decrypter.decryptObject(null, response.body)
-          .then((body) => this.spark.conversation.inboundNormalizer.normalize(hasItems ? body.items : body))
-          .then((body) => {
-            let normalize = body;
-            if (hasItems) {
-              normalize = body.items;
-            }
-            else if (hasActivities) {
-              normalize = body.activities.items;
-            }
-            return this.spark.conversation.normalizer.normalize(normalize);
-          })
-          .then((body) => {
-            if (hasItems) {
-              response.body.items = body;
-            }
-            else if (hasActivities) {
-              response.body.activities.items = body;
-            }
-            else {
-              response.body = body;
-            }
-            return response;
-          });
+  decryptResponse(options, response) {
+    const hasItems = has(response, `body.items`);
+    return this.spark.conversation.decrypter.decryptObject(null, get(response, hasItems ? `body.items` : `body`))
+      .then((body) => {
+        set(response, hasItems ? `body.items` : `body`, body);
+        return response;
       });
+  }
+
+  encryptRequest(options) {
+    return this.spark.conversation.encrypter.encryptObject(options.body)
+      .then((body) => {
+        options.body = body;
+        return options;
+      });
+  }
+
+  normalizeRequest(options) {
+    console.log(require(`util`).inspect(options, {depth: null}));
+    return this.spark.conversation.outboundNormalizer.normalize(options.body)
+      .then((body) => {
+        options.body = body;
+        return options;
+      });
+  }
+
+  normalizeResponse(options, response) {
+    if (has(response, `body.items`)) {
+      return this.spark.conversation.inboundNormalizer.normalize(response.body.items)
+        .then((b) => {
+          response.body.items = b;
+          return response;
+        });
+    }
+
+    if (has(response, `body.objectType`)) {
+      return this.spark.conversation.inboundNormalizer.normalize(response.body)
+        .then((b) => {
+          response.body = b;
+          return response;
+        });
+    }
+
+    return Promise.resolve(response);
   }
 
   /**
@@ -96,10 +124,10 @@ export default class ConversationInterceptor extends Interceptor {
    * @param {Object} response
    * @returns {Promise<Object>}
    */
-  shouldDecrypt(options, response) {
-    return Promise.all([`conversation`, `argonaut`].map((service) => this.spark.device.isSpecificService(service, options.service || options.uri)))
-      .then(([isConversationService, isArgonautService]) => {
-        if (!isConversationService || !isArgonautService) {
+  shouldDecryptResponse(options, response) {
+    return this.spark.device.isSpecificService(`conversation`, options.service || options.uri)
+      .then((isConversationService) => {
+        if (!isConversationService) {
           return options;
         }
 
@@ -118,4 +146,31 @@ export default class ConversationInterceptor extends Interceptor {
         return false;
       });
   }
+
+  shouldEncryptRequest(options) {
+    if (!options.method || options.method.toUpperCase() === `GET`) {
+      return Promise.resolve(false);
+    }
+    return this.spark.device.isSpecificService(`conversation`, options.service || options.uri)
+      .then((isConversationService) => {
+        if (!isConversationService) {
+          return false;
+        }
+
+        if (options.resource !== `content` && options.resource !== `activities` && options.resource !== `conversations`) {
+          return false;
+        }
+
+        return true;
+      });
+  }
+
+  shouldNormalizeResponse(options, response) {
+    return this.shouldDecryptResponse(options, response);
+  }
+
+  shouldNormalizeRequest(options) {
+    return this.shouldEncryptRequest(options);
+  }
+
 }
