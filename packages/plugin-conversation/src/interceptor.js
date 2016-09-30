@@ -82,6 +82,10 @@ export default class ConversationInterceptor extends Interceptor {
   }
 
   encryptRequest(options) {
+    if (!has(options, `body.objectType`)) {
+      return Promise.resolve(options);
+    }
+
     return this.spark.conversation.encrypter.encryptObject(options.body)
       .then((body) => {
         options.body = body;
@@ -166,11 +170,14 @@ export default class ConversationInterceptor extends Interceptor {
   }
 
   shouldNormalizeResponse(options, response) {
-    return this.shouldDecryptResponse(options, response);
+    // We only want to use the local logic, so explicity call the
+    // ConversationInterceptor implementation
+    return Reflect.apply(ConversationInterceptor.prototype.shouldDecryptResponse, this, [options, response]);
   }
 
   shouldNormalizeRequest(options) {
-    return this.shouldEncryptRequest(options);
+    // We only want to use the local logic, so explicity call the ConversationInterceptor implementation
+    return Reflect.apply(ConversationInterceptor.prototype.shouldEncryptRequest, this, [options]);
   }
 
 }

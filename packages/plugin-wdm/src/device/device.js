@@ -21,6 +21,7 @@ const Device = SparkPlugin.extend({
 
   props: {
     modificationTime: `string`,
+    searchEncryptionKeyUrl: `string`,
     services: {
       // Even though @jodykstr will tell you the docs claim you don't need to
       // initialize `object` properties, the docs lie.
