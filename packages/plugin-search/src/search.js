@@ -4,7 +4,7 @@
  * @private
  */
 
-import {pick, isArray} from 'lodash';
+import {isArray} from 'lodash';
 import {SparkPlugin} from '@ciscospark/spark-core';
 
 const Search = SparkPlugin.extend({
@@ -13,18 +13,20 @@ const Search = SparkPlugin.extend({
   people(options) {
     options = options || {};
 
-    if (!options.query && !options.queryString) {
-      return Promise.reject(new Error(`'options.query' is required`));
+    if (!options.queryString && options.query) {
+      options.queryString = options.query;
+      Reflect.deleteProperty(options, `query`);
     }
 
-    const body = pick(options, `size`, `includePeople`, `includeRooms`, `includeRobots`);
-    body.queryString = options.query || options.queryString;
+    if (!options.queryString) {
+      return Promise.reject(new Error(`\`options.query\` is required`));
+    }
 
     return this.request({
       api: `argonaut`,
       resource: `directory`,
       method: `POST`,
-      body
+      body: options
     })
       .then((res) => res.body);
   },
