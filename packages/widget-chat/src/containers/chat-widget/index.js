@@ -5,7 +5,7 @@ import classNames from 'classnames';
 
 import ConnectionStatus from '../../components/connection-status';
 import {fetchUser, fetchCurrentUser} from '../../actions/user';
-import { createConversationWithUser } from '../../actions/conversation';
+import {createConversationWithUser} from '../../actions/conversation';
 import ActivityTitleBar from '../../components/activity-title-bar';
 import ActivityList from '../../components/activity-list';
 import ActivityReadReceipt from '../../components/activity-read-receipt';
