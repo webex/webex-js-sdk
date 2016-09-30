@@ -56,6 +56,7 @@ describe(`plugin-team`, () => {
       spock.spark.mercury.disconnect()
     ]));
 
+    describe(`#addConversation()`, () => {
       let groupConversation, team;
       before(() => {
         const teamPromise = kirk.spark.team.create({
