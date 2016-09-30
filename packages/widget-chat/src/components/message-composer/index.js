@@ -1,4 +1,4 @@
-import React, {Component, PropTypes} from 'react';
+import React, {Component} from 'react';
 import classNames from 'classnames';
 
 import styles from './styles.css';
@@ -16,9 +16,5 @@ class MessageComposer extends Component {
     );
   }
 }
-
-MessageComposer.propTypes = {
-
-};
 
 export default MessageComposer;
