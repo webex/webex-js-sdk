@@ -211,7 +211,6 @@ describe(`plugin-conversation`, function() {
             activities.push(activity);
 
             return spark.conversation.download(activity.object.files.items[0])
-              .then(tap((f) => console.log(f.type, f.mimeType)))
               .then((f) => assert.equal(f.type, `application/vnd.ms-powerpoint`))
               .then(() => blockUntilTranscode.promise)
               .then((updateActivity) => {
