@@ -37,7 +37,7 @@ export function fetchCurrentUser(spark) {
 export function fetchUser(userEmail, spark) {
   return (dispatch) => {
     dispatch(requestUser(userEmail));
-    spark.user.getByEmail({email: userEmail})
+    spark.user.getUUID(userEmail)
       .then((user) => dispatch(receiveUser(userEmail, user)));
   };
 }
