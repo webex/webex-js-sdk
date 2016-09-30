@@ -5,7 +5,7 @@
  */
 
 import {Interceptor as ConversationInterceptor} from '@ciscospark/plugin-conversation';
-import {has} from 'lodash';
+import {get, has, set} from 'lodash';
 
 export default class SearchInterceptor extends ConversationInterceptor {
   /**
@@ -33,10 +33,10 @@ export default class SearchInterceptor extends ConversationInterceptor {
   encryptRequest(options) {
     return super.encryptRequest(options)
       .then(() => {
-        if (options.query && options.searchEncryptionKeyUrl) {
-          return this.spark.encryption.encryptText(options.searchEncryptionKeyUrl, options.query)
+        if (has(options, `body.query`) && has(options, `body.searchEncryptionKeyUrl`)) {
+          return this.spark.encryption.encryptText(get(options, `body.searchEncryptionKeyUrl`), get(options, `body.query`))
             .then((q) => {
-              options.query = q;
+              set(options, `body.query`, q);
               return options;
             });
         }
@@ -71,7 +71,7 @@ export default class SearchInterceptor extends ConversationInterceptor {
         }
 
         return this.spark.device.isSpecificService(`argonaut`, options.service || options.uri)
-          .then((isArgonautService) => Boolean(isArgonautService && options.query && options.searchEncryptionKeyUrl));
+          .then((isArgonautService) => Boolean(isArgonautService && has(options, `body.query`) && has(options, `body.searchEncryptionKeyUrl`)));
       });
   }
 

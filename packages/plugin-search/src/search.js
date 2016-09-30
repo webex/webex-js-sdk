@@ -4,7 +4,8 @@
  * @private
  */
 
-import {isArray} from 'lodash';
+import {get} from 'lodash';
+import {oneFlight, tap} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
 
 const Search = SparkPlugin.extend({
@@ -31,6 +32,16 @@ const Search = SparkPlugin.extend({
       .then((res) => res.body);
   },
 
+  @oneFlight
+  bindSearchKey() {
+    return this.spark.encryption.kms.createUnboundKeys({count: 1})
+      .then(([key]) => this.spark.encryption.kms.createResource({
+        key,
+        userIds: [this.spark.device.userId]
+      })
+        .then(() => this.spark.device.set(`searchEncryptionKeyUrl`, key.uri)));
+  },
+
   search(options) {
     /* eslint max-nested-callbacks: [0] */
     options = options || {};
@@ -39,68 +50,23 @@ const Search = SparkPlugin.extend({
       return Promise.resolve([]);
     }
 
-    let results = {};
-    return this._prepareKmsMessage()
-      .then((key) => this.spark.encryption.encryptText(key.keyUrl, options.query)
-          .then((query) => {
-            options.query = query;
-            options.searchEncryptionKeyUrl = key.keyUrl;
-            return this.request({
-              api: `argonaut`,
-              resource: `search`,
-              method: `POST`,
-              body: options
-            });
-          })
-          .then((res) => {
-            results = res;
-            if (!results.body || !results.body.activities || !results.body.activities.items) {
-              return [];
-            }
-            return results.body.activities.items;
-          })
-      );
-  },
-
-  _prepareKmsMessage() {
-    const keyUrl_ = this.spark.device.searchKeyUrl;
-    if (keyUrl_) {
-      return Promise.resolve({keyUrl: keyUrl_});
+    let promise = Promise.resolve();
+    if (!this.spark.device.searchEncryptionKeyUrl) {
+      promise = this.bindSearchKey();
     }
 
-    return this.spark.encryption.kms.createUnboundKeys({count: 1})
-      .then((returnKey) => {
-        const key = isArray(returnKey) ? returnKey[0] : returnKey;
-        this.spark.device.set(`searchKeyUrl`, key.uri);
-        return key.uri;
-      })
-      .then((keyUrl) => this.spark.encryption.kms.createResource({
-        userIds: [this.spark.device.userId],
-        keyUris: [keyUrl]
-      })
-        .then(() => ({keyUrl}))
-      );
-  },
-
-  /*
-  .then((request) => {
-    console.log(`prepareRequest finished`);
-    return request;
-  })
-  .then((request) => this.spark.encryption.kms.request(request))
-  .then(() => {console.log(`request finished`);})
-   */
-
-  _encryptQuery({query, keyUrl}) {
-    return this.spark.encryption.encryptText(query, keyUrl);
-  },
-
-  _decryptKmsMessage(activity) {
-    if (!activity.body.kmsMessage) {
-      return Promise.resolve();
-    }
-    return this.spark.encryption.kms.decryptKmsMessage(activity.body.kmsMessage);
+    return promise
+      .then(() => this.spark.request({
+        service: `argonaut`,
+        resource: `search`,
+        method: `POST`,
+        body: Object.assign(options, {
+          searchEncryptionKeyUrl: this.spark.device.searchEncryptionKeyUrl
+        })
+      }))
+      .then((res) => get(res, `body.activities.items`) || []);
   }
+
 });
 
 export default Search;
