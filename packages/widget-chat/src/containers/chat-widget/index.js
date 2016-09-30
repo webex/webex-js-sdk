@@ -5,6 +5,7 @@ import classNames from 'classnames';
 
 import ConnectionStatus from '../../components/connection-status';
 import {fetchUser, fetchCurrentUser} from '../../actions/user';
+import { createConversationWithUser } from '../../actions/conversation';
 import ActivityTitleBar from '../../components/activity-title-bar';
 import ActivityList from '../../components/activity-list';
 import ActivityReadReceipt from '../../components/activity-read-receipt';
@@ -28,18 +29,26 @@ export class ChatWidget extends Component {
       authenticated,
       connected,
       user,
+      userId,
       registered,
-      spark
+      spark,
+      conversation
     } = nextProps;
 
-    if (!user && spark && connected && authenticated && registered) {
-      nextProps.fetchCurrentUser(spark);
+    if (spark && connected && authenticated && registered) {
+      if (!user) {
+        nextProps.fetchCurrentUser(spark);
+      }
+      if (!conversation) {
+        nextProps.createConversationWithUser(userId, spark);
+      }
     }
+
   }
 
   shouldComponentUpdate(nextProps) {
     const props = this.props;
-    return nextProps.connected !== props.connected || nextProps.user !== props.user;
+    return nextProps.connected !== props.connected || nextProps.user !== props.user || nextProps.conversation !== props.conversation;
   }
 
   /**
@@ -67,6 +76,7 @@ export class ChatWidget extends Component {
 }
 
 ChatWidget.propTypes = {
+  createConversationWithUser: PropTypes.func.isRequired,
   fetchCurrentUser: PropTypes.func.isRequired,
   fetchUser: PropTypes.func.isRequired,
   spark: PropTypes.object.isRequired,
@@ -82,6 +92,7 @@ function mapStateToProps(state, ownProps) {
 export default connect(
   mapStateToProps,
   (dispatch) => bindActionCreators({
+    createConversationWithUser,
     fetchUser,
     fetchCurrentUser
   }, dispatch)
