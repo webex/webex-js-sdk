@@ -8,7 +8,6 @@ import {SparkPlugin} from '@ciscospark/spark-core';
 import {defaults} from 'lodash';
 import uuid from 'uuid';
 
-
 const Support = SparkPlugin.extend({
   namespace: `Support`,
 
@@ -41,96 +40,85 @@ const Support = SparkPlugin.extend({
   },
 
   submitLogs(metadata, logs) {
-    let filename, headers = {}, shouldAttemptReauth, userId;
     const metadataArray = this._constructFileMetadata(metadata);
-    logs = logs || this.logger._buffer.join(`\n`);
+    if (!logs && this.spark.logger.buffer) {
+      logs = this.spark.logger.buffer.join(`\n`);
+    }
 
+    let filename;
     if (metadata.locusId && metadata.callStart) {
       filename = `${metadata.locusId}_${metadata.callStart}.txt`;
     }
     else {
-      filename = `${this.spark.trackingId}.txt`;
+      filename = `${this.spark.sessionId}.txt`;
     }
 
-    const isUnAuthUser = !this.spark.isAuthenticated;
-    if (isUnAuthUser) {
-      logs = logs || `${new Date().toISOString()}DEBUG \`client: initiating upload session: Logs from UnAuthenticated user\``;
-      shouldAttemptReauth = false;
-      headers = {
-        Authorization: this.spark.credentials.getClientCredentialsAuthorization()
-      };
-    }
+    let userId;
+    return this.spark.credentials.getAuthorization()
+      .catch(() => this.spark.credentials.getClientCredentialsAuthorization())
+      .then((authorization) => {
+        const headers = {authorization};
 
-    return this.upload({
-      file: logs,
-      api: `atlas`,
-      resource: `logs/url`,
-      shouldAttemptReauth,
-      headers,
-      phases: {
-        initialize: {
-          // Must send empty object
-          body: {
-            file: filename
-          }
-        },
-        upload: {
-          $uri: function $uri(session) {
-            return session.tempURL;
-          }
-        },
-        finalize: {
+        return this.spark.upload({
+          file: logs,
           api: `atlas`,
-          resource: `logs/meta`,
-          $body: function $body(session) {
-            if (isUnAuthUser) {
-              userId = session.userId;
-              return {
-                filename: session.logFilename,
-                data: metadataArray,
-                userId: isUnAuthUser ? session.userId : ``
-              };
+          resource: `logs/url`,
+          shouldAttemptReauth: false,
+          headers,
+          phases: {
+            initialize: {
+              // headers,
+              body: {
+                file: filename
+              }
+            },
+            upload: {
+              $uri: (session) => session.tempURL
+            },
+            finalize: {
+              api: `atlas`,
+              resource: `logs/meta`,
+              // headers,
+              $body: (session) => {
+                userId = session.userId;
+                return {
+                  filename: session.logFilename,
+                  data: metadataArray,
+                  userId: this.spark.device.userId || session.userId
+                };
+              }
             }
-
-            return {
-              filename: session.logFilename,
-              data: metadataArray
-            };
           }
+        });
+      })
+      .then((body) => {
+        if (userId && !body.userId) {
+          body.userId = userId;
         }
-      }
-    })
-    .then((body) => {
-      if (isUnAuthUser) {
-        // userId received from Atlas in the above phase needs to be returned back to the callee
-        body.userId = userId;
+
         return body;
-      }
-      return {};
-    });
+      });
   },
 
   _constructFileMetadata(metadata) {
-    const metadataArray = [];
-    const client = this.spark.client || {};
-    let trackingId = client.trackingIdBase;
-
-    if (this.spark.config.trackingIdPrefix) {
-      trackingId = `${this.spark.config.trackingIdPrefix}_${client.trackingIdBase}`;
-    }
-
-    [`locusId`, `callStart`, `feedbackId`].forEach((key) => {
+    const metadataArray = [
+      `locusId`,
+      `callStart`,
+      `feedbackId`
+    ].map((key) => {
       if (metadata[key]) {
-        metadataArray.push({
+        return {
           key,
           value: metadata[key]
-        });
+        };
       }
-    });
+      return null;
+    })
+    .filter((entry) => Boolean(entry));
 
     metadataArray.push({
       key: `trackingId`,
-      value: trackingId
+      value: this.spark.sessionId
     });
 
     return metadataArray;

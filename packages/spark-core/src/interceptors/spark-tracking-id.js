@@ -7,51 +7,28 @@
 import {Interceptor} from '@ciscospark/http-core';
 import uuid from 'uuid';
 
+const sequenceNumbers = new WeakMap();
+
 /**
  * @class
  */
 export default class SparkTrackingIdInterceptor extends Interceptor {
   /**
-   * @constructor
-   * @param {ProxySpark} spark
-   * @param {Object} options
-   * @returns {SparkTrackingIdInterceptor}
+   * Sequence number; increments on access
+   * @type {Number}
    */
-  constructor(spark, options) {
-    super({spark});
-
-    if (!options || !options.prefix) {
-      throw new Error(`\`options.prefix\` is required. Did you forget to specify it at config.trackingIdPrefix?`);
-    }
-
-    let sequence = 0;
-    const base = options.base || uuid.v4();
-    const prefix = options.prefix || `spark-js-sdk`;
-
-    Object.defineProperties(this, {
-      base: {
-        writable: false,
-        value: base
-      },
-      prefix: {
-        writable: false,
-        value: prefix
-      },
-      sequence: {
-        get: function get() {
-          sequence += 1;
-          return sequence;
-        }
-      }
-    });
+  get sequence() {
+    let sq = sequenceNumbers.get(this) || 0;
+    sq += 1;
+    sequenceNumbers.set(this, sq);
+    return sq;
   }
 
   /**
-   * @param {Object} options
    * @returns {SparkTrackingIdInterceptor}
    */
-  static create(options) {
-    return new SparkTrackingIdInterceptor(this, options);
+  static create() {
+    return new SparkTrackingIdInterceptor({spark: this});
   }
 
   /**
@@ -60,8 +37,9 @@ export default class SparkTrackingIdInterceptor extends Interceptor {
    * @returns {Object}
    */
   onRequest(options) {
+    options.headers = options.headers || {};
     if (this.requiresTrackingId(options)) {
-      options.headers.trackingid = this._generateTrackingId(options);
+      options.headers.trackingid = `${this.spark.sessionId}_${this.sequence}`;
     }
     return options;
   }
@@ -73,14 +51,5 @@ export default class SparkTrackingIdInterceptor extends Interceptor {
    */
   requiresTrackingId(options) {
     return !options.headers.trackingid;
-  }
-
-  /**
-   * Generates a tracking id
-   * @private
-   * @returns {string}
-   */
-  _generateTrackingId() {
-    return `${this.prefix}_${this.base}_${this.sequence}`;
   }
 }

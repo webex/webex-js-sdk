@@ -28,9 +28,7 @@ let Spark;
 
 const interceptors = {
   SparkTrackingIdInterceptor() {
-    return SparkTrackingIdInterceptor.create({
-      prefix: get(this, `config.trackingIdPrefix`, `spark-js-sdk`)
-    });
+    return SparkTrackingIdInterceptor.create();
   },
   /* eslint no-extra-parens: [0] */
   RequestLoggerInterceptor: (process.env.ENABLE_NETWORK_LOGGING || process.env.ENABLE_VERBOSE_NETWORK_LOGGING) ? RequestLoggerInterceptor.create : undefined,
@@ -86,6 +84,10 @@ const SparkCore = AmpState.extend({
       // It's supposed to be a function, but that's not a type defined in
       // Ampersand
       type: `any`
+    },
+    sessionId: {
+      setOnce: true,
+      type: `string`
     }
   },
 
@@ -119,18 +121,7 @@ const SparkCore = AmpState.extend({
         return ints;
       }
 
-      // This is a bit of a hack, but we can enhance it later.
-      const int = Reflect.apply(interceptor, this, []);
-      if (int instanceof SparkTrackingIdInterceptor) {
-        Reflect.defineProperty(this, `trackingId`, {
-          enumerable: false,
-          get() {
-            return int._generateTrackingId();
-          }
-        });
-      }
-
-      ints.push(int);
+      ints.push(Reflect.apply(interceptor, this, []));
 
       return ints;
     };
@@ -144,6 +135,8 @@ const SparkCore = AmpState.extend({
       json: true,
       interceptors: ints
     });
+
+    this.sessionId = `${get(this, `config.trackingIdPrefix`, `spark-js-sdk`)}_${get(this, `config.trackingIdBase`, uuid.v4())}`;
   },
 
   logout(...args) {
@@ -183,13 +176,14 @@ const SparkCore = AmpState.extend({
       withCredentials: false,
       body: options.file,
       headers: {
-        'x-trans-id': uuid.v4()
+        'x-trans-id': uuid.v4(),
+        authorization: undefined
       }
     });
 
     defaults(options.phases.finalize, {
       method: `POST`
-    });
+    }, omit(options, `file`, `phases`));
 
     const shunt = new EventEmitter();
 

@@ -12,7 +12,6 @@ export default {
   support: {
     appType: ``,
     appVersion: ``,
-    languageCode: ``,
-    trackingIdPrefix: ``
+    languageCode: ``
   }
 };
