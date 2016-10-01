@@ -11,7 +11,7 @@ import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
 
 describe(`plugin-feature`, function() {
-  this.timeout(10000);
+  this.timeout(30000);
   let spark, spock;
   describe(`#setFeature()`, () => {
 

@@ -8,7 +8,7 @@ import {SparkHttpError, default as Spark} from '../..';
 import makeLocalUrl from '@ciscospark/test-helper-make-local-url';
 
 describe(`spark-core`, function() {
-  this.timeout(20000);
+  this.timeout(30000);
   describe(`Spark`, () => {
 
     describe(`#request()`, () => {

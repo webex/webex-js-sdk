@@ -4,13 +4,13 @@
  * @private
  */
 
-import Authorization from './authorization';
+import Authorization from '../authorization';
 import {base64, oneFlight, retry} from '@ciscospark/common';
 import {clone, has, isObject, pick} from 'lodash';
-import grantErrors from './grant-errors';
+import grantErrors from '../grant-errors';
 import querystring from 'querystring';
-import SparkPlugin from '../../lib/spark-plugin';
-import {persist, waitForValue} from '../../lib/storage';
+import SparkPlugin from '../../../lib/spark-plugin';
+import {waitForValue} from '../../../lib/storage';
 
 /**
  * Helper. Returns just the response body
@@ -30,7 +30,7 @@ function processGrant(res) {
   return new Authorization(res.body);
 }
 
-const CredentialsBase = SparkPlugin.extend({
+export default {
   derived: {
     canRefresh: {
       deps: [`authorization.canRefresh`],
@@ -96,8 +96,6 @@ const CredentialsBase = SparkPlugin.extend({
     return this.authorize(...args);
   },
 
-  @oneFlight
-  @waitForValue(`authorization`)
   authorize(options) {
     /* eslint no-invalid-this: [0] */
     this._isAuthenticating = true;
@@ -171,12 +169,6 @@ const CredentialsBase = SparkPlugin.extend({
 
     return promise
       .then(() => this.clientAuthorization.toString());
-  },
-
-  @persist(`authorization`)
-  @persist(`clientAuthorization`)
-  initialize(...args) {
-    return Reflect.apply(SparkPlugin.prototype.initialize, this, args);
   },
 
   /**
@@ -487,7 +479,7 @@ const CredentialsBase = SparkPlugin.extend({
 
     return this.request({
       method: `POST`,
-      uri: `{this.config.samlUrl}/{$this.orgId}/v2/actions/GetBearerToken/invoke`,
+      uri: `${this.config.samlUrl}/${this.orgId}/v2/actions/GetBearerToken/invoke`,
       body: pick(this, `name`, `password`),
       shouldRefreshAccessToken: false
     })
@@ -520,6 +512,4 @@ const CredentialsBase = SparkPlugin.extend({
       previousAuthorization.revoke();
     }
   }
-});
-
-export default CredentialsBase;
+};

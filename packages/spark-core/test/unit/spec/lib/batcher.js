@@ -27,7 +27,7 @@ describe(`spark-core`, () => {
       namespace: `mock`,
       submitHttpRequest(payload) {
         return spark.request({
-          api: `mock`,
+          service: `mock`,
           resource: `/batch`,
           body: payload
         });
@@ -243,7 +243,7 @@ describe(`spark-core`, () => {
             .then(() => {
               assert.calledOnce(spark.request);
               assert.deepEqual(spark.request.args[0][0], {
-                api: `mock`,
+                service: `mock`,
                 resource: `/batch`,
                 body: [1]
               });

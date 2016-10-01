@@ -16,7 +16,7 @@ import uuid from 'uuid';
 import {skipInNode} from '@ciscospark/test-helper-mocha';
 
 describe(`plugin-conversation`, function() {
-  this.timeout(20000);
+  this.timeout(30000);
   describe(`verbs`, () => {
     let mccoy, participants, spark, spock;
 
