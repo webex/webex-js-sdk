@@ -59,6 +59,9 @@ const Team = SparkPlugin.extend({
   /**
    * Create a team
    * @param {NewTeamObject} params
+   * @param {string} params.displayName
+   * @param {string} params.summary
+   * @param {Array} params.participants
    * @returns {Promise} Resolves with the created team
    */
   create(params) {
@@ -91,6 +94,9 @@ const Team = SparkPlugin.extend({
    * activities besides add (ie no post or share activities).
    * @param {TeamObject} team
    * @param {NewConversationObject} params
+   * @param {string} params.displayName
+   * @param {string} params.summary
+   * @param {Array} params.participants
    * @param {Object} options
    * @param {boolean} options.includeAllTeamMembers
    * @returns {Promise} Resolves with the newly created conversation
