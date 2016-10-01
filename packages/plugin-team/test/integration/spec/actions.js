@@ -496,9 +496,7 @@ describe(`plugin-team`, () => {
             assert.equal(activity.target.id, team.id);
           })
           .then(() => kirk.spark.team.get(team))
-          .then((t) => {
-            assert.equal(t.displayName, obj.displayName);
-          });
+          .then((t) => assert.equal(t.displayName, obj.displayName));
       });
 
       it(`updates a team summary`, () => {
@@ -514,9 +512,7 @@ describe(`plugin-team`, () => {
             assert.equal(activity.target.id, team.id);
           })
           .then(() => kirk.spark.team.get(team))
-          .then((t) => {
-            assert.equal(t.summary, obj.summary);
-          });
+          .then((t) => assert.equal(t.summary, obj.summary));
       });
 
     });

@@ -15,7 +15,7 @@ import uuid from 'uuid';
 
 describe(`plugin-team`, () => {
 
-  let kirk, participants, spark, spock, team;
+  let displayName, kirk, participants, spark, spock, team;
 
   before(() => testUsers.create({count: 3})
     .then((users) => {
@@ -36,34 +36,31 @@ describe(`plugin-team`, () => {
     })
   );
 
+  beforeEach(() => {
+    displayName = `team-conv-name-${uuid.v4()}`;
+  });
+
   after(() => spark.mercury.disconnect());
 
   describe(`#create()`, () => {
 
-    it(`creates a team with a multiple participants`, () => {
-      const displayName = `team-name-${uuid.v4()}`;
-      return spark.team.create({
-        displayName,
-        participants: [kirk, spock]
-      })
-        .then((team) => {
-          assert.isInternalTeam(team);
-          assert.isNewEncryptedTeam(team);
-          assert.lengthOf(team.teamMembers.items, 2);
+    it(`creates a team with a multiple participants`, () => spark.team.create({displayName, participants: [kirk, spock]})
+      .then((team) => {
+        assert.isInternalTeam(team);
+        assert.isNewEncryptedTeam(team);
+        assert.lengthOf(team.teamMembers.items, 2);
 
-          // Kirk created the team and is the moderator, Spock is not.
-          const kirkEntry = find(team.teamMembers.items, {id: kirk.id});
-          assert.isDefined(kirkEntry);
-          assert.isDefined(kirkEntry.roomProperties.isModerator);
+        // Kirk created the team and is the moderator, Spock is not.
+        const kirkEntry = find(team.teamMembers.items, {id: kirk.id});
+        assert.isDefined(kirkEntry);
+        assert.isDefined(kirkEntry.roomProperties.isModerator);
 
-          const spockEntry = find(team.teamMembers.items, {id: spock.id});
-          assert.isDefined(spockEntry);
-          assert.isUndefined(spockEntry.roomProperties);
-        });
-    });
+        const spockEntry = find(team.teamMembers.items, {id: spock.id});
+        assert.isDefined(spockEntry);
+        assert.isUndefined(spockEntry.roomProperties);
+      }));
 
     it(`creates a team with a name and summary`, () => {
-      const displayName = `team-name-${uuid.v4()}`;
       const summary = `team-summary-${uuid.v4()}`;
       return spark.team.create({
         displayName,
@@ -80,70 +77,44 @@ describe(`plugin-team`, () => {
         });
     });
 
-    it(`creates a team with a name but without a summary`, () => {
-      const displayName = `team-name-${uuid.v4()}`;
-      return spark.team.create({
-        displayName,
-        participants: [kirk]
-      })
-        .then((team) => {
-          assert.isInternalTeam(team);
-          assert.isNewEncryptedTeam(team);
-          assert.lengthOf(team.teamMembers.items, 1);
+    it(`creates a team with a name but without a summary`, () => spark.team.create({displayName, participants: [kirk]})
+      .then((team) => {
+        assert.isInternalTeam(team);
+        assert.isNewEncryptedTeam(team);
+        assert.lengthOf(team.teamMembers.items, 1);
 
-          assert.equal(team.displayName, displayName);
-          assert.isUndefined(team.summary);
-        });
-    });
+        assert.equal(team.displayName, displayName);
+        assert.isUndefined(team.summary);
+      }));
   });
 
   describe(`#createConversation()`, () => {
 
-    before(() => {
-      const displayName = `team-name-${uuid.v4()}`;
-      return spark.team.create({
-        displayName,
-        participants
-      })
+    before(() => spark.team.create({displayName, participants})
       .then((t) => {
         team = t;
-      });
+      }));
+
+    beforeEach(() => {
+      displayName = `team-conv-name-${uuid.v4()}`;
     });
 
-    it(`creates a team conversation with a single participant`, () => {
-      const displayName = `team-conv-name-${uuid.v4()}`;
-      return spark.team.createConversation(team, {
-        displayName,
-        participants: [kirk]
-      })
-        .then((tc) => {
-          assert.isInternalTeamConversation(tc);
-          assert.equal(tc.displayName, displayName);
+    it(`creates a team conversation with a single participant`, () => spark.team.createConversation(team, {displayName, participants: [kirk]})
+      .then((tc) => {
+        assert.isInternalTeamConversation(tc);
+        assert.equal(tc.displayName, displayName);
 
-          assert.lengthOf(tc.participants.items, 1);
-        });
-    });
+        assert.lengthOf(tc.participants.items, 1);
+      }));
 
-    it(`creates a team conversation with multiple participants`, () => {
-      const displayName = `team-conv-name-${uuid.v4()}`;
-      return spark.team.createConversation(team, {
-        displayName,
-        participants: [kirk, spock]
-      })
-        .then((tc) => {
-          assert.isInternalTeamConversation(tc);
-          assert.lengthOf(tc.participants.items, 2);
-        });
-    });
+    it(`creates a team conversation with multiple participants`, () => spark.team.createConversation(team, {displayName, participants: [kirk, spock]})
+      .then((tc) => {
+        assert.isInternalTeamConversation(tc);
+        assert.lengthOf(tc.participants.items, 2);
+      }));
 
     it(`creates a team conversation containing all team members via \`includeAllTeamMembers\` parameter`, () => {
-      const displayName = `team-conv-name-${uuid.v4()}`;
-      return spark.team.createConversation(team, {
-        displayName,
-        participants: [kirk]
-      }, {
-        includeAllTeamMembers: true
-      })
+      return spark.team.createConversation(team, {displayName, participants: [kirk]}, {includeAllTeamMembers: true})
         .then((tc) => {
           assert.isInternalTeamConversation(tc);
           assert.lengthOf(tc.participants.items, 3);
@@ -151,13 +122,7 @@ describe(`plugin-team`, () => {
     });
 
     it(`decrypts the 'add' activity appended to the general conversation after team room is created`, () => {
-      const displayName = `team-conv-name-${uuid.v4()}`;
-      return spark.team.createConversation(team, {
-        displayName,
-        participants: [kirk]
-      }, {
-        includeAllTeamMembers: true
-      })
+      return spark.team.createConversation(team, {displayName, participants: [kirk]}, {includeAllTeamMembers: true})
         .then((tc) => spark.conversation.get({
           id: team.generalConversationUuid
         }, {
@@ -179,5 +144,4 @@ describe(`plugin-team`, () => {
       );
     });
   });
-
 });

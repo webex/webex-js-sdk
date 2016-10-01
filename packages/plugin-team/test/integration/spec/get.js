@@ -115,8 +115,7 @@ describe(`plugin-team`, () => {
 
         assert.lengthOf(t.teamMembers.items, 0);
         assert.lengthOf(t.conversations.items, 0);
-      })
-    );
+      }));
 
     it(`retrieves a team with teamMembers`, () => kirk.spark.team.get(team0, {includeTeamMembers: true})
       .then((t) => {
@@ -124,8 +123,7 @@ describe(`plugin-team`, () => {
         assert.equal(t.id, team0.id);
         assert.lengthOf(t.teamMembers.items, team0.teamMembers.items.length);
         assert.lengthOf(t.conversations.items, 0);
-      })
-    );
+      }));
 
     it(`retrieves a team with conversations`, () => kirk.spark.team.get(team0, {includeTeamConversations: true})
       .then((t) => {
@@ -137,8 +135,7 @@ describe(`plugin-team`, () => {
         ensureGeneral(t, t.conversations.items);
         assert.include(map(t.conversations.items, `url`), teamConvo0.url);
         assert.include(map(t.conversations.items, `url`), teamConvo1.url);
-      })
-    );
+      }));
   });
 
   describe(`#listConversations()`, () => {
@@ -153,8 +150,7 @@ describe(`plugin-team`, () => {
           assert.isInternalTeamConversation(c);
           assert.include(map([team0, teamConvo0, teamConvo1], `displayName`), c.displayName);
         });
-      })
-    );
+      }));
 
     it(`retrieves and decypts conversations for a team (including unjoined)`, () => spock.spark.team.listConversations(team0)
       .then((conversations) => {
@@ -167,8 +163,7 @@ describe(`plugin-team`, () => {
           assert.isInternalTeamConversation(c);
           assert.include(map([team0, teamConvo0, teamConvo1], `displayName`), c.displayName);
         });
-      })
-    );
+      }));
   });
 
   describe(`#list()`, () => {
@@ -180,8 +175,7 @@ describe(`plugin-team`, () => {
           assert.lengthOf(team.teamMembers.items, 0);
           assert.lengthOf(team.conversations.items, 0);
         });
-      })
-    );
+      }));
 
     it(`retrieves a list of teams with teamMembers`, () => kirk.spark.team.list({includeTeamMembers: true})
       .then((teams) => {
@@ -191,8 +185,7 @@ describe(`plugin-team`, () => {
           assert.isAbove(team.teamMembers.items.length, 0);
           assert.lengthOf(team.conversations.items, 0);
         });
-      })
-    );
+      }));
 
     it(`retrieves a list of teams with conversations`, () => kirk.spark.team.list({includeTeamConversations: true})
       .then((teams) => {
@@ -203,7 +196,6 @@ describe(`plugin-team`, () => {
           assert.isAbove(team.conversations.items.length, 0);
           ensureGeneral(team, team.conversations.items);
         });
-      })
-    );
+      }));
   });
 });
