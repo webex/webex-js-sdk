@@ -136,6 +136,7 @@ function makeSpark(options) {
     metrics: {
       sendUnstructured: sinon.spy()
     },
+    sessionId: 'mock-spark_88888888-4444-4444-4444-aaaaaaaaaaaa',
     support: {},
     user: {},
     mercury: {},
