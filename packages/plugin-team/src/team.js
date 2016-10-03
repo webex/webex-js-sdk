@@ -80,7 +80,7 @@ const Team = SparkPlugin.extend({
         params.participants = uniq(participants);
       })
       .then(() => this._prepareTeam(params))
-      .then((payload) => this.request({
+      .then((payload) => this.spark.request({
         method: `POST`,
         service: `conversation`,
         resource: `teams`,
@@ -147,7 +147,7 @@ const Team = SparkPlugin.extend({
     }, options);
 
     return this._inferTeamUrl(team)
-      .then(() => this.request({
+      .then(() => this.spark.request({
         uri: team.url,
         qs: params
       }))
@@ -162,7 +162,7 @@ const Team = SparkPlugin.extend({
    */
   listConversations(team) {
     return this._inferTeamUrl(team)
-      .then(() => this.request({
+      .then(() => this.spark.request({
         uri: `${team.url}/conversations`
       }))
       .then((res) => res.body.items);
@@ -175,7 +175,7 @@ const Team = SparkPlugin.extend({
    * @returns {Promise} Resolves with the conversation
    */
   joinConversation(team, conversation) {
-    return this.request({
+    return this.spark.request({
       method: `POST`,
       uri: `${team.url}/conversations/${conversation.id}/participants`
     })
@@ -197,7 +197,7 @@ const Team = SparkPlugin.extend({
       includeTeamMembers: false
     }, options);
 
-    return this.request({
+    return this.spark.request({
       api: `conversation`,
       resource: `teams`,
       qs: params

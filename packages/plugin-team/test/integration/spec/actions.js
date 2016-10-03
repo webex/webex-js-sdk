@@ -52,8 +52,8 @@ describe(`plugin-team`, () => {
     );
 
     after(() => Promise.all([
-      kirk.spark.mercury.disconnect(),
-      spock.spark.mercury.disconnect()
+      kirk && kirk.spark.mercury.disconnect(),
+      spock && spock.spark.mercury.disconnect()
     ]));
 
     describe(`#addConversation()`, () => {
@@ -291,9 +291,7 @@ describe(`plugin-team`, () => {
       }));
 
       it(`adds the user to an open team conversation`, () => spock.spark.team.joinConversation(team, conversation)
-        .then((c) => {
-          assert.notInclude(c.tags, `NOT_JOINED`);
-        }));
+        .then((c) => assert.notInclude(c.tags, `NOT_JOINED`)));
     });
 
     describe(`#removeConversation()`, () => {

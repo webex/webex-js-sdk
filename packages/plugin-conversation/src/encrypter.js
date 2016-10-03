@@ -9,7 +9,6 @@ import {isArray, isFunction, isString} from 'lodash';
 import S from 'string';
 
 const encryptableActivities = [
-  `assign`,
   `create`,
   `post`,
   `share`,
