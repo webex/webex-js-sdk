@@ -37,11 +37,19 @@ export default class StorageAdapterLocalStorage {
 
       /**
        * @private
+       * @returns {rawData}
+       */
+      _getRawData() {
+        const rawData = localStorage.getItem(basekey);
+        return rawData ? JSON.parse(rawData) : {};
+      }
+
+      /**
+       * @private
        * @returns {mixed}
        */
       _load() {
-        const rawData = localStorage.getItem(basekey);
-        const allData = rawData ? JSON.parse(rawData) : {};
+        const allData = this._getRawData();
         return allData[namespaces.get(this)] || {};
       }
 
@@ -51,8 +59,7 @@ export default class StorageAdapterLocalStorage {
        * @returns {undefined}
        */
       _save(data) {
-        const rawData = localStorage.getItem(basekey);
-        const allData = rawData ? JSON.parse(rawData) : {};
+        const allData = this._getRawData();
         allData[namespaces.get(this)] = data;
 
         localStorage.setItem(basekey, JSON.stringify(allData));
@@ -83,7 +90,7 @@ export default class StorageAdapterLocalStorage {
           loggers.get(this).info(`local-storage-store-adapter: reading \`${key}\``);
           const data = this._load();
           const value = data[key];
-          if (value) {
+          if (typeof value !== `undefined`) {
             return resolve(value);
           }
 
