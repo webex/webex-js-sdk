@@ -12,57 +12,9 @@ describe(`spark-core`, () => {
     describe(`SparkTrackingIdInterceptor`, () => {
       let interceptor;
       beforeEach(() => {
-        interceptor = SparkTrackingIdInterceptor.create({
-          prefix: `spark-js-sdk--http-core`
-        });
-      });
-
-      describe(`#create()`, () => {
-        it(`requires an options object`, () => {
-          assert.throws(() => {
-            interceptor = SparkTrackingIdInterceptor.create();
-          }, /`options.prefix` is required/);
-        });
-
-        it(`requires an prefix option`, () => {
-          assert.throws(() => {
-            interceptor = SparkTrackingIdInterceptor.create({});
-          }, /`options.prefix` is required/);
-
-          assert.doesNotThrow(() => {
-            interceptor = SparkTrackingIdInterceptor.create({prefix: `spark-js-sdk--http-core`});
-          }, /`options.prefix` is required/);
-        });
-      });
-
-      describe(`#base`, () => {
-        it(`may be specified via options`, () => {
-          const interceptor = SparkTrackingIdInterceptor.create({
-            base: `fake-base`,
-            prefix: `spark-js-sdk--http-core`
-          });
-
-          assert.equal(interceptor.base, `fake-base`);
-        });
-
-        it(`defaults to a uuid`, () => {
-          const pattern = /.{8}(?:-.{4}){3}-.{12}/;
-          assert.match(interceptor.base, pattern);
-        });
-
-        it(`is not mutable`, () => {
-          assert.throws(() => {
-            interceptor.base = `this will throw`;
-          });
-        });
-      });
-
-      describe(`#prefix`, () => {
-        it(`is not mutable`, () => {
-          assert.throws(() => {
-            interceptor.prefix = `this will throw`;
-          });
-        });
+        interceptor = Reflect.apply(SparkTrackingIdInterceptor.create, {
+          sessionId: `mock-spark_uuid`
+        }, []);
       });
 
       describe(`#sequence`, () => {
@@ -75,15 +27,6 @@ describe(`spark-core`, () => {
           assert.equal(interceptor.sequence, seq + 1);
           assert.equal(interceptor.sequence, seq + 2);
           assert.equal(interceptor.sequence, seq + 3);
-        });
-      });
-
-      describe(`#_generateTrackingId()`, () => {
-        it(`returns a tracking id`, () => {
-          const pattern = /spark-js-sdk--http-core_.{8}(?:-.{4}){3}-.{12}_\d+/;
-          assert.match(interceptor._generateTrackingId(), pattern);
-          assert.match(interceptor._generateTrackingId(), pattern);
-          assert.match(interceptor._generateTrackingId(), pattern);
         });
       });
 
@@ -108,17 +51,19 @@ describe(`spark-core`, () => {
 
           assert.property(options, `headers`);
           assert.property(options.headers, `trackingid`);
+          assert.equal(options.headers.trackingid, `mock-spark_uuid_1`);
         });
 
         it(`does not add a tracking id if one is already specified`, () => {
-          const spy = sinon.spy(interceptor, `_generateTrackingId`);
+          const spy = sinon.spy(interceptor, `requiresTrackingId`);
           interceptor.onRequest({
             headers: {
               trackingid: `some id`
             }
           });
 
-          assert.notCalled(spy);
+          assert.lengthOf(spy.returnValues, 1);
+          assert.isFalse(spy.returnValues[0]);
         });
       });
 

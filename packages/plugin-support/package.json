@@ -2,10 +2,10 @@
   "name": "@ciscospark/plugin-support",
   "version": "0.7.0-alpha",
   "description": "",
+  "license": "MIT",
+  "author": "nickclar <nickclar@cisco.com>",
   "main": "dist/index.js",
   "devMain": "src/index.js",
-  "author": "nickclar <nickclar@cisco.com>",
-  "license": "(Apache-2.0)",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-support",
   "dependencies": {
     "@ciscospark/common": "^0.7.0-alpha",
@@ -27,5 +27,8 @@
     "babel-polyfill": "^6.3.14",
     "babel-register": "^6.4.3",
     "eslint": "^2.4.0"
+  },
+  "engines": {
+    "node": ">=4"
   }
 }
