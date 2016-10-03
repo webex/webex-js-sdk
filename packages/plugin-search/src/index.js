@@ -7,14 +7,11 @@
 import {registerPlugin} from '@ciscospark/spark-core';
 import Search from './search';
 import config from './config';
-import SearchInterceptor from './interceptor';
+import './interceptor';
 
 import '@ciscospark/plugin-encryption';
 
 registerPlugin(`search`, Search, {
-  interceptors: {
-    ConversationInterceptor: SearchInterceptor.create
-  },
   config
 });
 

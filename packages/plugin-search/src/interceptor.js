@@ -4,28 +4,23 @@
  * @private
  */
 
+/* eslint no-invalid-this: [0] */
+/* eslint max-nested-callbacks: [0] */
+
+
 import {Interceptor as ConversationInterceptor} from '@ciscospark/plugin-conversation';
-import {get, has, set} from 'lodash';
+import {get, has, set, wrap} from 'lodash';
 
-/**
- * Encrypts, Normalizes, and Decrypts search service payloads
- */
-export default class SearchInterceptor extends ConversationInterceptor {
-  /**
-   * @returns {SearchInterceptor}
-   */
-  static create() {
-    return new SearchInterceptor({spark: this});
-  }
 
+Object.assign(ConversationInterceptor.prototype, {
   /**
    * Decrypts a response
    * @param {Object} options
    * @param {Object} response
    * @returns {Promise<HttpResponseObject>}
    */
-  decryptResponse(options, response) {
-    return super.decryptResponse(options, response)
+  decryptResponse: wrap(ConversationInterceptor.prototype.decryptResponse, function decryptResponse(fn, options, response) {
+    return Reflect.apply(fn, this, [options, response])
       .then(() => {
         if (has(response, `body.activities.items`)) {
           return this.spark.conversation.decrypter.decryptObject(null, response.body.activities.items)
@@ -37,15 +32,15 @@ export default class SearchInterceptor extends ConversationInterceptor {
 
         return response;
       });
-  }
+  }),
 
   /**
    * Encrypts a request
    * @param {Object} options
    * @returns {Promise<Object>}
    */
-  encryptRequest(options) {
-    return super.encryptRequest(options)
+  encryptRequest: wrap(ConversationInterceptor.prototype.encryptRequest, function encryptRequest(fn, options) {
+    return Reflect.apply(fn, this, [options])
       .then(() => {
         if (has(options, `body.query`) && has(options, `body.searchEncryptionKeyUrl`)) {
           return this.spark.encryption.encryptText(get(options, `body.searchEncryptionKeyUrl`), get(options, `body.query`))
@@ -56,7 +51,7 @@ export default class SearchInterceptor extends ConversationInterceptor {
         }
         return options;
       });
-  }
+  }),
 
   /**
    * Normalizes a response
@@ -64,8 +59,8 @@ export default class SearchInterceptor extends ConversationInterceptor {
    * @param {Object} response
    * @returns {Promise<HttpResponseObject>}
    */
-  normalizeResponse(options, response) {
-    return super.normalizeResponse(options, response)
+  normalizeResponse: wrap(ConversationInterceptor.prototype.normalizeResponse, function normalizeResponse(fn, options, response) {
+    return Reflect.apply(fn, this, [options, response])
       .then(() => {
         if (!has(response, `body.activities.items`)) {
           return response;
@@ -76,7 +71,7 @@ export default class SearchInterceptor extends ConversationInterceptor {
             response.body.activities.items = body;
           });
       });
-  }
+  }),
 
   /**
    * Determines if the specified response contains encrypted values
@@ -84,10 +79,10 @@ export default class SearchInterceptor extends ConversationInterceptor {
    * @param {Object} response
    * @returns {Promise<Object>}
    */
-  shouldDecryptResponse(options, response) {
-    return super.shouldDecryptResponse(options, response)
-      .then((shouldDecryptResponse) => Boolean(shouldDecryptResponse || has(response, `body.activities.items`)));
-  }
+  shouldDecryptResponse: wrap(ConversationInterceptor.prototype.shouldDecryptResponse, function shouldDecryptResponse(fn, options, response) {
+    return Reflect.apply(fn, this, [options, response])
+      .then((should) => Boolean(should || has(response, `body.activities.items`)));
+  }),
 
 
   /**
@@ -95,17 +90,17 @@ export default class SearchInterceptor extends ConversationInterceptor {
    * @param {Object} options
    * @returns {Promise<Boolean>}
    */
-  shouldEncryptRequest(options) {
-    return super.shouldEncryptRequest(options)
-      .then((shouldEncryptRequest) => {
-        if (shouldEncryptRequest) {
+  shouldEncryptRequest: wrap(ConversationInterceptor.prototype.shouldEncryptRequest, function shouldEncryptRequest(fn, options) {
+    return Reflect.apply(fn, this, [options])
+      .then((should) => {
+        if (should) {
           return true;
         }
 
         return this.spark.device.isSpecificService(`argonaut`, options.service || options.uri)
           .then((isArgonautService) => Boolean(isArgonautService && has(options, `body.query`) && has(options, `body.searchEncryptionKeyUrl`)));
       });
-  }
+  }),
 
   /**
    * Determines if a response should be normalized
@@ -113,8 +108,8 @@ export default class SearchInterceptor extends ConversationInterceptor {
    * @param {Object} response
    * @returns {Promise<Boolean>}
    */
-  shouldNormalizeResponse(options, response) {
-    return super.shouldNormalizeResponse(options, response)
-      .then((shouldNormalizeResponse) => Boolean(shouldNormalizeResponse || has(response, `body.activities.items`)));
-  }
-}
+  shouldNormalizeResponse: wrap(ConversationInterceptor.prototype.shouldNormalizeResponse, function shouldNormalizeResponse(fn, options, response) {
+    return Reflect.apply(fn, this, [options, response])
+      .then((should) => Boolean(should || has(response, `body.activities.items`)));
+  })
+});
