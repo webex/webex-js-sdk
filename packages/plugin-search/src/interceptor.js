@@ -7,6 +7,9 @@
 import {Interceptor as ConversationInterceptor} from '@ciscospark/plugin-conversation';
 import {get, has, set} from 'lodash';
 
+/**
+ * Encrypts, Normalizes, and Decrypts search service payloads
+ */
 export default class SearchInterceptor extends ConversationInterceptor {
   /**
    * @returns {SearchInterceptor}
@@ -15,6 +18,12 @@ export default class SearchInterceptor extends ConversationInterceptor {
     return new SearchInterceptor({spark: this});
   }
 
+  /**
+   * Decrypts a response
+   * @param {Object} options
+   * @param {Object} response
+   * @returns {Promise<HttpResponseObject>}
+   */
   decryptResponse(options, response) {
     return super.decryptResponse(options, response)
       .then(() => {
@@ -30,6 +39,11 @@ export default class SearchInterceptor extends ConversationInterceptor {
       });
   }
 
+  /**
+   * Encrypts a request
+   * @param {Object} options
+   * @returns {Promise<Object>}
+   */
   encryptRequest(options) {
     return super.encryptRequest(options)
       .then(() => {
@@ -44,6 +58,12 @@ export default class SearchInterceptor extends ConversationInterceptor {
       });
   }
 
+  /**
+   * Normalizes a response
+   * @param {Object} options
+   * @param {Object} response
+   * @returns {Promise<HttpResponseObject>}
+   */
   normalizeResponse(options, response) {
     return super.normalizeResponse(options, response)
       .then(() => {
@@ -58,11 +78,23 @@ export default class SearchInterceptor extends ConversationInterceptor {
       });
   }
 
+  /**
+   * Determines if the specified response contains encrypted values
+   * @param {Object} options
+   * @param {Object} response
+   * @returns {Promise<Object>}
+   */
   shouldDecryptResponse(options, response) {
     return super.shouldDecryptResponse(options, response)
       .then((shouldDecryptResponse) => Boolean(shouldDecryptResponse || has(response, `body.activities.items`)));
   }
 
+
+  /**
+   * Determines if a request should be encrypted
+   * @param {Object} options
+   * @returns {Promise<Boolean>}
+   */
   shouldEncryptRequest(options) {
     return super.shouldEncryptRequest(options)
       .then((shouldEncryptRequest) => {
@@ -75,6 +107,12 @@ export default class SearchInterceptor extends ConversationInterceptor {
       });
   }
 
+  /**
+   * Determines if a response should be normalized
+   * @param {Object} options
+   * @param {Object} response
+   * @returns {Promise<Boolean>}
+   */
   shouldNormalizeResponse(options, response) {
     return super.shouldNormalizeResponse(options, response)
       .then((shouldNormalizeResponse) => Boolean(shouldNormalizeResponse || has(response, `body.activities.items`)));
