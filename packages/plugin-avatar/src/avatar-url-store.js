@@ -55,11 +55,12 @@ export default class AvatarUrlStore {
 
   /**
    * Adds the given item to the store
-   * @param {object} item
-   * @param {string} item.uuid
+   * @param {Object} item
+   * @param {integer} cacheControl
    * @param {integer} item.size
    * @param {string} item.url
-   * @returns {Promise<item>}
+   * @param {string} item.uuid
+   * @returns {Promise<string>}
    */
   add(item) {
     if (!item) {
@@ -68,21 +69,21 @@ export default class AvatarUrlStore {
     if (!item.uuid) {
       return Promise.reject(new Error(`\`uuid\` is required`));
     }
-
     if (!item.size) {
       return Promise.reject(new Error(`\`size\` is required`));
     }
-
     if (!patterns.uuid.test(item.uuid)) {
       return Promise.reject(new Error(`\`uuid\` does not appear to be a uuid`));
     }
-
     if (!item.url) {
       return Promise.reject(new Error(`\`url\` is required`));
     }
+    if (!item.cacheControl) {
+      return Promise.reject(new Error(`\`cacheControl\` is required`));
+    }
+
     // use item suggested cache TTL or configed default if missing
-    setTimeout(this.remove.bind(this, item),
-               item.cacheControl || this.config.cacheExpiration);
+    setTimeout(this.remove.bind(this, item), item.cacheControl);
     urlByUuid.get(this).set(`$(item.uuid) - $(item.size)`, item);
     return Promise.resolve(item.url);
   }

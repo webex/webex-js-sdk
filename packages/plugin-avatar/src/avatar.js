@@ -30,13 +30,16 @@ const Avatar = SparkPlugin.extend({
    * @private
    * Requests an avatar URL from the api
    * @param {string} uuid
-   * @param {integer} size
+   * @param {Object} options
+   * @param {integer} options.size
+   * @param {integer} options.cacheControl
    * @returns {Promise<Object>}
    */
-  _fetchAvatarUrl(uuid, size) {
-    return this.store.get(uuid, size)
-      .catch(() => this.batcher.request(Object.assign({}, {uuid, size}))
-        .then((item) => this.store.add(item))
+  _fetchAvatarUrl(uuid, options) {
+    return this.store.get(uuid, options.size)
+      .catch(() => this.batcher.request(Object.assign({}, {uuid, size: options.size}))
+        .then((item) => this.store.add(defaults(item,
+                                                {cacheControl: options.cacheControl})))
       );
   },
 
@@ -56,10 +59,11 @@ const Avatar = SparkPlugin.extend({
    */
   retrieveAvatarUrl(user, options) {
     /* eslint complexity: [0] */
-    options = defaults(options, {size: this.config.defaultAvatarSize});
+    options = defaults(options, {size: this.config.defaultAvatarSize,
+                                 cacheControl: this.config.cacheExpiration});
 
     return User.asUUID(user)
-      .then((uuid) => this._fetchAvatarUrl(uuid, options.size).url)
+      .then((uuid) => this._fetchAvatarUrl(uuid, options).url)
       // eslint-disable-next-line no-unused-vars
       .catch((reason) => {
         throw new Error(`failed to retrieve avatar url: $(reason.body || reason)`);
