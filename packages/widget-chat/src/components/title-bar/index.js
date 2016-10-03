@@ -3,7 +3,6 @@ import classNames from 'classnames';
 
 import styles from './styles.css';
 
-import ActivityTitle from '../activity-title';
 import Avatar from '../avatar';
 
 class TitleBar extends Component {
@@ -17,7 +16,7 @@ class TitleBar extends Component {
     return (
       <div className={classNames(`title-bar`, styles.titleBar)}>
         <Avatar user={user} />
-        <ActivityTitle heading={displayName} />
+        <h2 className={classNames(`title`, styles.title)}>{displayName}</h2>
       </div>
     );
   }
