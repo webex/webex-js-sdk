@@ -6,7 +6,7 @@ import classNames from 'classnames';
 import ConnectionStatus from '../../components/connection-status';
 import {fetchCurrentUser} from '../../actions/user';
 import {createConversationWithUser} from '../../actions/conversation';
-import ActivityTitleBar from '../../components/activity-title-bar';
+import TitleBar from '../../components/title-bar';
 import ActivityList from '../../components/activity-list';
 import MessageComposer from '../../components/message-composer';
 
@@ -91,7 +91,7 @@ export class ChatWidget extends Component {
       const user = this.getUserFromConversation(props.conversation);
       main = ( // eslint-disable-line no-extra-parens
         <div>
-          <ActivityTitleBar user={user} />
+          <TitleBar user={user} />
           <ActivityList activities={activities} id={id} participants={participants} />
           <MessageComposer />
           <ConnectionStatus id="connection-status" {...sparkState} />
