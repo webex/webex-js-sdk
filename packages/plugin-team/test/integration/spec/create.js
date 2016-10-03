@@ -15,13 +15,13 @@ import uuid from 'uuid';
 
 describe(`plugin-team`, () => {
 
-  let displayName, kirk, participants, spark, spock, team;
+  let displayName, kirk, participants, spark, spock, summary, team;
 
   before(() => testUsers.create({count: 3})
     .then((users) => {
       participants = [kirk, spock] = users;
 
-      spark = new CiscoSpark({
+      kirk.spark = spark = new CiscoSpark({
         credentials: {
           authorization: kirk.token
         },
@@ -38,9 +38,10 @@ describe(`plugin-team`, () => {
 
   beforeEach(() => {
     displayName = `team-conv-name-${uuid.v4()}`;
+    summary = `team-summary-${uuid.v4()}`;
   });
 
-  after(() => spark.mercury.disconnect());
+  after(() => kirk && kirk.spark.mercury.disconnect());
 
   describe(`#create()`, () => {
 
@@ -60,22 +61,15 @@ describe(`plugin-team`, () => {
         assert.isUndefined(spockEntry.roomProperties);
       }));
 
-    it(`creates a team with a name and summary`, () => {
-      const summary = `team-summary-${uuid.v4()}`;
-      return spark.team.create({
-        displayName,
-        summary,
-        participants: [kirk]
-      })
-        .then((team) => {
-          assert.isInternalTeam(team);
-          assert.isNewEncryptedTeam(team);
-          assert.lengthOf(team.teamMembers.items, 1);
+    it(`creates a team with a name and summary`, () => spark.team.create({displayName, summary, participants: [kirk]})
+      .then((team) => {
+        assert.isInternalTeam(team);
+        assert.isNewEncryptedTeam(team);
+        assert.lengthOf(team.teamMembers.items, 1);
 
-          assert.equal(team.displayName, displayName);
-          assert.equal(team.summary, summary);
-        });
-    });
+        assert.equal(team.displayName, displayName);
+        assert.equal(team.summary, summary);
+      }));
 
     it(`creates a team with a name but without a summary`, () => spark.team.create({displayName, participants: [kirk]})
       .then((team) => {
