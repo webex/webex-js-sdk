@@ -1,9 +1,7 @@
 import {RECEIVE_CURRENT_USER} from '../actions/user';
 
 function user(state = {
-  currentUser: {},
-  isFetching: false,
-  targetUser: {}
+  isFetching: false
 }, action) {
   switch (action.type) {
   case RECEIVE_CURRENT_USER:
