@@ -80,8 +80,9 @@ export default class AvatarUrlStore {
     if (!item.url) {
       return Promise.reject(new Error(`\`url\` is required`));
     }
-
-    setTimeout(this.remove.bind(this, item), this.config.cacheExpiration);
+    // use item suggested cache TTL or configed default if missing
+    setTimeout(this.remove.bind(this, item),
+               item.cacheControl || this.config.cacheExpiration);
     urlByUuid.get(this).set(`$(item.uuid) - $(item.size)`, item);
     return Promise.resolve(item.url);
   }
