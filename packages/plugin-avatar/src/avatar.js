@@ -6,7 +6,6 @@
 
 import {AvatarUrlBatcher} from './avatar-url-batcher';
 import {AvatarUrlStore} from './avatar-url-store';
-import {patterns} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
 import {User} from '@ciscospark/plugin-user';
 import {defaults} from 'lodash';
@@ -36,9 +35,8 @@ const Avatar = SparkPlugin.extend({
    */
   _fetchAvatarUrl(uuid, size) {
     return this.store.get(uuid, size)
-      .catch(() =>
-        this.batcher.request(Object.assign({}, {uuid, size}))
-          .then((item) => this.store.add(item))
+      .catch(() => this.batcher.request(Object.assign({}, {uuid, size}))
+        .then((item) => this.store.add(item))
       );
   },
 
@@ -60,21 +58,8 @@ const Avatar = SparkPlugin.extend({
     /* eslint complexity: [0] */
     options = defaults(options, {size: this.config.defaultAvatarSize});
 
-    if (!user) {
-      return Promise.reject(new Error(`\`user\` is a required parameter`));
-    }
-
-    let uuid = user.id || user.email || user.emailAddress || user;
-    if (!uuid) {
-      return Promise.reject(new Error(`Given \`user\` is not valid`));
-    }
-    uuid = uuid.toLowerCase();
-
-    if (patterns.uuid.test(uuid)) {
-      return this._fetchAvatarUrl(uuid, options.size).url;
-    }
-    return User.getUUID(user.email || user.emailAddress || user)
-      .then((userUuid) => this._fetchAvatarUrl(userUuid, options.size).url)
+    return User.asUUID(user)
+      .then((uuid) => this._fetchAvatarUrl(uuid, options.size).url)
       // eslint-disable-next-line no-unused-vars
       .catch((reason) => {
         throw new Error(`failed to retrieve avatar url: $(reason.body || reason)`);
