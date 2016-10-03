@@ -347,6 +347,32 @@ describe('Services', function() {
         });
       });
 
+      describe('#addSnapshotImage()', function() {
+        var fixture = {
+          png: 'sample-image-small-one.png'
+        };
+
+        before(function() {
+          return fixtures.fetchFixtures(fixture)
+            .then(function() {
+              return ensureBoard();
+            });
+        });
+
+        after(function() {
+          return party.mccoy.spark.board.persistence.deleteAllContent(board);
+        });
+
+        it('uploads image to spark files', function() {
+          return party.mccoy.spark.board.persistence.addSnapshotImage(conversation, board, fixture.png)
+            .then(function(res) {
+              assert.isDefined(res.image, 'image field is included');
+              assert.equal(res.image.encryptionKeyUrl, conversation.encryptionKeyUrl);
+              assert.isAbove(res.image.scr.length, 0, 'scr string exists');
+            });
+        });
+      });
+
       describe('#getContents()', function() {
 
         before(function() {

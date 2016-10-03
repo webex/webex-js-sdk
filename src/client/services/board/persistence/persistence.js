@@ -7,6 +7,7 @@
 
 var assign = require('lodash.assign');
 var SparkBase = require('../../../../lib/spark-base');
+var ImageUtil = require('../../../../lib/image');
 var chunk = require('lodash.chunk');
 var pick = require('lodash.pick');
 var promiseSeries = require('es6-promise-series');
@@ -64,6 +65,60 @@ var PersistenceService = SparkBase.extend({
           scr: scr
         }]);
       }.bind(this));
+  },
+
+
+  /**
+   * Adds a snapshot image of the board
+   *
+   * @param {Conversation} conversation - the current conversation that the board belongs
+   * @param {Board~Channel} channel
+   * @param {File} image
+   * @returns {Promise<Board~Channel>}
+   */
+  addSnapshotImage: function addSnapshotImage(conversation, channel, image) {
+    var metadata = {};
+    var imageScr;
+    return ImageUtil.processImage(image, metadata)
+      .then(function uploadImage(blob) {
+        metadata.size = blob.size;
+        return this.spark.board._uploadImage(conversation, blob);
+      }.bind(this))
+      .then(function encryptScr(scr) {
+        imageScr = scr;
+        return this.spark.encryption.encryptScr(imageScr, conversation.defaultActivityEncryptionKeyUrl);
+      }.bind(this))
+      .then(function attachEncryptedScr(encryptedScr) {
+        imageScr.encryptedScr = encryptedScr;
+        return encryptedScr;
+      }.bind(this))
+      .then(function getChannelInfo() {
+        return this.spark.board.persistence.getChannel(channel);
+      }.bind(this))
+      .then(function addSnapshotToChannel(channelInfo) {
+        var imageBody = {
+          image: {
+            url: imageScr.loc,
+            height: metadata.height || 400,
+            width: metadata.width || 640,
+            mimeType: image.type || 'image/png',
+            scr: imageScr.encryptedScr,
+            encryptionKeyUrl: conversation.defaultActivityEncryptionKeyUrl,
+            fileSize: metadata.size,
+            updateInterval: 360000
+          }
+        };
+        var channelBody = assign({}, channelInfo, imageBody);
+        return this.spark.request({
+          method: 'PUT',
+          api: 'board',
+          resource: '/channels/' + channel.channelId,
+          body: channelBody
+        });
+      }.bind(this))
+      .then(function returnSnapshotRes(res) {
+        return res.body;
+      });
   },
 
   /**
