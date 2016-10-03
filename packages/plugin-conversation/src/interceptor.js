@@ -30,9 +30,9 @@ export default class ConversationInterceptor extends Interceptor {
    */
   onRequest(options) {
     return this.shouldEncryptRequest(options)
-      .then((shouldDecrypt) => {
-        if (!shouldDecrypt) {
-          return options;
+      .then((shouldEncrypt) => {
+        if (!shouldEncrypt) {
+          return Promise.resolve();
         }
 
         return this.encryptRequest(options);
@@ -40,7 +40,7 @@ export default class ConversationInterceptor extends Interceptor {
       .then(() => this.shouldNormalizeRequest(options))
       .then((shouldNormalizeRequest) => {
         if (!shouldNormalizeRequest) {
-          return options;
+          return Promise.resolve();
         }
         return this.normalizeRequest(options);
       })
@@ -72,6 +72,12 @@ export default class ConversationInterceptor extends Interceptor {
       .then(() => response);
   }
 
+  /**
+   * Decrypts a response
+   * @param {Object} options
+   * @param {Object} response
+   * @returns {Promise<HttpResponseObject>}
+   */
   decryptResponse(options, response) {
     const hasItems = has(response, `body.items`);
     return this.spark.conversation.decrypter.decryptObject(null, get(response, hasItems ? `body.items` : `body`))
@@ -81,6 +87,11 @@ export default class ConversationInterceptor extends Interceptor {
       });
   }
 
+  /**
+   * Encrypts a request
+   * @param {Object} options
+   * @returns {Promise<Object>}
+   */
   encryptRequest(options) {
     if (!has(options, `body.objectType`)) {
       return Promise.resolve(options);
@@ -93,8 +104,12 @@ export default class ConversationInterceptor extends Interceptor {
       });
   }
 
+  /**
+   * Normalizes a request
+   * @param {Object} options
+   * @returns {Promise<Object>}
+   */
   normalizeRequest(options) {
-    console.log(require(`util`).inspect(options, {depth: null}));
     return this.spark.conversation.outboundNormalizer.normalize(options.body)
       .then((body) => {
         options.body = body;
@@ -102,6 +117,12 @@ export default class ConversationInterceptor extends Interceptor {
       });
   }
 
+  /**
+   * Normalizes a response
+   * @param {Object} options
+   * @param {Object} response
+   * @returns {Promise<HttpResponseObject>}
+   */
   normalizeResponse(options, response) {
     if (has(response, `body.items`)) {
       return this.spark.conversation.inboundNormalizer.normalize(response.body.items)
@@ -151,6 +172,11 @@ export default class ConversationInterceptor extends Interceptor {
       });
   }
 
+  /**
+   * Determines if a request should be encrypted
+   * @param {Object} options
+   * @returns {Promise<Boolean>}
+   */
   shouldEncryptRequest(options) {
     if (!options.method || options.method.toUpperCase() === `GET`) {
       return Promise.resolve(false);
@@ -169,12 +195,23 @@ export default class ConversationInterceptor extends Interceptor {
       });
   }
 
+  /**
+   * Determines if a response should be normalized
+   * @param {Object} options
+   * @param {Object} response
+   * @returns {Promise<Boolean>}
+   */
   shouldNormalizeResponse(options, response) {
     // We only want to use the local logic, so explicity call the
     // ConversationInterceptor implementation
     return Reflect.apply(ConversationInterceptor.prototype.shouldDecryptResponse, this, [options, response]);
   }
 
+  /**
+   * Determines if a request should be normalized
+   * @param {Object} options
+   * @returns {Promise<Boolean>}
+   */
   shouldNormalizeRequest(options) {
     // We only want to use the local logic, so explicity call the ConversationInterceptor implementation
     return Reflect.apply(ConversationInterceptor.prototype.shouldEncryptRequest, this, [options]);

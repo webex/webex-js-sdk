@@ -5,7 +5,7 @@
  */
 
 import {get} from 'lodash';
-import {oneFlight, tap} from '@ciscospark/common';
+import {oneFlight} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
 
 const Search = SparkPlugin.extend({
