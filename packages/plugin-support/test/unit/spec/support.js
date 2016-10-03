@@ -6,7 +6,6 @@
 
 import Support from '../..';
 
-import {patterns} from '@ciscospark/common';
 import {assert} from '@ciscospark/test-helper-chai';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
 
