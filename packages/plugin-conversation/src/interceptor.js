@@ -29,20 +29,20 @@ export default class ConversationInterceptor extends Interceptor {
    * @returns {Promise<Object>}
    */
   onRequest(options) {
-    return this.shouldEncryptRequest(options)
+    return this.shouldNormalizeRequest(options)
+      .then((shouldNormalizeRequest) => {
+        if (!shouldNormalizeRequest) {
+          return Promise.resolve();
+        }
+        return this.normalizeRequest(options);
+      })
+      .then(() => this.shouldEncryptRequest(options))
       .then((shouldEncrypt) => {
         if (!shouldEncrypt) {
           return Promise.resolve();
         }
 
         return this.encryptRequest(options);
-      })
-      .then(() => this.shouldNormalizeRequest(options))
-      .then((shouldNormalizeRequest) => {
-        if (!shouldNormalizeRequest) {
-          return Promise.resolve();
-        }
-        return this.normalizeRequest(options);
       })
       .then(() => options);
   }
@@ -196,8 +196,8 @@ export default class ConversationInterceptor extends Interceptor {
           return false;
         }
 
-        if (options.resource !== `content` && options.resource !== `activities` && options.resource !== `conversations`) {
-          return false;
+        if (options.resource !== `content` && options.resource !== `activities` && options.resource !== `conversations` && options.resource !== `teams`) {
+          return options;
         }
 
         return true;
