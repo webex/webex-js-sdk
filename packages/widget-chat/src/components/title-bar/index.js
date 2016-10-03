@@ -6,7 +6,7 @@ import styles from './styles.css';
 import ActivityTitle from '../activity-title';
 import Avatar from '../avatar';
 
-class ActivityTitleBar extends Component {
+class TitleBar extends Component {
   shouldComponentUpdate(nextProps) {
     return this.props.user !== nextProps.user;
   }
@@ -15,7 +15,7 @@ class ActivityTitleBar extends Component {
     const {user} = this.props;
     const {displayName} = this.props.user;
     return (
-      <div className={classNames(`activity-title-bar`, styles.activityTitleBar)}>
+      <div className={classNames(`title-bar`, styles.titleBar)}>
         <Avatar user={user} />
         <ActivityTitle heading={displayName} />
       </div>
@@ -23,8 +23,8 @@ class ActivityTitleBar extends Component {
   }
 }
 
-ActivityTitleBar.propTypes = {
+TitleBar.propTypes = {
   user: PropTypes.object.isRequired
 };
 
-export default ActivityTitleBar;
+export default TitleBar;
