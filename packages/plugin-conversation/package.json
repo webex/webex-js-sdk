@@ -17,6 +17,7 @@
     "babel-runtime": "^6.3.19",
     "core-decorators": "^0.12.3",
     "lodash": "^4.5.1",
+    "mime": "^1.3.4",
     "uuid": "^2.0.1"
   },
   "devDependencies": {
