@@ -31,7 +31,7 @@ describe(`plugin-conversation`, function() {
       return spark.mercury.connect();
     }));
 
-  after(() => spark.mercury.disconnect());
+  after(() => spark && spark.mercury.disconnect());
 
   describe(`#download()`, () => {
     let sampleImageSmallOnePng = `sample-image-small-one.png`;
@@ -156,7 +156,7 @@ describe(`plugin-conversation`, function() {
       return spark2.mercury.connect();
     });
 
-    after(() => spark2.mercury.disconnect());
+    after(() => spark2 && spark2.mercury.disconnect());
 
     let conversation;
     before(() => spark.conversation.create({participants})

@@ -27,7 +27,7 @@ describe(`Encryption`, function() {
         assert.isTrue(spark.isAuthenticated);
       }));
 
-    after(() => spark.mercury.disconnect());
+    after(() => spark && spark.mercury.disconnect());
 
     describe(`#createResource()`, () => {
       it(`creates a kms resource object`, () => spark.encryption.kms.createUnboundKeys({count: 1})
@@ -127,7 +127,7 @@ describe(`Encryption`, function() {
           assert.isTrue(spark.isAuthenticated);
         }));
 
-      after(() => spark2.mercury.disconnect());
+      after(() => spark2 && spark2.mercury.disconnect());
 
       beforeEach(() => {
         originalKmsTimeout = spark2.config.encryption.kmsInitialTimeout;
@@ -176,7 +176,7 @@ describe(`Encryption`, function() {
           return fedSpark.mercury.connect();
         }));
 
-      after(() => fedSpark.mercury.disconnect());
+      after(() => fedSpark && fedSpark.mercury.disconnect());
 
       it(`responds to pings`, () => assert.isFulfilled(fedSpark.encryption.kms.ping())
         .then((res) => {
