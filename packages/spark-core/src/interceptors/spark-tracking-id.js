@@ -5,7 +5,6 @@
  */
 
 import {Interceptor} from '@ciscospark/http-core';
-import uuid from 'uuid';
 
 const sequenceNumbers = new WeakMap();
 
