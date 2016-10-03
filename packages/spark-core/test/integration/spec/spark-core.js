@@ -26,6 +26,7 @@ describe(`spark-core`, function() {
         })
           .then((res) => {
             assert.property(res.options.headers, `trackingid`);
+            assert.match(res.options.headers.trackingid, /spark-js-sdk_[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}_\d+/);
           });
       });
 

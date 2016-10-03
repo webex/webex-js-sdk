@@ -27,9 +27,7 @@ export const children = {};
 let Spark;
 
 const interceptors = {
-  SparkTrackingIdInterceptor() {
-    return SparkTrackingIdInterceptor.create();
-  },
+  SparkTrackingIdInterceptor: SparkTrackingIdInterceptor.create,
   /* eslint no-extra-parens: [0] */
   RequestLoggerInterceptor: (process.env.ENABLE_NETWORK_LOGGING || process.env.ENABLE_VERBOSE_NETWORK_LOGGING) ? RequestLoggerInterceptor.create : undefined,
   ResponseLoggerInterceptor: (process.env.ENABLE_NETWORK_LOGGING || process.env.ENABLE_VERBOSE_NETWORK_LOGGING) ? ResponseLoggerInterceptor.create : undefined,
