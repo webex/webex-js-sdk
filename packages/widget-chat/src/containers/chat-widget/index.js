@@ -4,11 +4,10 @@ import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 
 import ConnectionStatus from '../../components/connection-status';
-import {fetchUser, fetchCurrentUser} from '../../actions/user';
+import {fetchCurrentUser} from '../../actions/user';
 import {createConversationWithUser} from '../../actions/conversation';
 import ActivityTitleBar from '../../components/activity-title-bar';
 import ActivityList from '../../components/activity-list';
-import ActivityReadReceipt from '../../components/activity-read-receipt';
 import MessageComposer from '../../components/message-composer';
 
 import styles from './styles.css';
@@ -22,14 +21,17 @@ export class ChatWidget extends Component {
 
   componentWillReceiveProps(nextProps) {
     const {
-      authenticated,
-      connected,
       user,
       userId,
-      registered,
       spark,
       conversation
     } = nextProps;
+
+    const {
+      authenticated,
+      connected,
+      registered
+    } = nextProps.sparkState;
 
     if (spark && connected && authenticated && registered) {
       if (!user) {
@@ -44,7 +46,7 @@ export class ChatWidget extends Component {
 
   shouldComponentUpdate(nextProps) {
     const props = this.props;
-    return nextProps.connected !== props.connected || nextProps.user !== props.user || nextProps.conversation !== props.conversation;
+    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation !== props.conversation;
   }
 
   /**
@@ -56,14 +58,22 @@ export class ChatWidget extends Component {
     const {userId} = this.props;
     const props = this.props;
     const user = {userId, avatar: ``};
-    const mockReadUsers = [{userId: `bernie`}, {userId: `adam`}];
+
+    const {
+      conversation,
+      sparkState} = props;
+    const {
+      activities,
+      id,
+      participants
+    } = conversation;
+
     return (
       <div className={classNames(`widget-chat`, styles.widgetChat)}>
         <ActivityTitleBar user={user} />
-        <ActivityList user={user} />
-        <ActivityReadReceipt actors={mockReadUsers} />
+        <ActivityList activities={activities} id={id} participants={participants} />
         <MessageComposer />
-        <ConnectionStatus id="connection-status" {...props} />
+        <ConnectionStatus id="connection-status" {...sparkState} />
       </div>
     );
   }
@@ -72,22 +82,22 @@ export class ChatWidget extends Component {
 ChatWidget.propTypes = {
   createConversationWithUser: PropTypes.func.isRequired,
   fetchCurrentUser: PropTypes.func.isRequired,
-  fetchUser: PropTypes.func.isRequired,
   spark: PropTypes.object.isRequired,
   userId: PropTypes.string.isRequired
 };
 
 function mapStateToProps(state, ownProps) {
-  return Object.assign({}, state.spark, {
-    spark: ownProps.spark
-  });
+  return {
+    spark: ownProps.spark,
+    sparkState: state.spark,
+    conversation: state.conversation
+  };
 }
 
 export default connect(
   mapStateToProps,
   (dispatch) => bindActionCreators({
     createConversationWithUser,
-    fetchUser,
     fetchCurrentUser
   }, dispatch)
 )(injectSpark(ChatWidget));

@@ -6,7 +6,6 @@ export function receiveCurrentUser(user) {
   };
 }
 
-
 export function fetchCurrentUser(spark) {
   return (dispatch) => {
     spark.user.get()
