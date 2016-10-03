@@ -5,14 +5,19 @@
  */
 
 import {Interceptor} from '@ciscospark/http-core';
-import {isArray} from 'lodash';
+import {
+  get,
+  has,
+  isArray,
+  set
+} from 'lodash';
 
 /**
  * Encrypts, Normalizes, and Decrypts conversation service payloads
  */
 export default class ConversationInterceptor extends Interceptor {
   /**
-   * @returns {EncryptionInterceptor}
+   * @returns {ConversationInterceptor}
    */
   static create() {
     return new ConversationInterceptor({spark: this});
@@ -24,27 +29,22 @@ export default class ConversationInterceptor extends Interceptor {
    * @returns {Promise<Object>}
    */
   onRequest(options) {
-    if (!options.method || options.method.toUpperCase() === `GET`) {
-      return options;
-    }
-
-    return this.spark.device.isSpecificService(`conversation`, options.service || options.uri)
-      .then((isConversationService) => {
-        if (!isConversationService) {
-          return options;
+    return this.shouldEncryptRequest(options)
+      .then((shouldEncrypt) => {
+        if (!shouldEncrypt) {
+          return Promise.resolve();
         }
 
-        if (options.resource !== `content` && options.resource !== `activities` && options.resource !== `conversations` && options.resource !== `teams`) {
-          return options;
+        return this.encryptRequest(options);
+      })
+      .then(() => this.shouldNormalizeRequest(options))
+      .then((shouldNormalizeRequest) => {
+        if (!shouldNormalizeRequest) {
+          return Promise.resolve();
         }
-
-        return this.spark.conversation.outboundNormalizer.normalize(options.body)
-          .then((body) => this.spark.conversation.encrypter.encryptObject(body))
-          .then((body) => {
-            options.body = body;
-            return options;
-          });
-      });
+        return this.normalizeRequest(options);
+      })
+      .then(() => options);
   }
 
   /**
@@ -54,26 +54,97 @@ export default class ConversationInterceptor extends Interceptor {
    * @returns {Promise<Object>}
    */
   onResponse(options, response) {
-    return this.shouldDecrypt(options, response)
+    return this.shouldDecryptResponse(options, response)
       .then((shouldDecrypt) => {
         if (!shouldDecrypt) {
-          return response;
+          return Promise.resolve();
         }
 
-        const hasItems = Boolean(response.body.items);
+        return this.decryptResponse(options, response);
+      })
+      .then(() => this.shouldNormalizeResponse(options, response))
+      .then((shouldNormalizeResponse) => {
+        if (!shouldNormalizeResponse) {
+          return Promise.resolve();
+        }
+        return this.normalizeResponse(response);
+      })
+      .then(() => response);
+  }
 
-        return this.spark.conversation.decrypter.decryptObject(null, hasItems ? response.body.items : response.body)
-          .then((body) => this.spark.conversation.inboundNormalizer.normalize(body))
-          .then((body) => {
-            if (hasItems) {
-              response.body.items = body;
-            }
-            else {
-              response.body = body;
-            }
-            return response;
-          });
+  /**
+   * Decrypts a response
+   * @param {Object} options
+   * @param {Object} response
+   * @returns {Promise<HttpResponseObject>}
+   */
+  decryptResponse(options, response) {
+    const hasItems = has(response, `body.items`);
+    return this.spark.conversation.decrypter.decryptObject(null, get(response, hasItems ? `body.items` : `body`))
+      .then((body) => {
+        set(response, hasItems ? `body.items` : `body`, body);
+        return response;
       });
+  }
+
+  /**
+   * Encrypts a request
+   * @param {Object} options
+   * @returns {Promise<Object>}
+   */
+  encryptRequest(options) {
+    if (!has(options, `body.objectType`)) {
+      return Promise.resolve(options);
+    }
+
+    return this.spark.conversation.encrypter.encryptObject(options.body)
+      .then((body) => {
+        options.body = body;
+        return options;
+      });
+  }
+
+  /**
+   * Normalizes a request
+   * @param {Object} options
+   * @returns {Promise<Object>}
+   */
+  normalizeRequest(options) {
+    if (!(isArray(options.body) || has(options, `body.objectType`))) {
+      return Promise.resolve(options);
+    }
+
+    return this.spark.conversation.outboundNormalizer.normalize(options.body)
+      .then((body) => {
+        options.body = body;
+        return options;
+      });
+  }
+
+  /**
+   * Normalizes a response
+   * @param {Object} options
+   * @param {Object} response
+   * @returns {Promise<HttpResponseObject>}
+   */
+  normalizeResponse(options, response) {
+    if (has(response, `body.items`)) {
+      return this.spark.conversation.inboundNormalizer.normalize(response.body.items)
+        .then((b) => {
+          response.body.items = b;
+          return response;
+        });
+    }
+
+    if (has(response, `body.objectType`)) {
+      return this.spark.conversation.inboundNormalizer.normalize(response.body)
+        .then((b) => {
+          response.body = b;
+          return response;
+        });
+    }
+
+    return Promise.resolve(response);
   }
 
   /**
@@ -82,11 +153,11 @@ export default class ConversationInterceptor extends Interceptor {
    * @param {Object} response
    * @returns {Promise<Object>}
    */
-  shouldDecrypt(options, response) {
+  shouldDecryptResponse(options, response) {
     return this.spark.device.isSpecificService(`conversation`, options.service || options.uri)
       .then((isConversationService) => {
         if (!isConversationService) {
-          return false;
+          return options;
         }
 
         if (isArray(response.body) && response.body[0].objectType) {
@@ -109,4 +180,50 @@ export default class ConversationInterceptor extends Interceptor {
         return false;
       });
   }
+
+  /**
+   * Determines if a request should be encrypted
+   * @param {Object} options
+   * @returns {Promise<Boolean>}
+   */
+  shouldEncryptRequest(options) {
+    if (!options.method || options.method.toUpperCase() === `GET`) {
+      return Promise.resolve(false);
+    }
+    return this.spark.device.isSpecificService(`conversation`, options.service || options.uri)
+      .then((isConversationService) => {
+        if (!isConversationService) {
+          return false;
+        }
+
+        if (options.resource !== `content` && options.resource !== `activities` && options.resource !== `conversations`) {
+          return false;
+        }
+
+        return true;
+      });
+  }
+
+  /**
+   * Determines if a response should be normalized
+   * @param {Object} options
+   * @param {Object} response
+   * @returns {Promise<Boolean>}
+   */
+  shouldNormalizeResponse(options, response) {
+    // We only want to use the local logic, so explicity call the
+    // ConversationInterceptor implementation
+    return Reflect.apply(ConversationInterceptor.prototype.shouldDecryptResponse, this, [options, response]);
+  }
+
+  /**
+   * Determines if a request should be normalized
+   * @param {Object} options
+   * @returns {Promise<Boolean>}
+   */
+  shouldNormalizeRequest(options) {
+    // We only want to use the local logic, so explicity call the ConversationInterceptor implementation
+    return Reflect.apply(ConversationInterceptor.prototype.shouldEncryptRequest, this, [options]);
+  }
+
 }
