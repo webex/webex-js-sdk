@@ -34,10 +34,10 @@ export class ChatWidget extends Component {
     } = nextProps.sparkState;
 
     if (spark && connected && authenticated && registered) {
-      if (!user) {
+      if (!user.currentUser && !user.isFetching) {
         nextProps.fetchCurrentUser(spark);
       }
-      if (!conversation) {
+      if (!conversation.id && !conversation.isFetching) {
         nextProps.createConversationWithUser(userId, spark);
       }
     }
@@ -61,7 +61,8 @@ export class ChatWidget extends Component {
 
     const {
       conversation,
-      sparkState} = props;
+      sparkState
+    } = props;
     const {
       activities,
       id,
@@ -90,6 +91,7 @@ function mapStateToProps(state, ownProps) {
   return {
     spark: ownProps.spark,
     sparkState: state.spark,
+    user: state.user,
     conversation: state.conversation
   };
 }

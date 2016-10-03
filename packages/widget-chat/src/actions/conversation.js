@@ -7,7 +7,7 @@ export function createConversation(userId) {
 }
 
 export const RECEIVE_CONVERSATION = `RECEIVE_CONVERSATION`;
-export function receiveConversation(userId, conversation) {
+export function receiveConversation(conversation) {
   return {
     type: RECEIVE_CONVERSATION,
     conversation
