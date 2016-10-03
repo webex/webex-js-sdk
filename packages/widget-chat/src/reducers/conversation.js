@@ -10,12 +10,17 @@ function conversation(state = {
       isFetching: true,
       userId: action.userId
     });
-  case RECEIVE_CONVERSATION:
+  case RECEIVE_CONVERSATION: {
+    const reducedConversation = {
+      id: action.conversation.id,
+      participants: action.conversation.participants
+    };
     return Object.assign({}, state, {
       isFetching: false,
       userId: action.userId,
-      conversation: action.conversation
+      conversation: reducedConversation
     });
+  }
   default:
     return state;
   }
