@@ -110,6 +110,10 @@ export default class ConversationInterceptor extends Interceptor {
    * @returns {Promise<Object>}
    */
   normalizeRequest(options) {
+    if (!(isArray(options.body) || has(options, `body.objectType`))) {
+      return Promise.resolve(options);
+    }
+
     return this.spark.conversation.outboundNormalizer.normalize(options.body)
       .then((body) => {
         options.body = body;
