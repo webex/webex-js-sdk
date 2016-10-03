@@ -4,7 +4,8 @@ function conversation(state = {
   activities: [],
   id: null,
   participants: [],
-  isFetching: false
+  isFetching: false,
+  isLoaded: false
 }, action) {
   switch (action.type) {
 
@@ -18,7 +19,8 @@ function conversation(state = {
       isFetching: false,
       activities: action.conversation.activities.items,
       id: action.conversation.id,
-      participants: action.conversation.participants.items
+      participants: action.conversation.participants.items,
+      isLoaded: true
     });
   }
 

@@ -7,17 +7,17 @@ import ActivityTitle from '../activity-title';
 import Avatar from '../avatar';
 
 class ActivityTitleBar extends Component {
-  shouldComponentUpdate() {
-    return false;
+  shouldComponentUpdate(nextProps) {
+    return this.props.user !== nextProps.user;
   }
 
   render() {
     const {user} = this.props;
-    const {userId} = this.props.user;
+    const {displayName} = this.props.user;
     return (
       <div className={classNames(`activity-title-bar`, styles.activityTitleBar)}>
         <Avatar user={user} />
-        <ActivityTitle heading={userId} />
+        <ActivityTitle heading={displayName} />
       </div>
     );
   }

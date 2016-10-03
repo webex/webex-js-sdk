@@ -54,6 +54,22 @@ export class ChatWidget extends Component {
   }
 
   /**
+   * Gets the non-current user of a conversation
+   *
+   * @param {object} conversation
+   * @returns {object}
+   */
+  getUserFromConversation(conversation) {
+    if (!conversation.participants) {
+      return null;
+    }
+    const props = this.props;
+    return conversation.participants.find((user) =>
+      user.emailAddress === props.userId
+    );
+  }
+
+  /**
    * Render
    *
    * @returns {Object}
@@ -61,10 +77,7 @@ export class ChatWidget extends Component {
    * @memberOf ChatWidget
    */
   render() {
-    const {userId} = this.props;
     const props = this.props;
-    const user = {userId, avatar: ``};
-
     const {
       conversation,
       sparkState
@@ -75,12 +88,25 @@ export class ChatWidget extends Component {
       participants
     } = conversation;
 
+    let main = ( // eslint-disable-line no-extra-parens
+      <div className="loading">
+        Connecting...
+      </div>
+    );
+    if (props.conversation.isLoaded) {
+      const user = this.getUserFromConversation(props.conversation);
+      main = ( // eslint-disable-line no-extra-parens
+        <div>
+          <ActivityTitleBar user={user} />
+          <ActivityList activities={activities} id={id} participants={participants} />
+          <MessageComposer />
+          <ConnectionStatus id="connection-status" {...sparkState} />
+        </div>
+      );
+    }
     return (
       <div className={classNames(`widget-chat`, styles.widgetChat)}>
-        <ActivityTitleBar user={user} />
-        <ActivityList activities={activities} id={id} participants={participants} />
-        <MessageComposer />
-        <ConnectionStatus id="connection-status" {...sparkState} />
+        {main}
       </div>
     );
   }
