@@ -7,10 +7,9 @@ export function createConversation(userId) {
 }
 
 export const RECEIVE_CONVERSATION = `RECEIVE_CONVERSATION`;
-export function receiveConversation(userId, conversation) {
+export function receiveConversation(conversation) {
   return {
     type: RECEIVE_CONVERSATION,
-    userId,
     conversation
   };
 }
@@ -29,6 +28,6 @@ export function createConversationWithUser(userId, spark) {
       participants: [userId]
     };
     spark.conversation.create(params)
-      .then((conversation) => dispatch(receiveConversation(userId, conversation)));
+      .then((conversation) => dispatch(receiveConversation(conversation)));
   };
 }

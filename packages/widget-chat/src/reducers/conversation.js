@@ -1,26 +1,27 @@
 import {CREATE_CONVERSATION, RECEIVE_CONVERSATION} from '../actions/conversation';
 
 function conversation(state = {
-  isFetching: false,
-  conversation: {}
+  activities: [],
+  id: null,
+  participants: [],
+  isFetching: false
 }, action) {
   switch (action.type) {
+
   case CREATE_CONVERSATION:
     return Object.assign({}, state, {
-      isFetching: true,
-      userId: action.userId
+      isFetching: true
     });
+
   case RECEIVE_CONVERSATION: {
-    const reducedConversation = {
-      id: action.conversation.id,
-      participants: action.conversation.participants
-    };
     return Object.assign({}, state, {
       isFetching: false,
-      userId: action.userId,
-      conversation: reducedConversation
+      activities: action.conversation.activities.items,
+      id: action.conversation.id,
+      participants: action.conversation.participants.items
     });
   }
+
   default:
     return state;
   }
