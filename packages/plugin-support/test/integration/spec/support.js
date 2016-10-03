@@ -37,14 +37,16 @@ describe(`plugin-support`, function() {
               authorization: users[0].token
             }
           });
+
+          return spark.device.register();
         }));
 
       it(`uploads logs`, () => spark.support.submitLogs({}, sampleTextOne)
         .then((body) => {
-          // Not sure what to assert here.
-          // In the case of an authorized user, the body should be empty {}
-          console.log(body);
           assert.isDefined(body);
+          assert.property(body, `url`);
+          assert.property(body, `userId`);
+          assert.equal(body.userId, spark.device.userId);
         }));
     });
 
@@ -54,8 +56,8 @@ describe(`plugin-support`, function() {
         return spark.support.submitLogs({}, sampleTextOne)
           .then((body) => {
             assert.isDefined(body);
-            assert.isDefined(body.url);
-            assert.isDefined(body.userId);
+            assert.property(body, `url`);
+            assert.property(body, `userId`);
           });
       });
     });

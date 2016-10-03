@@ -67,7 +67,6 @@ const Support = SparkPlugin.extend({
           headers,
           phases: {
             initialize: {
-              // headers,
               body: {
                 file: filename
               }
@@ -78,7 +77,6 @@ const Support = SparkPlugin.extend({
             finalize: {
               api: `atlas`,
               resource: `logs/meta`,
-              // headers,
               $body: (session) => {
                 userId = session.userId;
                 return {
