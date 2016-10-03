@@ -32,6 +32,12 @@ const Normalizer = SparkPlugin.extend({
         .then(() => object);
     }
 
+    // for multistatus objects For Eg: plugin-flag
+    if (isArray(object.multistatus)) {
+      return Promise.all(object.multistatus.map((o) => this.normalize(o.data.activity)))
+        .then(() => object);
+    }
+
     if (!object.objectType) {
       return Promise.reject(new Error(`Cannot normalize \`object\` without \objectType\``));
     }
