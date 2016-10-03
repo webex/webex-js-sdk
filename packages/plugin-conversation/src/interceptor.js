@@ -34,7 +34,7 @@ export default class ConversationInterceptor extends Interceptor {
           return options;
         }
 
-        if (options.resource !== `content` && options.resource !== `activities` && options.resource !== `conversations`) {
+        if (options.resource !== `content` && options.resource !== `activities` && options.resource !== `conversations` && options.resource !== `teams`) {
           return options;
         }
 
@@ -62,8 +62,8 @@ export default class ConversationInterceptor extends Interceptor {
 
         const hasItems = Boolean(response.body.items);
 
-        return this.spark.conversation.decrypter.decryptObject(null, response.body)
-          .then((body) => this.spark.conversation.inboundNormalizer.normalize(hasItems ? body.items : body))
+        return this.spark.conversation.decrypter.decryptObject(null, hasItems ? response.body.items : response.body)
+          .then((body) => this.spark.conversation.inboundNormalizer.normalize(body))
           .then((body) => {
             if (hasItems) {
               response.body.items = body;
