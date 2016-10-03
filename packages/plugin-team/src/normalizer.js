@@ -4,7 +4,7 @@
  * @private
  */
 
-import Normalizer from '@ciscospark/plugin-conversation';
+import {Normalizer} from '@ciscospark/plugin-conversation';
 
 
 Object.assign(Normalizer.prototype, {

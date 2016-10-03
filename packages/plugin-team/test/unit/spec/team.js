@@ -21,27 +21,17 @@ describe(`plugin-team`, () => {
     });
 
     describe(`#create()`, () => {
-      it(`requires a displayName`, () => {
-        return assert.isRejected(spark.team.create({}), /\`params.displayName\` is required/);
-      });
+      it(`requires a displayName`, () => assert.isRejected(spark.team.create({}), /\`params.displayName\` is required/));
 
-      it(`requires a participants attribute`, () => {
-        return assert.isRejected(spark.team.create({displayName: `test`}), /\`params.participants\` is required/);
-      });
+      it(`requires a participants attribute`, () => assert.isRejected(spark.team.create({displayName: `test`}), /\`params.participants\` is required/));
 
-      it(`requires a participants array`, () => {
-        return assert.isRejected(spark.team.create({displayName: `test`, participants: []}), /\`params.participants\` is required/);
-      });
+      it(`requires a participants array`, () => assert.isRejected(spark.team.create({displayName: `test`, participants: []}), /\`params.participants\` is required/));
     });
 
     describe(`#createConversation()`, () => {
-      it(`requires a displayName`, () => {
-        return assert.isRejected(spark.team.createConversation({}, {}), /\`params.displayName\` is required/);
-      });
+      it(`requires a displayName`, () => assert.isRejected(spark.team.createConversation({}, {}), /\`params.displayName\` is required/));
 
-      it(`requires a team object with a general conversation`, () => {
-        return assert.isRejected(spark.team.createConversation({}, {displayName: `test`}), /\`team.generalConversationUuid\` must be present/);
-      });
+      it(`requires a team object with a general conversation`, () => assert.isRejected(spark.team.createConversation({}, {displayName: `test`}), /\`team.generalConversationUuid\` must be present/));
     });
   });
 });
