@@ -7,18 +7,21 @@ function conversation(state = {
   isFetching: false
 }, action) {
   switch (action.type) {
+
   case CREATE_CONVERSATION:
     return Object.assign({}, state, {
       isFetching: true
     });
+
   case RECEIVE_CONVERSATION: {
     return Object.assign({}, state, {
       isFetching: false,
       activities: action.conversation.activities.items,
       id: action.conversation.id,
-      participants: action.conversation.participants
+      participants: action.conversation.participants.items
     });
   }
+
   default:
     return state;
   }
