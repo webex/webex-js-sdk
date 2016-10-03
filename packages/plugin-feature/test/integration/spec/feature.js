@@ -45,4 +45,38 @@ describe(`plugin-feature`, function() {
       });
     });
   });
+
+  describe(`#setBatchUserFeatures()`, () => {
+    before(() => testUsers.create({count: 1})
+      .then((users) => {
+        spock = users[0];
+        spark = new CiscoSpark({
+          credentials: {
+            authorization: spock.token
+          }
+        });
+        return spark.device.register();
+      })
+    );
+
+    const featureUpdateArray = [{
+      key: `key1`,
+      val: `value1`,
+      type: `USER`,
+      mutable: `true`
+    }, {
+      key: `key2`,
+      val: `value2`,
+      mutable: `false`
+    }];
+
+    it(`sets a value for two user feature toggle`, () => {
+      return spark.feature.setBundledFeatures(featureUpdateArray)
+        .then((res) => {
+          assert.isDefined(res);
+          assert.becomes(spark.feature.getFeature(`user`, `key1`), `value1`);
+          assert.becomes(spark.feature.getFeature(`user`, `key2`), `value2`);
+        });
+    });
+  });
 });
