@@ -7,7 +7,7 @@ describe(`ActivityReadReceipt component`, () => {
   let mockReadUsers;
   let component;
   beforeEach(() => {
-    mockReadUsers = [{userId: `bernie`}, {userId: `adam`}];
+    mockReadUsers = [`bernie`, `adam`];
     component = renderIntoDocument(
       <ActivityReadReceipt actors={mockReadUsers} />
     );
