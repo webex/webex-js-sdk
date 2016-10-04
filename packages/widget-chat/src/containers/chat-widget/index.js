@@ -95,9 +95,10 @@ export class ChatWidget extends Component {
     );
     if (props.conversation.isLoaded) {
       const user = this.getUserFromConversation(props.conversation);
+      const {displayName} = user;
       main = ( // eslint-disable-line no-extra-parens
         <div>
-          <TitleBar user={user} />
+          <TitleBar displayName={displayName} />
           <ActivityList activities={activities} id={id} participants={participants} />
           <MessageComposer />
           <ConnectionStatus id="connection-status" {...sparkState} />

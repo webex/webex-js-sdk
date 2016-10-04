@@ -7,15 +7,14 @@ import Avatar from '../avatar';
 
 class TitleBar extends Component {
   shouldComponentUpdate(nextProps) {
-    return this.props.user !== nextProps.user;
+    return this.props.displayName !== nextProps.displayName;
   }
 
   render() {
-    const {user} = this.props;
-    const {displayName} = this.props.user;
+    const {displayName} = this.props;
     return (
       <div className={classNames(`title-bar`, styles.titleBar)}>
-        <Avatar user={user} />
+        <Avatar displayName={displayName} />
         <h2 className={classNames(`title`, styles.title)}>{displayName}</h2>
       </div>
     );
@@ -23,7 +22,7 @@ class TitleBar extends Component {
 }
 
 TitleBar.propTypes = {
-  user: PropTypes.object.isRequired
+  displayName: PropTypes.string.isRequired
 };
 
 export default TitleBar;
