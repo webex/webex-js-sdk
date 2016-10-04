@@ -5,6 +5,8 @@
 import {assert} from '@ciscospark/test-helper-chai';
 import Avatar from '../../';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
+import sinon from '@ciscospark/test-helper-sinon';
+
 
 describe(`Services`, () => {
   describe(`Avatar`, () => {
@@ -24,7 +26,8 @@ describe(`Services`, () => {
 
       describe(`#fingerprintRequest(item)`, () => {
         it(`returns 'uuid - size'`, () => {
-          assert.equal(batcher.fingerprintRequest({uuid: `uuid1`, size: 80}), `uuid1 - 80`);
+          return batcher.fingerprintRequest({uuid: `uuid1`, size: 80})
+            .then((res) => assert.equal(res, `uuid1 - 80`));
         });
       });
     });

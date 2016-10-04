@@ -46,7 +46,7 @@ const AvatarUrlBatcher = Batcher.extend({
   didItemFail(item) {
     if (item.response) {
       if (item.size !== item.response.size) {
-        this.logger.warn(`Avatar: substituted size "$(response.size)" for " $(item.size)"`);
+        this.logger.warn(`Avatar: substituted size "$(response.size)" for " ${item.size}"`);
       }
       return Promise.resolve(true);
     }
@@ -77,7 +77,7 @@ const AvatarUrlBatcher = Batcher.extend({
    */
   // eslint-disable-next-line no-unused-vars
   fingerprintRequest(item) {
-    return Promise.resolve(`$(item.uuid) - $(item.size)`);
+    return Promise.resolve(`${item.uuid} - ${item.size}`);
   },
 
 
@@ -94,7 +94,7 @@ const AvatarUrlBatcher = Batcher.extend({
    */
   // eslint-disable-next-line no-unused-vars
   fingerprintResponse(item) {
-    return Promise.resolve(`$(item.uuid) - $(item.size)`);
+    return Promise.resolve(`${item.uuid} - ${item.size}`);
   },
 
   /**
