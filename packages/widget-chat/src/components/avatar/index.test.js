@@ -3,21 +3,19 @@ import {findRenderedDOMComponentWithClass, renderIntoDocument} from 'react-addon
 
 import Avatar from '.';
 
-let user;
+let displayName;
 let component;
 
 describe(`Avatar component`, () => {
   beforeEach(() => {
-    user = {
-      userId: `test@testing.net`
-    };
+    displayName = `test@testing.net`;
     component = renderIntoDocument(
-      <Avatar user={user} />
+      <Avatar displayName={displayName} />
     );
   });
 
   it(`renders`, () => {
-    const renderedComponent = findRenderedDOMComponentWithClass(component, `avatar-letter`);
+    const renderedComponent = findRenderedDOMComponentWithClass(component, `avatar`);
     expect(renderedComponent).toBeDefined();
   });
 
