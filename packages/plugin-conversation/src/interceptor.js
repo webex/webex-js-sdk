@@ -161,7 +161,7 @@ export default class ConversationInterceptor extends Interceptor {
     return this.spark.device.isSpecificService(`conversation`, options.service || options.uri)
       .then((isConversationService) => {
         if (!isConversationService) {
-          return options;
+          return false;
         }
 
         if (isArray(response.body) && response.body[0].objectType) {
@@ -202,7 +202,7 @@ export default class ConversationInterceptor extends Interceptor {
         }
 
         if (options.resource !== `content` && options.resource !== `activities` && options.resource !== `conversations` && options.resource !== `teams`) {
-          return options;
+          return false;
         }
 
         return true;
