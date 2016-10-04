@@ -14,8 +14,10 @@ class TitleBar extends Component {
     const {displayName} = this.props;
     return (
       <div className={classNames(`title-bar`, styles.titleBar)}>
-        <Avatar displayName={displayName} />
-        <h2 className={classNames(`title`, styles.title)}>{displayName}</h2>
+        <div className={classNames(`avatar-container`, styles.avatarContainer)}>
+          <Avatar displayName={displayName} />
+        </div>
+        <h1 className={classNames(`title`, styles.title)}>{displayName}</h1>
       </div>
     );
   }
