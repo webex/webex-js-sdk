@@ -92,6 +92,9 @@ const ShareActivity = SparkPlugin.extend({
     const promise = this.detect(file)
       .then((type) => {
         upload.mimeType = type;
+        if (!file.type) {
+          file.type = type;
+        }
         return processImage(file, this.config.thumbnailMaxWidth, this.config.thumbnailMaxHeight, this.logger);
       })
       .then((imageData) => {

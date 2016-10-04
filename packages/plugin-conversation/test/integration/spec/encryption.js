@@ -60,7 +60,8 @@ describe(`plugin-conversation`, () => {
               actor: {
                 id: spock.id,
                 objectType: `person`
-              }
+              },
+              objectType: `activity`
             },
             {
               verb: `add`,
@@ -71,7 +72,8 @@ describe(`plugin-conversation`, () => {
               object: {
                 id: spock.id,
                 objectType: `person`
-              }
+              },
+              objectType: `activity`
             },
             {
               verb: `add`,
@@ -82,11 +84,13 @@ describe(`plugin-conversation`, () => {
               object: {
                 id: checkov.id,
                 objectType: `person`
-              }
+              },
+              objectType: `activity`
             }
           ]
         }
-      }
+      },
+      shouldEncryptRequest: false
     })
       .then((res) => res.body)
       .then((c) => {
@@ -154,7 +158,8 @@ describe(`plugin-conversation`, () => {
                 actor: {
                   id: spock.id,
                   objectType: `person`
-                }
+                },
+                objectType: `activity`
               },
               {
                 verb: `add`,
@@ -165,7 +170,8 @@ describe(`plugin-conversation`, () => {
                 object: {
                   id: spock.id,
                   objectType: `person`
-                }
+                },
+                objectType: `activity`
               },
               {
                 verb: `add`,
@@ -176,12 +182,14 @@ describe(`plugin-conversation`, () => {
                 object: {
                   id: mccoy.id,
                   objectType: `person`
-                }
+                },
+                objectType: `activity`
               }
             ]
           },
           tags: [`ONE_ON_ONE`]
-        }
+        },
+        shouldEncryptRequest: false
       })
         .then((res) => res.body)
         .then((c) => {

@@ -67,7 +67,7 @@ export default class ConversationInterceptor extends Interceptor {
         if (!shouldNormalizeResponse) {
           return Promise.resolve();
         }
-        return this.normalizeResponse(response);
+        return this.normalizeResponse(options, response);
       })
       .then(() => response);
   }
@@ -110,7 +110,7 @@ export default class ConversationInterceptor extends Interceptor {
    * @returns {Promise<Object>}
    */
   normalizeRequest(options) {
-    if (!(isArray(options.body) || has(options, `body.objectType`))) {
+    if (!(isArray(options.body) && options.body[0] && options.body[0].objectType || has(options, `body.objectType`))) {
       return Promise.resolve(options);
     }
 
@@ -154,6 +154,10 @@ export default class ConversationInterceptor extends Interceptor {
    * @returns {Promise<Object>}
    */
   shouldDecryptResponse(options, response) {
+    if (options.shouldDecryptResponse === false) {
+      return Promise.resolve(false);
+    }
+
     return this.spark.device.isSpecificService(`conversation`, options.service || options.uri)
       .then((isConversationService) => {
         if (!isConversationService) {
@@ -187,9 +191,10 @@ export default class ConversationInterceptor extends Interceptor {
    * @returns {Promise<Boolean>}
    */
   shouldEncryptRequest(options) {
-    if (!options.method || options.method.toUpperCase() === `GET`) {
+    if (options.shouldEncryptRequest === false || !options.method || options.method.toUpperCase() === `GET`) {
       return Promise.resolve(false);
     }
+
     return this.spark.device.isSpecificService(`conversation`, options.service || options.uri)
       .then((isConversationService) => {
         if (!isConversationService) {
