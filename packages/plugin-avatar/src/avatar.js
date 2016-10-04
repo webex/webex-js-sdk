@@ -4,8 +4,8 @@
  * @private
  */
 
-import {AvatarUrlBatcher} from './avatar-url-batcher';
-import {AvatarUrlStore} from './avatar-url-store';
+import AvatarUrlBatcher from './avatar-url-batcher';
+import AvatarUrlStore from './avatar-url-store';
 import {SparkPlugin} from '@ciscospark/spark-core';
 import {User} from '@ciscospark/plugin-user';
 import {defaults} from 'lodash';
@@ -39,7 +39,8 @@ const Avatar = SparkPlugin.extend({
     return this.store.get(uuid, options.size)
       .catch(() => this.batcher.request(Object.assign({}, {uuid, size: options.size}))
         .then((item) => this.store.add(defaults(item,
-                                                {cacheControl: options.cacheControl})))
+                                                {cacheControl: options.cacheControl}))
+        )
       );
   },
 
