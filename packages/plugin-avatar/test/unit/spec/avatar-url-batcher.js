@@ -3,9 +3,8 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 import {assert} from '@ciscospark/test-helper-chai';
-import Avatar, {config} from '../../';
-// import '@ciscospark/test-helper-sinon';
-import {MockSpark} from '@ciscospark/test-helper-mock-spark';
+import Avatar from '../../';
+import MockSpark from '@ciscospark/test-helper-mock-spark';
 
 describe(`Services`, () => {
   describe(`Avatar`, () => {
@@ -19,10 +18,8 @@ describe(`Services`, () => {
             avatar: Avatar
           }
         });
-
-        spark.config.avatar = config.avatar;
+        console.warn('spark: <' + JSON.stringify(spark) + '>');
         batcher = spark.avatar.batcher;
-        console.warn(JSON.stringify(spark, null, `\t`));
       });
 
       describe(`#fingerprintRequest(item)`, () => {
