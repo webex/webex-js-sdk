@@ -1,18 +1,18 @@
 import React from 'react';
 import {findRenderedDOMComponentWithClass, renderIntoDocument} from 'react-addons-test-utils';
 
-import ActivityTitleBar from '.';
+import TitleBar from '.';
 
 let user;
 let component;
 
-describe(`ActivityTitleBar component`, () => {
+describe(`TitleBar component`, () => {
   beforeEach(() => {
     user = {
       userId: `test@testing.net`
     };
     component = renderIntoDocument(
-      <ActivityTitleBar user={user} />
+      <TitleBar user={user} />
     );
   });
 

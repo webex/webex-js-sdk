@@ -6,7 +6,7 @@ import classNames from 'classnames';
 import ConnectionStatus from '../../components/connection-status';
 import {fetchCurrentUser} from '../../actions/user';
 import {createConversationWithUser} from '../../actions/conversation';
-import ActivityTitleBar from '../../components/activity-title-bar';
+import TitleBar from '../../components/title-bar';
 import ActivityList from '../../components/activity-list';
 import MessageComposer from '../../components/message-composer';
 
@@ -50,15 +50,28 @@ export class ChatWidget extends Component {
   }
 
   /**
+   * Gets the non-current user of a conversation
+   *
+   * @param {object} conversation
+   * @returns {object}
+   */
+  getUserFromConversation(conversation) {
+    if (!conversation.participants) {
+      return null;
+    }
+    const props = this.props;
+    return conversation.participants.find((user) =>
+      user.emailAddress === props.userId
+    );
+  }
+
+  /**
    * Render
    *
    * @returns {Object}
    */
   render() {
-    const {userId} = this.props;
     const props = this.props;
-    const user = {userId, avatar: ``};
-
     const {
       conversation,
       sparkState
@@ -69,12 +82,26 @@ export class ChatWidget extends Component {
       participants
     } = conversation;
 
+    let main = ( // eslint-disable-line no-extra-parens
+      <div className="loading">
+        Connecting...
+      </div>
+    );
+    if (props.conversation.isLoaded) {
+      const user = this.getUserFromConversation(props.conversation);
+      const {displayName} = user;
+      main = ( // eslint-disable-line no-extra-parens
+        <div>
+          <TitleBar displayName={displayName} />
+          <ActivityList activities={activities} id={id} participants={participants} />
+          <MessageComposer />
+          <ConnectionStatus id="connection-status" {...sparkState} />
+        </div>
+      );
+    }
     return (
       <div className={classNames(`widget-chat`, styles.widgetChat)}>
-        <ActivityTitleBar user={user} />
-        <ActivityList activities={activities} id={id} participants={participants} />
-        <MessageComposer />
-        <ConnectionStatus id="connection-status" {...sparkState} />
+        {main}
       </div>
     );
   }

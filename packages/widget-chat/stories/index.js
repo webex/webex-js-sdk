@@ -4,13 +4,13 @@ import {storiesOf} from '@kadira/storybook';
 import ActivityItem from '../src/components/activity-item';
 import ActivityList from '../src/components/activity-list';
 import ActivityReadReceipt from '../src/components/activity-read-receipt';
-import ActivityTitle from '../src/components/activity-title';
-import ActivityTitleBar from '../src/components/activity-title-bar';
+import TitleBar from '../src/components/title-bar';
 import Avatar from '../src/components/avatar';
 import MessageComposer from '../src/components/message-composer';
 
 const testUser = {
-  userId: `bernie@gmail.net`
+  id: `bernie@gmail.net`,
+  displayName: `Bernie`
 };
 
 storiesOf(`ActivityItem`, module)
@@ -58,31 +58,21 @@ storiesOf(`ActivityList`, module)
 storiesOf(`ActivityReadReceipt`, module)
   .add(`Basic`, () => {
     const mockReadUsers = [{userId: `bernie`}, {userId: `adam`}];
-    return <ActivityReadReceipt actors={mockReadUsers}/>;
+    return <ActivityReadReceipt actors={mockReadUsers} />;
   });
 
-storiesOf(`ActivityTitle`, module)
-  .add(`Welcome Text`, () =>
-    <ActivityTitle heading="This is an Activity Title" />
-  );
-
-storiesOf(`ActivityTitleBar`, module)
+storiesOf(`TitleBar`, module)
   .add(`Default User`, () =>
-    <ActivityTitleBar user={testUser} />
+    <TitleBar user={testUser} />
   );
 
 storiesOf(`Avatar`, module)
   .add(`letter B`, () =>
-    <Avatar user={testUser} />
+    <Avatar displayName="Beta" />
   )
-  .add(`letter D`, () => {
-    const dUser = {
-      userId: `dis.user@netscape.net`
-    };
-    return (
-      <Avatar user={dUser} />
-    );
-  });
+  .add(`letter D`, () =>
+    <Avatar displayName="Delta" />
+  );
 
 storiesOf(`MessageComposer`, module)
   .add(`Basic`, () =>

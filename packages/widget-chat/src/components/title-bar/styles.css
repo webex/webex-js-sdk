@@ -1,0 +1,11 @@
+.title-bar {
+  display: flex;
+  background-color: aliceblue;
+  border-bottom: 1px solid black;
+}
+
+.title {
+  background-color: transparent;
+  line-height: 20px;
+  font-size: 20px;
+}
