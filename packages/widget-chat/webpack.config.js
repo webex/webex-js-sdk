@@ -131,6 +131,25 @@ module.exports = {
         test: /\.css$/,
         include: [/node_modules/],
         loaders: ['style-loader', 'css-loader']
+      }, {
+        test: /\.woff$/,
+        // Inline small woff files and output them below font/.
+        // Set mimetype just in case.
+        loader: 'url',
+        query: {
+          name: 'fonts/[hash].[ext]',
+          limit: 5000,
+          mimetype: 'application/font-woff'
+        },
+        include: path.resolve(__dirname, '..')
+      },
+      {
+        test: /\.ttf$|\.otf$|\.eot$/,
+        loader: 'file',
+        query: {
+          name: 'fonts/[hash].[ext]'
+        },
+        include: path.resolve(__dirname, '..')
       }
     ]
   }
