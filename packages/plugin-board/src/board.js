@@ -49,7 +49,7 @@ const Board = SparkPlugin.extend({
    * @param  {File} image - image to be uploaded
    * @returns {Promise<Board~Content>}
    */
-  addImage: function addImage(conversation, channel, image) {
+  addImage(conversation, channel, image) {
     return this.spark.board._uploadImage(conversation, image)
       .then((scr) => this.spark.board.addContent(conversation, channel, [{
         mimeType: image.type,
