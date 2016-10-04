@@ -24,10 +24,12 @@ export function receiveConversation(conversation) {
 export function createConversationWithUser(userId, spark) {
   return (dispatch) => {
     dispatch(createConversation(userId));
-    const params = {
+
+    spark.conversation.create({
       participants: [userId]
-    };
-    spark.conversation.create(params)
+    }, {
+      activitiesLimit: 10
+    })
       .then((conversation) => dispatch(receiveConversation(conversation)));
   };
 }
