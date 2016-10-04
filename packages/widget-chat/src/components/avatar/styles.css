@@ -9,12 +9,7 @@
   height: 40px;
   border-radius: 20px;
   margin: auto;
-}
-
-.avatar-letter strong {
   line-height: 1.6;
-  width: 40px;
-  display: block;
   text-align: center;
   font-size: 25px;
 }
