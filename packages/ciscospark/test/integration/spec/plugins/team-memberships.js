@@ -80,6 +80,10 @@ describe(`ciscospark`, function() {
             assert.isTeamMembership(membership);
             assert.equal(membership.teamId, team.id);
             assert.isTrue(membership.isModerator);
+
+            // prevent this test from breaking other tests
+            membership.isModerator = false;
+            return spark.teamMemberships.update(membership);
           }));
       });
 
