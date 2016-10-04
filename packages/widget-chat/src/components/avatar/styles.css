@@ -1,9 +1,14 @@
+.avatar {
+  display: flex;
+  flex: 1 1 auto;
+}
+
 .avatar-letter {
   background-color: darkgray;
   width: 40px;
   height: 40px;
   border-radius: 20px;
-  margin: 5px;
+  margin: auto;
 }
 
 .avatar-letter strong {
