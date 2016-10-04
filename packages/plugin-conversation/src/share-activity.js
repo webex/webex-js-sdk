@@ -34,6 +34,11 @@ const ShareActivity = SparkPlugin.extend({
 
     displayName: `string`,
 
+    enableThumbnails: {
+      default: true,
+      type: `boolean`
+    },
+
     hiddenSpaceUrl: `object`,
 
     mentions: `object`,
@@ -95,7 +100,13 @@ const ShareActivity = SparkPlugin.extend({
         if (!file.type) {
           file.type = type;
         }
-        return processImage(file, this.config.thumbnailMaxWidth, this.config.thumbnailMaxHeight, this.logger);
+        return processImage({
+          file,
+          thumbnailMaxWidth: this.config.thumbnailMaxWidth,
+          thumbnailMaxHeight: this.config.thumbnailMaxHeight,
+          enableThumbnails: this.enableThumbnails,
+          logger: this.logger
+        });
       })
       .then((imageData) => {
         const main = this.spark.encryption.encryptBinary(file)
@@ -118,16 +129,18 @@ const ShareActivity = SparkPlugin.extend({
           const [thumbnail, fileDimensions, thumbnailDimensions] = imageData;
           Object.assign(upload, fileDimensions);
 
-          upload.image = thumbnailDimensions;
-          thumb = this.spark.encryption.encryptBinary(thumbnail)
-            .then(({scr, cdata}) => {
-              upload.image.scr = scr;
-              return Promise.all([cdata, this.hiddenSpaceUrl]);
-            })
-            .then(([cdata, spaceUrl]) => this._upload(cdata, `${spaceUrl}/upload_sessions`))
-            .then((metadata) => {
-              upload.image.url = upload.image.scr.loc = metadata.downloadUrl;
-            });
+          if (thumbnail && thumbnailDimensions) {
+            upload.image = thumbnailDimensions;
+            thumb = this.spark.encryption.encryptBinary(thumbnail)
+              .then(({scr, cdata}) => {
+                upload.image.scr = scr;
+                return Promise.all([cdata, this.hiddenSpaceUrl]);
+              })
+              .then(([cdata, spaceUrl]) => this._upload(cdata, `${spaceUrl}/upload_sessions`))
+              .then((metadata) => {
+                upload.image.url = upload.image.scr.loc = metadata.downloadUrl;
+              });
+          }
         }
 
         return Promise.all([main, thumb]);

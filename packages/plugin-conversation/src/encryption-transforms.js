@@ -167,6 +167,17 @@ export const transforms = toArray(`outbound`, {
     alias: `encryptVerbActivity`
   },
 
+  encryptAssignActivity: {
+    direction: `outbound`,
+    fn(ctx, key, activity) {
+      return ctx.transform(`encryptVerbActivity`, key, activity)
+        .then(() => {
+          key = key || activity[KEY];
+          activity.encryptionKeyUrl = key.uri || key;
+        });
+    }
+  },
+
   encryptCreateActivity: {
     direction: `outbound`,
     alias: `encryptVerbActivity`

@@ -15,7 +15,7 @@ import {pick} from 'lodash';
  * @param {Logger} logger
  * @returns {Promise<Array>} Buffer, Dimensions, thumbnailDimensions
  */
-export default function processImage(file, thumbnailMaxWidth, thumbnailMaxHeight, logger) {
+export default function processImage({file, thumbnailMaxWidth, thumbnailMaxHeight, enableThumbnails, logger}) {
   if (!file.type || !file.type.startsWith(`image`)) {
     return Promise.resolve();
   }
@@ -31,29 +31,32 @@ export default function processImage(file, thumbnailMaxWidth, thumbnailMaxHeight
     });
   });
 
-  const thumbnail = new Promise((resolve, reject) => {
-    gm(file).resize(thumbnailMaxWidth, thumbnailMaxHeight)
-      .toBuffer((err, buffer) => {
-        if (err) {
-          reject(err);
-          return;
-        }
+  let thumbnail, thumbnailDimensions;
+  if (enableThumbnails) {
+    thumbnail = new Promise((resolve, reject) => {
+      gm(file).resize(thumbnailMaxWidth, thumbnailMaxHeight)
+        .toBuffer((err, buffer) => {
+          if (err) {
+            reject(err);
+            return;
+          }
 
-        resolve(buffer);
-      });
-  });
+          resolve(buffer);
+        });
+    });
 
-  const thumbnailDimensions = thumbnail.then((buffer) => new Promise((resolve, reject) => {
-    gm(buffer)
-      .size((err, size) => {
-        if (err) {
-          reject(err);
-          return;
-        }
+    thumbnailDimensions = thumbnail.then((buffer) => new Promise((resolve, reject) => {
+      gm(buffer)
+        .size((err, size) => {
+          if (err) {
+            reject(err);
+            return;
+          }
 
-        resolve(pick(size, `width`, `height`));
-      });
-  }));
+          resolve(pick(size, `width`, `height`));
+        });
+    }));
+  }
 
 
   return Promise.all([thumbnail, fileDimensions, thumbnailDimensions])
