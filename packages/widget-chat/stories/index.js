@@ -68,16 +68,11 @@ storiesOf(`TitleBar`, module)
 
 storiesOf(`Avatar`, module)
   .add(`letter B`, () =>
-    <Avatar user={testUser} />
+    <Avatar displayName="Beta" />
   )
-  .add(`letter D`, () => {
-    const dUser = {
-      userId: `dis.user@netscape.net`
-    };
-    return (
-      <Avatar user={dUser} />
-    );
-  });
+  .add(`letter D`, () =>
+    <Avatar displayName="Delta" />
+  );
 
 storiesOf(`MessageComposer`, module)
   .add(`Basic`, () =>

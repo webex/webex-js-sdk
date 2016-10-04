@@ -9,7 +9,7 @@ class Avatar extends Component {
   }
 
   render() {
-    const userInitial = this.props.user.displayName.substr(0, 1).toUpperCase();
+    const userInitial = this.props.displayName.substr(0, 1).toUpperCase();
     return (
       <div className={classNames(`avatar-letter`, styles.avatarLetter)}>
         <strong>{userInitial}</strong>
@@ -19,7 +19,7 @@ class Avatar extends Component {
 }
 
 Avatar.propTypes = {
-  user: PropTypes.object.isRequired
+  displayName: PropTypes.string.isRequired
 };
 
 export default Avatar;
