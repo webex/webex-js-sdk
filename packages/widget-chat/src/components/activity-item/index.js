@@ -1,24 +1,16 @@
-import React, {Component, PropTypes} from 'react';
+import React, {PropTypes} from 'react';
 
-class ActivityItem extends Component {
-  shouldComponentUpdate() {
-    return false;
-  }
-
-  render() {
-    const {activity} = this.props;
-    return (
-      <div>
-        <li>
-          {activity.activity.message}
-        </li>
-      </div>
-    );
-  }
+export default function ActivityItem(props) {
+  const {activity} = props;
+  return (
+    <div>
+      <li>
+        {activity.id} - {activity.object.displayName}
+      </li>
+    </div>
+  );
 }
 
 ActivityItem.propTypes = {
   activity: PropTypes.object.isRequired
 };
-
-export default ActivityItem;
