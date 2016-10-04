@@ -8,7 +8,7 @@
 .title {
   flex: 1 1 auto;
   background-color: transparent;
-  line-height: 68px;
+  line-height: 4;
   font-size: 17px;
   text-overflow: ellipsis;
   color: #049fd9;
