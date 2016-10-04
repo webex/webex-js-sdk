@@ -128,13 +128,11 @@ describe(`plugin-board`, function() {
 
   describe(`#ping()`, () => {
 
-    it(`pings board service`, () => {
-      return participants[0].spark.board.ping()
-        .then((res) => {
-          assert.property(res, `serviceName`);
-          assert.equal(res.serviceName, `Board`);
-        });
-    });
+    it(`pings board service`, () => participants[0].spark.board.ping()
+      .then((res) => {
+        assert.property(res, `serviceName`);
+        assert.equal(res.serviceName, `Board`);
+      }));
   });
 
   describe(`#addImage()`, () => {

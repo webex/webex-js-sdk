@@ -11,8 +11,7 @@ export default {
      * Milliseconds between pings sent up the socket
      * @type {number}
      */
-    // pingInterval: process.env.MERCURY_PING_INTERVAL || 15000,
-    pingInterval: 22222,
+    pingInterval: process.env.MERCURY_PING_INTERVAL || 15000,
 
     /**
      * Milliseconds to wait for a pong before declaring the connection dead

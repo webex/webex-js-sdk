@@ -94,11 +94,11 @@ const Board = SparkPlugin.extend({
       }
 
       return decryptPromise
-      .then((res) => {
-        Reflect.deleteProperty(content, `payload`);
-        Reflect.deleteProperty(content, `encryptionKeyUrl`);
-        return defaults(res, content);
-      });
+        .then((res) => {
+          Reflect.deleteProperty(content, `payload`);
+          Reflect.deleteProperty(content, `encryptionKeyUrl`);
+          return defaults(res, content);
+        });
     }));
   },
 
@@ -111,7 +111,7 @@ const Board = SparkPlugin.extend({
    */
   decryptSingleContent(encryptedData, encryptionKeyUrl) {
     return this.spark.encryption.decryptText(encryptionKeyUrl, encryptedData)
-    .then((res) => JSON.parse(res));
+      .then((res) => JSON.parse(res));
   },
 
   /**
@@ -125,14 +125,14 @@ const Board = SparkPlugin.extend({
     const payload = JSON.parse(encryptedData);
 
     return this.spark.encryption.decryptScr(encryptionKeyUrl, payload.scr)
-    .then((scr) => {
-      payload.scr = scr;
-      return this.spark.encryption.decryptText(encryptionKeyUrl, payload.displayName);
-    })
-    .then((displayName) => {
-      payload.displayName = displayName;
-      return payload;
-    });
+      .then((scr) => {
+        payload.scr = scr;
+        return this.spark.encryption.decryptText(encryptionKeyUrl, payload.displayName);
+      })
+      .then((displayName) => {
+        payload.displayName = displayName;
+        return payload;
+      });
   },
 
   /**
@@ -204,10 +204,10 @@ const Board = SparkPlugin.extend({
    */
   encryptSingleContent(encryptionKeyUrl, content) {
     return this.spark.encryption.encryptText(encryptionKeyUrl, JSON.stringify(content))
-    .then((res) => ({
-      encryptedData: res,
-      encryptionKeyUrl
-    }));
+      .then((res) => ({
+        encryptedData: res,
+        encryptionKeyUrl
+      }));
   },
 
   /**
@@ -219,18 +219,18 @@ const Board = SparkPlugin.extend({
    */
   encryptSingleFileContent(encryptionKeyUrl, content) {
     return this.spark.encryption.encryptScr(encryptionKeyUrl, content.scr)
-    .then((encryptedScr) => {
-      content.scr = encryptedScr;
-      return this.spark.encryption.encryptText(encryptionKeyUrl, content.displayName);
-    })
-    .then((encryptedDisplayName) => {
-      content.displayName = encryptedDisplayName;
+      .then((encryptedScr) => {
+        content.scr = encryptedScr;
+        return this.spark.encryption.encryptText(encryptionKeyUrl, content.displayName);
+      })
+      .then((encryptedDisplayName) => {
+        content.displayName = encryptedDisplayName;
 
-      return {
-        encryptedData: JSON.stringify(content),
-        encryptionKeyUrl
-      };
-    });
+        return {
+          encryptedData: JSON.stringify(content),
+          encryptionKeyUrl
+        };
+      });
   },
 
   /**
