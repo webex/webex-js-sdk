@@ -47,6 +47,19 @@ module.exports = {
     thumbnailMaxWidth: 640,
     keepEncryptedProperties: false
   },
+  avatar: {
+    bulkFetchDebounceDelay: 50,
+    /**
+     * @description Milliseconds a cached avatar url is considered valid
+     * @type {number}
+     */
+    cacheExpiration: 60*60*1000,
+    /**
+     * @description default avatar size to retrieve if no size is specified
+     * @type {number}
+     */
+    defaultAvatarSize: 80
+  },
   device: {
     deviceRegistrationUrl: process.env.DEVICE_REGISTRATION_URL || 'https://wdm-a.wbx2.com/wdm/api/v1/devices',
     defaults: {
