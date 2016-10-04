@@ -16,7 +16,7 @@ describe(`plugin-flag`, function() {
   describe(`Flag`, () => {
     let flagConversation, mccoy, participants, spock;
 
-    beforeEach(() => testUsers.create({count: 2})
+    before(() => testUsers.create({count: 2})
       .then((users) => {
         participants = [mccoy, spock] = users;
         spock.spark = new CiscoSpark({
@@ -29,13 +29,22 @@ describe(`plugin-flag`, function() {
             authorization: users[1].token
           }
         });
-      })
-      .then(() => spock.spark.device.register())
-      .then(() => mccoy.spark.device.register())
-      .then(() => spock.spark.conversation.create({
-        displayName: `Test Flagging Room`,
-        participants
-      }))
+
+        return Promise.all([
+          spock.spark.mercury.connect(),
+          mccoy.spark.mercury.connect()
+        ]);
+      }));
+
+    after(() => Promise.all([
+      spock && spock.spark.mercury.disconnect(),
+      mccoy && mccoy.spark.mercury.disconnect()
+    ]));
+
+    before(() => spock.spark.conversation.create({
+      displayName: `Test Flagging Room`,
+      participants
+    })
       .then((c) => {
         flagConversation = c;
         return mccoy.spark.conversation.post(flagConversation, {
@@ -52,7 +61,6 @@ describe(`plugin-flag`, function() {
         displayName: `Yes, I am in.`
       }))
       .then(() => {
-        assert.isDefined(flagConversation);
         const params = {
           activitiesLimit: 30
         };
@@ -68,8 +76,7 @@ describe(`plugin-flag`, function() {
         assert.equal(comments[2], `I am also doing well. Are you in for the party?`);
         assert.equal(comments[3], `Yes, I am in.`);
         flagConversation = conversation;
-      })
-    );
+      }));
 
 
     afterEach(() => spock.spark.flag.list()
