@@ -97,9 +97,9 @@ const RealtimeService = Mercury.extend({
 
     this.spark.credentials.getAuthorization()
       .then((authorization) => socket.open(this.spark.board.realtime.get(`boardWebSocketUrl`), {
-        forceCloseDelay: this.parent.config.forceCloseDelay,
-        pingInterval: this.parent.config.pingInterval,
-        pongTimeout: this.parent.config.pongTimeout,
+        forceCloseDelay: this.config.forceCloseDelay,
+        pingInterval: this.config.pingInterval,
+        pongTimeout: this.config.pongTimeout,
         token: authorization,
         trackingId: this.spark.trackingId,
         logger: this.logger

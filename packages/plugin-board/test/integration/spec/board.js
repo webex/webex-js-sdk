@@ -315,9 +315,23 @@ describe(`plugin-board`, function() {
     });
   });
 
-  describe(`Realtime`, () => {
+  describe(`realtime`, () => {
+    describe(`#config`, () => {
+
+      it(`shares board values`, () => {
+        // board values
+        assert.isDefined(participants[0].spark.board.realtime.config.pingInterval);
+        assert.isDefined(participants[0].spark.board.realtime.config.pongTimeout);
+        assert.isDefined(participants[0].spark.board.realtime.config.forceCloseDelay);
+
+        // mercury values not defined in board
+        assert.isUndefined(participants[0].spark.board.realtime.config.backoffTimeReset);
+        assert.isUndefined(participants[0].spark.board.realtime.config.backoffTimeMax);
+      });
+    });
+
     describe(`#publish()`, () => {
-      describe(`STRING`, () => {
+      describe(`string`, () => {
         let uniqueRealtimeData;
 
         before(() => {
@@ -353,7 +367,7 @@ describe(`plugin-board`, function() {
         });
       });
 
-      describe(`FILE`, () => {
+      describe(`file`, () => {
         let testScr;
 
         it(`uploads file to spark files which includes loc`, () => {
