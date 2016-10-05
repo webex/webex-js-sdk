@@ -348,6 +348,7 @@ const Board = SparkPlugin.extend({
 
     return decryptionPromise
       .then((decryptedData) => {
+
         // call the event handlers
         message.payload = decryptedData;
         return message;

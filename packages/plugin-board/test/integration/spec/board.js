@@ -84,20 +84,14 @@ describe(`plugin-board`, function() {
             return participant.spark.board.realtime.connect();
           });
       }));
-    })
+    }));
 
-    // load fixture image
-    .then(() => fh.fetch(`sample-image-small-one.png`))
-
+  // load fixture image
+  before(() => fh.fetch(`sample-image-small-one.png`)
     .then((fetchedFixture) => {
       fixture = fetchedFixture;
       return fetchedFixture;
-    })
-
-    // confirm we are listening
-    .then(() => Promise.all(map(participants, (participant) => {
-      assert(participant.spark.board.realtime.connected, `participant is not listening`);
-    }))));
+    }));
 
   // disconnect realtime
   after(() => Promise.all(map(participants, (participant) => {
@@ -329,7 +323,7 @@ describe(`plugin-board`, function() {
     });
 
     describe(`#publish()`, () => {
-      describe(`string`, () => {
+      describe(`string payload`, () => {
         let uniqueRealtimeData;
 
         before(() => {
@@ -356,8 +350,8 @@ describe(`plugin-board`, function() {
           });
 
           // confirm that both are connected.
-          assert(participants[0].spark.board.realtime.connected, `participant 0 is not connected`);
-          assert(participants[1].spark.board.realtime.connected, `participant 1 is not connected`);
+          assert.isTrue(participants[0].spark.board.realtime.connected, `participant 0 is connected`);
+          assert.isTrue(participants[1].spark.board.realtime.connected, `participant 1 is connected`);
 
           // do not return promise because we want done() to be called on
           // board.activity
@@ -365,7 +359,7 @@ describe(`plugin-board`, function() {
         });
       });
 
-      describe(`file`, () => {
+      describe(`file payload`, () => {
         let testScr;
 
         it(`uploads file to spark files which includes loc`, () => {
@@ -399,8 +393,8 @@ describe(`plugin-board`, function() {
           });
 
           // confirm that both are listening.
-          assert(participants[0].spark.board.realtime.connected, `participant 0 is not connected`);
-          assert(participants[1].spark.board.realtime.connected, `participant 1 is not listening`);
+          assert.isTrue(participants[0].spark.board.realtime.connected, `participant 0 is connected`);
+          assert.isTrue(participants[1].spark.board.realtime.connected, `participant 1 is listening`);
 
           // do not return promise because we want done() to be called on
           // board.activity
