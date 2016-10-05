@@ -87,10 +87,10 @@ const Board = SparkPlugin.extend({
       let decryptPromise;
 
       if (content.type === `FILE`) {
-        decryptPromise = this.decryptSingleFileContent(content.payload, content.encryptionKeyUrl);
+        decryptPromise = this.decryptSingleFileContent(content.encryptionKeyUrl, content.payload);
       }
       else {
-        decryptPromise = this.decryptSingleContent(content.payload, content.encryptionKeyUrl);
+        decryptPromise = this.decryptSingleContent(content.encryptionKeyUrl, content.payload);
       }
 
       return decryptPromise
@@ -105,11 +105,11 @@ const Board = SparkPlugin.extend({
   /**
    * Decryts a single STRING content object
    * @memberof Board.BoardService
-   * @param  {string} encryptedData
    * @param  {string} encryptionKeyUrl
+   * @param  {string} encryptedData
    * @returns {Promise<Board~Content>}
    */
-  decryptSingleContent(encryptedData, encryptionKeyUrl) {
+  decryptSingleContent(encryptionKeyUrl, encryptedData) {
     return this.spark.encryption.decryptText(encryptionKeyUrl, encryptedData)
       .then((res) => JSON.parse(res));
   },
@@ -117,11 +117,11 @@ const Board = SparkPlugin.extend({
   /**
    * Decryts a single FILE content object
    * @memberof Board.BoardService
-   * @param  {string} encryptedData
    * @param  {string} encryptionKeyUrl
+   * @param  {string} encryptedData
    * @returns {Promise<Board~Content>}
    */
-  decryptSingleFileContent(encryptedData, encryptionKeyUrl) {
+  decryptSingleFileContent(encryptionKeyUrl, encryptedData) {
     const payload = JSON.parse(encryptedData);
 
     return this.spark.encryption.decryptScr(encryptionKeyUrl, payload.scr)
@@ -340,10 +340,10 @@ const Board = SparkPlugin.extend({
     let decryptionPromise;
 
     if (message.contentType === `FILE`) {
-      decryptionPromise = this.decryptSingleFileContent(message.payload, message.envelope.encryptionKeyUrl);
+      decryptionPromise = this.decryptSingleFileContent(message.envelope.encryptionKeyUrl, message.payload);
     }
     else {
-      decryptionPromise = this.decryptSingleContent(message.payload, message.envelope.encryptionKeyUrl);
+      decryptionPromise = this.decryptSingleContent(message.envelope.encryptionKeyUrl, message.payload);
     }
 
     return decryptionPromise

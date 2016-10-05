@@ -352,7 +352,7 @@ describe(`plugin-board`, () => {
 
       return spark.board.decryptContents(curveContents)
         .then(() => {
-          assert.calledWith(spark.board.decryptSingleContent, encryptedData, fakeURL);
+          assert.calledWith(spark.board.decryptSingleContent, fakeURL, encryptedData);
           assert.notCalled(spark.encryption.decryptScr);
           assert.notCalled(spark.encryption.decryptText);
         });
