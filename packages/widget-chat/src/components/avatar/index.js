@@ -11,8 +11,10 @@ class Avatar extends Component {
   render() {
     const userInitial = this.props.displayName.substr(0, 1).toUpperCase();
     return (
-      <div className={classNames(`avatar-letter`, styles.avatarLetter)}>
-        <strong>{userInitial}</strong>
+      <div className={classNames(`avatar`, styles.avatar)}>
+        <div className={classNames(`avatar-letter`, styles.avatarLetter)}>
+          <strong>{userInitial}</strong>
+        </div>
       </div>
     );
   }

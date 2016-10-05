@@ -10,7 +10,7 @@ class ActivityReadReceipt extends Component {
   }
 
   render() {
-    const avatars = this.props.actors.map((actor) => <Avatar key={actor.id} user={actor} />);
+    const avatars = this.props.actors.map((actor) => <Avatar displayName={actor} key={actor} />);
     return (
       <div className={classNames(`activity-read-receipt`, styles.activityReadReceipt)}>
         {avatars}

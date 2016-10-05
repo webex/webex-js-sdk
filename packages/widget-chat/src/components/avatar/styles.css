@@ -1,15 +1,15 @@
+.avatar {
+  display: flex;
+  flex: 1 1 auto;
+}
+
 .avatar-letter {
   background-color: darkgray;
   width: 40px;
   height: 40px;
   border-radius: 20px;
-  margin: 5px;
-}
-
-.avatar-letter strong {
-  line-height: 40px;
-  width: 40px;
-  display: block;
+  margin: auto;
+  line-height: 1.6;
   text-align: center;
   font-size: 25px;
 }

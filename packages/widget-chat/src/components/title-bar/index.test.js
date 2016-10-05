@@ -1,24 +1,21 @@
 import React from 'react';
-import {findRenderedDOMComponentWithClass, renderIntoDocument} from 'react-addons-test-utils';
+import renderer from 'react-test-renderer';
 
 import TitleBar from '.';
 
-let user;
+let displayName;
 let component;
 
 describe(`TitleBar component`, () => {
   beforeEach(() => {
-    user = {
-      userId: `test@testing.net`
-    };
-    component = renderIntoDocument(
-      <TitleBar user={user} />
-    );
+    displayName = `test@testing.net`;
+    component = renderer.create(
+      <TitleBar displayName={displayName} />
+    ).toJSON();
   });
 
-  it(`renders`, () => {
-    const renderedComponent = findRenderedDOMComponentWithClass(component, `activity-title-bar`);
-    expect(renderedComponent).toBeDefined();
+  it(`renders correctly`, () => {
+    expect(component).toMatchSnapshot();
   });
 
 });
