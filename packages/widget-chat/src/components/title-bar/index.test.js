@@ -1,5 +1,5 @@
 import React from 'react';
-import {createRenderer} from 'react-addons-test-utils';
+import renderer from 'react-test-renderer';
 
 import TitleBar from '.';
 
@@ -8,15 +8,14 @@ let component;
 
 describe(`TitleBar component`, () => {
   beforeEach(() => {
-    const renderer = createRenderer();
     displayName = `test@testing.net`;
-    component = renderer.render(
+    component = renderer.create(
       <TitleBar displayName={displayName} />
-    );
+    ).toJSON();
   });
 
-  it(`renders`, () => {
-    expect(component.type).toBe(`div`);
+  it(`renders correctly`, () => {
+    expect(component).toMatchSnapshot();
   });
 
 });
