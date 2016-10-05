@@ -81,6 +81,7 @@ export class ChatWidget extends Component {
     const props = this.props;
     const {
       conversation,
+      spark,
       sparkState
     } = props;
     const {
@@ -89,11 +90,8 @@ export class ChatWidget extends Component {
       participants
     } = conversation;
 
-    let main = ( // eslint-disable-line no-extra-parens
-      <div className="loading">
-        Connecting...
-      </div>
-    );
+    let main = <div className="loading">Connecting...</div>;
+
     if (props.conversation.isLoaded) {
       const user = this.getUserFromConversation(props.conversation);
       const {displayName} = user;
