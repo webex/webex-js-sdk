@@ -38,9 +38,9 @@ describe(`plugin-phone`, function() {
       }));
 
     after(() => Promise.all([
-      spock.spark.phone.deregister()
+      spock && spock.spark.phone.deregister()
         .catch((reason) => console.warn(`could not disconnect spock from mercury`, reason)),
-      mccoy.spark.phone.deregister()
+      mccoy && mccoy.spark.phone.deregister()
         .catch((reason) => console.warn(`could not disconnect mccoy from mercury`, reason))
     ]));
 

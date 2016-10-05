@@ -17,6 +17,7 @@
     "babel-runtime": "^6.3.19",
     "core-decorators": "^0.12.3",
     "lodash": "^4.5.1",
+    "mime": "^1.3.4",
     "uuid": "^2.0.1"
   },
   "devDependencies": {
@@ -24,7 +25,6 @@
     "@ciscospark/test-helper-file": "^0.7.0-alpha",
     "@ciscospark/test-helper-mocha": "^0.7.0-alpha",
     "@ciscospark/test-helper-make-local-url": "^0.7.0-alpha",
-    "@ciscospark/test-helper-sinon": "^0.7.0-alpha",
     "@ciscospark/test-helper-test-users": "^0.7.0-alpha",
     "@ciscospark/xunit-with-logs": "^0.7.0-alpha",
     "babel-eslint": "^6.1.2",

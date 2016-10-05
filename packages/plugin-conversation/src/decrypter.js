@@ -33,19 +33,14 @@ const Decrypter = SparkPlugin.extend({
         .then(() => object);
     }
 
-    if (object.encryptionKeyUrl) {
-      key = object.encryptionKeyUrl;
+    if (isArray(object.multistatus)) {
+      return Promise.all(object.multistatus.map((item) => this.decryptObject(key, item.data.activity)))
+        .then(() => object);
     }
 
-    if (object.objectType) {
-      const methodName = S(`decrypt_${object.objectType}`).camelize().s;
-      if (isFunction(this[methodName])) {
-        return this[methodName](key, object)
-          .then(() => object);
-      }
-    }
+    return this.handleObjectDecryption(key, object)
+      .then(() => Promise.resolve(object));
 
-    return Promise.resolve(object);
   },
 
   /**
@@ -72,6 +67,12 @@ const Decrypter = SparkPlugin.extend({
 
     return this[methodName](key, object[property])
       .then((decryptedProperty) => {
+
+        if (this.config.conversation.keepEncryptedProperties) {
+          const encryptedPropName = S(`encrypted_${property}`).camelize().s;
+          object[encryptedPropName] = object[property];
+        }
+
         object[property] = decryptedProperty;
         return object;
       })
@@ -256,7 +257,30 @@ const Decrypter = SparkPlugin.extend({
    */
   decryptPropLocation(key, location) {
     return this.spark.encryption.decryptText(key, location);
+  },
+
+  /**
+   * @private
+   * @param {Object} key
+   * @param {Object} object
+   * @returns {Promise}
+   */
+  handleObjectDecryption(key, object) {
+    if (object.encryptionKeyUrl) {
+      key = object.encryptionKeyUrl;
+    }
+
+    if (object.objectType) {
+      const methodName = S(`decrypt_${object.objectType}`).camelize().s;
+      if (isFunction(this[methodName])) {
+        return this[methodName](key, object)
+        .then(() => object);
+      }
+    }
+    return Promise.resolve(object);
   }
+
+
 });
 
 export default Decrypter;

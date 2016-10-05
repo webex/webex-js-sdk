@@ -32,6 +32,12 @@ const Normalizer = SparkPlugin.extend({
         .then(() => object);
     }
 
+    // for multistatus objects For Eg: plugin-flag
+    if (isArray(object.multistatus)) {
+      return Promise.all(object.multistatus.map((o) => this.normalize(o.data.activity)))
+        .then(() => object);
+    }
+
     if (!object.objectType) {
       return Promise.reject(new Error(`Cannot normalize \`object\` without \objectType\``));
     }
@@ -119,6 +125,7 @@ const Normalizer = SparkPlugin.extend({
    * @returns {Promise}
    */
   normalizePerson(person) {
+    /* eslint complexity: [0] */
     const email = person.entryEmail || person.emailAddress || person.id;
     const id = person.entryUUID || person.id;
 
@@ -128,6 +135,10 @@ const Normalizer = SparkPlugin.extend({
     else {
       Reflect.deleteProperty(person, `entryEmail`);
       Reflect.deleteProperty(person, `emailAddress`);
+    }
+
+    if (person.roomProperties) {
+      person.roomProperties.isModerator = Boolean(person.roomProperties.isModerator);
     }
 
     if (patterns.uuid.test(id)) {
