@@ -8,7 +8,7 @@ import {fetchCurrentUser} from '../../actions/user';
 import {createConversationWithUser} from '../../actions/conversation';
 import ActivityTitleBar from '../../components/activity-title-bar';
 import ActivityList from '../../components/activity-list';
-import MessageComposer from '../../components/message-composer';
+import MessageComposer from '../message-composer';
 
 import styles from './styles.css';
 
@@ -55,7 +55,7 @@ export class ChatWidget extends Component {
    * @returns {Object}
    */
   render() {
-    const {userId} = this.props;
+    const {userId, spark} = this.props;
     const props = this.props;
     const user = {userId, avatar: ``};
 
@@ -73,7 +73,7 @@ export class ChatWidget extends Component {
       <div className={classNames(`widget-chat`, styles.widgetChat)}>
         <ActivityTitleBar user={user} />
         <ActivityList activities={activities} id={id} participants={participants} />
-        <MessageComposer />
+        <MessageComposer conversation={conversation} spark={spark} />
         <ConnectionStatus id="connection-status" {...sparkState} />
       </div>
     );
