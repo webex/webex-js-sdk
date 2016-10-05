@@ -91,11 +91,12 @@ export class ChatWidget extends Component {
       const {
         activities,
         id,
+        isLoaded,
         participants
       } = conversation;
 
-      if (props.conversation.isLoaded) {
-        const user = this.getUserFromConversation(props.conversation);
+      if (isLoaded) {
+        const user = this.getUserFromConversation(conversation);
         const {displayName} = user;
         main = ( // eslint-disable-line no-extra-parens
           <div>
