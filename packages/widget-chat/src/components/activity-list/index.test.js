@@ -1,21 +1,24 @@
 import React from 'react';
-import {findRenderedDOMComponentWithTag, renderIntoDocument} from 'react-addons-test-utils';
+import renderer from 'react-test-renderer';
 
 import ActivityList from '.';
 
 describe(`ActivityList component`, () => {
-  let activities;
-  let component;
-  beforeEach(() => {
-    activities = [{id: `bac`, activity: {message: `howdy`}}, {id: `abc`, activity: {message: `hi`}}];
-    component = renderIntoDocument(
-      <ActivityList activities={activities} />
-    );
-  });
+  const activities = [{
+    id: `test-123-123-123-123`,
+    content: `Test Activity Content 1`
+  }, {
+    id: `test-456-456-456-456`,
+    content: `Test Activity Content 2`
+  }];
 
-  it(`is rendered properly`, () => {
-    const componentNode = findRenderedDOMComponentWithTag(component, `ul`);
-    expect(componentNode.textContent).toEqual(`howdyhi`);
-  });
+  const component = renderer.create(
+    <ActivityList
+      activities={activities}
+    />
+  );
 
+  it(`renders properly`, () => {
+    expect(component).toMatchSnapshot();
+  });
 });

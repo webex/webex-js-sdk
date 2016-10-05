@@ -1,0 +1,9 @@
+exports[`ActivityItem component renders properly 1`] = `
+<div>
+  <li>
+    test-123-123-123-123
+     - 
+    Test Activity Content
+  </li>
+</div>
+`;
