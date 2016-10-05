@@ -14,7 +14,7 @@ var sinon = require('sinon');
 describe('Services', function() {
   describe('Encryption', function() {
     describe('#download()', function() {
-      this.timeout(30000);
+      this.timeout(120000);
       var party = {
         spock: true,
         mccoy: false,

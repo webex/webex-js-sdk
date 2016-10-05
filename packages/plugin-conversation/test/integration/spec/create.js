@@ -14,7 +14,7 @@ import uuid from 'uuid';
 import fh from '@ciscospark/test-helper-file';
 
 describe(`plugin-conversation`, function() {
-  this.timeout(30000);
+  this.timeout(60000);
   describe(`#create()`, () => {
     let checkov, mccoy, participants, spark, spock;
 

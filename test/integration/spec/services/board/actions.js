@@ -28,7 +28,7 @@ function generateTonsOfContents(numOfContents) {
 
 describe('Services', function() {
   describe('Board', function() {
-    this.timeout(60000);
+    this.timeout(120000);
 
     // added a third member in order to be able to create another room.
     var party = {
