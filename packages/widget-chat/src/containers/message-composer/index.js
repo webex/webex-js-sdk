@@ -19,7 +19,7 @@ class MessageComposer extends Component {
   }
 
   handleChange(e) {
-    this.props.setMessage(e.target.value.trim());
+    this.props.setMessage(e.target.value);
   }
 
   handleKeyDown(e) {
