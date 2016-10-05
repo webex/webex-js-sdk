@@ -5,7 +5,7 @@ import ActivityItem from '../activity-item';
 export default function ActivityList(props) {
   const activities = props.activities.map((activity) =>
     <ActivityItem
-      activity={activity.content}
+      content={activity.content}
       id={activity.id}
       key={activity.id}
     />

@@ -15,12 +15,18 @@ export default function conversation(state = {
     });
 
   case RECEIVE_CONVERSATION: {
+
+    const activities = action.conversation.activities.items.map((activity) => ({
+      id: activity.id,
+      content: activity.object.displayName
+    }));
+
     return Object.assign({}, state, {
+      activities,
       isFetching: false,
-      activities: action.conversation.activities.items,
+      isLoaded: true,
       id: action.conversation.id,
-      participants: action.conversation.participants.items,
-      isLoaded: true
+      participants: action.conversation.participants.items
     });
   }
 
