@@ -12,8 +12,8 @@ export default function TextArea(props) {
   return (
     <textarea
       onChange={onChange}
-      onSubmit={onSubmit}
       onKeyDown={onKeyDown}
+      onSubmit={onSubmit}
       placeholder={placeholder}
       value={value}
     />
