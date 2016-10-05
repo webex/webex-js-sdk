@@ -49,42 +49,42 @@ describe(`plugin-board`, function() {
         });
         return participant.spark.device.register();
       }));
-    })
+    }));
 
-    // create conversation
-    .then(() => participants[0].spark.conversation.create({
-      displayName: `Test Board Conversation`,
-      participants
-    }))
+  // create conversation
+  before(() => participants[0].spark.conversation.create({
+    displayName: `Test Board Conversation`,
+    participants
+  })
     .then((c) => {
       conversation = c;
       return conversation;
-    })
+    }));
 
-    // create channel (board)
-    .then(() => participants[0].spark.board.createChannel({aclUrl: conversation.id}))
+  // create channel (board)
+  before(() => participants[0].spark.board.createChannel({aclUrl: conversation.id})
     .then((channel) => {
       board = channel;
       return channel;
-    })
-
-    // connect to realtime channel
-    .then(() => {
-      const mercuryBindingId = boardChannelToMercuryBinding(board.channelId);
-      const bindingStr = [mercuryBindingsPrefix + mercuryBindingId];
-      const bindingObj = {bindings: bindingStr};
-
-      return Promise.all(map(participants, (participant) => {
-        return participant.spark.board.register(bindingObj)
-          .then((url) => {
-            participant.spark.board.realtime.set({
-              boardWebSocketUrl: url.webSocketUrl,
-              boardBindings: bindingStr
-            });
-            return participant.spark.board.realtime.connect();
-          });
-      }));
     }));
+
+  // connect to realtime channel
+  before(() => {
+    const mercuryBindingId = boardChannelToMercuryBinding(board.channelId);
+    const bindingStr = [mercuryBindingsPrefix + mercuryBindingId];
+    const bindingObj = {bindings: bindingStr};
+
+    return Promise.all(map(participants, (participant) => {
+      return participant.spark.board.register(bindingObj)
+        .then((url) => {
+          participant.spark.board.realtime.set({
+            boardWebSocketUrl: url.webSocketUrl,
+            boardBindings: bindingStr
+          });
+          return participant.spark.board.realtime.connect();
+        });
+    }));
+  });
 
   // load fixture image
   before(() => fh.fetch(`sample-image-small-one.png`)
