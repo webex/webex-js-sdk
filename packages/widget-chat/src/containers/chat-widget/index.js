@@ -83,25 +83,32 @@ export class ChatWidget extends Component {
       spark,
       sparkState
     } = props;
-    const {
-      activities,
-      id,
-      participants
-    } = conversation;
 
     let main = <div className="loading">Connecting...</div>;
 
-    if (props.conversation.isLoaded) {
-      const user = this.getUserFromConversation(props.conversation);
-      const {displayName} = user;
-      main = ( // eslint-disable-line no-extra-parens
-        <div>
-          <TitleBar displayName={displayName} />
-          <ActivityList activities={activities} id={id} participants={participants} />
-          <MessageComposer conversation={conversation} spark={spark} />
-          <ConnectionStatus id="connection-status" {...sparkState} />
-        </div>
-      );
+    if (conversation) {
+      const {
+        activities,
+        id,
+        participants
+      } = conversation;
+
+      if (props.conversation.isLoaded) {
+        const user = this.getUserFromConversation(props.conversation);
+        const {displayName} = user;
+        main = ( // eslint-disable-line no-extra-parens
+          <div>
+            <TitleBar displayName={displayName} />
+            <ActivityList
+              activities={activities}
+              id={id}
+              participants={participants}
+            />
+            <MessageComposer conversation={conversation} spark={spark} />
+            <ConnectionStatus id="connection-status" {...sparkState} />
+          </div>
+        );
+      }
     }
     return (
       <div className={classNames(`widget-chat`, styles.widgetChat)}>

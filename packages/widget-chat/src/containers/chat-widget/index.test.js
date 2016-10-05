@@ -1,14 +1,31 @@
 import React from 'react';
-import {ChatWidget} from '.';
-import {findRenderedDOMComponentWithTag, renderIntoDocument} from 'react-addons-test-utils';
+import renderer from 'react-test-renderer';
+import {Provider} from 'react-redux';
+import {applyMiddleware, combineReducers, compose, createStore} from 'redux';
+import thunk from 'redux-thunk';
 
-it(`is rendered properly`, () => {
-  const widget = renderIntoDocument(
-    <ChatWidget userId="Chat Widget!" />
+import {user, conversation, message} from '../../reducers';
+import sparkReducer from '../../modules/redux-spark/reducers';
+import {ChatWidget} from '.';
+
+describe(`ChatWidget`, () => {
+  const store = createStore(
+    combineReducers({
+      user,
+      conversation,
+      message,
+      spark: sparkReducer
+    }),
+    compose([applyMiddleware(thunk)])
   );
 
-  const widgetNode = ReactDOM.findDOMNode(widget);
+  it(`is rendered properly`, () => {
+    const widget = renderer.create(
+      <Provider store={store}>
+        <ChatWidget />
+      </Provider>
+    ).toJSON;
 
-  expect(widgetNode.textContent).toBe(`Chat Widget!`);
-
+    expect(widget).toMatchSnapshot();
+  });
 });

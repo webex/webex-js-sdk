@@ -4,7 +4,11 @@ import ActivityItem from '../activity-item';
 
 export default function ActivityList(props) {
   const activities = props.activities.map((activity) =>
-    <ActivityItem activity={activity} key={activity.id} />
+    <ActivityItem
+      activity={activity.content}
+      id={activity.id}
+      key={activity.id}
+    />
   );
 
   return (
