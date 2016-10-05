@@ -98,7 +98,7 @@ describe(`plugin-credentials`, () => {
           sparkBot = new CiscoSpark();
         }));
 
-      afterEach(() => spark.machineAccount.delete(bot)
+      afterEach(() => spark && spark.machineAccount.delete(bot)
         .catch(() => spark.machineAccount.delete(bot))
         .catch(() => spark.machineAccount.delete(bot)));
 

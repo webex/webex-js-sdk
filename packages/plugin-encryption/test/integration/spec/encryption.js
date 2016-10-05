@@ -41,7 +41,7 @@ describe(`Encryption`, function() {
   })
     .then((res) => {FILE = res.body;}));
 
-  after(() => spark.mercury.disconnect());
+  after(() => spark && spark.mercury.disconnect());
 
   describe(`#decryptBinary()`, () => {
     it(`decrypts a binary file`, () => spark.encryption.encryptBinary(FILE)
@@ -94,7 +94,7 @@ describe(`Encryption`, function() {
       ]
     }));
 
-    after(() => otherSpark.mercury.disconnect());
+    after(() => otherSpark && otherSpark.mercury.disconnect());
 
     beforeEach(() => {
       fetchKeySpy = sinon.spy(otherSpark.encryption.kms, `fetchKey`);
