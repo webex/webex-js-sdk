@@ -1,6 +1,6 @@
 import {CREATE_CONVERSATION, RECEIVE_CONVERSATION} from '../actions/conversation';
 
-function conversation(state = {
+export default function conversation(state = {
   activities: [],
   id: null,
   participants: [],
@@ -28,5 +28,3 @@ function conversation(state = {
     return state;
   }
 }
-
-export default conversation;
