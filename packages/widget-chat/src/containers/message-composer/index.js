@@ -23,8 +23,9 @@ class MessageComposer extends Component {
   }
 
   handleKeyDown(e) {
-    if (e.keyCode === 13) {
+    if (e.keyCode === 13 && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
       this.handleSubmit();
+      e.preventDefault();
     }
   }
 
