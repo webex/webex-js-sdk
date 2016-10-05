@@ -2,7 +2,7 @@ import {applyMiddleware, combineReducers, compose, createStore} from 'redux';
 
 import thunk from 'redux-thunk';
 import createLogger from 'redux-logger';
-import {user, conversation} from './reducers';
+import {user, conversation, message} from './reducers';
 import sparkReducer from './modules/redux-spark/reducers';
 
 const devtools = window.devToolsExtension || (() => (noop) => noop);
@@ -24,6 +24,7 @@ export default createStore(
   combineReducers({
     user,
     conversation,
+    message,
     spark: sparkReducer
   }),
   compose(...enhancers)
