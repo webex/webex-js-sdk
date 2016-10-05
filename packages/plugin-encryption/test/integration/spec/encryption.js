@@ -120,7 +120,13 @@ describe(`Encryption`, function() {
       .then(() => assert.calledOnce(fetchKeySpy)));
 
     it(`stores the newly retrieved key`, () => otherSpark.encryption.getKey(key.uri)
-      .then((k) => assert.becomes(otherSpark.encryption.unboundedStorage.get(k.uri), k)));
+      .then((k) => otherSpark.encryption.unboundedStorage.get(k.uri))
+      .then((str) => JSON.parse(str))
+      .then((k2) => {
+        assert.property(k2, `jwk`);
+        assert.property(k2.jwk, `k`);
+        assert.equal(key.jwk.kid, k2.jwk.kid);
+      }));
   });
 
   describe(`#download()`, () => {
