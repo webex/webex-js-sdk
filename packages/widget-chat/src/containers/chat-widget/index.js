@@ -8,7 +8,7 @@ import {fetchCurrentUser} from '../../actions/user';
 import {createConversationWithUser} from '../../actions/conversation';
 import TitleBar from '../../components/title-bar';
 import ActivityList from '../../components/activity-list';
-import MessageComposer from '../../components/message-composer';
+import MessageComposer from '../message-composer';
 
 import styles from './styles.css';
 
@@ -80,6 +80,7 @@ export class ChatWidget extends Component {
     const props = this.props;
     const {
       conversation,
+      spark,
       sparkState
     } = props;
     const {
@@ -100,7 +101,7 @@ export class ChatWidget extends Component {
         <div>
           <TitleBar displayName={displayName} />
           <ActivityList activities={activities} id={id} participants={participants} />
-          <MessageComposer />
+          <MessageComposer conversation={conversation} spark={spark} />
           <ConnectionStatus id="connection-status" {...sparkState} />
         </div>
       );
