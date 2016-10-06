@@ -17,6 +17,7 @@
     "babel-runtime": "^6.3.19",
     "extract-text-webpack-plugin": "^1.0.1",
     "lodash": "^4.5.1",
+    "moment": "^2.15.1",
     "react": "^15.3.2",
     "react-dom": "^15.3.2",
     "react-redux": "^4.4.5",

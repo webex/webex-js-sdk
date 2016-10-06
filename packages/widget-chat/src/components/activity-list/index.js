@@ -6,16 +6,15 @@ export default function ActivityList(props) {
   const activities = props.activities.map((activity) =>
     <ActivityItem
       content={activity.content}
-      id={activity.id}
       key={activity.id}
+      name={activity.name}
+      timestamp={activity.timestamp}
     />
   );
 
   return (
     <div>
-      <ul>
-        {activities}
-      </ul>
+      {activities}
     </div>
   );
 }
