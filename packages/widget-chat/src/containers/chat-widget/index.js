@@ -45,7 +45,6 @@ export class ChatWidget extends Component {
     if (conversation.id && !conversation.mercuryState.isListening) {
       nextProps.listenToMercuryActivity(conversation.id, spark);
     }
-
   }
 
   shouldComponentUpdate(nextProps) {
