@@ -1,20 +1,22 @@
 import React from 'react';
-import {findRenderedDOMComponentWithClass, renderIntoDocument} from 'react-addons-test-utils';
+import renderer from 'react-test-renderer';
 
 import MessageComposer from '.';
 
-let component;
-
 describe(`MessageComposer component`, () => {
-  beforeEach(() => {
-    component = renderIntoDocument(
-      <MessageComposer />
-    );
+  const component = renderer.create(
+    <MessageComposer
+      placeholder="Message Placeholder"
+      value="This is a message"
+    />
+  );
+
+  it(`renders properly`, () => {
+    expect(component).toMatchSnapshot();
   });
 
-  it(`renders`, () => {
-    const renderedComponent = findRenderedDOMComponentWithClass(component, `message-composer`);
-    expect(renderedComponent).toBeDefined();
-  });
+  // it(`sends message properly`, () => {});
+
+  // it(`handles value change properly`, () => {});
 
 });

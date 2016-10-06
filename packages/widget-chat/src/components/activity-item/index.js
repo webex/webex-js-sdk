@@ -1,16 +1,21 @@
 import React, {PropTypes} from 'react';
 
 export default function ActivityItem(props) {
-  const {activity} = props;
+  const {
+    content,
+    id
+  } = props;
+
   return (
     <div>
       <li>
-        {activity.id} - {activity.object.displayName}
+        {id} - {content}
       </li>
     </div>
   );
 }
 
 ActivityItem.propTypes = {
-  activity: PropTypes.object.isRequired
+  content: PropTypes.string,
+  id: PropTypes.string.isRequired
 };

@@ -1,0 +1,18 @@
+exports[`ActivityList component renders properly 1`] = `
+<div>
+  <ul>
+    <div>
+      <li>
+        test-123-123-123-123
+         - 
+      </li>
+    </div>
+    <div>
+      <li>
+        test-456-456-456-456
+         - 
+      </li>
+    </div>
+  </ul>
+</div>
+`;
