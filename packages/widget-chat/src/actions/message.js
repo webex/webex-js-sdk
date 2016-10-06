@@ -24,7 +24,7 @@ export function submitMessage(conversation, message, spark) {
   return (dispatch) => {
     dispatch(updateMessageState({isSending: true}));
     spark.conversation.post(conversation, message)
-      .then(() => updateMessageContent(``))
+      .then(() => dispatch(updateMessageContent(``)))
       .then(() => dispatch(updateMessageState({isSending: false})));
   };
 }

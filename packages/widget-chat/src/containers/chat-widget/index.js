@@ -91,6 +91,7 @@ export class ChatWidget extends Component {
       if (isLoaded) {
         const user = this.getUserFromConversation(conversation);
         const {displayName} = user;
+        const messagePlaceholder = `Send a message to ${displayName}`;
         main = ( // eslint-disable-line no-extra-parens
           <div>
             <TitleBar displayName={displayName} />
@@ -99,7 +100,7 @@ export class ChatWidget extends Component {
               id={id}
               participants={participants}
             />
-            <MessageComposer conversation={conversation} spark={spark} />
+            <MessageComposer conversation={conversation} placeholder={messagePlaceholder} spark={spark} />
             <ConnectionStatus id="connection-status" {...sparkState} />
           </div>
         );
