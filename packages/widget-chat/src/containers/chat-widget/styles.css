@@ -1,3 +1,6 @@
-.widgetChat {
+.widget-chat {
   border: 1px solid #ccc;
+  font-family: 'CiscoSansTTExtraLight', 'Helvetica Neue', Arial;
+  font-size: 16px;
+  font-weight: 200;
 }

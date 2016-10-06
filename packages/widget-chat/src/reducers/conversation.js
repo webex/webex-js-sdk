@@ -1,9 +1,22 @@
+import {formatDate} from '../utils/date';
+
 import {
   CREATE_CONVERSATION,
   RECEIVE_CONVERSATION,
   RECEIVE_MERCURY_ACTIVITY,
   UPDATE_MERCURY_STATE
 } from '../actions/conversation';
+
+
+function formatActivity(activity) {
+  return {
+    id: activity.id,
+    content: activity.object.displayName,
+    name: activity.actor.displayName,
+    timestamp: formatDate(activity.published)
+  };
+}
+
 
 export default function conversation(state = {
   activities: [],
@@ -24,10 +37,7 @@ export default function conversation(state = {
   }
 
   case RECEIVE_CONVERSATION: {
-    const activities = action.conversation.activities.items.map((activity) => ({
-      id: activity.id,
-      content: activity.object.displayName
-    }));
+    const activities = action.conversation.activities.items.map(formatActivity);
 
     return Object.assign({}, state, {
       activities,
@@ -40,10 +50,7 @@ export default function conversation(state = {
 
   case RECEIVE_MERCURY_ACTIVITY: {
     const activities = state.activities;
-    const activity = {
-      id: action.activity.id,
-      content: action.activity.object.displayName
-    };
+    const activity = formatActivity(action.activity);
     return Object.assign({}, state, {
       activities: [...activities, activity]
     });
