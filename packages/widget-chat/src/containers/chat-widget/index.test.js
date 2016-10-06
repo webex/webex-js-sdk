@@ -16,7 +16,7 @@ describe(`ChatWidget`, () => {
       message,
       spark: sparkReducer
     }),
-    compose([applyMiddleware(thunk)])
+    compose(applyMiddleware(thunk))
   );
 
   it(`is rendered properly`, () => {

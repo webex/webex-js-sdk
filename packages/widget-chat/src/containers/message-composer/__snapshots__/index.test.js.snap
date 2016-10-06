@@ -1,0 +1,38 @@
+exports[`MessageComposer component handles value change properly 1`] = `
+<div
+  className="message-composer">
+  <textarea
+    className="textarea"
+    onChange={[Function bound handleChange]}
+    onKeyDown={[Function bound handleKeyDown]}
+    onSubmit={[Function handleSubmit]}
+    placeholder="Message Placeholder"
+    value={undefined} />
+</div>
+`;
+
+exports[`MessageComposer component handles value change properly 2`] = `
+<div
+  className="message-composer">
+  <textarea
+    className="textarea"
+    onChange={[Function bound handleChange]}
+    onKeyDown={[Function bound handleKeyDown]}
+    onSubmit={[Function handleSubmit]}
+    placeholder="Message Placeholder"
+    value="abc123" />
+</div>
+`;
+
+exports[`MessageComposer component renders properly 1`] = `
+<div
+  className="message-composer">
+  <textarea
+    className="textarea"
+    onChange={[Function bound handleChange]}
+    onKeyDown={[Function bound handleKeyDown]}
+    onSubmit={[Function handleSubmit]}
+    placeholder="Message Placeholder"
+    value={undefined} />
+</div>
+`;
