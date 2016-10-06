@@ -10,7 +10,7 @@ describe(`Avatar component`, () => {
   beforeEach(() => {
     displayName = `test@testing.net`;
     component = renderIntoDocument(
-      <Avatar displayName={displayName} />
+      <Avatar name={displayName} />
     );
   });
 
