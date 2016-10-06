@@ -1,4 +1,6 @@
 .message-composer {
-  height: 60px;
   border: 1px solid lightgray;
+  height: auto;
+  max-height: 500px;
+  background-color: #f5f5f6;
 }
