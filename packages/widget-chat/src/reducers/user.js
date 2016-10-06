@@ -1,13 +1,17 @@
-import {RECEIVE_CURRENT_USER} from '../actions/user';
+import {RECEIVE_CURRENT_USER, UPDATE_CURRENT_USER_STATE} from '../actions/user';
 
 function user(state = {
-  isFetching: false
+  isFetchingCurrentUser: false
 }, action) {
   switch (action.type) {
   case RECEIVE_CURRENT_USER:
     return Object.assign({}, state, {
-      isFetching: false,
+      isFetchingCurrentUser: action.isFetching,
       currentUser: action.user
+    });
+  case UPDATE_CURRENT_USER_STATE:
+    return Object.assign({}, state, {
+      isFetchingCurrentUser: action.state.isFetching
     });
   default:
     return state;
