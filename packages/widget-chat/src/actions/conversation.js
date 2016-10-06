@@ -14,6 +14,23 @@ export function receiveConversation(conversation) {
   };
 }
 
+export const RECEIVE_MERCURY_ACTIVITY = `RECEIVE_MERCURY_ACTIVITY`;
+export function receiveMercuryActivity(activity) {
+  return {
+    type: RECEIVE_MERCURY_ACTIVITY,
+    activity
+  };
+}
+
+export const UPDATE_MERCURY_STATE = `UPDATE_MERCURY_STATE`;
+export function updateMercuryState(mercuryState) {
+  return {
+    type: UPDATE_MERCURY_STATE,
+    mercuryState
+  };
+}
+
+
 /**
  * Creates/Opens a conversation with a user
  *
@@ -28,8 +45,21 @@ export function createConversationWithUser(userId, spark) {
     spark.conversation.create({
       participants: [userId]
     }, {
-      activitiesLimit: 10
+      latestActivity: true,
+      activitiesLimit: 30
     })
       .then((conversation) => dispatch(receiveConversation(conversation)));
+  };
+}
+
+export function listenToMercuryActivity(conversationId, spark) {
+  return (dispatch) => {
+    dispatch(updateMercuryState({isListening: true}));
+    spark.mercury.on(`event:conversation.activity`, (event) => {
+      const activity = event.data.activity;
+      if (activity.object.objectType === `comment` && activity.target.id === conversationId) {
+        dispatch(receiveMercuryActivity(activity));
+      }
+    });
   };
 }
