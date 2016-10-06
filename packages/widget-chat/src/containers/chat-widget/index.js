@@ -38,7 +38,7 @@ export class ChatWidget extends Component {
     } = nextProps.sparkState;
 
     if (spark && connected && authenticated && registered) {
-      if (!user.currentUser && !user.isFetching) {
+      if (!user.currentUser && !user.isFetchingCurrentUser) {
         nextProps.fetchCurrentUser(spark);
       }
       if (!conversation.id && !conversation.isFetching) {
