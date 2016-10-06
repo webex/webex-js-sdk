@@ -5,7 +5,7 @@ import classNames from 'classnames';
 
 import ConnectionStatus from '../../components/connection-status';
 import {fetchCurrentUser} from '../../actions/user';
-import {createConversationWithUser} from '../../actions/conversation';
+import {createConversationWithUser, listenToMercuryActivity} from '../../actions/conversation';
 import TitleBar from '../../components/title-bar';
 import ActivityList from '../../components/activity-list';
 import MessageComposer from '../message-composer';
@@ -34,12 +34,16 @@ export class ChatWidget extends Component {
     } = nextProps.sparkState;
 
     if (spark && connected && authenticated && registered) {
-      if (!user.currentUser && !user.isFetching) {
+      if (!user.currentUser && !user.isFetchingCurrentUser) {
         nextProps.fetchCurrentUser(spark);
       }
       if (!conversation.id && !conversation.isFetching) {
         nextProps.createConversationWithUser(userId, spark);
       }
+    }
+
+    if (conversation.id && !conversation.mercuryState.isListening) {
+      nextProps.listenToMercuryActivity(conversation.id, spark);
     }
 
   }
@@ -116,6 +120,7 @@ export class ChatWidget extends Component {
 ChatWidget.propTypes = {
   createConversationWithUser: PropTypes.func.isRequired,
   fetchCurrentUser: PropTypes.func.isRequired,
+  listenToMercuryActivity: PropTypes.func.isRequired,
   spark: PropTypes.object.isRequired,
   userId: PropTypes.string.isRequired
 };
@@ -133,6 +138,7 @@ export default connect(
   mapStateToProps,
   (dispatch) => bindActionCreators({
     createConversationWithUser,
-    fetchCurrentUser
+    fetchCurrentUser,
+    listenToMercuryActivity
   }, dispatch)
 )(injectSpark(ChatWidget));
