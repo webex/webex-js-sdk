@@ -1,6 +1,6 @@
 {
   "name": "spark-js-sdk",
-  "version": "0.5.236",
+  "version": "0.5.239",
   "description": "JavaScript sdk for interacting with the Spark API",
   "homepage": "http://sqbu-github.cisco.com/WebExSquared/squared-js-sdk",
   "bugs": {
@@ -121,7 +121,7 @@
     "xhr": "~2.0.1"
   },
   "devDependencies": {
-    "babel-eslint": "^6.0.0-beta.5",
+    "babel-eslint": "^6.1.2",
     "babel-jest": "^15.0.0",
     "babel-loader": "^6.2.4",
     "babel-plugin-lodash": "2.1.0",

@@ -41,7 +41,7 @@ describe(`Encryption`, function() {
   })
     .then((res) => {FILE = res.body;}));
 
-  after(() => spark.mercury.disconnect());
+  after(() => spark && spark.mercury.disconnect());
 
   describe(`#decryptBinary()`, () => {
     it(`decrypts a binary file`, () => spark.encryption.encryptBinary(FILE)
@@ -94,7 +94,7 @@ describe(`Encryption`, function() {
       ]
     }));
 
-    after(() => otherSpark.mercury.disconnect());
+    after(() => otherSpark && otherSpark.mercury.disconnect());
 
     beforeEach(() => {
       fetchKeySpy = sinon.spy(otherSpark.encryption.kms, `fetchKey`);
@@ -120,7 +120,13 @@ describe(`Encryption`, function() {
       .then(() => assert.calledOnce(fetchKeySpy)));
 
     it(`stores the newly retrieved key`, () => otherSpark.encryption.getKey(key.uri)
-      .then((k) => assert.becomes(otherSpark.encryption.unboundedStorage.get(k.uri), k)));
+      .then((k) => otherSpark.encryption.unboundedStorage.get(k.uri))
+      .then((str) => JSON.parse(str))
+      .then((k2) => {
+        assert.property(k2, `jwk`);
+        assert.property(k2.jwk, `k`);
+        assert.equal(key.jwk.kid, k2.jwk.kid);
+      }));
   });
 
   describe(`#download()`, () => {
