@@ -8,7 +8,7 @@ import TextArea from '../../components/textarea';
 
 import styles from './styles.css';
 
-class MessageComposer extends Component {
+export class MessageComposer extends Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);

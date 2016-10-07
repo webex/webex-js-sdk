@@ -3,3 +3,4 @@ extends:
   - "../../.eslintrc-react.yml"
 env:
   jasmine: true
+  jest: true
