@@ -16,10 +16,6 @@ import injectSpark from '../../modules/redux-spark/inject-spark';
 
 /**
  * ChatWidget Component
- *
- * @export
- * @class ChatWidget
- * @extends {React.Component}
  */
 export class ChatWidget extends Component {
 
@@ -77,8 +73,6 @@ export class ChatWidget extends Component {
    * Render
    *
    * @returns {Object}
-   *
-   * @memberOf ChatWidget
    */
   render() {
     const props = this.props;
