@@ -7,6 +7,7 @@
 
 var SparkBase = require('../../../lib/spark-base');
 var CirconusMetricsRequestBatcher = require('./circonus-metrics-request-batcher');
+var ClientMetricsRequestBatcher = require('./client-metrics-request-batcher');
 var SplunkMetricsRequestBatcher = require('./splunk-metrics-request-batcher');
 
 /**
@@ -27,10 +28,29 @@ var MetricsService = SparkBase.extend(
   {
   children: {
     circonus: CirconusMetricsRequestBatcher,
-    splunk: SplunkMetricsRequestBatcher
+    splunk: SplunkMetricsRequestBatcher,
+    clientMetrics: ClientMetricsRequestBatcher
   },
 
   namespace: 'Metrics',
+
+  /**
+   * Submits semi-structured metrics
+   * @param eventName
+   * @param props
+   */
+  sendSemiStructured: function sendSemiStructured(eventName, props) {
+    var payload = {
+      metricName: eventName
+    };
+    if (props.tags) {
+      payload.tags = props.tags;
+    }
+    if (props.fields) {
+      payload.fields = props.fields;
+    }
+    this.clientMetrics.fetch(payload);
+  },
 
   /**
    * Submits an unstructured metrics

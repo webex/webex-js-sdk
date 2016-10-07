@@ -14,7 +14,7 @@ import makeLocalUrl from '@ciscospark/test-helper-make-local-url';
 import {map} from 'lodash';
 
 describe(`plugin-conversation`, function() {
-  this.timeout(30000);
+  this.timeout(120000);
 
   let mccoy, participants, spark, spock;
 
@@ -31,7 +31,7 @@ describe(`plugin-conversation`, function() {
       return spark.mercury.connect();
     }));
 
-  after(() => spark.mercury.disconnect());
+  after(() => spark && spark.mercury.disconnect());
 
   describe(`#download()`, () => {
     let sampleImageSmallOnePng = `sample-image-small-one.png`;
@@ -156,7 +156,7 @@ describe(`plugin-conversation`, function() {
       return spark2.mercury.connect();
     });
 
-    after(() => spark2.mercury.disconnect());
+    after(() => spark2 && spark2.mercury.disconnect());
 
     let conversation;
     before(() => spark.conversation.create({participants})

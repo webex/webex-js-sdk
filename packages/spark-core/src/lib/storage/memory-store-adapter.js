@@ -29,11 +29,11 @@ export default {
       get(key) {
         logger.info(`memory-store-adapter: reading \`${key}\``);
         const res = map.get(key);
-        if (res) {
-          return Promise.resolve(res);
+        if (typeof res === `undefined`) {
+          return Promise.reject(new NotFoundError());
         }
 
-        return Promise.reject(new NotFoundError());
+        return Promise.resolve(res);
       },
       put(key, value) {
         logger.info(`memory-store-adapter: writing \`${key}\``);

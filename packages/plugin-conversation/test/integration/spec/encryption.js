@@ -41,9 +41,9 @@ describe(`plugin-conversation`, () => {
       }));
 
     after(() => Promise.all([
-      checkov.spark.mercury.disconnect(),
-      spark.mercury.disconnect(),
-      mccoy.spark.mercury.disconnect()
+      checkov && checkov.spark.mercury.disconnect(),
+      spark && spark.mercury.disconnect(),
+      mccoy && mccoy.spark.mercury.disconnect()
     ]));
 
     let conversation;

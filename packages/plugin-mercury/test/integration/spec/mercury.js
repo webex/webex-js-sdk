@@ -24,7 +24,7 @@ describe(`plugin-mercury`, function() {
         });
       }));
 
-    afterEach(() => spark.mercury.disconnect());
+    afterEach(() => spark && spark.mercury.disconnect());
 
     describe(`#connect()`, () => {
       it(`connects to mercury`, () => {
