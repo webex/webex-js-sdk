@@ -81,7 +81,6 @@ export class ChatWidget extends Component {
    * @memberOf ChatWidget
    */
   render() {
-    const {spark} = this.props;
     const props = this.props;
     const {
       conversation,
