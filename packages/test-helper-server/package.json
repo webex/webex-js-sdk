@@ -6,6 +6,7 @@
   "main": "./src",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-server",
   "dependencies": {
+    "@ciscospark/test-helper-appid": "^0.7.0-alpha",
     "babelify": "^7.2.0",
     "body-parser": "^1.14.1",
     "browserify-middleware": "^7.0.0",
