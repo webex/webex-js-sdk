@@ -116,7 +116,7 @@ const Conversation = SparkPlugin.extend({
           file.name = item.displayName;
         }
 
-        if (typeof window === `undefined` && !file.type && item.mimeType) {
+        if (!file.type && item.mimeType) {
           file.type = item.mimeType;
         }
 
