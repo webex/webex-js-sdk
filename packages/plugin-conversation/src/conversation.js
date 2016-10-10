@@ -78,7 +78,7 @@ const Conversation = SparkPlugin.extend({
         participants.unshift(this.spark.device.userId);
         params.participants = uniq(participants);
 
-        if (participants.length === 2 && !(options && options.forceGrouped)) {
+        if (params.participants.length === 2 && !(options && options.forceGrouped)) {
           return this._maybeCreateOneOnOneThenPost(params);
         }
 
