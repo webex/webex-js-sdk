@@ -216,6 +216,25 @@ export default {
       .then((st) => this._receiveSupertoken(st));
   },
 
+  @whileInFlight(`isAuthenticating`)
+  @oneFlight
+  requestAccessTokenFromJwt({jwt}) {
+    return this.spark.request({
+      method: `POST`,
+      service: `hydra`,
+      resource: `jwt/login`,
+      headers: {
+        authorization: jwt
+      }
+    })
+      .then(tap((res) => console.log(res.body)))
+      .then((res) => new Token({
+        access_token: res.body.token,
+        expires_in: res.body.expiresIn
+      }, {parent: this}))
+      .then((token) => this._receiveSupertoken(token));
+  },
+
   /**
    * Exchanges an authorization code for an access token
    * @param {Object} options

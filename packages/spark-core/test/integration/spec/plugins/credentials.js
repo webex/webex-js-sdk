@@ -39,6 +39,7 @@ describe(`spark-core`, function() {
           it(`exchanges a JWT for an access token`, () => {
             const spark = new Spark();
             const promise = spark.authenticate({jwt});
+            assert.isTrue(spark.isAuthenticating);
             return promise
               .then(() => assert.isTrue(spark.isAuthenticated));
           });

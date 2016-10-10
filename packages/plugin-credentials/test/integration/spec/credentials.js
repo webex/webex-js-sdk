@@ -7,6 +7,7 @@
 import '../..';
 import '@ciscospark/plugin-machine-account';
 
+import {createUser} from '@ciscospark/test-helper-appid';
 import {assert} from '@ciscospark/test-helper-chai';
 import testUsers from '@ciscospark/test-helper-test-users';
 import CiscoSpark from '@ciscospark/spark-core';
@@ -44,6 +45,29 @@ describe(`plugin-credentials`, () => {
           assert.isDefined(spark.credentials.userTokens.get(`spark:kms`));
           assert.notEqual(spark.credentials.userTokens.get(`spark:kms`).access_token, supertoken);
         }));
+    });
+
+    describe(`#requestAccessTokenFromJwt()`, () => {
+      let jwt;
+      beforeEach(() => createUser({subject: `test-${uuid.v4()}`})
+        .then((res) => {
+          jwt = res.jwt;
+        }));
+
+      it(`exchanges a JWT for an access token`, () => {
+        const spark = new CiscoSpark();
+        const promise = spark.credentials.requestAccessTokenFromJwt({jwt});
+        assert.isTrue(spark.isAuthenticating);
+        assert.isTrue(spark.credentials.isAuthenticating);
+        return promise
+          .then(() => {
+            assert.isFalse(spark.isAuthenticating);
+            assert.isFalse(spark.credentials.isAuthenticating);
+            assert.isTrue(spark.canAuthorize);
+            assert.isTrue(spark.credentials.canAuthorize);
+            assert.isFalse(spark.credentials.canRefresh);
+          });
+      });
     });
 
     describe(`#requestAuthorizationCodeGrant()`, () => {
