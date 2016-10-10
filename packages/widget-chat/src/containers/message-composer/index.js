@@ -8,14 +8,16 @@ import TextArea from '../../components/textarea';
 
 import styles from './styles.css';
 
-class MessageComposer extends Component {
+export class MessageComposer extends Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
   }
-  shouldComponentUpdate() {
-    return false;
+
+  shouldComponentUpdate(nextProps) {
+    const props = this.props;
+    return props.value !== nextProps.value;
   }
 
   handleChange(e) {
@@ -40,10 +42,11 @@ class MessageComposer extends Component {
   }
 
   render() {
+    const props = this.props;
     const {
       placeholder,
       value
-    } = this.props;
+    } = props;
 
     return (
       <div className={classNames(`message-composer`, styles.messageComposer)}>
@@ -62,14 +65,14 @@ class MessageComposer extends Component {
 MessageComposer.propTypes = {
   placeholder: PropTypes.string,
   setMessage: PropTypes.func.isRequired,
-  submitMessage: PropTypes.func.isRequired,
-  value: PropTypes.string
+  submitMessage: PropTypes.func.isRequired
 };
 
 function mapStateToProps(state, ownProps) {
   return Object.assign({}, state.message, {
     spark: ownProps.spark,
-    conversation: state.conversation
+    conversation: state.conversation,
+    value: state.message.value
   });
 }
 

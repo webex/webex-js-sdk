@@ -1,4 +1,7 @@
 import React, {PropTypes} from 'react';
+import classNames from 'classnames';
+
+import styles from './styles.css';
 
 export default function TextArea(props) {
   const {
@@ -11,6 +14,7 @@ export default function TextArea(props) {
 
   return (
     <textarea
+      className={classNames(`textarea`, styles.textarea)}
       onChange={onChange}
       onKeyDown={onKeyDown}
       onSubmit={onSubmit}
