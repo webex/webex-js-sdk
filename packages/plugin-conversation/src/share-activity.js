@@ -5,9 +5,11 @@
  */
 
 import {proxyEvents, transferEvents} from '@ciscospark/common';
+import {detect} from '@ciscospark/http-core';
 import {SparkPlugin} from '@ciscospark/spark-core';
 import {filter, map} from 'lodash';
 import {EventEmitter} from 'events';
+import mime from 'mime';
 
 const EMITTER_SYMBOL = Symbol(`EMITTER_SYMBOL`);
 const PROMISE_SYMBOL = Symbol(`PROMISE_SYMBOL`);
@@ -87,8 +89,11 @@ const ShareActivity = SparkPlugin.extend({
     };
 
     this.uploads.set(file, upload);
-
-    const promise = processImage(file, this.config.thumbnailMaxWidth, this.config.thumbnailMaxHeight, this.logger)
+    const promise = this.detect(file)
+      .then((type) => {
+        upload.mimeType = type;
+        return processImage(file, this.config.thumbnailMaxWidth, this.config.thumbnailMaxHeight, this.logger);
+      })
       .then((imageData) => {
         const main = this.spark.encryption.encryptBinary(file)
           .then(({scr, cdata}) => {
@@ -130,6 +135,27 @@ const ShareActivity = SparkPlugin.extend({
 
     proxyEvents(emitter, promise);
     return promise;
+  },
+
+  detect(file) {
+    if (file.type) {
+      return Promise.resolve(file.type);
+    }
+
+    if (file.mimeType) {
+      return Promise.resolve(file.mimeType);
+    }
+
+    // This kinda belongs in http core, but since we have no guarantee that
+    // buffers are expected to have names there, it'll stay here for now.
+    return detect(file)
+      .then((type) => {
+        if (type === `application/x-msi`) {
+          return mime.lookup(file.name);
+        }
+
+        return type;
+      });
   },
 
   /**
