@@ -19,6 +19,11 @@ import injectSpark from '../../modules/redux-spark/inject-spark';
  */
 export class ChatWidget extends Component {
 
+  constructor(props) {
+    super(props);
+    this.setActivityList = this.setActivityList.bind(this);
+  }
+
   componentWillReceiveProps(nextProps) {
     const {
       user,
@@ -45,7 +50,6 @@ export class ChatWidget extends Component {
     if (conversation.id && !conversation.mercuryState.isListening) {
       nextProps.listenToMercuryActivity(conversation.id, spark);
     }
-
   }
 
   shouldComponentUpdate(nextProps) {
@@ -53,6 +57,9 @@ export class ChatWidget extends Component {
     return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation !== props.conversation;
   }
 
+  componentDidUpdate(props, state) {
+    this.scrollToBottom();
+  }
   /**
    * Gets the non-current user of a conversation
    *
@@ -67,6 +74,17 @@ export class ChatWidget extends Component {
     return conversation.participants.find((user) =>
       user.emailAddress === props.userId
     );
+  }
+
+  scrollToBottom() {
+    if (this.activityList) {
+      const node = this.activityList.getDOMNode();
+      node.scrollTop = node.scrollHeight;
+    }
+  }
+
+  setActivityList(ref) {
+    this.activityList = ref;
   }
 
   /**
@@ -97,15 +115,21 @@ export class ChatWidget extends Component {
         const {displayName} = user;
         const messagePlaceholder = `Send a message to ${displayName}`;
         main = ( // eslint-disable-line no-extra-parens
-          <div>
-            <TitleBar displayName={displayName} />
-            <ActivityList
-              activities={activities}
-              id={id}
-              participants={participants}
-            />
-            <MessageComposer conversation={conversation} placeholder={messagePlaceholder} spark={spark} />
-            <ConnectionStatus id="connection-status" {...sparkState} />
+          <div className={classNames(`widget-chat-inner`, styles.widgetChatInner)}>
+            <div className={classNames(`title-bar-wrapper`, styles.titleBarWrapper)}>
+              <TitleBar displayName={displayName} />
+              <ConnectionStatus id="connection-status" {...sparkState} />
+            </div>
+            <div className={classNames(`activity-list-wrapper`, styles.activityListWrapper)}>
+              <ActivityList
+                activities={activities}
+                id={id}
+                participants={participants}
+              />
+            </div>
+            <div className={classNames(`message-composer-wrapper`, styles.messageComposerWrapper)}>
+              <MessageComposer conversation={conversation} placeholder={messagePlaceholder} spark={spark} />
+            </div>
           </div>
         );
       }

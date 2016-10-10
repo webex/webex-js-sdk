@@ -4,13 +4,12 @@ exports[`TitleBar component renders correctly 1`] = `
   <div
     className="avatar-container">
     <div
-      className="avatar">
-      <div
-        className="avatar-letter">
-        <strong>
-          T
-        </strong>
-      </div>
+      className="avatar"
+      style={undefined}>
+      <span
+        className={undefined}>
+        T
+      </span>
     </div>
   </div>
   <h1

@@ -6,13 +6,17 @@ import ActivityItem from '.';
 describe(`ActivityItem component`, () => {
   const activity = {
     id: `test-123-123-123-123`,
-    content: `Test Activity Content`
+    content: `Test Activity Content`,
+    name: `Test User`,
+    timestamp: `2016-09-20T19:52:57.186Z`
   };
 
   const component = renderer.create(
     <ActivityItem
       content={activity.content}
       id={activity.id}
+      name={activity.name}
+      timestamp={activity.timestamp}
     />
   );
 

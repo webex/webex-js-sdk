@@ -1,3 +1,26 @@
-.widgetChat {
+.widget-chat {
   border: 1px solid #ccc;
+  font-family: 'CiscoSansTTExtraLight', 'Helvetica Neue', Arial;
+  font-size: 16px;
+  font-weight: 200;
+}
+
+.widget-chat,
+.widget-chat-inner {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1 1 auto;
+  height: 100%;
+}
+
+.activity-list-wrapper {
+  flex: 1;
+  display: flex;
+  height: 100%;
+  width: 100%;
+}
+
+.message-composer-wrapper {
+
 }

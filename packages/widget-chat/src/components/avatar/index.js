@@ -1,27 +1,32 @@
-import React, {Component, PropTypes} from 'react';
+import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 
 import styles from './styles.css';
 
-class Avatar extends Component {
-  shouldComponentUpdate() {
-    return false;
+function Avatar({name, image, isSelfAvatar}) {
+  let avatarClass, avatarStyle, backgroundStyle;
+  const userInitial = name.substr(0, 1).toUpperCase();
+
+  if (isSelfAvatar) {
+    avatarStyle = styles.selfAvatar;
+  }
+  else if (image) {
+    backgroundStyle = {backgroundImage: `url('${image}')`};
   }
 
-  render() {
-    const userInitial = this.props.displayName.substr(0, 1).toUpperCase();
-    return (
-      <div className={classNames(`avatar`, styles.avatar)}>
-        <div className={classNames(`avatar-letter`, styles.avatarLetter)}>
-          <strong>{userInitial}</strong>
-        </div>
-      </div>
-    );
-  }
+  return (
+    <div className={classNames(`avatar`, styles.avatar, avatarClass, avatarStyle)} style={backgroundStyle}>
+      <span className={styles.avatarLetter}>
+        {userInitial}
+      </span>
+    </div>
+  );
 }
 
 Avatar.propTypes = {
-  displayName: PropTypes.string.isRequired
+  image: PropTypes.string,
+  isSelfAvatar: PropTypes.bool,
+  name: PropTypes.string.isRequired
 };
 
 export default Avatar;
