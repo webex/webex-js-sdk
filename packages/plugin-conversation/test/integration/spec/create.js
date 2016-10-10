@@ -14,7 +14,7 @@ import uuid from 'uuid';
 import fh from '@ciscospark/test-helper-file';
 
 describe(`plugin-conversation`, function() {
-  this.timeout(30000);
+  this.timeout(60000);
   describe(`#create()`, () => {
     let checkov, mccoy, participants, spark, spock;
 
@@ -45,8 +45,8 @@ describe(`plugin-conversation`, function() {
       .then((f) => {sampleTextOne = f;}));
 
     after(() => Promise.all([
-      spark.mercury.disconnect(),
-      mccoy.spark.mercury.disconnect()
+      spark && spark.mercury.disconnect(),
+      mccoy && mccoy.spark.mercury.disconnect()
     ]));
 
     function makeEmailAddress() {

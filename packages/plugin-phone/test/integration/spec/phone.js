@@ -49,9 +49,9 @@ describe(`plugin-phone`, function() {
     });
 
     after(() => Promise.all([
-      spock.spark.phone.deregister()
+      spock && spock.spark.phone.deregister()
         .catch((reason) => console.warn(`could not disconnect spock from mercury`, reason)),
-      mccoy.spark.phone.deregister()
+      mccoy && mccoy.spark.phone.deregister()
         .catch((reason) => console.warn(`could not disconnect mccoy from mercury`, reason))
     ]));
 
@@ -164,7 +164,7 @@ describe(`plugin-phone`, function() {
           });
         }));
 
-      afterEach(() => kirk.spark.phone.deregister());
+      afterEach(() => kirk && kirk.spark.phone.deregister());
 
       it(`registers with wdm`, () => {
         return kirk.spark.phone.register()
