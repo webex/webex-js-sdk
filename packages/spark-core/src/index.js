@@ -12,7 +12,11 @@ export {
   makeSparkPluginStore,
   MemoryStoreAdapter,
   NotFoundError,
-  StorageError
+  persist,
+  StorageError,
+  SparkPluginStorage,
+  Store,
+  waitForValue
 } from './lib/storage';
 
 export {
@@ -36,12 +40,5 @@ export {
   default as Credentials,
   grantErrors
 } from './plugins/credentials';
-
-export {
-  SparkPluginStorage,
-  Store,
-  persist,
-  waitForValue
-} from './lib/storage';
 
 export {default as Batcher} from './lib/batcher';

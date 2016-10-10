@@ -78,7 +78,7 @@ const Conversation = SparkPlugin.extend({
         participants.unshift(this.spark.device.userId);
         params.participants = uniq(participants);
 
-        if (participants.length === 2 && !(options && options.forceGrouped)) {
+        if (params.participants.length === 2 && !(options && options.forceGrouped)) {
           return this._maybeCreateOneOnOneThenPost(params);
         }
 
@@ -116,7 +116,7 @@ const Conversation = SparkPlugin.extend({
           file.name = item.displayName;
         }
 
-        if (typeof window === `undefined` && !file.type && item.mimeType) {
+        if (!file.type && item.mimeType) {
           file.type = item.mimeType;
         }
 
