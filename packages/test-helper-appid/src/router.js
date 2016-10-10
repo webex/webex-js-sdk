@@ -20,7 +20,7 @@ router.use(bodyParser.json({
   strict: false
 }));
 
-router.post('/', function(req, res, next) {
+router.post('/', function convertUserNameToJWT(req, res, next) {
   if (!req.body.subject) {
     res
        .status(400)
