@@ -57,6 +57,9 @@ export class ChatWidget extends Component {
     return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation !== props.conversation;
   }
 
+  componentDidUpdate(props, state) {
+    this.scrollToBottom();
+  }
   /**
    * Gets the non-current user of a conversation
    *
@@ -71,6 +74,17 @@ export class ChatWidget extends Component {
     return conversation.participants.find((user) =>
       user.emailAddress === props.userId
     );
+  }
+
+  scrollToBottom() {
+    if (this.activityList) {
+      const node = this.activityList.getDOMNode();
+      node.scrollTop = node.scrollHeight;
+    }
+  }
+
+  setActivityList(ref) {
+    this.activityList = ref;
   }
 
   /**
