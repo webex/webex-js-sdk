@@ -118,6 +118,14 @@ export default {
         });
     }
 
+    if (options.jwt) {
+      return this.requestAccessTokenFromJwt(options)
+        .then((res) => {
+          this._isAuthenticating = false;
+          return res;
+        });
+    }
+
     this.set(pick(options, `name`, `orgId`, `password`));
 
     if (this.name && this.orgId && this.password) {
@@ -132,6 +140,7 @@ export default {
           return Promise.reject(res);
         });
     }
+
 
     this._isAuthenticating = false;
     return Promise.reject(new Error(`not enough parameters to authenticate`));
@@ -215,6 +224,29 @@ export default {
     return this.authorization.refresh(options)
       .then(this._pushAuthorization.bind(this))
       .catch(this._handleRefreshFailure.bind(this));
+  },
+
+  @oneFlight
+  requestAccessTokenFromJwt(options) {
+    return this.spark.request({
+      method: `POST`,
+      // I'm not thrilled by directly referencin the hydra service url, but
+      // since the spark-core credentials plugin is on the march toward
+      // deprecation, I think it's tolerable for now.
+      uri: `${this.config.hydraServiceUrl}/jwt/login`,
+      headers: {
+        authorization: options.jwt
+      }
+    })
+      .then((res) => ({
+        body: {
+          access_token: res.body.token,
+          token_type: `Bearer`,
+          expires_in: res.body.expiresIn
+        }
+      }))
+      .then(processGrant)
+      .then(this._pushAuthorization.bind(this));
   },
 
   @oneFlight
