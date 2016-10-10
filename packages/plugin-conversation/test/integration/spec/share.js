@@ -16,7 +16,7 @@ import uuid from 'uuid';
 import {skipInNode} from '@ciscospark/test-helper-mocha';
 
 describe(`plugin-conversation`, function() {
-  this.timeout(30000);
+  this.timeout(120000);
   describe(`verbs`, () => {
     let mccoy, participants, spark, spock;
 
@@ -43,8 +43,8 @@ describe(`plugin-conversation`, function() {
       }));
 
     after(() => Promise.all([
-      spark.mercury.disconnect(),
-      mccoy.spark.mercury.disconnect()
+      spark && spark.mercury.disconnect(),
+      mccoy && mccoy.spark.mercury.disconnect()
     ]));
 
     let conversation;
@@ -173,9 +173,7 @@ describe(`plugin-conversation`, function() {
           blockUntilTranscode = new Defer();
         });
 
-        afterEach(() => {
-          spark.mercury.off(`event:conversation.activity`, onMessage);
-        });
+        afterEach(() => spark && spark.mercury.off(`event:conversation.activity`, onMessage));
 
         function onMessage(message) {
           activities.push(message.data.activity);

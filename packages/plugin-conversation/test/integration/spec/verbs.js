@@ -40,8 +40,8 @@ describe(`plugin-conversation`, function() {
       }));
 
     after(() => Promise.all([
-      spark.mercury.disconnect(),
-      mccoy.spark.mercury.disconnect()
+      spark && spark.mercury.disconnect(),
+      mccoy && mccoy.spark.mercury.disconnect()
     ]));
 
     function makeEmailAddress() {
