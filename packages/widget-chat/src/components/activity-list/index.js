@@ -22,6 +22,5 @@ export default function ActivityList(props) {
 }
 
 ActivityList.propTypes = {
-  activities: PropTypes.array,
-  participants: PropTypes.array
+  activities: PropTypes.array
 };
