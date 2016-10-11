@@ -7,6 +7,7 @@ import {
   UPDATE_MERCURY_STATE
 } from '../actions/conversation';
 
+const filteredActivities = [`delete`];
 
 function formatActivity(activity) {
   return {
@@ -16,6 +17,10 @@ function formatActivity(activity) {
     timestamp: formatDate(activity.published),
     verb: activity.verb
   };
+}
+
+function filterActivity(activity) {
+  return filteredActivities.indexOf(activity.verb) === -1;
 }
 
 
@@ -38,7 +43,7 @@ export default function conversation(state = {
   }
 
   case RECEIVE_CONVERSATION: {
-    const activities = action.conversation.activities.items.map(formatActivity);
+    const activities = action.conversation.activities.items.filter(filterActivity).map(formatActivity);
 
     return Object.assign({}, state, {
       activities,

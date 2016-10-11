@@ -4,14 +4,8 @@ import ActivityItem from '../activity-item';
 
 import styles from './styles.css';
 
-const filteredVerbs = [`create`, `tombstone`, `delete`];
-
 export default function ActivityList(props) {
-  const filteredActivities = props.activities
-    .filter((activity) =>
-      filteredVerbs.indexOf(activity.verb) === -1
-    );
-  const activities = filteredActivities
+  const activities = props.activities
     .map((activity) =>
       <ActivityItem
         content={activity.content}
