@@ -1,0 +1,21 @@
+exports[`ActivityReadReceipt component renders properly 1`] = `
+<div
+  className="activity-read-receipt">
+  <div
+    className="avatar"
+    style={undefined}>
+    <span
+      className={undefined}>
+      B
+    </span>
+  </div>
+  <div
+    className="avatar"
+    style={undefined}>
+    <span
+      className={undefined}>
+      A
+    </span>
+  </div>
+</div>
+`;

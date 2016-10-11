@@ -19,12 +19,12 @@ describe(`ChatWidget`, () => {
     compose(applyMiddleware(thunk))
   );
 
-  it(`is rendered properly`, () => {
+  it(`renders properly`, () => {
     const widget = renderer.create(
       <Provider store={store}>
         <ChatWidget />
       </Provider>
-    ).toJSON;
+    ).toJSON();
 
     expect(widget).toMatchSnapshot();
   });

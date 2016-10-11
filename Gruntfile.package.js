@@ -42,6 +42,11 @@ module.exports = function(grunt) {
         src: [
           './packages/<%= package %>/dist'
         ]
+      },
+      snapshots: {
+        src: [
+          './packages/<%= package %>/**/__snapshots__'
+        ]
       }
     },
 
