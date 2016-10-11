@@ -18,6 +18,7 @@ describe(`ActivityItem component`, () => {
       id={activity.id}
       name={activity.name}
       timestamp={activity.timestamp}
+      verb={activity.verb}
     />
   );
 
