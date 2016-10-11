@@ -1,22 +1,37 @@
 import React from 'react';
-import {findRenderedDOMComponentWithClass, renderIntoDocument} from 'react-addons-test-utils';
+import renderer from 'react-test-renderer';
 
 import Avatar from '.';
 
-let displayName;
-let component;
+function createAvatar({image, isSelfAvatar, name}) {
+  return renderer.create(
+    <Avatar image={image} isSelfAvatar={isSelfAvatar} name={name} />
+  );
+}
 
 describe(`Avatar component`, () => {
+  let props;
+
   beforeEach(() => {
-    displayName = `test@testing.net`;
-    component = renderIntoDocument(
-      <Avatar name={displayName} />
-    );
+    props = {
+      name: `Test User`,
+      image: ``,
+      isSelfAvatar: false
+    };
   });
 
-  it(`renders`, () => {
-    const renderedComponent = findRenderedDOMComponentWithClass(component, `avatar`);
-    expect(renderedComponent).toBeDefined();
+  it(`renders properly without image`, () => {
+    props.image = null;
+    expect(createAvatar(props)).toMatchSnapshot();
   });
 
+  it(`renders properly as self avatar`, () => {
+    props.isSelfAvatar = true;
+    expect(createAvatar(props)).toMatchSnapshot();
+  });
+
+  it(`errors without name`, () => {
+    props.name = ``;
+    expect(createAvatar(props)).toThrow();
+  });
 });

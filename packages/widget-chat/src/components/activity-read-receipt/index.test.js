@@ -1,21 +1,15 @@
 import React from 'react';
-import {findRenderedDOMComponentWithClass, renderIntoDocument} from 'react-addons-test-utils';
+import renderer from 'react-test-renderer';
 
 import ActivityReadReceipt from '.';
 
 describe(`ActivityReadReceipt component`, () => {
-  let mockReadUsers;
-  let component;
-  beforeEach(() => {
-    mockReadUsers = [`bernie`, `adam`];
-    component = renderIntoDocument(
-      <ActivityReadReceipt actors={mockReadUsers} />
-    );
-  });
+  const mockReadUsers = [`bernie`, `adam`];
+  const component = renderer.create(
+    <ActivityReadReceipt actors={mockReadUsers} />
+  );
 
-  it(`is rendered properly`, () => {
-    const renderedComponent = findRenderedDOMComponentWithClass(component, `activity-read-receipt`);
-    expect(renderedComponent).toBeDefined();
+  it(`renders properly`, () => {
+    expect(component).toMatchSnapshot();
   });
-
 });

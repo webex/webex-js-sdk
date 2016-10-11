@@ -1,0 +1,21 @@
+exports[`Avatar component renders properly as self avatar 1`] = `
+<div
+  className="avatar"
+  style={undefined}>
+  <span
+    className={undefined}>
+    T
+  </span>
+</div>
+`;
+
+exports[`Avatar component renders properly without image 1`] = `
+<div
+  className="avatar"
+  style={undefined}>
+  <span
+    className={undefined}>
+    T
+  </span>
+</div>
+`;

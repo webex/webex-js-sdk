@@ -1,1 +1,9 @@
-exports[`ChatWidget is rendered properly 1`] = `[Function anonymous]`;
+exports[`ChatWidget renders properly 1`] = `
+<div
+  className="widget-chat">
+  <div
+    className="loading">
+    Connecting...
+  </div>
+</div>
+`;

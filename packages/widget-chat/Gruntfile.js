@@ -50,10 +50,8 @@ module.exports = function configGrunt(grunt) {
     'webpack:build'
   ]);
 
-  grunt.registerTask('test', ['jest'])
-
-  grunt.registerTask('serve', ['webpack-dev-server:start'])
-
+  grunt.registerTask('test', ['jest']);
+  grunt.registerTask('test-clean', ['clean:snapshots', 'jest']);
+  grunt.registerTask('serve', ['webpack-dev-server:start']);
   grunt.registerTask('default', ['serve']);
-
 };

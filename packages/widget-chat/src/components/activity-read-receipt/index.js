@@ -10,7 +10,7 @@ class ActivityReadReceipt extends Component {
   }
 
   render() {
-    const avatars = this.props.actors.map((actor) => <Avatar displayName={actor} key={actor} />);
+    const avatars = this.props.actors.map((actor) => <Avatar key={actor} name={actor} />);
     return (
       <div className={classNames(`activity-read-receipt`, styles.activityReadReceipt)}>
         {avatars}
@@ -20,7 +20,7 @@ class ActivityReadReceipt extends Component {
 }
 
 ActivityReadReceipt.propTypes = {
-  actors: PropTypes.array
+  actors: PropTypes.arrayOf(PropTypes.string)
 };
 
 export default ActivityReadReceipt;
