@@ -1,12 +1,13 @@
 import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 import ActivityItem from '../activity-item';
+import scrollableWrapper from '../wrapper-scrollable';
 
 import styles from './styles.css';
 
 const filteredVerbs = [`create`, `tombstone`, `delete`];
 
-export default function ActivityList(props) {
+function ActivityList(props) {
   const filteredActivities = props.activities
     .filter((activity) =>
       filteredVerbs.indexOf(activity.verb) === -1
@@ -32,3 +33,5 @@ export default function ActivityList(props) {
 ActivityList.propTypes = {
   activities: PropTypes.array
 };
+
+export default scrollableWrapper(ActivityList);

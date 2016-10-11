@@ -19,6 +19,11 @@ import injectSpark from '../../modules/redux-spark/inject-spark';
  */
 export class ChatWidget extends Component {
 
+  constructor(props) {
+    super(props);
+    this.getActivityList = this.getActivityList.bind(this);
+  }
+
   componentWillReceiveProps(nextProps) {
     const {
       user,
@@ -52,6 +57,12 @@ export class ChatWidget extends Component {
     return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation !== props.conversation;
   }
 
+  componentDidUpdate() {
+    if (this.activityList) {
+      this.activityList.scrollToBottom();
+    }
+  }
+
   /**
    * Gets the non-current user of a conversation
    *
@@ -66,6 +77,10 @@ export class ChatWidget extends Component {
     return conversation.participants.find((user) =>
       user.emailAddress === props.userId
     );
+  }
+
+  getActivityList(ref) {
+    this.activityList = ref;
   }
 
   /**
@@ -106,6 +121,7 @@ export class ChatWidget extends Component {
                 activities={activities}
                 id={id}
                 participants={participants}
+                ref={this.getActivityList}
               />
             </div>
             <div className={classNames(`message-composer-wrapper`, styles.messageComposerWrapper)}>
