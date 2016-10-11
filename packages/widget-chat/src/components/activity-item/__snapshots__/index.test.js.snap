@@ -1,35 +1,6 @@
 exports[`ActivityItem component renders properly 1`] = `
 <div
   className="activity-item">
-  <div
-    className="avatar-wrapper">
-    <div
-      className="avatar"
-      style={undefined}>
-      <span
-        className={undefined}>
-        T
-      </span>
-    </div>
-  </div>
-  <div
-    className="">
-    <div
-      className="">
-      <div
-        className=""
-        title="{name}">
-        Test User
-      </div>
-      <div
-        className="">
-        2016-09-20T19:52:57.186Z
-      </div>
-    </div>
-    <div
-      className="">
-      Test Activity Content
-    </div>
-  </div>
+  
 </div>
 `;
