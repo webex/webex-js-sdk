@@ -314,8 +314,27 @@ var TeamService = SparkBase.extend(
    */
   addConversation: function addConversation(team, conversation) {
     return this._ensureGeneralConversation(team)
-      .then(function submit(teamConversation) {
-        return this.spark.conversation.add(teamConversation, conversation);
+      .then(function prepareActivity(generalConversation) {
+        return this.spark.conversation._prepareActivity({}, {
+          verb: 'add',
+          target: pick(generalConversation, 'objectType', 'id', 'url', 'kmsResourceObjectUrl', 'defaultActivityEncryptionKeyUrl'),
+          object: {
+            id: conversation.id,
+            objectType: 'conversation'
+          },
+          kmsMessage: {
+            method: 'create',
+            uri: '/authorizations',
+            resourceUri: conversation.kmsResourceObjectUrl,
+            userIds: [generalConversation.kmsResourceObjectUrl]
+          }
+        })
+        .then(function callEncryptActivity(activity) {
+          return this.spark.conversation._encryptActivity(activity, generalConversation.defaultActivityEncryptionKeyUrl);
+        }.bind(this))
+      }.bind(this))
+      .then(function submitActivity(activity) {
+        return this.spark.conversation._submitActivity(activity);
       }.bind(this));
   },
 
