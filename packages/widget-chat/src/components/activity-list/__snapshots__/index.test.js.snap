@@ -1,6 +1,6 @@
 exports[`ActivityList component renders properly 1`] = `
 <div
-  className="activity-list">
+  className={undefined}>
   <div
     className="activity-item">
     <div>
