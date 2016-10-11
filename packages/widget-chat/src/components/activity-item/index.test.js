@@ -8,7 +8,8 @@ describe(`ActivityItem component`, () => {
     id: `test-123-123-123-123`,
     content: `Test Activity Content`,
     name: `Test User`,
-    timestamp: `2016-09-20T19:52:57.186Z`
+    timestamp: `2016-09-20T19:52:57.186Z`,
+    verb: `post`
   };
 
   const component = renderer.create(
@@ -17,6 +18,7 @@ describe(`ActivityItem component`, () => {
       id={activity.id}
       name={activity.name}
       timestamp={activity.timestamp}
+      verb={activity.verb}
     />
   );
 
