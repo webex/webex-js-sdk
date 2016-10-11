@@ -13,7 +13,8 @@ function formatActivity(activity) {
     id: activity.id,
     content: activity.object.displayName,
     name: activity.actor.displayName,
-    timestamp: formatDate(activity.published)
+    timestamp: formatDate(activity.published),
+    verb: activity.verb
   };
 }
 
