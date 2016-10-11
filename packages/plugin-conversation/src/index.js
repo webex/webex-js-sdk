@@ -21,3 +21,6 @@ registerPlugin(`conversation`, Conversation, {
 
 export {default as default} from './conversation';
 export {default as ShareActivity} from './share-activity';
+export {default as Encrypter} from './encrypter';
+export {default as Decrypter} from './decrypter';
+export {default as Normalizer} from './normalizer';

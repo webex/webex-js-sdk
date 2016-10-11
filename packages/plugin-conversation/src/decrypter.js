@@ -72,6 +72,12 @@ const Decrypter = SparkPlugin.extend({
 
     return this[methodName](key, object[property])
       .then((decryptedProperty) => {
+
+        if (this.config.conversation.keepEncryptedProperties) {
+          const encryptedPropName = S(`encrypted_${property}`).camelize().s;
+          object[encryptedPropName] = object[property];
+        }
+
         object[property] = decryptedProperty;
         return object;
       })

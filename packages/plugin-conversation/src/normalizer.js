@@ -119,6 +119,7 @@ const Normalizer = SparkPlugin.extend({
    * @returns {Promise}
    */
   normalizePerson(person) {
+    /* eslint complexity: [0] */
     const email = person.entryEmail || person.emailAddress || person.id;
     const id = person.entryUUID || person.id;
 
@@ -128,6 +129,10 @@ const Normalizer = SparkPlugin.extend({
     else {
       Reflect.deleteProperty(person, `entryEmail`);
       Reflect.deleteProperty(person, `emailAddress`);
+    }
+
+    if (person.roomProperties) {
+      person.roomProperties.isModerator = Boolean(person.roomProperties.isModerator);
     }
 
     if (patterns.uuid.test(id)) {
