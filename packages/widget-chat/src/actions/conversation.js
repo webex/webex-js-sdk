@@ -65,11 +65,15 @@ export function listenToMercuryActivity(conversationId, spark) {
     dispatch(updateMercuryState({isListening: true}));
     spark.mercury.on(`event:conversation.activity`, (event) => {
       const activity = event.data.activity;
-      if (activity.object.objectType === `comment` && activity.target.id === conversationId) {
-        dispatch(receiveMercuryComment(activity));
-      }
-      else if (activity.object.objectType === `activity` && activity.target.id === conversationId) {
-        dispatch(receiveMercuryActivity(activity));
+      const isChatMessage = activity.verb === `post` && activity.object.objectType === `comment` && activity.target.objectType === `conversation`;
+      // Ignore activity from other conversations
+      if (activity.target.id === conversationId) {
+        if (isChatMessage) {
+          dispatch(receiveMercuryComment(activity));
+        }
+        else if (activity.object.objectType === `activity`) {
+          dispatch(receiveMercuryActivity(activity));
+        }
       }
     });
   };
