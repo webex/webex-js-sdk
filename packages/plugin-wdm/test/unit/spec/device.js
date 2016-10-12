@@ -44,6 +44,10 @@ describe(`plugin-wdm`, () => {
       });
     });
 
+    describe(`#determineService()`, () => {
+      it(`determines the service backing the specified url`, () => assert.becomes(device.determineService(`https://conv-a.wbx2.com/conversation/api/v1/conversations`, `conversation`)));
+    });
+
     describe(`#getPreDiscoveryServiceUrl()`, () => {
       it(`requires a \`service\` parameter`, () => {
         return assert.isRejected(device.getPreDiscoveryServiceUrl(), /`service` is a required parameter/);

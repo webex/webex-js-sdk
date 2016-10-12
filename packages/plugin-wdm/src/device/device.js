@@ -44,6 +44,19 @@ const Device = SparkPlugin.extend({
   },
 
   @waitForValue(`@`)
+  determineService(url) {
+    for (const key of Object.keys(this.services)) {
+      const serviceUrl = this.services[key];
+      if (url.startsWith(serviceUrl)) {
+        // "ServiceUrl" is 10 characters
+        return Promise.resolve(key.substr(0, key.length - 10));
+      }
+    }
+
+    return Promise.reject(new Error(`${url} does not reflect a known service`));
+  },
+
+  @waitForValue(`@`)
   getServiceUrl(service) {
     return this._getServiceUrl(this.services, service)
       .then((isServiceUrl) => isServiceUrl || this.getPreDiscoveryServiceUrl(service));
