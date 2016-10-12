@@ -4,6 +4,7 @@ import {
   CREATE_CONVERSATION,
   RECEIVE_CONVERSATION,
   RECEIVE_MERCURY_ACTIVITY,
+  RECEIVE_MERCURY_COMMENT,
   UPDATE_MERCURY_STATE
 } from '../actions/conversation';
 
@@ -53,8 +54,28 @@ export default function conversation(state = {
       participants: action.conversation.participants.items
     });
   }
-
   case RECEIVE_MERCURY_ACTIVITY: {
+    let activities = state.activities;
+    if (action.activity.verb === `delete`) {
+      // Find activity that is being deleted and change it to a tombstone
+      const deletedId = action.activity.object.id;
+      activities = state.activities.map((activity) => {
+        if (activity.id === deletedId) {
+          return Object.assign({}, activity, {
+            content: undefined,
+            timestamp: formatDate(action.activity.published),
+            verb: `tombstone`
+          });
+        }
+        return activity;
+      });
+    }
+    return Object.assign({}, state, {
+      activities: [...activities]
+    });
+  }
+
+  case RECEIVE_MERCURY_COMMENT: {
     const activities = state.activities;
     const activity = formatActivity(action.activity);
     return Object.assign({}, state, {
