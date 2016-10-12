@@ -9,6 +9,7 @@ import {HttpStatusInterceptor, defaults as requestDefaults} from '@ciscospark/ht
 import {defaults, get, isFunction, merge, omit} from 'lodash';
 import AmpState from 'ampersand-state';
 import NetworkTimingInterceptor from './interceptors/network-timing';
+import PayloadTransformerInterceptor from './interceptors/payload-transformer';
 import RedirectInterceptor from './interceptors/redirect';
 import RequestLoggerInterceptor from './interceptors/request-logger';
 import RequestTimingInterceptor from './interceptors/request-timing';
@@ -38,6 +39,7 @@ const interceptors = {
   RequestTimingInterceptor: RequestTimingInterceptor.create,
   UrlInterceptor: undefined,
   AuthInterceptor: undefined,
+  PayloadTransformerInterceptor: PayloadTransformerInterceptor.create,
   ConversationInterceptor: undefined,
   EncryptionInterceptor: undefined,
   RedirectInterceptor: RedirectInterceptor.create,
@@ -339,6 +341,14 @@ export function registerPlugin(name, constructor, options) {
 
     if (options.config) {
       merge(config, options.config);
+    }
+
+    if (options.predicates) {
+      config.payloadTransformer.predicates = config.payloadTransformer.predicates.concat(options.predicates);
+    }
+
+    if (options.transforms) {
+      config.payloadTransformer.transforms = config.payloadTransformer.transforms.concat(options.transforms);
     }
 
     makeSparkConstructor();

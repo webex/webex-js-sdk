@@ -28,6 +28,7 @@ export {
 export {default as SparkHttpError} from './lib/spark-http-error';
 export {default as SparkPlugin} from './lib/spark-plugin';
 export {default as NetworkTimingInterceptor} from './interceptors/network-timing';
+export {default as PayloadTransformerInterceptor} from './interceptors/payload-transformer';
 export {default as RedirectInterceptor} from './interceptors/redirect';
 export {default as ResponseLoggerInterceptor} from './interceptors/response-logger';
 export {default as RequestLoggerInterceptor} from './interceptors/request-logger';
