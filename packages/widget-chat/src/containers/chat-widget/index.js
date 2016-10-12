@@ -2,12 +2,18 @@ import React, {Component, PropTypes} from 'react';
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
+import _ from 'lodash';
 
 import ConnectionStatus from '../../components/connection-status';
 import {fetchCurrentUser} from '../../actions/user';
-import {createConversationWithUser, listenToMercuryActivity} from '../../actions/conversation';
+import {
+  createConversationWithUser,
+  listenToMercuryActivity,
+  updateShouldScroll
+} from '../../actions/conversation';
 import TitleBar from '../../components/title-bar';
 import ActivityList from '../../components/activity-list';
+import ScrollToBottomButton from '../../components/scroll-to-bottom-button';
 import MessageComposer from '../message-composer';
 
 import styles from './styles.css';
@@ -22,6 +28,7 @@ export class ChatWidget extends Component {
   constructor(props) {
     super(props);
     this.getActivityList = this.getActivityList.bind(this);
+    this.handleScroll = this.handleScroll.bind(this);
   }
 
   componentWillReceiveProps(nextProps) {
@@ -50,16 +57,43 @@ export class ChatWidget extends Component {
     if (conversation.id && !conversation.mercuryState.isListening) {
       nextProps.listenToMercuryActivity(conversation.id, spark);
     }
+
+    // check if new activity is users position
+    // check if already at the bottom
   }
 
   shouldComponentUpdate(nextProps) {
     const props = this.props;
-    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation !== props.conversation;
+    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation.activities !== props.conversation.activities;
   }
 
-  componentDidUpdate() {
-    if (this.activityList) {
-      this.activityList.scrollToBottom();
+  componentDidUpdate(prevProps) {
+    const props = this.props;
+    const activityList = this.activityList;
+
+    if (activityList) {
+      const lastActivityFromPrev = _.last(prevProps.conversation.activities);
+      const lastActivityFromThis = _.last(props.conversation.activities);
+
+      // If new activity comes in
+      if (lastActivityFromPrev && lastActivityFromThis && props.conversation.activities.length !== prevProps.conversation.activities.length && lastActivityFromPrev.id !== lastActivityFromThis.id) {
+        // Scroll if from ourselves
+        if (props.user.id === lastActivityFromThis.actor.id) {
+          activityList.scrollToBottom();
+        }
+        else {
+          // Scroll if already at the bottom
+          if (activityList.isScrolledToBottom()) {
+            activityList.scrollToBottom();
+          }
+          else {
+            // Show new activity message
+          }
+        }
+      }
+      else if (prevProps.conversation.activities.length === 0) {
+        activityList.scrollToBottom();
+      }
     }
   }
 
@@ -81,6 +115,15 @@ export class ChatWidget extends Component {
 
   getActivityList(ref) {
     this.activityList = ref;
+  }
+
+  handleScroll() {
+    _.debounce(() => {
+      console.log(this);
+    }, 150, {
+      leading: true,
+      trailing: true
+    });
   }
 
   /**
@@ -120,6 +163,7 @@ export class ChatWidget extends Component {
               <ActivityList
                 activities={activities}
                 id={id}
+                onScroll={this.handleScroll}
                 participants={participants}
                 ref={this.getActivityList}
               />
@@ -144,6 +188,7 @@ ChatWidget.propTypes = {
   fetchCurrentUser: PropTypes.func.isRequired,
   listenToMercuryActivity: PropTypes.func.isRequired,
   spark: PropTypes.object.isRequired,
+  updateShouldScroll: PropTypes.func.isRequired,
   userId: PropTypes.string.isRequired
 };
 
@@ -161,6 +206,7 @@ export default connect(
   (dispatch) => bindActionCreators({
     createConversationWithUser,
     fetchCurrentUser,
-    listenToMercuryActivity
+    listenToMercuryActivity,
+    updateShouldScroll
   }, dispatch)
 )(injectSpark(ChatWidget));

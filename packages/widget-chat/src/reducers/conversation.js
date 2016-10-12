@@ -4,7 +4,8 @@ import {
   CREATE_CONVERSATION,
   RECEIVE_CONVERSATION,
   RECEIVE_MERCURY_ACTIVITY,
-  UPDATE_MERCURY_STATE
+  UPDATE_MERCURY_STATE,
+  UPDATE_SHOULD_SCROLL
 } from '../actions/conversation';
 
 
@@ -25,6 +26,7 @@ export default function conversation(state = {
   participants: [],
   isFetching: false,
   isLoaded: false,
+  shouldScroll: true,
   mercuryState: {
     isListening: false
   }
@@ -60,6 +62,12 @@ export default function conversation(state = {
   case UPDATE_MERCURY_STATE: {
     return Object.assign({}, state, {
       mercuryState: action.mercuryState
+    });
+  }
+
+  case UPDATE_SHOULD_SCROLL: {
+    return Object.assign({}, state, {
+      shouldScroll: action.shouldScroll
     });
   }
 

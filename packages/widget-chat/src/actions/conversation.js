@@ -30,6 +30,14 @@ export function updateMercuryState(mercuryState) {
   };
 }
 
+export const UPDATE_SHOULD_SCROLL = `UPDATE_SHOULD_SCROLL`;
+export function updateShouldScroll(shouldScroll) {
+  return {
+    type: UPDATE_SHOULD_SCROLL,
+    shouldScroll
+  };
+}
+
 
 /**
  * Creates/Opens a conversation with a user

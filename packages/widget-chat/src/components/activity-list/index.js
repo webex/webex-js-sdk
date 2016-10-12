@@ -1,7 +1,7 @@
 import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 import ActivityItem from '../activity-item';
-import scrollableWrapper from '../wrapper-scrollable';
+import injectScrollable from '../../containers/wrapper-scrollable';
 
 import styles from './styles.css';
 
@@ -34,4 +34,4 @@ ActivityList.propTypes = {
   activities: PropTypes.array
 };
 
-export default scrollableWrapper(ActivityList);
+export default injectScrollable(ActivityList);

@@ -4,7 +4,7 @@ import {Provider} from 'react-redux';
 import ChatWidget from './containers/chat-widget';
 import store from './store';
 
-import './main.css';
+import './styles/main.css';
 
 export default function Root() {
   const accessToken = process.env.CISCOSPARK_ACCESS_TOKEN;

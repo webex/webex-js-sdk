@@ -135,7 +135,7 @@ module.exports = {
         test: /\.woff$/,
         // Inline small woff files and output them below font/.
         // Set mimetype just in case.
-        loader: 'url',
+        loader: 'file',
         query: {
           name: 'fonts/[hash].[ext]',
           limit: 5000,
