@@ -1,33 +1,9 @@
 import React from 'react';
 import renderer from 'react-test-renderer';
 
-import ActivityItem from '.';
+import ActivityItemSystemMessage from '.';
 
-describe(`ActivityItem post component`, () => {
-  const activity = {
-    id: `test-123-123-123-123`,
-    content: `Test Activity Content`,
-    name: `Test User`,
-    timestamp: `2016-09-20T19:52:57.186Z`,
-    verb: `post`
-  };
-
-  const component = renderer.create(
-    <ActivityItem
-      content={activity.content}
-      id={activity.id}
-      name={activity.name}
-      timestamp={activity.timestamp}
-      verb={activity.verb}
-    />
-  );
-
-  it(`renders properly`, () => {
-    expect(component).toMatchSnapshot();
-  });
-});
-
-describe(`ActivityItem tombstone component`, () => {
+describe(`ActivityItemSystemMessage tombstone component`, () => {
   const activity = {
     id: `test-123-123-123-123`,
     content: `Test Activity Content`,
@@ -37,7 +13,7 @@ describe(`ActivityItem tombstone component`, () => {
   };
 
   const component = renderer.create(
-    <ActivityItem
+    <ActivityItemSystemMessage
       content={activity.content}
       id={activity.id}
       name={activity.name}
@@ -50,3 +26,28 @@ describe(`ActivityItem tombstone component`, () => {
     expect(component).toMatchSnapshot();
   });
 });
+
+describe(`ActivityItemSystemMessage create component`, () => {
+  const activity = {
+    id: `test-123-123-123-123`,
+    content: `Test Activity Content`,
+    name: `Test User`,
+    timestamp: `2016-09-20T19:52:57.186Z`,
+    verb: `create`
+  };
+
+  const component = renderer.create(
+    <ActivityItemSystemMessage
+      content={activity.content}
+      id={activity.id}
+      name={activity.name}
+      timestamp={activity.timestamp}
+      verb={activity.verb}
+    />
+  );
+
+  it(`renders properly`, () => {
+    expect(component).toMatchSnapshot();
+  });
+});
+
