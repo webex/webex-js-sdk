@@ -314,9 +314,7 @@ module.exports = function(grunt) {
         format: 'css'
       },
       src: [
-        './packages/<%= package %>/**/*.css',
-        '!./packages/<%= package %>/node_modules/**/*.css',
-        '!./packages/<%= package %>/dist/**/*.css'
+        './packages/<%= package %>/src/**/*.css'
       ]
     },
 

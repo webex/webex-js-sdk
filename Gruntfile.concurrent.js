@@ -104,9 +104,7 @@ module.exports = function gruntConfig(grunt) {
         format: 'css'
       },
       src: [
-        './packages/**/*.css',
-        '!./packages/**/node_modules/**/*.css',
-        '!./packages/**/dist/**/*.css'
+        './packages/*/src/**/*.css'
       ]
     },
 
