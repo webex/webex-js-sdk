@@ -38,5 +38,9 @@ export default {
   storage: {
     boundedAdapter: MemoryStoreAdapter,
     unboundedAdapter: MemoryStoreAdapter
+  },
+  payloadTransformer: {
+    predicates: [],
+    transforms: []
   }
 };

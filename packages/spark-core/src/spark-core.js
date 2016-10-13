@@ -6,9 +6,10 @@
 
 import {proxyEvents, retry, transferEvents} from '@ciscospark/common';
 import {HttpStatusInterceptor, defaults as requestDefaults} from '@ciscospark/http-core';
-import {defaults, get, isFunction, merge, omit} from 'lodash';
+import {defaults, get, isFunction, isString, last, merge, omit} from 'lodash';
 import AmpState from 'ampersand-state';
 import NetworkTimingInterceptor from './interceptors/network-timing';
+import PayloadTransformerInterceptor from './interceptors/payload-transformer';
 import RedirectInterceptor from './interceptors/redirect';
 import RequestLoggerInterceptor from './interceptors/request-logger';
 import RequestTimingInterceptor from './interceptors/request-timing';
@@ -34,8 +35,8 @@ const interceptors = {
   RequestTimingInterceptor: RequestTimingInterceptor.create,
   UrlInterceptor: undefined,
   AuthInterceptor: undefined,
+  PayloadTransformerInterceptor: PayloadTransformerInterceptor.create,
   ConversationInterceptor: undefined,
-  EncryptionInterceptor: undefined,
   RedirectInterceptor: RedirectInterceptor.create,
   HttpStatusInterceptor() {
     return HttpStatusInterceptor.create({
@@ -99,6 +100,63 @@ const SparkCore = AmpState.extend({
 
   refresh(...args) {
     return this.credentials.refresh(...args);
+  },
+
+  /**
+   * Applies the directionally appropriate transforms to the specified object
+   * @param {string} direction
+   * @param {Object} object
+   * @returns {Promise}
+   */
+  transform(direction, object) {
+    const predicates = this.config.payloadTransformer.predicates.filter((p) => !p.direction || p.direction === direction);
+    return Promise.all(predicates.map((p) => p.test(object)
+      .then((shouldTransform) => {
+        if (!shouldTransform) {
+          return object;
+        }
+        return p.extract(object)
+          // eslint-disable-next-line max-nested-callbacks
+          .then((target) => ({
+            name: p.name,
+            target
+          }));
+      })))
+      // eslint-disable-next-line arrow-body-style
+      .then((data) => {
+        // two rules to disable on the next line for readability reasons
+        // eslint-disable-next-line
+        return data.reduce((promise, {name, target}) => promise.then(() => {
+          return this.applyNamedTransform(direction, name, target);
+        }), Promise.resolve());
+      })
+      .then(() => object);
+  },
+
+  /**
+   * Applies the directionally appropriate transform to the specified parameters
+   * @param {string} direction
+   * @param {Object} ctx
+   * @param {string} name
+   * @returns {Promise}
+   */
+  applyNamedTransform(direction, ctx, name, ...rest) {
+    if (isString(ctx)) {
+      rest.unshift(name);
+      name = ctx;
+      ctx = {
+        spark: this,
+        transform: (...args) => this.applyNamedTransform(direction, ctx, ...args)
+      };
+    }
+
+    const transforms = ctx.spark.config.payloadTransformer.transforms.filter((tx) => tx.name === name && (!tx.direction || tx.direction === direction));
+    // too many implicit returns on the same line is difficult to interpret
+    // eslint-disable-next-line arrow-body-style
+    return transforms.reduce((promise, tx) => promise.then(() => {
+      return tx.fn(ctx, ...rest);
+    }), Promise.resolve())
+      .then(() => last(rest));
   },
 
   initialize() {
@@ -331,6 +389,14 @@ export function registerPlugin(name, constructor, options) {
 
     if (options.config) {
       merge(config, options.config);
+    }
+
+    if (options.predicates) {
+      config.payloadTransformer.predicates = config.payloadTransformer.predicates.concat(options.predicates);
+    }
+
+    if (options.transforms) {
+      config.payloadTransformer.transforms = config.payloadTransformer.transforms.concat(options.transforms);
     }
 
     makeSparkConstructor();
