@@ -7,9 +7,9 @@
   display: flex;
   overflow: initial;
   min-width: 300px;
-  padding-top:5px;
-  margin-top:40px;
-  position:relative;
+  padding-top: 5px;
+  margin-top: 40px;
+  position: relative;
   transition: transform 0.3s;
 }
 
@@ -19,14 +19,14 @@
 
 .content {
   max-width: 500px;
-  width:500px;
+  width: 500px;
   margin-left: 50px;
-  border-radius:1px;
+  border-radius: 1px;
 }
 
 .activity-text {
   transition: color 0.3s, margin-left 0.3s ease 0.5s;
-  width:100%;
+  width: 100%;
 }
 
 .avatar-wrapper {

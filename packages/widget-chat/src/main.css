@@ -1,36 +1,41 @@
 @font-face {
-  font-family: "CiscoSans TT Light";
+  font-family: 'CiscoSans TT Light';
   src: url("./fonts/CiscoSansLight.otf");
   src: local("CiscoSans TT Light"), url("./fonts/CiscoSansLight.otf"), url("./fonts/CiscoSansTTLight.ttf");
   font-weight: normal;
-  font-style: normal; }
+  font-style: normal;
+}
 
 @font-face {
   font-family: "CiscoSans TT Bold";
   src: url("./fonts/CiscoSansBold.otf");
   src: local("CiscoSans TT Bold"), url("./fonts/CiscoSansBold.otf"), url("./fonts/CiscoSansTTBold.ttf");
   font-weight: normal;
-  font-style: normal; }
+  font-style: normal;
+}
 
 @font-face {
   font-family: "CiscoSans TT Regular";
   src: url("./fonts/CiscoSansRegular.otf");
   src: local("CiscoSans TT Regular"), url("./fonts/CiscoSansRegular.otf"), url("./fonts/CiscoSansTTRegular.ttf");
   font-weight: normal;
-  font-style: normal; }
+  font-style: normal;
+}
 
 @font-face {
   font-family: "CiscoSans TT Extra Light";
   src: url("./fonts/CiscoSansExtraLight.otf");
   src: local("CiscoSans TT Extra Light"), url("./fonts/CiscoSansExtraLight.otf"), url("./fonts/CiscoSansTTExtraLight.ttf");
   font-weight: normal;
-  font-style: normal; }
+  font-style: normal;
+}
 
 @font-face {
   font-family: "CiscoSans TT Thin";
   src: url("./fonts/CiscoSansTTThin.ttf");
   font-weight: normal;
-  font-style: normal; }
+  font-style: normal;
+}
 
 html,
 body {

@@ -7,9 +7,9 @@
   display: flex;
   overflow: initial;
   min-width: 300px;
-  padding-top:5px;
-  margin-top:40px;
-  position:relative;
+  padding-top: 5px;
+  margin-top: 40px;
+  position: relative;
   transition: transform 0.3s;
 }
 
