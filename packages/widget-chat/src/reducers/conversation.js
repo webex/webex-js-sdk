@@ -1,5 +1,3 @@
-import {formatDate} from '../utils/date';
-
 import {
   CREATE_CONVERSATION,
   RECEIVE_CONVERSATION,
@@ -9,17 +7,6 @@ import {
 } from '../actions/conversation';
 
 const filteredActivities = [`delete`];
-
-function formatActivity(activity) {
-  return {
-    id: activity.id,
-    actorId: activity.actor.id,
-    content: activity.object.displayName,
-    name: activity.actor.displayName,
-    timestamp: formatDate(activity.published),
-    verb: activity.verb
-  };
-}
 
 function filterActivity(activity) {
   return filteredActivities.indexOf(activity.verb) === -1;
@@ -45,7 +32,7 @@ export default function conversation(state = {
   }
 
   case RECEIVE_CONVERSATION: {
-    const activities = action.conversation.activities.items.filter(filterActivity).map(formatActivity);
+    const activities = action.conversation.activities.items.filter(filterActivity);
 
     return Object.assign({}, state, {
       activities,
@@ -63,8 +50,6 @@ export default function conversation(state = {
       activities = state.activities.map((activity) => {
         if (activity.id === deletedId) {
           return Object.assign({}, activity, {
-            content: undefined,
-            timestamp: formatDate(action.activity.published),
             verb: `tombstone`
           });
         }
@@ -78,7 +63,7 @@ export default function conversation(state = {
 
   case RECEIVE_MERCURY_COMMENT: {
     const activities = state.activities;
-    const activity = formatActivity(action.activity);
+    const activity = action.activity;
     return Object.assign({}, state, {
       activities: [...activities, activity]
     });

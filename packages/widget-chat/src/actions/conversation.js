@@ -9,6 +9,15 @@ export function createConversation(userId) {
   };
 }
 
+export const DELETE_ACTIVITY_FROM_CONVERSATION = `DELETE_ACTIVITY_FROM_CONVERSATION`;
+export function deleteActivityFromConversation(conversation, activity) {
+  return {
+    type: DELETE_ACTIVITY_FROM_CONVERSATION,
+    conversation,
+    activity
+  };
+}
+
 export const RECEIVE_CONVERSATION = `RECEIVE_CONVERSATION`;
 export function receiveConversation(conversation) {
   return {
@@ -60,6 +69,15 @@ export function createConversationWithUser(userId, spark) {
       activitiesLimit: 30
     })
       .then((conversation) => dispatch(receiveConversation(conversation)));
+  };
+}
+
+export function deleteActivity(conversation, activity, spark) {
+  return (dispatch) => {
+    spark.conversation.delete(conversation, activity)
+      .then(() => {
+        dispatch(deleteActivityFromConversation(conversation, activity));
+      });
   };
 }
 

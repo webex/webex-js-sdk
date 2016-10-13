@@ -3,22 +3,26 @@ import classNames from 'classnames';
 import ActivityItem from '../activity-item';
 import injectScrollable from '../../containers/wrapper-scrollable';
 
+import {formatDate} from '../../utils/date';
+
 import styles from './styles.css';
 
 function ActivityList(props) {
   let lastActorId;
   const activities = props.activities
     .map((activity) => {
-      const additional = lastActorId === activity.actorId;
-      lastActorId = activity.actorId;
+      const additional = lastActorId === activity.actor.id;
+      lastActorId = activity.actor.id;
       return (
         <ActivityItem
-          content={activity.content}
+          content={activity.object.displayName}
+          id={activity.id}
           isAdditional={additional}
           isSelf={props.currentUserId === activity.actorId}
           key={activity.id}
-          name={activity.name}
-          timestamp={activity.timestamp}
+          name={activity.actor.displayName}
+          onActivityDelete={props.onActivityDelete}
+          timestamp={formatDate(activity.published)}
           verb={activity.verb}
         />
       );
@@ -33,7 +37,8 @@ function ActivityList(props) {
 
 ActivityList.propTypes = {
   activities: PropTypes.array,
-  currentUserId: PropTypes.string
+  currentUserId: PropTypes.string,
+  onActivityDelete: PropTypes.func.isRequired
 };
 
 export default injectScrollable(ActivityList);

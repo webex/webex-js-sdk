@@ -31,9 +31,11 @@ export default function ActivityItem(props) {
 ActivityItem.propTypes = {
   avatar: PropTypes.element,
   content: PropTypes.string,
+  id: PropTypes.string.isRequired,
   isAdditional: PropTypes.bool,
   isSelf: PropTypes.bool,
   name: PropTypes.string.isRequired,
+  onActivityDelete: PropTypes.func.isRequired,
   timestamp: PropTypes.string,
   verb: PropTypes.string.isRequired
 };
