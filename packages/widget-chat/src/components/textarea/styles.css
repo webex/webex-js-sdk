@@ -1,17 +1,17 @@
 .textarea {
-  font-size: 14px;
-  font-family: 'CiscoSansTTExtraLight', 'Helvetica Neue', Arial;
   display: block;
-  box-sizing: border-box;
-  background: transparent;
   width: 100%;
-  overflow: hidden;
-  resize: none;
+  max-height: 500px;
+  min-height: 59px;
   padding: 20px;
   margin: 0;
   margin-top: 15px;
-  min-height: 59px;
-  max-height: 500px;
-  outline: none;
+  overflow: hidden;
+  font-family: CiscoSansTTExtraLight, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  background: transparent;
   border: none;
+  outline: none;
+  box-sizing: border-box;
+  resize: none;
 }

@@ -5,14 +5,9 @@ import injectScrollable from '../../containers/wrapper-scrollable';
 
 import styles from './styles.css';
 
-const filteredVerbs = [`create`, `tombstone`, `delete`];
 
-function ActivityList(props) {
-  const filteredActivities = props.activities
-    .filter((activity) =>
-      filteredVerbs.indexOf(activity.verb) === -1
-    );
-  const activities = filteredActivities
+export default function ActivityList(props) {
+  const activities = props.activities
     .map((activity) =>
       <ActivityItem
         content={activity.content}

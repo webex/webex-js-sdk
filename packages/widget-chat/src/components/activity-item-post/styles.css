@@ -1,15 +1,15 @@
 .activity-item {
-  padding-left: 5px;
-  padding-right: 20px;
-  margin-left: 20px;
-  margin-right: 20px;
-  outline: none;
+  position: relative;
   display: flex;
-  overflow: initial;
   min-width: 300px;
-  padding-top:5px;
-  margin-top:40px;
-  position:relative;
+  padding-top: 5px;
+  padding-right: 20px;
+  padding-left: 5px;
+  margin-top: 40px;
+  margin-right: 20px;
+  margin-left: 20px;
+  overflow: initial;
+  outline: none;
   transition: transform 0.3s;
 }
 
@@ -18,21 +18,21 @@
 }
 
 .content {
+  width: 500px;
   max-width: 500px;
-  width:500px;
   margin-left: 50px;
-  border-radius:1px;
+  border-radius: 1px;
 }
 
 .activity-text {
+  width: 100%;
   transition: color 0.3s, margin-left 0.3s ease 0.5s;
-  width:100%;
 }
 
 .avatar-wrapper {
+  position: absolute;
   display: inline-block;
   flex: 0 0 auto;
-  position: absolute;
 }
 
 .pending .activity-text {
@@ -41,10 +41,10 @@
 }
 
 .failed .status {
-  color: rgb(218, 0, 0);
   font-size: 10px;
-  line-height: 14px;
-  cursor: pointer;
-  text-transform: uppercase;
   font-weight: bold;
+  line-height: 14px;
+  color: rgb(218, 0, 0);
+  text-transform: uppercase;
+  cursor: pointer;
 }

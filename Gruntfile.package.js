@@ -308,6 +308,16 @@ module.exports = function(grunt) {
       }
     },
 
+    stylelint: {
+      options: {
+        configFile: '.stylelintrc',
+        format: 'css'
+      },
+      src: [
+        './packages/<%= package %>/src/**/*.css'
+      ]
+    },
+
     watch: {
       serve: {
         files: [
@@ -330,6 +340,7 @@ module.exports = function(grunt) {
 
   registerTask('static-analysis', [
     'eslint',
+    'stylelint',
     'dependency-check'
   ]);
 

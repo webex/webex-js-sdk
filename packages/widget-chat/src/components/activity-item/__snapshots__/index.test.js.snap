@@ -1,4 +1,4 @@
-exports[`ActivityItem component renders properly 1`] = `
+exports[`ActivityItem post component renders properly 1`] = `
 <div
   className="activity-item">
   <div>
@@ -32,6 +32,16 @@ exports[`ActivityItem component renders properly 1`] = `
         Test Activity Content
       </div>
     </div>
+  </div>
+</div>
+`;
+
+exports[`ActivityItem tombstone component renders properly 1`] = `
+<div
+  className="activity-item">
+  <div
+    className="system-message">
+    Test User deleted message. 2016-09-20T19:52:57.186Z
   </div>
 </div>
 `;

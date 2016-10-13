@@ -4,10 +4,11 @@ import {
   CREATE_CONVERSATION,
   RECEIVE_CONVERSATION,
   RECEIVE_MERCURY_ACTIVITY,
-  UPDATE_MERCURY_STATE,
-  UPDATE_SHOULD_SCROLL
+  RECEIVE_MERCURY_COMMENT,
+  UPDATE_MERCURY_STATE
 } from '../actions/conversation';
 
+const filteredActivities = [`delete`];
 
 function formatActivity(activity) {
   return {
@@ -20,6 +21,10 @@ function formatActivity(activity) {
   };
 }
 
+function filterActivity(activity) {
+  return filteredActivities.indexOf(activity.verb) === -1;
+}
+
 
 export default function conversation(state = {
   activities: [],
@@ -27,7 +32,6 @@ export default function conversation(state = {
   participants: [],
   isFetching: false,
   isLoaded: false,
-  shouldScroll: true,
   mercuryState: {
     isListening: false
   }
@@ -41,7 +45,7 @@ export default function conversation(state = {
   }
 
   case RECEIVE_CONVERSATION: {
-    const activities = action.conversation.activities.items.map(formatActivity);
+    const activities = action.conversation.activities.items.filter(filterActivity).map(formatActivity);
 
     return Object.assign({}, state, {
       activities,
@@ -51,8 +55,28 @@ export default function conversation(state = {
       participants: action.conversation.participants.items
     });
   }
-
   case RECEIVE_MERCURY_ACTIVITY: {
+    let activities = state.activities;
+    if (action.activity.verb === `delete`) {
+      // Find activity that is being deleted and change it to a tombstone
+      const deletedId = action.activity.object.id;
+      activities = state.activities.map((activity) => {
+        if (activity.id === deletedId) {
+          return Object.assign({}, activity, {
+            content: undefined,
+            timestamp: formatDate(action.activity.published),
+            verb: `tombstone`
+          });
+        }
+        return activity;
+      });
+    }
+    return Object.assign({}, state, {
+      activities: [...activities]
+    });
+  }
+
+  case RECEIVE_MERCURY_COMMENT: {
     const activities = state.activities;
     const activity = formatActivity(action.activity);
     return Object.assign({}, state, {
@@ -63,12 +87,6 @@ export default function conversation(state = {
   case UPDATE_MERCURY_STATE: {
     return Object.assign({}, state, {
       mercuryState: action.mercuryState
-    });
-  }
-
-  case UPDATE_SHOULD_SCROLL: {
-    return Object.assign({}, state, {
-      shouldScroll: action.shouldScroll
     });
   }
 
