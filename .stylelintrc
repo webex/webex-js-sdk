@@ -23,7 +23,7 @@
     "font-weight-notation": "named-where-possible",
     "no-browser-hacks": true,
     "property-no-unknown": [ true, {
-      "ignore": ["composes"]
+      "ignoreProperties": ["composes"]
     }],
     "declaration-block-properties-order": [
       "composes"
