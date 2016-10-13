@@ -13,13 +13,7 @@ describe(`ActivityItem post component`, () => {
   };
 
   const component = renderer.create(
-    <ActivityItem
-      content={activity.content}
-      id={activity.id}
-      name={activity.name}
-      timestamp={activity.timestamp}
-      verb={activity.verb}
-    />
+    <ActivityItem {...activity} />
   );
 
   it(`renders properly`, () => {
@@ -37,13 +31,7 @@ describe(`ActivityItem tombstone component`, () => {
   };
 
   const component = renderer.create(
-    <ActivityItem
-      content={activity.content}
-      id={activity.id}
-      name={activity.name}
-      timestamp={activity.timestamp}
-      verb={activity.verb}
-    />
+    <ActivityItem {...activity} />
   );
 
   it(`renders properly`, () => {
