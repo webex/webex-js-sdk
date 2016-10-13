@@ -14,6 +14,14 @@ export function receiveConversation(conversation) {
   };
 }
 
+export const RECEIVE_MERCURY_COMMENT = `RECEIVE_MERCURY_COMMENT`;
+export function receiveMercuryComment(activity) {
+  return {
+    type: RECEIVE_MERCURY_COMMENT,
+    activity
+  };
+}
+
 export const RECEIVE_MERCURY_ACTIVITY = `RECEIVE_MERCURY_ACTIVITY`;
 export function receiveMercuryActivity(activity) {
   return {
@@ -57,8 +65,15 @@ export function listenToMercuryActivity(conversationId, spark) {
     dispatch(updateMercuryState({isListening: true}));
     spark.mercury.on(`event:conversation.activity`, (event) => {
       const activity = event.data.activity;
-      if (activity.object.objectType === `comment` && activity.target.id === conversationId) {
-        dispatch(receiveMercuryActivity(activity));
+      const isChatMessage = activity.verb === `post` && activity.object.objectType === `comment` && activity.target.objectType === `conversation`;
+      // Ignore activity from other conversations
+      if (activity.target.id === conversationId) {
+        if (isChatMessage) {
+          dispatch(receiveMercuryComment(activity));
+        }
+        else if (activity.object.objectType === `activity`) {
+          dispatch(receiveMercuryActivity(activity));
+        }
       }
     });
   };
