@@ -14,6 +14,7 @@ function formatActivity(activity) {
     id: activity.id,
     content: activity.object.displayName,
     name: activity.actor.displayName,
+    actorId: activity.actor.id,
     timestamp: formatDate(activity.published),
     verb: activity.verb
   };

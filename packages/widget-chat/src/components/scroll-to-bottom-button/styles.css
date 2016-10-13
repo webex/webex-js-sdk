@@ -29,3 +29,12 @@
   width: 19px;
   color: #fff;
 }
+
+.hidden {
+  display: none;
+}
+
+.with-text {
+  background-color: #049fd9;
+  color: #fff
+}

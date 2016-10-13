@@ -1,8 +1,18 @@
-import {applyMiddleware, combineReducers, compose, createStore} from 'redux';
+import {
+  applyMiddleware,
+  combineReducers,
+  compose,
+  createStore
+} from 'redux';
 
 import thunk from 'redux-thunk';
 import createLogger from 'redux-logger';
-import {user, conversation, message} from './reducers';
+import {
+  user,
+  conversation,
+  message,
+  widget
+} from './reducers';
 import sparkReducer from './modules/redux-spark/reducers';
 
 const devtools = window.devToolsExtension || (() => (noop) => noop);
@@ -25,6 +35,7 @@ export default createStore(
     user,
     conversation,
     message,
+    widget,
     spark: sparkReducer
   }),
   compose(...enhancers)

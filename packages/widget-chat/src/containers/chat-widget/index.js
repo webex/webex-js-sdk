@@ -8,9 +8,11 @@ import ConnectionStatus from '../../components/connection-status';
 import {fetchCurrentUser} from '../../actions/user';
 import {
   createConversationWithUser,
-  listenToMercuryActivity,
-  updateShouldScroll
+  listenToMercuryActivity
 } from '../../actions/conversation';
+import {
+    showScrollToBottomButton
+} from '../../actions/widget';
 import TitleBar from '../../components/title-bar';
 import ActivityList from '../../components/activity-list';
 import ScrollToBottomButton from '../../components/scroll-to-bottom-button';
@@ -58,8 +60,7 @@ export class ChatWidget extends Component {
       nextProps.listenToMercuryActivity(conversation.id, spark);
     }
 
-    // check if new activity is users position
-    // check if already at the bottom
+
   }
 
   shouldComponentUpdate(nextProps) {
@@ -78,17 +79,11 @@ export class ChatWidget extends Component {
       // If new activity comes in
       if (lastActivityFromPrev && lastActivityFromThis && props.conversation.activities.length !== prevProps.conversation.activities.length && lastActivityFromPrev.id !== lastActivityFromThis.id) {
         // Scroll if from ourselves
-        if (props.user.id === lastActivityFromThis.actor.id) {
+        if (props.user.currentUser.id === lastActivityFromThis.actorId) {
           activityList.scrollToBottom();
         }
-        else {
-          // Scroll if already at the bottom
-          if (activityList.isScrolledToBottom()) {
-            activityList.scrollToBottom();
-          }
-          else {
-            // Show new activity message
-          }
+        else if (activityList.isScrolledToBottom()) {
+          activityList.scrollToBottom();
         }
       }
       else if (prevProps.conversation.activities.length === 0) {
@@ -119,7 +114,9 @@ export class ChatWidget extends Component {
 
   handleScroll() {
     _.debounce(() => {
-      console.log(this);
+      if (!this.activityList.isScrolledToBottom()) {
+        this.props.showScrollToBottomButton();
+      }
     }, 150, {
       leading: true,
       trailing: true
@@ -149,6 +146,11 @@ export class ChatWidget extends Component {
         participants
       } = conversation;
 
+      let scrollButton;
+      if (props.widget.showScrollToBottomButton) {
+        scrollButton = <ScrollToBottomButton />;
+      }
+
       if (isLoaded) {
         const user = this.getUserFromConversation(conversation);
         const {displayName} = user;
@@ -167,6 +169,7 @@ export class ChatWidget extends Component {
                 participants={participants}
                 ref={this.getActivityList}
               />
+            {scrollButton}
             </div>
             <div className={classNames(`message-composer-wrapper`, styles.messageComposerWrapper)}>
               <MessageComposer conversation={conversation} placeholder={messagePlaceholder} spark={spark} />
@@ -187,8 +190,8 @@ ChatWidget.propTypes = {
   createConversationWithUser: PropTypes.func.isRequired,
   fetchCurrentUser: PropTypes.func.isRequired,
   listenToMercuryActivity: PropTypes.func.isRequired,
+  showScrollToBottomButton: PropTypes.func.isRequired,
   spark: PropTypes.object.isRequired,
-  updateShouldScroll: PropTypes.func.isRequired,
   userId: PropTypes.string.isRequired
 };
 
@@ -197,7 +200,8 @@ function mapStateToProps(state, ownProps) {
     spark: ownProps.spark,
     sparkState: state.spark,
     user: state.user,
-    conversation: state.conversation
+    conversation: state.conversation,
+    widget: state.widget
   };
 }
 
@@ -207,6 +211,6 @@ export default connect(
     createConversationWithUser,
     fetchCurrentUser,
     listenToMercuryActivity,
-    updateShouldScroll
+    showScrollToBottomButton
   }, dispatch)
 )(injectSpark(ChatWidget));
