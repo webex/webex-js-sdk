@@ -1,3 +1,6 @@
+import {updateHasNewMessage} from './widget.js';
+
+
 export const CREATE_CONVERSATION = `CREATE_CONVERSATION`;
 export function createConversation(userId) {
   return {
@@ -69,6 +72,7 @@ export function listenToMercuryActivity(conversationId, spark) {
       // Ignore activity from other conversations
       if (activity.target.id === conversationId) {
         if (isChatMessage) {
+          dispatch(updateHasNewMessage(true));
           dispatch(receiveMercuryComment(activity));
         }
         else if (activity.object.objectType === `activity`) {

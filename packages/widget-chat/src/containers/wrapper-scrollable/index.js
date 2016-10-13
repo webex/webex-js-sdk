@@ -38,7 +38,7 @@ export default function injectScrollable(WrappedComponent) {
 
     render() {
       return (
-        <div className={styles.scrollable} onScroll={this.props.handleScroll} ref={this.getNode}>
+        <div className={styles.scrollable} onScroll={this.props.onScroll} ref={this.getNode}>
           <WrappedComponent {...this.props} />
         </div>
       );
@@ -46,7 +46,7 @@ export default function injectScrollable(WrappedComponent) {
   }
 
   ScrollableComponent.propTypes = {
-    handleScroll: PropTypes.func
+    onScroll: PropTypes.func
   };
 
   ScrollableComponent.displayName = `ScrollableComponent(${getDisplayName(WrappedComponent)})`;

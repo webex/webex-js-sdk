@@ -22,8 +22,12 @@
     "selector-no-universal": true,
     "font-weight-notation": "named-where-possible",
     "no-browser-hacks": true,
+    "property-no-unknown": [ true, {
+      "ignore": ["composes"]
+    }],
     "declaration-block-properties-order": [
-      "position"
+      "composes"
+    , "position"
     , "top"
     , "right"
     , "bottom"

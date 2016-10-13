@@ -6,10 +6,18 @@ export function updateWidgetState(state) {
   };
 }
 
-export function showScrollToBottomButton() {
+export function showScrollToBottomButton(isVisible) {
   return (dispatch) => {
     dispatch(updateWidgetState({
-      showScrollToBottomButton: true
+      showScrollToBottomButton: isVisible
+    }));
+  };
+}
+
+export function updateHasNewMessage(hasNew) {
+  return (dispatch) => {
+    dispatch(updateWidgetState({
+      hasNewMessage: hasNew
     }));
   };
 }

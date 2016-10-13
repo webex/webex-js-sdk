@@ -11,7 +11,8 @@ import {
   listenToMercuryActivity
 } from '../../actions/conversation';
 import {
-    showScrollToBottomButton
+  updateHasNewMessage,
+  showScrollToBottomButton
 } from '../../actions/widget';
 import TitleBar from '../../components/title-bar';
 import ActivityList from '../../components/activity-list';
@@ -30,7 +31,8 @@ export class ChatWidget extends Component {
   constructor(props) {
     super(props);
     this.getActivityList = this.getActivityList.bind(this);
-    this.handleScroll = this.handleScroll.bind(this);
+    this.handleScrollToBottom = this.handleScrollToBottom.bind(this);
+    this.handleScroll = _.debounce(this.handleScroll.bind(this), 150);
   }
 
   componentWillReceiveProps(nextProps) {
@@ -60,12 +62,11 @@ export class ChatWidget extends Component {
       nextProps.listenToMercuryActivity(conversation.id, spark);
     }
 
-
   }
 
   shouldComponentUpdate(nextProps) {
     const props = this.props;
-    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation.activities !== props.conversation.activities;
+    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation.activities !== props.conversation.activities || nextProps.widget !== props.widget;
   }
 
   componentDidUpdate(prevProps) {
@@ -113,14 +114,19 @@ export class ChatWidget extends Component {
   }
 
   handleScroll() {
-    _.debounce(() => {
-      if (!this.activityList.isScrolledToBottom()) {
-        this.props.showScrollToBottomButton();
-      }
-    }, 150, {
-      leading: true,
-      trailing: true
-    });
+    const props = this.props;
+    if (this.activityList.isScrolledToBottom()) {
+      props.showScrollToBottomButton(false);
+      props.updateHasNewMessage(false);
+    }
+    else {
+      props.showScrollToBottomButton(true);
+    }
+
+  }
+
+  handleScrollToBottom() {
+    this.activityList.scrollToBottom();
   }
 
   /**
@@ -133,7 +139,8 @@ export class ChatWidget extends Component {
     const {
       conversation,
       spark,
-      sparkState
+      sparkState,
+      widget
     } = props;
 
     let main = <div className="loading">Connecting...</div>;
@@ -148,7 +155,8 @@ export class ChatWidget extends Component {
 
       let scrollButton;
       if (props.widget.showScrollToBottomButton) {
-        scrollButton = <ScrollToBottomButton />;
+        const label = widget.hasNewMessage ? `New Messages` : null;
+        scrollButton = <ScrollToBottomButton label={label} onClick={this.handleScrollToBottom} />;
       }
 
       if (isLoaded) {
@@ -192,6 +200,7 @@ ChatWidget.propTypes = {
   listenToMercuryActivity: PropTypes.func.isRequired,
   showScrollToBottomButton: PropTypes.func.isRequired,
   spark: PropTypes.object.isRequired,
+  updateHasNewMessage: PropTypes.func.isRequired,
   userId: PropTypes.string.isRequired
 };
 
@@ -211,6 +220,7 @@ export default connect(
     createConversationWithUser,
     fetchCurrentUser,
     listenToMercuryActivity,
-    showScrollToBottomButton
+    showScrollToBottomButton,
+    updateHasNewMessage
   }, dispatch)
 )(injectSpark(ChatWidget));

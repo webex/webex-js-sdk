@@ -6,7 +6,7 @@ import injectScrollable from '../../containers/wrapper-scrollable';
 import styles from './styles.css';
 
 
-export default function ActivityList(props) {
+function ActivityList(props) {
   const activities = props.activities
     .map((activity) =>
       <ActivityItem

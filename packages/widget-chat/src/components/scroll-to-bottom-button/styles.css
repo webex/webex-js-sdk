@@ -1,11 +1,11 @@
 .container {
-  opacity: 0.5;
   position: absolute;
+  bottom: 10px;
   left: 50%;
   margin-left: -15px;
   cursor: pointer;
-  bottom: 10px;
-  transition: opacity 0.5s ease-in;
+  opacity: 0.5;
+  transition: all 0.5s ease-in;
 }
 
 .container:hover {
@@ -13,21 +13,21 @@
 }
 
 .button {
-  composes: button from "../../styles/buttons.css";
+  composes: button from '../../styles/buttons.css';
   width: 30px;
   height: 30px;
-  border-radius: 50%;
   padding: 0;
+  border-radius: 50%;
 }
 
 .icon {
-  composes: icon-cisco-right-arrow from "../../styles/icons.css";
-  transform: rotate(90deg);
+  composes: icon-cisco-right-arrow from '../../styles/icons.css';
   display: block;
-  font-size: 17px;
-  height: 29px;
   width: 19px;
+  height: 29px;
+  font-size: 17px;
   color: #fff;
+  transform: rotate(90deg);
 }
 
 .hidden {
@@ -35,6 +35,6 @@
 }
 
 .with-text {
+  color: #fff;
   background-color: #049fd9;
-  color: #fff
 }

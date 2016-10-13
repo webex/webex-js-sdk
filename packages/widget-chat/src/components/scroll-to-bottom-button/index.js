@@ -6,16 +6,14 @@ import styles from './styles.css';
 export default function ScrollToBottomButton(props) {
   const {
     onClick,
-    isHidden,
-    text
+    label
   } = props;
 
-  const hiddenStyle = isHidden ? styles.hidden : ``;
-  const buttonStyle = text ? styles.withText : ``;
+  const buttonStyle = label ? styles.withText : ``;
   return (
-    <div className={classNames(`scroll-to-bottom-container`, styles.container, hiddenStyle)} onClick={onClick} >
+    <div className={classNames(`scroll-to-bottom-container`, styles.container)} onClick={onClick} >
       <button className={classNames(`scroll-to-bottom-button`, styles.button, buttonStyle)}>
-        <span className={classNames(`scroll-to-bottom-text`, styles.text)}>{text}</span>
+        <span className={classNames(`scroll-to-bottom-label`, styles.text)}>{label}</span>
         <span className={classNames(`scroll-to-bottom-icon`, styles.icon)} />
       </button>
     </div>
@@ -23,7 +21,6 @@ export default function ScrollToBottomButton(props) {
 }
 
 ScrollToBottomButton.propTypes = {
-  isHidden: PropTypes.bool,
-  onClick: PropTypes.func,
-  text: PropTypes.string
+  label: PropTypes.string,
+  onClick: PropTypes.func
 };
