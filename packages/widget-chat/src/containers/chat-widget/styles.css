@@ -1,26 +1,22 @@
 .widget-chat {
-  border: 1px solid #ccc;
-  font-family: 'CiscoSansTTExtraLight', 'Helvetica Neue', Arial;
+  font-family: CiscoSansTTExtraLight, 'Helvetica Neue', Arial, sans-serif;
   font-size: 16px;
   font-weight: 200;
+  border: 1px solid #ccc;
 }
 
 .widget-chat,
 .widget-chat-inner {
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  flex: 1 1 auto;
   height: 100%;
+  overflow: hidden;
+  flex-direction: column;
+  flex: 1 1 auto;
 }
 
 .activity-list-wrapper {
-  flex: 1;
   display: flex;
-  height: 100%;
   width: 100%;
-}
-
-.message-composer-wrapper {
-
+  height: 100%;
+  flex: 1;
 }

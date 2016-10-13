@@ -1,44 +1,49 @@
 @font-face {
-  font-family: "CiscoSans TT Light";
-  src: url("./fonts/CiscoSansLight.otf");
-  src: local("CiscoSans TT Light"), url("./fonts/CiscoSansLight.otf"), url("./fonts/CiscoSansTTLight.ttf");
+  font-family: 'CiscoSans TT Light';
+  font-style: normal;
   font-weight: normal;
-  font-style: normal; }
+  src: url('./fonts/CiscoSansLight.otf');
+  src: local('CiscoSans TT Light'), url('./fonts/CiscoSansLight.otf'), url('./fonts/CiscoSansTTLight.ttf');
+}
 
 @font-face {
-  font-family: "CiscoSans TT Bold";
-  src: url("./fonts/CiscoSansBold.otf");
-  src: local("CiscoSans TT Bold"), url("./fonts/CiscoSansBold.otf"), url("./fonts/CiscoSansTTBold.ttf");
+  font-family: 'CiscoSans TT Bold';
+  font-style: normal;
   font-weight: normal;
-  font-style: normal; }
+  src: url('./fonts/CiscoSansBold.otf');
+  src: local('CiscoSans TT Bold'), url('./fonts/CiscoSansBold.otf'), url('./fonts/CiscoSansTTBold.ttf');
+}
 
 @font-face {
-  font-family: "CiscoSans TT Regular";
-  src: url("./fonts/CiscoSansRegular.otf");
-  src: local("CiscoSans TT Regular"), url("./fonts/CiscoSansRegular.otf"), url("./fonts/CiscoSansTTRegular.ttf");
+  font-family: 'CiscoSans TT Regular';
+  font-style: normal;
   font-weight: normal;
-  font-style: normal; }
+  src: url('./fonts/CiscoSansRegular.otf');
+  src: local('CiscoSans TT Regular'), url('./fonts/CiscoSansRegular.otf'), url('./fonts/CiscoSansTTRegular.ttf');
+}
 
 @font-face {
-  font-family: "CiscoSans TT Extra Light";
-  src: url("./fonts/CiscoSansExtraLight.otf");
-  src: local("CiscoSans TT Extra Light"), url("./fonts/CiscoSansExtraLight.otf"), url("./fonts/CiscoSansTTExtraLight.ttf");
+  font-family: 'CiscoSans TT Extra Light';
+  font-style: normal;
   font-weight: normal;
-  font-style: normal; }
+  src: url('./fonts/CiscoSansExtraLight.otf');
+  src: local('CiscoSans TT Extra Light'), url('./fonts/CiscoSansExtraLight.otf'), url('./fonts/CiscoSansTTExtraLight.ttf');
+}
 
 @font-face {
-  font-family: "CiscoSans TT Thin";
-  src: url("./fonts/CiscoSansTTThin.ttf");
+  font-family: 'CiscoSans TT Thin';
+  font-style: normal;
   font-weight: normal;
-  font-style: normal; }
+  src: url('./fonts/CiscoSansTTThin.ttf');
+}
 
 html,
 body {
   width: 100%;
   height: 100%;
-  overflow: hidden;
-  margin: 0;
   padding: 0;
+  margin: 0;
+  overflow: hidden;
   border: 0;
 }
 
@@ -46,16 +51,16 @@ main,
 main > div,
 main > div > div {
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  height: 100%;
   width: 100%;
+  height: 100%;
+  overflow: hidden;
+  flex-direction: column;
 }
 
 .widget-wrapper {
   width: 500px;
   height: 500px;
-  overflow: hidden;
   margin: 10% auto;
+  overflow: hidden;
   border: 1px solid #333;
 }
