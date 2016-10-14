@@ -7,7 +7,6 @@
 import AvatarUrlBatcher from './avatar-url-batcher';
 import AvatarUrlStore from './avatar-url-store';
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {User} from '@ciscospark/plugin-user';
 import {defaults} from 'lodash';
 
 const Avatar = SparkPlugin.extend({
@@ -37,20 +36,14 @@ const Avatar = SparkPlugin.extend({
    */
   _fetchAvatarUrl(uuid, options) {
     return this.store.get(uuid, options.size)
-      .catch(() => this.batcher.request(Object.assign({}, {uuid, size: options.size}))
-        .then((item) => this.store.add(defaults(item,
-                                                {cacheControl: options.cacheControl}))
-        )
-      );
+      .catch(() =>
+        this.batcher.request(Object.assign({}, {uuid, size: options.size}))
+          .then((item) =>
+            this.store.add(defaults(item, {cacheControl: options.cacheControl}))));
   },
 
   /**
    * Retrieves an Avatar from a cache or the api on misses.
-   *
-   * Avatars are square images with sides of 1600, 640, 192, 135, 110, 80, 50,
-   * or 40 pixels. If no size is specified, 80px will be retrieved. If a
-   * non-standard size is requested, the server will return the closest-but-
-   * greater size (or 1600 if request is larger).
    *
    * @param {UserObject|string} user The user, Spark user uuid, or email
    * @param {Object} [options]
@@ -59,15 +52,19 @@ const Avatar = SparkPlugin.extend({
    * @returns {Promise<string>} A promise that resolves to the avatar
    */
   retrieveAvatarUrl(user, options) {
-    /* eslint complexity: [0] */
+    if (!user) {
+      return Promise.reject(new Error(`\`user\` is required parameter`));
+    }
+
     options = defaults(options, {size: this.config.defaultAvatarSize,
                                  cacheControl: this.config.cacheExpiration});
 
-    return User.asUUID(user)
-      .then((uuid) => this._fetchAvatarUrl(uuid, options).url)
-      // eslint-disable-next-line no-unused-vars
+    return this.spark.user.asUUID(user)
+      .then((uuid) =>
+        this._fetchAvatarUrl(uuid, options)
+          .then((res) => res.url))
       .catch((reason) => {
-        throw new Error(`failed to retrieve avatar url: $(reason.body || reason)`);
+        throw new Error(`failed to retrieve avatar url: ${reason.body || reason}`);
       });
   },
 

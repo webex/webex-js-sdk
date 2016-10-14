@@ -46,7 +46,7 @@ export default class AvatarUrlStore {
       return Promise.reject(new Error(`\`item.uuid\` does not appear to be a uuid`));
     }
 
-    const ret = urlByUuid.get(this).get(`$(item.uuid) - $(item.size)`);
+    const ret = urlByUuid.get(this).get(`${item.uuid} - ${item.size}`);
     if (ret) {
       return Promise.resolve(ret.url);
     }
@@ -67,25 +67,25 @@ export default class AvatarUrlStore {
       return Promise.reject(new Error(`\`item\` is required`));
     }
     if (!item.uuid) {
-      return Promise.reject(new Error(`\`uuid\` is required`));
+      return Promise.reject(new Error(`\`item.uuid\` is required`));
     }
     if (!item.size) {
-      return Promise.reject(new Error(`\`size\` is required`));
+      return Promise.reject(new Error(`\`item.size\` is required`));
     }
     if (!patterns.uuid.test(item.uuid)) {
-      return Promise.reject(new Error(`\`uuid\` does not appear to be a uuid`));
+      return Promise.reject(new Error(`\`item.uuid\` does not appear to be a uuid`));
     }
     if (!item.url) {
-      return Promise.reject(new Error(`\`url\` is required`));
+      return Promise.reject(new Error(`\`item.url\` is required`));
     }
     if (!item.cacheControl) {
-      return Promise.reject(new Error(`\`cacheControl\` is required`));
+      return Promise.reject(new Error(`\`item.cacheControl\` is required`));
     }
 
     // use item suggested cache TTL or configed default if missing
-    setTimeout(this.remove.bind(this, item), item.cacheControl);
-    urlByUuid.get(this).set(`$(item.uuid) - $(item.size)`, item);
-    return Promise.resolve(item.url);
+    setTimeout(this.remove.bind(this, item), item.cacheControl * 1000);
+    urlByUuid.get(this).set(`${item.uuid} - ${item.size}`, item);
+    return Promise.resolve(item);
   }
 
   /**
@@ -100,7 +100,7 @@ export default class AvatarUrlStore {
   remove(item) {
     /* eslint no-extra-parens: [0] */
     const sizes = (item.size && [item.size]) || [40, 50, 80, 110, 135, 192, 640, 1600];
-    sizes.forEach((one) => {urlByUuid.get(this).delete(this._toKey(Object.assign({item}, {size: one})));});
+    sizes.forEach((one) => urlByUuid.get(this).delete(`${item.uuid} - ${one}`));
     return true;
   }
 }
