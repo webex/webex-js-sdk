@@ -5,8 +5,6 @@
 import {assert} from '@ciscospark/test-helper-chai';
 import Avatar from '../../';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
-import sinon from '@ciscospark/test-helper-sinon';
-
 
 describe(`Services`, () => {
   describe(`Avatar`, () => {
@@ -20,14 +18,57 @@ describe(`Services`, () => {
             avatar: Avatar
           }
         });
-        console.warn('spark: <' + JSON.stringify(spark) + '>');
         batcher = spark.avatar.batcher;
       });
 
-      describe(`#fingerprintRequest(item)`, () => {
-        it(`returns 'uuid - size'`, () => {
-          return batcher.fingerprintRequest({uuid: `uuid1`, size: 80})
-            .then((res) => assert.equal(res, `uuid1 - 80`));
+      describe(`#fingerprints`, () => {
+        it(`fingerprintRequest returns 'uuid-size'`, () =>
+          assert.becomes(batcher.fingerprintRequest({uuid: `uuid1`, size: 80}), `uuid1-80`));
+        it(`fingerprintResponse returns 'uuid-size'`, () =>
+          assert.becomes(batcher.fingerprintRequest({uuid: `uuid1`, size: 80}), `uuid1-80`));
+      });
+      describe(`#submitHttpRequest`, () => {
+        const mockRequest = {
+          method: `POST`,
+          api: `avatar`,
+          resource: `profiles/urls`,
+          body: `foo`
+        };
+
+        it(`calls spark.request with expected params`, () => {
+          spark.request = function(options) {
+            return Promise.resolve(options);
+          };
+          // spark.requestPromise = Promise.resolve(mockRequest);
+          return batcher.submitHttpRequest(mockRequest.body)
+            .then((req) => assert.deepEqual(req, mockRequest));
+        });
+      });
+
+      describe(`#didItemFail`, () => {
+        let warn;
+        let loggerWarned;
+        beforeEach(() => {
+          warn = batcher.logger.warn;
+          loggerWarned = false;
+          batcher.logger.warn = function(msg) {
+            loggerWarned = (msg === `Avatar: substituted size "256" for "80"`);
+          };
+        });
+        afterEach(() => {
+          batcher.logger.warn = warn;
+        });
+        it(`returns false if no response in item`, () => {
+          return batcher.didItemFail({})
+            .then((res) => assert.isTrue(!res && !loggerWarned));
+        });
+        it(`returns true, warns reqested size does not equal response size`, () => {
+          return batcher.didItemFail({size: 80, response: {size: 256}})
+            .then((res) => assert.isTrue(res && loggerWarned));
+        });
+        it(`returns true no warning`, () => {
+          return batcher.didItemFail({size: 80, response: {size: 80}})
+            .then((res) => assert.isTrue(res && !loggerWarned));
         });
       });
     });
