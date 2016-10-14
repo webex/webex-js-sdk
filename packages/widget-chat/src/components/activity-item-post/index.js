@@ -35,4 +35,3 @@ ActivityItemPost.propTypes = {
   name: PropTypes.string.isRequired,
   timestamp: PropTypes.string
 };
-

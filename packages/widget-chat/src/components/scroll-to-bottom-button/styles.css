@@ -3,6 +3,9 @@
   bottom: 10px;
   left: 50%;
   margin-left: -15px;
+  font-size: 17px;
+  text-align: center;
+  white-space: nowrap;
   cursor: pointer;
   opacity: 0.5;
   transition: all 0.5s ease-in;
@@ -14,17 +17,17 @@
 
 .button {
   composes: button from '../../styles/buttons.css';
-  width: 30px;
   height: 30px;
+  min-width: 30px;
   padding: 0;
-  border-radius: 50%;
+  border-radius: 15px;
 }
 
 .icon {
   composes: icon-cisco-right-arrow from '../../styles/icons.css';
-  display: block;
-  width: 19px;
-  height: 29px;
+  display: inline-block;
+  width: 12px;
+  height: 17px;
   font-size: 17px;
   color: #fff;
   transform: rotate(90deg);
@@ -35,6 +38,22 @@
 }
 
 .with-text {
+  opacity: 1;
+  transition: opacity 0.5s ease-in-out, width 0.5s ease-in-out, margin-left 0.5s ease-in-out;
+}
+
+.with-text .button {
+  padding: 0 30px;
   color: #fff;
   background-color: #049fd9;
+}
+
+.label {
+  padding: 0 10px 0 0;
+  font-size: 17px;
+  text-transform: uppercase;
+}
+
+.with-text .icon {
+  font-size: 15px;
 }

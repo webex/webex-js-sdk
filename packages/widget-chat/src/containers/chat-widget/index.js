@@ -119,7 +119,7 @@ export class ChatWidget extends Component {
       props.showScrollToBottomButton(false);
       props.updateHasNewMessage(false);
     }
-    else {
+    else if (!props.widget.showScrollToBottomButton) {
       props.showScrollToBottomButton(true);
     }
 

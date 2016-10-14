@@ -9,11 +9,17 @@ export default function ScrollToBottomButton(props) {
     label
   } = props;
 
-  const buttonStyle = label ? styles.withText : ``;
+  let containerStyle, labelSpan;
+
+  if (label) {
+    labelSpan = <span className={classNames(`scroll-to-bottom-label`, styles.label)}>{label}</span>;
+    containerStyle = styles.withText;
+  }
+
   return (
-    <div className={classNames(`scroll-to-bottom-container`, styles.container)} onClick={onClick} >
-      <button className={classNames(`scroll-to-bottom-button`, styles.button, buttonStyle)}>
-        <span className={classNames(`scroll-to-bottom-label`, styles.text)}>{label}</span>
+    <div className={classNames(`scroll-to-bottom-container`, styles.container, containerStyle)} onClick={onClick} >
+      <button className={classNames(`scroll-to-bottom-button`, styles.button)}>
+        {labelSpan}
         <span className={classNames(`scroll-to-bottom-icon`, styles.icon)} />
       </button>
     </div>
