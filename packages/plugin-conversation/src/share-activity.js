@@ -9,7 +9,7 @@ import {detect} from '@ciscospark/http-core';
 import {SparkPlugin} from '@ciscospark/spark-core';
 import {filter, map} from 'lodash';
 import {EventEmitter} from 'events';
-import mime from 'mime';
+import mime from 'mime-types';
 
 const EMITTER_SYMBOL = Symbol(`EMITTER_SYMBOL`);
 const PROMISE_SYMBOL = Symbol(`PROMISE_SYMBOL`);
