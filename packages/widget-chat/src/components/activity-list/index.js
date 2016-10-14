@@ -3,9 +3,6 @@ import classNames from 'classnames';
 import ActivityItem from '../activity-item';
 import injectScrollable from '../../containers/wrapper-scrollable';
 
-import styles from './styles.css';
-
-
 function ActivityList(props) {
   const activities = props.activities
     .map((activity) =>
@@ -19,7 +16,7 @@ function ActivityList(props) {
     );
 
   return (
-    <div className={classNames(`activity-list`, styles.activityList)}>
+    <div className={classNames(`activity-list`)}>
       {activities}
     </div>
   );
