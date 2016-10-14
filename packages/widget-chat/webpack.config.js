@@ -132,6 +132,10 @@ module.exports = {
         include: [/node_modules/],
         loaders: ['style-loader', 'css-loader']
       }, {
+        test: /\.json$/,
+        loader: 'url'
+      },
+      {
         test: /\.woff$/,
         // Inline small woff files and output them below font/.
         // Set mimetype just in case.
@@ -152,5 +156,8 @@ module.exports = {
         include: path.resolve(__dirname, '..')
       }
     ]
+  },
+  node: {
+    fs: 'empty'
   }
 };
