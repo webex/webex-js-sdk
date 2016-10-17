@@ -32,6 +32,7 @@ export class ChatWidget extends Component {
     super(props);
     this.getActivityList = this.getActivityList.bind(this);
     this.handleScrollToBottom = this.handleScrollToBottom.bind(this);
+    this.handleSubmit = this.handleSubmit.bind(this);
     this.handleScroll = _.debounce(this.handleScroll.bind(this), 150);
   }
 
@@ -129,6 +130,10 @@ export class ChatWidget extends Component {
     this.activityList.scrollToBottom();
   }
 
+  handleSubmit() {
+    this.activityList.scrollToBottom();
+  }
+
   /**
    * Render
    *
@@ -180,7 +185,12 @@ export class ChatWidget extends Component {
               {scrollButton}
             </div>
             <div className={classNames(`message-composer-wrapper`, styles.messageComposerWrapper)}>
-              <MessageComposer conversation={conversation} placeholder={messagePlaceholder} spark={spark} />
+              <MessageComposer
+                conversation={conversation}
+                onSubmit={this.handleSubmit}
+                placeholder={messagePlaceholder}
+                spark={spark}
+              />
             </div>
           </div>
         );

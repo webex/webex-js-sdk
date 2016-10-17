@@ -38,6 +38,7 @@
 }
 
 .with-text {
+  margin-left: -110px;
   opacity: 1;
   transition: opacity 0.5s ease-in-out, width 0.5s ease-in-out, margin-left 0.5s ease-in-out;
 }
