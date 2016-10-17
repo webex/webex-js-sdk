@@ -1,0 +1,6 @@
+{
+  "extends": [
+    "../../.stylelintrc",
+    "stylelint-config-css-modules"
+  ]
+}

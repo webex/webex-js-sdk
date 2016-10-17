@@ -2,4 +2,9 @@
   position: relative;
   width: 100%;
   margin-right: 5px;
+  visibility: hidden;
+}
+
+:global(.activity-post:hover) .post-actions {
+  visibility: visible;
 }
