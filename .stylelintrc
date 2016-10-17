@@ -12,7 +12,7 @@
     "value-no-vendor-prefix": true,
     "max-nesting-depth": 0,
     "selector-max-compound-selectors": 3,
-    "selector-max-specificity": "0,2,0",
+    "selector-max-specificity": "0,4,0",
     "at-rule-no-unknown": true,
     "color-named": "never",
     "declaration-no-important": true,

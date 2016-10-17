@@ -13,6 +13,7 @@ const filteredActivities = [`delete`];
 function formatActivity(activity) {
   return {
     id: activity.id,
+    actorId: activity.actor.id,
     content: activity.object.displayName,
     name: activity.actor.displayName,
     actorId: activity.actor.id,
