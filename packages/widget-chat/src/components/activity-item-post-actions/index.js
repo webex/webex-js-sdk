@@ -1,4 +1,9 @@
 import React, {PropTypes} from 'react';
+import classNames from 'classnames';
+
+import Icon from '../icon';
+
+import styles from './styles.css';
 
 export default function ActivityItemPostActions(props) {
   function handleOnDelete() {
@@ -7,8 +12,8 @@ export default function ActivityItemPostActions(props) {
   }
 
   return (
-    <div>
-      <button onClick={handleOnDelete}>DELETE</button>
+    <div className={classNames(`post-actions`, styles.postActions)}>
+      <Icon handleOnClick={handleOnDelete} type="delete" />
     </div>
   );
 }

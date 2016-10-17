@@ -37,6 +37,14 @@
   src: url('./fonts/CiscoSansTTThin.ttf');
 }
 
+@font-face {
+  font-family: Atlantic-Icons;
+  font-style: normal;
+  font-weight: normal;
+  src: url('./fonts/Atlantic-Icons.eot');
+  src: url('./fonts/Atlantic-Icons.eot') format('embedded-opentype'), url('./fonts/Atlantic-Icons.ttf') format('truetype'), url('./fonts/Atlantic-Icons.woff') format('woff'), url('./fonts/Atlantic-Icons.svg') format('svg');
+}
+
 html,
 body {
   width: 100%;
