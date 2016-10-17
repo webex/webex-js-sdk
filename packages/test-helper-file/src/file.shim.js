@@ -82,27 +82,31 @@ function ensureArrayBuffer(file) {
   throw new Error('Could not determine type of `file`');
 }
 
+function fetch(filename) {
+  return new Promise(function(resolve, reject) {
+    xhr({
+      uri: makeLocalUrl('/' + filename),
+      responseType: 'blob'
+    }, function(err, res, body) {
+      if (err) {
+        reject(err);
+      }
+      else {
+        body.name = body.name || filename;
+        resolve(body);
+      }
+    });
+  });
+}
+
 var FileShim = module.exports = {
   /**
    * @param {string} filename
    * @returns {Promise}
    */
-  fetch: function fetch(filename) {
-    return new Promise(function(resolve, reject) {
-      xhr({
-        uri: makeLocalUrl('/' + filename),
-        responseType: 'blob'
-      }, function(err, res, body) {
-        if (err) {
-          reject(err);
-        }
-        else {
-          body.name = body.name || filename;
-          resolve(body);
-        }
-      });
-    });
-  },
+  fetch: fetch,
+
+  fetchWithoutMagic: fetch,
 
   isBufferLike: isBufferLike,
 

@@ -11,6 +11,23 @@ var Magic = require('mmmagic');
 
 var File = module.exports = {
   fetch: function fetch(filename) {
+    return File.fetchWithoutMagic(filename)
+      .then(function(data) {
+        return new Promise((resolve, reject) => {
+          var magic = new Magic.Magic(Magic.MAGIC_MIME_TYPE);
+          magic.detect(data, function(err2, res) {
+            if (err2) {
+              reject(err2);
+              return;
+            }
+            data.type = res;
+            resolve(data);
+          });
+        });
+      });
+  },
+
+  fetchWithoutMagic: function fetchWithoutMagic(filename) {
     return new Promise(function(resolve, reject) {
       var filepath = path.join(__dirname, '../../test-helper-server/src/static', filename);
       fs.readFile(filepath, function(err, data) {
@@ -19,15 +36,7 @@ var File = module.exports = {
           return;
         }
         data.name = filename;
-        var magic = new Magic.Magic(Magic.MAGIC_MIME_TYPE);
-        magic.detect(data, function(err2, res) {
-          if (err2) {
-            reject(err2);
-            return;
-          }
-          data.type = res;
-          resolve(data);
-        });
+        resolve(data);
       });
     });
   },

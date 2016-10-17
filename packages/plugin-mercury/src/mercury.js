@@ -112,7 +112,7 @@ const Mercury = SparkPlugin.extend({
         pingInterval: this.config.pingInterval,
         pongTimeout: this.config.pongTimeout,
         token: authorization,
-        trackingId: this.spark.trackingId,
+        trackingId: `${this.spark.sessionId}_${Date.now()}`,
         logger: this.logger
       }))
       .then(() => {
