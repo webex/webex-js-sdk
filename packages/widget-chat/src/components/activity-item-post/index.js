@@ -9,21 +9,22 @@ import styles from './styles.css';
 export default function ActivityItemPost(props) {
   const {
     content,
+    isAdditional,
     name,
     timestamp
   } = props;
 
   return (
-    <div>
+    <div className={classNames(`activity-post`, styles.post, isAdditional ? styles.additional : ``)}>
       <div className={classNames(`avatar-wrapper`, styles.avatarWrapper)}>
         <Avatar name={name} />
       </div>
       <div className={classNames(styles.content)}>
-        <div className={classNames(styles.meta)}>
-          <div className={classNames(styles.userName)} title="{name}">{name}</div>
-          <div className={classNames(styles.published)}>{timestamp}</div>
+        <div className={classNames(`meta`, styles.meta)}>
+          <div className={classNames(`display-name`, styles.displayName)} title="{name}">{name}</div>
+          <div className={classNames(`published`, styles.published)}>{timestamp}</div>
         </div>
-        <div className={classNames(styles.activityText)}>{content}</div>
+        <div className={classNames(`activity-text`, styles.activityText)}>{content}</div>
       </div>
     </div>
   );
@@ -32,7 +33,7 @@ export default function ActivityItemPost(props) {
 ActivityItemPost.propTypes = {
   avatar: PropTypes.element,
   content: PropTypes.string,
+  isAdditional: PropTypes.bool,
   name: PropTypes.string.isRequired,
   timestamp: PropTypes.string
 };
-
