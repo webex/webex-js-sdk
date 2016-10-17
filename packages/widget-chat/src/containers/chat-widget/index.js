@@ -177,7 +177,7 @@ export class ChatWidget extends Component {
                 participants={participants}
                 ref={this.getActivityList}
               />
-            {scrollButton}
+              {scrollButton}
             </div>
             <div className={classNames(`message-composer-wrapper`, styles.messageComposerWrapper)}>
               <MessageComposer conversation={conversation} placeholder={messagePlaceholder} spark={spark} />

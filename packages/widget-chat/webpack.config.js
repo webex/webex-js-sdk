@@ -142,7 +142,6 @@ module.exports = {
         loader: 'file',
         query: {
           name: 'fonts/[hash].[ext]',
-          limit: 5000,
           mimetype: 'application/font-woff'
         },
         include: path.resolve(__dirname, '..')
