@@ -47,20 +47,53 @@ describe(`plugin-credentials`, () => {
     });
 
     describe(`#requestAuthorizationCodeGrant()`, () => {
-      let code, spark;
 
-      beforeEach(() => testUsers.create({config: {authCodeOnly: true}})
-        .then(([u]) => {
-          spark = new CiscoSpark();
-          code = u.token.auth_code;
-        }));
+      describe(`when the user has the spark entitlement`, () => {
+        let code, spark;
 
-      it(`exchanges an authorization code for an access token`, () => spark.credentials.requestAuthorizationCodeGrant({code})
-        .then(() => {
-          assert.isDefined(spark.credentials.supertoken);
-          assert.isDefined(spark.credentials.userTokens.get(apiScope));
-          assert.isDefined(spark.credentials.userTokens.get(`spark:kms`));
-        }));
+        beforeEach(() => testUsers.create({config: {authCodeOnly: true}})
+          .then(([u]) => {
+            spark = new CiscoSpark();
+            code = u.token.auth_code;
+          }));
+
+        it(`exchanges an authorization code for an access token`, () => spark.credentials.requestAuthorizationCodeGrant({code})
+          .then(() => {
+            assert.isDefined(spark.credentials.supertoken);
+            assert.isDefined(spark.credentials.userTokens.get(apiScope));
+            assert.isDefined(spark.credentials.userTokens.get(`spark:kms`));
+          }));
+      });
+
+      describe(`when the user does not have the spark entitlement`, () => {
+        let code, spark;
+        beforeEach(() => testUsers.create({
+          config: {
+            // We omit the spark entitlment so that CI gives us a token lacking
+            // spark:* scopes
+            entitlements: [
+              `squaredCallInitiation`,
+              `squaredRoomModeration`,
+              `squaredInviter`,
+              `webExSquared`
+            ],
+            authCodeOnly: true
+          }
+        })
+          .then(([u]) => {
+            spark = new CiscoSpark();
+            code = u.token.auth_code;
+          }));
+
+        it(`exchanges an authorization code for an access token`, () => spark.credentials.requestAuthorizationCodeGrant({code})
+          .then(() => {
+            assert.isDefined(spark.credentials.supertoken);
+            assert.isDefined(spark.credentials.userTokens.get(apiScope));
+            assert.equal(spark.credentials.userTokens.get(apiScope).access_token, spark.credentials.supertoken.access_token);
+            assert.isDefined(spark.credentials.userTokens.get(`spark:kms`));
+            assert.equal(spark.credentials.userTokens.get(`spark:kms`).access_token, spark.credentials.supertoken.access_token);
+          }));
+      });
     });
 
     describe(`#requestClientCredentialsGrant()`, () => {
