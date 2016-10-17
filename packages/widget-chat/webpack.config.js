@@ -124,7 +124,7 @@ module.exports = {
         exclude: [/node_modules/],
         loader: ExtractTextPlugin.extract(
           'style-loader',
-          'css-loader?camelCase&modules&importLoaders=1!postcss-loader'
+          'css-loader?camelCase&modules&localIdentName=[local]--[hash:base64:5]&importLoaders=1!postcss-loader'
         )
       }, {
         // Do not transform vendor's CSS with CSS-modules

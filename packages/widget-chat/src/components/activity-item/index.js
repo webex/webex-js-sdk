@@ -31,6 +31,7 @@ export default function ActivityItem(props) {
 ActivityItem.propTypes = {
   avatar: PropTypes.element,
   content: PropTypes.string,
+  isAdditional: PropTypes.bool,
   name: PropTypes.string.isRequired,
   timestamp: PropTypes.string,
   verb: PropTypes.string.isRequired
