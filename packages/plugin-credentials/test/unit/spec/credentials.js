@@ -115,7 +115,12 @@ describe(`plugin-credentials`, () => {
           })));
         });
 
-        it(`falls back to the supertoken`, () => assert.becomes(spark.credentials.getUserToken(`spark:kms`), supertoken));
+        // Note: don't use becomes here. they are different state objects, so
+        // they have different cids. as such, the assertion fails, but then
+        // hangs (I think) because there's a recursive loop trying to render the
+        // diff.
+        it(`falls back to the supertoken`, () => assert.isFulfilled(spark.credentials.getUserToken(`spark:kms`))
+          .then((token) => assert.deepEqual(token.serialize(), supertoken.serialize())));
       });
 
       it(`blocks while a token refresh is inflight`, () => {
