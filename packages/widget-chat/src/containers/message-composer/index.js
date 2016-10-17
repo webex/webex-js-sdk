@@ -35,10 +35,14 @@ export class MessageComposer extends Component {
     const props = this.props;
     const {
       conversation,
+      onSubmit,
       spark,
       value
     } = props;
     props.submitMessage(conversation, value, spark);
+    if (onSubmit) {
+      onSubmit();
+    }
   }
 
   render() {
@@ -63,6 +67,7 @@ export class MessageComposer extends Component {
 }
 
 MessageComposer.propTypes = {
+  onSubmit: PropTypes.func,
   placeholder: PropTypes.string,
   setMessage: PropTypes.func.isRequired,
   submitMessage: PropTypes.func.isRequired

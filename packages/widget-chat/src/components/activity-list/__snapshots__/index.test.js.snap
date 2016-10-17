@@ -1,74 +1,114 @@
 exports[`ActivityList component renders properly 1`] = `
 <div
-  className="activity-list">
+  className={undefined}
+  onScroll={undefined}>
   <div
-    className="activity-item">
+    className="activity-list">
     <div
-      className="activity-post">
+      className="activity-item">
       <div
-        className="avatar-wrapper">
+        className="activity-post">
         <div
-          className="avatar"
-          style={undefined}>
-          <span
-            className={undefined}>
-            T
-          </span>
-        </div>
-      </div>
-      <div
-        className="">
-        <div
-          className="meta">
+          className="avatar-wrapper">
           <div
-            className="display-name"
-            title="{name}">
-            Test User 1
-          </div>
-          <div
-            className="published">
-            2016-09-20T19:52:57.186Z
+            className="avatar"
+            style={undefined}>
+            <span
+              className={undefined}>
+              T
+            </span>
           </div>
         </div>
         <div
-          className="activity-text">
-          Test Activity Content 1
+          className="">
+          <div
+            className="meta">
+            <div
+              className="display-name"
+              title="{name}">
+              Test User 1
+            </div>
+            <div
+              className="published">
+              2016-09-20T19:52:57.186Z
+            </div>
+          </div>
+          <div
+            className="activity-text">
+            Test Activity Content 1
+          </div>
         </div>
       </div>
     </div>
-  </div>
-  <div
-    className="activity-item">
     <div
-      className="activity-post">
+      className="activity-item">
       <div
-        className="avatar-wrapper">
+        className="activity-post">
         <div
-          className="avatar"
-          style={undefined}>
-          <span
-            className={undefined}>
-            T
-          </span>
+          className="avatar-wrapper">
+          <div
+            className="avatar"
+            style={undefined}>
+            <span
+              className={undefined}>
+              T
+            </span>
+          </div>
+        </div>
+        <div
+          className="">
+          <div
+            className="meta">
+            <div
+              className="display-name"
+              title="{name}">
+              Test User 2
+            </div>
+            <div
+              className="published">
+              2016-09-21T19:53:57.186Z
+            </div>
+          </div>
+          <div
+            className="activity-text">
+            Test Activity Content 2
+          </div>
         </div>
       </div>
+    </div>
+    <div
+      className="activity-item">
       <div
-        className="">
+        className="activity-post">
         <div
-          className="meta">
+          className="avatar-wrapper">
           <div
-            className="display-name"
-            title="{name}">
-            Test User 2
-          </div>
-          <div
-            className="published">
-            2016-09-21T19:53:57.186Z
+            className="avatar"
+            style={undefined}>
+            <span
+              className={undefined}>
+              T
+            </span>
           </div>
         </div>
         <div
-          className="activity-text">
-          Test Activity Content 2
+          className="">
+          <div
+            className="meta">
+            <div
+              className="display-name"
+              title="{name}">
+              Test User 2
+            </div>
+            <div
+              className="published">
+              2016-09-21T19:55:57.186Z
+            </div>
+          </div>
+          <div
+            className="activity-text">
+            Test Activity Content 3
+          </div>
         </div>
       </div>
     </div>

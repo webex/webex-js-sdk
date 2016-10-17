@@ -2,12 +2,21 @@ import React, {Component, PropTypes} from 'react';
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
+import _ from 'lodash';
 
 import ConnectionStatus from '../../components/connection-status';
 import {fetchCurrentUser} from '../../actions/user';
-import {createConversationWithUser, listenToMercuryActivity} from '../../actions/conversation';
+import {
+  createConversationWithUser,
+  listenToMercuryActivity
+} from '../../actions/conversation';
+import {
+  updateHasNewMessage,
+  showScrollToBottomButton
+} from '../../actions/widget';
 import TitleBar from '../../components/title-bar';
 import ActivityList from '../../components/activity-list';
+import ScrollToBottomButton from '../../components/scroll-to-bottom-button';
 import MessageComposer from '../message-composer';
 
 import styles from './styles.css';
@@ -18,6 +27,14 @@ import injectSpark from '../../modules/redux-spark/inject-spark';
  * ChatWidget Component
  */
 export class ChatWidget extends Component {
+
+  constructor(props) {
+    super(props);
+    this.getActivityList = this.getActivityList.bind(this);
+    this.handleScrollToBottom = this.handleScrollToBottom.bind(this);
+    this.handleSubmit = this.handleSubmit.bind(this);
+    this.handleScroll = _.debounce(this.handleScroll.bind(this), 150);
+  }
 
   componentWillReceiveProps(nextProps) {
     const {
@@ -45,11 +62,36 @@ export class ChatWidget extends Component {
     if (conversation.id && !conversation.mercuryState.isListening) {
       nextProps.listenToMercuryActivity(conversation.id, spark);
     }
+
   }
 
   shouldComponentUpdate(nextProps) {
     const props = this.props;
-    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation !== props.conversation;
+    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation.activities !== props.conversation.activities || nextProps.widget !== props.widget;
+  }
+
+  componentDidUpdate(prevProps) {
+    const props = this.props;
+    const activityList = this.activityList;
+
+    if (activityList) {
+      const lastActivityFromPrev = _.last(prevProps.conversation.activities);
+      const lastActivityFromThis = _.last(props.conversation.activities);
+
+      // If new activity comes in
+      if (lastActivityFromPrev && lastActivityFromThis && props.conversation.activities.length !== prevProps.conversation.activities.length && lastActivityFromPrev.id !== lastActivityFromThis.id) {
+        // Scroll if from ourselves
+        if (props.user.currentUser.id === lastActivityFromThis.actorId) {
+          activityList.scrollToBottom();
+        }
+        else if (activityList.isScrolledToBottom()) {
+          activityList.scrollToBottom();
+        }
+      }
+      else if (prevProps.conversation.activities.length === 0) {
+        activityList.scrollToBottom();
+      }
+    }
   }
 
   /**
@@ -68,6 +110,30 @@ export class ChatWidget extends Component {
     );
   }
 
+  getActivityList(ref) {
+    this.activityList = ref;
+  }
+
+  handleScroll() {
+    const props = this.props;
+    if (this.activityList.isScrolledToBottom()) {
+      props.showScrollToBottomButton(false);
+      props.updateHasNewMessage(false);
+    }
+    else if (!props.widget.showScrollToBottomButton) {
+      props.showScrollToBottomButton(true);
+    }
+
+  }
+
+  handleScrollToBottom() {
+    this.activityList.scrollToBottom();
+  }
+
+  handleSubmit() {
+    this.activityList.scrollToBottom();
+  }
+
   /**
    * Render
    *
@@ -78,7 +144,8 @@ export class ChatWidget extends Component {
     const {
       conversation,
       spark,
-      sparkState
+      sparkState,
+      widget
     } = props;
 
     let main = <div className="loading">Connecting...</div>;
@@ -90,6 +157,12 @@ export class ChatWidget extends Component {
         isLoaded,
         participants
       } = conversation;
+
+      let scrollButton;
+      if (props.widget.showScrollToBottomButton) {
+        const label = widget.hasNewMessage ? `New Messages` : null;
+        scrollButton = <ScrollToBottomButton label={label} onClick={this.handleScrollToBottom} />;
+      }
 
       if (isLoaded) {
         const user = this.getUserFromConversation(conversation);
@@ -105,11 +178,19 @@ export class ChatWidget extends Component {
               <ActivityList
                 activities={activities}
                 id={id}
+                onScroll={this.handleScroll}
                 participants={participants}
+                ref={this.getActivityList}
               />
+              {scrollButton}
             </div>
             <div className={classNames(`message-composer-wrapper`, styles.messageComposerWrapper)}>
-              <MessageComposer conversation={conversation} placeholder={messagePlaceholder} spark={spark} />
+              <MessageComposer
+                conversation={conversation}
+                onSubmit={this.handleSubmit}
+                placeholder={messagePlaceholder}
+                spark={spark}
+              />
             </div>
           </div>
         );
@@ -127,7 +208,9 @@ ChatWidget.propTypes = {
   createConversationWithUser: PropTypes.func.isRequired,
   fetchCurrentUser: PropTypes.func.isRequired,
   listenToMercuryActivity: PropTypes.func.isRequired,
+  showScrollToBottomButton: PropTypes.func.isRequired,
   spark: PropTypes.object.isRequired,
+  updateHasNewMessage: PropTypes.func.isRequired,
   userId: PropTypes.string.isRequired
 };
 
@@ -136,7 +219,8 @@ function mapStateToProps(state, ownProps) {
     spark: ownProps.spark,
     sparkState: state.spark,
     user: state.user,
-    conversation: state.conversation
+    conversation: state.conversation,
+    widget: state.widget
   };
 }
 
@@ -145,6 +229,8 @@ export default connect(
   (dispatch) => bindActionCreators({
     createConversationWithUser,
     fetchCurrentUser,
-    listenToMercuryActivity
+    listenToMercuryActivity,
+    showScrollToBottomButton,
+    updateHasNewMessage
   }, dispatch)
 )(injectSpark(ChatWidget));

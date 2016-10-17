@@ -17,7 +17,7 @@ describe(`ActivityList component`, () => {
     timestamp: `2016-09-21T19:53:57.186Z`,
     verb: `post`
   }, {
-    id: `test-456-456-456-456`,
+    id: `test-789-789-789-789`,
     content: `Test Activity Content 3`,
     isAdditional: true,
     name: `Test User 2`,

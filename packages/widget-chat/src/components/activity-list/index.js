@@ -1,10 +1,9 @@
 import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 import ActivityItem from '../activity-item';
+import injectScrollable from '../../containers/wrapper-scrollable';
 
-import styles from './styles.css';
-
-export default function ActivityList(props) {
+function ActivityList(props) {
   let lastActorId;
   const activities = props.activities
     .map((activity) => {
@@ -23,7 +22,7 @@ export default function ActivityList(props) {
     });
 
   return (
-    <div className={classNames(`activity-list`, styles.activityList)}>
+    <div className={classNames(`activity-list`)}>
       {activities}
     </div>
   );
@@ -32,3 +31,5 @@ export default function ActivityList(props) {
 ActivityList.propTypes = {
   activities: PropTypes.array
 };
+
+export default injectScrollable(ActivityList);
