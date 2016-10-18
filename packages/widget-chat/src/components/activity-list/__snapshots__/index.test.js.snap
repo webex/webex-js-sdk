@@ -14,7 +14,9 @@ exports[`ActivityList component renders properly 1`] = `
             className="avatar"
             style={undefined}>
             <span
-              className="avatar-self" />
+              className="avatar-letter">
+              T
+            </span>
           </div>
         </div>
         <div
@@ -66,7 +68,9 @@ exports[`ActivityList component renders properly 1`] = `
             className="avatar"
             style={undefined}>
             <span
-              className="avatar-self" />
+              className="avatar-letter">
+              T
+            </span>
           </div>
         </div>
         <div
@@ -118,7 +122,9 @@ exports[`ActivityList component renders properly 1`] = `
             className="avatar"
             style={undefined}>
             <span
-              className="avatar-self" />
+              className="avatar-letter">
+              T
+            </span>
           </div>
         </div>
         <div
