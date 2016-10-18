@@ -164,6 +164,31 @@ const User = SparkPlugin.extend({
   },
 
   /**
+   * Extracts a user object for a user specified by userId(UUID) and organization specified by orgId(UUID)
+   * @param {Object} options
+   * @param {string} options.userId
+   * @param {string} options.orgId
+   * @private
+   * @returns {Promise<Object>}
+   */
+  getUserForOrg(options) {
+    // var scimServiceUrl = this.spark.config.device.preDiscoveryServices.scim;
+    if (!options.userId || !options.orgId) {
+      return Promise.reject(`Both userId and orgId must be passed in.`);
+    }
+    return this.request({
+      method: `GET`,
+      service: `scim`,
+      resource: `${options.orgId}/v1/Users/${options.userId}`
+    })
+     .then((res) => res.body)
+     .catch((reason) => {
+       this.logger.error(`plugin-user : Error occurred in retrieving user`, reason);
+       return Promise.reject(reason);
+     });
+  },
+
+  /**
    * Extracts the uuid from a user identifying object
    * @param {string|Object} user
    * @private
