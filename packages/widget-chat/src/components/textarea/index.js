@@ -5,6 +5,7 @@ import styles from './styles.css';
 
 export default function TextArea(props) {
   const {
+    className,
     onChange,
     onKeyDown,
     onSubmit,
@@ -15,7 +16,7 @@ export default function TextArea(props) {
 
   return (
     <textarea
-      className={classNames(`textarea`, styles.textarea)}
+      className={classNames(`textarea`, styles.textarea, className)}
       onChange={onChange}
       onKeyDown={onKeyDown}
       onSubmit={onSubmit}
@@ -27,6 +28,7 @@ export default function TextArea(props) {
 }
 
 TextArea.propTypes = {
+  className: PropTypes.string,
   onChange: PropTypes.func,
   onKeyDown: PropTypes.func,
   onSubmit: PropTypes.func.isRequired,

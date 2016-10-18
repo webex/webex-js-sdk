@@ -4,21 +4,22 @@ import classNames from 'classnames';
 import styles from './styles.css';
 
 function Avatar({name, image, isSelfAvatar}) {
-  let avatarStyle, backgroundStyle;
+  let avatarContents, backgroundStyle;
   const userInitial = name.substr(0, 1).toUpperCase();
 
   if (isSelfAvatar) {
-    avatarStyle = styles.selfAvatar;
+    avatarContents = <span className={classNames(`avatar-self`, styles.avatarSelf)} />;
   }
   else if (image) {
     backgroundStyle = {backgroundImage: `url('${image}')`};
   }
+  else {
+    avatarContents = <span className={classNames(`avatar-letter`, styles.avatarLetter)}>{userInitial}</span>;
+  }
 
   return (
-    <div className={classNames(`avatar`, styles.avatar, avatarStyle)} style={backgroundStyle}>
-      <span className={styles.avatarLetter}>
-        {userInitial}
-      </span>
+    <div className={classNames(`avatar`, styles.avatar)} style={backgroundStyle}>
+      {avatarContents}
     </div>
   );
 }

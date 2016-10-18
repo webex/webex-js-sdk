@@ -58,8 +58,9 @@ export class MessageComposer extends Component {
         <div className={classNames(`add-file-container`, styles.addFileContainer)}>
           <AddFileButton />
         </div>
-        <div className={classNames(`textarea-container`, styles.textareaContainer)}>
+        <div className={classNames(`textarea-container`)}>
           <TextArea
+            className={styles.textarea}
             onChange={this.handleChange}
             onKeyDown={this.handleKeyDown}
             onSubmit={this.handleSubmit}
