@@ -59,6 +59,7 @@ export class MessageComposer extends Component {
           onKeyDown={this.handleKeyDown}
           onSubmit={this.handleSubmit}
           placeholder={placeholder}
+          rows={1}
           value={value}
         />
       </div>

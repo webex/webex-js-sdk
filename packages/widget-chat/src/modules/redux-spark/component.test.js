@@ -10,12 +10,14 @@ const mockStore = configureMockStore([]);
 
 function createStore() {
   return mockStore({
-    authenticated: false,
-    authenticating: false,
-    registered: false,
-    registering: false,
-    connected: false,
-    connecting: false
+    spark: {
+      authenticated: false,
+      authenticating: false,
+      registered: false,
+      registering: false,
+      connected: false,
+      connecting: false
+    }
   });
 }
 
