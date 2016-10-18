@@ -46,6 +46,8 @@
 
 .activity-text {
   width: 100%;
+  font-size: 15px;
+  color: #4f5051;
   transition: color 0.3s, margin-left 0.3s ease 0.5s;
 }
 

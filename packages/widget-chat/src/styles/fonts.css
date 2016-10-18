@@ -1,0 +1,45 @@
+@font-face {
+  font-family: 'CiscoSans TT Light';
+  font-style: normal;
+  font-weight: normal;
+  src: url('../fonts/CiscoSansLight.otf');
+  src: local('CiscoSans TT Light'), url('../fonts/CiscoSansLight.otf'), url('../fonts/CiscoSansTTLight.ttf');
+}
+
+@font-face {
+  font-family: 'CiscoSans TT Bold';
+  font-style: normal;
+  font-weight: normal;
+  src: url('../fonts/CiscoSansBold.otf');
+  src: local('CiscoSans TT Bold'), url('../fonts/CiscoSansBold.otf'), url('../fonts/CiscoSansTTBold.ttf');
+}
+
+@font-face {
+  font-family: 'CiscoSans TT Regular';
+  font-style: normal;
+  font-weight: normal;
+  src: url('../fonts/CiscoSansRegular.otf');
+  src: local('CiscoSans TT Regular'), url('../fonts/CiscoSansRegular.otf'), url('../fonts/CiscoSansTTRegular.ttf');
+}
+
+@font-face {
+  font-family: 'CiscoSans TT Extra Light';
+  font-style: normal;
+  font-weight: normal;
+  src: url('../fonts/CiscoSansExtraLight.otf');
+  src: local('CiscoSans TT Extra Light'), url('../fonts/CiscoSansExtraLight.otf'), url('../fonts/CiscoSansTTExtraLight.ttf');
+}
+
+@font-face {
+  font-family: 'CiscoSans TT Thin';
+  font-style: normal;
+  font-weight: normal;
+  src: url('../fonts/CiscoSansTTThin.ttf');
+}
+
+@font-face {
+  font-family: 'Atlantic Neo Icons';
+  font-style: normal;
+  font-weight: normal;
+  src: url('../fonts/Atlantic-Neo-Icons.woff');
+}

@@ -9,6 +9,7 @@ export default function TextArea(props) {
     onKeyDown,
     onSubmit,
     placeholder,
+    rows,
     value
   } = props;
 
@@ -19,6 +20,7 @@ export default function TextArea(props) {
       onKeyDown={onKeyDown}
       onSubmit={onSubmit}
       placeholder={placeholder}
+      rows={rows}
       value={value}
     />
   );
@@ -29,5 +31,6 @@ TextArea.propTypes = {
   onKeyDown: PropTypes.func,
   onSubmit: PropTypes.func.isRequired,
   placeholder: PropTypes.string,
+  rows: PropTypes.number,
   value: PropTypes.string
 };
