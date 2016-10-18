@@ -4,7 +4,6 @@ import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 import _ from 'lodash';
 
-import ConnectionStatus from '../../components/connection-status';
 import {fetchCurrentUser} from '../../actions/user';
 import {
   createConversationWithUser,
