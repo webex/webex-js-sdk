@@ -6,7 +6,7 @@
 
 import {proxyEvents, tap} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
+import {cloneDeep, defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
 import Decrypter from './decrypter';
 import Encrypter from './encrypter';
 import uuid from 'uuid';
@@ -735,7 +735,7 @@ const Conversation = SparkPlugin.extend({
       kmsMessage: {
         method: `create`,
         uri: `/resources`,
-        userIds: params.participants,
+        userIds: cloneDeep(params.participants),
         keyUris: []
       }
     };
