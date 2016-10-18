@@ -5,7 +5,7 @@ import styles from './styles.css';
 
 function Avatar({name, image, isSelfAvatar}) {
   let avatarContents, backgroundStyle;
-  const userInitial = name.substr(0, 1).toUpperCase();
+
 
   if (isSelfAvatar) {
     avatarContents = <span className={classNames(`avatar-self`, styles.avatarSelf)} />;
@@ -14,7 +14,7 @@ function Avatar({name, image, isSelfAvatar}) {
     backgroundStyle = {backgroundImage: `url('${image}')`};
   }
   else {
-    avatarContents = <span className={classNames(`avatar-letter`, styles.avatarLetter)}>{userInitial}</span>;
+    avatarContents = <span className={classNames(`avatar-letter`, styles.avatarLetter)}>{name.substr(0, 1).toUpperCase()}</span>;
   }
 
   return (
