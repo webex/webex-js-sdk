@@ -17,8 +17,8 @@ export default function ScrollToBottomButton(props) {
   }
 
   return (
-    <div className={classNames(`scroll-to-bottom-container`, styles.container, containerStyle)} onClick={onClick} >
-      <button className={classNames(`scroll-to-bottom-button`, styles.button)}>
+    <div className={classNames(`scroll-to-bottom-container`, styles.container, containerStyle)}>
+      <button className={classNames(`scroll-to-bottom-button`, styles.button)} onClick={onClick}>
         {labelSpan}
         <span className={classNames(`scroll-to-bottom-icon`, styles.icon)} />
       </button>

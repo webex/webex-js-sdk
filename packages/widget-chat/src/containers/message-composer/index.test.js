@@ -50,7 +50,8 @@ describe(`MessageComposer component`, () => {
       };
       let tree = component.toJSON();
       expect(tree).toMatchSnapshot();
-      const textarea = tree.children[0];
+      // Not need better way to grab child nodes
+      const textarea = tree.children[1].children[0];
       textarea.props.onChange(event);
       tree = component.toJSON();
       expect(tree).toMatchSnapshot();

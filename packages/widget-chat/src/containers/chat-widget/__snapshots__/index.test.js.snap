@@ -2,6 +2,8 @@ exports[`ChatWidget renders properly 1`] = `
 <div
   className="widget-chat">
   <div
+    className="banner" />
+  <div
     className="loading">
     Connecting...
   </div>

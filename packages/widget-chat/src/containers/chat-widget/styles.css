@@ -5,6 +5,12 @@
   border: 1px solid #ccc;
 }
 
+.banner {
+  width: 100%;
+  height: 12px;
+  background-color: #049fd9;
+}
+
 .widget-chat,
 .widget-chat-inner {
   display: flex;
