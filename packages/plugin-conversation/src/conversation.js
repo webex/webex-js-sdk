@@ -7,23 +7,30 @@
 import {proxyEvents, tap} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
 import {defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
-import Decrypter from './decrypter';
-import Encrypter from './encrypter';
 import uuid from 'uuid';
 import querystring from 'querystring';
 import ShareActivity from './share-activity';
 import {EventEmitter} from 'events';
-import InboundNormalizer from './inbound-normalizer';
-import OutboundNormalizer from './outbound-normalizer';
 
 const Conversation = SparkPlugin.extend({
   namespace: `Conversation`,
 
-  children: {
-    decrypter: Decrypter,
-    encrypter: Encrypter,
-    inboundNormalizer: InboundNormalizer,
-    outboundNormalizer: OutboundNormalizer
+  acknowledge(conversation, object, activity) {
+    if (!isObject(object)) {
+      return Promise.reject(new Error(`\`object\` must be an object`));
+    }
+
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb: `acknowledge`,
+        target: this.prepareConversation(conversation),
+        object: {
+          objectType: `activity`,
+          id: object.id,
+          url: object.url
+        }
+      }))
+      .then((a) => this.submit(a));
   },
 
   /**
@@ -356,7 +363,7 @@ const Conversation = SparkPlugin.extend({
   },
 
   prepareConversation(conversation) {
-    return defaults(pick(conversation, `id`, `url`, `objectType`), {
+    return defaults(pick(conversation, `id`, `url`, `objectType`, `defaultActivityEncryptionKeyUrl`, `kmsResourceObjectUrl`), {
       objectType: `conversation`
     });
   },
@@ -421,11 +428,10 @@ const Conversation = SparkPlugin.extend({
    * @param {Event} event
    * @returns {Promise}
    */
-  processActivityEvent(event) {
-    return this.decrypter.decryptObject(event.activity)
-      .then(() => this.inboundNormalizer.normalize(event.activity))
-      .then(() => event);
-  },
+  // processActivityEvent(event) {
+  //   return this.spark.transform(`inbound`, event.activity)
+  //     .then(() => event);
+  // },
 
   /**
    * Removes all mute-related tags
@@ -839,7 +845,6 @@ const Conversation = SparkPlugin.extend({
 });
 
 [
-  `acknowledge`,
   `delete`,
   `update`
 ].forEach((verb) => {

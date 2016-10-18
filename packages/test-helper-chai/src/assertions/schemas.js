@@ -85,6 +85,7 @@ module.exports = function schemas(chai) {
 
   Assertion.addProperty('NewEncryptedConversation', function() {
     assert.property(this._obj, 'kmsMessage');
+    assert.isObject(this._obj.kmsMessage);
     assert.equal(this._obj.kmsMessage.status, 201);
     assert.property(this._obj, 'defaultActivityEncryptionKeyUrl');
     assert.property(this._obj, 'kmsResourceObjectUrl');

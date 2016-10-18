@@ -24,6 +24,9 @@ export default class PayloadTransformerInterceptor extends Interceptor {
    * @returns {Object}
    */
   onRequest(options) {
+    if (options.noTransform) {
+      return options;
+    }
     return this.spark.transform(`outbound`, options);
   }
 

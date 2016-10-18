@@ -87,7 +87,7 @@ describe(`plugin-conversation`, function() {
       });
 
       describe(`when {forceGrouped: true} is specified`, () => {
-        it(`creates a grouped conversation`, () => spark.conversation.create({participants: [mccoy]}, {forceGrouped: true})
+        it(`creates a grouped conversation @canary`, () => spark.conversation.create({participants: [mccoy]}, {forceGrouped: true})
           .then((conversation) => {
             assert.isConversation(conversation);
             assert.isGroupConversation(conversation);

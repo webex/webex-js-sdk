@@ -6,7 +6,7 @@
 
 import {proxyEvents, retry, transferEvents} from '@ciscospark/common';
 import {HttpStatusInterceptor, defaults as requestDefaults} from '@ciscospark/http-core';
-import {defaults, get, isFunction, isString, last, merge, omit} from 'lodash';
+import {defaults, get, has, isFunction, isString, last, merge, omit} from 'lodash';
 import AmpState from 'ampersand-state';
 import NetworkTimingInterceptor from './interceptors/network-timing';
 import PayloadTransformerInterceptor from './interceptors/payload-transformer';
@@ -113,7 +113,7 @@ const SparkCore = AmpState.extend({
     return Promise.all(predicates.map((p) => p.test(object)
       .then((shouldTransform) => {
         if (!shouldTransform) {
-          return object;
+          return undefined;
         }
         return p.extract(object)
           // eslint-disable-next-line max-nested-callbacks
@@ -122,14 +122,15 @@ const SparkCore = AmpState.extend({
             target
           }));
       })))
-      // eslint-disable-next-line arrow-body-style
-      .then((data) => {
-        // two rules to disable on the next line for readability reasons
-        // eslint-disable-next-line
-        return data.reduce((promise, {name, target}) => promise.then(() => {
+      .then((data) => data
+        .filter((d) => Boolean(d))
+        // eslint-disable-next-line max-nested-callbacks
+        .reduce((promise, {name, target, alias}) => promise.then(() => {
+          if (alias) {
+            return this.applyNamedTransform(direction, alias, target);
+          }
           return this.applyNamedTransform(direction, name, target);
-        }), Promise.resolve());
-      })
+        }), Promise.resolve()))
       .then(() => object);
   },
 
@@ -154,7 +155,11 @@ const SparkCore = AmpState.extend({
     // too many implicit returns on the same line is difficult to interpret
     // eslint-disable-next-line arrow-body-style
     return transforms.reduce((promise, tx) => promise.then(() => {
-      return tx.fn(ctx, ...rest);
+      console.log(`TX@@@`, tx.name, tx.alias);
+      if (tx.alias) {
+        return ctx.transform(tx.alias, ...rest);
+      }
+      return Promise.resolve(tx.fn(ctx, ...rest));
     }), Promise.resolve())
       .then(() => last(rest));
   },
@@ -399,12 +404,12 @@ export function registerPlugin(name, constructor, options) {
       merge(config, options.config);
     }
 
-    if (options.predicates) {
-      config.payloadTransformer.predicates = config.payloadTransformer.predicates.concat(options.predicates);
+    if (has(options, `payloadTransformer.predicates`)) {
+      config.payloadTransformer.predicates = config.payloadTransformer.predicates.concat(get(options, `payloadTransformer.predicates`));
     }
 
-    if (options.transforms) {
-      config.payloadTransformer.transforms = config.payloadTransformer.transforms.concat(options.transforms);
+    if (has(options, `payloadTransformer.transforms`)) {
+      config.payloadTransformer.transforms = config.payloadTransformer.transforms.concat(get(options, `payloadTransformer.transforms`));
     }
 
     makeSparkConstructor();

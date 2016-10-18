@@ -1,0 +1,23 @@
+import {isFunction} from 'lodash';
+
+/**
+ * Helper to convert objects into arrays of transforms. probably belongs in
+ * spark-core
+ * @param {string} direction
+ * @param {Object} obj
+ * @returns {Array}
+ */
+export default function toArray(direction, obj) {
+  return Object.keys(obj).map((name) => {
+    const entry = obj[name];
+    if (isFunction(entry)) {
+      return {
+        name,
+        direction,
+        fn: entry
+      };
+    }
+
+    return Object.assign({name}, entry);
+  });
+}

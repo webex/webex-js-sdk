@@ -51,6 +51,7 @@ describe(`plugin-conversation`, () => {
       method: `POST`,
       service: `conversation`,
       resource: `/conversations`,
+      noTransform: true,
       body: {
         objectType: `conversation`,
         activities: {
@@ -132,9 +133,21 @@ describe(`plugin-conversation`, () => {
         })
           .then(() => checkov.spark.conversation.get(conversation))
           .then((c) => {
-            assert.equal(c.displayName, `New Name!`);
             assert.property(c, `defaultActivityEncryptionKeyUrl`);
             assert.property(c, `encryptionKeyUrl`);
+            assert.equal(c.displayName, `New Name!`);
+          }));
+      });
+
+      describe(`#updateKey()`, () => {
+        it(`sets the conversation's defaultActivityEncryptionKeyUrl`, () => spark.conversation.updateKey(conversation)
+          .then(() => spark.conversation.get(conversation))
+          .then((c) => {
+            assert.property(c, `defaultActivityEncryptionKeyUrl`);
+          })
+          .then(() => checkov.spark.conversation.get(conversation))
+          .then((c) => {
+            assert.property(c, `defaultActivityEncryptionKeyUrl`);
           }));
       });
     });
@@ -145,6 +158,7 @@ describe(`plugin-conversation`, () => {
         method: `POST`,
         service: `conversation`,
         resource: `/conversations`,
+        noTransform: true,
         body: {
           objectType: `conversation`,
           activities: {
