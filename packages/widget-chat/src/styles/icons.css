@@ -22,3 +22,11 @@
 .icon-cisco-right-arrow::before {
   content: '\e0f1';
 }
+
+.icon-cisco-add {
+  composes: icon;
+}
+
+.icon-cisco-add::before {
+  content: '\e00a';
+}

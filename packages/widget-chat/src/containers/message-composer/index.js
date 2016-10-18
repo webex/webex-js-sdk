@@ -5,6 +5,7 @@ import classNames from 'classnames';
 
 import {setMessage, submitMessage} from '../../actions/message';
 import TextArea from '../../components/textarea';
+import AddFileButton from '../../components/add-file-button';
 
 import styles from './styles.css';
 
@@ -54,14 +55,19 @@ export class MessageComposer extends Component {
 
     return (
       <div className={classNames(`message-composer`, styles.messageComposer)}>
-        <TextArea
-          onChange={this.handleChange}
-          onKeyDown={this.handleKeyDown}
-          onSubmit={this.handleSubmit}
-          placeholder={placeholder}
-          rows={1}
-          value={value}
-        />
+        <div className={classNames(`add-file-container`, styles.addFileContainer)}>
+          <AddFileButton />
+        </div>
+        <div className={classNames(`textarea-container`, styles.textareaContainer)}>
+          <TextArea
+            onChange={this.handleChange}
+            onKeyDown={this.handleKeyDown}
+            onSubmit={this.handleSubmit}
+            placeholder={placeholder}
+            rows={1}
+            value={value}
+          />
+        </div>
       </div>
     );
   }

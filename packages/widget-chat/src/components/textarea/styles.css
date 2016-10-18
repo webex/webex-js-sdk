@@ -1,11 +1,7 @@
 .textarea {
   display: block;
   width: 100%;
-  max-height: 500px;
-  min-height: 59px;
-  padding: 20px;
   margin: 0;
-  margin-top: 15px;
   overflow: hidden;
   font-family: 'CiscoSans TT Extra Light', 'Helvetica Neue', Arial, sans-serif;
   font-size: 14px;
