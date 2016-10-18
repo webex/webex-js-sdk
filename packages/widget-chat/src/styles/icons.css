@@ -15,10 +15,26 @@
   speak: none;
 }
 
+.icon-cisco-add {
+  composes: icon;
+}
+
+.icon-cisco-add::before {
+  content: '\e00a';
+}
+
 .icon-cisco-right-arrow {
   composes: icon;
 }
 
 .icon-cisco-right-arrow::before {
   content: '\e0f1';
+}
+
+.icon-cisco-message {
+  composes: icon;
+}
+
+.icon-cisco-message::before {
+  content: '\e0a5';
 }

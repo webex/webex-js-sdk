@@ -20,9 +20,10 @@ describe(`ChatWidget`, () => {
   );
 
   it(`renders properly`, () => {
+    const accessToken = process.env.CISCOSPARK_ACCESS_TOKEN;
     const widget = renderer.create(
       <Provider store={store}>
-        <ChatWidget />
+        <ChatWidget accessToken={accessToken} userId="bernie.zang@gmail.com" />
       </Provider>
     ).toJSON();
 

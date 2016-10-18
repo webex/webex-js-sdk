@@ -1,38 +1,77 @@
 exports[`MessageComposer component snapshot tests handles value change properly 1`] = `
 <div
   className="message-composer">
-  <textarea
-    className="textarea"
-    onChange={[Function bound handleChange]}
-    onKeyDown={[Function bound handleKeyDown]}
-    onSubmit={[Function handleSubmit]}
-    placeholder="Message Placeholder"
-    value={undefined} />
+  <div
+    className="add-file-container">
+    <button
+      className="add-file-button"
+      onClick={undefined}>
+      <span
+        className="add-file-icon" />
+    </button>
+  </div>
+  <div
+    className="textarea-container">
+    <textarea
+      className="textarea"
+      onChange={[Function bound handleChange]}
+      onKeyDown={[Function bound handleKeyDown]}
+      onSubmit={[Function handleSubmit]}
+      placeholder="Message Placeholder"
+      rows={1}
+      value={undefined} />
+  </div>
 </div>
 `;
 
 exports[`MessageComposer component snapshot tests handles value change properly 2`] = `
 <div
   className="message-composer">
-  <textarea
-    className="textarea"
-    onChange={[Function bound handleChange]}
-    onKeyDown={[Function bound handleKeyDown]}
-    onSubmit={[Function handleSubmit]}
-    placeholder="Message Placeholder"
-    value="abc123" />
+  <div
+    className="add-file-container">
+    <button
+      className="add-file-button"
+      onClick={undefined}>
+      <span
+        className="add-file-icon" />
+    </button>
+  </div>
+  <div
+    className="textarea-container">
+    <textarea
+      className="textarea"
+      onChange={[Function bound handleChange]}
+      onKeyDown={[Function bound handleKeyDown]}
+      onSubmit={[Function handleSubmit]}
+      placeholder="Message Placeholder"
+      rows={1}
+      value="abc123" />
+  </div>
 </div>
 `;
 
 exports[`MessageComposer component snapshot tests renders properly 1`] = `
 <div
   className="message-composer">
-  <textarea
-    className="textarea"
-    onChange={[Function bound handleChange]}
-    onKeyDown={[Function bound handleKeyDown]}
-    onSubmit={[Function handleSubmit]}
-    placeholder="Message Placeholder"
-    value={undefined} />
+  <div
+    className="add-file-container">
+    <button
+      className="add-file-button"
+      onClick={undefined}>
+      <span
+        className="add-file-icon" />
+    </button>
+  </div>
+  <div
+    className="textarea-container">
+    <textarea
+      className="textarea"
+      onChange={[Function bound handleChange]}
+      onKeyDown={[Function bound handleKeyDown]}
+      onSubmit={[Function handleSubmit]}
+      placeholder="Message Placeholder"
+      rows={1}
+      value={undefined} />
+  </div>
 </div>
 `;

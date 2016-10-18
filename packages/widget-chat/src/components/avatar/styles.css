@@ -1,15 +1,22 @@
 .avatar {
   display: flex;
-  flex: 1 1 auto;
+  width: 32px;
+  height: 32px;
 }
 
 .avatar-letter {
-  width: 40px;
-  height: 40px;
-  margin: auto;
-  font-size: 25px;
-  line-height: 1.6;
+  display: block;
+  width: 100%;
+  height: 100%;
+  font-size: 20px;
+  line-height: 1.8;
   text-align: center;
   background-color: #a9a9a9;
   border-radius: 50%;
+}
+
+.avatar-self {
+  composes: icon-cisco-message from '../../styles/icons.css';
+  font-size: 34px;
+  color: #04c9ef;
 }

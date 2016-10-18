@@ -7,7 +7,7 @@ exports[`ActivityItemPost post component renders properly 1`] = `
       className="avatar"
       style={undefined}>
       <span
-        className={undefined}>
+        className="avatar-letter">
         T
       </span>
     </div>

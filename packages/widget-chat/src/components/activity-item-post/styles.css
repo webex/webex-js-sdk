@@ -1,4 +1,5 @@
 .post {
+  width: 100%;
   margin-top: 40px;
 }
 
@@ -18,14 +19,12 @@
 }
 
 .content {
-  width: 500px;
   max-width: 500px;
-  margin-left: 60px;
+  margin-left: 50px;
   border-radius: 1px;
 }
 
 .meta {
-  min-width: 300px;
   padding: 0;
   margin: 0;
   margin-bottom: 7px;
@@ -46,6 +45,8 @@
 
 .activity-text {
   width: 100%;
+  font-size: 15px;
+  color: #4f5051;
   transition: color 0.3s, margin-left 0.3s ease 0.5s;
 }
 

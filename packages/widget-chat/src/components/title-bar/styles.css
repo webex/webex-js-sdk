@@ -16,7 +16,10 @@
 }
 
 .avatar-container {
-  display: flex;
-  width: 68px;
-  height: 68px;
+  padding: 18px;
+}
+
+.connection-status-container {
+  flex: 0;
+  padding: 28px 20px;
 }

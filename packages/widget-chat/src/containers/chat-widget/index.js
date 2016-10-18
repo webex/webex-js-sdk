@@ -4,7 +4,6 @@ import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 import _ from 'lodash';
 
-import ConnectionStatus from '../../components/connection-status';
 import {fetchCurrentUser} from '../../actions/user';
 import {
   createConversationWithUser,
@@ -176,8 +175,7 @@ export class ChatWidget extends Component {
         main = ( // eslint-disable-line no-extra-parens
           <div className={classNames(`widget-chat-inner`, styles.widgetChatInner)}>
             <div className={classNames(`title-bar-wrapper`, styles.titleBarWrapper)}>
-              <TitleBar displayName={displayName} />
-              <ConnectionStatus id="connection-status" {...sparkState} />
+              <TitleBar connectionStatus={sparkState} displayName={displayName} />
             </div>
             <div className={classNames(`activity-list-wrapper`, styles.activityListWrapper)}>
               <ActivityList
@@ -204,6 +202,7 @@ export class ChatWidget extends Component {
     }
     return (
       <div className={classNames(`widget-chat`, styles.widgetChat)}>
+        <div className={classNames(`banner`, styles.banner)} />
         {main}
       </div>
     );
