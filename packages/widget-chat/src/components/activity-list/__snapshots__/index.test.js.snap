@@ -30,7 +30,7 @@ exports[`ActivityList component renders properly 1`] = `
             </div>
             <div
               className="published">
-              2016-09-20T19:52:57.186Z
+              9/20/16, 3:52 PM
             </div>
           </div>
           <div
@@ -38,6 +38,24 @@ exports[`ActivityList component renders properly 1`] = `
             Test Activity Content 1
           </div>
         </div>
+        <div
+          className="activity-post-actions">
+          <div
+            className="post-actions">
+            <div
+              className="post-actions-item">
+              <div
+                className="icon-container">
+                <div
+                  className="icon delete"
+                  onClick={[Function handleOnDelete]}
+                  title="Delete this message">
+                  
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div
@@ -66,7 +84,7 @@ exports[`ActivityList component renders properly 1`] = `
             </div>
             <div
               className="published">
-              2016-09-21T19:53:57.186Z
+              9/20/16, 3:53 PM
             </div>
           </div>
           <div
@@ -74,6 +92,24 @@ exports[`ActivityList component renders properly 1`] = `
             Test Activity Content 2
           </div>
         </div>
+        <div
+          className="activity-post-actions">
+          <div
+            className="post-actions">
+            <div
+              className="post-actions-item">
+              <div
+                className="icon-container">
+                <div
+                  className="icon delete"
+                  onClick={[Function handleOnDelete]}
+                  title="Delete this message">
+                  
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div
@@ -98,16 +134,34 @@ exports[`ActivityList component renders properly 1`] = `
             <div
               className="display-name"
               title="{name}">
-              Test User 2
+              Test User 3
             </div>
             <div
               className="published">
-              2016-09-21T19:55:57.186Z
+              9/20/16, 3:54 PM
             </div>
           </div>
           <div
             className="activity-text">
             Test Activity Content 3
+          </div>
+        </div>
+        <div
+          className="activity-post-actions">
+          <div
+            className="post-actions">
+            <div
+              className="post-actions-item">
+              <div
+                className="icon-container">
+                <div
+                  className="icon delete"
+                  onClick={[Function handleOnDelete]}
+                  title="Delete this message">
+                  
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
