@@ -5,6 +5,12 @@
 
 'use strict';
 
+// TODO: have non-catalog services register these
+const NON_CATALOG_URLS = [
+  'https://identity.webex.com/identity/scim/',
+  'http://localhost:9090/calendar-server/'
+];
+
 var authProcessor = {
   pre: function pre(options) {
     // If Authorizations is already set, don't overwrite it
@@ -98,7 +104,25 @@ var authProcessor = {
       return true;
     }
 
+    if (options.uri && authProcessor.isNonCatalogServiceUrl(options.uri)) {
+      return true;
+    }
     return false;
+  },
+
+  /**
+   * Checks if the given URL is a non-catalog service.
+   *
+   * @return {boolean} true iff the given url is a non-catalog service URL
+   */
+  isNonCatalogServiceUrl: function isNonCatalogServiceUrl(url) {
+    if (!url) {
+      return false;
+    }
+
+    return NON_CATALOG_URLS.some(function(nonCatalogUrl) {
+      return url.indexOf(nonCatalogUrl) !== -1;
+    });
   },
 
   requiresClientCredentials: function requiresClientCredentials(options) {
