@@ -8,17 +8,18 @@ import {formatDate} from '../../utils/date';
 import styles from './styles.css';
 
 function ActivityList(props) {
-  let lastActorId;
+  let lastActorId, lastVerb;
   const activities = props.activities
     .map((activity) => {
-      const additional = lastActorId === activity.actor.id;
+      const additional = lastActorId === activity.actor.id && lastVerb === activity.verb;
       lastActorId = activity.actor.id;
+      lastVerb = activity.verb;
       return (
         <ActivityItem
           content={activity.object.displayName}
           id={activity.id}
           isAdditional={additional}
-          isSelf={props.currentUserId === activity.actorId}
+          isSelf={props.currentUserId === activity.actor.id}
           key={activity.id}
           name={activity.actor.displayName}
           onActivityDelete={props.onActivityDelete}
