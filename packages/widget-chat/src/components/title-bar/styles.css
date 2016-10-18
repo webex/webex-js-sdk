@@ -18,3 +18,8 @@
 .avatar-container {
   padding: 18px;
 }
+
+.connection-status-container {
+  flex: 0;
+  padding: 28px 20px;
+}

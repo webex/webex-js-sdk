@@ -5,7 +5,7 @@ exports[`ActivityReadReceipt component renders properly 1`] = `
     className="avatar"
     style={undefined}>
     <span
-      className={undefined}>
+      className="avatar-letter">
       B
     </span>
   </div>
@@ -13,7 +13,7 @@ exports[`ActivityReadReceipt component renders properly 1`] = `
     className="avatar"
     style={undefined}>
     <span
-      className={undefined}>
+      className="avatar-letter">
       A
     </span>
   </div>

@@ -7,7 +7,7 @@ exports[`TitleBar component renders correctly 1`] = `
       className="avatar"
       style={undefined}>
       <span
-        className={undefined}>
+        className="avatar-letter">
         T
       </span>
     </div>
@@ -16,5 +16,10 @@ exports[`TitleBar component renders correctly 1`] = `
     className="title">
     test@testing.net
   </h1>
+  <div
+    className="connection-status-container">
+    <span
+      className="connection-status" />
+  </div>
 </div>
 `;
