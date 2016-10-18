@@ -15,11 +15,11 @@ function ActivityList(props) {
         <ActivityItem
           content={activity.content}
           isAdditional={additional}
+          isSelf={props.currentUserId === activity.actorId}
           key={activity.id}
           name={activity.name}
           timestamp={activity.timestamp}
           verb={activity.verb}
-          isSelf={props.currentUserId === activity.actorId}
         />
       );
     });
