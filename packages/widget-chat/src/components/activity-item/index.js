@@ -32,6 +32,7 @@ ActivityItem.propTypes = {
   avatar: PropTypes.element,
   content: PropTypes.string,
   isAdditional: PropTypes.bool,
+  isSelf: PropTypes.bool,
   name: PropTypes.string.isRequired,
   timestamp: PropTypes.string,
   verb: PropTypes.string.isRequired

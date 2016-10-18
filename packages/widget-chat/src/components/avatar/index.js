@@ -4,7 +4,7 @@ import classNames from 'classnames';
 import styles from './styles.css';
 
 function Avatar({name, image, isSelfAvatar}) {
-  let avatarClass, avatarStyle, backgroundStyle;
+  let avatarStyle, backgroundStyle;
   const userInitial = name.substr(0, 1).toUpperCase();
 
   if (isSelfAvatar) {
@@ -15,7 +15,7 @@ function Avatar({name, image, isSelfAvatar}) {
   }
 
   return (
-    <div className={classNames(`avatar`, styles.avatar, avatarClass, avatarStyle)} style={backgroundStyle}>
+    <div className={classNames(`avatar`, styles.avatar, avatarStyle)} style={backgroundStyle}>
       <span className={styles.avatarLetter}>
         {userInitial}
       </span>

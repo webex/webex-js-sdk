@@ -10,6 +10,7 @@ export default function ActivityItemPost(props) {
   const {
     content,
     isAdditional,
+    isSelf,
     name,
     timestamp
   } = props;
@@ -17,7 +18,7 @@ export default function ActivityItemPost(props) {
   return (
     <div className={classNames(`activity-post`, styles.post, isAdditional ? styles.additional : ``)}>
       <div className={classNames(`avatar-wrapper`, styles.avatarWrapper)}>
-        <Avatar name={name} />
+        <Avatar isSelfAvatar={isSelf} name={name} />
       </div>
       <div className={classNames(styles.content)}>
         <div className={classNames(`meta`, styles.meta)}>
@@ -34,6 +35,7 @@ ActivityItemPost.propTypes = {
   avatar: PropTypes.element,
   content: PropTypes.string,
   isAdditional: PropTypes.bool,
+  isSelf: PropTypes.bool,
   name: PropTypes.string.isRequired,
   timestamp: PropTypes.string
 };

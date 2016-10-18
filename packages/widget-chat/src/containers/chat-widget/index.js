@@ -148,6 +148,11 @@ export class ChatWidget extends Component {
       widget
     } = props;
 
+    let currentUser;
+    if (props.user) {
+      currentUser = props.user.currentUser;
+    }
+
     let main = <div className="loading">Connecting...</div>;
 
     if (conversation) {
@@ -177,6 +182,7 @@ export class ChatWidget extends Component {
             <div className={classNames(`activity-list-wrapper`, styles.activityListWrapper)}>
               <ActivityList
                 activities={activities}
+                currentUserId={currentUser.id}
                 id={id}
                 onScroll={this.handleScroll}
                 participants={participants}
