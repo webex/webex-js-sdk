@@ -1,10 +1,8 @@
 .post-actions {
-  position: relative;
-  width: 100%;
-  margin-right: 5px;
-  visibility: hidden;
+  display: flex;
+  justify-content: flex-end;
 }
 
-:global(.activity-post:hover) .post-actions {
-  visibility: visible;
+.post-actions-item {
+  flex: 0 0 auto;
 }

@@ -13,7 +13,9 @@ export default function ActivityItemPostActions(props) {
 
   return (
     <div className={classNames(`post-actions`, styles.postActions)}>
-      <Icon handleOnClick={handleOnDelete} type="delete" />
+      <div className={classNames(`post-actions-item`, styles.postActionsItem)}>
+        <Icon handleOnClick={handleOnDelete} title="Delete this message" type="delete" />
+      </div>
     </div>
   );
 }

@@ -79,3 +79,19 @@
 .additional .avatar-wrapper {
   display: none;
 }
+
+/*
+ * Align post actions at the bottom right of post
+ */
+.activity-post-actions {
+  width: 100%;
+  margin-top: auto;
+  margin-right: 5px;
+  text-align: right;
+  visibility: hidden;
+  flex-direction: column;
+}
+
+.post:hover .activity-post-actions {
+  visibility: visible;
+}

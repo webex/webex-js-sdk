@@ -29,7 +29,9 @@ export default function ActivityItemPost(props) {
         </div>
         <div className={classNames(`activity-text`, styles.activityText)}>{content}</div>
       </div>
-      <ActivityItemPostActions id={id} onDelete={onActivityDelete} />
+      <div className={classNames(`activity-post-actions`, styles.activityPostActions)} >
+        <ActivityItemPostActions id={id} onDelete={onActivityDelete} />
+      </div>
     </div>
   );
 }
