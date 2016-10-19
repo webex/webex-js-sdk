@@ -2,7 +2,7 @@ import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 
 import IconButton from '../icon-button';
-
+import {ICON_TYPE_DELETE} from '../icon';
 import styles from './styles.css';
 
 export default function ActivityItemPostActions(props) {
@@ -14,15 +14,22 @@ export default function ActivityItemPostActions(props) {
   const actions = [];
   if (props.isSelf) {
     actions.push(
-      <div className={classNames(`post-actions-item`, styles.postActionsItem)}>
-        <IconButton onClick={handleOnDelete} title="Delete this message" type="delete" />
-      </div>
-    );
+      {
+        handleOnClick: handleOnDelete,
+        title: `Delete this message`,
+        type: ICON_TYPE_DELETE
+      });
   }
+
+  const actionItems = actions.map((action, index) =>
+    <div className={classNames(`post-actions-item`, styles.postActionsItem)} key={index}>
+      <IconButton onClick={action.handleOnClick} title={action.title} type={action.type} />
+    </div>
+  );
 
   return (
     <div className={classNames(`post-actions`, styles.postActions)}>
-      {actions}
+      {actionItems}
     </div>
   );
 }
