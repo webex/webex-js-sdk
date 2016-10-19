@@ -1,0 +1,9 @@
+exports[`IconButton component renders properly 1`] = `
+<div
+  className="icon-button"
+  onClick={[Function anonymous]}>
+  <div
+    className="icon"
+    title={undefined} />
+</div>
+`;

@@ -1,17 +1,20 @@
-exports[`ActivityItemPostActions component renders properly 1`] = `
+exports[`ActivityItemPostActions component show delete param renders properly 1`] = `
 <div
   className="post-actions">
   <div
     className="post-actions-item">
     <div
-      className="icon-container">
+      className="icon-button"
+      onClick={[Function handleOnDelete]}>
       <div
-        className="icon delete"
-        onClick={[Function handleOnDelete]}
-        title="Delete this message">
-        
-      </div>
+        className="icon"
+        title="Delete this message" />
     </div>
   </div>
 </div>
+`;
+
+exports[`ActivityItemPostActions component without show delete param renders properly 1`] = `
+<div
+  className="post-actions" />
 `;

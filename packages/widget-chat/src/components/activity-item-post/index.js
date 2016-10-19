@@ -17,6 +17,8 @@ export default function ActivityItemPost(props) {
     timestamp
   } = props;
 
+  const showDeleteAction = isSelf;
+
   return (
     <div className={classNames(`activity-post`, styles.post, isAdditional ? styles.additional : ``)}>
       <div className={classNames(`avatar-wrapper`, styles.avatarWrapper)}>
@@ -30,7 +32,7 @@ export default function ActivityItemPost(props) {
         <div className={classNames(`activity-text`, styles.activityText)}>{content}</div>
       </div>
       <div className={classNames(`activity-post-actions`, styles.activityPostActions)} >
-        <ActivityItemPostActions id={id} onDelete={onActivityDelete} />
+        <ActivityItemPostActions id={id} onDelete={onActivityDelete} showDelete={showDeleteAction} />
       </div>
     </div>
   );

@@ -1,6 +1,44 @@
-.icon {
+.icon::before {
+  font-variant: normal;
+  font-feature-settings: 'liga';
+  font-variant-ligatures: discretionary-ligatures;
   font-family: 'Atlantic Neo Icons';
-  font-size: 18px;
-  line-height: 1.2;
-  cursor: pointer;
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+  speak: none;
+}
+
+.add {
+  composes: icon;
+}
+
+.add::before {
+  content: '\e00a';
+}
+
+.delete {
+  composes: icon;
+}
+
+.delete::before {
+  content: '\e0e7';
+}
+
+.message {
+  composes: icon;
+}
+
+.message::before {
+  content: '\e0a5';
+}
+
+.rightArrow {
+  composes: icon;
+}
+
+.rightArrow::before {
+  content: '\e0f1';
 }

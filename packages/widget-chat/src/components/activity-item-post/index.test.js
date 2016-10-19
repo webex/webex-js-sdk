@@ -6,6 +6,7 @@ import ActivityItemPost from '.';
 describe(`ActivityItemPost post component`, () => {
   const activity = {
     id: `test-123-123-123-123`,
+    isSelf: true,
     content: `Test Activity Content`,
     name: `Test User`,
     timestamp: `2016-09-20T19:52:57.186Z`,
@@ -13,13 +14,7 @@ describe(`ActivityItemPost post component`, () => {
   };
 
   const component = renderer.create(
-    <ActivityItemPost
-      content={activity.content}
-      id={activity.id}
-      name={activity.name}
-      timestamp={activity.timestamp}
-      verb={activity.verb}
-    />
+    <ActivityItemPost {...activity} />
   );
 
   it(`renders properly`, () => {
