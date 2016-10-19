@@ -1,0 +1,11 @@
+.widget-component-container {
+  position: absolute;
+  right: 10px;
+  bottom: 0;
+  width: 500px;
+  height: 600px;
+}
+
+.widget-component-container > div {
+  height: 100%;
+}
