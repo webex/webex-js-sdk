@@ -1,4 +1,5 @@
 .post {
+  display: flex;
   width: 100%;
   margin-top: 40px;
 }
@@ -12,7 +13,7 @@
 }
 
 .published {
-  display: inline-block;
+  flex: 0 0 auto;
   margin-left: 10px;
   opacity: 0.5;
   visibility: hidden;
@@ -25,6 +26,8 @@
 }
 
 .meta {
+  display: flex;
+  flex-direction: row;
   padding: 0;
   margin: 0;
   margin-bottom: 7px;
@@ -40,7 +43,7 @@
 }
 
 .display-name {
-  display: inline-block;
+  flex: 0 0 auto;
 }
 
 .activity-text {
@@ -77,4 +80,20 @@
 .additional .meta,
 .additional .avatar-wrapper {
   display: none;
+}
+
+/*
+ * Align post actions at the bottom right of post
+ */
+.activity-post-actions {
+  width: 100%;
+  margin-top: auto;
+  margin-right: 5px;
+  text-align: right;
+  visibility: hidden;
+  flex-direction: column;
+}
+
+.post:hover .activity-post-actions {
+  visibility: visible;
 }

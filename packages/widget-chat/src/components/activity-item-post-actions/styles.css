@@ -1,0 +1,8 @@
+.post-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.post-actions-item {
+  flex: 0 0 auto;
+}

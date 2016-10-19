@@ -147,7 +147,7 @@ module.exports = {
         include: path.resolve(__dirname, '..')
       },
       {
-        test: /\.ttf$|\.otf$|\.eot$/,
+        test: /\.ttf$|\.otf$|\.eot$|\.svg$/,
         loader: 'file',
         query: {
           name: 'fonts/[hash].[ext]'

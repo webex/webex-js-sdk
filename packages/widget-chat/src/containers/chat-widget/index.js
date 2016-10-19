@@ -7,6 +7,7 @@ import _ from 'lodash';
 import {fetchCurrentUser} from '../../actions/user';
 import {
   createConversationWithUser,
+  deleteActivity,
   listenToMercuryActivity
 } from '../../actions/conversation';
 import {
@@ -26,10 +27,10 @@ import injectSpark from '../../modules/redux-spark/inject-spark';
  * ChatWidget Component
  */
 export class ChatWidget extends Component {
-
   constructor(props) {
     super(props);
     this.getActivityList = this.getActivityList.bind(this);
+    this.handleActivityDelete = this.handleActivityDelete.bind(this);
     this.handleScrollToBottom = this.handleScrollToBottom.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleScroll = _.debounce(this.handleScroll.bind(this), 150);
@@ -133,6 +134,18 @@ export class ChatWidget extends Component {
     this.activityList.scrollToBottom();
   }
 
+  handleActivityDelete(activityId) {
+    const props = this.props;
+    const {
+      conversation,
+      spark
+    } = props;
+    const activity = conversation.activities.find((act) => act.id === activityId);
+    if (activity) {
+      this.props.deleteActivity(conversation, activity, spark);
+    }
+  }
+
   /**
    * Render
    *
@@ -182,6 +195,7 @@ export class ChatWidget extends Component {
                 activities={activities}
                 currentUserId={currentUser.id}
                 id={id}
+                onActivityDelete={this.handleActivityDelete}
                 onScroll={this.handleScroll}
                 participants={participants}
                 ref={this.getActivityList}
@@ -211,6 +225,7 @@ export class ChatWidget extends Component {
 
 ChatWidget.propTypes = {
   createConversationWithUser: PropTypes.func.isRequired,
+  deleteActivity: PropTypes.func.isRequired,
   fetchCurrentUser: PropTypes.func.isRequired,
   listenToMercuryActivity: PropTypes.func.isRequired,
   showScrollToBottomButton: PropTypes.func.isRequired,
@@ -233,6 +248,7 @@ export default connect(
   mapStateToProps,
   (dispatch) => bindActionCreators({
     createConversationWithUser,
+    deleteActivity,
     fetchCurrentUser,
     listenToMercuryActivity,
     showScrollToBottomButton,

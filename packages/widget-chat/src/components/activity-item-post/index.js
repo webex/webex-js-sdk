@@ -2,16 +2,18 @@ import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 
 import Avatar from '../avatar';
-
+import ActivityItemPostActions from '../activity-item-post-actions';
 import styles from './styles.css';
 
 
 export default function ActivityItemPost(props) {
   const {
     content,
+    id,
     isAdditional,
     isSelf,
     name,
+    onActivityDelete,
     timestamp
   } = props;
 
@@ -27,6 +29,9 @@ export default function ActivityItemPost(props) {
         </div>
         <div className={classNames(`activity-text`, styles.activityText)}>{content}</div>
       </div>
+      <div className={classNames(`activity-post-actions`, styles.activityPostActions)} >
+        <ActivityItemPostActions id={id} onDelete={onActivityDelete} />
+      </div>
     </div>
   );
 }
@@ -34,8 +39,10 @@ export default function ActivityItemPost(props) {
 ActivityItemPost.propTypes = {
   avatar: PropTypes.element,
   content: PropTypes.string,
+  id: PropTypes.string.isRequired,
   isAdditional: PropTypes.bool,
   isSelf: PropTypes.bool,
   name: PropTypes.string.isRequired,
+  onActivityDelete: PropTypes.func,
   timestamp: PropTypes.string
 };
