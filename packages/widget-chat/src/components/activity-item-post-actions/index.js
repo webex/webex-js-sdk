@@ -12,7 +12,7 @@ export default function ActivityItemPostActions(props) {
   }
 
   const actions = [];
-  if (props.isSelf) {
+  if (props.showDelete) {
     actions.push(
       {
         handleOnClick: handleOnDelete,
@@ -36,6 +36,6 @@ export default function ActivityItemPostActions(props) {
 
 ActivityItemPostActions.propTypes = {
   id: PropTypes.string.isRequired,
-  isSelf: PropTypes.bool,
-  onDelete: PropTypes.func
+  onDelete: PropTypes.func,
+  showDelete: PropTypes.bool.isRequired
 };

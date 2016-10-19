@@ -6,9 +6,9 @@ import ActivityItemPostActions from '.';
 
 describe(`ActivityItemPostActions component`, () => {
   const onDelete = jest.fn();
-  describe(`is self param`, () => {
+  describe(`show delete param`, () => {
     const component = renderer.create(
-      <ActivityItemPostActions id="abc-123" isSelf="true" onDelete={onDelete} />
+      <ActivityItemPostActions id="abc-123" onDelete={onDelete} showDelete />
   );
 
     it(`renders properly`, () => {
@@ -16,9 +16,9 @@ describe(`ActivityItemPostActions component`, () => {
     });
   });
 
-  describe(`without is self param`, () => {
+  describe(`without show delete param`, () => {
     const component = renderer.create(
-      <ActivityItemPostActions id="abc-123" onDelete={onDelete} />
+      <ActivityItemPostActions id="abc-123" onDelete={onDelete} showDelete={false} />
   );
 
     it(`renders properly`, () => {

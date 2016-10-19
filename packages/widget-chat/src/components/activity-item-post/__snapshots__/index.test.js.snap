@@ -7,9 +7,7 @@ exports[`ActivityItemPost post component renders properly 1`] = `
       className="avatar"
       style={undefined}>
       <span
-        className="avatar-letter">
-        T
-      </span>
+        className="avatar-self" />
     </div>
   </div>
   <div
@@ -34,7 +32,18 @@ exports[`ActivityItemPost post component renders properly 1`] = `
   <div
     className="activity-post-actions">
     <div
-      className="post-actions" />
+      className="post-actions">
+      <div
+        className="post-actions-item">
+        <div
+          className="icon-button"
+          onClick={[Function handleOnDelete]}>
+          <div
+            className="icon"
+            title="Delete this message" />
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 `;

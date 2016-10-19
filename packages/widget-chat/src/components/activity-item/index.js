@@ -35,7 +35,7 @@ ActivityItem.propTypes = {
   isAdditional: PropTypes.bool,
   isSelf: PropTypes.bool,
   name: PropTypes.string.isRequired,
-  onActivityDelete: PropTypes.func.isRequired,
+  onActivityDelete: PropTypes.func,
   timestamp: PropTypes.string,
   verb: PropTypes.string.isRequired
 };
