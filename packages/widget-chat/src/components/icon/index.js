@@ -10,16 +10,13 @@ function Icon(props) {
     iconCode = `\uE0E7`;
   }
   return (
-    <div className={classNames(`icon-container`, styles.iconContainer)}>
-      <div className={classNames(`icon`, props.type, styles.icon)} onClick={props.handleOnClick} title={props.title}>
-        {iconCode}
-      </div>
+    <div className={classNames(`icon`, props.type, styles.icon)} title={props.title}>
+      {iconCode}
     </div>
   );
 }
 
 Icon.propTypes = {
-  handleOnClick: PropTypes.func,
   title: PropTypes.string,
   type: PropTypes.string.isRequired
 };
