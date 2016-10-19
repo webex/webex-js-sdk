@@ -1,6 +1,13 @@
 import conversation from './conversation';
-import user from './user';
+import indicators from './indicators';
 import message from './message';
+import user from './user';
 import widget from './widget';
 
-export {conversation, user, message, widget};
+export {
+  conversation,
+  indicators,
+  message,
+  user,
+  widget
+};
