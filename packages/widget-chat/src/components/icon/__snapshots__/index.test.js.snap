@@ -1,11 +1,5 @@
 exports[`Icon component renders properly 1`] = `
 <div
-  className="icon-container">
-  <div
-    className="icon delete"
-    onClick={undefined}
-    title={undefined}>
-    
-  </div>
-</div>
+  className="icon"
+  title={undefined} />
 `;

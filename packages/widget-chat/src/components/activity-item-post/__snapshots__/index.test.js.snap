@@ -34,20 +34,7 @@ exports[`ActivityItemPost post component renders properly 1`] = `
   <div
     className="activity-post-actions">
     <div
-      className="post-actions">
-      <div
-        className="post-actions-item">
-        <div
-          className="icon-container">
-          <div
-            className="icon delete"
-            onClick={[Function handleOnDelete]}
-            title="Delete this message">
-            
-          </div>
-        </div>
-      </div>
-    </div>
+      className="post-actions" />
   </div>
 </div>
 `;
