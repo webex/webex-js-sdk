@@ -1,6 +1,14 @@
 import {updateHasNewMessage} from './widget.js';
 
 
+export const ADD_ACTIVITIES_TO_CONVERSATION = `ADD_ACTIVITIES_TO_CONVERSATION`;
+export function addActivitiesToConversation(activities) {
+  return {
+    type: ADD_ACTIVITIES_TO_CONVERSATION,
+    activities
+  };
+}
+
 export const CREATE_CONVERSATION = `CREATE_CONVERSATION`;
 export function createConversation(userId) {
   return {
@@ -50,7 +58,6 @@ export function updateMercuryState(mercuryState) {
   };
 }
 
-
 /**
  * Creates/Opens a conversation with a user
  *
@@ -97,6 +104,19 @@ export function listenToMercuryActivity(conversationId, spark) {
           dispatch(receiveMercuryActivity(activity));
         }
       }
+    });
+  };
+}
+
+export function loadPreviousMessages(converstationId, lastActivity, spark) {
+  return (dispatch) => {
+    spark.conversation.listActivities({
+      conversationId: converstationId,
+      limit: 20,
+      maxDate: lastActivity.published
+    })
+    .then((activities) => {
+      dispatch(addActivitiesToConversation(activities));
     });
   };
 }

@@ -8,7 +8,8 @@ import {fetchCurrentUser} from '../../actions/user';
 import {
   createConversationWithUser,
   deleteActivity,
-  listenToMercuryActivity
+  listenToMercuryActivity,
+  loadPreviousMessages
 } from '../../actions/conversation';
 import {
   updateHasNewMessage,
@@ -116,6 +117,10 @@ export class ChatWidget extends Component {
 
   handleScroll() {
     const props = this.props;
+    const {
+      conversation,
+      spark
+    } = props;
     if (this.activityList.isScrolledToBottom()) {
       props.showScrollToBottomButton(false);
       props.updateHasNewMessage(false);
@@ -123,7 +128,9 @@ export class ChatWidget extends Component {
     else if (!props.widget.showScrollToBottomButton) {
       props.showScrollToBottomButton(true);
     }
-
+    if (this.activityList.isScrolledToTop()) {
+      props.loadPreviousMessages(conversation.id, _.first(conversation.activities), spark);
+    }
   }
 
   handleScrollToBottom() {
@@ -228,6 +235,7 @@ ChatWidget.propTypes = {
   deleteActivity: PropTypes.func.isRequired,
   fetchCurrentUser: PropTypes.func.isRequired,
   listenToMercuryActivity: PropTypes.func.isRequired,
+  loadPreviousMessages: PropTypes.func.isRequired,
   showScrollToBottomButton: PropTypes.func.isRequired,
   spark: PropTypes.object.isRequired,
   updateHasNewMessage: PropTypes.func.isRequired,
@@ -251,6 +259,7 @@ export default connect(
     deleteActivity,
     fetchCurrentUser,
     listenToMercuryActivity,
+    loadPreviousMessages,
     showScrollToBottomButton,
     updateHasNewMessage
   }, dispatch)

@@ -1,4 +1,5 @@
 import {
+  ADD_ACTIVITIES_TO_CONVERSATION,
   CREATE_CONVERSATION,
   RECEIVE_CONVERSATION,
   RECEIVE_MERCURY_ACTIVITY,
@@ -24,6 +25,11 @@ export default function conversation(state = {
   }
 }, action) {
   switch (action.type) {
+  case ADD_ACTIVITIES_TO_CONVERSATION: {
+    return Object.assign({}, state, {
+      activities: [...action.activities, ...state.activities]
+    });
+  }
 
   case CREATE_CONVERSATION: {
     return Object.assign({}, state, {
@@ -42,6 +48,7 @@ export default function conversation(state = {
       participants: action.conversation.participants.items
     });
   }
+
   case RECEIVE_MERCURY_ACTIVITY: {
     let activities = state.activities;
     if (action.activity.verb === `delete`) {
