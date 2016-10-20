@@ -5,8 +5,6 @@ import injectWidgetLoader from './loader';
 import ChatWidget from './containers/chat-widget';
 import store from './store';
 
-import './styles/main.css';
-
 function Root({accessToken, userId}) {
   return (
     <Provider store={store}>

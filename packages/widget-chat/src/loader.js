@@ -31,10 +31,8 @@ export default function injectWidgetLoader(WrappedComponent) {
 
     handleSubmit(e) {
       e.preventDefault();
-      const count = this.state.renderKey || 1;
       this.setState(Object.assign({}, {
-        userId: this.state.tempUserId,
-        renderKey: count + 1
+        userId: this.state.tempUserId
       }));
     }
 
@@ -42,22 +40,30 @@ export default function injectWidgetLoader(WrappedComponent) {
       let widget;
       const props = this.props;
       if (this.state && this.state.userId) {
-        widget = <div className={classNames(`widget-component-container`, styles.widgetComponentContainer)} key={`widget-${this.state.renderKey}`}><WrappedComponent accessToken={props.accessToken} userId={this.state.userId} /></div>;
+        widget = ( // eslint-disable-line no-extra-parens
+          <div className={classNames(`widget-component-container`, styles.widgetComponentContainer)}>
+            <WrappedComponent accessToken={props.accessToken} userId={this.state.userId} />
+          </div>
+        );
       }
-      return (
-        <div className={classNames(`widget-container`, styles.widgetContainer)}>
+      else {
+        widget = ( // eslint-disable-line no-extra-parens
           <form className={classNames(`widget-props-form`, styles.widgetPropsForm)} ref={this.getForm}>
             <div className={classNames(`field-wrapper`, styles.fieldWrapper)}>
-              <label className={classNames(`field-label`, styles.fieldLabel)}>User ID</label>
               <input
                 className={classNames(`field-input`, styles.fieldInput)}
                 onChange={this.handleFieldChange}
+                placeholder="User ID"
                 type="text"
                 value={this.state ? this.state.tempUserId : ``}
               />
             </div>
-            <button className={classNames(`props-submit`, styles.propsSubmit)} onClick={this.handleSubmit}>Go</button>
+            <button className={classNames(`props-submit`, styles.propsSubmit)} onClick={this.handleSubmit}>Chat</button>
           </form>
+        );
+      }
+      return (
+        <div className={classNames(`widget-container`, styles.widgetContainer)}>
           {widget}
         </div>
       );
