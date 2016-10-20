@@ -155,7 +155,6 @@ const SparkCore = AmpState.extend({
     // too many implicit returns on the same line is difficult to interpret
     // eslint-disable-next-line arrow-body-style
     return transforms.reduce((promise, tx) => promise.then(() => {
-      console.log(`TX@@@`, tx.name, tx.alias);
       if (tx.alias) {
         return ctx.transform(tx.alias, ...rest);
       }
@@ -370,7 +369,7 @@ export function registerPlugin(name, constructor, options) {
   /* eslint complexity: [0] */
   if (constructorCalled) {
     const message = `registerPlugin() should not be called after instantiating a Spark instance`;
-    /* eslint no-console: [0] */
+    // eslint-disable-next-line no-console
     console.warn(message);
     /* istanbul ignore else */
     if (process.env.NODE_ENV !== `production`) {

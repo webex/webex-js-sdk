@@ -31,6 +31,15 @@ registerPlugin(`conversation`, Conversation, {
         }
       },
       {
+        name: `transformObject`,
+        test(event) {
+          return Promise.resolve(has(event, `activity`));
+        },
+        extract(event) {
+          return Promise.resolve(event.activity);
+        }
+      },
+      {
         name: `transformObjectArray`,
         test(options) {
           return Promise.resolve(has(options, `body.items[0].objectType`));

@@ -428,10 +428,10 @@ const Conversation = SparkPlugin.extend({
    * @param {Event} event
    * @returns {Promise}
    */
-  // processActivityEvent(event) {
-  //   return this.spark.transform(`inbound`, event.activity)
-  //     .then(() => event);
-  // },
+  processActivityEvent(event) {
+    return this.spark.transform(`inbound`, event)
+      .then(() => event);
+  },
 
   /**
    * Removes all mute-related tags
