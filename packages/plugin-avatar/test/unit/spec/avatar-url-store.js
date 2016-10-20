@@ -6,8 +6,19 @@ import {assert} from '@ciscospark/test-helper-chai';
 import Avatar from '../../';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
 
+/* eslint camelcase: 0*/
 describe(`Services`, () => {
   describe(`Avatar`, () => {
+    const item1_40 = {uuid: `id1@example.com`, size: 40, url: `http://www-40.example.com`, cacheControl: 300};
+    const item1_50 = {uuid: `id1@example.com`, size: 50, url: `http://www-50.example.com`, cacheControl: 300};
+    const item1_80 = {uuid: `id1@example.com`, size: 80, url: `http://www-80.example.com`, cacheControl: 300};
+    const item1_110 = {uuid: `id1@example.com`, size: 110, url: `http://www-110.example.com`, cacheControl: 300};
+    const item1_192 = {uuid: `id1@example.com`, size: 192, url: `http://www-192.example.com`, cacheControl: 300};
+    const item1_640 = {uuid: `id1@example.com`, size: 640, url: `http://www-640.example.com`, cacheControl: 300};
+    const item1_1600 = {uuid: `id1@example.com`, size: 1600, url: `http://www-1600.example.com`, cacheControl: 300};
+    const item2_80 = {uuid: `id2@example.com`, size: 80, url: `http://www2.example.com`, cacheControl: 300};
+    const item3_80 = {uuid: `id3@example.com`, size: 80, url: `http://www3.example.com`, cacheControl: 300};
+
     describe(`AvatarUrlStore`, () => {
       let store;
       let spark;
@@ -37,17 +48,6 @@ describe(`Services`, () => {
         assert.isRejected(store.get({uuid: `id1@example.com`, size: 80}), `No URL found by specified id`);
       });
       it(`set / get / remove`, () => {
-        const item1_40 = {uuid: `id1@example.com`, size: 40, url: `http://www-40.example.com`, cacheControl: 300};
-        const item1_50 = {uuid: `id1@example.com`, size: 50, url: `http://www-50.example.com`, cacheControl: 300};
-        const item1_80 = {uuid: `id1@example.com`, size: 80, url: `http://www-80.example.com`, cacheControl: 300};
-        const item1_110 = {uuid: `id1@example.com`, size: 110, url: `http://www-110.example.com`, cacheControl: 300};
-        const item1_135 = {uuid: `id1@example.com`, size: 135, url: `http://www-135.example.com`, cacheControl: 300};
-        const item1_192 = {uuid: `id1@example.com`, size: 192, url: `http://www-192.example.com`, cacheControl: 300};
-        const item1_640 = {uuid: `id1@example.com`, size: 640, url: `http://www-640.example.com`, cacheControl: 300};
-        const item1_1600 = {uuid: `id1@example.com`, size: 1600, url: `http://www-1600.example.com`, cacheControl: 300};
-        const item2_80 = {uuid: `id2@example.com`, size: 80, url: `http://www2.example.com`, cacheControl: 300};
-        const item3_80 = {uuid: `id3@example.com`, size: 80, url: `http://www3.example.com`, cacheControl: 300};
-
         assert.isFulfilled(store.add(item1_80));
         assert.isFulfilled(store.add(item2_80));
         assert.isFulfilled(store.add(item3_80));
