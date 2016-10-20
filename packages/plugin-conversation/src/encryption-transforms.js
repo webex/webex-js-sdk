@@ -40,10 +40,8 @@ export const transforms = toArray(`outbound`, {
     return Promise.resolve(key || ctx.spark.encryption.kms.createUnboundKeys({count: 1}))
       .then((keys) => {
         const k = isArray(keys) ? keys[0] : keys;
-        if (conversation.kmsMessage) {
-          if (conversation.kmsMessage.keyUris && !conversation.kmsMessage.keyUris.includes(k.uri)) {
-            conversation.kmsMessage.keyUris.push(k.uri);
-          }
+        if (has(conversation, `kmsMessage.keyUris`) && !conversation.kmsMessage.keyUris.includes(k.uri)) {
+          conversation.kmsMessage.keyUris.push(k.uri);
         }
 
         return Promise.all([
@@ -86,12 +84,7 @@ export const transforms = toArray(`outbound`, {
       .then(() => {
         key = key || activity[KEY];
       })
-      .then(() => ctx.transform(`encryptObject`, key, activity.object))
-      .then(() => {
-        if (activity.verb === `post` || activity.verb === `share`) {
-          activity.encryptionKeyUrl = key.uri || key;
-        }
-      });
+      .then(() => ctx.transform(`encryptObject`, key, activity.object));
   },
 
   maybeEncryptTarget(ctx, key, activity) {
@@ -181,12 +174,24 @@ export const transforms = toArray(`outbound`, {
 
   encryptPostActivity: {
     direction: `outbound`,
-    alias: `encryptVerbActivity`
+    fn(ctx, key, activity) {
+      return ctx.transform(`encryptVerbActivity`, key, activity)
+        .then(() => {
+          key = key || activity[KEY];
+          activity.encryptionKeyUrl = key.uri || key;
+        });
+    }
   },
 
   encryptShareActivity: {
     direction: `outbound`,
-    alias: `encryptVerbActivity`
+    fn(ctx, key, activity) {
+      return ctx.transform(`encryptVerbActivity`, key, activity)
+        .then(() => {
+          key = key || activity[KEY];
+          activity.encryptionKeyUrl = key.uri || key;
+        });
+    }
   },
 
   encryptUpdateActivity: {
@@ -261,12 +266,6 @@ export const transforms = toArray(`outbound`, {
     return ctx.spark.encryption.encryptText(key.uri || key, object[name])
       .then((ciphertext) => {
         object[name] = ciphertext;
-
-        return ctx.spark.encryption.decryptText(key.uri || key, object[name]);
-      })
-      .catch((reason) => {
-        ctx.spark.logger.warn(`plugin-conversation: failed to encrypt ${name}`);
-        return Promise.reject(reason);
       });
   }
 });

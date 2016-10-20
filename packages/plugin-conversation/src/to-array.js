@@ -3,8 +3,9 @@ import {isFunction} from 'lodash';
 /**
  * Helper to convert objects into arrays of transforms. probably belongs in
  * spark-core
- * @param {string} direction
+ * @param {string} direction "inbound"|"outbound"
  * @param {Object} obj
+ * @private
  * @returns {Array}
  */
 export default function toArray(direction, obj) {
