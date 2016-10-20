@@ -148,8 +148,7 @@ module.exports = {
       },
       {
         test: /\.png$|\.jpg$/,
-        loader: 'file',
-        include: path.resolve(__dirname, '..')
+        loader: 'url'
       },
       {
         test: /\.ttf$|\.otf$|\.eot$|\.svg$/,
