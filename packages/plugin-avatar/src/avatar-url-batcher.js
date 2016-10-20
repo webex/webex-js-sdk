@@ -32,15 +32,14 @@ const AvatarUrlBatcher = Batcher.extend({
       if (item.size !== item.response.size) {
         this.logger.warn(`Avatar: substituted size "${item.response.size}" for "${item.size}"`);
       }
-      return Promise.resolve(true);
+      return Promise.resolve(false);
     }
-    return Promise.resolve(false);
+    return Promise.resolve(true);
   },
 
   handleItemSuccess(item) {
     return this.getDeferredForResponse(item)
-      .then((defer) =>
-        defer.resolve(Object.assign(item, {url: item.url})));
+      .then((defer) => defer.resolve(item));
   },
 
   fingerprintRequest(item) {

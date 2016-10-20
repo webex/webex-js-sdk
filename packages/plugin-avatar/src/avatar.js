@@ -39,7 +39,7 @@ const Avatar = SparkPlugin.extend({
       .catch(() =>
         this.batcher.request(Object.assign({}, {uuid, size: options.size}))
           .then((item) =>
-            this.store.add(defaults(item, {cacheControl: options.cacheControl}))));
+            this.store.add(defaults(item, {cacheControl: options.cacheControl, url: item.response.url}))));
   },
 
   /**
@@ -62,10 +62,8 @@ const Avatar = SparkPlugin.extend({
     return this.spark.user.asUUID(user)
       .then((uuid) =>
         this._fetchAvatarUrl(uuid, options)
-          .then((res) => res.url))
-      .catch((reason) => {
-        throw new Error(`failed to retrieve avatar url: ${reason.body || reason}`);
-      });
+          .then((res) => res.url)
+          .catch(() => Promise.reject(new Error(`Could not retrieve avatar`))));
   },
 
   /**
