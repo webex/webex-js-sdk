@@ -3,6 +3,12 @@ import React, {Component} from 'react';
 import classNames from 'classnames';
 
 import styles from './styles/loader.css';
+let bgImg;
+try {
+  bgImg = require(`./local/bg.png`);
+}
+catch(e) {
+}
 
 function getDisplayName(C) {
   return C.displayName || C.name || `C`;
@@ -41,7 +47,7 @@ export default function injectWidgetLoader(WrappedComponent) {
       const props = this.props;
       if (this.state && this.state.userId) {
         widget = ( // eslint-disable-line no-extra-parens
-          <div className={classNames(`widget-component-container`, styles.widgetComponentContainer)}>
+          <div className={classNames(`widget-component-container`, styles.widgetComponentContainer)} >
             <WrappedComponent accessToken={props.accessToken} userId={this.state.userId} />
           </div>
         );
@@ -63,7 +69,7 @@ export default function injectWidgetLoader(WrappedComponent) {
         );
       }
       return (
-        <div className={classNames(`widget-container`, styles.widgetContainer)}>
+        <div className={classNames(`widget-container`, styles.widgetContainer)} style={{backgroundImage: `url('${bgImg}')`}}>
           {widget}
         </div>
       );
