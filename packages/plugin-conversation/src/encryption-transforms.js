@@ -116,15 +116,15 @@ export const transforms = toArray(`outbound`, {
         }
 
         if (!activity.target.defaultActivityEncryptionKeyUrl) {
-          ctx.logger.warn(`plugin-conversation: downloaded conversation to determine its defaultActivityEncryptionKeyUrl; make sure to pass all encryption related properties when calling Spark.conversation methods.`);
+          ctx.spark.logger.warn(`plugin-conversation: downloaded conversation to determine its defaultActivityEncryptionKeyUrl; make sure to pass all encryption related properties when calling Spark.conversation methods.`);
         }
 
         if (!activity.target.kmsResourceObjectUrl) {
-          ctx.logger.warn(`plugin-conversation: downloaded conversation to determine its kmsResourceObjectUrl; make sure to pass all encryption related properties when calling Spark.conversation methods.`);
+          ctx.spark.logger.warn(`plugin-conversation: downloaded conversation to determine its kmsResourceObjectUrl; make sure to pass all encryption related properties when calling Spark.conversation methods.`);
         }
 
-        activity.target.defaultActivityEncryptionKeyUrl = conversation.defaultActivityEncryptionKeyUrl;
-        activity[KEY] = activity.target.kmsResourceObjectUrl = conversation.kmsResourceObjectUrl;
+        activity[KEY] = activity.target.defaultActivityEncryptionKeyUrl = conversation.defaultActivityEncryptionKeyUrl;
+        activity.target.kmsResourceObjectUrl = conversation.kmsResourceObjectUrl;
         return Promise.resolve();
       });
   },
