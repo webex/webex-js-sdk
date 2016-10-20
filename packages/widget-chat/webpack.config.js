@@ -147,6 +147,10 @@ module.exports = {
         include: path.resolve(__dirname, '..')
       },
       {
+        test: /\.png$|\.jpg$/,
+        loader: 'url'
+      },
+      {
         test: /\.ttf$|\.otf$|\.eot$|\.svg$/,
         loader: 'file',
         query: {
