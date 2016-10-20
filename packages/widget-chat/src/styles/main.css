@@ -20,11 +20,3 @@ main > div > div {
   overflow: hidden;
   flex-direction: column;
 }
-
-.widget-wrapper {
-  width: 500px;
-  height: 500px;
-  margin: 10% auto;
-  overflow: hidden;
-  border: 1px solid #333;
-}

@@ -20,7 +20,7 @@
 }
 
 .content {
-  max-width: 500px;
+  width: 100%;
   margin-left: 50px;
   border-radius: 1px;
 }
@@ -91,6 +91,7 @@
   margin-right: 5px;
   text-align: right;
   visibility: hidden;
+  flex: 0;
   flex-direction: column;
 }
 
