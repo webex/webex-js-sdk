@@ -24,7 +24,6 @@ describe(`plugin-wdm`, () => {
 
       device = spark.device;
 
-      device.services = {};
       device.config.preDiscoveryServices = {};
     });
 
