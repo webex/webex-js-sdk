@@ -22,6 +22,9 @@ describe(`Services`, () => {
         }
       });
       avatar = spark.avatar;
+      avatar.config.batcherWait = 1500;
+      avatar.config.batcherMaxCalls = 100;
+      avatar.config.batcherMaxWait = 100;
       avatar.config.cacheExpiration = 60 * 60;
       avatar.config.defaultAvatarSize = 80;
     });
@@ -57,8 +60,8 @@ describe(`Services`, () => {
               ]
             }
           }));
-
-          return assert.becomes(avatar.retrieveAvatarUrl(`88888888-4444-4444-4444-aaaaaaaaaaa0`), `https://example.com/88888888-4444-4444-4444-aaaaaaaaaaa0`);
+          const deferred = avatar.retrieveAvatarUrl(`88888888-4444-4444-4444-aaaaaaaaaaa0`);
+          return assert.becomes(deferred, `https://example.com/88888888-4444-4444-4444-aaaaaaaaaaa0`);
         });
 
         it(`fails to retrieve an avatar url`, () => {
@@ -78,7 +81,7 @@ describe(`Services`, () => {
             }
           }));
 
-          return assert.isRejected(avatar.retrieveAvatarUrl(`88888888-4444-4444-4444-aaaaaaaaaaa0`), /bulk retrieval for avatar urls failed/);
+          return assert.isRejected(avatar.retrieveAvatarUrl(`88888888-4444-4444-4444-aaaaaaaaaaa0`), /Could not retrieve avatar/);
         });
 
         it(`retrieves an avatar url for a non-default size`, () => {
@@ -207,8 +210,8 @@ describe(`Services`, () => {
           const a1 = avatar.retrieveAvatarUrl(`88888888-4444-4444-4444-aaaaaaaaaaa1`);
 
           return Promise.all([
-            assert.isRejected(a1, /bulk retrieval for avatar urls failed/),
-            assert.isRejected(a0, /bulk retrieval for avatar urls failed/)
+            assert.isRejected(a1, /Could not retrieve avatar/),
+            assert.isRejected(a0, /Could not retrieve avatar/)
           ])
             .then(() => {
               assert.callCount(spark.request, 1);
@@ -246,7 +249,7 @@ describe(`Services`, () => {
 
           return Promise.all([
             assert.becomes(avatar.retrieveAvatarUrl(`88888888-4444-4444-4444-aaaaaaaaaaa0`), `https://example.com/88888888-4444-4444-4444-aaaaaaaaaaa0`),
-            assert.isRejected(avatar.retrieveAvatarUrl(`88888888-4444-4444-4444-aaaaaaaaaaa1`), /requested uuid not found in bulk avatar payload/)
+            assert.isRejected(avatar.retrieveAvatarUrl(`88888888-4444-4444-4444-aaaaaaaaaaa1`), /Could not retrieve avatar/)
           ])
             .then(() => {
               assert.callCount(spark.request, 1);

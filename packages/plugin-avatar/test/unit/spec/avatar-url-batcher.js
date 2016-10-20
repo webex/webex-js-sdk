@@ -58,17 +58,17 @@ describe(`Services`, () => {
         afterEach(() => {
           batcher.logger.warn = warn;
         });
-        it(`returns false if no response in item`, () => {
+        it(`returns true if no response in item`, () => {
           return batcher.didItemFail({})
-            .then((res) => assert.isTrue(!res && !loggerWarned));
+            .then((res) => assert.isTrue(res));
         });
-        it(`returns true, warns reqested size does not equal response size`, () => {
+        it(`returns false, warns reqested size does not equal response size`, () => {
           return batcher.didItemFail({size: 80, response: {size: 256}})
-            .then((res) => assert.isTrue(res && loggerWarned));
+            .then((res) => assert.isFalse(res && loggerWarned));
         });
-        it(`returns true no warning`, () => {
+        it(`returns false no warning`, () => {
           return batcher.didItemFail({size: 80, response: {size: 80}})
-            .then((res) => assert.isTrue(res && !loggerWarned));
+            .then((res) => assert.isFalse(res && !loggerWarned));
         });
       });
     });
