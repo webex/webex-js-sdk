@@ -17,6 +17,7 @@ import {
 import TitleBar from '../../components/title-bar';
 import ActivityList from '../../components/activity-list';
 import ScrollToBottomButton from '../../components/scroll-to-bottom-button';
+import TypingIndicator from '../../components/typing-indicators';
 import MessageComposer from '../message-composer';
 
 import styles from './styles.css';
@@ -67,7 +68,7 @@ export class ChatWidget extends Component {
 
   shouldComponentUpdate(nextProps) {
     const props = this.props;
-    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation.activities !== props.conversation.activities || nextProps.widget !== props.widget;
+    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation.activities !== props.conversation.activities || nextProps.widget !== props.widget || nextProps.indicators !== props.indicators;
   }
 
   componentDidUpdate(prevProps) {
@@ -155,6 +156,7 @@ export class ChatWidget extends Component {
     const props = this.props;
     const {
       conversation,
+      indicators,
       spark,
       sparkState,
       widget
@@ -183,6 +185,7 @@ export class ChatWidget extends Component {
 
       if (isLoaded) {
         const user = this.getUserFromConversation(conversation);
+        const isTyping = indicators.typing.length > 0;
         const {displayName} = user;
         const messagePlaceholder = `Send a message to ${displayName}`;
         main = ( // eslint-disable-line no-extra-parens
@@ -201,6 +204,9 @@ export class ChatWidget extends Component {
                 ref={this.getActivityList}
               />
               {scrollButton}
+            </div>
+            <div className={classNames(`indicators`, styles.indicators)}>
+              <TypingIndicator isTyping={isTyping} />
             </div>
             <div className={classNames(`message-composer-wrapper`, styles.messageComposerWrapper)}>
               <MessageComposer
@@ -240,7 +246,8 @@ function mapStateToProps(state, ownProps) {
     sparkState: state.spark,
     user: state.user,
     conversation: state.conversation,
-    widget: state.widget
+    widget: state.widget,
+    indicators: state.indicators
   };
 }
 
