@@ -17,7 +17,7 @@ import {
 import TitleBar from '../../components/title-bar';
 import ActivityList from '../../components/activity-list';
 import ScrollToBottomButton from '../../components/scroll-to-bottom-button';
-import TypingIndicator from '../../components/typing-indicators';
+import TypingIndicator from '../../components/typing-indicator';
 import MessageComposer from '../message-composer';
 
 import styles from './styles.css';
@@ -186,6 +186,10 @@ export class ChatWidget extends Component {
       if (isLoaded) {
         const user = this.getUserFromConversation(conversation);
         const isTyping = indicators.typing.length > 0;
+        let typingIndicator;
+        if (isTyping) {
+          typingIndicator = <TypingIndicator />;
+        }
         const {displayName} = user;
         const messagePlaceholder = `Send a message to ${displayName}`;
         main = ( // eslint-disable-line no-extra-parens
@@ -204,9 +208,9 @@ export class ChatWidget extends Component {
                 ref={this.getActivityList}
               />
               {scrollButton}
-            </div>
-            <div className={classNames(`indicators`, styles.indicators)}>
-              <TypingIndicator isTyping={isTyping} />
+              <div className={classNames(`indicators`, styles.indicators)}>
+                {typingIndicator}
+              </div>
             </div>
             <div className={classNames(`message-composer-wrapper`, styles.messageComposerWrapper)}>
               <MessageComposer
