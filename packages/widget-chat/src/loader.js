@@ -1,4 +1,4 @@
-/* eslint-disable react/no-set-state */
+/* eslint-disable react/no-set-state, global-require */
 import React, {Component} from 'react';
 import classNames from 'classnames';
 
@@ -7,7 +7,8 @@ let bgImg;
 try {
   bgImg = require(`./local/bg.png`);
 }
-catch(e) {
+catch (e) {
+  bgImg = require(`./images/bg.png`);
 }
 
 function getDisplayName(C) {
