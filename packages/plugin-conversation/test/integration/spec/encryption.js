@@ -8,7 +8,7 @@ import {assert} from '@ciscospark/test-helper-chai';
 import testUsers from '@ciscospark/test-helper-test-users';
 
 describe(`plugin-conversation`, () => {
-  let checkov, mccoy, spark, spock, participants;
+  let checkov, mccoy, participants, spark, spock;
 
   before(() => testUsers.create({count: 3})
     .then((users) => {
