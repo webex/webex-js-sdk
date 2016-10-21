@@ -35,6 +35,10 @@ export default {
     logoutUri: `https://idbroker.webex.com/idb/saml2/jsp/doSSO.jsp`,
     samlUrl: `https://idbroker.webex.com/idb/token`
   },
+  payloadTransformer: {
+    predicates: [],
+    transforms: []
+  },
   storage: {
     boundedAdapter: MemoryStoreAdapter,
     unboundedAdapter: MemoryStoreAdapter
