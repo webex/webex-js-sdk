@@ -25,9 +25,15 @@
   position: relative;
   display: flex;
   width: 100%;
+  flex: 1 1 auto;
 }
 
 .message-composer-wrapper {
   height: 100%;
   flex: 1;
+}
+
+.loading {
+  margin: 30px auto;
+  text-align: center;
 }
