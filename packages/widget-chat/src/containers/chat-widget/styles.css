@@ -31,20 +31,3 @@
   height: 100%;
   flex: 1;
 }
-
-.indicators {
-  position: absolute;
-  bottom: 10px;
-  left: 50%;
-  margin-left: -15px;
-  font-size: 17px;
-  text-align: center;
-  white-space: nowrap;
-  cursor: pointer;
-  opacity: 0.5;
-  transition: all 0.5s ease-in;
-}
-
-.indicators:hover {
-  opacity: 1;
-}

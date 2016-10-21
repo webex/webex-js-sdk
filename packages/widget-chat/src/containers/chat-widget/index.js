@@ -15,9 +15,8 @@ import {
   showScrollToBottomButton
 } from '../../actions/widget';
 import TitleBar from '../../components/title-bar';
-import ActivityList from '../../components/activity-list';
+import ScrollingActivity from '../scrolling-activity';
 import ScrollToBottomButton from '../../components/scroll-to-bottom-button';
-import TypingIndicator from '../../components/typing-indicator';
 import MessageComposer from '../message-composer';
 
 import styles from './styles.css';
@@ -172,9 +171,7 @@ export class ChatWidget extends Component {
     if (conversation) {
       const {
         activities,
-        id,
-        isLoaded,
-        participants
+        isLoaded
       } = conversation;
 
       let scrollButton;
@@ -186,10 +183,6 @@ export class ChatWidget extends Component {
       if (isLoaded) {
         const user = this.getUserFromConversation(conversation);
         const isTyping = indicators.typing.length > 0;
-        let typingIndicator;
-        if (isTyping) {
-          typingIndicator = <TypingIndicator />;
-        }
         const {displayName} = user;
         const messagePlaceholder = `Send a message to ${displayName}`;
         main = ( // eslint-disable-line no-extra-parens
@@ -198,19 +191,15 @@ export class ChatWidget extends Component {
               <TitleBar connectionStatus={sparkState} displayName={displayName} />
             </div>
             <div className={classNames(`activity-list-wrapper`, styles.activityListWrapper)}>
-              <ActivityList
+              <ScrollingActivity
                 activities={activities}
                 currentUserId={currentUser.id}
-                id={id}
+                isTyping={isTyping}
                 onActivityDelete={this.handleActivityDelete}
                 onScroll={this.handleScroll}
-                participants={participants}
                 ref={this.getActivityList}
               />
               {scrollButton}
-              <div className={classNames(`indicators`, styles.indicators)}>
-                {typingIndicator}
-              </div>
             </div>
             <div className={classNames(`message-composer-wrapper`, styles.messageComposerWrapper)}>
               <MessageComposer
