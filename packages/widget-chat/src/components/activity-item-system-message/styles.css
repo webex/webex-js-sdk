@@ -1,7 +1,7 @@
 .system-message {
   width: 100%;
+  padding-top: 20px;
+  font-size: 14px;
   color: #aeaeaf;
   text-align: center;
-  font-size: 14px;
-  padding-top: 20px;
 }
