@@ -165,7 +165,7 @@ export class ChatWidget extends Component {
       currentUser = props.user.currentUser;
     }
 
-    let main = <div className="loading">Connecting...</div>;
+    let main = <div className={classNames(`loading`, styles.loading)}>Connecting...</div>;
 
     if (conversation) {
       const {
