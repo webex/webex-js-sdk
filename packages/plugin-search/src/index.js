@@ -37,7 +37,8 @@ registerPlugin(`search`, Search, {
         name: `transformObjectArray`,
         direction: `inbound`,
         test(ctx, response) {
-          return Promise.resolve(has(response, `body.activities.items`));
+          return Promise.resolve(has(response, `body.activities.items[0].objectType`))
+            .then((res) => res && ctx.spark.device.isSpecificService(`argonaut`, response.options.service || response.options.uri));
         },
         extract(response) {
           return Promise.resolve(response.body.activities.items);
