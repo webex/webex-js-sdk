@@ -37,8 +37,7 @@ ScrollingActivity.propTypes = {
   activities: PropTypes.array,
   currentUserId: PropTypes.string,
   isTyping: PropTypes.bool,
-  onActivityDelete: PropTypes.func.isRequired,
-  onScrollToBottom: PropTypes.func
+  onActivityDelete: PropTypes.func.isRequired
 };
 
 export default injectScrollable(ScrollingActivity);
