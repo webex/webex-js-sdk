@@ -1,16 +1,16 @@
 export const ADD_TYPING_INDICATOR = `ADD_TYPING_INDICATOR`;
-export function addTyping(id) {
+export function addTyping(userId) {
   return {
     type: ADD_TYPING_INDICATOR,
-    id
+    userId
   };
 }
 
 export const DELETE_TYPING_INDICATOR = `DELETE_TYPING_INDICATOR`;
-export function deleteTyping(id) {
+export function deleteTyping(userId) {
   return {
     type: DELETE_TYPING_INDICATOR,
-    id
+    userId
   };
 }
 
