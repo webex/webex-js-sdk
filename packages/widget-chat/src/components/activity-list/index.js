@@ -1,13 +1,10 @@
 import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 import ActivityItem from '../activity-item';
-import injectScrollable from '../../containers/wrapper-scrollable';
 
 import {formatDate} from '../../utils/date';
 
-import styles from './styles.css';
-
-function ActivityList(props) {
+export default function ActivityList(props) {
   let lastActorId, lastVerb;
   const activities = props.activities
     .map((activity) => {
@@ -30,7 +27,7 @@ function ActivityList(props) {
     });
 
   return (
-    <div className={classNames(`activity-list`, styles.activityList)}>
+    <div className={classNames(`activity-list`)}>
       {activities}
     </div>
   );
@@ -41,5 +38,3 @@ ActivityList.propTypes = {
   currentUserId: PropTypes.string,
   onActivityDelete: PropTypes.func.isRequired
 };
-
-export default injectScrollable(ActivityList);
