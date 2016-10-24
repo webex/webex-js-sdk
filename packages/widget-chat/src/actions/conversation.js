@@ -1,5 +1,5 @@
 import {updateHasNewMessage} from './widget.js';
-
+import {setTyping} from './indicators';
 
 export const ADD_ACTIVITIES_TO_CONVERSATION = `ADD_ACTIVITIES_TO_CONVERSATION`;
 export function addActivitiesToConversation(activities) {
@@ -91,6 +91,18 @@ export function deleteActivity(conversation, activity, spark) {
 export function listenToMercuryActivity(conversationId, spark) {
   return (dispatch) => {
     dispatch(updateMercuryState({isListening: true}));
+    spark.mercury.on(`event:status.start_typing`, (event) => {
+      if (event.data.conversationId === conversationId) {
+        dispatch(setTyping(event.data.actor.id, true));
+      }
+    });
+
+    spark.mercury.on(`event:status.stop_typing`, (event) => {
+      if (event.data.conversationId === conversationId) {
+        dispatch(setTyping(event.data.actor.id, false));
+      }
+    });
+
     spark.mercury.on(`event:conversation.activity`, (event) => {
       const activity = event.data.activity;
       const isChatMessage = activity.verb === `post` && activity.object.objectType === `comment` && activity.target.objectType === `conversation`;

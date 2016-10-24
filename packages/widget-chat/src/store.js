@@ -8,9 +8,10 @@ import {
 import thunk from 'redux-thunk';
 import createLogger from 'redux-logger';
 import {
-  user,
   conversation,
+  indicators,
   message,
+  user,
   widget
 } from './reducers';
 import sparkReducer from './modules/redux-spark/reducers';
@@ -32,9 +33,10 @@ const enhancers = [
 
 export default createStore(
   combineReducers({
-    user,
     conversation,
+    indicators,
     message,
+    user,
     widget,
     spark: sparkReducer
   }),
