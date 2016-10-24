@@ -23,7 +23,7 @@ registerPlugin(`conversation`, Conversation, {
     predicates: [
       {
         name: `transformObject`,
-        test(options) {
+        test(ctx, options) {
           return Promise.resolve(has(options, `body.objectType`));
         },
         extract(options) {
@@ -41,7 +41,7 @@ registerPlugin(`conversation`, Conversation, {
       },
       {
         name: `transformObjectArray`,
-        test(options) {
+        test(ctx, options) {
           return Promise.resolve(has(options, `body.items[0].objectType`));
         },
         extract(options) {
@@ -209,4 +209,3 @@ registerPlugin(`conversation`, Conversation, {
 
 export {default as default} from './conversation';
 export {default as ShareActivity} from './share-activity';
-export {default as Interceptor} from './interceptor';

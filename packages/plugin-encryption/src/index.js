@@ -25,7 +25,7 @@ registerPlugin(`encryption`, Encryption, {
       direction: `outbound`,
       // I don't see any practical way to reduce complexity here.
       // eslint-disable-next-line complexity
-      test(options) {
+      test(ctx, options) {
         if (!has(options, `body.kmsMessage`)) {
           return Promise.resolve(false);
         }
@@ -56,7 +56,7 @@ registerPlugin(`encryption`, Encryption, {
     }, {
       name: `decryptKmsMessage`,
       direction: `inbound`,
-      test(response) {
+      test(ctx, response) {
         return Promise.resolve(has(response, `body.kmsMessage`) && isString(response.body.kmsMessage));
       },
       extract(response) {
