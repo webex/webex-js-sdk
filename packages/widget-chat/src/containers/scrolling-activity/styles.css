@@ -1,5 +1,6 @@
 .indicators {
   display: flex;
+  min-height: 40px;
   justify-content: center;
   padding-bottom: 5px;
   font-size: 17px;
