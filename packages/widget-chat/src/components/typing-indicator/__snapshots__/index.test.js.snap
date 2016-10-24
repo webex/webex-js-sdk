@@ -1,0 +1,8 @@
+exports[`TypingIndicator component renders correctly 1`] = `
+<div
+  className="typing-background">
+  <span>
+    ...
+  </span>
+</div>
+`;
