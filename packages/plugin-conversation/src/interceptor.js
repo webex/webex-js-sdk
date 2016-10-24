@@ -38,8 +38,7 @@ export default class ConversationInterceptor extends Interceptor {
           return options;
         }
 
-        return this.spark.conversation.outboundNormalizer.normalize(options.body)
-          .then((body) => this.spark.conversation.encrypter.encryptObject(body))
+        return this.spark.conversation.encrypter.encryptObject(options.body)
           .then((body) => {
             options.body = body;
             return options;
@@ -63,7 +62,6 @@ export default class ConversationInterceptor extends Interceptor {
         const hasItems = Boolean(response.body.items);
 
         return this.spark.conversation.decrypter.decryptObject(null, response.body)
-          .then((body) => this.spark.conversation.inboundNormalizer.normalize(hasItems ? body.items : body))
           .then((body) => {
             if (hasItems) {
               response.body.items = body;
