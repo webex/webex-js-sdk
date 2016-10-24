@@ -24,7 +24,6 @@ describe(`plugin-wdm`, () => {
 
       device = spark.device;
 
-      device.services = {};
       device.config.preDiscoveryServices = {};
     });
 
@@ -42,6 +41,11 @@ describe(`plugin-wdm`, () => {
         device.clear();
         assert.lengthOf(device.features.developer, 0);
       });
+    });
+
+    describe(`#determineService()`, () => {
+      it(`determines the service backing the specified url`, () => assert.becomes(device.determineService(`https://conv-a.wbx2.com/conversation/api/v1/conversations`), `conversation`));
+      it(`rejects if no service can be determined`, () => assert.isRejected(device.determineService(`https://rogue-service.example.com`), /does not reflect a known service/));
     });
 
     describe(`#getPreDiscoveryServiceUrl()`, () => {
@@ -132,6 +136,12 @@ describe(`plugin-wdm`, () => {
           assert.becomes(device.isService(`valid`), true)
         ]);
       });
+    });
+
+    describe(`#isSpecificService()`, () => {
+      it(`resolves with true if the service and key match`, () => assert.becomes(device.isSpecificService(`wdm`, `wdm`), true));
+      it(`resolves with true if the service is a url that matches the service specified by key`, () => assert.becomes(device.isSpecificService(`conversation`, `https://conv-a.wbx2.com/conversation/api/v1/conversations`), true));
+      it(`resolves with false if the service does not match the key`, () => assert.becomes(device.isSpecificService(`wdm`, `https://conv-a.wbx2.com/conversation/api/v1/conversations`), false));
     });
 
     describe(`#isServiceUrl()`, () => {

@@ -142,15 +142,17 @@ describe(`plugin-conversation`, function() {
         richMessage = `<spark-mention data-object-id="${mccoy.id}" data-object-type="person">mccoy</spark-mention>, THIS IS A TEST MESSAGE`;
       });
 
-      it(`posts a comment to the specified conversation`, () => spark.conversation.post(conversation, message)
-        .then((activity) => {
-          assert.isActivity(activity);
+      it(`posts a comment to the specified conversation`, () => {
+        return spark.conversation.post(conversation, message)
+          .then((activity) => {
+            assert.isActivity(activity);
 
-          assert.isEncryptedActivity(activity);
-          assert.equal(activity.encryptionKeyUrl, conversation.defaultActivityEncryptionKeyUrl);
+            assert.isEncryptedActivity(activity);
+            assert.equal(activity.encryptionKeyUrl, conversation.defaultActivityEncryptionKeyUrl);
 
-          assert.equal(activity.object.displayName, message);
-        }));
+            assert.equal(activity.object.displayName, message);
+          });
+      });
 
       it(`posts a sticky to the specified conversation`, () => spark.request({
         service: `stickies`,
