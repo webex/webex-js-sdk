@@ -8,7 +8,9 @@ function TypingIndicator() {
 
   return ( // eslint-disable-line no-extra-parens
     <div className={classNames(`typing-background`, styles.background)}>
-      <span>...</span>
+      <div className={classNames(`typing-indicator`, styles.typingIndicator)}>
+        <div className={classNames(`sq`, styles.sq)} /><div className={classNames(`sq`, styles.sq)} /><div className={classNames(`sq`, styles.sq)} />
+      </div>
     </div>
   );
 }
