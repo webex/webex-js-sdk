@@ -23,12 +23,11 @@ registerPlugin(`conversation`, Conversation, {
     predicates: [
       {
         name: `transformObject`,
-        direction: `outbound`,
-        test(ctx, options) {
-          return Promise.resolve(has(options, `body.objectType`));
+        test(ctx, optionsOrResponse) {
+          return Promise.resolve(has(optionsOrResponse, `body.objectType`));
         },
-        extract(options) {
-          return Promise.resolve(options.body);
+        extract(optionsOrResponse) {
+          return Promise.resolve(optionsOrResponse.body);
         }
       },
       {
