@@ -95,12 +95,12 @@ export default class AvatarUrlStore {
    * @param {object} item
    * @param {string} item.uuid The user unique id
    * @param {integer} item.size The size of the avatar to remove
-   * @returns {boolean} true
+   * @returns {Promise<true>}
    */
   remove(item) {
     /* eslint no-extra-parens: [0] */
     const sizes = (item.size && [item.size]) || [40, 50, 80, 110, 135, 192, 640, 1600];
     sizes.forEach((one) => urlByUuid.get(this).delete(`${item.uuid} - ${one}`));
-    return true;
+    return Promise.resolve(true);
   }
 }
