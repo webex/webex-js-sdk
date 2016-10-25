@@ -30,7 +30,7 @@
 
 .message-composer-wrapper {
   height: 100%;
-  flex: 1;
+  flex: 0;
 }
 
 .loading {
