@@ -16,7 +16,7 @@ describe(`plugin-flag`, function() {
   describe(`Flag`, () => {
     let flagConversation, mccoy, participants, spock;
 
-    beforeEach(() => testUsers.create({count: 2})
+    beforeEach(`create users`, () => testUsers.create({count: 2})
       .then((users) => {
         participants = [mccoy, spock] = users;
         spock.spark = new CiscoSpark({
@@ -29,13 +29,20 @@ describe(`plugin-flag`, function() {
             authorization: users[1].token
           }
         });
-      })
-      .then(() => spock.spark.device.register())
-      .then(() => mccoy.spark.device.register())
-      .then(() => spock.spark.conversation.create({
-        displayName: `Test Flagging Room`,
-        participants
-      }))
+      }));
+
+    beforeEach(() => spock.spark.mercury.connect());
+    beforeEach(() => mccoy.spark.mercury.connect());
+
+    afterEach(() => Promise.all([
+      spock && spock.spark.mercury.disconnect(),
+      mccoy && mccoy.spark.mercury.disconnect()
+    ]));
+
+    beforeEach(`populate data`, () => spock.spark.conversation.create({
+      displayName: `Test Flagging Room`,
+      participants
+    })
       .then((c) => {
         flagConversation = c;
         return mccoy.spark.conversation.post(flagConversation, {
@@ -68,15 +75,12 @@ describe(`plugin-flag`, function() {
         assert.equal(comments[2], `I am also doing well. Are you in for the party?`);
         assert.equal(comments[3], `Yes, I am in.`);
         flagConversation = conversation;
-      })
-    );
+      }));
 
 
     afterEach(() => spock.spark.flag.list()
-      .then((flags) => {
-        flags.forEach((flag) => spock.spark.flag.delete(flag));
-      })
-    );
+      .then((flags) => Promise.all(flags.map((flag) => spock.spark.flag.delete(flag)
+        .catch((reason) => console.warn(reason))))));
 
     describe(`#flag()`, () => {
       it(`flags the activity`, () => {
