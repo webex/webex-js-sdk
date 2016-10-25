@@ -9,7 +9,7 @@ import fh from '@ciscospark/test-helper-file';
 import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
 
-describe(`Services`, () => {
+describe(`plugin-avatar`, function() {
   describe(`Avatar`, () => {
     this.timeout(120000);
     /* eslint max-statements: [0] */
