@@ -3,10 +3,12 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 
+import {createUser} from '@ciscospark/test-helper-appid';
 import {assert} from '@ciscospark/test-helper-chai';
 import retry from '@ciscospark/test-helper-retry';
 import {default as Spark, Authorization, grantErrors} from '../../..';
 import testUsers from '@ciscospark/test-helper-test-users';
+import uuid from 'uuid';
 
 describe(`spark-core`, function() {
   this.timeout(30000);
@@ -25,6 +27,22 @@ describe(`spark-core`, function() {
 
         afterEach(() => {
           user = undefined;
+        });
+
+        describe(`#requestAccessTokenFromJwt()`, () => {
+          let jwt;
+          beforeEach(() => createUser({subject: `test-${uuid.v4()}`})
+            .then((res) => {
+              jwt = res.jwt;
+            }));
+
+          it(`exchanges a JWT for an access token`, () => {
+            const spark = new Spark();
+            const promise = spark.authenticate({jwt});
+            assert.isTrue(spark.isAuthenticating);
+            return promise
+              .then(() => assert.isTrue(spark.isAuthenticated));
+          });
         });
 
         describe(`#requestAuthorizationCodeGrant()`, () => {
