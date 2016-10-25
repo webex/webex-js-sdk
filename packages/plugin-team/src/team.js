@@ -4,9 +4,6 @@
  * @private
  */
 
-import './decrypter';
-import './encrypter';
-
 import {find, pick, uniq} from 'lodash';
 import {SparkPlugin} from '@ciscospark/spark-core';
 import querystring from 'querystring';
