@@ -33,7 +33,7 @@ registerPlugin(`conversation`, Conversation, {
       {
         name: `transformObject`,
         direction: `inbound`,
-        test(event) {
+        test(ctx, event) {
           return Promise.resolve(has(event, `activity`));
         },
         extract(event) {
