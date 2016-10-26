@@ -542,6 +542,12 @@ const Conversation = SparkPlugin.extend({
       .then((res) => res.body);
   },
 
+  /**
+   * Remove the avatar from a room
+   * @param {Conversation~ConversationObject} conversation
+   * @param {Conversation~ActivityObject} activity
+   * @returns {Promise}
+   */
   unassign(conversation, activity) {
     return this._inferConversationUrl(conversation)
       .then(() => this.prepare(activity, {

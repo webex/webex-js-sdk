@@ -162,12 +162,7 @@ export const transforms = toArray(`outbound`, {
     }
   },
 
-  encryptAddActivity: {
-    direction: `outbound`,
-    alias: `encryptVerbActivity`
-  },
-
-  encryptAssignActivity: {
+  encryptVerbActivityWithKey: {
     direction: `outbound`,
     fn(ctx, key, activity) {
       return ctx.transform(`encryptVerbActivity`, key, activity)
@@ -176,6 +171,16 @@ export const transforms = toArray(`outbound`, {
           activity.encryptionKeyUrl = key.uri || key;
         });
     }
+  },
+
+  encryptAddActivity: {
+    direction: `outbound`,
+    alias: `encryptVerbActivity`
+  },
+
+  encryptAssignActivity: {
+    direction: `outbound`,
+    alias: `encryptVerbActivityWithKey`
   },
 
   encryptCreateActivity: {
@@ -185,35 +190,17 @@ export const transforms = toArray(`outbound`, {
 
   encryptPostActivity: {
     direction: `outbound`,
-    fn(ctx, key, activity) {
-      return ctx.transform(`encryptVerbActivity`, key, activity)
-        .then(() => {
-          key = key || activity[KEY];
-          activity.encryptionKeyUrl = key.uri || key;
-        });
-    }
+    alias: `encryptVerbActivityWithKey`
   },
 
   encryptShareActivity: {
     direction: `outbound`,
-    fn(ctx, key, activity) {
-      return ctx.transform(`encryptVerbActivity`, key, activity)
-        .then(() => {
-          key = key || activity[KEY];
-          activity.encryptionKeyUrl = key.uri || key;
-        });
-    }
+    alias: `encryptVerbActivityWithKey`
   },
 
   encryptUpdateActivity: {
     direction: `outbound`,
-    fn(ctx, key, activity) {
-      return ctx.transform(`encryptVerbActivity`, key, activity)
-        .then(() => {
-          key = key || activity[KEY];
-          activity.encryptionKeyUrl = key.uri || key;
-        });
-    }
+    alias: `encryptVerbActivityWithKey`
   },
 
   encryptUpdateKeyActivity: {

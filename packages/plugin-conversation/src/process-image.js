@@ -9,10 +9,11 @@ import {pick} from 'lodash';
 
 /**
  * Measures an image file and produces a thumbnail for it
- * @param {Buffer} file
- * @param {Number} thumbnailMaxWidth
- * @param {Number} thumbnailMaxHeight
- * @param {Logger} logger
+ * @param {Object} options
+ * @param {Blob|ArrayBuffer} options.file
+ * @param {Number} options.thumbnailMaxWidth
+ * @param {Number} options.thumbnailMaxHeight
+ * @param {Boolean} options.enableThumbnails
  * @returns {Promise<Array>} Buffer, Dimensions, thumbnailDimensions
  */
 export default function processImage({file, thumbnailMaxWidth, thumbnailMaxHeight, enableThumbnails, logger}) {
