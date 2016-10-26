@@ -10,13 +10,13 @@ export default function ConfirmationModal(props) {
 
   const modalClassNames = classNames(`dialogue-modal`, styles.dialogueModal);
 
-  const leftBtnClassNames = classNames(
+  const actionBtnClassNames = classNames(
     `dialogue-modal-btn`,
     `dialogue-modal-action-btn`,
     styles.dialogueModalBtn,
     styles.dialogueModalActionBtn
   );
-  const rightBtnClassNames = classNames(
+  const cancelBtnClassNames = classNames(
     `dialogue-modal-btn`,
     `dialogue-modal-exit-btn`,
     styles.dialogueModalBtn,
@@ -36,18 +36,18 @@ export default function ConfirmationModal(props) {
             {messages.body}
           </div>
           <button
-            className={leftBtnClassNames}
-            onClick={props.onClickLeftBtn}
-            title={messages.leftBtnText}
+            className={actionBtnClassNames}
+            onClick={props.onClickActionButton}
+            title={messages.actionButtonText}
           >
-            {messages.leftBtnText}
+            {messages.actionButtonText}
           </button>
           <button
-            className={rightBtnClassNames}
-            onClick={props.onClickRightBtn}
-            title={messages.rightBtnText}
+            className={cancelBtnClassNames}
+            onClick={props.onClickCancelButton}
+            title={messages.cancelButtonText}
           >
-            {messages.rightBtnText}
+            {messages.cancelButtonText}
           </button>
         </div>
       </div>
@@ -59,6 +59,6 @@ export default function ConfirmationModal(props) {
 
 ConfirmationModal.propTypes = {
   messages: PropTypes.object,
-  onClickLeftBtn: PropTypes.func,
-  onClickRightBtn: PropTypes.func
+  onClickActionButton: PropTypes.func,
+  onClickCancelButton: PropTypes.func
 };
