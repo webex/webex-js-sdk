@@ -39,8 +39,7 @@ describe(`plugin-board`, () => {
         }));
       }));
 
-    // create conversation
-    before(() => participants[0].spark.conversation.create({
+    before(`create conversation`, () => participants[0].spark.conversation.create({
       displayName: `Test Board Conversation`,
       participants
     })
@@ -49,15 +48,13 @@ describe(`plugin-board`, () => {
         return conversation;
       }));
 
-    // create channel (board)
-    before(() => participants[0].spark.board.createChannel({aclUrl: conversation.id})
+    before(`create channel (board)`, () => participants[0].spark.board.createChannel({aclUrl: conversation.id})
       .then((channel) => {
         board = channel;
         return channel;
       }));
 
-    // connect to realtime channel
-    before(() => {
+    before(`connect to realtime channel`, () => {
       const mercuryBindingId = boardChannelToMercuryBinding(board.channelId);
       const bindingStr = [mercuryBindingsPrefix + mercuryBindingId];
       const bindingObj = {bindings: bindingStr};
@@ -74,15 +71,14 @@ describe(`plugin-board`, () => {
       }));
     });
 
-    // load fixture image
-    before(() => fh.fetch(`sample-image-small-one.png`)
+    before(`load fixture image`, () => fh.fetch(`sample-image-small-one.png`)
       .then((fetchedFixture) => {
         fixture = fetchedFixture;
         return fetchedFixture;
       }));
 
     // disconnect realtime
-    after(() => Promise.all(map(participants, (participant) => {
+    after(`disconnect realtime`, () => Promise.all(map(participants, (participant) => {
 
       if (participant.spark.board.realtime.connected) {
         return participant.spark.board.realtime.disconnect()

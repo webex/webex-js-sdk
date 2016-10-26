@@ -30,8 +30,7 @@ describe(`plugin-board`, () => {
     this.timeout(30000);
     let board, conversation, fixture, participants;
 
-    // create users
-    before(() => testUsers.create({count: 3})
+    before(`create users`, () => testUsers.create({count: 3})
       .then((users) => {
         participants = users;
 
@@ -45,8 +44,7 @@ describe(`plugin-board`, () => {
         }));
       }));
 
-    // create conversation
-    before(() => participants[0].spark.conversation.create({
+    before(`create conversation`, () => participants[0].spark.conversation.create({
       displayName: `Test Board Conversation`,
       participants
     })
@@ -55,15 +53,13 @@ describe(`plugin-board`, () => {
         return conversation;
       }));
 
-    // create channel (board)
-    before(() => participants[0].spark.board.createChannel({aclUrl: conversation.id})
+    before(`create channel (board)`, () => participants[0].spark.board.createChannel({aclUrl: conversation.id})
       .then((channel) => {
         board = channel;
         return channel;
       }));
 
-    // load fixture image
-    before(() => fh.fetch(`sample-image-small-one.png`)
+    before(`load fixture image`, () => fh.fetch(`sample-image-small-one.png`)
       .then((fetchedFixture) => {
         fixture = fetchedFixture;
         return fetchedFixture;
