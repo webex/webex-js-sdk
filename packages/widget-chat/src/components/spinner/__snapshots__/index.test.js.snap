@@ -1,0 +1,4 @@
+exports[`Spinner component renders properly 1`] = `
+<div
+  className="spinner" />
+`;

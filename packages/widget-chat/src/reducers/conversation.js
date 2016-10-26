@@ -6,6 +6,7 @@ import {
   RECEIVE_CONVERSATION,
   RECEIVE_MERCURY_ACTIVITY,
   RECEIVE_MERCURY_COMMENT,
+  UPDATE_CONVERSATION_STATE,
   UPDATE_MERCURY_STATE
 } from '../actions/conversation';
 
@@ -27,6 +28,8 @@ export default function conversation(state = {
   participants: [],
   isFetching: false,
   isLoaded: false,
+  isLoadingHistoryUp: false,
+  isLoadingHistoryDown: false,
   mercuryState: {
     isListening: false
   }
@@ -82,6 +85,10 @@ export default function conversation(state = {
     return Object.assign({}, state, {
       activities: [...activities, activity]
     });
+  }
+
+  case UPDATE_CONVERSATION_STATE: {
+    return Object.assign({}, state, action.conversationState);
   }
 
   case UPDATE_MERCURY_STATE: {

@@ -37,3 +37,10 @@
   margin: 30px auto;
   text-align: center;
 }
+
+.spinner-container {
+  position: relative;
+  width: 25px;
+  height: 25px;
+  margin: 10px auto;
+}

@@ -58,6 +58,15 @@ export function updateMercuryState(mercuryState) {
   };
 }
 
+export const UPDATE_CONVERSATION_STATE = `UPDATE_CONVERSATION_STATE`;
+export function updateConversationState(conversationState) {
+  return {
+    type: UPDATE_CONVERSATION_STATE,
+    conversationState
+  };
+}
+
+
 /**
  * Creates/Opens a conversation with a user
  *
@@ -122,6 +131,7 @@ export function listenToMercuryActivity(conversationId, spark) {
 
 export function loadPreviousMessages(converstationId, lastActivity, spark) {
   return (dispatch) => {
+    dispatch(updateConversationState({isLoadingHistoryUp: true}));
     spark.conversation.listActivities({
       conversationId: converstationId,
       limit: 20,
@@ -129,6 +139,7 @@ export function loadPreviousMessages(converstationId, lastActivity, spark) {
     })
     .then((activities) => {
       dispatch(addActivitiesToConversation(activities));
+      dispatch(updateConversationState({isLoadingHistoryUp: false}));
     });
   };
 }

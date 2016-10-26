@@ -130,20 +130,7 @@ exports[`ScrollingActivity container renders properly 1`] = `
       </div>
     </div>
     <div
-      className="indicators">
-      <div
-        className="typing-background">
-        <div
-          className="typing-indicator">
-          <div
-            className="sq" />
-          <div
-            className="sq" />
-          <div
-            className="sq" />
-        </div>
-      </div>
-    </div>
+      className="indicators" />
   </div>
 </div>
 `;
