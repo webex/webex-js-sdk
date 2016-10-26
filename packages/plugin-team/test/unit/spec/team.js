@@ -5,8 +5,10 @@
  */
 
 import {assert} from '@ciscospark/test-helper-chai';
-import Team from '../..';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
+import sinon from '@ciscospark/test-helper-sinon';
+import Team from '../..';
+import User from '@ciscospark/plugin-user';
 
 describe(`plugin-team`, () => {
   describe(`Team`, () => {
@@ -15,9 +17,12 @@ describe(`plugin-team`, () => {
     beforeEach(() => {
       spark = new MockSpark({
         children: {
-          team: Team
+          team: Team,
+          user: User
         }
       });
+
+      spark.user.recordUUID = sinon.spy();
     });
 
     describe(`#create()`, () => {
@@ -32,6 +37,18 @@ describe(`plugin-team`, () => {
       it(`requires a displayName`, () => assert.isRejected(spark.team.createConversation({}, {}), /\`params.displayName\` is required/));
 
       it(`requires a team object with a general conversation`, () => assert.isRejected(spark.team.createConversation({}, {displayName: `test`}), /\`team.generalConversationUuid\` must be present/));
+    });
+
+    describe(`#prepareTeamConversation()`, () => {
+      it(`requires a KRO`, () => assert.isRejected(spark.team._prepareTeamConversation({}), /Error: Team general conversation must have a KRO/));
+    });
+
+    describe(`#recordUUIDs`, () => {
+      it(`resolves if there are no teamMembers`, () => spark.team._recordUUIDs({})
+        .then(() => assert.equal(spark.user.recordUUID.callCount, 0)));
+
+      it(`resolves if there isn't teamMembers.items`, () => spark.team._recordUUIDs({teamMembers: {}})
+        .then(() => assert.equal(spark.user.recordUUID.callCount, 0)));
     });
   });
 });
