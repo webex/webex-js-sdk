@@ -12,6 +12,7 @@ var contains = require('lodash.contains');
 var delay = require('../../../../lib/delay');
 var find = require('lodash.find');
 var fh2 = require('../../../lib/fixtures-v2');
+var get = require('lodash.get');
 var helpers = require('../../../lib/helpers');
 var landingparty = require('../../../lib/landingparty');
 var last = require('lodash.last');
@@ -1285,6 +1286,10 @@ describe('Services', function() {
               });
           });
 
+          after(function() {
+            party.spock.spark.upload.restore();
+          });
+
           it('shares the specified image to the conversation', function() {
             assert.isDefined(activity.encryptionKeyUrl, 'The activity is encrypted');
 
@@ -1305,6 +1310,10 @@ describe('Services', function() {
                 // Check that the thumbnail file has the correct '_thumbnail' suffix on the upload path
                 return helpers.assertIsExpectedThumbnail(file, activity.object.files.items[0].image);
               });
+          });
+
+          it('has a contentCategory of images', function() {
+            assert.equal(activity.object.contentCategory, 'images');
           });
 
           it('provides progress events for the image');
@@ -1353,6 +1362,10 @@ describe('Services', function() {
                   return helpers.assertIsExpectedThumbnail(file, item.image);
                 });
             }));
+          });
+
+          it('has a contentCategory of images', function() {
+            assert.equal(activity.object.contentCategory, 'images');
           });
 
           it('provides progress events for those images');
@@ -1408,6 +1421,11 @@ describe('Services', function() {
               });
           });
 
+          it('has a contentCategory of documents', function() {
+            assert.equal(hashTestActivity.object.contentCategory, 'documents');
+            assert.equal(activity.object.contentCategory, 'documents');
+          });
+
           it('provides progress events for the file');
         });
 
@@ -1442,6 +1460,10 @@ describe('Services', function() {
                   return helpers.assertIsSameFile(file, files[i]);
                 });
             }));
+          });
+
+          it('has a contentCategory of documents', function() {
+            assert.equal(activity.object.contentCategory, 'documents');
           });
 
           it('provides progress events for those files');
@@ -1496,6 +1518,68 @@ describe('Services', function() {
                     assert.lengthOf(updateActivity.object.files.items[0].transcodedCollection.items[0].files.items, 3);
                   });
               });
+          });
+        });
+
+        describe('shares a whiteboard', function() {
+          this.timeout(60000);
+          var whiteboardActivity;
+
+          before(function() {
+            sinon.spy(party.spock.spark, 'upload');
+            return party.spock.spark.conversation.share(conversation, {
+              files: [
+                [fixtures.sampleImageSmallOnePng, {
+                  actions: [{
+                    type: 'edit',
+                    mimeType: 'application/x-cisco-spark-whiteboard',
+                    url: 'https://boards.example.com/boards/1'
+                  }]
+                }]
+              ]
+            })
+              .then(function(a) {
+                whiteboardActivity = a;
+                console.log('glh whiteboardActivity', a.object.files.items);
+              });
+          });
+
+          after(function() {
+            party.spock.spark.upload.restore();
+          });
+
+          it('shares the specified image to the conversation', function() {
+            assert.isDefined(whiteboardActivity.encryptionKeyUrl, 'The activity is encrypted');
+
+            helpers.assertIsValidFileItem(whiteboardActivity.object.files.items[0]);
+
+            return party.spock.spark.conversation.download(whiteboardActivity.object.files.items[0], {preferBlob: true})
+              .then(function(file) {
+                return helpers.assertIsSameFile(file, fixtures.sampleImageSmallOnePng);
+              });
+          });
+
+          it('creates a thumbnail for that image', function() {
+            helpers.assertIsValidThumbnailItem(whiteboardActivity.object.files.items[0].image);
+
+            return party.spock.spark.conversation.download(whiteboardActivity.object.files.items[0].image, {preferBlob: true})
+              .then(function(file) {
+                assert(party.spock.spark.upload.called);
+                // Check that the thumbnail file has the correct '_thumbnail' suffix on the upload path
+                return helpers.assertIsExpectedThumbnail(file, whiteboardActivity.object.files.items[0].image);
+              });
+          });
+
+          it('has a contentCategory of documents', function() {
+            assert.equal(whiteboardActivity.object.contentCategory, 'documents');
+          });
+
+          it('contains a file with actions for edit.', function() {
+            var item = get(whiteboardActivity, 'object.files.items[0]');
+            assert.isArray(item.actions);
+            assert.equal(item.actions[0].type, 'edit');
+            assert.equal(item.actions[0].mimeType, 'application/x-cisco-spark-whiteboard');
+            assert.equal(item.actions[0].url, 'https://boards.example.com/boards/1');
           });
         });
       });

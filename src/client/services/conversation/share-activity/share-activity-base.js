@@ -11,6 +11,7 @@ var defaults = require('lodash.defaults');
 var EventEmitter = require('events').EventEmitter;
 var filter = require('lodash.filter');
 var findIndex = require('lodash.findindex');
+var map = require('lodash.map');
 var merge = require('lodash.merge');
 var oneFlight = require('../../../../util/one-flight');
 var pick = require('lodash.pick');
@@ -18,6 +19,7 @@ var pluck = require('lodash.pluck');
 var imageUtil = require('../../../../lib/image');
 var remove = require('lodash.remove');
 var resolveWith = require('../../../../util/resolve-with');
+var some = require('lodash.some');
 var SparkBase = require('../../../../lib/spark-base');
 var uuid = require('uuid');
 var values = require('lodash.values');
@@ -115,12 +117,17 @@ var ShareActivityBase = SparkBase.extend(
    * file is no longer in the files array, then the
    * upload is discarded.
    * @param {FileObject} file
+   * @param {Object} options
+   * @param {Object} options.actions - actions for alternative view strategies
    * @returns {Promise} Resolves with the updated activity
    */
-  addFile: function addFile(file) {
+  addFile: function addFile(file, options) {
+    if (!options) {
+      options = {};
+    }
+
     // Give the file a temp id and push it on as while the upload is pending
     file.clientTempId = file.clientTempId || uuid.v4();
-
     var index = findIndex(this.files, {clientTempId: file.clientTempId});
 
     if (index === -1) {
@@ -198,7 +205,7 @@ var ShareActivityBase = SparkBase.extend(
               objectType: 'file',
               scr: scr,
               url: data.downloadUrl
-            });
+            }, pick(options, ['actions']));
           });
 
         promises.push(filePromise);
@@ -373,7 +380,7 @@ var ShareActivityBase = SparkBase.extend(
             mentions: this.object.mentions || properties.mentions,
             files: {
               items: this.object.files.items.map(function prepareFile(file) {
-                var item = pick(file, 'displayName', 'fileSize', 'mimeType', 'objectType', 'scr', 'url', 'clientTempId');
+                var item = pick(file, 'displayName', 'fileSize', 'mimeType', 'objectType', 'scr', 'url', 'clientTempId', 'actions');
                 if (file.image && file.image.scr) {
                   item.image = file.image;
                 }
@@ -404,12 +411,27 @@ var ShareActivityBase = SparkBase.extend(
   },
 
   /**
+   * @param {Array} items
+   * @param {string} mimeType
+   * @private
+   * @returns {boolean}
+   */
+  _itemContainsActionWithMimeType: function _itemContainsActionWithMimeType(items, mimeType) {
+    return some(map(items, (item) => some(item.actions, ['mimeType', mimeType])));
+  },
+
+  /**
    * Determines the content category for the items
    * @param {Array} items
    * @returns {string}
    * @private
    */
   _determineContentCategory: function _determineContentCategory(items) {
+
+    if (this._itemContainsActionWithMimeType(items, 'application/x-cisco-spark-whiteboard')) {
+      return 'documents';
+    }
+
     var mimeTypes = filter(pluck(items, 'mimeType'));
     if (mimeTypes.length !== items.length) {
       return 'documents';

@@ -7,7 +7,7 @@
 import {proxyEvents, transferEvents} from '@ciscospark/common';
 import {detect} from '@ciscospark/http-core';
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {filter, map} from 'lodash';
+import {filter, map, pick, some} from 'lodash';
 import {EventEmitter} from 'events';
 import mime from 'mime-types';
 
@@ -75,9 +75,11 @@ const ShareActivity = SparkPlugin.extend({
    * Adds an additional file to the share and begins submitting it to spark
    * files
    * @param {File} file
+   * @param {Object} options
+   * @param {Object} options.actions
    * @returns {EventEmittingPromise}
    */
-  add(file) {
+  add(file, options) {
     let upload = this.uploads.get(file);
     if (upload) {
       return upload[PROMISE_SYMBOL];
@@ -85,13 +87,13 @@ const ShareActivity = SparkPlugin.extend({
 
     const emitter = new EventEmitter();
 
-    upload = {
+    upload = Object.assign({
       displayName: file.name,
       fileSize: file.size || file.byteLength || file.length,
       mimeType: file.type,
       objectType: `file`,
       [EMITTER_SYMBOL]: emitter
-    };
+    }, pick(options, [`actions`]));
 
     this.uploads.set(file, upload);
     const promise = this.detect(file)
@@ -255,10 +257,26 @@ const ShareActivity = SparkPlugin.extend({
 
   /**
    * @param {Array} items
+   * @param {string} mimeType
+   * @private
+   * @returns {boolean}
+   */
+  _itemContainsActionWithMimeType(items, mimeType) {
+    return some(map(items, (item) => some(item.actions, [`mimeType`, mimeType])));
+  },
+
+  /**
+   * @param {Array} items
    * @private
    * @returns {string}
    */
   _determineContentCategory(items) {
+
+    // determine if the items contain an image
+    if (this._itemContainsActionWithMimeType(items, `application/x-cisco-spark-whiteboard`)) {
+      return `documents`;
+    }
+
     const mimeTypes = filter(map(items, `mimeType`));
     if (mimeTypes.length !== items.length) {
       return `documents`;
@@ -316,7 +334,14 @@ ShareActivity.create = function create(conversation, object, spark) {
   });
 
   if (files) {
-    files.forEach((file) => share.add(file));
+    files.forEach((file) => {
+      if (Array.isArray(file)) {
+        Reflect.apply(share.add, share, file);
+      }
+      else {
+        share.add(file);
+      }
+    });
   }
 
   return share;

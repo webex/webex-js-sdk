@@ -15,7 +15,7 @@ var ShareActivityBase = require('./share-activity-base');
  * @memberof Conversation
  */
 var ShareActivity = ShareActivityBase.extend({
-  addFile: function addFile(file) {
+  addFile: function addFile(file, options) {
     if (!file.type) {
       return new Promise(function executor(resolve, reject) {
         var magic = new Magic.Magic(Magic.MAGIC_MIME_TYPE);
@@ -29,7 +29,9 @@ var ShareActivity = ShareActivityBase.extend({
           }
         });
       })
-        .then(ShareActivityBase.prototype.addFile.bind(this));
+        .then(function addFileAfterDetect(detectedFile) {
+          ShareActivityBase.prototype.addFile.apply(this, [detectedFile, options]);
+        }.bind(this));
     }
     else {
       return ShareActivityBase.prototype.addFile.apply(this, arguments);
