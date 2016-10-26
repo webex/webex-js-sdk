@@ -331,7 +331,7 @@ var TeamService = SparkBase.extend(
         })
         .then(function callEncryptActivity(activity) {
           return this.spark.conversation._encryptActivity(activity, generalConversation.defaultActivityEncryptionKeyUrl);
-        }.bind(this))
+        }.bind(this));
       }.bind(this))
       .then(function submitActivity(activity) {
         return this.spark.conversation._submitActivity(activity);
