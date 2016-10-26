@@ -23,16 +23,17 @@ registerPlugin(`conversation`, Conversation, {
     predicates: [
       {
         name: `transformObject`,
-        test(options) {
-          return Promise.resolve(has(options, `body.objectType`));
+        test(ctx, optionsOrResponse) {
+          return Promise.resolve(has(optionsOrResponse, `body.objectType`));
         },
-        extract(options) {
-          return Promise.resolve(options.body);
+        extract(optionsOrResponse) {
+          return Promise.resolve(optionsOrResponse.body);
         }
       },
       {
         name: `transformObject`,
-        test(event) {
+        direction: `inbound`,
+        test(ctx, event) {
           return Promise.resolve(has(event, `activity`));
         },
         extract(event) {
@@ -41,7 +42,8 @@ registerPlugin(`conversation`, Conversation, {
       },
       {
         name: `transformObjectArray`,
-        test(options) {
+        direction: `inbound`,
+        test(ctx, options) {
           return Promise.resolve(has(options, `body.items[0].objectType`));
         },
         extract(options) {

@@ -89,6 +89,16 @@ describe(`plugin-conversation`, function() {
         assert.equal(c.id, conversation.id);
         assert.equal(c.url, conversation.url);
       }));
+
+    it(`decrypts the contents of activities in the retrieved conversation`, () => spark.conversation.post(conversation, {
+      displayName: `Test Message`
+    })
+      .then(() => spark.conversation.get({url: conversation.url}, {activitiesLimit: 50}))
+      .then((c) => {
+        const posts = c.activities.items.filter((activity) => activity.verb === `post`);
+        assert.lengthOf(posts, 1);
+        assert.equal(posts[0].object.displayName, `Test Message`);
+      }));
   });
 
   describe(`#list()`, () => {

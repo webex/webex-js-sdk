@@ -16,10 +16,8 @@
 }
 
 .widget-props-form {
-  position: absolute;
-  top: 171px;
-  left: 600px;
   padding: 10px;
+  margin: 20% auto;
   font-family: 'CiscoSans TT Light';
   background: #fff;
 }
@@ -36,13 +34,15 @@
 
 .field-input {
   padding: 4px 5px;
+  font-size: 20px;
 }
 
 .props-submit {
   padding: 5px 20px;
+  font-size: 20px;
   color: #fff;
   cursor: pointer;
   background-color: rgb(0, 112, 210);
   border: 0;
-  border-radius: 13px;
+  border-radius: 20px;
 }
