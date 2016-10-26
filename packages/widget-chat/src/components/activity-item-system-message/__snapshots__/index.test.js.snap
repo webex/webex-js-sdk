@@ -5,9 +5,16 @@ exports[`ActivityItemSystemMessage create component renders properly 1`] = `
 </div>
 `;
 
+exports[`ActivityItemSystemMessage tombstone component is self renders properly 1`] = `
+<div
+  className="system-message">
+  You deleted your message. 2016-09-20T19:52:57.186Z
+</div>
+`;
+
 exports[`ActivityItemSystemMessage tombstone component renders properly 1`] = `
 <div
   className="system-message">
-  Test User deleted message. 2016-09-20T19:52:57.186Z
+  Test User deleted their own message. 2016-09-20T19:52:57.186Z
 </div>
 `;
