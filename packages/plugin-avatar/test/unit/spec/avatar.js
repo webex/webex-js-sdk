@@ -4,6 +4,7 @@
  */
 import {assert} from '@ciscospark/test-helper-chai';
 import Avatar from '../../';
+import {SparkHttpError} from '@ciscospark/spark-core';
 import User from '@ciscospark/plugin-user';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
 import sinon from '@ciscospark/test-helper-sinon';
@@ -35,7 +36,7 @@ describe(`plugin-avatar`, () => {
       ]);
     });
 
-    describe(`request`, () => {
+    describe(`when retrieving a single item`, () => {
       it(`retrieves an avatar url`, () => {
         spark.request = sinon.stub().returns(Promise.resolve({
           body: {
@@ -64,10 +65,15 @@ describe(`plugin-avatar`, () => {
       });
 
       it(`fails to retrieve an avatar url`, () => {
-        spark.request = sinon.stub().returns(Promise.reject({
+        spark.request = sinon.stub().returns(Promise.reject(new SparkHttpError.InternalServerError({
           body: ``,
           statusCode: 500,
           options: {
+            method: `POST`,
+            uri: `https://avatar.example.com`,
+            headers: {
+              trackingid: `tid`
+            },
             ids: [
               `88888888-4444-4444-4444-aaaaaaaaaaa0`
             ],
@@ -78,9 +84,9 @@ describe(`plugin-avatar`, () => {
               }
             ]
           }
-        }));
+        })));
 
-        return assert.isRejected(avatar.retrieveAvatarUrl(`88888888-4444-4444-4444-aaaaaaaaaaa0`), /Could not retrieve avatar/);
+        return assert.isRejected(avatar.retrieveAvatarUrl(`88888888-4444-4444-4444-aaaaaaaaaaa0`));
       });
 
       it(`retrieves an avatar url for a non-default size`, () => {
@@ -138,7 +144,7 @@ describe(`plugin-avatar`, () => {
       });
     });
 
-    describe(`(batched)`, () => {
+    describe(`when retrieving multiple items`, () => {
       it(`retrieves a group of avatar urls`, () => {
         spark.request = sinon.stub().returns(Promise.resolve({
           body: {
@@ -184,10 +190,15 @@ describe(`plugin-avatar`, () => {
       });
 
       it(`rejects each requested avatar if the api call fails`, () => {
-        spark.request = sinon.stub().returns(Promise.reject({
+        spark.request = sinon.stub().returns(Promise.reject(new SparkHttpError.InternalServerError({
           body: ``,
           statusCode: 500,
           options: {
+            method: `POST`,
+            uri: `https://avatar.example.com`,
+            headers: {
+              trackingid: `tid`
+            },
             ids: [
               `88888888-4444-4444-4444-aaaaaaaaaaa0`,
               `88888888-4444-4444-4444-aaaaaaaaaaa1`
@@ -203,14 +214,14 @@ describe(`plugin-avatar`, () => {
               }
             ]
           }
-        }));
+        })));
 
         const a0 = avatar.retrieveAvatarUrl(`88888888-4444-4444-4444-aaaaaaaaaaa0`);
         const a1 = avatar.retrieveAvatarUrl(`88888888-4444-4444-4444-aaaaaaaaaaa1`);
 
         return Promise.all([
-          assert.isRejected(a1, /Could not retrieve avatar/),
-          assert.isRejected(a0, /Could not retrieve avatar/)
+          assert.isRejected(a1),
+          assert.isRejected(a0)
         ])
           .then(() => {
             assert.callCount(spark.request, 1);
@@ -248,7 +259,7 @@ describe(`plugin-avatar`, () => {
 
         return Promise.all([
           assert.becomes(avatar.retrieveAvatarUrl(`88888888-4444-4444-4444-aaaaaaaaaaa0`), `https://example.com/88888888-4444-4444-4444-aaaaaaaaaaa0`),
-          assert.isRejected(avatar.retrieveAvatarUrl(`88888888-4444-4444-4444-aaaaaaaaaaa1`), /Could not retrieve avatar/)
+          assert.isRejected(avatar.retrieveAvatarUrl(`88888888-4444-4444-4444-aaaaaaaaaaa1`), /Failed to retrieve avatar/)
         ])
           .then(() => {
             assert.callCount(spark.request, 1);

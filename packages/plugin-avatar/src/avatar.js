@@ -36,10 +36,8 @@ const Avatar = SparkPlugin.extend({
    */
   _fetchAvatarUrl(uuid, options) {
     return this.store.get(uuid, options.size)
-      .catch(() =>
-        this.batcher.request(Object.assign({}, {uuid, size: options.size}))
-          .then((item) =>
-            this.store.add(defaults(item, {cacheControl: options.cacheControl, url: item.response.url}))));
+      .catch(() => this.batcher.request(Object.assign({}, {uuid, size: options.size}))
+        .then((item) => this.store.add(defaults(item, {cacheControl: options.cacheControl, url: item.response.url}))));
   },
 
   /**
@@ -53,17 +51,17 @@ const Avatar = SparkPlugin.extend({
    */
   retrieveAvatarUrl(user, options) {
     if (!user) {
-      return Promise.reject(new Error(`\`user\` is required parameter`));
+      return Promise.reject(new Error(`\`user\` is a required parameter`));
     }
 
-    options = defaults(options, {size: this.config.defaultAvatarSize,
-                                 cacheControl: this.config.cacheExpiration});
+    options = defaults(options, {
+      size: this.config.defaultAvatarSize,
+      cacheControl: this.config.cacheExpiration
+    });
 
     return this.spark.user.asUUID(user)
-      .then((uuid) =>
-        this._fetchAvatarUrl(uuid, options)
-          .then((res) => res.url)
-          .catch(() => Promise.reject(new Error(`Could not retrieve avatar`))));
+      .then((uuid) => this._fetchAvatarUrl(uuid, options)
+      .then((res) => res.url));
   },
 
   /**
@@ -88,7 +86,7 @@ const Avatar = SparkPlugin.extend({
           api: `avatar`,
           // eslint-disable-next-line no-unused-vars
           $resource: function $resource(session) {
-            return `profile$(session.id)`;
+            return `profile/${session.id}`;
           },
           $body: function $body(session) {
             return session;
@@ -105,4 +103,3 @@ const Avatar = SparkPlugin.extend({
 });
 
 export default Avatar;
-

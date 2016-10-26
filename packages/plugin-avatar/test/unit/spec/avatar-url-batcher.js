@@ -21,11 +21,10 @@ describe(`plugin-avatar`, () => {
     });
 
     describe(`#fingerprints`, () => {
-      it(`fingerprintRequest returns 'uuid-size'`, () =>
-        assert.becomes(batcher.fingerprintRequest({uuid: `uuid1`, size: 80}), `uuid1-80`));
-      it(`fingerprintResponse returns 'uuid-size'`, () =>
-        assert.becomes(batcher.fingerprintRequest({uuid: `uuid1`, size: 80}), `uuid1-80`));
+      it(`fingerprintRequest returns 'uuid-size'`, () => assert.becomes(batcher.fingerprintRequest({uuid: `uuid1`, size: 80}), `uuid1-80`));
+      it(`fingerprintResponse returns 'uuid-size'`, () => assert.becomes(batcher.fingerprintRequest({uuid: `uuid1`, size: 80}), `uuid1-80`));
     });
+
     describe(`#submitHttpRequest`, () => {
       const mockRequest = {
         method: `POST`,
@@ -54,21 +53,19 @@ describe(`plugin-avatar`, () => {
           loggerWarned = (msg === `Avatar: substituted size "256" for "80"`);
         };
       });
+
       afterEach(() => {
         batcher.logger.warn = warn;
       });
-      it(`returns true if no response in item`, () => {
-        return batcher.didItemFail({})
-          .then((res) => assert.isTrue(res));
-      });
-      it(`returns false, warns reqested size does not equal response size`, () => {
-        return batcher.didItemFail({size: 80, response: {size: 256}})
-          .then((res) => assert.isFalse(res && loggerWarned));
-      });
-      it(`returns false no warning`, () => {
-        return batcher.didItemFail({size: 80, response: {size: 80}})
-          .then((res) => assert.isFalse(res && !loggerWarned));
-      });
+
+      it(`returns true if no response in item`, () => batcher.didItemFail({})
+        .then((res) => assert.isTrue(res)));
+
+      it(`returns false, warns reqested size does not equal response size`, () => batcher.didItemFail({size: 80, response: {size: 256}})
+        .then((res) => assert.isFalse(res && loggerWarned)));
+
+      it(`returns false no warning`, () => batcher.didItemFail({size: 80, response: {size: 80}})
+        .then((res) => assert.isFalse(res && !loggerWarned)));
     });
   });
 });

@@ -5,26 +5,34 @@
  */
 
 import {Batcher} from '@ciscospark/spark-core';
+import {uniq} from 'lodash';
 
 const AvatarUrlBatcher = Batcher.extend({
   namespace: `Avatar`,
 
   handleHttpSuccess(res) {
-    try {
-      return Promise.all(
-        res.options.body.map((req) => Promise.all(
-            req.sizes.map((size) => {
-              const response = res.body[req.uuid] && res.body[req.uuid][size] || undefined;
-              return this.acceptItem(Object.assign({}, {uuid: req.uuid, size, response}));
-            })
-          )
-        )
-      );
-    }
-    catch (e) {
-      this.logger.error(e);
-      return Promise.reject(e);
-    }
+    // eslint-disable-next-line arrow-body-style
+    return Promise.all(res.options.body.map((req) => {
+      return Promise.all(req.sizes.map((size) => {
+        const response = res.body[req.uuid] && res.body[req.uuid][size] || undefined;
+        return this.acceptItem({uuid: req.uuid, size, response});
+      }));
+    }));
+  },
+
+  handleHttpError(reason) {
+    const msg = reason.message || reason.body || reason;
+    // avoid multiple => on same line
+    // eslint-disable-next-line arrow-body-style
+    return Promise.all(reason.options.body.map((item) => {
+      return Promise.all(item.sizes.map((size) => this.getDeferredForRequest({
+        uuid: item.uuid,
+        size
+      })
+        // I don't see a better way to do this than with an additional nesting
+        // eslint-disable-next-line max-nested-callbacks
+        .then((defer) => defer.reject(msg instanceof Error ? msg : new Error(msg)))));
+    }));
   },
 
   didItemFail(item) {
@@ -35,6 +43,13 @@ const AvatarUrlBatcher = Batcher.extend({
       return Promise.resolve(false);
     }
     return Promise.resolve(true);
+  },
+
+  handleItemFailure(item) {
+    return this.getDeferredForRequest(item)
+      .then((defer) => {
+        defer.reject(new Error(item.response || `Failed to retrieve avatar`));
+      });
   },
 
   handleItemSuccess(item) {
@@ -49,6 +64,28 @@ const AvatarUrlBatcher = Batcher.extend({
 
   fingerprintResponse(item) {
     return Promise.resolve(`${item.uuid}-${item.size}`);
+  },
+
+  prepareRequest(queue) {
+    const map = queue.reduce((m, item) => {
+      let o = m.get(item.uuid);
+      if (!o) {
+        o = [];
+        m.set(item.uuid, o);
+      }
+      o.push(item.size);
+      return m;
+    }, new Map());
+
+    const payload = [];
+    map.forEach((value, key) => {
+      payload.push({
+        uuid: key,
+        sizes: uniq(value)
+      });
+    });
+
+    return Promise.resolve(payload);
   },
 
   submitHttpRequest(payload) {

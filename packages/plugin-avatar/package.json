@@ -18,6 +18,7 @@
   },
   "devDependencies": {
     "@ciscospark/test-helper-chai": "^0.7.0-alpha",
+    "@ciscospark/test-helper-file": "^0.7.0-alpha",
     "@ciscospark/test-helper-mocha": "^0.7.0-alpha",
     "@ciscospark/test-helper-mock-spark": "^0.7.0-alpha",
     "@ciscospark/test-helper-sinon": "^0.7.0-alpha",
