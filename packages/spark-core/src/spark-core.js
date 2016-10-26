@@ -110,7 +110,10 @@ const SparkCore = AmpState.extend({
    */
   transform(direction, object) {
     const predicates = this.config.payloadTransformer.predicates.filter((p) => !p.direction || p.direction === direction);
-    return Promise.all(predicates.map((p) => p.test(object)
+    const ctx = {
+      spark: this
+    };
+    return Promise.all(predicates.map((p) => p.test(ctx, object)
       .then((shouldTransform) => {
         if (!shouldTransform) {
           return undefined;

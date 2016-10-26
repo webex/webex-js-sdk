@@ -1,6 +1,6 @@
 {
   "name": "spark-js-sdk",
-  "version": "0.5.245",
+  "version": "0.5.247",
   "description": "JavaScript sdk for interacting with the Spark API",
   "homepage": "http://sqbu-github.cisco.com/WebExSquared/squared-js-sdk",
   "bugs": {
@@ -54,7 +54,9 @@
     "pretest:package": "npm run check-package",
     "test:package": "npm run grunt:package -- test",
     "posttest:package:sauce": "npm run sauce:stop",
-    "lerna": "lerna"
+    "lerna": "lerna",
+    "distsrc": "sed -ibak 's#\"main\": \"dist/index.js#\"main\": \"src/index.js#' packages/*/package.json && rm packages/*/*bak",
+    "srcdist": "sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' packages/*/package.json && rm packages/*/*bak"
   },
   "dependencies": {
     "ampersand-collection": "^2.0.0",

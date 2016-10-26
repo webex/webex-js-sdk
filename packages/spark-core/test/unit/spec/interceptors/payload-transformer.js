@@ -18,7 +18,7 @@ describe(`spark-core`, () => {
               predicates: [{
                 name: `transformObject`,
                 direction: `outbound`,
-                test(options) {
+                test(ctx, options) {
                   return Promise.resolve(Boolean(options && options.body && options.body.objectType));
                 },
                 extract(options) {
