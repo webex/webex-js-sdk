@@ -61,7 +61,6 @@ const AvatarUrlBatcher = Batcher.extend({
     return Promise.resolve(`${item.uuid}-${item.size}`);
   },
 
-
   fingerprintResponse(item) {
     return Promise.resolve(`${item.uuid}-${item.size}`);
   },

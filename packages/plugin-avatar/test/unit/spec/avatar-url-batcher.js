@@ -25,7 +25,7 @@ describe(`plugin-avatar`, () => {
       it(`fingerprintResponse returns 'uuid-size'`, () => assert.becomes(batcher.fingerprintRequest({uuid: `uuid1`, size: 80}), `uuid1-80`));
     });
 
-    describe(`#submitHttpRequest`, () => {
+    describe(`#submitHttpRequest()`, () => {
       const mockRequest = {
         method: `POST`,
         api: `avatar`,
@@ -43,13 +43,13 @@ describe(`plugin-avatar`, () => {
       });
     });
 
-    describe(`#didItemFail`, () => {
+    describe(`#didItemFail()`, () => {
       let warn;
       let loggerWarned;
       beforeEach(() => {
         warn = batcher.logger.warn;
         loggerWarned = false;
-        batcher.logger.warn = function(msg) {
+        batcher.logger.warn = (msg) => {
           loggerWarned = (msg === `Avatar: substituted size "256" for "80"`);
         };
       });

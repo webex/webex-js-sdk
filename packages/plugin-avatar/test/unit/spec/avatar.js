@@ -29,7 +29,7 @@ describe(`plugin-avatar`, () => {
     avatar.config.defaultAvatarSize = 80;
   });
 
-  describe(`#retrieveAvatarUrl`, () => {
+  describe(`#retrieveAvatarUrl()`, () => {
     it(`requires a user identifying object`, () => {
       return Promise.all([
         assert.isRejected(avatar.retrieveAvatarUrl(), `\`user\` is a required parameter`)

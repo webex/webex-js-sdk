@@ -13,7 +13,7 @@ describe(`plugin-avatar`, () => {
 
   let mccoy, spark, spock;
 
-  before(() => testUsers.create({count: 3})
+  before(() => testUsers.create({count: 2})
     .then((users) => {
       [spock, mccoy] = users;
 
