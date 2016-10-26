@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 import {
   ADD_ACTIVITIES_TO_CONVERSATION,
   CREATE_CONVERSATION,
@@ -13,6 +15,11 @@ function filterActivity(activity) {
   return filteredActivities.indexOf(activity.verb) === -1;
 }
 
+function sortActivityByTime(activities) {
+  activities = _.uniqBy(activities, `id`);
+  return _.sortBy(activities, [`published`]);
+}
+
 
 export default function conversation(state = {
   activities: [],
@@ -26,8 +33,9 @@ export default function conversation(state = {
 }, action) {
   switch (action.type) {
   case ADD_ACTIVITIES_TO_CONVERSATION: {
+    const activities = [...action.activities, ...state.activities];
     return Object.assign({}, state, {
-      activities: [...action.activities, ...state.activities]
+      activities: sortActivityByTime(activities)
     });
   }
 

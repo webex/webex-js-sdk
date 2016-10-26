@@ -22,6 +22,18 @@ export default function injectScrollable(WrappedComponent) {
       this.node = node;
     }
 
+    getScrollHeight() {
+      return this.node.scrollHeight;
+    }
+
+    getScrollTop() {
+      return this.node.scrollTop;
+    }
+
+    setScrollTop(top) {
+      this.node.scrollTop = top;
+    }
+
     scrollToBottom() {
       const node = this.node;
       node.scrollTop = node.scrollHeight;

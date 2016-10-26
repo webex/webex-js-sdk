@@ -13,6 +13,7 @@ import {
 } from '../../actions/conversation';
 import {
   updateHasNewMessage,
+  setScrollPosition,
   showScrollToBottomButton
 } from '../../actions/widget';
 import TitleBar from '../../components/title-bar';
@@ -71,6 +72,13 @@ export class ChatWidget extends Component {
     return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation.activities !== props.conversation.activities || nextProps.widget !== props.widget || nextProps.indicators !== props.indicators;
   }
 
+  componentWillUpdate(nextProps) {
+    const props = this.props;
+    if (this.activityList && nextProps.conversation.activities.length !== props.conversation.activities.length) {
+      this.scrollHeight = this.activityList.getScrollHeight();
+    }
+  }
+
   componentDidUpdate(prevProps) {
     const props = this.props;
     const activityList = this.activityList;
@@ -78,6 +86,9 @@ export class ChatWidget extends Component {
     if (activityList) {
       const lastActivityFromPrev = _.last(prevProps.conversation.activities);
       const lastActivityFromThis = _.last(props.conversation.activities);
+
+      const firstActivityFromPrev = _.first(prevProps.conversation.activities);
+      const firstActivityFromThis = _.first(props.conversation.activities);
 
       // If new activity comes in
       if (lastActivityFromPrev && lastActivityFromThis && props.conversation.activities.length !== prevProps.conversation.activities.length && lastActivityFromPrev.id !== lastActivityFromThis.id) {
@@ -91,6 +102,9 @@ export class ChatWidget extends Component {
       }
       else if (prevProps.conversation.activities.length === 0) {
         activityList.scrollToBottom();
+      }
+      else if (firstActivityFromThis.id !== firstActivityFromPrev.id) {
+        activityList.setScrollTop(activityList.getScrollHeight() - this.scrollHeight + prevProps.widget.scrollTop);
       }
     }
   }
@@ -119,13 +133,17 @@ export class ChatWidget extends Component {
     const props = this.props;
     const {
       conversation,
-      spark
+      spark,
+      widget
     } = props;
+
+    props.setScrollPosition({scrollTop: this.activityList.getScrollTop()});
+
     if (this.activityList.isScrolledToBottom()) {
       props.showScrollToBottomButton(false);
       props.updateHasNewMessage(false);
     }
-    else if (!props.widget.showScrollToBottomButton) {
+    else if (!widget.showScrollToBottomButton) {
       props.showScrollToBottomButton(true);
     }
     if (this.activityList.isScrolledToTop()) {
@@ -235,6 +253,7 @@ ChatWidget.propTypes = {
   fetchCurrentUser: PropTypes.func.isRequired,
   listenToMercuryActivity: PropTypes.func.isRequired,
   loadPreviousMessages: PropTypes.func.isRequired,
+  setScrollPosition: PropTypes.func.isRequired,
   showScrollToBottomButton: PropTypes.func.isRequired,
   spark: PropTypes.object.isRequired,
   updateHasNewMessage: PropTypes.func.isRequired,
@@ -260,6 +279,7 @@ export default connect(
     fetchCurrentUser,
     listenToMercuryActivity,
     loadPreviousMessages,
+    setScrollPosition,
     showScrollToBottomButton,
     updateHasNewMessage
   }, dispatch)
