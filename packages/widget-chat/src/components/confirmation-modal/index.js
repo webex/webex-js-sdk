@@ -23,8 +23,6 @@ export default function ConfirmationModal(props) {
     styles.dialogueModalExitBtn
   );
 
-
-
   return (
     <div>
       <div className={modalClassNames}>
