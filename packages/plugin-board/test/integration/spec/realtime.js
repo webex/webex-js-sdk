@@ -20,12 +20,11 @@ function boardChannelToMercuryBinding(channelId) {
 
 describe(`plugin-board`, () => {
   describe(`realtime`, function() {
-    this.timeout(30000);
+    this.timeout(60000);
     const mercuryBindingsPrefix = `board.`;
     let board, conversation, fixture, participants;
 
-    // create users
-    before(() => testUsers.create({count: 3})
+    before(`create users`, () => testUsers.create({count: 3})
       .then((users) => {
         participants = users;
 

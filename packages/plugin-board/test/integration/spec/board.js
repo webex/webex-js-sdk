@@ -27,7 +27,7 @@ function generateTonsOfContents(numOfContents) {
 
 describe(`plugin-board`, () => {
   describe(`service`, function() {
-    this.timeout(30000);
+    this.timeout(60000);
     let board, conversation, fixture, participants;
 
     before(`create users`, () => testUsers.create({count: 3})
