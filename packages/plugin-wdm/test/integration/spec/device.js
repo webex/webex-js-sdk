@@ -54,7 +54,9 @@ describe(`plugin-wdm`, function() {
     });
 
     describe(`#unregister()`, () => {
-      it(`unregisters the device`);
+      it(`unregisters the device`, () => spark.device.register()
+        .then(() => spark.device.unregister())
+        .then(() => assert.isUndefined(spark.device.url)));
     });
   });
 });

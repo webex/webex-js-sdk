@@ -1,4 +1,5 @@
 /* eslint complexity: ["error", 10] */
+// Refactoring and splitting up reducer in next feature
 import _ from 'lodash';
 
 import {

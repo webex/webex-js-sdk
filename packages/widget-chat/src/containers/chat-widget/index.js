@@ -12,9 +12,12 @@ import {
   loadPreviousMessages
 } from '../../actions/conversation';
 import {
-  updateHasNewMessage,
+  confirmDeleteActivity,
+  deleteActivityAndDismiss,
+  hideDeleteModal,
   setScrollPosition,
-  showScrollToBottomButton
+  showScrollToBottomButton,
+  updateHasNewMessage
 } from '../../actions/widget';
 import TitleBar from '../../components/title-bar';
 import ScrollingActivity from '../scrolling-activity';
@@ -26,6 +29,8 @@ import styles from './styles.css';
 
 import injectSpark from '../../modules/redux-spark/inject-spark';
 
+import ConfirmationModal from '../../components/confirmation-modal';
+
 /**
  * ChatWidget Component
  */
@@ -34,6 +39,8 @@ export class ChatWidget extends Component {
     super(props);
     this.getActivityList = this.getActivityList.bind(this);
     this.handleActivityDelete = this.handleActivityDelete.bind(this);
+    this.handleCancelActivityDelete = this.handleCancelActivityDelete.bind(this);
+    this.handleConfirmActivityDelete = this.handleConfirmActivityDelete.bind(this);
     this.handleScrollToBottom = this.handleScrollToBottom.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleScroll = _.debounce(this.handleScroll.bind(this), 150);
@@ -160,16 +167,46 @@ export class ChatWidget extends Component {
     this.activityList.scrollToBottom();
   }
 
+  /**
+   * Displays modal confirming activity delete
+   *
+   * @param {String} activityId
+   *
+   * @returns {undefined}
+   */
   handleActivityDelete(activityId) {
+    this.props.confirmDeleteActivity(activityId);
+  }
+
+  /**
+   * Does the actual deletion of the activity after confirmation modal
+   *
+   * @returns {undefined}
+   */
+  handleConfirmActivityDelete() {
     const props = this.props;
     const {
       conversation,
-      spark
+      spark,
+      widget
     } = props;
+    const activityId = widget.deletingActivityId;
     const activity = conversation.activities.find((act) => act.id === activityId);
     if (activity) {
-      this.props.deleteActivity(conversation, activity, spark);
+      this.props.deleteActivityAndDismiss(conversation, activity, spark);
     }
+    else {
+      this.props.hideDeleteModal();
+    }
+  }
+
+  /**
+   * Dismisses the confirmation modal
+   *
+   * @returns {undefined}
+   */
+  handleCancelActivityDelete() {
+    this.props.hideDeleteModal();
   }
 
   /**
@@ -215,6 +252,23 @@ export class ChatWidget extends Component {
         scrollButton = <ScrollToBottomButton label={label} onClick={this.handleScrollToBottom} />;
       }
 
+      let deleteAlert;
+      if (props.widget.showAlertModal) {
+        const alertMessages = {
+          title: `Delete`,
+          body: `Are you sure you want to delete this message?`,
+          actionButtonText: `Delete`,
+          cancelButtonText: `Cancel`
+        };
+        deleteAlert = ( // eslint-disable-line no-extra-parens
+          <ConfirmationModal
+            messages={alertMessages}
+            onClickActionButton={this.handleConfirmActivityDelete}
+            onClickCancelButton={this.handleCancelActivityDelete}
+          />
+        );
+      }
+
       if (isLoaded) {
         const user = this.getUserFromConversation(conversation);
         const isTyping = indicators.typing.length > 0;
@@ -246,10 +300,12 @@ export class ChatWidget extends Component {
                 spark={spark}
               />
             </div>
+            {deleteAlert}
           </div>
         );
       }
     }
+
     return (
       <div className={classNames(`widget-chat`, styles.widgetChat)}>
         <div className={classNames(`banner`, styles.banner)} />
@@ -260,9 +316,12 @@ export class ChatWidget extends Component {
 }
 
 ChatWidget.propTypes = {
+  confirmDeleteActivity: PropTypes.func.isRequired,
   createConversationWithUser: PropTypes.func.isRequired,
   deleteActivity: PropTypes.func.isRequired,
+  deleteActivityAndDismiss: PropTypes.func.isRequired,
   fetchCurrentUser: PropTypes.func.isRequired,
+  hideDeleteModal: PropTypes.func.isRequired,
   listenToMercuryActivity: PropTypes.func.isRequired,
   loadPreviousMessages: PropTypes.func.isRequired,
   setScrollPosition: PropTypes.func.isRequired,
@@ -286,9 +345,12 @@ function mapStateToProps(state, ownProps) {
 export default connect(
   mapStateToProps,
   (dispatch) => bindActionCreators({
+    confirmDeleteActivity,
     createConversationWithUser,
     deleteActivity,
+    deleteActivityAndDismiss,
     fetchCurrentUser,
+    hideDeleteModal,
     listenToMercuryActivity,
     loadPreviousMessages,
     setScrollPosition,

@@ -11,6 +11,7 @@ import {assert} from '@ciscospark/test-helper-chai';
 import testUsers from '@ciscospark/test-helper-test-users';
 import {find, map} from 'lodash';
 import uuid from 'uuid';
+import fh from '@ciscospark/test-helper-file';
 
 describe(`plugin-conversation`, function() {
   this.timeout(30000);
@@ -94,8 +95,45 @@ describe(`plugin-conversation`, function() {
         }));
     });
 
+    describe(`#assign()`, () => {
+      before(() => spark.conversation.create({participants})
+        .then((c) => {
+          conversation = c;
+        }));
+
+      let sampleImageSmallOnePng = `sample-image-small-one.png`;
+
+      before(() => fh.fetch(sampleImageSmallOnePng)
+        .then((res) => {
+          sampleImageSmallOnePng = res;
+        }));
+
+      it(`assigns an avatar to a room`, () => spark.conversation.assign(conversation, sampleImageSmallOnePng)
+        .then(() => spark.conversation.get(conversation))
+        .then((c) => {
+          assert.property(c, `avatar`);
+
+          assert.property(c.avatar, `files`);
+          assert.property(c.avatar.files, `items`);
+          assert.lengthOf(c.avatar.files.items, 1);
+          assert.property(c.avatar.files.items[0], `fileSize`);
+          assert.property(c.avatar.files.items[0], `mimeType`);
+          assert.property(c.avatar.files.items[0], `objectType`);
+          assert.property(c.avatar.files.items[0], `scr`);
+          assert.property(c.avatar.files.items[0], `url`);
+          assert.equal(c.avatar.objectType, `content`);
+
+          assert.isString(c.avatarEncryptionKeyUrl);
+          assert.isObject(c.avatar.files.items[0].scr, `The scr was decrypted`);
+          assert.equal(c.avatar.files.items[0].displayName, `sample-image-small-one.png`);
+
+          assert.property(c, `avatarEncryptionKeyUrl`);
+        }));
+    });
+
     describe(`#leave()`, () => {
       afterEach(() => {conversation = null;});
+
       it(`removes the current user from the specified conversation`, () => spark.conversation.leave(conversation)
         .then((activity) => {
           assert.isActivity(activity);
@@ -232,6 +270,29 @@ describe(`plugin-conversation`, function() {
       })
         .then((c) => spark.conversation.get({url: c.target.url}))
         .then((c) => assert.equal(c.displayName, `displayName2`)));
+    });
+
+    describe(`#unassign()`, () => {
+      before(() => spark.conversation.create({participants})
+        .then((c) => {
+          conversation = c;
+        }));
+
+      let sampleImageSmallOnePng = `sample-image-small-one.png`;
+
+      before(() => fh.fetch(sampleImageSmallOnePng)
+        .then((res) => {
+          sampleImageSmallOnePng = res;
+        }));
+
+      beforeEach(() => spark.conversation.assign(conversation, sampleImageSmallOnePng));
+
+      it(`unassigns an avatar from a room`, () => spark.conversation.unassign(conversation)
+        .then(() => spark.conversation.get(conversation)
+        .then((c) => {
+          assert.notProperty(c, `avatar`);
+          assert.notProperty(c, `avatarEncryptionKeyUrl`);
+        })));
     });
 
     describe(`#updateKey()`, () => {

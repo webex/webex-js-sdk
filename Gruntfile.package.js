@@ -9,6 +9,7 @@ var assert = require('assert');
 var isparta = require('isparta');
 var path = require('path');
 
+// eslint-disable-next-line complexity
 module.exports = function(grunt) {
   assert(process.env.PACKAGE, 'process.env.PACKAGE must be defined');
   var pkg = require('./packages/' + process.env.PACKAGE + '/package');
@@ -55,6 +56,13 @@ module.exports = function(grunt) {
         tasks: (function() {
           if (process.env.UNIT_ONLY) {
             return ['test:node'];
+          }
+
+          if (process.env.SAUCE_IS_DOWN) {
+            return [
+              'test:doc',
+              'test:node'
+            ];
           }
 
           return [
