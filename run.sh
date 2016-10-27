@@ -106,6 +106,9 @@ fi
 if [ -n "${SKIP_FLAKY_TESTS}" ]; then
   DOCKER_RUN_ENV+=" -e SKIP_FLAKY_TESTS=${SKIP_FLAKY_TESTS} "
 fi
+if [ -n "${SAUCE_IS_DOWN}" ]; then
+  DOCKER_RUN_ENV+=" -e SAUCE_IS_DOWN=${SAUCE_IS_DOWN} "
+fi
 
 export DOCKER_CONTAINER_NAME="${JOB_NAME}-${BUILD_NUMBER}-builder"
 
