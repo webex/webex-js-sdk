@@ -8,6 +8,7 @@ import {fetchCurrentUser} from '../../actions/user';
 import {
   createConversationWithUser,
   deleteActivity,
+  flagActivity,
   listenToMercuryActivity
 } from '../../actions/conversation';
 import {
@@ -38,6 +39,7 @@ export class ChatWidget extends Component {
     this.handleActivityDelete = this.handleActivityDelete.bind(this);
     this.handleCancelActivityDelete = this.handleCancelActivityDelete.bind(this);
     this.handleConfirmActivityDelete = this.handleConfirmActivityDelete.bind(this);
+    this.handleActivityFlag = this.handleActivityFlag.bind(this);
     this.handleScrollToBottom = this.handleScrollToBottom.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleScroll = _.debounce(this.handleScroll.bind(this), 150);
@@ -139,6 +141,18 @@ export class ChatWidget extends Component {
 
   handleSubmit() {
     this.activityList.scrollToBottom();
+  }
+
+  handleActivityFlag(activityId) {
+    const props = this.props;
+    const {
+      conversation,
+      spark
+    } = props;
+    const activity = conversation.activities.find((act) => act.id === activityId);
+    if (activity) {
+      this.props.flagActivity(conversation, activity, spark);
+    }
   }
 
   /**
@@ -250,6 +264,7 @@ export class ChatWidget extends Component {
                 currentUserId={currentUser.id}
                 isTyping={isTyping}
                 onActivityDelete={this.handleActivityDelete}
+                onActivityFlag={this.handleActivityFlag}
                 onScroll={this.handleScroll}
                 ref={this.getActivityList}
               />
@@ -284,6 +299,7 @@ ChatWidget.propTypes = {
   deleteActivity: PropTypes.func.isRequired,
   deleteActivityAndDismiss: PropTypes.func.isRequired,
   fetchCurrentUser: PropTypes.func.isRequired,
+  flagActivity: PropTypes.func.isRequired,
   hideDeleteModal: PropTypes.func.isRequired,
   listenToMercuryActivity: PropTypes.func.isRequired,
   showScrollToBottomButton: PropTypes.func.isRequired,
@@ -310,6 +326,7 @@ export default connect(
     createConversationWithUser,
     deleteActivity,
     deleteActivityAndDismiss,
+    flagActivity,
     fetchCurrentUser,
     hideDeleteModal,
     listenToMercuryActivity,

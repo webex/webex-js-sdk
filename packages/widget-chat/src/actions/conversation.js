@@ -18,6 +18,15 @@ export function deleteActivityFromConversation(conversation, activity) {
   };
 }
 
+export const FLAG_ACTIVITY_IN_CONVERSATION = `FLAG_ACTIVITY_IN_CONVERSATION`;
+export function flagActivityInConversation(conversation, activity) {
+  return {
+    type: FLAG_ACTIVITY_IN_CONVERSATION,
+    conversation,
+    activity
+  };
+}
+
 export const RECEIVE_CONVERSATION = `RECEIVE_CONVERSATION`;
 export function receiveConversation(conversation) {
   return {
@@ -78,7 +87,14 @@ export function deleteActivity(conversation, activity, spark) {
       .then(() => {
         dispatch(deleteActivityFromConversation(conversation, activity));
       });
+}
 
+export function flagActivity(conversation, activity, spark) {
+  return (dispatch) =>
+    spark.flag.create(activity)
+      .then(() => {
+        dispatch(flagActivityInConversation(conversation, activity));
+      });
 }
 
 export function listenToMercuryActivity(conversationId, spark) {

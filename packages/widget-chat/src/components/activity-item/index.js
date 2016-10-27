@@ -36,6 +36,7 @@ ActivityItem.propTypes = {
   isSelf: PropTypes.bool,
   name: PropTypes.string.isRequired,
   onActivityDelete: PropTypes.func,
+  onActivityFlag: PropTypes.func,
   timestamp: PropTypes.string,
   verb: PropTypes.string.isRequired
 };

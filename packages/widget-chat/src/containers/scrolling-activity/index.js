@@ -9,10 +9,7 @@ import styles from './styles.css';
 
 function ScrollingActivity(props) {
   const {
-    activities,
-    currentUserId,
-    isTyping,
-    onActivityDelete
+    isTyping
   } = props;
   let typingIndicator;
   if (isTyping) {
@@ -21,11 +18,7 @@ function ScrollingActivity(props) {
 
   return (
     <div>
-      <ActivityList
-        activities={activities}
-        currentUserId={currentUserId}
-        onActivityDelete={onActivityDelete}
-      />
+      <ActivityList {...props} />
       <div className={classNames(`indicators`, styles.indicators)}>
         {typingIndicator}
       </div>
@@ -37,7 +30,8 @@ ScrollingActivity.propTypes = {
   activities: PropTypes.array,
   currentUserId: PropTypes.string,
   isTyping: PropTypes.bool,
-  onActivityDelete: PropTypes.func.isRequired
+  onActivityDelete: PropTypes.func.isRequired,
+  onActivityFlag: PropTypes.func.isRequired
 };
 
 export default injectScrollable(ScrollingActivity);

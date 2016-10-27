@@ -2,7 +2,7 @@ import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 
 import IconButton from '../icon-button';
-import {ICON_TYPE_DELETE} from '../icon';
+import {ICON_TYPE_DELETE, ICON_TYPE_FLAGGED_OUTLINE} from '../icon';
 import styles from './styles.css';
 
 export default function ActivityItemPostActions(props) {
@@ -11,7 +11,18 @@ export default function ActivityItemPostActions(props) {
     onDelete(id);
   }
 
-  const actions = [];
+  function handleOnFlag() {
+    const {id, onFlag} = props;
+    onFlag(id);
+  }
+
+  const actions = [
+    {
+      handleOnClick: handleOnFlag,
+      title: `Flag this message`,
+      type: ICON_TYPE_FLAGGED_OUTLINE
+    }
+  ];
   if (props.showDelete) {
     actions.push(
       {
@@ -37,5 +48,6 @@ export default function ActivityItemPostActions(props) {
 ActivityItemPostActions.propTypes = {
   id: PropTypes.string.isRequired,
   onDelete: PropTypes.func,
+  onFlag: PropTypes.func,
   showDelete: PropTypes.bool.isRequired
 };

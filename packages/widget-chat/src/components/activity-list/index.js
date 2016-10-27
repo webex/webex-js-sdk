@@ -20,6 +20,7 @@ export default function ActivityList(props) {
           key={activity.id}
           name={activity.actor.displayName}
           onActivityDelete={props.onActivityDelete}
+          onActivityFlag={props.onActivityFlag}
           timestamp={formatDate(activity.published)}
           verb={activity.verb}
         />
@@ -36,5 +37,6 @@ export default function ActivityList(props) {
 ActivityList.propTypes = {
   activities: PropTypes.array,
   currentUserId: PropTypes.string,
-  onActivityDelete: PropTypes.func.isRequired
+  onActivityDelete: PropTypes.func.isRequired,
+  onActivityFlag: PropTypes.func.isRequired
 };

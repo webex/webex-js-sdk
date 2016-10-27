@@ -14,6 +14,7 @@ export default function ActivityItemPost(props) {
     isSelf,
     name,
     onActivityDelete,
+    onActivityFlag,
     timestamp
   } = props;
 
@@ -32,7 +33,12 @@ export default function ActivityItemPost(props) {
         <div className={classNames(`activity-text`, styles.activityText)}>{content}</div>
       </div>
       <div className={classNames(`activity-post-actions`, styles.activityPostActions)} >
-        <ActivityItemPostActions id={id} onDelete={onActivityDelete} showDelete={showDeleteAction} />
+        <ActivityItemPostActions
+          id={id}
+          onDelete={onActivityDelete}
+          onFlag={onActivityFlag}
+          showDelete={showDeleteAction}
+        />
       </div>
     </div>
   );
@@ -46,5 +52,6 @@ ActivityItemPost.propTypes = {
   isSelf: PropTypes.bool,
   name: PropTypes.string.isRequired,
   onActivityDelete: PropTypes.func,
+  onActivityFlag: PropTypes.func,
   timestamp: PropTypes.string
 };
