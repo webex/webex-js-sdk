@@ -86,7 +86,7 @@ const Conversation = SparkPlugin.extend({
         params.participants = uniq(participants);
 
         if (params.participants.length === 2 && !(options && options.forceGrouped)) {
-          return this._maybeCreateOneOnOneThenPost(params);
+          return this._maybeCreateOneOnOneThenPost(params, options);
         }
 
         return this._createGrouped(params);
@@ -699,15 +699,16 @@ const Conversation = SparkPlugin.extend({
 
   /**
    * @param {Object} params
+   * @param {Object} options
    * @private
    * @returns {Promise<Conversation>}
    */
-  _maybeCreateOneOnOneThenPost(params) {
+  _maybeCreateOneOnOneThenPost(params, options) {
     return this.get(defaults({
       // the use of uniq in Conversation#create guarantees participant[1] will
       // always be the other user
       user: params.participants[1]
-    }))
+    }), options)
       .then((conversation) => {
         if (params.comment) {
           return this.post(conversation, {displayName: params.comment})
