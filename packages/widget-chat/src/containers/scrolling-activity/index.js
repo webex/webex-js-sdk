@@ -29,6 +29,7 @@ function ScrollingActivity(props) {
 ScrollingActivity.propTypes = {
   activities: PropTypes.array,
   currentUserId: PropTypes.string,
+  flags: PropTypes.array,
   isTyping: PropTypes.bool,
   onActivityDelete: PropTypes.func.isRequired,
   onActivityFlag: PropTypes.func.isRequired

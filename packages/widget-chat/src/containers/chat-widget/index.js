@@ -224,6 +224,7 @@ export class ChatWidget extends Component {
     const props = this.props;
     const {
       conversation,
+      flags,
       indicators,
       spark,
       sparkState,
@@ -280,6 +281,7 @@ export class ChatWidget extends Component {
               <ScrollingActivity
                 activities={activities}
                 currentUserId={currentUser.id}
+                flags={flags.flags}
                 isTyping={isTyping}
                 onActivityDelete={this.handleActivityDelete}
                 onActivityFlag={this.handleActivityFlag}

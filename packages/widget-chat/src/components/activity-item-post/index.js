@@ -11,6 +11,7 @@ export default function ActivityItemPost(props) {
     content,
     id,
     isAdditional,
+    isFlagged,
     isSelf,
     name,
     onActivityDelete,
@@ -35,6 +36,7 @@ export default function ActivityItemPost(props) {
       <div className={classNames(`activity-post-actions`, styles.activityPostActions)} >
         <ActivityItemPostActions
           id={id}
+          isFlagged={isFlagged}
           onDelete={onActivityDelete}
           onFlag={onActivityFlag}
           showDelete={showDeleteAction}
@@ -49,6 +51,7 @@ ActivityItemPost.propTypes = {
   content: PropTypes.string,
   id: PropTypes.string.isRequired,
   isAdditional: PropTypes.bool,
+  isFlagged: PropTypes.bool,
   isSelf: PropTypes.bool,
   name: PropTypes.string.isRequired,
   onActivityDelete: PropTypes.func,

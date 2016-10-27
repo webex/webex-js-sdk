@@ -33,6 +33,7 @@ ActivityItem.propTypes = {
   content: PropTypes.string,
   id: PropTypes.string.isRequired,
   isAdditional: PropTypes.bool,
+  isFlagged: PropTypes.bool,
   isSelf: PropTypes.bool,
   name: PropTypes.string.isRequired,
   onActivityDelete: PropTypes.func,

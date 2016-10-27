@@ -7,3 +7,7 @@
   flex: 0 0 auto;
   margin: 0 2px;
 }
+
+.highlighted {
+  color: #049fd9;
+}

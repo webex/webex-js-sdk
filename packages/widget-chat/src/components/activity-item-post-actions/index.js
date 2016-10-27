@@ -20,7 +20,8 @@ export default function ActivityItemPostActions(props) {
     {
       handleOnClick: handleOnFlag,
       title: `Flag this message`,
-      type: ICON_TYPE_FLAGGED_OUTLINE
+      type: ICON_TYPE_FLAGGED_OUTLINE,
+      className: props.isFlagged ? `highlighted` : ``
     }
   ];
   if (props.showDelete) {
@@ -31,12 +32,17 @@ export default function ActivityItemPostActions(props) {
         type: ICON_TYPE_DELETE
       });
   }
-
-  const actionItems = actions.map((action, index) =>
-    <div className={classNames(`post-actions-item`, styles.postActionsItem)} key={index}>
-      <IconButton onClick={action.handleOnClick} title={action.title} type={action.type} />
-    </div>
-  );
+  const actionItems = actions.map((action, index) => {
+    const actionClassNames = [`post-actions-item`, styles.postActionsItem];
+    if (action.className) {
+      actionClassNames.push(action.className, styles[action.className]);
+    }
+    return (
+      <div className={classNames(actionClassNames)} key={index}>
+        <IconButton onClick={action.handleOnClick} title={action.title} type={action.type} />
+      </div>
+    );
+  });
 
   return (
     <div className={classNames(`post-actions`, styles.postActions)}>
@@ -47,6 +53,7 @@ export default function ActivityItemPostActions(props) {
 
 ActivityItemPostActions.propTypes = {
   id: PropTypes.string.isRequired,
+  isFlagged: PropTypes.bool,
   onDelete: PropTypes.func,
   onFlag: PropTypes.func,
   showDelete: PropTypes.bool.isRequired
