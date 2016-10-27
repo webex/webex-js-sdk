@@ -73,12 +73,12 @@ export function createConversationWithUser(userId, spark) {
 }
 
 export function deleteActivity(conversation, activity, spark) {
-  return (dispatch) => {
+  return (dispatch) =>
     spark.conversation.delete(conversation, activity)
       .then(() => {
         dispatch(deleteActivityFromConversation(conversation, activity));
       });
-  };
+
 }
 
 export function listenToMercuryActivity(conversationId, spark) {

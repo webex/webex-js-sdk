@@ -1,6 +1,8 @@
 import {UPDATE_WIDGET_STATE} from '../actions/widget';
 
 export default function reduceWidget(state = {
+  deletingActivityId: null,
+  showAlertModal: false,
   showScrollToBottomButton: false,
   hasNewMessage: false
 }, action) {

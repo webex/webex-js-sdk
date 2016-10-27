@@ -85,6 +85,8 @@ app.use('/cookies', require('./cookies'));
 app.use('/json', require('./json'));
 app.use('/form', require('./form'));
 app.use('/files', require('./files'));
+app.use('/jwt', require('@ciscospark/test-helper-appid').router);
+
 app.get('/requires-basic-auth', function(req, res) {
   if (req.headers.authorization === 'Basic ' + btoa('basicuser:basicpass')) {
     res.status(200).send().end();
