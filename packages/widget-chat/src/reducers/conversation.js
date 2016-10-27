@@ -1,3 +1,4 @@
+/* eslint complexity: ["error", 10] */
 import _ from 'lodash';
 
 import {
@@ -22,7 +23,7 @@ function sortActivityByTime(activities) {
 }
 
 
-export default function conversation(state = {
+export default function reduceConversation(state = {
   activities: [],
   id: null,
   participants: [],
