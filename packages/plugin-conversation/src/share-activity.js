@@ -7,7 +7,7 @@
 import {proxyEvents, transferEvents} from '@ciscospark/common';
 import {detect} from '@ciscospark/http-core';
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {filter, map, pick, some} from 'lodash';
+import {filter, isArray, map, pick, some} from 'lodash';
 import {EventEmitter} from 'events';
 import mime from 'mime-types';
 
@@ -262,7 +262,7 @@ const ShareActivity = SparkPlugin.extend({
    * @returns {boolean}
    */
   _itemContainsActionWithMimeType(items, mimeType) {
-    return some(map(items, (item) => some(item.actions, [`mimeType`, mimeType])));
+    return some(items.map((item) => some(item.actions, [`mimeType`, mimeType])));
   },
 
   /**
@@ -335,7 +335,7 @@ ShareActivity.create = function create(conversation, object, spark) {
 
   if (files) {
     files.forEach((file) => {
-      if (Array.isArray(file)) {
+      if (isArray(file)) {
         Reflect.apply(share.add, share, file);
       }
       else {
