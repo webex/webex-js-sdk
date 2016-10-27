@@ -510,6 +510,11 @@ const Conversation = SparkPlugin.extend({
       });
     }
 
+    // leaky abstraction
+    if (activity.verb !== `acknowledge`) {
+      this.spark.trigger(`user-activity`);
+    }
+
     return this.request(params)
       .then((res) => res.body);
   },
