@@ -460,6 +460,34 @@ const Conversation = SparkPlugin.extend({
   },
 
   /**
+   * Assigns an avatar to a room
+   * @param {Object} conversation
+   * @param {File} avatar
+   * @returns {Promise<Activity>}
+   */
+  assign(conversation, avatar) {
+    if ((avatar.size || avatar.length) > 1024 * 1024) {
+      return Promise.reject(new Error(`Room avatars must be less than 1MB`));
+    }
+    return this._inferConversationUrl(conversation)
+      .then(() => {
+        const activity = ShareActivity.create(conversation, null, this.spark);
+        activity.enableThumbnails = false;
+        activity.add(avatar);
+
+        return this.prepare(activity, {
+          target: this.prepareConversation(conversation)
+        });
+      })
+      .then((a) => {
+        // yes, this seems a little hacky; will likely be resolved as a result
+        // of #213
+        a.verb = `assign`;
+        return this.submit(a);
+      });
+  },
+
+  /**
    * Shares files to the specified converstion
    * @param {Object} conversation
    * @param {ShareActivity|Array<File>} activity
@@ -517,6 +545,27 @@ const Conversation = SparkPlugin.extend({
 
     return this.request(params)
       .then((res) => res.body);
+  },
+
+  /**
+   * Remove the avatar from a room
+   * @param {Conversation~ConversationObject} conversation
+   * @param {Conversation~ActivityObject} activity
+   * @returns {Promise}
+   */
+  unassign(conversation, activity) {
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb: `unassign`,
+        target: this.prepareConversation(conversation),
+        object: {
+          objectType: `content`,
+          files: {
+            items: []
+          }
+        }
+      }))
+      .then((a) => this.submit(a));
   },
 
   /**
@@ -786,7 +835,6 @@ const Conversation = SparkPlugin.extend({
     return Promise.all(conversation.participants.items.map((participant) => this.spark.user.recordUUID(participant)));
   }
 });
-
 
 [
   `favorite`,

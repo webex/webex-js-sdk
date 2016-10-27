@@ -40,6 +40,9 @@ export const transforms = toArray(`inbound`, {
       promises.push(ctx.transform(`decryptPropDisplayName`, usableKey, conversation));
       promises.push(ctx.transform(`decryptPropContent`, usableKey, conversation));
     }
+    if (conversation.avatarEncryptionKeyUrl) {
+      promises.push(ctx.transform(`decryptObject`, conversation.avatarEncryptionKeyUrl, conversation.avatar));
+    }
 
     return Promise.all(promises);
   },
