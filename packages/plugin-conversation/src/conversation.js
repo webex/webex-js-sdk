@@ -6,7 +6,7 @@
 
 import {proxyEvents, tap} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
+import {cloneDeep, defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
 import uuid from 'uuid';
 import querystring from 'querystring';
 import ShareActivity from './share-activity';
@@ -85,7 +85,7 @@ const Conversation = SparkPlugin.extend({
         participants.unshift(this.spark.device.userId);
         params.participants = uniq(participants);
 
-        if (participants.length === 2 && !(options && options.forceGrouped)) {
+        if (params.participants.length === 2 && !(options && options.forceGrouped)) {
           return this._maybeCreateOneOnOneThenPost(params, options);
         }
 
@@ -460,6 +460,34 @@ const Conversation = SparkPlugin.extend({
   },
 
   /**
+   * Assigns an avatar to a room
+   * @param {Object} conversation
+   * @param {File} avatar
+   * @returns {Promise<Activity>}
+   */
+  assign(conversation, avatar) {
+    if ((avatar.size || avatar.length) > 1024 * 1024) {
+      return Promise.reject(new Error(`Room avatars must be less than 1MB`));
+    }
+    return this._inferConversationUrl(conversation)
+      .then(() => {
+        const activity = ShareActivity.create(conversation, null, this.spark);
+        activity.enableThumbnails = false;
+        activity.add(avatar);
+
+        return this.prepare(activity, {
+          target: this.prepareConversation(conversation)
+        });
+      })
+      .then((a) => {
+        // yes, this seems a little hacky; will likely be resolved as a result
+        // of #213
+        a.verb = `assign`;
+        return this.submit(a);
+      });
+  },
+
+  /**
    * Shares files to the specified converstion
    * @param {Object} conversation
    * @param {ShareActivity|Array<File>} activity
@@ -510,8 +538,34 @@ const Conversation = SparkPlugin.extend({
       });
     }
 
+    // leaky abstraction
+    if (activity.verb !== `acknowledge`) {
+      this.spark.trigger(`user-activity`);
+    }
+
     return this.request(params)
       .then((res) => res.body);
+  },
+
+  /**
+   * Remove the avatar from a room
+   * @param {Conversation~ConversationObject} conversation
+   * @param {Conversation~ActivityObject} activity
+   * @returns {Promise}
+   */
+  unassign(conversation, activity) {
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb: `unassign`,
+        target: this.prepareConversation(conversation),
+        object: {
+          objectType: `content`,
+          files: {
+            items: []
+          }
+        }
+      }))
+      .then((a) => this.submit(a));
   },
 
   /**
@@ -742,7 +796,7 @@ const Conversation = SparkPlugin.extend({
       kmsMessage: {
         method: `create`,
         uri: `/resources`,
-        userIds: params.participants,
+        userIds: cloneDeep(params.participants),
         keyUris: []
       }
     };
@@ -781,7 +835,6 @@ const Conversation = SparkPlugin.extend({
     return Promise.all(conversation.participants.items.map((participant) => this.spark.user.recordUUID(participant)));
   }
 });
-
 
 [
   `favorite`,

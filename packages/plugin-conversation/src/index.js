@@ -158,8 +158,7 @@ registerPlugin(`conversation`, Conversation, {
           return Promise.all([
             Promise.all(conversation.activities.items.map((item) => ctx.transform(`normalizeObject`, item))),
             Promise.all(conversation.participants.items.map((item) => ctx.transform(`normalizeObject`, item)))
-          ])
-            .then(() => conversation);
+          ]);
         }
       },
       {
@@ -174,6 +173,7 @@ registerPlugin(`conversation`, Conversation, {
       },
       {
         name: `normalizePerson`,
+        // eslint-disable-next-line complexity
         fn(ctx, person) {
           const email = person.entryEmail || person.emailAddress || person.id;
           const id = person.entryUUID || person.id;
@@ -184,6 +184,10 @@ registerPlugin(`conversation`, Conversation, {
           else {
             Reflect.deleteProperty(person, `entryEmail`);
             Reflect.deleteProperty(person, `emailAddress`);
+          }
+
+          if (person.roomProperties) {
+            person.roomProperties.isModerator = Boolean(person.roomProperties.isModerator);
           }
 
           if (patterns.uuid.test(id)) {

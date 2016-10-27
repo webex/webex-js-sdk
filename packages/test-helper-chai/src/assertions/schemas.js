@@ -73,6 +73,22 @@ module.exports = function schemas(chai) {
     assert.property(this._obj, 'description');
   });
 
+  Assertion.addProperty('InternalTeam', function() {
+    assert.equal(this._obj.objectType, 'team');
+    assert.property(this._obj, 'id');
+    assert.property(this._obj, 'url');
+    assert.property(this._obj, 'generalConversationUuid');
+
+    assert.property(this._obj, 'encryptedDisplayName');
+    assert.property(this._obj, 'displayName');
+    assert.notEqual(this._obj.displayName, this._obj.encryptedDisplayName);
+
+    if (this._obj.summary) {
+      assert.property(this._obj, 'encryptedSummary');
+      assert.notEqual(this._obj.summary, this._obj.encryptedSummary);
+    }
+  });
+
   Assertion.addProperty('OneOnOneConversation', function() {
     assert.isConversation(this._obj);
     assert.include(this._obj.tags, 'ONE_ON_ONE');
@@ -83,12 +99,27 @@ module.exports = function schemas(chai) {
     assert.notInclude(this._obj.tags, 'ONE_ON_ONE');
   });
 
+  Assertion.addProperty('InternalTeamConversation', function() {
+    assert.isConversation(this._obj);
+    assert.property(this._obj, 'team');
+
+    assert.ok(this._obj.tags.includes('OPEN') || this._obj.tags.includes('TEAM'), 'Conversation must have `OPEN` or `TEAM` tag');
+
+    assert.property(this._obj, 'encryptedDisplayName');
+    assert.property(this._obj, 'displayName');
+    assert.notEqual(this._obj.displayName, this._obj.encryptedDisplayName);
+  });
+
   Assertion.addProperty('NewEncryptedConversation', function() {
     assert.property(this._obj, 'kmsMessage');
     assert.isObject(this._obj.kmsMessage);
     assert.equal(this._obj.kmsMessage.status, 201);
     assert.property(this._obj, 'defaultActivityEncryptionKeyUrl');
     assert.property(this._obj, 'kmsResourceObjectUrl');
+  });
+
+  Assertion.addProperty('NewEncryptedInternalTeam', function() {
+    assert.isNewEncryptedConversation(this._obj);
   });
 
   Assertion.addProperty('EncryptedActivity', function() {
@@ -241,11 +272,14 @@ module.exports = function schemas(chai) {
     'AccessToken',
     'Activity',
     'Conversation',
+    'InternalTeam',
     'FileItem',
     'ThumbnailItem',
     'OneOnOneConversation',
     'GroupConversation',
+    'InternalTeamConversation',
     'NewEncryptedConversation',
+    'NewEncryptedTeam',
     'EncryptedActivity',
     'MachineAccount',
     'Membership',

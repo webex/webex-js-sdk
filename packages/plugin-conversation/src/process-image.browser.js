@@ -47,12 +47,14 @@ export function computeDimensions({width, height}, maxWidth, maxHeight) {
 
 /**
  * Measures an image file and produces a thumbnail for it
- * @param {Blob|ArrayBuffer} file
- * @param {Number} thumbnailMaxWidth
- * @param {Number} thumbnailMaxHeight
+ * @param {Object} options
+ * @param {Blob|ArrayBuffer} options.file
+ * @param {Number} options.thumbnailMaxWidth
+ * @param {Number} options.thumbnailMaxHeight
+ * @param {Boolean} options.enableThumbnails
  * @returns {Promise<Array>} Buffer, Dimensions, thumbnailDimensions
  */
-export default function processImage(file, thumbnailMaxWidth, thumbnailMaxHeight) {
+export default function processImage({file, thumbnailMaxWidth, thumbnailMaxHeight, enableThumbnails}) {
   if (!file.type.startsWith(`image`)) {
     return Promise.resolve();
   }
@@ -69,7 +71,9 @@ export default function processImage(file, thumbnailMaxWidth, thumbnailMaxHeight
   })
     .then((img) => {
       const fileDimensions = pick(img, `height`, `width`);
-
+      if (!enableThumbnails) {
+        return [null, fileDimensions, null];
+      }
       const thumbnailDimensions = computeDimensions(fileDimensions, thumbnailMaxWidth, thumbnailMaxHeight);
 
       const canvas = document.createElement(`canvas`);
