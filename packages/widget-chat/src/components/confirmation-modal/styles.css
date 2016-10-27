@@ -17,7 +17,7 @@
   width: 350px;
   min-height: 150px;
   margin: -75px 0 0 -175px;
-  font: CiscoSansTTExtraLight, 'Helvetica Neue', Arial;
+  font: 'CiscoSans TT Extra Light', 'Helvetica Neue', Arial;
   font-size: 16px;
   background-color: var(--color-white);
   box-shadow: 0 17px 50px 0 #000;
@@ -72,13 +72,13 @@
 
 .dialogue-modal-body-text {
   padding: 30px 23px;
-  font-family: CiscoSansTTRegular, 'Helvetica Neue', Arial;
+  font-family: 'CiscoSans TT Regular', 'Helvetica Neue', Arial;
 }
 
 .dialogue-modal-btn {
   width: 50%;
   padding: 10px;
-  font-family: CiscoSansTTRegular, 'Helvetica Neue', Arial;
+  font-family: 'CiscoSans TT Regular', 'Helvetica Neue', Arial;
   font-size: 15px;
   cursor: pointer;
   background-color: var(--color-white);
@@ -137,7 +137,7 @@
 }
 
 .dialogue-modal-action-btn {
-  font-family: CiscoSansTTExtraLight, 'Helvetica Neue', Arial;
+  font-family: 'CiscoSans TT Extra Light', 'Helvetica Neue', Arial;
   color: var(--color-primary);
 }
 
@@ -166,14 +166,14 @@
 }
 
 .dialogue-modal-exit-btn {
-  font-family: CiscoSansTTExtraLight, 'Helvetica Neue', Arial;
+  font-family: 'CiscoSans TT Extra Light', 'Helvetica Neue', Arial;
   color: var(--color-gray);
 }
 
 .dialogue-modal-title-text {
   height: 32px;
   margin-top: 16px;
-  font-family: CiscoSansTTExtraLight, 'Helvetica Neue', Arial;
+  font-family: 'CiscoSans TT Extra Light', 'Helvetica Neue', Arial;
   font-size: 20px;
   font-weight: 300;
   line-height: 1.6;
@@ -184,7 +184,7 @@
 .dialogue-modal-body-subtext {
   height: 100%;
   margin: 16px 24px 32px;
-  font-family: CiscoSansTTExtraLight, 'Helvetica Neue', Arial;
+  font-family: 'CiscoSans TT Extra Light', 'Helvetica Neue', Arial;
   font-size: 14px;
   font-weight: 300;
   line-height: 1.71;
