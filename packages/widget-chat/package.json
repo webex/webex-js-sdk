@@ -28,6 +28,7 @@
   "devDependencies": {
     "@ciscospark/http-core": "^0.7.0-alpha",
     "@ciscospark/plugin-conversation": "^0.7.0-alpha",
+    "@ciscospark/plugin-flag": "^0.7.0-alpha",
     "@ciscospark/spark-core": "^0.7.0-alpha",
     "@ciscospark/storage-adapter-local-storage": "^0.7.0-alpha",
     "@kadira/storybook": "^2.5.2",
