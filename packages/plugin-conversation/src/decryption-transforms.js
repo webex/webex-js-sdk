@@ -40,6 +40,9 @@ export const transforms = toArray(`inbound`, {
       promises.push(ctx.transform(`decryptPropDisplayName`, usableKey, conversation));
       promises.push(ctx.transform(`decryptPropContent`, usableKey, conversation));
     }
+    if (conversation.avatarEncryptionKeyUrl) {
+      promises.push(ctx.transform(`decryptObject`, conversation.avatarEncryptionKeyUrl, conversation.avatar));
+    }
 
     return Promise.all(promises);
   },
@@ -104,6 +107,11 @@ export const transforms = toArray(`inbound`, {
 
     return ctx.spark.encryption.decryptText(key, object[name])
       .then((plaintext) => {
+        if (ctx.spark.config.conversation.keepEncryptedProperties) {
+          const encryptedPropName = S(`encrypted_${name}`).camelize().s;
+          object[encryptedPropName] = object[name];
+        }
+
         object[name] = plaintext;
       })
       .catch((reason) => {

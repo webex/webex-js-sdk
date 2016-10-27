@@ -9,11 +9,22 @@
 # the sdk root dir
 
 set -e
-npm run sauce:start
-set +e
-npm run sauce:run -- npm run test:package
-EXIT_CODE=$?
-set -e
-npm run sauce:stop
 
-exit ${EXIT_CODE}
+# copied from http://www.tldp.org/LDP/abs/html/comparison-ops.html because I can
+# never remember which is which
+# > -z string is null, that is, has zero length
+# > -n string is not null.
+
+if [ -n "${SAUCE_IS_DOWN}" ]; then
+  npm run test:package
+else
+  npm run sauce:start
+
+  set +e
+  npm run sauce:run -- npm run test:package
+  EXIT_CODE=$?
+  set -e
+
+  npm run sauce:stop
+  exit ${EXIT_CODE}
+fi
