@@ -4,6 +4,7 @@
  * @private
  */
 
+import '@ciscospark/plugin-user';
 import '@ciscospark/plugin-wdm';
 
 import {registerPlugin} from '@ciscospark/spark-core';
