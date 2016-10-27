@@ -9,18 +9,29 @@ export const SYSTEM_MESSAGE_VERBS = [SYSTEM_MESSAGE_VERB_CREATE, SYSTEM_MESSAGE_
 
 export default function ActivityItemSystemMessage(props) {
   const {
+    isSelf,
     name,
     timestamp,
     verb
   } = props;
 
   let systemMessage;
+  let displayName;
+  let actionVerb;
+  if (isSelf) {
+    displayName = `You`;
+    actionVerb = `your`;
+  }
+  else {
+    displayName = name;
+    actionVerb = `their own`;
+  }
 
   if (verb === SYSTEM_MESSAGE_VERB_CREATE) {
-    systemMessage = `${name} created conversation. ${timestamp}`;
+    systemMessage = `${displayName} created conversation. ${timestamp}`;
   }
   else if (verb === SYSTEM_MESSAGE_VERB_TOMBSTONE) {
-    systemMessage = `${name} deleted message. ${timestamp}`;
+    systemMessage = `${displayName} deleted ${actionVerb} message. ${timestamp}`;
   }
 
   return (
@@ -32,6 +43,7 @@ export default function ActivityItemSystemMessage(props) {
 
 ActivityItemSystemMessage.propTypes = {
   content: PropTypes.string,
+  isSelf: PropTypes.bool,
   name: PropTypes.string.isRequired,
   timestamp: PropTypes.string,
   verb: PropTypes.string.isRequired
