@@ -13,7 +13,7 @@ describe(`plugin-avatar`, () => {
 
   let mccoy, spark, spock;
 
-  before(() => testUsers.create({count: 2})
+  before(`create users`, () => testUsers.create({count: 2})
     .then((users) => {
       [spock, mccoy] = users;
 
@@ -28,12 +28,12 @@ describe(`plugin-avatar`, () => {
           authorization: mccoy.token
         }
       });
-
-      return Promise.all([
-        spark.device.register(),
-        mccoy.spark.device.register()
-      ]);
     }));
+
+  before(`register with wdm`, () => Promise.all([
+    spark.device.register(),
+    mccoy.spark.device.register()
+  ]));
 
   let sampleImageSmallOnePng = `sample-image-small-one.png`;
 
