@@ -1,6 +1,5 @@
 import {
   CREATE_CONVERSATION,
-  FLAG_ACTIVITY_IN_CONVERSATION,
   RECEIVE_CONVERSATION,
   RECEIVE_MERCURY_ACTIVITY,
   RECEIVE_MERCURY_COMMENT,
@@ -43,6 +42,7 @@ export default function conversation(state = {
       participants: action.conversation.participants.items
     });
   }
+
   case RECEIVE_MERCURY_ACTIVITY: {
     let activities = state.activities;
     if (action.activity.verb === `delete`) {

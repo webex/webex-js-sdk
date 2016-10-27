@@ -8,9 +8,12 @@ import {fetchCurrentUser} from '../../actions/user';
 import {
   createConversationWithUser,
   deleteActivity,
-  flagActivity,
   listenToMercuryActivity
 } from '../../actions/conversation';
+import {
+  fetchFlagsForConversation,
+  flagActivity
+} from '../../actions/flags';
 import {
   confirmDeleteActivity,
   deleteActivityAndDismiss,
@@ -50,7 +53,8 @@ export class ChatWidget extends Component {
       user,
       userId,
       spark,
-      conversation
+      conversation,
+      flags
     } = nextProps;
 
     const {
@@ -68,15 +72,29 @@ export class ChatWidget extends Component {
       }
     }
 
-    if (conversation.id && !conversation.mercuryState.isListening) {
-      nextProps.listenToMercuryActivity(conversation.id, spark);
+    // Setup once we have a conversation
+    if (conversation.id) {
+      if (!conversation.mercuryState.isListening) {
+        nextProps.listenToMercuryActivity(conversation.id, spark);
+      }
+      if (!flags.hasFetched && !flags.isFetching) {
+        nextProps.fetchFlagsForConversation(conversation, spark);
+      }
     }
 
   }
 
   shouldComponentUpdate(nextProps) {
     const props = this.props;
-    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation.activities !== props.conversation.activities || nextProps.widget !== props.widget || nextProps.indicators !== props.indicators;
+    /* eslint-disable operator-linebreak */
+    /* eslint-disable-reason: Giant list of comparisons very difficult to read and diff */
+    return nextProps.conversation.activities !== props.conversation.activities
+      || nextProps.flags !== props.flags
+      || nextProps.indicators !== props.indicators
+      || nextProps.sparkState.connected !== props.sparkState.connected
+      || nextProps.user !== props.user
+      || nextProps.widget !== props.widget;
+    /* eslint-enable operator-linebreak */
   }
 
   componentDidUpdate(prevProps) {
@@ -312,6 +330,7 @@ function mapStateToProps(state, ownProps) {
   return {
     spark: ownProps.spark,
     sparkState: state.spark,
+    flags: state.flags,
     user: state.user,
     conversation: state.conversation,
     widget: state.widget,
@@ -328,6 +347,7 @@ export default connect(
     deleteActivityAndDismiss,
     flagActivity,
     fetchCurrentUser,
+    fetchFlagsForConversation,
     hideDeleteModal,
     listenToMercuryActivity,
     showScrollToBottomButton,
