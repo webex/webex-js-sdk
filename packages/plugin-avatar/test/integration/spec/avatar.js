@@ -3,6 +3,8 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 
+import '../..';
+
 import {assert} from '@ciscospark/test-helper-chai';
 import sinon from '@ciscospark/test-helper-sinon';
 import fh from '@ciscospark/test-helper-file';
