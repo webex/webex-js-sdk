@@ -6,6 +6,17 @@
 
 export default {
   board: {
+    /**
+     * Number of contents per batch when adding contents to a channel
+     * @type {number}
+     */
+    numberContentsPerPageForAdd: 150,
+
+    /**
+     * Number of contents per batch when getting contents from a channel
+     * @type {number}
+     */
+    numberContentsPerPageForGet: 1000,
 
     /**
      * Milliseconds between pings sent up the socket

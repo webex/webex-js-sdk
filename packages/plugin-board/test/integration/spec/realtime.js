@@ -19,8 +19,7 @@ function boardChannelToMercuryBinding(channelId) {
 }
 
 describe(`plugin-board`, () => {
-  describe(`realtime`, function() {
-    this.timeout(60000);
+  describe(`realtime`, () => {
     const mercuryBindingsPrefix = `board.`;
     let board, conversation, fixture, participants;
 

@@ -7,11 +7,8 @@
 import {assign} from 'lodash';
 import {SparkPlugin, Page} from '@ciscospark/spark-core';
 import Realtime from './realtime';
-import {defaults, chunk, pick, last} from 'lodash';
+import {defaults, chunk, pick} from 'lodash';
 import promiseSeries from 'es6-promise-series';
-
-// number is hard-coded in board service atm
-const MAX_ALLOWED_INPUT_SIZE = 1000;
 
 const Board = SparkPlugin.extend({
   namespace: `Board`,
@@ -22,7 +19,7 @@ const Board = SparkPlugin.extend({
 
   /**
    * Adds Content to a Channel
-   * If contents length is greater than MAX_ALLOWED_INPUT_SIZE, this method
+   * If contents length is greater than config.board.numberContentsPerPageForAdd, this method
    * will break contents into chunks and make multiple GET request to the
    * board service
    * @memberof Board.BoardService
@@ -33,7 +30,7 @@ const Board = SparkPlugin.extend({
    */
   addContent(conversation, channel, contents) {
     let chunks = [];
-    chunks = chunk(contents, MAX_ALLOWED_INPUT_SIZE);
+    chunks = chunk(contents, this.config.numberContentsPerPageForAdd);
     // we want the first promise to resolve before continuing with the next
     // chunk or else we'll have race conditions among patches
     return promiseSeries(chunks.map((part) => this._addContentChunk.bind(this, conversation, channel, part)));
@@ -234,53 +231,26 @@ const Board = SparkPlugin.extend({
   },
 
   /**
-   * Gets all Content from a Channel
-   * It will make multiple GET requests if contents length are greater than
-   * MAX_ALLOW_INPUT_SIZE, the number is currently determined and hard-coded
-   * by the backend
+   * Retrieves contents from a specified channel
    * @memberof Board.BoardService
    * @param  {Board~Channel} channel
-   * @returns {Promise<Array>} Resolves with an Array of {@link Board~Content} objects.
+   * @param  {Object} options
+   * @param  {Object} options.qs
+   * @returns {Promise<Page<Board~Channel>>} Resolves with an array of Content items
    */
-  getAllContent(channel) {
-    let contents = [];
-    let hasMoreContents = false;
+  getContents(channel, options) {
+    options = options || {};
 
-    const loop = () => {
-      if (!hasMoreContents) {
-        return Promise.resolve(contents);
+    const params = {
+      uri: `${channel.channelUrl}/contents`,
+      qs: {
+        contentsLimit: this.config.numberContentsPerPageForGet
       }
-      const oldestContentTime = last(contents).createdTime;
-
-      return this._getPageOfContents(channel, {sinceDate: oldestContentTime})
-        .then((res) => {
-
-          if (res.length >= MAX_ALLOWED_INPUT_SIZE) {
-            hasMoreContents = true;
-          }
-          else {
-            hasMoreContents = false;
-          }
-
-          // for the 2nd+ request, the result will include the last item of
-          // the first request, so we'll discard it here
-          res.shift();
-          contents = contents.concat(res);
-          return contents;
-        })
-        .then(loop.bind(this));
     };
+    assign(params.qs, pick(options, `contentsLimit`));
 
-    return this._getPageOfContents(channel)
-      .then((res) => {
-        contents = res;
-
-        if (contents.length >= MAX_ALLOWED_INPUT_SIZE) {
-          hasMoreContents = true;
-        }
-        return contents;
-      })
-      .then(loop.bind(this));
+    return this.request(params)
+      .then((res) => new Page(res, this.spark));
   },
 
   /**
@@ -379,17 +349,6 @@ const Board = SparkPlugin.extend({
         body: res
       }))
       .then((res) => res.body);
-  },
-
-  _getPageOfContents(channel, query) {
-    query = query ? pick(query, `sinceDate`, `contentsLimit`) : {};
-
-    return this.spark.request({
-      method: `GET`,
-      uri: `${channel.channelUrl}/contents`,
-      qs: query
-    })
-      .then((res) => this.spark.board.decryptContents(res.body));
   },
 
   /**

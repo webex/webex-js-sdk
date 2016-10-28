@@ -36,8 +36,8 @@ var MetricsService = SparkBase.extend(
 
   /**
    * Submits semi-structured metrics
-   * @param eventName
-   * @param props
+   * @param {string} eventName
+   * @param {Object} props
    */
   sendSemiStructured: function sendSemiStructured(eventName, props) {
     var payload = {

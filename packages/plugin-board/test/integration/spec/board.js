@@ -3,12 +3,11 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 
-import '../..';
+import {config} from '../..';
 
 import {assert} from '@ciscospark/test-helper-chai';
 import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
-import {flaky} from '@ciscospark/test-helper-mocha';
 import fh from '@ciscospark/test-helper-file';
 import {find, map} from 'lodash';
 import uuid from 'uuid';
@@ -27,7 +26,6 @@ function generateTonsOfContents(numOfContents) {
 
 describe(`plugin-board`, () => {
   describe(`service`, function() {
-    this.timeout(60000);
     let board, conversation, fixture, participants;
 
     before(`create users`, () => testUsers.create({count: 3})
@@ -65,6 +63,10 @@ describe(`plugin-board`, () => {
         return fetchedFixture;
       }));
 
+    after(`disconnect mercury`, () => Promise.all(map(participants, (participant) => {
+      return participant.spark.mercury.disconnect();
+    })));
+
     describe(`#_uploadImage()`, () => {
 
       it(`uploads image to spark files`, () => {
@@ -98,16 +100,16 @@ describe(`plugin-board`, () => {
           .then((fileContent) => {
             testContent = fileContent[0].items[0];
             assert.equal(testContent.type, `FILE`, `content type should be image`);
-            assert.property(testContent, `contentId`, `content should contain contentId property`);
-            assert.property(testContent, `payload`, `content should contain payload property`);
-            assert.property(testContent, `encryptionKeyUrl`, `content should contain encryptionKeyUrl property`);
+            assert.property(testContent, `contentUrl`, `content should contain contentId property`);
+            assert.property(testContent, `channelUrl`, `content should contain contentUrl property`);
+            assert.property(testContent, `scr`, `content should contain scr property`);
           });
       });
 
       it(`adds to presistence`, () => {
-        return participants[0].spark.board.getAllContent(board)
+        return participants[0].spark.board.getContents(board)
           .then((allContents) => {
-            const imageContent = find(allContents, {contentId: testContent.contentId});
+            const imageContent = find(allContents.items, {contentId: testContent.contentId});
             assert.isDefined(imageContent);
             assert.property(imageContent, `scr`);
             assert.equal(imageContent.displayName, `sample-image-small-one.png`);
@@ -193,8 +195,6 @@ describe(`plugin-board`, () => {
 
     describe(`#getContents()`, () => {
 
-      afterEach(() => participants[0].spark.board.deleteAllContent(board));
-
       it(`adds and gets contents from the specified board`, () => {
         const contents = [{type: `curve`}];
         const data = [{
@@ -202,28 +202,52 @@ describe(`plugin-board`, () => {
           payload: JSON.stringify(contents[0])
         }];
 
-        return participants[0].spark.board.addContent(conversation, board, data)
-          .then(() => {
-            return participants[0].spark.board.getAllContent(board);
-          })
-          .then((res) => {
-            assert.equal(res[0].payload, data[0].payload);
+        return participants[0].spark.board.deleteAllContent(board)
+          .then(() => participants[0].spark.board.addContent(conversation, board, data))
+          .then(() => participants[0].spark.board.getContents(board))
+          .then((contentPage) => {
+            assert.equal(contentPage.length, data.length);
+            assert.equal(contentPage.items[0].payload, data[0].payload);
+            assert.equal(contentPage.items[0].type, data[0].type);
           });
       });
 
-      flaky(it)(`can deal with tons of contents by pagination`, () => {
-        const tonsOfContents = generateTonsOfContents(2100);
+      describe(`handles large data sets`, () => {
+        const extraContent = 100;
+        let tonsOfContents;
 
-        return participants[0].spark.board.addContent(conversation, board, tonsOfContents)
-          .then(() => {
-            return participants[0].spark.board.getAllContent(board);
+        before(`create large data set`, () => {
+          tonsOfContents = generateTonsOfContents(config.board.numberContentsPerPageForGet + extraContent);
+          return participants[0].spark.board.deleteAllContent(board)
+            .then(() => participants[0].spark.board.addContent(conversation, board, tonsOfContents));
+        });
+
+        after(() => participants[0].spark.board.deleteAllContent(board));
+
+        it(`using the default page limit`, () => participants[0].spark.board.getContents(board)
+          .then((res) => {
+            assert.lengthOf(res, config.board.numberContentsPerPageForGet);
+            assert(res.hasNext());
+
+            for (let i = 0; i < res.length; i++) {
+              assert.equal(res.items[i].payload, tonsOfContents[i].payload);
+            }
+            return res.next();
           })
           .then((res) => {
-            assert.equal(res.length, tonsOfContents.length);
+            assert.lengthOf(res, extraContent);
+            assert(!res.hasNext());
+
             for (let i = 0; i < res.length; i++) {
-              assert.equal(res[i].payload, tonsOfContents[i].payload);
+              assert.equal(res.items[i].payload, tonsOfContents[config.board.numberContentsPerPageForGet + i].payload);
             }
-          });
+          }));
+
+        it(`using a client defined page limit`, () => participants[0].spark.board.getContents(board, {contentsLimit: 25})
+          .then((res) => {
+            assert.lengthOf(res, 25);
+            assert(res.hasNext());
+          }));
       });
     });
 
@@ -259,27 +283,26 @@ describe(`plugin-board`, () => {
             return participants[0].spark.board.deleteAllContent(channel);
           })
           .then(() => {
-            return participants[0].spark.board.getAllContent(channel);
+            return participants[0].spark.board.getContents(channel);
           })
           .then((res) => {
-            assert.equal(res.length, 0);
+            assert.lengthOf(res, 0);
             return res;
           })
           .then(() => {
             return participants[0].spark.board.addContent(conversation, channel, data);
           })
           .then((res) => {
-            assert.equal(res[0].items.length, 2);
+            assert.lengthOf(res[0].items, 2);
             const content = res[0].items[0];
-            console.log(`contentId: `, content.contentId);
             return participants[0].spark.board.deleteContent(channel, content);
           })
           .then(() => {
-            return participants[0].spark.board.getAllContent(channel);
+            return participants[0].spark.board.getContents(channel);
           })
           .then((res) => {
-            assert.equal(res.length, 1);
-            assert.equal(res[0].payload, data[1].payload);
+            assert.lengthOf(res, 1);
+            assert.equal(res.items[0].payload, data[1].payload);
             return res;
           });
       });

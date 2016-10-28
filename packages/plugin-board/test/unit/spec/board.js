@@ -6,7 +6,7 @@
 import {assert} from '@ciscospark/test-helper-chai';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
 import sinon from '@ciscospark/test-helper-sinon';
-import Board from '../..';
+import Board, {config as boardConfig} from '../..';
 
 describe(`plugin-board`, () => {
   let spark;
@@ -62,9 +62,13 @@ describe(`plugin-board`, () => {
         decryptScr: sinon.stub().returns(Promise.resolve(`decryptedFoo`)),
         encryptScr: sinon.stub().returns(Promise.resolve(`encryptedFoo`))
       },
-      request: sinon.stub().returns(Promise.resolve({body: ``})),
+      request: sinon.stub().returns(Promise.resolve({
+        headers: {},
+        body: ``
+      })),
       upload: sinon.stub().returns(Promise.resolve({body: {downloadUrl: fakeURL}}))
     });
+    spark.config.board = boardConfig.board;
   });
 
   describe(`#addContent()`, () => {
@@ -97,7 +101,7 @@ describe(`plugin-board`, () => {
     it(`sends large data using multiple requests`, () => {
       const largeData = [];
 
-      for (let i = 0; i < 2500; i++) {
+      for (let i = 0; i < 400; i++) {
         largeData.push({data: i});
       }
 
@@ -397,25 +401,32 @@ describe(`plugin-board`, () => {
   });
 
 
-  describe(`#getAllContent()`, () => {
+  describe(`#getContents()`, () => {
 
-    before(() => {
+    beforeEach(() => {
       sinon.stub(spark.board, `decryptContents`).returns([`foo`]);
       spark.request.reset();
-      return spark.board.getAllContent(channel);
     });
 
-    after(() => {
+    afterEach(() => {
       spark.board.decryptContents.restore();
     });
 
+    it(`requests GET contents with default page size`, () => spark.board.getContents(channel)
+      .then(() => assert.calledWith(spark.request, {
+        uri: `${boardServiceUrl}/channels/${boardId}/contents`,
+        qs: {
+          contentsLimit: boardConfig.board.numberContentsPerPageForGet
+        }
+      })));
 
-    it(`requests GET contents`, () => {
-      assert.calledWith(spark.request, sinon.match({
-        method: `GET`,
-        uri: `${boardServiceUrl}/channels/${boardId}/contents`
-      }));
-    });
+    it(`requests GET contents with client defined page size`, () => spark.board.getContents(channel, {contentsLimit: 25})
+      .then(() => assert.calledWith(spark.request, {
+        uri: `${boardServiceUrl}/channels/${boardId}/contents`,
+        qs: {
+          contentsLimit: 25
+        }
+      })));
   });
 
   describe(`#register()`, () => {
