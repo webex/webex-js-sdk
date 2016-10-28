@@ -18,6 +18,14 @@ export default function ActivityItemPost(props) {
     onActivityFlag(id);
   }
 
+  function highlightAction(action) { // eslint-disable-line react/no-multi-comp
+    return (
+      <div className={classNames(`activity-post-action-highlighted`, styles.activityPostActionHighlighted)}>
+        {action}
+      </div>
+    );
+  }
+
   const {
     content,
     isAdditional,
@@ -28,8 +36,10 @@ export default function ActivityItemPost(props) {
   } = props;
 
   const deleteAction = isSelf ? <ActivityItemPostAction iconType={ICON_TYPE_DELETE} onClick={handleOnDelete} title="Delete this message" /> : ``;
-  const flagAction = <ActivityItemPostAction iconType={ICON_TYPE_FLAGGED_OUTLINE} onClick={handleOnFlag} title="Flag this message" />;
-
+  let flagAction = <ActivityItemPostAction iconType={ICON_TYPE_FLAGGED_OUTLINE} onClick={handleOnFlag} title="Flag this message" />;
+  if (isFlagged) {
+    flagAction = highlightAction(flagAction);
+  }
 
   return (
     <div className={classNames(`activity-post`, styles.post, isAdditional ? styles.additional : ``)}>

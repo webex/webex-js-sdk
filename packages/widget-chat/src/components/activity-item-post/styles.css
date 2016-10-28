@@ -97,6 +97,11 @@
   justify-content: flex-end;
 }
 
+.activity-post-action-highlighted {
+  color: #049fd9;
+  visibility: visible;
+}
+
 .post:hover .activity-post-actions {
   visibility: visible;
 }
