@@ -53,7 +53,7 @@ The scope should indicate what is being changed. Generally, these should match p
 
 ### Subject
 
-The subject contains s succinct description of the change:
+The subject contains succinct description of the change:
 
 - use the imperative, present tense: "change" not "changed" nor "changes"
 - don't capitalize first letter

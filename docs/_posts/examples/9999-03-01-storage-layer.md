@@ -13,7 +13,7 @@ Within a spark plugin, the storage layer is available via two properties: `this.
 
 # Adapters
 
-A storage adapter is a proscribed interface to an arbitrary storage backend. Its entry point is `bind()`. Bind accepts one argument, `namespace`, and returns an object containing the methods `del()`, `get()`, and `put()`. These methods are scoped to the `namespace`. For example, the following block would write the value `true` to the key `"proof"` in the `namespace` `"spark-core"`.
+A storage adapter is a prescribed interface to an arbitrary storage backend. Its entry point is `bind()`. Bind accepts one argument, `namespace`, and returns an object containing the methods `del()`, `get()`, and `put()`. These methods are scoped to the `namespace`. For example, the following block would write the value `true` to the key `"proof"` in the `namespace` `"spark-core"`.
 
 ```javascript
 const binding = adapter.bind(`spark-core`);
