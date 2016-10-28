@@ -31,7 +31,6 @@ export default function reduceConversation(state = {
   isFetching: false,
   isLoaded: false,
   isLoadingHistoryUp: false,
-  isLoadingHistoryDown: false,
   mercuryState: {
     isListening: false
   }

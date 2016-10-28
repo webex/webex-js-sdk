@@ -77,7 +77,7 @@ export class ChatWidget extends Component {
 
   shouldComponentUpdate(nextProps) {
     const props = this.props;
-    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation.activities !== props.conversation.activities || nextProps.widget !== props.widget || nextProps.indicators !== props.indicators || nextProps.conversation.isLoadingHistoryUp !== props.conversation.isLoadingHistoryUp || nextProps.conversation.isLoadingHistoryDown !== props.conversation.isLoadingHistoryDown;
+    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation.activities !== props.conversation.activities || nextProps.widget !== props.widget || nextProps.indicators !== props.indicators || nextProps.conversation.isLoadingHistoryUp !== props.conversation.isLoadingHistoryUp;
   }
 
   componentWillUpdate(nextProps) {
@@ -242,7 +242,6 @@ export class ChatWidget extends Component {
       const {
         activities,
         isLoaded,
-        isLoadingHistoryDown,
         isLoadingHistoryUp
       } = conversation;
 
@@ -283,7 +282,6 @@ export class ChatWidget extends Component {
               <ScrollingActivity
                 activities={activities}
                 currentUserId={currentUser.id}
-                isLoadingHistoryDown={isLoadingHistoryDown}
                 isLoadingHistoryUp={isLoadingHistoryUp}
                 isTyping={isTyping}
                 onActivityDelete={this.handleActivityDelete}
