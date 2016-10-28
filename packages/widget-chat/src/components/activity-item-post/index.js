@@ -2,24 +2,34 @@ import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 
 import Avatar from '../avatar';
-import ActivityItemPostActions from '../activity-item-post-actions';
+import ActivityItemPostAction from '../activity-item-post-action';
 import styles from './styles.css';
 
+import {ICON_TYPE_DELETE, ICON_TYPE_FLAGGED_OUTLINE} from '../icon';
 
 export default function ActivityItemPost(props) {
+  function handleOnDelete() {
+    const {id, onActivityDelete} = props;
+    onActivityDelete(id);
+  }
+
+  function handleOnFlag() {
+    const {id, onActivityFlag} = props;
+    onActivityFlag(id);
+  }
+
   const {
     content,
-    id,
     isAdditional,
     isFlagged,
     isSelf,
     name,
-    onActivityDelete,
-    onActivityFlag,
     timestamp
   } = props;
 
-  const showDeleteAction = isSelf;
+  const deleteAction = isSelf ? <ActivityItemPostAction iconType={ICON_TYPE_DELETE} onClick={handleOnDelete} title="Delete this message" /> : ``;
+  const flagAction = <ActivityItemPostAction iconType={ICON_TYPE_FLAGGED_OUTLINE} onClick={handleOnFlag} title="Flag this message" />;
+
 
   return (
     <div className={classNames(`activity-post`, styles.post, isAdditional ? styles.additional : ``)}>
@@ -34,13 +44,8 @@ export default function ActivityItemPost(props) {
         <div className={classNames(`activity-text`, styles.activityText)}>{content}</div>
       </div>
       <div className={classNames(`activity-post-actions`, styles.activityPostActions)} >
-        <ActivityItemPostActions
-          id={id}
-          isFlagged={isFlagged}
-          onDelete={onActivityDelete}
-          onFlag={onActivityFlag}
-          showDelete={showDeleteAction}
-        />
+        {flagAction}
+        {deleteAction}
       </div>
     </div>
   );

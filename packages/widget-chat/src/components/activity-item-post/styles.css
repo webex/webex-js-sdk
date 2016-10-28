@@ -86,13 +86,15 @@
  * Align post actions at the bottom right of post
  */
 .activity-post-actions {
+  display: flex;
   width: 100%;
   margin-top: auto;
   margin-right: 5px;
   text-align: right;
   visibility: hidden;
   flex: 0;
-  flex-direction: column;
+  flex-direction: row;
+  justify-content: flex-end;
 }
 
 .post:hover .activity-post-actions {
