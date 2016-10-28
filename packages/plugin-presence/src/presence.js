@@ -3,6 +3,7 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  * @private
  */
+
 import PresenceBatcher from './presence-batcher';
 import PresenceStore from './presence-store';
 import {SparkPlugin} from '@ciscospark/spark-core';
@@ -41,7 +42,9 @@ const Presence = SparkPlugin.extend({
    * @returns {Promise}
    */
   get(subjects) {
-
+    return Promise.all(subjects.map((subject) => {
+      return this._retrievePresence(subject);
+    }));
   },
 
   /**
@@ -132,10 +135,10 @@ const Presence = SparkPlugin.extend({
 
   _retrievePresence(user) {
     return this.store.get(user)
-      .catch(() => this.batcher.request(Object.assign({}, {uuid, size: options.size}))
-        .then((item) => this.store.add(item)));
+      .catch(() => this.batcher.request(user.id || user))
+        .then((presence) => this.store.add(presence));
   }
 
 });
 
-export default Presence
+export default Presence;

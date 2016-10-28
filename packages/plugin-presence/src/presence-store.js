@@ -33,7 +33,7 @@ export default class PresenceStore {
 
   constructor() {
     presenceById.set(this, new Map());
-  },
+  }
 
   /**
    * Adds a user's presence object to the store.
@@ -65,7 +65,7 @@ export default class PresenceStore {
     const ttl = presence.expires || this.config.cacheExpiration;
     setTimeout(this.remove.bind(this, presence.subject), ttl);
     return Promise.resolve(presence);
-  },
+  }
 
   /**
    * Retrieves a user's presence from the store.
@@ -94,7 +94,7 @@ export default class PresenceStore {
       return Promise.resolve(cachedPresence);
     }
     return Promise.reject(new Error(`No Presence found for specified user`));
-  },
+  }
 
   /**
    * Removes a user's presence from the store.
@@ -122,4 +122,4 @@ export default class PresenceStore {
     return Promise.resolve(true);
   }
 
-};
+}

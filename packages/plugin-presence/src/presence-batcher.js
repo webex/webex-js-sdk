@@ -26,7 +26,7 @@ const PresenceBatcher = Batcher.extend({
   },
 
   handleHttpSuccess(res) {
-
+    return Promise.all(res.body.statusList.map(() => this.acceptItem(res)));
   },
 
   handleItemFailure(item) {
@@ -34,14 +34,21 @@ const PresenceBatcher = Batcher.extend({
   },
 
   handleItemSuccess(item) {
-
+    return this.getDeferredForRequest(item)
+      .then((defer) => defer.resolve(item));
   },
 
   prepareRequest(queue) {
+    const payload = {
+      subjects: queue
+    };
 
+    return Promise.resolve(payload);
   },
 
   submitHttpRequest(payload) {
+    console.log('parent', this.parent);
+
     return this.spark.request({
       method: `post`,
       api: `apheleia`,
