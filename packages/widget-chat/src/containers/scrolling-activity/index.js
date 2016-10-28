@@ -12,12 +12,11 @@ function ScrollingActivity(props) {
   const {
     activities,
     currentUserId,
-    isLoadingHistoryDown,
     isLoadingHistoryUp,
     isTyping,
     onActivityDelete
   } = props;
-  let spinnerDown, spinnerUp, typingIndicator;
+  let spinnerUp, typingIndicator;
   if (isTyping) {
     typingIndicator = <TypingIndicator />;
   }
@@ -26,9 +25,6 @@ function ScrollingActivity(props) {
 
   if (isLoadingHistoryUp) {
     spinnerUp = spinner;
-  }
-  else if (isLoadingHistoryDown) {
-    spinnerDown = spinner;
   }
 
   return (
@@ -50,7 +46,6 @@ function ScrollingActivity(props) {
 ScrollingActivity.propTypes = {
   activities: PropTypes.array,
   currentUserId: PropTypes.string,
-  isLoadingHistoryDown: PropTypes.bool,
   isLoadingHistoryUp: PropTypes.bool,
   isTyping: PropTypes.bool,
   onActivityDelete: PropTypes.func.isRequired
