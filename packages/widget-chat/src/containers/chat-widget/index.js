@@ -11,8 +11,9 @@ import {
   listenToMercuryActivity
 } from '../../actions/conversation';
 import {
-  fetchFlagsForConversation,
-  flagActivity
+  fetchFlags,
+  flagActivity,
+  removeFlag
 } from '../../actions/flags';
 import {
   confirmDeleteActivity,
@@ -78,7 +79,7 @@ export class ChatWidget extends Component {
         nextProps.listenToMercuryActivity(conversation.id, spark);
       }
       if (!flags.hasFetched && !flags.isFetching) {
-        nextProps.fetchFlagsForConversation(conversation, spark);
+        nextProps.fetchFlags(spark);
       }
     }
 
@@ -165,11 +166,19 @@ export class ChatWidget extends Component {
     const props = this.props;
     const {
       conversation,
+      flags,
       spark
     } = props;
     const activity = conversation.activities.find((act) => act.id === activityId);
     if (activity) {
-      this.props.flagActivity(activity, spark);
+      const foundFlag = flags.flags.find((flag) => flag.activityUrl === activity.url);
+      if (foundFlag) {
+        this.props.removeFlag(foundFlag, spark);
+      }
+      else {
+        this.props.flagActivity(activity, spark);
+      }
+
     }
   }
 
@@ -322,6 +331,7 @@ ChatWidget.propTypes = {
   flagActivity: PropTypes.func.isRequired,
   hideDeleteModal: PropTypes.func.isRequired,
   listenToMercuryActivity: PropTypes.func.isRequired,
+  removeFlag: PropTypes.func.isRequired,
   showScrollToBottomButton: PropTypes.func.isRequired,
   spark: PropTypes.object.isRequired,
   updateHasNewMessage: PropTypes.func.isRequired,
@@ -349,9 +359,10 @@ export default connect(
     deleteActivityAndDismiss,
     flagActivity,
     fetchCurrentUser,
-    fetchFlagsForConversation,
+    fetchFlags,
     hideDeleteModal,
     listenToMercuryActivity,
+    removeFlag,
     showScrollToBottomButton,
     updateHasNewMessage
   }, dispatch)

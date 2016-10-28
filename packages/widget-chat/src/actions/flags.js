@@ -1,12 +1,12 @@
 export const BEGIN_RECEIVE_FLAGS = `BEGIN_RECEIVE_FLAGS`;
-export function beginReceiveFlags() {
+function actionBeginReceiveFlags() {
   return {
     type: BEGIN_RECEIVE_FLAGS
   };
 }
 
 export const ADD_FLAG = `ADD_FLAG`;
-export function addFlag(flag) {
+function actionAddFlag(flag) {
   return {
     type: ADD_FLAG,
     flag
@@ -14,19 +14,27 @@ export function addFlag(flag) {
 }
 
 export const RECEIVE_FLAGS = `RECEIVE_FLAGS`;
-export function receiveFlags(flags) {
+function actionReceiveFlags(flags) {
   return {
     type: RECEIVE_FLAGS,
     flags
   };
 }
 
-export function fetchFlagsForConversation(conversation, spark) {
+export const REMOVE_FLAG = `REMOVE_FLAG`;
+function actionRemoveFlag(flag) {
+  return {
+    type: REMOVE_FLAG,
+    flag
+  };
+}
+
+export function fetchFlags(spark) {
   return (dispatch) => {
-    dispatch(beginReceiveFlags());
+    dispatch(actionBeginReceiveFlags());
     spark.flag.list()
       .then((flags) => {
-        dispatch(receiveFlags(flags));
+        dispatch(actionReceiveFlags(flags));
       });
   };
 }
@@ -35,6 +43,14 @@ export function flagActivity(activity, spark) {
   return (dispatch) =>
     spark.flag.create(activity)
       .then((flag) => {
-        dispatch(addFlag(flag));
+        dispatch(actionAddFlag(flag));
+      });
+}
+
+export function removeFlag(flag, spark) {
+  return (dispatch) =>
+    spark.flag.delete(flag)
+      .then(() => {
+        dispatch(actionRemoveFlag(flag));
       });
 }

@@ -1,7 +1,8 @@
 import {
   ADD_FLAG,
   BEGIN_RECEIVE_FLAGS,
-  RECEIVE_FLAGS
+  RECEIVE_FLAGS,
+  REMOVE_FLAG
 } from '../actions/flags';
 
 function mapFlag(flag) {
@@ -37,6 +38,13 @@ export default function conversation(state = {
     return Object.assign({}, state, {
       hasFetched: true,
       isFetching: false,
+      flags: [...flags]
+    });
+  }
+
+  case REMOVE_FLAG: {
+    const flags = state.flags.filter((flag) => flag.id !== action.flag.id);
+    return Object.assign({}, state, {
       flags: [...flags]
     });
   }
