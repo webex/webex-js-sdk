@@ -5,12 +5,11 @@ export function beginReceiveFlags() {
   };
 }
 
-export const FLAG_ACTIVITY_IN_CONVERSATION = `FLAG_ACTIVITY_IN_CONVERSATION`;
-export function flagActivityInConversation(conversation, activity) {
+export const ADD_FLAG = `ADD_FLAG`;
+export function addFlag(flag) {
   return {
-    type: FLAG_ACTIVITY_IN_CONVERSATION,
-    conversation,
-    activity
+    type: ADD_FLAG,
+    flag
   };
 }
 
@@ -32,10 +31,10 @@ export function fetchFlagsForConversation(conversation, spark) {
   };
 }
 
-export function flagActivity(conversation, activity, spark) {
+export function flagActivity(activity, spark) {
   return (dispatch) =>
     spark.flag.create(activity)
-      .then(() => {
-        dispatch(flagActivityInConversation(conversation, activity));
+      .then((flag) => {
+        dispatch(addFlag(flag));
       });
 }

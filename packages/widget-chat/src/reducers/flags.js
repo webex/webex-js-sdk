@@ -1,7 +1,16 @@
 import {
+  ADD_FLAG,
   BEGIN_RECEIVE_FLAGS,
   RECEIVE_FLAGS
 } from '../actions/flags';
+
+function mapFlag(flag) {
+  return {
+    id: flag.id,
+    url: flag.url,
+    activityUrl: flag[`flag-item`]
+  };
+}
 
 export default function conversation(state = {
   flags: [],
@@ -10,6 +19,13 @@ export default function conversation(state = {
 }, action) {
   switch (action.type) {
 
+  case ADD_FLAG: {
+    const flag = mapFlag(action.flag);
+    return Object.assign({}, state, {
+      flags: [...state.flags, flag]
+    });
+  }
+
   case BEGIN_RECEIVE_FLAGS: {
     return Object.assign({}, state, {
       isFetching: true
@@ -17,13 +33,7 @@ export default function conversation(state = {
   }
 
   case RECEIVE_FLAGS: {
-    const flags = action.flags.map((flag) => (
-      {
-        id: flag.id,
-        url: flag.url,
-        activityUrl: flag[`flag-item`]
-      })
-    );
+    const flags = action.flags.map(mapFlag);
     return Object.assign({}, state, {
       hasFetched: true,
       isFetching: false,

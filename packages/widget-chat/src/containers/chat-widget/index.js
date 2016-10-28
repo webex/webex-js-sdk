@@ -169,7 +169,7 @@ export class ChatWidget extends Component {
     } = props;
     const activity = conversation.activities.find((act) => act.id === activityId);
     if (activity) {
-      this.props.flagActivity(conversation, activity, spark);
+      this.props.flagActivity(activity, spark);
     }
   }
 
