@@ -18,9 +18,13 @@ export default function ActivityItemPost(props) {
     onActivityFlag(id);
   }
 
-  function highlightAction(action) { // eslint-disable-line react/no-multi-comp
+  function wrapActionItem(action, highlight) { // eslint-disable-line react/no-multi-comp
+    const actionClassNames = [`activity-post-action`, styles.activityPostAction];
+    if (highlight) {
+      actionClassNames.push(`activity-post-action-highlighted`, styles.activityPostActionHighlighted);
+    }
     return (
-      <div className={classNames(`activity-post-action-highlighted`, styles.activityPostActionHighlighted)}>
+      <div className={classNames(actionClassNames)}>
         {action}
       </div>
     );
@@ -35,11 +39,18 @@ export default function ActivityItemPost(props) {
     timestamp
   } = props;
 
-  const deleteAction = isSelf ? <ActivityItemPostAction iconType={ICON_TYPE_DELETE} onClick={handleOnDelete} title="Delete this message" /> : ``;
-  let flagAction = <ActivityItemPostAction iconType={ICON_TYPE_FLAGGED_OUTLINE} onClick={handleOnFlag} title="Flag this message" />;
-  if (isFlagged) {
-    flagAction = highlightAction(flagAction);
+  let deleteAction;
+  if (isSelf) {
+    deleteAction = <ActivityItemPostAction iconType={ICON_TYPE_DELETE} onClick={handleOnDelete} title="Delete this message" />
   }
+  else {
+    deleteAction = <div className={classNames(`action-spacer`, styles.actionSpacer)} />;
+  }
+  deleteAction = wrapActionItem(deleteAction, false);
+
+  let flagAction = <ActivityItemPostAction iconType={ICON_TYPE_FLAGGED_OUTLINE} onClick={handleOnFlag} title="Flag this message" />;
+  flagAction = wrapActionItem(flagAction, isFlagged);
+
 
   return (
     <div className={classNames(`activity-post`, styles.post, isAdditional ? styles.additional : ``)}>
