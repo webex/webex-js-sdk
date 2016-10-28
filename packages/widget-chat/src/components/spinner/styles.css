@@ -1,0 +1,28 @@
+.spinner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  margin: auto;
+  border: 1px solid #aeaeae;
+  border-left: 1px solid #6a6b6c;
+  animation: load8 0.6s infinite linear;
+}
+
+.spinner,
+.spinner::after {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+@keyframes load8 {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}

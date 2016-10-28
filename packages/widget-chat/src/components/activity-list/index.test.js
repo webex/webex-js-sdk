@@ -39,9 +39,12 @@ describe(`ActivityList component`, () => {
     verb: `post`
   }];
 
+  const onActivityDelete = jest.fn();
+
   const component = renderer.create(
     <ActivityList
       activities={activities}
+      onActivityDelete={onActivityDelete}
     />
   );
 
