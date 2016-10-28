@@ -72,12 +72,11 @@ export class ChatWidget extends Component {
     if (conversation.id && !conversation.mercuryState.isListening) {
       nextProps.listenToMercuryActivity(conversation.id, spark);
     }
-
   }
 
   shouldComponentUpdate(nextProps) {
     const props = this.props;
-    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation.activities !== props.conversation.activities || nextProps.widget !== props.widget || nextProps.indicators !== props.indicators || nextProps.conversation.isLoadingHistoryUp !== props.conversation.isLoadingHistoryUp;
+    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation.activities !== props.conversation.activities || nextProps.widget !== props.widget || nextProps.indicators !== props.indicators || nextProps.conversation.isLoadingHistoryUp !== props.conversation.isLoadingHistoryUp || nextProps.share !== props.share;
   }
 
   componentWillUpdate(nextProps) {
@@ -136,6 +135,7 @@ export class ChatWidget extends Component {
   getActivityList(ref) {
     this.activityList = ref;
   }
+
 
   handleScroll() {
     const props = this.props;
@@ -331,6 +331,7 @@ ChatWidget.propTypes = {
 
 function mapStateToProps(state, ownProps) {
   return {
+    share: state.share,
     spark: ownProps.spark,
     sparkState: state.spark,
     user: state.user,

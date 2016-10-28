@@ -11,6 +11,7 @@ import {
   conversation,
   indicators,
   message,
+  share,
   user,
   widget
 } from './reducers';
@@ -36,6 +37,7 @@ export default createStore(
     conversation,
     indicators,
     message,
+    share,
     user,
     widget,
     spark: sparkReducer

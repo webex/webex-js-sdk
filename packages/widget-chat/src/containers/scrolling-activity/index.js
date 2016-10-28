@@ -35,7 +35,6 @@ function ScrollingActivity(props) {
         currentUserId={currentUserId}
         onActivityDelete={onActivityDelete}
       />
-      {spinnerDown}
       <div className={classNames(`indicators`, styles.indicators)}>
         {typingIndicator}
       </div>

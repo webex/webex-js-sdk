@@ -13,7 +13,7 @@ export default function ActivityList(props) {
       lastVerb = activity.verb;
       return (
         <ActivityItem
-          content={activity.object.displayName}
+          activity={activity.object}
           id={activity.id}
           isAdditional={additional}
           isSelf={props.currentUserId === activity.actor.id}
