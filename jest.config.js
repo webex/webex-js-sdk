@@ -20,5 +20,6 @@ module.exports = {
     },
     rootDir: path.join('packages', process.env.PACKAGE)
   },
+  runInBand: true,
   verbose: true
 };
