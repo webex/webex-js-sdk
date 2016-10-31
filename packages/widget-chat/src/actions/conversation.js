@@ -1,6 +1,14 @@
 import {updateHasNewMessage} from './widget.js';
 import {setTyping} from './indicators';
 
+export const ADD_ACTIVITIES_TO_CONVERSATION = `ADD_ACTIVITIES_TO_CONVERSATION`;
+export function addActivitiesToConversation(activities) {
+  return {
+    type: ADD_ACTIVITIES_TO_CONVERSATION,
+    activities
+  };
+}
+
 export const CREATE_CONVERSATION = `CREATE_CONVERSATION`;
 export function createConversation(userId) {
   return {
@@ -47,6 +55,14 @@ export function updateMercuryState(mercuryState) {
   return {
     type: UPDATE_MERCURY_STATE,
     mercuryState
+  };
+}
+
+export const UPDATE_CONVERSATION_STATE = `UPDATE_CONVERSATION_STATE`;
+export function updateConversationState(conversationState) {
+  return {
+    type: UPDATE_CONVERSATION_STATE,
+    conversationState
   };
 }
 
@@ -108,6 +124,21 @@ export function listenToMercuryActivity(conversationId, spark) {
           dispatch(receiveMercuryActivity(activity));
         }
       }
+    });
+  };
+}
+
+export function loadPreviousMessages(converstationId, lastActivity, spark) {
+  return (dispatch) => {
+    dispatch(updateConversationState({isLoadingHistoryUp: true}));
+    spark.conversation.listActivities({
+      conversationId: converstationId,
+      limit: 20,
+      maxDate: lastActivity.published
+    })
+    .then((activities) => {
+      dispatch(addActivitiesToConversation(activities));
+      dispatch(updateConversationState({isLoadingHistoryUp: false}));
     });
   };
 }

@@ -5,7 +5,6 @@ import ActivityList from '.';
 
 describe(`ActivityList component`, () => {
   const flags = [];
-  const onSomething = jest.fn();
   const activities = [{
     id: `test-123-123-123-123`,
     actor: {
@@ -41,12 +40,14 @@ describe(`ActivityList component`, () => {
     verb: `post`
   }];
 
+  const onActivityDelete = jest.fn();
+  const onActivityFlag = jest.fn();
   const component = renderer.create(
     <ActivityList
       activities={activities}
       flags={flags}
-      onActivityDelete={onSomething}
-      onActivityFlag={onSomething}
+      onActivityDelete={onActivityDelete}
+      onActivityFlag={onActivityFlag}
     />
   );
 

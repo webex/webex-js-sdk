@@ -1,4 +1,4 @@
-exports[`ActivityItemPostActions component show delete param renders properly 1`] = `
+exports[`ActivityItemPostActions component renders properly 1`] = `
 <div
   className="post-action-item">
   <div

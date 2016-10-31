@@ -39,12 +39,17 @@ const activities = [{
   verb: `post`
 }];
 
+const onActivityDelete = jest.fn();
+const onActivityFlag = jest.fn();
+
 describe(`ScrollingActivity container`, () => {
   it(`renders properly`, () => {
     const component = renderer.create(
       <ScrollingActivity
         activities={activities}
         flags={flags}
+        onActivityDelete={onActivityDelete}
+        onActivityFlag={onActivityFlag}
       />
     );
     expect(component).toMatchSnapshot();
@@ -56,6 +61,8 @@ describe(`ScrollingActivity container`, () => {
         activities={activities}
         flags={flags}
         isTyping
+        onActivityDelete={onActivityDelete}
+        onActivityFlag={onActivityFlag}
       />
     );
     expect(component).toMatchSnapshot();
