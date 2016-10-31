@@ -186,7 +186,7 @@
     "karma-mocha-reporter": "^2.0.4",
     "karma-safari-launcher": "^1.0.0",
     "karma-sauce-launcher": "^1.0.0",
-    "lerna": "2.0.0-beta.26",
+    "lerna": "2.0.0-beta.30",
     "load-grunt-tasks": "^3.5.0",
     "lodash": "^4.5.1",
     "lolex": "^1.5.1",
