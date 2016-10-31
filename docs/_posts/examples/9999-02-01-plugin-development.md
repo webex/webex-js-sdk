@@ -127,7 +127,7 @@ PACKAGE=PACKAGENAME npm run grunt:package -- serve
 
 ### Run unit tests in watch mode
 
-OK, this one's a handfull and requires a global package, but there were too many possible variants to hardcode it any where.
+OK, this one's a handful and requires a global package, but there were too many possible variants to hardcode it any where.
 
 ```bash
 npm install -g nodemon
