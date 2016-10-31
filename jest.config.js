@@ -2,7 +2,7 @@
 
 var path = require('path');
 
-module.exports = {
+var options = {
   testPathPattern: '.*.test.js',
   coverage: process.env.COVERAGE,
   config: {
@@ -20,6 +20,11 @@ module.exports = {
     },
     rootDir: path.join('packages', process.env.PACKAGE)
   },
-  runInBand: true,
   verbose: true
 };
+
+if (process.env.CI || process.env.JENKINS_URL) {
+  options.runInBand = true;
+}
+
+module.exports = options;
