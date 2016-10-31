@@ -76,7 +76,7 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
     this.logger.info(`credentials(shim): initiating implicit grant flow`);
 
     /* eslint camelcase: [0] */
-    window.location = this._buildOAuthUrl(assign({response_type: `token`}, options));
+    window.location = this.buildOAuthUrl(assign({response_type: `token`}, options));
 
     // Return an unreasolved promise to suppress console errors.
     return new Promise(noop);
@@ -99,7 +99,7 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
 
     this.logger.info(`credentials(shim): initiating authorization code grant flow`);
 
-    window.location = this._buildOAuthUrl(assign({response_type: `code`}, options));
+    window.location = this.buildOAuthUrl(assign({response_type: `code`}, options));
     return new Promise(noop);
   },
 
@@ -155,7 +155,7 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
     /* eslint prefer-rest-params: [0] */
     return Reflect.apply(common.logout, this, arguments)
       .then(() => {
-        window.location = this._buildLogoutUrl();
+        window.location = this.buildLogoutUrl();
       });
   },
 
