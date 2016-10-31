@@ -1,7 +1,7 @@
 import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 import ActivityItemPost from '../activity-item-post';
-import ActivityItemShare from '../activity-item-share';
+import ActivityItemShareList from '../activity-item-share-list';
 import ActivityItemSystemMessage, {SYSTEM_MESSAGE_VERBS} from '../activity-item-system-message';
 
 import styles from './styles.css';
@@ -24,7 +24,7 @@ export default function ActivityItem(props) {
     itemComponent = <ActivityItemSystemMessage content={activity.displayName} {...props} />;
   }
   else if (verb === SHARE_VERB) {
-    itemComponent = <ActivityItemShare files={activity.files.items} {...props} />;
+    itemComponent = <ActivityItemShareList files={activity.files.items} {...props} />;
   }
 
   return (

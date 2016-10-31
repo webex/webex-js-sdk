@@ -1,7 +1,9 @@
-export const SAVE_SHARE = `SAVE_SHARE`;
-export function saveShare(file, fileObject) {
+import saveAs from 'browser-saveas';
+
+export const RECEIVE_SHARE = `RECEIVE_SHARE`;
+export function receiveShare(file, fileObject) {
   return {
-    type: SAVE_SHARE,
+    type: RECEIVE_SHARE,
     file,
     fileObject
   };
@@ -16,14 +18,14 @@ export function updateShareStatus(fileObject, status) {
   };
 }
 
-
-export function downloadSharedFile(fileObject, spark) {
+export function retrieveSharedFile(fileObject, spark) {
   return (dispatch) => {
     dispatch(updateShareStatus(fileObject, {isDownloading: true}));
-    spark.conversation.download(fileObject)
+    return spark.conversation.download(fileObject)
       .then((file) => {
         dispatch(updateShareStatus(fileObject, {isDownloading: false}));
-        dispatch(saveShare(file, fileObject));
+        dispatch(receiveShare(file, fileObject));
+        return file;
       });
   };
 }

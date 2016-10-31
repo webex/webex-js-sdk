@@ -1,9 +1,11 @@
 import React, {Component, PropTypes} from 'react';
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
+import saveAs from 'browser-saveas';
 
+import {bufferToBlob} from '../../utils/files';
 import spark from '../../modules/redux-spark/spark';
-import {downloadSharedFile} from '../../actions/share';
+import {retrieveSharedFile} from '../../actions/share';
 
 
 function getDisplayName(C) {
@@ -14,54 +16,57 @@ export default function injectFileDownloader(WrappedComponent) {
   class FileDownloader extends Component {
     constructor(props) {
       super(props);
-      this.downloadFile = this.downloadFile.bind(this);
-      this.getSharedFile = this.getSharedFile.bind(this);
+      this.retrieveFile = this.retrieveFile.bind(this);
+      this.getSharedFileFromStore = this.getSharedFileFromStore.bind(this);
+      this.handleDownloadClick = this.handleDownloadClick.bind(this);
     }
 
     componentDidMount() {
       const {files} = this.props;
       files.forEach((file) => {
-        if (file.url && file.scr && !this.getSharedFile(file.url)) {
-          this.downloadFile(file);
-        }
+        this.getThumbnailImage(file);
       });
     }
 
-    downloadFile(file) {
+    retrieveFile(file) {
       const props = this.props;
-      props.downloadSharedFile(file, spark);
+      props.retrieveSharedFile(file, spark);
     }
 
-    getSharedFile(fileUrl) {
+    getSharedFileFromStore(fileUrl) {
       const props = this.props;
       return props.share.files[fileUrl];
     }
 
+    getThumbnailImage(fileObject) {
+      const image = fileObject.image;
+      if (image && (image.url && !this.getSharedFileFromStore(image.url) || image.scr)) {
+        this.retrieveFile(image);
+      }
+    }
+
+    handleDownloadClick(fileObject) {
+      const cachedBlob = this.getSharedFileFromStore(fileObject);
+      if (cachedBlob) {
+        saveAs(cachedBlob, fileObject.name);
+      }
+      else {
+        this.props.retrieveSharedFile(fileObject, spark)
+          .then((file) => {
+            const {blob} = bufferToBlob(file);
+            saveAs(blob, file.name);
+          });
+      }
+    }
+
     render() {
-      const {
-        files
-      } = this.props;
-
-      const content = files.map((file) => {
-        if (file.url && file.scr) {
-          const filePointer = this.getSharedFile(file.url);
-          if (filePointer && !filePointer.isDownloading) {
-            return <div key={file.url}>{file.displayName} - {file.url} <img src={filePointer.objectUrl} /></div>;
-          }
-        }
-        return <div key={file.url}>{file.displayName} - {file.url}</div>;
-      });
-
-      return (
-        <div>
-          <WrappedComponent content={content} {...this.props} />
-        </div>
-      );
+      return <WrappedComponent onDownloadClick={this.handleDownloadClick} {...this.props} />;
     }
   }
 
   FileDownloader.propTypes = {
-    files: PropTypes.array
+    files: PropTypes.array,
+    retrieveSharedFile: PropTypes.func.isRequired
   };
 
   FileDownloader.displayName = `FileDownloader(${getDisplayName(WrappedComponent)})`;
@@ -72,7 +77,7 @@ export default function injectFileDownloader(WrappedComponent) {
       share: state.share
     }),
     (dispatch) => bindActionCreators({
-      downloadSharedFile
+      retrieveSharedFile
     }, dispatch)
   )(FileDownloader);
 }

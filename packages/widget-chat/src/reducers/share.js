@@ -1,35 +1,41 @@
+import {bufferToBlob} from '../utils/files';
+
 import {
-  SAVE_SHARE,
+  RECEIVE_SHARE,
   UPDATE_SHARE_STATUS
 } from '../actions/share';
 
 export default function reduceShare(state = {
-  files: {}
+  files: {},
+  download: []
 }, action) {
   switch (action.type) {
-  case SAVE_SHARE: {
-    const urlCreator = window.URL || window.webkitURL;
-    const blob = new Blob([action.file], {type: action.file.type});
-    const objectUrl = urlCreator.createObjectURL(blob);
+
+  case RECEIVE_SHARE: {
+    const {blob, objectUrl} = bufferToBlob(action.file);
+    const key = action.fileObject.url;
+
     return Object.assign({}, state, {
       files: Object.assign({}, state.files, {
-        [action.fileObject.url]: {
+        [key]: Object.assign({}, state.files[key], {
+          name: action.file.displayName,
+          mimeType: action.file.mimeType,
+          fileSize: action.file.fileSize,
           blob,
           objectUrl
-        }
+        })
       })
     });
   }
 
   case UPDATE_SHARE_STATUS: {
+    const key = action.fileObject.url;
     return Object.assign({}, state, {
-      files: Object.assign({}, state.files,
-        Object.assign({}, state.files[action.fileObject.url], {
-          [action.fileObject.url]: {
-            isDownloading: action.isDownloading
-          }
+      files: Object.assign({}, state.files, {
+        [key]: Object.assign({}, state.files[key], {
+          status: action.status
         })
-      )
+      })
     });
   }
 
