@@ -41,7 +41,7 @@ export default function ActivityItemPost(props) {
 
   let deleteAction;
   if (isSelf) {
-    deleteAction = <ActivityItemPostAction iconType={ICON_TYPE_DELETE} onClick={handleOnDelete} title="Delete this message" />
+    deleteAction = <ActivityItemPostAction iconType={ICON_TYPE_DELETE} onClick={handleOnDelete} title="Delete this message" />;
   }
   else {
     deleteAction = <div className={classNames(`action-spacer`, styles.actionSpacer)} />;
