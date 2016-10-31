@@ -12,7 +12,7 @@ export default function ActivityList(props) {
       const additional = lastActorId === activity.actor.id && lastVerb === activity.verb;
       lastActorId = activity.actor.id;
       lastVerb = activity.verb;
-      const isFlagged = flags.some((flag) => flag.activityUrl === activity.url);
+      const isFlagged = flags && flags.some((flag) => flag.activityUrl === activity.url);
       return (
         <ActivityItem
           content={activity.object.displayName}

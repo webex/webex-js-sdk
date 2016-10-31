@@ -4,7 +4,7 @@ import {Provider} from 'react-redux';
 import {applyMiddleware, combineReducers, compose, createStore} from 'redux';
 import thunk from 'redux-thunk';
 
-import {user, conversation, message} from '../../reducers';
+import {user, conversation, message, flags} from '../../reducers';
 import sparkReducer from '../../modules/redux-spark/reducers';
 import {ChatWidget} from '.';
 
@@ -14,6 +14,7 @@ describe(`ChatWidget`, () => {
       user,
       conversation,
       message,
+      flags,
       spark: sparkReducer
     }),
     compose(applyMiddleware(thunk))

@@ -3,6 +3,7 @@ import renderer from 'react-test-renderer';
 
 import ScrollingActivity from '.';
 
+const flags = [];
 const activities = [{
   id: `test-123-123-123-123`,
   actor: {
@@ -43,6 +44,7 @@ describe(`ScrollingActivity container`, () => {
     const component = renderer.create(
       <ScrollingActivity
         activities={activities}
+        flags={flags}
       />
     );
     expect(component).toMatchSnapshot();
@@ -52,6 +54,7 @@ describe(`ScrollingActivity container`, () => {
     const component = renderer.create(
       <ScrollingActivity
         activities={activities}
+        flags={flags}
         isTyping
       />
     );
