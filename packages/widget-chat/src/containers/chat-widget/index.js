@@ -8,18 +8,21 @@ import {fetchCurrentUser} from '../../actions/user';
 import {
   createConversationWithUser,
   deleteActivity,
-  listenToMercuryActivity
+  listenToMercuryActivity,
+  loadPreviousMessages
 } from '../../actions/conversation';
 import {
   confirmDeleteActivity,
   deleteActivityAndDismiss,
   hideDeleteModal,
+  setScrollPosition,
   showScrollToBottomButton,
   updateHasNewMessage
 } from '../../actions/widget';
 import TitleBar from '../../components/title-bar';
 import ScrollingActivity from '../scrolling-activity';
 import ScrollToBottomButton from '../../components/scroll-to-bottom-button';
+import Spinner from '../../components/spinner';
 import MessageComposer from '../message-composer';
 
 import styles from './styles.css';
@@ -74,7 +77,14 @@ export class ChatWidget extends Component {
 
   shouldComponentUpdate(nextProps) {
     const props = this.props;
-    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation.activities !== props.conversation.activities || nextProps.widget !== props.widget || nextProps.indicators !== props.indicators;
+    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation.activities !== props.conversation.activities || nextProps.widget !== props.widget || nextProps.indicators !== props.indicators || nextProps.conversation.isLoadingHistoryUp !== props.conversation.isLoadingHistoryUp;
+  }
+
+  componentWillUpdate(nextProps) {
+    const props = this.props;
+    if (this.activityList && nextProps.conversation.activities.length !== props.conversation.activities.length) {
+      this.scrollHeight = this.activityList.getScrollHeight();
+    }
   }
 
   componentDidUpdate(prevProps) {
@@ -84,6 +94,9 @@ export class ChatWidget extends Component {
     if (activityList) {
       const lastActivityFromPrev = _.last(prevProps.conversation.activities);
       const lastActivityFromThis = _.last(props.conversation.activities);
+
+      const firstActivityFromPrev = _.first(prevProps.conversation.activities);
+      const firstActivityFromThis = _.first(props.conversation.activities);
 
       // If new activity comes in
       if (lastActivityFromPrev && lastActivityFromThis && props.conversation.activities.length !== prevProps.conversation.activities.length && lastActivityFromPrev.id !== lastActivityFromThis.id) {
@@ -97,6 +110,9 @@ export class ChatWidget extends Component {
       }
       else if (prevProps.conversation.activities.length === 0) {
         activityList.scrollToBottom();
+      }
+      else if (firstActivityFromThis.id !== firstActivityFromPrev.id) {
+        activityList.setScrollTop(activityList.getScrollHeight() - this.scrollHeight + prevProps.widget.scrollTop);
       }
     }
   }
@@ -123,14 +139,24 @@ export class ChatWidget extends Component {
 
   handleScroll() {
     const props = this.props;
+    const {
+      conversation,
+      spark,
+      widget
+    } = props;
+
+    props.setScrollPosition({scrollTop: this.activityList.getScrollTop()});
+
     if (this.activityList.isScrolledToBottom()) {
       props.showScrollToBottomButton(false);
       props.updateHasNewMessage(false);
     }
-    else if (!props.widget.showScrollToBottomButton) {
+    else if (!widget.showScrollToBottomButton) {
       props.showScrollToBottomButton(true);
     }
-
+    if (this.activityList.isScrolledToTop() && conversation.activities[0].verb !== `create`) {
+      props.loadPreviousMessages(conversation.id, _.first(conversation.activities), spark);
+    }
   }
 
   handleScrollToBottom() {
@@ -203,12 +229,20 @@ export class ChatWidget extends Component {
       currentUser = props.user.currentUser;
     }
 
-    let main = <div className={classNames(`loading`, styles.loading)}>Connecting...</div>;
+    let main = ( // eslint-disable-line no-extra-parens
+      <div className={classNames(`loading`, styles.loading)}>
+        Connecting...
+        <div className={classNames(`spinner-container`, styles.spinnerContainer)}>
+          <Spinner />
+        </div>
+      </div>
+    );
 
     if (conversation) {
       const {
         activities,
-        isLoaded
+        isLoaded,
+        isLoadingHistoryUp
       } = conversation;
 
       let scrollButton;
@@ -248,6 +282,7 @@ export class ChatWidget extends Component {
               <ScrollingActivity
                 activities={activities}
                 currentUserId={currentUser.id}
+                isLoadingHistoryUp={isLoadingHistoryUp}
                 isTyping={isTyping}
                 onActivityDelete={this.handleActivityDelete}
                 onScroll={this.handleScroll}
@@ -286,6 +321,8 @@ ChatWidget.propTypes = {
   fetchCurrentUser: PropTypes.func.isRequired,
   hideDeleteModal: PropTypes.func.isRequired,
   listenToMercuryActivity: PropTypes.func.isRequired,
+  loadPreviousMessages: PropTypes.func.isRequired,
+  setScrollPosition: PropTypes.func.isRequired,
   showScrollToBottomButton: PropTypes.func.isRequired,
   spark: PropTypes.object.isRequired,
   updateHasNewMessage: PropTypes.func.isRequired,
@@ -313,6 +350,8 @@ export default connect(
     fetchCurrentUser,
     hideDeleteModal,
     listenToMercuryActivity,
+    loadPreviousMessages,
+    setScrollPosition,
     showScrollToBottomButton,
     updateHasNewMessage
   }, dispatch)

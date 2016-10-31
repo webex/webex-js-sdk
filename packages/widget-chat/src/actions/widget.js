@@ -8,6 +8,15 @@ export function updateWidgetState(state) {
   };
 }
 
+export const SET_SCROLL_POSITION = `SET_SCROLL_POSITION`;
+export function setScrollPosition(scrollPosition) {
+  return {
+    type: SET_SCROLL_POSITION,
+    scrollPosition
+  };
+}
+
+
 export function showScrollToBottomButton(isVisible) {
   return (dispatch) => {
     dispatch(updateWidgetState({
@@ -15,6 +24,7 @@ export function showScrollToBottomButton(isVisible) {
     }));
   };
 }
+
 
 export function updateHasNewMessage(hasNew) {
   return (dispatch) => {

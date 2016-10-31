@@ -1,8 +1,14 @@
+/* eslint complexity: ["error", 10] */
+// Refactoring and splitting up reducer in next feature
+import _ from 'lodash';
+
 import {
+  ADD_ACTIVITIES_TO_CONVERSATION,
   CREATE_CONVERSATION,
   RECEIVE_CONVERSATION,
   RECEIVE_MERCURY_ACTIVITY,
   RECEIVE_MERCURY_COMMENT,
+  UPDATE_CONVERSATION_STATE,
   UPDATE_MERCURY_STATE
 } from '../actions/conversation';
 
@@ -12,18 +18,30 @@ function filterActivity(activity) {
   return filteredActivities.indexOf(activity.verb) === -1;
 }
 
+function sortActivityByTime(activities) {
+  activities = _.uniqBy(activities, `id`);
+  return _.sortBy(activities, [`published`]);
+}
 
-export default function conversation(state = {
+
+export default function reduceConversation(state = {
   activities: [],
   id: null,
   participants: [],
   isFetching: false,
   isLoaded: false,
+  isLoadingHistoryUp: false,
   mercuryState: {
     isListening: false
   }
 }, action) {
   switch (action.type) {
+  case ADD_ACTIVITIES_TO_CONVERSATION: {
+    const activities = [...action.activities, ...state.activities];
+    return Object.assign({}, state, {
+      activities: sortActivityByTime(activities)
+    });
+  }
 
   case CREATE_CONVERSATION: {
     return Object.assign({}, state, {
@@ -42,6 +60,7 @@ export default function conversation(state = {
       participants: action.conversation.participants.items
     });
   }
+
   case RECEIVE_MERCURY_ACTIVITY: {
     let activities = state.activities;
     if (action.activity.verb === `delete`) {
@@ -67,6 +86,10 @@ export default function conversation(state = {
     return Object.assign({}, state, {
       activities: [...activities, activity]
     });
+  }
+
+  case UPDATE_CONVERSATION_STATE: {
+    return Object.assign({}, state, action.conversationState);
   }
 
   case UPDATE_MERCURY_STATE: {
