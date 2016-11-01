@@ -22,7 +22,7 @@ npm run grunt -- release
 npm run grunt:concurrent -- build:docs
 
 echo "################################################################################"
-echo "# STORING PRMOTION SHA"
+echo "# STORING PROMOTION SHA"
 echo "################################################################################"
 
 git rev-parse HEAD > ${SDK_ROOT_DIR}/.promotion-sha

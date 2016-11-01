@@ -215,7 +215,7 @@ module.exports = function gruntConfig(grunt) {
     'documentation',
   ]);
 
-  grunt.registerTask('publis:docs', [
+  grunt.registerTask('publish:docs', [
     'gh-pages:ghc',
   ]);
 
