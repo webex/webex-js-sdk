@@ -1,14 +1,15 @@
 .icon::before {
-  font-variant: normal;
-  font-feature-settings: 'liga';
-  font-variant-ligatures: discretionary-ligatures;
   font-family: 'Atlantic Neo Icons';
+  -webkit-font-smoothing: antialiased;
   font-style: normal;
   font-weight: normal;
   line-height: 1;
   letter-spacing: 0;
   text-transform: none;
   speak: none;
+  font-feature-settings: 'liga';
+  font-variant: normal;
+  font-variant-ligatures: discretionary-ligatures;
 }
 
 .icon-cisco-ac-power::before {

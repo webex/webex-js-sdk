@@ -1,29 +1,31 @@
-export const RECEIVE_SHARE = `RECEIVE_SHARE`;
-export function receiveShare(file, fileObject) {
+export const FETCH_SHARE = `FETCH_SHARE`;
+export function fetchShare(fileObject) {
   return {
-    type: RECEIVE_SHARE,
-    file,
-    fileObject
+    type: FETCH_SHARE,
+    payload: {
+      fileObject
+    }
   };
 }
 
-export const UPDATE_SHARE_STATUS = `UPDATE_SHARE_STATUS`;
-export function updateShareStatus(fileObject, status) {
+export const RECEIVE_SHARE = `RECEIVE_SHARE`;
+export function receiveShare(payload, error) {
   return {
-    type: UPDATE_SHARE_STATUS,
-    fileObject,
-    status
+    type: RECEIVE_SHARE,
+    payload,
+    error
   };
 }
 
 export function retrieveSharedFile(fileObject, spark) {
   return (dispatch) => {
-    dispatch(updateShareStatus(fileObject, {isDownloading: true}));
+    dispatch(fetchShare(fileObject));
     return spark.conversation.download(fileObject)
       .then((file) => {
-        dispatch(updateShareStatus(fileObject, {isDownloading: false}));
-        dispatch(receiveShare(file, fileObject));
+        dispatch(receiveShare({file, fileObject}, false));
         return file;
+      }, (error) => {
+        dispatch(receiveShare(error, true));
       });
   };
 }

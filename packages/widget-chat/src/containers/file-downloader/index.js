@@ -49,9 +49,9 @@ export default function injectFileDownloader(WrappedComponent) {
     }
 
     handleDownloadClick(fileObject) {
-      const cachedBlob = this.getSharedFileFromStore(fileObject.url).blob;
-      if (cachedBlob) {
-        saveAs(cachedBlob, fileObject.displayName);
+      const cachedFile = this.getSharedFileFromStore(fileObject.url);
+      if (cachedFile && cachedFile.blob) {
+        saveAs(cachedFile.blob, fileObject.displayName);
       }
       else {
         this.props.retrieveSharedFile(fileObject, spark)

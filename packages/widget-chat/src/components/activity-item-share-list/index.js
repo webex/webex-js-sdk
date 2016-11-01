@@ -3,7 +3,7 @@ import classNames from 'classnames';
 
 import injectFileDownloader from '../../containers/file-downloader';
 import ActivityItemBase from '../activity-item-base';
-import ShareItem from '../activity-item-share-item';
+import ShareFile from '../activity-item-share-file';
 import ShareThumbnail from '../activity-item-share-thumbnail';
 import styles from './styles.css';
 
@@ -28,7 +28,7 @@ function ActivityItemShareList(props) {
         );
       }
     }
-    return <ShareItem file={file} key={file.url} />;
+    return <ShareFile file={file} key={file.url} onDownloadClick={onDownloadClick} />;
   });
 
   return (

@@ -1,32 +1,24 @@
 import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 
+import Icon from '../icon';
 import IconButton from '../icon-button';
-import {ICON_TYPE_DOWNLOAD} from '../icon';
-import Spinner from '../spinner';
+import {ICON_TYPE_DOWNLOAD, ICON_TYPE_DOCUMENT} from '../icon';
 import {bytesToSize} from '../../utils/files';
 import styles from './styles.css';
 
-function ActivityItemShareThumbnail(props) {
+function ActivityItemShareFile(props) {
   const {
+    children,
     file,
-    onDownloadClick,
-    thumbnail
+    onDownloadClick
   } = props;
+
   const {
     displayName,
     fileSize,
     objectType
   } = file;
-
-  let image;
-
-  if (thumbnail && !thumbnail.isFetching && thumbnail.objectUrl) {
-    image = <img src={thumbnail.objectUrl} />;
-  }
-  else if (thumbnail.isFetching) {
-    image = <div className={classNames(`spinner-container`, styles.spinnerContainer)}><Spinner /></div>;
-  }
 
   function handleDownloadClick() {
     onDownloadClick(file);
@@ -34,8 +26,8 @@ function ActivityItemShareThumbnail(props) {
 
   return (
     <div className={classNames(`activity-share-item`, styles.shareItem)}>
-      <div className={classNames(`share-thumbnail`, styles.thumbnail)}>
-        {image}
+      <div className={classNames(`share-file-icon`, styles.fileIcon)}>
+        <Icon type={ICON_TYPE_DOCUMENT} />
       </div>
       <div className={classNames(`share-meta`, styles.meta)}>
         <div className={classNames(`share-file-info`, styles.fileInfo)}>
@@ -56,14 +48,15 @@ function ActivityItemShareThumbnail(props) {
           </div>
         </div>
       </div>
+      {children}
     </div>
   );
 }
 
-ActivityItemShareThumbnail.propTypes = {
+ActivityItemShareFile.propTypes = {
+  children: PropTypes.element,
   file: PropTypes.object,
-  onDownloadClick: PropTypes.func,
-  thumbnail: PropTypes.object
+  onDownloadClick: PropTypes.func
 };
 
-export default ActivityItemShareThumbnail;
+export default ActivityItemShareFile;

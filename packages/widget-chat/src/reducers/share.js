@@ -2,7 +2,7 @@ import {bufferToBlob} from '../utils/files';
 
 import {
   RECEIVE_SHARE,
-  UPDATE_SHARE_STATUS
+  FETCH_SHARE
 } from '../actions/share';
 
 export default function reduceShare(state = {
@@ -11,15 +11,20 @@ export default function reduceShare(state = {
   switch (action.type) {
 
   case RECEIVE_SHARE: {
-    const {blob, objectUrl} = bufferToBlob(action.file);
-    const key = action.fileObject.url;
+    const {
+      file,
+      fileObject
+    } = action.payload;
+    const {blob, objectUrl} = bufferToBlob(file);
+    const key = fileObject.url;
 
     return Object.assign({}, state, {
       files: Object.assign({}, state.files, {
         [key]: Object.assign({}, state.files[key], {
-          name: action.fileObject.displayName,
-          mimeType: action.fileObject.mimeType,
-          fileSize: action.fileObject.fileSize,
+          name: fileObject.displayName,
+          mimeType: fileObject.mimeType,
+          fileSize: fileObject.fileSize,
+          isFetching: false,
           blob,
           objectUrl
         })
@@ -27,12 +32,12 @@ export default function reduceShare(state = {
     });
   }
 
-  case UPDATE_SHARE_STATUS: {
-    const key = action.fileObject.url;
+  case FETCH_SHARE: {
+    const key = action.payload.fileObject.url;
     return Object.assign({}, state, {
       files: Object.assign({}, state.files, {
         [key]: Object.assign({}, state.files[key], {
-          status: action.status
+          isFetching: true
         })
       })
     });
