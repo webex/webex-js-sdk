@@ -40,15 +40,18 @@ export default function injectFileDownloader(WrappedComponent) {
 
     getThumbnailImage(fileObject) {
       const image = fileObject.image;
-      if (image && (image.url && !this.getSharedFileFromStore(image.url) || image.scr)) {
+      if (fileObject.mimeType === `image/gif` && fileObject.url) {
+        this.retrieveFile(fileObject);
+      }
+      else if (image && (image.url && !this.getSharedFileFromStore(image.url) || image.scr)) {
         this.retrieveFile(image);
       }
     }
 
     handleDownloadClick(fileObject) {
-      const cachedBlob = this.getSharedFileFromStore(fileObject);
+      const cachedBlob = this.getSharedFileFromStore(fileObject.url).blob;
       if (cachedBlob) {
-        saveAs(cachedBlob, fileObject.name);
+        saveAs(cachedBlob, fileObject.displayName);
       }
       else {
         this.props.retrieveSharedFile(fileObject, spark)

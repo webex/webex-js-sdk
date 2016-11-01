@@ -6,8 +6,7 @@ import {
 } from '../actions/share';
 
 export default function reduceShare(state = {
-  files: {},
-  download: []
+  files: {}
 }, action) {
   switch (action.type) {
 
@@ -18,9 +17,9 @@ export default function reduceShare(state = {
     return Object.assign({}, state, {
       files: Object.assign({}, state.files, {
         [key]: Object.assign({}, state.files[key], {
-          name: action.file.displayName,
-          mimeType: action.file.mimeType,
-          fileSize: action.file.fileSize,
+          name: action.fileObject.displayName,
+          mimeType: action.fileObject.mimeType,
+          fileSize: action.fileObject.fileSize,
           blob,
           objectUrl
         })

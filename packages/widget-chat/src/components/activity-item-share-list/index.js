@@ -15,15 +15,18 @@ function ActivityItemShareList(props) {
   } = props;
 
   const items = files.map((file) => {
-    if (file.image && share.files[file.image.url]) {
-      return (
-        <ShareThumbnail
-          file={file}
-          key={file.url}
-          onDownloadClick={onDownloadClick}
-          thumbnail={share.files[file.image.url]}
-        />
-      );
+    if (file.image) {
+      const thumbnail = file.mimeType === `image/gif` ? share.files[file.url] : share.files[file.image.url];
+      if (thumbnail) {
+        return (
+          <ShareThumbnail
+            file={file}
+            key={file.url}
+            onDownloadClick={onDownloadClick}
+            thumbnail={thumbnail}
+          />
+        );
+      }
     }
     return <ShareItem file={file} key={file.url} />;
   });

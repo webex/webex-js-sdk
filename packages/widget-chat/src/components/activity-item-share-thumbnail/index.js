@@ -19,13 +19,9 @@ function ActivityItemShareThumbnail(props) {
     objectType
   } = file;
 
-  let image, thumbnailSize;
+  let image;
 
   if (thumbnail && !thumbnail.status.isDownloading && thumbnail.objectUrl) {
-    thumbnailSize = {
-      'max-height': file.image.height || `100%`,
-      'max-width': file.image.width || `100%`
-    };
     image = <img src={thumbnail.objectUrl} />;
   }
   else if (thumbnail.status.isDownloading) {
@@ -37,7 +33,7 @@ function ActivityItemShareThumbnail(props) {
   }
 
   return (
-    <div className={classNames(`activity-share-item`, styles.shareItem)} style={thumbnailSize} >
+    <div className={classNames(`activity-share-item`, styles.shareItem)}>
       <div className={classNames(`share-thumbnail`, styles.thumbnail)}>
         {image}
       </div>
