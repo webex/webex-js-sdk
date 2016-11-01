@@ -9,7 +9,6 @@ import styles from './styles.css';
 
 function ActivityItemShareFile(props) {
   const {
-    children,
     file,
     onDownloadClick
   } = props;
@@ -48,13 +47,11 @@ function ActivityItemShareFile(props) {
           </div>
         </div>
       </div>
-      {children}
     </div>
   );
 }
 
 ActivityItemShareFile.propTypes = {
-  children: PropTypes.element,
   file: PropTypes.object,
   onDownloadClick: PropTypes.func
 };

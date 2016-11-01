@@ -41,7 +41,6 @@ export default function ActivityItemBase(props) {
 }
 
 ActivityItemBase.propTypes = {
-  avatar: PropTypes.element,
   children: PropTypes.element.isRequired,
   id: PropTypes.string.isRequired,
   isAdditional: PropTypes.bool,

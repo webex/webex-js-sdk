@@ -2,9 +2,9 @@ exports[`ActivityList component renders properly 1`] = `
 <div
   className="activity-list">
   <div
-    className="activity-item">
+    className="activity-item-container">
     <div
-      className="activity-post">
+      className="activity-item">
       <div
         className="avatar-wrapper">
         <div
@@ -17,7 +17,7 @@ exports[`ActivityList component renders properly 1`] = `
         </div>
       </div>
       <div
-        className="">
+        className="content-container">
         <div
           className="meta">
           <div
@@ -31,8 +31,11 @@ exports[`ActivityList component renders properly 1`] = `
           </div>
         </div>
         <div
-          className="activity-text">
-          Test Activity Content 1
+          className="activity-content">
+          <div
+            className="activity-text">
+            Test Activity Content 1
+          </div>
         </div>
       </div>
       <div
@@ -43,9 +46,9 @@ exports[`ActivityList component renders properly 1`] = `
     </div>
   </div>
   <div
-    className="activity-item">
+    className="activity-item-container">
     <div
-      className="activity-post">
+      className="activity-item">
       <div
         className="avatar-wrapper">
         <div
@@ -58,7 +61,7 @@ exports[`ActivityList component renders properly 1`] = `
         </div>
       </div>
       <div
-        className="">
+        className="content-container">
         <div
           className="meta">
           <div
@@ -72,8 +75,11 @@ exports[`ActivityList component renders properly 1`] = `
           </div>
         </div>
         <div
-          className="activity-text">
-          Test Activity Content 2
+          className="activity-content">
+          <div
+            className="activity-text">
+            Test Activity Content 2
+          </div>
         </div>
       </div>
       <div
@@ -84,9 +90,9 @@ exports[`ActivityList component renders properly 1`] = `
     </div>
   </div>
   <div
-    className="activity-item">
+    className="activity-item-container">
     <div
-      className="activity-post">
+      className="activity-item">
       <div
         className="avatar-wrapper">
         <div
@@ -99,7 +105,7 @@ exports[`ActivityList component renders properly 1`] = `
         </div>
       </div>
       <div
-        className="">
+        className="content-container">
         <div
           className="meta">
           <div
@@ -113,8 +119,11 @@ exports[`ActivityList component renders properly 1`] = `
           </div>
         </div>
         <div
-          className="activity-text">
-          Test Activity Content 3
+          className="activity-content">
+          <div
+            className="activity-text">
+            Test Activity Content 3
+          </div>
         </div>
       </div>
       <div

@@ -1,8 +1,8 @@
 exports[`ActivityItem post component is self renders properly 1`] = `
 <div
-  className="activity-item">
+  className="activity-item-container">
   <div
-    className="activity-post">
+    className="activity-item">
     <div
       className="avatar-wrapper">
       <div
@@ -13,7 +13,7 @@ exports[`ActivityItem post component is self renders properly 1`] = `
       </div>
     </div>
     <div
-      className="">
+      className="content-container">
       <div
         className="meta">
         <div
@@ -27,8 +27,11 @@ exports[`ActivityItem post component is self renders properly 1`] = `
         </div>
       </div>
       <div
-        className="activity-text">
-        Test Activity Content
+        className="activity-content">
+        <div
+          className="activity-text">
+          Test Activity Content
+        </div>
       </div>
     </div>
     <div
@@ -53,9 +56,9 @@ exports[`ActivityItem post component is self renders properly 1`] = `
 
 exports[`ActivityItem post component not self renders properly 1`] = `
 <div
-  className="activity-item">
+  className="activity-item-container">
   <div
-    className="activity-post">
+    className="activity-item">
     <div
       className="avatar-wrapper">
       <div
@@ -68,7 +71,7 @@ exports[`ActivityItem post component not self renders properly 1`] = `
       </div>
     </div>
     <div
-      className="">
+      className="content-container">
       <div
         className="meta">
         <div
@@ -82,8 +85,11 @@ exports[`ActivityItem post component not self renders properly 1`] = `
         </div>
       </div>
       <div
-        className="activity-text">
-        Test Activity Content
+        className="activity-content">
+        <div
+          className="activity-text">
+          Test Activity Content
+        </div>
       </div>
     </div>
     <div
@@ -97,7 +103,7 @@ exports[`ActivityItem post component not self renders properly 1`] = `
 
 exports[`ActivityItem tombstone component renders properly 1`] = `
 <div
-  className="activity-item">
+  className="activity-item-container">
   <div
     className="system-message">
     Test User deleted their own message. 2016-09-20T19:52:57.186Z
