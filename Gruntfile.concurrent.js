@@ -211,9 +211,12 @@ module.exports = function gruntConfig(grunt) {
     'concurrent:build'
   ]);
 
-  grunt.registerTask('publish-docs', [
+  grunt.registerTask('build:docs', [
     'documentation',
-    'gh-pages:ghc'
+  ]);
+
+  grunt.registerTask('publis:docs', [
+    'gh-pages:ghc',
   ]);
 
   grunt.initConfig(config);

@@ -15,9 +15,11 @@ echo "##########################################################################
 npm run grunt:circle -- coverage
 
 echo "################################################################################"
-echo "# BUMPING INTERNAL VERSION NUMBER"
+echo "# BUMPING VERSION NUMBERS"
 echo "################################################################################"
 npm run grunt -- release
+./pre-release.sh
+npm run grunt:concurrent -- build:docs
 
 echo "################################################################################"
 echo "# STORING PRMOTION SHA"
