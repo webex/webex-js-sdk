@@ -30,12 +30,13 @@ echo "# BOOTSTRAPPING MODULES"
 echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} npm run bootstrap
 
-set +e
-echo "# Top Level Dependencies"
-npm ls --depth 0
-echo "# Package Dependencies"
-npm run lerna -- exec -- npm ls --depth 0
-set -e
+# disabling for now; lerna@2.0.0-beta30 fails here
+# set +e
+# echo "# Top Level Dependencies"
+# npm ls --depth 0
+# echo "# Package Dependencies"
+# npm run lerna -- exec -- npm ls --depth 0
+# set -e
 
 echo "################################################################################"
 echo "# BUILDING MODULES"
