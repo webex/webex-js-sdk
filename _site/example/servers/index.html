@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Usage in Node</title>
+  <meta name="description" content="The Getting Started guide will get you pretty far in node land, but at some point, you’ll probably want more users than just yourself.">
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+  <link rel="stylesheet" href="/spark-js-sdk/css/main.css">
+
+  <script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+
+  <link rel="canonical" href="ciscospark.github.io/spark-js-sdk/spark-js-sdk/example/servers/">
+  <link rel="alternate" type="application/rss+xml" title="Cisco Spark JavaScript SDK" href="ciscospark.github.io/spark-js-sdk/spark-js-sdk/feed.xml">
+</head>
+
+
+  <body>
+
+    <header class="navbar navbar-static-top" role="banner">
+  <div class="container">
+    <div class="navbar-header">
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#primary-navigation" aria-controls="primary-navigation" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a href="/spark-js-sdk/" class="navbar-brand">Cisco Spark JavaScript SDK</a>
+    </div>
+    <nav class="collapse navbar-collapse" id="primary-navigation">
+      <ul class="nav navbar-nav">
+        
+          
+          <li>
+            <a class="page-link" href="/spark-js-sdk/api/">API</a>
+          </li>
+          
+        
+          
+        
+          
+        
+        <li>
+          <a class="page-link" href="/spark-js-sdk/app">Example App</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+
+    <main>
+      <div class="container">
+  <div class="row">
+    <div class="col-xs-3">
+      <ul class="nav">
+        
+          <li class="">
+            <a href="/spark-js-sdk/example/getting-started/">Getting Started</a>
+          </li>
+        
+          <li class="">
+            <a href="/spark-js-sdk/example/browsers/">Usage in Browsers</a>
+          </li>
+        
+          <li class="">
+            <a href="/spark-js-sdk/example/calling/">Placing a Call</a>
+          </li>
+        
+          <li class=" active">
+            <a href="/spark-js-sdk/example/servers/">Usage in Node</a>
+          </li>
+        
+          <li class="">
+            <a href="/spark-js-sdk/example/plugin-development/">Plugin Development</a>
+          </li>
+        
+          <li class="">
+            <a href="/spark-js-sdk/example/storage-layer/">Storage Layer</a>
+          </li>
+        
+      </ul>
+    </div>
+    <div class="col-xs-9">
+      <article class="example" itemscope itemtype="http://schema.org/Article">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">Usage in Node</h1>
+    <p class="post-meta"></p>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <p>The <a href="/example/getting-started">Getting Started</a> guide will get you pretty far in node land, but at some point, you’ll probably want more users than just yourself.</p>
+
+<blockquote>
+  <p>This guide and the corresponding code is still a work in progress. While every effort will be made to avoid breaking changes, expect some fluctuation around the initialization and authorization apis.</p>
+</blockquote>
+
+<p>Before you can login users with OAuth, you’ll need to register a new application on the <a href="https://developer.ciscospark.com">developer portal</a>. You’ll need to set some of the values from that page as environment variables:
+- <code class="highlighter-rouge">CISCOSPARK_CLIENT_ID</code>
+- <code class="highlighter-rouge">CISCOSPARK_CLIENT_SECRET</code>
+- <code class="highlighter-rouge">CISCOSPARK_REDIRECT_URI</code>
+- <code class="highlighter-rouge">CISCOSPARK_SCOPE</code></p>
+
+<h1 id="init">Init</h1>
+
+<p>Use <code class="highlighter-rouge">ciscospark.init()</code> to create new <code class="highlighter-rouge">CiscoSpark</code> instance.</p>
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="kd">var</span> <span class="nx">ciscospark</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">'ciscospark'</span><span class="p">);</span>
+<span class="kr">const</span> <span class="nx">spark2</span> <span class="o">=</span> <span class="nx">ciscospark</span><span class="p">.</span><span class="nx">init</span><span class="p">();</span>
+</code></pre>
+</div>
+
+<p>Use the authorization url you got from the developer portal to authenticate your users and get back an auth code. Then, pass that auth code to spark</p>
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="nx">spark2</span><span class="p">.</span><span class="nx">authorize</span><span class="p">({</span><span class="na">code</span><span class="p">:</span> <span class="o">&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="p">})</span>
+  <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// spark is authorized</span>
+  <span class="p">});</span>
+</code></pre>
+</div>
+
+<p>By default, <code class="highlighter-rouge">ciscospark</code> stores credentials and some other registration data in memory, but we provide a generic interface - inspired by <a href="https://www.npmjs.com/package/leveldb">leveldb</a> - for hooking in your own cache layer. See <a href="/example/storage-layer/">Storage Layer</a> for more details.</p>
+
+<h1 id="express-example">Express Example</h1>
+
+<p>The following is an approximation of how an expressjs app might do authentication. It assumes you’re using a session middleware of some kind that puts a user identifier on each request. The function <code class="highlighter-rouge">storageAdapterForYourBackend</code> would produce a storage adapter bound to the user specified in the request object.</p>
+
+<h2 id="oauth-route-handlers">OAuth Route Handlers</h2>
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="kr">const</span> <span class="nx">ciscospark</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="err">`</span><span class="nx">ciscospark</span><span class="err">`</span><span class="p">);</span>
+<span class="kr">const</span> <span class="nx">assert</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="err">`</span><span class="nx">assert</span><span class="err">`</span><span class="p">);</span>
+
+<span class="nx">app</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="err">`</span><span class="o">/</span><span class="nx">login</span><span class="err">`</span><span class="p">,</span> <span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="nx">res</span><span class="p">.</span><span class="nx">redirect</span><span class="p">(</span><span class="nx">ciscospark</span><span class="p">.</span><span class="nx">credentials</span><span class="p">.</span><span class="nx">buildOAuthUrl</span><span class="p">()).</span><span class="nx">end</span><span class="p">();</span>
+<span class="p">});</span>
+
+<span class="nx">app</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="err">`</span><span class="o">/</span><span class="nx">oauth</span><span class="o">/</span><span class="nx">redirect</span><span class="err">`</span><span class="p">,</span> <span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="nx">assert</span><span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">code</span><span class="p">);</span>
+  <span class="nx">req</span><span class="p">.</span><span class="nx">spark</span> <span class="o">=</span> <span class="nx">ciscospark</span><span class="p">.</span><span class="nx">init</span><span class="p">({</span>
+    <span class="na">config</span><span class="p">:</span> <span class="p">{</span>
+      <span class="na">storage</span><span class="p">:</span> <span class="p">{</span>
+        <span class="na">boundedAdapter</span><span class="p">:</span> <span class="nx">storageAdapterForYourBackend</span><span class="p">(</span><span class="nx">req</span><span class="p">)</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">});</span>
+
+  <span class="nx">req</span><span class="p">.</span><span class="nx">spark</span><span class="p">.</span><span class="nx">authorize</span><span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">then</span><span class="p">(()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+
+      <span class="nx">res</span><span class="p">.</span><span class="nx">redirect</span><span class="p">(</span><span class="err">`</span><span class="o">/</span><span class="err">`</span><span class="p">).</span><span class="nx">end</span><span class="p">();</span>
+    <span class="p">});</span>
+<span class="p">});</span>
+</code></pre>
+</div>
+
+<h2 id="auth-middleware">Auth Middleware</h2>
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="kr">const</span> <span class="nx">ciscospark</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="err">`</span><span class="nx">ciscospark</span><span class="err">`</span><span class="p">);</span>
+<span class="nx">app</span><span class="p">.</span><span class="nx">use</span><span class="p">((</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">next</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nx">user</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">req</span><span class="p">.</span><span class="nx">spark</span> <span class="o">=</span> <span class="nx">ciscospark</span><span class="p">.</span><span class="nx">init</span><span class="p">({</span>
+      <span class="na">config</span><span class="p">:</span> <span class="p">{</span>
+        <span class="na">storage</span><span class="p">:</span> <span class="p">{</span>
+          <span class="na">boundedAdapter</span><span class="p">:</span> <span class="nx">storageAdapterForYourBackend</span><span class="p">(</span><span class="nx">req</span><span class="p">)</span>
+        <span class="p">}</span>
+      <span class="p">}</span>
+    <span class="p">});</span>
+  <span class="p">}</span>
+
+  <span class="nx">next</span><span class="p">();</span>
+<span class="p">});</span>
+</code></pre>
+</div>
+
+  </div>
+
+</article>
+
+    </div>
+</div>
+
+    </main>
+
+    <footer>
+  <p class="copyright-block">© 2016 Cisco and/or its affiliates. All Rights Reserved.</p>
+</footer>
+
+
+  </body>
+
+</html>
