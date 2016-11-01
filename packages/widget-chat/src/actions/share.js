@@ -1,5 +1,3 @@
-import saveAs from 'browser-saveas';
-
 export const RECEIVE_SHARE = `RECEIVE_SHARE`;
 export function receiveShare(file, fileObject) {
   return {

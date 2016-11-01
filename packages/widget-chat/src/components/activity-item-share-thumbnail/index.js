@@ -23,8 +23,8 @@ function ActivityItemShareThumbnail(props) {
 
   if (thumbnail && !thumbnail.status.isDownloading && thumbnail.objectUrl) {
     thumbnailSize = {
-      height: file.image.height || `100%`,
-      width: file.image.width || `100%`
+      'max-height': file.image.height || `100%`,
+      'max-width': file.image.width || `100%`
     };
     image = <img src={thumbnail.objectUrl} />;
   }
@@ -42,14 +42,21 @@ function ActivityItemShareThumbnail(props) {
         {image}
       </div>
       <div className={classNames(`share-meta`, styles.meta)}>
-        <div className={classNames(`share-name`, styles.name)}>{displayName}</div>
         <div className={classNames(`share-file-info`, styles.fileInfo)}>
-          <span className={classNames(`share-file-size`, styles.fileSize)}>{bytesToSize(fileSize)}</span>
-          <span className={classNames(`share-file-type`, styles.fileType)}>{objectType}</span>
+          <div className={classNames(`share-name`, styles.name)}>{displayName}</div>
+          <div className={classNames(`share-file-props`, styles.fileProps)}>
+            <span className={classNames(`share-file-size`, styles.fileSize)}>{bytesToSize(fileSize)}</span>
+            <span className={classNames(`share-file-type`, styles.fileType)}>{objectType}</span>
+          </div>
         </div>
         <div className={classNames(`share-item-actions`, styles.shareActions)}>
-          <div className={classNames(`post-actions-item`, styles.postActionsItem)}>
-            <IconButton onClick={handleDownloadClick} title="Download this file" type={ICON_TYPE_DOWNLOAD} />
+          <div className={classNames(`share-action-item`, styles.shareActionItem)}>
+            <IconButton
+              className={styles.downloadButton}
+              onClick={handleDownloadClick}
+              title="Download this file"
+              type={ICON_TYPE_DOWNLOAD}
+            />
           </div>
         </div>
       </div>

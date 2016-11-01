@@ -21,7 +21,7 @@
   right: 0;
   bottom: 0;
   left: 0;
-  padding: 10px;
+  display: flex;
   font-size: 14px;
   color: #fff;
   background: rgba(52, 53, 55, 0.8);
@@ -35,14 +35,32 @@
 }
 
 .file-info {
+  padding: 8px 10px;
+  flex: 1 1 auto;
+}
+
+.file-props {
   color: #aeaeaf;
 }
 
-.file-info > span {
+.file-props > span {
   display: inline-block;
   margin-right: 5px;
 }
 
 .share-item:hover .meta {
   visibility: visible;
+}
+
+.share-action-item {
+  flex: 0;
+}
+
+.share-action-item:hover {
+  background-color: #343537;
+}
+
+.download-button {
+  padding: 14px;
+  font-size: 18px;
 }
