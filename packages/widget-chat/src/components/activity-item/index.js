@@ -20,11 +20,11 @@ export default function ActivityItem(props) {
   if (verb === POST_VERB) {
     itemComponent = <ActivityItemPost content={activity.displayName} {...props} />;
   }
-  else if (SYSTEM_MESSAGE_VERBS.indexOf(verb) !== -1) {
-    itemComponent = <ActivityItemSystemMessage content={activity.displayName} {...props} />;
-  }
   else if (verb === SHARE_VERB) {
     itemComponent = <ActivityItemShareList files={activity.files.items} {...props} />;
+  }
+  else if (SYSTEM_MESSAGE_VERBS.indexOf(verb) !== -1) {
+    itemComponent = <ActivityItemSystemMessage content={activity.displayName} {...props} />;
   }
 
   return (

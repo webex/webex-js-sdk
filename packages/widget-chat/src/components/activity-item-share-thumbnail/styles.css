@@ -8,9 +8,9 @@
 
 .share-item {
   position: relative;
+  display: flex;
+  height: 200px;
   max-width: 320px;
-  max-height: 320px;
-  min-height: 194px;
   margin-bottom: 10px;
   overflow: hidden;
   cursor: pointer;
@@ -32,17 +32,28 @@
   visibility: hidden;
 }
 
+.thumbnail {
+  margin: auto;
+}
+
 .thumbnail > img {
-  width: 100%;
+  max-width: 100%;
 }
 
 .file-info {
   padding: 8px 10px;
+  overflow: hidden;
   flex: 1 1 auto;
 }
 
 .file-props {
   color: #aeaeaf;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .file-props > span {

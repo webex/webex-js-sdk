@@ -21,11 +21,13 @@ function ActivityItemShareThumbnail(props) {
 
   let image;
 
-  if (thumbnail && !thumbnail.isFetching && thumbnail.objectUrl) {
-    image = <img src={thumbnail.objectUrl} />;
-  }
-  else if (thumbnail.isFetching) {
-    image = <div className={classNames(`spinner-container`, styles.spinnerContainer)}><Spinner /></div>;
+  if (thumbnail) {
+    if (!thumbnail.isFetching && thumbnail.objectUrl) {
+      image = <img src={thumbnail.objectUrl} />;
+    }
+    else if (thumbnail.isFetching) {
+      image = <div className={classNames(`spinner-container`, styles.spinnerContainer)}><Spinner /></div>;
+    }
   }
 
   function handleDownloadClick() {
