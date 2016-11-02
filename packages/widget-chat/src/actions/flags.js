@@ -76,8 +76,6 @@ function removeFlagError(error, flag) {
   };
 }
 
-
-
 /**
  * Fetches all of the current user's flags
  *
