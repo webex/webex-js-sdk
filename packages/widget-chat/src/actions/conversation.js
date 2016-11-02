@@ -8,15 +8,29 @@ export const ADD_ACTIVITIES_TO_CONVERSATION = `ADD_ACTIVITIES_TO_CONVERSATION`;
 export function addActivitiesToConversation(activities) {
   return {
     type: ADD_ACTIVITIES_TO_CONVERSATION,
-    activities
+    payload: {
+      activities
+    }
+  };
+}
+
+export const CREATE_CONVERSATION_BEGIN = `CREATE_CONVERSATION_BEGIN`;
+export function createConversationBegin(userId) {
+  return {
+    type: CREATE_CONVERSATION_BEGIN,
+    payload: {
+      userId
+    }
   };
 }
 
 export const CREATE_CONVERSATION = `CREATE_CONVERSATION`;
-export function createConversation(userId) {
+export function createConversation(conversation) {
   return {
     type: CREATE_CONVERSATION,
-    userId
+    payload: {
+      conversation
+    }
   };
 }
 
@@ -24,16 +38,10 @@ export const DELETE_ACTIVITY_FROM_CONVERSATION = `DELETE_ACTIVITY_FROM_CONVERSAT
 export function deleteActivityFromConversation(conversation, activity) {
   return {
     type: DELETE_ACTIVITY_FROM_CONVERSATION,
-    conversation,
-    activity
-  };
-}
-
-export const RECEIVE_CONVERSATION = `RECEIVE_CONVERSATION`;
-export function receiveConversation(conversation) {
-  return {
-    type: RECEIVE_CONVERSATION,
-    conversation
+    payload: {
+      conversation,
+      activity
+    }
   };
 }
 
@@ -41,7 +49,9 @@ export const RECEIVE_MERCURY_COMMENT = `RECEIVE_MERCURY_COMMENT`;
 export function receiveMercuryComment(activity) {
   return {
     type: RECEIVE_MERCURY_COMMENT,
-    activity
+    payload: {
+      activity
+    }
   };
 }
 
@@ -49,7 +59,9 @@ export const RECEIVE_MERCURY_ACTIVITY = `RECEIVE_MERCURY_ACTIVITY`;
 export function receiveMercuryActivity(activity) {
   return {
     type: RECEIVE_MERCURY_ACTIVITY,
-    activity
+    payload: {
+      activity
+    }
   };
 }
 
@@ -57,7 +69,9 @@ export const UPDATE_MERCURY_STATE = `UPDATE_MERCURY_STATE`;
 export function updateMercuryState(mercuryState) {
   return {
     type: UPDATE_MERCURY_STATE,
-    mercuryState
+    payload: {
+      mercuryState
+    }
   };
 }
 
@@ -65,7 +79,9 @@ export const UPDATE_CONVERSATION_STATE = `UPDATE_CONVERSATION_STATE`;
 export function updateConversationState(conversationState) {
   return {
     type: UPDATE_CONVERSATION_STATE,
-    conversationState
+    payload: {
+      conversationState
+    }
   };
 }
 
@@ -79,7 +95,7 @@ export function updateConversationState(conversationState) {
  */
 export function createConversationWithUser(userId, spark) {
   return (dispatch) => {
-    dispatch(createConversation(userId));
+    dispatch(createConversationBegin(userId));
 
     spark.conversation.create({
       participants: [userId]
@@ -87,7 +103,7 @@ export function createConversationWithUser(userId, spark) {
       latestActivity: true,
       activitiesLimit: 30
     })
-      .then((conversation) => dispatch(receiveConversation(conversation)));
+      .then((conversation) => dispatch(createConversation(conversation)));
   };
 }
 
