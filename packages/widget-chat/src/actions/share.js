@@ -9,11 +9,10 @@ export function fetchShare(fileObject) {
 }
 
 export const RECEIVE_SHARE = `RECEIVE_SHARE`;
-export function receiveShare(payload, error) {
+export function receiveShare(payload) {
   return {
     type: RECEIVE_SHARE,
-    payload,
-    error
+    payload
   };
 }
 
@@ -24,8 +23,6 @@ export function retrieveSharedFile(fileObject, spark) {
       .then((file) => {
         dispatch(receiveShare({file, fileObject}, false));
         return file;
-      }, (error) => {
-        dispatch(receiveShare(error, true));
       });
   };
 }
