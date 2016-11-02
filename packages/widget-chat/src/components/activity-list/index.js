@@ -6,20 +6,24 @@ import {formatDate} from '../../utils/date';
 
 export default function ActivityList(props) {
   let lastActorId, lastVerb;
+  const {flags} = props;
   const activities = props.activities
     .map((activity) => {
       const additional = lastActorId === activity.actor.id && lastVerb === activity.verb;
       lastActorId = activity.actor.id;
       lastVerb = activity.verb;
+      const isFlagged = flags && flags.some((flag) => flag.activityUrl === activity.url);
       return (
         <ActivityItem
           activity={activity.object}
           id={activity.id}
           isAdditional={additional}
+          isFlagged={isFlagged}
           isSelf={props.currentUserId === activity.actor.id}
           key={activity.id}
           name={activity.actor.displayName}
           onActivityDelete={props.onActivityDelete}
+          onActivityFlag={props.onActivityFlag}
           timestamp={formatDate(activity.published)}
           verb={activity.verb}
         />
@@ -36,5 +40,7 @@ export default function ActivityList(props) {
 ActivityList.propTypes = {
   activities: PropTypes.array,
   currentUserId: PropTypes.string,
-  onActivityDelete: PropTypes.func.isRequired
+  flags: PropTypes.array,
+  onActivityDelete: PropTypes.func.isRequired,
+  onActivityFlag: PropTypes.func.isRequired
 };

@@ -6,7 +6,6 @@ import store from '../../store';
 import ChatWidget from '.';
 
 describe(`ChatWidget`, () => {
-
   it(`renders properly`, () => {
     const accessToken = process.env.CISCOSPARK_ACCESS_TOKEN;
     const widget = renderer.create(

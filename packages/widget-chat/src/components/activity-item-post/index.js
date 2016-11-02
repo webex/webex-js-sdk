@@ -5,6 +5,7 @@ import ActivityItemBase from '../activity-item-base';
 import styles from './styles.css';
 
 export default function ActivityItemPost(props) {
+
   const {
     content
   } = props;

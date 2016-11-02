@@ -1,6 +1,7 @@
 /* eslint camelcase: [0] */
 
 import '@ciscospark/plugin-conversation';
+import '@ciscospark/plugin-flag';
 import Spark from '@ciscospark/spark-core';
 import LocalStorageStoreAdapter from '@ciscospark/storage-adapter-local-storage';
 

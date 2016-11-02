@@ -97,7 +97,6 @@ export function deleteActivity(conversation, activity, spark) {
       .then(() => {
         dispatch(deleteActivityFromConversation(conversation, activity));
       });
-
 }
 
 export function listenToMercuryActivity(conversationId, spark) {

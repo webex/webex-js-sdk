@@ -13,10 +13,10 @@
 }
 
 .published {
-  flex: 0 0 auto;
   margin-left: 10px;
   opacity: 0.5;
   visibility: hidden;
+  flex: 0 0 auto;
 }
 
 .content-container {
@@ -27,7 +27,6 @@
 
 .meta {
   display: flex;
-  flex-direction: row;
   padding: 0;
   margin: 0;
   margin-bottom: 7px;
@@ -40,6 +39,7 @@
   cursor: auto;
   transition: opacity 300ms;
   user-select: none;
+  flex-direction: row;
 }
 
 .display-name {
@@ -50,6 +50,20 @@
   position: absolute;
   display: inline-block;
   flex: 0 0 auto;
+}
+
+.pending .content-container {
+  color: rgb(176, 176, 176);
+  cursor: pointer;
+}
+
+.failed .status {
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 14px;
+  color: rgb(218, 0, 0);
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
 /*
@@ -69,13 +83,24 @@
  * Align post actions at the bottom right of post
  */
 .activity-post-actions {
+  display: flex;
   width: 100%;
   margin-top: auto;
   margin-right: 5px;
   text-align: right;
   visibility: hidden;
   flex: 0;
-  flex-direction: column;
+  flex-direction: row;
+  justify-content: flex-end;
+}
+
+.activity-post-action {
+  width: 22px;
+}
+
+.activity-post-action.isHighlighted {
+  color: #049fd9;
+  visibility: visible;
 }
 
 .activity-item:hover .activity-post-actions {
