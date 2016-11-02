@@ -30,6 +30,11 @@ npm run lerna -- exec -- bash -c "npm publish || true"
 export NPM_CONFIG_REGISTRY="${REG}"
 rm -f ~/.npmrc
 
+VERSION=$(git reflog -n 1 | grep "commit: v." | awk '{print $4}')
+if [ -n "${VERSION}" ]; then
+  git push origin "${VERSION}":"${VERSION}"
+fi
+
 echo "################################################################################"
 echo "# PUBLISHING NEW DOCUMENENTATION"
 echo "################################################################################"
