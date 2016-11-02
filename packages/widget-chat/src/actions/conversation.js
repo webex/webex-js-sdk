@@ -1,6 +1,9 @@
 import {updateHasNewMessage} from './widget.js';
 import {setTyping} from './indicators';
 
+const VISIBLE_ACTIVITY_VERBS = [`share`, `post`];
+const VISIBLE_ACTIVITY_TYPES = [`comment`, `content`, `conversation`];
+
 export const ADD_ACTIVITIES_TO_CONVERSATION = `ADD_ACTIVITIES_TO_CONVERSATION`;
 export function addActivitiesToConversation(activities) {
   return {
@@ -113,10 +116,10 @@ export function listenToMercuryActivity(conversationId, spark) {
 
     spark.mercury.on(`event:conversation.activity`, (event) => {
       const activity = event.data.activity;
-      const isChatMessage = activity.verb === `post` && activity.object.objectType === `comment` && activity.target.objectType === `conversation`;
+      const isVisibleContent = VISIBLE_ACTIVITY_VERBS.indexOf(activity.verb) !== -1 && VISIBLE_ACTIVITY_TYPES.indexOf(activity.object.objectType) !== -1;
       // Ignore activity from other conversations
       if (activity.target.id === conversationId) {
-        if (isChatMessage) {
+        if (isVisibleContent) {
           dispatch(updateHasNewMessage(true));
           dispatch(receiveMercuryComment(activity));
         }

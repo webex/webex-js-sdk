@@ -4,7 +4,7 @@ import renderer from 'react-test-renderer';
 import {Provider} from 'react-redux';
 
 import SparkComponent from './component';
-import createSpark from './spark';
+import spark from './spark';
 
 const mockStore = configureMockStore([]);
 
@@ -22,7 +22,6 @@ function createStore() {
 }
 
 describe(`spark component`, () => {
-  const spark = createSpark();
   const store = createStore();
 
   it(`renders correctly`, () => {

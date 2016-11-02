@@ -3,7 +3,7 @@ exports[`ActivityItemPostActions component renders properly 1`] = `
   className="post-action-item">
   <div
     className="icon-button"
-    onClick={[Function anonymous]}>
+    onClick={[Function mockConstructor]}>
     <div
       className="icon"
       title="abc-123" />

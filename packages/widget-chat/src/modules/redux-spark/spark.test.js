@@ -1,4 +1,4 @@
-import createSpark from './spark';
+import {createSpark} from './spark';
 
 describe(`spark`, () => {
   it(`is authenticated`, () => {
