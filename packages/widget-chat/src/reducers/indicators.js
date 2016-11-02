@@ -5,13 +5,13 @@ export default function indicators(state = {
 }, action) {
   switch (action.type) {
   case ADD_TYPING_INDICATOR:
-    if (state.typing.indexOf(action.userId) === -1) {
-      return {typing: [action.userId, ...state.typing]};
+    if (state.typing.indexOf(action.payload.userId) === -1) {
+      return {typing: [action.payload.userId, ...state.typing]};
     }
     return state;
   case DELETE_TYPING_INDICATOR:
     return {
-      typing: state.typing.filter((userId) => userId !== action.userId)
+      typing: state.typing.filter((userId) => userId !== action.payload.userId)
     };
   default:
     return state;

@@ -31,7 +31,7 @@ TextArea.propTypes = {
   className: PropTypes.string,
   onChange: PropTypes.func,
   onKeyDown: PropTypes.func,
-  onSubmit: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func,
   placeholder: PropTypes.string,
   rows: PropTypes.number,
   value: PropTypes.string

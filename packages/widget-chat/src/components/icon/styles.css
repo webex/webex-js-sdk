@@ -3,6 +3,7 @@
   font-feature-settings: 'liga';
   font-variant-ligatures: discretionary-ligatures;
   font-family: 'Atlantic Neo Icons';
+  -webkit-font-smoothing: antialiased;
   font-style: normal;
   font-weight: normal;
   line-height: 1;

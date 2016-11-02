@@ -2,7 +2,9 @@ export const UPDATE_MESSAGE_STATE = `UPDATE_MESSAGE_STATE`;
 export function updateMessageState(state) {
   return {
     type: UPDATE_MESSAGE_STATE,
-    state
+    payload: {
+      state
+    }
   };
 }
 
@@ -10,7 +12,9 @@ export const UPDATE_MESSAGE_CONTENT = `UPDATE_MESSAGE_CONTENT`;
 export function updateMessageContent(value) {
   return {
     type: UPDATE_MESSAGE_CONTENT,
-    value
+    payload: {
+      value
+    }
   };
 }
 

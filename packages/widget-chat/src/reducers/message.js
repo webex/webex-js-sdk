@@ -5,10 +5,10 @@ export default function message(state = {
 }, action) {
   switch (action.type) {
   case UPDATE_MESSAGE_STATE:
-    return Object.assign({}, state, action.state);
+    return Object.assign({}, state, action.payload.state);
   case UPDATE_MESSAGE_CONTENT:
     return Object.assign({}, state, {
-      value: action.value
+      value: action.payload.value
     });
   default:
     return state;

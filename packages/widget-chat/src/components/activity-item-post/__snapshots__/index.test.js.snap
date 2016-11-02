@@ -1,6 +1,6 @@
 exports[`ActivityItemPost post component renders properly 1`] = `
 <div
-  className="activity-post">
+  className="activity-item">
   <div
     className="avatar-wrapper">
     <div
@@ -11,7 +11,7 @@ exports[`ActivityItemPost post component renders properly 1`] = `
     </div>
   </div>
   <div
-    className="">
+    className="content-container">
     <div
       className="meta">
       <div
@@ -25,8 +25,11 @@ exports[`ActivityItemPost post component renders properly 1`] = `
       </div>
     </div>
     <div
-      className="activity-text">
-      Test Activity Content
+      className="activity-content">
+      <div
+        className="activity-text">
+        Test Activity Content
+      </div>
     </div>
   </div>
   <div

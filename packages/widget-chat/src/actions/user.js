@@ -1,29 +1,31 @@
-export const RECEIVE_CURRENT_USER = `RECEIVE_CURRENT_USER`;
-export function receiveCurrentUser(user) {
+export const GET_CURRENT_USER = `GET_CURRENT_USER`;
+export function getCurrentUser(user) {
   return {
-    type: RECEIVE_CURRENT_USER,
-    isFetching: false,
-    user
+    type: GET_CURRENT_USER,
+    payload: {
+      isFetching: false,
+      user
+    }
   };
 }
 
-export const UPDATE_CURRENT_USER_STATE = `UPDATE_CURRENT_USER_STATE`;
-export function updateCurrentUserState(state) {
+export const GET_CURRENT_USER_BEGIN = `GET_CURRENT_USER_BEGIN`;
+export function getCurrentUserBegin() {
   return {
-    type: UPDATE_CURRENT_USER_STATE,
-    state
+    type: GET_CURRENT_USER_BEGIN,
+    payload: {
+      isFetching: true
+    }
   };
 }
 
 
 export function fetchCurrentUser(spark) {
   return (dispatch) => {
-    dispatch(updateCurrentUserState({
-      isFetching: true
-    }));
-    spark.user.get()
+    dispatch(getCurrentUserBegin());
+    return spark.user.get()
       .then((user) => {
-        dispatch(receiveCurrentUser(user));
+        dispatch(getCurrentUser(user));
       });
   };
 }

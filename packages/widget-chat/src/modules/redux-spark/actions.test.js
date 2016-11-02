@@ -3,7 +3,7 @@
 import configureMockStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
 
-import createSpark from './spark';
+import {createSpark} from './spark';
 import {
   UPDATE_SPARK_STATE,
   updateSparkState,

@@ -1,0 +1,48 @@
+.share-item {
+  position: relative;
+  display: flex;
+  width: 320px;
+  height: 60px;
+  margin-bottom: 5px;
+  font-family: 'CiscoSans TT Regular', 'Helvetica Neue', Arial, sans-serif;
+  color: #6a6b6c;
+  background-color: #ebebec;
+  border: 1px solid #ebebec;
+  border-radius: 4px;
+}
+
+.file-icon {
+  display: flex;
+  width: 60px;
+  height: 60px;
+  padding: 15px;
+  font-size: 30px;
+  text-align: center;
+  flex: 0;
+}
+
+.meta {
+  display: flex;
+  flex: 1 1 auto;
+}
+
+.file-info {
+  margin: auto 0;
+  font-size: 12px;
+  vertical-align: center;
+  flex: 1 1 auto;
+}
+
+.file-props {
+  color: #aeaeaf;
+}
+
+.share-actions {
+  padding: 16px;
+  font-size: 22px;
+  flex: 0;
+}
+
+.file-type {
+  margin-left: 5px;
+}

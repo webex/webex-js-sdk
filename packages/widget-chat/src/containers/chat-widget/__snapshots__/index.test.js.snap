@@ -1,15 +1,17 @@
 exports[`ChatWidget renders properly 1`] = `
-<div
-  className="widget-chat">
+<div>
   <div
-    className="banner" />
-  <div
-    className="loading">
-    Connecting...
+    className="widget-chat">
     <div
-      className="spinner-container">
+      className="banner" />
+    <div
+      className="loading">
+      Connecting...
       <div
-        className="spinner" />
+        className="spinner-container">
+        <div
+          className="spinner" />
+      </div>
     </div>
   </div>
 </div>

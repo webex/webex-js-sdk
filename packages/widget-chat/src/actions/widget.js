@@ -4,7 +4,9 @@ export const UPDATE_WIDGET_STATE = `UPDATE_WIDGET_STATE`;
 export function updateWidgetState(state) {
   return {
     type: UPDATE_WIDGET_STATE,
-    state
+    payload: {
+      state
+    }
   };
 }
 
@@ -12,7 +14,9 @@ export const SET_SCROLL_POSITION = `SET_SCROLL_POSITION`;
 export function setScrollPosition(scrollPosition) {
   return {
     type: SET_SCROLL_POSITION,
-    scrollPosition
+    payload: {
+      scrollPosition
+    }
   };
 }
 
