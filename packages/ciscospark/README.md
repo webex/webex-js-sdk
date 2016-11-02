@@ -4,12 +4,12 @@
 
 ## Table of Contents
 
-- [Install](#Install)
-- [Usage](#Usage)
-  - [In Browser](#In Browser)
-- [API](#API)
-- [Contribute](#Contribute)
-- [License](#License)
+- [Install](#install)
+- [Usage](#usage)
+  - [In Browser](#in-browser)
+- [API](#api)
+- [Contribute](#contribute)
+- [License](#license)
 
 ## Install
 
