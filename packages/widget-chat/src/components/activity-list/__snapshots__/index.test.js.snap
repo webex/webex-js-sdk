@@ -38,7 +38,23 @@ exports[`ActivityList component renders properly 1`] = `
       <div
         className="activity-post-actions">
         <div
-          className="post-actions" />
+          className="activity-post-action">
+          <div
+            className="post-action-item">
+            <div
+              className="icon-button"
+              onClick={[Function handleOnFlag]}>
+              <div
+                className="icon"
+                title="Flag this message" />
+            </div>
+          </div>
+        </div>
+        <div
+          className="activity-post-action">
+          <div
+            className="action-spacer" />
+        </div>
       </div>
     </div>
   </div>
@@ -79,7 +95,23 @@ exports[`ActivityList component renders properly 1`] = `
       <div
         className="activity-post-actions">
         <div
-          className="post-actions" />
+          className="activity-post-action">
+          <div
+            className="post-action-item">
+            <div
+              className="icon-button"
+              onClick={[Function handleOnFlag]}>
+              <div
+                className="icon"
+                title="Flag this message" />
+            </div>
+          </div>
+        </div>
+        <div
+          className="activity-post-action">
+          <div
+            className="action-spacer" />
+        </div>
       </div>
     </div>
   </div>
@@ -120,7 +152,23 @@ exports[`ActivityList component renders properly 1`] = `
       <div
         className="activity-post-actions">
         <div
-          className="post-actions" />
+          className="activity-post-action">
+          <div
+            className="post-action-item">
+            <div
+              className="icon-button"
+              onClick={[Function handleOnFlag]}>
+              <div
+                className="icon"
+                title="Flag this message" />
+            </div>
+          </div>
+        </div>
+        <div
+          className="activity-post-action">
+          <div
+            className="action-spacer" />
+        </div>
       </div>
     </div>
   </div>

@@ -12,6 +12,11 @@ import {
   loadPreviousMessages
 } from '../../actions/conversation';
 import {
+  fetchFlags,
+  flagActivity,
+  removeFlagFromServer
+} from '../../actions/flags';
+import {
   confirmDeleteActivity,
   deleteActivityAndDismiss,
   hideDeleteModal,
@@ -41,6 +46,7 @@ export class ChatWidget extends Component {
     this.handleActivityDelete = this.handleActivityDelete.bind(this);
     this.handleCancelActivityDelete = this.handleCancelActivityDelete.bind(this);
     this.handleConfirmActivityDelete = this.handleConfirmActivityDelete.bind(this);
+    this.handleActivityFlag = this.handleActivityFlag.bind(this);
     this.handleScrollToBottom = this.handleScrollToBottom.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleScroll = _.debounce(this.handleScroll.bind(this), 150);
@@ -51,7 +57,8 @@ export class ChatWidget extends Component {
       user,
       userId,
       spark,
-      conversation
+      conversation,
+      flags
     } = nextProps;
 
     const {
@@ -69,15 +76,30 @@ export class ChatWidget extends Component {
       }
     }
 
-    if (conversation.id && !conversation.mercuryState.isListening) {
-      nextProps.listenToMercuryActivity(conversation.id, spark);
+    // Setup once we have a conversation
+    if (conversation.id) {
+      if (!conversation.mercuryState.isListening) {
+        nextProps.listenToMercuryActivity(conversation.id, spark);
+      }
+      if (!flags.hasFetched && !flags.isFetching) {
+        nextProps.fetchFlags(spark);
+      }
     }
 
   }
 
   shouldComponentUpdate(nextProps) {
     const props = this.props;
-    return nextProps.sparkState.connected !== props.sparkState.connected || nextProps.user !== props.user || nextProps.conversation.activities !== props.conversation.activities || nextProps.widget !== props.widget || nextProps.indicators !== props.indicators || nextProps.conversation.isLoadingHistoryUp !== props.conversation.isLoadingHistoryUp;
+    /* eslint-disable operator-linebreak */
+    /* eslint-disable-reason: Giant list of comparisons very difficult to read and diff */
+    return nextProps.conversation.activities !== props.conversation.activities
+      || nextProps.conversation.isLoadingHistoryUp !== props.conversation.isLoadingHistoryUp
+      || nextProps.flags !== props.flags
+      || nextProps.indicators !== props.indicators
+      || nextProps.sparkState.connected !== props.sparkState.connected
+      || nextProps.user !== props.user
+      || nextProps.widget !== props.widget;
+    /* eslint-enable operator-linebreak */
   }
 
   componentWillUpdate(nextProps) {
@@ -167,6 +189,26 @@ export class ChatWidget extends Component {
     this.activityList.scrollToBottom();
   }
 
+  handleActivityFlag(activityId) {
+    const props = this.props;
+    const {
+      conversation,
+      flags,
+      spark
+    } = props;
+    const activity = conversation.activities.find((act) => act.id === activityId);
+    if (activity) {
+      const foundFlag = flags.flags.find((flag) => flag.activityUrl === activity.url);
+      if (foundFlag) {
+        this.props.removeFlagFromServer(foundFlag, spark);
+      }
+      else {
+        this.props.flagActivity(activity, spark);
+      }
+
+    }
+  }
+
   /**
    * Displays modal confirming activity delete
    *
@@ -218,6 +260,7 @@ export class ChatWidget extends Component {
     const props = this.props;
     const {
       conversation,
+      flags,
       indicators,
       spark,
       sparkState,
@@ -282,9 +325,11 @@ export class ChatWidget extends Component {
               <ScrollingActivity
                 activities={activities}
                 currentUserId={currentUser.id}
+                flags={flags.flags}
                 isLoadingHistoryUp={isLoadingHistoryUp}
                 isTyping={isTyping}
                 onActivityDelete={this.handleActivityDelete}
+                onActivityFlag={this.handleActivityFlag}
                 onScroll={this.handleScroll}
                 ref={this.getActivityList}
               />
@@ -319,9 +364,11 @@ ChatWidget.propTypes = {
   deleteActivity: PropTypes.func.isRequired,
   deleteActivityAndDismiss: PropTypes.func.isRequired,
   fetchCurrentUser: PropTypes.func.isRequired,
+  flagActivity: PropTypes.func.isRequired,
   hideDeleteModal: PropTypes.func.isRequired,
   listenToMercuryActivity: PropTypes.func.isRequired,
   loadPreviousMessages: PropTypes.func.isRequired,
+  removeFlagFromServer: PropTypes.func.isRequired,
   setScrollPosition: PropTypes.func.isRequired,
   showScrollToBottomButton: PropTypes.func.isRequired,
   spark: PropTypes.object.isRequired,
@@ -333,6 +380,7 @@ function mapStateToProps(state, ownProps) {
   return {
     spark: ownProps.spark,
     sparkState: state.spark,
+    flags: state.flags,
     user: state.user,
     conversation: state.conversation,
     widget: state.widget,
@@ -347,10 +395,13 @@ export default connect(
     createConversationWithUser,
     deleteActivity,
     deleteActivityAndDismiss,
+    flagActivity,
     fetchCurrentUser,
+    fetchFlags,
     hideDeleteModal,
     listenToMercuryActivity,
     loadPreviousMessages,
+    removeFlagFromServer,
     setScrollPosition,
     showScrollToBottomButton,
     updateHasNewMessage

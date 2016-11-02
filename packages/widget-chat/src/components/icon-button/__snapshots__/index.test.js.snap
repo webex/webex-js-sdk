@@ -1,7 +1,7 @@
 exports[`IconButton component renders properly 1`] = `
 <div
   className="icon-button"
-  onClick={[Function mockConstructor]}>
+  onClick={[Function anonymous]}>
   <div
     className="icon"
     title={undefined} />

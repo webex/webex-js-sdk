@@ -32,9 +32,22 @@ exports[`ActivityItemPost post component renders properly 1`] = `
   <div
     className="activity-post-actions">
     <div
-      className="post-actions">
+      className="activity-post-action">
       <div
-        className="post-actions-item">
+        className="post-action-item">
+        <div
+          className="icon-button"
+          onClick={[Function handleOnFlag]}>
+          <div
+            className="icon"
+            title="Flag this message" />
+        </div>
+      </div>
+    </div>
+    <div
+      className="activity-post-action">
+      <div
+        className="post-action-item">
         <div
           className="icon-button"
           onClick={[Function handleOnDelete]}>
