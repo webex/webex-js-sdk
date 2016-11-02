@@ -9,6 +9,7 @@ import thunk from 'redux-thunk';
 import createLogger from 'redux-logger';
 import {
   conversation,
+  flags,
   indicators,
   message,
   user,
@@ -34,6 +35,7 @@ const enhancers = [
 export default createStore(
   combineReducers({
     conversation,
+    flags,
     indicators,
     message,
     user,

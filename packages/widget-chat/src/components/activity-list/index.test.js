@@ -4,6 +4,7 @@ import renderer from 'react-test-renderer';
 import ActivityList from '.';
 
 describe(`ActivityList component`, () => {
+  const flags = [];
   const activities = [{
     id: `test-123-123-123-123`,
     actor: {
@@ -40,11 +41,13 @@ describe(`ActivityList component`, () => {
   }];
 
   const onActivityDelete = jest.fn();
-
+  const onActivityFlag = jest.fn();
   const component = renderer.create(
     <ActivityList
       activities={activities}
+      flags={flags}
       onActivityDelete={onActivityDelete}
+      onActivityFlag={onActivityFlag}
     />
   );
 
