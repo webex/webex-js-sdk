@@ -30,26 +30,26 @@ function addFlagError(activity, error) {
   };
 }
 
-export const FLAGS_REQUEST_BEGIN = `FLAGS_REQUEST_BEGIN`;
-function flagsRequestBegin() {
+export const REQUEST_FLAGS_BEGIN = `REQUEST_FLAGS_BEGIN`;
+function requestFlagsBegin() {
   return {
-    type: FLAGS_REQUEST_BEGIN
+    type: REQUEST_FLAGS_BEGIN
   };
 }
 
-export const FLAGS_REQUEST = `FLAGS_REQUEST`;
-function flagsRequestSuccess(flags) {
+export const REQUEST_FLAGS = `REQUEST_FLAGS`;
+function requestFlagsSuccess(flags) {
   return {
-    type: FLAGS_REQUEST,
+    type: REQUEST_FLAGS,
     payload: {
       flags
     }
   };
 }
 
-function flagsRequestError(error) {
+function requestFlagsError(error) {
   return {
-    type: FLAGS_REQUEST,
+    type: REQUEST_FLAGS,
     payload: error,
     error: true
   };
@@ -84,13 +84,13 @@ function removeFlagError(error, flag) {
  */
 export function fetchFlags(spark) {
   return (dispatch) => {
-    dispatch(flagsRequestBegin());
+    dispatch(requestFlagsBegin());
     return spark.flag.list()
       .then((flags) =>
-        dispatch(flagsRequestSuccess(flags))
+        dispatch(requestFlagsSuccess(flags))
       )
       .catch((error) =>
-        dispatch(flagsRequestError(error))
+        dispatch(requestFlagsError(error))
       );
   };
 }

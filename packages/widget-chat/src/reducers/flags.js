@@ -1,8 +1,8 @@
 import {
   ADD_FLAG,
   ADD_FLAG_BEGIN,
-  FLAGS_REQUEST,
-  FLAGS_REQUEST_BEGIN,
+  REQUEST_FLAGS,
+  REQUEST_FLAGS_BEGIN,
   REMOVE_FLAG
 } from '../actions/flags';
 
@@ -57,9 +57,9 @@ export default function conversation(state = { // eslint-disable-line complexity
     });
   }
 
-  case FLAGS_REQUEST_BEGIN:
+  case REQUEST_FLAGS_BEGIN:
     return Object.assign({}, state, {isFetching: true});
-  case FLAGS_REQUEST: {
+  case REQUEST_FLAGS: {
     const flagObject = Object.assign({}, state, {
       hasFetched: true,
       isFetching: false
