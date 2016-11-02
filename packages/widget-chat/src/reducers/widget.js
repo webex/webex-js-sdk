@@ -11,10 +11,10 @@ export default function reduceWidget(state = {
 }, action) {
   switch (action.type) {
   case UPDATE_WIDGET_STATE:
-    return Object.assign({}, state, action.state);
+    return Object.assign({}, state, action.payload.state);
 
   case SET_SCROLL_POSITION:
-    return Object.assign({}, state, action.scrollPosition);
+    return Object.assign({}, state, action.payload.scrollPosition);
 
   default:
     return state;
