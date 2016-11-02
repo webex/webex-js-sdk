@@ -5,7 +5,7 @@ import _ from 'lodash';
 import {
   ADD_ACTIVITIES_TO_CONVERSATION,
   CREATE_CONVERSATION,
-  RECEIVE_CONVERSATION,
+  CREATE_CONVERSATION_BEGIN,
   RECEIVE_MERCURY_ACTIVITY,
   RECEIVE_MERCURY_COMMENT,
   UPDATE_CONVERSATION_STATE,
@@ -43,13 +43,13 @@ export default function reduceConversation(state = {
     });
   }
 
-  case CREATE_CONVERSATION: {
+  case CREATE_CONVERSATION_BEGIN: {
     return Object.assign({}, state, {
       isFetching: true
     });
   }
 
-  case RECEIVE_CONVERSATION: {
+  case CREATE_CONVERSATION: {
     const activities = action.payload.conversation.activities.items.filter(filterActivity);
 
     return Object.assign({}, state, {

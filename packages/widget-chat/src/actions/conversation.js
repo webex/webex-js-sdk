@@ -11,12 +11,22 @@ export function addActivitiesToConversation(activities) {
   };
 }
 
+export const CREATE_CONVERSATION_BEGIN = `CREATE_CONVERSATION_BEGIN`;
+export function createConversationBegin(userId) {
+  return {
+    type: CREATE_CONVERSATION_BEGIN,
+    payload: {
+      userId
+    }
+  };
+}
+
 export const CREATE_CONVERSATION = `CREATE_CONVERSATION`;
-export function createConversation(userId) {
+export function createConversation(conversation) {
   return {
     type: CREATE_CONVERSATION,
     payload: {
-      userId
+      conversation
     }
   };
 }
@@ -28,16 +38,6 @@ export function deleteActivityFromConversation(conversation, activity) {
     payload: {
       conversation,
       activity
-    }
-  };
-}
-
-export const RECEIVE_CONVERSATION = `RECEIVE_CONVERSATION`;
-export function receiveConversation(conversation) {
-  return {
-    type: RECEIVE_CONVERSATION,
-    payload: {
-      conversation
     }
   };
 }
@@ -92,7 +92,7 @@ export function updateConversationState(conversationState) {
  */
 export function createConversationWithUser(userId, spark) {
   return (dispatch) => {
-    dispatch(createConversation(userId));
+    dispatch(createConversationBegin(userId));
 
     spark.conversation.create({
       participants: [userId]
@@ -100,7 +100,7 @@ export function createConversationWithUser(userId, spark) {
       latestActivity: true,
       activitiesLimit: 30
     })
-      .then((conversation) => dispatch(receiveConversation(conversation)));
+      .then((conversation) => dispatch(createConversation(conversation)));
   };
 }
 
