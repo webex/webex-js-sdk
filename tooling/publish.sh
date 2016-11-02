@@ -9,7 +9,7 @@ DOCKER_RUN_OPTS="--rm --volumes-from ${HOSTNMAME} spark-js-sdk-builder"
 echo "################################################################################"
 echo "# PUBLISHING NEW VERSIONS TO NPM"
 echo "################################################################################"
-echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
+echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ../.npmrc
 npm run lerna -- exec -- bash -c "npm publish || true"
 rm -f .npmrc
 
