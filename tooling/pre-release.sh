@@ -3,14 +3,9 @@
 set -e
 
 # Updates version numbers but *does not* publish to npm/github
+cd $(dirname $)
 
-VERSION=$(node <<EOF
-var fs = require('fs');
-var lerna = JSON.parse(fs.readFileSync('../lerna.json'));
-var version = lerna.version;
-version = version.split('.');
-console.log(version[0] + '.' + version[1] + '.' + (parseInt(version[2], 10) + 1));
-EOF)
+VERSION=$(node ./get-version.js)
 
 set +e
 npm run lerna -- publish --skip-npm --skip-git --repo-version="${VERSION}" --yes
