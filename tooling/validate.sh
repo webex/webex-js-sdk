@@ -19,7 +19,6 @@ echo "# BUMPING VERSION NUMBERS"
 echo "################################################################################"
 npm run grunt -- release
 ./pre-release.sh
-npm run grunt:concurrent -- build:docs
 
 echo "################################################################################"
 echo "# STORING PROMOTION SHA"
