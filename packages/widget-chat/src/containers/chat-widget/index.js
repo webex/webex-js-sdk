@@ -311,13 +311,14 @@ export class ChatWidget extends Component {
       indicators,
       spark,
       sparkState,
+      user,
       widget
     } = props;
 
-    let currentUser;
-    if (props.user) {
-      currentUser = props.user.currentUser;
-    }
+    const {
+      avatars,
+      currentUser
+    } = user;
 
     let main = ( // eslint-disable-line no-extra-parens
       <div className={classNames(`loading`, styles.loading)}>
@@ -359,18 +360,24 @@ export class ChatWidget extends Component {
       }
 
       if (isLoaded) {
-        const user = this.getUserFromConversation(conversation);
+        const toUser = this.getUserFromConversation(conversation);
+        const toUserAvatar = avatars[toUser.id];
         const isTyping = indicators.typing.length > 0;
-        const {displayName} = user;
+        const {displayName} = toUser;
         const messagePlaceholder = `Send a message to ${displayName}`;
         main = ( // eslint-disable-line no-extra-parens
           <div className={classNames(`widget-chat-inner`, styles.widgetChatInner)}>
             <div className={classNames(`title-bar-wrapper`, styles.titleBarWrapper)}>
-              <TitleBar connectionStatus={sparkState} displayName={displayName} />
+              <TitleBar
+                connectionStatus={sparkState}
+                displayName={displayName}
+                image={toUserAvatar}
+              />
             </div>
             <div className={classNames(`activity-list-wrapper`, styles.activityListWrapper)}>
               <ScrollingActivity
                 activities={activities}
+                avatars={avatars}
                 currentUserId={currentUser.id}
                 flags={flags.flags}
                 isLoadingHistoryUp={isLoadingHistoryUp}

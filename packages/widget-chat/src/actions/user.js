@@ -1,17 +1,21 @@
-export const ADD_AVATAR_FOR_USER = `ADD_AVATAR_FOR_USER`;
-function addAvatarForUserId(userId, avatar) {
+export const ADD_AVATAR = `ADD_AVATAR`;
+function addAvatar(userId, avatar) {
   return {
-    type: ADD_AVATAR_FOR_USER,
-    userId,
-    avatar
+    type: ADD_AVATAR,
+    payload: {
+      userId,
+      avatar
+    }
   };
 }
 
-export const BEGIN_FETCH_AVATAR_FOR_USER = `BEGIN_FETCH_AVATAR_FOR_USER`;
-function beginFetchAvatarForUser(userId) {
+export const ADD_AVATAR_BEGIN = `ADD_AVATAR_BEGIN`;
+function addAvatarBegin(userId) {
   return {
-    type: BEGIN_FETCH_AVATAR_FOR_USER,
-    userId
+    type: ADD_AVATAR_BEGIN,
+    payload: {
+      userId
+    }
   };
 }
 
@@ -49,10 +53,10 @@ export function fetchCurrentUser(spark) {
 
 export function fetchAvatarForUserId(userId, spark) {
   return (dispatch) => {
-    dispatch(beginFetchAvatarForUser(userId));
+    dispatch(addAvatarBegin(userId));
     return spark.avatar.retrieveAvatarUrl(userId)
       .then((avatarUrl) =>
-        dispatch(addAvatarForUserId(userId, avatarUrl))
+        dispatch(addAvatar(userId, avatarUrl))
       );
   };
 }

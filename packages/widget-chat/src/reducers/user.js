@@ -1,6 +1,6 @@
 import {
-  ADD_AVATAR_FOR_USER,
-  BEGIN_FETCH_AVATAR_FOR_USER,
+  ADD_AVATAR,
+  ADD_AVATAR_BEGIN,
   GET_CURRENT_USER,
   GET_CURRENT_USER_BEGIN
 } from '../actions/user';
@@ -11,9 +11,9 @@ function user(state = {
   isFetchingCurrentUser: false
 }, action) {
   switch (action.type) {
-  case ADD_AVATAR_FOR_USER:
+  case ADD_AVATAR:
     {
-      const {userId, avatar} = action;
+      const {userId, avatar} = action.payload;
       const avatarObj = {};
       avatarObj[userId] = avatar;
       const avatars = Object.assign({}, state.avatars, avatarObj);
@@ -23,9 +23,9 @@ function user(state = {
         avatarsInFlight
       });
     }
-  case BEGIN_FETCH_AVATAR_FOR_USER:
+  case ADD_AVATAR_BEGIN:
     return Object.assign({}, state, {
-      avatarsInFlight: [...state.avatarsInFlight, action.userId]
+      avatarsInFlight: [...state.avatarsInFlight, action.payload.userId]
     });
   case GET_CURRENT_USER:
     return Object.assign({}, state, {

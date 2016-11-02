@@ -6,7 +6,7 @@ import {formatDate} from '../../utils/date';
 
 export default function ActivityList(props) {
   let lastActorId, lastVerb;
-  const {flags} = props;
+  const {avatars, flags} = props;
   const activities = props.activities
     .map((activity) => {
       const additional = lastActorId === activity.actor.id && lastVerb === activity.verb;
@@ -15,6 +15,7 @@ export default function ActivityList(props) {
       const isFlagged = flags && flags.some((flag) => flag.activityUrl === activity.url);
       return (
         <ActivityItem
+          avatarUrl={avatars[activity.actor.id]}
           content={activity.object.displayName}
           id={activity.id}
           isAdditional={additional}
@@ -39,6 +40,7 @@ export default function ActivityList(props) {
 
 ActivityList.propTypes = {
   activities: PropTypes.array,
+  avatars: PropTypes.object.isRequired,
   currentUserId: PropTypes.string,
   flags: PropTypes.array,
   onActivityDelete: PropTypes.func.isRequired,
