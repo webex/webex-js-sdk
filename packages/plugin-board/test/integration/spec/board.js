@@ -25,7 +25,7 @@ function generateTonsOfContents(numOfContents) {
 }
 
 describe(`plugin-board`, () => {
-  describe(`service`, function() {
+  describe(`service`, () => {
     let board, conversation, fixture, participants;
 
     before(`create users`, () => testUsers.create({count: 3})
