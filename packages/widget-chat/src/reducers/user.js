@@ -1,8 +1,8 @@
 import {
   ADD_AVATAR_FOR_USER,
   BEGIN_FETCH_AVATAR_FOR_USER,
-  RECEIVE_CURRENT_USER,
-  UPDATE_CURRENT_USER_STATE
+  GET_CURRENT_USER,
+  GET_CURRENT_USER_BEGIN
 } from '../actions/user';
 
 function user(state = {
@@ -27,14 +27,14 @@ function user(state = {
     return Object.assign({}, state, {
       avatarsInFlight: [...state.avatarsInFlight, action.userId]
     });
-  case RECEIVE_CURRENT_USER:
+  case GET_CURRENT_USER:
     return Object.assign({}, state, {
-      isFetchingCurrentUser: action.isFetching,
-      currentUser: action.user
+      isFetchingCurrentUser: action.payload.isFetching,
+      currentUser: action.payload.user
     });
-  case UPDATE_CURRENT_USER_STATE:
+  case GET_CURRENT_USER_BEGIN:
     return Object.assign({}, state, {
-      isFetchingCurrentUser: action.state.isFetching
+      isFetchingCurrentUser: action.payload.isFetching
     });
   default:
     return state;

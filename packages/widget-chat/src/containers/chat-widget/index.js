@@ -17,7 +17,7 @@ import {
 import {
   fetchFlags,
   flagActivity,
-  removeFlag
+  removeFlagFromServer
 } from '../../actions/flags';
 import {
   confirmDeleteActivity,
@@ -247,7 +247,7 @@ export class ChatWidget extends Component {
     if (activity) {
       const foundFlag = flags.flags.find((flag) => flag.activityUrl === activity.url);
       if (foundFlag) {
-        this.props.removeFlag(foundFlag, spark);
+        this.props.removeFlagFromServer(foundFlag, spark);
       }
       else {
         this.props.flagActivity(activity, spark);
@@ -416,7 +416,7 @@ ChatWidget.propTypes = {
   hideDeleteModal: PropTypes.func.isRequired,
   listenToMercuryActivity: PropTypes.func.isRequired,
   loadPreviousMessages: PropTypes.func.isRequired,
-  removeFlag: PropTypes.func.isRequired,
+  removeFlagFromServer: PropTypes.func.isRequired,
   setScrollPosition: PropTypes.func.isRequired,
   showScrollToBottomButton: PropTypes.func.isRequired,
   spark: PropTypes.object.isRequired,
@@ -450,7 +450,7 @@ export default connect(
     hideDeleteModal,
     listenToMercuryActivity,
     loadPreviousMessages,
-    removeFlag,
+    removeFlagFromServer,
     setScrollPosition,
     showScrollToBottomButton,
     updateHasNewMessage

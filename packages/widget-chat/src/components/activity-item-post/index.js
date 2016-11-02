@@ -18,16 +18,12 @@ export default function ActivityItemPost(props) {
     onActivityFlag(id);
   }
 
-  function wrapActionItem(action, highlight) { // eslint-disable-line react/no-multi-comp
+  function getActionClassNames(highlight) {
     const actionClassNames = [`activity-post-action`, styles.activityPostAction];
     if (highlight) {
-      actionClassNames.push(`activity-post-action-highlighted`, styles.activityPostActionHighlighted);
+      actionClassNames.push(`isHighlighted`, styles.isHighlighted);
     }
-    return (
-      <div className={classNames(actionClassNames)}>
-        {action}
-      </div>
-    );
+    return actionClassNames;
   }
 
   const {
@@ -41,16 +37,33 @@ export default function ActivityItemPost(props) {
 
   let deleteAction;
   if (isSelf) {
-    deleteAction = <ActivityItemPostAction iconType={ICON_TYPE_DELETE} onClick={handleOnDelete} title="Delete this message" />;
+    deleteAction = ( // eslint-disable-line no-extra-parens
+      <div className={classNames(getActionClassNames())}>
+        <ActivityItemPostAction
+          iconType={ICON_TYPE_DELETE}
+          onClick={handleOnDelete}
+          title="Delete this message"
+        />
+      </div>
+    );
   }
   else {
-    deleteAction = <div className={classNames(`action-spacer`, styles.actionSpacer)} />;
+    deleteAction = ( // eslint-disable-line no-extra-parens
+      <div className={classNames(getActionClassNames())}>
+        <div className={classNames(`action-spacer`, styles.actionSpacer)} />
+      </div>
+    );
   }
-  deleteAction = wrapActionItem(deleteAction, false);
 
-  let flagAction = <ActivityItemPostAction iconType={ICON_TYPE_FLAGGED_OUTLINE} onClick={handleOnFlag} title="Flag this message" />;
-  flagAction = wrapActionItem(flagAction, isFlagged);
-
+  const flagAction = ( // eslint-disable-line no-extra-parens
+    <div className={classNames(getActionClassNames(isFlagged))}>
+      <ActivityItemPostAction
+        iconType={ICON_TYPE_FLAGGED_OUTLINE}
+        onClick={handleOnFlag}
+        title="Flag this message"
+      />
+    </div>
+  );
 
   return (
     <div className={classNames(`activity-post`, styles.post, isAdditional ? styles.additional : ``)}>

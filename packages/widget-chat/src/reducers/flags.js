@@ -1,10 +1,9 @@
 import {
   ADD_FLAG,
-  BEGIN_RECEIVE_FLAGS,
-  RECEIVE_FLAGS,
-  REMOVE_FLAG,
-  REMOVE_FLAG_FAIL,
-  UPDATE_FLAG
+  ADD_FLAG_BEGIN,
+  REQUEST_FLAGS,
+  REQUEST_FLAGS_BEGIN,
+  REMOVE_FLAG
 } from '../actions/flags';
 
 const IN_FLIGHT_FLAG_ID = `IN_FLIGHT_FLAG_ID`;
@@ -18,7 +17,8 @@ function mapFlag(flag) {
   };
 }
 
-export default function conversation(state = {
+// eslint-disable-reason Reducer Reduction Strategy incoming...
+export default function conversation(state = { // eslint-disable-line complexity
   flags: [],
   hasFetched: false,
   isFetching: false
@@ -26,58 +26,68 @@ export default function conversation(state = {
   switch (action.type) {
 
   case ADD_FLAG: {
+    const {activity} = action.payload;
+    let flags = [...state.flags];
+    if (action.error) {
+      // Remove in flight flag
+      flags = flags.filter((flag) => flag.activityUrl !== activity.url);
+    }
+    else {
+      const updatedFlag = mapFlag(action.payload.flag);
+      flags = flags.map((flag) => {
+        // Replace in flight activity flag with actual flag
+        if (flag.activityUrl === updatedFlag.activityUrl) {
+          return updatedFlag;
+        }
+        return flag;
+      });
+    }
+    return Object.assign({}, state, {
+      flags: [...flags]
+    });
+  }
+  case ADD_FLAG_BEGIN: {
     const flag = {
       id: IN_FLIGHT_FLAG_ID,
       url: IN_FLIGHT_FLAG_URL,
-      activityUrl: action.activity.url
+      activityUrl: action.payload.activity.url
     };
     return Object.assign({}, state, {
       flags: [...state.flags, flag]
     });
   }
 
-  case BEGIN_RECEIVE_FLAGS: {
-    return Object.assign({}, state, {
-      isFetching: true
-    });
-  }
-
-  case RECEIVE_FLAGS: {
-    const flags = action.flags.map(mapFlag);
-    return Object.assign({}, state, {
+  case REQUEST_FLAGS_BEGIN:
+    return Object.assign({}, state, {isFetching: true});
+  case REQUEST_FLAGS: {
+    const flagObject = Object.assign({}, state, {
       hasFetched: true,
-      isFetching: false,
-      flags: [...flags]
+      isFetching: false
     });
+    if (action.error) {
+      flagObject.error = action.payload;
+    }
+    else {
+      const flags = action.payload.flags.map(mapFlag);
+      flagObject.flags = [...flags];
+    }
+    return flagObject;
   }
 
   case REMOVE_FLAG: {
-    const flags = state.flags.filter((flag) => flag.id !== action.flag.id);
+    const {flag} = action.payload;
+    let flags = [...state.flags];
+    if (action.error) {
+      // Unable to delete flag, add it back in
+      flags.push(flag);
+    }
+    else {
+      flags = state.flags.filter((existingFlag) => existingFlag.id !== flag.id);
+    }
     return Object.assign({}, state, {
       flags: [...flags]
     });
   }
-
-  case REMOVE_FLAG_FAIL: {
-    const flag = action.flag;
-    return Object.assign({}, state, {
-      flags: [...state.flags, flag]
-    });
-  }
-
-  case UPDATE_FLAG: {
-    const updatedFlag = mapFlag(action.flag);
-    const flags = state.flags.map((flag) => {
-      if (flag.activityUrl === updatedFlag.activityUrl) {
-        return updatedFlag;
-      }
-      return flag;
-    });
-    return Object.assign({}, state, {
-      flags: [...flags]
-    });
-  }
-
   default: {
     return state;
   }

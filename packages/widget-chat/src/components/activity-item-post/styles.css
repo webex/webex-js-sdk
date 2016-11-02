@@ -101,7 +101,7 @@
   width: 22px;
 }
 
-.activity-post-action-highlighted {
+.activity-post-action.isHighlighted {
   color: #049fd9;
   visibility: visible;
 }

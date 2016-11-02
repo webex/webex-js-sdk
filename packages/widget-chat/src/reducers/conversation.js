@@ -5,7 +5,7 @@ import _ from 'lodash';
 import {
   ADD_ACTIVITIES_TO_CONVERSATION,
   CREATE_CONVERSATION,
-  RECEIVE_CONVERSATION,
+  CREATE_CONVERSATION_BEGIN,
   RECEIVE_MERCURY_ACTIVITY,
   RECEIVE_MERCURY_COMMENT,
   UPDATE_CONVERSATION_STATE,
@@ -37,35 +37,35 @@ export default function reduceConversation(state = {
 }, action) {
   switch (action.type) {
   case ADD_ACTIVITIES_TO_CONVERSATION: {
-    const activities = [...action.activities, ...state.activities];
+    const activities = [...action.payload.activities, ...state.activities];
     return Object.assign({}, state, {
       activities: sortActivityByTime(activities)
     });
   }
 
-  case CREATE_CONVERSATION: {
+  case CREATE_CONVERSATION_BEGIN: {
     return Object.assign({}, state, {
       isFetching: true
     });
   }
 
-  case RECEIVE_CONVERSATION: {
-    const activities = action.conversation.activities.items.filter(filterActivity);
+  case CREATE_CONVERSATION: {
+    const activities = action.payload.conversation.activities.items.filter(filterActivity);
 
     return Object.assign({}, state, {
       activities,
       isFetching: false,
       isLoaded: true,
-      id: action.conversation.id,
-      participants: action.conversation.participants.items
+      id: action.payload.conversation.id,
+      participants: action.payload.conversation.participants.items
     });
   }
 
   case RECEIVE_MERCURY_ACTIVITY: {
     let activities = state.activities;
-    if (action.activity.verb === `delete`) {
+    if (action.payload.activity.verb === `delete`) {
       // Find activity that is being deleted and change it to a tombstone
-      const deletedId = action.activity.object.id;
+      const deletedId = action.payload.activity.object.id;
       activities = state.activities.map((activity) => {
         if (activity.id === deletedId) {
           return Object.assign({}, activity, {
@@ -82,19 +82,19 @@ export default function reduceConversation(state = {
 
   case RECEIVE_MERCURY_COMMENT: {
     const activities = state.activities;
-    const activity = action.activity;
+    const activity = action.payload.activity;
     return Object.assign({}, state, {
       activities: [...activities, activity]
     });
   }
 
   case UPDATE_CONVERSATION_STATE: {
-    return Object.assign({}, state, action.conversationState);
+    return Object.assign({}, state, action.payload.conversationState);
   }
 
   case UPDATE_MERCURY_STATE: {
     return Object.assign({}, state, {
-      mercuryState: action.mercuryState
+      mercuryState: action.payload.mercuryState
     });
   }
 

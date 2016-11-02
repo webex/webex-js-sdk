@@ -1,47 +1,78 @@
+export const ADD_FLAG_BEGIN = `ADD_FLAG_BEGIN`;
+function addFlagBegin(activity) {
+  return {
+    type: ADD_FLAG_BEGIN,
+    payload: {
+      activity
+    }
+  };
+}
+
 export const ADD_FLAG = `ADD_FLAG`;
-function actionAddFlag(activity) {
+function addFlagSuccess(activity, flag) {
   return {
     type: ADD_FLAG,
-    activity
+    payload: {
+      activity,
+      flag
+    }
   };
 }
 
-export const BEGIN_RECEIVE_FLAGS = `BEGIN_RECEIVE_FLAGS`;
-function actionBeginReceiveFlags() {
+function addFlagError(activity, error) {
   return {
-    type: BEGIN_RECEIVE_FLAGS
+    type: ADD_FLAG,
+    payload: {
+      activity,
+      error
+    },
+    error: true
   };
 }
 
-export const RECEIVE_FLAGS = `RECEIVE_FLAGS`;
-function actionReceiveFlags(flags) {
+export const REQUEST_FLAGS_BEGIN = `REQUEST_FLAGS_BEGIN`;
+function requestFlagsBegin() {
   return {
-    type: RECEIVE_FLAGS,
-    flags
+    type: REQUEST_FLAGS_BEGIN
+  };
+}
+
+export const REQUEST_FLAGS = `REQUEST_FLAGS`;
+function requestFlagsSuccess(flags) {
+  return {
+    type: REQUEST_FLAGS,
+    payload: {
+      flags
+    }
+  };
+}
+
+function requestFlagsError(error) {
+  return {
+    type: REQUEST_FLAGS,
+    payload: error,
+    error: true
   };
 }
 
 export const REMOVE_FLAG = `REMOVE_FLAG`;
-function actionRemoveFlag(flag) {
+function removeFlagBegin(flag) {
   return {
     type: REMOVE_FLAG,
-    flag
+    payload: {
+      flag
+    }
   };
 }
 
-export const REMOVE_FLAG_FAIL = `REMOVE_FLAG_FAIL`;
-function actionRemoveFlagFail(flag) {
+function removeFlagError(error, flag) {
   return {
-    type: REMOVE_FLAG_FAIL,
-    flag
-  };
-}
-
-export const UPDATE_FLAG = `UPDATE_FLAG`;
-function actionUpdateFlag(flag) {
-  return {
-    type: UPDATE_FLAG,
-    flag
+    type: REMOVE_FLAG,
+    payload: {
+      error,
+      flag
+    },
+    error: true
   };
 }
 
@@ -53,11 +84,14 @@ function actionUpdateFlag(flag) {
  */
 export function fetchFlags(spark) {
   return (dispatch) => {
-    dispatch(actionBeginReceiveFlags());
-    spark.flag.list()
-      .then((flags) => {
-        dispatch(actionReceiveFlags(flags));
-      });
+    dispatch(requestFlagsBegin());
+    return spark.flag.list()
+      .then((flags) =>
+        dispatch(requestFlagsSuccess(flags))
+      )
+      .catch((error) =>
+        dispatch(requestFlagsError(error))
+      );
   };
 }
 
@@ -71,11 +105,14 @@ export function fetchFlags(spark) {
  */
 export function flagActivity(activity, spark) {
   return (dispatch) => {
-    dispatch(actionAddFlag(activity));
+    dispatch(addFlagBegin(activity));
     return spark.flag.create(activity)
-      .then((flag) => {
-        dispatch(actionUpdateFlag(flag));
-      });
+      .then((flag) =>
+        dispatch(addFlagSuccess(activity, flag))
+      )
+      .catch((error) =>
+        dispatch(addFlagError(activity, error))
+      );
   };
 }
 
@@ -87,12 +124,12 @@ export function flagActivity(activity, spark) {
  * @param {any} spark
  * @returns {function}
  */
-export function removeFlag(flag, spark) {
+export function removeFlagFromServer(flag, spark) {
   return (dispatch) => {
-    dispatch(actionRemoveFlag(flag));
+    dispatch(removeFlagBegin(flag));
     return spark.flag.delete(flag)
-      .catch(() => {
-        dispatch(actionRemoveFlagFail(flag));
+      .catch((error) => {
+        dispatch(removeFlagError(error, flag));
       });
   };
 }
