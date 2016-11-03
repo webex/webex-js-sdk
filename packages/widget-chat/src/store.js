@@ -12,6 +12,7 @@ import {
   flags,
   indicators,
   message,
+  share,
   user,
   widget
 } from './reducers';
@@ -38,6 +39,7 @@ export default createStore(
     flags,
     indicators,
     message,
+    share,
     user,
     widget,
     spark: sparkReducer

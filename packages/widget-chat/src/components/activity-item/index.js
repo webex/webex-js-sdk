@@ -1,36 +1,42 @@
 import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 import ActivityItemPost from '../activity-item-post';
+import ActivityItemShareList from '../activity-item-share-list';
 import ActivityItemSystemMessage, {SYSTEM_MESSAGE_VERBS} from '../activity-item-system-message';
 
 import styles from './styles.css';
 
 const POST_VERB = `post`;
+const SHARE_VERB = `share`;
 
 export default function ActivityItem(props) {
   const {
+    activity,
     verb
   } = props;
 
   let itemComponent = ``;
 
   if (verb === POST_VERB) {
-    itemComponent = <ActivityItemPost {...props} />;
+    itemComponent = <ActivityItemPost content={activity.displayName} {...props} />;
+  }
+  else if (verb === SHARE_VERB) {
+    itemComponent = <ActivityItemShareList files={activity.files.items} {...props} />;
   }
   else if (SYSTEM_MESSAGE_VERBS.indexOf(verb) !== -1) {
-    itemComponent = <ActivityItemSystemMessage {...props} />;
+    itemComponent = <ActivityItemSystemMessage content={activity.displayName} {...props} />;
   }
 
   return (
-    <div className={classNames(`activity-item`, styles.activityItem)}>
+    <div className={classNames(`activity-item-container`, styles.activityItemContainer)}>
       {itemComponent}
     </div>
   );
 }
 
 ActivityItem.propTypes = {
-  avatar: PropTypes.element,
-  content: PropTypes.string,
+  activity: PropTypes.object,
+  avatarUrl: PropTypes.string,
   id: PropTypes.string.isRequired,
   isAdditional: PropTypes.bool,
   isFlagged: PropTypes.bool,

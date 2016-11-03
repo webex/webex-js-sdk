@@ -1,6 +1,6 @@
 import React, {Component} from 'react';
 
-import createSpark from './spark';
+import spark from './spark';
 import SparkComponent from './component';
 
 
@@ -13,7 +13,6 @@ export default function injectSpark(WrappedComponent, options = {}) {
   const {
     withRef = false
   } = options;
-  const spark = createSpark();
 
   class InjectSpark extends Component {
 

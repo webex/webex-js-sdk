@@ -15,8 +15,8 @@ export default function ActivityList(props) {
       const isFlagged = flags && flags.some((flag) => flag.activityUrl === activity.url);
       return (
         <ActivityItem
+          activity={activity.object}
           avatarUrl={avatars[activity.actor.id]}
-          content={activity.object.displayName}
           id={activity.id}
           isAdditional={additional}
           isFlagged={isFlagged}

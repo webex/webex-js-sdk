@@ -1,0 +1,20 @@
+exports[`FileDownloader container renders properly 1`] = `
+<div
+  files={
+    Array [
+      Object {
+        "url": "testFile1.jpg"
+      },
+      Object {
+        "url": "testFile2.jpg"
+      }
+    ]
+  }
+  onDownloadClick={[Function bound handleDownloadClick]}
+  retrieveSharedFile={[Function anonymous]}
+  share={
+    Object {
+      "files": Object {}
+    }
+  } />
+`;

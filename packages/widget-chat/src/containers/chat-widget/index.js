@@ -82,22 +82,26 @@ export class ChatWidget extends Component {
     if (conversation.id) {
       this.setupConversationActions(conversation, nextProps);
     }
-
   }
 
+  /* eslint-disable complexity */
+  /* eslint-disable-reason: Lots of checks for better efficiency, will be broken up later */
   shouldComponentUpdate(nextProps) {
     const props = this.props;
+
     /* eslint-disable operator-linebreak */
     /* eslint-disable-reason: Giant list of comparisons very difficult to read and diff */
     return nextProps.conversation.activities !== props.conversation.activities
       || nextProps.conversation.isLoadingHistoryUp !== props.conversation.isLoadingHistoryUp
       || nextProps.flags !== props.flags
       || nextProps.indicators !== props.indicators
+      || nextProps.share !== props.share
       || nextProps.sparkState.connected !== props.sparkState.connected
       || nextProps.user !== props.user
       || nextProps.widget !== props.widget;
     /* eslint-enable operator-linebreak */
   }
+  /* eslint-enable complexity */
 
   componentWillUpdate(nextProps) {
     const props = this.props;
@@ -205,6 +209,7 @@ export class ChatWidget extends Component {
   getActivityList(ref) {
     this.activityList = ref;
   }
+
 
   handleScroll() {
     const props = this.props;
@@ -433,6 +438,7 @@ ChatWidget.propTypes = {
 
 function mapStateToProps(state, ownProps) {
   return {
+    share: state.share,
     spark: ownProps.spark,
     sparkState: state.spark,
     flags: state.flags,
