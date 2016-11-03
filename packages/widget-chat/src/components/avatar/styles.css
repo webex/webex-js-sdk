@@ -2,6 +2,8 @@
   display: flex;
   width: 32px;
   height: 32px;
+  background-size: cover;
+  border-radius: 50%;
 }
 
 .avatar-letter {

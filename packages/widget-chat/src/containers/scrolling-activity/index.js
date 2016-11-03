@@ -37,6 +37,7 @@ function ScrollingActivity(props) {
 
 ScrollingActivity.propTypes = {
   activities: PropTypes.array,
+  avatars: PropTypes.object.isRequired,
   currentUserId: PropTypes.string,
   flags: PropTypes.array,
   isLoadingHistoryUp: PropTypes.bool,

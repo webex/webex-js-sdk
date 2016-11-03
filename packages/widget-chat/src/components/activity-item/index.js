@@ -36,7 +36,7 @@ export default function ActivityItem(props) {
 
 ActivityItem.propTypes = {
   activity: PropTypes.object,
-  avatar: PropTypes.element,
+  avatarUrl: PropTypes.string,
   id: PropTypes.string.isRequired,
   isAdditional: PropTypes.bool,
   isFlagged: PropTypes.bool,

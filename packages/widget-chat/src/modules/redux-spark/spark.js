@@ -1,5 +1,6 @@
 /* eslint camelcase: [0] */
 
+import '@ciscospark/plugin-avatar';
 import '@ciscospark/plugin-conversation';
 import '@ciscospark/plugin-flag';
 import Spark from '@ciscospark/spark-core';
