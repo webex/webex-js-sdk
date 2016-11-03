@@ -3,7 +3,7 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {config} from '../..';
+import '../..';
 
 import {assert} from '@ciscospark/test-helper-chai';
 import CiscoSpark from '@ciscospark/spark-core';
@@ -13,22 +13,24 @@ import {find, map} from 'lodash';
 import uuid from 'uuid';
 
 function generateTonsOfContents(numOfContents) {
-  const contents = [];
+  return new Promise((resolve) => {
+    const contents = [];
 
-  for (let i = 0; i < numOfContents; i++) {
-    contents.push({
-      type: `curve`,
-      payload: JSON.stringify({id: i, type: `curve`})
-    });
-  }
-  return contents;
+    for (let i = 0; i < numOfContents; i++) {
+      contents.push({
+        type: `curve`,
+        payload: JSON.stringify({id: i, type: `curve`})
+      });
+    }
+    resolve(contents);
+  });
 }
 
 describe(`plugin-board`, () => {
   describe(`service`, () => {
     let board, conversation, fixture, participants;
 
-    before(`create users`, () => testUsers.create({count: 3})
+    before(`create users`, () => testUsers.create({count: 2})
       .then((users) => {
         participants = users;
 
@@ -68,6 +70,8 @@ describe(`plugin-board`, () => {
     })));
 
     describe(`#_uploadImage()`, () => {
+
+      after(() => participants[0].spark.board.deleteAllContent(board));
 
       it(`uploads image to spark files`, () => {
         return participants[0].spark.board._uploadImage(conversation, fixture)
@@ -138,33 +142,24 @@ describe(`plugin-board`, () => {
       });
 
       it(`retrieves all boards for a specified conversation across multiple pages`, () => {
-        const pageLimit = 10;
-        let conversation;
+        let existingChannelsCount = 0;
+        let numChannelsToAdd = 0;
+        const pageLimit = 50;
 
-        // create room
-        return participants[0].spark.conversation.create({
-          displayName: `Test Board Conversation`,
-          participants
+        return participants[0].spark.board.getChannels({
+          conversationId: conversation.id,
+          channelsLimit: 100
         })
-
-          // board in room should be 0
-          .then((conversationResp) => {
-            conversation = conversationResp;
-
-            return participants[0].spark.board.getChannels({
-              conversationId: conversation.id,
-              channelsLimit: pageLimit
-            });
-          })
-          .then((channelPage) => {
-            assert.lengthOf(channelPage.items, 0);
+          .then((res) => {
+            existingChannelsCount = res.length;
+            assert(existingChannelsCount < pageLimit, `the existing channel count must be less that pageLimit for this test`);
+            numChannelsToAdd = pageLimit - existingChannelsCount + 1;
           })
 
-          // create boards
           .then(() => {
             const promises = [];
 
-            for (let i = 0; i < pageLimit + 1; i++) {
+            for (let i = 0; i < numChannelsToAdd; i++) {
               promises.push(participants[0].spark.board.createChannel({
                 aclUrl: conversation.id
               }));
@@ -187,13 +182,15 @@ describe(`plugin-board`, () => {
             return channelPage.next();
           })
           .then((channelPage) => {
-            assert.lengthOf(channelPage.items, 1);
+            assert.lengthOf(channelPage, 1);
             assert(!channelPage.hasNext());
           });
       });
     });
 
     describe(`#getContents()`, () => {
+
+      after(() => participants[0].spark.board.deleteAllContent(board));
 
       it(`adds and gets contents from the specified board`, () => {
         const contents = [{type: `curve`}];
@@ -209,37 +206,32 @@ describe(`plugin-board`, () => {
             assert.equal(contentPage.length, data.length);
             assert.equal(contentPage.items[0].payload, data[0].payload);
             assert.equal(contentPage.items[0].type, data[0].type);
-          });
+          })
+          .then(() => participants[0].spark.board.deleteAllContent(board));
       });
 
       describe(`handles large data sets`, () => {
-        const extraContent = 100;
+        const numberOfContents = 30;
         let tonsOfContents;
 
-        before(`create large data set`, () => {
-          tonsOfContents = generateTonsOfContents(config.board.numberContentsPerPageForGet + extraContent);
-          return participants[0].spark.board.deleteAllContent(board)
-            .then(() => participants[0].spark.board.addContent(conversation, board, tonsOfContents));
+        before(`generate contents`, () => {
+          return generateTonsOfContents(numberOfContents)
+            .then((res) => {
+              tonsOfContents = res;
+            });
         });
+
+        before(`create contents`, () => participants[0].spark.board.addContent(conversation, board, tonsOfContents));
 
         after(() => participants[0].spark.board.deleteAllContent(board));
 
         it(`using the default page limit`, () => participants[0].spark.board.getContents(board)
           .then((res) => {
-            assert.lengthOf(res, config.board.numberContentsPerPageForGet);
-            assert(res.hasNext());
-
-            for (let i = 0; i < res.length; i++) {
-              assert.equal(res.items[i].payload, tonsOfContents[i].payload);
-            }
-            return res.next();
-          })
-          .then((res) => {
-            assert.lengthOf(res, extraContent);
+            assert.lengthOf(res, numberOfContents);
             assert(!res.hasNext());
 
             for (let i = 0; i < res.length; i++) {
-              assert.equal(res.items[i].payload, tonsOfContents[config.board.numberContentsPerPageForGet + i].payload);
+              assert.equal(res.items[i].payload, tonsOfContents[i].payload, `payload data matches`);
             }
           }));
 
@@ -247,6 +239,11 @@ describe(`plugin-board`, () => {
           .then((res) => {
             assert.lengthOf(res, 25);
             assert(res.hasNext());
+            return res.next();
+          })
+          .then((res) => {
+            assert.lengthOf(res, numberOfContents - 25);
+            assert(!res.hasNext());
           }));
       });
     });
@@ -279,27 +276,19 @@ describe(`plugin-board`, () => {
         ];
 
         return participants[0].spark.board.addContent(conversation, channel, data)
-          .then(() => {
-            return participants[0].spark.board.deleteAllContent(channel);
-          })
-          .then(() => {
-            return participants[0].spark.board.getContents(channel);
-          })
+          .then(() => participants[0].spark.board.deleteAllContent(channel))
+          .then(() => participants[0].spark.board.getContents(channel))
           .then((res) => {
             assert.lengthOf(res, 0);
             return res;
           })
-          .then(() => {
-            return participants[0].spark.board.addContent(conversation, channel, data);
-          })
+          .then(() => participants[0].spark.board.addContent(conversation, channel, data))
           .then((res) => {
             assert.lengthOf(res[0].items, 2);
             const content = res[0].items[0];
             return participants[0].spark.board.deleteContent(channel, content);
           })
-          .then(() => {
-            return participants[0].spark.board.getContents(channel);
-          })
+          .then(() => participants[0].spark.board.getContents(channel))
           .then((res) => {
             assert.lengthOf(res, 1);
             assert.equal(res.items[0].payload, data[1].payload);

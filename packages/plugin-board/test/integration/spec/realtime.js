@@ -23,7 +23,7 @@ describe(`plugin-board`, () => {
     const mercuryBindingsPrefix = `board.`;
     let board, conversation, fixture, participants;
 
-    before(`create users`, () => testUsers.create({count: 3})
+    before(`create users`, () => testUsers.create({count: 2})
       .then((users) => {
         participants = users;
 
