@@ -7,6 +7,7 @@
 
 /* eslint-env browser */
 
+var assign = require('lodash.assign');
 var isarray = require('lodash.isarray');
 var Persistence = require('./persistence');
 var Realtime = require('./realtime');
@@ -89,10 +90,31 @@ var BoardService = SparkBase.extend({
       });
   },
 
+
+  /**
+   * Encrypt a channel
+   *
+   * @param {Board~Channel} channel
+   * @param {Object} options
+   * @param {Object} options.key Key to encrypt the channel and its contents
+   * @returns {Promise<Board~EncryptedChannel>}
+   */
+  encryptChannel: function encryptChannel(channel, options) {
+    options = assign({
+      key: null
+    }, options);
+
+    return Promise.resolve(options.key || this.spark.encryption.getUnusedKey())
+      .then(function encryptKmsMessage(key) {
+        channel.defaultEncryptionKeyUrl = key.keyUrl;
+        return this.spark.conversation.encrypter.encryptProperty(channel, 'kmsMessage', key);
+      }.bind(this));
+  },
+
   /**
    * Encrypts a collection of content
    * @memberof Board.BoardService
-   * @param  {string} encryptionKeyUrl conversation.defaultActivityEncryptionKeyUrl
+   * @param  {string} encryptionKeyUrl channel.defaultEncryptionKeyUrl
    * @param  {Array} contents   Array of {@link Board~Content} objects. (curves, text, and images)
    * @return {Promise<Array>} Resolves with an array of encrypted {@link Board~Content} objects.
    */

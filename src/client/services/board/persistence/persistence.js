@@ -8,6 +8,7 @@
 var assign = require('lodash.assign');
 var SparkBase = require('../../../../lib/spark-base');
 var chunk = require('lodash.chunk');
+var last = require('lodash.last');
 var pick = require('lodash.pick');
 var promiseSeries = require('es6-promise-series');
 
@@ -29,18 +30,17 @@ var PersistenceService = SparkBase.extend({
    * will break contents into chunks and make multiple GET request to the
    * board service
    * @memberof Board.PersistenceService
-   * @param  {Conversation} conversation - Contains the currently selected conversation
    * @param  {Board~Channel} channel
    * @param  {Array} contents - Array of {@link Board~Content} objects
    * @return {Promise<Board~Content>}
    */
-  addContent: function addContent(conversation, channel, contents) {
+  addContent: function addContent(channel, contents) {
     var chunks = [];
     chunks = chunk(contents, MAX_CONTENTS_ADD);
     // we want the first promise to resolve before continuing with the next
     // chunk or else we'll have race conditions among patches
     return promiseSeries(chunks.map(function _addContent(part) {
-      return this._addContentChunk.bind(this, conversation, channel, part);
+      return this._addContentChunk.bind(this, channel, part);
     }, this));
   },
 
@@ -49,7 +49,7 @@ var PersistenceService = SparkBase.extend({
    * Uploads image to spark files and adds SCR + downalodUrl to the persistence
    * service
    * @memberof Board.PersistenceService
-   * @param  {Conversation} conversation - Contains the currently selected conversation
+   * @param  {Conversation~ConversationObject} conversation
    * @param  {Board~Channel} channel
    * @param  {File} image - image to be uploaded
    * @return {Promise<Board~Content>}
@@ -57,7 +57,7 @@ var PersistenceService = SparkBase.extend({
   addImage: function addImage(conversation, channel, image) {
     return this.spark.board._uploadImage(conversation, image)
       .then(function addContent(scr) {
-        return this.spark.board.persistence.addContent(conversation, channel, [{
+        return this.spark.board.persistence.addContent(channel, [{
           mimeType: image.type,
           size: image.size,
           displayName: image.name,
@@ -113,19 +113,39 @@ var PersistenceService = SparkBase.extend({
   /**
    * Creates a Channel
    * @memberof Board.PersistenceService
+   * @param  {Conversation~ConversationObject} conversation
    * @param  {Board~Channel} channel
    * @return {Promise<Board~Channel>}
    */
-  createChannel: function createChannel(channel) {
-    return this.spark.request({
-      method: 'POST',
-      api: 'board',
-      resource: '/channels',
-      body: channel
-    })
+  createChannel: function createChannel(conversation, channel) {
+    if (!channel) {
+      channel = {};
+    }
+
+    return this._encryptChannel(conversation, channel)
+      .then(function requestCreateChannel(preppedChannel) {
+        return this.spark.request({
+          method: 'POST',
+          api: 'board',
+          resource: '/channels',
+          body: preppedChannel
+        });
+      }.bind(this))
       .then(function resolveWithBody(res) {
         return res.body;
       });
+  },
+
+  _encryptChannel: function _prepareChannel(conversation, channel) {
+    channel.aclUrlLink = conversation.aclUrl;
+    channel.kmsMessage = {
+      method: 'create',
+      uri: '/resources',
+      userIds: [conversation.kmsResourceObjectUrl],
+      keyUris: []
+    };
+
+    return this.spark.board.encryptChannel(channel);
   },
 
   /**
@@ -220,23 +240,26 @@ var PersistenceService = SparkBase.extend({
   /**
    * Gets Channels
    * @memberof Board.PersistenceService
+   * @param {Conversation~ConversationObject} conversation
    * @param {Object} options
    * @param {number} options.limit Max number of activities to return
    * @return {Promise} Resolves with an array of Channel items
    */
-  getChannels: function getChannels(options) {
+  getChannels: function getChannels(conversation, options) {
     options = options || {};
 
-    if (!options.conversationId) {
-      return Promise.reject(new Error('`conversationId` is required'));
+    if (!conversation) {
+      return Promise.reject(new Error('`conversation` is required'));
     }
 
     var params = {
       api: 'board',
       resource: '/channels',
-      qs: {}
+      qs: {
+        aclUrlLink: conversation.aclUrl
+      }
     };
-    assign(params.qs, pick(options, 'channelsLimit', 'conversationId'));
+    assign(params.qs, pick(options, 'channelsLimit'));
 
     return this.request(params)
       .then(function resolveWithBody(res) {
@@ -278,8 +301,8 @@ var PersistenceService = SparkBase.extend({
       });
   },
 
-  _addContentChunk: function _addContentHelper(conversation, channel, contentChunk) {
-    return this.spark.board.encryptContents(conversation.defaultActivityEncryptionKeyUrl, contentChunk)
+  _addContentChunk: function _addContentHelper(channel, contentChunk) {
+    return this.spark.board.encryptContents(channel.defaultEncryptionKeyUrl, contentChunk)
       .then(function addContent(res) {
         return this.spark.request({
           method: 'POST',
