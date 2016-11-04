@@ -113,7 +113,7 @@ describe(`http-core`, function() {
       // browser look like network errors in browsers, so testing it isn`t that
       // critical. That said, moving the error-reformatting logic out of the
       // environment-specific implementations may make this easier to stub.
-      nodeOnly(`makes network errors look mostly like HTTP errors`, () => {
+      nodeOnly(it)(`makes network errors look mostly like HTTP errors`, () => {
         return assert.isRejected(request(`https://localhost:0/not-a-route`))
           .then((err) => {
             assert.instanceOf(err, HttpError.NetworkOrCORSError);
