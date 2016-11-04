@@ -230,7 +230,7 @@ export default {
   requestAccessTokenFromJwt(options) {
     return this.spark.request({
       method: `POST`,
-      // I'm not thrilled by directly referencin the hydra service url, but
+      // I'm not thrilled by directly referencing the hydra service url, but
       // since the spark-core credentials plugin is on the march toward
       // deprecation, I think it's tolerable for now.
       uri: `${this.config.hydraServiceUrl}/jwt/login`,
