@@ -101,7 +101,8 @@ export function createConversationWithUser(userId, spark) {
       participants: [userId]
     }, {
       latestActivity: true,
-      activitiesLimit: 30
+      activitiesLimit: 30,
+      participantAckFilter: `all`
     })
       .then((conversation) => dispatch(createConversation(conversation)));
   };

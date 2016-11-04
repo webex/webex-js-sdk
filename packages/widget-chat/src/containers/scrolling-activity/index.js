@@ -5,6 +5,7 @@ import injectScrollable from '../wrapper-scrollable';
 import TypingIndicator from '../../components/typing-indicator';
 import ActivityList from '../../components/activity-list';
 import Spinner from '../../components/spinner';
+import ReadReceipts from '../read-receipts';
 
 import styles from './styles.css';
 
@@ -30,6 +31,9 @@ function ScrollingActivity(props) {
       <ActivityList {...props} />
       <div className={classNames(`indicators`, styles.indicators)}>
         {typingIndicator}
+      </div>
+      <div>
+        <ReadReceipts />
       </div>
     </div>
   );
