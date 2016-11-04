@@ -7,7 +7,6 @@ cd $(dirname $)
 
 VERSION=$(node ./get-version.js)
 
-
 echo "The following packages will be updated to version ${VERSION}"
 npm run lerna -- updated
 
