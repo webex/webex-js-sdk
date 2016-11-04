@@ -31,7 +31,9 @@ module.exports = function gruntConfig(grunt) {
       '!example*',
       '!test-helper*',
       '!bin*',
-      '!xunit-with-logs'
+      '!xunit-with-logs',
+      'test-helper-mock-web-socket',
+      'test-helper-mock-socket'
   ]);
 
   var config = {
