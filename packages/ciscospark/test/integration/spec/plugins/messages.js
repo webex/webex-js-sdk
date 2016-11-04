@@ -7,6 +7,8 @@ import {assert} from '@ciscospark/test-helper-chai';
 import {SparkHttpError} from '@ciscospark/spark-core';
 import sinon from '@ciscospark/test-helper-sinon';
 import spark from '../../..';
+import fh from '@ciscospark/test-helper-file';
+import {browserOnly, nodeOnly} from '@ciscospark/test-helper-mocha';
 
 const KNOWN_HOSTED_IMAGE_URL = `https://download.ciscospark.com/test/photo.png`;
 
@@ -63,6 +65,52 @@ describe(`ciscospark`, function() {
             assert.lengthOf(message.files, 1);
           });
       });
+
+      let blob, buffer;
+
+      browserOnly(before)(() => fh.fetch(`sample-image-small-one.png`)
+        .then((file) => {
+          blob = file;
+
+          return new Promise((resolve) => {
+            /* global FileReader */
+            const fileReader = new FileReader();
+            fileReader.onload = function() {
+              buffer = this.result;
+              resolve();
+            };
+            fileReader.readAsArrayBuffer(blob);
+          });
+        }));
+
+      nodeOnly(before)(() => fh.fetchWithoutMagic(`sample-image-small-one.png`)
+        .then((file) => {
+          buffer = file;
+        }));
+
+      browserOnly(it)(`posts a file to a room by directly supplying its blob`, () => spark.messages.create({
+        roomId: room.id,
+        file: blob
+      })
+        .then((message) => {
+          assert.property(message, `files`);
+          assert.isDefined(message.files);
+          assert.isArray(message.files);
+          assert.lengthOf(message.files, 1);
+        }));
+
+        // This appears to fail in browser because the uploaded file doesn't
+        // have a `filename` property.
+      it(`posts a file to a room by directly supplying its buffer`, () => spark.messages.create({
+        roomId: room.id,
+        file: buffer
+      })
+        .then((message) => {
+          assert.property(message, `files`);
+          assert.isDefined(message.files);
+          assert.isArray(message.files);
+          assert.lengthOf(message.files, 1);
+        }));
 
       it(`posts a file with a message to a room by specifying the file's url`, () => {
         return spark.messages.create({
