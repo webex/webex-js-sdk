@@ -7,6 +7,10 @@ cd $(dirname $)
 
 VERSION=$(node ./get-version.js)
 
+
+echo "The following packages will be updated to version ${VERSION}"
+npm run lerna -- updated
+
 set +e
 npm run lerna -- publish --skip-npm --skip-git --repo-version="${VERSION}" --yes
 EXIT_CODE=$?
