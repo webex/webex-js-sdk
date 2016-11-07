@@ -183,7 +183,7 @@ export default function _request(options) {
    */
   function ensureBlob(file) {
     if (file instanceof ArrayBuffer) {
-      const ret = new Blob([file], file.type);
+      const ret = file.type ? new Blob([file], {type: file.type}) : new Blob([file]);
       ret.filename = file.filename || file.name || `untitled`;
       return ret;
     }
