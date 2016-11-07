@@ -4,7 +4,10 @@ import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 import _ from 'lodash';
 
-import {fetchCurrentUser} from '../../actions/user';
+import {
+  fetchAvatarForUserId,
+  fetchCurrentUser
+} from '../../actions/user';
 import {
   createConversationWithUser,
   deleteActivity,
@@ -57,8 +60,7 @@ export class ChatWidget extends Component {
       user,
       userId,
       spark,
-      conversation,
-      flags
+      conversation
     } = nextProps;
 
     const {
@@ -78,12 +80,7 @@ export class ChatWidget extends Component {
 
     // Setup once we have a conversation
     if (conversation.id) {
-      if (!conversation.mercuryState.isListening) {
-        nextProps.listenToMercuryActivity(conversation.id, spark);
-      }
-      if (!flags.hasFetched && !flags.isFetching) {
-        nextProps.fetchFlags(spark);
-      }
+      this.setupConversationActions(conversation, nextProps);
     }
   }
 
@@ -141,6 +138,56 @@ export class ChatWidget extends Component {
         activityList.setScrollTop(activityList.getScrollHeight() - this.scrollHeight + prevProps.widget.scrollTop);
       }
     }
+  }
+
+  /**
+   * Once a conversation has been established, setup
+   * actions need to happen for app state
+   *
+   * @param {any} conversation
+   * @param {any} nextProps
+   *
+   * @returns {null}
+   */
+  setupConversationActions(conversation, nextProps) {
+    const {flags, spark} = nextProps;
+    const {props} = this;
+    const prevConversation = props.conversation;
+    if (!conversation.mercuryState.isListening) {
+      nextProps.listenToMercuryActivity(conversation.id, spark);
+    }
+    if (!flags.hasFetched && !flags.isFetching) {
+      nextProps.fetchFlags(spark);
+    }
+    // We only want to fetch avatars when a new activity is seen
+    if (conversation.participants.length && conversation.participants.length !== prevConversation.participants.length) {
+      this.getAvatarsFromConversation(conversation, nextProps);
+    }
+  }
+
+  /**
+   * Processes the activities and fetches avatars for users
+   * that have not been fetched yet
+   *
+   * @param {any} conversation
+   * @param {any} props
+   *
+   * @returns {null}
+   */
+  getAvatarsFromConversation(conversation, props) {
+    const {
+      spark,
+      user
+    } = props;
+    const {participants} = conversation;
+    const userIds = _.uniq(participants.map((participant) => participant.id))
+      .filter((userId) => {
+        // Only return users that haven't been fetched or is fetching
+        const fetched = user.avatars.hasOwnProperty(userId);
+        const fetching = user.avatarsInFlight.indexOf(userId) !== -1;
+        return !fetched || !fetching;
+      });
+    userIds.forEach((userId) => props.fetchAvatarForUserId(userId, spark));
   }
 
   /**
@@ -269,13 +316,14 @@ export class ChatWidget extends Component {
       indicators,
       spark,
       sparkState,
+      user,
       widget
     } = props;
 
-    let currentUser;
-    if (props.user) {
-      currentUser = props.user.currentUser;
-    }
+    const {
+      avatars,
+      currentUser
+    } = user;
 
     let main = ( // eslint-disable-line no-extra-parens
       <div className={classNames(`loading`, styles.loading)}>
@@ -317,18 +365,24 @@ export class ChatWidget extends Component {
       }
 
       if (isLoaded) {
-        const user = this.getUserFromConversation(conversation);
+        const toUser = this.getUserFromConversation(conversation);
+        const toUserAvatar = avatars[toUser.id];
         const isTyping = indicators.typing.length > 0;
-        const {displayName} = user;
+        const {displayName} = toUser;
         const messagePlaceholder = `Send a message to ${displayName}`;
         main = ( // eslint-disable-line no-extra-parens
           <div className={classNames(`widget-chat-inner`, styles.widgetChatInner)}>
             <div className={classNames(`title-bar-wrapper`, styles.titleBarWrapper)}>
-              <TitleBar connectionStatus={sparkState} displayName={displayName} />
+              <TitleBar
+                connectionStatus={sparkState}
+                displayName={displayName}
+                image={toUserAvatar}
+              />
             </div>
             <div className={classNames(`activity-list-wrapper`, styles.activityListWrapper)}>
               <ScrollingActivity
                 activities={activities}
+                avatars={avatars}
                 currentUserId={currentUser.id}
                 flags={flags.flags}
                 isLoadingHistoryUp={isLoadingHistoryUp}
@@ -368,6 +422,7 @@ ChatWidget.propTypes = {
   createConversationWithUser: PropTypes.func.isRequired,
   deleteActivity: PropTypes.func.isRequired,
   deleteActivityAndDismiss: PropTypes.func.isRequired,
+  fetchAvatarForUserId: PropTypes.func.isRequired,
   fetchCurrentUser: PropTypes.func.isRequired,
   flagActivity: PropTypes.func.isRequired,
   hideDeleteModal: PropTypes.func.isRequired,
@@ -401,9 +456,10 @@ export default connect(
     createConversationWithUser,
     deleteActivity,
     deleteActivityAndDismiss,
-    flagActivity,
+    fetchAvatarForUserId,
     fetchCurrentUser,
     fetchFlags,
+    flagActivity,
     hideDeleteModal,
     listenToMercuryActivity,
     loadPreviousMessages,

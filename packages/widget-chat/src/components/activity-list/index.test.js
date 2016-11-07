@@ -39,12 +39,15 @@ describe(`ActivityList component`, () => {
     published: `2016-09-20T19:54:57.186Z`,
     verb: `post`
   }];
-
+  const avatars = {
+    'test-123-123-123-123': `http://googledoodle.jpg`
+  };
   const onActivityDelete = jest.fn();
   const onActivityFlag = jest.fn();
   const component = renderer.create(
     <ActivityList
       activities={activities}
+      avatars={avatars}
       flags={flags}
       onActivityDelete={onActivityDelete}
       onActivityFlag={onActivityFlag}

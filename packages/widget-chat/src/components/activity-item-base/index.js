@@ -11,6 +11,7 @@ import {ICON_TYPE_DELETE, ICON_TYPE_FLAGGED_OUTLINE} from '../icon';
 export default function ActivityItemBase(props) {
 
   const {
+    avatarUrl,
     children,
     isAdditional,
     isFlagged,
@@ -71,7 +72,7 @@ export default function ActivityItemBase(props) {
   return (
     <div className={classNames(`activity-item`, styles.activityItem, isAdditional ? styles.additional : ``)}>
       <div className={classNames(`avatar-wrapper`, styles.avatarWrapper)}>
-        <Avatar isSelfAvatar={isSelf} name={name} />
+        <Avatar image={avatarUrl} isSelfAvatar={isSelf} name={name} />
       </div>
       <div className={classNames(`content-container`, styles.contentContainer)}>
         <div className={classNames(`meta`, styles.meta)}>
@@ -91,6 +92,7 @@ export default function ActivityItemBase(props) {
 }
 
 ActivityItemBase.propTypes = {
+  avatarUrl: PropTypes.string,
   children: PropTypes.element.isRequired,
   id: PropTypes.string.isRequired,
   isAdditional: PropTypes.bool,
