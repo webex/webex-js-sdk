@@ -60,13 +60,14 @@ exports[`ActivityShareList post component renders properly 1`] = `
               className="share-item-actions">
               <div
                 className="share-action-item">
-                <div
+                <button
                   className="icon-button"
-                  onClick={[Function handleDownloadClick]}>
+                  onClick={[Function handleDownloadClick]}
+                  onKeyUp={[Function handleDownloadClick]}>
                   <div
                     className="icon"
                     title="Download this file" />
-                </div>
+                </button>
               </div>
             </div>
           </div>
@@ -80,13 +81,14 @@ exports[`ActivityShareList post component renders properly 1`] = `
       className="activity-post-action">
       <div
         className="post-action-item">
-        <div
+        <button
           className="icon-button"
-          onClick={[Function handleOnFlag]}>
+          onClick={[Function handleOnFlag]}
+          onKeyUp={[Function handleOnFlag]}>
           <div
             className="icon"
             title="Flag this message" />
-        </div>
+        </button>
       </div>
     </div>
     <div
