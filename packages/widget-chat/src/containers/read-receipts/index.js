@@ -8,7 +8,7 @@ import Avatar from '../../components/avatar';
 class ReadReceipts extends Component {
   shouldComponentUpdate(nextProps) {
     const {props} = this;
-    return nextProps.recent !== props.recent;
+    return nextProps.readUsers !== props.readUsers || nextProps.user !== props.user;
   }
 
   componentDidUpdate() {
