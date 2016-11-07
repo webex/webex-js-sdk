@@ -42,7 +42,6 @@ export default function ActivityItemSystemMessage(props) {
 }
 
 ActivityItemSystemMessage.propTypes = {
-  content: PropTypes.string,
   isSelf: PropTypes.bool,
   name: PropTypes.string.isRequired,
   timestamp: PropTypes.string,

@@ -13,22 +13,23 @@ export default function ActivityItemBase(props) {
   const {
     avatarUrl,
     children,
+    id,
     isAdditional,
     isFlagged,
     isSelf,
     name,
+    onActivityDelete,
+    onActivityFlag,
     timestamp
   } = props;
 
   let deleteAction;
 
   function handleOnDelete() {
-    const {id, onActivityDelete} = props;
     onActivityDelete(id);
   }
 
   function handleOnFlag() {
-    const {id, onActivityFlag} = props;
     onActivityFlag(id);
   }
 

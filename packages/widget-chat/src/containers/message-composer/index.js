@@ -22,7 +22,8 @@ export class MessageComposer extends Component {
   }
 
   handleChange(e) {
-    this.props.setMessage(e.target.value);
+    const props = this.props;
+    props.setMessage(e.target.value);
   }
 
   handleKeyDown(e) {
@@ -33,13 +34,13 @@ export class MessageComposer extends Component {
   }
 
   handleSubmit() {
-    const props = this.props;
+    const {props} = this;
     const {
       conversation,
-      onSubmit,
       spark,
       value
     } = props;
+    const {onSubmit} = this.props;
     props.submitMessage(conversation, value, spark);
     if (onSubmit) {
       onSubmit();
@@ -49,9 +50,9 @@ export class MessageComposer extends Component {
   render() {
     const props = this.props;
     const {
-      placeholder,
       value
     } = props;
+    const {placeholder} = this.props;
 
     return (
       <div className={classNames(`message-composer`, styles.messageComposer)}>
@@ -60,12 +61,12 @@ export class MessageComposer extends Component {
         </div>
         <div className={classNames(`textarea-container`)}>
           <TextArea
-            className={styles.textarea}
             onChange={this.handleChange}
             onKeyDown={this.handleKeyDown}
             onSubmit={this.handleSubmit}
             placeholder={placeholder}
             rows={1}
+            textAreaClassName={styles.textarea}
             value={value}
           />
         </div>
@@ -76,9 +77,7 @@ export class MessageComposer extends Component {
 
 MessageComposer.propTypes = {
   onSubmit: PropTypes.func,
-  placeholder: PropTypes.string,
-  setMessage: PropTypes.func.isRequired,
-  submitMessage: PropTypes.func.isRequired
+  placeholder: PropTypes.string
 };
 
 function mapStateToProps(state, ownProps) {

@@ -3,7 +3,7 @@ import {connect} from 'react-redux';
 import injectSpark from '../src/modules/redux-spark/inject-spark';
 
 function TestWidget() {
-  return <div>TestWidget</div>;
+  return <div>{`TestWidget`}</div>;
 }
 
 function mapStateToProps(state, ownProps) {

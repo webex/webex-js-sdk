@@ -65,7 +65,7 @@ export default function injectWidgetLoader(WrappedComponent) {
                 value={this.state ? this.state.tempUserId : ``}
               />
             </div>
-            <button className={classNames(`props-submit`, styles.propsSubmit)} onClick={this.handleSubmit}>Chat</button>
+            <button className={classNames(`props-submit`, styles.propsSubmit)} onClick={this.handleSubmit}>{`Chat`}</button>
           </form>
         );
       }
