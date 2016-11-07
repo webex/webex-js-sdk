@@ -57,6 +57,47 @@ const Board = SparkPlugin.extend({
   },
 
   /**
+   * Adds a snapshot image of the board
+   *
+   * @param {Conversation} conversation - the current conversation that the board belongs
+   * @param {Board~Channel} channel
+   * @param {File} image
+   * @returns {Promise<Board~Channel>}
+   */
+  addSnapshotImage(conversation, channel, image) {
+    let imageScr;
+    return this.spark.board._uploadImage(conversation, image)
+      .then((scr) => {
+        imageScr = scr;
+        return this.spark.encryption.encryptScr(conversation.defaultActivityEncryptionKeyUrl, imageScr);
+      })
+      .then((encryptedScr) => {
+        imageScr.encryptedScr = encryptedScr;
+        return encryptedScr;
+      })
+      .then(() => {
+        const imageBody = {
+          image: {
+            url: imageScr.loc,
+            height: image.height || 900,
+            width: image.width || 1600,
+            mimeType: image.type || `image/png`,
+            scr: imageScr.encryptedScr,
+            encryptionKeyUrl: conversation.defaultActivityEncryptionKeyUrl,
+            fileSize: image.size
+          }
+        };
+        return this.spark.request({
+          method: `PATCH`,
+          api: `board`,
+          resource: `/channels/${channel.channelId}`,
+          body: imageBody
+        });
+      })
+      .then((res) => res.body);
+  },
+
+  /**
    * Creates a Channel
    * @memberof Board.BoardService
    * @param  {Board~Channel} channel

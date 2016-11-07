@@ -84,6 +84,25 @@ describe(`plugin-board`, () => {
       });
     });
 
+    describe(`#addSnapshotImage()`, () => {
+
+      after(() => participants[0].spark.board.deleteAllContent(board));
+
+      it(`uploads image to spark files and adds to channel`, () => {
+        let imageRes;
+        return participants[0].spark.board.addSnapshotImage(conversation, board, fixture)
+          .then((res) => {
+            imageRes = res.image;
+            assert.isDefined(res.image, `image field is included`);
+            assert.equal(res.image.encryptionKeyUrl, conversation.encryptionKeyUrl);
+            assert.isAbove(res.image.scr.length, 0, `scr string exists`);
+            return participants[1].spark.board.getChannel(board);
+          })
+          .then((res) => {
+            assert.deepEqual(imageRes, res.image);
+          });
+      });
+    });
 
     describe(`#ping()`, () => {
 

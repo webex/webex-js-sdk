@@ -363,12 +363,18 @@ describe('Services', function() {
           return party.mccoy.spark.board.persistence.deleteAllContent(board);
         });
 
-        it('uploads image to spark files', function() {
+        it('uploads image to spark files and then add image to channel', function() {
+          var imageRes;
           return party.mccoy.spark.board.persistence.addSnapshotImage(conversation, board, fixture.png)
             .then(function(res) {
+              imageRes = res.image;
               assert.isDefined(res.image, 'image field is included');
               assert.equal(res.image.encryptionKeyUrl, conversation.encryptionKeyUrl);
               assert.isAbove(res.image.scr.length, 0, 'scr string exists');
+              return party.spock.spark.board.persistence.getChannel(board);
+            })
+            .then(function(res) {
+              assert.deepEqual(res.image, imageRes);
             });
         });
       });
