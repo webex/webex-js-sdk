@@ -3,7 +3,7 @@ import {connect} from 'react-redux';
 
 import {getMostRecentReadReceipts} from '../../selectors/conversation';
 
-import TypingAvatar from '../typing-avatar';
+import TypingAvatar from '../../components/typing-avatar';
 
 class ReadReceipts extends Component {
   shouldComponentUpdate(nextProps) {
