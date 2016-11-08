@@ -1540,7 +1540,6 @@ describe('Services', function() {
             })
               .then(function(a) {
                 whiteboardActivity = a;
-                console.log('glh whiteboardActivity', a.object.files.items);
               });
           });
 
