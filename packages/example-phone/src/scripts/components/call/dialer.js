@@ -31,7 +31,7 @@ export default class Dialer extends Component {
 
   render() {
     return (
-      <Form className="form-inline" onSubmit={this.handleSubmit.bind(this)} ref={(f) => {this.form = f;}}>
+      <Form formClassName="form-inline" onSubmit={this.handleSubmit.bind(this)} ref={(f) => {this.form = f;}}>
         <FormGroup controlId="Address">
           <FormControl
             name="address"
@@ -42,9 +42,9 @@ export default class Dialer extends Component {
           />
         </FormGroup>
         <ButtonGroup>
-          <Button title="Dial" type="submit">Dial</Button>
-          <Button onClick={this.handleAudioOnlyClicked.bind(this)} title="Dial (Audio Only)" type="submit">Dial (Audio Only)</Button>
-          <Button onClick={this.handleVideoOnlyClicked.bind(this)} title="Dial (Video Only)" type="submit">Dial (Video Only)</Button>
+          <Button title="Dial" type="submit">{`Dial`}</Button>
+          <Button onClick={this.handleAudioOnlyClicked.bind(this)} title="Dial (Audio Only)" type="submit">{`Dial (Audio Only)`}</Button>
+          <Button onClick={this.handleVideoOnlyClicked.bind(this)} title="Dial (Video Only)" type="submit">{`Dial (Video Only)`}</Button>
         </ButtonGroup>
       </Form>
     );

@@ -21,7 +21,7 @@ class AuthPage extends Component {
   render() {
     return (
       <div className="auth">
-        <Button onClick={this.handleLogin.bind(this)} title="Login with UI">Login With UI</Button>
+        <Button onClick={this.handleLogin.bind(this)} title="Login with UI">{`Login With UI`}</Button>
       </div>
     );
   }

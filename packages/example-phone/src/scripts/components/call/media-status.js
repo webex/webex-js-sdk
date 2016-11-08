@@ -5,11 +5,11 @@ export default function MediaStatus({audioDirection, videoDirection}) {
     <table>
       <tbody>
         <tr>
-          <td>audio:</td>
+          <td>{`audio:`}</td>
           <td className="audio-direction">{audioDirection}</td>
         </tr>
         <tr>
-          <td>video:</td>
+          <td>{`video:`}</td>
           <td className="video-direction">{videoDirection}</td>
         </tr>
       </tbody>

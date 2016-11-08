@@ -15,7 +15,7 @@ export default function RemoteView({
     mediaElement = (
       <div>
         <audio src={remoteMediaStreamUrl} />
-        <img src="images/default_avatar_individual.png" />
+        <img alt="avatar" src="images/default_avatar_individual.png" />
       </div>
     );
   }

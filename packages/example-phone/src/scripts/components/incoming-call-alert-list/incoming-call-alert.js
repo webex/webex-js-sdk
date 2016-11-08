@@ -35,12 +35,12 @@ export default class IncomingCallAlert extends Component {
     const remoteName = call.remote.person.name;
     return (
       <Alert bsStyle="warning" onDismiss={this.handleDecline.bind(this)}>
-        <p><strong>Incoming Call</strong> from {remoteName}</p>
+        <p><strong>{`Incoming Call`}</strong>{` from `} {remoteName}</p>
         <p>
-          <Button onClick={this.handleAnswer.bind(this)} title="Answer Call">Answer</Button>
-          <Button onClick={this.handleAnswerWithAudio.bind(this)} title="Answer Call with Audio">Answer with Audio</Button>
-          <Button onClick={this.handleAnswerWithVideo.bind(this)} title="Answer Call with Video">Answer with Video</Button>
-          <Button bsStyle="danger" onClick={this.handleDecline.bind(this)} title="Decline Call">Decline</Button>
+          <Button onClick={this.handleAnswer.bind(this)} title="Answer Call">{`Answer`}</Button>
+          <Button onClick={this.handleAnswerWithAudio.bind(this)} title="Answer Call with Audio">{`Answer with Audio`}</Button>
+          <Button onClick={this.handleAnswerWithVideo.bind(this)} title="Answer Call with Video">{`Answer with Video`}</Button>
+          <Button bsStyle="danger" onClick={this.handleDecline.bind(this)} title="Decline Call">{`Decline`}</Button>
         </p>
       </Alert>
     );

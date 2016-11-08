@@ -5,6 +5,7 @@ import {Form as BootstrapForm} from 'react-bootstrap';
 export default class Form extends BootstrapForm {
   static propTypes = {
     children: React.PropTypes.node.isRequired,
+    formClassName: React.PropTypes.string,
     onChange: React.PropTypes.func,
     onSubmit: React.PropTypes.func.isRequired
   };
@@ -32,6 +33,7 @@ export default class Form extends BootstrapForm {
     /* eslint no-unused-vars: [0] */
 
     const {
+      formClassName,
       onChange,
       onSubmit,
       children,
@@ -40,6 +42,7 @@ export default class Form extends BootstrapForm {
 
     return (
       <form
+        className={formClassName}
         onChange={this.handleChange.bind(this)}
         onSubmit={this.handleSubmit.bind(this)}
         {...props} {...this.state}

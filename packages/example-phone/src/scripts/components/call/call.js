@@ -10,7 +10,7 @@ export default function Call({remoteName, ...props}) {
       <Grid>
         <Row>
           <Col sm={12}>
-            <h2>Call with <span className="remote-party-name">{remoteName}</span></h2>
+            <h2>{`Call with `}<span className="remote-party-name">{remoteName}</span></h2>
           </Col>
         </Row>
       </Grid>
