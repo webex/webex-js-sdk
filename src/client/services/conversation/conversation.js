@@ -31,6 +31,9 @@ var SparkBase = require('../../../lib/spark-base');
 var uniq = require('lodash.uniq');
 var uuid = require('uuid');
 
+require('setimmediate');
+var ExifImage = require('exif').ExifImage;
+
 /**
  * @class
  * @extends {SparkBase}
@@ -93,6 +96,7 @@ var ConversationService = SparkBase.extend(
   // ----------
 
   download: function download(item, options) {
+    console.log('@@@@@ inside SDK.download');
     options = options || {};
 
     var isEncrypted = !!item.scr;
@@ -119,17 +123,36 @@ var ConversationService = SparkBase.extend(
 
         var promise;
         if (isEncrypted) {
+          console.log('@@@@@  Initiall22222 item=', item);
           promise = this.spark.encryption.download(item.scr)
             .on('progress', emitter.emit.bind(emitter, 'progress'))
             .then(function ensureBlob(res) {
-              if (typeof window === 'undefined') {
-                return res;
-              }
-              else {
-                /* eslint-env browser */
-                return new Blob([res.buffer], {type: item.mimeType});
-              }
-            });
+              console.log('@@@@@  response = ', res, ' for item=', item);
+              return new Promise(function(resolve) {
+                new ExifImage({ image : res }, function (error, exifData) {
+                  if (error) {
+                    console.log('@@@@@ Error1: '+error.message);
+                  }
+                  else {
+                    console.log('@@@@@@@@@ exifData=', exifData);
+                    if (exifData) {
+                      item.orientation = exifData.image.Orientation;
+                    }
+                  }
+                  return resolve(res);
+                });
+              })
+            })
+              .then(function(res) {
+                console.log('@@@@ Now here');
+                if (typeof window === 'undefined') {
+                  return res;
+                }
+                else {
+                  /* eslint-env browser */
+                  return new Blob([res.buffer], {type: item.mimeType});
+                }
+              })
         }
         else {
           promise = this.request({
@@ -145,6 +168,7 @@ var ConversationService = SparkBase.extend(
         return promise
           .then(function assignMetadata(file) {
             this.logger.info('conversation: file downloaded');
+            console.log('@@@@@@ File downloaded now setting the orientation item.orientation=', item.orientation);
             if (item.displayName && !file.name) {
               file.name = item.displayName;
             }
