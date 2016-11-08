@@ -1,12 +1,13 @@
 .background {
-  width: 30px;
-  height: 30px;
+  position: inherit;
+  width: 32px;
+  height: 32px;
   padding: 0;
   text-align: center;
   cursor: default;
-  background-color: #696969;
+  background-color: rgba(0, 0, 0, 0.3);
   border: none;
-  border-radius: 15px;
+  border-radius: 50%;
 }
 
 .typing-indicator {
