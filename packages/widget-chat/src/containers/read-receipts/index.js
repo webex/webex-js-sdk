@@ -1,4 +1,4 @@
-import React, {Component, PropTypes} from 'react';
+import React, {Component} from 'react';
 import {connect} from 'react-redux';
 
 import {getMostRecentReadReceipts} from '../../selectors/conversation';
@@ -16,10 +16,10 @@ class ReadReceipts extends Component {
   }
 
   render() {
-    const {props} = this;
-    const {avatars, currentUser} = props.user;
-    const typing = props.typing;
-    const users = props.readUsers
+    const stateProps = this.props;
+    const {avatars, currentUser} = stateProps.user;
+    const typing = stateProps.typing;
+    const users = stateProps.readUsers
       .filter((user) => user.id !== currentUser.id)
       .map((user) => {
         const {displayName} = user;
@@ -54,11 +54,6 @@ function mapStateToProps(state) {
     readUsers: getMostRecentReadReceipts(state)
   };
 }
-
-ReadReceipts.propTypes = {
-  readUsers: PropTypes.array,
-  user: PropTypes.object
-};
 
 export default connect(
   mapStateToProps

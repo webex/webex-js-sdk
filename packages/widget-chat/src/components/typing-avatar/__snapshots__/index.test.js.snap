@@ -1,0 +1,50 @@
+exports[`ScrollingActivity container renders properly 1`] = `
+<div
+  className="typing-avatar">
+  <div
+    className="avatar">
+    <div
+      className="avatar"
+      style={undefined}>
+      <span
+        className="avatar-letter">
+        T
+      </span>
+    </div>
+  </div>
+  <div
+    className="typing" />
+</div>
+`;
+
+exports[`ScrollingActivity container renders properly when typing 1`] = `
+<div
+  className="typing-avatar">
+  <div
+    className="avatar">
+    <div
+      className="avatar"
+      style={undefined}>
+      <span
+        className="avatar-letter">
+        T
+      </span>
+    </div>
+  </div>
+  <div
+    className="typing">
+    <div
+      className="typing-background">
+      <div
+        className="typing-indicator">
+        <div
+          className="sq" />
+        <div
+          className="sq" />
+        <div
+          className="sq" />
+      </div>
+    </div>
+  </div>
+</div>
+`;
