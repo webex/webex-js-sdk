@@ -30,7 +30,7 @@ describe(`plugin-board`, () => {
   describe(`service`, () => {
     let board, conversation, fixture, participants;
 
-    before(`create users`, () => testUsers.create({count: 2})
+    before(`create users`, () => testUsers.create({count: 3})
       .then((users) => {
         participants = users;
 
@@ -53,7 +53,7 @@ describe(`plugin-board`, () => {
         return conversation;
       }));
 
-    before(`create channel (board)`, () => participants[0].spark.board.createChannel({aclUrl: conversation.id})
+    before(`create channel (board)`, () => participants[0].spark.board.createChannel(conversation)
       .then((channel) => {
         board = channel;
         return channel;
@@ -68,6 +68,22 @@ describe(`plugin-board`, () => {
     after(`disconnect mercury`, () => Promise.all(map(participants, (participant) => {
       return participant.spark.mercury.disconnect();
     })));
+
+    describe(`#getChannel`, () => {
+      it(`gets the channal metadata`, () => {
+        return participants[0].spark.board.getChannel(board)
+          .then((channel) => {
+            assert.property(channel, `kmsResourceUrl`);
+            assert.property(channel, `aclUrl`);
+
+            assert.equal(channel.channelUrl, board.channelUrl);
+            assert.equal(channel.aclUrlLink, conversation.aclUrl);
+            assert.notEqual(channel.kmsResourceUrl, conversation.kmsResourceObjectUrl);
+            assert.notEqual(channel.aclUrl, conversation.aclUrl);
+            assert.notEqual(channel.defaultEncryptionKeyUrl, conversation.defaultActivityEncryptionKeyUrl);
+          });
+      });
+    });
 
     describe(`#_uploadImage()`, () => {
 
@@ -152,7 +168,7 @@ describe(`plugin-board`, () => {
     describe(`#getChannels`, () => {
 
       it(`retrieves a newly created board for a specified conversation within a single page`, () => {
-        return participants[0].spark.board.getChannels({conversationId: conversation.id})
+        return participants[0].spark.board.getChannels(conversation)
           .then((getChannelsResp) => {
             const channelFound = find(getChannelsResp.items, {channelId: board.channelId});
             assert.isDefined(channelFound);
@@ -165,8 +181,7 @@ describe(`plugin-board`, () => {
         let numChannelsToAdd = 0;
         const pageLimit = 50;
 
-        return participants[0].spark.board.getChannels({
-          conversationId: conversation.id,
+        return participants[0].spark.board.getChannels(conversation, {
           channelsLimit: 100
         })
           .then((res) => {
@@ -179,17 +194,14 @@ describe(`plugin-board`, () => {
             const promises = [];
 
             for (let i = 0; i < numChannelsToAdd; i++) {
-              promises.push(participants[0].spark.board.createChannel({
-                aclUrl: conversation.id
-              }));
+              promises.push(participants[0].spark.board.createChannel(conversation));
             }
             return Promise.all(promises);
           })
 
           // get boards, page 1
           .then(() => {
-            return participants[0].spark.board.getChannels({
-              conversationId: conversation.id,
+            return participants[0].spark.board.getChannels(conversation, {
               channelsLimit: pageLimit
             });
           })
@@ -209,7 +221,7 @@ describe(`plugin-board`, () => {
 
     describe(`#getContents()`, () => {
 
-      after(() => participants[0].spark.board.deleteAllContent(board));
+      afterEach(() => participants[0].spark.board.deleteAllContent(board));
 
       it(`adds and gets contents from the specified board`, () => {
         const contents = [{type: `curve`}];
@@ -219,7 +231,7 @@ describe(`plugin-board`, () => {
         }];
 
         return participants[0].spark.board.deleteAllContent(board)
-          .then(() => participants[0].spark.board.addContent(conversation, board, data))
+          .then(() => participants[0].spark.board.addContent(board, data))
           .then(() => participants[0].spark.board.getContents(board))
           .then((contentPage) => {
             assert.equal(contentPage.length, data.length);
@@ -227,6 +239,45 @@ describe(`plugin-board`, () => {
             assert.equal(contentPage.items[0].type, data[0].type);
           })
           .then(() => participants[0].spark.board.deleteAllContent(board));
+      });
+
+      it(`allows other people to read contents`, () => {
+        const contents = [{type: `curve`, points: [1, 2, 3, 4]}];
+        const data = [{
+          type: contents[0].type,
+          payload: JSON.stringify(contents[0])
+        }];
+
+        return participants[0].spark.board.addContent(board, data)
+          .then(() => {
+            return participants[1].spark.board.getContents(board);
+          })
+          .then((contentPage) => {
+            assert.equal(contentPage.length, data.length);
+            assert.equal(contentPage.items[0].payload, data[0].payload);
+            return participants[2].spark.board.getContents(board);
+          })
+          .then((contentPage) => {
+            assert.equal(contentPage.length, data.length);
+            assert.equal(contentPage.items[0].payload, data[0].payload);
+          });
+      });
+
+      it(`allows other people to write contents`, () => {
+        const contents = [{type: `curve`, points: [1, 2, 3, 4]}];
+        const data = [{
+          type: contents[0].type,
+          payload: JSON.stringify(contents[0])
+        }];
+
+        return participants[2].spark.board.addContent(board, data)
+          .then(() => {
+            return participants[1].spark.board.getContents(board);
+          })
+          .then((contentPage) => {
+            assert.equal(contentPage.length, data.length);
+            assert.equal(contentPage.items[0].payload, data[0].payload);
+          });
       });
 
       describe(`handles large data sets`, () => {
@@ -240,9 +291,7 @@ describe(`plugin-board`, () => {
             });
         });
 
-        before(`create contents`, () => participants[0].spark.board.addContent(conversation, board, tonsOfContents));
-
-        after(() => participants[0].spark.board.deleteAllContent(board));
+        beforeEach(`create contents`, () => participants[0].spark.board.addContent(board, tonsOfContents));
 
         it(`using the default page limit`, () => participants[0].spark.board.getContents(board)
           .then((res) => {
@@ -294,14 +343,14 @@ describe(`plugin-board`, () => {
           }
         ];
 
-        return participants[0].spark.board.addContent(conversation, channel, data)
+        return participants[0].spark.board.addContent(channel, data)
           .then(() => participants[0].spark.board.deleteAllContent(channel))
           .then(() => participants[0].spark.board.getContents(channel))
           .then((res) => {
             assert.lengthOf(res, 0);
             return res;
           })
-          .then(() => participants[0].spark.board.addContent(conversation, channel, data))
+          .then(() => participants[0].spark.board.addContent(channel, data))
           .then((res) => {
             assert.lengthOf(res[0].items, 2);
             const content = res[0].items[0];

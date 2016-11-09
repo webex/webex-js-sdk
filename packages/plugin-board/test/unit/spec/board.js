@@ -12,10 +12,14 @@ describe(`plugin-board`, () => {
   let spark;
   const encryptedData = `encryptedData`;
   const decryptedText = `decryptedText`;
-  const fakeURL = `fakeURL`;
+  const fakeURL = `https://encryption-a.wbx2.com/encryption/api/v1/keys/8a7d3d78-ce75-48aa-a943-2e8acf63fbc9`;
   const file = `dataURL://base64;`;
   const boardServiceUrl = `https://awesome.service.url`;
   const boardId = `boardId`;
+
+  const mockKey = {
+    uri: `https://encryption-a.wbx2.com/encryption/api/v1/keys/7ad503ec-854b-4fce-a7f0-182e1997bdb6`
+  };
 
   const image = {
     height: 900,
@@ -24,13 +28,28 @@ describe(`plugin-board`, () => {
   };
 
   const conversation = {
-    id: `superUniqueId`,
-    defaultActivityEncryptionKeyUrl: fakeURL
+    id: `7c7e69a0-a086-11e6-8670-d7b4b51d7641`,
+    defaultActivityEncryptionKeyUrl: fakeURL,
+    kmsResourceObjectUrl: `https://encryption-a.wbx2.com/encryption/api/v1/resources/8693f702-2012-40c6-9ec4-f1392f0a620a`,
+    aclUrl: `https://acl-a.wbx2.com/acl/api/v1/acls/7ca94a30-a086-11e6-b599-d90deb9846ed`
   };
 
   const channel = {
     channelUrl: `${boardServiceUrl}/channels/${boardId}`,
-    channelId: boardId
+    channelId: boardId,
+    aclUrlLink: conversation.aclUrl,
+    defaultEncryptionKeyUrl: mockKey.uri,
+    kmsMessage: {
+      method: `create`,
+      uri: `/resources`,
+      userIds: [conversation.kmsResourceObjectUrl],
+      keyUris: []
+    }
+  };
+
+  const channelRequestBody = {
+    aclUrlLink: channel.aclUrlLink,
+    kmsMessage: channel.kmsMessage
   };
 
   const data1 = {
@@ -85,7 +104,7 @@ describe(`plugin-board`, () => {
     });
 
     it(`requests POST all contents to contents`, () => {
-      return spark.board.addContent(conversation, channel, [data1, data2])
+      return spark.board.addContent(channel, [data1, data2])
         .then(() => {
           assert.calledWith(spark.request, sinon.match({
             method: `POST`,
@@ -93,12 +112,12 @@ describe(`plugin-board`, () => {
             body: [{
               device: `FAKE_DEVICE`,
               type: `STRING`,
-              encryptionKeyUrl: `fakeURL`,
+              encryptionKeyUrl: mockKey.uri,
               payload: `encryptedData`
             }, {
               device: `FAKE_DEVICE`,
               type: `STRING`,
-              encryptionKeyUrl: `fakeURL`,
+              encryptionKeyUrl: mockKey.uri,
               payload: `encryptedData`
             }]
           }));
@@ -112,7 +131,7 @@ describe(`plugin-board`, () => {
         largeData.push({data: i});
       }
 
-      return spark.board.addContent(conversation, channel, largeData)
+      return spark.board.addContent(channel, largeData)
         .then(() => {
           assert.equal(spark.request.callCount, 3);
         });
@@ -160,7 +179,7 @@ describe(`plugin-board`, () => {
 
     before(() => {
       spark.request.reset();
-      return spark.board.createChannel({aclUrl: `foo`});
+      return spark.board.createChannel(conversation);
     });
 
     it(`requests POST to channels service`, () => {
@@ -168,9 +187,7 @@ describe(`plugin-board`, () => {
         method: `POST`,
         api: `board`,
         resource: `/channels`,
-        body: {
-          aclUrl: `foo`
-        }
+        body: channelRequestBody
       }));
     });
   });

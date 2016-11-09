@@ -22,17 +22,16 @@ const Board = SparkPlugin.extend({
    * will break contents into chunks and make multiple GET request to the
    * board service
    * @memberof Board.BoardService
-   * @param  {Conversation} conversation - Contains the currently selected conversation
    * @param  {Board~Channel} channel
    * @param  {Array} contents - Array of {@link Board~Content} objects
    * @returns {Promise<Board~Content>}
    */
-  addContent(conversation, channel, contents) {
+  addContent(channel, contents) {
     let chunks = [];
     chunks = chunk(contents, this.config.numberContentsPerPageForAdd);
     // we want the first promise to resolve before continuing with the next
     // chunk or else we'll have race conditions among patches
-    return promiseSeries(chunks.map((part) => this._addContentChunk.bind(this, conversation, channel, part)));
+    return promiseSeries(chunks.map((part) => this._addContentChunk.bind(this, channel, part)));
   },
 
   /**
@@ -47,7 +46,7 @@ const Board = SparkPlugin.extend({
    */
   addImage(conversation, channel, image) {
     return this.spark.board._uploadImage(conversation, image)
-      .then((scr) => this.spark.board.addContent(conversation, channel, [{
+      .then((scr) => this.spark.board.addContent(channel, [{
         mimeType: image.type,
         size: image.size,
         displayName: image.name,
@@ -100,17 +99,30 @@ const Board = SparkPlugin.extend({
   /**
    * Creates a Channel
    * @memberof Board.BoardService
+   * @param  {Conversation~ConversationObject} conversation
    * @param  {Board~Channel} channel
    * @returns {Promise<Board~Channel>}
    */
-  createChannel(channel) {
+  createChannel(conversation, channel) {
     return this.spark.request({
       method: `POST`,
       api: `board`,
       resource: `/channels`,
-      body: channel
+      body: this._prepareChannel(conversation, channel)
     })
       .then((res) => res.body);
+  },
+
+  _prepareChannel(conversation, channel) {
+    return Object.assign({
+      aclUrlLink: conversation.aclUrl,
+      kmsMessage: {
+        method: `create`,
+        uri: `/resources`,
+        userIds: [conversation.kmsResourceObjectUrl],
+        keyUris: []
+      }
+    }, channel);
   },
 
   /**
@@ -311,23 +323,26 @@ const Board = SparkPlugin.extend({
   /**
    * Gets Channels
    * @memberof Board.BoardService
+   * @param {Conversation~ConversationObject} conversation
    * @param {Object} options
    * @param {number} options.limit Max number of activities to return
    * @returns {Promise<Page<Board~Channel>>} Resolves with an array of Channel items
    */
-  getChannels(options) {
+  getChannels(conversation, options) {
     options = options || {};
 
-    if (!options.conversationId) {
-      return Promise.reject(new Error(`\`conversationId\` is required`));
+    if (!conversation) {
+      return Promise.reject(new Error(`\`conversation\` is required`));
     }
 
     const params = {
       api: `board`,
       resource: `/channels`,
-      qs: {}
+      qs: {
+        aclUrlLink: conversation.aclUrl
+      }
     };
-    assign(params.qs, pick(options, `channelsLimit`, `conversationId`));
+    assign(params.qs, pick(options, `channelsLimit`));
 
     return this.request(params)
       .then((res) => new Page(res, this.spark));
@@ -382,8 +397,8 @@ const Board = SparkPlugin.extend({
       .then((res) => res.body);
   },
 
-  _addContentChunk(conversation, channel, contentChunk) {
-    return this.spark.board.encryptContents(conversation.defaultActivityEncryptionKeyUrl, contentChunk)
+  _addContentChunk(channel, contentChunk) {
+    return this.spark.board.encryptContents(channel.defaultEncryptionKeyUrl, contentChunk)
       .then((res) => this.spark.request({
         method: `POST`,
         uri: `${channel.channelUrl}/contents`,

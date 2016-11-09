@@ -46,7 +46,7 @@ describe(`plugin-board`, () => {
         return conversation;
       }));
 
-    before(`create channel (board)`, () => participants[0].spark.board.createChannel({aclUrl: conversation.id})
+    before(`create channel (board)`, () => participants[0].spark.board.createChannel(conversation)
       .then((channel) => {
         board = channel;
         return channel;
@@ -135,7 +135,7 @@ describe(`plugin-board`, () => {
 
           // do not return promise because we want done() to be called on
           // board.activity
-          participants[0].spark.board.realtime.publish(conversation, data);
+          participants[0].spark.board.realtime.publish(board, data);
         });
       });
 
@@ -178,7 +178,7 @@ describe(`plugin-board`, () => {
 
           // do not return promise because we want done() to be called on
           // board.activity
-          participants[0].spark.board.realtime.publish(conversation, data);
+          participants[0].spark.board.realtime.publish(board, data);
         });
       });
     });
