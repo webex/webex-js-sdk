@@ -6,7 +6,7 @@ import {formatDate} from '../../utils/date';
 
 export default function ActivityList(props) {
   let lastActorId, lastVerb;
-  const {avatars, flags} = props;
+  const {avatars, currentUserId, flags, onActivityDelete, onActivityFlag} = props;
   const activities = props.activities
     .map((activity) => {
       const additional = lastActorId === activity.actor.id && lastVerb === activity.verb;
@@ -20,11 +20,11 @@ export default function ActivityList(props) {
           id={activity.id}
           isAdditional={additional}
           isFlagged={isFlagged}
-          isSelf={props.currentUserId === activity.actor.id}
+          isSelf={currentUserId === activity.actor.id}
           key={activity.id}
           name={activity.actor.displayName}
-          onActivityDelete={props.onActivityDelete}
-          onActivityFlag={props.onActivityFlag}
+          onActivityDelete={onActivityDelete}
+          onActivityFlag={onActivityFlag}
           timestamp={formatDate(activity.published)}
           verb={activity.verb}
         />

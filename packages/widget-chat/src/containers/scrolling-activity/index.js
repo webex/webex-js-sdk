@@ -31,6 +31,8 @@ function ScrollingActivity(props) {
   );
 }
 
+/* eslint-disable react/no-unused-prop-types */
+/* eslint-disable-reason passing props via destructuring */
 ScrollingActivity.propTypes = {
   activities: PropTypes.array,
   avatars: PropTypes.object.isRequired,
@@ -40,5 +42,6 @@ ScrollingActivity.propTypes = {
   onActivityDelete: PropTypes.func.isRequired,
   onActivityFlag: PropTypes.func.isRequired
 };
+/* eslint-enable react/no-unused-prop-types */
 
 export default injectScrollable(ScrollingActivity);

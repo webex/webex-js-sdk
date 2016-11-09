@@ -10,7 +10,6 @@ import {
 } from '../../actions/user';
 import {
   createConversationWithUser,
-  deleteActivity,
   listenToMercuryActivity,
   loadPreviousMessages
 } from '../../actions/conversation';
@@ -71,10 +70,10 @@ export class ChatWidget extends Component {
 
     if (spark && connected && authenticated && registered) {
       if (!user.currentUser && !user.isFetchingCurrentUser) {
-        nextProps.fetchCurrentUser(spark);
+        this.props.fetchCurrentUser(spark);
       }
       if (!conversation.id && !conversation.isFetching) {
-        nextProps.createConversationWithUser(userId, spark);
+        this.props.createConversationWithUser(userId, spark);
       }
     }
 
@@ -154,14 +153,14 @@ export class ChatWidget extends Component {
     const {props} = this;
     const prevConversation = props.conversation;
     if (!conversation.mercuryState.isListening) {
-      nextProps.listenToMercuryActivity(conversation.id, spark);
+      this.props.listenToMercuryActivity(conversation.id, spark);
     }
     if (!flags.hasFetched && !flags.isFetching) {
       nextProps.fetchFlags(spark);
     }
     // We only want to fetch avatars when a new activity is seen
     if (conversation.participants.length && conversation.participants.length !== prevConversation.participants.length) {
-      this.getAvatarsFromConversation(conversation, nextProps);
+      this.getAvatarsFromConversation(conversation);
     }
   }
 
@@ -170,11 +169,11 @@ export class ChatWidget extends Component {
    * that have not been fetched yet
    *
    * @param {any} conversation
-   * @param {any} props
    *
    * @returns {null}
    */
-  getAvatarsFromConversation(conversation, props) {
+  getAvatarsFromConversation(conversation) {
+    const {props} = this;
     const {
       spark,
       user
@@ -187,7 +186,7 @@ export class ChatWidget extends Component {
         const fetching = user.avatarsInFlight.indexOf(userId) !== -1;
         return !fetched || !fetching;
       });
-    userIds.forEach((userId) => props.fetchAvatarForUserId(userId, spark));
+    userIds.forEach((userId) => this.props.fetchAvatarForUserId(userId, spark));
   }
 
   /**
@@ -219,17 +218,17 @@ export class ChatWidget extends Component {
       widget
     } = props;
 
-    props.setScrollPosition({scrollTop: this.activityList.getScrollTop()});
+    this.props.setScrollPosition({scrollTop: this.activityList.getScrollTop()});
 
     if (this.activityList.isScrolledToBottom()) {
-      props.showScrollToBottomButton(false);
-      props.updateHasNewMessage(false);
+      this.props.showScrollToBottomButton(false);
+      this.props.updateHasNewMessage(false);
     }
     else if (!widget.showScrollToBottomButton) {
-      props.showScrollToBottomButton(true);
+      this.props.showScrollToBottomButton(true);
     }
     if (this.activityList.isScrolledToTop() && conversation.activities[0].verb !== `create`) {
-      props.loadPreviousMessages(conversation.id, _.first(conversation.activities), spark);
+      this.props.loadPreviousMessages(conversation.id, _.first(conversation.activities), spark);
     }
   }
 
@@ -327,7 +326,7 @@ export class ChatWidget extends Component {
 
     let main = ( // eslint-disable-line no-extra-parens
       <div className={classNames(`loading`, styles.loading)}>
-        Connecting...
+        {`Connecting...`}
         <div className={classNames(`spinner-container`, styles.spinnerContainer)}>
           <Spinner />
         </div>
@@ -420,7 +419,6 @@ export class ChatWidget extends Component {
 ChatWidget.propTypes = {
   confirmDeleteActivity: PropTypes.func.isRequired,
   createConversationWithUser: PropTypes.func.isRequired,
-  deleteActivity: PropTypes.func.isRequired,
   deleteActivityAndDismiss: PropTypes.func.isRequired,
   fetchAvatarForUserId: PropTypes.func.isRequired,
   fetchCurrentUser: PropTypes.func.isRequired,
@@ -454,7 +452,6 @@ export default connect(
   (dispatch) => bindActionCreators({
     confirmDeleteActivity,
     createConversationWithUser,
-    deleteActivity,
     deleteActivityAndDismiss,
     fetchAvatarForUserId,
     fetchCurrentUser,

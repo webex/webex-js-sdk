@@ -29,13 +29,14 @@ exports[`ActivityItemShareFile component renders properly 1`] = `
       className="share-item-actions">
       <div
         className="share-action-item">
-        <div
+        <button
           className="icon-button"
-          onClick={[Function handleDownloadClick]}>
+          onClick={[Function handleDownloadClick]}
+          onKeyUp={[Function handleDownloadClick]}>
           <div
             className="icon"
             title="Download this file" />
-        </div>
+        </button>
       </div>
     </div>
   </div>

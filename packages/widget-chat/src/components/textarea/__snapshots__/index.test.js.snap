@@ -1,6 +1,6 @@
 exports[`TextArea component renders properly 1`] = `
 <textarea
-  className="textarea test-class"
+  className="textarea"
   onChange={[Function anonymous]}
   onKeyDown={[Function anonymous]}
   onSubmit={[Function anonymous]}

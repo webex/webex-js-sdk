@@ -60,10 +60,7 @@ class SparkComponent extends Component {
 }
 
 SparkComponent.propTypes = {
-  connectToMercury: PropTypes.func.isRequired,
-  registerDevice: PropTypes.func.isRequired,
-  spark: PropTypes.object.isRequired,
-  updateSparkState: PropTypes.func.isRequired
+  spark: PropTypes.object.isRequired
 };
 
 export default connect(

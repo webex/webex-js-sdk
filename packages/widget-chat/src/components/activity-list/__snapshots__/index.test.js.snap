@@ -44,13 +44,14 @@ exports[`ActivityList component renders properly 1`] = `
           className="activity-post-action">
           <div
             className="post-action-item">
-            <div
+            <button
               className="icon-button"
-              onClick={[Function handleOnFlag]}>
+              onClick={[Function handleOnFlag]}
+              onKeyUp={[Function handleOnFlag]}>
               <div
                 className="icon"
                 title="Flag this message" />
-            </div>
+            </button>
           </div>
         </div>
         <div
@@ -104,13 +105,14 @@ exports[`ActivityList component renders properly 1`] = `
           className="activity-post-action">
           <div
             className="post-action-item">
-            <div
+            <button
               className="icon-button"
-              onClick={[Function handleOnFlag]}>
+              onClick={[Function handleOnFlag]}
+              onKeyUp={[Function handleOnFlag]}>
               <div
                 className="icon"
                 title="Flag this message" />
-            </div>
+            </button>
           </div>
         </div>
         <div
@@ -164,13 +166,14 @@ exports[`ActivityList component renders properly 1`] = `
           className="activity-post-action">
           <div
             className="post-action-item">
-            <div
+            <button
               className="icon-button"
-              onClick={[Function handleOnFlag]}>
+              onClick={[Function handleOnFlag]}
+              onKeyUp={[Function handleOnFlag]}>
               <div
                 className="icon"
                 title="Flag this message" />
-            </div>
+            </button>
           </div>
         </div>
         <div
