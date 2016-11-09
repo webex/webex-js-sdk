@@ -5,7 +5,7 @@
 
 'use strict';
 
-
+var has = require('lodash.has');
 var Magic = require('mmmagic');
 var ShareActivityBase = require('./share-activity-base');
 
@@ -15,11 +15,11 @@ var ShareActivityBase = require('./share-activity-base');
  * @memberof Conversation
  */
 var ShareActivity = ShareActivityBase.extend({
-  addFile: function addFile(file, options) {
+  addFile: function addFile(file) {
     if (!file.type) {
       return new Promise(function executor(resolve, reject) {
         var magic = new Magic.Magic(Magic.MAGIC_MIME_TYPE);
-        magic.detect(file, function magicCallback(err, res) {
+        magic.detect(has(file, 'file') ? file.file : file, function magicCallback(err, res) {
           if (err) {
             reject(err);
           }
@@ -29,9 +29,7 @@ var ShareActivity = ShareActivityBase.extend({
           }
         });
       })
-        .then(function addFileAfterDetect(detectedFile) {
-          ShareActivityBase.prototype.addFile.apply(this, [detectedFile, options]);
-        }.bind(this));
+        .then(ShareActivityBase.prototype.addFile.bind(this));
     }
     else {
       return ShareActivityBase.prototype.addFile.apply(this, arguments);

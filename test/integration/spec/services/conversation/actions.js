@@ -1528,15 +1528,14 @@ describe('Services', function() {
           before(function() {
             sinon.spy(party.spock.spark, 'upload');
             return party.spock.spark.conversation.share(conversation, {
-              files: [
-                [fixtures.sampleImageSmallOnePng, {
-                  actions: [{
-                    type: 'edit',
-                    mimeType: 'application/x-cisco-spark-whiteboard',
-                    url: 'https://boards.example.com/boards/1'
-                  }]
+              files: [{
+                file: fixtures.sampleImageSmallOnePng,
+                actions: [{
+                  type: 'edit',
+                  mimeType: 'application/x-cisco-spark-whiteboard',
+                  url: 'https://boards.example.com/boards/1'
                 }]
-              ]
+              }]
             })
               .then(function(a) {
                 whiteboardActivity = a;

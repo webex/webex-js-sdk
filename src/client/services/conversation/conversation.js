@@ -13,7 +13,6 @@ var Encrypter = require('./encrypter');
 var EventEmitter = require('events').EventEmitter;
 var FileCache = require('./file-cache');
 var forEach = require('lodash.foreach');
-var isArray = require('lodash.isarray');
 var isObject = require('lodash.isobject');
 var isFunction = require('lodash.isfunction');
 var last = require('lodash.last');
@@ -1170,14 +1169,7 @@ var ConversationService = SparkBase.extend(
           activity = shareActivity;
 
           return Promise.all(object.files.map(function uploadFile(file) {
-
-            // addFile options are passed as the second value of an array
-            if (isArray(file)) {
-              return activity.addFile.apply(activity, file);
-            }
-            else {
-              return activity.addFile(file);
-            }
+            return activity.addFile(file);
           }, this))
           .then(function callPrepareActivity() {
             return this._prepareActivity(activity, object);
