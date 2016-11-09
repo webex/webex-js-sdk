@@ -3,6 +3,7 @@
 import _ from 'lodash';
 
 import {
+  ACKNOWLEDGE_ACTIVITY,
   ADD_ACTIVITIES_TO_CONVERSATION,
   CREATE_CONVERSATION,
   CREATE_CONVERSATION_BEGIN,
@@ -65,15 +66,22 @@ function receiveMercuryActivity(state, action) {
 export default function reduceConversation(state = {
   activities: [],
   id: null,
-  participants: [],
+  lastAcknowledgedActivity: null,
   isFetching: false,
   isLoaded: false,
   isLoadingHistoryUp: false,
   mercuryState: {
     isListening: false
-  }
+  },
+  participants: []
 }, action) {
   switch (action.type) {
+  case ACKNOWLEDGE_ACTIVITY: {
+    const activityId = action.payload.activity.id;
+    return Object.assign({}, state, {
+      lastAcknowledgedActivity: activityId
+    });
+  }
   case ADD_ACTIVITIES_TO_CONVERSATION: {
     const activities = [...action.payload.activities, ...state.activities];
     return Object.assign({}, state, {

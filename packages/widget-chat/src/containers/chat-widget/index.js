@@ -9,6 +9,7 @@ import {
   fetchCurrentUser
 } from '../../actions/user';
 import {
+  acknowledgeActivityOnServer,
   createConversationWithUser,
   listenToMercuryActivity,
   loadPreviousMessages
@@ -223,6 +224,10 @@ export class ChatWidget extends Component {
     if (this.activityList.isScrolledToBottom()) {
       this.props.showScrollToBottomButton(false);
       this.props.updateHasNewMessage(false);
+      const lastActivity = _.last(conversation.activities);
+      if (conversation.lastAcknowledgedActivity !== lastActivity.id) {
+        this.props.acknowledgeActivityOnServer(conversation, lastActivity, spark);
+      }
     }
     else if (!widget.showScrollToBottomButton) {
       this.props.showScrollToBottomButton(true);
@@ -417,6 +422,7 @@ export class ChatWidget extends Component {
 }
 
 ChatWidget.propTypes = {
+  acknowledgeActivityOnServer: PropTypes.func.isRequired,
   confirmDeleteActivity: PropTypes.func.isRequired,
   createConversationWithUser: PropTypes.func.isRequired,
   deleteActivityAndDismiss: PropTypes.func.isRequired,
@@ -450,6 +456,7 @@ function mapStateToProps(state, ownProps) {
 export default connect(
   mapStateToProps,
   (dispatch) => bindActionCreators({
+    acknowledgeActivityOnServer,
     confirmDeleteActivity,
     createConversationWithUser,
     deleteActivityAndDismiss,
