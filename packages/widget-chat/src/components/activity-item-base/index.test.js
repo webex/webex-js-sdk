@@ -12,7 +12,7 @@ describe(`ActivityItemBase component`, () => {
     verb: `post`
   };
 
-  const child = <div>Test Content</div>;
+  const child = <div>{`Test Content`}</div>;
 
   const component = renderer.create(
     <ActivityItemBase {...activity} >

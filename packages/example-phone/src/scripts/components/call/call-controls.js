@@ -29,7 +29,7 @@ export default function CallControls({
           inactiveTitle="Start sending audio"
           onActivate={onStartSendingAudio}
           onDeactivate={onStopSendingAudio}
-        >Send Audio</ToggleButton>
+        >{`Send Audio`}</ToggleButton>
         <ToggleButton
           active={sendingVideo}
           activeStyle=""
@@ -38,7 +38,7 @@ export default function CallControls({
           inactiveTitle="Start sending video"
           onActivate={onStartSendingVideo}
           onDeactivate={onStopSendingVideo}
-        >Send Video</ToggleButton>
+        >{`Send Video`}</ToggleButton>
         <ToggleButton
           active={receivingAudio}
           activeStyle=""
@@ -47,7 +47,7 @@ export default function CallControls({
           inactiveTitle="Start receiving audio"
           onActivate={onStartReceivingAudio}
           onDeactivate={onStopReceivingAudio}
-        >Receive Audio</ToggleButton>
+        >{`Receive Audio`}</ToggleButton>
         <ToggleButton
           active={receivingVideo}
           activeStyle=""
@@ -56,9 +56,9 @@ export default function CallControls({
           inactiveTitle="Start receiving video"
           onActivate={onStartReceivingVideo}
           onDeactivate={onStopReceivingVideo}
-        >Receive Video</ToggleButton>
+        >{`Receive Video`}</ToggleButton>
       </ButtonGroup>
-      <Button bsStyle="danger" onClick={onHangup} title="Hang up">Hang Up</Button>
+      <Button bsStyle="danger" onClick={onHangup} title="Hang up">{`Hang Up`}</Button>
     </div>
   );
 }

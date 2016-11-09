@@ -29,17 +29,17 @@ class App extends Component {
         <Navbar inverse>
           <Navbar.Header>
             <Navbar.Brand>
-              <Link to="/">CiscoSpark SDK Example</Link>
+              <Link to="/">{`CiscoSpark SDK Example`}</Link>
             </Navbar.Brand>
             <Navbar.Toggle />
           </Navbar.Header>
           <Navbar.Collapse>
             <Nav>
               <LinkContainer to={`/auth`}>
-                <NavItem title="Link to Auth Page">Auth</NavItem>
+                <NavItem title="Link to Auth Page">{`Auth`}</NavItem>
               </LinkContainer>
               <LinkContainer to={`/call`}>
-                <NavItem title="Link to Call Page">Call</NavItem>
+                <NavItem title="Link to Call Page">{`Call`}</NavItem>
               </LinkContainer>
             </Nav>
             <p className="navbar-text navbar-right">

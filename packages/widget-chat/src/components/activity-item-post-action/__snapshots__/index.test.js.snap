@@ -1,12 +1,13 @@
 exports[`ActivityItemPostActions component renders properly 1`] = `
 <div
   className="post-action-item">
-  <div
+  <button
     className="icon-button"
-    onClick={[Function anonymous]}>
+    onClick={[Function anonymous]}
+    onKeyUp={[Function anonymous]}>
     <div
       className="icon"
       title="abc-123" />
-  </div>
+  </button>
 </div>
 `;

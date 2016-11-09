@@ -24,7 +24,7 @@ export default function ActivityItem(props) {
     itemComponent = <ActivityItemShareList files={activity.files.items} {...props} />;
   }
   else if (SYSTEM_MESSAGE_VERBS.indexOf(verb) !== -1) {
-    itemComponent = <ActivityItemSystemMessage content={activity.displayName} {...props} />;
+    itemComponent = <ActivityItemSystemMessage {...props} />;
   }
 
   return (
@@ -33,7 +33,8 @@ export default function ActivityItem(props) {
     </div>
   );
 }
-
+/* eslint-disable react/no-unused-prop-types */
+/* eslint-disable-reason passing props via destructuring */
 ActivityItem.propTypes = {
   activity: PropTypes.object,
   avatarUrl: PropTypes.string,
@@ -47,3 +48,4 @@ ActivityItem.propTypes = {
   timestamp: PropTypes.string,
   verb: PropTypes.string.isRequired
 };
+/* eslint-enable react/no-unused-prop-types */

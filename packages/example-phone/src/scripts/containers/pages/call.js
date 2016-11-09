@@ -14,6 +14,7 @@ import {answer, decline} from '../../actions/incoming-call';
 import {dial} from '../../actions/phone';
 
 class CallPage extends Component {
+  /* eslint-disable react/no-unused-prop-types */
   static propTypes = {
     answer: React.PropTypes.func.isRequired,
     calls: React.PropTypes.array.isRequired,
@@ -22,6 +23,7 @@ class CallPage extends Component {
     lastCall: React.PropTypes.object,
     spark: React.PropTypes.object.isRequired
   }
+  /* eslint-disable react/no-unused-prop-types */
 
   handleAnswer(call) {
     const {answer, spark} = this.props;
@@ -35,7 +37,7 @@ class CallPage extends Component {
 
   render() {
     const {dial, spark} = this.props;
-
+    /* eslint-disable react/forbid-component-props */
     return (
       <Grid className="call" fluid>
         <Row>
@@ -61,6 +63,7 @@ class CallPage extends Component {
         </Row>
       </Grid>
     );
+    /* eslint-enable react/forbid-component-props */
   }
 }
 

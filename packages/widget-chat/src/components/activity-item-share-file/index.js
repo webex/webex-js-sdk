@@ -39,7 +39,7 @@ function ActivityItemShareFile(props) {
         <div className={classNames(`share-item-actions`, styles.shareActions)}>
           <div className={classNames(`share-action-item`, styles.shareActionItem)}>
             <IconButton
-              className={styles.downloadButton}
+              buttonClassName={styles.downloadButton}
               onClick={handleDownloadClick}
               title="Download this file"
               type={ICON_TYPE_DOWNLOAD}

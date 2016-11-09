@@ -23,7 +23,7 @@ function ActivityItemShareThumbnail(props) {
 
   if (thumbnail) {
     if (!thumbnail.isFetching && thumbnail.objectUrl) {
-      image = <img src={thumbnail.objectUrl} />;
+      image = <img alt="Uploaded File" src={thumbnail.objectUrl} />;
     }
     else if (thumbnail.isFetching) {
       image = <div className={classNames(`spinner-container`, styles.spinnerContainer)}><Spinner /></div>;
@@ -50,7 +50,7 @@ function ActivityItemShareThumbnail(props) {
         <div className={classNames(`share-item-actions`, styles.shareActions)}>
           <div className={classNames(`share-action-item`, styles.shareActionItem)}>
             <IconButton
-              className={styles.downloadButton}
+              buttonClassName={styles.downloadButton}
               onClick={handleDownloadClick}
               title="Download this file"
               type={ICON_TYPE_DOWNLOAD}

@@ -40,26 +40,28 @@ exports[`ActivityItem post component is self renders properly 1`] = `
         className="activity-post-action">
         <div
           className="post-action-item">
-          <div
+          <button
             className="icon-button"
-            onClick={[Function handleOnFlag]}>
+            onClick={[Function handleOnFlag]}
+            onKeyUp={[Function handleOnFlag]}>
             <div
               className="icon"
               title="Flag this message" />
-          </div>
+          </button>
         </div>
       </div>
       <div
         className="activity-post-action">
         <div
           className="post-action-item">
-          <div
+          <button
             className="icon-button"
-            onClick={[Function handleOnDelete]}>
+            onClick={[Function handleOnDelete]}
+            onKeyUp={[Function handleOnDelete]}>
             <div
               className="icon"
               title="Delete this message" />
-          </div>
+          </button>
         </div>
       </div>
     </div>
@@ -111,13 +113,14 @@ exports[`ActivityItem post component not self renders properly 1`] = `
         className="activity-post-action">
         <div
           className="post-action-item">
-          <div
+          <button
             className="icon-button"
-            onClick={[Function handleOnFlag]}>
+            onClick={[Function handleOnFlag]}
+            onKeyUp={[Function handleOnFlag]}>
             <div
               className="icon"
               title="Flag this message" />
-          </div>
+          </button>
         </div>
       </div>
       <div
