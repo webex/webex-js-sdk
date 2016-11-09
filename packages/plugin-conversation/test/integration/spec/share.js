@@ -218,15 +218,14 @@ describe(`plugin-conversation`, function() {
           }));
       });
 
-      it(`shares a whiteboard`, () => spark.conversation.share(conversation, [
-          [sampleImageSmallOnePng, {
-            actions: [{
-              type: `edit`,
-              mimeType: `application/x-cisco-spark-whiteboard`,
-              url: `https://boards.example.com/boards/1`
-            }]
-          }]
-      ])
+      it(`shares a whiteboard`, () => spark.conversation.share(conversation, [{
+        file: sampleImageSmallOnePng,
+        actions: [{
+          type: `edit`,
+          mimeType: `application/x-cisco-spark-whiteboard`,
+          url: `https://boards.example.com/boards/1`
+        }]
+      }])
         .then((activity) => {
           assert.isActivity(activity);
           assert.isEncryptedActivity(activity);

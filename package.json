@@ -90,6 +90,7 @@
     "lodash.first": "^3.0.0",
     "lodash.foreach": "^3.0.2",
     "lodash.get": "^4.4.2",
+    "lodash.has": "^4.5.2",
     "lodash.includes": "^4.1.0",
     "lodash.isarray": "^3.0.1",
     "lodash.isequal": "^3.0.4",
