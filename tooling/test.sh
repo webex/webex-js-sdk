@@ -137,6 +137,9 @@ for FILE in $(find ./reports/junit -name karma-*.xml) ; do
   (write) { print $0 }
   /<\/system-out/ { write = 1 }
   ' < $FILE > ${FILE}-out.xml
+  # Backup the raw data in case we want to look at it later. We'll just put in
+  # .tmp because exporting it as a build artifact will massively grow the build.
+  mv ${FILE} .tmp/${FILE}
   mv ${FILE}-out.xml ${FILE}
 done
 
