@@ -118,10 +118,6 @@ var PersistenceService = SparkBase.extend({
    * @return {Promise<Board~Channel>}
    */
   createChannel: function createChannel(conversation, channel) {
-    if (!channel) {
-      channel = {};
-    }
-
     return this._encryptChannel(conversation, channel)
       .then(function requestCreateChannel(preppedChannel) {
         return this.spark.request({
@@ -136,7 +132,16 @@ var PersistenceService = SparkBase.extend({
       });
   },
 
-  _encryptChannel: function _prepareChannel(conversation, channel) {
+  _encryptChannel: function _encryptChannel(conversation, channel) {
+    channel = this._prepareChannel(conversation, channel);
+    return this.spark.board.encryptChannel(channel);
+  },
+
+  _prepareChannel: function _prepareChannel(conversation, channel) {
+    if (!channel) {
+      channel = {};
+    }
+
     channel.aclUrlLink = conversation.aclUrl;
     channel.kmsMessage = {
       method: 'create',
@@ -145,7 +150,7 @@ var PersistenceService = SparkBase.extend({
       keyUris: []
     };
 
-    return this.spark.board.encryptChannel(channel);
+    return channel;
   },
 
   /**

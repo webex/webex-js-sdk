@@ -70,7 +70,7 @@ describe(`plugin-board`, () => {
     })));
 
     describe(`#getChannel`, () => {
-      it(`gets the channal metadata`, () => {
+      it(`gets the channel metadata`, () => {
         return participants[0].spark.board.getChannel(board)
           .then((channel) => {
             assert.property(channel, `kmsResourceUrl`);

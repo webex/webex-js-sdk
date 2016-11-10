@@ -280,6 +280,26 @@ describe('Services', function() {
     });
 
     describe('Persistence', function() {
+      describe('#getChannel', function() {
+        before(function() {
+          return ensureBoard();
+        });
+
+        it('gets the channel metadata', function() {
+          return party.mccoy.spark.board.persistence.getChannel(board)
+            .then(function(channel) {
+              assert.property(channel, 'kmsResourceUrl');
+              assert.property(channel, 'aclUrl');
+
+              assert.equal(channel.channelUrl, board.channelUrl);
+              assert.equal(channel.aclUrlLink, conversation.aclUrl);
+              assert.notEqual(channel.kmsResourceUrl, conversation.kmsResourceObjectUrl);
+              assert.notEqual(channel.aclUrl, conversation.aclUrl);
+              assert.notEqual(channel.defaultEncryptionKeyUrl, conversation.defaultActivityEncryptionKeyUrl);
+            });
+        });
+      });
+
       describe('#ping()', function() {
         it('pings persistence board service', function() {
           return party.mccoy.spark.board.persistence.ping()
