@@ -16,7 +16,7 @@ describe(`plugin-credentials`, function() {
 
     let spark, supertoken;
 
-    beforeEach(() => testUsers.create({count: 1})
+    beforeEach(`create test user`, () => testUsers.create({count: 1})
       .then((users) => {
         assert.isDefined(users[0].token);
         spark = new CiscoSpark({
