@@ -16,7 +16,7 @@ describe(`Encryption`, function() {
   describe(`KMS`, () => {
     let spark, user;
 
-    before(() => testUsers.create({count: 1})
+    before(`create test user`, () => testUsers.create({count: 1})
       .then((users) => {
         user = users[0];
         spark = new CiscoSpark({
@@ -117,7 +117,7 @@ describe(`Encryption`, function() {
 
     describe(`when ecdhe negotiation times out`, () => {
       let originalKmsTimeout, spark2, spy;
-      before(() => testUsers.create({count: 1})
+      before(`create test user`, () => testUsers.create({count: 1})
         .then(([u]) => {
           spark2 = new CiscoSpark({
             credentials: {
@@ -129,7 +129,7 @@ describe(`Encryption`, function() {
 
       after(() => spark2 && spark2.mercury.disconnect());
 
-      beforeEach(() => {
+      beforeEach(`alter config`, () => {
         originalKmsTimeout = spark2.config.encryption.kmsInitialTimeout;
         spark2.config.encryption.kmsInitialTimeout = 100;
         spy = sinon.spy(spark2.encryption.kms, `prepareRequest`);
@@ -154,7 +154,7 @@ describe(`Encryption`, function() {
     describe(`when the kms is in another org`, () => {
       let fedSpark;
 
-      before(() => testUsers.create({
+      before(`create test user in other org`, () => testUsers.create({
         count: 1,
         config: {
           email: `spark-js-sdk--kms-fed--${uuid.v4()}@wx2.example.com`,
@@ -173,8 +173,9 @@ describe(`Encryption`, function() {
             }
           });
           assert.isTrue(fedSpark.isAuthenticated);
-          return fedSpark.mercury.connect();
         }));
+
+      before(`connect federated user to mercury`, () => fedSpark.mercury.connect());
 
       after(() => fedSpark && fedSpark.mercury.disconnect());
 

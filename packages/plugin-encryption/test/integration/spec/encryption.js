@@ -21,7 +21,7 @@ describe(`Encryption`, function() {
   const PLAINTEXT = `Admiral, if we go "by the book". like Lieutenant Saavik, hours could seem like days.`;
   let FILE = makeLocalUrl(`/sample-image-small-one.png`);
 
-  before(() => testUsers.create({count: 1})
+  before(`create test user`, () => testUsers.create({count: 1})
     .then((users) => {
       const user = users[0];
       spark = new CiscoSpark({
@@ -30,12 +30,14 @@ describe(`Encryption`, function() {
         }
       });
       assert.isTrue(spark.isAuthenticated);
-
-      return spark.encryption.kms.createUnboundKeys({count: 1})
-        .then(([k]) => {key = k;});
     }));
 
-  before(() => spark.request({
+  before(`create unbound key`, () => spark.encryption.kms.createUnboundKeys({count: 1})
+    .then(([k]) => {
+      key = k;
+    }));
+
+  before(`fetch file fixture`, () => spark.request({
     uri: FILE,
     responseType: `buffer`
   })
@@ -75,7 +77,7 @@ describe(`Encryption`, function() {
 
   describe(`#getKey()`, () => {
     let fetchKeySpy, otherSpark, otherUser, storageGetSpy;
-    before(() => testUsers.create({count: 1})
+    before(`create test user`, () => testUsers.create({count: 1})
       .then((users) => {
         otherUser = users[0];
         otherSpark = new CiscoSpark({
@@ -86,7 +88,7 @@ describe(`Encryption`, function() {
         assert.isTrue(otherSpark.isAuthenticated);
       }));
 
-    before(() => spark.encryption.kms.createResource({
+    before(`create kms resource`, () => spark.encryption.kms.createResource({
       key,
       userIds: [
         spark.device.userId,
