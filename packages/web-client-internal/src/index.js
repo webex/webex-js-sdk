@@ -20,5 +20,17 @@ import '@ciscospark/plugin-support';
 import '@ciscospark/plugin-team';
 import '@ciscospark/plugin-user';
 import '@ciscospark/plugin-wdm';
+import config from './config';
+import SparkCore from '@ciscospark/spark-core';
+import {merge} from 'lodash';
 
-export {default as CiscoSpark} from '@ciscospark/spark-core';
+/**
+ * @param {Object} attrs
+ * @param {Object} attrs.config
+ * @returns {Spark}
+ */
+export default function CiscoSpark(attrs) {
+  attrs = attrs || {};
+  attrs.config = merge(config, attrs.config);
+  return new SparkCore(attrs);
+}

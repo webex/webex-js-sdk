@@ -24,7 +24,7 @@
     "Nate Cohen-Smith <ncohensm@cisco.com>",
     "Vagou Zhou <vagouz@cisco.com>"
   ],
-  "main": "src/index.js",
+  "main": "packages/web-client-internal/dist/index.js",
   "repository": {
     "type": "git",
     "url": "http://sqbu-github.cisco.com:WebExSquared/squared-js-sdk.git"

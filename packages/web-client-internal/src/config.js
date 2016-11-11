@@ -4,5 +4,8 @@
  * @private
  */
 
+import storageConfig from './config-storage';
+
 export default {
+  storage: storageConfig
 };
