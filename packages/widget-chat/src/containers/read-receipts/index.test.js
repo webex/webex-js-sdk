@@ -6,7 +6,7 @@ import store from '../../store';
 
 import ReadReceipts from '.';
 
-describe(`ScrollingActivity container`, () => {
+describe(`ReadReceipts container`, () => {
   it(`renders properly`, () => {
     const component = renderer.create(
       <Provider store={store}>

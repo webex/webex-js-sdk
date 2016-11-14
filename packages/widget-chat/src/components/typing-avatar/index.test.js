@@ -3,7 +3,7 @@ import renderer from 'react-test-renderer';
 
 import TypingAvatar from '.';
 
-describe(`ScrollingActivity container`, () => {
+describe(`TypingAvatar container`, () => {
   it(`renders properly`, () => {
     const component = renderer.create(
       <TypingAvatar name={`Testerson`} />
