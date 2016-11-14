@@ -1,5 +1,8 @@
 import React from 'react';
 import renderer from 'react-test-renderer';
+import {Provider} from 'react-redux';
+
+import store from '../../store';
 
 import ScrollingActivity from '.';
 
@@ -47,27 +50,15 @@ const onActivityFlag = jest.fn();
 describe(`ScrollingActivity container`, () => {
   it(`renders properly`, () => {
     const component = renderer.create(
-      <ScrollingActivity
-        activities={activities}
-        avatars={avatars}
-        flags={flags}
-        onActivityDelete={onActivityDelete}
-        onActivityFlag={onActivityFlag}
-      />
-    );
-    expect(component).toMatchSnapshot();
-  });
-
-  it(`renders properly when typing`, () => {
-    const component = renderer.create(
-      <ScrollingActivity
-        activities={activities}
-        avatars={avatars}
-        flags={flags}
-        isTyping
-        onActivityDelete={onActivityDelete}
-        onActivityFlag={onActivityFlag}
-      />
+      <Provider store={store}>
+        <ScrollingActivity
+          activities={activities}
+          avatars={avatars}
+          flags={flags}
+          onActivityDelete={onActivityDelete}
+          onActivityFlag={onActivityFlag}
+        />
+      </Provider>
     );
     expect(component).toMatchSnapshot();
   });

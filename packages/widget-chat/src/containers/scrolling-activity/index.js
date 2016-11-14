@@ -2,21 +2,17 @@ import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 import injectScrollable from '../wrapper-scrollable';
 
-import TypingIndicator from '../../components/typing-indicator';
 import ActivityList from '../../components/activity-list';
 import Spinner from '../../components/spinner';
+import ReadReceipts from '../read-receipts';
 
 import styles from './styles.css';
 
 function ScrollingActivity(props) {
   const {
-    isLoadingHistoryUp,
-    isTyping
+    isLoadingHistoryUp
   } = props;
-  let spinnerUp, typingIndicator;
-  if (isTyping) {
-    typingIndicator = <TypingIndicator />;
-  }
+  let spinnerUp;
 
   const spinner = <div className={classNames(`spinner-container`, styles.spinnerContainer)}><Spinner /></div>;
 
@@ -29,7 +25,7 @@ function ScrollingActivity(props) {
       {spinnerUp}
       <ActivityList {...props} />
       <div className={classNames(`indicators`, styles.indicators)}>
-        {typingIndicator}
+        <ReadReceipts />
       </div>
     </div>
   );
@@ -43,7 +39,6 @@ ScrollingActivity.propTypes = {
   currentUserId: PropTypes.string,
   flags: PropTypes.array,
   isLoadingHistoryUp: PropTypes.bool,
-  isTyping: PropTypes.bool,
   onActivityDelete: PropTypes.func.isRequired,
   onActivityFlag: PropTypes.func.isRequired
 };

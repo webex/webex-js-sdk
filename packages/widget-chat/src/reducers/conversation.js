@@ -3,6 +3,7 @@
 import _ from 'lodash';
 
 import {
+  ACKNOWLEDGE_ACTIVITY,
   ADD_ACTIVITIES_TO_CONVERSATION,
   CREATE_CONVERSATION,
   CREATE_CONVERSATION_BEGIN,
@@ -23,19 +24,64 @@ function sortActivityByTime(activities) {
   return _.sortBy(activities, [`published`]);
 }
 
+function receiveMercuryActivity(state, action) {
+  let {activities, participants} = state;
+  const {activity} = action.payload;
+  const {verb} = activity;
+  if (verb === `delete`) {
+    // Find activity that is being deleted and change it to a tombstone
+    const deletedId = activity.object.id;
+    activities = state.activities.map((activityItem) => {
+      if (activityItem.id === deletedId) {
+        return Object.assign({}, activityItem, {
+          verb: `tombstone`
+        });
+      }
+      return activityItem;
+    });
+  }
+  else if (verb === `acknowledge`) {
+    // acknowledge is a read receipt. we need to update the participants who
+    // are listed in this acknowledgement
+    const actorId = activity.actor.id;
+    participants = state.participants.map((participant) => {
+      if (participant.id === actorId) {
+        return Object.assign({}, participant, {
+          roomProperties: Object.assign({}, participant.roomProperties, {
+            lastSeenActivityUUID: activity.object.id,
+            lastSeenActivityDate: activity.published
+          })
+        });
+      }
+      return participant;
+    });
+  }
+  return Object.assign({}, state, {
+    activities: [...activities],
+    participants: [...participants]
+  });
+}
+
 
 export default function reduceConversation(state = {
   activities: [],
   id: null,
-  participants: [],
+  lastAcknowledgedActivity: null,
   isFetching: false,
   isLoaded: false,
   isLoadingHistoryUp: false,
   mercuryState: {
     isListening: false
-  }
+  },
+  participants: []
 }, action) {
   switch (action.type) {
+  case ACKNOWLEDGE_ACTIVITY: {
+    const activityId = action.payload.activity.id;
+    return Object.assign({}, state, {
+      lastAcknowledgedActivity: activityId
+    });
+  }
   case ADD_ACTIVITIES_TO_CONVERSATION: {
     const activities = [...action.payload.activities, ...state.activities];
     return Object.assign({}, state, {
@@ -62,22 +108,7 @@ export default function reduceConversation(state = {
   }
 
   case RECEIVE_MERCURY_ACTIVITY: {
-    let activities = state.activities;
-    if (action.payload.activity.verb === `delete`) {
-      // Find activity that is being deleted and change it to a tombstone
-      const deletedId = action.payload.activity.object.id;
-      activities = state.activities.map((activity) => {
-        if (activity.id === deletedId) {
-          return Object.assign({}, activity, {
-            verb: `tombstone`
-          });
-        }
-        return activity;
-      });
-    }
-    return Object.assign({}, state, {
-      activities: [...activities]
-    });
+    return receiveMercuryActivity(state, action);
   }
 
   case RECEIVE_MERCURY_COMMENT: {

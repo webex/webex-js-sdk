@@ -4,6 +4,16 @@ import {setTyping} from './indicators';
 const VISIBLE_ACTIVITY_VERBS = [`share`, `post`];
 const VISIBLE_ACTIVITY_TYPES = [`comment`, `content`, `conversation`];
 
+export const ACKNOWLEDGE_ACTIVITY = `ACKNOWLEDGE_ACTIVITY`;
+function acknowledgeActivity(activity) {
+  return {
+    type: ACKNOWLEDGE_ACTIVITY,
+    payload: {
+      activity
+    }
+  };
+}
+
 export const ADD_ACTIVITIES_TO_CONVERSATION = `ADD_ACTIVITIES_TO_CONVERSATION`;
 export function addActivitiesToConversation(activities) {
   return {
@@ -86,6 +96,15 @@ export function updateConversationState(conversationState) {
 }
 
 
+export function acknowledgeActivityOnServer(conversation, activity, spark) {
+  return (dispatch) =>
+    spark.conversation.acknowledge({
+      id: conversation.id
+    }, {
+      id: activity.id
+    }).then(() => dispatch(acknowledgeActivity(activity)));
+}
+
 /**
  * Creates/Opens a conversation with a user
  *
@@ -101,7 +120,8 @@ export function createConversationWithUser(userId, spark) {
       participants: [userId]
     }, {
       latestActivity: true,
-      activitiesLimit: 30
+      activitiesLimit: 30,
+      participantAckFilter: `all`
     })
       .then((conversation) => dispatch(createConversation(conversation)));
   };
