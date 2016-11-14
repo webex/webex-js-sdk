@@ -18,7 +18,15 @@ export default function ActivityItem(props) {
   let itemComponent = ``;
 
   if (verb === POST_VERB) {
-    itemComponent = <ActivityItemPost content={activity.displayName} {...props} />;
+    let content;
+    if (activity.content) {
+      // HTML encoded posts
+      content = activity.content;
+    }
+    else {
+      content = activity.displayName;
+    }
+    itemComponent = <ActivityItemPost content={content} {...props} />;
   }
   else if (verb === SHARE_VERB) {
     itemComponent = <ActivityItemShareList files={activity.files.items} {...props} />;

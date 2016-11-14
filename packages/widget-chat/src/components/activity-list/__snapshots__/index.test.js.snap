@@ -33,9 +33,12 @@ exports[`ActivityList component renders properly 1`] = `
         <div
           className="activity-content">
           <div
-            className="activity-text">
-            Test Activity Content 1
-          </div>
+            className="activity-text"
+            dangerouslySetInnerHTML={
+              Object {
+                "__html": "Test Activity Content 1"
+              }
+            } />
         </div>
       </div>
       <div
@@ -94,9 +97,12 @@ exports[`ActivityList component renders properly 1`] = `
         <div
           className="activity-content">
           <div
-            className="activity-text">
-            Test Activity Content 2
-          </div>
+            className="activity-text"
+            dangerouslySetInnerHTML={
+              Object {
+                "__html": "Test Activity Content 2"
+              }
+            } />
         </div>
       </div>
       <div
@@ -155,9 +161,12 @@ exports[`ActivityList component renders properly 1`] = `
         <div
           className="activity-content">
           <div
-            className="activity-text">
-            Test Activity Content 3
-          </div>
+            className="activity-text"
+            dangerouslySetInnerHTML={
+              Object {
+                "__html": "Test Activity Content 3"
+              }
+            } />
         </div>
       </div>
       <div

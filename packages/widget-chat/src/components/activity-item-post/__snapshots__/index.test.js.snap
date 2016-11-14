@@ -27,9 +27,12 @@ exports[`ActivityItemPost post component renders properly 1`] = `
     <div
       className="activity-content">
       <div
-        className="activity-text">
-        Test Activity Content
-      </div>
+        className="activity-text"
+        dangerouslySetInnerHTML={
+          Object {
+            "__html": "Test Activity Content"
+          }
+        } />
     </div>
   </div>
   <div

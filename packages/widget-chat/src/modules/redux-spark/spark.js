@@ -15,6 +15,48 @@ export function createSpark(accessToken) {
       }
     },
     config: {
+      conversation: {
+        allowedInboundTags: {
+          'spark-mention': [`data-object-type`, `data-object-id`, `data-object-url`],
+          a: [`href`],
+          b: [],
+          blockquote: [`class`],
+          strong: [],
+          i: [],
+          em: [],
+          pre: [],
+          code: [],
+          br: [],
+          hr: [],
+          p: [],
+          ul: [],
+          ol: [],
+          li: [],
+          h1: [],
+          h2: [],
+          h3: []
+        },
+        allowedOutboundTags: {
+          'spark-mention': [`data-object-type`, `data-object-id`, `data-object-url`],
+          a: [`href`],
+          b: [],
+          blockquote: [`class`],
+          strong: [],
+          i: [],
+          em: [],
+          pre: [],
+          code: [],
+          br: [],
+          hr: [],
+          p: [],
+          ul: [],
+          ol: [],
+          li: [],
+          h1: [],
+          h2: [],
+          h3: []
+        }
+      },
       storage: {
         boundedAdapter: new LocalStorageStoreAdapter(`ciscospark-embedded`)
       }
