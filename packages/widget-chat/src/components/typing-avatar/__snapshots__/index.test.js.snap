@@ -1,4 +1,4 @@
-exports[`ScrollingActivity container renders properly 1`] = `
+exports[`TypingAvatar container renders properly 1`] = `
 <div
   className="typing-avatar">
   <div
@@ -17,7 +17,7 @@ exports[`ScrollingActivity container renders properly 1`] = `
 </div>
 `;
 
-exports[`ScrollingActivity container renders properly when typing 1`] = `
+exports[`TypingAvatar container renders properly when typing 1`] = `
 <div
   className="typing-avatar">
   <div
