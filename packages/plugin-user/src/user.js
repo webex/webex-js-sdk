@@ -183,19 +183,15 @@ const User = SparkPlugin.extend({
   register(params, options) {
     params = params || {};
     options = options || {};
-
     defaults(params, this.config.registrationDefaults);
-
     if (!params.email) {
       throw new Error(`\`params.email\` is required`);
     }
-
     // Spoof mobile client for testing of activate and reverify APIs
     let headers;
     if (options.spoofMobile) {
       headers = {'User-Agent': `wx2-android`};
     }
-
     return this.request({
       api: `atlas`,
       resource: `users/email/verify`,

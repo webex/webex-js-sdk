@@ -91,11 +91,11 @@ const SparkCore = AmpState.extend({
   },
 
   authenticate(...args) {
-    return this.credentials.authenticate(...args);
+    return this.credentials.initiateLogin(...args);
   },
 
   authorize(...args) {
-    return this.credentials.authorize(...args);
+    return this.credentials.initiateLogin(...args);
   },
 
   refresh(...args) {

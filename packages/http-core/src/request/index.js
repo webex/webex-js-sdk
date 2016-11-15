@@ -20,7 +20,6 @@ export default function request(options) {
 
   options.download = new EventEmitter();
   options.upload = new EventEmitter();
-
   return intercept(options.interceptors, `Request`)
     .then((...args) => _request(options, ...args))
     .then((...args) => intercept(options.interceptors.slice().reverse(), `Response`, ...args));
@@ -35,7 +34,6 @@ export default function request(options) {
   function intercept(interceptors, key, res) {
     const successKey = `on${key}`;
     const errorKey = `on${key}Error`;
-
     return interceptors.reduce((promise, interceptor) => promise.then(
         (result) => {
           if (interceptor[successKey]) {
@@ -44,6 +42,7 @@ export default function request(options) {
           return Promise.resolve(result);
         },
         (reason) => {
+          console.log('SDK: INTERCEPTOR ERROR', reason)
           if (interceptor[errorKey]) {
             return interceptor[errorKey](options, reason);
           }

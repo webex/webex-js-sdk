@@ -39,11 +39,11 @@ export default class AuthInterceptor extends Interceptor {
     ])
       .then((results) => {
         const [requiresCredentials, requiresClientCredentials] = results;
-        if (requiresCredentials) {
-          return this.spark.credentials.getAuthorization();
-        }
-        else if (requiresClientCredentials) {
+        if (requiresClientCredentials) {
           return this.spark.credentials.getClientCredentials();
+        }
+        else if (requiresCredentials) {
+          return this.spark.credentials.getUserToken();
         }
         return null;
       })
@@ -69,7 +69,7 @@ export default class AuthInterceptor extends Interceptor {
             Reflect.deleteProperty(reason.options.headers, `authorization`);
           }
 
-          return this.spark.credentials.authorize({force: true})
+          return this.spark.credentials.initiateLogin({force: true})
             .then(() => this.replay(options));
         }
 
