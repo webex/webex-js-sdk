@@ -9,16 +9,12 @@ import AddFileButton from '../../components/add-file-button';
 
 import styles from './styles.css';
 
-export class MessageComposer extends Component {
+// eslint-disable-reason Redux connect gives us shouldComponentUpdate smarts
+export class MessageComposer extends Component { // eslint-disable-line react/require-optimization
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
-  }
-
-  shouldComponentUpdate(nextProps) {
-    const props = this.props;
-    return props.value !== nextProps.value;
   }
 
   handleChange(e) {

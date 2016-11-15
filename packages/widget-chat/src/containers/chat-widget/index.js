@@ -42,7 +42,8 @@ import ConfirmationModal from '../../components/confirmation-modal';
 /**
  * ChatWidget Component
  */
-export class ChatWidget extends Component {
+// eslint-disable-reason Redux connect gives us shouldComponentUpdate smarts
+export class ChatWidget extends Component { // eslint-disable-line react/require-optimization
   constructor(props) {
     super(props);
     this.getActivityList = this.getActivityList.bind(this);
@@ -84,24 +85,6 @@ export class ChatWidget extends Component {
     }
   }
 
-  /* eslint-disable complexity */
-  /* eslint-disable-reason: Lots of checks for better efficiency, will be broken up later */
-  shouldComponentUpdate(nextProps) {
-    const props = this.props;
-
-    /* eslint-disable operator-linebreak */
-    /* eslint-disable-reason: Giant list of comparisons very difficult to read and diff */
-    return nextProps.conversation.activities !== props.conversation.activities
-      || nextProps.conversation.isLoadingHistoryUp !== props.conversation.isLoadingHistoryUp
-      || nextProps.flags !== props.flags
-      || nextProps.indicators !== props.indicators
-      || nextProps.share !== props.share
-      || nextProps.sparkState.connected !== props.sparkState.connected
-      || nextProps.user !== props.user
-      || nextProps.widget !== props.widget;
-    /* eslint-enable operator-linebreak */
-  }
-  /* eslint-enable complexity */
 
   componentWillUpdate(nextProps) {
     const props = this.props;
