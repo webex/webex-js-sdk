@@ -8,10 +8,10 @@ import {
 import thunk from 'redux-thunk';
 import createLogger from 'redux-logger';
 import {
+  activity,
   conversation,
   flags,
   indicators,
-  message,
   share,
   user,
   widget
@@ -35,10 +35,10 @@ const enhancers = [
 
 export default createStore(
   combineReducers({
+    activity,
     conversation,
     flags,
     indicators,
-    message,
     share,
     user,
     widget,

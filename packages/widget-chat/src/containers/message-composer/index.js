@@ -3,7 +3,11 @@ import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 
-import {setMessage, submitMessage} from '../../actions/message';
+import {
+  createActivity,
+  submitActivity,
+  updateActivityText
+} from '../../actions/activity';
 import TextArea from '../../components/textarea';
 import AddFileButton from '../../components/add-file-button';
 
@@ -16,14 +20,21 @@ export class MessageComposer extends Component {
     this.handleKeyDown = this.handleKeyDown.bind(this);
   }
 
+  componentWillReceiveProps(nextProps) {
+    if (!nextProps.activity) {
+      const props = this.props;
+      props.createActivity(props.conversation, ``, props.conversation.participants[0]);
+    }
+  }
+
   shouldComponentUpdate(nextProps) {
     const props = this.props;
-    return props.value !== nextProps.value;
+    return props.activity !== nextProps.activity;
   }
 
   handleChange(e) {
     const props = this.props;
-    props.setMessage(e.target.value);
+    props.updateActivityText(e.target.value);
   }
 
   handleKeyDown(e) {
@@ -36,22 +47,23 @@ export class MessageComposer extends Component {
   handleSubmit() {
     const {props} = this;
     const {
+      activity,
       conversation,
-      spark,
-      value
+      spark
     } = props;
     const {onSubmit} = this.props;
-    props.submitMessage(conversation, value, spark);
+    props.submitActivity(conversation, activity, spark);
     if (onSubmit) {
       onSubmit();
     }
   }
 
   render() {
+    let text;
     const props = this.props;
-    const {
-      value
-    } = props;
+    if (props.activity && props.activity.object) {
+      text = props.activity.object.displayName;
+    }
     const {placeholder} = this.props;
 
     return (
@@ -67,7 +79,7 @@ export class MessageComposer extends Component {
             placeholder={placeholder}
             rows={1}
             textAreaClassName={styles.textarea}
-            value={value}
+            value={text}
           />
         </div>
       </div>
@@ -81,17 +93,17 @@ MessageComposer.propTypes = {
 };
 
 function mapStateToProps(state, ownProps) {
-  return Object.assign({}, state.message, {
+  return Object.assign({}, state.activity, {
     spark: ownProps.spark,
-    conversation: state.conversation,
-    value: state.message.value
+    conversation: state.conversation
   });
 }
 
 export default connect(
   mapStateToProps,
   (dispatch) => bindActionCreators({
-    setMessage,
-    submitMessage
+    createActivity,
+    submitActivity,
+    updateActivityText
   }, dispatch)
 )(MessageComposer);
