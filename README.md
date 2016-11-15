@@ -80,6 +80,14 @@ npm install -g nodemon
 nodemon -w packages/PACKAGENAME/src -w packages/PACKAGENAME/test -x "UNIT_ONLY=true PACKAGE=PACKAGENAME npm run --silent grunt:package express:test test:node"
 ```
 
+### Documentation
+To compile the documentation locally, make sure you have [Jekyll](https://jekyllrb.com/) installed then run the following:
+
+```bash
+cd docs
+jekyll serve --config=_config.local.yml
+```
+
 ## Contribute
 
 Pull requests welcome. Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
