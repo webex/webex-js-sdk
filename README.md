@@ -85,7 +85,7 @@ To compile the documentation locally, make sure you have [Jekyll](https://jekyll
 
 ```bash
 cd docs
-jekyll serve --config=_config.local.yml
+jekyll serve --config=_config.yml,_config.local.yml
 ```
 
 ## Contribute
