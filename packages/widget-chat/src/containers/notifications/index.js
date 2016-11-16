@@ -26,6 +26,11 @@ class Notifications extends Component {
     this._displayNotifications();
   }
 
+  /**
+   * Checks if browser notifications are supported and updates store
+   *
+   * @returns {null}
+   */
   _checkSupported() {
     const {props} = this;
     if (!props.isSupported && window && window.Notification) {
@@ -33,6 +38,13 @@ class Notifications extends Component {
     }
   }
 
+  /**
+   * Checks if we have permission from the user to send a notification
+   *
+   * @returns {bool}
+   *
+   * @memberOf Notifications
+   */
   _hasPermission() {
     const {props} = this;
     return props.permission === `granted`;
@@ -48,6 +60,11 @@ class Notifications extends Component {
     return document.webkitHidden || document.mozHidden || document.msHidden || document.hidden || !document.hasFocus();
   }
 
+  /**
+   * Processes notifications and displays them if needed
+   *
+   * @returns {null}
+   */
   _displayNotifications() {
     const {props} = this;
     if (props.notifications.length > 0) {

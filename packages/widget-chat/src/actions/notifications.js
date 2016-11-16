@@ -30,10 +30,23 @@ function updateNotificationSetting(setting) {
   };
 }
 
+/**
+ * Creates a new notification for processing
+ *
+ * @param {string} notificationId
+ * @param {string} type
+ * @returns {function}
+ */
 export function createNotification(notificationId, type) {
   return (dispatch) => dispatch(addNotification({notificationId, type}));
 }
 
+/**
+ * Updates an existing notification to indicate that it was sent
+ *
+ * @param {string} notificationId
+ * @returns {function}
+ */
 export function notificationSent(notificationId) {
   return (dispatch) => dispatch(markNotificationSent(notificationId));
 }
