@@ -17,6 +17,11 @@ export class FileUploader extends Component {
     this.handleFileChange = this.handleFileChange.bind(this);
   }
 
+  shouldComponentUpdate(nextProps) {
+    const props = this.props;
+    return nextProps.activity === props.activity;
+  }
+
   getFiles() {
     const props = this.props;
     return props.activity.files;
@@ -51,7 +56,7 @@ export class FileUploader extends Component {
   render() {
     return (
       <div className={classNames(`file-uploader-container`, styles.container)}>
-        <div className={classNames(`add-file-container`, styles.addFileContainer)}>
+        <div className={classNames(`button-container`, styles.buttonContainer)}>
           <AddFileButton onChange={this.handleFileChange} />
         </div>
       </div>
