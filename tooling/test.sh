@@ -48,7 +48,7 @@ PIDS=""
 echo "################################################################################"
 echo "# RUNNING LEGACY NODE TESTS"
 echo "################################################################################"
-docker run ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:node > ${SDK_ROOT_DIR}/reports/logs/legacy.node.log 2>&1" &
+docker run ${DOCKER_RUN_OPTS} --name ${PACKAGE} bash -c "npm run test:legacy:node > ${SDK_ROOT_DIR}/reports/logs/legacy.node.log 2>&1" &
 PIDS+=" $!"
 
 echo "################################################################################"
