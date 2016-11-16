@@ -429,7 +429,9 @@ var ShareActivityBase = SparkBase.extend(
    * @returns {boolean}
    */
   _itemContainsActionWithMimeType: function _itemContainsActionWithMimeType(items, mimeType) {
-    return some(map(items, (item) => some(item.actions, ['mimeType', mimeType])));
+    return some(map(items, function doSomeActionsContainMimeType(item) {
+      return some(item.actions, ['mimeType', mimeType]);
+    }));
   },
 
   /**
