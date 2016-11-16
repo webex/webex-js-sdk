@@ -1,4 +1,8 @@
-import {constructActivity} from '../utils/activity';
+import {
+  constructActivity,
+  updateActivityWithContent
+} from '../utils/activity';
+
 import {
   ADD_FILES_TO_ACTIVITY,
   CREATE_ACTIVITY,
@@ -13,12 +17,12 @@ export default function reduceActivity(state = {
 }, action) {
   switch (action.type) {
   case ADD_FILES_TO_ACTIVITY: {
-    const newState = Object.assign({}, state);
-    if (!state.activity.files) {
-      newState.activity.files = [];
+    if (state.activity.files) {
+      const newState = Object.assign({}, state);
+      newState.activity.files.concat(action.files);
+      return newState;
     }
-    newState.activity.files.concat(action.files);
-    return newState;
+    return updateActivityWithContent(state.activity, action.payload.files);
   }
   case CREATE_ACTIVITY: {
     const {

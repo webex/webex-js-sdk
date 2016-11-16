@@ -16,7 +16,7 @@ function ActivityItemShareList(props) {
 
   const items = files.map((file) => {
     if (file.image) {
-      const thumbnail = file.mimeType === `image/gif` ? share.files[file.url] : share.files[file.image.url];
+      const thumbnail = file.mimeType === `image/gif` ? share.getIn([`files`, file.url]) : share.getIn([`files`, file.image.url]);
       return (
         <ShareThumbnail
           file={file}

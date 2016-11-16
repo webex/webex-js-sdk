@@ -60,7 +60,6 @@ export function isImage(file) {
   return file.type.indexOf(`image`) !== -1;
 }
 
-
 export function sanitize(file) {
   return _.assign(file, {
     displayName: file.displayName || null,

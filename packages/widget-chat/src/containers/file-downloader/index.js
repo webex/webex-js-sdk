@@ -35,7 +35,7 @@ export default function injectFileDownloader(WrappedComponent) {
 
     getSharedFileFromStore(fileUrl) {
       const props = this.props;
-      return props.share.files[fileUrl];
+      return props.share.get([`files`, fileUrl]);
     }
 
     getThumbnailImage(fileObject) {
