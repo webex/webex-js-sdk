@@ -1,5 +1,6 @@
 import {constructActivity} from '../utils/activity';
 import {
+  ADD_FILES_TO_ACTIVITY,
   CREATE_ACTIVITY,
   UPDATE_ACTIVITY_STATE,
   UPDATE_ACTIVITY_TEXT
@@ -11,6 +12,14 @@ export default function reduceActivity(state = {
   }
 }, action) {
   switch (action.type) {
+  case ADD_FILES_TO_ACTIVITY: {
+    const newState = Object.assign({}, state);
+    if (!state.activity.files) {
+      newState.activity.files = [];
+    }
+    newState.activity.files.concat(action.files);
+    return newState;
+  }
   case CREATE_ACTIVITY: {
     const {
       actor,

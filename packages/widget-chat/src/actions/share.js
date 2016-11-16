@@ -16,6 +16,17 @@ export function receiveShare(payload) {
   };
 }
 
+export const STORE_SHARES = `STORE_SHARES`;
+export function storeShares(shares) {
+  return {
+    type: STORE_SHARES,
+    payload: {
+      shares
+    }
+  };
+}
+
+
 export function retrieveSharedFile(fileObject, spark) {
   return (dispatch) => {
     dispatch(fetchShare(fileObject));
@@ -23,6 +34,17 @@ export function retrieveSharedFile(fileObject, spark) {
       .then((file) => {
         dispatch(receiveShare({file, fileObject}, false));
         return file;
+      });
+  };
+}
+
+export function uploadFiles(conversation, activity, files, spark) {
+  return (dispatch) => {
+    const shareActivity = spark.conversation.makeShare(conversation);
+    return Promise.resolve(shareActivity)
+      .then((share) => Promise.all(files.map((file) => share.add(file))))
+      .then((uploadedShares) => {
+        dispatch(storeShares(uploadedShares));
       });
   };
 }

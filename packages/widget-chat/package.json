@@ -17,6 +17,7 @@
     "babel-runtime": "^6.3.19",
     "browser-saveas": "^1.0.1",
     "extract-text-webpack-plugin": "^1.0.1",
+    "immutable": "^3.8.1",
     "lodash": "^4.5.1",
     "marked": "^0.3.6",
     "moment": "^2.15.1",

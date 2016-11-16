@@ -8,8 +8,9 @@ import {
   submitActivity,
   updateActivityText
 } from '../../actions/activity';
+import FileUploader from '../file-uploader';
 import TextArea from '../../components/textarea';
-import AddFileButton from '../../components/add-file-button';
+
 
 import styles from './styles.css';
 
@@ -68,9 +69,7 @@ export class MessageComposer extends Component {
 
     return (
       <div className={classNames(`message-composer`, styles.messageComposer)}>
-        <div className={classNames(`add-file-container`, styles.addFileContainer)}>
-          <AddFileButton />
-        </div>
+        <FileUploader onSubmit={this.handleSubmit} />
         <div className={classNames(`textarea-container`)}>
           <TextArea
             onChange={this.handleChange}
@@ -93,10 +92,11 @@ MessageComposer.propTypes = {
 };
 
 function mapStateToProps(state, ownProps) {
-  return Object.assign({}, state.activity, {
+  return {
+    activity: state.activity.activity,
     spark: ownProps.spark,
     conversation: state.conversation
-  });
+  };
 }
 
 export default connect(
