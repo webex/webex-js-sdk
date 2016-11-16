@@ -10,7 +10,7 @@ FAILURE_COUNT=0
 RUN_COUNT=1
 
 set +e
-/work/test.sh
+SUITE_RUN_COUNT="${RUN_COUNT}" /work/test.sh
 EXIT_CODE=$?
 set -e
 
@@ -21,7 +21,7 @@ if [ "${EXIT_CODE}" -ne "0" ]; then
   echo "Retrying ${PACKAGE} for the first time"
 
   set +e
-  /work/test.sh
+  SUITE_RUN_COUNT="${RUN_COUNT}" /work/test.sh
   EXIT_CODE=$?
   set -e
 fi
@@ -33,7 +33,7 @@ if [ "${EXIT_CODE}" -ne "0" ]; then
   echo "Retrying ${PACKAGE} for the second time"
 
   set +e
-  /work/test.sh
+  SUITE_RUN_COUNT="${RUN_COUNT}" /work/test.sh
   EXIT_CODE=$?
   set -e
 fi
