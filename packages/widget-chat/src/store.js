@@ -12,6 +12,7 @@ import {
   flags,
   indicators,
   message,
+  notifications,
   share,
   user,
   widget
@@ -39,6 +40,7 @@ export default createStore(
     flags,
     indicators,
     message,
+    notifications,
     share,
     user,
     widget,
