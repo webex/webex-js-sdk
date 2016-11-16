@@ -20,10 +20,43 @@ function markNotificationSent(notificationId) {
   };
 }
 
-export function createNotification(activityId, type) {
-  return (dispatch) => dispatch(addNotification({activityId, type}));
+export const UPDATE_NOTIFICATION_SETTING = `UPDATE_NOTIFICATION_SETTING`;
+function updateNotificationSetting(setting) {
+  return {
+    type: UPDATE_NOTIFICATION_SETTING,
+    payload: {
+      setting
+    }
+  };
+}
+
+export function createNotification(notificationId, type) {
+  return (dispatch) => dispatch(addNotification({notificationId, type}));
 }
 
 export function notificationSent(notificationId) {
   return (dispatch) => dispatch(markNotificationSent(notificationId));
+}
+
+/**
+ * Changes the permission type after we've request notification
+ * permissions from the user
+ *
+ * @param {String} permission
+ * @returns {function}
+ */
+export function setNotificationPermission(permission) {
+  return (dispatch) => dispatch(updateNotificationSetting({permission}));
+}
+
+/**
+ * Changes the setting for if native notifications are supported
+ * by the user's device/browser
+ *
+ * @export
+ * @param {bool} isSupported
+ * @returns {function}
+ */
+export function setNotificationSupported(isSupported) {
+  return (dispatch) => dispatch(updateNotificationSetting({isSupported}));
 }

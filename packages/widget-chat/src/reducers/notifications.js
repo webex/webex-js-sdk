@@ -1,28 +1,36 @@
-import {ADD_NOTIFICATION, MARK_NOTIFICATION_SENT} from '../actions/notifications';
+import {ADD_NOTIFICATION, MARK_NOTIFICATION_SENT, UPDATE_NOTIFICATION_SETTING} from '../actions/notifications';
 
 export default function indicators(state = {
-  items: []
+  isSupported: false,
+  items: [],
+  permission: null
 }, action) {
   switch (action.type) {
   case ADD_NOTIFICATION:
     {
-      const {activityId, type} = action.payload.notification;
+      const {notificationId, type} = action.payload.notification;
+      if (state.items.find((notification) => notification.notificationId === notificationId)) {
+        // Don't add notifications for items already added
+        return state;
+      }
       const notification = {
-        activityId,
+        notificationId,
         type,
         sent: false
       };
-      return {items: [notification, ...state.items]};
+      return Object.assign({}, state, {items: [notification, ...state.items]});
     }
   case MARK_NOTIFICATION_SENT:
-    return {
+    return Object.assign({}, state, {
       items: state.items.map((notification) => {
-        if (notification.activityId === action.payload.activityId) {
+        if (notification.notificationId === action.payload.notificationId) {
           notification.sent = true;
         }
         return notification;
       })
-    };
+    });
+  case UPDATE_NOTIFICATION_SETTING:
+    return Object.assign({}, state, action.payload.setting);
   default:
     return state;
   }
