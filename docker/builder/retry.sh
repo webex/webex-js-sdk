@@ -9,6 +9,16 @@ set -e
 FAILURE_COUNT=0
 RUN_COUNT=1
 
+#
+# REMOVE REMNANT SAUCE FILES FROM PREVIOUS BUILD
+#
+
+rm -rf ".sauce/${PACKAGE}/sc.pid"
+rm -rf ".sauce/${PACKAGE}/sc.tid"
+rm -rf ".sauce/${PACKAGE}/sc.ready"
+rm -rf ".sauce/${PACKAGE}/sauce_connect.log"
+rm -rf ".sauce/${PACKAGE}/sauce_connect.*.log"
+
 set +e
 SUITE_RUN_COUNT="${RUN_COUNT}" /work/test.sh
 EXIT_CODE=$?
