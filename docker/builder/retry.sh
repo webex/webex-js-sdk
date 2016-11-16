@@ -40,9 +40,11 @@ fi
 
 
 if [ "${FAILURE_COUNT}" -ne "0" ]; then
-  MSG="Suite for ${PACKAGE} failed one or more times. Please see reports/logs/docker.${PACKAGE}.log for more info."
+  MSG="Suite for ${PACKAGE} failed ${FAILURE_COUNT} out of ${RUN_COUNT} attempts. Please see reports/logs/docker.${PACKAGE}.log for more info."
 
-  cat <<EOT > "./reports/junit/suite.${PACKAGE}.xml"
+  if [ "${EXIT_CODE}" -ne "0" ]; then
+
+    cat <<EOT > "./reports/junit/suite.${PACKAGE}.xml"
 <testsuite
   name="spark-js-sdk"
   package="${PACKAGE}"
@@ -60,6 +62,7 @@ if [ "${FAILURE_COUNT}" -ne "0" ]; then
   </testcase>
 </testsuite>
 EOT
+  fi
 
   exit ${EXIT_CODE}
 fi
