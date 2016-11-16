@@ -98,11 +98,7 @@ export function updateConversationState(conversationState) {
 
 export function acknowledgeActivityOnServer(conversation, activity, spark) {
   return (dispatch) =>
-    spark.conversation.acknowledge({
-      id: conversation.id
-    }, {
-      id: activity.id
-    }).then(() => dispatch(acknowledgeActivity(activity)));
+    spark.conversation.acknowledge(conversation, activity).then(() => dispatch(acknowledgeActivity(activity)));
 }
 
 /**
@@ -167,11 +163,11 @@ export function listenToMercuryActivity(conversationId, spark) {
   };
 }
 
-export function loadPreviousMessages(converstationId, lastActivity, spark) {
+export function loadPreviousMessages(conversationId, lastActivity, spark) {
   return (dispatch) => {
     dispatch(updateConversationState({isLoadingHistoryUp: true}));
     spark.conversation.listActivities({
-      conversationId: converstationId,
+      conversationId,
       limit: 20,
       maxDate: lastActivity.published
     })

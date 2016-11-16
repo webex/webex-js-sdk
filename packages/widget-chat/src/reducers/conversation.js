@@ -96,14 +96,25 @@ export default function reduceConversation(state = {
   }
 
   case CREATE_CONVERSATION: {
+    const {
+      defaultActivityEncryptionKeyUrl,
+      id,
+      kmsResourceObjectUrl,
+      participants,
+      url
+    } = action.payload.conversation;
+
     const activities = action.payload.conversation.activities.items.filter(filterActivity);
 
     return Object.assign({}, state, {
       activities,
+      defaultActivityEncryptionKeyUrl,
+      id,
+      kmsResourceObjectUrl,
+      url,
       isFetching: false,
       isLoaded: true,
-      id: action.payload.conversation.id,
-      participants: action.payload.conversation.participants.items
+      participants: participants.items
     });
   }
 

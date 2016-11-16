@@ -1,38 +1,47 @@
 import marked from 'marked';
 import {filterSync} from '@ciscospark/helper-html';
 
-export const UPDATE_MESSAGE_STATE = `UPDATE_MESSAGE_STATE`;
-export function updateMessageState(state) {
+export const UPDATE_ACTIVITY_STATE = `UPDATE_ACTIVITY_STATE`;
+export function updateActivityState(state) {
   return {
-    type: UPDATE_MESSAGE_STATE,
+    type: UPDATE_ACTIVITY_STATE,
     payload: {
       state
     }
   };
 }
 
-export const UPDATE_MESSAGE_CONTENT = `UPDATE_MESSAGE_CONTENT`;
-export function updateMessageContent(value) {
+export const UPDATE_ACTIVITY_TEXT = `UPDATE_ACTIVITY_TEXT`;
+export function updateActivityText(text) {
   return {
-    type: UPDATE_MESSAGE_CONTENT,
+    type: UPDATE_ACTIVITY_TEXT,
     payload: {
-      value
+      text
     }
   };
 }
 
-export function setMessage(value) {
-  return (dispatch) => {
-    dispatch(updateMessageContent(value));
+export const CREATE_ACTIVITY = `CREATE_ACTIVITY`;
+export function createActivity(conversation, text, actor) {
+  return {
+    type: CREATE_ACTIVITY,
+    payload: {
+      actor,
+      conversation,
+      text
+    }
   };
 }
 
-export function submitMessage(conversation, message, spark) {
+export function submitActivity(conversation, activity, spark) {
   return (dispatch) => {
-    dispatch(updateMessageState({isSending: true}));
-    spark.conversation.post(conversation, _createMessageObject(message))
-      .then(() => dispatch(updateMessageContent(``)))
-      .then(() => dispatch(updateMessageState({isSending: false})));
+    dispatch(updateActivityState({isSending: true}));
+    const message = _createMessageObject(activity.object.displayName);
+    if (!activity.files) {
+      spark.conversation.post(conversation, message)
+        .then(() => dispatch(createActivity(conversation, ``, conversation.participants[0])))
+        .then(() => dispatch(updateActivityState({isSending: false})));
+    }
   };
 }
 
