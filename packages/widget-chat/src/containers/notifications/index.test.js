@@ -1,18 +1,25 @@
-import React from 'react';
-import renderer from 'react-test-renderer';
-import {Provider} from 'react-redux';
+import {Notifications} from '.';
 
-import store from '../../store';
-
-import Notifications from '.';
-
-describe(`Notifications container`, () => {
-  it(`renders properly`, () => {
-    const component = renderer.create(
-      <Provider store={store}>
-        <Notifications />
-      </Provider>
-    );
-    expect(component).toMatchSnapshot();
+describe(`Notifications component`, () => {
+  let component;
+  let props;
+  const notificationSent = jest.fn();
+  const setNotificationPermission = jest.fn();
+  const setNotificationSupported = jest.fn();
+  beforeEach(() => {
+    props = {
+      isSupported: false,
+      notifications: [],
+      permission: null,
+      notificationSent,
+      setNotificationPermission,
+      setNotificationSupported
+    };
+    component = new Notifications(props);
   });
+
+  it(`should instantiate`, () => {
+    expect(component).toBeDefined();
+  });
+
 });
