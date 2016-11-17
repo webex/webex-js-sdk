@@ -5,7 +5,7 @@ import injectWidgetLoader from './loader';
 import ChatWidget from './containers/chat-widget';
 import store from './store';
 
-function Root({accessToken, userId}) {
+export default function Root({accessToken, userId}) {
   return (
     <Provider store={store}>
       <ChatWidget accessToken={accessToken} userId={userId} />
@@ -17,5 +17,3 @@ Root.propTypes = {
   accessToken: PropTypes.string.isRequired,
   userId: PropTypes.string.isRequired
 };
-
-export default injectWidgetLoader(Root);
