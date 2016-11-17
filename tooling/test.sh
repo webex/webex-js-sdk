@@ -54,6 +54,11 @@ PIDS+=" $!"
 echo "################################################################################"
 echo "# RUNNING LEGACY BROWSER TESTS"
 echo "################################################################################"
+rm -rf "${SDK_ROOT_DIR}.sauce/legacy/sc.pid"
+rm -rf "${SDK_ROOT_DIR}.sauce/legacy/sc.tid"
+rm -rf "${SDK_ROOT_DIR}.sauce/legacy/sc.ready"
+rm -rf "${SDK_ROOT_DIR}.sauce/legacy/sauce_connect.log"
+rm -rf "${SDK_ROOT_DIR}.sauce/legacy/sauce_connect.*.log"
 docker run -e PACKAGE=${legacy} ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:browser > ${SDK_ROOT_DIR}/reports/logs/legacy.browser.log 2>&1" &
 PIDS+=" $!"
 
