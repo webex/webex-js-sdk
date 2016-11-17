@@ -11,7 +11,7 @@ export function createSpark(accessToken) {
   return new Spark({
     credentials: {
       authorization: {
-        access_token: accessToken || process.env.CISCOSPARK_ACCESS_TOKEN || credentials.access_token
+        access_token: accessToken || credentials.access_token
       }
     },
     config: {
@@ -63,7 +63,3 @@ export function createSpark(accessToken) {
     }
   });
 }
-
-const spark = createSpark();
-
-export default spark;

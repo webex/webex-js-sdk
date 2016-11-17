@@ -2,9 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import _ from 'lodash';
 
-
 import Root from './root';
-import injectLoader from './loader';
 
 import './styles/main.css';
 
@@ -17,12 +15,8 @@ const defaultConfig = {
 function initChatWidget(element, config) {
   config = _.merge({}, defaultConfig, config);
 
-  let root = <Root accessToken={config.accessToken} userId={config.userId} />;
-  if (config.env !== `dev`) {
-    root = injectLoader(root);
-  }
   ReactDOM.render(
-    root,
+    <Root accessToken={config.accessToken} userId={config.userId} />,
     element
   );
 

@@ -1,10 +1,23 @@
 export const UPDATE_SPARK_STATE = `UPDATE_SPARK_STATE`;
-export function updateSparkState(state) {
+export function updateSparkState(status) {
   return {
     type: UPDATE_SPARK_STATE,
-    state
+    payload: {
+      status
+    }
   };
 }
+
+export const STORE_SPARK_INSTANCE = `STORE_SPARK_INSTANCE`;
+export function storeSparkInstance(spark) {
+  return {
+    type: STORE_SPARK_INSTANCE,
+    payload: {
+      spark
+    }
+  };
+}
+
 
 export function registerDevice(spark) {
   return (dispatch) => {
