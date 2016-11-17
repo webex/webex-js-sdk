@@ -1,9 +1,11 @@
 import {ADD_NOTIFICATION, MARK_NOTIFICATION_SENT, UPDATE_NOTIFICATION_SETTING} from '../actions/notifications';
 
-export default function indicators(state = {
-  isSupported: false,
+export default function reduceNotifications(state = {
   items: [],
-  permission: null
+  settings: {
+    isSupported: false,
+    permission: null
+  }
 }, action) {
   switch (action.type) {
   case ADD_NOTIFICATION:
@@ -30,7 +32,7 @@ export default function indicators(state = {
       })
     });
   case UPDATE_NOTIFICATION_SETTING:
-    return Object.assign({}, state, action.payload.setting);
+    return Object.assign({}, state, {settings: Object.assign({}, state.settings, action.payload.setting)});
   default:
     return state;
   }

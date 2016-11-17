@@ -109,9 +109,9 @@ class Notifications extends Component {
 
 function mapStateToProps(state) {
   return {
-    isSupported: state.notifications.isSupported,
+    isSupported: state.notifications.settings.isSupported,
     notifications: getUnsentNotifications(state),
-    permission: state.notifications.permission
+    permission: state.notifications.settings.permission
   };
 }
 
