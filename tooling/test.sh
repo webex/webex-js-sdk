@@ -21,6 +21,8 @@ echo "# CLEANING"
 echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} npm run grunt -- clean
 docker run ${DOCKER_RUN_OPTS} npm run grunt:concurrent -- clean
+rm -rf "${SDK_ROOT_DIR}/.sauce/*/sc.*"
+rm -rf "${SDK_ROOT_DIR}/.sauce/*/sauce_connect*log"
 
 rm -rf ${SDK_ROOT_DIR}/reports
 mkdir -p ${SDK_ROOT_DIR}/reports/logs
@@ -49,18 +51,17 @@ echo "##########################################################################
 echo "# RUNNING LEGACY NODE TESTS"
 echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} --name ${PACKAGE} bash -c "npm run test:legacy:node > ${SDK_ROOT_DIR}/reports/logs/legacy.node.log 2>&1" &
-PIDS+=" $!"
+PID="$!"
+echo "Running legacy node tests as ${PID}"
+PIDS+=" ${PID}"
 
 echo "################################################################################"
 echo "# RUNNING LEGACY BROWSER TESTS"
 echo "################################################################################"
-rm -rf "${SDK_ROOT_DIR}.sauce/legacy/sc.pid"
-rm -rf "${SDK_ROOT_DIR}.sauce/legacy/sc.tid"
-rm -rf "${SDK_ROOT_DIR}.sauce/legacy/sc.ready"
-rm -rf "${SDK_ROOT_DIR}.sauce/legacy/sauce_connect.log"
-rm -rf "${SDK_ROOT_DIR}.sauce/legacy/sauce_connect.*.log"
 docker run -e PACKAGE=${legacy} ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:browser > ${SDK_ROOT_DIR}/reports/logs/legacy.browser.log 2>&1" &
-PIDS+=" $!"
+PID="$!"
+echo "Running legacy browser tests as ${PID}"
+PIDS+=" ${PID}"
 
 echo "################################################################################"
 echo "# RUNNING MODULE TESTS"
@@ -104,7 +105,9 @@ for i in ${SDK_ROOT_DIR}/packages/*; do
   # Note: using & instead of -d so that wait works
   # Note: the Dockerfile's default CMD will run package tests automatically
   docker run -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} &
-  PIDS+=" $!"
+  PID="$!"
+  echo "Running tests for ${PACKAGE} as ${PID}"
+  PIDS+=" ${PID}"
 done
 
 FINAL_EXIT_CODE=0
@@ -125,6 +128,7 @@ for P in $PIDS; do
   set -e
 
   if [ "${EXIT_CODE}" -ne "0" ]; then
+    echo "${PID} did not complete successfully; The log output above should identify the PIDs of each suite"
     FINAL_EXIT_CODE=1
   fi
   # TODO cleanup sauce files for package
