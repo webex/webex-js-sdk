@@ -8,5 +8,6 @@ echo "#"
 echo "# GZIPPING ARTIFACTS"
 echo "#"
 
-gzip -r ./.sauce/*/sauce_connect*log,
+set +e
+gzip -r ./.sauce/*/sauce_connect*log
 gzip -r ./reports
