@@ -133,7 +133,7 @@ for P in $PIDS; do
   set -e
 
   if [ "${EXIT_CODE}" -ne "0" ]; then
-    echo "${PID} did not complete successfully; The log output above should identify the PIDs of each suite"
+    echo "${PID} exited with code ${EXIT_CODE}; search for ${PID} above to determine which suite failed"
     FINAL_EXIT_CODE=1
   fi
   # TODO cleanup sauce files for package
