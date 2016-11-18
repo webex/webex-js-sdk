@@ -94,7 +94,7 @@ var ConversationService = SparkBase.extend(
 
   getExifData: function getExifData(file, buf) {
     return new Promise(function(resolve) {
-      if (file && file.image) {
+      if (file && file.image && file.mimeType === 'image/jpeg') {
         new ExifImage({ image : buf }, function (error, exifData) {
           if (error) {
             this.logger.info('conversation: error with image rotation ', error.message);
