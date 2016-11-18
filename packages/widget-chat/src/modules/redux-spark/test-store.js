@@ -1,6 +1,8 @@
 // Store for testing
 import {
+  applyMiddleware,
   combineReducers,
+  compose,
   createStore
 } from 'redux';
 import configureMockStore from 'redux-mock-store';
@@ -23,8 +25,14 @@ export function createMockStore() {
   }));
 }
 
+const enhancers = [
+  applyMiddleware(
+    thunk)
+];
+
 export const store = createStore(
   combineReducers({
     spark: reducers
-  })
+  }),
+  compose(...enhancers)
 );

@@ -1,7 +1,7 @@
 /* eslint max-nested-callbacks: ["error", 3] */
 
 import {createSpark} from './spark';
-import {store} from './test-store';
+import {store, createMockStore} from './test-store';
 import {
   UPDATE_SPARK_STATE,
   updateSparkState,
@@ -32,6 +32,11 @@ describe(`actions`, () => {
 });
 
 describe(`sdk actions`, () => {
+  let mockStore;
+
+  beforeEach(() => {
+    mockStore = createMockStore();
+  });
 
   it(`should register this device with spark`, () => {
     const spark = createSpark(ACCESS_TOKEN);
@@ -47,9 +52,9 @@ describe(`sdk actions`, () => {
       }
     }];
 
-    return store.dispatch(registerDevice(spark))
+    return mockStore.dispatch(registerDevice(spark))
       .then(() => {
-        expect(store.getActions()).toEqual(expectedActions);
+        expect(mockStore.getActions()).toEqual(expectedActions);
       });
   });
 
@@ -67,9 +72,9 @@ describe(`sdk actions`, () => {
       }
     }];
 
-    return store.dispatch(connectToMercury(spark))
+    return mockStore.dispatch(connectToMercury(spark))
       .then(() => {
-        expect(store.getActions()).toEqual(expectedActions);
+        expect(mockStore.getActions()).toEqual(expectedActions);
       });
   });
 });

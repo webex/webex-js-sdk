@@ -22,7 +22,7 @@ export class MessageComposer extends Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    if (!nextProps.activity) {
+    if (!nextProps.activity.get(`activity`)) {
       const props = this.props;
       props.createActivity(props.conversation, ``, props.conversation.participants[0]);
     }
@@ -53,7 +53,7 @@ export class MessageComposer extends Component {
       spark
     } = props;
     const {onSubmit} = this.props;
-    props.submitActivity(conversation, activity, spark);
+    props.submitActivity(conversation, activity.get(`activity`), spark);
     if (onSubmit) {
       onSubmit();
     }
@@ -62,8 +62,8 @@ export class MessageComposer extends Component {
   render() {
     let text;
     const props = this.props;
-    if (props.activity && props.activity.object) {
-      text = props.activity.object.displayName;
+    if (props.activity && props.activity.getIn([`activity`, `object`])) {
+      text = props.activity.getIn([`activity`, `object`, `displayName`]);
     }
     const {placeholder} = this.props;
 
@@ -94,10 +94,11 @@ MessageComposer.propTypes = {
 };
 
 function mapStateToProps(state, ownProps) {
-  return Object.assign({}, state.activity, {
+  return {
+    activity: state.activity,
     spark: ownProps.spark,
     conversation: state.conversation
-  });
+  };
 }
 
 export default connect(

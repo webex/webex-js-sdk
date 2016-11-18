@@ -1,6 +1,7 @@
 /* eslint-disable max-nested-callbacks */
 import React from 'react';
 import renderer from 'react-test-renderer';
+import {Map} from 'immutable';
 import {Provider} from 'react-redux';
 
 import store from '../../store.js';
@@ -46,16 +47,20 @@ describe(`MessageComposer component`, () => {
   describe(`class method tests`, () => {
     it(`sends message properly`, () => {
       const props = {
-        submitMessage: jest.fn()
+        activity: new Map(),
+        submitActivity: jest.fn()
       };
       const messageComposer = new MessageComposer(props);
       messageComposer.handleSubmit();
-      expect(messageComposer.props.submitMessage).toHaveBeenCalled();
+      expect(messageComposer.props.submitActivity).toHaveBeenCalled();
     });
 
     describe(`enter key processing`, () => {
       let event;
-      const messageComposer = new MessageComposer();
+      const props = {
+        activity: new Map()
+      };
+      const messageComposer = new MessageComposer(props);
       beforeEach(() => {
         messageComposer.handleSubmit = jest.fn();
         event = {
