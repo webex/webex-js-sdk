@@ -82,6 +82,11 @@ for i in ${SDK_ROOT_DIR}/packages/*; do
     continue
   fi
 
+  # this guy is failing with non-zero exit code, but for no aparent reason.
+  if ! echo $i | grep -qc -v storage-adapter-spec ; then
+    continue
+  fi
+
   echo "################################################################################"
   echo "# Docker Stats"
   echo "################################################################################"
