@@ -10,7 +10,6 @@
 
 var pick = require('lodash.pick');
 var imageBase = require('./image-base');
-// var ExifImage = require('exif').ExifImage;
 
 var ImageUtil = {
 
@@ -29,7 +28,7 @@ var ImageUtil = {
       ctx.translate(x + width/2, y + height/2);
       //rotate the canvas around the origin
       ctx.rotate(rad);
-      if (flip){
+      if (flip) {
           //flip the canvas
           ctx.scale(-1,1);
       }
@@ -39,7 +38,7 @@ var ImageUtil = {
       ctx.restore();
   },
 
-  fixImageOrientation: function fixImageOrientation(orientation, img, width, height, ctx) {
+  setImageOrientation: function setImageOrientation(orientation, img, width, height, ctx) {
     switch(orientation) {
       case 2:
         this.drawImage(img, 0, 0, width, height, 0, true, ctx); // flipImage
@@ -80,7 +79,6 @@ var ImageUtil = {
       img.src = URL.createObjectURL(file);
     })
       .then(function resizeImage(img) {
-        console.log('@@@@@@ inside processImage of SDK, file=', file);
         metadata.dimensions = pick(img, 'height', 'width');
 
         var dimensions = imageBase._computeThumbnailDimensions(img, options);
@@ -92,7 +90,7 @@ var ImageUtil = {
 
         var ctx = canvas.getContext('2d');
         if (file && file.image && file.image.orientation && file.image.orientation !== 1) {
-          this.fixImageOrientation(file.image.orientation, img, dimensions.width, dimensions.height, ctx);
+          this.setImageOrientation(file.image.orientation, img, dimensions.width, dimensions.height, ctx);
         }
         else {
           ctx.drawImage(img, 0, 0, dimensions.width, dimensions.height);
@@ -116,7 +114,6 @@ var ImageUtil = {
         for (var i = 0; i < byteString.length; i++) {
           dw.setUint8(i, byteString.charCodeAt(i));
         }
-        console.log('@@@@@@ returning ab which is the ArrayBuffer of the image...');
         return ab;
       }.bind(this));
   }

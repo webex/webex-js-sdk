@@ -92,11 +92,28 @@ var ConversationService = SparkBase.extend(
     this.encryptionDisabled = false;
   },
 
-  // Retrievers
-  // ----------
+  getExifData: function getExifData(file, buf) {
+    return new Promise(function(resolve) {
+      if (file && file.image) {
+        new ExifImage({ image : buf }, function (error, exifData) {
+          if (error) {
+            this.logger.info('conversation: error with image rotation ', error.message);
+          }
+          else {
+            if (exifData) {
+              file.image.orientation = exifData.image.Orientation;
+            }
+          }
+          resolve(buf);
+        });
+      }
+      else {
+        resolve(buf);
+      }
+    }.bind(this))
+  },
 
-  getImageOrientation: function getImageOrientation(file) {
-    console.log('@@@@@ inside SDK getImageOrientation()');
+  fixImageOrientation: function fixImageOrientation(file) {
     return new Promise(function(resolve) {
       var reader = new FileReader();
       reader.readAsArrayBuffer(file);
@@ -107,32 +124,18 @@ var ConversationService = SparkBase.extend(
         for (let i = 0; i < buf.length; ++i) {
           buf[i] = view[i];
         }
-        console.log('@@@@@ File contents read into a buffer buf=', buf);
         resolve(buf);
       }
     }.bind(this))
       .then(function(buf) {
-        return new Promise(function(resolve) {
-          new ExifImage({ image : buf }, function (error, exifData) {
-            if (error) {
-              console.log('@@@@@ Error1 from fixImageOrientation: '+error.message);
-              resolve(file);
-            }
-            else {
-              console.log('@@@@@@@@@ exifData from fixImageOrientation=', exifData);
-              if (exifData) {
-                console.log('@@@@@@ Found exifData.image.Orientation=', exifData.image.Orientation);
-                file.image.orientation = exifData.image.Orientation;
-              }
-            }
-            resolve(file);
-          });
-        }.bind(this))
-      })
+        return this.getExifData(file, buf);
+      }.bind(this))
   },
 
+  // Retrievers
+  // ----------
+
   download: function download(item, options) {
-    // console.log('@@@@@ inside SDK.download');
     options = options || {};
 
     var isEncrypted = !!item.scr;
@@ -161,26 +164,10 @@ var ConversationService = SparkBase.extend(
         if (isEncrypted) {
           promise = this.spark.encryption.download(item.scr)
             .on('progress', emitter.emit.bind(emitter, 'progress'))
-            .then(function ensureBlob(res) {
-              console.log('@@@@@  response = ', res, ' for item=', item);
-              return new Promise(function(resolve) {
-                new ExifImage({ image : res }, function (error, exifData) {
-                  if (error) {
-                    console.log('@@@@@ Error1: '+error.message);
-                  }
-                  else {
-                    console.log('@@@@@@@@@ exifData=', exifData);
-                    if (exifData) {
-                      console.log('@@@@@@@@@ exifData.image.Orientation=', exifData.image.Orientation);
-                      item.image.orientation = exifData.image.Orientation;
-                    }
-                  }
-                  return resolve(res);
-                });
-              })
-            })
-              .then(function(res) {
-                console.log('@@@@ Now here');
+            .then(function(res) {
+              return this.getExifData(item, res);
+            }.bind(this))
+              .then(function ensureBlob(res) {
                 if (typeof window === 'undefined') {
                   return res;
                 }
@@ -204,7 +191,6 @@ var ConversationService = SparkBase.extend(
         return promise
           .then(function assignMetadata(file) {
             this.logger.info('conversation: file downloaded');
-            console.log('@@@@@@ File downloaded now setting the orientation item.orientation=', item.orientation);
             if (item.displayName && !file.name) {
               file.name = item.displayName;
             }
