@@ -50,7 +50,7 @@ PIDS=""
 echo "################################################################################"
 echo "# RUNNING LEGACY NODE TESTS"
 echo "################################################################################"
-docker run ${DOCKER_RUN_OPTS} --name ${PACKAGE} bash -c "npm run test:legacy:node > ${SDK_ROOT_DIR}/reports/logs/legacy.node.log 2>&1" &
+docker run -e PACKAGE=legacy ${DOCKER_RUN_OPTS} --name ${PACKAGE} bash -c "npm run test:legacy:node > ${SDK_ROOT_DIR}/reports/logs/legacy.node.log 2>&1" &
 PID="$!"
 echo "Running legacy node tests as ${PID}"
 PIDS+=" ${PID}"
@@ -58,7 +58,7 @@ PIDS+=" ${PID}"
 echo "################################################################################"
 echo "# RUNNING LEGACY BROWSER TESTS"
 echo "################################################################################"
-docker run -e PACKAGE=${legacy} ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:browser > ${SDK_ROOT_DIR}/reports/logs/legacy.browser.log 2>&1" &
+docker run -e PACKAGE=legacy ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:browser > ${SDK_ROOT_DIR}/reports/logs/legacy.browser.log 2>&1" &
 PID="$!"
 echo "Running legacy browser tests as ${PID}"
 PIDS+=" ${PID}"
