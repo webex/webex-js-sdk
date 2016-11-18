@@ -1,4 +1,4 @@
-import {ADD_NOTIFICATION, MARK_NOTIFICATION_SENT, UPDATE_NOTIFICATION_SETTING} from '../actions/notifications';
+import {ADD_NOTIFICATION, DELETE_NOTIFICATION, UPDATE_NOTIFICATION_SETTING} from '../actions/notifications';
 
 export default function reduceNotifications(state = {
   items: [],
@@ -17,19 +17,13 @@ export default function reduceNotifications(state = {
       }
       const notification = {
         notificationId,
-        type,
-        sent: false
+        type
       };
       return Object.assign({}, state, {items: [notification, ...state.items]});
     }
-  case MARK_NOTIFICATION_SENT:
+  case DELETE_NOTIFICATION:
     return Object.assign({}, state, {
-      items: state.items.map((notification) => {
-        if (notification.notificationId === action.payload.notificationId) {
-          notification.sent = true;
-        }
-        return notification;
-      })
+      items: state.items.filter((notification) => notification.notificationId !== action.payload.notificationId)
     });
   case UPDATE_NOTIFICATION_SETTING:
     return Object.assign({}, state, {settings: Object.assign({}, state.settings, action.payload.setting)});

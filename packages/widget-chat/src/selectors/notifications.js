@@ -8,7 +8,6 @@ export const getUnsentNotifications = createSelector(
   [getActivities, getNotifications, getAvatars],
   (activities, notifications, avatars) =>
     notifications
-      .filter((notification) => !notification.sent)
       .map((notification) => {
         const notificationActivity = findActivityWithUrl(activities, notification.notificationId);
         return Object.assign({}, notification, {

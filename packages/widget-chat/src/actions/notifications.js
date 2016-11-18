@@ -10,10 +10,10 @@ function addNotification(notification) {
   };
 }
 
-export const MARK_NOTIFICATION_SENT = `MARK_NOTIFICATION_SENT`;
-function markNotificationSent(notificationId) {
+export const DELETE_NOTIFICATION = `DELETE_NOTIFICATION`;
+function deleteNotification(notificationId) {
   return {
-    type: MARK_NOTIFICATION_SENT,
+    type: DELETE_NOTIFICATION,
     payload: {
       notificationId
     }
@@ -48,7 +48,7 @@ export function createNotification(notificationId, type) {
  * @returns {function}
  */
 export function notificationSent(notificationId) {
-  return (dispatch) => dispatch(markNotificationSent(notificationId));
+  return (dispatch) => dispatch(deleteNotification(notificationId));
 }
 
 /**
