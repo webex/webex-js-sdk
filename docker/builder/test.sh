@@ -25,6 +25,8 @@ else
   EXIT_CODE=$?
   set -e
 
+  echo "DEBUG: npm run test:package exit code: ${EXIT_CODE}"
+
   npm run sauce:stop
   exit ${EXIT_CODE}
 fi
