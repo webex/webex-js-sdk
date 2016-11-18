@@ -50,7 +50,7 @@ PIDS=""
 echo "################################################################################"
 echo "# RUNNING LEGACY NODE TESTS"
 echo "################################################################################"
-docker run -e PACKAGE=legacy ${DOCKER_RUN_OPTS} --name ${PACKAGE} bash -c "npm run test:legacy:node > ${SDK_ROOT_DIR}/reports/logs/legacy.node.log 2>&1" &
+docker run --name "legacy-node-${BUILD_NUMBER}" -e PACKAGE=legacy ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:node > ${SDK_ROOT_DIR}/reports/logs/legacy.node.log 2>&1" &
 PID="$!"
 echo "Running legacy node tests as ${PID}"
 PIDS+=" ${PID}"
@@ -58,7 +58,7 @@ PIDS+=" ${PID}"
 echo "################################################################################"
 echo "# RUNNING LEGACY BROWSER TESTS"
 echo "################################################################################"
-docker run -e PACKAGE=legacy ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:browser > ${SDK_ROOT_DIR}/reports/logs/legacy.browser.log 2>&1" &
+docker run --name "legacy-browser-${BUILD_NUMBER}" -e PACKAGE=legacy ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:browser > ${SDK_ROOT_DIR}/reports/logs/legacy.browser.log 2>&1" &
 PID="$!"
 echo "Running legacy browser tests as ${PID}"
 PIDS+=" ${PID}"
@@ -79,11 +79,6 @@ for i in ${SDK_ROOT_DIR}/packages/*; do
   fi
 
   if ! echo $i | grep -qc -v xunit-with-logs ; then
-    continue
-  fi
-
-  # this guy is failing with non-zero exit code, but for no aparent reason.
-  if ! echo $i | grep -qc -v storage-adapter-spec ; then
     continue
   fi
 
@@ -109,7 +104,7 @@ for i in ${SDK_ROOT_DIR}/packages/*; do
   echo "################################################################################"
   # Note: using & instead of -d so that wait works
   # Note: the Dockerfile's default CMD will run package tests automatically
-  docker run -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} &
+  docker run --name "${PACKAGE}-${BUILD_NUMBER}" -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} &
   PID="$!"
   echo "Running tests for ${PACKAGE} as ${PID}"
   PIDS+=" ${PID}"
