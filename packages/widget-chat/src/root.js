@@ -1,7 +1,6 @@
 import React, {PropTypes} from 'react';
 import {Provider} from 'react-redux';
 
-import injectWidgetLoader from './loader';
 import ChatWidget from './containers/chat-widget';
 import store from './store';
 

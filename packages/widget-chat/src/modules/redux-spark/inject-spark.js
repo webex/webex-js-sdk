@@ -1,6 +1,5 @@
 import React, {Component, PropTypes} from 'react';
 
-import {createSpark} from './spark';
 import SparkComponent from './component';
 
 function getDisplayName(C) {

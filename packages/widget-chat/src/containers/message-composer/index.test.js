@@ -1,30 +1,15 @@
 /* eslint-disable max-nested-callbacks */
 import React from 'react';
 import renderer from 'react-test-renderer';
-
 import {Provider} from 'react-redux';
-import {applyMiddleware, combineReducers, compose, createStore} from 'redux';
-import thunk from 'redux-thunk';
 
-import {user, conversation, message} from '../../reducers';
-import sparkReducer from '../../modules/redux-spark/reducers';
-
-
+import store from '../../store.js';
 import ConnectedMessageComposer, {MessageComposer} from '.';
-let component, store;
+
+let component;
 
 describe(`MessageComposer component`, () => {
   beforeEach(() => {
-    store = createStore(
-      combineReducers({
-        user,
-        conversation,
-        message,
-        spark: sparkReducer
-      }),
-      compose(applyMiddleware(thunk))
-    );
-
     component = renderer.create(
       <Provider store={store}>
         <ConnectedMessageComposer

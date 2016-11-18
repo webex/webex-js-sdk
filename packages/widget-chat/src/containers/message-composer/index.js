@@ -18,6 +18,7 @@ export class MessageComposer extends Component {
     super(props);
     this.handleChange = this.handleChange.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
+    this.handleSubmit = this.handleSubmit.bind(this);
   }
 
   componentWillReceiveProps(nextProps) {
@@ -45,7 +46,7 @@ export class MessageComposer extends Component {
   }
 
   handleSubmit() {
-    const {props} = this;
+    const props = this.props;
     const {
       activity,
       conversation,

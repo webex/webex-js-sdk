@@ -16,5 +16,6 @@ exports[`FileDownloader container renders properly 1`] = `
     Object {
       "files": Object {}
     }
-  } />
+  }
+  spark={null} />
 `;
