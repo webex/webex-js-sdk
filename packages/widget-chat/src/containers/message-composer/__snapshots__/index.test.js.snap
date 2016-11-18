@@ -45,7 +45,7 @@ exports[`MessageComposer component snapshot tests handles value change properly 
       onSubmit={[Function handleSubmit]}
       placeholder="Message Placeholder"
       rows={1}
-      value="abc123" />
+      value={undefined} />
   </div>
 </div>
 `;

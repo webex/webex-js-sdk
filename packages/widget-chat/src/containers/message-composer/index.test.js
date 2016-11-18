@@ -61,11 +61,11 @@ describe(`MessageComposer component`, () => {
   describe(`class method tests`, () => {
     it(`sends message properly`, () => {
       const props = {
-        submitMessage: jest.fn()
+        submitActivity: jest.fn()
       };
       const messageComposer = new MessageComposer(props);
       messageComposer.handleSubmit();
-      expect(messageComposer.props.submitMessage).toHaveBeenCalled();
+      expect(messageComposer.props.submitActivity).toHaveBeenCalled();
     });
 
     describe(`enter key processing`, () => {
