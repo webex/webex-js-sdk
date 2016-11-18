@@ -22,10 +22,20 @@ export class Notifications extends Component {
       this.checkSupported();
     }
     if (_.isNull(props.permission) && props.isSupported) {
-      browserUtilities.requestPermissionForNotifications()
-        .then((permission) => props.setNotificationPermission(permission));
+      this.requestPermission();
     }
     this.displayNotifications();
+  }
+
+  /**
+   * Requests permission from the browser to allow notifications
+   *
+   * @returns {Promise}
+   */
+  requestPermission() {
+    const {props} = this;
+    return browserUtilities.requestPermissionForNotifications()
+        .then((permission) => props.setNotificationPermission(permission));
   }
 
   /**
