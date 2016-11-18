@@ -95,8 +95,44 @@ var ConversationService = SparkBase.extend(
   // Retrievers
   // ----------
 
+  getImageOrientation: function getImageOrientation(file) {
+    console.log('@@@@@ inside SDK getImageOrientation()');
+    return new Promise(function(resolve) {
+      var reader = new FileReader();
+      reader.readAsArrayBuffer(file);
+      reader.onload = function() {
+        var arrayBuffer = reader.result
+        var buf = new Buffer(arrayBuffer.byteLength);
+        var view = new Uint8Array(arrayBuffer);
+        for (let i = 0; i < buf.length; ++i) {
+          buf[i] = view[i];
+        }
+        console.log('@@@@@ File contents read into a buffer buf=', buf);
+        resolve(buf);
+      }
+    }.bind(this))
+      .then(function(buf) {
+        return new Promise(function(resolve) {
+          new ExifImage({ image : buf }, function (error, exifData) {
+            if (error) {
+              console.log('@@@@@ Error1 from fixImageOrientation: '+error.message);
+              resolve(file);
+            }
+            else {
+              console.log('@@@@@@@@@ exifData from fixImageOrientation=', exifData);
+              if (exifData) {
+                console.log('@@@@@@ Found exifData.image.Orientation=', exifData.image.Orientation);
+                file.image.orientation = exifData.image.Orientation;
+              }
+            }
+            resolve(file);
+          });
+        }.bind(this))
+      })
+  },
+
   download: function download(item, options) {
-    console.log('@@@@@ inside SDK.download');
+    // console.log('@@@@@ inside SDK.download');
     options = options || {};
 
     var isEncrypted = !!item.scr;
@@ -123,7 +159,6 @@ var ConversationService = SparkBase.extend(
 
         var promise;
         if (isEncrypted) {
-          console.log('@@@@@  Initiall22222 item=', item);
           promise = this.spark.encryption.download(item.scr)
             .on('progress', emitter.emit.bind(emitter, 'progress'))
             .then(function ensureBlob(res) {
@@ -136,7 +171,8 @@ var ConversationService = SparkBase.extend(
                   else {
                     console.log('@@@@@@@@@ exifData=', exifData);
                     if (exifData) {
-                      item.orientation = exifData.image.Orientation;
+                      console.log('@@@@@@@@@ exifData.image.Orientation=', exifData.image.Orientation);
+                      item.image.orientation = exifData.image.Orientation;
                     }
                   }
                   return resolve(res);

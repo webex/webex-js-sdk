@@ -457,13 +457,15 @@ var ShareActivityBase = SparkBase.extend(
    */
   _processImage: function _processImage(file, options) {
     var metadata = {};
-    return imageUtil.processImage(file, metadata, options)
+    console.log('@@@@@@ Fix the thumbnail for correct orientation of the image file=', file);
+    return imageUtil.processImage(file, metadata, options) // Fix the thumbnail for correct orientation of the image
       .then(function encryptThumbnail(thumbnail) {
         return this.spark.encryption.encryptBinary(thumbnail);
       }.bind(this))
       .then(function assignThumbnailData(data) {
         metadata.thumbnailBlob = data.cblob;
         metadata.image.scr = data.scr;
+        metadata.image.orientation = file.image.orientation;
         return metadata;
       });
   },

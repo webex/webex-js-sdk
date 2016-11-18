@@ -10,8 +10,61 @@
 
 var pick = require('lodash.pick');
 var imageBase = require('./image-base');
+// var ExifImage = require('exif').ExifImage;
 
 var ImageUtil = {
+
+    drawImage: function drawImage(img, x, y, width, height, deg, flip, ctx) {
+      //save current context before applying transformations
+      ctx.save();
+      var rad;
+      //convert degrees to radians
+      if (flip) {
+          rad = deg * Math.PI / 180;
+      }
+      else {
+          rad = 2*Math.PI - deg * Math.PI / 180;
+      }
+      //set the origin to the center of the image
+      ctx.translate(x + width/2, y + height/2);
+      //rotate the canvas around the origin
+      ctx.rotate(rad);
+      if (flip){
+          //flip the canvas
+          ctx.scale(-1,1);
+      }
+      //draw the image
+      ctx.drawImage(img, -width/2, -height/2, width, height);
+      //restore the canvas
+      ctx.restore();
+  },
+
+  fixImageOrientation: function fixImageOrientation(orientation, img, width, height, ctx) {
+    switch(orientation) {
+      case 2:
+        this.drawImage(img, 0, 0, width, height, 0, true, ctx); // flipImage
+        break;
+      case 3:
+        this.drawImage(img, 0, 0, width, height, 180, false, ctx); // rotateImage180
+        break;
+      case 4:
+        this.drawImage(img, 0, 0, width, height, 180, true, ctx); // rotate180AndFlipImage
+        break;
+      case 5:
+        this.drawImage(img, 0, 0, width, height, 270, true, ctx); // rotate90AndFlipImage
+        break;
+      case 6:
+        this.drawImage(img, 0, 0, width, height, 270, false, ctx); // rotateImage90
+        break;
+      case 7:
+        this.drawImage(img, 0, 0, width, height, 90, true, ctx); // rotateNeg90AndFlipImage
+        break;
+      case 8:
+        this.drawImage(img, 0, 0, width, height, 90, false, ctx); // rotateNeg90
+        break;
+    }
+
+  },
 
   processImage: function processImage(file, metadata, options) {
     if (file.type.indexOf('image') !== 0) {
@@ -27,6 +80,7 @@ var ImageUtil = {
       img.src = URL.createObjectURL(file);
     })
       .then(function resizeImage(img) {
+        console.log('@@@@@@ inside processImage of SDK, file=', file);
         metadata.dimensions = pick(img, 'height', 'width');
 
         var dimensions = imageBase._computeThumbnailDimensions(img, options);
@@ -37,7 +91,13 @@ var ImageUtil = {
         metadata.image = dimensions;
 
         var ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, dimensions.width, dimensions.height);
+        if (file && file.image && file.image.orientation && file.image.orientation !== 1) {
+          this.fixImageOrientation(file.image.orientation, img, dimensions.width, dimensions.height, ctx);
+        }
+        else {
+          ctx.drawImage(img, 0, 0, dimensions.width, dimensions.height);
+        }
+
 
         // TODO take advantage of canvas.toBlob in Firefox
 
@@ -56,7 +116,7 @@ var ImageUtil = {
         for (var i = 0; i < byteString.length; i++) {
           dw.setUint8(i, byteString.charCodeAt(i));
         }
-
+        console.log('@@@@@@ returning ab which is the ArrayBuffer of the image...');
         return ab;
       }.bind(this));
   }
