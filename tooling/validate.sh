@@ -8,12 +8,6 @@ git tag | xargs git tag -d
 git gc
 git fetch origin --tags
 
-
-# Note: the version setting stuff below belongs in pre-release.sh, but the
-# grunt release command throws off lerna's version detection
-echo "The following packages will be published if this build succeeds"
-npm run lerna -- updated
-
 cd $(dirname $0)
 VERSION=$(node ./get-version.js)
 set +e
