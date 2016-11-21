@@ -29,6 +29,8 @@ else
   EXIT_CODE=$?
   set -e
 
+  # Don't fail the build if we fail to disconnect from sauce
+  set +e
   npm run sauce:stop
   exit ${EXIT_CODE}
 fi

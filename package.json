@@ -53,7 +53,7 @@
     "posttest:legacy:browser": "PACKAGE=legacy npm run sauce:stop",
     "pretest:package": "npm run check-package",
     "test:package": "npm run grunt:package -- test",
-    "posttest:package:sauce": "npm run sauce:stop",
+    "posttest:package:sauce": "npm run sauce:stop || true",
     "lerna": "lerna",
     "distsrc": "sed -ibak 's#\"main\": \"dist/index.js#\"main\": \"src/index.js#' packages/*/package.json && rm packages/*/*bak",
     "srcdist": "sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' packages/*/package.json && rm packages/*/*bak"
