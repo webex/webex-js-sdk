@@ -31,8 +31,8 @@ exports[`ActivityItemShareFile component renders properly 1`] = `
         className="share-action-item">
         <button
           className="icon-button"
-          onClick={[Function handleDownloadClick]}
-          onKeyUp={[Function handleDownloadClick]}>
+          onClick={[Function]}
+          onKeyUp={[Function]}>
           <div
             className="icon"
             title="Download this file" />

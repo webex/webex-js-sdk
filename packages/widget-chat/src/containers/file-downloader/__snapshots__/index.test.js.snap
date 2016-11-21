@@ -3,18 +3,18 @@ exports[`FileDownloader container renders properly 1`] = `
   files={
     Array [
       Object {
-        "url": "testFile1.jpg"
+        "url": "testFile1.jpg",
       },
       Object {
-        "url": "testFile2.jpg"
-      }
+        "url": "testFile2.jpg",
+      },
     ]
   }
-  onDownloadClick={[Function bound handleDownloadClick]}
-  retrieveSharedFile={[Function anonymous]}
+  onDownloadClick={[Function]}
+  retrieveSharedFile={[Function]}
   share={
     Object {
-      "files": Object {}
+      "files": Object {},
     }
   }
   spark={null} />

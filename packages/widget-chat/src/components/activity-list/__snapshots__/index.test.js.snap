@@ -36,7 +36,7 @@ exports[`ActivityList component renders properly 1`] = `
             className="activity-text"
             dangerouslySetInnerHTML={
               Object {
-                "__html": "Test Activity Content 1"
+                "__html": "Test Activity Content 1",
               }
             } />
         </div>
@@ -49,8 +49,8 @@ exports[`ActivityList component renders properly 1`] = `
             className="post-action-item">
             <button
               className="icon-button"
-              onClick={[Function handleOnFlag]}
-              onKeyUp={[Function handleOnFlag]}>
+              onClick={[Function]}
+              onKeyUp={[Function]}>
               <div
                 className="icon"
                 title="Flag this message" />
@@ -100,7 +100,7 @@ exports[`ActivityList component renders properly 1`] = `
             className="activity-text"
             dangerouslySetInnerHTML={
               Object {
-                "__html": "Test Activity Content 2"
+                "__html": "Test Activity Content 2",
               }
             } />
         </div>
@@ -113,8 +113,8 @@ exports[`ActivityList component renders properly 1`] = `
             className="post-action-item">
             <button
               className="icon-button"
-              onClick={[Function handleOnFlag]}
-              onKeyUp={[Function handleOnFlag]}>
+              onClick={[Function]}
+              onKeyUp={[Function]}>
               <div
                 className="icon"
                 title="Flag this message" />
@@ -164,7 +164,7 @@ exports[`ActivityList component renders properly 1`] = `
             className="activity-text"
             dangerouslySetInnerHTML={
               Object {
-                "__html": "Test Activity Content 3"
+                "__html": "Test Activity Content 3",
               }
             } />
         </div>
@@ -177,8 +177,8 @@ exports[`ActivityList component renders properly 1`] = `
             className="post-action-item">
             <button
               className="icon-button"
-              onClick={[Function handleOnFlag]}
-              onKeyUp={[Function handleOnFlag]}>
+              onClick={[Function]}
+              onKeyUp={[Function]}>
               <div
                 className="icon"
                 title="Flag this message" />

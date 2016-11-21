@@ -1,9 +1,9 @@
 exports[`TextArea component renders properly 1`] = `
 <textarea
   className="textarea"
-  onChange={[Function mockConstructor]}
-  onKeyDown={[Function mockConstructor]}
-  onSubmit={[Function mockConstructor]}
+  onChange={[Function]}
+  onKeyDown={[Function]}
+  onSubmit={[Function]}
   placeholder="TextArea Placeholder"
   rows={2}
   value="" />

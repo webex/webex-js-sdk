@@ -39,8 +39,8 @@ exports[`ActivityItemBase component renders properly 1`] = `
         className="post-action-item">
         <button
           className="icon-button"
-          onClick={[Function handleOnFlag]}
-          onKeyUp={[Function handleOnFlag]}>
+          onClick={[Function]}
+          onKeyUp={[Function]}>
           <div
             className="icon"
             title="Flag this message" />
@@ -53,8 +53,8 @@ exports[`ActivityItemBase component renders properly 1`] = `
         className="post-action-item">
         <button
           className="icon-button"
-          onClick={[Function handleOnDelete]}
-          onKeyUp={[Function handleOnDelete]}>
+          onClick={[Function]}
+          onKeyUp={[Function]}>
           <div
             className="icon"
             title="Delete this message" />
