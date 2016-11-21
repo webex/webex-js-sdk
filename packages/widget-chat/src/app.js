@@ -12,7 +12,7 @@ const defaultConfig = {
   env: process.env.ENV_VARIABLE
 };
 
-function initChatWidget(element, config) {
+export function initChatWidget(element, config) {
   config = _.merge({}, defaultConfig, config);
 
   ReactDOM.render(
