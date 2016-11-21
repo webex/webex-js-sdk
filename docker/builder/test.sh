@@ -10,6 +10,10 @@
 
 set -e
 
+rm -rf ".sauce/${PACKAGE}/sc.pid"
+rm -rf ".sauce/${PACKAGE}/sc.tid"
+rm -rf ".sauce/${PACKAGE}/sc.ready"
+
 # copied from http://www.tldp.org/LDP/abs/html/comparison-ops.html because I can
 # never remember which is which
 # > -z string is null, that is, has zero length
