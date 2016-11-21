@@ -21,6 +21,7 @@ npm run lerna -- publish --skip-npm --skip-git --repo-version="${VERSION}" --yes
 EXIT_CODE=$?
 set -e
 
+cd "${SDK_ROOT_DIR}"
 if [ "${EXIT_CODE}" -eq "0" ]; then
   git add lerna.json packages/*/package.json
   git commit -m "v${VERSION}"
