@@ -20,6 +20,10 @@ import {
   removeFlagFromServer
 } from '../../actions/flags';
 import {
+  NOTIFICATION_TYPE_POST,
+  createNotification
+} from '../../actions/notifications';
+import {
   confirmDeleteActivity,
   deleteActivityAndDismiss,
   hideDeleteModal,
@@ -32,6 +36,7 @@ import ScrollingActivity from '../scrolling-activity';
 import ScrollToBottomButton from '../../components/scroll-to-bottom-button';
 import Spinner from '../../components/spinner';
 import MessageComposer from '../message-composer';
+import Notifications from '../notifications';
 
 import styles from './styles.css';
 
@@ -124,11 +129,15 @@ export class ChatWidget extends Component {
       // If new activity comes in
       if (lastActivityFromPrev && lastActivityFromThis && props.conversation.activities.length !== prevProps.conversation.activities.length && lastActivityFromPrev.id !== lastActivityFromThis.id) {
         // Scroll if from ourselves
-        if (props.user.currentUser.id === lastActivityFromThis.actorId) {
+        if (props.user.currentUser.id === lastActivityFromThis.actor.id) {
           activityList.scrollToBottom();
         }
-        else if (activityList.isScrolledToBottom()) {
-          activityList.scrollToBottom();
+        else {
+          if (activityList.isScrolledToBottom()) {
+            activityList.scrollToBottom();
+          }
+          // Send notification of new message
+          this.props.createNotification(lastActivityFromThis.url, NOTIFICATION_TYPE_POST);
         }
       }
       else if (prevProps.conversation.activities.length === 0) {
@@ -221,10 +230,10 @@ export class ChatWidget extends Component {
 
     this.props.setScrollPosition({scrollTop: this.activityList.getScrollTop()});
 
+    const lastActivity = _.last(conversation.activities);
     if (this.activityList.isScrolledToBottom()) {
       this.props.showScrollToBottomButton(false);
       this.props.updateHasNewMessage(false);
-      const lastActivity = _.last(conversation.activities);
       if (conversation.lastAcknowledgedActivity !== lastActivity.id) {
         this.props.acknowledgeActivityOnServer(conversation, lastActivity, spark);
       }
@@ -232,6 +241,7 @@ export class ChatWidget extends Component {
     else if (!widget.showScrollToBottomButton) {
       this.props.showScrollToBottomButton(true);
     }
+
     if (this.activityList.isScrolledToTop() && conversation.activities[0].verb !== `create`) {
       this.props.loadPreviousMessages(conversation.id, _.first(conversation.activities), spark);
     }
@@ -416,6 +426,7 @@ export class ChatWidget extends Component {
       <div className={classNames(`widget-chat`, styles.widgetChat)}>
         <div className={classNames(`banner`, styles.banner)} />
         {main}
+        <Notifications />
       </div>
     );
   }
@@ -425,6 +436,7 @@ ChatWidget.propTypes = {
   acknowledgeActivityOnServer: PropTypes.func.isRequired,
   confirmDeleteActivity: PropTypes.func.isRequired,
   createConversationWithUser: PropTypes.func.isRequired,
+  createNotification: PropTypes.func.isRequired,
   deleteActivityAndDismiss: PropTypes.func.isRequired,
   fetchAvatarForUserId: PropTypes.func.isRequired,
   fetchCurrentUser: PropTypes.func.isRequired,
@@ -458,6 +470,7 @@ export default connect(
     acknowledgeActivityOnServer,
     confirmDeleteActivity,
     createConversationWithUser,
+    createNotification,
     deleteActivityAndDismiss,
     fetchAvatarForUserId,
     fetchCurrentUser,
