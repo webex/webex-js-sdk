@@ -16,7 +16,13 @@ git tag
 echo "DEBUG: last tag"
 git describe --tags $(git rev-list --tags --max-count=1)
 LAST_TAG=$(git describe --tags $(git rev-list --tags --max-count=1))
+
+echo "DEBUG: git updated"
 git diff --name-only ${LAST_TAG} -- "packages/ciscospark"
+
+echo "DEBUG: lerna updated"
+
+npm run lerna -- updated
 
 cd $(dirname $0)
 

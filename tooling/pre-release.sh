@@ -7,6 +7,11 @@ cd $(dirname $)
 
 VERSION=$(node ./get-version.js)
 
+echo "DEBUG: packages to publish (pre-release.sh)"
+git describe --tags $(git rev-list --tags --max-count=1)
+LAST_TAG=$(git describe --tags $(git rev-list --tags --max-count=1))
+git diff --name-only ${LAST_TAG} -- "packages/ciscospark"
+
 echo "The following packages will be updated to version ${VERSION}"
 npm run lerna -- updated
 
