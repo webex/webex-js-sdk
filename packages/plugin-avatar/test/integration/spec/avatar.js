@@ -3,6 +3,8 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 
+import '../..';
+
 import {assert} from '@ciscospark/test-helper-chai';
 import sinon from '@ciscospark/test-helper-sinon';
 import fh from '@ciscospark/test-helper-file';
@@ -13,7 +15,7 @@ describe(`plugin-avatar`, () => {
 
   let mccoy, spark, spock;
 
-  before(() => testUsers.create({count: 2})
+  before(`create users`, () => testUsers.create({count: 2})
     .then((users) => {
       [spock, mccoy] = users;
 
@@ -28,12 +30,12 @@ describe(`plugin-avatar`, () => {
           authorization: mccoy.token
         }
       });
-
-      return Promise.all([
-        spark.device.register(),
-        mccoy.spark.device.register()
-      ]);
     }));
+
+  before(`register with wdm`, () => Promise.all([
+    spark.device.register(),
+    mccoy.spark.device.register()
+  ]));
 
   let sampleImageSmallOnePng = `sample-image-small-one.png`;
 

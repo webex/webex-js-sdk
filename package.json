@@ -1,6 +1,6 @@
 {
   "name": "spark-js-sdk",
-  "version": "0.5.255",
+  "version": "0.5.272",
   "description": "JavaScript sdk for interacting with the Spark API",
   "homepage": "http://sqbu-github.cisco.com/WebExSquared/squared-js-sdk",
   "bugs": {
@@ -194,7 +194,7 @@
     "karma-mocha-reporter": "^2.0.4",
     "karma-safari-launcher": "^1.0.0",
     "karma-sauce-launcher": "^1.0.0",
-    "lerna": "2.0.0-beta.26",
+    "lerna": "2.0.0-beta.30",
     "load-grunt-tasks": "^3.5.0",
     "lodash": "^4.5.1",
     "lolex": "^1.5.1",

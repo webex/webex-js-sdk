@@ -165,15 +165,6 @@ SAUCE_ACCESS_KEY=${SAUCE_ACCESS_KEY}
 EOF
 
 #
-# REMOVE REMNANT SAUCE FILES FROM PREVIOUS BUILD
-#
-
-rm -rf .sauce/*/sc.pid
-rm -rf .sauce/*/sc.tid
-rm -rf .sauce/*/sc.ready
-rm -rf .sauce/*/sauce_connect.log
-
-#
 # SET DEFAULT CONCURRENCY
 #
 

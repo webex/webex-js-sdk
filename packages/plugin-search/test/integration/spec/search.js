@@ -22,7 +22,7 @@ describe(`plugin-search`, () => {
   describe(`#people`, () => {
     let bot, checkov, mccoy, spark;
 
-    before(() => testUsers.create({count: 2})
+    before(`create test users`, () => testUsers.create({count: 2})
       .then((users) => {
         [checkov, mccoy] = users;
 
@@ -31,26 +31,24 @@ describe(`plugin-search`, () => {
             authorization: checkov.token
           }
         });
+      }));
 
-        return spark.mercury.connect();
-      })
-      .then(() => spark.request({
-        api: `hydra`,
-        resource: `bots`,
-        method: `POST`,
-        body: {
-          displayName: `Personal Assistant`,
-          email: `${uuid.v4()}@sparkbot.io`
-        }
-      }))
+    before(`connect to mercury`, () => spark.mercury.connect());
+
+    before(`create bot`, () => spark.request({
+      api: `hydra`,
+      resource: `bots`,
+      method: `POST`,
+      body: {
+        displayName: `Personal Assistant`,
+        email: `${uuid.v4()}@sparkbot.io`
+      }
+    })
       .then((results) => {
         bot = results.body;
-      })
-    );
+      }));
 
-    after(() => {
-      spark.mercury.disconnect();
-    });
+    after(() => spark && spark.mercury.disconnect());
 
     it(`searches for users with a specific string`, () => {
       return spark.search.people({query: `abc`})

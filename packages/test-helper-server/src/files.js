@@ -9,6 +9,7 @@ var bodyParser = require('body-parser');
 var express = require('express');
 var fs = require('fs');
 var mkdirp = require('mkdirp');
+var multer = require(`multer`);
 var path = require('path');
 var reflect = require('./reflect');
 var uuid = require('uuid');
@@ -63,6 +64,17 @@ router.get('/download/:id', function(req, res, next) {
     }
 
     return res.status(200).send(data).end();
+  });
+});
+
+router.use(`/metadata`, multer({dest: uploadPath}).array(`files`));
+
+['put', 'patch', 'post'].forEach(function(methodName) {
+  router[methodName]('/metadata', function(req, res) {
+    res
+      .status(200)
+      .json(req.files)
+      .end();
   });
 });
 

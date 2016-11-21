@@ -12,11 +12,11 @@ While quibbling about grammar in issue titles may seem a bit pedantic, adhering 
 
 ## Git Commit Guidelines
 
-As part of the build process, commits are run through [conventional changelog](https://github.com/ajoslin/conventional-changelog) to generate the changelog. Please adhere to the following guidelines when formatting your commit messages.
+As part of the build process, commits are run through [conventional changelog](https://github.com/conventional-changelog/conventional-changelog) to generate the changelog. Please adhere to the following guidelines when formatting your commit messages.
 
 ### Commit Message Format
 
-Each commit message consists of a <b>header</b>, a <b>body</b> and a <b>footer</b>. The header has a special format that includes a <b>type</b>, a <b>scope</b> and a <b>subject</b>:
+Each commit message consists of a **header**, a **body** and a **footer**. The header has a special format that includes a **type**, a **scope** and a **subject**:
 
 ```
 <type>(<scope>): <subject>
@@ -26,7 +26,7 @@ Each commit message consists of a <b>header</b>, a <b>body</b> and a <b>footer</
 <footer>
 ```
 
-The <b>header</b> is mandatory and the scope of the header is optional.
+The **header** is mandatory and the scope of the header is optional.
 
 Any line of the commit message cannot be longer 100 characters! This allows the message to be easier to read on GitHub as well as in various git tools.
 
@@ -38,40 +38,38 @@ If the commit reverts a previous commit, it should begin with `revert:`, followe
 
 Must be one of the following:
 
-- <b>feat</b>: A new feature
-- <b>fix</b>: A bug fix
-- <b>docs</b>: Documentation only changes
-- <b>style</b>: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
-- <b>refactor</b>: A code change that neither fixes a bug nor adds a feature
-- <b>perf</b>: A code change that improves performance
-- <b>test</b>: Adding missing tests
-- <b>chore</b>: Changes to the build process or auxiliary tools and libraries such as documentation generation
+- **feat**: A new feature
+- **fix**: A bug fix
+- **docs**: Documentation only changes
+- **style**: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
+- **refactor**: A code change that neither fixes a bug nor adds a feature
+- **perf**: A code change that improves performance
+- **test**: Adding missing tests
+- **chore**: Changes to the build process or auxiliary tools and libraries such as documentation generation
 
 ### Scope
 
-The scope could be anything specifying place of the commit change. Generally, these should match package names.For example, `http-core`, `common`, `ciscospark`, etc...
+The scope should indicate what is being changed. Generally, these should match package names. For example, `http-core`, `common`, `ciscospark`, etc. Other than package names, `tooling` tends to be the most common.
 
 ### Subject
 
 The subject contains succinct description of the change:
 
-use the imperative, present tense: "change" not "changed" nor "changes"
-don't capitalize first letter
-no dot (.) at the end
+- use the imperative, present tense: "change" not "changed" nor "changes"
+- don't capitalize first letter
+- no dot (.) at the end
 
 ### Body
 
-Just as in the <b>subject<b>, use the imperative, present tense: "change" not "changed" nor "changes". The body should include the motivation for the change and contrast this with previous behavior.
+Just as in the **subject** the imperative, present tense: "change" not "changed" nor "changes". The body should include the motivation for the change and contrast this with previous behavior.
 
 ### Footer
 
-The footer should contain any information about <b>Breaking Changes</b> and is also the place to reference GitHub issues that this commit <b>Closes</b>.
+The footer should contain any information about **Breaking changes** and is also the place to reference GitHub issues that this commit **closes**.
 
-<b>Breaking Changes</b> should start with the word `BREAKING CHANGE:` with a space or two newlines. The rest of the commit message is then used for this.
+**Breaking Changes** should start with the word `BREAKING CHANGE:` with a space or two newlines. The rest of the commit message is then used for this.
 
-## Running the Tests
-
-### Environment Setup
+## Running the tests
 
 Install dependencies:
 
@@ -82,59 +80,23 @@ npm install
 npm run bootstrap
 ```
 
-You'll to create a file called `.env` that defines, at a minimum:
+You'll need to create a file called `.env` that defines, at a minimum:
 
-- `COMMON_IDENTITY_CLIENT_ID`
-- `COMMON_IDENTITY_CLIENT_SECRET`
-- `COMMON_IDENTITY_REDIRECT_URI`
-- `COMMON_IDENTITY_SCOPE`
-- `SCOPE`
-- `COMMON_IDENTITY_SERVICE`
-- `PORT`
-- `FIXTURE_PORT`
-- `KARMA_PORT`
+- `CISCOSPARK_CLIENT_ID`
+- `CISCOSPARK_CLIENT_SECRET`
+- `CISCOSPARK_REDIRECT_URI`
+- `CISCOSPARK_SCOPE`
 
-Yes, `SCOPE` and `COMMON_IDENTITY_SCOPE` are redundant and should have the same values. Don't ask, you need to define both.
+You can get these values by registering a new integration on the [developer portal](https://developer.ciscospark.com/add-integration.html).
 
-`COMMON_IDENTITY_SERVICE` should probably always be `spark`.
+Finally, to run all tests:
 
-`PORT`, `FIXTURE_PORT`, and `KARMA_PORT` can mostly be any valid port, but when running tests via Sauce Labs, be sure to check their acceptable ports list. Good defaults are `8000`, `9000`, `8001`, respectively.
-
-To run tests via Sauce Labs, you'll also need to define:
-
-- `SAUCE_USERNAME`
-- `SAUCE_ACCESS_KEY`
-
-### Packages
-
-Build all packages
-```bash
-npm run build
-```
-
-Build a single package
-```bash
-PACKAGE=<name> npm run grunt:package -- build
-```
-
-Run all tests
 ```bash
 npm run grunt:concurrent -- test
 ```
 
-Run tests for a single package
-```bash
-PACKGE=<name> npm run grunt:package -- test
-```
+And to run the tests for a specific package
 
-Test behavior can be modified via environment variables.
-
-Run all tests via Sauce Labs with code coverage and xunit output
 ```bash
-COVERAGE=true SAUCE=true XUNIT=true npm run grunt:concurrent -- test
-```
-
-Run tests for a single package via Sauce Labs with code coverage and xunit output
-```bash
-PACKAGE=<name> COVERAGE=true SAUCE=true XUNIT=true PACKGE=<name> npm run grunt:package -- test
+PACKAGE=<package name> npm run grunt:package -- test
 ```

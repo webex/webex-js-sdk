@@ -43,3 +43,4 @@ export {
 } from './plugins/credentials';
 
 export {default as Batcher} from './lib/batcher';
+export {default as Page} from './lib/page';
