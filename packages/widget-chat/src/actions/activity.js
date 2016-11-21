@@ -1,40 +1,6 @@
 import marked from 'marked';
 import {filterSync} from '@ciscospark/helper-html';
 
-import {
-  constructImage,
-  isImage,
-  sanitize
-} from '../utils/files';
-
-import {
-  storeShares,
-  uploadFiles
-} from './share';
-
-
-export const ADD_FILES_TO_ACTIVITY = `ADD_FILES_TO_ACTIVITY`;
-export function addFilesToActivity(files) {
-  return {
-    type: ADD_FILES_TO_ACTIVITY,
-    payload: {
-      files
-    }
-  };
-}
-
-export const CREATE_ACTIVITY = `CREATE_ACTIVITY`;
-export function createActivity(conversation, text, actor) {
-  return {
-    type: CREATE_ACTIVITY,
-    payload: {
-      actor,
-      conversation,
-      text
-    }
-  };
-}
-
 export const UPDATE_ACTIVITY_STATE = `UPDATE_ACTIVITY_STATE`;
 export function updateActivityState(state) {
   return {
@@ -55,48 +21,28 @@ export function updateActivityText(text) {
   };
 }
 
-export function addShareFiles(conversation, activity, files, spark) {
-  return (dispatch) => {
-    const images = [];
-    let cleanFiles;
-    if (files && files.length) {
-      cleanFiles = files.map((file) => {
-        file = sanitize(file);
-        if (isImage(file)) {
-          images.push(constructImage(file));
-        }
-        return file;
-      });
+export const CREATE_ACTIVITY = `CREATE_ACTIVITY`;
+export function createActivity(conversation, text, actor) {
+  return {
+    type: CREATE_ACTIVITY,
+    payload: {
+      actor,
+      conversation,
+      text
     }
-
-    Promise.all(images)
-      .then((localImages) => {
-        dispatch(updateActivityState({isUploadingShare: true}));
-        dispatch(addFilesToActivity(cleanFiles));
-        dispatch(storeShares(localImages));
-        dispatch(uploadFiles(conversation, activity, files, spark));
-      });
   };
 }
-
 
 export function submitActivity(conversation, activity, spark) {
   return (dispatch) => {
     dispatch(updateActivityState({isSending: true}));
     const message = _createMessageObject(activity.object.displayName);
-    if (activity.files) {
-      dispatch(updateActivityState({isSending: false}));
-    }
-    else {
+    if (!activity.files) {
       spark.conversation.post(conversation, message)
-        .then(() => dispatch(resetActivity(conversation)))
+        .then(() => dispatch(createActivity(conversation, ``, conversation.participants[0])))
         .then(() => dispatch(updateActivityState({isSending: false})));
     }
   };
-}
-
-export function resetActivity(conversation) {
-  return (dispatch) => dispatch(createActivity(conversation, ``, conversation.participants[0]));
 }
 
 function _createMessageObject(messageString) {
