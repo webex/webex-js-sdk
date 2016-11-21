@@ -12,8 +12,6 @@ set +e
 EXIT_CODE=$?
 set -e
 
-echo "DEBUG: ${PACKAGE} retry.sh exit code: ${EXIT_CODE}"
-
 if [ "${EXIT_CODE}" -ne "0" ]; then
   MSG="Suite for ${PACKAGE} failed one or more times. Please see reports/logs/docker.${PACKAGE}.log for more info."
 
