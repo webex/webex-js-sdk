@@ -5,6 +5,8 @@
 
 'use strict';
 
+/* global Uint8Array */
+
 var assign = require('lodash.assign');
 var cloneDeep = require('lodash.clonedeep');
 var Decrypter = require('./decrypter');
@@ -93,9 +95,9 @@ var ConversationService = SparkBase.extend(
   },
 
   getExifData: function getExifData(file, buf) {
-    return new Promise(function(resolve) {
+    return new Promise(function setOrientation(resolve) {
       if (file && file.image && file.mimeType === 'image/jpeg') {
-        new ExifImage({ image : buf }, function (error, exifData) {
+        new ExifImage({image: buf}, function fetchExifData(error, exifData) {
           if (error) {
             this.logger.info('conversation: error with image rotation ', error.message);
           }
@@ -110,26 +112,26 @@ var ConversationService = SparkBase.extend(
       else {
         resolve(buf);
       }
-    }.bind(this))
+    }.bind(this));
   },
 
   fixImageOrientation: function fixImageOrientation(file) {
-    return new Promise(function(resolve) {
+    return new Promise(function readFileInBuffer(resolve) {
       var reader = new FileReader();
       reader.readAsArrayBuffer(file);
-      reader.onload = function() {
-        var arrayBuffer = reader.result
+      reader.onload = function onload() {
+        var arrayBuffer = reader.result;
         var buf = new Buffer(arrayBuffer.byteLength);
         var view = new Uint8Array(arrayBuffer);
         for (let i = 0; i < buf.length; ++i) {
           buf[i] = view[i];
         }
         resolve(buf);
-      }
+      };
     }.bind(this))
-      .then(function(buf) {
+      .then(function getExifData(buf) {
         return this.getExifData(file, buf);
-      }.bind(this))
+      }.bind(this));
   },
 
   // Retrievers
@@ -164,7 +166,7 @@ var ConversationService = SparkBase.extend(
         if (isEncrypted) {
           promise = this.spark.encryption.download(item.scr)
             .on('progress', emitter.emit.bind(emitter, 'progress'))
-            .then(function(res) {
+            .then(function getExifData(res) {
               return this.getExifData(item, res);
             }.bind(this))
               .then(function ensureBlob(res) {
@@ -175,7 +177,7 @@ var ConversationService = SparkBase.extend(
                   /* eslint-env browser */
                   return new Blob([res.buffer], {type: item.mimeType});
                 }
-              })
+              });
         }
         else {
           promise = this.request({
