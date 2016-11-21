@@ -2,27 +2,30 @@
 
 set -e
 
-echo "DEBUG: the following tags are present in this repository"
-git tag
 
 # Make sure local tags don't include failed releases
 git tag | xargs git tag -d
 git gc
 git fetch origin --tags
 
-echo "DEBUG: the following tags are present in this repository (after rm/gc)"
-git tag
 
-echo "DEBUG: last tag"
-git describe --tags $(git rev-list --tags --max-count=1)
-LAST_TAG=$(git describe --tags $(git rev-list --tags --max-count=1))
-
-echo "DEBUG: git updated"
-git diff --name-only ${LAST_TAG} -- "packages/ciscospark"
-
-echo "DEBUG: lerna updated"
-
+# Note: the version setting stuff below belongs in pre-release.sh, but the
+# grunt release command throws off lerna's version detection
+echo "The following packages will be published if this build succeeds"
 npm run lerna -- updated
+
+cd $(dirname $0)
+VERSION=$(node ./get-version.js)
+set +e
+npm run lerna -- publish --skip-npm --skip-git --repo-version="${VERSION}" --yes
+EXIT_CODE=$?
+set -e
+
+if [ "${EXIT_CODE}" -eq "0" ]; then
+  git add lerna.json packages/*/package.json
+  git commit -m "v${VERSION}"
+  git tag "v${VERSION}"
+fi
 
 cd $(dirname $0)
 
