@@ -2,11 +2,15 @@
 
 set -e
 
+echo "DEBUG: the following tags are present in this repository"
+git tag
+
 # Make sure local tags don't include failed releases
 git tag | xargs git tag -d
+git gc
 git fetch origin --tags
 
-echo "DEBUG: the following tags are present in this repository"
+echo "DEBUG: the following tags are present in this repository (after rm/gc)"
 git tag
 
 cd $(dirname $0)
