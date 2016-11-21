@@ -1,13 +1,10 @@
-import React, {Component} from 'react';
+import React, {Component, PropTypes} from 'react';
 
-import spark from './spark';
 import SparkComponent from './component';
-
 
 function getDisplayName(C) {
   return C.displayName || C.name || `C`;
 }
-
 
 export default function injectSpark(WrappedComponent, options = {}) {
   const {
@@ -28,16 +25,19 @@ export default function injectSpark(WrappedComponent, options = {}) {
     render() {
       return (
         <div>
-          <SparkComponent spark={spark} />
+          <SparkComponent accessToken={this.props.accessToken} />
           <WrappedComponent
             {...this.props}
             ref={withRef ? `wrappedInstance` : null}
-            spark={spark}
           />
         </div>
       );
     }
   }
+
+  InjectSpark.propTypes = {
+    accessToken: PropTypes.string
+  };
 
   InjectSpark.displayName = `InjectSpark(${getDisplayName(WrappedComponent)})`;
   InjectSpark.WrappedComponent = WrappedComponent;

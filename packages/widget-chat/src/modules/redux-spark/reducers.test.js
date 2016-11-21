@@ -1,14 +1,18 @@
+import {Map} from 'immutable';
 import reducer from './reducers';
 
 describe(`spark reducer`, () => {
-  const initialState = {
-    authenticated: false,
-    authenticating: false,
-    registered: false,
-    registering: false,
-    connected: false,
-    connecting: false
-  };
+  const initialState = new Map({
+    status: new Map({
+      authenticated: false,
+      authenticating: false,
+      registered: false,
+      registering: false,
+      connected: false,
+      connecting: false
+    }),
+    spark: null
+  });
 
   it(`should return initial state`, () => {
     expect(reducer(undefined, {}))
@@ -18,19 +22,24 @@ describe(`spark reducer`, () => {
   it(`should handle UPDATE_SPARK_STATE`, () => {
     expect(reducer(initialState, {
       type: `UPDATE_SPARK_STATE`,
-      state: {
-        authenticated: true,
-        registered: true,
-        connected: true
+      payload: {
+        status: {
+          authenticated: true,
+          registered: true,
+          connected: true
+        }
       }
-    }))
+    }).toJS())
     .toEqual({
-      authenticated: true,
-      authenticating: false,
-      registered: true,
-      registering: false,
-      connected: true,
-      connecting: false
+      status: {
+        authenticated: true,
+        authenticating: false,
+        registered: true,
+        registering: false,
+        connected: true,
+        connecting: false
+      },
+      spark: null
     });
   });
 });

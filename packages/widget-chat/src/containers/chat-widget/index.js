@@ -447,16 +447,15 @@ ChatWidget.propTypes = {
   removeFlagFromServer: PropTypes.func.isRequired,
   setScrollPosition: PropTypes.func.isRequired,
   showScrollToBottomButton: PropTypes.func.isRequired,
-  spark: PropTypes.object.isRequired,
   updateHasNewMessage: PropTypes.func.isRequired,
   userId: PropTypes.string.isRequired
 };
 
-function mapStateToProps(state, ownProps) {
+function mapStateToProps(state) {
   return {
     share: state.share,
-    spark: ownProps.spark,
-    sparkState: state.spark,
+    spark: state.spark.get(`spark`),
+    sparkState: state.spark.get(`status`).toJS(),
     flags: state.flags,
     user: state.user,
     conversation: state.conversation,

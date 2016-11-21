@@ -1,12 +1,12 @@
 import marked from 'marked';
 import {filterSync} from '@ciscospark/helper-html';
 
-export const UPDATE_ACTIVITY_STATE = `UPDATE_ACTIVITY_STATE`;
-export function updateActivityState(state) {
+export const UPDATE_ACTIVITY_STATUS = `UPDATE_ACTIVITY_STATUS`;
+export function updateActivityStatus(status) {
   return {
-    type: UPDATE_ACTIVITY_STATE,
+    type: UPDATE_ACTIVITY_STATUS,
     payload: {
-      state
+      status
     }
   };
 }
@@ -35,12 +35,12 @@ export function createActivity(conversation, text, actor) {
 
 export function submitActivity(conversation, activity, spark) {
   return (dispatch) => {
-    dispatch(updateActivityState({isSending: true}));
-    const message = _createMessageObject(activity.object.displayName);
-    if (!activity.files) {
+    dispatch(updateActivityStatus({isSending: true}));
+    const message = _createMessageObject(activity.getIn([`object`, `displayName`]));
+    if (!activity.getIn(`files`)) {
       spark.conversation.post(conversation, message)
         .then(() => dispatch(createActivity(conversation, ``, conversation.participants[0])))
-        .then(() => dispatch(updateActivityState({isSending: false})));
+        .then(() => dispatch(updateActivityStatus({isSending: false})));
     }
   };
 }

@@ -5,15 +5,26 @@ import {connect} from 'react-redux';
 import {
   connectToMercury,
   updateSparkState,
-  registerDevice
+  registerDevice,
+  storeSparkInstance
 } from './actions';
+
+import {createSpark} from './spark';
 
 class SparkComponent extends Component {
 
   componentDidMount() {
-    const props = this.props;
+    const {
+      accessToken
+    } = this.props;
 
-    const {spark} = props;
+    const props = this.props;
+    let spark = props.spark.get(`spark`);
+
+    if (!spark) {
+      spark = createSpark(accessToken);
+      props.storeSparkInstance(spark);
+    }
 
     spark.listenToAndRun(spark, `change:isAuthenticated`, () => {
       props.updateSparkState({authenticated: spark.isAuthenticated});
@@ -27,9 +38,8 @@ class SparkComponent extends Component {
       props.updateSparkState({connected: spark.mercury.connected});
     });
 
-
     if (props.authenticated && !props.registered && !props.registering) {
-      props.registerDevice(props.spark);
+      props.registerDevice(spark);
     }
   }
 
@@ -39,9 +49,10 @@ class SparkComponent extends Component {
       connecting,
       authenticated,
       registered,
-      registering,
-      spark
-    } = nextProps;
+      registering
+    } = nextProps.spark.get(`status`).toJS();
+    const spark = nextProps.spark.get(`spark`);
+
     if (authenticated && !registered && !registering) {
       nextProps.registerDevice(spark);
     }
@@ -50,8 +61,9 @@ class SparkComponent extends Component {
     }
   }
 
-  shouldComponentUpdate() {
-    return false;
+  shouldComponentUpdate(nextProps) {
+    const props = this.props;
+    return nextProps !== props;
   }
 
   render() {
@@ -60,14 +72,17 @@ class SparkComponent extends Component {
 }
 
 SparkComponent.propTypes = {
-  spark: PropTypes.object.isRequired
+  accessToken: PropTypes.string
 };
 
 export default connect(
-  (state) => state.spark,
+  (state) => ({
+    spark: state.spark
+  }),
   (dispatch) => bindActionCreators({
     connectToMercury,
     updateSparkState,
-    registerDevice
+    registerDevice,
+    storeSparkInstance
   }, dispatch)
 )(SparkComponent);

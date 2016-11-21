@@ -1,17 +1,30 @@
-import {UPDATE_SPARK_STATE} from './actions';
+import {Map} from 'immutable';
 
-export default function spark(state = {
-  authenticated: false,
-  authenticating: false,
-  registered: false,
-  registering: false,
-  connected: false,
-  connecting: false
-}, action) {
+import {
+  STORE_SPARK_INSTANCE,
+  UPDATE_SPARK_STATE
+} from './actions';
+
+export default function reduceSpark(state = new Map({
+  status: new Map({
+    authenticated: false,
+    authenticating: false,
+    registered: false,
+    registering: false,
+    connected: false,
+    connecting: false
+  }),
+  spark: null
+}), action) {
   switch (action.type) {
 
   case UPDATE_SPARK_STATE:
-    return Object.assign({}, state, action.state);
+    return state.mergeDeep({
+      status: action.payload.status
+    });
+
+  case STORE_SPARK_INSTANCE:
+    return state.setIn([`spark`], action.payload.spark);
 
   default:
     return state;

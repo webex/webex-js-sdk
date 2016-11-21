@@ -40,7 +40,7 @@ exports[`ScrollingActivity container renders properly 1`] = `
                 className="activity-text"
                 dangerouslySetInnerHTML={
                   Object {
-                    "__html": "Test Activity Content 1"
+                    "__html": "Test Activity Content 1",
                   }
                 } />
             </div>
@@ -53,8 +53,8 @@ exports[`ScrollingActivity container renders properly 1`] = `
                 className="post-action-item">
                 <button
                   className="icon-button"
-                  onClick={[Function handleOnFlag]}
-                  onKeyUp={[Function handleOnFlag]}>
+                  onClick={[Function]}
+                  onKeyUp={[Function]}>
                   <div
                     className="icon"
                     title="Flag this message" />
@@ -104,7 +104,7 @@ exports[`ScrollingActivity container renders properly 1`] = `
                 className="activity-text"
                 dangerouslySetInnerHTML={
                   Object {
-                    "__html": "Test Activity Content 2"
+                    "__html": "Test Activity Content 2",
                   }
                 } />
             </div>
@@ -117,8 +117,8 @@ exports[`ScrollingActivity container renders properly 1`] = `
                 className="post-action-item">
                 <button
                   className="icon-button"
-                  onClick={[Function handleOnFlag]}
-                  onKeyUp={[Function handleOnFlag]}>
+                  onClick={[Function]}
+                  onKeyUp={[Function]}>
                   <div
                     className="icon"
                     title="Flag this message" />
@@ -168,7 +168,7 @@ exports[`ScrollingActivity container renders properly 1`] = `
                 className="activity-text"
                 dangerouslySetInnerHTML={
                   Object {
-                    "__html": "Test Activity Content 3"
+                    "__html": "Test Activity Content 3",
                   }
                 } />
             </div>
@@ -181,8 +181,8 @@ exports[`ScrollingActivity container renders properly 1`] = `
                 className="post-action-item">
                 <button
                   className="icon-button"
-                  onClick={[Function handleOnFlag]}
-                  onKeyUp={[Function handleOnFlag]}>
+                  onClick={[Function]}
+                  onKeyUp={[Function]}>
                   <div
                     className="icon"
                     title="Flag this message" />
