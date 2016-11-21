@@ -166,9 +166,9 @@ var ConversationService = SparkBase.extend(
         if (isEncrypted) {
           promise = this.spark.encryption.download(item.scr)
             .on('progress', emitter.emit.bind(emitter, 'progress'))
-            .then(function getExifData(res) {
-              return this.getExifData(item, res);
-            }.bind(this))
+              .then(function getExifData(res) {
+                return this.getExifData(item, res);
+              }.bind(this))
               .then(function ensureBlob(res) {
                 if (typeof window === 'undefined') {
                   return res;
