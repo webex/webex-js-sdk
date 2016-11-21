@@ -23,7 +23,6 @@ set +e
 SUITE_RUN_COUNT="${RUN_COUNT}" /work/test.sh
 EXIT_CODE=$?
 set -e
-echo "DEBUG: (1) test.sh exit code: ${EXIT_CODE}"
 
 if [ "${EXIT_CODE}" -ne "0" ]; then
   FAILURE_COUNT=1
@@ -35,7 +34,6 @@ if [ "${EXIT_CODE}" -ne "0" ]; then
   SUITE_RUN_COUNT="${RUN_COUNT}" /work/test.sh
   EXIT_CODE=$?
   set -e
-  echo "DEBUG: (2) test.sh exit code: ${EXIT_CODE}"
 fi
 
 if [ "${EXIT_CODE}" -ne "0" ]; then
@@ -48,7 +46,6 @@ if [ "${EXIT_CODE}" -ne "0" ]; then
   SUITE_RUN_COUNT="${RUN_COUNT}" /work/test.sh
   EXIT_CODE=$?
   set -e
-  echo "DEBUG: (3) test.sh exit code: ${EXIT_CODE}"
 fi
 
 
