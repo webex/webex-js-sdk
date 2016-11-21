@@ -1,7 +1,7 @@
 exports[`AddFileButton component renders properly 1`] = `
 <button
   className="add-file-button"
-  onClick={[Function anonymous]}>
+  onClick={[Function mockConstructor]}>
   <span
     className="add-file-icon" />
 </button>

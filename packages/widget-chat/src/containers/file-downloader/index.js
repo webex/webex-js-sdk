@@ -4,7 +4,6 @@ import {bindActionCreators} from 'redux';
 import saveAs from 'browser-saveas';
 
 import {bufferToBlob} from '../../utils/files';
-import spark from '../../modules/redux-spark/spark';
 import {retrieveSharedFile} from '../../actions/share';
 
 
@@ -30,7 +29,7 @@ export default function injectFileDownloader(WrappedComponent) {
 
     retrieveFile(file) {
       const props = this.props;
-      props.retrieveSharedFile(file, spark);
+      props.retrieveSharedFile(file, props.spark);
     }
 
     getSharedFileFromStore(fileUrl) {
@@ -49,12 +48,13 @@ export default function injectFileDownloader(WrappedComponent) {
     }
 
     handleDownloadClick(fileObject) {
+      const props = this.props;
       const cachedFile = this.getSharedFileFromStore(fileObject.url);
       if (cachedFile && cachedFile.blob) {
         saveAs(cachedFile.blob, fileObject.displayName);
       }
       else {
-        this.props.retrieveSharedFile(fileObject, spark)
+        props.retrieveSharedFile(fileObject, props.spark)
           .then((file) => {
             const {blob} = bufferToBlob(file);
             saveAs(blob, file.name);
@@ -68,8 +68,7 @@ export default function injectFileDownloader(WrappedComponent) {
   }
 
   FileDownloader.propTypes = {
-    files: PropTypes.array,
-    retrieveSharedFile: PropTypes.func.isRequired
+    files: PropTypes.array
   };
 
   FileDownloader.displayName = `FileDownloader(${getDisplayName(WrappedComponent)})`;
@@ -77,7 +76,8 @@ export default function injectFileDownloader(WrappedComponent) {
 
   return connect(
     (state) => ({
-      share: state.share
+      share: state.share,
+      spark: state.spark.get(`spark`)
     }),
     (dispatch) => bindActionCreators({
       retrieveSharedFile

@@ -16,7 +16,7 @@ exports[`MessageComposer component snapshot tests handles value change properly 
       className="textarea"
       onChange={[Function bound handleChange]}
       onKeyDown={[Function bound handleKeyDown]}
-      onSubmit={[Function handleSubmit]}
+      onSubmit={[Function bound handleSubmit]}
       placeholder="Message Placeholder"
       rows={1}
       value={undefined} />
@@ -42,7 +42,7 @@ exports[`MessageComposer component snapshot tests handles value change properly 
       className="textarea"
       onChange={[Function bound handleChange]}
       onKeyDown={[Function bound handleKeyDown]}
-      onSubmit={[Function handleSubmit]}
+      onSubmit={[Function bound handleSubmit]}
       placeholder="Message Placeholder"
       rows={1}
       value="abc123" />
@@ -68,7 +68,7 @@ exports[`MessageComposer component snapshot tests renders properly 1`] = `
       className="textarea"
       onChange={[Function bound handleChange]}
       onKeyDown={[Function bound handleKeyDown]}
-      onSubmit={[Function handleSubmit]}
+      onSubmit={[Function bound handleSubmit]}
       placeholder="Message Placeholder"
       rows={1}
       value={undefined} />
