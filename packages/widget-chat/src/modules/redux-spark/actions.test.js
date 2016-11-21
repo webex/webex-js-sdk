@@ -1,7 +1,7 @@
 /* eslint max-nested-callbacks: ["error", 3] */
 
 import {createSpark} from './spark';
-import {store, createMockStore} from './test-store';
+import {createMockStore} from './test-store';
 import {
   UPDATE_SPARK_STATE,
   updateSparkState,
