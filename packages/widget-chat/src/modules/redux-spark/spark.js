@@ -3,6 +3,8 @@
 import '@ciscospark/plugin-avatar';
 import '@ciscospark/plugin-conversation';
 import '@ciscospark/plugin-flag';
+import '@ciscospark/plugin-mercury';
+import '@ciscospark/plugin-wdm';
 import Spark from '@ciscospark/spark-core';
 import LocalStorageStoreAdapter from '@ciscospark/storage-adapter-local-storage';
 
