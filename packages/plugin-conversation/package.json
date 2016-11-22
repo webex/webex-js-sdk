@@ -16,6 +16,7 @@
     "@ciscospark/spark-core": "^0.7.3",
     "babel-runtime": "^6.3.19",
     "core-decorators": "^0.12.3",
+    "gm": "^1.23.0",
     "lodash": "^4.5.1",
     "mime-types": "^2.1.12",
     "uuid": "^2.0.1"
