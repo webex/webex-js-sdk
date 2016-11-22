@@ -8,7 +8,8 @@ import file from '@ciscospark/test-helper-file';
 import {HttpError, request} from '../..';
 import makeLocalUrl from '@ciscospark/test-helper-make-local-url';
 import sinon from '@ciscospark/test-helper-sinon';
-import {nodeOnly} from '@ciscospark/test-helper-mocha';
+import {flaky, nodeOnly} from '@ciscospark/test-helper-mocha';
+
 describe(`http-core`, function() {
   this.timeout(30000);
   describe(`request()`, () => {
@@ -229,7 +230,7 @@ describe(`http-core`, function() {
       });
     });
 
-    it(`submits files as multipart form data`, () => file.fetch(`sample-powerpoint-two-page.ppt`)
+    flaky(it)(`submits files as multipart form data`, () => file.fetch(`sample-powerpoint-two-page.ppt`)
       .then((f) => request({
         method: `POST`,
         uri: makeLocalUrl(`/files/metadata`),
