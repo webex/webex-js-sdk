@@ -1,13 +1,19 @@
 import React, {PropTypes} from 'react';
 import {Provider} from 'react-redux';
+import {addLocaleData, IntlProvider} from 'react-intl';
+import enLocaleData from 'react-intl/locale-data/en';
 
 import ChatWidget from './containers/chat-widget';
 import store from './store';
 
 export default function Root({accessToken, userId}) {
+  addLocaleData(enLocaleData);
+
   return (
     <Provider store={store}>
-      <ChatWidget accessToken={accessToken} userId={userId} />
+      <IntlProvider locale={`en`}>
+        <ChatWidget accessToken={accessToken} userId={userId} />
+      </IntlProvider>
     </Provider>
   );
 }

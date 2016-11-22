@@ -3,6 +3,7 @@ import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 import _ from 'lodash';
+import {injectIntl, intlShape, FormattedMessage} from 'react-intl';
 
 import {
   fetchAvatarForUserId,
@@ -328,12 +329,13 @@ export class ChatWidget extends Component {
       conversation,
       flags,
       indicators,
+      intl,
       spark,
       sparkState,
       user,
       widget
     } = props;
-
+    const {formatMessage} = intl;
     const {
       avatars,
       currentUser
@@ -341,7 +343,10 @@ export class ChatWidget extends Component {
 
     let main = ( // eslint-disable-line no-extra-parens
       <div className={classNames(`loading`, styles.loading)}>
-        {`Connecting...`}
+        <FormattedMessage
+          defaultMessage={`Connecting`}
+          id={`ChatWidget.connecting`}
+        />{`...`}
         <div className={classNames(`spinner-container`, styles.spinnerContainer)}>
           <Spinner />
         </div>
@@ -383,7 +388,12 @@ export class ChatWidget extends Component {
         const toUserAvatar = avatars[toUser.id];
         const isTyping = indicators.typing.length > 0;
         const {displayName} = toUser;
-        const messagePlaceholder = `Send a message to ${displayName}`;
+        const placeholderMessage = {
+          id: `ChatWidget.messagePlaceholder`,
+          defaultMessage: `Send a message to {displayName}`,
+          description: `Placeholder value to show in message input field`
+        };
+        const messagePlaceholder = formatMessage(placeholderMessage, {displayName});
         main = ( // eslint-disable-line no-extra-parens
           <div className={classNames(`widget-chat-inner`, styles.widgetChatInner)}>
             <div className={classNames(`title-bar-wrapper`, styles.titleBarWrapper)}>
@@ -442,6 +452,7 @@ ChatWidget.propTypes = {
   fetchCurrentUser: PropTypes.func.isRequired,
   flagActivity: PropTypes.func.isRequired,
   hideDeleteModal: PropTypes.func.isRequired,
+  intl: intlShape.isRequired,
   listenToMercuryActivity: PropTypes.func.isRequired,
   loadPreviousMessages: PropTypes.func.isRequired,
   removeFlagFromServer: PropTypes.func.isRequired,
@@ -484,4 +495,4 @@ export default connect(
     showScrollToBottomButton,
     updateHasNewMessage
   }, dispatch)
-)(injectSpark(ChatWidget));
+)(injectSpark(injectIntl(ChatWidget)));

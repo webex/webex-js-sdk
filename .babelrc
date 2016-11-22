@@ -2,7 +2,14 @@
   "plugins": [
     "transform-decorators-legacy",
     "lodash",
-    "transform-runtime"
+    "transform-runtime",
+    [
+      "react-intl", {
+        "messagesDir": "messages",
+        "enforceDescriptions": false,
+        "extractSourceLocation": true
+      }
+    ]
   ],
   "presets": ["es2015"],
   "sourceMaps": true
