@@ -31,7 +31,9 @@ module.exports = function gruntConfig(grunt) {
       '!example*',
       '!test-helper*',
       '!bin*',
-      '!xunit-with-logs'
+      '!xunit-with-logs',
+      'test-helper-mock-web-socket',
+      'test-helper-mock-socket'
   ]);
 
   var config = {
@@ -221,9 +223,12 @@ module.exports = function gruntConfig(grunt) {
     'concurrent:build'
   ]);
 
-  grunt.registerTask('publish-docs', [
+  grunt.registerTask('build:docs', [
     'documentation',
-    'gh-pages:ghc'
+  ]);
+
+  grunt.registerTask('publish:docs', [
+    'gh-pages:ghc',
   ]);
 
   grunt.initConfig(config);

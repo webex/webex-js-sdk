@@ -4,6 +4,9 @@
  * @private
  */
 
+import '@ciscospark/plugin-user';
+import '@ciscospark/plugin-wdm';
+
 import {registerPlugin} from '@ciscospark/spark-core';
 import Avatar from './avatar';
 import config from './config';

@@ -178,7 +178,7 @@ describe('Services', function() {
         it('sends large data using multiple requests', function() {
           var largeData = [];
 
-          for (var i = 0; i < 2500; i++) {
+          for (var i = 0; i < 400; i++) {
             largeData.push({data: i});
           }
 
@@ -193,6 +193,8 @@ describe('Services', function() {
       describe('#getAllContent()', function() {
 
         before(function() {
+          spark.request.returns(Promise.resolve({headers: {}}));
+          sinon.stub(spark.board, 'parseLinkHeaders');
           sinon.stub(spark.board, 'decryptContents').returns(['foo']);
           spark.request.reset();
           return spark.board.persistence.getAllContent(channel);
@@ -200,8 +202,9 @@ describe('Services', function() {
 
         after(function() {
           spark.board.decryptContents.restore();
+          spark.board.parseLinkHeaders.restore();
+          spark.request.reset();
         });
-
 
         it('requests GET contents', function() {
           assert.calledWith(spark.request, sinon.match({

@@ -18,7 +18,7 @@ describe(`plugin-credentials`, () => {
     describe(`#refresh()`, () => {
       let spark;
 
-      beforeEach(() => testUsers.create({count: 1})
+      beforeEach(`create test user`, () => testUsers.create({count: 1})
         .then((users) => {
           spark = new CiscoSpark({
             credentials: {
@@ -51,7 +51,7 @@ describe(`plugin-credentials`, () => {
       describe(`when the user has the spark entitlement`, () => {
         let code, spark;
 
-        beforeEach(() => testUsers.create({config: {authCodeOnly: true}})
+        beforeEach(`create auth code only test user`, () => testUsers.create({config: {authCodeOnly: true}})
           .then(([u]) => {
             spark = new CiscoSpark();
             code = u.token.auth_code;
@@ -67,7 +67,7 @@ describe(`plugin-credentials`, () => {
 
       describe(`when the user does not have the spark entitlement`, () => {
         let code, spark;
-        beforeEach(() => testUsers.create({
+        beforeEach(`create non-spark-entitled test user`, () => testUsers.create({
           config: {
             // We omit the spark entitlment so that CI gives us a token lacking
             // spark:* scopes
@@ -109,7 +109,7 @@ describe(`plugin-credentials`, () => {
     describe(`#requestSamlExtensionGrant()`, () => {
       let spark, user;
 
-      beforeEach(() => testUsers.create({count: 1})
+      beforeEach(`create test user`, () => testUsers.create({count: 1})
         .then((users) => {
           [user] = users;
           spark = new CiscoSpark({
@@ -117,12 +117,12 @@ describe(`plugin-credentials`, () => {
               supertoken: users[0].token
             }
           });
-
-          return spark.device.register();
         }));
 
+      beforeEach(`connect to wdm`, () => spark.device.register());
+
       let bot, sparkBot;
-      beforeEach(() => spark.machineAccount.create({
+      beforeEach(`create machine account`, () => spark.machineAccount.create({
         name: `spark-js-sdk-testbot-${uuid.v4()}`,
         contactEmail: user.email
       })

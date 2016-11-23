@@ -67,7 +67,7 @@ export default class Page {
       return {};
     }
 
-    linkHeaders = Array.isArray(linkHeaders) || [linkHeaders];
+    linkHeaders = Array.isArray(linkHeaders) ? linkHeaders : [linkHeaders];
     return linkHeaders.reduce((links, linkHeader) => {
       linkHeader = linkHeader.split(`;`);
       const link = linkHeader[0]

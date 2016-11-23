@@ -2,8 +2,11 @@ import React from 'react';
 import renderer from 'react-test-renderer';
 import {Provider} from 'react-redux';
 
+import {store as sparkStore} from '../../modules/redux-spark/test-store';
 import store from '../../store';
 import ChatWidget from '.';
+
+store.spark = sparkStore;
 
 describe(`ChatWidget`, () => {
   it(`renders properly`, () => {

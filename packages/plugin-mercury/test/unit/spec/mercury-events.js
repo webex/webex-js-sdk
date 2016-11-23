@@ -7,7 +7,7 @@ import {assert} from '@ciscospark/test-helper-chai';
 import Mercury, {config as mercuryConfig, Socket} from '../..';
 import sinon from '@ciscospark/test-helper-sinon';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
-import MockWebSocket from '../lib/mock-web-socket';
+import MockWebSocket from '@ciscospark/test-helper-mock-web-socket';
 import uuid from 'uuid';
 import promiseTick from '../lib/promise-tick';
 import lolex from 'lolex';

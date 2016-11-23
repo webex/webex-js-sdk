@@ -39,9 +39,11 @@ function prepareOptions(options) {
  */
 function doRequest(options) {
   return new Promise((resolve) => {
+    const logger = options.logger;
+
     const r = request(options, (error, response) => {
       if (error) {
-        options.logger.warn(error);
+        logger.warn(error);
       }
 
       if (response) {

@@ -13,7 +13,7 @@ import CiscoSpark from '@ciscospark/spark-core';
 describe(`plugin-mashups`, function() {
   this.timeout(20000);
   let conversation, mccoy, participants, spark, spock;
-  before(() => testUsers.create({count: 3})
+  before(`create test users`, () => testUsers.create({count: 3})
     .then((users) => {
       participants = [spock, mccoy] = users;
 
@@ -27,15 +27,16 @@ describe(`plugin-mashups`, function() {
           authorization: mccoy.token
         }
       });
+    }));
 
-      return Promise.all([
-        spark.mercury.connect(),
-        mccoy.spark.mercury.connect()
-      ])
-        .then(() => spark.conversation.create({participants}))
-        .then((c) => {
-          conversation = c;
-        });
+  before(`register with wdm and connect to mercury`, () => Promise.all([
+    spark.mercury.connect(),
+    mccoy.spark.mercury.connect()
+  ]));
+
+  before(`create conversation`, () => spark.conversation.create({participants})
+    .then((c) => {
+      conversation = c;
     }));
 
   after(() => Promise.all([

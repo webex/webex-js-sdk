@@ -1,12 +1,12 @@
 {
   "name": "@ciscospark/test-helper-file",
-  "version": "0.7.0-alpha",
+  "version": "0.7.0",
   "description": "File helpers for writing isomorphicish mocha tests",
   "license": "MIT",
   "main": "./src/index.js",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-file",
   "dependencies": {
-    "@ciscospark/test-helper-make-local-url": "^0.7.0-alpha",
+    "@ciscospark/test-helper-make-local-url": "^0.7.0",
     "es6-promise": "^3.2.1",
     "mmmagic": "^0.4.4",
     "xhr": "^2.2.0"
