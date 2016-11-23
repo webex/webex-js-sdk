@@ -1,6 +1,6 @@
 import {ADD_TYPING_INDICATOR, DELETE_TYPING_INDICATOR} from '../actions/indicators';
 
-export default function indicators(state = {
+export default function reduceIndicators(state = {
   typing: []
 }, action) {
   switch (action.type) {

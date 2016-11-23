@@ -3,7 +3,6 @@ import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 
-import spark from '../../modules/redux-spark/spark';
 import {constructFile} from '../../utils/files';
 import {addShareFiles} from '../../actions/activity';
 
@@ -35,7 +34,8 @@ export class FileUploader extends Component {
 
     const {
       activity,
-      conversation
+      conversation,
+      spark
     } = props;
 
     const files = [];
@@ -72,7 +72,8 @@ FileUploader.propTypes = {
 export default connect(
   (state) => ({
     activity: state.activity.activity,
-    conversation: state.conversation
+    conversation: state.conversation,
+    spark: state.spark.get(`spark`)
   }),
   (dispatch) => bindActionCreators({
     addShareFiles

@@ -30,7 +30,7 @@ exports[`ActivityItemPost post component renders properly 1`] = `
         className="activity-text"
         dangerouslySetInnerHTML={
           Object {
-            "__html": "Test Activity Content"
+            "__html": "Test Activity Content",
           }
         } />
     </div>
@@ -43,8 +43,8 @@ exports[`ActivityItemPost post component renders properly 1`] = `
         className="post-action-item">
         <button
           className="icon-button"
-          onClick={[Function handleOnFlag]}
-          onKeyUp={[Function handleOnFlag]}>
+          onClick={[Function]}
+          onKeyUp={[Function]}>
           <div
             className="icon"
             title="Flag this message" />
@@ -57,8 +57,8 @@ exports[`ActivityItemPost post component renders properly 1`] = `
         className="post-action-item">
         <button
           className="icon-button"
-          onClick={[Function handleOnDelete]}
-          onKeyUp={[Function handleOnDelete]}>
+          onClick={[Function]}
+          onKeyUp={[Function]}>
           <div
             className="icon"
             title="Delete this message" />

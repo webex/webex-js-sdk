@@ -181,7 +181,7 @@
     "istanbul": "^0.4.4",
     "jasmine-reporters": "^2.2.0",
     "jest": "^17.0.3",
-    "jest-cli": "^15.1.1",
+    "jest-cli": "^17.0.3",
     "jscs": "~2.0.0",
     "jsdoc": "~3.3.0-beta3",
     "karma": "^1.1.1",

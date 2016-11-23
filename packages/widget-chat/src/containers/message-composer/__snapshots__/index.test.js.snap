@@ -2,21 +2,32 @@ exports[`MessageComposer component snapshot tests handles value change properly 
 <div
   className="message-composer">
   <div
-    className="add-file-container">
-    <button
-      className="add-file-button"
-      onClick={undefined}>
-      <span
-        className="add-file-icon" />
-    </button>
+    className="file-uploader-container">
+    <div
+      className="button-container">
+      <div
+        className="add-file-container">
+        <button
+          className="add-file-button"
+          onClick={undefined}>
+          <span
+            className="add-file-icon" />
+        </button>
+        <input
+          className="file-input"
+          multiple="multiple"
+          onChange={[Function]}
+          type="file" />
+      </div>
+    </div>
   </div>
   <div
     className="textarea-container">
     <textarea
       className="textarea"
-      onChange={[Function bound handleChange]}
-      onKeyDown={[Function bound handleKeyDown]}
-      onSubmit={[Function bound handleSubmit]}
+      onChange={[Function]}
+      onKeyDown={[Function]}
+      onSubmit={[Function]}
       placeholder="Message Placeholder"
       rows={1}
       value={undefined} />
@@ -28,21 +39,32 @@ exports[`MessageComposer component snapshot tests handles value change properly 
 <div
   className="message-composer">
   <div
-    className="add-file-container">
-    <button
-      className="add-file-button"
-      onClick={undefined}>
-      <span
-        className="add-file-icon" />
-    </button>
+    className="file-uploader-container">
+    <div
+      className="button-container">
+      <div
+        className="add-file-container">
+        <button
+          className="add-file-button"
+          onClick={undefined}>
+          <span
+            className="add-file-icon" />
+        </button>
+        <input
+          className="file-input"
+          multiple="multiple"
+          onChange={[Function]}
+          type="file" />
+      </div>
+    </div>
   </div>
   <div
     className="textarea-container">
     <textarea
       className="textarea"
-      onChange={[Function bound handleChange]}
-      onKeyDown={[Function bound handleKeyDown]}
-      onSubmit={[Function bound handleSubmit]}
+      onChange={[Function]}
+      onKeyDown={[Function]}
+      onSubmit={[Function]}
       placeholder="Message Placeholder"
       rows={1}
       value="abc123" />
@@ -54,21 +76,32 @@ exports[`MessageComposer component snapshot tests renders properly 1`] = `
 <div
   className="message-composer">
   <div
-    className="add-file-container">
-    <button
-      className="add-file-button"
-      onClick={undefined}>
-      <span
-        className="add-file-icon" />
-    </button>
+    className="file-uploader-container">
+    <div
+      className="button-container">
+      <div
+        className="add-file-container">
+        <button
+          className="add-file-button"
+          onClick={undefined}>
+          <span
+            className="add-file-icon" />
+        </button>
+        <input
+          className="file-input"
+          multiple="multiple"
+          onChange={[Function]}
+          type="file" />
+      </div>
+    </div>
   </div>
   <div
     className="textarea-container">
     <textarea
       className="textarea"
-      onChange={[Function bound handleChange]}
-      onKeyDown={[Function bound handleKeyDown]}
-      onSubmit={[Function bound handleSubmit]}
+      onChange={[Function]}
+      onKeyDown={[Function]}
+      onSubmit={[Function]}
       placeholder="Message Placeholder"
       rows={1}
       value={undefined} />

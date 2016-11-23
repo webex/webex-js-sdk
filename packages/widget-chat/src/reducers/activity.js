@@ -1,8 +1,8 @@
 import {Map} from 'immutable';
 
+import {constructFile} from '../utils/files';
 import {
-  constructActivity,
-  updateActivityWithContent
+  constructActivity
 } from '../utils/activity';
 
 import {
@@ -12,6 +12,10 @@ import {
   UPDATE_ACTIVITY_TEXT
 } from '../actions/activity';
 
+function constructFiles(files) {
+  return files.map((file) => constructFile(file));
+}
+
 export default function reduceActivity(state = new Map({
   status: new Map({
     isSending: false
@@ -20,12 +24,18 @@ export default function reduceActivity(state = new Map({
 }), action) {
   switch (action.type) {
   case ADD_FILES_TO_ACTIVITY: {
-    if (state.activity.files) {
-      const newState = Object.assign({}, state);
-      newState.activity.files.concat(action.files);
-      return newState;
+    if (state.getIn([`activity`, `files`])) {
+      return state.updateIn([`activity`, `files`, `items`], (files) => files.concat(constructFiles(action.payload.files)));
     }
-    return updateActivityWithContent(state.activity, action.payload.files);
+    return state.mergeDeepIn([`activity`], {
+      object: {
+        objectType: `content`
+      },
+      verb: `share`,
+      files: {
+        items: constructFiles(action.payload.files)
+      }
+    });
   }
   case CREATE_ACTIVITY: {
     const {

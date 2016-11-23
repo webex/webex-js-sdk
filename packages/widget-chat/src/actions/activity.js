@@ -1,6 +1,23 @@
 import marked from 'marked';
 import {filterSync} from '@ciscospark/helper-html';
 
+import {
+  constructImage,
+  isImage,
+  sanitize
+} from '../utils/files';
+
+
+export const ADD_FILES_TO_ACTIVITY = `ADD_FILES_TO_ACTIVITY`;
+export function addFilesToActivity(files) {
+  return {
+    type: ADD_FILES_TO_ACTIVITY,
+    payload: {
+      files
+    }
+  };
+}
+
 export const UPDATE_ACTIVITY_STATUS = `UPDATE_ACTIVITY_STATUS`;
 export function updateActivityStatus(status) {
   return {
@@ -30,6 +47,51 @@ export function createActivity(conversation, text, actor) {
       conversation,
       text
     }
+  };
+}
+
+export const STORE_SHARE_ACTIVITY = `CREATE_SHARE_ACTIVITY`;
+export function storeShareActivity(activity) {
+  return {
+    type: STORE_SHARE_ACTIVITY,
+    payload: {
+      activity
+    }
+  };
+}
+
+export function addFiles(conversation, activity, files, spark) {
+  return (dispatch) => {
+    const shareActivity = activity.has(`shareActivity`);
+    if (!shareActivity) {
+      dispatch(createShareActivity(conversation, spark));
+    }
+
+    const images = [];
+    let cleanFiles;
+    if (files && files.length) {
+      cleanFiles = files.map((file) => {
+        file = sanitize(file);
+        if (isImage(file)) {
+          images.push(constructImage(file));
+        }
+        return file;
+      });
+    }
+
+    Promise.all(images)
+      .then((localImages) => {
+        dispatch(updateActivityStatus({isUploadingShare: true}));
+        cleanFiles.forEach((file) => shareActivity.add(file));
+      });
+  };
+}
+
+export function createShareActivity(conversation, spark) {
+  return (dispatch) => {
+    const shareActivity = spark.conversation.makeShare(conversation);
+    dispatch(storeShareActivity(shareActivity));
+    return shareActivity;
   };
 }
 

@@ -32,7 +32,7 @@ exports[`ActivityItem post component is self renders properly 1`] = `
           className="activity-text"
           dangerouslySetInnerHTML={
             Object {
-              "__html": "Test Activity Content"
+              "__html": "Test Activity Content",
             }
           } />
       </div>
@@ -45,8 +45,8 @@ exports[`ActivityItem post component is self renders properly 1`] = `
           className="post-action-item">
           <button
             className="icon-button"
-            onClick={[Function handleOnFlag]}
-            onKeyUp={[Function handleOnFlag]}>
+            onClick={[Function]}
+            onKeyUp={[Function]}>
             <div
               className="icon"
               title="Flag this message" />
@@ -59,8 +59,8 @@ exports[`ActivityItem post component is self renders properly 1`] = `
           className="post-action-item">
           <button
             className="icon-button"
-            onClick={[Function handleOnDelete]}
-            onKeyUp={[Function handleOnDelete]}>
+            onClick={[Function]}
+            onKeyUp={[Function]}>
             <div
               className="icon"
               title="Delete this message" />
@@ -108,7 +108,7 @@ exports[`ActivityItem post component not self renders properly 1`] = `
           className="activity-text"
           dangerouslySetInnerHTML={
             Object {
-              "__html": "Test Activity Content"
+              "__html": "Test Activity Content",
             }
           } />
       </div>
@@ -121,8 +121,8 @@ exports[`ActivityItem post component not self renders properly 1`] = `
           className="post-action-item">
           <button
             className="icon-button"
-            onClick={[Function handleOnFlag]}
-            onKeyUp={[Function handleOnFlag]}>
+            onClick={[Function]}
+            onKeyUp={[Function]}>
             <div
               className="icon"
               title="Flag this message" />
@@ -175,7 +175,7 @@ exports[`ActivityItem post component not self with html renders properly 1`] = `
           className="activity-text"
           dangerouslySetInnerHTML={
             Object {
-              "__html": "<pre>js.func();</pre>"
+              "__html": "<pre>js.func();</pre>",
             }
           } />
       </div>
@@ -188,8 +188,8 @@ exports[`ActivityItem post component not self with html renders properly 1`] = `
           className="post-action-item">
           <button
             className="icon-button"
-            onClick={[Function handleOnFlag]}
-            onKeyUp={[Function handleOnFlag]}>
+            onClick={[Function]}
+            onKeyUp={[Function]}>
             <div
               className="icon"
               title="Flag this message" />

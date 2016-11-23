@@ -1,8 +1,16 @@
 exports[`AddFileButton component renders properly 1`] = `
-<button
-  className="add-file-button"
-  onClick={[Function mockConstructor]}>
-  <span
-    className="add-file-icon" />
-</button>
+<div
+  className="add-file-container">
+  <button
+    className="add-file-button"
+    onClick={[Function]}>
+    <span
+      className="add-file-icon" />
+  </button>
+  <input
+    className="file-input"
+    multiple="multiple"
+    onChange={undefined}
+    type="file" />
+</div>
 `;

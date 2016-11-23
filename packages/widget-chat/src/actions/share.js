@@ -37,14 +37,3 @@ export function retrieveSharedFile(fileObject, spark) {
       });
   };
 }
-
-export function uploadFiles(conversation, activity, files, spark) {
-  return (dispatch) => {
-    const shareActivity = spark.conversation.makeShare(conversation);
-    return Promise.resolve(shareActivity)
-      .then((share) => Promise.all(files.map((file) => share.add(file))))
-      .then((uploadedShares) => {
-        dispatch(storeShares(uploadedShares));
-      });
-  };
-}

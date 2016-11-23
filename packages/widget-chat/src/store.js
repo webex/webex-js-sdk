@@ -12,6 +12,7 @@ import {
   conversation,
   flags,
   indicators,
+  notifications,
   share,
   user,
   widget
@@ -39,6 +40,7 @@ export default createStore(
     conversation,
     flags,
     indicators,
+    notifications,
     share,
     user,
     widget,
