@@ -4,8 +4,7 @@
  * @private
  */
 
-import Page from '../lib/page';
-import {SparkPlugin} from '@ciscospark/spark-core';
+import {SparkPlugin, Page} from '@ciscospark/spark-core';
 
 /**
  * @typedef {Object} Types~Webhook

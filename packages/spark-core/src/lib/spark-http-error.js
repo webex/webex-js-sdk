@@ -27,6 +27,9 @@ const SparkHttpError = extendError(HttpError, {
       message += `\n${this.options.method} ${this.options.service.toUpperCase()}/${this.options.resource}`;
     }
     message += `\nWEBEX_TRACKING_ID: ${this.options.headers.trackingid}`;
+    if (this.options.headers && this.options.headers[`x-trans-id`]) {
+      message += `\nX-Trans-Id: ${this.options.headers[`x-trans-id`]}`;
+    }
     message += `\n`;
 
     return message;

@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/http-core",
-  "version": "0.7.0-alpha",
+  "version": "0.7.0",
   "description": "Core HTTP library for the Cisco Spark",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -20,11 +20,12 @@
     "xhr": "^2.0.3"
   },
   "devDependencies": {
-    "@ciscospark/test-helper-chai": "^0.7.0-alpha",
-    "@ciscospark/test-helper-file": "^0.7.0-alpha",
-    "@ciscospark/test-helper-make-local-url": "^0.7.0-alpha",
-    "@ciscospark/test-helper-sinon": "^0.7.0-alpha",
-    "@ciscospark/xunit-with-logs": "^0.7.0-alpha",
+    "@ciscospark/test-helper-chai": "^0.7.0",
+    "@ciscospark/test-helper-file": "^0.7.0",
+    "@ciscospark/test-helper-make-local-url": "^0.7.0",
+    "@ciscospark/test-helper-mocha": "^0.7.0",
+    "@ciscospark/test-helper-sinon": "^0.7.0",
+    "@ciscospark/xunit-with-logs": "^0.7.0",
     "babel-eslint": "^6.1.2",
     "babel-plugin-lodash": "2.1.0",
     "babel-polyfill": "^6.3.14",

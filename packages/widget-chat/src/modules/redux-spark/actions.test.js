@@ -1,6 +1,7 @@
 /* eslint max-nested-callbacks: ["error", 3] */
+jest.mock(`./spark`);
+const {createSpark} = require(`./spark`);
 
-import {createSpark} from './spark';
 import {createMockStore} from './test-store';
 import {
   UPDATE_SPARK_STATE,

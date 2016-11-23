@@ -9,8 +9,18 @@ set -e
 FAILURE_COUNT=0
 RUN_COUNT=1
 
+#
+# REMOVE REMNANT SAUCE FILES FROM PREVIOUS BUILD
+#
+
+rm -rf ".sauce/${PACKAGE}/sc.pid"
+rm -rf ".sauce/${PACKAGE}/sc.tid"
+rm -rf ".sauce/${PACKAGE}/sc.ready"
+rm -rf ".sauce/${PACKAGE}/sauce_connect.log"
+rm -rf ".sauce/${PACKAGE}/sauce_connect.*.log"
+
 set +e
-/work/test.sh
+SUITE_RUN_COUNT="${RUN_COUNT}" /work/test.sh
 EXIT_CODE=$?
 set -e
 
@@ -21,7 +31,7 @@ if [ "${EXIT_CODE}" -ne "0" ]; then
   echo "Retrying ${PACKAGE} for the first time"
 
   set +e
-  /work/test.sh
+  SUITE_RUN_COUNT="${RUN_COUNT}" /work/test.sh
   EXIT_CODE=$?
   set -e
 fi
@@ -33,16 +43,18 @@ if [ "${EXIT_CODE}" -ne "0" ]; then
   echo "Retrying ${PACKAGE} for the second time"
 
   set +e
-  /work/test.sh
+  SUITE_RUN_COUNT="${RUN_COUNT}" /work/test.sh
   EXIT_CODE=$?
   set -e
 fi
 
 
 if [ "${FAILURE_COUNT}" -ne "0" ]; then
-  MSG="Suite for ${PACKAGE} failed one or more times. Please see reports/logs/docker.${PACKAGE}.log for more info."
+  MSG="Suite for ${PACKAGE} failed ${FAILURE_COUNT} out of ${RUN_COUNT} attempts. Please see reports/logs/docker.${PACKAGE}.log for more info."
 
-  cat <<EOT > "./reports/junit/suite.${PACKAGE}.xml"
+  if [ "${EXIT_CODE}" -ne "0" ]; then
+
+    cat <<EOT > "./reports/junit/suite.${PACKAGE}.xml"
 <testsuite
   name="spark-js-sdk"
   package="${PACKAGE}"
@@ -60,6 +72,7 @@ if [ "${FAILURE_COUNT}" -ne "0" ]; then
   </testcase>
 </testsuite>
 EOT
+  fi
 
   exit ${EXIT_CODE}
 fi

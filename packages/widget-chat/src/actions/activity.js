@@ -1,6 +1,7 @@
 import marked from 'marked';
 import {filterSync} from '@ciscospark/helper-html';
 
+<<<<<<< HEAD
 import {
   constructImage,
   isImage,
@@ -23,6 +24,13 @@ export function updateActivityStatus(status) {
   return {
     type: UPDATE_ACTIVITY_STATUS,
     payload: {
+=======
+export const UPDATE_ACTIVITY_STATUS = `UPDATE_ACTIVITY_STATUS`;
+export function updateActivityStatus(status) {
+  return {
+    type: UPDATE_ACTIVITY_STATUS,
+    payload: {
+>>>>>>> widget-dev
       status
     }
   };

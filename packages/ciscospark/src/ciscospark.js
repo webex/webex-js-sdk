@@ -58,13 +58,29 @@ const ciscospark = new CiscoSpark({
 
 /**
  * Create a new ciscospark instance.
+ *
  * Note: ciscospark.init() really only applies to node apps at this time. In web
  * browsers, you'll want to stick with manipulating the ciscospark instance you
- * get from `require('ciscospark')`
+ * get from `require('ciscospark')`.
+ *
+ * In addition to creating spark instances when you need more than one at a time
+ * (for example, on an Express route handler), you can use `ciscospark.init()`
+ * to create instances with an alternate config object. You'll typically do this
+ * when you want to provide an alternate storage backend:
+ * ```javascript
+ * const spark = ciscospark.init({
+ *   config: {
+ *     storage: {
+ *       boundedAdapter: youCustomAdapter
+ *     }
+ *   }
+ * })
+ * ```
+ * Previous versions of the sdk suggested you should pass credentials here.
+ * While that still possible, we no longer document it because you should rely
+ * on the storage layer instead.
  * @param {Object} attrs
- * @param {Object} attrs.credentials (optional)
- * @param {Object} attrs.device (optional)
- * @param {Object} attrs.config (optiona)
+ * @param {Object} attrs.config (optional)
  * @memberof CiscoSpark
  * @returns {CiscoSpark}
  */

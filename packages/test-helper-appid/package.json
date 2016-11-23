@@ -1,14 +1,14 @@
 {
   "name": "@ciscospark/test-helper-appid",
-  "version": "0.7.0-alpha",
+  "version": "0.7.0",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
-  "main": "src/index.js",
+  "main": "./src",
   "devMain": "src/index.js",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-appid",
   "dependencies": {
-    "@ciscospark/test-helper-make-local-url": "0.7.0-alpha",
+    "@ciscospark/test-helper-make-local-url": "^0.7.0",
     "body-parser": "^1.15.2",
     "express": "^4.14.0",
     "jsonwebtoken": "^7.1.9"

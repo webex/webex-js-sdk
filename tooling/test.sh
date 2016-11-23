@@ -21,6 +21,8 @@ echo "# CLEANING"
 echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} npm run grunt -- clean
 docker run ${DOCKER_RUN_OPTS} npm run grunt:concurrent -- clean
+rm -rf "${SDK_ROOT_DIR}/.sauce/*/sc.*"
+rm -rf "${SDK_ROOT_DIR}/.sauce/*/sauce_connect*log"
 
 rm -rf ${SDK_ROOT_DIR}/reports
 mkdir -p ${SDK_ROOT_DIR}/reports/logs
@@ -30,12 +32,13 @@ echo "# BOOTSTRAPPING MODULES"
 echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} npm run bootstrap
 
-set +e
-echo "# Top Level Dependencies"
-npm ls --depth 0
-echo "# Package Dependencies"
-npm run lerna -- exec -- npm ls --depth 0
-set -e
+# disabling for now; lerna@2.0.0-beta30 fails here
+# set +e
+# echo "# Top Level Dependencies"
+# npm ls --depth 0
+# echo "# Package Dependencies"
+# npm run lerna -- exec -- npm ls --depth 0
+# set -e
 
 echo "################################################################################"
 echo "# BUILDING MODULES"
@@ -47,14 +50,18 @@ PIDS=""
 echo "################################################################################"
 echo "# RUNNING LEGACY NODE TESTS"
 echo "################################################################################"
-docker run ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:node > ${SDK_ROOT_DIR}/reports/logs/legacy.node.log 2>&1" &
-PIDS+=" $!"
+docker run --name "legacy-node-${BUILD_NUMBER}" -e PACKAGE=legacy ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:node > ${SDK_ROOT_DIR}/reports/logs/legacy.node.log 2>&1" &
+PID="$!"
+echo "Running legacy node tests as ${PID}"
+PIDS+=" ${PID}"
 
 echo "################################################################################"
 echo "# RUNNING LEGACY BROWSER TESTS"
 echo "################################################################################"
-docker run -e PACKAGE=${legacy} ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:browser > ${SDK_ROOT_DIR}/reports/logs/legacy.browser.log 2>&1" &
-PIDS+=" $!"
+docker run --name "legacy-browser-${BUILD_NUMBER}" -e PACKAGE=legacy ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:browser > ${SDK_ROOT_DIR}/reports/logs/legacy.browser.log 2>&1" &
+PID="$!"
+echo "Running legacy browser tests as ${PID}"
+PIDS+=" ${PID}"
 
 echo "################################################################################"
 echo "# RUNNING MODULE TESTS"
@@ -97,8 +104,10 @@ for i in ${SDK_ROOT_DIR}/packages/*; do
   echo "################################################################################"
   # Note: using & instead of -d so that wait works
   # Note: the Dockerfile's default CMD will run package tests automatically
-  docker run -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} &
-  PIDS+=" $!"
+  docker run --name "${PACKAGE}-${BUILD_NUMBER}" -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} &
+  PID="$!"
+  echo "Running tests for ${PACKAGE} as ${PID}"
+  PIDS+=" ${PID}"
 done
 
 FINAL_EXIT_CODE=0
@@ -119,6 +128,7 @@ for P in $PIDS; do
   set -e
 
   if [ "${EXIT_CODE}" -ne "0" ]; then
+    echo "${PID} exited with code ${EXIT_CODE}; search for ${PID} above to determine which suite failed"
     FINAL_EXIT_CODE=1
   fi
   # TODO cleanup sauce files for package
@@ -136,6 +146,12 @@ for FILE in $(find ./reports/junit -name karma-*.xml) ; do
   (write) { print $0 }
   /<\/system-out/ { write = 1 }
   ' < $FILE > ${FILE}-out.xml
+
+  # Backup the raw data in case we want to look at it later. We'll just put in
+  # .tmp because exporting it as a build artifact will massively grow the build.
+  mkdir -p ".tmp/$(dirname ${FILE})"
+  mv ${FILE} .tmp/${FILE}
+
   mv ${FILE}-out.xml ${FILE}
 done
 

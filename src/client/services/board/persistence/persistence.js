@@ -9,10 +9,9 @@ var assign = require('lodash.assign');
 var SparkBase = require('../../../../lib/spark-base');
 var chunk = require('lodash.chunk');
 var pick = require('lodash.pick');
-var last = require('lodash.last');
 var promiseSeries = require('es6-promise-series');
 // number is hard-coded in board service atm
-var MAX_ALLOWED_INPUT_SIZE = 1000;
+var MAX_ALLOWED_INPUT_SIZE = 150;
 
 /**
  * @class
@@ -120,48 +119,40 @@ var PersistenceService = SparkBase.extend({
   /**
    * Gets all Content from a Channel
    * It will make multiple GET requests if contents length are greater than
-   * MAX_ALLOW_INPUT_SIZE, the number is currently determined and hard-coded
+   * MAX_ALLOWED_INPUT_SIZE, the number is currently determined and hard-coded
    * by the backend
    * @memberof Board.PersistenceService
    * @param  {Board~Channel} channel
    * @return {Promise<Array>} Resolves with an Array of {@link Board~Content} objects.
    */
-  getAllContent: function getAllContent(channel) {
-    var contents = [];
-    var hasMoreContents = false;
-    function loop() {
-      if (!hasMoreContents) {
-        return Promise.resolve(contents);
+  getAllContent: function getAllContent(channel, query) {
+    var defaultQuery = {
+      contentsLimit: MAX_ALLOWED_INPUT_SIZE
+    };
+
+    query = query ? assign(defaultQuery, pick(query, 'contentsLimit')) : defaultQuery;
+
+    function loop(contents) {
+      if (!contents.link || !contents.link.next) {
+        return Promise.resolve(contents.items);
       }
 
-      var oldestContentTime = last(contents).createdTime;
-      return this._getPageOfContents(channel, {sinceDate: oldestContentTime})
-        .then(function getMoreContents(res) {
-          if (res.length >= MAX_ALLOWED_INPUT_SIZE) {
-            hasMoreContents = true;
-          }
-          else {
-            hasMoreContents = false;
-          }
+      return this.spark.request({
+        uri: contents.link.next
+      })
+        .then(function decryptContents(res) {
+          contents.link = this.spark.board.parseLinkHeaders(res.headers.link);
+          return this.spark.board.decryptContents(res.body);
+        }.bind(this))
 
-          // for the 2nd+ request, the result will include the last item of
-          // the first request, so we'll discard it here
-          res.shift();
-          contents = contents.concat(res);
+        .then(function getMoreContents(res) {
+          contents.items = contents.items.concat(res);
           return contents;
-        })
+        }.bind(this))
         .then(loop.bind(this));
     }
 
-    return this._getPageOfContents(channel)
-      .then(function getContents(res) {
-        contents = res;
-        if (contents.length >= MAX_ALLOWED_INPUT_SIZE) {
-          hasMoreContents = true;
-        }
-
-        return contents;
-      })
+    return this._getPageOfContents(channel, query)
       .then(loop.bind(this));
   },
 
@@ -258,6 +249,7 @@ var PersistenceService = SparkBase.extend({
 
   _getPageOfContents: function _getPageOfContents(channel, query) {
     query = query ? pick(query, 'sinceDate', 'contentsLimit') : {};
+    var nextLink;
 
     return this.spark.request({
       method: 'GET',
@@ -265,7 +257,14 @@ var PersistenceService = SparkBase.extend({
       qs: query
     })
       .then(function decryptContents(res) {
+        nextLink = this.spark.board.parseLinkHeaders(res.headers.link);
         return this.spark.board.decryptContents(res.body);
+      }.bind(this))
+      .then(function addNextLink(res) {
+        return {
+          items: res,
+          link: nextLink
+        };
       }.bind(this));
   }
 

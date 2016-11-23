@@ -368,7 +368,7 @@ export default {
     return Reflect.apply(SparkPlugin.prototype.set, this, arguments);
   },
 
-  _buildLogoutUrl() {
+  buildLogoutUrl() {
     // eslint doesn't yet handle nested strings quite right
     /* eslint quotes: [0] */
     return `${this.config.logoutUri}?${querystring.stringify({
@@ -378,7 +378,7 @@ export default {
     })}`;
   },
 
-  _buildOAuthUrl(options) {
+  buildOAuthUrl(options) {
     /* eslint camelcase: [0] */
     const fields = [
       `client_id`,
