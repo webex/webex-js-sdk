@@ -9,7 +9,9 @@
 var jwt = require('jsonwebtoken');
 
 module.exports = function createUser(options) {
-  return Promise.resolve({jwt: jwt.sign({
-    org: process.env.CISCOSPARK_APPID_ORGID
-  }, new Buffer(process.env.CISCOSPARK_APPID_SECRET, 'base64'), options)});
+  return Promise.resolve({
+    jwt: jwt.sign({
+      org: process.env.CISCOSPARK_APPID_ORGID
+    }, new Buffer(process.env.CISCOSPARK_APPID_SECRET, 'base64'), options)
+  });
 };

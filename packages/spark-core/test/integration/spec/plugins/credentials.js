@@ -33,10 +33,12 @@ describe(`spark-core`, function() {
           let jwt;
           beforeEach(() => createUser({subject: `test-${uuid.v4()}`})
             .then((res) => {
+              assert.isDefined(res.jwt);
               jwt = res.jwt;
             }));
 
           it(`exchanges a JWT for an access token`, () => {
+            assert.isDefined(jwt);
             const spark = new Spark();
             const promise = spark.authenticate({jwt});
             return promise
@@ -167,7 +169,10 @@ describe(`spark-core`, function() {
                   credentials: {
                     requestJWT() {
                       return createUser(id)
-                        .then((res) => res.jwt);
+                        .then((res) => {
+                          assert.isDefined(res.jwt);
+                          return res;
+                        });
                     }
                   }
                 }
@@ -177,7 +182,9 @@ describe(`spark-core`, function() {
               let originalAccessToken;
               return promise
                 .then(() => {
+                  assert.isTrue(spark.isAuthenticated);
                   originalAccessToken = spark.credentials.authorization.access_token;
+                  return spark.refresh({force: true});
                 })
                 .then(() => assert.isTrue(spark.isAuthenticated))
                 .then(() => assert.notEqual(spark.credentials.authorization.access_token, originalAccessToken));

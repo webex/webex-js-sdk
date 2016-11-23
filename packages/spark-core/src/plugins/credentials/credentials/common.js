@@ -6,7 +6,7 @@
 
 import Authorization from '../authorization';
 import {base64, oneFlight, retry} from '@ciscospark/common';
-import {clone, has, isObject, pick} from 'lodash';
+import {clone, has, get, isObject, pick} from 'lodash';
 import grantErrors from '../grant-errors';
 import querystring from 'querystring';
 import SparkPlugin from '../../../lib/spark-plugin';
@@ -35,6 +35,9 @@ export default {
     canRefresh: {
       deps: [`authorization.canRefresh`],
       fn() {
+        if (this.config.requestJWT) {
+          return true;
+        }
         /* eslint camelcase: [0] */
         return Boolean(this.config.oauth.client_id && this.config.oauth.client_secret && this.authorization && this.authorization.canRefresh);
       }
@@ -109,17 +112,17 @@ export default {
         });
     }
 
-    if (this.canRefresh) {
-      this.logger.info(`credentials: refreshable, refreshing`);
-      return this.refresh(options)
+    if (options.jwt) {
+      return this.requestAccessTokenFromJwt(options)
         .then((res) => {
           this._isAuthenticating = false;
           return res;
         });
     }
 
-    if (options.jwt) {
-      return this.requestAccessTokenFromJwt(options)
+    if (this.canRefresh) {
+      this.logger.info(`credentials: refreshable, refreshing`);
+      return this.refresh(options)
         .then((res) => {
           this._isAuthenticating = false;
           return res;
@@ -214,12 +217,18 @@ export default {
 
     options = options || {};
 
-    if (!options.force && !this.authorization.isExpired) {
+    if (!options.force && !get(this, `authorization.isExpired`)) {
       this.logger.info(`credentials: authorization not expired, not refreshing`);
       return Promise.resolve();
     }
 
     this.logger.info(`credentials: refreshing`);
+
+    if (this.config.requestJWT) {
+      this.logger.info(`credentials: request new jwt`);
+      return this.config.requestJWT()
+        .then((jwt) => this.requestAccessTokenFromJwt(jwt));
+    }
 
     return this.authorization.refresh(options)
       .then(this._pushAuthorization.bind(this))
@@ -228,6 +237,7 @@ export default {
 
   @oneFlight
   requestAccessTokenFromJwt(options) {
+    this.logger.info(`credentials: exchanging jwt for access token`);
     return this.spark.request({
       method: `POST`,
       // I'm not thrilled by directly referencing the hydra service url, but
