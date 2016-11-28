@@ -52,6 +52,8 @@ module.exports = function(config) {
 
     colors: !process.env.XUNIT,
 
+    concurrency: 3,
+
     customLaunchers: launchers,
 
     files: (function() {
