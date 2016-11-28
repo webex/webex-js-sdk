@@ -46,5 +46,26 @@ describe('Services', function() {
       });
     });
 
+    describe('#setBatchUserFeatures()', function() {
+      var featureUpdateArray = [{
+        key: 'key1',
+        val: 'value1',
+        type: 'USER',
+        mutable: 'true'
+      }, {
+        key: 'key2',
+        val: 'value2',
+        mutable: 'false'
+      }];
+
+      it('sets a value for two user feature toggle', function() {
+        return party.spock.spark.feature.setBundledFeatures(featureUpdateArray)
+          .then(function(res) {
+            assert.isDefined(res);
+            assert.becomes(party.spock.spark.feature.getFeature('user', 'key1'), 'value1');
+            assert.becomes(party.spock.spark.feature.getFeature('user', 'key2'), 'value2');
+          });
+      });
+    });
   });
 });
