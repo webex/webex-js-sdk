@@ -5,7 +5,6 @@
     "transform-runtime",
     [
       "react-intl", {
-        "messagesDir": "messages",
         "enforceDescriptions": false,
         "extractSourceLocation": true
       }
