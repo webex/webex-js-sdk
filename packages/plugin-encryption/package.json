@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-encryption",
-  "version": "0.7.0",
+  "version": "0.7.3",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -9,10 +9,10 @@
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-encryption",
   "dependencies": {
     "@ciscospark/common": "^0.7.0",
-    "@ciscospark/http-core": "^0.7.0",
-    "@ciscospark/plugin-mercury": "^0.7.0",
-    "@ciscospark/plugin-wdm": "^0.7.0",
-    "@ciscospark/spark-core": "^0.7.0",
+    "@ciscospark/http-core": "^0.7.3",
+    "@ciscospark/plugin-mercury": "^0.7.3",
+    "@ciscospark/plugin-wdm": "^0.7.3",
+    "@ciscospark/spark-core": "^0.7.3",
     "babel-runtime": "^6.3.19",
     "extend-error": "git://github.com/ianwremmel/extend-error.git",
     "lodash": "^4.5.1",
