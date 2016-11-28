@@ -46,7 +46,7 @@ describe('Services', function() {
       });
     });
 
-    describe('#setBatchUserFeatures()', function() {
+    describe('#setBundledFeatures()', function() {
       var featureUpdateArray = [{
         key: 'key1',
         val: 'value1',
