@@ -4,7 +4,6 @@ import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 
 import {
-  createActivity,
   submitActivity,
   updateActivityText
 } from '../../actions/activity';
@@ -17,16 +16,9 @@ import styles from './styles.css';
 export class MessageComposer extends Component {
   constructor(props) {
     super(props);
-    this.handleChange = this.handleChange.bind(this);
+    this.handleTextChange = this.handleTextChange.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
-  }
-
-  componentWillReceiveProps(nextProps) {
-    if (!nextProps.activity.get(`activity`)) {
-      const props = this.props;
-      props.createActivity(props.conversation, ``, props.conversation.participants[0]);
-    }
   }
 
   shouldComponentUpdate(nextProps) {
@@ -34,7 +26,7 @@ export class MessageComposer extends Component {
     return props.activity !== nextProps.activity;
   }
 
-  handleChange(e) {
+  handleTextChange(e) {
     const props = this.props;
     props.updateActivityText(e.target.value);
   }
@@ -54,7 +46,7 @@ export class MessageComposer extends Component {
       spark
     } = props;
     const {onSubmit} = this.props;
-    props.submitActivity(conversation, activity.get(`activity`), spark);
+    props.submitActivity(conversation, activity, spark);
     if (onSubmit) {
       onSubmit();
     }
@@ -63,8 +55,8 @@ export class MessageComposer extends Component {
   render() {
     let text;
     const props = this.props;
-    if (props.activity && props.activity.getIn([`activity`, `object`])) {
-      text = props.activity.getIn([`activity`, `object`, `displayName`]);
+    if (props.activity && props.activity.has(`text`)) {
+      text = props.activity.get(`text`);
     }
     const {placeholder} = this.props;
 
@@ -73,7 +65,7 @@ export class MessageComposer extends Component {
         <FileUploader onSubmit={this.handleSubmit} />
         <div className={classNames(`textarea-container`)}>
           <TextArea
-            onChange={this.handleChange}
+            onChange={this.handleTextChange}
             onKeyDown={this.handleKeyDown}
             onSubmit={this.handleSubmit}
             placeholder={placeholder}
@@ -103,7 +95,6 @@ function mapStateToProps(state, ownProps) {
 export default connect(
   mapStateToProps,
   (dispatch) => bindActionCreators({
-    createActivity,
     submitActivity,
     updateActivityText
   }, dispatch)

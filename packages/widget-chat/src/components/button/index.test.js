@@ -1,14 +1,14 @@
 import React from 'react';
 import renderer from 'react-test-renderer';
 
-import IconButton from '.';
+import Button from '.';
 
-describe(`IconButton component`, () => {
+describe(`Button component`, () => {
   const onClick = jest.fn();
   const component = renderer.create(
-    <IconButton
+    <Button
+      iconType="delete"
       onClick={onClick}
-      type="delete"
     />
   );
 

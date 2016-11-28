@@ -1,7 +1,7 @@
 import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 
-import IconButton from '../icon-button';
+import Button from '../button';
 import {ICON_TYPE_DOWNLOAD} from '../icon';
 import Spinner from '../spinner';
 import {bytesToSize} from '../../utils/files';
@@ -49,11 +49,11 @@ function ActivityItemShareThumbnail(props) {
         </div>
         <div className={classNames(`share-item-actions`, styles.shareActions)}>
           <div className={classNames(`share-action-item`, styles.shareActionItem)}>
-            <IconButton
+            <Button
               buttonClassName={styles.downloadButton}
+              iconType={ICON_TYPE_DOWNLOAD}
               onClick={handleDownloadClick}
               title="Download this file"
-              type={ICON_TYPE_DOWNLOAD}
             />
           </div>
         </div>

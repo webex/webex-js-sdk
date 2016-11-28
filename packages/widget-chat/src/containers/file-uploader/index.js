@@ -4,7 +4,7 @@ import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 
 import {constructFile} from '../../utils/files';
-import {addShareFiles} from '../../actions/activity';
+import {addFiles} from '../../actions/activity';
 
 import AddFileButton from '../../components/add-file-button';
 import styles from './styles.css';
@@ -19,11 +19,6 @@ export class FileUploader extends Component {
   shouldComponentUpdate(nextProps) {
     const props = this.props;
     return nextProps.activity === props.activity;
-  }
-
-  getFiles() {
-    const props = this.props;
-    return props.activity.files;
   }
 
   handleFileChange(e) {
@@ -43,14 +38,10 @@ export class FileUploader extends Component {
     for (let i = 0; i < e.target.files.length; i++) {
       files.push(constructFile(e.target.files[i]));
     }
-    props.addShareFiles(conversation, activity, files, spark);
+    props.addFiles(conversation, activity, files, spark);
 
     // Clear the value of the input so the same file can be added again.
     e.target.value = ``;
-  }
-
-  uploadFiles(files) {
-    return files;
   }
 
   render() {
@@ -68,14 +59,13 @@ FileUploader.propTypes = {
   handleSubmit: PropTypes.func
 };
 
-
 export default connect(
   (state) => ({
-    activity: state.activity.activity,
+    activity: state.activity,
     conversation: state.conversation,
     spark: state.spark.get(`spark`)
   }),
   (dispatch) => bindActionCreators({
-    addShareFiles
+    addFiles
   }, dispatch)
 )(FileUploader);

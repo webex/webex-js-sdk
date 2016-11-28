@@ -2,7 +2,7 @@ import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 
 import Icon from '../icon';
-import IconButton from '../icon-button';
+import Button from '../button';
 import {ICON_TYPE_DOWNLOAD, ICON_TYPE_DOCUMENT} from '../icon';
 import {bytesToSize} from '../../utils/files';
 import styles from './styles.css';
@@ -38,11 +38,11 @@ function ActivityItemShareFile(props) {
         </div>
         <div className={classNames(`share-item-actions`, styles.shareActions)}>
           <div className={classNames(`share-action-item`, styles.shareActionItem)}>
-            <IconButton
+            <Button
               buttonClassName={styles.downloadButton}
+              iconType={ICON_TYPE_DOWNLOAD}
               onClick={handleDownloadClick}
               title="Download this file"
-              type={ICON_TYPE_DOWNLOAD}
             />
           </div>
         </div>
