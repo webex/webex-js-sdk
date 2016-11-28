@@ -329,13 +329,12 @@ export class ChatWidget extends Component {
       conversation,
       flags,
       indicators,
-      intl,
       spark,
       sparkState,
       user,
       widget
     } = props;
-    const {formatMessage} = intl;
+    const {formatMessage} = this.props.intl;
     const {
       avatars,
       currentUser
@@ -345,7 +344,7 @@ export class ChatWidget extends Component {
       <div className={classNames(`loading`, styles.loading)}>
         <FormattedMessage
           defaultMessage={`Connecting`}
-          id={`ChatWidget.connecting`}
+          id={`connecting`}
         />{`...`}
         <div className={classNames(`spinner-container`, styles.spinnerContainer)}>
           <Spinner />
@@ -362,17 +361,33 @@ export class ChatWidget extends Component {
 
       let scrollButton;
       if (props.widget.showScrollToBottomButton) {
-        const label = widget.hasNewMessage ? `New Messages` : null;
+        const newMessages = {
+          id: `newMessages`,
+          defaultMessage: `New Messages`
+        };
+        const label = widget.hasNewMessage ? formatMessage(newMessages) : null;
         scrollButton = <ScrollToBottomButton label={label} onClick={this.handleScrollToBottom} />;
       }
 
       let deleteAlert;
       if (props.widget.showAlertModal) {
+        const confirmDeletingMessage = {
+          id: `confirmDeletingMessage`,
+          defaultMessage: `Are you sure you want to delete this message?`
+        };
+        const deleteMessage = {
+          id: `delete`,
+          defaultMessage: `Delete`
+        };
+        const cancelMessage = {
+          id: `cancel`,
+          defaultMessage: `Cancel`
+        };
         const alertMessages = {
-          title: `Delete`,
-          body: `Are you sure you want to delete this message?`,
-          actionButtonText: `Delete`,
-          cancelButtonText: `Cancel`
+          title: formatMessage(deleteMessage),
+          body: formatMessage(confirmDeletingMessage),
+          actionButtonText: formatMessage(deleteMessage),
+          cancelButtonText: formatMessage(cancelMessage)
         };
         deleteAlert = ( // eslint-disable-line no-extra-parens
           <ConfirmationModal
@@ -389,7 +404,7 @@ export class ChatWidget extends Component {
         const isTyping = indicators.typing.length > 0;
         const {displayName} = toUser;
         const placeholderMessage = {
-          id: `ChatWidget.messagePlaceholder`,
+          id: `sendAMessageToRoom`,
           defaultMessage: `Send a message to {displayName}`,
           description: `Placeholder value to show in message input field`
         };

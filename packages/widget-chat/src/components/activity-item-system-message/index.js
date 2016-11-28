@@ -1,6 +1,8 @@
 import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 
+import {FormattedMessage} from 'react-intl';
+
 import styles from './styles.css';
 
 export const SYSTEM_MESSAGE_VERB_TOMBSTONE = `tombstone`;
@@ -16,27 +18,45 @@ export default function ActivityItemSystemMessage(props) {
   } = props;
 
   let systemMessage;
-  let displayName;
-  let actionVerb;
-  if (isSelf) {
-    displayName = `You`;
-    actionVerb = `your`;
-  }
-  else {
-    displayName = name;
-    actionVerb = `their own`;
-  }
 
   if (verb === SYSTEM_MESSAGE_VERB_CREATE) {
-    systemMessage = `${displayName} created conversation. ${timestamp}`;
+    if (isSelf) {
+      systemMessage = ( // eslint-disable-line no-extra-parens
+        <FormattedMessage
+          defaultMessage={`You created conversation.`}
+          id={`youCreatedConversation`}
+        />);
+    }
+    else {
+      systemMessage = ( // eslint-disable-line no-extra-parens
+        <FormattedMessage
+          defaultMessage={`{name} created conversation.`}
+          id={`someoneElseCreatedConversation`}
+          values={{name}}
+        />);
+    }
   }
   else if (verb === SYSTEM_MESSAGE_VERB_TOMBSTONE) {
-    systemMessage = `${displayName} deleted ${actionVerb} message. ${timestamp}`;
+    if (isSelf) {
+      systemMessage = ( // eslint-disable-line no-extra-parens
+        <FormattedMessage
+          defaultMessage={`You deleted your message.`}
+          id={`youDeletedYourMessage`}
+        />);
+    }
+    else {
+      systemMessage = ( // eslint-disable-line no-extra-parens
+        <FormattedMessage
+          defaultMessage={`{name} deleted their own message.`}
+          id={`someoneDeletedTheirMessage`}
+          values={{name}}
+        />);
+    }
   }
 
   return (
     <div className={classNames(`system-message`, styles.systemMessage)}>
-      {systemMessage}
+      {systemMessage} {timestamp}
     </div>
   );
 }
