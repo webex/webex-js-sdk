@@ -73,6 +73,28 @@ var FeatureService = SparkBase.extend(
       }.bind(this));
   },
 
+    /**
+     * Issues request to server to set a value for a feature toggle.
+     * @param {array} featureList
+     * @returns {Promise} Refreshes the local device and resolves with the features endpoint`s response.
+     */
+    setBundledFeatures(featureList) {
+      forEach(featureList, function (item) {
+        item.mutable = item.mutable || `true`;
+        item.type = item.type || `USER`;
+      });
+
+      return this.request({
+        method: `POST`,
+        api: `feature`,
+        resource: `features/users/${this.spark.device.userId}/toggles`,
+        body: featureList
+      })
+        .then(function processResponse(res) {
+          return this.spark.device.features[`user`].add(res.body, {merge: true});
+        }.bind(this));
+    },
+
   initialize: function initialize() {
     SparkBase.prototype.initialize.apply(this, arguments);
 

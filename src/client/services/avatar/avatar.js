@@ -56,7 +56,7 @@ var AvatarService = SparkBase.extend(
       return Promise.reject(new Error('`user` is a required parameter'));
     }
 
-    var id = (user.id || (user._values ? user._values.id : user._values) || user.email || user.emailAddress || user);
+    var id = (user.id || user.email || user.emailAddress || user);
 
     if (!id) {
       return Promise.reject(new Error('`user` is a required parameter'));
