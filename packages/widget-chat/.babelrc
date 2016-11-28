@@ -1,0 +1,11 @@
+{
+  "plugins": [
+    "lodash",
+    "transform-runtime"
+  ],
+  "presets": [
+    "es2015",
+    "react"
+  ],
+  "sourceMaps": true
+}

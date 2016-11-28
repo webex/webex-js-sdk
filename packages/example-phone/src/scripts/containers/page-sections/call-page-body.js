@@ -17,6 +17,7 @@ import {
 } from '../../actions/call';
 
 class CallPageBody extends Component {
+  /* eslint-disable react/no-unused-prop-types */
   static propTypes = {
     startReceivingAudio: React.PropTypes.func.isRequired,
     startReceivingVideo: React.PropTypes.func.isRequired,
@@ -28,6 +29,7 @@ class CallPageBody extends Component {
     stopSendingAudio: React.PropTypes.func.isRequired,
     stopSendingVideo: React.PropTypes.func.isRequired
   };
+  /* eslint-enable react/no-unused-prop-types */
 
   render() {
     const {status} = this.props;

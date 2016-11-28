@@ -1,0 +1,14 @@
+exports[`TypingIndicator component renders correctly 1`] = `
+<div
+  className="typing-background">
+  <div
+    className="typing-indicator">
+    <div
+      className="sq" />
+    <div
+      className="sq" />
+    <div
+      className="sq" />
+  </div>
+</div>
+`;

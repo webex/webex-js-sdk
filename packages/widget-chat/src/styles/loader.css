@@ -1,0 +1,48 @@
+.widget-container {
+  background-color: #fff;
+  background-repeat: no-repeat;
+}
+
+.widget-component-container {
+  position: absolute;
+  right: 10px;
+  bottom: 0;
+  width: 500px;
+  height: 600px;
+}
+
+.widget-component-container > div {
+  height: 100%;
+}
+
+.widget-props-form {
+  padding: 10px;
+  margin: 20% auto;
+  font-family: 'CiscoSans TT Light';
+  background: #fff;
+}
+
+.field-wrapper,
+.props-submit {
+  display: inline-block;
+}
+
+.field-label,
+.field-input {
+  margin-right: 10px;
+}
+
+.field-input {
+  padding: 4px 5px;
+  font-size: 20px;
+}
+
+.props-submit {
+  padding: 5px 20px;
+  font-size: 20px;
+  color: #fff;
+  cursor: pointer;
+  background-color: rgb(0, 112, 210);
+  border: 0;
+  border-radius: 20px;
+}

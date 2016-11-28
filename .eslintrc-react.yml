@@ -1,20 +1,28 @@
-ecmaFeatures:
-  jsx: true
+parserOptions:
+  ecmaFeatures:
+    jsx: true
 env:
   browser: true
 plugins:
   - react
+  - jsx-a11y
 rules:
   require-jsdoc:
     - 0
   react/display-name:
+    - 2
+  react/forbid-component-props:
     - 2
   react/forbid-prop-types:
     - 2
     -
       forbid:
         - style
+  react/no-children-prop:
+    - 2
   react/no-danger:
+    - 2
+  react/no-danger-with-children:
     - 2
   react/no-deprecated:
     - 2
@@ -30,11 +38,17 @@ rules:
     - 2
   react/no-multi-comp:
     - 2
+  react/no-render-return-value:
+    - 2
   react/no-set-state:
     - 2
   react/no-string-refs:
     - 2
+  react/no-unescaped-entities:
+    - 2
   react/no-unknown-property:
+    - 2
+  react/no-unused-prop-types:
     - 2
   react/prefer-es6-class:
     - 2
@@ -44,8 +58,6 @@ rules:
     - 2
   react/react-in-jsx-scope:
     - 2
-  react/require-extension:
-    - 0
   react/require-optimization:
     - 2
   react/require-render-return:
@@ -55,6 +67,8 @@ rules:
   react/sort-comp:
     - 2
   react/sort-prop-types:
+    - 2
+  react/style-prop-object:
     - 2
 
   #
@@ -71,15 +85,19 @@ rules:
   react/jsx-equals-spacing:
     - 2
     - "never"
+  react/jsx-filename-extension:
+    - 2
+    - extensions:
+      - .js
   react/jsx-first-prop-new-line:
     - 2
     - "multiline"
   react/jsx-handler-names:
     - 2
-  react/jsx-indent-props:
-    - 2
-    - 2
   react/jsx-indent:
+    - 2
+    - 2
+  react/jsx-indent-props:
     - 2
     - 2
   react/jsx-key:
@@ -90,13 +108,15 @@ rules:
       maximum: 3
   react/jsx-no-bind:
     - 2
+  react/jsx-no-comment-textnodes:
+    - 2
   react/jsx-no-duplicate-props:
     - 2
   react/jsx-no-literals:
-    - 0
-  react/jsx-no-undef:
     - 2
   react/jsx-no-target-blank:
+    - 2
+  react/jsx-no-undef:
     - 2
   react/jsx-pascal-case:
     - 2
@@ -109,4 +129,57 @@ rules:
   react/jsx-uses-vars:
     - 2
   react/jsx-wrap-multilines:
+    - 2
+
+  #
+  # jsx-a11y
+  #
+
+  jsx-a11y/anchor-has-content:
+    - 2
+  jsx-a11y/aria-props:
+    - 2
+  jsx-a11y/aria-proptypes:
+    - 2
+  jsx-a11y/aria-role:
+    - 2
+  jsx-a11y/aria-unsupported-elements:
+    - 2
+  jsx-a11y/click-events-have-key-events:
+    - 2
+  jsx-a11y/heading-has-content:
+    - 2
+  jsx-a11y/href-no-hash:
+    - 2
+  jsx-a11y/html-has-lang:
+    - 2
+  jsx-a11y/img-has-alt:
+    - 2
+  jsx-a11y/img-redundant-alt:
+    - 2
+  jsx-a11y/label-has-for:
+    - 2
+  jsx-a11y/lang:
+    - 2
+  jsx-a11y/mouse-events-have-key-events:
+    - 2
+  jsx-a11y/no-access-key:
+    - 2
+  jsx-a11y/no-marquee:
+    - 2
+  jsx-a11y/no-onchange:
+    - 2
+  jsx-a11y/no-static-element-interactions:
+    - 2
+  jsx-a11y/onclick-has-focus:
+    - 2
+  jsx-a11y/onclick-has-role:
+    - 2
+  jsx-a11y/role-has-required-aria-props:
+    - 2
+  jsx-a11y/role-supports-aria-props:
+    - 2
+  jsx-a11y/scope:
+    - 2
+  jsx-a11y/tabindex-no-positive:
     - 2

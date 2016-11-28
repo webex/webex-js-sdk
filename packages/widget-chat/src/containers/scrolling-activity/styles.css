@@ -1,0 +1,15 @@
+.indicators {
+  display: flex;
+  min-height: 40px;
+  padding-bottom: 5px;
+  font-size: 17px;
+  white-space: nowrap;
+  justify-content: center;
+}
+
+.spinner-container {
+  position: relative;
+  width: 25px;
+  height: 25px;
+  margin: 5px auto;
+}

@@ -1,0 +1,10 @@
+exports[`TextArea component renders properly 1`] = `
+<textarea
+  className="textarea"
+  onChange={[Function]}
+  onKeyDown={[Function]}
+  onSubmit={[Function]}
+  placeholder="TextArea Placeholder"
+  rows={2}
+  value="" />
+`;

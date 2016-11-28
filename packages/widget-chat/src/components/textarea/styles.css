@@ -1,0 +1,13 @@
+.textarea {
+  display: block;
+  width: 100%;
+  margin: 0;
+  overflow: hidden;
+  font-family: 'CiscoSans TT Extra Light', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  background: transparent;
+  border: none;
+  outline: none;
+  box-sizing: border-box;
+  resize: none;
+}

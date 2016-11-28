@@ -1,0 +1,17 @@
+.typing-avatar {
+  position: relative;
+}
+
+.avatar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+}
+
+.typing {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+}

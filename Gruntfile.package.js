@@ -43,6 +43,11 @@ module.exports = function(grunt) {
         src: [
           './packages/<%= package %>/dist'
         ]
+      },
+      snapshots: {
+        src: [
+          './packages/<%= package %>/**/__snapshots__'
+        ]
       }
     },
 
@@ -195,6 +200,10 @@ module.exports = function(grunt) {
       }
     },
 
+    jest: {
+      options: require('./jest.config')
+    },
+
     karma: {
       test: {
         options: {
@@ -307,6 +316,16 @@ module.exports = function(grunt) {
       }
     },
 
+    stylelint: {
+      options: {
+        configFile: '.stylelintrc',
+        format: 'css'
+      },
+      src: [
+        './packages/<%= package %>/src/**/*.css'
+      ]
+    },
+
     watch: {
       serve: {
         files: [
@@ -329,6 +348,7 @@ module.exports = function(grunt) {
 
   registerTask('static-analysis', [
     'eslint',
+    'stylelint',
     'dependency-check'
   ]);
 

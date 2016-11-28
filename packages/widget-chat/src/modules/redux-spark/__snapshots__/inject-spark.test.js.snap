@@ -1,0 +1,7 @@
+exports[`injectSpark renders correctly 1`] = `
+<div>
+  <div>
+    TestWidget
+  </div>
+</div>
+`;
