@@ -17,19 +17,20 @@ export default function ActivityItem(props) {
 
   let itemComponent = ``;
 
+  let content;
+  if (activity.content) {
+    // HTML encoded posts
+    content = activity.content;
+  }
+  else {
+    content = activity.displayName;
+  }
+
   if (verb === POST_VERB) {
-    let content;
-    if (activity.content) {
-      // HTML encoded posts
-      content = activity.content;
-    }
-    else {
-      content = activity.displayName;
-    }
     itemComponent = <ActivityItemPost content={content} {...props} />;
   }
   else if (verb === SHARE_VERB) {
-    itemComponent = <ActivityItemShareList files={activity.files.items} {...props} />;
+    itemComponent = <ActivityItemShareList content={content} files={activity.files.items} {...props} />;
   }
   else if (SYSTEM_MESSAGE_VERBS.indexOf(verb) !== -1) {
     itemComponent = <ActivityItemSystemMessage {...props} />;

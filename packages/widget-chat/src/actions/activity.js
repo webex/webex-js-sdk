@@ -97,6 +97,8 @@ export function submitActivity(conversation, activity, spark) {
     const message = _createMessageObject(activity.get(`text`));
     const shareActivity = activity.get(`shareActivity`);
     if (shareActivity) {
+      shareActivity.displayName = message.displayName;
+      shareActivity.content = message.content;
       spark.conversation.share(conversation, shareActivity)
         .then(cleanupAfterSubmit(dispatch));
     }

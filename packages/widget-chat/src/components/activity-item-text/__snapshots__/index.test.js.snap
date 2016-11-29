@@ -1,0 +1,9 @@
+exports[`ActivityItemText component renders properly 1`] = `
+<div
+  className="activity-text"
+  dangerouslySetInnerHTML={
+    Object {
+      "__html": "Test Text",
+    }
+  } />
+`;
