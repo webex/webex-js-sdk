@@ -275,7 +275,7 @@ const ShareActivity = SparkPlugin.extend({
    * @returns {boolean}
    */
   _itemContainsActionWithMimeType(items, mimeType) {
-    return some(items.map((item) => some(item.actions, [`mimeType`, mimeType])));
+    return some(items.map((item) => some(item.actions, {mimeType})));
   },
 
   /**

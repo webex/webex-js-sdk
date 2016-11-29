@@ -237,15 +237,10 @@ describe(`plugin-conversation`, function() {
           assert.equal(activity.object.files.items[0].actions[0].mimeType, `application/x-cisco-spark-whiteboard`);
           assert.equal(activity.object.files.items[0].actions[0].url, `https://boards.example.com/boards/1`);
 
-          return Promise.all([
-            spark.conversation.download(activity.object.files.items[0])
-              .then(tap((f) => assert.equal(f.type, `image/png`)))
-          ]);
+          return spark.conversation.download(activity.object.files.items[0])
+            .then(tap((f) => assert.equal(f.type, `image/png`)));
         })
-
-        .then(([file0]) => Promise.all([
-          assert.eventually.isTrue(fh.isMatchingFile(file0, sampleImageSmallOnePng))
-        ])));
+        .then((file0) => assert.eventually.isTrue(fh.isMatchingFile(file0, sampleImageSmallOnePng))));
     });
 
     describe(`#makeShare`, () => {
