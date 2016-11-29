@@ -64,3 +64,19 @@ export function hideDeleteModal() {
     }));
   };
 }
+
+export function blurTextArea() {
+  return (dispatch) => {
+    dispatch(updateWidgetState({
+      hasTextAreaFocus: false
+    }));
+  };
+}
+
+export function focusTextArea() {
+  return (dispatch) => {
+    dispatch(updateWidgetState({
+      hasTextAreaFocus: true
+    }));
+  };
+}

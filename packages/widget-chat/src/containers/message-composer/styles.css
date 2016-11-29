@@ -2,17 +2,19 @@
   position: relative;
   height: auto;
   max-height: 500px;
+  background-color: #f5f5f6;
+  border-top: 1px solid #d3d3d3;
+  transition: all 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.hasFocus {
+  border-top-color: #66c5e8;
 }
 
 .add-file-container {
   position: absolute;
   top: 12px;
   left: 20px;
-}
-
-.textarea-container {
-  background-color: #f5f5f6;
-  border: 1px solid #d3d3d3;
 }
 
 .textarea {

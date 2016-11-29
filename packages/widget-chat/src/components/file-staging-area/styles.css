@@ -4,6 +4,8 @@
   max-height: 150px;
   padding-right: 80px;
   overflow-y: auto;
+  background-color: hsla(240, 5%, 96%, 0.3);
+  border-bottom: 1px solid #ebebec;
 }
 
 .files {

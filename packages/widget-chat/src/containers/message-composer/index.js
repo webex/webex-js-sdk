@@ -7,6 +7,8 @@ import {
   submitActivity,
   updateActivityText
 } from '../../actions/activity';
+import {blurTextArea, focusTextArea} from '../../actions/widget';
+
 import FileUploader from '../file-uploader';
 import TextArea from '../../components/textarea';
 
@@ -17,13 +19,15 @@ export class MessageComposer extends Component {
   constructor(props) {
     super(props);
     this.handleTextChange = this.handleTextChange.bind(this);
+    this.handleTextAreaBlur = this.handleTextAreaBlur.bind(this);
+    this.handleTextAreaFocus = this.handleTextAreaFocus.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
   }
 
   shouldComponentUpdate(nextProps) {
     const props = this.props;
-    return props.activity !== nextProps.activity;
+    return props.activity !== nextProps.activity || props.widget !== nextProps.widget;
   }
 
   handleTextChange(e) {
@@ -52,6 +56,16 @@ export class MessageComposer extends Component {
     }
   }
 
+  handleTextAreaBlur() {
+    const props = this.props;
+    props.blurTextArea();
+  }
+
+  handleTextAreaFocus() {
+    const props = this.props;
+    props.focusTextArea();
+  }
+
   render() {
     let text;
     const props = this.props;
@@ -59,13 +73,16 @@ export class MessageComposer extends Component {
       text = props.activity.get(`text`);
     }
     const {placeholder} = this.props;
+    const textAreaFocusStyle = props.widget.hasTextAreaFocus ? styles.hasFocus : ``;
 
     return (
-      <div className={classNames(`message-composer`, styles.messageComposer)}>
+      <div className={classNames(`message-composer`, styles.messageComposer, textAreaFocusStyle)}>
         <FileUploader onSubmit={this.handleSubmit} />
         <div className={classNames(`textarea-container`, styles.textareaContainer)}>
           <TextArea
+            onBlur={this.handleTextAreaBlur}
             onChange={this.handleTextChange}
+            onFocus={this.handleTextAreaFocus}
             onKeyDown={this.handleKeyDown}
             onSubmit={this.handleSubmit}
             placeholder={placeholder}
@@ -88,13 +105,16 @@ function mapStateToProps(state, ownProps) {
   return {
     activity: state.activity,
     spark: ownProps.spark,
-    conversation: state.conversation
+    conversation: state.conversation,
+    widget: state.widget
   };
 }
 
 export default connect(
   mapStateToProps,
   (dispatch) => bindActionCreators({
+    blurTextArea,
+    focusTextArea,
     submitActivity,
     updateActivityText
   }, dispatch)
