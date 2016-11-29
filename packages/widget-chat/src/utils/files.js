@@ -62,6 +62,7 @@ export function isImage(file) {
 
 export function sanitize(file) {
   return _.assign(file, {
+    id: file.clientTempId,
     displayName: file.displayName || null,
     fileSize: file.fileSize || 0,
     fileSizePretty: bytesToSize(file.fileSize)

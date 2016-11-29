@@ -63,7 +63,7 @@ export class MessageComposer extends Component {
     return (
       <div className={classNames(`message-composer`, styles.messageComposer)}>
         <FileUploader onSubmit={this.handleSubmit} />
-        <div className={classNames(`textarea-container`)}>
+        <div className={classNames(`textarea-container`, styles.textareaContainer)}>
           <TextArea
             onChange={this.handleTextChange}
             onKeyDown={this.handleKeyDown}

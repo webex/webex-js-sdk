@@ -24,7 +24,7 @@ export default function reduceActivity(state = initialState, action) {
       return o;
     }, {});
 
-    return state.mergeDeepIn([`files`], files);
+    return state.mergeIn([`files`], files);
   }
 
   case RESET_ACTIVITY: {

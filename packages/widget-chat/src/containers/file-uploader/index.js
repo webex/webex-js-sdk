@@ -7,6 +7,7 @@ import {constructFile} from '../../utils/files';
 import {addFiles} from '../../actions/activity';
 
 import AddFileButton from '../../components/add-file-button';
+import FileStagingArea from '../../components/file-staging-area';
 import styles from './styles.css';
 
 export class FileUploader extends Component {
@@ -18,7 +19,7 @@ export class FileUploader extends Component {
 
   shouldComponentUpdate(nextProps) {
     const props = this.props;
-    return nextProps.activity === props.activity;
+    return nextProps.activity !== props.activity;
   }
 
   handleFileChange(e) {
@@ -45,8 +46,26 @@ export class FileUploader extends Component {
   }
 
   render() {
+    const props = this.props;
+    const {
+      onSubmit
+    } = this.props;
+    const files = props.activity.get(`files`);
+
+    let stagingArea;
+    if (files && files.count()) {
+      stagingArea = ( // eslint-disable-line no-extra-parens
+        <FileStagingArea
+          files={files}
+          onFileDelete={this.handleFileDelete}
+          onSubmit={onSubmit}
+        />
+      );
+    }
+
     return (
       <div className={classNames(`file-uploader-container`, styles.container)}>
+        {stagingArea}
         <div className={classNames(`button-container`, styles.buttonContainer)}>
           <AddFileButton onChange={this.handleFileChange} />
         </div>
@@ -56,13 +75,14 @@ export class FileUploader extends Component {
 }
 
 FileUploader.propTypes = {
-  handleSubmit: PropTypes.func
+  onSubmit: PropTypes.func
 };
 
 export default connect(
   (state) => ({
     activity: state.activity,
     conversation: state.conversation,
+    files: state.activity.get(`files`),
     spark: state.spark.get(`spark`)
   }),
   (dispatch) => bindActionCreators({

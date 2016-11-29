@@ -84,6 +84,7 @@ export function addFiles(conversation, activity, files, spark) {
     Promise.all(images)
       .then((localImages) => {
         dispatch(updateActivityStatus({isUploadingShare: true}));
+        dispatch(addFilesToActivity(cleanFiles));
         cleanFiles.forEach((file) => shareActivity.add(file));
         // create update staging area with new files
       });
