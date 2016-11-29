@@ -1,8 +1,10 @@
 import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 
+import {bytesToSize, getFileType, isImage} from '../../utils/files';
+
 import Button from '../button';
-import Chip from '../chip';
+import ChipFile from '../chip-file';
 
 import styles from './styles.css';
 
@@ -16,22 +18,32 @@ export default function FileStagingArea(props) {
 
   if (files && Object.keys(files).length) {
     files.forEach((file) => {
-      fileChips.push(
-        <Chip
-          fileName={file.name}
-          fileType={file.fileType}
-          id={file.id}
-          key={file.id}
-          onDelete={onFileDelete}
-        />
-      );
+      const chipProps = {
+        name: file.name,
+        type: getFileType(file.type),
+        size: bytesToSize(file.fileSize),
+        id: file.id,
+        key: file.id,
+        onDelete: onFileDelete
+      };
+
+      if (isImage(file)) {
+        const urlCreator = window.URL || window.webkitURL;
+        chipProps.thumbnail = urlCreator.createObjectURL(file);
+      }
+
+      fileChips.push(<ChipFile {...chipProps} />);
     });
   }
 
   return (
     <div className={classNames(`file-staging-area`, styles.fileStagingArea)}>
-      {fileChips}
-      <Button label="Share" onClick={onSubmit} />
+      <div className={classNames(`staged-files`, styles.files)}>
+        {fileChips}
+      </div>
+      <div className={classNames(`staging-actions`, styles.actions)}>
+        <Button label="Share" onClick={onSubmit} />
+      </div>
     </div>
   );
 }

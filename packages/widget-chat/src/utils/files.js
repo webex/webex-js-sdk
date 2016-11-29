@@ -1,6 +1,17 @@
 import uuid from 'uuid';
 import _ from 'lodash';
 
+const FILE_TYPES = {
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': `spreadsheet`,
+  'application/pdf': `pdf`,
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': `presentation`,
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': `doc`,
+  'application/vnd.ms-excel': `spreadsheet`,
+  'application/octet-stream': `binary`,
+  'application/zip': `zip`
+};
+
+
 export function bytesToSize(bytes) {
   if (!bytes || bytes === 0) {
     return `0 Bytes`;
@@ -67,4 +78,19 @@ export function sanitize(file) {
     fileSize: file.fileSize || 0,
     fileSizePretty: bytesToSize(file.fileSize)
   });
+}
+
+export function getFileType(mimeType) {
+  if (FILE_TYPES[mimeType]) {
+    return FILE_TYPES[mimeType];
+  }
+
+  const tokens = mimeType.split(`/`);
+  if (tokens[0] === `image`) {
+    return `image`;
+  }
+  else if (tokens[0] === `text`) {
+    return `${tokens[1].charAt(0).toUpperCase()}${tokens[1].slice(1)} file`;
+  }
+  return `file`;
 }

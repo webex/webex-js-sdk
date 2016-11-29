@@ -1,9 +1,8 @@
 import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 
-import Icon from '../icon';
 import Button from '../button';
-import {ICON_TYPE_DOWNLOAD, ICON_TYPE_DOCUMENT} from '../icon';
+import Icon, {ICON_TYPE_DOWNLOAD, ICON_TYPE_DOCUMENT} from '../icon';
 import {bytesToSize} from '../../utils/files';
 import styles from './styles.css';
 

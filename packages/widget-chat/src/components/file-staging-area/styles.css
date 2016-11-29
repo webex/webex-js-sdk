@@ -1,0 +1,29 @@
+.file-staging-area {
+  position: relative;
+  display: flex;
+  max-height: 150px;
+  padding-right: 80px;
+  overflow-y: auto;
+}
+
+.files {
+  flex: 1 1 auto;
+}
+
+.actions {
+  position: absolute;
+  right: 0;
+  display: flex;
+  height: 100%;
+}
+
+.actions > button {
+  height: 30px;
+  padding: 8px 20px;
+  margin: auto 9px;
+  font-size: 13px;
+  line-height: 13px;
+  color: #fff;
+  background-color: #049fd9;
+  border-radius: 4px;
+}

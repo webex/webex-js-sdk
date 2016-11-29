@@ -1,7 +1,5 @@
-.container {
-  position: absolute;
-}
-
 .button-container {
-  margin: 13px;
+  position: absolute;
+  bottom: 47px;
+  left: 15px;
 }
