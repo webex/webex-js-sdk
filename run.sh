@@ -76,6 +76,7 @@ export WORKDIR
 # Pass environment variables to container at runtime
 
 rm -f docker-env
+
 DOCKER_ENV_KEYS=""
 DOCKER_ENV_KEYS+="ATLAS_SERVICE_URL "
 DOCKER_ENV_KEYS+="BUILD_NUMBER "
@@ -90,9 +91,12 @@ DOCKER_ENV_KEYS+="SAUCE_IS_DOWN "
 DOCKER_ENV_KEYS+="SDK_BUILD_DEBUG "
 DOCKER_ENV_KEYS+="SKIP_FLAKY_TESTS "
 DOCKER_ENV_KEYS+="WDM_SERVICE_URL "
+# We don't want to fail if grep doesn't find the specifed var
+set +e
 for KEY in $DOCKER_ENV_KEYS; do
   env | grep "${KEY}" >> docker-env
 done
+set -e
 
 export DOCKER_CONTAINER_NAME="${JOB_NAME}-${BUILD_NUMBER}-builder"
 
