@@ -8,9 +8,6 @@ set -e
 # and https://wiki.jenkins-ci.org/display/JENKINS/Aborting+a+build
 trap 'JOBS=$(jobs -p); if [ -n "${JOBS}" ]; then kill "${JOBS}"; fi' SIGINT SIGTERM EXIT
 
-docker ps
-docker ps -a
-
 echo "################################################################################"
 echo "# INSTALLING LEGACY DEPENDENCIES"
 echo "################################################################################"
@@ -43,15 +40,9 @@ echo "##########################################################################
 
 PIDS=""
 
-STATS_FILE=$(pwd)/dockerstats
-echo "Piping docker stats to ${STATS_FILE}"
-docker stats > "${STATS_FILE}" &
-DOCKER_STATS_PID=$!
-trap "kill -TERM ${DOCKER_STATS_PID} && rm ${STATS_FILE}" EXIT
-
 # Ideally, the following would be done with lerna but there seem to be some bugs
 # in --scope and --ignore
-PACKAGES=$(ls "$(pwd)/packages")
+PACKAGES=$(ls "${SDK_ROOT_DIR}/packages")
 PACKAGES+=" legacy:node"
 PACKAGES+=" legacy:browser"
 for PACKAGE in ${PACKAGES}; do
@@ -127,7 +118,6 @@ for FILE in $(find ./reports/junit -name "karma-*.xml") ; do
 
   mv ${FILE}-out.xml ${FILE}
 done
-
 
 if [ "${FINAL_EXIT_CODE}" -ne "0" ]; then
   echo "################################################################################"

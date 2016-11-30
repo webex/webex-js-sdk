@@ -6,6 +6,12 @@
 
 set -e
 
+# Load secrets
+export env $(cat .env | xargs)
+
+GRUNT_LOG_FILE="$(pwd)/reports/logs/${PACKAGE}.log"
+mkdir -p "$(pwd)/reports/sauce"
+
 if [ -n "${SDK_BUILD_DEBUG}" ]; then
   set -x
 fi
@@ -31,7 +37,7 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
       daemon -U --name sauce_connect -- ${SC_BINARY} \
         -D *.ciscospark.com,*.wbx2.com,*.webex.com*,storage101.dfw1.clouddrive.com \
         -vv \
-        -l "${LOGS_DIR}/sauce_connect.${SC_ITERATION}.log" \
+        -l "$(pwd)/reports/sauce/sauce_connect.${SC_ITERATION}.log" \
         --tunnel-identifier "${SC_TUNNEL_IDENTIFIER}" \
         --pidfile "${SC_PID_FILE}" \
         --readyfile "${SC_READY_FILE}"
@@ -76,11 +82,11 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
 
   set +e
   if [ "${PACKAGE}" == "legacy:node" ]; then
-    npm run test:legacy:node > ./reports/logs/${PACKAGE}.log
+    npm run test:legacy:node > ${GRUNT_LOG_FILE}
   elif [ "${PACKAGE}" == "legacy:browser" ]; then
-    npm run test:legacy:browser > ./reports/logs/${PACKAGE}.log
+    npm run test:legacy:browser > ${GRUNT_LOG_FILE}
   else
-    npm run test:package > ./reports/logs/${PACKAGE}.log
+    npm run test:package > ${GRUNT_LOG_FILE}
   fi
   EXIT_CODE=$?
   set -e

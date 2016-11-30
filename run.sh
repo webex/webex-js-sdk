@@ -7,7 +7,10 @@ ps aux | grep grunt | grep -v grunt | awk '{print $2}' | xargs kill > /dev/null 
 
 # Now, fail if anything fails
 set -e
-set -x
+
+if [ -n "${SDK_BUILD_DEBUG}" ]; then
+  set -x
+fi
 
 #
 # CONFIGURE NODE
@@ -75,7 +78,7 @@ WORKDIR="${SDK_ROOT_DIR}"
 export WORKDIR
 
 # Pass environment variables to container at runtime
-DOCKER_ENV_FILE="$(pwd)/docker-env"
+DOCKER_ENV_FILE="${SDK_ROOT_DIR}/docker-env"
 export DOCKER_ENV_FILE
 rm -f ${DOCKER_ENV_FILE}
 
@@ -102,33 +105,35 @@ set -e
 
 export DOCKER_CONTAINER_NAME="${JOB_NAME}-${BUILD_NUMBER}-builder"
 
-# Push runtime config data into the container definition and build it
-cat <<EOT >>./docker/builder/Dockerfile
+if ! docker images | grep -qc ${DOCKER_CONTAINER_NAME}; then
+  # Push runtime config data into the container definition and build it
+  cat <<EOT >>./docker/builder/Dockerfile
 RUN groupadd -g $(id -g) jenkins
 RUN useradd -u $(id -u) -g $(id -g) -m jenkins
 WORKDIR ${WORKDIR}
 USER $(id -u)
 EOT
 
-for DOCKER_BUILD_ITERATION in $(seq 1 3); do
-  echo "Docker build ${DOCKER_BUILD_ITERATION}: building"
+  for DOCKER_BUILD_ITERATION in $(seq 1 3); do
+    echo "Docker build ${DOCKER_BUILD_ITERATION}: building"
 
-  set +e
-  docker build -t ${DOCKER_CONTAINER_NAME} ./docker/builder
-  EXIT_CODE=$?
-  if [ "${EXIT_CODE}" == "0" ]; then
-    echo "Docker build ${DOCKER_BUILD_ITERATION}: succeeded"
-    break
+    set +e
+    docker build -t ${DOCKER_CONTAINER_NAME} ./docker/builder
+    EXIT_CODE=$?
+    if [ "${EXIT_CODE}" == "0" ]; then
+      echo "Docker build ${DOCKER_BUILD_ITERATION}: succeeded"
+      break
+    fi
+    echo "Docker build ${DOCKER_BUILD_ITERATION}: failed"
+  done
+
+  if [ "${EXIT_CODE}" -ne "0" ]; then
+    exit 30
   fi
-  echo "Docker build ${DOCKER_BUILD_ITERATION}: failed"
-done
 
-if [ "${EXIT_CODE}" -ne "0" ]; then
-  exit 30
+  # Reset the Dockerfile to make sure we don't accidentally commit it later
+  git checkout ./docker/builder/Dockerfile
 fi
-
-# Reset the Dockerfile to make sure we don't accidentally commit it later
-git checkout ./docker/builder/Dockerfile
 
 DOCKER_RUN_OPTS="--env-file ${DOCKER_ENV_FILE}"
 # Cleanup the container when done

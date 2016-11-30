@@ -23,6 +23,7 @@ RUN wget "https://saucelabs.com/downloads/sc-${SAUCE_CONNECT_VERSION}-linux.tar.
 RUN ls
 RUN tar -xzf "sc-${SAUCE_CONNECT_VERSION}-linux.tar.gz"
 RUN ln -s "${SC_BINARY}" /usr/local/bin/sc
+RUN chmod ugo+w /sauce
 
 WORKDIR /work
 
