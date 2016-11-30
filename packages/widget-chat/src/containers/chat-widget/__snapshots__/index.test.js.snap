@@ -6,7 +6,10 @@ exports[`ChatWidget renders properly 1`] = `
       className="banner" />
     <div
       className="loading">
-      Connecting...
+      <span>
+        Connecting
+      </span>
+      ...
       <div
         className="spinner-container">
         <div
