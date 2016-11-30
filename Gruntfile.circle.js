@@ -61,9 +61,7 @@ module.exports = function gruntConfig(grunt) {
       `*`,
       `!test-helper*`,
       `!bin*`,
-      `!xunit-with-logs`,
-      `test-helper-mock-web-socket`,
-      `test-helper-mock-socket`
+      `!xunit-with-logs`
   ]);
 
   const CIRCLE_NODE_TOTAL = parseInt(process.env.CIRCLE_NODE_TOTAL || 1, 10);
