@@ -10,18 +10,18 @@ export default function ChipBase(props) {
   const {
     children,
     id,
-    onDelete
+    onRemove
   } = props;
 
-  function handleDelete() {
-    onDelete(id);
+  function handleRemove() {
+    onRemove(id);
   }
 
   return (
     <div className={classNames(`chip`, styles.chip)}>
       {children}
       <div className={classNames(`chip-action`, styles.action)}>
-        <Button iconType={ICON_TYPE_DELETE} onClick={handleDelete} />
+        <Button iconType={ICON_TYPE_DELETE} onClick={handleRemove} />
       </div>
     </div>
   );
@@ -30,5 +30,5 @@ export default function ChipBase(props) {
 ChipBase.propTypes = {
   children: PropTypes.node.isRequired,
   id: PropTypes.string,
-  onDelete: PropTypes.func
+  onRemove: PropTypes.func
 };

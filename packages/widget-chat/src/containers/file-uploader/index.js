@@ -4,7 +4,7 @@ import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 
 import {constructFile} from '../../utils/files';
-import {addFiles} from '../../actions/activity';
+import {addFiles, removeFile} from '../../actions/activity';
 
 import AddFileButton from '../../components/add-file-button';
 import FileStagingArea from '../../components/file-staging-area';
@@ -15,6 +15,7 @@ export class FileUploader extends Component {
   constructor(props) {
     super(props);
     this.handleFileChange = this.handleFileChange.bind(this);
+    this.handleFileRemove = this.handleFileRemove.bind(this);
   }
 
   shouldComponentUpdate(nextProps) {
@@ -45,6 +46,11 @@ export class FileUploader extends Component {
     e.target.value = ``;
   }
 
+  handleFileRemove(id) {
+    const props = this.props;
+    props.removeFile(id, props.activity);
+  }
+
   render() {
     const props = this.props;
     const {
@@ -57,7 +63,7 @@ export class FileUploader extends Component {
       stagingArea = ( // eslint-disable-line no-extra-parens
         <FileStagingArea
           files={files}
-          onFileDelete={this.handleFileDelete}
+          onFileRemove={this.handleFileRemove}
           onSubmit={onSubmit}
         />
       );
@@ -86,6 +92,7 @@ export default connect(
     spark: state.spark.get(`spark`)
   }),
   (dispatch) => bindActionCreators({
-    addFiles
+    addFiles,
+    removeFile
   }, dispatch)
 )(FileUploader);

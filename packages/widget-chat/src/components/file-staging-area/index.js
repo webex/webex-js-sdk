@@ -10,7 +10,7 @@ import styles from './styles.css';
 
 export default function FileStagingArea(props) {
   const {
-    onFileDelete,
+    onFileRemove,
     onSubmit,
     files
   } = props;
@@ -23,8 +23,7 @@ export default function FileStagingArea(props) {
         type: getFileType(file.type),
         size: bytesToSize(file.fileSize),
         id: file.id,
-        key: file.id,
-        onDelete: onFileDelete
+        onRemove: onFileRemove
       };
 
       if (isImage(file)) {
@@ -32,7 +31,7 @@ export default function FileStagingArea(props) {
         chipProps.thumbnail = urlCreator.createObjectURL(file);
       }
 
-      fileChips.push(<ChipFile {...chipProps} />);
+      fileChips.push(<div className={classNames(`chip-container`, styles.chipContainer)} key={file.id}><ChipFile {...chipProps} /></div>);
     });
   }
 
@@ -50,6 +49,6 @@ export default function FileStagingArea(props) {
 
 FileStagingArea.propTypes = {
   files: PropTypes.object,
-  onFileDelete: PropTypes.func,
+  onFileRemove: PropTypes.func,
   onSubmit: PropTypes.func
 };

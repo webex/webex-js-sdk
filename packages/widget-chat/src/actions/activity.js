@@ -1,16 +1,7 @@
 import marked from 'marked';
 import {filterSync} from '@ciscospark/helper-html';
 
-import {
-  constructImage,
-  isImage,
-  sanitize
-} from '../utils/files';
-
-import {
-  constructActivity
-} from '../utils/activity';
-
+import {sanitize} from '../utils/files';
 
 export const ADD_FILES_TO_ACTIVITY = `ADD_FILES_TO_ACTIVITY`;
 export function addFilesToActivity(files) {
@@ -18,6 +9,16 @@ export function addFilesToActivity(files) {
     type: ADD_FILES_TO_ACTIVITY,
     payload: {
       files
+    }
+  };
+}
+
+export const REMOVE_FILE_FROM_ACTIVITY = `REMOVE_FILE_FROM_ACTIVITY`;
+export function removeFileFromActivity(id) {
+  return {
+    type: REMOVE_FILE_FROM_ACTIVITY,
+    payload: {
+      id
     }
   };
 }
@@ -69,25 +70,22 @@ export function addFiles(conversation, activity, files, spark) {
       dispatch(saveShareActivity(shareActivity));
     }
 
-    const images = [];
     let cleanFiles;
     if (files && files.length) {
-      cleanFiles = files.map((file) => {
-        file = sanitize(file);
-        if (isImage(file)) {
-          images.push(constructImage(file));
-        }
-        return file;
-      });
+      cleanFiles = files.map((file) => sanitize(file));
     }
 
-    Promise.all(images)
-      .then((localImages) => {
-        dispatch(updateActivityStatus({isUploadingShare: true}));
-        dispatch(addFilesToActivity(cleanFiles));
-        cleanFiles.forEach((file) => shareActivity.add(file));
-        // create update staging area with new files
-      });
+    dispatch(updateActivityStatus({isUploadingShare: true}));
+    dispatch(addFilesToActivity(cleanFiles));
+    cleanFiles.forEach((file) => shareActivity.add(file));
+  };
+}
+
+export function removeFile(id, activity) {
+  return (dispatch) => {
+    const shareActivity = activity.get(`shareActivity`);
+    const file = activity.getIn([`files`, id]);
+    shareActivity.remove(file).then(() => dispatch(removeFileFromActivity(id)));
   };
 }
 
@@ -96,7 +94,7 @@ export function submitActivity(conversation, activity, spark) {
     dispatch(updateActivityStatus({isSending: true}));
     const message = _createMessageObject(activity.get(`text`));
     const shareActivity = activity.get(`shareActivity`);
-    if (shareActivity) {
+    if (shareActivity && activity.get(`files`).size) {
       shareActivity.displayName = message.displayName;
       shareActivity.content = message.content;
       spark.conversation.share(conversation, shareActivity)

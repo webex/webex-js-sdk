@@ -3,6 +3,7 @@ import {Map, OrderedMap} from 'immutable';
 import {
   ADD_FILES_TO_ACTIVITY,
   RESET_ACTIVITY,
+  REMOVE_FILE_FROM_ACTIVITY,
   SAVE_SHARE_ACTIVITY,
   UPDATE_ACTIVITY_STATUS,
   UPDATE_ACTIVITY_TEXT
@@ -25,6 +26,10 @@ export default function reduceActivity(state = initialState, action) {
     }, {});
 
     return state.mergeIn([`files`], files);
+  }
+
+  case REMOVE_FILE_FROM_ACTIVITY: {
+    return state.deleteIn([`files`, action.payload.id]);
   }
 
   case RESET_ACTIVITY: {
