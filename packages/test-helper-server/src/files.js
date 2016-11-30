@@ -67,10 +67,11 @@ router.get('/download/:id', function(req, res, next) {
   });
 });
 
-router.use(`/metadata`, multer({dest: uploadPath}).array(`files`));
+var storage = multer.memoryStorage();
+var upload = multer({storage: storage});
 
 ['put', 'patch', 'post'].forEach(function(methodName) {
-  router[methodName]('/metadata', function(req, res) {
+  router[methodName]('/metadata', upload.array(`files`), function(req, res) {
     res
       .status(200)
       .json(req.files)
