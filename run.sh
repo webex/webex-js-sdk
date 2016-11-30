@@ -7,6 +7,7 @@ ps aux | grep grunt | grep -v grunt | awk '{print $2}' | xargs kill > /dev/null 
 
 # Now, fail if anything fails
 set -e
+set -x
 
 #
 # CONFIGURE NODE
@@ -74,8 +75,9 @@ WORKDIR="${SDK_ROOT_DIR}"
 export WORKDIR
 
 # Pass environment variables to container at runtime
-
-rm -f docker-env
+DOCKER_ENV_FILE="$(pwd)/docker-env"
+export DOCKER_ENV_FILE
+rm -f ${DOCKER_ENV_FILE}
 
 DOCKER_ENV_KEYS=""
 DOCKER_ENV_KEYS+="ATLAS_SERVICE_URL "
@@ -94,7 +96,7 @@ DOCKER_ENV_KEYS+="WDM_SERVICE_URL "
 # We don't want to fail if grep doesn't find the specifed var
 set +e
 for KEY in $DOCKER_ENV_KEYS; do
-  env | grep "${KEY}" >> docker-env
+  env | grep "${KEY}" >> ${DOCKER_ENV_FILE}
 done
 set -e
 
@@ -128,7 +130,7 @@ fi
 # Reset the Dockerfile to make sure we don't accidentally commit it later
 git checkout ./docker/builder/Dockerfile
 
-DOCKER_RUN_OPTS="--env-file docker-env"
+DOCKER_RUN_OPTS="--env-file ${DOCKER_ENV_FILE}"
 # Cleanup the container when done
 DOCKER_RUN_OPTS="${DOCKER_RUN_OPTS} --rm"
 # Make sure the npm cache stays inside the workspace

@@ -25,3 +25,4 @@ string
 .sauce.tid
 .npm
 local/
+docker-env
