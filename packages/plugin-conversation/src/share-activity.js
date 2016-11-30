@@ -7,7 +7,7 @@
 import {proxyEvents, transferEvents} from '@ciscospark/common';
 import {detect} from '@ciscospark/http-core';
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {filter, has, map, some} from 'lodash';
+import {filter, map, pick, some} from 'lodash';
 import {EventEmitter} from 'events';
 import mime from 'mime-types';
 
@@ -75,38 +75,26 @@ const ShareActivity = SparkPlugin.extend({
    * Adds an additional file to the share and begins submitting it to spark
    * files
    * @param {File} file
+   * @param {Object} options
+   * @param {Object} options.actions
    * @returns {EventEmittingPromise}
    */
-  add(file) {
-    let actions;
-
-    // ArrayBuffer might be located in an object with the actions.
-    if (has(file, `file`) && has(file, `actions`)) {
-      this.logger.info(`share-activity: ArrayBuffer with actions found`);
-      actions = file.actions;
-      file = file.file;
-    }
-
-    // Blobs will contain the actions in the Blob object
-    else if (has(file, `actions`)) {
-      this.logger.info(`share-activity: Blob with actions found`);
-      actions = file.actions;
-    }
+  add(file, options) {
+    options = options || {};
     let upload = this.uploads.get(file);
+
     if (upload) {
       return upload[PROMISE_SYMBOL];
     }
-
     const emitter = new EventEmitter();
 
-    upload = {
+    upload = Object.assign({
       displayName: file.name,
       fileSize: file.size || file.byteLength || file.length,
       mimeType: file.type,
       objectType: `file`,
-      actions,
       [EMITTER_SYMBOL]: emitter
-    };
+    }, pick(options, `actions`));
 
     this.uploads.set(file, upload);
     const promise = this.detect(file)

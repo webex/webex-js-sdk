@@ -218,14 +218,17 @@ describe(`plugin-conversation`, function() {
           }));
       });
 
-      it(`shares a whiteboard`, () => spark.conversation.share(conversation, [{
-        file: sampleImageSmallOnePng,
-        actions: [{
-          type: `edit`,
-          mimeType: `application/x-cisco-spark-whiteboard`,
-          url: `https://boards.example.com/boards/1`
-        }]
-      }])
+      it(`shares a whiteboard`, () => {
+        const activity = spark.conversation.makeShare(conversation);
+
+        activity.add(sampleImageSmallOnePng, {
+          actions: [{
+            type: `edit`,
+            mimeType: `application/x-cisco-spark-whiteboard`,
+            url: `https://boards.example.com/boards/1`
+          }]
+        })
+
         .then((activity) => {
           assert.isActivity(activity);
           assert.isEncryptedActivity(activity);
@@ -240,7 +243,8 @@ describe(`plugin-conversation`, function() {
           return spark.conversation.download(activity.object.files.items[0])
             .then(tap((f) => assert.equal(f.type, `image/png`)));
         })
-        .then((file0) => assert.eventually.isTrue(fh.isMatchingFile(file0, sampleImageSmallOnePng))));
+        .then((file0) => assert.eventually.isTrue(fh.isMatchingFile(file0, sampleImageSmallOnePng)));
+      });
     });
 
     describe(`#makeShare`, () => {

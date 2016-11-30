@@ -1522,23 +1522,35 @@ describe('Services', function() {
         });
 
         describe('shares a whiteboard', function() {
+          ensureConversation();
           this.timeout(60000);
-          var whiteboardActivity;
+          var whiteboardActivity = {};
+          var object = {};
 
           before(function() {
             sinon.spy(party.spock.spark, 'upload');
-            return party.spock.spark.conversation.share(conversation, {
-              files: [{
-                file: fixtures.sampleImageSmallOnePng,
-                actions: [{
-                  type: 'edit',
-                  mimeType: 'application/x-cisco-spark-whiteboard',
-                  url: 'https://boards.example.com/boards/1'
-                }]
-              }]
-            })
-              .then(function(a) {
-                whiteboardActivity = a;
+
+            return party.spock.spark.conversation.createShareActivity(conversation, object)
+              .then(function(activity) {
+                return activity.addFile(fixtures.sampleImageSmallOnePng, {
+                  actions: [{
+                    type: 'edit',
+                    mimeType: 'application/x-cisco-spark-whiteboard',
+                    url: 'https://boards.example.com/boards/1'
+                  }]
+                });
+              })
+
+              .then(function(activity) {
+                return party.spock.spark.conversation._prepareActivity(activity, object);
+              })
+
+              .then(function(activity) {
+                return party.spock.spark.conversation._submitContentActivity(conversation, object, activity, {});
+              })
+
+              .then(function(activity) {
+                whiteboardActivity = activity;
               });
           });
 

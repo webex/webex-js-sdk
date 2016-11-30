@@ -11,7 +11,6 @@ var defaults = require('lodash.defaults');
 var EventEmitter = require('events').EventEmitter;
 var filter = require('lodash.filter');
 var findIndex = require('lodash.findindex');
-var has = require('lodash.has');
 var map = require('lodash.map');
 var merge = require('lodash.merge');
 var oneFlight = require('../../../../util/one-flight');
@@ -118,24 +117,12 @@ var ShareActivityBase = SparkBase.extend(
    * file is no longer in the files array, then the
    * upload is discarded.
    * @param {FileObject} file
+   * @param {Object} options
+   * @param {Object} options.actions
    * @returns {Promise} Resolves with the updated activity
    */
-  addFile: function addFile(file) {
-    /* eslint complexity: [0] */
-    var actions;
-
-    // ArrayBuffer might be located in an object with the actions.
-    if (has(file, 'file') && has(file, 'actions')) {
-      this.logger.info('share-activity: ArrayBuffer with actions found');
-      actions = file.actions;
-      file = file.file;
-    }
-
-    // Blobs will contain the actions in the Blob object
-    else if (has(file, 'actions')) {
-      this.logger.info('share-activity: Blob with actions found');
-      actions = file.actions;
-    }
+  addFile: function addFile(file, options) {
+    options = options || {};
 
     // Give the file a temp id and push it on as while the upload is pending
     file.clientTempId = file.clientTempId || uuid.v4();
@@ -209,7 +196,6 @@ var ShareActivityBase = SparkBase.extend(
           .then(function assignFileMetadata(data) {
             scr.loc = data.downloadUrl;
             assign(item, {
-              actions: actions,
               clientTempId: file.clientTempId,
               displayName: file.name,
               fileSize: file.size || file.byteLength || file.length,
@@ -217,7 +203,7 @@ var ShareActivityBase = SparkBase.extend(
               objectType: 'file',
               scr: scr,
               url: data.downloadUrl
-            });
+            }, pick(options, 'actions'));
           });
 
         promises.push(filePromise);
