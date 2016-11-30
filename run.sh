@@ -109,6 +109,9 @@ fi
 if [ -n "${SAUCE_IS_DOWN}" ]; then
   DOCKER_RUN_ENV+=" -e SAUCE_IS_DOWN=${SAUCE_IS_DOWN} "
 fi
+if [ -n "${SDK_BUILD_DEBUG}" ]; then
+  DOCKER_RUN_ENV+=" -e SDK_BUILD_DEBUG=${SDK_BUILD_DEBUG} "
+fi
 
 export DOCKER_CONTAINER_NAME="${JOB_NAME}-${BUILD_NUMBER}-builder"
 
