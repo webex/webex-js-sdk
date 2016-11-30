@@ -12,7 +12,7 @@ function ListSeparator(props) {
 }
 
 ListSeparator.propTypes = {
-  primaryText: PropTypes.string.isRequired
+  primaryText: PropTypes.object
 };
 
 export default ListSeparator;

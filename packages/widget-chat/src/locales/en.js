@@ -7,5 +7,7 @@ export default
     youCreatedConversation: `You created conversation.`,
     someoneElseCreatedConversation: `{name} created conversation.`,
     youDeletedYourMessage: `You deleted your message.`,
-    someoneDeletedTheirMessage: `{name} deleted their own message.`
+    someoneDeletedTheirMessage: `{name} deleted their own message.`,
+    today: `Today`,
+    yesterday: `Yesterday`
   };
