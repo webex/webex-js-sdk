@@ -3,6 +3,7 @@ import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 import _ from 'lodash';
+import {injectIntl, intlShape, FormattedMessage} from 'react-intl';
 
 import {
   fetchAvatarForUserId,
@@ -333,7 +334,7 @@ export class ChatWidget extends Component {
       user,
       widget
     } = props;
-
+    const {formatMessage} = this.props.intl;
     const {
       avatars,
       currentUser
@@ -341,7 +342,10 @@ export class ChatWidget extends Component {
 
     let main = ( // eslint-disable-line no-extra-parens
       <div className={classNames(`loading`, styles.loading)}>
-        {`Connecting...`}
+        <FormattedMessage
+          defaultMessage={`Connecting`}
+          id={`connecting`}
+        />{`...`}
         <div className={classNames(`spinner-container`, styles.spinnerContainer)}>
           <Spinner />
         </div>
@@ -357,17 +361,33 @@ export class ChatWidget extends Component {
 
       let scrollButton;
       if (props.widget.showScrollToBottomButton) {
-        const label = widget.hasNewMessage ? `New Messages` : null;
+        const newMessages = {
+          id: `newMessages`,
+          defaultMessage: `New Messages`
+        };
+        const label = widget.hasNewMessage ? formatMessage(newMessages) : null;
         scrollButton = <ScrollToBottomButton label={label} onClick={this.handleScrollToBottom} />;
       }
 
       let deleteAlert;
       if (props.widget.showAlertModal) {
+        const confirmDeletingMessage = {
+          id: `confirmDeletingMessage`,
+          defaultMessage: `Are you sure you want to delete this message?`
+        };
+        const deleteMessage = {
+          id: `delete`,
+          defaultMessage: `Delete`
+        };
+        const cancelMessage = {
+          id: `cancel`,
+          defaultMessage: `Cancel`
+        };
         const alertMessages = {
-          title: `Delete`,
-          body: `Are you sure you want to delete this message?`,
-          actionButtonText: `Delete`,
-          cancelButtonText: `Cancel`
+          title: formatMessage(deleteMessage),
+          body: formatMessage(confirmDeletingMessage),
+          actionButtonText: formatMessage(deleteMessage),
+          cancelButtonText: formatMessage(cancelMessage)
         };
         deleteAlert = ( // eslint-disable-line no-extra-parens
           <ConfirmationModal
@@ -383,7 +403,12 @@ export class ChatWidget extends Component {
         const toUserAvatar = avatars[toUser.id];
         const isTyping = indicators.typing.length > 0;
         const {displayName} = toUser;
-        const messagePlaceholder = `Send a message to ${displayName}`;
+        const placeholderMessage = {
+          id: `sendAMessageToRoom`,
+          defaultMessage: `Send a message to {displayName}`,
+          description: `Placeholder value to show in message input field`
+        };
+        const messagePlaceholder = formatMessage(placeholderMessage, {displayName});
         main = ( // eslint-disable-line no-extra-parens
           <div className={classNames(`widget-chat-inner`, styles.widgetChatInner)}>
             <div className={classNames(`title-bar-wrapper`, styles.titleBarWrapper)}>
@@ -442,6 +467,7 @@ ChatWidget.propTypes = {
   fetchCurrentUser: PropTypes.func.isRequired,
   flagActivity: PropTypes.func.isRequired,
   hideDeleteModal: PropTypes.func.isRequired,
+  intl: intlShape.isRequired,
   listenToMercuryActivity: PropTypes.func.isRequired,
   loadPreviousMessages: PropTypes.func.isRequired,
   removeFlagFromServer: PropTypes.func.isRequired,
@@ -484,4 +510,4 @@ export default connect(
     showScrollToBottomButton,
     updateHasNewMessage
   }, dispatch)
-)(injectSpark(ChatWidget));
+)(injectSpark(injectIntl(ChatWidget)));
