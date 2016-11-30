@@ -32,63 +32,44 @@ echo "# BOOTSTRAPPING MODULES"
 echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} npm run bootstrap
 
-# disabling for now; lerna@2.0.0-beta30 fails here
-# set +e
-# echo "# Top Level Dependencies"
-# npm ls --depth 0
-# echo "# Package Dependencies"
-# npm run lerna -- exec -- npm ls --depth 0
-# set -e
-
 echo "################################################################################"
 echo "# BUILDING MODULES"
 echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} npm run build
 
+echo "################################################################################"
+echo "# RUNNING TESTS"
+echo "################################################################################"
+
 PIDS=""
 
-echo "################################################################################"
-echo "# RUNNING LEGACY NODE TESTS"
-echo "################################################################################"
-docker run --name "legacy-node-${BUILD_NUMBER}" -e PACKAGE=legacy ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:node > ${SDK_ROOT_DIR}/reports/logs/legacy.node.log 2>&1" &
-PID="$!"
-echo "Running legacy node tests as ${PID}"
-PIDS+=" ${PID}"
-
-echo "################################################################################"
-echo "# RUNNING LEGACY BROWSER TESTS"
-echo "################################################################################"
-docker run --name "legacy-browser-${BUILD_NUMBER}" -e PACKAGE=legacy ${DOCKER_RUN_OPTS} bash -c "npm run test:legacy:browser > ${SDK_ROOT_DIR}/reports/logs/legacy.browser.log 2>&1" &
-PID="$!"
-echo "Running legacy browser tests as ${PID}"
-PIDS+=" ${PID}"
-
-echo "################################################################################"
-echo "# RUNNING MODULE TESTS"
-echo "################################################################################"
+STATS_FILE=$(pwd)/dockerstats
+echo "Piping docker stats to ${STATS_FILE}"
+docker stats > "${STATS_FILE}" &
+DOCKER_STATS_PID=$!
+trap "kill -TERM ${DOCKER_STATS_PID} && rm ${STATS_FILE}" EXIT
 
 # Ideally, the following would be done with lerna but there seem to be some bugs
 # in --scope and --ignore
-for i in ${SDK_ROOT_DIR}/packages/*; do
-  if ! echo $i | grep -qc -v test-helper ; then
+PACKAGES=$(ls "$(pwd)/packages")
+PACKAGES+=" legacy:node"
+PACKAGES+=" legacy:browser"
+for PACKAGE in ${PACKAGES}; do
+  if ! echo ${PACKAGE} | grep -qc -v test-helper ; then
     continue
   fi
 
-  if ! echo $i | grep -qc -v bin- ; then
+  if ! echo ${PACKAGE} | grep -qc -v bin- ; then
     continue
   fi
 
-  if ! echo $i | grep -qc -v xunit-with-logs ; then
+  if ! echo ${PACKAGE} | grep -qc -v xunit-with-logs ; then
     continue
   fi
 
-  echo "################################################################################"
-  echo "# Docker Stats"
-  echo "################################################################################"
-  docker stats --no-stream
-  docker ps
+  CONTAINER_NAME="${PACKAGE}-${BUILD_NUMBER}"
 
-  if [ "${CONCURRENCY}" != "" ]; then
+  if [ -n "${CONCURRENCY}" ]; then
     echo "Keeping concurrent job count below ${CONCURRENCY}"
     while [ $(jobs -p | wc -l) -gt ${CONCURRENCY} ]; do
       echo "."
@@ -98,26 +79,19 @@ for i in ${SDK_ROOT_DIR}/packages/*; do
     echo "Warning: CONCURRENCY limit not set; running all suites at once"
   fi
 
-  PACKAGE=$(echo $i | sed -e 's/.*packages\///g')
   echo "################################################################################"
-  echo "# RUNNING ${PACKAGE} TESTS"
+  echo "# RUNNING ${PACKAGE} TESTS IN CONTAINER ${CONTAINER_NAME}"
   echo "################################################################################"
   # Note: using & instead of -d so that wait works
   # Note: the Dockerfile's default CMD will run package tests automatically
-  docker run --name "${PACKAGE}-${BUILD_NUMBER}" -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} &
+  docker run --name "${CONTAINER_NAME}" -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} &
   PID="$!"
-  echo "Running tests for ${PACKAGE} as ${PID}"
   PIDS+=" ${PID}"
+  echo "Running tests for ${PACKAGE} as ${PID}"
 done
 
 FINAL_EXIT_CODE=0
 for P in $PIDS; do
-  echo "################################################################################"
-  echo "# Docker Stats"
-  echo "################################################################################"
-  docker stats --no-stream
-  docker ps
-
   echo "################################################################################"
   echo "# Waiting for $(jobs -p | wc -l) jobs to complete"
   echo "################################################################################"
@@ -131,7 +105,6 @@ for P in $PIDS; do
     echo "${PID} exited with code ${EXIT_CODE}; search for ${PID} above to determine which suite failed"
     FINAL_EXIT_CODE=1
   fi
-  # TODO cleanup sauce files for package
 done
 
 echo "################################################################################"
@@ -139,7 +112,7 @@ echo "# Stripping unhelpful, jenkins breaking logs from karma xml"
 echo "################################################################################"
 
 cd ${SDK_ROOT_DIR}
-for FILE in $(find ./reports/junit -name karma-*.xml) ; do
+for FILE in $(find ./reports/junit -name "karma-*.xml") ; do
   awk '
   BEGIN { write = 1 }
   /<system-out/{ write = 0 }

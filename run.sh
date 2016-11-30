@@ -162,8 +162,11 @@ fi
 #
 # CLEANUP CONTAINERS ON EXIT
 #
-
-trap "docker rmi ${DOCKER_CONTAINER_NAME}" EXIT
+# disabling for now. run.sh gets called multiple times, which leads to multiple
+# builds of the same container. this also has weird effects if there are still
+# containers running. Jason tells me docker is configured to aggressively GC, so
+# this should be fine.
+# trap "docker rmi ${DOCKER_CONTAINER_NAME}" EXIT
 
 #
 # RUN THE COMMAND THAT WAS PASSED TO THIS SCRIPT

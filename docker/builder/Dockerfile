@@ -13,9 +13,6 @@ ENV KARMA_PORT                8001
 ENV SAUCE_CONNECT_VERSION     4.4.2
 ENV MAX_SAUCE_CONNECT_RETRIES 3
 ENV MAX_TEST_SUITE_RETRIES    3
-ENV COVERAGE_DIR              /coverage
-ENV JUNIT_DIR                 /junit
-ENV LOGS_DIR                  /logs
 ENV SC_PID_FILE               /sauce/sc.pid
 ENV SC_READY_FILE             /sauce/sc.ready
 ENV SC_BINARY                 /sauce/sc-${SAUCE_CONNECT_VERSION}-linux/bin/sc

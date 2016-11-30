@@ -10,10 +10,6 @@ if [ -n "${SDK_BUILD_DEBUG}" ]; then
   set -x
 fi
 
-rm -rf ${COVERAGE_DIR:?}/*
-rm -rf ${JUNIT_DIR:?}/*
-rm -rf ${LOGS_DIR:?}/*
-
 # copied from http://www.tldp.org/LDP/abs/html/comparison-ops.html because I can
 # never remember which is which
 # > -z string is null, that is, has zero length
@@ -80,11 +76,11 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
 
   set +e
   if [ "${PACKAGE}" == "legacy:node" ]; then
-    npm run test:legacy:node
+    npm run test:legacy:node > ./reports/logs/${PACKAGE}.log
   elif [ "${PACKAGE}" == "legacy:browser" ]; then
-    npm run test:legacy:browser
+    npm run test:legacy:browser > ./reports/logs/${PACKAGE}.log
   else
-    npm run test:package
+    npm run test:package > ./reports/logs/${PACKAGE}.log
   fi
   EXIT_CODE=$?
   set -e
