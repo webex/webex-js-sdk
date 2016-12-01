@@ -6,6 +6,14 @@
   --color-gray-ultra-light: #d7d7d8;
 }
 
+.separator.upper {
+  text-transform: uppercase;
+}
+
+.separator.blue {
+  color: var(--color-primary);
+}
+
 .separator {
   display: flex;
   padding-top: 17px;
@@ -44,4 +52,9 @@
 .separator-text::after {
   left: 100%;
   margin-left: 20px;
+}
+
+.separator-text.blue::before,
+.separator-text.blue::after {
+  background-color: var(--color-primary);
 }

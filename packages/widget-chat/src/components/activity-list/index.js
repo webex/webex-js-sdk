@@ -38,7 +38,7 @@ export default function ActivityList(props) {
           id={`newMessages`}
         />
       );
-      items.push(<ListSeparator primaryText={newMessages} />);
+      items.push(<ListSeparator classNames={[`upper`, `blue`]} primaryText={newMessages} />);
       shouldDisplayNewMessageMarker = false;
     }
 
