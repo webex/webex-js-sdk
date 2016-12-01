@@ -83,7 +83,7 @@ export default function processImage({file, thumbnailMaxWidth, thumbnailMaxHeigh
 
       const ctx = canvas.getContext(`2d`);
       if (file && file.image && file.image.orientation && file.image.orientation !== 1) {
-        ImageOrientationUtil.setImageOrientation({orientation: file.image.orientation, img, width: thumbnailDimensions.width, height: thumbnailDimensions.height, ctx});
+        imageOrientationUtil.setImageOrientation({orientation: file.image.orientation, img, width: thumbnailDimensions.width, height: thumbnailDimensions.height, ctx});
       }
       else {
         ctx.drawImage(img, 0, 0, thumbnailDimensions.width, thumbnailDimensions.height);

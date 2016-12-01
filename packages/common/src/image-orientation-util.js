@@ -6,7 +6,7 @@
 /* global Uint8Array, FileReader */
 
 // require('setimmediate');
-var ExifImage = require('exif').ExifImage;
+const ExifImage = require(`exif`).ExifImage;
 
 /**
 * Adds exif orientation information on the image file
@@ -16,13 +16,11 @@ var ExifImage = require('exif').ExifImage;
 */
 export function getExifData(file, buf) {
   return new Promise((resolve) => {
-    if (file && file.image && file.mimeType === `image/jpeg`) {
+    // For avatar images the file.type is set as image/jpeg, however for images shared in an activity file.mimeType is set as image/jpeg. Handling both conditions.
+    if (file && file.image && (file.type === `image/jpeg` || file.mimeType === `image/jpeg`)) {
       /* eslint-disable no-new */
       new ExifImage({image: buf}, (error, exifData) => {
-        if (error) {
-          this.logger.info(`conversation: error with image rotation `, error.message);
-        }
-        else if (exifData) {
+        if (!error && exifData) {
           file.image.orientation = exifData.image.Orientation;
         }
         resolve(buf);
@@ -32,7 +30,7 @@ export function getExifData(file, buf) {
       resolve(buf);
     }
   });
-},
+}
 
 /**
 * fetches and updates the image file with exif information, required to correctly rotate the image activity
@@ -53,10 +51,8 @@ export function fixImageOrientation(file) {
       resolve(buf);
     };
   })
-  .then(function getExifData(buf) {
-    return getExifData(file, buf);
-  });
-},
+  .then((buf) => getExifData(file, buf));
+}
 
 
 /**
@@ -107,37 +103,37 @@ export function setImageOrientation(options) {
     ctx: options.ctx
   };
   switch (options && options.orientation) {
-    case 3:
+  case 3:
     // rotateImage180
     image.deg = 180;
     image.flip = false;
     break;
-    case 4:
+  case 4:
     // rotate180AndFlipImage
     image.deg = 180;
     image.flip = true;
     break;
-    case 5:
+  case 5:
     // rotate90AndFlipImage
     image.deg = 270;
     image.flip = true;
     break;
-    case 6:
+  case 6:
     // rotateImage90
     image.deg = 270;
     image.flip = false;
     break;
-    case 7:
+  case 7:
     // rotateNeg90AndFlipImage
     image.deg = 90;
     image.flip = true;
     break;
-    case 8:
+  case 8:
     // rotateNeg90
     image.deg = 90;
     image.flip = false;
     break;
-    default:
+  default:
     break;
   }
   drawImage(image);
