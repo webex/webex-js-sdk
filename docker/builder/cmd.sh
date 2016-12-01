@@ -10,8 +10,6 @@ set -e
 export env $(cat .env | xargs)
 
 GRUNT_LOG_FILE="/workspace/reports/logs/${PACKAGE}.log"
-mkdir -p /workspace/reports/logs/
-mkdir -p /workspace/reports/sauce
 
 if [ -n "${SDK_BUILD_DEBUG}" ]; then
   set -x

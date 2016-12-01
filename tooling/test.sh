@@ -22,7 +22,12 @@ rm -rf "${SDK_ROOT_DIR}/.sauce/*/sc.*"
 rm -rf "${SDK_ROOT_DIR}/.sauce/*/sauce_connect*log"
 
 rm -rf ${SDK_ROOT_DIR}/reports
+mkdir -p ${SDK_ROOT_DIR}/reports/coverage
+mkdir -p ${SDK_ROOT_DIR}/reports/coverage-final
+mkdir -p ${SDK_ROOT_DIR}/reports/junit
 mkdir -p ${SDK_ROOT_DIR}/reports/logs
+mkdir -p ${SDK_ROOT_DIR}/reports/sauce
+chmod -R ugo+w ${SDK_ROOT_DIR}/reports
 
 echo "################################################################################"
 echo "# BOOTSTRAPPING MODULES"
@@ -82,13 +87,13 @@ for PACKAGE in ${PACKAGES}; do
 done
 
 FINAL_EXIT_CODE=0
-for P in $PIDS; do
+for PID in $PIDS; do
   echo "################################################################################"
   echo "# Waiting for $(jobs -p | wc -l) jobs to complete"
   echo "################################################################################"
 
   set +e
-  wait $P
+  wait $PID
   EXIT_CODE=$?
   set -e
 
