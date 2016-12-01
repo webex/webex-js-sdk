@@ -372,23 +372,23 @@ export class ChatWidget extends Component {
 
       let deleteAlert;
       if (props.widget.showAlertModal) {
-        const confirmDeletingMessage = {
-          id: `confirmDeletingMessage`,
-          defaultMessage: `Are you sure you want to delete this message?`
-        };
-        const deleteMessage = {
-          id: `delete`,
-          defaultMessage: `Delete`
-        };
-        const cancelMessage = {
-          id: `cancel`,
-          defaultMessage: `Cancel`
-        };
         const alertMessages = {
-          title: formatMessage(deleteMessage),
-          body: formatMessage(confirmDeletingMessage),
-          actionButtonText: formatMessage(deleteMessage),
-          cancelButtonText: formatMessage(cancelMessage)
+          title: formatMessage({
+            id: `delete`,
+            defaultMessage: `Delete`
+          }),
+          body: formatMessage({
+            id: `confirmDeletingMessage`,
+            defaultMessage: `Are you sure you want to delete this message?`
+          }),
+          actionButtonText: formatMessage({
+            id: `delete`,
+            defaultMessage: `Delete`
+          }),
+          cancelButtonText: formatMessage({
+            id: `cancel`,
+            defaultMessage: `Cancel`
+          })
         };
         deleteAlert = ( // eslint-disable-line no-extra-parens
           <ConfirmationModal
