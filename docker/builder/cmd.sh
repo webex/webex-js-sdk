@@ -9,6 +9,8 @@ set -e
 # Load secrets
 export env $(cat .env | xargs)
 
+cd ${WORKSPACE}
+
 GRUNT_LOG_FILE="$(pwd)/reports/logs/${PACKAGE}.log"
 
 if [ -n "${SDK_BUILD_DEBUG}" ]; then
@@ -120,3 +122,5 @@ if [ "${EXIT_CODE}" -ne "0" ]; then
   echo "${PACKAGE}: Suite: Test Suite failed after ${MAX_TEST_SUITE_RETRIES} attempts"
   exit "${EXIT_CODE}"
 fi
+
+echo "${PACKAGE}: Suite: succeeded"
