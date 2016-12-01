@@ -71,7 +71,7 @@ var EncryptionServiceBase = SparkBase.extend(
     }
 
     var emitter = new EventEmitter();
-    
+
     var promise = this._fetchDownloadUrl(scr)
       .then(function downloadAndEmit(url) {
         var promise = this._fetchBinary(url);

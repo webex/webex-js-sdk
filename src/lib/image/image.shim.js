@@ -10,77 +10,9 @@
 
 var pick = require('lodash.pick');
 var imageBase = require('./image-base');
+var ImageOrientationUtil = require('../../util/image-orientation-util');
 
 var ImageUtil = {
-  drawImage: function drawImage(options) {
-    // save current context before applying transformations
-    options.ctx.save();
-    var rad;
-    // convert degrees to radians
-    if (options.flip) {
-      rad = options.deg*Math.PI/180;
-    }
-    else {
-      rad = 2*Math.PI - options.deg*Math.PI/180;
-    }
-    // set the origin to the center of the image
-    options.ctx.translate(options.x + options.width/2, options.y + options.height/2);
-    // rotate the canvas around the origin
-    options.ctx.rotate(rad);
-    if (options.flip) {
-      // flip the canvas
-      options.ctx.scale(-1,1);
-    }
-    // draw the image
-    options.ctx.drawImage(options.img, -options.width/2, -options.height/2, options.width, options.height);
-    // restore the canvas
-    options.ctx.restore();
-  },
-
-  setImageOrientation: function setImageOrientation(options) {
-    var image = {
-      img: options.img,
-      x: 0,
-      y: 0,
-      width: options.width,
-      height: options.height,
-      deg: 0,
-      flip: true,
-      ctx: options.ctx
-    };
-    switch (options && options.orientation) {
-      case 3:
-        // rotateImage180
-        image.deg = 180;
-        image.flip = false;
-        break;
-      case 4:
-        image.deg = 180;
-        image.flip = true;
-        break;
-      case 5:
-        // rotate90AndFlipImage
-        image.deg = 270;
-        image.flip = true;
-        break;
-      case 6:
-        // rotateImage90
-        image.deg = 270;
-        image.flip = false;
-        break;
-      case 7:
-        // rotateNeg90AndFlipImage
-        image.deg = 90;
-        image.flip = true;
-        break;
-      case 8:
-        // rotateNeg90
-        image.deg = 90;
-        image.flip = false;
-        break;
-    }
-    this.drawImage(image);
-  },
 
   processImage: function processImage(file, metadata, options) {
     if (file.type.indexOf('image') !== 0) {
@@ -107,7 +39,7 @@ var ImageUtil = {
 
         var ctx = canvas.getContext('2d');
         if (file && file.image && file.image.orientation && file.image.orientation !== 1) {
-          this.setImageOrientation({orientation: file.image.orientation, img, width: dimensions.width, height: dimensions.height, ctx});
+          ImageOrientationUtil.setImageOrientation({orientation: file.image.orientation, img, width: dimensions.width, height: dimensions.height, ctx});
         }
         else {
           ctx.drawImage(img, 0, 0, dimensions.width, dimensions.height);

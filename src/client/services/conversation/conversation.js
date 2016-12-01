@@ -5,8 +5,6 @@
 
 'use strict';
 
-/* global Uint8Array */
-
 var assign = require('lodash.assign');
 var cloneDeep = require('lodash.clonedeep');
 var Decrypter = require('./decrypter');
@@ -20,6 +18,7 @@ var isFunction = require('lodash.isfunction');
 var last = require('lodash.last');
 var merge = require('lodash.merge');
 var noop = require('lodash.noop');
+var ImageOrientationUtil = require('../../../util/image-orientation-util');
 var InboundNormalizer = require('./inbound-normalizer');
 var OutboundNormalizer = require('./outbound-normalizer');
 var omit = require('lodash.omit');
@@ -32,9 +31,6 @@ var ShareActivity = require('./share-activity');
 var SparkBase = require('../../../lib/spark-base');
 var uniq = require('lodash.uniq');
 var uuid = require('uuid');
-
-require('setimmediate');
-var ExifImage = require('exif').ExifImage;
 
 /**
  * @class
@@ -94,46 +90,6 @@ var ConversationService = SparkBase.extend(
     this.encryptionDisabled = false;
   },
 
-  getExifData: function getExifData(file, buf) {
-    return new Promise(function setOrientation(resolve) {
-      if (file && file.image && file.mimeType === 'image/jpeg') {
-        new ExifImage({image: buf}, function fetchExifData(error, exifData) {
-          if (error) {
-            this.logger.info('conversation: error with image rotation ', error.message);
-          }
-          else {
-            if (exifData) {
-              file.image.orientation = exifData.image.Orientation;
-            }
-          }
-          resolve(buf);
-        });
-      }
-      else {
-        resolve(buf);
-      }
-    }.bind(this));
-  },
-
-  fixImageOrientation: function fixImageOrientation(file) {
-    return new Promise(function readFileInBuffer(resolve) {
-      var reader = new FileReader();
-      reader.readAsArrayBuffer(file);
-      reader.onload = function onload() {
-        var arrayBuffer = reader.result;
-        var buf = new Buffer(arrayBuffer.byteLength);
-        var view = new Uint8Array(arrayBuffer);
-        for (let i = 0; i < buf.length; ++i) {
-          buf[i] = view[i];
-        }
-        resolve(buf);
-      };
-    }.bind(this))
-      .then(function getExifData(buf) {
-        return this.getExifData(file, buf);
-      }.bind(this));
-  },
-
   // Retrievers
   // ----------
 
@@ -167,7 +123,7 @@ var ConversationService = SparkBase.extend(
           promise = this.spark.encryption.download(item.scr)
             .on('progress', emitter.emit.bind(emitter, 'progress'))
               .then(function getExifData(res) {
-                return this.getExifData(item, res);
+                return ImageOrientationUtil.getExifData(item, res);
               }.bind(this))
               .then(function ensureBlob(res) {
                 if (typeof window === 'undefined') {

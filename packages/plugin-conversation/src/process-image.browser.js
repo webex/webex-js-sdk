@@ -4,6 +4,7 @@
  * @private
  */
 
+import {imageOrientationUtil} from '@ciscospark/common';
 import {pick} from 'lodash';
 import {base64} from '@ciscospark/common';
 
@@ -46,90 +47,6 @@ export function computeDimensions({width, height}, maxWidth, maxHeight) {
 }
 
 /**
- * Draws the image on the canvas so that the thumbnail
- * could be generated
- * @param {Object} options
- * @returns {Object}
- */
-export function drawImage(options) {
-  // save current context before applying transformations
-  options.ctx.save();
-  let rad;
-  // convert degrees to radians
-  if (options.flip) {
-    rad = options.deg * Math.PI / 180;
-  }
-  else {
-    rad = 2 * Math.PI - options.deg * Math.PI / 180;
-  }
-  // set the origin to the center of the image
-  options.ctx.translate(options.x + options.width / 2, options.y + options.height / 2);
-  // rotate the canvas around the origin
-  options.ctx.rotate(rad);
-  if (options.flip) {
-    // flip the canvas
-    options.ctx.scale(-1, 1);
-  }
-  // draw the image
-  options.ctx.drawImage(options.img, -options.width / 2, -options.height / 2, options.width, options.height);
-  // restore the canvas
-  options.ctx.restore();
-}
-
-/**
- * Rotates/flips the image on the canvas as per exif information
- * @param {Object} options
- * @returns {Object}
- */
-export function setImageOrientation(options) {
-  const image = {
-    img: options.img,
-    x: 0,
-    y: 0,
-    width: options.width,
-    height: options.height,
-    deg: 0,
-    flip: true,
-    ctx: options.ctx
-  };
-  switch (options && options.orientation) {
-  case 3:
-    // rotateImage180
-    image.deg = 180;
-    image.flip = false;
-    break;
-  case 4:
-    // rotate180AndFlipImage
-    image.deg = 180;
-    image.flip = true;
-    break;
-  case 5:
-    // rotate90AndFlipImage
-    image.deg = 270;
-    image.flip = true;
-    break;
-  case 6:
-    // rotateImage90
-    image.deg = 270;
-    image.flip = false;
-    break;
-  case 7:
-    // rotateNeg90AndFlipImage
-    image.deg = 90;
-    image.flip = true;
-    break;
-  case 8:
-    // rotateNeg90
-    image.deg = 90;
-    image.flip = false;
-    break;
-  default:
-    break;
-  }
-  drawImage(image);
-}
-
-/**
  * Measures an image file and produces a thumbnail for it
  * @param {Object} options
  * @param {Blob|ArrayBuffer} options.file
@@ -166,7 +83,7 @@ export default function processImage({file, thumbnailMaxWidth, thumbnailMaxHeigh
 
       const ctx = canvas.getContext(`2d`);
       if (file && file.image && file.image.orientation && file.image.orientation !== 1) {
-        setImageOrientation({orientation: file.image.orientation, img, width: thumbnailDimensions.width, height: thumbnailDimensions.height, ctx});
+        ImageOrientationUtil.setImageOrientation({orientation: file.image.orientation, img, width: thumbnailDimensions.width, height: thumbnailDimensions.height, ctx});
       }
       else {
         ctx.drawImage(img, 0, 0, thumbnailDimensions.width, thumbnailDimensions.height);

@@ -3,16 +3,14 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  * @private
  */
-/* global FileReader */
 
-import {proxyEvents, tap} from '@ciscospark/common';
+import {imageOrientationUtil, proxyEvents, tap} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
 import {cloneDeep, defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
 import uuid from 'uuid';
 import querystring from 'querystring';
 import ShareActivity from './share-activity';
 import {EventEmitter} from 'events';
-const ExifImage = require(`exif`).ExifImage;
 
 const Conversation = SparkPlugin.extend({
   namespace: `Conversation`,
@@ -132,7 +130,7 @@ const Conversation = SparkPlugin.extend({
     const shunt = new EventEmitter();
     const promise = (isEncrypted ? this.spark.encryption.download(item.scr) : this._downloadUnencryptedFile(item.url))
       .on(`progress`, (...args) => shunt.emit(`progress`, ...args))
-      .then((res) => this.getExifData(item, res))
+      .then((res) => imageOrientationUtil.getExifData(item, res))
       .then((file) => {
         this.logger.info(`conversation: file downloaded`);
 
@@ -209,31 +207,6 @@ const Conversation = SparkPlugin.extend({
   },
 
   /**
-    * fetches and updates the image file with exif information, required to correctly rotate the image activity
-    * @param {Object} file
-    * @returns {Promise<Object>}
-  */
-  fixImageOrientation: function fixImageOrientation(file) {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.readAsArrayBuffer(file);
-      reader.onload = function onload() {
-        const arrayBuffer = reader.result;
-        const buf = new Buffer(arrayBuffer.byteLength);
-        const view = new Uint8Array(arrayBuffer);
-        for (let i = 0; i < buf.length; ++i) {
-          buf[i] = view[i];
-        }
-        resolve(buf);
-      };
-    })
-      .then(function getExifData(buf) {
-        return getExifData(file, buf);
-      });
-  },
-
-
-  /**
    * Fetches a single conversation
    * @param {Object} conversation
    * @param {Object} options
@@ -271,32 +244,6 @@ const Conversation = SparkPlugin.extend({
       })
       .then(tap((res) => this._recordUUIDs(res.body)))
       .then((res) => res.body);
-  },
-
-  /**
-   * Adds exif orientation information on the image file
-   * @param {Object} file
-   * @param {Object} buf
-   * @returns {Promise<ExifImage>}
-   */
-  getExifData: function getExifData(file, buf) {
-    return new Promise((resolve) => {
-      if (file && file.image && file.mimeType === `image/jpeg`) {
-        /* eslint-disable no-new */
-        new ExifImage({image: buf}, (error, exifData) => {
-          if (error) {
-            this.logger.info(`conversation: error with image rotation `, error.message);
-          }
-          else if (exifData) {
-            file.image.orientation = exifData.image.Orientation;
-          }
-          resolve(buf);
-        });
-      }
-      else {
-        resolve(buf);
-      }
-    });
   },
 
   /**
