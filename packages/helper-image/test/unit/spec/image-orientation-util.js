@@ -9,7 +9,7 @@ import file from '@ciscospark/test-helper-file';
 import {HttpError, request} from '../..';
 import sinon from '@ciscospark/test-helper-sinon';
 import {nodeOnly} from '@ciscospark/test-helper-mocha';
-describe(`http-image`, function() {
+describe(`helper-image`, function() {
   this.timeout(30000);
 
   describe(`getExifData()`, () => {
