@@ -9,7 +9,7 @@ set -e
 # Load secrets
 export env $(cat .env | xargs)
 
-GRUNT_LOG_FILE="/workspace/reports/logs/${PACKAGE}.log"
+GRUNT_LOG_FILE="$(pwd)/reports/logs/${PACKAGE}.log"
 
 if [ -n "${SDK_BUILD_DEBUG}" ]; then
   set -x
@@ -36,7 +36,7 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
       daemon -U --name sauce_connect -- ${SC_BINARY} \
         -D *.ciscospark.com,*.wbx2.com,*.webex.com*,storage101.dfw1.clouddrive.com \
         -vv \
-        -l "/workspace/reports/sauce/sauce_connect.${SC_ITERATION}.log" \
+        -l "$(pwd)/reports/sauce/sauce_connect.${SC_ITERATION}.log" \
         --tunnel-identifier "${SC_TUNNEL_IDENTIFIER}" \
         --pidfile "${SC_PID_FILE}" \
         --readyfile "${SC_READY_FILE}"
