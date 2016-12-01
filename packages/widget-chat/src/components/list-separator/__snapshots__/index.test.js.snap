@@ -1,0 +1,9 @@
+exports[`ListSeparator component renders properly 1`] = `
+<div
+  className="separator">
+  <p
+    className="separator-text">
+    Testing 123
+  </p>
+</div>
+`;
