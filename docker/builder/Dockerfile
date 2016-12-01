@@ -27,10 +27,6 @@ RUN chmod ugo+w /sauce
 
 WORKDIR /work
 
-VOLUME coverage
-VOLUME logs
-VOLUME junit
-
 COPY cmd.sh cmd.sh
 
 WORKDIR /workspace

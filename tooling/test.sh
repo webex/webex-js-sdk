@@ -43,8 +43,8 @@ PIDS=""
 # Ideally, the following would be done with lerna but there seem to be some bugs
 # in --scope and --ignore
 PACKAGES=$(ls "${SDK_ROOT_DIR}/packages")
-PACKAGES+=" legacy:node"
-PACKAGES+=" legacy:browser"
+PACKAGES+=" legacy-node"
+PACKAGES+=" legacy-browser"
 for PACKAGE in ${PACKAGES}; do
   if ! echo ${PACKAGE} | grep -qc -v test-helper ; then
     continue
