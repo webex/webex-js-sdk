@@ -159,7 +159,7 @@
     "grunt-cli": "~0.1.13",
     "grunt-concurrent": "^2.1.0",
     "grunt-continue": "~0.1.0",
-    "grunt-contrib-clean": "~0.6.0",
+    "grunt-contrib-clean": "^1.0.0",
     "grunt-contrib-connect": "~0.10.1",
     "grunt-contrib-copy": "~0.8.0",
     "grunt-contrib-watch": "^1.0.0",

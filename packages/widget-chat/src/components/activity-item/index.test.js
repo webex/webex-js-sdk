@@ -1,5 +1,6 @@
 import React from 'react';
-import renderer from 'react-test-renderer';
+
+import createComponentWithIntl from '../../utils/createComponentWithIntl';
 
 import ActivityItem from '.';
 
@@ -16,7 +17,7 @@ describe(`ActivityItem post component is self`, () => {
     verb: `post`
   };
 
-  const component = renderer.create(
+  const component = createComponentWithIntl(
     <ActivityItem {...activity} />
   );
 
@@ -37,7 +38,7 @@ describe(`ActivityItem post component not self`, () => {
     verb: `post`
   };
 
-  const component = renderer.create(
+  const component = createComponentWithIntl(
     <ActivityItem {...activity} />
   );
 
@@ -59,7 +60,7 @@ describe(`ActivityItem post component not self with html`, () => {
     verb: `post`
   };
 
-  const component = renderer.create(
+  const component = createComponentWithIntl(
     <ActivityItem {...activity} />
   );
 
@@ -80,7 +81,7 @@ describe(`ActivityItem tombstone component`, () => {
     verb: `tombstone`
   };
 
-  const component = renderer.create(
+  const component = createComponentWithIntl(
     <ActivityItem {...activity} />
   );
 

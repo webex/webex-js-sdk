@@ -49,6 +49,7 @@ module.exports = function gruntConfig(grunt) {
       `http-core`,
       `plugin-mercury`,
       `example-phone`,
+      `widget-chat`,
 
       `helper-html`,
       `plugin-wdm`,
