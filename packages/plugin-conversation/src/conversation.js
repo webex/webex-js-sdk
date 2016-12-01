@@ -4,9 +4,10 @@
  * @private
  */
 
-import {imageOrientationUtil, proxyEvents, tap} from '@ciscospark/common';
+import {proxyEvents, tap} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
 import {cloneDeep, defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
+import {getExifData} from '@ciscospark/helper-image';
 import uuid from 'uuid';
 import querystring from 'querystring';
 import ShareActivity from './share-activity';
@@ -130,7 +131,7 @@ const Conversation = SparkPlugin.extend({
     const shunt = new EventEmitter();
     const promise = (isEncrypted ? this.spark.encryption.download(item.scr) : this._downloadUnencryptedFile(item.url))
       .on(`progress`, (...args) => shunt.emit(`progress`, ...args))
-      .then((res) => imageOrientationUtil.getExifData(item, res))
+      .then((res) => getExifData(item, res))
       .then((file) => {
         this.logger.info(`conversation: file downloaded`);
 

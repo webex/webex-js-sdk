@@ -9,27 +9,34 @@
 const ExifImage = require(`exif`).ExifImage;
 
 /**
-* Adds exif orientation information on the image file
-* @param {Object} file
-* @param {Object} buf
-* @returns {Promise<ExifImage>}
+* Draws the image on the canvas so that the thumbnail
+* could be generated
+* @param {Object} options
+* @returns {Object}
 */
-export function getExifData(file, buf) {
-  return new Promise((resolve) => {
-    // For avatar images the file.type is set as image/jpeg, however for images shared in an activity file.mimeType is set as image/jpeg. Handling both conditions.
-    if (file && file.image && (file.type === `image/jpeg` || file.mimeType === `image/jpeg`)) {
-      /* eslint-disable no-new */
-      new ExifImage({image: buf}, (error, exifData) => {
-        if (!error && exifData) {
-          file.image.orientation = exifData.image.Orientation;
-        }
-        resolve(buf);
-      });
-    }
-    else {
-      resolve(buf);
-    }
-  });
+function drawImage(options) {
+  // save current context before applying transformations
+  options.ctx.save();
+  let rad;
+  // convert degrees to radians
+  if (options.flip) {
+    rad = options.deg * Math.PI / 180;
+  }
+  else {
+    rad = 2 * Math.PI - options.deg * Math.PI / 180;
+  }
+  // set the origin to the center of the image
+  options.ctx.translate(options.x + options.width / 2, options.y + options.height / 2);
+  // rotate the canvas around the origin
+  options.ctx.rotate(rad);
+  if (options.flip) {
+    // flip the canvas
+    options.ctx.scale(-1, 1);
+  }
+  // draw the image
+  options.ctx.drawImage(options.img, -options.width / 2, -options.height / 2, options.width, options.height);
+  // restore the canvas
+  options.ctx.restore();
 }
 
 /**
@@ -54,36 +61,28 @@ export function fixImageOrientation(file) {
   .then((buf) => getExifData(file, buf));
 }
 
-
 /**
-* Draws the image on the canvas so that the thumbnail
-* could be generated
-* @param {Object} options
-* @returns {Object}
+* Adds exif orientation information on the image file
+* @param {Object} file
+* @param {Object} buf
+* @returns {Promise<ExifImage>}
 */
-export function drawImage(options) {
-  // save current context before applying transformations
-  options.ctx.save();
-  let rad;
-  // convert degrees to radians
-  if (options.flip) {
-    rad = options.deg * Math.PI / 180;
-  }
-  else {
-    rad = 2 * Math.PI - options.deg * Math.PI / 180;
-  }
-  // set the origin to the center of the image
-  options.ctx.translate(options.x + options.width / 2, options.y + options.height / 2);
-  // rotate the canvas around the origin
-  options.ctx.rotate(rad);
-  if (options.flip) {
-    // flip the canvas
-    options.ctx.scale(-1, 1);
-  }
-  // draw the image
-  options.ctx.drawImage(options.img, -options.width / 2, -options.height / 2, options.width, options.height);
-  // restore the canvas
-  options.ctx.restore();
+export function getExifData(file, buf) {
+  return new Promise((resolve) => {
+    // For avatar images the file.type is set as image/jpeg, however for images shared in an activity file.mimeType is set as image/jpeg. Handling both conditions.
+    if (file && file.image && (file.type === `image/jpeg` || file.mimeType === `image/jpeg`)) {
+      /* eslint-disable no-new */
+      new ExifImage({image: buf}, (error, exifData) => {
+        if (!error && exifData) {
+          file.image.orientation = exifData.image.Orientation;
+        }
+        resolve(buf);
+      });
+    }
+    else {
+      resolve(buf);
+    }
+  });
 }
 
 /**
