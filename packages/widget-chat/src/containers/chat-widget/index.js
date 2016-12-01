@@ -356,7 +356,8 @@ export class ChatWidget extends Component {
       const {
         activities,
         isLoaded,
-        isLoadingHistoryUp
+        isLoadingHistoryUp,
+        lastAcknowledgedActivity
       } = conversation;
 
       let scrollButton;
@@ -426,6 +427,7 @@ export class ChatWidget extends Component {
                 flags={flags.flags}
                 isLoadingHistoryUp={isLoadingHistoryUp}
                 isTyping={isTyping}
+                lastAcknowledgedActivity={lastAcknowledgedActivity}
                 onActivityDelete={this.handleActivityDelete}
                 onActivityFlag={this.handleActivityFlag}
                 onScroll={this.handleScroll}

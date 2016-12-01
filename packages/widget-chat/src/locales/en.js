@@ -9,5 +9,6 @@ export default
     youDeletedYourMessage: `You deleted your message.`,
     someoneDeletedTheirMessage: `{name} deleted their own message.`,
     today: `Today`,
-    yesterday: `Yesterday`
+    yesterday: `Yesterday`,
+    newMessages: `NEW MESSAGES`
   };

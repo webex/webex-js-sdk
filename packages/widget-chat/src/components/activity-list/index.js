@@ -1,16 +1,18 @@
 import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 import moment from 'moment';
+import {FormattedMessage} from 'react-intl';
 import ActivityItem from '../activity-item';
 import DaySeparator from '../day-separator';
-
+import ListSeparator from '../list-separator';
 import {formatDate} from '../../utils/date';
 
 export default function ActivityList(props) {
   let lastActorId, lastDay, lastVerb;
   const now = moment();
-  const {avatars, currentUserId, flags, onActivityDelete, onActivityFlag} = props;
+  const {avatars, currentUserId, flags, lastAcknowledgedActivity, onActivityDelete, onActivityFlag} = props;
   const items = [];
+  let shouldDisplayNewMessageMarker = false;
   props.activities.forEach((activity) => {
     // Insert day separator if this activity and last one happen on a different day
     const activityMoment = moment(activity.published, moment.ISO_8601);
@@ -27,6 +29,18 @@ export default function ActivityList(props) {
       );
     }
     lastDay = activityDay;
+
+    if (shouldDisplayNewMessageMarker) {
+      const newMessages = ( // eslint-disable-line no-extra-parens
+        <FormattedMessage
+          defaultMessage={`NEW MESSAGES`}
+          description={`Indicator to display that new, unread messages follow`}
+          id={`newMessages`}
+        />
+      );
+      items.push(<ListSeparator primaryText={newMessages} />);
+      shouldDisplayNewMessageMarker = false;
+    }
 
     // additional items don't repeat user avatar and name
     const additional = sameDay && lastActorId === activity.actor.id && lastVerb === activity.verb;
@@ -49,6 +63,11 @@ export default function ActivityList(props) {
         verb={activity.verb}
       />
     );
+
+    // if this activity is last acked by user render the banner
+    if (lastAcknowledgedActivity && lastAcknowledgedActivity === activity.id) {
+      shouldDisplayNewMessageMarker = true;
+    }
   });
 
   return (
@@ -63,6 +82,7 @@ ActivityList.propTypes = {
   avatars: PropTypes.object.isRequired,
   currentUserId: PropTypes.string,
   flags: PropTypes.array,
+  lastAcknowledgedActivity: PropTypes.string,
   onActivityDelete: PropTypes.func.isRequired,
   onActivityFlag: PropTypes.func.isRequired
 };
