@@ -88,7 +88,6 @@ export default connect(
   (state) => ({
     activity: state.activity,
     conversation: state.conversation,
-    files: state.activity.get(`files`),
     spark: state.spark.get(`spark`)
   }),
   (dispatch) => bindActionCreators({

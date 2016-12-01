@@ -25,7 +25,9 @@ exports[`MessageComposer component snapshot tests handles value change properly 
     className="textarea-container">
     <textarea
       className="textarea"
+      onBlur={[Function]}
       onChange={[Function]}
+      onFocus={[Function]}
       onKeyDown={[Function]}
       onSubmit={[Function]}
       placeholder="Message Placeholder"
@@ -62,7 +64,9 @@ exports[`MessageComposer component snapshot tests handles value change properly 
     className="textarea-container">
     <textarea
       className="textarea"
+      onBlur={[Function]}
       onChange={[Function]}
+      onFocus={[Function]}
       onKeyDown={[Function]}
       onSubmit={[Function]}
       placeholder="Message Placeholder"
@@ -99,7 +103,9 @@ exports[`MessageComposer component snapshot tests renders properly 1`] = `
     className="textarea-container">
     <textarea
       className="textarea"
+      onBlur={[Function]}
       onChange={[Function]}
+      onFocus={[Function]}
       onKeyDown={[Function]}
       onSubmit={[Function]}
       placeholder="Message Placeholder"

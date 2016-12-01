@@ -10,7 +10,7 @@ exports[`AddFileButton component renders properly 1`] = `
   <input
     className="file-input"
     multiple="multiple"
-    onChange={undefined}
+    onChange={[Function]}
     type="file" />
 </div>
 `;

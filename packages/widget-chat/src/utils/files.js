@@ -84,13 +84,14 @@ export function getFileType(mimeType) {
   if (FILE_TYPES[mimeType]) {
     return FILE_TYPES[mimeType];
   }
-
-  const tokens = mimeType.split(`/`);
-  if (tokens[0] === `image`) {
-    return `image`;
-  }
-  else if (tokens[0] === `text`) {
-    return `${tokens[1].charAt(0).toUpperCase()}${tokens[1].slice(1)} file`;
+  if (mimeType) {
+    const tokens = mimeType.split(`/`);
+    if (tokens[0] === `image`) {
+      return `image`;
+    }
+    else if (tokens[0] === `text`) {
+      return `${tokens[1].charAt(0).toUpperCase()}${tokens[1].slice(1)} file`;
+    }
   }
   return `file`;
 }
