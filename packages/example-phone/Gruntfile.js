@@ -64,6 +64,10 @@ module.exports = function configGrunt(grunt) {
     ]);
   }
 
+  if (process.env.SAUCE_IS_DOWN) {
+    grunt.registerTask('test', []);
+  }
+
   grunt.registerTask('serve', [
     'webpack-dev-server:serve'
   ]);

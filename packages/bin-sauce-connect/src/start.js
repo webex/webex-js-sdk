@@ -8,7 +8,7 @@ import rm from './lib/rm';
 
 const mkdirp = denodeify(_mkdirp);
 
-const SAUCE_CONNECT_VERSION = `4.3.16`;
+const SAUCE_CONNECT_VERSION = `4.4.1`;
 
 (async function run() {
   try {

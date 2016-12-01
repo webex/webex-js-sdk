@@ -2,21 +2,25 @@
 
 set -e
 
-echo "DEBUG: the following tags are present in this repository"
-git tag
 
 # Make sure local tags don't include failed releases
 git tag | xargs git tag -d
 git gc
 git fetch origin --tags
 
-echo "DEBUG: the following tags are present in this repository (after rm/gc)"
-git tag
+cd $(dirname $0)
+VERSION=$(node ./get-version.js)
+set +e
+npm run lerna -- publish --skip-npm --skip-git --repo-version="${VERSION}" --yes
+EXIT_CODE=$?
+set -e
 
-echo "DEBUG: last tag"
-git describe --tags $(git rev-list --tags --max-count=1)
-LAST_TAG=$(git describe --tags $(git rev-list --tags --max-count=1))
-git diff --name-only ${LAST_TAG} -- "packages/ciscospark"
+cd "${SDK_ROOT_DIR}"
+if [ "${EXIT_CODE}" -eq "0" ]; then
+  git add lerna.json packages/*/package.json
+  git commit -m "v${VERSION}"
+  git tag "v${VERSION}"
+fi
 
 cd $(dirname $0)
 
