@@ -54,35 +54,37 @@ describe(`helper-image`, function() {
           restore: sinon.stub().returns(() => true)
         }
       };
-      [3,4,5,6,7,8].forEach(function(index) {
+      [3, 4, 5, 6, 7, 8].forEach((index) => {
         options.orientation = index;
         ImageOrientationUtil.setImageOrientation(options);
         assert.isTrue(options.ctx.save.called);
         assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
         assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
         assert.isTrue(options.ctx.restore.called);
-        switch(index) {
-          case 3:
-            assert.isTrue(options.ctx.rotate.calledWith(2 * Math.PI - 180 * Math.PI / 180));
-            break;
-          case 4:
-            assert.isTrue(options.ctx.rotate.calledWith(180 * Math.PI / 180));
-            assert.isTrue(options.ctx.scale.calledWith(-1, 1));
-            break;
-          case 5:
-            assert.isTrue(options.ctx.rotate.calledWith(270 * Math.PI / 180));
-            assert.isTrue(options.ctx.scale.calledWith(-1, 1));
-            break;
-          case 6:
-            assert.isTrue(options.ctx.rotate.calledWith(2 * Math.PI - 270 * Math.PI / 180));
-            break;
-          case 7:
-            assert.isTrue(options.ctx.rotate.calledWith(90 * Math.PI / 180));
-            assert.isTrue(options.ctx.scale.calledWith(-1, 1));
-            break;
-          case 8:
-            assert.isTrue(options.ctx.rotate.calledWith(2 * Math.PI - 90 * Math.PI / 180));
-            break;
+        switch (index) {
+        case 3:
+          assert.isTrue(options.ctx.rotate.calledWith(2 * Math.PI - 180 * Math.PI / 180));
+          break;
+        case 4:
+          assert.isTrue(options.ctx.rotate.calledWith(180 * Math.PI / 180));
+          assert.isTrue(options.ctx.scale.calledWith(-1, 1));
+          break;
+        case 5:
+          assert.isTrue(options.ctx.rotate.calledWith(270 * Math.PI / 180));
+          assert.isTrue(options.ctx.scale.calledWith(-1, 1));
+          break;
+        case 6:
+          assert.isTrue(options.ctx.rotate.calledWith(2 * Math.PI - 270 * Math.PI / 180));
+          break;
+        case 7:
+          assert.isTrue(options.ctx.rotate.calledWith(90 * Math.PI / 180));
+          assert.isTrue(options.ctx.scale.calledWith(-1, 1));
+          break;
+        case 8:
+          assert.isTrue(options.ctx.rotate.calledWith(2 * Math.PI - 90 * Math.PI / 180));
+          break;
+        default:
+          break;
         }
       });
     });
