@@ -30,7 +30,7 @@ describe('getExifData()', function() {
           .then(function(res) {
             assert.equal(res, f);
             assert.equal(sampleFile.image.orientation, 7);
-          })
+          });
       });
   });
 });
