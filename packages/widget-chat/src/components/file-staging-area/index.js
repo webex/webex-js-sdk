@@ -1,7 +1,7 @@
 import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 
-import {bytesToSize, getFileType, isImage} from '../../utils/files';
+import {bytesToSize, getFileType} from '../../utils/files';
 
 import Button from '../button';
 import ChipFile from '../chip-file';
@@ -23,13 +23,9 @@ export default function FileStagingArea(props) {
         type: getFileType(file.type),
         size: bytesToSize(file.fileSize),
         id: file.id,
-        onRemove: onFileRemove
+        onRemove: onFileRemove,
+        thumbnail: file.thumbnail
       };
-
-      if (isImage(file)) {
-        const urlCreator = window.URL || window.webkitURL;
-        chipProps.thumbnail = urlCreator.createObjectURL(file);
-      }
 
       fileChips.push(<div className={classNames(`chip-container`, styles.chipContainer)} key={file.id}><ChipFile {...chipProps} /></div>);
     });
