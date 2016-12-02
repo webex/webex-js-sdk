@@ -14,7 +14,7 @@ const ExifImage = require(`exif`).ExifImage;
 * @param {Object} options
 * @returns {Object}
 */
-function drawImage(options) {
+export function drawImage(options) {
   // save current context before applying transformations
   options.ctx.save();
   let rad;

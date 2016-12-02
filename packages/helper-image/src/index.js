@@ -4,4 +4,4 @@
  * @private
  */
 
-export {fixImageOrientation, getExifData, setImageOrientation} from './image-orientation-util';
+export {drawImage, fixImageOrientation, getExifData, setImageOrientation} from './image-orientation-util';
