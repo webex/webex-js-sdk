@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-conversation",
-  "version": "0.7.7",
+  "version": "0.7.8",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -10,10 +10,10 @@
   "dependencies": {
     "@ciscospark/common": "^0.7.0",
     "@ciscospark/helper-html": "^0.7.0",
-    "@ciscospark/http-core": "^0.7.7",
-    "@ciscospark/plugin-encryption": "^0.7.7",
-    "@ciscospark/plugin-user": "^0.7.7",
-    "@ciscospark/spark-core": "^0.7.7",
+    "@ciscospark/http-core": "^0.7.8",
+    "@ciscospark/plugin-encryption": "^0.7.8",
+    "@ciscospark/plugin-user": "^0.7.8",
+    "@ciscospark/spark-core": "^0.7.8",
     "babel-runtime": "^6.3.19",
     "core-decorators": "^0.12.3",
     "gm": "^1.23.0",
