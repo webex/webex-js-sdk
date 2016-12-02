@@ -57,10 +57,10 @@ describe(`helper-image`, function() {
       };
       ImageOrientationUtil.setImageOrientation(options);
       assert.isTrue(options.ctx.save.called);
-      assert.isTrue(options.ctx.translate.called);
-      assert.isTrue(options.ctx.rotate.called);
-      assert.isTrue(options.ctx.scale.called);
-      assert.isTrue(options.ctx.drawImage.called);
+      assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
+      assert.isTrue(options.ctx.rotate.calledWith(90 * Math.PI / 180));
+      assert.isTrue(options.ctx.scale.calledWith(-1, 1));
+      assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
       assert.isTrue(options.ctx.restore.called);
     });
   });
