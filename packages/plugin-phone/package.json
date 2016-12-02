@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-phone",
-  "version": "0.7.6",
+  "version": "0.7.7",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
@@ -8,9 +8,9 @@
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-phone",
   "dependencies": {
     "@ciscospark/common": "^0.7.0",
-    "@ciscospark/plugin-locus": "^0.7.6",
-    "@ciscospark/plugin-metrics": "^0.7.6",
-    "@ciscospark/spark-core": "^0.7.6",
+    "@ciscospark/plugin-locus": "^0.7.7",
+    "@ciscospark/plugin-metrics": "^0.7.7",
+    "@ciscospark/spark-core": "^0.7.7",
     "babel-runtime": "^6.3.19",
     "envify": "^3.4.0",
     "lodash": "^4.13.1",

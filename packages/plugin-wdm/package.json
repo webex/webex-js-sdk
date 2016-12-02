@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-wdm",
-  "version": "0.7.6",
+  "version": "0.7.7",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -9,8 +9,8 @@
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-wdm",
   "dependencies": {
     "@ciscospark/common": "^0.7.0",
-    "@ciscospark/http-core": "^0.7.6",
-    "@ciscospark/spark-core": "^0.7.6",
+    "@ciscospark/http-core": "^0.7.7",
+    "@ciscospark/spark-core": "^0.7.7",
     "ampersand-collection": "^2.0.0",
     "ampersand-state": "^5.0.0",
     "babel-runtime": "^6.3.19",
