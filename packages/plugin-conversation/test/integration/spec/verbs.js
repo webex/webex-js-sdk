@@ -536,7 +536,24 @@ describe(`plugin-conversation`, function() {
       });
 
       describe(`#delete()`, () => {
-        it(`deletes the current user's content`, () => spark.conversation.post(conversation, {displayName: `Delete Me 1`})
+        let sampleImageSmallOnePng = `sample-image-small-one.png`;
+
+        before(() => fh.fetch(sampleImageSmallOnePng)
+          .then((res) => {
+            sampleImageSmallOnePng = res;
+          }));
+
+        it(`deletes the current user's post`, () => spark.conversation.post(conversation, {displayName: `Delete Me 1`})
+          .then((a) => spark.conversation.delete(conversation, a))
+          .then(() => new Promise((resolve) => setTimeout(resolve, 2000)))
+          .then(() => spark.conversation.get(conversation, {activitiesLimit: 2}))
+          .then((c) => {
+            assert.equal(c.activities.items[0].verb, `tombstone`);
+            assert.equal(c.activities.items[1].verb, `delete`);
+          }));
+
+        it(`deletes the current user's share`, () =>
+          spark.conversation.share(conversation, [sampleImageSmallOnePng])
           .then((a) => spark.conversation.delete(conversation, a))
           .then(() => new Promise((resolve) => setTimeout(resolve, 2000)))
           .then(() => spark.conversation.get(conversation, {activitiesLimit: 2}))

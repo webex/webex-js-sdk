@@ -1,6 +1,6 @@
-exports[`IconButton component renders properly 1`] = `
+exports[`Button component renders properly 1`] = `
 <button
-  className="icon-button"
+  className="button"
   onClick={[Function]}
   onKeyUp={[Function]}>
   <div

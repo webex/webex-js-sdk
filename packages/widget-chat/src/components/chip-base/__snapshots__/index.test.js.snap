@@ -1,0 +1,17 @@
+exports[`ChipBase component renders properly 1`] = `
+<div
+  className="chip">
+  <div />
+  <div
+    className="chip-action">
+    <button
+      className="button"
+      onClick={[Function]}
+      onKeyUp={[Function]}>
+      <div
+        className="icon"
+        title={undefined} />
+    </button>
+  </div>
+</div>
+`;
