@@ -12,6 +12,8 @@ export env $(cat .env | xargs)
 cd ${WORKSPACE}
 
 GRUNT_LOG_FILE="$(pwd)/reports/logs/${PACKAGE}.log"
+export BABEL_CACHE_PATH=$(pwd)/.tmp/babel-cache/${PACKAGE}.babel.json
+mkdir -p "$(pwd)/.tmp/babel-cache"
 
 if [ -n "${SDK_BUILD_DEBUG}" ]; then
   set -x
