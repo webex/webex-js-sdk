@@ -2,6 +2,14 @@
 
 set -e
 
+cd $(dirname $0)
+
+./test.sh
+
+echo "################################################################################"
+echo "# COLLECTING COVERAGE REPORTS"
+echo "################################################################################"
+npm run grunt:circle -- coverage
 
 # Make sure local tags don't include failed releases
 git tag | xargs git tag -d
@@ -21,15 +29,6 @@ if [ "${EXIT_CODE}" -eq "0" ]; then
   git commit -m "v${VERSION}"
   git tag "v${VERSION}"
 fi
-
-cd $(dirname $0)
-
-./test.sh
-
-echo "################################################################################"
-echo "# COLLECTING COVERAGE REPORTS"
-echo "################################################################################"
-npm run grunt:circle -- coverage
 
 echo "################################################################################"
 echo "# BUMPING VERSION NUMBERS"
