@@ -7,3 +7,13 @@ exports[`ListSeparator component renders properly 1`] = `
   </p>
 </div>
 `;
+
+exports[`ListSeparator component renders properly with classes 1`] = `
+<div
+  className="separator bold blue">
+  <p
+    className="separator-text bold blue">
+    Testing 123
+  </p>
+</div>
+`;
