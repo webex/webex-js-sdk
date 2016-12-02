@@ -40,33 +40,6 @@ export function constructFile(file) {
   });
 }
 
-export function constructImage(file) {
-  if (!isImage(file)) {
-    return Promise.resolve();
-  }
-
-  const objectURL = URL.createObjectURL(file);
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = function onload() {
-      resolve(img);
-    };
-    img.onerror = reject;
-    img.src = objectURL;
-  })
-    .then((img) => {
-      const dimensions = _.pick(img, `height`, `width`);
-      const image = {
-        clientTempId: file.clientTempId,
-        height: dimensions.height,
-        width: dimensions.width,
-        objectURL
-      };
-
-      return Promise.resolve(image);
-    });
-}
-
 export function isImage(file) {
   return file.type.indexOf(`image`) !== -1;
 }

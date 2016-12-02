@@ -21,14 +21,14 @@ export default function reduceShare(state = new Map({
     const {blob, objectUrl} = bufferToBlob(file);
     const key = fileObject.url;
 
-    return state.setIn([`files`, key], {
+    return state.setIn([`files`, key], new Map({
       name: fileObject.displayName,
       mimeType: fileObject.mimeType,
       fileSize: fileObject.fileSize,
       isFetching: false,
       blob,
       objectUrl
-    });
+    }));
   }
 
   case STORE_SHARES: {
