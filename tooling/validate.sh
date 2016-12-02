@@ -2,13 +2,20 @@
 
 set -e
 
+cd $(dirname $0)
+
+./test.sh
+
+echo "################################################################################"
+echo "# COLLECTING COVERAGE REPORTS"
+echo "################################################################################"
+npm run grunt:circle -- coverage
 
 # Make sure local tags don't include failed releases
 git tag | xargs git tag -d
 git gc
 git fetch origin --tags
 
-cd $(dirname $0)
 VERSION=$(node ./get-version.js)
 set +e
 npm run lerna -- publish --skip-npm --skip-git --repo-version="${VERSION}" --yes
@@ -22,20 +29,11 @@ if [ "${EXIT_CODE}" -eq "0" ]; then
   git tag "v${VERSION}"
 fi
 
-cd $(dirname $0)
-
-./test.sh
-
-echo "################################################################################"
-echo "# COLLECTING COVERAGE REPORTS"
-echo "################################################################################"
-npm run grunt:circle -- coverage
-
 echo "################################################################################"
 echo "# BUMPING VERSION NUMBERS"
 echo "################################################################################"
 npm run grunt -- release
-./pre-release.sh
+./tooling/pre-release.sh
 
 echo "################################################################################"
 echo "# STORING PROMOTION SHA"
