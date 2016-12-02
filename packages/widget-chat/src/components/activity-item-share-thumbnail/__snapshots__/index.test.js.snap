@@ -1,0 +1,97 @@
+exports[`ActivityShareThumbnail post component renders loading state properly 1`] = `
+<div
+  className="activity-share-item">
+  <div
+    className="share-thumbnail">
+    <div
+      className="spinner-container">
+      <div
+        className="spinner" />
+    </div>
+  </div>
+  <div
+    className="share-meta">
+    <div
+      className="share-file-info">
+      <div
+        className="share-name">
+        testImage.js
+      </div>
+      <div
+        className="share-file-props">
+        <span
+          className="share-file-size">
+          1.47 MB
+        </span>
+        <span
+          className="share-file-type">
+          js
+        </span>
+      </div>
+    </div>
+    <div
+      className="share-item-actions">
+      <div
+        className="share-action-item">
+        <button
+          className="button"
+          onClick={[Function]}
+          onKeyUp={[Function]}>
+          <div
+            className="icon"
+            title="Download this file" />
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ActivityShareThumbnail post component renders thumbnail properly 1`] = `
+<div
+  className="activity-share-item">
+  <div
+    className="share-thumbnail">
+    <div
+      className="spinner-container">
+      <div
+        className="spinner" />
+    </div>
+  </div>
+  <div
+    className="share-meta">
+    <div
+      className="share-file-info">
+      <div
+        className="share-name">
+        testImage.js
+      </div>
+      <div
+        className="share-file-props">
+        <span
+          className="share-file-size">
+          1.47 MB
+        </span>
+        <span
+          className="share-file-type">
+          js
+        </span>
+      </div>
+    </div>
+    <div
+      className="share-item-actions">
+      <div
+        className="share-action-item">
+        <button
+          className="button"
+          onClick={[Function]}
+          onKeyUp={[Function]}>
+          <div
+            className="icon"
+            title="Download this file" />
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+`;

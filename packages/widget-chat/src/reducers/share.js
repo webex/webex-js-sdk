@@ -1,13 +1,16 @@
+import {Map, OrderedMap} from 'immutable';
+
 import {bufferToBlob} from '../utils/files';
 
 import {
+  FETCH_SHARE,
   RECEIVE_SHARE,
-  FETCH_SHARE
+  STORE_SHARES
 } from '../actions/share';
 
-export default function reduceShare(state = {
-  files: {}
-}, action) {
+export default function reduceShare(state = new Map({
+  files: new OrderedMap({})
+}), action) {
   switch (action.type) {
 
   case RECEIVE_SHARE: {
@@ -18,29 +21,23 @@ export default function reduceShare(state = {
     const {blob, objectUrl} = bufferToBlob(file);
     const key = fileObject.url;
 
-    return Object.assign({}, state, {
-      files: Object.assign({}, state.files, {
-        [key]: Object.assign({}, state.files[key], {
-          name: fileObject.displayName,
-          mimeType: fileObject.mimeType,
-          fileSize: fileObject.fileSize,
-          isFetching: false,
-          blob,
-          objectUrl
-        })
-      })
+    return state.setIn([`files`, key], {
+      name: fileObject.displayName,
+      mimeType: fileObject.mimeType,
+      fileSize: fileObject.fileSize,
+      isFetching: false,
+      blob,
+      objectUrl
     });
+  }
+
+  case STORE_SHARES: {
+    return state;
   }
 
   case FETCH_SHARE: {
     const key = action.payload.fileObject.url;
-    return Object.assign({}, state, {
-      files: Object.assign({}, state.files, {
-        [key]: Object.assign({}, state.files[key], {
-          isFetching: true
-        })
-      })
-    });
+    return state.setIn([`files`, key, `isFetching`], true);
   }
 
   default: {

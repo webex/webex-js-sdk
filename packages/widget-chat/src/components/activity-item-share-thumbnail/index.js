@@ -1,7 +1,7 @@
 import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 
-import IconButton from '../icon-button';
+import Button from '../button';
 import {ICON_TYPE_DOWNLOAD} from '../icon';
 import Spinner from '../spinner';
 import {bytesToSize} from '../../utils/files';
@@ -22,10 +22,12 @@ function ActivityItemShareThumbnail(props) {
   let image;
 
   if (thumbnail) {
-    if (!thumbnail.isFetching && thumbnail.objectUrl) {
-      image = <img alt="Uploaded File" src={thumbnail.objectUrl} />;
+    const isFetching = thumbnail.get(`isFetching`);
+    const objectUrl = thumbnail.get(`objectUrl`);
+    if (!isFetching && objectUrl) {
+      image = <img alt="Uploaded File" src={objectUrl} />;
     }
-    else if (thumbnail.isFetching) {
+    else if (isFetching) {
       image = <div className={classNames(`spinner-container`, styles.spinnerContainer)}><Spinner /></div>;
     }
   }
@@ -49,11 +51,11 @@ function ActivityItemShareThumbnail(props) {
         </div>
         <div className={classNames(`share-item-actions`, styles.shareActions)}>
           <div className={classNames(`share-action-item`, styles.shareActionItem)}>
-            <IconButton
+            <Button
               buttonClassName={styles.downloadButton}
+              iconType={ICON_TYPE_DOWNLOAD}
               onClick={handleDownloadClick}
               title="Download this file"
-              type={ICON_TYPE_DOWNLOAD}
             />
           </div>
         </div>

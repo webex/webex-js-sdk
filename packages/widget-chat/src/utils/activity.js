@@ -1,6 +1,5 @@
 import uuid from 'uuid';
 
-
 export function constructActivity(conversation, text, actor) {
   return {
     actor: {
