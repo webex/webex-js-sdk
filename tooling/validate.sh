@@ -16,7 +16,6 @@ git tag | xargs git tag -d
 git gc
 git fetch origin --tags
 
-cd $(dirname $0)
 VERSION=$(node ./get-version.js)
 set +e
 npm run lerna -- publish --skip-npm --skip-git --repo-version="${VERSION}" --yes
