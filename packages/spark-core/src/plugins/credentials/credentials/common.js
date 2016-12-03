@@ -132,6 +132,15 @@ export default {
   @oneFlight
   @waitForValue(`authorization`)
   getAuthorization() {
+    return this._getAuthorization();
+  },
+
+  _getAuthorization() {
+    if (this.isAuthenticating) {
+      return new Promise((resolve) => this.once(`change:isAuthenticating`, resolve))
+        .then(() => this._getAuthorization());
+    }
+
     if (this.isAuthenticated) {
       if (this.isExpired) {
         if (this.canRefresh) {
