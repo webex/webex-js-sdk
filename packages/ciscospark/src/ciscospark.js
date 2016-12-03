@@ -8,7 +8,7 @@
 
 import '@ciscospark/plugin-phone';
 
-import {defaults, get, has, set} from 'lodash';
+import {defaults, get, has, omit, set} from 'lodash';
 import CiscoSpark, {children, registerPlugin} from '@ciscospark/spark-core';
 import AuthInterceptor from './interceptors/auth';
 import Memberships from './plugins/memberships';
@@ -85,6 +85,18 @@ const ciscospark = new CiscoSpark({
  * @returns {CiscoSpark}
  */
 ciscospark.init = function init(attrs) {
+  if (attrs.jwt) {
+    const jwt = attrs.jwt;
+    const etc = omit(attrs, jwt);
+    etc.config = defaults(etc.config, config);
+    const spark = new CiscoSpark(etc);
+    spark.authorize({jwt})
+      .catch((reason) => {
+        this.logger.error(`ciscospark: JWT init failed`, reason);
+      });
+    return spark;
+  }
+
   if (has(attrs, `credentials.access_token`) || has(`credentials.refresh_token`)) {
     attrs.credentials.authorization = {};
     [
