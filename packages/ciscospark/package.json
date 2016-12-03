@@ -19,6 +19,7 @@
     "lodash": "^4.5.1"
   },
   "devDependencies": {
+    "@ciscospark/test-helper-appid": "^0.7.0",
     "@ciscospark/test-helper-chai": "^0.7.0",
     "@ciscospark/test-helper-file": "^0.7.0",
     "@ciscospark/test-helper-mocha": "^0.7.0",

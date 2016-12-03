@@ -6,6 +6,8 @@
 import {assert} from '@ciscospark/test-helper-chai';
 import testUsers from '@ciscospark/test-helper-test-users';
 import ciscospark from '../..';
+import uuid from 'uuid';
+import {createUser} from '@ciscospark/test-helper-appid';
 
 describe(`ciscospark`, function() {
   this.timeout(60000);
@@ -58,7 +60,18 @@ describe(`ciscospark`, function() {
         .then((res) => assert.statusCode(res, 200));
     });
         });
-    });
 
+    it(`creates a new authenticated spark instance via JWT token`, () => createUser({subject: `test-${uuid.v4()}`})
+      .then(({jwt}) => {
+        const spark = ciscospark.init({jwt});
+        return spark.request({
+          uri: `${spark.config.hydraServiceUrl}/people/me`
+    });
+      })
+      .then((res) => assert.statusCode(res, 200)));
+
+    it(`accepts a jwt refresh callback`);
+    it(`emits an error event of initial refresh token auth fails`);
+    it(`emits an error event of initial JWT auth fails`);
   });
 });
