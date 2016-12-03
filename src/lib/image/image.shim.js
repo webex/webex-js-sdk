@@ -10,7 +10,7 @@
 
 var pick = require('lodash.pick');
 var imageBase = require('./image-base');
-var ImageOrientationUtil = require('../../util/image-orientation-util');
+var imageHelper = require('../../util/image-helper');
 
 var ImageUtil = {
 
@@ -39,7 +39,7 @@ var ImageUtil = {
 
         var ctx = canvas.getContext('2d');
         if (file && file.image && file.image.orientation && file.image.orientation !== 1) {
-          ImageOrientationUtil.setImageOrientation({orientation: file.image.orientation, img, width: dimensions.width, height: dimensions.height, ctx});
+          imageHelper.orient({orientation: file.image.orientation, img, width: dimensions.width, height: dimensions.height, ctx});
         }
         else {
           ctx.drawImage(img, 0, 0, dimensions.width, dimensions.height);

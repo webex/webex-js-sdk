@@ -5,7 +5,6 @@
 
 /* global Uint8Array, FileReader */
 
-// require('setimmediate');
 const ExifImage = require(`exif`).ExifImage;
 
 /**
@@ -58,7 +57,7 @@ export function fixImageOrientation(file) {
       resolve(buf);
     };
   })
-  .then((buf) => getExifData(file, buf));
+  .then((buf) => readExifData(file, buf));
 }
 
 /**
@@ -67,7 +66,7 @@ export function fixImageOrientation(file) {
 * @param {Object} buf
 * @returns {Promise<ExifImage>}
 */
-export function getExifData(file, buf) {
+export function readExifData(file, buf) {
   return new Promise((resolve) => {
     // For avatar images the file.type is set as image/jpeg, however for images shared in an activity file.mimeType is set as image/jpeg. Handling both conditions.
     if (file && file.image && (file.type === `image/jpeg` || file.mimeType === `image/jpeg`)) {
@@ -90,7 +89,7 @@ export function getExifData(file, buf) {
 * @param {Object} options
 * @returns {Object}
 */
-export function setImageOrientation(options) {
+export function orient(options) {
   const image = {
     img: options.img,
     x: 0,

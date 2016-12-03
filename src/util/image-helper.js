@@ -10,8 +10,8 @@
 require('setimmediate');
 var ExifImage = require('exif').ExifImage;
 
-var ImageOrientationUtil = {
-  getExifData: function getExifData(file, buf) {
+var ImageHelper = {
+  readExifData: function readExifData(file, buf) {
     return new Promise(function setOrientation(resolve) {
       // For avatar images the file.type is set as image/jpeg, however for images shared in an activity file.mimeType is set as image/jpeg. Handling both conditions.
       if (file && file.image && (file.type === 'image/jpeg' || file.mimeType === 'image/jpeg')) {
@@ -42,8 +42,8 @@ var ImageOrientationUtil = {
         resolve(buf);
       };
     }.bind(this))
-      .then(function getExifData(buf) {
-        return this.getExifData(file, buf);
+      .then(function readExifData(buf) {
+        return this.readExifData(file, buf);
       }.bind(this));
   },
 
@@ -72,7 +72,7 @@ var ImageOrientationUtil = {
     options.ctx.restore();
   },
 
-  setImageOrientation: function setImageOrientation(options) {
+  orient: function orient(options) {
     var image = {
       img: options.img,
       x: 0,
@@ -120,4 +120,4 @@ var ImageOrientationUtil = {
 
 };
 
-module.exports = ImageOrientationUtil;
+module.exports = ImageHelper;

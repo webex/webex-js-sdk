@@ -4,4 +4,4 @@
  * @private
  */
 
-export {drawImage, fixImageOrientation, getExifData, setImageOrientation} from './image-orientation-util';
+export {drawImage, fixImageOrientation, readExifData, orient} from './image-helper.browser';

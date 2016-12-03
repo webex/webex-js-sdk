@@ -18,7 +18,7 @@ var isFunction = require('lodash.isfunction');
 var last = require('lodash.last');
 var merge = require('lodash.merge');
 var noop = require('lodash.noop');
-var ImageOrientationUtil = require('../../../util/image-orientation-util');
+var imageHelper = require('../../../util/image-helper');
 var InboundNormalizer = require('./inbound-normalizer');
 var OutboundNormalizer = require('./outbound-normalizer');
 var omit = require('lodash.omit');
@@ -122,8 +122,8 @@ var ConversationService = SparkBase.extend(
         if (isEncrypted) {
           promise = this.spark.encryption.download(item.scr)
             .on('progress', emitter.emit.bind(emitter, 'progress'))
-              .then(function getExifData(res) {
-                return ImageOrientationUtil.getExifData(item, res);
+              .then(function readExifData(res) {
+                return imageHelper.readExifData(item, res);
               }.bind(this))
               .then(function ensureBlob(res) {
                 if (typeof window === 'undefined') {

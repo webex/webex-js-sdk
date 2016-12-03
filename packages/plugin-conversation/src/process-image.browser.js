@@ -5,7 +5,7 @@
  */
 
 import {pick} from 'lodash';
-import {setImageOrientation} from '@ciscospark/helper-image';
+import {orient} from '@ciscospark/helper-image';
 import {base64} from '@ciscospark/common';
 
 /* global Blob, document, Image, URL */
@@ -83,7 +83,7 @@ export default function processImage({file, thumbnailMaxWidth, thumbnailMaxHeigh
 
       const ctx = canvas.getContext(`2d`);
       if (file && file.image && file.image.orientation && file.image.orientation !== 1) {
-        setImageOrientation({orientation: file.image.orientation, img, width: thumbnailDimensions.width, height: thumbnailDimensions.height, ctx});
+        orient({orientation: file.image.orientation, img, width: thumbnailDimensions.width, height: thumbnailDimensions.height, ctx});
       }
       else {
         ctx.drawImage(img, 0, 0, thumbnailDimensions.width, thumbnailDimensions.height);
