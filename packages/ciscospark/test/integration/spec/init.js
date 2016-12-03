@@ -59,14 +59,25 @@ describe(`ciscospark`, function() {
       })
         .then((res) => assert.statusCode(res, 200));
     });
-        });
+
+    it(`creates a new authenticated spark instance via very shorthand credentials`, () => {
+      /* eslint camelcase: [0] */
+      const spark = ciscospark.init({
+        access_token: user.token.access_token
+      });
+
+      return spark.request({
+        uri: `${spark.config.hydraServiceUrl}/people/me`
+      })
+        .then((res) => assert.statusCode(res, 200));
+    });
 
     it(`creates a new authenticated spark instance via JWT token`, () => createUser({subject: `test-${uuid.v4()}`})
       .then(({jwt}) => {
         const spark = ciscospark.init({jwt});
         return spark.request({
           uri: `${spark.config.hydraServiceUrl}/people/me`
-    });
+        });
       })
       .then((res) => assert.statusCode(res, 200)));
 
