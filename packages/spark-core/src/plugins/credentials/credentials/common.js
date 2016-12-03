@@ -5,7 +5,7 @@
  */
 
 import Authorization from '../authorization';
-import {base64, oneFlight, retry} from '@ciscospark/common';
+import {base64, oneFlight, retry, whileInFlight} from '@ciscospark/common';
 import {clone, has, get, isObject, pick} from 'lodash';
 import grantErrors from '../grant-errors';
 import querystring from 'querystring';
@@ -99,49 +99,29 @@ export default {
     return this.authorize(...args);
   },
 
+  @whileInFlight(`_isAuthenticating`)
   authorize(options) {
     /* eslint no-invalid-this: [0] */
-    this._isAuthenticating = true;
     options = options || {};
     if (options.code) {
       this.logger.info(`credentials: auth code received, exchanging for access_token`);
-      return this.requestAuthorizationCodeGrant(options)
-        .then((res) => {
-          this._isAuthenticating = false;
-          return res;
-        });
+      return this.requestAuthorizationCodeGrant(options);
     }
 
     if (options.jwt) {
-      return this.requestAccessTokenFromJwt(options)
-        .then((res) => {
-          this._isAuthenticating = false;
-          return res;
-        });
+      return this.requestAccessTokenFromJwt(options);
     }
 
     if (this.canRefresh) {
       this.logger.info(`credentials: refreshable, refreshing`);
-      return this.refresh(options)
-        .then((res) => {
-          this._isAuthenticating = false;
-          return res;
-        });
+      return this.refresh(options);
     }
 
     this.set(pick(options, `name`, `orgId`, `password`));
 
     if (this.name && this.orgId && this.password) {
       this.logger.info(`credentials: machine credentials received, authenticating`);
-      return this.requestSamlExtensionGrant(options)
-        .then((res) => {
-          this._isAuthenticating = false;
-          return res;
-        })
-        .catch((res) => {
-          this._isAuthenticating = false;
-          return Promise.reject(res);
-        });
+      return this.requestSamlExtensionGrant(options);
     }
 
 
