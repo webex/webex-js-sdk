@@ -33,11 +33,9 @@ describe(`ciscospark`, function() {
       assert.isAbove(spark.credentials.authorization.access_token.length, 0);
 
       return spark.request({
-        uri: `${spark.config.hydraServiceUrl}/rooms`
+        uri: `${spark.config.hydraServiceUrl}/people/me`
       })
-        .then((res) => {
-          assert.statusCode(res, 200);
-        });
+        .then((res) => assert.statusCode(res, 200));
     });
 
     it(`creates a new authenticated spark instance via shorthand credentials`, () => {
@@ -55,10 +53,10 @@ describe(`ciscospark`, function() {
       assert.isAbove(spark.credentials.authorization.access_token.length, 0);
 
       return spark.request({
-        uri: `${spark.config.hydraServiceUrl}/rooms`
+        uri: `${spark.config.hydraServiceUrl}/people/me`
       })
-        .then((res) => {
-          assert.statusCode(res, 200);
+        .then((res) => assert.statusCode(res, 200));
+    });
         });
     });
 
