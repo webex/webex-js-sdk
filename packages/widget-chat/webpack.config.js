@@ -43,37 +43,7 @@ module.exports = {
   devtool: 'sourcemap',
   plugins: [
     new InlineEnviromentVariablesPlugin(process.env),
-    new webpack.optimize.UglifyJsPlugin({
-      compress: {
-        sequences: false,
-        properties: false,
-        dead_code: true,
-        drop_debugger: false,
-        unsafe: false,
-        unsafe_comps: false,
-        conditionals: false,
-        comparisons: false,
-        evaluate: false,
-        booleans: false,
-        loops: false,
-        unused: false,
-        hoist_funs: false,
-        hoist_vars: false,
-        if_return: false,
-        join_vars: false,
-        cascade: false,
-        warnings: true,
-        negate_iife: false,
-        pure_getters: false,
-        pure_funcs: null,
-        drop_console: false,
-        keep_fargs: true,
-        keep_fnames: true,
-        passes: 1
-      },
-      beautify: false,
-      mangle: false
-    }),
+    new webpack.optimize.UglifyJsPlugin(),
     new ExtractTextPlugin('[name].css'),
     new HtmlWebpackPlugin({
       hash: true,

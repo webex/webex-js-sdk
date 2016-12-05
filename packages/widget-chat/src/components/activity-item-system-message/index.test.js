@@ -1,5 +1,5 @@
 import React from 'react';
-import renderer from 'react-test-renderer';
+import createComponentWithIntl from '../../utils/createComponentWithIntl';
 
 import ActivityItemSystemMessage from '.';
 
@@ -11,7 +11,7 @@ describe(`ActivityItemSystemMessage tombstone component`, () => {
     verb: `tombstone`
   };
 
-  const component = renderer.create(
+  const component = createComponentWithIntl(
     <ActivityItemSystemMessage
       id={activity.id}
       name={activity.name}
@@ -33,7 +33,7 @@ describe(`ActivityItemSystemMessage tombstone component is self`, () => {
     verb: `tombstone`
   };
 
-  const component = renderer.create(
+  const component = createComponentWithIntl(
     <ActivityItemSystemMessage
       id={activity.id}
       isSelf
@@ -56,7 +56,7 @@ describe(`ActivityItemSystemMessage create component`, () => {
     verb: `create`
   };
 
-  const component = renderer.create(
+  const component = createComponentWithIntl(
     <ActivityItemSystemMessage
       id={activity.id}
       name={activity.name}

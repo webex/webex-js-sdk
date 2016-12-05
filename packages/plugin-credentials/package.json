@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-credentials",
-  "version": "0.7.6",
+  "version": "0.7.10",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -9,8 +9,8 @@
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-credentials",
   "dependencies": {
     "@ciscospark/common": "^0.7.0",
-    "@ciscospark/plugin-wdm": "^0.7.6",
-    "@ciscospark/spark-core": "^0.7.6",
+    "@ciscospark/plugin-wdm": "^0.7.10",
+    "@ciscospark/spark-core": "^0.7.10",
     "ampersand-collection": "^2.0.0",
     "babel-runtime": "^6.3.19",
     "core-decorators": "^0.12.3",
@@ -19,8 +19,8 @@
     "uuid": "^2.0.2"
   },
   "devDependencies": {
-    "@ciscospark/plugin-machine-account": "^0.7.6",
-    "@ciscospark/storage-adapter-local-storage": "^0.7.6",
+    "@ciscospark/plugin-machine-account": "^0.7.10",
+    "@ciscospark/storage-adapter-local-storage": "^0.7.10",
     "@ciscospark/test-helper-automation": "^0.7.0",
     "@ciscospark/test-helper-chai": "^0.7.0",
     "@ciscospark/test-helper-mocha": "^0.7.0",
