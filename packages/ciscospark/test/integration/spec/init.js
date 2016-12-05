@@ -4,6 +4,7 @@
  */
 
 import {assert} from '@ciscospark/test-helper-chai';
+import sinon from '@ciscospark/test-helper-sinon';
 import testUsers from '@ciscospark/test-helper-test-users';
 import ciscospark from '../..';
 import uuid from 'uuid';
@@ -81,8 +82,49 @@ describe(`ciscospark`, function() {
       })
       .then((res) => assert.statusCode(res, 200)));
 
-    it(`accepts a jwt refresh callback`);
-    it(`emits an error event of initial refresh token auth fails`);
-    it(`emits an error event of initial JWT auth fails`);
+    it(`accepts a JWT refresh callback`, () => {
+      const id = {subject: `test-${uuid.v4()}`};
+      return createUser(id)
+        .then(({jwt}) => {
+          const spark = ciscospark.init({
+            jwt,
+            requestJWT() {
+              return createUser(id)
+                .then((res) => {
+                  assert.isDefined(res.jwt);
+                  return res;
+                });
+            }
+          });
+
+          // This test is going to need to evolve once plugin credentials lands.
+          // Rather than reading the access token, we'll need to grab it with an
+          // api call. Additionally, plugin-credentials will need to provide
+          // isAuthenticated and isAuthenticating for some time.
+          let originalAccessToken;
+          return spark.authenticate({jwt})
+            .then(() => {
+              assert.isTrue(spark.isAuthenticated);
+              originalAccessToken = spark.credentials.authorization.access_token;
+              return spark.refresh({force: true});
+            })
+            .then(() => assert.isTrue(spark.isAuthenticated))
+            .then(() => assert.notEqual(spark.credentials.authorization.access_token, originalAccessToken));
+        });
+    });
+
+    it(`emits an error event if initial JWT auth fails`, (done) => {
+      const spy = sinon.spy();
+      const spark = ciscospark.init({
+        jwt: `not a token`
+      });
+
+      spark.on(`error`, spy);
+      spark.on(`error`, () => {
+        assert.calledOnce(spy);
+        done();
+      });
+      assert.notCalled(spy);
+    });
   });
 });
