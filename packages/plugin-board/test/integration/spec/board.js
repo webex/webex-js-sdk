@@ -84,13 +84,13 @@ describe(`plugin-board`, () => {
       });
     });
 
-    describe(`#addSnapshotImage()`, () => {
+    describe(`#setSnapshotImage()`, () => {
 
       after(() => participants[0].spark.board.deleteAllContent(board));
 
       it(`uploads image to spark files and adds to channel`, () => {
         let imageRes;
-        return participants[0].spark.board.addSnapshotImage(conversation, board, fixture)
+        return participants[0].spark.board.setSnapshotImage(conversation, board, fixture)
           .then((res) => {
             imageRes = res.image;
             assert.isDefined(res.image, `image field is included`);

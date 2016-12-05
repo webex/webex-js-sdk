@@ -57,14 +57,14 @@ const Board = SparkPlugin.extend({
   },
 
   /**
-   * Adds a snapshot image of the board
+   * Set a snapshot image for a board
    *
    * @param {Conversation} conversation - the current conversation that the board belongs
    * @param {Board~Channel} channel
    * @param {File} image
    * @returns {Promise<Board~Channel>}
    */
-  addSnapshotImage(conversation, channel, image) {
+  setSnapshotImage(conversation, channel, image) {
     let imageScr;
     return this.spark.board._uploadImage(conversation, image)
       .then((scr) => {

@@ -68,14 +68,14 @@ var PersistenceService = SparkBase.extend({
 
 
   /**
-   * Adds a snapshot image of the board
+   * Set a snapshot image for a board
    *
    * @param {Conversation} conversation - the current conversation that the board belongs
    * @param {Board~Channel} channel
    * @param {File} image
    * @returns {Promise<Board~Channel>}
    */
-  addSnapshotImage: function addSnapshotImage(conversation, channel, image) {
+  setSnapshotImage: function setSnapshotImage(conversation, channel, image) {
     var imageScr;
     return this.spark.board._uploadImage(conversation, image)
       .then(function encryptScr(scr) {
@@ -86,7 +86,7 @@ var PersistenceService = SparkBase.extend({
         imageScr.encryptedScr = encryptedScr;
         return encryptedScr;
       }.bind(this))
-      .then(function addSnapshotToChannel() {
+      .then(function setSnapshotInChannel() {
         var imageBody = {
           image: {
             url: imageScr.loc,

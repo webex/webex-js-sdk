@@ -347,7 +347,7 @@ describe('Services', function() {
         });
       });
 
-      describe('#addSnapshotImage()', function() {
+      describe('#setSnapshotImage()', function() {
         var fixture = {
           png: 'sample-image-small-one.png'
         };
@@ -365,7 +365,7 @@ describe('Services', function() {
 
         it('uploads image to spark files and then add image to channel', function() {
           var imageRes;
-          return party.mccoy.spark.board.persistence.addSnapshotImage(conversation, board, fixture.png)
+          return party.mccoy.spark.board.persistence.setSnapshotImage(conversation, board, fixture.png)
             .then(function(res) {
               imageRes = res.image;
               assert.isDefined(res.image, 'image field is included');
