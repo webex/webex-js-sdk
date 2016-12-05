@@ -72,49 +72,55 @@ var ImageHelper = {
     options.ctx.restore();
   },
 
-  orient: function orient(options) {
-    var image = {
-      img: options.img,
-      x: 0,
-      y: 0,
-      width: options.width,
-      height: options.height,
-      deg: 0,
-      flip: true,
-      ctx: options.ctx
-    };
-    switch (options && options.orientation) {
-      case 3:
-        // rotateImage180
-        image.deg = 180;
-        image.flip = false;
-        break;
-      case 4:
-        image.deg = 180;
-        image.flip = true;
-        break;
-      case 5:
-        // rotate90AndFlipImage
-        image.deg = 270;
-        image.flip = true;
-        break;
-      case 6:
-        // rotateImage90
-        image.deg = 270;
-        image.flip = false;
-        break;
-      case 7:
-        // rotateNeg90AndFlipImage
-        image.deg = 90;
-        image.flip = true;
-        break;
-      case 8:
-        // rotateNeg90
-        image.deg = 90;
-        image.flip = false;
-        break;
+  /* eslint complexity: ["error", 9] */
+  orient: function orient(options, file) {
+    if (file && file.image && file.image.orientation && file.image.orientation !== 1) {
+      var image = {
+        img: options.img,
+        x: options.x,
+        y: options.y,
+        width: options.width,
+        height: options.height,
+        deg: 0,
+        flip: true,
+        ctx: options.ctx
+      };
+      switch (options && options.orientation) {
+        case 3:
+          // rotateImage180
+          image.deg = 180;
+          image.flip = false;
+          break;
+        case 4:
+          image.deg = 180;
+          image.flip = true;
+          break;
+        case 5:
+          // rotate90AndFlipImage
+          image.deg = 270;
+          image.flip = true;
+          break;
+        case 6:
+          // rotateImage90
+          image.deg = 270;
+          image.flip = false;
+          break;
+        case 7:
+          // rotateNeg90AndFlipImage
+          image.deg = 90;
+          image.flip = true;
+          break;
+        case 8:
+          // rotateNeg90
+          image.deg = 90;
+          image.flip = false;
+          break;
+      }
+      this.drawImage(image);
     }
-    this.drawImage(image);
+    else {
+      options.ctx.drawImage(options.img, options.x, options.y, options.width, options.height);
+    }
   }
 
 

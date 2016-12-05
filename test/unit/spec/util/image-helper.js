@@ -34,69 +34,101 @@ describe('readExifData()', function() {
 });
 
 describe('orient()', function() {
-  ImageHelper.drawImage = sinon.spy();
-  var sampleImageOptions = {
+  var file = {
+    displayName: 'Portrait_7.jpg',
+    fileSize: 405822,
+    type: 'image/jpeg',
+    image: {
+      height: 300,
+      width: 362
+    },
+    mimeType: 'image/jpeg',
+    objectType: 'file',
+  };
+  var options = {
     img: 'SampleImage.jpg',
     x: 0,
     y: 0,
     width: 362,
     height: 300,
-    ctx: {}
+    ctx: {
+      save: sinon.stub().returns(true),
+      translate: sinon.stub().returns(true),
+      rotate: sinon.stub().returns(true),
+      scale: sinon.stub().returns(true),
+      drawImage: sinon.stub().returns(true),
+      restore: sinon.stub().returns(true)
+    }
   };
-  [1, 2, 3, 4, 5, 6, 7, ].forEach(function(orientation) {
-    var image = {
-      img: sampleImageOptions.img,
-      x: 0,
-      y: 0,
-      width: sampleImageOptions.width,
-      height: sampleImageOptions.height,
-      deg: 0,
-      flip: true,
-      ctx: sampleImageOptions.ctx
-    };
+  [1, 2, 3, 4, 5, 6, 7, 8].forEach(function(orientation) {
     var msg;
     // just changing the orientation to make sure that the function is correctly processing the inputs
-    sampleImageOptions.orientation = orientation;
-    ImageHelper.orient(sampleImageOptions);
-    switch(orientation) {
-      case 2:
-        msg = 'flipImage';
-        break;
-      case 3:
-        msg = 'rotateImage180';
-        image.deg = 180;
-        image.flip = false;
-        break;
-      case 4:
-        msg = 'rotate180AndFlipImage';
-        image.deg = 180;
-        image.flip = true;
-        break;
-      case 5:
-        msg = 'rotate270AndFlipImage';
-        image.deg = 270;
-        image.flip = true;
-        break;
-      case 6:
-        msg = 'rotateImage270';
-        image.deg = 270;
-        image.flip = false;
-        break;
-      case 7:
-        msg = 'rotateNeg90AndFlipImage';
-        image.deg = 90;
-        image.flip = true;
-        break;
-      case 8:
-        msg = 'rotateNeg90';
-        image.deg = 90;
-        image.flip = false;
-        break;
-      default:
-        msg = 'do nothing';
-        break;
+    options.orientation = orientation;
+    file.image.orientation = orientation;
+    ImageHelper.orient(options, file);
+    switch (orientation) {
+    case 2:
+      msg = 'flipImage';
+      assert.isTrue(options.ctx.save.called);
+      assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
+      assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
+      assert.isTrue(options.ctx.restore.called);
+      break;
+    case 3:
+      msg = 'rotateImage180';
+      assert.isTrue(options.ctx.save.called);
+      assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
+      assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
+      assert.isTrue(options.ctx.restore.called);
+      assert.isTrue(options.ctx.rotate.calledWith(2 * Math.PI - 180 * Math.PI / 180));
+      break;
+    case 4:
+      msg = 'rotate180AndFlipImage';
+      assert.isTrue(options.ctx.save.called);
+      assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
+      assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
+      assert.isTrue(options.ctx.restore.called);
+      assert.isTrue(options.ctx.rotate.calledWith(180 * Math.PI / 180));
+      assert.isTrue(options.ctx.scale.calledWith(-1, 1));
+      break;
+    case 5:
+      msg = 'rotate270AndFlipImage';
+      assert.isTrue(options.ctx.save.called);
+      assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
+      assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
+      assert.isTrue(options.ctx.restore.called);
+      assert.isTrue(options.ctx.rotate.calledWith(270 * Math.PI / 180));
+      assert.isTrue(options.ctx.scale.calledWith(-1, 1));
+      break;
+    case 6:
+      msg = 'rotateImage270';
+      assert.isTrue(options.ctx.save.called);
+      assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
+      assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
+      assert.isTrue(options.ctx.restore.called);
+      assert.isTrue(options.ctx.rotate.calledWith(2 * Math.PI - 270 * Math.PI / 180));
+      break;
+    case 7:
+      msg = 'rotateNeg90AndFlipImage';
+      assert.isTrue(options.ctx.save.called);
+      assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
+      assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
+      assert.isTrue(options.ctx.restore.called);
+      assert.isTrue(options.ctx.rotate.calledWith(90 * Math.PI / 180));
+      assert.isTrue(options.ctx.scale.calledWith(-1, 1));
+      break;
+    case 8:
+      msg = 'rotateNeg90';
+      assert.isTrue(options.ctx.save.called);
+      assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
+      assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
+      assert.isTrue(options.ctx.restore.called);
+      assert.isTrue(options.ctx.rotate.calledWith(2 * Math.PI - 90 * Math.PI / 180));
+      break;
+    default:
+      msg = 'do nothing';
+      break;
     }
-    assert(ImageHelper.drawImage.calledWith(image));
     it(msg + ' on the canvas if image orientation is ' + orientation, /* eslint complexity: ["error", 9] */ function() {});
   });
 });
