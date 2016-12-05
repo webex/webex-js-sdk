@@ -104,6 +104,20 @@ const Conversation = SparkPlugin.extend({
       });
   },
 
+  delete(conversation, object, activity) {
+    if (!isObject(object)) {
+      return Promise.reject(new Error(`\`object\` must be an object`));
+    }
+
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb: `delete`,
+        target: this.prepareConversation(conversation),
+        object: pick(object, `id`, `url`, `objectType`)
+      }))
+      .then((a) => this.submit(a));
+  },
+
   /**
    * Downloads the file specified in item.scr or item.url
    * @param {Object} item
@@ -621,6 +635,20 @@ const Conversation = SparkPlugin.extend({
     }, activity);
   },
 
+  update(conversation, object, activity) {
+    if (!isObject(object)) {
+      return Promise.reject(new Error(`\`object\` must be an object`));
+    }
+
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb: `update`,
+        target: this.prepareConversation(conversation),
+        object
+      }))
+      .then((a) => this.submit(a));
+  },
+
   /**
    * Sets a new key for the conversation
    * @param {Object} conversation
@@ -922,25 +950,6 @@ const Conversation = SparkPlugin.extend({
         verb,
         target: c,
         object: Object.assign(c, object)
-      }))
-      .then((a) => this.submit(a));
-  };
-});
-
-[
-  `delete`,
-  `update`
-].forEach((verb) => {
-  Conversation.prototype[verb] = function submitObjectActivity(conversation, object, activity) {
-    if (!isObject(object)) {
-      return Promise.reject(new Error(`\`object\` must be an object`));
-    }
-
-    return this._inferConversationUrl(conversation)
-      .then(() => this.prepare(activity, {
-        verb,
-        target: this.prepareConversation(conversation),
-        object
       }))
       .then((a) => this.submit(a));
   };

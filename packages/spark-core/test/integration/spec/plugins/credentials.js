@@ -3,10 +3,12 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 
+import {createUser} from '@ciscospark/test-helper-appid';
 import {assert} from '@ciscospark/test-helper-chai';
 import retry from '@ciscospark/test-helper-retry';
 import {default as Spark, Authorization, grantErrors} from '../../..';
 import testUsers from '@ciscospark/test-helper-test-users';
+import uuid from 'uuid';
 
 describe(`spark-core`, function() {
   this.timeout(30000);
@@ -25,6 +27,23 @@ describe(`spark-core`, function() {
 
         afterEach(() => {
           user = undefined;
+        });
+
+        describe(`#requestAccessTokenFromJwt()`, () => {
+          let jwt;
+          beforeEach(() => createUser({subject: `test-${uuid.v4()}`})
+            .then((res) => {
+              assert.isDefined(res.jwt);
+              jwt = res.jwt;
+            }));
+
+          it(`exchanges a JWT for an access token`, () => {
+            assert.isDefined(jwt);
+            const spark = new Spark();
+            const promise = spark.authenticate({jwt});
+            return promise
+              .then(() => assert.isTrue(spark.isAuthenticated));
+          });
         });
 
         describe(`#requestAuthorizationCodeGrant()`, () => {
@@ -96,39 +115,82 @@ describe(`spark-core`, function() {
         });
 
         describe(`#refresh()`, () => {
-          let spark;
-          beforeEach(() => {
-            return testUsers.create()
-              .then(([u]) => {
-                user = u;
-                spark = new Spark({
-                  credentials: {
-                    authorization: user.token
-                  }
+          describe(`when invoked for a spark user`, () => {
+            let spark;
+            beforeEach(() => {
+              return testUsers.create()
+                .then(([u]) => {
+                  user = u;
+                  spark = new Spark({
+                    credentials: {
+                      authorization: user.token
+                    }
+                  });
                 });
-              });
+            });
+
+            it(`refreshes an access token`, () => {
+              // Make sure the timeout accounts for retries
+              this.timeout(retry.timeout(20000));
+              const originalAccessToken = spark.credentials.authorization.access_token;
+              const originalAuthorization = spark.credentials.authorization;
+              return retry(() => {
+                return spark.credentials.refresh({force: true})
+                  .catch((reason) => {
+                    console.warn(`retrying test:`, reason.stack);
+                    // If we get a refresh failure, put the original Authorization
+                    // back so we can try again.
+                    spark.credentials.set(`authorization`, originalAuthorization);
+                    return Promise.reject(reason);
+                  });
+              })
+                .then(() => {
+                  assert.notEqual(spark.credentials.authorization.access_token, originalAccessToken);
+                  assert.equal(spark.credentials.previousAuthorization.access_token, originalAccessToken);
+                });
+            });
           });
 
-          it(`refreshes an access token`, () => {
-            // Make sure the timeout accounts for retries
-            this.timeout(retry.timeout(20000));
-            const originalAccessToken = spark.credentials.authorization.access_token;
-            const originalAuthorization = spark.credentials.authorization;
-            return retry(() => {
-              return spark.credentials.refresh({force: true})
-                .catch((reason) => {
-                  console.warn(`retrying test:`, reason.stack);
-                  // If we get a refresh failure, put the original Authorization
-                  // back so we can try again.
-                  spark.credentials.set(`authorization`, originalAuthorization);
-                  return Promise.reject(reason);
-                });
-            })
-              .then(() => {
-                assert.notEqual(spark.credentials.authorization.access_token, originalAccessToken);
-                assert.equal(spark.credentials.previousAuthorization.access_token, originalAccessToken);
+          describe(`when invoked for a JWT user`, () => {
+            let jwt;
+            let id;
+            beforeEach(() => {
+              id = {subject: `test-${uuid.v4()}`};
+            });
+
+            beforeEach(() => createUser(id)
+              .then((res) => {
+                jwt = res.jwt;
+              }));
+
+            it(`refreshes an access token via jwt`, () => {
+              const spark = new Spark({
+                config: {
+                  credentials: {
+                    requestJWT() {
+                      return createUser(id)
+                        .then((res) => {
+                          assert.isDefined(res.jwt);
+                          return res;
+                        });
+                    }
+                  }
+                }
               });
+
+              const promise = spark.authenticate({jwt});
+              let originalAccessToken;
+              return promise
+                .then(() => {
+                  assert.isTrue(spark.isAuthenticated);
+                  originalAccessToken = spark.credentials.authorization.access_token;
+                  return spark.refresh({force: true});
+                })
+                .then(() => assert.isTrue(spark.isAuthenticated))
+                .then(() => assert.notEqual(spark.credentials.authorization.access_token, originalAccessToken));
+            });
           });
+
         });
 
       });
