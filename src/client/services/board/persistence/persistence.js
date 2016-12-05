@@ -8,7 +8,6 @@
 var assign = require('lodash.assign');
 var SparkBase = require('../../../../lib/spark-base');
 var chunk = require('lodash.chunk');
-var last = require('lodash.last');
 var pick = require('lodash.pick');
 var promiseSeries = require('es6-promise-series');
 

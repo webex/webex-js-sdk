@@ -7,7 +7,6 @@
 
 /* eslint-env browser */
 
-var assign = require('lodash.assign');
 var isarray = require('lodash.isarray');
 var Persistence = require('./persistence');
 var Realtime = require('./realtime');
@@ -100,9 +99,7 @@ var BoardService = SparkBase.extend({
    * @returns {Promise<Board~EncryptedChannel>}
    */
   encryptChannel: function encryptChannel(channel, options) {
-    options = assign({
-      key: null
-    }, options);
+    options = options || {};
 
     return Promise.resolve(options.key || this.spark.encryption.getUnusedKey())
       .then(function encryptKmsMessage(key) {
