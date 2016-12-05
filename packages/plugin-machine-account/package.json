@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-machine-account",
-  "version": "0.7.5",
+  "version": "0.7.10",
   "description": "",
   "license": "MIT",
   "author": "Ian Remmel <iremmel@cisco.com>",
@@ -9,8 +9,8 @@
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-machine-account",
   "dependencies": {
     "@ciscospark/common": "^0.7.0",
-    "@ciscospark/plugin-wdm": "^0.7.5",
-    "@ciscospark/spark-core": "^0.7.5",
+    "@ciscospark/plugin-wdm": "^0.7.10",
+    "@ciscospark/spark-core": "^0.7.10",
     "babel-runtime": "^6.3.19",
     "lodash": "^4.5.1"
   },

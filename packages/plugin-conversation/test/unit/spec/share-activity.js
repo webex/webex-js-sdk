@@ -53,6 +53,21 @@ describe(`plugin-conversation`, () => {
         ];
         assert.equal(sa._determineContentCategory(items), `videos`);
       });
+
+      it(`returns "documents" if a whiteboard mimeType is found in item.actions`, () => {
+        const items = [
+          {
+            mimeType: `image/png`,
+            actions: [{
+              mimeType: `application/x-cisco-spark-whiteboard`,
+              type: `edit`,
+              url: `https://boards.example.com/boards/1`
+            }]
+          }
+        ];
+        assert.equal(sa._determineContentCategory(items), `documents`);
+      });
+
     });
   });
 });
