@@ -14,7 +14,8 @@ const initialState = new Map({
     isSending: false
   }),
   files: new OrderedMap(),
-  text: ``
+  text: ``,
+  isTyping: false
 });
 
 export default function reduceActivity(state = initialState, action) {
