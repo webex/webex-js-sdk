@@ -10,8 +10,9 @@ var SparkBase = require('../../../../lib/spark-base');
 var chunk = require('lodash.chunk');
 var pick = require('lodash.pick');
 var promiseSeries = require('es6-promise-series');
-// number is hard-coded in board service atm
-var MAX_ALLOWED_INPUT_SIZE = 150;
+
+var MAX_CONTENTS_ADD = 150;
+var MAX_CONTENTS_GET = 1000;
 
 /**
  * @class
@@ -24,7 +25,7 @@ var PersistenceService = SparkBase.extend({
 
   /**
    * Adds Content to a Channel
-   * If contents length is greater than MAX_ALLOWED_INPUT_SIZE, this method
+   * If contents length is greater than MAX_CONTENTS_ADD, this method
    * will break contents into chunks and make multiple GET request to the
    * board service
    * @memberof Board.PersistenceService
@@ -35,7 +36,7 @@ var PersistenceService = SparkBase.extend({
    */
   addContent: function addContent(conversation, channel, contents) {
     var chunks = [];
-    chunks = chunk(contents, MAX_ALLOWED_INPUT_SIZE);
+    chunks = chunk(contents, MAX_CONTENTS_ADD);
     // we want the first promise to resolve before continuing with the next
     // chunk or else we'll have race conditions among patches
     return promiseSeries(chunks.map(function _addContent(part) {
@@ -119,7 +120,7 @@ var PersistenceService = SparkBase.extend({
   /**
    * Gets all Content from a Channel
    * It will make multiple GET requests if contents length are greater than
-   * MAX_ALLOWED_INPUT_SIZE, the number is currently determined and hard-coded
+   * MAX_CONTENTS_GET, the number is currently determined and hard-coded
    * by the backend
    * @memberof Board.PersistenceService
    * @param  {Board~Channel} channel
@@ -127,7 +128,7 @@ var PersistenceService = SparkBase.extend({
    */
   getAllContent: function getAllContent(channel, query) {
     var defaultQuery = {
-      contentsLimit: MAX_ALLOWED_INPUT_SIZE
+      contentsLimit: MAX_CONTENTS_GET
     };
 
     query = query ? assign(defaultQuery, pick(query, 'contentsLimit')) : defaultQuery;
