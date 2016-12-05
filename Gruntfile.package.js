@@ -46,7 +46,8 @@ module.exports = function(grunt) {
       },
       snapshots: {
         src: [
-          './packages/<%= package %>/src/**/__snapshots__'
+          './packages/<%= package %>/src/**/__snapshots__',
+          './packages/<%= package %>/test/**/__snapshots__',
         ]
       }
     },
