@@ -82,7 +82,17 @@ export default function processImage({file, thumbnailMaxWidth, thumbnailMaxHeigh
       canvas.height = thumbnailDimensions.height;
 
       const ctx = canvas.getContext(`2d`);
-      orient({orientation: file.image.orientation, img, x: 0, y: 0, width: thumbnailDimensions.width, height: thumbnailDimensions.height, ctx}, file);
+      orient(
+        {
+          orientation: file.image.orientation,
+          img,
+          x: 0,
+          y: 0,
+          width: thumbnailDimensions.width,
+          height: thumbnailDimensions.height,
+          ctx
+        },
+        file);
       const parts = canvas.toDataURL(`image/png`).split(`,`);
       const byteString = base64.decode(parts[1]);
 

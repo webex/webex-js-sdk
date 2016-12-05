@@ -10,7 +10,7 @@ const ExifImage = require(`exif`).ExifImage;
 /**
 * Draws the image on the canvas so that the thumbnail
 * could be generated
-* @param {Object} options
+* @param {Object} options(orientation: image exif orientation range from 1-8, img: Image object, x: start x-axis, y: start y-axis, width: width of the thumbnail, height: height of the thumbnail, ctx: canvas context)
 * @returns {Object}
 */
 export function drawImage(options) {
@@ -39,11 +39,11 @@ export function drawImage(options) {
 }
 
 /**
-* fetches and updates the image file with exif information, required to correctly rotate the image activity
+* Updates the image file with exif information, required to correctly rotate the image activity
 * @param {Object} file
 * @returns {Promise<Object>}
 */
-export function fixImageOrientation(file) {
+export function updateImageOrientation(file) {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.readAsArrayBuffer(file);

@@ -8,7 +8,7 @@ import {readExifData, orient} from '../..';
 import file from '@ciscospark/test-helper-file';
 import sinon from '@ciscospark/test-helper-sinon';
 describe(`helper-image`, function() {
-  this.timeout(30000);
+  this.timeout(10000);
 
   describe(`readExifData()`, () => {
     it(`adds exif orientation information on the image file`, () => {

@@ -28,7 +28,7 @@ var ImageHelper = {
     }.bind(this));
   },
 
-  fixImageOrientation: function fixImageOrientation(file) {
+  updateImageOrientation: function updateImageOrientation(file) {
     return new Promise(function readFileInBuffer(resolve) {
       var reader = new FileReader();
       reader.readAsArrayBuffer(file);

@@ -38,7 +38,17 @@ var ImageUtil = {
         metadata.image = dimensions;
 
         var ctx = canvas.getContext('2d');
-        imageHelper.orient({orientation: file.image.orientation, img, x: 0, y: 0, width: dimensions.width, height: dimensions.height, ctx}, file);
+        imageHelper.orient(
+          {
+            orientation: file.image.orientation,
+            img,
+            x: 0,
+            y: 0,
+            width: dimensions.width,
+            height: dimensions.height,
+            ctx
+          },
+          file);
 
         // TODO take advantage of canvas.toBlob in Firefox
 
