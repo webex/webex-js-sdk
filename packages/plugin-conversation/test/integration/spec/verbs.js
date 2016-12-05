@@ -7,6 +7,7 @@ import '../..';
 
 import {patterns} from '@ciscospark/common';
 import CiscoSpark, {SparkHttpError} from '@ciscospark/spark-core';
+import sinon from '@ciscospark/test-helper-sinon';
 import {assert} from '@ciscospark/test-helper-chai';
 import testUsers from '@ciscospark/test-helper-test-users';
 import {find, map} from 'lodash';
@@ -335,6 +336,34 @@ describe(`plugin-conversation`, function() {
           assert.notEqual(c.defaultActivityEncryptionKeyUrl, conversation.defaultActivityEncryptionKeyUrl);
           return mccoy.spark.encryption.kms.fetchKey({uri: c.defaultActivityEncryptionKeyUrl});
         }));
+    });
+
+    describe(`#updateTypingStatus()`, () => {
+      beforeEach(() => spark.conversation.create({participants, comment: `THIS IS A COMMENT`})
+        .then((c) => {conversation = c;}));
+
+      it(`sets the typing indicator for the specified conversation`, () => {
+        const spy = sinon.spy();
+        mccoy.spark.mercury.on(`event:status.start_typing`, spy);
+
+        return spark.conversation.updateTypingStatus(conversation, {typing: true})
+        .then(() => spark.conversation.get(conversation))
+        .then(() => {
+          assert.calledOnce(spy);
+        });
+      });
+
+      it(`clears the typing indicator for the specified conversation`, () => {
+        const spy = sinon.spy();
+        mccoy.spark.mercury.on(`event:status.stop_typing`, spy);
+
+        return spark.conversation.updateTypingStatus(conversation, {typing: true})
+        .then(() => spark.conversation.updateTypingStatus(conversation, {typing: false}))
+        .then(() => spark.conversation.get(conversation))
+        .then(() => {
+          assert.calledOnce(spy);
+        });
+      });
     });
 
     describe(`verbs that update conversation tags`, () => {
