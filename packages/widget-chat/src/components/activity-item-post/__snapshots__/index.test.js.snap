@@ -42,7 +42,7 @@ exports[`ActivityItemPost post component renders properly 1`] = `
       <div
         className="post-action-item">
         <button
-          className="icon-button"
+          className="button"
           onClick={[Function]}
           onKeyUp={[Function]}>
           <div
@@ -56,7 +56,7 @@ exports[`ActivityItemPost post component renders properly 1`] = `
       <div
         className="post-action-item">
         <button
-          className="icon-button"
+          className="button"
           onClick={[Function]}
           onKeyUp={[Function]}>
           <div
