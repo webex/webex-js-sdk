@@ -10,7 +10,7 @@ const ExifImage = require(`exif`).ExifImage;
 /**
 * Draws the image on the canvas so that the thumbnail
 * could be generated
-* @param {Object} options(orientation: image exif orientation range from 1-8, img: Image object, x: start x-axis, y: start y-axis, width: width of the thumbnail, height: height of the thumbnail, ctx: canvas context)
+* @param {Object} options(options(orientation: image exif orientation range from 1-8, img: Image object, x: start x-axis, y: start y-axis, width: width of the thumbnail, height: height of the thumbnail, deg: counterclockwise degree rotation, flip: flip Image, ctx: canvas context))
 * @returns {Object}
 */
 export function drawImage(options) {
@@ -87,7 +87,7 @@ export function readExifData(file, buf) {
 /* eslint complexity: ["error", 9] */
 /**
 * Rotates/flips the image on the canvas as per exif information
-* @param {Object} options
+* @param {Object} options(orientation: image exif orientation range from 1-8, img: Image object, x: start x-axis, y: start y-axis, width: width of the thumbnail, height: height of the thumbnail, ctx: canvas context)
 * @param {Object} file
 * @returns {Object}
 */
