@@ -3,7 +3,7 @@ import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 
-import {constructFile} from '../../utils/files';
+import {constructFiles} from '../../utils/files';
 import {addFiles, removeFile} from '../../actions/activity';
 
 import AddFileButton from '../../components/add-file-button';
@@ -35,11 +35,7 @@ export class FileUploader extends Component {
       spark
     } = props;
 
-    const files = [];
-
-    for (let i = 0; i < e.target.files.length; i++) {
-      files.push(constructFile(e.target.files[i]));
-    }
+    const files = constructFiles(e.target.files);
     props.addFiles(conversation, activity, files, spark);
 
     // Clear the value of the input so the same file can be added again.
