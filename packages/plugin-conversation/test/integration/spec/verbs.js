@@ -5,7 +5,7 @@
 
 import '../..';
 
-import {patterns} from '@ciscospark/common';
+import {Defer, patterns} from '@ciscospark/common';
 import CiscoSpark, {SparkHttpError} from '@ciscospark/spark-core';
 import sinon from '@ciscospark/test-helper-sinon';
 import {assert} from '@ciscospark/test-helper-chai';
@@ -339,30 +339,43 @@ describe(`plugin-conversation`, function() {
     });
 
     describe(`#updateTypingStatus()`, () => {
-      beforeEach(() => spark.conversation.create({participants, comment: `THIS IS A COMMENT`})
-        .then((c) => {conversation = c;}));
+      let blockUntilMercuryStart;
+      let blockUntilMercuryStop;
+      let startTypingSpy;
+      let stopTypingSpy;
+      beforeEach(() => {
+        startTypingSpy = sinon.spy();
+        stopTypingSpy = sinon.spy();
+        blockUntilMercuryStart = new Defer();
+        blockUntilMercuryStop = new Defer();
+        mccoy.spark.mercury.on(`event:status.start_typing`, () => {
+          startTypingSpy();
+          blockUntilMercuryStart.resolve();
+        });
+        mccoy.spark.mercury.on(`event:status.stop_typing`, () => {
+          stopTypingSpy();
+          blockUntilMercuryStop.resolve();
+        });
+        return spark.conversation.create({participants, comment: `THIS IS A COMMENT`})
+          .then((c) => {
+            conversation = c;
+          });
+      });
 
       it(`sets the typing indicator for the specified conversation`, () => {
-        const spy = sinon.spy();
-        mccoy.spark.mercury.on(`event:status.start_typing`, spy);
-
         return spark.conversation.updateTypingStatus(conversation, {typing: true})
-        .then(() => spark.conversation.get(conversation))
-        .then(() => {
-          assert.calledOnce(spy);
-        });
+          .then(() => blockUntilMercuryStart.promise)
+          .then(() => {
+            assert.calledOnce(startTypingSpy);
+          });
       });
 
       it(`clears the typing indicator for the specified conversation`, () => {
-        const spy = sinon.spy();
-        mccoy.spark.mercury.on(`event:status.stop_typing`, spy);
-
-        return spark.conversation.updateTypingStatus(conversation, {typing: true})
-        .then(() => spark.conversation.updateTypingStatus(conversation, {typing: false}))
-        .then(() => spark.conversation.get(conversation))
-        .then(() => {
-          assert.calledOnce(spy);
-        });
+        return spark.conversation.updateTypingStatus(conversation, {typing: false})
+          .then(() => blockUntilMercuryStop.promise)
+          .then(() => {
+            assert.called(stopTypingSpy);
+          });
       });
     });
 
