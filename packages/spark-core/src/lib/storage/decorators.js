@@ -100,6 +100,15 @@ export function waitForValue(key) {
 
 const inited = new Set();
 
+/**
+ * finds a means of identitying the `target` param passed to
+ * `prepareInitialize()`. When possible, avoids duplicate `init()` calls if
+ * namespaces collide
+ *
+ * @param {Object|Constructor} target
+ * @private
+ * @returns {String|Constructor}
+ */
 function identifyTarget(target) {
   if (target.namespace) {
     return target.namespace;
