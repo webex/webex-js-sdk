@@ -61,7 +61,6 @@ export function persist(...args) {
   };
 }
 
-const sym = Symbol();
 const M = Map;
 const S = Set;
 const BlockingKeyMap = make(M, M, S);
@@ -98,14 +97,26 @@ export function waitForValue(key) {
   };
 }
 
+
+const inited = new Set();
+
+function identifyTarget(target) {
+  if (target.namespace) {
+    return target.namespace;
+  }
+
+  return target;
+}
+
 /**
  * @param {Function} target
  * @param {string} prop
  * @returns {undefined}
  */
 function prepareInitialize(target, prop) {
-  if (!target[sym]) {
-    target[sym] = true;
+  const id = identifyTarget(target);
+  if (!inited.has(id)) {
+    inited.add(id);
     if (target.initialize) {
       target.initialize = wrap(target.initialize, function applyInit(fn, ...args) {
         const ret = Reflect.apply(fn, this, args);
