@@ -54,12 +54,12 @@ export default class AuthInterceptor extends Interceptor {
   }
 
   /**
-   * @see Interceptor#onRequestError
+   * @see Interceptor#onResponseError
    * @param {Object} options
    * @param {Error} reason
    * @returns {Object}
    */
-  onRequestError(options, reason) {
+  onResponseError(options, reason) {
     return this.shouldAttemptReauth(reason, options)
       .then((shouldAttemptReauth) => {
         if (shouldAttemptReauth) {
@@ -69,7 +69,7 @@ export default class AuthInterceptor extends Interceptor {
             Reflect.deleteProperty(reason.options.headers, `authorization`);
           }
 
-          return this.spark.credentials.authorize({force: true})
+          return this.spark.refresh({force: true})
             .then(() => this.replay(options));
         }
 
