@@ -4,8 +4,6 @@
  * @private
  */
 
- /* eslint no-console:[0] */
-
 import {get, has, isArray, isString, omit} from 'lodash';
 import util from 'util';
 import {Interceptor} from '@ciscospark/http-core';
@@ -27,31 +25,32 @@ export default class RequestLoggerInterceptor extends Interceptor {
    * @returns {Object}
    */
   onRequest(options) {
-    console.log(`/**********************************************************************\\ `);
-    console.log(`Request:`, options.method || `GET`, options.uri);
-    console.log(`WEBEX_TRACKINGID: `, get(options, `headers.trackingid`));
+    const logger = get(options, `logger`, console);
+    logger.log(`/**********************************************************************\\ `);
+    logger.log(`Request:`, options.method || `GET`, options.uri);
+    logger.log(`WEBEX_TRACKINGID: `, get(options, `headers.trackingid`));
     /* istanbul ignore next */
     if (has(options, `headers.x-trans-id`)) {
-      console.log(`X-Trans-ID: `, get(options, `headers.x-trans-id`));
+      logger.log(`X-Trans-ID: `, get(options, `headers.x-trans-id`));
     }
     if (has(this, `spark.device.userId`)) {
-      console.log(`User ID:`, get(this, `spark.device.userId`));
+      logger.log(`User ID:`, get(this, `spark.device.userId`));
     }
     const now = new Date();
     if (process.env.ENABLE_VERBOSE_NETWORK_LOGGING) {
-      console.log(`timestamp (start): `, now.getTime(), now.toISOString());
+      logger.log(`timestamp (start): `, now.getTime(), now.toISOString());
       try {
         // Determine if body is a buffer without relying on Buffer to avoid
         // node/browser conflicts.
         if (options.body && options.body.length && !isArray(options.body) && !isString(options.body)) {
-          console.log(`Request Options:`, util.inspect(omit(options, `body`), {depth: null}));
+          logger.log(`Request Options:`, util.inspect(omit(options, `body`), {depth: null}));
         }
         else {
-          console.log(`Request Options:`, util.inspect(options, {depth: null}));
+          logger.log(`Request Options:`, util.inspect(options, {depth: null}));
         }
       }
       catch (e) {
-        console.warn(`Could not stringify request options:`, e);
+        logger.warn(`Could not stringify request options:`, e);
       }
     }
 
@@ -68,8 +67,9 @@ export default class RequestLoggerInterceptor extends Interceptor {
     // We need to do the normal onRequest logging, but then log how the request
     // failed since the response logger won't be called.
     this.onRequest(options);
-    console.error(`Request Failed: `, reason.stack);
-    console.log(`\\**********************************************************************/`);
+    const logger = get(options, `logger`, console);
+    logger.error(`Request Failed: `, reason.stack);
+    logger.log(`\\**********************************************************************/`);
 
     return Promise.reject(reason);
   }
