@@ -8,7 +8,7 @@
 
 import '@ciscospark/plugin-phone';
 
-import {defaults, get, has, set} from 'lodash';
+import {defaults, get, has, omit, set} from 'lodash';
 import CiscoSpark, {children, registerPlugin} from '@ciscospark/spark-core';
 import AuthInterceptor from './interceptors/auth';
 import Memberships from './plugins/memberships';
@@ -57,6 +57,17 @@ const ciscospark = new CiscoSpark({
 });
 
 /**
+ * Error Event
+ *
+ * Emitted when init fails asynchronously. (For example, if the `jwt` passed to
+ * {@link CiscoSpark.init} cannot be exchanged for an access token)
+ *
+ * @event error
+ * @instance
+ * @memberof CiscoSpark
+ */
+
+/**
  * Create a new ciscospark instance.
  *
  * Note: ciscospark.init() really only applies to node apps at this time. In web
@@ -77,14 +88,32 @@ const ciscospark = new CiscoSpark({
  * })
  * ```
  * Previous versions of the sdk suggested you should pass credentials here.
- * While that still possible, we no longer document it because you should rely
- * on the storage layer instead.
+ * While that still is possible, we no longer document it because you should
+ * rely on the storage layer instead.
+ * @emits CiscoSpark.events:error
  * @param {Object} attrs
+ * @param {Object} attrs.jwt (optional)
+ * @param {Object} attrs.requestJWT (optional)
  * @param {Object} attrs.config (optional)
  * @memberof CiscoSpark
  * @returns {CiscoSpark}
  */
 ciscospark.init = function init(attrs) {
+  if (attrs.jwt) {
+    const jwt = attrs.jwt;
+    const requestJWT = attrs.requestJWT;
+    const etc = omit(attrs, `jwt`, `requestJWT`);
+    etc.config = defaults(etc.config, config);
+    set(etc, `config.credentials.requestJWT`, requestJWT);
+    const spark = new CiscoSpark(etc);
+    spark.authorize({jwt})
+      .catch((reason) => {
+        spark.logger.error(`ciscospark: JWT init failed`, reason);
+        spark.emit(`error`, reason);
+      });
+    return spark;
+  }
+
   if (has(attrs, `credentials.access_token`) || has(`credentials.refresh_token`)) {
     attrs.credentials.authorization = {};
     [
