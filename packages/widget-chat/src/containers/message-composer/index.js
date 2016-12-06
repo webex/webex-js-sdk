@@ -29,7 +29,7 @@ export class MessageComposer extends Component {
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.debouncedTyping = _.debounce(
-      this.sendTyping.bind(this),
+      this.sendTyping,
       TYPING_DELAY,
       {
         leading: true,
@@ -45,15 +45,25 @@ export class MessageComposer extends Component {
   }
 
   handleTextChange(e) {
-    this.debouncedTyping();
     const props = this.props;
     props.updateActivityText(e.target.value);
+    if (e.target.value === ``) {
+      const {
+        conversation,
+        spark
+      } = props;
+      props.setUserTyping(false, conversation, spark);
+    }
   }
 
   handleKeyDown(e) {
     if (e.keyCode === 13 && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
       this.handleSubmit();
       e.preventDefault();
+    }
+    else {
+      const props = this.props;
+      this.debouncedTyping(props);
     }
   }
 
@@ -87,8 +97,7 @@ export class MessageComposer extends Component {
     props.focusTextArea();
   }
 
-  sendTyping() {
-    const props = this.props;
+  sendTyping(props) {
     const {
       conversation,
       spark
