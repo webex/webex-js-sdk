@@ -70,7 +70,6 @@ function updateActivityTyping(isTyping) {
   };
 }
 
-
 /**
  * Adds file to message, creates Share activity if not present, starts upload
  *
