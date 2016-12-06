@@ -437,6 +437,7 @@ export class ChatWidget extends Component {
           activeClassName: styles.activeDropzone,
           className: styles.dropzone,
           disableClick: true,
+          disablePreview: true,
           onDrop: this.handleFileDrop
         };
 
@@ -474,6 +475,14 @@ export class ChatWidget extends Component {
                 />
               </div>
               {deleteAlert}
+              <div className={classNames(`dropzone-message`, styles.dropzoneMessage)}>
+                <div className={classNames(`dropzone-message-title`, styles.dropzoneTitle)}>
+                  <FormattedMessage
+                    defaultMessage={`Drag and drop your files here`}
+                    id={`dropFilesHere`}
+                  />
+                </div>
+              </div>
             </Dropzone>
           </div>
         );

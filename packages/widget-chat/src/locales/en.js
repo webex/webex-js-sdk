@@ -7,5 +7,6 @@ export default
     youCreatedConversation: `You created conversation.`,
     someoneElseCreatedConversation: `{name} created conversation.`,
     youDeletedYourMessage: `You deleted your message.`,
-    someoneDeletedTheirMessage: `{name} deleted their own message.`
+    someoneDeletedTheirMessage: `{name} deleted their own message.`,
+    dropFilesHere: `Drag and drop your files here`
   };
