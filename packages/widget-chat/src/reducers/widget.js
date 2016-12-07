@@ -7,7 +7,8 @@ export default function reduceWidget(state = {
   deletingActivityId: null,
   showAlertModal: false,
   showScrollToBottomButton: false,
-  hasNewMessage: false
+  hasNewMessage: false,
+  hasTextAreaFocus: false
 }, action) {
   switch (action.type) {
   case UPDATE_WIDGET_STATE:

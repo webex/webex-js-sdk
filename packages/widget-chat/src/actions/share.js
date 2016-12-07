@@ -16,6 +16,17 @@ export function receiveShare(payload) {
   };
 }
 
+export const STORE_SHARES = `STORE_SHARES`;
+export function storeShares(shares) {
+  return {
+    type: STORE_SHARES,
+    payload: {
+      shares
+    }
+  };
+}
+
+
 export function retrieveSharedFile(fileObject, spark) {
   return (dispatch) => {
     dispatch(fetchShare(fileObject));

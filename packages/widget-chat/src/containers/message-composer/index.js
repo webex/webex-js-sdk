@@ -4,36 +4,33 @@ import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 
 import {
-  createActivity,
   submitActivity,
   updateActivityText
 } from '../../actions/activity';
+import {blurTextArea, focusTextArea} from '../../actions/widget';
+
+import FileUploader from '../file-uploader';
 import TextArea from '../../components/textarea';
-import AddFileButton from '../../components/add-file-button';
+
 
 import styles from './styles.css';
 
 export class MessageComposer extends Component {
   constructor(props) {
     super(props);
-    this.handleChange = this.handleChange.bind(this);
+    this.handleTextChange = this.handleTextChange.bind(this);
+    this.handleTextAreaBlur = this.handleTextAreaBlur.bind(this);
+    this.handleTextAreaFocus = this.handleTextAreaFocus.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
   }
 
-  componentWillReceiveProps(nextProps) {
-    if (!nextProps.activity.get(`activity`)) {
-      const props = this.props;
-      props.createActivity(props.conversation, ``, props.conversation.participants[0]);
-    }
-  }
-
   shouldComponentUpdate(nextProps) {
     const props = this.props;
-    return props.activity !== nextProps.activity;
+    return props.activity !== nextProps.activity || props.widget !== nextProps.widget;
   }
 
-  handleChange(e) {
+  handleTextChange(e) {
     const props = this.props;
     props.updateActivityText(e.target.value);
   }
@@ -53,28 +50,39 @@ export class MessageComposer extends Component {
       spark
     } = props;
     const {onSubmit} = this.props;
-    props.submitActivity(conversation, activity.get(`activity`), spark);
+    props.submitActivity(conversation, activity, spark);
     if (onSubmit) {
       onSubmit();
     }
   }
 
+  handleTextAreaBlur() {
+    const props = this.props;
+    props.blurTextArea();
+  }
+
+  handleTextAreaFocus() {
+    const props = this.props;
+    props.focusTextArea();
+  }
+
   render() {
     let text;
     const props = this.props;
-    if (props.activity && props.activity.getIn([`activity`, `object`])) {
-      text = props.activity.getIn([`activity`, `object`, `displayName`]);
+    if (props.activity && props.activity.has(`text`)) {
+      text = props.activity.get(`text`);
     }
     const {placeholder} = this.props;
+    const textAreaFocusStyle = props.widget.hasTextAreaFocus ? styles.hasFocus : ``;
 
     return (
-      <div className={classNames(`message-composer`, styles.messageComposer)}>
-        <div className={classNames(`add-file-container`, styles.addFileContainer)}>
-          <AddFileButton />
-        </div>
-        <div className={classNames(`textarea-container`)}>
+      <div className={classNames(`message-composer`, styles.messageComposer, textAreaFocusStyle)}>
+        <FileUploader onSubmit={this.handleSubmit} />
+        <div className={classNames(`textarea-container`, styles.textareaContainer)}>
           <TextArea
-            onChange={this.handleChange}
+            onBlur={this.handleTextAreaBlur}
+            onChange={this.handleTextChange}
+            onFocus={this.handleTextAreaFocus}
             onKeyDown={this.handleKeyDown}
             onSubmit={this.handleSubmit}
             placeholder={placeholder}
@@ -97,14 +105,16 @@ function mapStateToProps(state, ownProps) {
   return {
     activity: state.activity,
     spark: ownProps.spark,
-    conversation: state.conversation
+    conversation: state.conversation,
+    widget: state.widget
   };
 }
 
 export default connect(
   mapStateToProps,
   (dispatch) => bindActionCreators({
-    createActivity,
+    blurTextArea,
+    focusTextArea,
     submitActivity,
     updateActivityText
   }, dispatch)

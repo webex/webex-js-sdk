@@ -44,7 +44,7 @@ exports[`ActivityItem post component is self renders properly 1`] = `
         <div
           className="post-action-item">
           <button
-            className="icon-button"
+            className="button"
             onClick={[Function]}
             onKeyUp={[Function]}>
             <div
@@ -58,7 +58,7 @@ exports[`ActivityItem post component is self renders properly 1`] = `
         <div
           className="post-action-item">
           <button
-            className="icon-button"
+            className="button"
             onClick={[Function]}
             onKeyUp={[Function]}>
             <div
@@ -120,7 +120,7 @@ exports[`ActivityItem post component not self renders properly 1`] = `
         <div
           className="post-action-item">
           <button
-            className="icon-button"
+            className="button"
             onClick={[Function]}
             onKeyUp={[Function]}>
             <div
@@ -187,7 +187,7 @@ exports[`ActivityItem post component not self with html renders properly 1`] = `
         <div
           className="post-action-item">
           <button
-            className="icon-button"
+            className="button"
             onClick={[Function]}
             onKeyUp={[Function]}>
             <div
@@ -211,7 +211,11 @@ exports[`ActivityItem tombstone component renders properly 1`] = `
   className="activity-item-container">
   <div
     className="system-message">
-    Test User deleted their own message. 2016-09-20T19:52:57.186Z
+    <span>
+      Test User deleted their own message.
+    </span>
+     
+    2016-09-20T19:52:57.186Z
   </div>
 </div>
 `;
