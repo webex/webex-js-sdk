@@ -15,12 +15,12 @@ PACKAGE=widget-message-meet npm run grunt:package -- build
 ```
 1. Locate the `package/widget-message-meet/dist` directory.
 1. Copy the resources in the `dist` directory to own project and add a `<script />` tag to your page to include the `bundle.js` and a `<link />` tag to include `main.css`.
-1. Create a container where you which to include the chat widget and add the following attributes to configure the widget:
+1. Create a container where you which to include the message meet widget and add the following attributes to configure the widget:
   * `data-toggle="spark-message-meet"`: (required)
-  * `data-access-token`: Access token for the user account that is initiating the chat session. For testing purposes you can use a developer access token from https://developers.ciscospark.com
+  * `data-access-token`: Access token for the user account that is initiating the message/meet session. For testing purposes you can use a developer access token from https://developers.ciscospark.com
   * `data-user-id`: User Id or email of the target user.
 ```html
-<div class="chat-widget-container"
+<div class="message-meet-widget-container"
   data-toggle="spark-message-meet"
   data-access-token="XXXXXXXXXXXXXXXXXXXXXX"
   data-user-id="sparky@ciscospark.com"

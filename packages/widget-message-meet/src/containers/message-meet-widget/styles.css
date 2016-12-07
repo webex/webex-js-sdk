@@ -1,4 +1,4 @@
-.widget-chat {
+.widget-message-meet {
   font-family: 'CiscoSans TT Extra Light', 'Helvetica Neue', Arial, sans-serif;
   font-size: 16px;
   font-weight: 200;
@@ -12,8 +12,8 @@
   background-color: #049fd9;
 }
 
-.widget-chat,
-.widget-chat-inner {
+.widget-message-meet,
+.widget-message-meet-inner {
   display: flex;
   height: 100%;
   overflow: hidden;

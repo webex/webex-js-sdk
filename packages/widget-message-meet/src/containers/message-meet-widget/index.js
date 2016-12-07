@@ -49,9 +49,9 @@ import injectSpark from '../../modules/redux-spark/inject-spark';
 import ConfirmationModal from '../../components/confirmation-modal';
 
 /**
- * ChatWidget Component
+ * MessageMeetWidget Component
  */
-export class ChatWidget extends Component {
+export class MessageMeetWidget extends Component {
   constructor(props) {
     super(props);
     this.getActivityList = this.getActivityList.bind(this);
@@ -443,7 +443,7 @@ export class ChatWidget extends Component {
         };
 
         main = ( // eslint-disable-line no-extra-parens
-          <div className={classNames(`widget-chat-inner`, styles.widgetChatInner)}>
+          <div className={classNames(`widget-message-meet-inner`, styles.widgetMessageMeetInner)}>
             <div className={classNames(`title-bar-wrapper`, styles.titleBarWrapper)}>
               <TitleBar
                 connectionStatus={sparkState}
@@ -492,7 +492,7 @@ export class ChatWidget extends Component {
     }
 
     return (
-      <div className={classNames(`widget-chat`, styles.widgetChat)}>
+      <div className={classNames(`widget-message-meet`, styles.widgetMessageMeet)}>
         <div className={classNames(`banner`, styles.banner)} />
         {main}
         <Notifications />
@@ -501,7 +501,7 @@ export class ChatWidget extends Component {
   }
 }
 
-ChatWidget.propTypes = {
+MessageMeetWidget.propTypes = {
   acknowledgeActivityOnServer: PropTypes.func.isRequired,
   addFiles: PropTypes.func.isRequired,
   confirmDeleteActivity: PropTypes.func.isRequired,
@@ -557,4 +557,4 @@ export default connect(
     showScrollToBottomButton,
     updateHasNewMessage
   }, dispatch)
-)(injectSpark(injectIntl(ChatWidget)));
+)(injectSpark(injectIntl(MessageMeetWidget)));

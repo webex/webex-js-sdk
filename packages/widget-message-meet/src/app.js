@@ -12,7 +12,7 @@ const defaultConfig = {
   env: process.env.ENV_VARIABLE
 };
 
-export function initChatWidget(element, config) {
+export function initMessageMeetWidget(element, config) {
   config = _.merge({}, defaultConfig, config);
 
   ReactDOM.render(
@@ -27,7 +27,7 @@ export function initChatWidget(element, config) {
 function loadAllWidgets() {
   const widgets = document.querySelectorAll(`[data-toggle="spark-message-meet"]`);
   for (const widget of widgets) {
-    initChatWidget(widget, {
+    initMessageMeetWidget(widget, {
       accessToken: widget.getAttribute(`data-access-token`) || undefined,
       userId: widget.getAttribute(`data-user-id`) || undefined
     });
