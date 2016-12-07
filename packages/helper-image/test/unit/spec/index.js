@@ -36,36 +36,38 @@ describe(`helper-image`, () => {
   describe(`orient()`, () => {
     const events = [
       {
-        orientation: 1,
-        message: `do nothing`
+        orientation: 1
       },
       {
         orientation: 2,
-        message: `flipImage`
+        flip: true
       },
       {
         orientation: 3,
-        message: `rotateImage180`
+        rotate: `180`
       },
       {
         orientation: 4,
-        message: `rotate180AndFlipImage`
+        flip: true,
+        rotate: `180`
       },
       {
         orientation: 5,
-        message: `rotate270AndFlipImage`
+        flip: true,
+        rotate: `270`
       },
       {
         orientation: 6,
-        message: `rotateImage270`
+        rotate: `270`
       },
       {
         orientation: 7,
-        message: `rotateNeg90AndFlipImage`
+        flip: true,
+        rotate: `90`
       },
       {
         orientation: 8,
-        message: `rotateNeg90`
+        rotate: `90`
       }
     ];
     const file = {
@@ -94,67 +96,28 @@ describe(`helper-image`, () => {
         restore: sinon.stub().returns(() => true)
       }
     };
-    events.forEach(/* eslint complexity: ["error", 9] */ (def) => {
-      const {message, orientation} = def;
-      describe(`when an image file is received with image orientation as ${orientation}`, () => {
+    events.forEach((def) => {
+      const {flip, orientation, rotate} = def;
+      describe(`when an image file is received with orientation as ${orientation}`, () => {
         options.orientation = orientation;
         file.image.orientation = orientation;
         orient(options, file);
-        it(`${message} on the canvas`, /* eslint no-empty-function: 0 */ () => {
-          switch (orientation) {
-          case 2:
-            assert.isTrue(options.ctx.save.called);
-            assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
-            assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
-            assert.isTrue(options.ctx.restore.called);
-            break;
-          case 3:
-            assert.isTrue(options.ctx.save.called);
-            assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
-            assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
-            assert.isTrue(options.ctx.restore.called);
-            assert.isTrue(options.ctx.rotate.calledWith(2 * Math.PI - 180 * Math.PI / 180));
-            break;
-          case 4:
-            assert.isTrue(options.ctx.save.called);
-            assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
-            assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
-            assert.isTrue(options.ctx.restore.called);
-            assert.isTrue(options.ctx.rotate.calledWith(180 * Math.PI / 180));
+        let message = flip ? `flips ` : ``;
+        message += rotate ? `rotates ${rotate} deg` : ``;
+        message = message ? `image on the canvas ${message}` : `does nothing `;
+        it(`${message}`, () => {
+          assert.isTrue(options.ctx.save.called);
+          assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
+          assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
+          assert.isTrue(options.ctx.restore.called);
+          if (flip) {
             assert.isTrue(options.ctx.scale.calledWith(-1, 1));
-            break;
-          case 5:
-            assert.isTrue(options.ctx.save.called);
-            assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
-            assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
-            assert.isTrue(options.ctx.restore.called);
-            assert.isTrue(options.ctx.rotate.calledWith(270 * Math.PI / 180));
-            assert.isTrue(options.ctx.scale.calledWith(-1, 1));
-            break;
-          case 6:
-            assert.isTrue(options.ctx.save.called);
-            assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
-            assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
-            assert.isTrue(options.ctx.restore.called);
-            assert.isTrue(options.ctx.rotate.calledWith(2 * Math.PI - 270 * Math.PI / 180));
-            break;
-          case 7:
-            assert.isTrue(options.ctx.save.called);
-            assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
-            assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
-            assert.isTrue(options.ctx.restore.called);
-            assert.isTrue(options.ctx.rotate.calledWith(90 * Math.PI / 180));
-            assert.isTrue(options.ctx.scale.calledWith(-1, 1));
-            break;
-          case 8:
-            assert.isTrue(options.ctx.save.called);
-            assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
-            assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
-            assert.isTrue(options.ctx.restore.called);
+            if (rotate) {
+              assert.isTrue(options.ctx.rotate.calledWith(rotate * Math.PI / 180));
+            }
+          }
+          else if (rotate) {
             assert.isTrue(options.ctx.rotate.calledWith(2 * Math.PI - 90 * Math.PI / 180));
-            break;
-          default:
-            break;
           }
         });
       });

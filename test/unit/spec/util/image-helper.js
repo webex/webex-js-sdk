@@ -36,36 +36,38 @@ describe('readExifData()', function() {
 describe('orient()', function() {
   var events = [
     {
-      orientation: 1,
-      message: 'do nothing'
+      orientation: 1
     },
     {
       orientation: 2,
-      message: 'flipImage'
+      flip: true,
     },
     {
       orientation: 3,
-      message: 'rotateImage180'
+      rotate: '180'
     },
     {
       orientation: 4,
-      message: 'rotate180AndFlipImage'
+      flip: true,
+      rotate: '180'
     },
     {
       orientation: 5,
-      message: 'rotate270AndFlipImage'
+      flip: true,
+      rotate: '270'
     },
     {
       orientation: 6,
-      message: 'rotateImage270'
+      rotate: '270'
     },
     {
       orientation: 7,
-      message: 'rotateNeg90AndFlipImage'
+      flip: true,
+      rotate: '90'
     },
     {
       orientation: 8,
-      message: 'rotateNeg90'
+      rotate: '90'
     }
   ];
   var file = {
@@ -95,65 +97,26 @@ describe('orient()', function() {
     }
   };
   events.forEach(function(event) {
-    describe('when an image file is received with image orientation as ' + event.orientation, function() {
+    describe('when an image file is received with orientation as ' + event.orientation, function() {
       options.orientation = event.orientation;
       file.image.orientation = event.orientation;
       ImageHelper.orient(options, file);
-      it(event.message + ' on the canvas', /* eslint complexity: ["error", 9] */ function() {
-        switch (event.orientation) {
-          case 2:
-            assert.isTrue(options.ctx.save.called);
-            assert.isTrue(options.ctx.translate.calledWith(options.x + options.width/2, options.y + options.height/2));
-            assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width/2, -options.height/2, options.width, options.height));
-            assert.isTrue(options.ctx.restore.called);
-            break;
-          case 3:
-            assert.isTrue(options.ctx.save.called);
-            assert.isTrue(options.ctx.translate.calledWith(options.x + options.width/2, options.y + options.height/2));
-            assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width/2, -options.height/2, options.width, options.height));
-            assert.isTrue(options.ctx.restore.called);
-            assert.isTrue(options.ctx.rotate.calledWith(2*Math.PI - 180*Math.PI/180));
-            break;
-          case 4:
-            assert.isTrue(options.ctx.save.called);
-            assert.isTrue(options.ctx.translate.calledWith(options.x + options.width/2, options.y + options.height/2));
-            assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width/2, -options.height/2, options.width, options.height));
-            assert.isTrue(options.ctx.restore.called);
-            assert.isTrue(options.ctx.rotate.calledWith(180*Math.PI/180));
-            assert.isTrue(options.ctx.scale.calledWith(-1, 1));
-            break;
-          case 5:
-            assert.isTrue(options.ctx.save.called);
-            assert.isTrue(options.ctx.translate.calledWith(options.x + options.width/2, options.y + options.height/2));
-            assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width/2, -options.height/2, options.width, options.height));
-            assert.isTrue(options.ctx.restore.called);
-            assert.isTrue(options.ctx.rotate.calledWith(270*Math.PI/180));
-            assert.isTrue(options.ctx.scale.calledWith(-1, 1));
-            break;
-          case 6:
-            assert.isTrue(options.ctx.save.called);
-            assert.isTrue(options.ctx.translate.calledWith(options.x + options.width/2, options.y + options.height/2));
-            assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width/2, -options.height/2, options.width, options.height));
-            assert.isTrue(options.ctx.restore.called);
-            assert.isTrue(options.ctx.rotate.calledWith(2*Math.PI - 270*Math.PI/180));
-            break;
-          case 7:
-            assert.isTrue(options.ctx.save.called);
-            assert.isTrue(options.ctx.translate.calledWith(options.x + options.width/2, options.y + options.height/2));
-            assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width/2, -options.height/2, options.width, options.height));
-            assert.isTrue(options.ctx.restore.called);
-            assert.isTrue(options.ctx.rotate.calledWith(90*Math.PI/180));
-            assert.isTrue(options.ctx.scale.calledWith(-1, 1));
-            break;
-          case 8:
-            assert.isTrue(options.ctx.save.called);
-            assert.isTrue(options.ctx.translate.calledWith(options.x + options.width/2, options.y + options.height/2));
-            assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width/2, -options.height/2, options.width, options.height));
-            assert.isTrue(options.ctx.restore.called);
-            assert.isTrue(options.ctx.rotate.calledWith(2*Math.PI - 90*Math.PI/180));
-            break;
-          default:
-            break;
+      var message = event.flip ? 'flips ' : '';
+      message += event.rotate ? 'rotates ' + event.rotate + ' deg' : '';
+      message = message ? 'canvas ' + message : 'does nothing ';
+      it(message, function() {
+        assert.isTrue(options.ctx.save.called);
+        assert.isTrue(options.ctx.translate.calledWith(options.x + options.width / 2, options.y + options.height / 2));
+        assert.isTrue(options.ctx.drawImage.calledWith(options.img, -options.width / 2, -options.height / 2, options.width, options.height));
+        assert.isTrue(options.ctx.restore.called);
+        if (event.flip) {
+          assert.isTrue(options.ctx.scale.calledWith(-1, 1));
+          if (event.rotate) {
+            assert.isTrue(options.ctx.rotate.calledWith(event.rotate * Math.PI / 180));
+          }
+        }
+        else if (event.rotate) {
+          assert.isTrue(options.ctx.rotate.calledWith(2 * Math.PI - 90 * Math.PI / 180));
         }
       });
     });
