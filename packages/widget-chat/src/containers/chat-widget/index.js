@@ -4,6 +4,7 @@ import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
 import _ from 'lodash';
 import {injectIntl, intlShape, FormattedMessage} from 'react-intl';
+import Dropzone from 'react-dropzone';
 
 import {
   fetchAvatarForUserId,
@@ -32,6 +33,8 @@ import {
   showScrollToBottomButton,
   updateHasNewMessage
 } from '../../actions/widget';
+import {addFiles} from '../../actions/activity';
+import {constructFiles} from '../../utils/files';
 import TitleBar from '../../components/title-bar';
 import ScrollingActivity from '../scrolling-activity';
 import ScrollToBottomButton from '../../components/scroll-to-bottom-button';
@@ -58,6 +61,7 @@ export class ChatWidget extends Component {
     this.handleActivityFlag = this.handleActivityFlag.bind(this);
     this.handleScrollToBottom = this.handleScrollToBottom.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
+    this.handleFileDrop = this.handleFileDrop.bind(this);
     this.handleScroll = _.debounce(this.handleScroll.bind(this), 150);
   }
 
@@ -319,6 +323,25 @@ export class ChatWidget extends Component {
   }
 
   /**
+   * Adds dropped file into activity store
+   *
+   * @param {array} acceptedFiles
+   *
+   * @returns {undefined}
+   */
+  handleFileDrop(acceptedFiles) {
+    const props = this.props;
+    const {
+      conversation,
+      activity,
+      spark
+    } = props;
+    const files = constructFiles(acceptedFiles);
+    this.props.addFiles(conversation, activity, files, spark);
+  }
+
+
+  /**
    * Render
    *
    * @returns {Object}
@@ -410,6 +433,15 @@ export class ChatWidget extends Component {
           description: `Placeholder value to show in message input field`
         };
         const messagePlaceholder = formatMessage(placeholderMessage, {displayName});
+
+        const dropzoneProps = {
+          activeClassName: styles.activeDropzone,
+          className: styles.dropzone,
+          disableClick: true,
+          disablePreview: true,
+          onDrop: this.handleFileDrop
+        };
+
         main = ( // eslint-disable-line no-extra-parens
           <div className={classNames(`widget-chat-inner`, styles.widgetChatInner)}>
             <div className={classNames(`title-bar-wrapper`, styles.titleBarWrapper)}>
@@ -419,31 +451,41 @@ export class ChatWidget extends Component {
                 image={toUserAvatar}
               />
             </div>
-            <div className={classNames(`activity-list-wrapper`, styles.activityListWrapper)}>
-              <ScrollingActivity
-                activities={activities}
-                avatars={avatars}
-                currentUserId={currentUser.id}
-                flags={flags.flags}
-                isLoadingHistoryUp={isLoadingHistoryUp}
-                isTyping={isTyping}
-                lastAcknowledgedActivityId={lastAcknowledgedActivityId}
-                onActivityDelete={this.handleActivityDelete}
-                onActivityFlag={this.handleActivityFlag}
-                onScroll={this.handleScroll}
-                ref={this.getActivityList}
-              />
-              {scrollButton}
-            </div>
-            <div className={classNames(`message-composer-wrapper`, styles.messageComposerWrapper)}>
-              <MessageComposer
-                conversation={conversation}
-                onSubmit={this.handleSubmit}
-                placeholder={messagePlaceholder}
-                spark={spark}
-              />
-            </div>
-            {deleteAlert}
+            <Dropzone {...dropzoneProps}>
+              <div className={classNames(`activity-list-wrapper`, styles.activityListWrapper)}>
+                <ScrollingActivity
+                  activities={activities}
+                  avatars={avatars}
+                  currentUserId={currentUser.id}
+                  flags={flags.flags}
+                  isLoadingHistoryUp={isLoadingHistoryUp}
+                  isTyping={isTyping}
+                  lastAcknowledgedActivityId={lastAcknowledgedActivityId}
+                  onActivityDelete={this.handleActivityDelete}
+                  onActivityFlag={this.handleActivityFlag}
+                  onScroll={this.handleScroll}
+                  ref={this.getActivityList}
+                />
+                {scrollButton}
+              </div>
+              <div className={classNames(`message-composer-wrapper`, styles.messageComposerWrapper)}>
+                <MessageComposer
+                  conversation={conversation}
+                  onSubmit={this.handleSubmit}
+                  placeholder={messagePlaceholder}
+                  spark={spark}
+                />
+              </div>
+              {deleteAlert}
+              <div className={classNames(`dropzone-message`, styles.dropzoneMessage)}>
+                <div className={classNames(`dropzone-message-title`, styles.dropzoneTitle)}>
+                  <FormattedMessage
+                    defaultMessage={`Drag and drop your files here`}
+                    id={`dropFilesHere`}
+                  />
+                </div>
+              </div>
+            </Dropzone>
           </div>
         );
       }
@@ -461,6 +503,7 @@ export class ChatWidget extends Component {
 
 ChatWidget.propTypes = {
   acknowledgeActivityOnServer: PropTypes.func.isRequired,
+  addFiles: PropTypes.func.isRequired,
   confirmDeleteActivity: PropTypes.func.isRequired,
   createConversationWithUser: PropTypes.func.isRequired,
   createNotification: PropTypes.func.isRequired,
@@ -481,6 +524,7 @@ ChatWidget.propTypes = {
 
 function mapStateToProps(state) {
   return {
+    activity: state.activity,
     share: state.share,
     spark: state.spark.get(`spark`),
     sparkState: state.spark.get(`status`).toJS(),
@@ -496,6 +540,7 @@ export default connect(
   mapStateToProps,
   (dispatch) => bindActionCreators({
     acknowledgeActivityOnServer,
+    addFiles,
     confirmDeleteActivity,
     createConversationWithUser,
     createNotification,

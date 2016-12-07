@@ -60,9 +60,6 @@ export default function ActivityList(props) {
     if (lastAcknowledgedActivityId && lastAcknowledgedActivityId === activity.id) {
       shouldDisplayNewMessageMarker = true;
     }
-
-    //TODO DELETE
-    items.push(<NewMessagesSeparator key={`new-messages-${activity.id}`} />);
   });
 
   return (

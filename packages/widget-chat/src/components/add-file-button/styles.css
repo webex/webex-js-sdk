@@ -1,4 +1,9 @@
+.container {
+  position: relative;
+}
+
 .button {
+  position: absolute;
   width: 32px;
   height: 32px;
   padding: 0;
@@ -18,4 +23,11 @@
   font-size: 17px;
   line-height: 14px;
   color: #4f5051;
+}
+
+.file-input {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  opacity: 0;
 }
