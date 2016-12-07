@@ -32,6 +32,7 @@ process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 module.exports = {
   context: __dirname,
   entry: [
+    'babel-polyfill',
     './src/app.js'
   ],
   output: {
@@ -103,7 +104,7 @@ module.exports = {
         loaders: ['style-loader', 'css-loader']
       }, {
         test: /\.json$/,
-        loader: 'url'
+        loader: 'json-loader'
       },
       {
         test: /\.woff$/,
