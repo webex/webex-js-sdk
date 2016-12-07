@@ -1,12 +1,12 @@
 {
-  "name": "@ciscospark/widget-chat",
+  "name": "@ciscospark/widget-message-meet",
   "version": "0.7.12",
   "description": "",
   "license": "MIT",
   "author": "Adam Weeks <adweeks@cisco.com>",
   "main": "dist/bundle.js",
   "devMain": "src/app.js",
-  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/widget-chat",
+  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/widget-message-meet",
   "scripts": {
     "start": "webpack-dev-server --history-api-fallback --hot --inline --port 8000 --colors",
     "test": "jest",

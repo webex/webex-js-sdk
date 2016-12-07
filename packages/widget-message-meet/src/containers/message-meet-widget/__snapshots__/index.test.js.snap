@@ -1,4 +1,4 @@
-exports[`ChatWidget renders properly 1`] = `
+exports[`MessageMeetWidget renders properly 1`] = `
 <div>
   <div
     className="widget-chat">

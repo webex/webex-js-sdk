@@ -25,7 +25,7 @@ export function initChatWidget(element, config) {
 
 
 function loadAllWidgets() {
-  const widgets = document.querySelectorAll(`[data-toggle="spark-chat"]`);
+  const widgets = document.querySelectorAll(`[data-toggle="spark-message-meet"]`);
   for (const widget of widgets) {
     initChatWidget(widget, {
       accessToken: widget.getAttribute(`data-access-token`) || undefined,
