@@ -6,6 +6,8 @@
 
 /* eslint no-console: [0] */
 
+import {patterns} from '@ciscospark/common';
+
 import {
   SparkHttpError,
   SparkPlugin
@@ -14,9 +16,9 @@ import {
 import {
   cloneDeep,
   isArray,
-  isObject
+  isObject,
+  isString
 } from 'lodash';
-
 
 const precedence = {
   silent: 0,
@@ -38,7 +40,8 @@ const fallbacks = {
   trace: [`debug`, `info`, `log`]
 };
 
-const re = /[Aa]uthorization/;
+const authTokenKeyPattern = /[Aa]uthorization/;
+
 /**
  * Recursively strips "authorization" fields from the specified object
  * @param {Object} object
@@ -49,10 +52,15 @@ function walkAndFilter(object) {
     return object.map(walkAndFilter);
   }
   if (!isObject(object)) {
+    if (isString(object)) {
+      if (patterns.email.test(object)) {
+        return `-- REDACTED --`;
+      }
+    }
     return object;
   }
   for (const key in object) {
-    if (key.match(re)) {
+    if (key.test(authTokenKeyPattern)) {
       Reflect.deleteProperty(object, key);
     }
     else {
@@ -67,6 +75,14 @@ function walkAndFilter(object) {
 const Logger = SparkPlugin.extend({
   namespace: `Logger`,
 
+  computed: {
+    level: {
+      cache: false,
+      fn() {
+        return this.getCurrentLevel();
+      }
+    }
+  },
   session: {
     buffer: {
       type: `array`,
@@ -76,6 +92,12 @@ const Logger = SparkPlugin.extend({
     }
   },
 
+  /**
+   * Ensures auth headers don't get printed in logs
+   * @param {Array<mixed>} args
+   * @private
+   * @returns {Array<mixed>}
+   */
   filter(...args) {
     return args.map((arg) => {
       // SparkHttpError already ensures auth tokens don't get printed, so, no
@@ -99,32 +121,54 @@ const Logger = SparkPlugin.extend({
     });
   },
 
+  /**
+   * Determines if the current level allows logs at the speicified level to be
+   * printed
+   * @param {string} level
+   * @private
+   * @returns {boolean}
+   */
   shouldPrint(level) {
-    return precedence[level] <= precedence[this._getCurrentLevel()];
+    return precedence[level] <= precedence[this.getCurrentLevel()];
   },
 
-  _getCurrentLevel() {
+  /**
+   * Indicates the current log level based on env vars, feature toggles, and
+   * user type.
+   * @instance
+   * @memberof Logger
+   * @private
+   * @returns {string}
+   */
+  // eslint-disable-next-line complexity
+  getCurrentLevel() {
     // If a level has been explicitly set via config, alway use it.
     if (this.config.level) {
       return this.config.level;
     }
 
-    // Always use debug-level logging in development or test mode;
-    if (process.env.NODE_ENV === `development` || process.env.NODE_ENV === `test`) {
-      return `trace`;
+    if (process.env.CISCOSPARK_LOG_LEVEL in levels) {
+      return process.env.CISCOSPARK_LOG_LEVEL;
     }
 
-    // Use server-side-feature toggles to configure log levels
-    const level = this.spark.device && this.spark.device.features.developer.get(`log-level`);
-    if (level) {
-      if (levels.includes(level)) {
-        return level;
+    if (process.env.IS_CISCOSPARK_WEB_CLIENT) {
+      // Always use debug-level logging in development or test mode;
+      if (process.env.NODE_ENV === `development` || process.env.NODE_ENV === `test`) {
+        return `trace`;
       }
-    }
 
-    // Show verbose but not full-debug logging for team members;
-    if (this.spark.device && this.spark.device.features.entitlement.get(`team-member`)) {
-      return `log`;
+      // Use server-side-feature toggles to configure log levels
+      const level = this.spark.device && this.spark.device.features.developer.get(`log-level`);
+      if (level) {
+        if (levels.includes(level)) {
+          return level;
+        }
+      }
+
+      // Show verbose but not full-debug logging for team members;
+      if (this.spark.device && this.spark.device.features.entitlement.get(`team-member`)) {
+        return `log`;
+      }
     }
 
     return `error`;
