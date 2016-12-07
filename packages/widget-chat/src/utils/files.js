@@ -40,6 +40,14 @@ export function constructFile(file) {
   });
 }
 
+export function constructFiles(files) {
+  const constructedFiles = [];
+  for (let i = 0; i < files.length; i++) {
+    constructedFiles.push(constructFile(files[i]));
+  }
+  return constructedFiles;
+}
+
 export function isImage(file) {
   return file.type.indexOf(`image`) !== -1;
 }

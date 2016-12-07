@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/widget-chat",
-  "version": "0.7.10",
+  "version": "0.7.12",
   "description": "",
   "license": "MIT",
   "author": "Adam Weeks <adweeks@cisco.com>",
@@ -23,6 +23,7 @@
     "moment": "^2.15.1",
     "react": "^15.3.2",
     "react-dom": "^15.3.2",
+    "react-dropzone": "^3.7.3",
     "react-intl": "^2.1.5",
     "react-redux": "^4.4.5",
     "redux": "^3.6.0",
@@ -31,14 +32,14 @@
   },
   "devDependencies": {
     "@ciscospark/helper-html": "^0.7.0",
-    "@ciscospark/http-core": "^0.7.10",
-    "@ciscospark/plugin-avatar": "^0.7.10",
-    "@ciscospark/plugin-conversation": "^0.7.10",
-    "@ciscospark/plugin-flag": "^0.7.10",
-    "@ciscospark/spark-core": "^0.7.10",
-    "@ciscospark/storage-adapter-local-storage": "^0.7.10",
+    "@ciscospark/http-core": "^0.7.12",
+    "@ciscospark/plugin-avatar": "^0.7.12",
+    "@ciscospark/plugin-conversation": "^0.7.12",
+    "@ciscospark/plugin-flag": "^0.7.12",
+    "@ciscospark/spark-core": "^0.7.12",
+    "@ciscospark/storage-adapter-local-storage": "^0.7.12",
     "@ciscospark/test-helper-file": "^0.7.0",
-    "@ciscospark/test-helper-server": "^0.7.10",
+    "@ciscospark/test-helper-server": "^0.7.12",
     "@kadira/storybook": "^2.5.2",
     "babel-core": "^6.7.7",
     "babel-eslint": "^6.0.0-beta.5",
@@ -64,8 +65,7 @@
     "redux-mock-store": "^1.2.1",
     "redux-thunk": "^2.1.0",
     "require-dir": "^0.3.0",
-    "reselect": "^2.5.4",
-    "stylelint-config-css-modules": "^0.1.0"
+    "reselect": "^2.5.4"
   },
   "engines": {
     "node": ">=4"
