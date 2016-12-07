@@ -510,6 +510,15 @@ const Conversation = SparkPlugin.extend({
    * @returns {Promise}
    */
   updateTypingStatus(conversation, options) {
+    if (!conversation.id) {
+      if (conversation.url) {
+        conversation.id = conversation.url.split(`/`).pop();
+      }
+      else {
+        return Promise.reject(new Error(`conversation: could not identify conversation`));
+      }
+    }
+
     let eventType;
     if (options.typing) {
       eventType = `status.start_typing`;

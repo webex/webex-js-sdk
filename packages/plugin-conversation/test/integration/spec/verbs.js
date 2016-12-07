@@ -341,11 +341,9 @@ describe(`plugin-conversation`, function() {
     describe(`#updateTypingStatus()`, () => {
       let blockUntilMercuryStart;
       let blockUntilMercuryStop;
-      let startTypingSpy;
-      let stopTypingSpy;
+      const startTypingSpy = sinon.spy();
+      const stopTypingSpy = sinon.spy();
       beforeEach(() => {
-        startTypingSpy = sinon.spy();
-        stopTypingSpy = sinon.spy();
         blockUntilMercuryStart = new Defer();
         blockUntilMercuryStop = new Defer();
         mccoy.spark.mercury.on(`event:status.start_typing`, () => {
@@ -362,6 +360,11 @@ describe(`plugin-conversation`, function() {
           });
       });
 
+      afterEach(() => {
+        startTypingSpy.reset();
+        stopTypingSpy.reset();
+      });
+
       it(`sets the typing indicator for the specified conversation`, () => {
         return spark.conversation.updateTypingStatus(conversation, {typing: true})
           .then(() => blockUntilMercuryStart.promise)
@@ -375,6 +378,26 @@ describe(`plugin-conversation`, function() {
           .then(() => blockUntilMercuryStop.promise)
           .then(() => {
             assert.called(stopTypingSpy);
+          });
+      });
+
+      it(`fails if called with a bad conversation object`, () => {
+        let error;
+        return spark.conversation.updateTypingStatus({}, {typing: false})
+          .catch((reason) => {
+            error = reason;
+          })
+          .then(() => {
+            assert.isDefined(error);
+          });
+      });
+
+      it(`infers id from conversation url if missing`, () => {
+        Reflect.deleteProperty(conversation, `id`);
+        return spark.conversation.updateTypingStatus(conversation, {typing: true})
+          .then(() => blockUntilMercuryStart.promise)
+          .then(() => {
+            assert.called(startTypingSpy);
           });
       });
     });
