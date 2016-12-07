@@ -151,23 +151,16 @@ const Logger = SparkPlugin.extend({
       return process.env.CISCOSPARK_LOG_LEVEL;
     }
 
-    if (process.env.IS_CISCOSPARK_WEB_CLIENT) {
-      // Always use debug-level logging in development or test mode;
-      if (process.env.NODE_ENV === `development` || process.env.NODE_ENV === `test`) {
-        return `trace`;
-      }
+    // Always use debug-level logging in development or test mode;
+    if (process.env.NODE_ENV === `test`) {
+      return `trace`;
+    }
 
-      // Use server-side-feature toggles to configure log levels
-      const level = this.spark.device && this.spark.device.features.developer.get(`log-level`);
-      if (level) {
-        if (levels.includes(level)) {
-          return level;
-        }
-      }
-
-      // Show verbose but not full-debug logging for team members;
-      if (this.spark.device && this.spark.device.features.entitlement.get(`team-member`)) {
-        return `log`;
+    // Use server-side-feature toggles to configure log levels
+    const level = this.spark.device && this.spark.device.features.developer.get(`log-level`);
+    if (level) {
+      if (levels.includes(level)) {
+        return level;
       }
     }
 
