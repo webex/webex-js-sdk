@@ -90,7 +90,6 @@ export function addFiles(conversation, activity, files, spark) {
         return clean;
       });
     }
-
     dispatch(updateActivityStatus({isUploadingShare: true}));
     dispatch(addFilesToActivity(cleanFiles));
     cleanFiles.forEach((file) => shareActivity.add(file));

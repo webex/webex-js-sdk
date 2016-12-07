@@ -27,19 +27,21 @@ export class FileUploader extends Component {
     e.stopPropagation();
     e.preventDefault();
 
-    const props = this.props;
+    if (e.target.files.length) {
+      const props = this.props;
 
-    const {
-      activity,
-      conversation,
-      spark
-    } = props;
+      const {
+        activity,
+        conversation,
+        spark
+      } = props;
 
-    const files = constructFiles(e.target.files);
-    props.addFiles(conversation, activity, files, spark);
+      const files = constructFiles(e.target.files);
+      props.addFiles(conversation, activity, files, spark);
 
-    // Clear the value of the input so the same file can be added again.
-    e.target.value = ``;
+      // Clear the value of the input so the same file can be added again.
+      e.target.value = ``;
+    }
   }
 
   handleFileRemove(id) {
