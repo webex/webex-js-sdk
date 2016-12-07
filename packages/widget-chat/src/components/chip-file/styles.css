@@ -9,8 +9,11 @@
 }
 
 .info {
+  display: flex;
   padding: 0 10px;
   margin: auto 0;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .name {
