@@ -11,11 +11,11 @@ import {
 
 const initialState = new Map({
   status: new Map({
-    isSending: false
+    isSending: false,
+    isTyping: false
   }),
   files: new OrderedMap(),
-  text: ``,
-  isTyping: false
+  text: ``
 });
 
 export default function reduceActivity(state = initialState, action) {
