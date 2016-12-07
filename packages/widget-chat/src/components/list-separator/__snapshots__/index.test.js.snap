@@ -10,9 +10,9 @@ exports[`ListSeparator component renders properly 1`] = `
 
 exports[`ListSeparator component renders properly with classes 1`] = `
 <div
-  className="separator bold blue">
+  className="separator informative">
   <p
-    className="separator-text bold blue">
+    className="separator-text informative">
     Testing 123
   </p>
 </div>

@@ -1,16 +1,15 @@
 import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 import moment from 'moment';
-import {FormattedMessage} from 'react-intl';
 import ActivityItem from '../activity-item';
 import DaySeparator from '../day-separator';
-import ListSeparator from '../list-separator';
+import NewMessagesSeparator from '../new-messages-separator';
 import {formatDate} from '../../utils/date';
 
 export default function ActivityList(props) {
   let lastActorId, lastDay, lastVerb;
   const now = moment();
-  const {avatars, currentUserId, flags, lastAcknowledgedActivity, onActivityDelete, onActivityFlag} = props;
+  const {avatars, currentUserId, flags, lastAcknowledgedActivityId, onActivityDelete, onActivityFlag} = props;
   const items = [];
   let shouldDisplayNewMessageMarker = false;
   props.activities.forEach((activity) => {
@@ -31,14 +30,7 @@ export default function ActivityList(props) {
     lastDay = activityDay;
 
     if (shouldDisplayNewMessageMarker) {
-      const newMessages = ( // eslint-disable-line no-extra-parens
-        <FormattedMessage
-          defaultMessage={`NEW MESSAGES`}
-          description={`Indicator to display that new, unread messages follow`}
-          id={`newMessages`}
-        />
-      );
-      items.push(<ListSeparator classNames={[`upper`, `blue`]} primaryText={newMessages} />);
+      items.push(<NewMessagesSeparator key={`new-messages-${activity.id}`} />);
       shouldDisplayNewMessageMarker = false;
     }
 
@@ -65,9 +57,12 @@ export default function ActivityList(props) {
     );
 
     // if this activity is last acked by user render the banner
-    if (lastAcknowledgedActivity && lastAcknowledgedActivity === activity.id) {
+    if (lastAcknowledgedActivityId && lastAcknowledgedActivityId === activity.id) {
       shouldDisplayNewMessageMarker = true;
     }
+
+    //TODO DELETE
+    items.push(<NewMessagesSeparator key={`new-messages-${activity.id}`} />);
   });
 
   return (
@@ -82,7 +77,7 @@ ActivityList.propTypes = {
   avatars: PropTypes.object.isRequired,
   currentUserId: PropTypes.string,
   flags: PropTypes.array,
-  lastAcknowledgedActivity: PropTypes.string,
+  lastAcknowledgedActivityId: PropTypes.string,
   onActivityDelete: PropTypes.func.isRequired,
   onActivityFlag: PropTypes.func.isRequired
 };

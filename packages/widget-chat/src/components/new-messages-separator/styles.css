@@ -1,0 +1,12 @@
+:root {
+  --color-primary: #049fd9;
+}
+
+.new-messages {
+  color: var(--color-primary);
+  text-transform: uppercase;
+}
+
+.new-messages.separator {
+  color: var(--color-primary);
+}

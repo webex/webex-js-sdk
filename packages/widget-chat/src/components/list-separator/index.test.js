@@ -14,10 +14,9 @@ describe(`ListSeparator component`, () => {
   });
 
   it(`renders properly with classes`, () => {
-    const classNames = [`bold`, `blue`];
     const component = renderer.create(
       <ListSeparator
-        classNames={classNames}
+        isInformative
         primaryText={`Testing 123`}
       />
     );

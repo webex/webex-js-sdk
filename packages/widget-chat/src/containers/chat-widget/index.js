@@ -235,7 +235,7 @@ export class ChatWidget extends Component {
     if (this.activityList.isScrolledToBottom()) {
       this.props.showScrollToBottomButton(false);
       this.props.updateHasNewMessage(false);
-      if (conversation.lastAcknowledgedActivity !== lastActivity.id) {
+      if (conversation.lastAcknowledgedActivityId !== lastActivity.id) {
         this.props.acknowledgeActivityOnServer(conversation, lastActivity, spark);
       }
     }
@@ -357,7 +357,7 @@ export class ChatWidget extends Component {
         activities,
         isLoaded,
         isLoadingHistoryUp,
-        lastAcknowledgedActivity
+        lastAcknowledgedActivityId
       } = conversation;
 
       let scrollButton;
@@ -427,7 +427,7 @@ export class ChatWidget extends Component {
                 flags={flags.flags}
                 isLoadingHistoryUp={isLoadingHistoryUp}
                 isTyping={isTyping}
-                lastAcknowledgedActivity={lastAcknowledgedActivity}
+                lastAcknowledgedActivityId={lastAcknowledgedActivityId}
                 onActivityDelete={this.handleActivityDelete}
                 onActivityFlag={this.handleActivityFlag}
                 onScroll={this.handleScroll}

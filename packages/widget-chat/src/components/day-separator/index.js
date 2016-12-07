@@ -5,7 +5,7 @@ import {FormattedDate, FormattedMessage} from 'react-intl';
 
 import ListSeparator from '../list-separator';
 
-function componentName(props) {
+function DaySeparator(props) {
   const {fromDate, now, toDate} = props;
 
   return (
@@ -66,10 +66,10 @@ function calculateDateText(fromDate, now, toDate) {
   return text;
 }
 
-componentName.propTypes = {
+DaySeparator.propTypes = {
   fromDate: PropTypes.object.isRequired,
   now: PropTypes.object.isRequired,
   toDate: PropTypes.object.isRequired
 };
 
-export default componentName;
+export default DaySeparator;

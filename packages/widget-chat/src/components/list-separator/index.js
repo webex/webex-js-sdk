@@ -6,13 +6,12 @@ import styles from './styles.css';
 function ListSeparator(props) {
   const mainStyles = [`separator`, styles.separator];
   const textStyles = [`separator-text`, styles.separatorText];
-  if (props.classNames) {
-    props.classNames.forEach((className) => {
-      mainStyles.push(className);
-      mainStyles.push(styles[className]);
-      textStyles.push(className);
-      textStyles.push(styles[className]);
-    });
+  const informativeClass = `informative`;
+  if (props.isInformative) {
+    mainStyles.push(informativeClass);
+    mainStyles.push(styles[informativeClass]);
+    textStyles.push(informativeClass);
+    textStyles.push(styles[informativeClass]);
   }
   return (
     <div className={classNames(mainStyles)}>
@@ -22,7 +21,7 @@ function ListSeparator(props) {
 }
 
 ListSeparator.propTypes = {
-  classNames: PropTypes.array,
+  isInformative: PropTypes.boolean,
   primaryText: PropTypes.object
 };
 

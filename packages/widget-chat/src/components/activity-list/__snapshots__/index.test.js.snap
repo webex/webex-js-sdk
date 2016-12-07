@@ -65,6 +65,17 @@ exports[`ActivityList component renders properly 1`] = `
       </div>
     </div>
   </div>
+  <div>
+    <div
+      className="separator informative">
+      <p
+        className="separator-text informative">
+        <span>
+          NEW MESSAGES
+        </span>
+      </p>
+    </div>
+  </div>
   <div
     className="activity-item-container">
     <div
@@ -129,6 +140,17 @@ exports[`ActivityList component renders properly 1`] = `
       </div>
     </div>
   </div>
+  <div>
+    <div
+      className="separator informative">
+      <p
+        className="separator-text informative">
+        <span>
+          NEW MESSAGES
+        </span>
+      </p>
+    </div>
+  </div>
   <div
     className="activity-item-container">
     <div
@@ -191,6 +213,17 @@ exports[`ActivityList component renders properly 1`] = `
             className="action-spacer" />
         </div>
       </div>
+    </div>
+  </div>
+  <div>
+    <div
+      className="separator informative">
+      <p
+        className="separator-text informative">
+        <span>
+          NEW MESSAGES
+        </span>
+      </p>
     </div>
   </div>
 </div>

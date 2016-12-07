@@ -1,5 +1,5 @@
 import React from 'react';
-import renderer from 'react-test-renderer';
+import createComponentWithIntl from '../../utils/createComponentWithIntl';
 import {Provider} from 'react-redux';
 
 import store from '../../store';
@@ -49,7 +49,7 @@ const onActivityFlag = jest.fn();
 
 describe(`ScrollingActivity container`, () => {
   it(`renders properly`, () => {
-    const component = renderer.create(
+    const component = createComponentWithIntl(
       <Provider store={store}>
         <ScrollingActivity
           activities={activities}

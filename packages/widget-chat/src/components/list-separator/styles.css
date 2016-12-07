@@ -1,17 +1,11 @@
 :root {
-  --color-white: #fefefe;
   --color-primary: #049fd9;
-  --color-gray-light: #aeaeaf;
   --color-gray: #858688;
-  --color-gray-ultra-light: #d7d7d8;
 }
 
-.separator.upper {
-  text-transform: uppercase;
-}
-
-.separator.blue {
+.separator.informative {
   color: var(--color-primary);
+  text-transform: uppercase;
 }
 
 .separator {
@@ -54,7 +48,7 @@
   margin-left: 20px;
 }
 
-.separator-text.blue::before,
-.separator-text.blue::after {
+.separator-text.informative::before,
+.separator-text.informative::after {
   background-color: var(--color-primary);
 }
