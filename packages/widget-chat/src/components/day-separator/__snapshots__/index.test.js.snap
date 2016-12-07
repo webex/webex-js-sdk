@@ -1,0 +1,55 @@
+exports[`DaySeparator component renders properly for a month ago 1`] = `
+<div>
+  <div
+    className="separator">
+    <p
+      className="separator-text">
+      <span>
+        December 31
+      </span>
+    </p>
+  </div>
+</div>
+`;
+
+exports[`DaySeparator component renders properly for more than a year ago 1`] = `
+<div>
+  <div
+    className="separator">
+    <p
+      className="separator-text">
+      <span>
+        January 31, 1999
+      </span>
+    </p>
+  </div>
+</div>
+`;
+
+exports[`DaySeparator component renders properly for today 1`] = `
+<div>
+  <div
+    className="separator">
+    <p
+      className="separator-text">
+      <span>
+        Today
+      </span>
+    </p>
+  </div>
+</div>
+`;
+
+exports[`DaySeparator component renders properly for yesterday 1`] = `
+<div>
+  <div
+    className="separator">
+    <p
+      className="separator-text">
+      <span>
+        Yesterday
+      </span>
+    </p>
+  </div>
+</div>
+`;

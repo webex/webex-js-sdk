@@ -1,5 +1,5 @@
 import React from 'react';
-import renderer from 'react-test-renderer';
+import createComponentWithIntl from '../../utils/createComponentWithIntl';
 
 import ActivityList from '.';
 
@@ -44,7 +44,7 @@ describe(`ActivityList component`, () => {
   };
   const onActivityDelete = jest.fn();
   const onActivityFlag = jest.fn();
-  const component = renderer.create(
+  const component = createComponentWithIntl(
     <ActivityList
       activities={activities}
       avatars={avatars}

@@ -66,7 +66,7 @@ function receiveMercuryActivity(state, action) {
 export default function reduceConversation(state = {
   activities: [],
   id: null,
-  lastAcknowledgedActivity: null,
+  lastAcknowledgedActivityId: null,
   isFetching: false,
   isLoaded: false,
   isLoadingHistoryUp: false,
@@ -79,7 +79,7 @@ export default function reduceConversation(state = {
   case ACKNOWLEDGE_ACTIVITY: {
     const activityId = action.payload.activity.id;
     return Object.assign({}, state, {
-      lastAcknowledgedActivity: activityId
+      lastAcknowledgedActivityId: activityId
     });
   }
   case ADD_ACTIVITIES_TO_CONVERSATION: {
