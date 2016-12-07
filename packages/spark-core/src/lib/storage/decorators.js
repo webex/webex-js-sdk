@@ -117,6 +117,8 @@ function identifyTarget(target) {
   return target;
 }
 
+const stack = new Set();
+
 /**
  * @param {Function} target
  * @param {string} prop
@@ -143,15 +145,21 @@ function prepareInitialize(target, prop) {
    */
   function init() {
     const self = this;
+    const namespace = this.getNamespace();
     this.spark.initialize = wrap(this.spark.initialize || identity, function applyInit(fn, ...args) {
+      // Call spark's initalize method first
+      // Reminder: in order for MockSpark to accept initial storage data, the
+      // wrapped initialize() must be invoked before attempting to load data.
       // Reminder: context here is `spark`, not `self`.
+      stack.add(namespace);
       Reflect.apply(fn, this, args);
 
+      // Then prepare a function for setting values retrieved from storage
       const set = curry((key, value) => {
-        this.logger.info(`storage:(${self.getNamespace()}): got \`${key}\` for first time`);
+        this.logger.info(`storage:(${namespace}): got \`${key}\` for first time`);
         if (key === `@`) {
           self.parent.set({
-            [self.getNamespace().toLowerCase()]: value
+            [namespace.toLowerCase()]: value
           });
         }
         else if (result(self[key], `isState`)) {
@@ -160,22 +168,35 @@ function prepareInitialize(target, prop) {
         else {
           self.set(key, value);
         }
-        this.logger.info(`storage:(${self.getNamespace()}): set \`${key}\` for first time`);
+        this.logger.info(`storage:(${namespace}): set \`${key}\` for first time`);
       });
 
+      // And prepare an error handler for when those keys can't be found
       const handle = curry((key, reason) => {
         if (reason instanceof NotFoundError || process.env.NODE_ENV !== `production` && reason.toString().includes(`MockNotFoundError`)) {
-          this.logger.info(`storage(${self.getNamespace()}): no data for \`${key}\`, continuing`);
+          this.logger.info(`storage(${namespace}): no data for \`${key}\`, continuing`);
           return Promise.resolve();
         }
-        this.logger.error(`storage(${self.getNamespace()}): failed to init \`${key}\``, reason);
+        this.logger.error(`storage(${namespace}): failed to init \`${key}\``, reason);
         return Promise.reject(reason);
       });
 
+      // Iterate over the list of keys marked as blocking via `@waitForValue`
       const keys = blockingKeys.get(target, prop);
-      keys.forEach((key) => this.boundedStorage.get(self.getNamespace(), key)
+      const promises = [];
+      keys.forEach((key) => {
+        promises.push(this.boundedStorage.get(namespace, key)
         .then(set(key))
         .catch(handle(key)));
+      });
+
+      Promise.all(promises)
+        .then(() => {
+          stack.delete(namespace);
+          if (stack.size === 0) {
+            this.emit(`loaded`);
+          }
+        });
     });
   }
 }

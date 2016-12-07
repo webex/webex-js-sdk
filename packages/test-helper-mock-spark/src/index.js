@@ -23,32 +23,36 @@ function makeSpark(options) {
     return requestPromise;
   };
 
-  function makeMockStorage() {
+  function makeMockStorage(data) {
+
+    data = data || {};
     return {
       on: sinon.spy(),
       once: sinon.spy(),
       listenTo: sinon.spy(),
       listenToAndRun: sinon.spy(),
       clear: function clear(namespace) {
-        this.data = this.data || {};
+        this.data = this.data || data;
         this.data[namespace] = {};
       },
       del: function del(namespace, key) {
-        this.data = this.data || {};
+        this.data = this.data || data;
         this.data[namespace] = this.data[namespace] || {};
         delete this.data[namespace][key];
       },
       get: function get(namespace, key) {
-        this.data = this.data || {};
+        this.data = this.data || data;
         this.data[namespace] = this.data[namespace] || {};
-        var ret = this[key];
+        var ret = this.data[namespace][key];
         if (ret) {
+
           return Promise.resolve(ret);
         }
+
         return Promise.reject(new Error('MockNotFoundError'));
       },
       put: function put(namespace, key, value) {
-        this.data = this.data || {};
+        this.data = this.data || data;
         this.data[namespace] = this.data[namespace] || {};
         this.data[namespace][key] = value;
         return Promise.resolve();
@@ -100,13 +104,13 @@ function makeSpark(options) {
       support: {},
       user: {}
     },
-    initialize: function initialize() {
-      this.boundedStorage = makeMockStorage();
-      this.unboundedStorage = makeMockStorage();
+    initialize: function initialize(attrs) {
+      this.boundedStorage = makeMockStorage(attrs && attrs.initialBoundedStorage);
+      this.unboundedStorage = makeMockStorage(attrs && attrs.initialUnboundedStorage);
     }
   }));
 
-  var spark = new MockSpark();
+  var spark = new MockSpark(options && options.attrs);
 
   sinon.spy(spark, 'refresh');
   _.defaults(spark, {
