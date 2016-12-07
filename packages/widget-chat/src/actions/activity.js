@@ -60,7 +60,6 @@ export function updateActivityText(text) {
   };
 }
 
-
 /**
  * Adds file to message, creates Share activity if not present, starts upload
  *
@@ -140,6 +139,22 @@ export function submitActivity(conversation, activity, spark) {
     }
   };
 }
+
+/**
+ * Sets the typing status of the current user
+ *
+ * @param {boolean} isTyping
+ * @param {object} conversation
+ * @param {object} spark
+ * @returns {function}
+ */
+export function setUserTyping(isTyping, conversation, spark) {
+  return (dispatch) => {
+    spark.conversation.updateTypingStatus(conversation, {typing: isTyping});
+    return dispatch(updateActivityStatus({isTyping}));
+  };
+}
+
 
 /**
 * Helper to reset Activity store

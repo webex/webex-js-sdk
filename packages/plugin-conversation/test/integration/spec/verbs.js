@@ -5,8 +5,9 @@
 
 import '../..';
 
-import {patterns} from '@ciscospark/common';
+import {Defer, patterns} from '@ciscospark/common';
 import CiscoSpark, {SparkHttpError} from '@ciscospark/spark-core';
+import sinon from '@ciscospark/test-helper-sinon';
 import {assert} from '@ciscospark/test-helper-chai';
 import testUsers from '@ciscospark/test-helper-test-users';
 import {find, map} from 'lodash';
@@ -335,6 +336,70 @@ describe(`plugin-conversation`, function() {
           assert.notEqual(c.defaultActivityEncryptionKeyUrl, conversation.defaultActivityEncryptionKeyUrl);
           return mccoy.spark.encryption.kms.fetchKey({uri: c.defaultActivityEncryptionKeyUrl});
         }));
+    });
+
+    describe(`#updateTypingStatus()`, () => {
+      let blockUntilMercuryStart;
+      let blockUntilMercuryStop;
+      const startTypingSpy = sinon.spy();
+      const stopTypingSpy = sinon.spy();
+      beforeEach(() => {
+        blockUntilMercuryStart = new Defer();
+        blockUntilMercuryStop = new Defer();
+        mccoy.spark.mercury.on(`event:status.start_typing`, () => {
+          startTypingSpy();
+          blockUntilMercuryStart.resolve();
+        });
+        mccoy.spark.mercury.on(`event:status.stop_typing`, () => {
+          stopTypingSpy();
+          blockUntilMercuryStop.resolve();
+        });
+        return spark.conversation.create({participants, comment: `THIS IS A COMMENT`})
+          .then((c) => {
+            conversation = c;
+          });
+      });
+
+      afterEach(() => {
+        startTypingSpy.reset();
+        stopTypingSpy.reset();
+      });
+
+      it(`sets the typing indicator for the specified conversation`, () => {
+        return spark.conversation.updateTypingStatus(conversation, {typing: true})
+          .then(() => blockUntilMercuryStart.promise)
+          .then(() => {
+            assert.calledOnce(startTypingSpy);
+          });
+      });
+
+      it(`clears the typing indicator for the specified conversation`, () => {
+        return spark.conversation.updateTypingStatus(conversation, {typing: false})
+          .then(() => blockUntilMercuryStop.promise)
+          .then(() => {
+            assert.called(stopTypingSpy);
+          });
+      });
+
+      it(`fails if called with a bad conversation object`, () => {
+        let error;
+        return spark.conversation.updateTypingStatus({}, {typing: false})
+          .catch((reason) => {
+            error = reason;
+          })
+          .then(() => {
+            assert.isDefined(error);
+          });
+      });
+
+      it(`infers id from conversation url if missing`, () => {
+        Reflect.deleteProperty(conversation, `id`);
+        return spark.conversation.updateTypingStatus(conversation, {typing: true})
+          .then(() => blockUntilMercuryStart.promise)
+          .then(() => {
+            assert.called(startTypingSpy);
+          });
+      });
     });
 
     describe(`verbs that update conversation tags`, () => {

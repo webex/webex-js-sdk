@@ -502,6 +502,44 @@ const Conversation = SparkPlugin.extend({
   },
 
   /**
+   * Sets the typing status of the current user in a conversation
+   *
+   * @param {Object} conversation
+   * @param {Object} options
+   * @param {boolean} options.typing
+   * @returns {Promise}
+   */
+  updateTypingStatus(conversation, options) {
+    if (!conversation.id) {
+      if (conversation.url) {
+        conversation.id = conversation.url.split(`/`).pop();
+      }
+      else {
+        return Promise.reject(new Error(`conversation: could not identify conversation`));
+      }
+    }
+
+    let eventType;
+    if (options.typing) {
+      eventType = `status.start_typing`;
+    }
+    else {
+      eventType = `status.stop_typing`;
+    }
+
+    const params = {
+      method: `POST`,
+      service: `conversation`,
+      resource: `status/typing`,
+      body: {
+        conversationId: conversation.id,
+        eventType
+      }
+    };
+    return this.request(params);
+  },
+
+  /**
    * Shares files to the specified converstion
    * @param {Object} conversation
    * @param {ShareActivity|Array<File>} activity

@@ -2,8 +2,10 @@ import React, {Component, PropTypes} from 'react';
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 import classNames from 'classnames';
+import _ from 'lodash';
 
 import {
+  setUserTyping,
   submitActivity,
   updateActivityText
 } from '../../actions/activity';
@@ -15,6 +17,9 @@ import TextArea from '../../components/textarea';
 
 import styles from './styles.css';
 
+// milliseconds before repeating a 'is typing' status
+const TYPING_DELAY = 150;
+
 export class MessageComposer extends Component {
   constructor(props) {
     super(props);
@@ -23,6 +28,15 @@ export class MessageComposer extends Component {
     this.handleTextAreaFocus = this.handleTextAreaFocus.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
+    this.debouncedTyping = _.debounce(
+      this.sendTyping,
+      TYPING_DELAY,
+      {
+        leading: true,
+        maxWait: 350,
+        trailing: false
+      }
+    );
   }
 
   shouldComponentUpdate(nextProps) {
@@ -33,12 +47,23 @@ export class MessageComposer extends Component {
   handleTextChange(e) {
     const props = this.props;
     props.updateActivityText(e.target.value);
+    if (e.target.value === ``) {
+      const {
+        conversation,
+        spark
+      } = props;
+      props.setUserTyping(false, conversation, spark);
+    }
   }
 
   handleKeyDown(e) {
     if (e.keyCode === 13 && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
       this.handleSubmit();
       e.preventDefault();
+    }
+    else {
+      const props = this.props;
+      this.debouncedTyping(props);
     }
   }
 
@@ -58,12 +83,26 @@ export class MessageComposer extends Component {
 
   handleTextAreaBlur() {
     const props = this.props;
+    const {
+      conversation,
+      spark
+    } = props;
     props.blurTextArea();
+    this.debouncedTyping.cancel();
+    props.setUserTyping(false, conversation, spark);
   }
 
   handleTextAreaFocus() {
     const props = this.props;
     props.focusTextArea();
+  }
+
+  sendTyping(props) {
+    const {
+      conversation,
+      spark
+    } = props;
+    props.setUserTyping(true, conversation, spark);
   }
 
   render() {
@@ -115,6 +154,7 @@ export default connect(
   (dispatch) => bindActionCreators({
     blurTextArea,
     focusTextArea,
+    setUserTyping,
     submitActivity,
     updateActivityText
   }, dispatch)

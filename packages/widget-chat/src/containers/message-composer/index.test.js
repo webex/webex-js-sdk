@@ -4,7 +4,8 @@ import renderer from 'react-test-renderer';
 import {Map} from 'immutable';
 import {Provider} from 'react-redux';
 
-import store from '../../store.js';
+import store from '../../store';
+
 import ConnectedMessageComposer, {MessageComposer} from '.';
 
 let component;
@@ -55,10 +56,49 @@ describe(`MessageComposer component`, () => {
       expect(messageComposer.props.submitActivity).toHaveBeenCalled();
     });
 
+    describe(`sending typing indicators`, () => {
+      let event, messageComposer, setUserTyping;
+      const conversation = {};
+      const spark = {};
+      beforeEach(() => {
+        setUserTyping = jest.fn();
+        const props = {
+          activity: new Map(),
+          blurTextArea: jest.fn(),
+          conversation,
+          setUserTyping,
+          spark,
+          updateActivityText: jest.fn()
+        };
+        messageComposer = new MessageComposer(props);
+      });
+
+      it(`sets user typing on keydown`, () => {
+        event = {
+          // the letter 'd'
+          keyCode: 68,
+          preventDefault: jest.fn()
+        };
+        messageComposer.handleKeyDown(event);
+        expect(setUserTyping).toHaveBeenCalledWith(true, conversation, spark);
+      });
+
+      it(`clears typing on blur`, () => {
+        messageComposer.handleTextAreaBlur();
+        expect(setUserTyping).toHaveBeenCalledWith(false, conversation, spark);
+      });
+
+      it(`clears typing when field is changed to empty`, () => {
+        messageComposer.handleTextChange({target: {value: ``}});
+        expect(setUserTyping).toHaveBeenCalledWith(false, conversation, spark);
+      });
+    });
+
     describe(`enter key processing`, () => {
       let event;
       const props = {
-        activity: new Map()
+        activity: new Map(),
+        setUserTyping: jest.fn()
       };
       const messageComposer = new MessageComposer(props);
       beforeEach(() => {

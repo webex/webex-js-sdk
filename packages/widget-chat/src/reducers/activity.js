@@ -11,7 +11,8 @@ import {
 
 const initialState = new Map({
   status: new Map({
-    isSending: false
+    isSending: false,
+    isTyping: false
   }),
   files: new OrderedMap(),
   text: ``
