@@ -12,7 +12,7 @@ export default function ActivityList(props) {
   const {avatars, currentUserId, flags, lastAcknowledgedActivityId, onActivityDelete, onActivityFlag} = props;
   const items = [];
   let shouldDisplayNewMessageMarker = false;
-  props.activities.forEach((activity) => {
+  props.activities.forEach((activity, index) => {
     // Insert day separator if this activity and last one happen on a different day
     const activityMoment = moment(activity.published, moment.ISO_8601);
     const activityDay = activityMoment.endOf(`day`);
@@ -56,8 +56,10 @@ export default function ActivityList(props) {
       />
     );
 
-    // if this activity is last acked by user render the banner
-    if (lastAcknowledgedActivityId && lastAcknowledgedActivityId === activity.id) {
+    const isLastAcked = lastAcknowledgedActivityId && lastAcknowledgedActivityId === activity.id;
+    const isNotSelf = currentUserId !== activity.actor.id;
+    const isNotLastAct = index !== props.activities.length - 1;
+    if (isLastAcked && isNotSelf && isNotLastAct) {
       shouldDisplayNewMessageMarker = true;
     }
   });
