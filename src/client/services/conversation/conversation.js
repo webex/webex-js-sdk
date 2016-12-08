@@ -18,6 +18,7 @@ var isFunction = require('lodash.isfunction');
 var last = require('lodash.last');
 var merge = require('lodash.merge');
 var noop = require('lodash.noop');
+var imageHelper = require('../../../util/image-helper');
 var InboundNormalizer = require('./inbound-normalizer');
 var OutboundNormalizer = require('./outbound-normalizer');
 var omit = require('lodash.omit');
@@ -121,15 +122,18 @@ var ConversationService = SparkBase.extend(
         if (isEncrypted) {
           promise = this.spark.encryption.download(item.scr)
             .on('progress', emitter.emit.bind(emitter, 'progress'))
-            .then(function ensureBlob(res) {
-              if (typeof window === 'undefined') {
-                return res;
-              }
-              else {
-                /* eslint-env browser */
-                return new Blob([res.buffer], {type: item.mimeType});
-              }
-            });
+              .then(function readExifData(res) {
+                return imageHelper.readExifData(item, res);
+              }.bind(this))
+              .then(function ensureBlob(res) {
+                if (typeof window === 'undefined') {
+                  return res;
+                }
+                else {
+                  /* eslint-env browser */
+                  return new Blob([res.buffer], {type: item.mimeType});
+                }
+              });
         }
         else {
           promise = this.request({
