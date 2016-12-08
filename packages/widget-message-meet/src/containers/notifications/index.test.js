@@ -49,8 +49,8 @@ describe(`Notifications component`, () => {
   });
 
   it(`should request permissions and set result`, () => {
-    browserUtilities.requestPermissionForNotifications = jest.fn(() => Promise.resolve(browserUtilities.PERMISSION_GRANTED));
-    return component.requestPermission().then(() => {
+    browserUtilities.requestPermissionForNotifications = jest.fn(() => browserUtilities.PERMISSION_GRANTED);
+    component.requestPermission(() => {
       expect(setNotificationPermission).toBeCalledWith(browserUtilities.PERMISSION_GRANTED);
     });
   });

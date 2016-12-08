@@ -34,8 +34,7 @@ export class Notifications extends Component {
    */
   requestPermission() {
     const {props} = this;
-    return browserUtilities.requestPermissionForNotifications()
-        .then((permission) => props.setNotificationPermission(permission));
+    return browserUtilities.requestPermissionForNotifications((permission) => props.setNotificationPermission(permission));
   }
 
   /**

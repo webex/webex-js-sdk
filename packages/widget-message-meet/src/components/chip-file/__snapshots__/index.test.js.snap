@@ -3,12 +3,6 @@ exports[`ChipFile component renders properly 1`] = `
   className="chip">
   <div
     className="file-thumbnail">
-    <div
-      className="file-icon">
-      <div
-        className="icon"
-        title={undefined} />
-    </div>
     <img
       role="presentation"
       src="blob:localhost/testFile.jpg" />

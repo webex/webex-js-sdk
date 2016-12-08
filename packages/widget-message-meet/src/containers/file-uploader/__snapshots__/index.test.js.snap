@@ -115,8 +115,7 @@ exports[`FileUploader container renders properly 1`] = `
     <div
       className="add-file-container">
       <button
-        className="add-file-button"
-        onClick={undefined}>
+        className="add-file-button">
         <span
           className="add-file-icon" />
       </button>
