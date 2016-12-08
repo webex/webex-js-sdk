@@ -71,7 +71,7 @@ function walkAndFilter(object) {
 const Logger = SparkPlugin.extend({
   namespace: `Logger`,
 
-  computed: {
+  derived: {
     level: {
       cache: false,
       fn() {
