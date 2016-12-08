@@ -84,7 +84,7 @@ export default function processImage({file, thumbnailMaxWidth, thumbnailMaxHeigh
       const ctx = canvas.getContext(`2d`);
       orient(
         {
-          orientation: file.image.orientation,
+          orientation: file && file.image ? file.image.orientation : ``,
           img,
           x: 0,
           y: 0,

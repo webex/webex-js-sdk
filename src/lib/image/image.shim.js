@@ -40,7 +40,7 @@ var ImageUtil = {
         var ctx = canvas.getContext('2d');
         imageHelper.orient(
           {
-            orientation: file.image.orientation,
+            orientation: file && file.image ? file.image.orientation : '',
             img,
             x: 0,
             y: 0,
