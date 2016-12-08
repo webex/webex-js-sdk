@@ -10,6 +10,7 @@
 
 var pick = require('lodash.pick');
 var imageBase = require('./image-base');
+var imageHelper = require('../../util/image-helper');
 
 var ImageUtil = {
 
@@ -37,7 +38,17 @@ var ImageUtil = {
         metadata.image = dimensions;
 
         var ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, dimensions.width, dimensions.height);
+        imageHelper.orient(
+          {
+            orientation: file && file.image ? file.image.orientation : '',
+            img,
+            x: 0,
+            y: 0,
+            width: dimensions.width,
+            height: dimensions.height,
+            ctx
+          },
+          file);
 
         // TODO take advantage of canvas.toBlob in Firefox
 
@@ -56,7 +67,6 @@ var ImageUtil = {
         for (var i = 0; i < byteString.length; i++) {
           dw.setUint8(i, byteString.charCodeAt(i));
         }
-
         return ab;
       }.bind(this));
   }

@@ -1,6 +1,6 @@
 {
   "name": "spark-js-sdk",
-  "version": "0.5.284",
+  "version": "0.5.286",
   "description": "JavaScript sdk for interacting with the Spark API",
   "homepage": "http://sqbu-github.cisco.com/WebExSquared/squared-js-sdk",
   "bugs": {
@@ -151,6 +151,7 @@
     "eslint-plugin-jsx-a11y": "^2.2.3",
     "eslint-plugin-mocha": "^4.5.1",
     "eslint-plugin-react": "^6.5.0",
+    "exif": "^0.6.0",
     "file-loader": "^0.9.0",
     "grunt": "~0.4.5",
     "grunt-babel": "^6.0.0",
@@ -206,6 +207,7 @@
     "postcss-loader": "^0.13.0",
     "remark": "^5.0.1",
     "remark-html": "^4.0.0",
+    "setimmediate": "^1.0.5",
     "shelljs": "~0.5.0",
     "sinon": "~1.14.1",
     "style-loader": "^0.13.1",

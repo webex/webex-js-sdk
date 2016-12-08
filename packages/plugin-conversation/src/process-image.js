@@ -36,7 +36,8 @@ export default function processImage({file, thumbnailMaxWidth, thumbnailMaxHeigh
   if (enableThumbnails) {
     thumbnail = new Promise((resolve, reject) => {
       gm(file).resize(thumbnailMaxWidth, thumbnailMaxHeight)
-        .toBuffer((err, buffer) => {
+        .autoOrient()
+        .toBuffer(`PNG`, (err, buffer) => {
           if (err) {
             reject(err);
             return;
