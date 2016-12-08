@@ -409,7 +409,7 @@ describe('Services', function() {
           var tonsOfContents = generateTonsOfContents(400);
           return party.mccoy.spark.board.persistence.addContent(conversation, board, tonsOfContents)
             .then(function() {
-              return party.mccoy.spark.board.persistence.getAllContent(board);
+              return party.mccoy.spark.board.persistence.getAllContent(board, {contentsLimit: 150});
             })
             .then(function(res) {
               assert.equal(res.length, tonsOfContents.length);

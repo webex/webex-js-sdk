@@ -87,6 +87,7 @@ const Board = SparkPlugin.extend({
             fileSize: image.size
           }
         };
+
         return this.spark.request({
           method: `PATCH`,
           api: `board`,
