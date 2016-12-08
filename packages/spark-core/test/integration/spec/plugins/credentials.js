@@ -29,7 +29,9 @@ describe(`spark-core`, function() {
           user = undefined;
         });
 
-        describe(`#requestAccessTokenFromJwt()`, () => {
+        // Disabled until (a) the server code is tested and (b) the integration
+        // environment is configured such that this test works.
+        describe.skip(`#requestAccessTokenFromJwt()`, () => {
           let jwt;
           beforeEach(() => createUser({subject: `test-${uuid.v4()}`})
             .then((res) => {
@@ -151,7 +153,9 @@ describe(`spark-core`, function() {
             });
           });
 
-          describe(`when invoked for a JWT user`, () => {
+          // Disabled until (a) the server code is tested and (b) the
+          // integration environment is configured such that this test works.
+          describe.skip(`when invoked for a JWT user`, () => {
             let jwt;
             let id;
             beforeEach(() => {
