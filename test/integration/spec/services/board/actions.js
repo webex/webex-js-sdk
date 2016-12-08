@@ -280,7 +280,7 @@ describe('Services', function() {
     });
 
     describe('Persistence', function() {
-      describe('#getChannel', function() {
+      describe('#getChannel()', function() {
         before(function() {
           return ensureBoard();
         });

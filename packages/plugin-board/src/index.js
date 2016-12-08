@@ -55,7 +55,7 @@ registerPlugin(`board`, Board, {
         direction: `outbound`,
 
         test(ctx, options) {
-          if (get(options, `service`) === `board` && has(options, `body.aclUrlLink`)) {
+          if (ctx.spark.device.isSpecificService(`board`, options.uri) && has(options, `body.aclUrlLink`)) {
             return Promise.resolve(true);
           }
           return Promise.resolve(false);
