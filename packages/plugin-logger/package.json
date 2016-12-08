@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-logger",
-  "version": "0.7.14",
+  "version": "0.7.15",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -8,7 +8,7 @@
   "devMain": "src/index.js",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-logger",
   "dependencies": {
-    "@ciscospark/spark-core": "^0.7.14",
+    "@ciscospark/spark-core": "^0.7.15",
     "babel-runtime": "^6.3.19",
     "lodash": "^4.5.1"
   },
