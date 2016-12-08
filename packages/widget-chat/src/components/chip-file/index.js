@@ -13,14 +13,19 @@ export default function ChipFile(props) {
     thumbnail,
     type
   } = props;
-
+  let icon;
+  if (!thumbnail) {
+    icon = ( // eslint-disable-line no-extra-parens
+      <div className={classNames(`file-icon`, styles.icon)}>
+        <Icon type={ICON_TYPE_DOCUMENT} />
+      </div>
+    );
+  }
 
   return (
     <ChipBase {...props}>
       <div className={classNames(`file-thumbnail`, styles.thumbnail)}>
-        <div className={classNames(`file-icon`, styles.icon)}>
-          <Icon type={ICON_TYPE_DOCUMENT} />
-        </div>
+        {icon}
         <img role="presentation" src={thumbnail} />
       </div>
       <div className={classNames(`file-info`, styles.info)}>

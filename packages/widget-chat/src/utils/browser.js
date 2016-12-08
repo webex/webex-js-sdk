@@ -31,8 +31,8 @@ export function isNotificationSupported() {
   return window && window.Notification;
 }
 
-export function requestPermissionForNotifications() {
-  return window.Notification.requestPermission();
+export function requestPermissionForNotifications(callback) {
+  return window.Notification.requestPermission(callback);
 }
 
 /**

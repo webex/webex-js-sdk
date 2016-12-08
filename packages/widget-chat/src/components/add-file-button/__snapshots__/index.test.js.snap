@@ -2,8 +2,7 @@ exports[`AddFileButton component renders properly 1`] = `
 <div
   className="add-file-container">
   <button
-    className="add-file-button"
-    onClick={[Function]}>
+    className="add-file-button">
     <span
       className="add-file-icon" />
   </button>

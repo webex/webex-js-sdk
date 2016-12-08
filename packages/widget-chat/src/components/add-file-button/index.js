@@ -5,13 +5,12 @@ import styles from './styles.css';
 
 export default function AddFileButton(props) {
   const {
-    onChange,
-    onClick
+    onChange
   } = props;
 
   return (
     <div className={classNames(`add-file-container`, styles.container)}>
-      <button className={classNames(`add-file-button`, styles.button)} onClick={onClick}>
+      <button className={classNames(`add-file-button`, styles.button)}>
         <span className={classNames(`add-file-icon`, styles.icon)} />
       </button>
       <input
@@ -25,6 +24,5 @@ export default function AddFileButton(props) {
 }
 
 AddFileButton.propTypes = {
-  onChange: PropTypes.func,
-  onClick: PropTypes.func
+  onChange: PropTypes.func
 };
