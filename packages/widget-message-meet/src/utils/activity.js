@@ -8,7 +8,7 @@ export function constructActivity(conversation, text, actor) {
       objectType: `person`
     },
     // Needed for round trip
-    clientTempId: `sdk-widget-chat-${uuid.v4()}`,
+    clientTempId: `sdk-widget-message-meet-${uuid.v4()}`,
     // Minimum properties needed by API
     object: {
       displayName: text.displayName || text,

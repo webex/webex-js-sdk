@@ -5,16 +5,16 @@ import createComponentWithIntl from '../../utils/createComponentWithIntl';
 
 import {store as sparkStore} from '../../modules/redux-spark/test-store';
 import store from '../../store';
-import ChatWidget from '.';
+import MessageMeetWidget from '.';
 
 store.spark = sparkStore;
 
-describe(`ChatWidget`, () => {
+describe(`MessageMeetWidget`, () => {
   it(`renders properly`, () => {
     const accessToken = process.env.CISCOSPARK_ACCESS_TOKEN;
     const component = createComponentWithIntl(
       <Provider store={store}>
-        <ChatWidget accessToken={accessToken} userId="bernie.zang@gmail.com" />
+        <MessageMeetWidget accessToken={accessToken} userId="sparky@ciscospark.com" />
       </Provider>
     );
 
