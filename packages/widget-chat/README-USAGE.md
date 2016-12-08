@@ -27,6 +27,23 @@ Currently, this widget supports:
 
 Depending on how comfortable you are with these frameworks, there are are a number of ways you can "install" our code.
 
+### Spark for Developers
+
+If you haven't already, go to the Spark for Developers Portal (<https://developers.ciscospark.com>) and sign up for an account. Once you've created an account you can get your developer access token by clicking on your avatar at the top right of the screen.
+
+When you want to eventually create an integration and have your own users take advantage of the widget, you'll need to create an integration with the following scopes:
+
+  ```
+  spark:rooms_read
+  spark:rooms_write
+  spark:memberships_read
+  spark:memberships_write
+  spark:messages_read
+  spark:messages_write
+  ```
+
+Head over to the Spark for Developers Documentation for more information about how to setup OAuth for your app: <https://developer.ciscospark.com/authentication.html>
+
 ### CDN
 
 Using our CDN requires the least amount of work to get started. To get started, add the following into your HTML file:
