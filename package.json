@@ -1,6 +1,6 @@
 {
   "name": "spark-js-sdk",
-  "version": "0.5.284",
+  "version": "0.5.286",
   "description": "JavaScript sdk for interacting with the Spark API",
   "homepage": "http://sqbu-github.cisco.com/WebExSquared/squared-js-sdk",
   "bugs": {
@@ -53,7 +53,8 @@
     "test:package": "npm run grunt:package -- test --stack",
     "lerna": "lerna",
     "distsrc": "sed -ibak 's#\"main\": \"dist/index.js#\"main\": \"src/index.js#' packages/*/package.json && rm packages/*/*bak",
-    "srcdist": "sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' packages/*/package.json && rm packages/*/*bak"
+    "srcdist": "sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' packages/*/package.json && rm packages/*/*bak",
+    "clean-empty-packages": "node ./scripts/clean-empty-packages.js --clean"
   },
   "dependencies": {
     "ampersand-collection": "^2.0.0",
@@ -151,7 +152,9 @@
     "eslint-plugin-jsx-a11y": "^2.2.3",
     "eslint-plugin-mocha": "^4.5.1",
     "eslint-plugin-react": "^6.5.0",
+    "exif": "^0.6.0",
     "file-loader": "^0.9.0",
+    "fs-extra": "^1.0.0",
     "grunt": "~0.4.5",
     "grunt-babel": "^6.0.0",
     "grunt-banner": "~0.4.0",
@@ -206,6 +209,7 @@
     "postcss-loader": "^0.13.0",
     "remark": "^5.0.1",
     "remark-html": "^4.0.0",
+    "setimmediate": "^1.0.5",
     "shelljs": "~0.5.0",
     "sinon": "~1.14.1",
     "style-loader": "^0.13.1",
@@ -220,7 +224,8 @@
     "watchify": "^3.7.0",
     "wd": "~0.3.11",
     "webpack": "^1.13.1",
-    "webpack-dev-server": "^1.14.1"
+    "webpack-dev-server": "^1.14.1",
+    "yargs": "^6.5.0"
   },
   "optionalDependencies": {
     "clarify": "^1.0.5",

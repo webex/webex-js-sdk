@@ -12,7 +12,6 @@ var imageBase = require('./image-base');
 var ImageUtil = {
 
   processImage: function processImage(file, metadata, options) {
-
     return new Promise(function executor(resolve, reject) {
       gm(file)
       .size(function sizeCallback(err, size) {
@@ -33,6 +32,7 @@ var ImageUtil = {
         return new Promise(function execute(resolve, reject) {
           gm(file)
           .resize(dimensions.height, dimensions.width)
+          .autoOrient()
           .toBuffer('PNG', function toBufferCallback(err, buffer) {
             if (err) {
               reject(err);

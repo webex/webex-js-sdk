@@ -16,6 +16,7 @@ module.exports = {
   generateRandomString: require('./generate-random-string'),
   hashId: require('./hash-id'),
   html: require('./html'),
+  imageHelper: require('./image-helper'),
   oneFlight: require('./one-flight'),
   patterns: require('./patterns'),
   resolveWith: require('./resolve-with'),
