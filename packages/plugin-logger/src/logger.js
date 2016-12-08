@@ -4,8 +4,6 @@
  * @private
  */
 
-/* eslint no-console: [0] */
-
 import {patterns} from '@ciscospark/common';
 
 import {
@@ -60,12 +58,10 @@ function walkAndFilter(object) {
     return object;
   }
   for (const key in object) {
-    if (key.test(authTokenKeyPattern)) {
+    if (authTokenKeyPattern.test(key)) {
       Reflect.deleteProperty(object, key);
     }
     else {
-      console.log(key);
-      console.log(object);
       object[key] = walkAndFilter(object[key]);
     }
   }
@@ -173,6 +169,7 @@ levels.forEach((level) => {
   let impl = level;
   if (impls) {
     impls = impls.slice();
+    // eslint-disable-next-line no-console
     while (!console[impl]) {
       impl = impls.pop();
     }
@@ -181,16 +178,19 @@ levels.forEach((level) => {
   Logger.prototype[level] = function wrappedConsoleMethod(...args) {
     try {
       const filtered = this.filter(...args);
-      if (this.shouldPrint(level)) {
-        console[impl](...filtered);
-      }
-
       const stringified = filtered.map((item) => {
         if (item instanceof SparkHttpError) {
           return item.toString();
         }
         return item;
       });
+
+      if (this.shouldPrint(level)) {
+        const toPrint = typeof window === `undefined` ? filtered : stringified;
+        // eslint-disable-next-line no-console
+        console[impl](...toPrint);
+      }
+
       stringified.unshift(Date.now());
       this.buffer.push(stringified);
       if (this.buffer.length > this.config.historyLength) {
@@ -199,10 +199,10 @@ levels.forEach((level) => {
     }
     catch (reason) {
       /* istanbul ignore next */
+      // eslint-disable-next-line no-console
       console.warn(`failed to execute Logger#${level}`, reason);
     }
   };
 });
-
 
 export default Logger;

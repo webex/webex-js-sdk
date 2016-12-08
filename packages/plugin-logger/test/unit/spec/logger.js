@@ -109,7 +109,7 @@ describe(`plugin-logger`, () => {
       });
       spark.logger.log(error);
       assert.lengthOf(spark.logger.buffer, 1);
-      assert.match(console.log.args[0][0], /SparkHttpError/g);
+      assert.match(console.log.args[0][0], /SparkHttpError/);
     });
 
     it(`buffers custom errors in a readable fashion`, () => {
@@ -201,19 +201,6 @@ describe(`plugin-logger`, () => {
       });
     });
 
-    nodeOnly(it)(`logs at TRACE in development environments`, () => {
-      console.trace.restore();
-      sinon.stub(console, `trace`);
-      process.env.NODE_ENV = undefined;
-      assert.notCalled(console.trace);
-      spark.logger.trace(`test`);
-      assert.notCalled(console.trace);
-
-      process.env.NODE_ENV = `development`;
-      spark.logger.trace(`test`);
-      assert.called(console.trace);
-    });
-
     nodeOnly(it)(`logs at TRACE in test environments`, () => {
       console.trace.restore();
       sinon.stub(console, `trace`);
@@ -274,32 +261,6 @@ describe(`plugin-logger`, () => {
         assert.notCalled(console.info);
       });
     });
-
-    nodeOnly(it)(`defaults to "log" for spark team members`, () => {
-      spark.logger.log(`test`);
-      assert.notCalled(console.log);
-
-      spark.device = {
-        features: {
-          developer: {
-            get() {
-              return;
-            }
-          },
-          entitlement: {
-            get() {
-              return true;
-            }
-          }
-        }
-      };
-
-      spark.logger.log(`test`);
-      assert.called(console.log);
-      spark.logger.info(`test`);
-      assert.notCalled(console.info);
-    });
-
 
     nodeOnly(it)(`defaults to "error" for all other users`, () => {
       spark.logger.error(`test`);
