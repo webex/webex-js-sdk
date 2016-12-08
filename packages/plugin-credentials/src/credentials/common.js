@@ -26,6 +26,7 @@ export default {
   },
 
   session: {
+    clientToken: makeStateDataType(Token, `token`).prop,
     isAuthenticating: {
       default: false,
       type: `boolean`
@@ -121,6 +122,19 @@ export default {
     // we'll additionally base64url-encode the state
     parameters.state = base64.toBase64Url(querystring.stringify(parameters.state));
     return `${this.config.oauth.authorizationUrl}?${querystring.stringify(parameters)}`;
+  },
+
+  /**
+   * Gets the current client token or requests a new one if its invalid.
+   * @returns {Promise<Token>}
+   */
+  @waitForValue(`@`)
+  getClientToken() {
+    if (this.clientToken && this.clientToken.canAuthorize) {
+      return Promise.resolve(this.clientToken);
+    }
+
+    return this.requestClientCredentialsGrant();
   },
 
   /**
@@ -303,6 +317,9 @@ export default {
       shouldRefreshAccessToken: false
     })
       .then((res) => new Token(res.body, {parent: this}))
+      .then(tap((token) => {
+        this.clientToken = token;
+      }))
       .catch((res) => {
         if (res.statusCode !== 400) {
           return Promise.reject(res);

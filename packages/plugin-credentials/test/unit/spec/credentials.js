@@ -72,6 +72,36 @@ describe(`plugin-credentials`, () => {
       }
     });
 
+    describe(`#getClientToken()`, () => {
+      it(`resolves with the client token`, () => {
+        sinon.spy(spark.credentials, `requestClientCredentialsGrant`);
+
+        spark.credentials.set({
+          clientToken: {
+            access_token: `a token`,
+            token_type: `fake`
+          }
+        });
+
+        return spark.credentials.getClientToken()
+          .then((token) => {
+            assert.notCalled(spark.credentials.requestClientCredentialsGrant);
+            assert.equal(token.access_token, `a token`);
+          });
+      });
+
+      it(`fetches a new client token if one does not exist`, () => {
+        sinon.stub(spark.credentials, `requestClientCredentialsGrant`).returns(Promise.resolve({
+          access_token: `this should really be a Token instance, but that's not relevant for this test`
+        }));
+
+        return spark.credentials.getClientToken()
+          .then(() => {
+            assert.calledOnce(spark.credentials.requestClientCredentialsGrant);
+          });
+      });
+    });
+
     describe(`#getUserToken()`, () => {
       let apiToken, kmsToken, supertoken;
       beforeEach(() => {
