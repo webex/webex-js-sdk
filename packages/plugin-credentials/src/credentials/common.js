@@ -16,8 +16,6 @@ import {persist, waitForValue} from '@ciscospark/spark-core';
 import {deprecated} from 'core-decorators';
 import querystring from 'querystring';
 
-export const apiScope = filterScope(`spark:kms`, process.env.CISCOSPARK_SCOPE);
-
 export default {
   dataTypes: {
     token: makeStateDataType(Token, `token`).dataType
@@ -151,7 +149,7 @@ export default {
     }
 
     if (!scope) {
-      scope = apiScope;
+      scope = filterScope(`spark:kms`, this.config.scope);
     }
 
     scope = sortScope(scope);
@@ -493,8 +491,9 @@ export default {
   _receiveSupertoken(supertoken) {
     const scopes = [
       `spark:kms`,
-      apiScope
+      filterScope(`spark:kms`, this.config.scope)
     ];
+
 
     return Promise.all(scopes.map((scope) => supertoken.downscope(scope)
       .catch((reason) => this._handleDownscopeFailure(supertoken, scope, reason))

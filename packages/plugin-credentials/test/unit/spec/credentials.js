@@ -13,7 +13,7 @@ import MockSpark from '@ciscospark/test-helper-mock-spark';
 import uuid from 'uuid';
 import CiscoSpark, {grantErrors} from '@ciscospark/spark-core';
 import Credentials, {
-  apiScope,
+  filterScope,
   Token
 } from '../..';
 
@@ -30,13 +30,15 @@ describe(`plugin-credentials`, () => {
       }, {parent: spark});
     }
 
-    let spark;
+    let apiScope, spark;
     beforeEach(() => {
       spark = new MockSpark({
         children: {
           credentials: Credentials
         }
       });
+
+      apiScope = filterScope(`spark:kms`, spark.config.credentials.scope);
 
       spark.request.returns(Promise.resolve({
         statusCode: 200,
@@ -60,7 +62,6 @@ describe(`plugin-credentials`, () => {
         if (scope === apiScope) {
           return Promise.resolve(nextKmsToken);
         }
-
         return Promise.resolve(makeToken(scope, this));
       });
     });
