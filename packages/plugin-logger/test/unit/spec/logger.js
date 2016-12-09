@@ -285,6 +285,16 @@ describe(`plugin-logger`, () => {
   });
 
   describe(`#filter`, () => {
+    it(`redacts email addresses`, () => {
+      const message = {
+        blarg: `test@example.com`
+      };
+
+      assert.deepEqual(spark.logger.filter(message), [{
+        blarg: `-- REDACTED --`
+      }]);
+    });
+
     it(`strips auth headers from log output`, () => {
       const msg = {
         headers: {
