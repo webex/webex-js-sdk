@@ -41,12 +41,12 @@ var ImageUtil = {
         imageHelper.orient(
           {
             orientation: file && file.image ? file.image.orientation : '',
-            img,
+            img: img,
             x: 0,
             y: 0,
             width: dimensions.width,
             height: dimensions.height,
-            ctx
+            ctx: ctx
           },
           file);
 

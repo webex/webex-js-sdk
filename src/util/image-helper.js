@@ -36,7 +36,7 @@ var ImageHelper = {
         var arrayBuffer = reader.result;
         var buf = new Buffer(arrayBuffer.byteLength);
         var view = new Uint8Array(arrayBuffer);
-        for (let i = 0; i < buf.length; ++i) {
+        for (var i = 0; i < buf.length; ++i) {
           buf[i] = view[i];
         }
         resolve(buf);
