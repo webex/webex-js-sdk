@@ -24,6 +24,7 @@ export default {
   },
 
   props: {
+    clientToken: makeStateDataType(Token, `token`).prop,
     supertoken: makeStateDataType(Token, `token`).prop
   },
 
@@ -131,7 +132,27 @@ export default {
    * @returns {Token}
    */
   @waitForValue(`@`)
+  getClientCredentials() {
+    let promise;
+    if (!this.clientToken || !this.clientToken.canAuthorize || this.clientToken.isExpired) {
+      promise = this.requestClientCredentialsGrant();
+    }
+    else {
+      promise = Promise.resolve();
+    }
+
+    return promise
+      .then(() => this.clientToken.toString());
+  },
+
+  /**
+   * Gets a token with the specified scope
+   * @param {string} scope
+   * @returns {Token}
+   */
+  @waitForValue(`@`)
   getUserToken(scope) {
+
     // Note: this behaves much like oneFlight, but doesn't return a unique
     // promise. Since it recursively calls iteself, oneFlight is problematic.
     if (this.isRefreshing) {
@@ -150,21 +171,22 @@ export default {
       });
     }
 
+    this.logger.info(`credentials: user token requested`);
+
     if (!scope) {
-      scope = apiScope;
+      //scope = apiScope;
+      scope = filterScope(`spark:kms`, this.config.scope);
     }
-
     scope = sortScope(scope);
-
     const token = this.userTokens.get(scope);
 
     if (!token) {
       return this.supertoken.downscope(scope)
         .catch((reason) => this._handleDownscopeFailure(this.supertoken, scope, reason))
-        .then(tap((t) => this.userTokens.add(t)));
+        .then(tap((t) => this.userTokens.add(t)))
+        .then((downscopeToken) => downscopeToken.toString());
     }
-
-    return Promise.resolve(token);
+    return Promise.resolve(token.toString());
   },
 
   /**
@@ -282,7 +304,6 @@ export default {
         return Promise.reject(new Error(`config.credentials.${key} or CISCOSPARK_${baseVar} or COMMON_IDENTITY_${baseVar} or ${baseVar} must be defined`));
       }
     }
-
     this.logger.info(`credentials: requesting client credentials grant`);
 
     options = options || {};
@@ -305,6 +326,9 @@ export default {
       shouldRefreshAccessToken: false
     })
       .then((res) => new Token(res.body, {parent: this}))
+      .then((token) => {
+        this.clientToken = token;
+      })
       .catch((res) => {
         if (res.statusCode !== 400) {
           return Promise.reject(res);
@@ -493,9 +517,8 @@ export default {
   _receiveSupertoken(supertoken) {
     const scopes = [
       `spark:kms`,
-      apiScope
+      filterScope(`spark:kms`, this.config.scope)
     ];
-
     return Promise.all(scopes.map((scope) => supertoken.downscope(scope)
       .catch((reason) => this._handleDownscopeFailure(supertoken, scope, reason))
     ))

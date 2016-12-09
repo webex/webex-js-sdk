@@ -44,7 +44,7 @@ describe(`spark-core`, () => {
         }
       }));
 
-      return spark.credentials.authorize({code: 5})
+      return spark.credentials.initiateLogin({code: 5})
         .then(() => {
           assert.calledOnce(spark.request);
           assert.equal(spark.credentials.authorization.access_token, `fake token`);

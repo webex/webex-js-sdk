@@ -4,7 +4,7 @@
  * @private
  */
 
-import {isArray} from 'lodash';
+import {isArray, defaults} from 'lodash';
 import {oneFlight, patterns, tap} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
 import UserUUIDBatcher from './user-uuid-batcher';
@@ -24,6 +24,29 @@ const User = SparkPlugin.extend({
       },
       type: `any`
     }
+  },
+
+  /**
+   * Activates/verifies a Spark user account.
+   * @param {Object} params
+   * @param {Object} params.encryptedQueryParam (required)
+   * @returns {Promise}
+   * @todo Add details to the @returns object once the endpoint stabilizes
+   */
+  activate: function activate(params) {
+    params = params || {};
+
+    if (!params.encryptedQueryString) {
+      throw new Error(`\params.encryptedQueryString\` is required`);
+    }
+
+    return this.request({
+      api: `atlas`,
+      resource: `users/email/activate`,
+      method: `POST`,
+      body: params
+    })
+      .then((res) => res.body);
   },
 
   /**
@@ -141,6 +164,42 @@ const User = SparkPlugin.extend({
     }
 
     return this.store.add(user);
+  },
+
+  /**
+   * Registers a new user with Spark. Can be called before
+   * authenticate.
+   * @param {Object} params
+   * @param {Object} params.email (required)
+   * @param {Object} params.pushId (optional)
+   * @param {Object} params.deviceId (optional)
+   * @param {Object} params.deviceName (optional)
+   * @param {Object} options
+   * @param {Object} options.spoofMobile if true, spoof mobile client for
+   * testing of activate and reverify APIs
+   * @returns {Promise}
+   * @todo Add details to the @returnsobject once the endpoint stabilizes
+   */
+  register(params, options) {
+    params = params || {};
+    options = options || {};
+    defaults(params, this.config.registrationDefaults);
+    if (!params.email) {
+      throw new Error(`\`params.email\` is required`);
+    }
+    // Spoof mobile client for testing of activate and reverify APIs
+    let headers;
+    if (options.spoofMobile) {
+      headers = {'User-Agent': `wx2-android`};
+    }
+    return this.request({
+      api: `atlas`,
+      resource: `users/email/verify`,
+      method: `POST`,
+      body: params,
+      headers
+    })
+      .then((res) => res.body);
   },
 
   /**

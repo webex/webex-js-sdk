@@ -19,6 +19,15 @@ export default class AdvancedAuthInterceptor extends AuthInterceptor {
   }
 
   /**
+   * Indicates whether or not the current request requires client credentials
+   * @param {Object} options
+   * @returns {Promise<boolean>}
+   */
+  requiresClientCredentials(options) {
+    return Promise.resolve(options.service === `atlas` && options.resource && options.resource.indexOf(`users/email/`) !== -1);
+  }
+
+  /**
    * Indicates whether or not the current request requires credentials
    * @param {Object} options
    * @returns {Promise<boolean>}
