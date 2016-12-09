@@ -87,8 +87,8 @@ registerPlugin(`conversation`, Conversation, {
             return Promise.resolve();
           }
 
-          return ctx.transform(`normalizeObject`, object)
-            .then(() => ctx.transform(`decryptObject`, object));
+          return ctx.transform(`decryptObject`, object)
+            .then(() => ctx.transform(`normalizeObject`, object));
         }
       },
       {
