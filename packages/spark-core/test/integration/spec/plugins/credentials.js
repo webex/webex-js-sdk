@@ -207,7 +207,7 @@ describe(`spark-core`, function() {
             const initialToken = user.token;
             // eslint-disable-next-line camelcase
             spark.credentials.authorization.access_token = `invalid`;
-            spark.request({
+            return spark.request({
               service: `conversation`,
               method: `GET`,
               resource: `build_info`
