@@ -24,7 +24,7 @@ describe(`Encryption`, function() {
             authorization: user.token
           }
         });
-        assert.isTrue(spark.isAuthenticated);
+        assert.isTrue(spark.isAuthenticated || spark.canAuthorize);
       }));
 
     after(() => spark && spark.mercury.disconnect());

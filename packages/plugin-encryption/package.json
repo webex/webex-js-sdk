@@ -10,6 +10,7 @@
   "dependencies": {
     "@ciscospark/common": "^0.7.0",
     "@ciscospark/http-core": "^0.7.24",
+    "@ciscospark/plugin-credentials": "^0.7.24",
     "@ciscospark/plugin-mercury": "^0.7.24",
     "@ciscospark/plugin-wdm": "^0.7.24",
     "@ciscospark/spark-core": "^0.7.24",
