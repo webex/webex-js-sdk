@@ -194,7 +194,7 @@ export default {
 
   @persist(`@`)
   initialize(...args) {
-    return Reflect.apply(SparkPlugin.prototype.initialize, this, args);
+    return Reflect.apply(SparkPlugin.prototype.initialize, this, ...args);
   },
 
   @waitForValue(`@`)
@@ -377,14 +377,14 @@ export default {
    */
   set(attrs, options) {
     if (isObject(attrs)) {
+      if (attrs.authorization) {
+        attrs = attrs.authorization;
+      }
+
       if (attrs.access_token) {
         attrs = {
           supertoken: attrs
         };
-      }
-
-      if (attrs.authorization) {
-        attrs = attrs.authorization;
       }
 
       attrs.userTokens = attrs.userTokens || [];
