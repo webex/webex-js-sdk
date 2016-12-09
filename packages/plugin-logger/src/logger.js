@@ -143,7 +143,7 @@ const Logger = SparkPlugin.extend({
       return this.config.level;
     }
 
-    if (process.env.CISCOSPARK_LOG_LEVEL in levels) {
+    if (levels.includes(process.env.CISCOSPARK_LOG_LEVEL)) {
       return process.env.CISCOSPARK_LOG_LEVEL;
     }
 

@@ -192,6 +192,15 @@ describe(`plugin-logger`, () => {
       assert.isFalse(spark.logger.shouldPrint(`trace`), `it does not print \`trace\` logs when the level is \`silent\``);
     });
 
+    nodeOnly(it)(`uses the CISCOSPARK_LOG_LEVEL environment varable to control log level`, () => {
+      levels.forEach((level) => {
+        process.env.CISCOSPARK_LOG_LEVEL = level;
+        console[impl(level)].reset();
+        spark.logger[level](`test: ${level}`);
+        assert.calledOnce(console[impl(level)]);
+      });
+    });
+
     it(`prefers the config specified logger.level`, () => {
       levels.forEach((level) => {
         spark.logger.config.level = level;
