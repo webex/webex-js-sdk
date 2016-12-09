@@ -40,7 +40,7 @@ export default class AuthInterceptor extends Interceptor {
       .then((results) => {
         const [requiresCredentials, requiresClientCredentials] = results;
         if (requiresClientCredentials) {
-          return this.spark.credentials.getClientCredentials();
+          return this.spark.credentials.getClientCredentialsAuthorization();
         }
         else if (requiresCredentials) {
           return this.spark.credentials.getAuthorization();
@@ -135,6 +135,10 @@ export default class AuthInterceptor extends Interceptor {
    */
   shouldAttemptReauth(reason, options) {
     if (options && options.shouldRefreshAccessToken === false) {
+      return Promise.resolve(false);
+    }
+
+    if (options && options.requiresClientCredentials) {
       return Promise.resolve(false);
     }
 

@@ -17,16 +17,19 @@ export default class DeviceAuthInterceptor extends AuthInterceptor {
     return new DeviceAuthInterceptor({spark: this});
   }
 
+  // it's an if-tree, splitting it up into more functions makes it more
+  // difficult to interpet, not less
+  /* eslint-disable complexity */
   /**
    * @param {Object} options
    * @returns {Promise<boolean>}
    */
   requiresCredentials(options) {
-    if (options.uri.includes(this.spark.config.credentials.oauth.tokenUrl)) {
+    if (options.uri.includes(this.spark.config.credentials.tokenUrl || this.spark.config.credentials.oauth.tokenUrl)) {
       return Promise.resolve(false);
     }
 
-    if (options.uri.includes(this.spark.config.credentials.oauth.authorizeUrl)) {
+    if (options.uri.includes(this.spark.config.credentials.authorizeUrl || this.spark.config.credentials.oauth.authorizeUrl)) {
       return Promise.resolve(false);
     }
 
@@ -44,4 +47,5 @@ export default class DeviceAuthInterceptor extends AuthInterceptor {
 
     return Promise.resolve(false);
   }
+  /* eslint-enable complexity */
 }

@@ -124,6 +124,11 @@ export default {
     return `${this.config.oauth.authorizationUrl}?${querystring.stringify(parameters)}`;
   },
 
+  @deprecated(`use Credentials#getClientToken()`)
+  getClientCredentialsAuthorization() {
+    return this.getClientToken();
+  },
+
   /**
    * Gets the current client token or requests a new one if its invalid.
    * @returns {Promise<Token>}
