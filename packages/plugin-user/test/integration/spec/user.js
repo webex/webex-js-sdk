@@ -12,6 +12,7 @@ import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
 import {patterns} from '@ciscospark/common';
 import uuid from 'uuid';
+import {nodeOnly} from '@ciscospark/test-helper-mocha';
 
 describe(`plugin-user`, function() {
   this.timeout(30000);
@@ -32,6 +33,56 @@ describe(`plugin-user`, function() {
 
       return spark.device.register();
     }));
+
+  describe(`#verify()`, () => {
+    it(`registers a new user`, () => spark.user.verify({email: `Collabctg+spark-js-sdk-${uuid.v4()}@gmail.com`})
+      .then((res) => {
+        console.log(res);
+        assert.property(res, `showPasswordPage`);
+        assert.isFalse(res.showPasswordPage);
+
+        assert.isFalse(res.showConfirmationCodePage);
+        assert.isFalse(res.showPasswordPage);
+        assert.isTrue(res.isUserCreated);
+        assert.isFalse(res.isSSOUser);
+        assert.isTrue(res.newUserSignUp);
+      }));
+
+    it(`leaves email address validation up to Atlas`, () => assert.isRejected(spark.user.register({email: `not an email address`}))
+      .then((res) => assert.statusCode(res, 400)));
+  });
+
+  // This test relies on setting a specific user agent, so it doesn't work in
+  // browsers
+  nodeOnly(describe)(`#activate()`, () => {
+    it(`completes the mobile signup process`, () => spark.request({
+      service: `atlas`,
+      resource: `users/email/verify`,
+      method: `POST`,
+      body: {
+        deviceName: `DESKTOP`,
+        deviceId: `not a mobile device`,
+        pushId: `not a mobile device`,
+        email: `Collabctg+spark-js-sdk-${uuid.v4()}@gmail.com`
+      },
+      requiresClientCredentials: true,
+      headers: {
+        'user-agent': `wx2-android`
+      }
+    })
+      .then((res) => {
+        assert.property(res.body, `eqp`);
+        return assert.isFulfilled(spark.user.activate({encryptedQueryString: res.body.eqp}));
+      })
+      .then((res) => spark.user.verify({email: res.email}))
+      .then((res) => {
+        assert.isFalse(res.showConfirmationCodePage);
+        assert.isFalse(res.showPasswordPage);
+        assert.isFalse(res.isUserCreated);
+        assert.isFalse(res.isSSOUser);
+        assert.isFalse(res.newUserSignUp);
+      }));
+  });
 
   describe(`#get()`, () => {
     it(`gets the current user`, () => spark.user.get()

@@ -12,6 +12,7 @@
     "@ciscospark/plugin-wdm": "^0.7.19",
     "@ciscospark/spark-core": "^0.7.19",
     "babel-runtime": "^6.3.19",
+    "core-decorators": "^0.14.0",
     "lodash": "^4.13.1"
   },
   "devDependencies": {
