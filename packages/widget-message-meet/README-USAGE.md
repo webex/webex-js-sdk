@@ -1,12 +1,12 @@
-# Spark Message and Meet Widget
+# Spark Message and Meet Widget _(widget-message-meet)_
 
-The Spark Message and Meet widget allows developers to quickly and easily incorporate messaging through Cisco Spark into an application. This widget handles the heavy lifting of coordinating between your application and the Spark APIs, and provides a complete Spark UI and messaging experience without having to build all front end UI yourself.
+* THIS WIDGET CONTAINS EXPERIMENTAL CODE *
 
-Our widget is built using React <https://github.com/facebook/react>, Redux <https://github.com/reactjs/redux>, and the Spark JS SDK <https://github.com/ciscospark/spark-js-sdk>. This allows a developer to extend the UI to support different messaging contexts.
+> The Spark Message Meet widget allows developers to easily incorporate Cisco Spark 1 on 1 messaging  into an application.
 
 ## Table of Contents
--   [Features](#features)
--   [Getting Started](#getting-started)
+-   [Background](#background)
+-   [Install](#install)
     -   [CDN](#cdn)
     -   [Build from Source](#build-from-source)
 -   [Usage](#usage)
@@ -14,16 +14,20 @@ Our widget is built using React <https://github.com/facebook/react>, Redux <http
     -   [JSX](#jsx)
 -   [Browser Support](#browser-support)
 
-## Features
+## Background
 
-Currently, this widget supports:
--   Basic text based messaging
+This widget handles the heavy lifting of coordinating between your application and the Spark APIs, and provides components of the Spark messaging experience without having to build all front end UI yourself.
+
+Our widget is built using React <https://github.com/facebook/react>, Redux <https://github.com/reactjs/redux>, and the Spark Javascript SDK <https://github.com/ciscospark/spark-js-sdk>.
+
+This widget supports:
+-   1 on 1 messaging
 -   Inline Markdown
 -   Sharing of files and documents
 -   Preview and download of files and documents
 -   Flagging messages for follow up
 
-## Getting Started
+## Install
 
 Depending on how comfortable you are with these frameworks, there are are a number of ways you can "install" our code.
 
@@ -46,7 +50,7 @@ Head over to the Spark for Developers Documentation for more information about h
 
 ### CDN
 
-Using our CDN requires the least amount of work to get started. To get started, add the following into your HTML file:
+Using our CDN requires the least amount of work to get started. Add the following into your HTML file:
 ```
 <!-- Latest compiled and minified CSS -->
 <link rel="stylesheet" href="https://code.s4d.io/widget-message-meet/main.css">
@@ -61,9 +65,9 @@ Using our CDN requires the least amount of work to get started. To get started, 
 1.  From the root of the sdk repo, run the following to build the widget:
 
   ```sh
-  PACKAGE=widget-chat npm run grunt:package -- build
+  PACKAGE=widget-message-meet npm run grunt:package -- build
   ```
-1.  The built bundles are located at `package/widget-chat/dist`.
+1.  The built bundles are located at `package/widget-message-meet/dist`.
 
 ## Usage
 
@@ -72,17 +76,19 @@ Using our CDN requires the least amount of work to get started. To get started, 
 The easiest way to get the Spark Chat Widget into your web site is to add the built resources and attach data attributes to your a container.
 
 1.  If you're using our CDN, skip to step 2.
-  -  Copy the resources in the `dist` directory to own project and add a `<script />` tag to your page to include the `bundle.js` and a `<link />` tag to include `main.css`.
-1.  Create a container where you which to include the chat widget and add the following attributes to configure the widget:
+  -  Copy the resources in the `dist` directory to own project.
+  -  Add a `<script />` tag to your page to include the `bundle.js`
+  -  Add a `<link />` tag to include `main.css`
+1.  Create a container where you would like to embed the chat widget and add the following attributes to configure the widget:
   - `data-toggle="spark-chat"`: (required)
-  - `data-access-token`: Access token for the user account that is initiating the chat session. For testing purposes you can use a developer access token from <https://developers.ciscospark.com>
-  - `data-user-id`: User Id or email of the target user.
+  - `data-access-token`: Access token for the user account initiating the messaging session. For testing purposes you can use a developer access token from <https://developers.ciscospark.com>
+  - `data-user-id`: User Id or email of the message recipient.
 
     ```html
     <div class="chat-widget-container"
       data-toggle="spark-chat"
       data-access-token="XXXXXXXXXXXXXXXXXXXXXX"
-      data-user-id="sparky@ciscospark.com"
+      data-user-id="XXXXXXXXXXXXXXX"
       />
     ```
 
@@ -105,5 +111,13 @@ ReactDOM.render(
 
 This widget supports the follow browsers:
 -   Current release of Chrome
--   Current releaes of Firefox
+-   Current release of Firefox
 -   Internet Explorer 11 or later
+
+## Contribute
+
+Please see [CONTRIBUTING.md](../../CONTRIBUTING.md) for more details.
+
+## License
+
+&copy; 2016 Cisco and/or its affiliates. All Rights Reserved.
