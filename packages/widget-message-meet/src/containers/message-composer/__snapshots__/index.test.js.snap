@@ -1,0 +1,113 @@
+exports[`MessageComposer component snapshot tests handles value change properly 1`] = `
+<div
+  className="message-composer">
+  <div
+    className="file-uploader-container">
+    <div
+      className="button-container">
+      <div
+        className="add-file-container">
+        <button
+          className="add-file-button">
+          <span
+            className="add-file-icon" />
+        </button>
+        <input
+          className="file-input"
+          multiple="multiple"
+          onChange={[Function]}
+          type="file" />
+      </div>
+    </div>
+  </div>
+  <div
+    className="textarea-container">
+    <textarea
+      className="textarea"
+      onBlur={[Function]}
+      onChange={[Function]}
+      onFocus={[Function]}
+      onKeyDown={[Function]}
+      onSubmit={[Function]}
+      placeholder="Message Placeholder"
+      rows={1}
+      value="" />
+  </div>
+</div>
+`;
+
+exports[`MessageComposer component snapshot tests handles value change properly 2`] = `
+<div
+  className="message-composer">
+  <div
+    className="file-uploader-container">
+    <div
+      className="button-container">
+      <div
+        className="add-file-container">
+        <button
+          className="add-file-button">
+          <span
+            className="add-file-icon" />
+        </button>
+        <input
+          className="file-input"
+          multiple="multiple"
+          onChange={[Function]}
+          type="file" />
+      </div>
+    </div>
+  </div>
+  <div
+    className="textarea-container">
+    <textarea
+      className="textarea"
+      onBlur={[Function]}
+      onChange={[Function]}
+      onFocus={[Function]}
+      onKeyDown={[Function]}
+      onSubmit={[Function]}
+      placeholder="Message Placeholder"
+      rows={1}
+      value="abc123" />
+  </div>
+</div>
+`;
+
+exports[`MessageComposer component snapshot tests renders properly 1`] = `
+<div
+  className="message-composer">
+  <div
+    className="file-uploader-container">
+    <div
+      className="button-container">
+      <div
+        className="add-file-container">
+        <button
+          className="add-file-button">
+          <span
+            className="add-file-icon" />
+        </button>
+        <input
+          className="file-input"
+          multiple="multiple"
+          onChange={[Function]}
+          type="file" />
+      </div>
+    </div>
+  </div>
+  <div
+    className="textarea-container">
+    <textarea
+      className="textarea"
+      onBlur={[Function]}
+      onChange={[Function]}
+      onFocus={[Function]}
+      onKeyDown={[Function]}
+      onSubmit={[Function]}
+      placeholder="Message Placeholder"
+      rows={1}
+      value="" />
+  </div>
+</div>
+`;

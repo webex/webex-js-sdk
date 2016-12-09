@@ -1,0 +1,21 @@
+exports[`MessageMeetWidget renders properly 1`] = `
+<div>
+  <div
+    className="widget-chat">
+    <div
+      className="banner" />
+    <div
+      className="loading">
+      <span>
+        Connecting
+      </span>
+      ...
+      <div
+        className="spinner-container">
+        <div
+          className="spinner" />
+      </div>
+    </div>
+  </div>
+</div>
+`;

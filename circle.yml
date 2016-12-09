@@ -46,7 +46,7 @@ dependencies:
     - packages/test-helper-server/node_modules
     - packages/test-helper-sinon/node_modules
     - packages/test-helper-test-users/node_modules
-    - packages/widget-chat/node_modules
+    - packages/widget-message-meet/node_modules
     - packages/xunit-with-logs/node_modules
   post:
     - npm run bootstrap:

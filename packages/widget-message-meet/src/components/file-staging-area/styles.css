@@ -1,0 +1,38 @@
+.file-staging-area {
+  position: relative;
+  display: flex;
+  overflow-y: auto;
+  background-color: hsla(240, 5%, 96%, 0.2);
+  border-bottom: 1px solid #ebebec;
+}
+
+.files {
+  display: flex;
+  max-height: 150px;
+  margin: 5px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+}
+
+.chip-container {
+  width: 260px;
+  height: 60px;
+  margin: 5px;
+}
+
+.actions {
+  display: flex;
+  margin: auto;
+}
+
+.actions > button {
+  height: 30px;
+  padding: 8px 20px;
+  margin: auto 9px;
+  font-size: 13px;
+  line-height: 13px;
+  color: #fff;
+  background-color: #049fd9;
+  border-radius: 4px;
+}
