@@ -147,7 +147,7 @@ const Logger = SparkPlugin.extend({
       return process.env.CISCOSPARK_LOG_LEVEL;
     }
 
-    // Always use debug-level logging in development or test mode;
+    // Always use debug-level logging in test mode;
     if (process.env.NODE_ENV === `test`) {
       return `trace`;
     }

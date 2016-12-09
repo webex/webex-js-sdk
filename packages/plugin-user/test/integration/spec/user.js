@@ -37,7 +37,6 @@ describe(`plugin-user`, function() {
   describe(`#verify()`, () => {
     it(`registers a new user`, () => spark.user.verify({email: `Collabctg+spark-js-sdk-${uuid.v4()}@gmail.com`})
       .then((res) => {
-        console.log(res);
         assert.property(res, `showPasswordPage`);
         assert.isFalse(res.showPasswordPage);
 

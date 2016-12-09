@@ -96,9 +96,7 @@ describe(`plugin-credentials`, () => {
         }));
 
         return spark.credentials.getClientToken()
-          .then(() => {
-            assert.calledOnce(spark.credentials.requestClientCredentialsGrant);
-          });
+          .then(() => assert.calledOnce(spark.credentials.requestClientCredentialsGrant));
       });
     });
 
