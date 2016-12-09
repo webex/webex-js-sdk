@@ -9,7 +9,7 @@ import {formatDate} from '../../utils/date';
 export default function ActivityList(props) {
   let lastActorId, lastDay, lastVerb;
   const now = moment();
-  const {avatars, currentUserId, flags, lastAcknowledgedActivityId, onActivityDelete, onActivityFlag} = props;
+  const {avatars, currentUserId, flags, inFlightActivity, lastAcknowledgedActivityId, onActivityDelete, onActivityFlag} = props;
   const items = [];
   let shouldDisplayNewMessageMarker = false;
   props.activities.forEach((activity, index) => {
@@ -64,6 +64,9 @@ export default function ActivityList(props) {
     }
   });
 
+  if (inFlightActivity) {
+    items.push(<div key="sending">{`Sending...`}</div>);
+  }
   return (
     <div className={classNames(`activity-list`)}>
       {items}
@@ -76,6 +79,7 @@ ActivityList.propTypes = {
   avatars: PropTypes.object.isRequired,
   currentUserId: PropTypes.string,
   flags: PropTypes.array,
+  inFlightActivity: PropTypes.bool,
   lastAcknowledgedActivityId: PropTypes.string,
   onActivityDelete: PropTypes.func.isRequired,
   onActivityFlag: PropTypes.func.isRequired

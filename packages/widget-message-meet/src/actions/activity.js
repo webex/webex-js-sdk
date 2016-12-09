@@ -60,6 +60,16 @@ export function updateActivityText(text) {
   };
 }
 
+export const SUBMIT_ACTIVITY_START = `SUBMIT_ACTIVITY_START`;
+function submitActivityStart(activity) {
+  return {
+    type: SUBMIT_ACTIVITY_START,
+    payload: {
+      activity
+    }
+  };
+}
+
 /**
  * Adds file to message, creates Share activity if not present, starts upload
  *
@@ -123,16 +133,17 @@ export function removeFile(id, activity) {
 */
 export function submitActivity(conversation, activity, spark) {
   return (dispatch) => {
-    dispatch(updateActivityStatus({isSending: true}));
     const message = _createMessageObject(activity.get(`text`));
     const shareActivity = activity.get(`shareActivity`);
     if (shareActivity && activity.get(`files`).size) {
       shareActivity.displayName = message.displayName;
       shareActivity.content = message.content;
+      dispatch(submitActivityStart(shareActivity));
       spark.conversation.share(conversation, shareActivity)
         .then(cleanupAfterSubmit(activity, dispatch));
     }
     else if (message) {
+      dispatch(submitActivityStart(message));
       spark.conversation.post(conversation, message)
         .then(cleanupAfterSubmit(activity, dispatch));
     }
@@ -170,7 +181,6 @@ function cleanupAfterSubmit(activity, dispatch) {
     });
   }
   dispatch(resetActivity());
-  dispatch(updateActivityStatus({isSending: false}));
 }
 
 /**

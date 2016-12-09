@@ -108,7 +108,8 @@ export class MessageMeetWidget extends Component {
       || nextProps.share !== props.share
       || nextProps.sparkState.connected !== props.sparkState.connected
       || nextProps.user !== props.user
-      || nextProps.widget !== props.widget;
+      || nextProps.widget !== props.widget
+      || nextProps.activity.getIn([`status`, `isSending`]) !== props.activity.getIn([`status`, `isSending`]);
     /* eslint-enable operator-linebreak */
   }
   /* eslint-enable complexity */
@@ -349,6 +350,7 @@ export class MessageMeetWidget extends Component {
   render() {
     const props = this.props;
     const {
+      activity,
       conversation,
       flags,
       indicators,
@@ -458,6 +460,7 @@ export class MessageMeetWidget extends Component {
                   avatars={avatars}
                   currentUserId={currentUser.id}
                   flags={flags.flags}
+                  inFlightActivity={activity.getIn([`status`, `isSending`])}
                   isLoadingHistoryUp={isLoadingHistoryUp}
                   isTyping={isTyping}
                   lastAcknowledgedActivityId={lastAcknowledgedActivityId}
