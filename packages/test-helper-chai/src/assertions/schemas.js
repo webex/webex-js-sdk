@@ -268,6 +268,22 @@ module.exports = function schemas(chai) {
     // assert.isISODate(this._obj.created);
   });
 
+  Assertion.addProperty('Whiteboard', function() {
+    assert.properties(this._obj, [
+      'id',
+      'created',
+      'creatorId'
+    ]);
+
+    assert.isHydraID(this._obj.id);
+    assert.isHydraID(this._obj.creatorId);
+    assert.isISODate(this._obj.created);
+
+    if (this._obj.roomId) {
+      assert.isHydraID(this._obj.roomId);
+    }
+  });
+
   shouldToAssert(chai, [
     'AccessToken',
     'Activity',
@@ -290,6 +306,7 @@ module.exports = function schemas(chai) {
     'Team',
     'teamMembership',
     'TeamRoom',
-    'Webhook'
+    'Webhook',
+    'Whiteboard'
   ]);
 };
