@@ -5,6 +5,7 @@
 
 'use strict';
 
+var base64 = require('../../../common').base64;
 var shouldToAssert = require('./should-to-assert');
 
 /**
@@ -20,9 +21,16 @@ module.exports = function primitives(chai) {
   var uuidPattern = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/;
   var emailPattern = /^[^\s]+?@[^\s]+?$/;
 
+  // This may need to be loosened in the future
+  var hydraIdPattern = /^ciscospark:\/\/[a-zA-Z]+\/[a-zA-Z]+\/[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}(:[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12})?$/;
+
   Assertion.addProperty('hydraId', function() {
     assert.isString(this._obj);
     assert.notMatch(this._obj, uuidPattern);
+
+    var decoded = base64.decode(this._obj);
+    assert.match(decoded, hydraIdPattern);
+
   });
 
   Assertion.addProperty('uuid', function() {

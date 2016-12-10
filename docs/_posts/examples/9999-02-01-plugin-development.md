@@ -108,6 +108,15 @@ Usually faster, and can build on the fly, thus no need to rebuild everything bet
 PACKAGE=PACKAGENAME npm run grunt:package -- express:test test:node
 ```
 
+
+### Run the tests, but only certain ones
+Run tests where the description matches a particular pattern.  This only works with test:node.
+
+```bash
+PACKAGE=PACKAGENAME npm run grunt:package -- express:test test:node --grep "creates a room"
+```
+
+
 ### Run tests in-browser in debug mode
 Keeps the browser open so that you can reload set break points and reload the page
 

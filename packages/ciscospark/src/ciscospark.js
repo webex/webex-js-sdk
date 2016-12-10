@@ -19,6 +19,7 @@ import Rooms from './plugins/rooms';
 import Teams from './plugins/teams';
 import TeamMemberships from './plugins/team-memberships';
 import Webhooks from './plugins/webhooks';
+import Whiteboards from './plugins/whiteboards';
 import config from './config';
 
 // This shouldn't be necessary once the plugins are moved to their own packages
@@ -36,6 +37,7 @@ registerPlugin(`rooms`, Rooms);
 registerPlugin(`teams`, Teams);
 registerPlugin(`teamMemberships`, TeamMemberships);
 registerPlugin(`webhooks`, Webhooks);
+registerPlugin(`whiteboards`, Whiteboards);
 
 // documentation.js puts hashes in relative urls, so need to specify full urls
 // here
