@@ -133,6 +133,10 @@ describe(`plugin-logger`, () => {
   // We can't manipulate NODE_ENV in karma, tests, so run this chunk only in
   // node
   describe(`#shouldPrint()`, () => {
+    nodeOnly(afterEach)(() => {
+      process.env.CISCOSPARK_LOG_LEVEL = undefined;
+    });
+
     it(`indicates whether or not the desired log should be printed at the current log level`, () => {
       /* eslint max-statements: [0] */
       spark.logger.config.level = `trace`;
