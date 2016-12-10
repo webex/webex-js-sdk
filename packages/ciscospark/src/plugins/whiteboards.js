@@ -85,9 +85,11 @@ const Whiteboards = SparkPlugin.extend({
     let channelId = base64.decode(id);
     const idx = channelId.lastIndexOf('/');
     if (idx == -1) {
-      return Promise.reject(new Error('Invalid board ID: ' + id));
+      // Assume it's a Channel UUID
+      channelId = id;
+    } else {
+      channelId = channelId.substring(idx + 1);
     }
-    channelId = channelId.substring(idx + 1);
 
     return this.spark.request({
       method: 'GET',

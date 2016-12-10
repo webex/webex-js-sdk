@@ -9,6 +9,7 @@ import sinon from '@ciscospark/test-helper-sinon';
 import spark from '../../..';
 import util from 'util';
 import {createRooms, createBoards} from '../testutil';
+import {base64} from '@ciscospark/common';
 
 describe(`ciscospark`, function() {
   this.timeout(60000);
@@ -34,26 +35,58 @@ describe(`ciscospark`, function() {
     });
 
     describe(`#create()`, () => {
-      it(`creates a whiteboard for a room`, () => {
-          return spark.rooms.create({title: `Cisco Spark Test Room`})
-            .then((room) => {
-              rooms.push(room);
-              const body = {roomId: room.id};
-              return spark.whiteboards.create(body);
-            })
-            .then((board) => {
-                assert.isWhiteboard(board);
-                assert.isHydraID(board.roomId);
-                return spark.whiteboards.get(board.id)
-                  .then((got) => {
-                    assert.isWhiteboard(got);
-                    assert.equal(got.id, board.id);
-                    assert.equal(got.roomId, board.roomId);
-                  });
-            });
-      });
+      it(`creates a whiteboard for a room`, () =>
+        spark.rooms.create({title: `Cisco Spark Test Room`})
+          .then((room) => {
+            rooms.push(room);
+            const body = {roomId: room.id};
+            return spark.whiteboards.create(body);
+          })
+          .then((board) => {
+              assert.isWhiteboard(board);
+              assert.isHydraID(board.roomId);
+              return spark.whiteboards.get(board.id)
+                .then((got) => {
+                  assert.isWhiteboard(got);
+                  assert.equal(got.id, board.id);
+                  assert.equal(got.roomId, board.roomId);
+                });
+          })
+      );
     });
 
+
+    describe(`#get()`, () => {
+      it(`get a nonexistent whiteboard throws not found`, () =>
+        spark.whiteboards.get('Y2lzY29zcGFyazovL3VzL1RFQU0vMTNlMThmNDAtNDJmYy0xMWU2LWE5ZDgtMjExYTBkYzc5NzY5')
+          .then((got) => {
+            assert.fail(got, null, 'Expected error');
+          })
+          .catch((err) => {
+            assert.statusCode(err, 404, 'expected Not Found');
+          })
+      );
+
+      it(`supports get by channel uuid`, () =>
+        spark.rooms.create({title: `Cisco Spark Test Room`})
+          .then((room) => {
+            rooms.push(room);
+            const body = {roomId: room.id};
+            return spark.whiteboards.create(body);
+          })
+          .then((board) => {
+            let boardId = base64.decode(board.id);
+            const idx = boardId.lastIndexOf('/');
+            boardId = boardId.substring(idx + 1);
+            return spark.whiteboards.get(boardId)
+              .then((got) => {
+                assert.isWhiteboard(got);
+                assert.equal(got.id, board.id);
+                assert.equal(got.roomId, board.roomId);
+              });
+          })
+      );
+    });
 
     describe(`#list()`, () => {
       let boards;
