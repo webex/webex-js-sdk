@@ -2,7 +2,7 @@
 
 * THIS WIDGET CONTAINS EXPERIMENTAL CODE *
 
-> The Spark Message Meet widget allows developers to easily incorporate Cisco Spark 1 on 1 messaging  into an application.
+> The Spark Message Meet widget allows developers to easily incorporate Cisco Spark 1 on 1 messaging into an application.
 
 ## Table of Contents
 -   [Background](#background)
@@ -81,14 +81,16 @@ The easiest way to get the Spark Chat Widget into your web site is to add the bu
   -  Add a `<link />` tag to include `main.css`
 1.  Create a container where you would like to embed the chat widget and add the following attributes to configure the widget:
   - `data-toggle="spark-chat"`: (required)
-  - `data-access-token`: Access token for the user account initiating the messaging session. For testing purposes you can use a developer access token from <https://developers.ciscospark.com>
-  - `data-user-id`: User Id or email of the message recipient.
+  - `data-access-token`: (required) Access token for the user account initiating the messaging session. For testing purposes you can use a developer access token from <https://developers.ciscospark.com>.
+  - Include one of the following attributes:
+    - `data-to-person-email`: Email of the message recipient.
+    - `data-to-person-id`: User Id of the message recipient.
 
     ```html
     <div class="chat-widget-container"
       data-toggle="spark-chat"
       data-access-token="XXXXXXXXXXXXXXXXXXXXXX"
-      data-user-id="XXXXXXXXXXXXXXX"
+      data-to-person-email="XXXXX@XXXXXXXXX"
       />
     ```
 
@@ -96,13 +98,15 @@ The easiest way to get the Spark Chat Widget into your web site is to add the bu
 
 Because our widgets are built using React, you'll be able to directly import the modules and components into your React app.
 
-Replace `YOUR_ACCESS_TOKEN` with the access token of the user who is going to be sending the messages (for development purposes this can just be your Developer Access Token), `TARGET_USER_EMAIL` with the email of the user who is recieving the messages, and `ELEMENT` with the ID of the element you want to inject into.
+Replace `YOUR_ACCESS_TOKEN` with the access token of the user who is going to be sending the messages (for development purposes this can just be your Developer Access Token), `TARGET_USER_EMAIL` with the email of the user who is receiving the messages, and `ELEMENT` with the ID of the element you want to inject into.
+
+If you have the User ID of the recipient, you may provide that in the property `toPersonId` of `MessageMeetWidget` instead of using `toPersonEmail`.
 
 ```javascript
 import MessageMeetWidget from '@ciscospark/widget-message-meet';
 
 ReactDOM.render(
-  <MessageMeetWidget accessToken="YOUR_ACCESS_TOKEN" userId="TARGET_USER_EMAIL" />,
+  <MessageMeetWidget accessToken="YOUR_ACCESS_TOKEN" toPersonEmail="TARGET_USER_EMAIL" />,
   document.getElementById('ELEMENT')
 );
 ```
