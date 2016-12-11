@@ -21,7 +21,7 @@ function ListSeparator(props) {
 }
 
 ListSeparator.propTypes = {
-  isInformative: PropTypes.boolean,
+  isInformative: PropTypes.bool,
   primaryText: PropTypes.object
 };
 
