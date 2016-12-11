@@ -68,7 +68,8 @@ export class MessageMeetWidget extends Component {
   componentWillReceiveProps(nextProps) {
     const {
       user,
-      userId,
+      toPersonEmail,
+      toPersonId,
       spark,
       conversation
     } = nextProps;
@@ -84,7 +85,7 @@ export class MessageMeetWidget extends Component {
         this.props.fetchCurrentUser(spark);
       }
       if (!conversation.id && !conversation.isFetching) {
-        this.props.createConversationWithUser(userId, spark);
+        this.props.createConversationWithUser(toPersonId || toPersonEmail, spark);
       }
     }
 
@@ -216,7 +217,7 @@ export class MessageMeetWidget extends Component {
     }
     const props = this.props;
     return conversation.participants.find((user) =>
-      user.emailAddress === props.userId
+      user.id === props.user.currentUser.id
     );
   }
 
@@ -518,8 +519,9 @@ MessageMeetWidget.propTypes = {
   removeFlagFromServer: PropTypes.func.isRequired,
   setScrollPosition: PropTypes.func.isRequired,
   showScrollToBottomButton: PropTypes.func.isRequired,
-  updateHasNewMessage: PropTypes.func.isRequired,
-  userId: PropTypes.string.isRequired
+  toPersonEmail: PropTypes.string,
+  toPersonId: PropTypes.string,
+  updateHasNewMessage: PropTypes.func.isRequired
 };
 
 function mapStateToProps(state) {
