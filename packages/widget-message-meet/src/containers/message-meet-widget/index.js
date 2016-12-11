@@ -38,7 +38,7 @@ import {constructFiles} from '../../utils/files';
 import TitleBar from '../../components/title-bar';
 import ScrollingActivity from '../scrolling-activity';
 import ScrollToBottomButton from '../../components/scroll-to-bottom-button';
-import Spinner from '../../components/spinner';
+import LoadingScreen from '../../components/loading-screen';
 import MessageComposer from '../message-composer';
 import Notifications from '../notifications';
 
@@ -63,6 +63,7 @@ export class MessageMeetWidget extends Component {
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleFileDrop = this.handleFileDrop.bind(this);
     this.handleScroll = _.debounce(this.handleScroll.bind(this), 150);
+    this.renderConversation = this.renderConversation.bind(this);
   }
 
   componentWillReceiveProps(nextProps) {
@@ -341,13 +342,13 @@ export class MessageMeetWidget extends Component {
     this.props.addFiles(conversation, activity, files, spark);
   }
 
-
   /**
-   * Render
+   * Renders the conversation area of the widget
    *
-   * @returns {Object}
+   * @return {object}
    */
-  render() {
+
+  renderConversation() {
     const props = this.props;
     const {
       conversation,
@@ -364,138 +365,145 @@ export class MessageMeetWidget extends Component {
       currentUser
     } = user;
 
-    let main = ( // eslint-disable-line no-extra-parens
-      <div className={classNames(`loading`, styles.loading)}>
-        <FormattedMessage
-          defaultMessage={`Connecting`}
-          id={`connecting`}
-        />{`...`}
-        <div className={classNames(`spinner-container`, styles.spinnerContainer)}>
-          <Spinner />
-        </div>
-      </div>
-    );
+    const {
+      activities,
+      isLoadingHistoryUp,
+      lastAcknowledgedActivityId
+    } = conversation;
 
-    if (conversation) {
-      const {
-        activities,
-        isLoaded,
-        isLoadingHistoryUp,
-        lastAcknowledgedActivityId
-      } = conversation;
+    let scrollButton;
+    if (widget.showScrollToBottomButton) {
+      const newMessages = {
+        id: `newMessages`,
+        defaultMessage: `New Messages`
+      };
+      const label = widget.hasNewMessage ? formatMessage(newMessages) : null;
+      scrollButton = <ScrollToBottomButton label={label} onClick={this.handleScrollToBottom} />;
+    }
 
-      let scrollButton;
-      if (props.widget.showScrollToBottomButton) {
-        const newMessages = {
-          id: `newMessages`,
-          defaultMessage: `New Messages`
-        };
-        const label = widget.hasNewMessage ? formatMessage(newMessages) : null;
-        scrollButton = <ScrollToBottomButton label={label} onClick={this.handleScrollToBottom} />;
-      }
+    let deleteAlert;
+    if (props.widget.showAlertModal) {
+      const alertMessages = {
+        title: formatMessage({
+          id: `delete`,
+          defaultMessage: `Delete`
+        }),
+        body: formatMessage({
+          id: `confirmDeletingMessage`,
+          defaultMessage: `Are you sure you want to delete this message?`
+        }),
+        actionButtonText: formatMessage({
+          id: `delete`,
+          defaultMessage: `Delete`
+        }),
+        cancelButtonText: formatMessage({
+          id: `cancel`,
+          defaultMessage: `Cancel`
+        })
+      };
+      deleteAlert = ( // eslint-disable-line no-extra-parens
+        <ConfirmationModal
+          messages={alertMessages}
+          onClickActionButton={this.handleConfirmActivityDelete}
+          onClickCancelButton={this.handleCancelActivityDelete}
+        />
+      );
+    }
 
-      let deleteAlert;
-      if (props.widget.showAlertModal) {
-        const alertMessages = {
-          title: formatMessage({
-            id: `delete`,
-            defaultMessage: `Delete`
-          }),
-          body: formatMessage({
-            id: `confirmDeletingMessage`,
-            defaultMessage: `Are you sure you want to delete this message?`
-          }),
-          actionButtonText: formatMessage({
-            id: `delete`,
-            defaultMessage: `Delete`
-          }),
-          cancelButtonText: formatMessage({
-            id: `cancel`,
-            defaultMessage: `Cancel`
-          })
-        };
-        deleteAlert = ( // eslint-disable-line no-extra-parens
-          <ConfirmationModal
-            messages={alertMessages}
-            onClickActionButton={this.handleConfirmActivityDelete}
-            onClickCancelButton={this.handleCancelActivityDelete}
+    const toUser = this.getUserFromConversation(conversation);
+    const toUserAvatar = avatars[toUser.id];
+    const isTyping = indicators.typing.length > 0;
+    const {displayName} = toUser;
+    const placeholderMessage = {
+      id: `sendAMessageToRoom`,
+      defaultMessage: `Send a message to {displayName}`,
+      description: `Placeholder value to show in message input field`
+    };
+    const messagePlaceholder = formatMessage(placeholderMessage, {displayName});
+
+    const dropzoneProps = {
+      activeClassName: styles.activeDropzone,
+      className: styles.dropzone,
+      disableClick: true,
+      disablePreview: true,
+      onDrop: this.handleFileDrop
+    };
+
+    return (
+      <div className={classNames(`widget-message-meet-inner`, styles.widgetMessageMeetInner)}>
+        <div className={classNames(`title-bar-wrapper`, styles.titleBarWrapper)}>
+          <TitleBar
+            connectionStatus={sparkState}
+            displayName={displayName}
+            image={toUserAvatar}
           />
-        );
-      }
-
-      if (isLoaded) {
-        const toUser = this.getUserFromConversation(conversation);
-        const toUserAvatar = avatars[toUser.id];
-        const isTyping = indicators.typing.length > 0;
-        const {displayName} = toUser;
-        const placeholderMessage = {
-          id: `sendAMessageToRoom`,
-          defaultMessage: `Send a message to {displayName}`,
-          description: `Placeholder value to show in message input field`
-        };
-        const messagePlaceholder = formatMessage(placeholderMessage, {displayName});
-
-        const dropzoneProps = {
-          activeClassName: styles.activeDropzone,
-          className: styles.dropzone,
-          disableClick: true,
-          disablePreview: true,
-          onDrop: this.handleFileDrop
-        };
-
-        main = ( // eslint-disable-line no-extra-parens
-          <div className={classNames(`widget-message-meet-inner`, styles.widgetMessageMeetInner)}>
-            <div className={classNames(`title-bar-wrapper`, styles.titleBarWrapper)}>
-              <TitleBar
-                connectionStatus={sparkState}
-                displayName={displayName}
-                image={toUserAvatar}
+        </div>
+        <Dropzone {...dropzoneProps}>
+          <div className={classNames(`activity-list-wrapper`, styles.activityListWrapper)}>
+            <ScrollingActivity
+              activities={activities}
+              avatars={avatars}
+              currentUserId={currentUser.id}
+              flags={flags.flags}
+              isLoadingHistoryUp={isLoadingHistoryUp}
+              isTyping={isTyping}
+              lastAcknowledgedActivityId={lastAcknowledgedActivityId}
+              onActivityDelete={this.handleActivityDelete}
+              onActivityFlag={this.handleActivityFlag}
+              onScroll={this.handleScroll}
+              ref={this.getActivityList}
+            />
+            {scrollButton}
+          </div>
+          <div className={classNames(`message-composer-wrapper`, styles.messageComposerWrapper)}>
+            <MessageComposer
+              conversation={conversation}
+              onSubmit={this.handleSubmit}
+              placeholder={messagePlaceholder}
+              spark={spark}
+            />
+          </div>
+          {deleteAlert}
+          <div className={classNames(`dropzone-message`, styles.dropzoneMessage)}>
+            <div className={classNames(`dropzone-message-title`, styles.dropzoneTitle)}>
+              <FormattedMessage
+                defaultMessage="Drag and drop your files here"
+                id="dropFilesHere"
               />
             </div>
-            <Dropzone {...dropzoneProps}>
-              <div className={classNames(`activity-list-wrapper`, styles.activityListWrapper)}>
-                <ScrollingActivity
-                  activities={activities}
-                  avatars={avatars}
-                  currentUserId={currentUser.id}
-                  flags={flags.flags}
-                  isLoadingHistoryUp={isLoadingHistoryUp}
-                  isTyping={isTyping}
-                  lastAcknowledgedActivityId={lastAcknowledgedActivityId}
-                  onActivityDelete={this.handleActivityDelete}
-                  onActivityFlag={this.handleActivityFlag}
-                  onScroll={this.handleScroll}
-                  ref={this.getActivityList}
-                />
-                {scrollButton}
-              </div>
-              <div className={classNames(`message-composer-wrapper`, styles.messageComposerWrapper)}>
-                <MessageComposer
-                  conversation={conversation}
-                  onSubmit={this.handleSubmit}
-                  placeholder={messagePlaceholder}
-                  spark={spark}
-                />
-              </div>
-              {deleteAlert}
-              <div className={classNames(`dropzone-message`, styles.dropzoneMessage)}>
-                <div className={classNames(`dropzone-message-title`, styles.dropzoneTitle)}>
-                  <FormattedMessage
-                    defaultMessage={`Drag and drop your files here`}
-                    id={`dropFilesHere`}
-                  />
-                </div>
-              </div>
-            </Dropzone>
           </div>
-        );
-      }
+        </Dropzone>
+      </div>
+    );
+  }
+
+  /**
+   * Render
+   *
+   * @returns {Object}
+   */
+  render() {
+    const props = this.props;
+    const {
+      conversation
+    } = props;
+    let widgetInner;
+
+    // Handle missing accessToken or toPerson
+
+
+    if (conversation && conversation.isLoaded) {
+      widgetInner = this.renderConversation();
     }
+
+    const loadingScreen = conversation ? `` : <LoadingScreen />;
 
     return (
       <div className={classNames(`widget-message-meet`, styles.widgetMessageMeet)}>
         <div className={classNames(`banner`, styles.banner)} />
-        {main}
+        {loadingScreen}
+        {connectionErrors}
+        {widgetInner}
         <Notifications />
       </div>
     );
