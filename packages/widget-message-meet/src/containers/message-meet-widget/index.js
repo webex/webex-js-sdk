@@ -83,10 +83,10 @@ export class MessageMeetWidget extends Component {
 
     if (spark && connected && authenticated && registered) {
       if (!user.currentUser && !user.isFetchingCurrentUser) {
-        this.props.fetchCurrentUser(spark);
+        nextProps.fetchCurrentUser(spark);
       }
       if (!conversation.id && !conversation.isFetching) {
-        this.props.createConversationWithUser(toPersonId || toPersonEmail, spark);
+        nextProps.createConversationWithUser(toPersonId || toPersonEmail, spark);
       }
     }
 
@@ -144,7 +144,7 @@ export class MessageMeetWidget extends Component {
             activityList.scrollToBottom();
           }
           // Send notification of new message
-          this.props.createNotification(lastActivityFromThis.url, NOTIFICATION_TYPE_POST);
+          props.createNotification(lastActivityFromThis.url, NOTIFICATION_TYPE_POST);
         }
       }
       else if (prevProps.conversation.activities.length === 0) {
@@ -203,7 +203,7 @@ export class MessageMeetWidget extends Component {
         const fetching = user.avatarsInFlight.indexOf(userId) !== -1;
         return !fetched || !fetching;
       });
-    userIds.forEach((userId) => this.props.fetchAvatarForUserId(userId, spark));
+    userIds.forEach((userId) => props.fetchAvatarForUserId(userId, spark));
   }
 
   /**
@@ -242,7 +242,7 @@ export class MessageMeetWidget extends Component {
       this.props.showScrollToBottomButton(false);
       this.props.updateHasNewMessage(false);
       if (conversation.lastAcknowledgedActivityId !== lastActivity.id) {
-        this.props.acknowledgeActivityOnServer(conversation, lastActivity, spark);
+        props.acknowledgeActivityOnServer(conversation, lastActivity, spark);
       }
     }
     else if (!widget.showScrollToBottomButton) {
@@ -290,7 +290,8 @@ export class MessageMeetWidget extends Component {
    * @returns {undefined}
    */
   handleActivityDelete(activityId) {
-    this.props.confirmDeleteActivity(activityId);
+    const props = this.props;
+    props.confirmDeleteActivity(activityId);
   }
 
   /**
@@ -308,7 +309,7 @@ export class MessageMeetWidget extends Component {
     const activityId = widget.deletingActivityId;
     const activity = conversation.activities.find((act) => act.id === activityId);
     if (activity) {
-      this.props.deleteActivityAndDismiss(conversation, activity, spark);
+      props.deleteActivityAndDismiss(conversation, activity, spark);
     }
     else {
       this.props.hideDeleteModal();
@@ -339,7 +340,7 @@ export class MessageMeetWidget extends Component {
       spark
     } = props;
     const files = constructFiles(acceptedFiles);
-    this.props.addFiles(conversation, activity, files, spark);
+    props.addFiles(conversation, activity, files, spark);
   }
 
   /**
@@ -511,13 +512,6 @@ export class MessageMeetWidget extends Component {
 }
 
 MessageMeetWidget.propTypes = {
-  acknowledgeActivityOnServer: PropTypes.func.isRequired,
-  addFiles: PropTypes.func.isRequired,
-  confirmDeleteActivity: PropTypes.func.isRequired,
-  createConversationWithUser: PropTypes.func.isRequired,
-  createNotification: PropTypes.func.isRequired,
-  deleteActivityAndDismiss: PropTypes.func.isRequired,
-  fetchAvatarForUserId: PropTypes.func.isRequired,
   fetchCurrentUser: PropTypes.func.isRequired,
   flagActivity: PropTypes.func.isRequired,
   hideDeleteModal: PropTypes.func.isRequired,
