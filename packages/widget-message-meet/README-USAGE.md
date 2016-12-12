@@ -10,6 +10,7 @@
     -   [CDN](#cdn)
     -   [Build from Source](#build-from-source)
 -   [Usage](#usage)
+    -   [Quick Start](#quick-start)
     -   [HTML](#html)
     -   [JSX](#jsx)
 -   [Browser Support](#browser-support)
@@ -62,6 +63,7 @@ Using our CDN requires the least amount of work to get started. Add the followin
 ### Build from Source
 
 1.  Follow these instructions to checkout and build the SDK <https://github.com/ciscospark/spark-js-sdk/blob/master/README.md>
+1.  Be sure to run `npm install` and `npm run bootstrap` from the root of the sdk repo. You will want to run this ever time you pull down any new upates for the sdk.
 1.  From the root of the sdk repo, run the following to build the widget:
 
   ```sh
@@ -70,6 +72,18 @@ Using our CDN requires the least amount of work to get started. Add the followin
 1.  The built bundles are located at `package/widget-message-meet/dist`.
 
 ## Usage
+
+### Quick Start
+
+If you would just like to get running immediately follow these instructions to get a webpack-dev-server running with the widget.
+
+1.  Create a `.env` file in the root of the SDK project with the following lines, replacing the Xs with the appropriate value:
+
+    ```
+    CISCOSPARK_ACCESS_TOKEN=XXXXXXXXXXXXXXXXXXXXXX
+    TO_PERSON_EMAIL=XXXXX@XXXXXXXXX
+    ```
+1.  From the root directory run: `PACKAGE=widget-message-meet npm run grunt:package start`
 
 ### HTML
 
