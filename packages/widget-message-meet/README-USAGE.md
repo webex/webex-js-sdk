@@ -73,22 +73,22 @@ Using our CDN requires the least amount of work to get started. Add the followin
 
 ### HTML
 
-The easiest way to get the Spark Chat Widget into your web site is to add the built resources and attach data attributes to your a container.
+The easiest way to get the Spark Message and Meet Widget into your web site is to add the built resources and attach data attributes to your a container.
 
 1.  If you're using our CDN, skip to step 2.
   -  Copy the resources in the `dist` directory to own project.
   -  Add a `<script />` tag to your page to include the `bundle.js`
   -  Add a `<link />` tag to include `main.css`
-1.  Create a container where you would like to embed the chat widget and add the following attributes to configure the widget:
-  - `data-toggle="spark-chat"`: (required)
+1.  Create a container where you would like to embed the widget and add the following attributes to configure the widget:
+  - `data-toggle="spark-message-meet"`: (required)
   - `data-access-token`: (required) Access token for the user account initiating the messaging session. For testing purposes you can use a developer access token from <https://developers.ciscospark.com>.
   - Include one of the following attributes:
     - `data-to-person-email`: Email of the message recipient.
     - `data-to-person-id`: User Id of the message recipient.
 
     ```html
-    <div class="chat-widget-container"
-      data-toggle="spark-chat"
+    <div
+      data-toggle="spark-message-meet"
       data-access-token="XXXXXXXXXXXXXXXXXXXXXX"
       data-to-person-email="XXXXX@XXXXXXXXX"
       />
