@@ -13,6 +13,7 @@ export default {
   maxAuthenticationReplays: 1,
   maxReconnectAttempts: 1,
   trackingIdPrefix: `spark-js-sdk`,
+  trackingIdSuffix: ``,
   AlternateLogger: undefined,
   credentials: {
     /**
