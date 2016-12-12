@@ -4,7 +4,7 @@
  * @private
  */
 
-/* eslint no-console: [0] */
+import {patterns} from '@ciscospark/common';
 
 import {
   SparkHttpError,
@@ -14,9 +14,9 @@ import {
 import {
   cloneDeep,
   isArray,
-  isObject
+  isObject,
+  isString
 } from 'lodash';
-
 
 const precedence = {
   silent: 0,
@@ -38,7 +38,8 @@ const fallbacks = {
   trace: [`debug`, `info`, `log`]
 };
 
-const re = /[Aa]uthorization/;
+const authTokenKeyPattern = /[Aa]uthorization/;
+
 /**
  * Recursively strips "authorization" fields from the specified object
  * @param {Object} object
@@ -49,15 +50,18 @@ function walkAndFilter(object) {
     return object.map(walkAndFilter);
   }
   if (!isObject(object)) {
+    if (isString(object)) {
+      if (patterns.email.test(object)) {
+        return `-- REDACTED --`;
+      }
+    }
     return object;
   }
   for (const key in object) {
-    if (key.match(re)) {
+    if (authTokenKeyPattern.test(key)) {
       Reflect.deleteProperty(object, key);
     }
     else {
-      console.log(key);
-      console.log(object);
       object[key] = walkAndFilter(object[key]);
     }
   }
@@ -67,6 +71,14 @@ function walkAndFilter(object) {
 const Logger = SparkPlugin.extend({
   namespace: `Logger`,
 
+  derived: {
+    level: {
+      cache: false,
+      fn() {
+        return this.getCurrentLevel();
+      }
+    }
+  },
   session: {
     buffer: {
       type: `array`,
@@ -76,6 +88,12 @@ const Logger = SparkPlugin.extend({
     }
   },
 
+  /**
+   * Ensures auth headers don't get printed in logs
+   * @param {Array<mixed>} args
+   * @private
+   * @returns {Array<mixed>}
+   */
   filter(...args) {
     return args.map((arg) => {
       // SparkHttpError already ensures auth tokens don't get printed, so, no
@@ -99,18 +117,38 @@ const Logger = SparkPlugin.extend({
     });
   },
 
+  /**
+   * Determines if the current level allows logs at the speicified level to be
+   * printed
+   * @param {string} level
+   * @private
+   * @returns {boolean}
+   */
   shouldPrint(level) {
-    return precedence[level] <= precedence[this._getCurrentLevel()];
+    return precedence[level] <= precedence[this.getCurrentLevel()];
   },
 
-  _getCurrentLevel() {
+  /**
+   * Indicates the current log level based on env vars, feature toggles, and
+   * user type.
+   * @instance
+   * @memberof Logger
+   * @private
+   * @returns {string}
+   */
+  // eslint-disable-next-line complexity
+  getCurrentLevel() {
     // If a level has been explicitly set via config, alway use it.
     if (this.config.level) {
       return this.config.level;
     }
 
+    if (levels.includes(process.env.CISCOSPARK_LOG_LEVEL)) {
+      return process.env.CISCOSPARK_LOG_LEVEL;
+    }
+
     // Always use debug-level logging in development or test mode;
-    if (process.env.NODE_ENV === `development` || process.env.NODE_ENV === `test`) {
+    if (process.env.NODE_ENV === `test`) {
       return `trace`;
     }
 
@@ -122,11 +160,6 @@ const Logger = SparkPlugin.extend({
       }
     }
 
-    // Show verbose but not full-debug logging for team members;
-    if (this.spark.device && this.spark.device.features.entitlement.get(`team-member`)) {
-      return `log`;
-    }
-
     return `error`;
   }
 });
@@ -136,6 +169,7 @@ levels.forEach((level) => {
   let impl = level;
   if (impls) {
     impls = impls.slice();
+    // eslint-disable-next-line no-console
     while (!console[impl]) {
       impl = impls.pop();
     }
@@ -144,16 +178,19 @@ levels.forEach((level) => {
   Logger.prototype[level] = function wrappedConsoleMethod(...args) {
     try {
       const filtered = this.filter(...args);
-      if (this.shouldPrint(level)) {
-        console[impl](...filtered);
-      }
-
       const stringified = filtered.map((item) => {
         if (item instanceof SparkHttpError) {
           return item.toString();
         }
         return item;
       });
+
+      if (this.shouldPrint(level)) {
+        const toPrint = typeof window === `undefined` ? filtered : stringified;
+        // eslint-disable-next-line no-console
+        console[impl](...toPrint);
+      }
+
       stringified.unshift(Date.now());
       this.buffer.push(stringified);
       if (this.buffer.length > this.config.historyLength) {
@@ -162,10 +199,10 @@ levels.forEach((level) => {
     }
     catch (reason) {
       /* istanbul ignore next */
+      // eslint-disable-next-line no-console
       console.warn(`failed to execute Logger#${level}`, reason);
     }
   };
 });
-
 
 export default Logger;

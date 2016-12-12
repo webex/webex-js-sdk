@@ -6,13 +6,13 @@ import messages from './locales/en';
 import MessageMeetWidget from './containers/message-meet-widget';
 import store from './store';
 
-export default function Root({accessToken, userId}) {
+export default function Root({accessToken, toPersonEmail, toPersonId}) {
   addLocaleData(enLocaleData);
 
   return (
     <Provider store={store}>
       <IntlProvider locale={`en`} messages={messages}>
-        <MessageMeetWidget accessToken={accessToken} userId={userId} />
+        <MessageMeetWidget accessToken={accessToken} toPersonEmail={toPersonEmail} toPersonId={toPersonId} />
       </IntlProvider>
     </Provider>
   );
@@ -20,5 +20,6 @@ export default function Root({accessToken, userId}) {
 
 Root.propTypes = {
   accessToken: PropTypes.string.isRequired,
-  userId: PropTypes.string.isRequired
+  toPersonEmail: PropTypes.string,
+  toPersonId: PropTypes.string
 };

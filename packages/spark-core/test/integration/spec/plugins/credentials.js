@@ -197,6 +197,29 @@ describe(`spark-core`, function() {
 
         });
 
+        describe(`when the api responds with a 401`, () => {
+          it(`refreshes the access token`, () => {
+            const spark = new Spark({
+              credentials: {
+                authorization: user.token
+              }
+            });
+            const initialToken = user.token;
+            // eslint-disable-next-line camelcase
+            spark.credentials.authorization.access_token = `invalid`;
+            spark.request({
+              service: `conversation`,
+              method: `GET`,
+              resource: `build_info`
+            })
+              .then((res) => {
+                assert.equal(res.statusCode, 200);
+                assert.notEqual(spark.credentials.authorization.apiToken.access_token, initialToken);
+              });
+
+          });
+        });
+
       });
     });
   });

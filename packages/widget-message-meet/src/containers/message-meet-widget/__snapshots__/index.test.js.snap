@@ -1,7 +1,7 @@
 exports[`MessageMeetWidget renders properly 1`] = `
 <div>
   <div
-    className="widget-chat">
+    className="widget-message-meet">
     <div
       className="banner" />
     <div

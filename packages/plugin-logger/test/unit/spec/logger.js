@@ -109,7 +109,7 @@ describe(`plugin-logger`, () => {
       });
       spark.logger.log(error);
       assert.lengthOf(spark.logger.buffer, 1);
-      assert.match(console.log.args[0][0], /SparkHttpError/g);
+      assert.match(console.log.args[0][0], /SparkHttpError/);
     });
 
     it(`buffers custom errors in a readable fashion`, () => {
@@ -133,6 +133,10 @@ describe(`plugin-logger`, () => {
   // We can't manipulate NODE_ENV in karma, tests, so run this chunk only in
   // node
   describe(`#shouldPrint()`, () => {
+    nodeOnly(afterEach)(() => {
+      process.env.CISCOSPARK_LOG_LEVEL = undefined;
+    });
+
     it(`indicates whether or not the desired log should be printed at the current log level`, () => {
       /* eslint max-statements: [0] */
       spark.logger.config.level = `trace`;
@@ -192,6 +196,15 @@ describe(`plugin-logger`, () => {
       assert.isFalse(spark.logger.shouldPrint(`trace`), `it does not print \`trace\` logs when the level is \`silent\``);
     });
 
+    nodeOnly(it)(`uses the CISCOSPARK_LOG_LEVEL environment varable to control log level`, () => {
+      levels.forEach((level) => {
+        process.env.CISCOSPARK_LOG_LEVEL = level;
+        console[impl(level)].reset();
+        spark.logger[level](`test: ${level}`);
+        assert.calledOnce(console[impl(level)]);
+      });
+    });
+
     it(`prefers the config specified logger.level`, () => {
       levels.forEach((level) => {
         spark.logger.config.level = level;
@@ -199,19 +212,6 @@ describe(`plugin-logger`, () => {
         spark.logger[level](`test: ${level}`);
         assert.calledOnce(console[impl(level)]);
       });
-    });
-
-    nodeOnly(it)(`logs at TRACE in development environments`, () => {
-      console.trace.restore();
-      sinon.stub(console, `trace`);
-      process.env.NODE_ENV = undefined;
-      assert.notCalled(console.trace);
-      spark.logger.trace(`test`);
-      assert.notCalled(console.trace);
-
-      process.env.NODE_ENV = `development`;
-      spark.logger.trace(`test`);
-      assert.called(console.trace);
     });
 
     nodeOnly(it)(`logs at TRACE in test environments`, () => {
@@ -275,32 +275,6 @@ describe(`plugin-logger`, () => {
       });
     });
 
-    nodeOnly(it)(`defaults to "log" for spark team members`, () => {
-      spark.logger.log(`test`);
-      assert.notCalled(console.log);
-
-      spark.device = {
-        features: {
-          developer: {
-            get() {
-              return;
-            }
-          },
-          entitlement: {
-            get() {
-              return true;
-            }
-          }
-        }
-      };
-
-      spark.logger.log(`test`);
-      assert.called(console.log);
-      spark.logger.info(`test`);
-      assert.notCalled(console.info);
-    });
-
-
     nodeOnly(it)(`defaults to "error" for all other users`, () => {
       spark.logger.error(`test`);
       assert.called(console.error);
@@ -311,6 +285,16 @@ describe(`plugin-logger`, () => {
   });
 
   describe(`#filter`, () => {
+    it(`redacts email addresses`, () => {
+      const message = {
+        blarg: `test@example.com`
+      };
+
+      assert.deepEqual(spark.logger.filter(message), [{
+        blarg: `-- REDACTED --`
+      }]);
+    });
+
     it(`strips auth headers from log output`, () => {
       const msg = {
         headers: {
