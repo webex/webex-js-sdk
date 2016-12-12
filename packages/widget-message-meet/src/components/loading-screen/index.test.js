@@ -1,11 +1,11 @@
 import React from 'react';
-import renderer from 'react-test-renderer';
 
+import createComponentWithIntl from '../../utils/createComponentWithIntl';
 import LoadingScreen from '.';
 
 describe(`LoadingScreen component`, () => {
 
-  const component = renderer.create(
+  const component = createComponentWithIntl(
     <LoadingScreen />
   );
 

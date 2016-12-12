@@ -12,8 +12,7 @@ export default function reduceSpark(state = new Map({
     registered: false,
     registering: false,
     connected: false,
-    connecting: false,
-    error: false
+    connecting: false
   }),
   spark: null
 }), action) {
