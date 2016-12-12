@@ -43,6 +43,14 @@ export default function runAbstractStorageAdapterSpec(adapter) {
         it(`puts an object into the store`, () => bound.put(key, obj)
           .then(() => assert.becomes(bound.get(key), obj)));
 
+        it(`puts an array into the store`, () => bound.put(key, [1, 2])
+          .then(() => assert.becomes(bound.get(key), [1, 2])));
+
+        it(`puts an array back into the store`, () => bound.put(key, [1, 2])
+          .then(() => assert.becomes(bound.get(key), [1, 2]))
+          .then(() => bound.put(key, [1, 2, 3]))
+          .then(() => assert.becomes(bound.get(key), [1, 2, 3])));
+
         it(`handles concurrency`, () => Promise.all([
           bound.put(key, 1),
           bound.put(key, 2),

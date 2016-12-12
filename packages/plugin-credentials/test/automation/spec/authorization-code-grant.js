@@ -10,7 +10,7 @@ import pkg from '../../../package.json';
 
 const redirectUri = process.env.CISCOSPARK_REDIRECT_URI || process.env.REDIRECT_URI;
 
-describe(`spark-core`, function() {
+describe(`plugin-credentials`, function() {
   this.timeout(120000);
   describe(`Authorization`, () => {
     describe(`Authorization Code Grant`, () => {

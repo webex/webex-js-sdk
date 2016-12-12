@@ -19,6 +19,26 @@ if [ -n "${SDK_BUILD_DEBUG}" ]; then
   set -x
 fi
 
+function STOP_SAUCE {
+  # This would be a terrible place to fail the build
+  set +e
+
+  echo "${PACKAGE}: Shutting down Sauce tunnel with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
+  daemon --stop --name sauce_connect
+  PID_CHECK=0
+  while [[ -e "${SC_PID_FILE}" && ${PID_CHECK} -lt 24 ]]; do
+    sleep 5
+    let PID_CHECK+=1
+    echo "${PACKAGE}: SC Shutdown Check: ${PID_CHECK}"
+  done
+
+  if [ -e "${SC_PID_FILE}" ]; then
+    echo "${PACKAGE}: SC PID file still exists after two minutes; exiting anyway"
+  else
+    echo "${PACKAGE}: SC Tunnel closed successfully"
+  fi
+}
+
 # copied from http://www.tldp.org/LDP/abs/html/comparison-ops.html because I can
 # never remember which is which
 # > -z string is null, that is, has zero length
@@ -70,7 +90,7 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
       fi
 
       # Make sure to kill Sauce Connect when the script exits
-      trap "daemon --stop --name sauce_connect" EXIT
+      trap "STOP_SAUCE" EXIT
 
       break;
     done
