@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/spark-core",
-  "version": "0.7.19",
+  "version": "0.7.20",
   "description": "Plugin handling for Cisco Spark",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -9,7 +9,7 @@
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/spark-core",
   "dependencies": {
     "@ciscospark/common": "^0.7.0",
-    "@ciscospark/http-core": "^0.7.19",
+    "@ciscospark/http-core": "^0.7.20",
     "ampersand-events": "^2.0.0",
     "ampersand-state": "^5.0.0",
     "babel-runtime": "^6.3.19",
@@ -19,12 +19,12 @@
     "uuid": "^2.0.1"
   },
   "devDependencies": {
-    "@ciscospark/storage-adapter-spec": "^0.7.19",
-    "@ciscospark/test-helper-appid": "^0.7.19",
+    "@ciscospark/storage-adapter-spec": "^0.7.20",
+    "@ciscospark/test-helper-appid": "^0.7.20",
     "@ciscospark/test-helper-automation": "^0.7.0",
     "@ciscospark/test-helper-chai": "^0.7.0",
     "@ciscospark/test-helper-make-local-url": "^0.7.0",
-    "@ciscospark/test-helper-mock-spark": "^0.7.19",
+    "@ciscospark/test-helper-mock-spark": "^0.7.20",
     "@ciscospark/test-helper-retry": "^0.7.0",
     "@ciscospark/test-helper-sinon": "^0.7.0",
     "@ciscospark/test-helper-test-users": "^0.7.0",
