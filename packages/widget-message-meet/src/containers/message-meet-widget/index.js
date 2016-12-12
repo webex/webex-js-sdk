@@ -170,7 +170,7 @@ export class MessageMeetWidget extends Component {
     const {props} = this;
     const prevConversation = props.conversation;
     if (!conversation.mercuryState.isListening) {
-      this.props.listenToMercuryActivity(conversation.id, spark);
+      props.listenToMercuryActivity(conversation.id, spark);
     }
     if (!flags.hasFetched && !flags.isFetching) {
       nextProps.fetchFlags(spark);
@@ -235,22 +235,22 @@ export class MessageMeetWidget extends Component {
       widget
     } = props;
 
-    this.props.setScrollPosition({scrollTop: this.activityList.getScrollTop()});
+    props.setScrollPosition({scrollTop: this.activityList.getScrollTop()});
 
     const lastActivity = _.last(conversation.activities);
     if (this.activityList.isScrolledToBottom()) {
-      this.props.showScrollToBottomButton(false);
-      this.props.updateHasNewMessage(false);
+      props.showScrollToBottomButton(false);
+      props.updateHasNewMessage(false);
       if (conversation.lastAcknowledgedActivityId !== lastActivity.id) {
         props.acknowledgeActivityOnServer(conversation, lastActivity, spark);
       }
     }
     else if (!widget.showScrollToBottomButton) {
-      this.props.showScrollToBottomButton(true);
+      props.showScrollToBottomButton(true);
     }
 
     if (this.activityList.isScrolledToTop() && conversation.activities[0].verb !== `create`) {
-      this.props.loadPreviousMessages(conversation.id, _.first(conversation.activities), spark);
+      props.loadPreviousMessages(conversation.id, _.first(conversation.activities), spark);
     }
   }
 
@@ -273,10 +273,10 @@ export class MessageMeetWidget extends Component {
     if (activity) {
       const foundFlag = flags.flags.find((flag) => flag.activityUrl === activity.url);
       if (foundFlag) {
-        this.props.removeFlagFromServer(foundFlag, spark);
+        props.removeFlagFromServer(foundFlag, spark);
       }
       else {
-        this.props.flagActivity(activity, spark);
+        props.flagActivity(activity, spark);
       }
 
     }
@@ -312,7 +312,7 @@ export class MessageMeetWidget extends Component {
       props.deleteActivityAndDismiss(conversation, activity, spark);
     }
     else {
-      this.props.hideDeleteModal();
+      props.hideDeleteModal();
     }
   }
 
@@ -322,7 +322,8 @@ export class MessageMeetWidget extends Component {
    * @returns {undefined}
    */
   handleCancelActivityDelete() {
-    this.props.hideDeleteModal();
+    const props = this.props;
+    props.hideDeleteModal();
   }
 
   /**
@@ -488,22 +489,12 @@ export class MessageMeetWidget extends Component {
     const {
       conversation
     } = props;
-    let widgetInner;
 
-    // Handle missing accessToken or toPerson
-
-
-    if (conversation && conversation.isLoaded) {
-      widgetInner = this.renderConversation();
-    }
-
-    const loadingScreen = conversation ? `` : <LoadingScreen />;
+    const widgetInner = conversation && conversation.isLoaded ? this.renderConversation() : <LoadingScreen />;
 
     return (
       <div className={classNames(`widget-message-meet`, styles.widgetMessageMeet)}>
         <div className={classNames(`banner`, styles.banner)} />
-        {loadingScreen}
-        {connectionErrors}
         {widgetInner}
         <Notifications />
       </div>
@@ -512,18 +503,9 @@ export class MessageMeetWidget extends Component {
 }
 
 MessageMeetWidget.propTypes = {
-  fetchCurrentUser: PropTypes.func.isRequired,
-  flagActivity: PropTypes.func.isRequired,
-  hideDeleteModal: PropTypes.func.isRequired,
   intl: intlShape.isRequired,
-  listenToMercuryActivity: PropTypes.func.isRequired,
-  loadPreviousMessages: PropTypes.func.isRequired,
-  removeFlagFromServer: PropTypes.func.isRequired,
-  setScrollPosition: PropTypes.func.isRequired,
-  showScrollToBottomButton: PropTypes.func.isRequired,
   toPersonEmail: PropTypes.string,
-  toPersonId: PropTypes.string,
-  updateHasNewMessage: PropTypes.func.isRequired
+  toPersonId: PropTypes.string
 };
 
 function mapStateToProps(state) {

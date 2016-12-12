@@ -26,6 +26,13 @@ catch (reason) {
   // environment, so it's ok
 }
 
+// Clear env values in production
+if (process.env.NODE_ENV === 'production') {
+  process.env.CISCO_ACCESS_TOKEN = '';
+  process.env.TO_PERSON_EMAIL = '';
+  process.env.TO_PERSON_ID = '';
+}
+
 module.exports = {
   context: __dirname,
   entry: [
@@ -44,7 +51,6 @@ module.exports = {
     new ExtractTextPlugin('[name].css'),
     new HtmlWebpackPlugin({
       hash: true,
-      // inject: 'head',
       minify: {
         collapseWhitespace: false,
         removeComments: true,
@@ -114,8 +120,11 @@ module.exports = {
         include: path.resolve(__dirname, '..')
       },
       {
-        test: /\.png$|\.jpg$/,
-        loader: 'url'
+        test: /.*\.(gif|png|jpe?g|svg)$/i,
+        loaders: [
+          'file?hash=sha512&digest=hex&name=[hash].[ext]',
+          'image-webpack?{optimizationLevel: 7, interlaced: false, pngquant:{quality: "65-90", speed: 4}, mozjpeg: {quality: 65}}'
+        ]
       },
       {
         test: /\.ttf$|\.otf$|\.eot$|\.svg$/,
