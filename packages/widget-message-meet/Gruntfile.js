@@ -59,7 +59,6 @@ module.exports = function configGrunt(grunt) {
 
   grunt.registerTask('build', [
     'clean:dist',
-    'env:build',
     'webpack:build'
   ]);
 
