@@ -152,6 +152,9 @@ module.exports = function(grunt) {
       defaults: {
         BUILD_NUMBER: process.env.BUILD_NUMBER || 'local-' + process.env.USER + '-' + pkg.name + '-' + Date.now()
       },
+      build: {
+        NODE_ENV: 'production'
+      },
       secrets: {
         src: '.env'
       },
