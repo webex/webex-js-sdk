@@ -1,7 +1,7 @@
-export const UPDATE_SPARK_STATE = `UPDATE_SPARK_STATE`;
-export function updateSparkState(status) {
+export const UPDATE_SPARK_STATUS = `UPDATE_SPARK_STATUS`;
+export function updateSparkStatus(status) {
   return {
-    type: UPDATE_SPARK_STATE,
+    type: UPDATE_SPARK_STATUS,
     payload: {
       status
     }
@@ -21,16 +21,16 @@ export function storeSparkInstance(spark) {
 
 export function registerDevice(spark) {
   return (dispatch) => {
-    dispatch(updateSparkState({registering: true}));
+    dispatch(updateSparkStatus({registering: true}));
     return spark.device.register()
-      .then(() => dispatch(updateSparkState({registering: false, registered: true})));
+      .then(() => dispatch(updateSparkStatus({registering: false, registered: true})));
   };
 }
 
 export function connectToMercury(spark) {
   return (dispatch) => {
-    dispatch(updateSparkState({connecting: true}));
+    dispatch(updateSparkStatus({connecting: true}));
     return spark.mercury.connect()
-    .then(() => dispatch(updateSparkState({connecting: false, connected: true})));
+    .then(() => dispatch(updateSparkStatus({connecting: false, connected: true})));
   };
 }

@@ -4,7 +4,7 @@ import {connect} from 'react-redux';
 
 import {
   connectToMercury,
-  updateSparkState,
+  updateSparkStatus,
   registerDevice,
   storeSparkInstance
 } from './actions';
@@ -27,15 +27,15 @@ class SparkComponent extends Component {
     }
 
     spark.listenToAndRun(spark, `change:isAuthenticated`, () => {
-      props.updateSparkState({authenticated: spark.isAuthenticated});
+      props.updateSparkStatus({authenticated: spark.isAuthenticated});
     });
 
     spark.listenToAndRun(spark, `change:isAuthenticating`, () => {
-      props.updateSparkState({authenticating: spark.isAuthenticating});
+      props.updateSparkStatus({authenticating: spark.isAuthenticating});
     });
 
     spark.mercury.listenToAndRun(spark.mercury, `change:connected`, () => {
-      props.updateSparkState({connected: spark.mercury.connected});
+      props.updateSparkStatus({connected: spark.mercury.connected});
     });
 
     if (props.authenticated && !props.registered && !props.registering) {
@@ -72,7 +72,7 @@ class SparkComponent extends Component {
 }
 
 SparkComponent.propTypes = {
-  accessToken: PropTypes.string
+  accessToken: PropTypes.string.isRequired
 };
 
 export default connect(
@@ -81,7 +81,7 @@ export default connect(
   }),
   (dispatch) => bindActionCreators({
     connectToMercury,
-    updateSparkState,
+    updateSparkStatus,
     registerDevice,
     storeSparkInstance
   }, dispatch)

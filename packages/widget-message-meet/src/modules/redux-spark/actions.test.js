@@ -4,8 +4,8 @@ const {createSpark} = require(`./spark`);
 
 import {createMockStore} from './test-store';
 import {
-  UPDATE_SPARK_STATE,
-  updateSparkState,
+  UPDATE_SPARK_STATUS,
+  updateSparkStatus,
   registerDevice,
   connectToMercury
 } from './actions';
@@ -22,13 +22,13 @@ describe(`actions`, () => {
     };
 
     const expectedAction = {
-      type: UPDATE_SPARK_STATE,
+      type: UPDATE_SPARK_STATUS,
       payload: {
         status: newState
       }
     };
 
-    expect(updateSparkState(newState)).toEqual(expectedAction);
+    expect(updateSparkStatus(newState)).toEqual(expectedAction);
   });
 });
 
@@ -42,12 +42,12 @@ describe(`sdk actions`, () => {
   it(`should register this device with spark`, () => {
     const spark = createSpark(ACCESS_TOKEN);
     const expectedActions = [{
-      type: UPDATE_SPARK_STATE,
+      type: UPDATE_SPARK_STATUS,
       payload: {
         status: {registering: true}
       }
     }, {
-      type: UPDATE_SPARK_STATE,
+      type: UPDATE_SPARK_STATUS,
       payload: {
         status: {registering: false, registered: true}
       }
@@ -62,12 +62,12 @@ describe(`sdk actions`, () => {
   it(`should connect to mercury with spark`, () => {
     const spark = createSpark(ACCESS_TOKEN);
     const expectedActions = [{
-      type: UPDATE_SPARK_STATE,
+      type: UPDATE_SPARK_STATUS,
       payload: {
         status: {connecting: true}
       }
     }, {
-      type: UPDATE_SPARK_STATE,
+      type: UPDATE_SPARK_STATUS,
       payload: {
         status: {connecting: false, connected: true}
       }
