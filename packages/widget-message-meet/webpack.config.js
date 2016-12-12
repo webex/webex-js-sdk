@@ -4,7 +4,6 @@
 
 var dotenv = require('dotenv');
 var path = require('path');
-var webpack = require('webpack');
 // Note that webpack is intended to be invoked via grunt, plugins
 // need to be installed in the example-phone package, but loaders need to be
 // installed in the root package.
@@ -27,8 +26,6 @@ catch (reason) {
   // environment, so it's ok
 }
 
-process.env.NODE_ENV = process.env.NODE_ENV || 'development';
-
 module.exports = {
   context: __dirname,
   entry: [
@@ -44,13 +41,12 @@ module.exports = {
   devtool: 'sourcemap',
   plugins: [
     new InlineEnviromentVariablesPlugin(process.env),
-    new webpack.optimize.UglifyJsPlugin(),
     new ExtractTextPlugin('[name].css'),
     new HtmlWebpackPlugin({
       hash: true,
       // inject: 'head',
       minify: {
-        collapseWhitespace: true,
+        collapseWhitespace: false,
         removeComments: true,
         removeScriptTypeAttributes: true,
         removeStyleLinkTypeAttributes: true,

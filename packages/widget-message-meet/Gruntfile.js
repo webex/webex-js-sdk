@@ -8,11 +8,13 @@
 'use strict';
 
 var path = require('path');
+var webpackConfig = require('./webpack.config');
+var webpack = require('webpack');
 
 module.exports = function configGrunt(grunt) {
   grunt.config('webpack',
     {
-      options: Object.assign({}, require('./webpack.config'), {
+      options: Object.assign({}, webpackConfig, {
         hot: false,
         inline: false,
         keepalive: false,
@@ -20,7 +22,16 @@ module.exports = function configGrunt(grunt) {
         watch: false
       }),
       build: {
-        progress: false
+        debug: false,
+        progress: false,
+        plugins: webpackConfig.plugins.concat(
+          new webpack.optimize.UglifyJsPlugin(),
+          new webpack.DefinePlugin({
+            'process.env': {
+              NODE_ENV: JSON.stringify("production")
+            }
+          })
+        )
       }
     });
   grunt.config('webpack-dev-server',
@@ -35,7 +46,7 @@ module.exports = function configGrunt(grunt) {
         progress: true,
         watch: true,
         port: parseInt(process.env.PORT || 8000),
-        webpack: require('./webpack.config')
+        webpack: webpackConfig
       },
       start: {
         keepAlive: true,
@@ -47,6 +58,8 @@ module.exports = function configGrunt(grunt) {
     });
 
   grunt.registerTask('build', [
+    'clean:dist',
+    'env:build',
     'webpack:build'
   ]);
 
