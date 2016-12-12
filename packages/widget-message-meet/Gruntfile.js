@@ -51,7 +51,7 @@ module.exports = function configGrunt(grunt) {
       start: {
         keepAlive: true,
         webpack: {
-          devtool: 'eval',
+          devtool: 'eval-source-map',
           debug: true
         }
       }
@@ -59,7 +59,6 @@ module.exports = function configGrunt(grunt) {
 
   grunt.registerTask('build', [
     'clean:dist',
-    'env:build',
     'webpack:build'
   ]);
 
