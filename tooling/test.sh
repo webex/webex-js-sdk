@@ -18,6 +18,7 @@ echo "# CLEANING"
 echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} npm run grunt -- clean
 docker run ${DOCKER_RUN_OPTS} npm run grunt:concurrent -- clean
+docker run ${DOCKER_RUN_OPTS} npm run clean-empty-packages
 rm -rf "${SDK_ROOT_DIR}/.sauce/*/sc.*"
 rm -rf "${SDK_ROOT_DIR}/.sauce/*/sauce_connect*log"
 
