@@ -28,7 +28,7 @@ catch (reason) {
 
 // Clear env values in production
 if (process.env.NODE_ENV === 'production') {
-  process.env.CISCO_ACCESS_TOKEN = '';
+  process.env.CISCOSPARK_ACCESS_TOKEN = '';
   process.env.TO_PERSON_EMAIL = '';
   process.env.TO_PERSON_ID = '';
 }
@@ -122,7 +122,7 @@ module.exports = {
       {
         test: /.*\.(gif|png|jpe?g|svg)$/i,
         loaders: [
-          'file?hash=sha512&digest=hex&name=[hash].[ext]',
+          'file?name=[name].[ext]',
           'image-webpack?{optimizationLevel: 7, interlaced: false, pngquant:{quality: "65-90", speed: 4}, mozjpeg: {quality: 65}}'
         ]
       },
