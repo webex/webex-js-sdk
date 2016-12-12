@@ -51,7 +51,7 @@ module.exports = function configGrunt(grunt) {
       start: {
         keepAlive: true,
         webpack: {
-          devtool: 'eval',
+          devtool: 'eval-source-map',
           debug: true
         }
       }
