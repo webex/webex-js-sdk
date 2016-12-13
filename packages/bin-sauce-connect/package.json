@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/bin-sauce-connect",
-  "version": "0.7.20",
+  "version": "0.7.21",
   "description": "",
   "license": "MIT",
   "bin": {
