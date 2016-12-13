@@ -24,7 +24,7 @@ describe(`Encryption`, function() {
             authorization: user.token
           }
         });
-        assert.isTrue(spark.isAuthenticated || spark.canAuthorize);
+        assert.isTrue(spark.canAuthorize);
       }));
 
     after(() => spark && spark.mercury.disconnect());
@@ -124,7 +124,7 @@ describe(`Encryption`, function() {
               authorization: u.token
             }
           });
-          assert.isTrue(spark.isAuthenticated);
+          assert.isTrue(spark.canAuthorize);
         }));
 
       after(() => spark2 && spark2.mercury.disconnect());
@@ -172,7 +172,7 @@ describe(`Encryption`, function() {
               authorization: fedUser.token
             }
           });
-          assert.isTrue(fedSpark.isAuthenticated);
+          assert.isTrue(fedSpark.canAuthorize);
         }));
 
       before(`connect federated user to mercury`, () => fedSpark.mercury.connect());
