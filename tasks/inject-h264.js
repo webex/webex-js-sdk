@@ -52,7 +52,6 @@ module.exports = function(grunt) {
     var outPath = path.join(__dirname, '..', 'packages', process.env.PACKAGE, 'browsers.processed.js');
 
     var browsers = require(inPath)();
-    console.log(browsers);
     var done = this.async();
     Promise.all([
       copy(path.join(__dirname, 'selenium', 'mac'))

@@ -76,8 +76,7 @@ describe(`plugin-phone`, function() {
       beforeEach(() => {createLocusSpy = sinon.spy(spock.spark.locus, `create`);});
       afterEach(() => createLocusSpy.restore());
 
-      // FIXME firefox is weird with vp8 vs h264
-      it.skip(`initiates a video only call`, () => {
+      it(`initiates a video only call`, () => {
         spock.spark.phone.dial(mccoy.email, {
           constraints: {
             video: true,
@@ -204,8 +203,7 @@ describe(`plugin-phone`, function() {
       it(`is a noop when already registered`, () => assert.isFulfilled(spock.spark.phone.register()));
     });
 
-    // FIXME firefox is weird with vp8 vs h264
-    describe.skip(`#defaultFacingMode`, () => {
+    describe(`#defaultFacingMode`, () => {
       it(`defaults to user`, () => {
         assert.equal(spock.spark.phone.defaultFacingMode, `user`);
       });
