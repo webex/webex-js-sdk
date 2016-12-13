@@ -16,8 +16,6 @@ import {persist, waitForValue} from '@ciscospark/spark-core';
 import {deprecated} from 'core-decorators';
 import querystring from 'querystring';
 
-export const apiScope = filterScope(`spark:kms`, process.env.CISCOSPARK_SCOPE);
-
 export default {
   dataTypes: {
     token: makeStateDataType(Token, `token`).dataType
@@ -28,6 +26,7 @@ export default {
   },
 
   session: {
+    clientToken: makeStateDataType(Token, `token`).prop,
     isAuthenticating: {
       default: false,
       type: `boolean`
@@ -125,6 +124,24 @@ export default {
     return `${this.config.oauth.authorizationUrl}?${querystring.stringify(parameters)}`;
   },
 
+  @deprecated(`use Credentials#getClientToken()`)
+  getClientCredentialsAuthorization() {
+    return this.getClientToken();
+  },
+
+  /**
+   * Gets the current client token or requests a new one if its invalid.
+   * @returns {Promise<Token>}
+   */
+  @waitForValue(`@`)
+  getClientToken() {
+    if (this.clientToken && this.clientToken.canAuthorize) {
+      return Promise.resolve(this.clientToken);
+    }
+
+    return this.requestClientCredentialsGrant();
+  },
+
   /**
    * Gets a token with the specified scope
    * @param {string} scope
@@ -151,7 +168,7 @@ export default {
     }
 
     if (!scope) {
-      scope = apiScope;
+      scope = filterScope(`spark:kms`, this.config.scope);
     }
 
     scope = sortScope(scope);
@@ -305,6 +322,9 @@ export default {
       shouldRefreshAccessToken: false
     })
       .then((res) => new Token(res.body, {parent: this}))
+      .then(tap((token) => {
+        this.clientToken = token;
+      }))
       .catch((res) => {
         if (res.statusCode !== 400) {
           return Promise.reject(res);
@@ -493,8 +513,9 @@ export default {
   _receiveSupertoken(supertoken) {
     const scopes = [
       `spark:kms`,
-      apiScope
+      filterScope(`spark:kms`, this.config.scope)
     ];
+
 
     return Promise.all(scopes.map((scope) => supertoken.downscope(scope)
       .catch((reason) => this._handleDownscopeFailure(supertoken, scope, reason))
