@@ -26,13 +26,19 @@ describe('Services', function() {
       var spark;
       var encryptedData = 'encryptedData';
       var fakeURL = 'fakeURL';
+      var image = {
+        height: 900,
+        width: 1600,
+        size: 1500
+      };
       var conversation = {
         id: 'superUniqueId',
         defaultActivityEncryptionKeyUrl: fakeURL
       };
       var boardId = 'boardId';
       var channel = {
-        channelUrl: boardServiceUrl + '/channels/' + boardId
+        channelUrl: boardServiceUrl + '/channels/' + boardId,
+        channelId: boardId
       };
       var data1 = {
         contentUrl: channel.channelUrl + '/contents/data1',
@@ -60,7 +66,8 @@ describe('Services', function() {
             download: sinon.stub().returns(Promise.resolve({
               toArrayBuffer: sinon.stub()
             })),
-            decryptScr: sinon.stub().returns(Promise.resolve('decryptedFoo'))
+            decryptScr: sinon.stub().returns(Promise.resolve('decryptedFoo')),
+            encryptScr: sinon.stub().returns(Promise.resolve('encryptedFoo'))
           },
           device: {
             deviceType: 'FAKE_DEVICE',
@@ -190,6 +197,43 @@ describe('Services', function() {
 
       });
 
+      describe('#setSnapshotImage()', function() {
+        before(function() {
+          spark.request.reset();
+          sinon.stub(spark.board, '_uploadImage').returns(Promise.resolve({
+            loc: fakeURL
+          }));
+          spark.encryption.encryptScr.reset();
+        });
+
+        after(function() {
+          spark.board._uploadImage.restore();
+          spark.encryption.encryptScr.reset();
+        });
+
+        it('requests PATCH to board service', function() {
+          return spark.board.persistence.setSnapshotImage(conversation, channel, image)
+            .then(function() {
+              assert.calledWith(spark.request, sinon.match({
+                method: 'PATCH',
+                api: 'board',
+                resource: '/channels/' + boardId,
+                body: {
+                  image: {
+                    url: fakeURL,
+                    height: image.height,
+                    width: image.width,
+                    mimeType: 'image/png',
+                    scr: 'encryptedFoo',
+                    encryptionKeyUrl: conversation.defaultActivityEncryptionKeyUrl,
+                    fileSize: image.size
+                  }
+                }
+              }));
+            });
+        });
+      });
+
       describe('#getAllContent()', function() {
 
         before(function() {
@@ -240,6 +284,30 @@ describe('Services', function() {
           assert.calledWith(spark.request, sinon.match({
             method: 'DELETE',
             uri: boardServiceUrl + '/channels/' + boardId + '/contents'
+          }));
+        });
+      });
+
+      describe('#_getPageOfContents()', function() {
+        before(function() {
+          spark.request.returns(Promise.resolve({headers: {}}));
+          sinon.stub(spark.board, 'parseLinkHeaders');
+          sinon.stub(spark.board, 'decryptContents').returns(['foo']);
+          spark.request.reset();
+          return spark.board.persistence._getPageOfContents(channel);
+        });
+
+        after(function() {
+          spark.board.decryptContents.restore();
+          spark.board.parseLinkHeaders.restore();
+          spark.request.reset();
+        });
+
+        it('requests GET contents', function() {
+          assert.calledWith(spark.request, sinon.match({
+            method: 'GET',
+            uri: boardServiceUrl + '/channels/' + boardId + '/contents',
+            qs: {}
           }));
         });
       });

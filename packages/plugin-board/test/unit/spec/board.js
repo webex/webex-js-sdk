@@ -17,13 +17,20 @@ describe(`plugin-board`, () => {
   const boardServiceUrl = `https://awesome.service.url`;
   const boardId = `boardId`;
 
+  const image = {
+    height: 900,
+    width: 1600,
+    size: 15000
+  };
+
   const conversation = {
     id: `superUniqueId`,
     defaultActivityEncryptionKeyUrl: fakeURL
   };
 
   const channel = {
-    channelUrl: `${boardServiceUrl}/channels/${boardId}`
+    channelUrl: `${boardServiceUrl}/channels/${boardId}`,
+    channelId: boardId
   };
 
   const data1 = {
@@ -108,6 +115,43 @@ describe(`plugin-board`, () => {
       return spark.board.addContent(conversation, channel, largeData)
         .then(() => {
           assert.equal(spark.request.callCount, 3);
+        });
+    });
+  });
+
+  describe(`#setSnapshotImage()`, () => {
+    beforeEach(() => {
+      spark.request.reset();
+      sinon.stub(spark.board, `_uploadImageToSparkFiles`).returns(Promise.resolve({
+        downloadUrl: fakeURL
+      }));
+      spark.encryption.encryptScr.reset();
+    });
+
+    afterEach(() => {
+      spark.board._uploadImageToSparkFiles.restore();
+      spark.encryption.encryptScr.reset();
+    });
+
+    it(`requests PATCH to board service`, () => {
+      return spark.board.setSnapshotImage(conversation, channel, image)
+        .then(() => {
+          assert.calledWith(spark.request, sinon.match({
+            method: `PATCH`,
+            api: `board`,
+            resource: `/channels/${boardId}`,
+            body: {
+              image: {
+                url: fakeURL,
+                height: image.height,
+                width: image.width,
+                mimeType: `image/png`,
+                scr: `encryptedFoo`,
+                encryptionKeyUrl: conversation.defaultActivityEncryptionKeyUrl,
+                fileSize: image.size
+              }
+            }
+          }));
         });
     });
   });
@@ -396,6 +440,10 @@ describe(`plugin-board`, () => {
         method: `GET`,
         uri: `${boardServiceUrl}/channels/${boardId}`
       }));
+    });
+
+    it(`requires conversationId`, () => {
+      return assert.isRejected(spark.board.getChannels(), `\`conversationId\` is required`);
     });
 
   });

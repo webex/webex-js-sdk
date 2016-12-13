@@ -13,7 +13,7 @@ import MockSpark from '@ciscospark/test-helper-mock-spark';
 import uuid from 'uuid';
 import CiscoSpark, {grantErrors} from '@ciscospark/spark-core';
 import Credentials, {
-  apiScope,
+  filterScope,
   Token
 } from '../..';
 
@@ -30,13 +30,15 @@ describe(`plugin-credentials`, () => {
       }, {parent: spark});
     }
 
-    let spark;
+    let apiScope, spark;
     beforeEach(() => {
       spark = new MockSpark({
         children: {
           credentials: Credentials
         }
       });
+
+      apiScope = filterScope(`spark:kms`, spark.config.credentials.scope);
 
       spark.request.returns(Promise.resolve({
         statusCode: 200,
@@ -60,7 +62,6 @@ describe(`plugin-credentials`, () => {
         if (scope === apiScope) {
           return Promise.resolve(nextKmsToken);
         }
-
         return Promise.resolve(makeToken(scope, this));
       });
     });
@@ -69,6 +70,34 @@ describe(`plugin-credentials`, () => {
       if (Token.prototype.downscope.restore) {
         Token.prototype.downscope.restore();
       }
+    });
+
+    describe(`#getClientToken()`, () => {
+      it(`resolves with the client token`, () => {
+        sinon.spy(spark.credentials, `requestClientCredentialsGrant`);
+
+        spark.credentials.set({
+          clientToken: {
+            access_token: `a token`,
+            token_type: `fake`
+          }
+        });
+
+        return spark.credentials.getClientToken()
+          .then((token) => {
+            assert.notCalled(spark.credentials.requestClientCredentialsGrant);
+            assert.equal(token.access_token, `a token`);
+          });
+      });
+
+      it(`fetches a new client token if one does not exist`, () => {
+        sinon.stub(spark.credentials, `requestClientCredentialsGrant`).returns(Promise.resolve({
+          access_token: `this should really be a Token instance, but that's not relevant for this test`
+        }));
+
+        return spark.credentials.getClientToken()
+          .then(() => assert.calledOnce(spark.credentials.requestClientCredentialsGrant));
+      });
     });
 
     describe(`#getUserToken()`, () => {

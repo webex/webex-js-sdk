@@ -34,11 +34,13 @@ registerPlugin(`board`, Board, {
           }
 
           // we must have a encryptionKeyUrl
+          /* istanbul ignore if */
           if (!get(options, `body.items[0].encryptionKeyUrl`)) {
             return Promise.resolve(false);
           }
 
           // we must have a payload
+          /* istanbul ignore if */
           if (!get(options, `body.items[0].payload`)) {
             return Promise.resolve(false);
           }

@@ -207,14 +207,16 @@ describe(`spark-core`, function() {
             const initialToken = user.token;
             // eslint-disable-next-line camelcase
             spark.credentials.authorization.access_token = `invalid`;
-            spark.request({
-              service: `conversation`,
+            return spark.request({
+              // This is the only environmentally appropriate url available
+              // to this test suite.
+              uri: `${spark.config.credentials.hydraServiceUrl}/build_info`,
               method: `GET`,
               resource: `build_info`
             })
               .then((res) => {
                 assert.equal(res.statusCode, 200);
-                assert.notEqual(spark.credentials.authorization.apiToken.access_token, initialToken);
+                assert.notEqual(spark.credentials.authorization.access_token, initialToken);
               });
 
           });
