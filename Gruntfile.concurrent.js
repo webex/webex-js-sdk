@@ -28,7 +28,6 @@ module.exports = function gruntConfig(grunt) {
       'helper-html',
       'jsdoctrinetest',
       '*',
-      '!example*',
       '!test-helper*',
       '!bin*',
       '!xunit-with-logs',

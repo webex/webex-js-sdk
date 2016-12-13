@@ -1,4 +1,4 @@
-import {createBrowser} from '@ciscospark/test-helper-automation';
+import createBrowser from '../lib/create-browser';
 import testUsers from '@ciscospark/test-helper-test-users';
 import pkg from '../../../package.json';
 
@@ -6,16 +6,13 @@ import pkg from '../../../package.json';
 describe(`example-phone`, () => {
   let browser, callee, caller;
 
-  beforeEach(() => testUsers.create({count: 2})
+  beforeEach(`create users`, () => testUsers.create({count: 2})
     .then(([u1, u2]) => {
       caller = u1;
       callee = u2;
     }));
 
-  beforeEach(() => createBrowser(pkg, {
-    platform: `Linux`,
-    browserName: `firefox`,
-    version: `latest`,
+  beforeEach(`create browser`, () => createBrowser(pkg, {
     name: `caller`
   })
     .then((b) => {browser = b;})
@@ -24,20 +21,19 @@ describe(`example-phone`, () => {
       .bdInit(callee)
       .clickOnTitle(`Link to Call Page`)));
 
-  afterEach(() => Promise.resolve(browser && browser.quit())
+  afterEach(`quit browser`, () => browser && browser.quit()
     .catch((reason) => {console.warn(reason);}));
 
-  afterEach(() => browser.bdDeinit()
+  afterEach(`quit drone browser`, () => browser && browser.bdDeinit()
     .catch((reason) => {console.warn(reason);}));
 
   describe(`As an authenticated user not in a call`, () => {
-    // FIXME firefox is weird with vp8 vs h264
-    it.skip(`starts a call`, () => browser
+    it(`starts a call`, () => browser
       .placeCall(callee.email)
       .bdAnswerCall()
       .assertIsInCallWith(callee));
 
-    // FIXME firefox is weird with vp8 vs h264
+    // FIXME seems broken
     it.skip(`starts a call without audio then adds audio to the call`, () => browser
       .placeVideoOnlyCall(callee.email)
       .bdAnswerCall()
@@ -50,7 +46,7 @@ describe(`example-phone`, () => {
       .assertLocalVideoDirection(`sendrecv`)
     );
 
-    // FIXME firefox is weird with vp8 vs h264
+    // FIXME seems broken
     it.skip(`starts a call without video then adds video the call`, () => browser
       .placeAudioOnlyCall(callee.email)
       .bdAnswerCall()
@@ -77,18 +73,17 @@ describe(`example-phone`, () => {
   });
 
   describe(`As an authenticated user in a call`, () => {
-    beforeEach(() => browser
+    beforeEach(`start call`, () => browser
       .placeCall(callee.email)
       .bdAnswerCall()
       .assertIsInCallWith(callee));
 
-    // FIXME firefox is weird with vp8 vs h264
-    it.skip(`ends the call`, () => browser
+    it(`ends the call`, () => browser
       .clickOnTitle(`Hang up`)
       .assertCallStatus(`disconnected`)
       .waitForElementNotPresent(`.remote-party-name`));
 
-    // FIXME firefox is weird with vp8 vs h264
+    // FIXME seems broken
     it.skip(`toggles sending its audio`, () => browser
       .clickOnTitle(`Stop sending audio`)
       .assertLocalAudioDirection(`recvonly`)
@@ -146,7 +141,7 @@ describe(`example-phone`, () => {
   });
 
   describe(`As an authenticated user that completed a call`, () => {
-    beforeEach(() => browser
+    beforeEach(`start call`, () => browser
       .placeCall(callee.email)
       .bdAnswerCall()
       .waitForElementByClassName(`remote-party-name`)

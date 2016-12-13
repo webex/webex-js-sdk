@@ -1,20 +1,17 @@
-import {createBrowser} from '@ciscospark/test-helper-automation';
+import createBrowser from '../lib/create-browser';
 import testUsers from '@ciscospark/test-helper-test-users';
 import pkg from '../../../package.json';
 
 describe(`example-phone`, () => {
   let browser, callee, caller;
 
-  beforeEach(() => testUsers.create({count: 2})
+  beforeEach(`create users`, () => testUsers.create({count: 2})
     .then(([u1, u2]) => {
       caller = u1;
       callee = u2;
     }));
 
-  beforeEach(() => createBrowser(pkg, {
-    platform: `Linux`,
-    browserName: `firefox`,
-    version: `latest`,
+  beforeEach(`create browser`, () => createBrowser(pkg, {
     name: `caller`
   })
     .then((b) => {browser = b;})
@@ -23,20 +20,18 @@ describe(`example-phone`, () => {
       .bdInit(caller)
       .clickOnTitle(`Link to Call Page`)));
 
-  afterEach(() => Promise.resolve(browser && browser.quit())
+  afterEach(`quit browser`, () => browser && browser.quit()
     .catch((reason) => {console.warn(reason);}));
 
   describe(`As an authenticated user`, () => {
     describe(`when there is an incoming call`, () => {
-      // FIXME firefox is weird with vp8 vs h264
-      it.skip(`answers the call`, () => browser
+      it(`answers the call`, () => browser
         .bdPlaceCall(callee.email)
         .waitForElementByClassName(`alert`)
         .answerCall()
         .assertIsInCallWith(caller));
 
-      // FIXME firefox is weird with vp8 vs h264
-      it.skip(`answers the call with audio only`, () => browser
+      it(`answers the call with audio only`, () => browser
         .bdPlaceCall(callee.email)
         .clickOnTitle(`Answer Call with Audio`)
         .assertIsInCallWith(caller)
@@ -44,7 +39,7 @@ describe(`example-phone`, () => {
         .assertLocalVideoDirection(`inactive`)
       );
 
-      // FIXME firefox is weird with vp8 vs h264
+      // FIXME seems broken
       it.skip(`answers the call with video only`, () => browser
         .bdPlaceCall(callee.email)
         .clickOnTitle(`Answer Call with Video`)

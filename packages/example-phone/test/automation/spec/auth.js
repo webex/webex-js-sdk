@@ -3,24 +3,20 @@
  * Copyright (c) 2015 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {createBrowser} from '@ciscospark/test-helper-automation';
+import createBrowser from '../lib/create-browser';
 import testUsers from '@ciscospark/test-helper-test-users';
 import pkg from '../../../package.json';
 
 describe(`example-phone`, () => {
   let browser, user;
 
-  before(() => testUsers.create({count: 1})
+  before(`create user`, () => testUsers.create({count: 1})
     .then((users) => {user = users[0];}));
 
-  beforeEach(() => createBrowser(pkg, {
-    platform: `Linux`,
-    browserName: `firefox`,
-    version: `latest`
-  })
+  beforeEach(`create browser`, () => createBrowser(pkg)
     .then((b) => {browser = b;}));
 
-  afterEach(() => Promise.resolve(browser && browser.quit())
+  afterEach(`quit browser`, () => browser && browser.quit()
     .catch((reason) => {console.warn(reason);}));
 
   describe(`An unauthenticated user`, () => {
@@ -60,7 +56,7 @@ describe(`example-phone`, () => {
   });
 
   describe(`An authenticated user`, () => {
-    beforeEach(() => browser
+    beforeEach(`login`, () => browser
       .getMainPage()
       .waitForElementByCssSelector(`[href="/auth"]`)
         .click()
