@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/storage-adapter-spec",
-  "version": "0.7.22",
+  "version": "0.7.23",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
