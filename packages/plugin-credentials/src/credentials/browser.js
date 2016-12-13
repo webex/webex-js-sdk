@@ -241,4 +241,3 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
 }));
 
 export default Credentials;
-export {apiScope} from './common';
