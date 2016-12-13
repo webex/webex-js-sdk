@@ -114,7 +114,7 @@ module.exports = {
         // Set mimetype just in case.
         loader: 'file',
         query: {
-          name: 'fonts/[hash].[ext]',
+          name: 'fonts/[name].[ext]',
           mimetype: 'application/font-woff'
         },
         include: path.resolve(__dirname, '..')
@@ -130,7 +130,7 @@ module.exports = {
         test: /\.ttf$|\.otf$|\.eot$|\.svg$/,
         loader: 'file',
         query: {
-          name: 'fonts/[hash].[ext]'
+          name: 'fonts/[name].[ext]'
         },
         include: path.resolve(__dirname, '..')
       }
