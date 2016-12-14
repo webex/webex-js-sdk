@@ -44,8 +44,6 @@ module.exports = {
     path: path.resolve(__dirname, 'dist'),
     sourceMapFilename: '[file].map'
   },
-  debug: process.env.NODE_ENV !== 'production',
-  devtool: 'sourcemap',
   plugins: [
     new InlineEnviromentVariablesPlugin(process.env),
     new ExtractTextPlugin('[name].css'),
