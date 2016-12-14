@@ -55,15 +55,17 @@ describe('Services', function() {
       }, {
         key: 'key2',
         val: 'value2',
-        mutable: 'false'
+        mutable: 'true'
       }];
 
       it('sets a value for two user feature toggle', function() {
+        assert.equal(party.spock.spark.device.features.user.get({key: 'key1'}), undefined);
+        assert.equal(party.spock.spark.device.features.user.get({key: 'key2'}), undefined);
+
         return party.spock.spark.feature.setBundledFeatures(featureUpdateArray)
-          .then(function(res) {
-            assert.isDefined(res);
-            assert.becomes(party.spock.spark.feature.getFeature('user', 'key1'), 'value1');
-            assert.becomes(party.spock.spark.feature.getFeature('user', 'key2'), 'value2');
+          .then(function() {
+            assert.equal(party.spock.spark.device.features.user.get({key: 'key1'}).val, 'value1');
+            assert.equal(party.spock.spark.device.features.user.get({key: 'key2'}).val, 'value2');
           });
       });
     });
