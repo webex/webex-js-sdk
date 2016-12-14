@@ -6,7 +6,6 @@
 'use strict';
 
 var SparkBase = require('../../../lib/spark-base');
-var forEach = require('lodash.foreach');
 
 /**
  * @class
@@ -80,7 +79,7 @@ var FeatureService = SparkBase.extend(
    * @returns {Promise} Refreshes the local device and resolves with the features endpoint`s response.
    */
   setBundledFeatures(featureList) {
-    forEach(featureList, function assignDefaults(item) {
+    featureList.forEach(function assignDefaults(item) {
       item.mutable = item.mutable || 'true';
       item.type = item.type || 'USER';
     });
@@ -92,7 +91,9 @@ var FeatureService = SparkBase.extend(
       body: featureList
     })
       .then(function processResponse(res) {
-        return this.spark.device.features.user.add(res.body, {merge: true});
+        res.body.featureToggles.forEach(function mergeFeatures(item) {
+          this.spark.device.features.user.add(item, {merge: true});
+        }.bind(this));
       }.bind(this));
   },
 
