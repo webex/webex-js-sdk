@@ -149,7 +149,8 @@ module.exports = function gruntConfig(grunt) {
       all: [
         `./packages/*/src/**/*.js`,
         `./packages/*/test/**/*.js`,
-        `./packages/*/*.js`
+        `./packages/*/*.js`,
+        `!./packages/*/browsers.processed.js`
       ]
     },
 

@@ -95,7 +95,8 @@ module.exports = function gruntConfig(grunt) {
         './packages/*/src/**/*.js',
         './packages/*/test/**/*.js',
         '!./packages/*/test/**/*.es6.js',
-        './packages/*/*.js'
+        './packages/*/*.js',
+        '!./packages/*/browsers.processed.js'
       ]
     },
 
