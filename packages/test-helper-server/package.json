@@ -1,12 +1,12 @@
 {
   "name": "@ciscospark/test-helper-server",
-  "version": "0.7.24",
+  "version": "0.7.25",
   "description": "",
   "license": "MIT",
   "main": "./src",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-server",
   "dependencies": {
-    "@ciscospark/test-helper-appid": "^0.7.24",
+    "@ciscospark/test-helper-appid": "^0.7.25",
     "babelify": "^7.2.0",
     "body-parser": "^1.14.1",
     "browserify-middleware": "^7.0.0",

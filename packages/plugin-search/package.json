@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-search",
-  "version": "0.7.24",
+  "version": "0.7.25",
   "description": "",
   "license": "MIT",
   "author": "Michael Wegman <mwegman@cisco.com>",
@@ -9,9 +9,9 @@
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-search",
   "dependencies": {
     "@ciscospark/common": "^0.7.0",
-    "@ciscospark/spark-core": "^0.7.24",
-    "@ciscospark/plugin-encryption": "^0.7.24",
-    "@ciscospark/plugin-conversation": "^0.7.24",
+    "@ciscospark/spark-core": "^0.7.25",
+    "@ciscospark/plugin-encryption": "^0.7.25",
+    "@ciscospark/plugin-conversation": "^0.7.25",
     "babel-runtime": "^6.3.19",
     "lodash": "^4.5.1"
   },
@@ -22,8 +22,8 @@
     "@ciscospark/test-helper-test-users": "^0.7.0",
     "@ciscospark/test-helper-retry": "^0.7.0",
     "@ciscospark/xunit-with-logs": "^0.7.0",
-    "@ciscospark/plugin-conversation": "^0.7.24",
-    "@ciscospark/plugin-wdm": "^0.7.24",
+    "@ciscospark/plugin-conversation": "^0.7.25",
+    "@ciscospark/plugin-wdm": "^0.7.25",
     "babel-eslint": "^6.1.2",
     "babel-plugin-lodash": "2.1.0",
     "babel-polyfill": "^6.3.14",
