@@ -61,16 +61,15 @@ describe(`plugin-credentials`, function() {
           .should.eventually.become(`Authorization Automation Test`)
         .waitForElementByCssSelector(`[title="Logout"]`)
           .click()
-        // Need to give the click action enough time to start the redirect
-        // process; this is more of a "nextTick" than an actual sleep, so I
-        // *think* we can safely use a smallish number and not be concerned
-        // about flakiness
         .sleep(500)
         .title()
           .should.eventually.become(`Authorization Automation Test`)
+        .waitForElementById(`access-token`)
+          .text()
+            .should.eventually.be.empty
         .waitForElementByCssSelector(`[title="Login with Implicit Grant"]`)
           .click()
-        .waitForElementByCssSelector(`#IDToken1`));
+        .waitForElementById(`IDToken1`));
     });
   });
 });

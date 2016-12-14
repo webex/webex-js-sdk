@@ -72,14 +72,14 @@ export default {
 
   /**
    * Constructs a logout URL
+   * @param {Object} options
    * @returns {string}
    */
-  buildLogoutUrl() {
-    return `${this.config.logoutUri}?${querystring.stringify({
-      type: `logout`,
-      goto: this.config.redirect_uri,
-      service: this.config.service
-    })}`;
+  buildLogoutUrl(options) {
+    return `${this.config.logoutUri}?${querystring.stringify(Object.assign({
+      goto: this.config.oauth.redirect_uri,
+      service: this.config.oauth.service
+    }, options))}`;
   },
 
   /**

@@ -153,12 +153,9 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
     this.logger.info(`credentials(shim): logging out`);
     const token = this.authorization.refresh_token || this.authorization.access_token;
     options = Object.assign({token}, options);
-    /* eslint prefer-rest-params: [0] */
     return Reflect.apply(common.logout, this, [options])
       .then(() => {
-        const logoutUrl = this.buildLogoutUrl(options);
-        this.logger.info(`credentials(shim): redirecting to ${logoutUrl}`);
-        window.location = logoutUrl;
+        window.location = this.buildLogoutUrl(options);
       });
   },
 
