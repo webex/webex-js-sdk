@@ -32,12 +32,12 @@ module.exports = function() {
         browserName: 'firefox',
         version: 'latest'
       },
-      // sl_firefox_latest_win7: {
-      //   base: 'SauceLabs',
-      //   platform: 'Windows 7',
-      //   browserName: 'firefox',
-      //   version: 'latest'
-      // }
+      sl_firefox_latest_win7: {
+        base: 'SauceLabs',
+        platform: 'Windows 7',
+        browserName: 'firefox',
+        version: 'latest'
+      }
     }
   };
 
