@@ -8,12 +8,11 @@
 }
 
 .logo {
-  width: 30%;
+  width: 60px;
+  height: 60px;
   margin: auto;
-}
-
-.logo img {
-  width: 100%;
+  background: transparent url('./logo-spark.png') no-repeat;
+  background-size: cover;
 }
 
 .spinner-container {
