@@ -1,13 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-import Root from './root';
+import Main from './main';
 
 import './styles/main.css';
 
 export function initMessageMeetWidget(element, config) {
   ReactDOM.render(
-    <Root accessToken={config.accessToken} toPersonEmail={config.toPersonEmail} toPersonId={config.toPersonId} />,
+    <Main accessToken={config.accessToken} toPersonEmail={config.toPersonEmail} toPersonId={config.toPersonId} />,
     element
   );
   return element;
@@ -24,7 +24,7 @@ function loadAllWidgets() {
   }
 }
 
-loadAllWidgets();
+document.addEventListener(`DOMContentLoaded`, loadAllWidgets, false);
 
 if (module.hot) {
   module.hot.accept();
