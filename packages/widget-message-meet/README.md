@@ -80,7 +80,7 @@ If you would just like to get running immediately follow these instructions to g
 1.  Create a `.env` file in the root of the SDK project with the following lines, replacing the Xs with the appropriate value:
 
     ```
-    CISCOSPARK_ACCESS_TOKEN=XXXXXXXXXXXXXXXXXXXXXX
+    CISCOSPARK_ACCESS_TOKEN=YOUR_ACCESS_TOKEN
     TO_PERSON_EMAIL=XXXXX@XXXXXXXXX
     ```
 1.  From the root directory run: `PACKAGE=widget-message-meet npm run grunt:package start`
@@ -95,16 +95,18 @@ The easiest way to get the Spark Message and Meet Widget into your web site is t
   -  Add a `<link />` tag to include `main.css`
 1.  Create a container where you would like to embed the widget and add the following attributes to configure the widget:
   - `data-toggle="spark-message-meet"`: (required)
-  - `data-access-token`: (required) Access token for the user account initiating the messaging session. For testing purposes you can use a developer access token from <https://developers.ciscospark.com>.
+  - `data-access-token`: Access token for the user account initiating the messaging session. For testing purposes you can use a developer access token from <https://developers.ciscospark.com>.
   - Include one of the following attributes:
     - `data-to-person-email`: Email of the message recipient.
     - `data-to-person-id`: User Id of the message recipient.
+  - `data-display-auth`: Display an auth screen if token isn't passed
 
     ```html
     <div
       data-toggle="spark-message-meet"
-      data-access-token="XXXXXXXXXXXXXXXXXXXXXX"
+      data-access-token="YOUR_ACCESS_TOKEN"
       data-to-person-email="XXXXX@XXXXXXXXX"
+      data-display-auth="true"
       />
     ```
 
