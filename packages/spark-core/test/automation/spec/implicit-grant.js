@@ -56,19 +56,21 @@ describe(`spark-core`, function() {
 
       });
 
-      // Skipped because CI started flaking (on a weekend) if returnURL
-      // isn't registered.
-      it.skip(`logs out a user`, () => {
+      it(`logs out a user`, () => {
         return browser
           .title()
             .should.eventually.become(`Authorization Automation Test`)
           .waitForElementByCssSelector(`[title="Logout"]`)
             .click()
-          // Until we can configure a returnURL, we need to treat a failure as a
-          // success
-          .waitForElementByClassName(`error`)
+          .sleep(500)
+          .title()
+            .should.eventually.become(`Authorization Automation Test`)
+          .waitForElementById(`access-token`)
             .text()
-              .should.eventually.become(`returnURL is not allowed`);
+              .should.eventually.be.empty
+          .waitForElementByCssSelector(`[title="Login with Implicit Grant"]`)
+            .click()
+          .waitForElementById(`IDToken1`);
       });
     });
   });
