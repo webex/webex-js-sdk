@@ -3,40 +3,39 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 
-'use strict';
 
 module.exports = function gruntConfig(grunt) {
-  require('load-grunt-tasks')(grunt);
-  require('time-grunt')(grunt);
-  grunt.loadTasks('tasks');
+  require(`load-grunt-tasks`)(grunt);
+  require(`time-grunt`)(grunt);
+  grunt.loadTasks(`tasks`);
 
-  var PACKAGES = grunt.file.expand({
-    cwd: 'packages'
+  const PACKAGES = grunt.file.expand({
+    cwd: `packages`
   }, [
       // note: packages are ordered on approximate flakiness of their respective
       // test suites
-      'example-phone',
-      'ciscospark',
-      'plugin-phone',
-      'http-core',
-      'spark-core',
-      'plugin-wdm',
-      'plugin-mercury',
-      'plugin-locus',
-      'generator-ciscospark',
-      'common',
-      'helper-html',
-      'jsdoctrinetest',
-      '*',
-      '!example*',
-      '!test-helper*',
-      '!bin*',
-      '!xunit-with-logs',
-      'test-helper-mock-web-socket',
-      'test-helper-mock-socket'
+    `example-phone`,
+    `ciscospark`,
+    `plugin-phone`,
+    `http-core`,
+    `spark-core`,
+    `plugin-wdm`,
+    `plugin-mercury`,
+    `plugin-locus`,
+    `generator-ciscospark`,
+    `common`,
+    `helper-html`,
+    `jsdoctrinetest`,
+    `*`,
+    `!example*`,
+    `!test-helper*`,
+    `!bin*`,
+    `!xunit-with-logs`,
+    `test-helper-mock-web-socket`,
+    `test-helper-mock-socket`
   ]);
 
-  var config = {
+  const config = {
     concurrent: {
       build: {
         tasks: [],
@@ -57,7 +56,7 @@ module.exports = function gruntConfig(grunt) {
     clean: {
       reports: {
         src: [
-          './reports'
+          `./reports`
         ]
       }
     },
@@ -68,24 +67,24 @@ module.exports = function gruntConfig(grunt) {
       },
       html: {
         src: [
-          './packages/ciscospark/src/index.js',
-          './packages/plugin-phone/src/index.js'
+          `./packages/ciscospark/src/index.js`,
+          `./packages/plugin-phone/src/index.js`
         ],
         options: {
-          destination: './docs/api/',
-          format: 'html',
+          destination: `./docs/api/`,
+          format: `html`,
           github: true,
-          theme: './docs/_theme'
+          theme: `./docs/_theme`
         }
       }
     },
 
     env: {
       default: {
-        src: '.env.default.json'
+        src: `.env.default.json`
       },
       secrets: {
-        src: '.env'
+        src: `.env`
       }
     },
 
@@ -93,34 +92,45 @@ module.exports = function gruntConfig(grunt) {
     // local testing
     eslint: {
       all: [
-        './packages/*/src/**/*.js',
-        './packages/*/test/**/*.js',
-        '!./packages/*/test/**/*.es6.js',
-        './packages/*/*.js'
+        `./packages/*/src/**/*.js`,
+        `./packages/*/test/**/*.js`,
+        `!./packages/*/test/**/*.es6.js`,
+        `./packages/*/*.js`
+      ],
+      options: {
+        format: process.env.XUNIT ? `checkstyle` : `stylish`,
+        outputFile: process.env.XUNIT && `reports/style/eslint-concurrent.xml`
+      }
+    },
+
+    fileExists: {
+      checkstylexml: [
+        `./reports/style/eslint-concurrent.xml`,
+        `./reports/style/eslint-legacy.xml`
       ]
     },
 
     stylelint: {
       options: {
-        configFile: '.stylelintrc',
-        format: 'css'
+        configFile: `.stylelintrc`,
+        format: `css`
       },
       src: [
-        './packages/*/src/**/*.css'
+        `./packages/*/src/**/*.css`
       ]
     },
 
     'gh-pages': {
       options: {
-        base: 'docs'
+        base: `docs`
       },
       docs: {
-        src: ['**']
+        src: [`**`]
       },
       ghc: {
-        src: ['**'],
+        src: [`**`],
         options: {
-          repo: 'git@github.com:ciscospark/spark-js-sdk.git'
+          repo: `git@github.com:ciscospark/spark-js-sdk.git`
         }
       }
     },
@@ -128,17 +138,17 @@ module.exports = function gruntConfig(grunt) {
     makeReport2: {
       all: {
         files: [{
-          cwd: './reports/coverage-final/',
+          cwd: `./reports/coverage-final/`,
           expand: true,
-          src: '**/*.json'
+          src: `**/*.json`
         }],
         options: {
           reporters: {
             cobertura: {
-              file: './reports/cobertura-coverage.xml'
+              file: `./reports/cobertura-coverage.xml`
             },
             json: {
-              file: './reports/coverage.json'
+              file: `./reports/coverage.json`
             },
             html: {},
             'text-summary': {}
@@ -152,10 +162,10 @@ module.exports = function gruntConfig(grunt) {
         options: {
           overrides(packageName) {
             return {
-              license: 'MIT',
+              license: `MIT`,
               repository: `https://github.com/ciscospark/spark-js-sdk/tree/master/packages/${packageName}`,
               engines: {
-                node: '>=4'
+                node: `>=4`
               }
             };
           }
@@ -170,33 +180,31 @@ module.exports = function gruntConfig(grunt) {
     delete config.makeReport2.all.options.reporters.html;
   }
 
-  PACKAGES.forEach(function(packageName) {
-    var shellBuildKey = 'build_' + packageName;
-    var buildKey = 'build:' + packageName;
-    var shellTestKey = 'test_' + packageName;
-    var testKey = 'test:' + packageName;
+  PACKAGES.forEach((packageName) => {
+    const shellBuildKey = `build_${packageName}`;
+    const buildKey = `build:${packageName}`;
+    const shellTestKey = `test_${packageName}`;
+    const testKey = `test:${packageName}`;
 
     config.shell[shellBuildKey] = {
-      command: 'PACKAGE=' + packageName + ' grunt --gruntfile Gruntfile.package.js --no-color build'
+      command: `PACKAGE=${packageName} grunt --gruntfile Gruntfile.package.js --no-color build`
     };
-    grunt.registerTask(buildKey, 'shell:' + shellBuildKey);
+    grunt.registerTask(buildKey, `shell:${shellBuildKey}`);
     config.concurrent.build.tasks.push(buildKey);
 
     config.shell[shellTestKey] = {
-      command: 'PACKAGE=' + packageName + ' grunt --gruntfile Gruntfile.package.js --no-color test'
+      command: `PACKAGE=${packageName} grunt --gruntfile Gruntfile.package.js --no-color test`
     };
-    grunt.registerTask(testKey, 'shell:' + shellTestKey);
+    grunt.registerTask(testKey, `shell:${shellTestKey}`);
     config.concurrent.test.tasks.push(testKey);
   });
 
-  grunt.registerTask('test', [
-    'clean:reports',
-    'eslint',
-    'concurrent:test',
-    p(process.env.COVERAGE) && 'makeReport2'
-  ].filter(function(key) {
-    return typeof key === 'string';
-  }));
+  grunt.registerTask(`test`, [
+    `clean:reports`,
+    `eslint`,
+    `concurrent:test`,
+    p(process.env.COVERAGE) && `makeReport2`
+  ].filter((key) => typeof key === `string`));
 
   /**
    * Helper function which converts environment strings into
@@ -206,36 +214,36 @@ module.exports = function gruntConfig(grunt) {
    * @private
    */
   function p(env) {
-    if (typeof env === 'undefined' || env === 'undefined' || env === '') {
+    if (typeof env === `undefined` || env === `undefined` || env === ``) {
       return undefined;
     }
-    if (env.toLowerCase() === 'true') {
+    if (env.toLowerCase() === `true`) {
       return true;
     }
-    if (env.toLowerCase() === 'false') {
+    if (env.toLowerCase() === `false`) {
       return false;
     }
-    throw new Error('p(): `env`"' + env + '" is not a recognized string');
+    throw new Error(`p(): \`env\`"${env}" is not a recognized string`);
   }
 
-  grunt.registerTask('build', [
-    'package-json',
-    'concurrent:build'
+  grunt.registerTask(`build`, [
+    `package-json`,
+    `concurrent:build`
   ]);
 
-  grunt.registerTask('build:docs', [
-    'documentation',
+  grunt.registerTask(`build:docs`, [
+    `documentation`
   ]);
 
-  grunt.registerTask('publish:docs', [
-    'gh-pages:ghc',
+  grunt.registerTask(`publish:docs`, [
+    `gh-pages:ghc`
   ]);
 
   grunt.initConfig(config);
   grunt.task.run([
-    'env:default',
-    'env:secrets'
+    `env:default`,
+    `env:secrets`
   ]);
 
-  grunt.registerTask('default', []);
+  grunt.registerTask(`default`, []);
 };

@@ -3,32 +3,36 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 
+// eslint-disable-next-line strict
 'use strict';
 
-var assert = require('assert');
-var isparta = require('isparta');
-var path = require('path');
+const assert = require(`assert`);
+const isparta = require(`isparta`);
+const path = require(`path`);
 
 // eslint-disable-next-line complexity
-module.exports = function(grunt) {
-  assert(process.env.PACKAGE, 'process.env.PACKAGE must be defined');
-  var pkg = require('./packages/' + process.env.PACKAGE + '/package');
+module.exports = function configureGrunt(grunt) {
+  assert(process.env.PACKAGE, `process.env.PACKAGE must be defined`);
+  // eslint-disable-next-line global-require
+  const pkg = require(`./packages/${process.env.PACKAGE}/package`);
 
-  require('load-grunt-tasks')(grunt);
-  require('time-grunt')(grunt);
-  grunt.loadTasks('tasks');
+  // eslint-disable-next-line global-require
+  require(`load-grunt-tasks`)(grunt);
+  // eslint-disable-next-line global-require
+  require(`time-grunt`)(grunt);
+  grunt.loadTasks(`tasks`);
 
-  grunt.loadNpmTasks('dependency-check');
+  grunt.loadNpmTasks(`dependency-check`);
 
   grunt.initConfig({
     babel: {
       dist: {
         files: [{
-          cwd: './packages/<%= package %>/src',
-          dest: './packages/<%= package %>/dist',
+          cwd: `./packages/<%= package %>/src`,
+          dest: `./packages/<%= package %>/dist`,
           expand: true,
-          filter: 'isFile',
-          src: '**/*.js'
+          filter: `isFile`,
+          src: `**/*.js`
         }]
       }
     },
@@ -36,41 +40,41 @@ module.exports = function(grunt) {
     clean: {
       coverage: {
         src: [
-          './packages/<%= package %>/.coverage'
+          `./packages/<%= package %>/.coverage`
         ]
       },
       dist: {
         src: [
-          './packages/<%= package %>/dist'
+          `./packages/<%= package %>/dist`
         ]
       },
       snapshots: {
         src: [
-          './packages/<%= package %>/src/**/__snapshots__',
-          './packages/<%= package %>/test/**/__snapshots__',
+          `./packages/<%= package %>/src/**/__snapshots__`,
+          `./packages/<%= package %>/test/**/__snapshots__`
         ]
       }
     },
 
     concurrent: {
       test: {
-        tasks: (function() {
+        tasks: (function generateTasks() {
           if (process.env.UNIT_ONLY) {
-            return ['test:node'];
+            return [`test:node`];
           }
 
           if (process.env.SAUCE_IS_DOWN) {
             return [
-              'test:doc',
-              'test:node'
+              `test:doc`,
+              `test:node`
             ];
           }
 
           return [
-            'test:automation',
-            'test:browser',
-            'test:doc',
-            'test:node'
+            `test:automation`,
+            `test:browser`,
+            `test:doc`,
+            `test:node`
           ];
         }()),
         options: {
@@ -84,23 +88,23 @@ module.exports = function(grunt) {
         // There ought to be a better way to get karma coverage to spit out
         // absolute paths, but so far I can't find it.
         files: [{
-          cwd: './reports/coverage/<%= package %>',
+          cwd: `./reports/coverage/<%= package %>`,
           expand: true,
-          src: '**/*.json',
-          dest: './reports/coverage-final/<%= package %>'
+          src: `**/*.json`,
+          dest: `./reports/coverage-final/<%= package %>`
         }],
         options: {
-          process: function(content) {
-            var next = content;
-            var current;
-            while(next !== current) {
+          process(content) {
+            let next = content;
+            let current;
+            while (next !== current) {
               current = next;
-              next = next.replace(process.cwd() + '/', '');
+              next = next.replace(`${process.cwd()}/`, ``);
             }
 
-            var c1 = JSON.parse(next);
-            var c2 = Object.keys(c1).reduce(function(content, key) {
-              if (key.indexOf('test-helper-') !== -1 || key.indexOf('bin-') !== -1 || key.indexOf('xunit-with-logs') !== -1) {
+            const c1 = JSON.parse(next);
+            const c2 = Object.keys(c1).reduce((content, key) => {
+              if (key.indexOf(`test-helper-`) !== -1 || key.indexOf(`bin-`) !== -1 || key.indexOf(`xunit-with-logs`) !== -1) {
                 delete content[key];
               }
               return content;
@@ -112,88 +116,88 @@ module.exports = function(grunt) {
     },
 
     'dependency-check': {
-      files: '.',
+      files: `.`,
       options: {
         excludeUnusedDev: true,
-        package: './packages/<%= package %>'
+        package: `./packages/<%= package %>`
       }
     },
 
     documentation: {
       options: {
-        destination: './packages/<%= package %>',
+        destination: `./packages/<%= package %>`,
         externals: {
-          cwd: './packages/<%= package %>/test/documentation/spec',
-          dest: '.',
+          cwd: `./packages/<%= package %>/test/documentation/spec`,
+          dest: `.`,
           expand: true,
-          src: '**/*.js'
+          src: `**/*.js`
         },
         private: false
       },
       json: {
-        src: './packages/<%= package %>/src/index.js',
+        src: `./packages/<%= package %>/src/index.js`,
         options: {
-          format: 'json'
+          format: `json`
         }
       },
       html: {
-        src: './packages/<%= package %>/src/index.js',
+        src: `./packages/<%= package %>/src/index.js`,
         options: {
-          destination: './packages/<%= package %>/doc',
-          format: 'html'
+          destination: `./packages/<%= package %>/doc`,
+          format: `html`
         }
       }
     },
 
     env: {
       default: {
-        src: '.env.default.json'
+        src: `.env.default.json`
       },
       defaults: {
-        BUILD_NUMBER: process.env.BUILD_NUMBER || 'local-' + process.env.USER + '-' + pkg.name + '-' + Date.now()
+        BUILD_NUMBER: process.env.BUILD_NUMBER || `local-${process.env.USER}-${pkg.name}-${Date.now()}`
       },
       secrets: {
-        src: '.env'
+        src: `.env`
       },
       test: {
-        NODE_ENV: 'test'
+        NODE_ENV: `test`
       }
     },
 
     eslint: {
       options: {
-        format: process.env.XUNIT ? 'junit' : 'stylish',
-        outputFile: process.env.XUNIT && '<%= xunitDir %>/eslint-<%= package %>.xml'
+        format: process.env.XUNIT ? `junit` : `stylish`,
+        outputFile: process.env.XUNIT && `<%= xunitDir %>/eslint-<%= package %>.xml`
       },
       all: [
-        './packages/<%= package %>/src/**/*.js',
-        './packages/<%= package %>/test/**/*.js',
-        '!./packages/<%= package %>/test/**/*.es6.js',
-        './packages/<%= package %>/*.js'
+        `./packages/<%= package %>/src/**/*.js`,
+        `./packages/<%= package %>/test/**/*.js`,
+        `!./packages/<%= package %>/test/**/*.es6.js`,
+        `./packages/<%= package %>/*.js`
       ]
     },
 
     express: {
       test: {
         options: {
-          script: './packages/test-helper-server'
+          script: `./packages/test-helper-server`
         }
       }
     },
 
     fileExists: {
       karmaxml: [
-        './reports/junit/*/karma-<%= package %>.xml'
+        `./reports/junit/*/karma-<%= package %>.xml`
       ]
     },
 
     instrument2: {
       src: {
         files: [{
-          cwd: './packages/<%= package %>',
-          dest: './packages/<%= package %>/.coverage',
+          cwd: `./packages/<%= package %>`,
+          dest: `./packages/<%= package %>/.coverage`,
           expand: true,
-          src: './src/**/*.js'
+          src: `./src/**/*.js`
         }]
       },
       options: {
@@ -202,18 +206,18 @@ module.exports = function(grunt) {
     },
 
     jest: {
-      options: require('./jest.config')
+      options: require(`./jest.config`)
     },
 
     karma: {
       test: {
         options: {
-          configFile: 'karma-ng.conf.js',
+          configFile: `karma-ng.conf.js`,
           // need to put client config here because grunt-mocha clobbers config
           // in karma.conf.js
           client: {
             mocha: {
-              retries: (process.env.JENKINS || process.env.CI) ? 1 : 0
+              retries: process.env.JENKINS || process.env.CI ? 1 : 0
             }
           }
         }
@@ -223,13 +227,13 @@ module.exports = function(grunt) {
     makeReport2: {
       test: {
         files: [{
-          cwd: '.',
+          cwd: `.`,
           expand: true,
-          src: './reports/coverage/<%= package %>/mocha-final.json'
+          src: `./reports/coverage/<%= package %>/mocha-final.json`
         }, {
-          cwd: '.',
+          cwd: `.`,
           expand: true,
-          src: './reports/coverage/<%= package %>*/coverage-final.json'
+          src: `./reports/coverage/<%= package %>*/coverage-final.json`
         }],
         options: {
           reporters: {
@@ -241,9 +245,9 @@ module.exports = function(grunt) {
 
     mochaTest: {
       options: {
-        reporter: process.env.XUNIT ? path.join(__dirname, './packages/xunit-with-logs') : 'spec',
+        reporter: process.env.XUNIT ? path.join(__dirname, `./packages/xunit-with-logs`) : `spec`,
         // TODO figure out how to detect retried tests
-        retries: (process.env.JENKINS || process.env.CI) ? 1 : 0,
+        retries: process.env.JENKINS || process.env.CI ? 1 : 0,
         timeout: 30000,
         noFail: Boolean(process.env.XUNIT)
       },
@@ -253,183 +257,183 @@ module.exports = function(grunt) {
           // browser test failure; it probably means that selenium or the sauce
           // tunnel is flaking.
           noFail: false,
-          require: makeMochaRequires(['babel-register']),
+          require: makeMochaRequires([`babel-register`]),
           reporterOptions: {
-            output: '<%= xunitDir %>/mocha-<%= package %>-automation.xml'
+            output: `<%= xunitDir %>/mocha-<%= package %>-automation.xml`
           }
         },
         src: [
-          './packages/<%= package %>/test/automation/spec/**/*.js'
+          `./packages/<%= package %>/test/automation/spec/**/*.js`
         ]
       },
       node: {
         options: {
-          require: makeMochaRequires(['babel-register']),
+          require: makeMochaRequires([`babel-register`]),
           reporterOptions: {
-            output: '<%= xunitDir %>/mocha-<%= package %>.xml'
+            output: `<%= xunitDir %>/mocha-<%= package %>.xml`
           }
         },
         src: (function() {
-          if ( process.env.UNIT_ONLY) {
-            return ['./packages/<%= package %>/test/unit/spec/**/*.js'];
+          if (process.env.UNIT_ONLY) {
+            return [`./packages/<%= package %>/test/unit/spec/**/*.js`];
           }
 
-          var src = [
-            './packages/<%= package %>/test/*/spec/**/*.js',
-            '!./packages/<%= package %>/test/automation/spec/**/*.js',
-            '!./packages/<%= package %>/test/documentation/spec/**/*.js'
+          const src = [
+            `./packages/<%= package %>/test/*/spec/**/*.js`,
+            `!./packages/<%= package %>/test/automation/spec/**/*.js`,
+            `!./packages/<%= package %>/test/documentation/spec/**/*.js`
           ];
           if (process.env.PIPELINE) {
-            src.push('!./packages/<%= package %>/test/unit/spec/**/*.js');
+            src.push(`!./packages/<%= package %>/test/unit/spec/**/*.js`);
           }
           return src;
         }())
       },
       doc: {
         options: {
-          require: makeMochaRequires(['./packages/jsdoctrinetest']),
+          require: makeMochaRequires([`./packages/jsdoctrinetest`]),
           reporterOptions: {
-            output: '<%= xunitDir %>/mocha-<%= package %>-doc.xml'
+            output: `<%= xunitDir %>/mocha-<%= package %>-doc.xml`
           }
         },
         src: [
-          './packages/<%= package %>/dist/**/*.js',
+          `./packages/<%= package %>/dist/**/*.js`,
           // Exclude browser implementations; this is only running in node
-          '!./packages/<%= package %>/dist/**/*.shim.js'
+          `!./packages/<%= package %>/dist/**/*.shim.js`
         ]
       }
     },
 
     package: process.env.PACKAGE,
 
-    xunitDir: process.env.XUNIT_DIR || './reports/junit',
+    xunitDir: process.env.XUNIT_DIR || `./reports/junit`,
 
     shell: {
       'move-babelrc': {
-        command: 'mv .babelrc babelrc'
+        command: `mv .babelrc babelrc`
       },
       'restore-bablrc': {
-        command: 'mv babelrc .babelrc'
+        command: `mv babelrc .babelrc`
       }
     },
 
     storeCoverage2: {
       test: {
         options: {
-          dest: './reports/coverage/<%= package %>/mocha-final.json'
+          dest: `./reports/coverage/<%= package %>/mocha-final.json`
         }
       }
     },
 
     stylelint: {
       options: {
-        configFile: '.stylelintrc',
-        format: 'css'
+        configFile: `.stylelintrc`,
+        format: `css`
       },
       src: [
-        './packages/<%= package %>/src/**/*.css'
+        `./packages/<%= package %>/src/**/*.css`
       ]
     },
 
     watch: {
       serve: {
         files: [
-          'Gruntfile.package.js',
-          'packages/test-helper-server/*',
-          'packages/test-helper-server/src/**'
+          `Gruntfile.package.js`,
+          `packages/test-helper-server/*`,
+          `packages/test-helper-server/src/**`
         ],
         options: {
           spawn: false
         },
-        tasks: ['express:test']
+        tasks: [`express:test`]
       }
     }
   });
 
   grunt.task.run([
-    'env:default',
-    'env:secrets'
+    `env:default`,
+    `env:secrets`
   ]);
 
-  registerTask('static-analysis', [
-    'eslint',
-    'stylelint',
-    'dependency-check'
+  registerTask(`static-analysis`, [
+    `eslint`,
+    `stylelint`,
+    `dependency-check`
   ]);
 
-  registerTask('build', [
-    'clean:dist',
-    'babel'
+  registerTask(`build`, [
+    `clean:dist`,
+    `babel`
   ]);
 
-  registerTask('test:automation', [
-    !process.env.SC_TUNNEL_IDENTIFIER && !process.env.XUNIT && 'continue:on',
-    !process.env.SC_TUNNEL_IDENTIFIER && 'selenium_start',
-    'mochaTest:automation',
-    !process.env.SC_TUNNEL_IDENTIFIER && 'selenium_stop',
-    !process.env.SC_TUNNEL_IDENTIFIER && !process.env.XUNIT && 'continue:off',
-    !process.env.SC_TUNNEL_IDENTIFIER && !process.env.XUNIT && 'continue:fail-on-warning'
+  registerTask(`test:automation`, [
+    !process.env.SC_TUNNEL_IDENTIFIER && !process.env.XUNIT && `continue:on`,
+    !process.env.SC_TUNNEL_IDENTIFIER && `selenium_start`,
+    `mochaTest:automation`,
+    !process.env.SC_TUNNEL_IDENTIFIER && `selenium_stop`,
+    !process.env.SC_TUNNEL_IDENTIFIER && !process.env.XUNIT && `continue:off`,
+    !process.env.SC_TUNNEL_IDENTIFIER && !process.env.XUNIT && `continue:fail-on-warning`
   ]);
 
-  registerTask('test:browser', [
+  registerTask(`test:browser`, [
     // SAUCE TUNNEL FAILURES ideally, we want to suppress failures and let xunit
     // collect them, but until we figure out why the sauce tunnel is flaking, we
     // need to try to rerun the suite
     // p(process.env.XUNIT) && 'continue:on',
-    'karma',
+    `karma`,
     // p(process.env.XUNIT) && 'continue:off'
-    p(process.env.XUNIT) && 'fileExists:karmaxml',
+    p(process.env.XUNIT) && `fileExists:karmaxml`
   ]);
 
-  registerTask('test:node', [
-    p(process.env.COVERAGE) && 'instrument2',
-    'mochaTest:node',
-    p(process.env.COVERAGE) && 'storeCoverage2'
+  registerTask(`test:node`, [
+    p(process.env.COVERAGE) && `instrument2`,
+    `mochaTest:node`,
+    p(process.env.COVERAGE) && `storeCoverage2`
   ]);
 
-  registerTask('test:doc', [
-    'mochaTest:doc'
+  registerTask(`test:doc`, [
+    `mochaTest:doc`
   ]);
 
-  registerTask('test', [
-    'env',
-    'clean:coverage',
-    'serve:test',
-    'concurrent:test',
-    p(process.env.COVERAGE) && 'copy:coverage',
-    p(process.env.COVERAGE) && 'makeReport2'
+  registerTask(`test`, [
+    `env`,
+    `clean:coverage`,
+    `serve:test`,
+    `concurrent:test`,
+    p(process.env.COVERAGE) && `copy:coverage`,
+    p(process.env.COVERAGE) && `makeReport2`
   ]);
 
   function filterNulls(tasks) {
-    return tasks.filter(function(key) { return typeof key === 'string';});
+    return tasks.filter((key) => typeof key === `string`);
   }
 
   function registerTask(name, tasks) {
     grunt.registerTask(name, filterNulls(tasks));
   }
 
-  registerTask('test:doc', [
-    'env',
-    'mochaTest:doc'
+  registerTask(`test:doc`, [
+    `env`,
+    `mochaTest:doc`
   ]);
 
-  registerTask('default', []);
+  registerTask(`default`, []);
 
-  registerTask('serve:test', [
-    'express:test'
+  registerTask(`serve:test`, [
+    `express:test`
   ]);
 
-  registerTask('serve', [
-    'express:test',
-    'watch:serve'
+  registerTask(`serve`, [
+    `express:test`,
+    `watch:serve`
   ]);
 
   try {
-    require('./packages/' + process.env.PACKAGE +  '/Gruntfile.js')(grunt, p, makeMochaRequires);
+    require(`./packages/${process.env.PACKAGE}/Gruntfile.js`)(grunt, p, makeMochaRequires);
   }
-  catch(error) {
+  catch (error) {
     // ignore
-    console.log(error);
+    console.info(`No custom gruntfile found at ./packages/${process.env.PACKAGE}/Gruntfile.js; assuming no override intended`);
   }
 
   /**
@@ -440,22 +444,22 @@ module.exports = function(grunt) {
    * @private
    */
   function p(env) {
-    if (typeof env === 'undefined' || env === 'undefined' || env === '') {
+    if (typeof env === `undefined` || env === `undefined` || env === ``) {
       return undefined;
     }
-    if (env.toLowerCase() === 'true') {
+    if (env.toLowerCase() === `true`) {
       return true;
     }
-    if (env.toLowerCase() === 'false') {
+    if (env.toLowerCase() === `false`) {
       return false;
     }
-    throw new Error('p(): `env`"' + env + '" is not a recognized string');
+    throw new Error(`p(): \`env\`"${env}" is not a recognized string`);
   }
 
   function makeMochaRequires(requires) {
     requires = requires || [];
     // Don't include trace and clarify in environments that can't use them
-    if (parseInt(process.versions.node.split('.')[0]) < 4) {
+    if (parseInt(process.versions.node.split(`.`)[0]) < 4) {
       return requires.concat([
         function() {
           Error.stackTraceLimit = Infinity;
@@ -463,9 +467,9 @@ module.exports = function(grunt) {
       ]);
     }
 
-    if (parseInt(process.versions.node.split('.')[0]) <= 5) {
+    if (parseInt(process.versions.node.split(`.`)[0]) <= 5) {
       return requires.concat([
-        'clarify',
+        `clarify`,
         function() {
           Error.stackTraceLimit = Infinity;
         }
@@ -473,8 +477,8 @@ module.exports = function(grunt) {
     }
 
     return requires.concat([
-      'trace',
-      'clarify',
+      `trace`,
+      `clarify`,
       function() {
         Error.stackTraceLimit = Infinity;
       }
