@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/helper-image",
-  "version": "0.7.25",
+  "version": "0.7.26",
   "description": "",
   "license": "MIT",
   "author": "Saurabh Jain <saurjai3@cisco.com>",
@@ -9,7 +9,7 @@
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/helper-image",
   "dependencies": {
     "@ciscospark/common": "^0.7.0",
-    "@ciscospark/spark-core": "^0.7.25",
+    "@ciscospark/spark-core": "^0.7.26",
     "babel-runtime": "^6.3.19",
     "exif": "^0.6.0",
     "lodash": "^4.5.1",
