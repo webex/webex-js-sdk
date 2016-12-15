@@ -287,6 +287,10 @@ const Token = SparkPlugin.extend({
     return this.string;
   },
 
+  toJSON() {
+    return this.toString();
+  },
+
   validate() {
     return this.spark.request({
       method: `POST`,

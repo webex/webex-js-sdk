@@ -29,7 +29,7 @@ describe(`Encryption`, function() {
           authorization: user.token
         }
       });
-      assert.isTrue(spark.isAuthenticated);
+      assert.isTrue(spark.canAuthorize);
     }));
 
   before(`create unbound key`, () => spark.encryption.kms.createUnboundKeys({count: 1})
@@ -85,7 +85,7 @@ describe(`Encryption`, function() {
             authorization: otherUser.token
           }
         });
-        assert.isTrue(otherSpark.isAuthenticated);
+        assert.isTrue(otherSpark.canAuthorize);
       }));
 
     before(`create kms resource`, () => spark.encryption.kms.createResource({
