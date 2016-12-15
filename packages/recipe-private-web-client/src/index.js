@@ -11,7 +11,6 @@ import '@ciscospark/plugin-encryption';
 import '@ciscospark/plugin-feature';
 import '@ciscospark/plugin-flag';
 import '@ciscospark/plugin-logger';
-import '@ciscospark/plugin-mashups';
 import '@ciscospark/plugin-mercury';
 import '@ciscospark/plugin-metrics';
 import '@ciscospark/plugin-search';

@@ -19,7 +19,6 @@
     "@ciscospark/plugin-feature": "^0.7.26",
     "@ciscospark/plugin-flag": "^0.7.26",
     "@ciscospark/plugin-logger": "^0.7.26",
-    "@ciscospark/plugin-mashups": "^0.7.26",
     "@ciscospark/plugin-mercury": "^0.7.26",
     "@ciscospark/plugin-metrics": "^0.7.26",
     "@ciscospark/plugin-search": "^0.7.26",
