@@ -1,15 +1,24 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 
+import Main from './main';
 import Root from './root';
 
 import './styles/main.css';
 
 export function initMessageMeetWidget(element, config) {
-  ReactDOM.render(
-    <Root accessToken={config.accessToken} toPersonEmail={config.toPersonEmail} toPersonId={config.toPersonId} />,
-    element
-  );
+  if (config.displayAuth) {
+    ReactDOM.render(
+      <Main accessToken={config.accessToken} toPersonEmail={config.toPersonEmail} toPersonId={config.toPersonId} />,
+      element
+    );
+  }
+  else {
+    ReactDOM.render(
+      <Root accessToken={config.accessToken} toPersonEmail={config.toPersonEmail} toPersonId={config.toPersonId} />,
+      element
+    );
+  }
   return element;
 }
 
@@ -18,13 +27,14 @@ function loadAllWidgets() {
   for (const widget of widgets) {
     initMessageMeetWidget(widget, {
       accessToken: widget.getAttribute(`data-access-token`) || undefined,
+      displayAuth: widget.getAttribute(`data-display-auth`) || undefined,
       toPersonEmail: widget.getAttribute(`data-to-person-email`) || undefined,
       toPersonId: widget.getAttribute(`data-to-person-id`) || undefined
     });
   }
 }
 
-loadAllWidgets();
+document.addEventListener(`DOMContentLoaded`, loadAllWidgets, false);
 
 if (module.hot) {
   module.hot.accept();
