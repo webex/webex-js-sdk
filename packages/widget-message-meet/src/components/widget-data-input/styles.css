@@ -24,7 +24,7 @@
 
 .field-wrapper,
 .props-submit {
-  display: block;
+  display: flex;
 }
 
 .props-submit {
