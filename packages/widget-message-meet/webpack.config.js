@@ -34,10 +34,9 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 module.exports = {
-  context: __dirname,
+  context: path.resolve(__dirname, 'src'),
   entry: [
-    'babel-polyfill',
-    './src/app.js'
+    './app.js'
   ],
   output: {
     filename: 'bundle.js',
