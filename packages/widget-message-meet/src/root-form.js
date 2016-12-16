@@ -4,7 +4,7 @@ import React, {Component, PropTypes} from 'react';
 import Root from './root';
 import WidgetDataInput from './components/widget-data-input';
 
-class Main extends Component {
+class RootForm extends Component {
 
   constructor(props) {
     super(props);
@@ -53,10 +53,10 @@ class Main extends Component {
   }
 }
 
-Main.propTypes = {
+RootForm.propTypes = {
   accessToken: PropTypes.string,
   toPersonEmail: PropTypes.string,
   toPersonId: PropTypes.string
 };
 
-export default Main;
+export default RootForm;

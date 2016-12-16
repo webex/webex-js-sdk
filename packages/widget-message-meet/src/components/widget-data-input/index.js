@@ -17,8 +17,8 @@ class WidgetDataInput extends Component {
       toPersonEmail
     };
     this.handleSubmit = this.handleSubmit.bind(this);
-    this.handleAccessTokenChange = (e) => this.setState({accessToken: e.target.value});
-    this.handleEmailChange = (e) => this.setState({toPersonEmail: e.target.value});
+    this.handleAccessTokenChange = this.handleAccessTokenChange.bind(this);
+    this.handleEmailChange = this.handleEmailChange.bind(this);
   }
 
   shouldComponentUpdate() {
@@ -36,6 +36,14 @@ class WidgetDataInput extends Component {
     }
   }
 
+  handleAccessTokenChange(e) {
+    return this.setState({accessToken: e.target.value});
+  }
+
+  handleEmailChange(e) {
+    return this.setState({toPersonEmail: e.target.value});
+  }
+
   validateForm(state) {
     return state.accessToken && state.toPersonEmail;
   }
@@ -50,18 +58,18 @@ class WidgetDataInput extends Component {
             <input
               className={classNames(`field-input`, styles.fieldInput)}
               onChange={this.handleEmailChange}
-              placeholder="User Email"
+              placeholder="To User Email"
               type="text"
-              value={this.state ? this.state.toPersonEmail : ``}
+              value={this.state.toPersonEmail}
             />
           </div>
           <div className={classNames(`field-wrapper`, styles.fieldWrapper)}>
             <input
               className={classNames(`field-input`, styles.fieldInput)}
               onChange={this.handleAccessTokenChange}
-              placeholder="Access Token"
+              placeholder="Your Access Token"
               type="text"
-              value={this.state ? this.state.accessToken : ``}
+              value={this.state.accessToken}
             />
           </div>
           <button className={classNames(`props-submit`, styles.propsSubmit)} onClick={this.handleSubmit}>{`Chat`}</button>

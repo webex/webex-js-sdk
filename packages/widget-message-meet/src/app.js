@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-import Main from './main';
+import RootForm from './root-form';
 import Root from './root';
 
 import './styles/main.css';
@@ -9,7 +9,7 @@ import './styles/main.css';
 export function initMessageMeetWidget(element, config) {
   if (config.displayAuth) {
     ReactDOM.render(
-      <Main accessToken={config.accessToken} toPersonEmail={config.toPersonEmail} toPersonId={config.toPersonId} />,
+      <RootForm accessToken={config.accessToken} toPersonEmail={config.toPersonEmail} toPersonId={config.toPersonId} />,
       element
     );
   }
