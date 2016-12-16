@@ -16,7 +16,6 @@ require('./client/services/metrics');
 require('./client/services/support');
 require('./client/services/search');
 require('./client/services/team');
-require('./client/services/mashups');
 require('./client/services/user');
 
 var Spark = require('./spark-core');

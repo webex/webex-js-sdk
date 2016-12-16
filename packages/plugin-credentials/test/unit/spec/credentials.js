@@ -207,18 +207,34 @@ describe(`plugin-credentials`, () => {
     });
 
     describe(`#initialize()`, () => {
-      it(`handles all the possible shapes of cached credentials`, () => {
-        [
-          {
+      [
+        {
+          msg: `accepts an access_token`,
+          credentials: {
             access_token: `Fake ST`
-          },
-          {
+          }
+        },
+        {
+          msg: `accepts a supertoken`,
+          credentials: {
             supertoken: {
               access_token: `ST`,
               token_type: `Fake`
             }
-          },
-          {
+          }
+        },
+        {
+          msg: `accepts an authorization`,
+          credentials: {
+            authorization: {
+              access_token: `ST`,
+              token_type: `Fake`
+            }
+          }
+        },
+        {
+          msg: `accepts an authorization with a supertoken`,
+          credentials: {
             authorization: {
               supertoken: {
                 access_token: `ST`,
@@ -226,12 +242,18 @@ describe(`plugin-credentials`, () => {
               }
             }
           }
-        ].forEach((credentials) => {
+        }
+      ]
+      .forEach(({msg, credentials}) => {
+        it(msg, () => {
           const s = new CiscoSpark({credentials});
+          assert.isTrue(s.canAuthorize);
           assert.equal(s.credentials.supertoken.access_token, `ST`);
           assert.equal(s.credentials.supertoken.token_type, `Fake`);
         });
+      });
 
+      it(`accepts a complete set of credentials`, () => {
         const credentials = {
           authorization: {
             supertoken: {

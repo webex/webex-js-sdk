@@ -29,7 +29,7 @@ describe(`plugin-user`, function() {
           authorization: user.token
         }
       });
-      assert.isTrue(spark.isAuthenticated);
+      assert.isTrue(spark.isAuthenticated || spark.canAuthorize);
 
       return spark.device.register();
     }));
