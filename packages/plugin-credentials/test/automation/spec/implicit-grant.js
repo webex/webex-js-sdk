@@ -61,7 +61,10 @@ describe(`plugin-credentials`, function() {
           .should.eventually.become(`Authorization Automation Test`)
         .waitForElementByCssSelector(`[title="Logout"]`)
           .click()
-        .sleep(500)
+        // We need to revoke three tokens before the window.location assignment.
+        // So far, I haven't found any ques to wait for, so sleep seems to be
+        // the only option.
+        .sleep(3000)
         .title()
           .should.eventually.become(`Authorization Automation Test`)
         .waitForElementById(`access-token`)
