@@ -9,7 +9,6 @@
 
 var path = require('path');
 var webpackConfig = require('./webpack.config');
-var webpack = require('webpack');
 
 module.exports = function configGrunt(grunt) {
   grunt.config('webpack',
@@ -23,15 +22,7 @@ module.exports = function configGrunt(grunt) {
       }),
       build: {
         debug: false,
-        progress: false,
-        plugins: webpackConfig.plugins.concat(
-          new webpack.optimize.UglifyJsPlugin(),
-          new webpack.DefinePlugin({
-            'process.env': {
-              NODE_ENV: JSON.stringify("production")
-            }
-          })
-        )
+        progress: false
       }
     });
   grunt.config('webpack-dev-server',

@@ -7,9 +7,11 @@ var path = require('path');
 // Note that webpack is intended to be invoked via grunt, plugins
 // need to be installed in the example-phone package, but loaders need to be
 // installed in the root package.
+var webpack = require('webpack');
 var InlineEnviromentVariablesPlugin = require('inline-environment-variables-webpack-plugin');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
+var StatsPlugin = require('stats-webpack-plugin');
 
 // PostCSS plugins
 const cssnext = require('postcss-cssnext');
@@ -26,18 +28,51 @@ catch (reason) {
   // environment, so it's ok
 }
 
+var plugins = [
+  new InlineEnviromentVariablesPlugin(process.env),
+  new ExtractTextPlugin('[name].css'),
+  new HtmlWebpackPlugin({
+    hash: true,
+    minify: {
+      collapseWhitespace: false,
+      removeComments: true,
+      removeScriptTypeAttributes: true,
+      removeStyleLinkTypeAttributes: true,
+      sortAttributes: true,
+      sortClassName: true
+    },
+    template: path.resolve(__dirname, './src/index.html')
+  })
+];
+
 // Clear env values in production
 if (process.env.NODE_ENV === 'production') {
   process.env.CISCOSPARK_ACCESS_TOKEN = '';
   process.env.TO_PERSON_EMAIL = '';
   process.env.TO_PERSON_ID = '';
+
+  // Set addtional optimization plugins
+  plugins = plugins.concat(
+    new webpack.optimize.DedupePlugin(),
+    new webpack.optimize.UglifyJsPlugin({
+      compress: {
+        warnings: false
+      }
+    }),
+    new webpack.DefinePlugin({
+      'process.env': {
+        NODE_ENV: JSON.stringify('production')
+      }
+    }),
+    new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
+    new StatsPlugin('stats.json')
+  );
 }
 
 module.exports = {
-  context: __dirname,
+  context: path.resolve(__dirname, 'src'),
   entry: [
-    'babel-polyfill',
-    './src/app.js'
+    './app.js'
   ],
   output: {
     filename: 'bundle.js',
@@ -45,29 +80,23 @@ module.exports = {
     sourceMapFilename: '[file].map'
   },
   debug: process.env.NODE_ENV !== 'production',
-  devtool: 'sourcemap',
-  plugins: [
-    new InlineEnviromentVariablesPlugin(process.env),
-    new ExtractTextPlugin('[name].css'),
-    new HtmlWebpackPlugin({
-      hash: true,
-      minify: {
-        collapseWhitespace: false,
-        removeComments: true,
-        removeScriptTypeAttributes: true,
-        removeStyleLinkTypeAttributes: true,
-        sortAttributes: true,
-        sortClassName: true
-      },
-      template: path.resolve(__dirname, './src/index.html')
-    })
-  ],
-  postcss: () => [
-    cssnext({
-      browsers: ['last 2 versions', 'IE > 10']
-    }),
-    postcssReporter()
-  ],
+  devtool: 'source-maps',
+  stats: {
+    children: false
+  },
+  plugins,
+  postcss: () => {
+    var output = [
+      cssnext({
+        browsers: ['last 2 versions', 'IE > 10']
+      })
+    ];
+    if (process.env.NODE_ENV !== 'production') {
+      output.push(postcssReporter());
+    }
+
+    return output;
+  },
   resolve: {
     // Add "devMain" to the packageMains defaults so we can load src instead of
     // dist (so far, haven't found a better way)
