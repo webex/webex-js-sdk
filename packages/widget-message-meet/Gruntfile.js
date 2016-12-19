@@ -9,6 +9,7 @@
 
 var path = require('path');
 var webpackConfig = require('./webpack.config');
+var webpackDemoConfig = require('./webpack.demo.config');
 var webpack = require('webpack');
 
 module.exports = function configGrunt(grunt) {
@@ -54,6 +55,14 @@ module.exports = function configGrunt(grunt) {
           devtool: 'eval-source-map',
           debug: true
         }
+      },
+      demo: {
+        keepAlive: true,
+        webpack: {
+          devtool: 'eval-source-map',
+          debug: true,
+          entry: './src/demo/app.js'
+        }
       }
     });
 
@@ -65,5 +74,6 @@ module.exports = function configGrunt(grunt) {
   grunt.registerTask('test', ['jest']);
   grunt.registerTask('test-clean', ['clean:snapshots', 'jest']);
   grunt.registerTask('start', ['webpack-dev-server:start']);
+  grunt.registerTask('start-demo', ['webpack-dev-server:demo']);
   grunt.registerTask('default', ['start']);
 };
