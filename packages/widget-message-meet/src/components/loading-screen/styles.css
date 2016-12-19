@@ -7,15 +7,6 @@
   flex-direction: column;
 }
 
-.logo {
-  width: 30%;
-  margin: auto;
-}
-
-.logo img {
-  width: 100%;
-}
-
 .spinner-container {
   position: relative;
   width: 25px;
