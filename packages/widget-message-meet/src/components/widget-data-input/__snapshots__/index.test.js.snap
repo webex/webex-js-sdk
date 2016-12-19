@@ -14,7 +14,7 @@ exports[`WidgetDataInput component renders properly 1`] = `
       <input
         className="field-input"
         onChange={[Function]}
-        placeholder="User Email"
+        placeholder="To User Email"
         type="text"
         value={undefined} />
     </div>
@@ -23,7 +23,7 @@ exports[`WidgetDataInput component renders properly 1`] = `
       <input
         className="field-input"
         onChange={[Function]}
-        placeholder="Access Token"
+        placeholder="Your Access Token"
         type="text"
         value={undefined} />
     </div>
