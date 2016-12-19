@@ -137,7 +137,7 @@
     "grunt-selenium-webdriver": "~0.2.450",
     "grunt-shell": "~1.1.2",
     "grunt-stylelint": "^0.6.0",
-    "grunt-webpack": "^1.0.11",
+    "grunt-webpack": "^1.0.18",
     "highlight.js": "^9.5.0",
     "ink-docstrap": "~0.5.2",
     "isparta": "^4.0.0",

@@ -10,7 +10,7 @@
   "scripts": {
     "start": "webpack-dev-server --history-api-fallback --hot --inline --port 8000 --colors",
     "test": "jest",
-    "build": "webpack",
+    "build": "NODE_ENV=production webpack --config webpack/webpack.prod.js",
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook"
   },

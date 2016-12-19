@@ -8,44 +8,32 @@
 'use strict';
 
 var path = require('path');
-var webpackConfig = require('./webpack.config');
 
 module.exports = function configGrunt(grunt) {
   grunt.config('webpack',
     {
-      options: Object.assign({}, webpackConfig, {
+      options: require('./webpack/webpack.prod'),
+      build: {
         hot: false,
         inline: false,
         keepalive: false,
-        progress: true,
-        watch: false
-      }),
-      build: {
-        debug: false,
-        progress: false
+        progress: false,
+        watch: false,
+        debug: false
       }
     });
   grunt.config('webpack-dev-server',
     {
       options: {
-        compress: true,
-        historyApiFallback: true,
         host: '0.0.0.0',
         hot: true,
-        inline: true,
         keepalive: true,
         progress: true,
         watch: true,
         port: parseInt(process.env.PORT || 8000),
-        webpack: webpackConfig
+        webpack: require('./webpack/webpack.dev')
       },
-      start: {
-        keepAlive: true,
-        webpack: {
-          devtool: 'eval-source-map',
-          debug: true
-        }
-      }
+      start: {}
     });
 
   grunt.registerTask('build', [
