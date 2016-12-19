@@ -6,7 +6,7 @@ import {
 } from 'redux';
 
 import thunk from 'redux-thunk';
-import createLogger from 'redux-logger';
+
 import {
   activity,
   conversation,
@@ -21,16 +21,21 @@ import sparkReducer from './modules/redux-spark/reducers';
 
 const devtools = window.devToolsExtension || (() => (noop) => noop);
 
+const middlewares = [thunk];
+
+if (process.env.NODE_ENV !== `production`) {
+  const createLogger = require(`redux-logger`); // eslint-disable-line global-require
+  const logger = createLogger({
+    level: process.env.NODE_ENV === `production` ? `error` : `info`,
+    duration: true,
+    collapsed: false,
+    logErrors: process.env.NODE_ENV === `production`
+  });
+  middlewares.push(logger);
+}
+
 const enhancers = [
-  applyMiddleware(
-    thunk,
-    createLogger({
-      level: `info`,
-      duration: true,
-      collapsed: false,
-      logErrors: process.env.NODE_ENV === `production`
-    })
-  ),
+  applyMiddleware(...middlewares),
   devtools()
 ];
 

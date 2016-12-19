@@ -34,18 +34,15 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 module.exports = {
-  context: __dirname,
+  context: path.resolve(__dirname, 'src'),
   entry: [
-    'babel-polyfill',
-    './src/app.js'
+    './app.js'
   ],
   output: {
     filename: 'bundle.js',
     path: path.resolve(__dirname, 'dist'),
     sourceMapFilename: '[file].map'
   },
-  debug: process.env.NODE_ENV !== 'production',
-  devtool: 'sourcemap',
   plugins: [
     new InlineEnviromentVariablesPlugin(process.env),
     new ExtractTextPlugin('[name].css'),
@@ -114,7 +111,7 @@ module.exports = {
         // Set mimetype just in case.
         loader: 'file',
         query: {
-          name: 'fonts/[hash].[ext]',
+          name: 'fonts/[name].[ext]',
           mimetype: 'application/font-woff'
         },
         include: path.resolve(__dirname, '..')
@@ -122,7 +119,7 @@ module.exports = {
       {
         test: /.*\.(gif|png|jpe?g|svg)$/i,
         loaders: [
-          'file?name=[name].[ext]',
+          'file?name=./images/[name].[ext]',
           'image-webpack?{optimizationLevel: 7, interlaced: false, pngquant:{quality: "65-90", speed: 4}, mozjpeg: {quality: 65}}'
         ]
       },
@@ -130,7 +127,7 @@ module.exports = {
         test: /\.ttf$|\.otf$|\.eot$|\.svg$/,
         loader: 'file',
         query: {
-          name: 'fonts/[hash].[ext]'
+          name: 'fonts/[name].[ext]'
         },
         include: path.resolve(__dirname, '..')
       }
