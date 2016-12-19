@@ -7,6 +7,12 @@
   flex-direction: column;
 }
 
+.logo {
+  width: 60px;
+  height: 60px;
+  margin: auto;
+}
+
 .spinner-container {
   position: relative;
   width: 25px;

@@ -9,7 +9,9 @@ import styles from './styles.css';
 export default function LoadingScreen() {
   return (
     <div className={classNames(`loading`, styles.loading)}>
-      <SparkLogo />
+      <div className={classNames(`spark-logo`, styles.logo)}>
+        <SparkLogo />
+      </div>
       <FormattedMessage
         defaultMessage="Connecting to Spark"
         id="connecting"

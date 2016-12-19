@@ -408,13 +408,6 @@ module.exports = function(grunt) {
 
   registerTask('default', []);
 
-  try {
-    require('./packages/' + process.env.PACKAGE +  '/Gruntfile.js')(grunt, p, makeMochaRequires);
-  }
-  catch(error) {
-    // ignore
-  }
-
   registerTask('serve:test', [
     'express:test'
   ]);
@@ -423,6 +416,13 @@ module.exports = function(grunt) {
     'express:test',
     'watch:serve'
   ]);
+
+  try {
+    require('./packages/' + process.env.PACKAGE +  '/Gruntfile.js')(grunt, p, makeMochaRequires);
+  }
+  catch(error) {
+    // ignore
+  }
 
   /**
    * Helper function which converts environment strings into

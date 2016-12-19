@@ -50,7 +50,9 @@ PIDS=""
 # in --scope and --ignore
 PACKAGES=$(ls "${SDK_ROOT_DIR}/packages")
 PACKAGES+=" legacy-node"
-PACKAGES+=" legacy-browser"
+if [ -z "${SAUCE_IS_DOWN}" ]; then
+  PACKAGES+=" legacy-browser"
+fi
 for PACKAGE in ${PACKAGES}; do
   if ! echo ${PACKAGE} | grep -qc -v test-helper ; then
     continue
