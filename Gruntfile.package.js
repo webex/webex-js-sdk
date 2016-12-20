@@ -408,7 +408,6 @@ module.exports = function(grunt) {
 
   registerTask('default', []);
 
-
   registerTask('serve:test', [
     'express:test'
   ]);

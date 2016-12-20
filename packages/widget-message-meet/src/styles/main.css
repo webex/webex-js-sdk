@@ -11,6 +11,10 @@ body {
   border: 0;
 }
 
+/* stylelint-disable selector-no-attribute */
+[data-toggle='spark-message-meet'],
+[data-toggle='spark-message-meet'] > div,
+[data-toggle='spark-message-meet'] > div > div,
 main,
 main > div,
 main > div > div {

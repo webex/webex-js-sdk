@@ -39,6 +39,7 @@ If you haven't already, go to the Spark for Developers Portal (<https://develope
 When you want to eventually create an integration and have your own users take advantage of the widget, you'll need to create an integration with the following scopes:
 
   ```
+  spark:kms
   spark:rooms_read
   spark:rooms_write
   spark:memberships_read
