@@ -22,6 +22,8 @@
     "Fong Chin <fonchin@cisco.com>",
     "Hans Steinbrecher <hsteinbr@cisco.com>",
     "Nate Cohen-Smith <ncohensm@cisco.com>",
+    "Adam Weeks <adweeks@cisco.com>",
+    "Bernie Zang <nzang@cisco.com>",
     "Vagou Zhou <vagouz@cisco.com>"
   ],
   "main": "src/index.js",

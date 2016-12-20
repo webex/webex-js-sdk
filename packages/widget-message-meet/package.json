@@ -4,6 +4,9 @@
   "description": "The Spark Message Meet widget allows developers to easily incorporate Cisco Spark 1 on 1 messaging into an application.",
   "license": "MIT",
   "author": "Adam Weeks <adweeks@cisco.com>",
+  "contributors": [
+    "Bernie Zang <nzang@cisco.com>"
+  ],
   "main": "dist/bundle.js",
   "devMain": "src/app.js",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/widget-message-meet",
