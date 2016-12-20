@@ -1,0 +1,25 @@
+{
+  "name": "eslint-config-ciscospark",
+  "version": "0.7.0-alpha",
+  "description": "",
+  "main": "es2015.js",
+  "author": "Ian W. Remmel <iremmel@cisco.com>",
+  "license": "MIT",
+  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/eslint-rules",
+  "keywords": [
+    "eslint",
+    "eslintconfig"
+  ],
+  "peerDependencies": {
+    "babel-eslint": "^7.1.1",
+    "eslint": ">= 3",
+    "eslint-plugin-import": "^2.2.0",
+    "eslint-plugin-jsx-a11y": "^3.0.2",
+    "eslint-plugin-mocha": "^4.7.0",
+    "eslint-plugin-react": "^6.8.0"
+  },
+  "scripts": {
+    "postinstall": "echo \"***$(pwd)***\"",
+    "postlink": "echo \"***$(pwd)***\""
+  }
+}

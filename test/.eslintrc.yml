@@ -1,0 +1,8 @@
+extends:
+- "ciscospark/es5"
+- "ciscospark/mocha"
+env:
+  browser: true
+  mocha: true
+  node: true
+root: true

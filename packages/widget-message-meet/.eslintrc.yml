@@ -1,6 +1,4 @@
-extends:
-  - "../../.eslintrc-es6.yml"
-  - "../../.eslintrc-react.yml"
+# extends: "ciscospark/react"
 env:
   jasmine: true
   jest: true

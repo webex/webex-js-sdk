@@ -1,13 +1,11 @@
-extends:
-  - "../../.eslintrc-es6.yml"
-  - "../../.eslintrc-react.yml"
+extends: "ciscospark/react"
 rules:
   # FIXME temporarily disable TODO warnings
   no-warning-comments:
-    - 0
+  - 0
   no-shadow:
-    - 0
+  - 0
   react/jsx-no-bind:
-    - 0
+  - 0
   react/require-optimization:
-    - 0
+  - 0

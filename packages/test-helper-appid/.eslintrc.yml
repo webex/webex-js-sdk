@@ -1,1 +1,2 @@
-extends: "../../.eslintrc-es5.yml"
+extends: "ciscospark/es5"
+root: true

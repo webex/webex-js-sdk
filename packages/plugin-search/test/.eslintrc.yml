@@ -1,1 +1,1 @@
-extends: "../../../.eslintrc-mocha.yml"
+extends: "ciscospark/mocha"

@@ -1,11 +1,3 @@
-{
-  "rules": {
-    "func-names": [2],
-    "no-console": [2],
-    "valid-jsdoc": [0, {
-      "prefer": {
-        "return": "returns"
-      }
-    }]
-  }
-}
+extends:
+- "ciscospark/es5"
+root: true
