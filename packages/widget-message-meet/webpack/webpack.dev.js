@@ -12,8 +12,8 @@ const plugins = [
 module.exports = require(`./webpack.base`)({
   entry: `./app.js`,
   output: {
-    filename: `[name].js`,
-    chunkFilename: `[name].chunk.js`
+    filename: `bundle.js`,
+    chunkFilename: `bundle.chunk.js`
   },
   plugins,
   devtools: `cheap-module-eval-source-map`,

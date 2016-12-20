@@ -16,7 +16,7 @@ docker run -e PACKAGE=example-phone -e NODE_ENV=production ${DOCKER_RUN_OPTS} np
 echo "################################################################################"
 echo "# BUILDING WIDGETS"
 echo "################################################################################"
-docker run -e PACKAGE=widget-message-meet -e NODE_ENV=production ${DOCKER_RUN_OPTS} npm run grunt:package -- webpack:build
+docker run -e PACKAGE=widget-message-meet -e NODE_ENV=production ${DOCKER_RUN_OPTS} npm run grunt:package build
 
 
 echo "################################################################################"

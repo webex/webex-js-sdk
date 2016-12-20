@@ -33,7 +33,7 @@ module.exports = (options) => ({
   debug: options.debug || false,
   devtool: options.devtool,
   plugins: options.plugins.concat([
-    new InlineEnviromentVariablesPlugin(process.env),
+    new InlineEnviromentVariablesPlugin(Object.assign(process.env, options.env)),
     new ExtractTextPlugin('[name].css'),
     new webpack.DefinePlugin({
       'process.env': {

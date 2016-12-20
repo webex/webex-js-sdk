@@ -34,5 +34,10 @@ module.exports = require(`./webpack.base`)({
     path: path.resolve(__dirname, `..`, `dist`),
     sourceMapFilename: `[file].map`
   },
-  plugins
+  plugins,
+  env: {
+    CISCOSPARK_ACCESS_TOKEN: ``,
+    TO_PERSON_EMAIL: ``,
+    TO_PERSON_ID: ``
+  }
 });
