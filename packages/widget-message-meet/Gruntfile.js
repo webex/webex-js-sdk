@@ -10,16 +10,15 @@
 var path = require('path');
 
 module.exports = function configGrunt(grunt) {
-  grunt.config('webpack',
+  grunt.config('shell',
     {
-      options: require('./webpack/webpack.prod'),
+      options: {
+        execOptions: {
+          cwd: __dirname
+        }
+      },
       build: {
-        hot: false,
-        inline: false,
-        keepalive: false,
-        progress: false,
-        watch: false,
-        debug: false
+        command: 'npm run build'
       }
     });
   grunt.config('webpack-dev-server',
@@ -38,11 +37,11 @@ module.exports = function configGrunt(grunt) {
 
   grunt.registerTask('build', [
     'clean:dist',
-    'webpack:build'
+    'shell:build'
   ]);
 
   grunt.registerTask('test', ['jest']);
   grunt.registerTask('test-clean', ['clean:snapshots', 'jest']);
-  grunt.registerTask('start', ['webpack-dev-server:start']);
-  grunt.registerTask('default', ['start']);
+  grunt.registerTask('serve', ['webpack-dev-server:start']);
+  grunt.registerTask('default', ['server']);
 };

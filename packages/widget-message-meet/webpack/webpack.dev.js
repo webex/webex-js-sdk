@@ -16,7 +16,7 @@ module.exports = require(`./webpack.base`)({
     chunkFilename: `[name].chunk.js`
   },
   plugins,
-  devtools: `eval`,
+  devtools: `cheap-module-eval-source-map`,
   postcss: [postcssReporter],
   debug: true
 });
