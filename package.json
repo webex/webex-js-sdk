@@ -56,7 +56,7 @@
     "srcdist": "sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' packages/*/package.json && rm packages/*/*bak",
     "clean-empty-packages": "node ./scripts/clean-empty-packages.js --clean",
     "prepublish": "in-install && npm run link-lint-rules || not-in-install",
-    "link-lint-rules": "cd packages/eslint-config-ciscospark && npm link && cd ../.. && npm link eslint-config-ciscospark"
+    "link-lint-rules": "rm -rf ./node_modules/eslint-config-ciscospark && cd packages/eslint-config-ciscospark && npm link && cd ../.. && npm link eslint-config-ciscospark"
   },
   "dependencies": {
     "ampersand-collection": "^2.0.0",
