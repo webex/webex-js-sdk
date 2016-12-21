@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/common",
-  "version": "0.7.0",
+  "version": "0.7.30",
   "description": "Common utilities for Cisco Spark",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -14,14 +14,14 @@
     "backoff": "^2.4.1",
     "btoa": "^1.1.2",
     "envify": "^3.4.0",
-    "lodash": "^4.5.1"
+    "lodash": "^4.13.1"
   },
   "devDependencies": {
-    "@ciscospark/test-helper-chai": "^0.7.0",
+    "@ciscospark/test-helper-chai": "^0.7.30",
     "@ciscospark/test-helper-sinon": "^0.7.0",
     "ampersand-state": "^5.0.2",
     "babel-eslint": "^6.1.2",
-    "babel-plugin-lodash": "2.1.0",
+    "babel-plugin-lodash": "^3.2.11",
     "babel-polyfill": "^6.3.14",
     "babel-register": "^6.4.3",
     "eslint": "^3.5.0",
