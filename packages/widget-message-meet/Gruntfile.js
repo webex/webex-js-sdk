@@ -39,6 +39,31 @@ module.exports = function configGrunt(grunt) {
             }
           })
         )
+      },
+      buildDemo: {
+        debug: false,
+        entry: './demo/app.js',
+        output: {
+          filename: 'bundle.js',
+          path: path.resolve(__dirname, 'dist', 'demo'),
+          sourceMapFilename: '[file].map'
+        },
+        progress: false,
+        devtool: 'source-map',
+        plugins: webpackConfig.plugins.concat(
+          new webpack.DefinePlugin({
+            'process.env': {
+              NODE_ENV: JSON.stringify("production")
+            }
+          }),
+          new webpack.optimize.OccurenceOrderPlugin(),
+          new webpack.optimize.UglifyJsPlugin({
+            sourceMap: true,
+            compress: {
+              warnings: false
+            }
+          })
+        )
       }
     });
   grunt.config('webpack-dev-server',
@@ -75,6 +100,11 @@ module.exports = function configGrunt(grunt) {
   grunt.registerTask('build', [
     'clean:dist',
     'webpack:build'
+  ]);
+
+  grunt.registerTask('build-demo', [
+    'clean:dist',
+    'webpack:buildDemo'
   ]);
 
   grunt.registerTask('test', ['jest']);
