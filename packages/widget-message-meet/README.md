@@ -55,10 +55,10 @@ Head over to the Spark for Developers Documentation for more information about h
 Using our CDN requires the least amount of work to get started. Add the following into your HTML file:
 ```
 <!-- Latest compiled and minified CSS -->
-<link rel="stylesheet" href="https://code.s4d.io/widget-message-meet/main.css">
+<link rel="stylesheet" href="https://code.s4d.io/widget-message-meet/production/main.css">
 
 <!-- Latest compiled and minified JavaScript -->
-<script src="https://code.s4d.io/widget-message-meet/bundle.js"></script>
+<script src="https://code.s4d.io/widget-message-meet/production/bundle.js"></script>
 ```
 
 ### Build from Source
