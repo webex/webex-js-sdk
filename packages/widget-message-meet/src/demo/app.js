@@ -7,7 +7,7 @@ import DemoApp from './demo';
 function loadDemo() {
   ReactDOM.render(
     <DemoApp />,
-    document.getElementById(`main`)
+    document.getElementById(`spark-message-meet`)
   );
 }
 
