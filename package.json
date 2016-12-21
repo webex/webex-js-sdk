@@ -54,7 +54,9 @@
     "lerna": "lerna",
     "distsrc": "sed -ibak 's#\"main\": \"dist/index.js#\"main\": \"src/index.js#' packages/*/package.json && rm packages/*/*bak",
     "srcdist": "sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' packages/*/package.json && rm packages/*/*bak",
-    "clean-empty-packages": "node ./scripts/clean-empty-packages.js --clean"
+    "clean-empty-packages": "node ./scripts/clean-empty-packages.js --clean",
+    "prepublish": "in-install && npm run link-lint-rules || not-in-install",
+    "link-lint-rules": "cd packages/eslint-config-ciscospark && npm link && cd ../.. && npm link eslint-config-ciscospark"
   },
   "dependencies": {
     "ampersand-collection": "^2.0.0",
@@ -183,6 +185,7 @@
     "grunt-stylelint": "^0.6.0",
     "grunt-webpack": "^1.0.11",
     "highlight.js": "^9.5.0",
+    "in-publish": "^2.0.0",
     "ink-docstrap": "~0.5.2",
     "isparta": "^4.0.0",
     "istanbul": "^0.4.4",
