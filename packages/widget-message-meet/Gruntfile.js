@@ -9,7 +9,6 @@
 
 var path = require('path');
 var webpackConfig = require('./webpack.config');
-var webpackDemoConfig = require('./webpack.demo.config');
 var webpack = require('webpack');
 
 module.exports = function configGrunt(grunt) {
@@ -65,11 +64,11 @@ module.exports = function configGrunt(grunt) {
       },
       demo: {
         keepAlive: true,
-        webpack: {
-          devtool: 'eval-source-map',
-          debug: true,
-          entry: './src/demo/app.js'
-        }
+          webpack: {
+            devtool: 'eval-source-map',
+            debug: true,
+            entry: './demo/app.js'
+          }
       }
     });
 

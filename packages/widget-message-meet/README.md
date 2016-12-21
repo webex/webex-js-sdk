@@ -100,14 +100,12 @@ The easiest way to get the Spark Message and Meet Widget into your web site is t
   - Include one of the following attributes:
     - `data-to-person-email`: Email of the message recipient.
     - `data-to-person-id`: User Id of the message recipient.
-  - `data-display-auth`: Display an auth screen if token isn't passed
 
     ```html
     <div
       data-toggle="spark-message-meet"
       data-access-token="YOUR_ACCESS_TOKEN"
       data-to-person-email="XXXXX@XXXXXXXXX"
-      data-display-auth="true"
       />
     ```
 
