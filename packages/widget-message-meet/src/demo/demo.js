@@ -16,7 +16,7 @@ class DemoApp extends Component {
   constructor() {
     super();
     this.state = {
-      mode: MODE_REACT,
+      mode: MODE_INLINE,
       accessToken: ``,
       toPersonEmail: ``,
       running: false
@@ -62,7 +62,7 @@ class DemoApp extends Component {
         </div>);
     }
     return (
-      <div>
+      <div className={classNames(`demo-wrapper`, styles.demoWrapper)}>
         <div className="logo">
           <SparkLogo />
         </div>
@@ -89,28 +89,31 @@ class DemoApp extends Component {
             <a href="http://developer.ciscospark.com">{`Get access token from developer.ciscospark.com`}</a>
           </div>
           <div className={classNames(`field-wrapper`, styles.fieldWrapper)}>
-            <div className={classNames(`button-group`, styles.buttonGroup)}>
-
-              <input
-                checked={this.state.mode === MODE_INLINE}
-                id="radio_inline"
-                onChange={this.handleModeChange}
-                type="radio"
-                value={MODE_INLINE}
-              />
-              <label htmlFor="radio_inline">
-                {`Inline Mode`}
-              </label>
-              <input
-                checked={this.state.mode === MODE_REACT}
-                id="radio_react"
-                onChange={this.handleModeChange}
-                type="radio"
-                value={MODE_REACT}
-              />
-              <label htmlFor="radio_react">
-                {`React Component`}
-              </label>
+            <div className={classNames(`radio-group`, styles.radioGroup)}>
+              <div className={classNames(`radio-item`, styles.radioItem)}>
+                <input
+                  checked={this.state.mode === MODE_INLINE}
+                  id="radio_inline"
+                  onChange={this.handleModeChange}
+                  type="radio"
+                  value={MODE_INLINE}
+                />
+                <label htmlFor="radio_inline">
+                  {`Inline Mode`}
+                </label>
+              </div>
+              <div className={classNames(`radio-item`, styles.radioItem)}>
+                <input
+                  checked={this.state.mode === MODE_REACT}
+                  id="radio_react"
+                  onChange={this.handleModeChange}
+                  type="radio"
+                  value={MODE_REACT}
+                />
+                <label htmlFor="radio_react">
+                  {`React Component`}
+                </label>
+              </div>
             </div>
           </div>
           <div className={classNames(`example-code`, styles.exampleCode)}>

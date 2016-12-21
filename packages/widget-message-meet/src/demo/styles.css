@@ -1,6 +1,6 @@
-.widget-container {
-  background-color: #fff;
-  background-repeat: no-repeat;
+.demo-wrapper {
+  max-width: 500px;
+  margin: 0 auto;
 }
 
 .widget-component-container {
@@ -61,9 +61,13 @@
   background-color: #808080;
 }
 
-.button-group {
+.radio-group {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+}
+
+.radio-item {
+  display: flex;
 }
 
 .example-code {
