@@ -84,7 +84,7 @@ If you would just like to get running immediately follow these instructions to g
     CISCOSPARK_ACCESS_TOKEN=XXXXXXXXXXXXXXXXXXXXXX
     TO_PERSON_EMAIL=XXXXX@XXXXXXXXX
     ```
-1.  From the root directory run: `PACKAGE=widget-message-meet npm run grunt:package start`
+1.  From the root directory run: `PACKAGE=widget-message-meet npm run grunt:package serve`
 
 ### HTML
 
