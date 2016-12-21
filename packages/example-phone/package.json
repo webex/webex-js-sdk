@@ -48,6 +48,7 @@
     "html-webpack-plugin": "^2.22.0",
     "inline-environment-variables-webpack-plugin": "0.0.2",
     "require-dir": "^0.3.0",
+    "string": "^3.3.3",
     "style-loader": "^0.13.1"
   },
   "engines": {

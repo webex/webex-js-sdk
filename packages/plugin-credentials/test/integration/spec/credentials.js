@@ -4,13 +4,12 @@
  * @private
  */
 
-import '../..';
+import {filterScope} from '../..';
 import '@ciscospark/plugin-machine-account';
 
 import {assert} from '@ciscospark/test-helper-chai';
 import testUsers from '@ciscospark/test-helper-test-users';
 import CiscoSpark from '@ciscospark/spark-core';
-import {filterScope} from '../..';
 import uuid from 'uuid';
 
 const apiScope = filterScope(`spark:kms`, process.env.CISCOSPARK_SCOPE);

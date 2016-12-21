@@ -17,7 +17,7 @@ wd.addPromiseChainMethod('printLogs', function printLogs() {
       logs.forEach(function formatLog(log) {
         try {
           log.message = JSON.parse(log.message);
-          const method = console[log.message.message.level] || console.log;
+          var method = console[log.message.message.level] || console.log;
           method.call(console, 'browser log:', log.message.message.text);
         }
         catch (err) {

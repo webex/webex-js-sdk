@@ -1,15 +1,17 @@
+'use strict';
+
 module.exports = {
   env: {
     es6: true
   },
-  extends: `./es5.js`,
+  extends: './es5.js',
   parserOptions: {
     ecmaVersion: 2015,
-    sourceType: `module`
+    sourceType: 'module'
   },
-  parser: `babel-eslint`,
+  parser: 'babel-eslint',
   plugins: [
-    `import`
+    'import'
   ],
   rules: {
     //
@@ -19,13 +21,13 @@ module.exports = {
     strict: [
       // No need because modules force strict mode
       2,
-      `never`
+      'never'
     ],
     //
     // Stylistic Issues
     // http://eslint.org/docs/rules/#stylistic-issues
     //
-    "require-jsdoc": [
+    'require-jsdoc': [
       2,
       {
         require: {
@@ -41,86 +43,86 @@ module.exports = {
     //
     quotes: [
       2,
-      `backtick`
+      'backtick'
     ],
-    "arrow-body-style": [
+    'arrow-body-style': [
       2,
-      `as-needed`
+      'as-needed'
     ],
-    "arrow-parens": [
+    'arrow-parens': [
       2,
-      `always`
+      'always'
     ],
-    "arrow-spacing": [
+    'arrow-spacing': [
       2,
       {
         after: true,
         before: true
       }
     ],
-    "constructor-super": [
+    'constructor-super': [
       2
     ],
     // There seems to be a bug in generator-star-spacing; it should be
-    // [2, {"before": false, "after": true}]
-    "generator-star-spacing": [
+    // [2, {'before': false, 'after': true}]
+    'generator-star-spacing': [
       0
     ],
-    "no-class-assign": [
+    'no-class-assign': [
       2
     ],
-    "no-confusing-arrow": [
+    'no-confusing-arrow': [
       2
     ],
-    "no-const-assign": [
+    'no-const-assign': [
       2
     ],
-    "no-dupe-class-members": [
+    'no-dupe-class-members': [
       2
     ],
-    "no-new-symbol": [
+    'no-new-symbol': [
       2
     ],
-    "no-this-before-super": [
+    'no-this-before-super': [
       2
     ],
-    "no-useless-constructor": [
+    'no-useless-constructor': [
       2
     ],
-    "no-var": [
+    'no-var': [
       2
     ],
-    "object-shorthand": [
+    'object-shorthand': [
       2
     ],
-    "prefer-arrow-callback": [
+    'prefer-arrow-callback': [
       2
     ],
-    "prefer-const": [
+    'prefer-const': [
       2
     ],
-    "prefer-reflect": [
+    'prefer-reflect': [
       2
     ],
-    "prefer-rest-params": [
+    'prefer-rest-params': [
       2
     ],
-    "prefer-spread": [
+    'prefer-spread': [
       2
     ],
-    "prefer-template": [
+    'prefer-template': [
       2
     ],
-    "require-yield": [
+    'require-yield': [
       2
     ],
-    "template-curly-spacing": [
+    'template-curly-spacing': [
       2,
-      `never`
+      'never'
     ],
-    "yield-star-spacing": [
+    'yield-star-spacing': [
       2,
-      `after`
+      'after'
     ],
     //
     // Import Plugin
@@ -130,104 +132,105 @@ module.exports = {
     //
     // Import Plugin/Static analysis
     //
-    "import/no-unresolved": [
+    'import/no-unresolved': [
       2
     ],
-    "import/named": [
+    'import/named': [
       2
     ],
-    "import/default": [
+    'import/default': [
       2
     ],
-    "import/namespace": [
+    'import/namespace': [
       2
     ],
-    "import/no-restricted-paths": [
+    'import/no-restricted-paths': [
       0
     ],
-    "import/no-absolute-path": [
+    'import/no-absolute-path': [
       2
     ],
-    "import/no-dynamic-require": [
+    'import/no-dynamic-require': [
       2
     ],
     // I feel like no-internal-modules is a best practice, but it's a bit of work
     // for us to adhere to it right now.
-    "import/no-internal-modules": [
+    'import/no-internal-modules': [
       0
     ],
-    "import/no-webpack-loader-syntax": [
+    'import/no-webpack-loader-syntax': [
       2
     ],
     //
     // Import Plugin/Helpful warnings
     //
-    "import/export": [
+    'import/export': [
       2
     ],
-    "import/no-named-as-default": [
+    'import/no-named-as-default': [
       2
     ],
-    "import/no-named-as-default-member": [
+    'import/no-named-as-default-member': [
       2
     ],
-    "import/no-deprecated": [
+    'import/no-deprecated': [
       2
     ],
-    "import/no-extraneous-dependencies": [
+    'import/no-extraneous-dependencies': [
       2
     ],
-    "import/no-mutable-exports": [
+    'import/no-mutable-exports': [
       2
     ],
     //
     // Import Plugin/Module systems
     //
-    "import/unambiguous": [
+    'import/unambiguous': [
+      0
+    ],
+    'import/no-commonjs': [
       2
     ],
-    "import/no-commonjs": [
+    'import/no-amd': [
       2
     ],
-    "import/no-amd": [
-      2
-    ],
-    "import/no-nodejs-modules": [
+    'import/no-nodejs-modules': [
       0
     ],
     //
     // Import Plugin/Style guide
     //
-    "import/first": [
+    'import/first': [
       2
     ],
-    "import/no-duplicates": [
+    'import/no-duplicates': [
       2
     ],
-    "import/no-namespace": [
+    'import/no-namespace': [
       2
     ],
-    "import/extensions": [
+    'import/extensions': [
       2
     ],
-    "import/order": [
-      2
-    ],
-    "import/newline-after-import": [
-      2
-    ],
-    "import/prefer-default-export": [
-      2
-    ],
-    "import/max-dependencies": [
+    'import/order': [
+      // 2
       0
     ],
-    // no-unassigned-import seems like the "right" way to do things, but would
+    'import/newline-after-import': [
+      2
+    ],
+    'import/prefer-default-export': [
+      2
+    ],
+    'import/max-dependencies': [
+      0
+    ],
+    // no-unassigned-import seems like the 'right' way to do things, but would
     // actually break the plugin system
-    "import/no-unassigned-import": [
+    'import/no-unassigned-import': [
       0
     ],
-    "import/no-named-default": [
+    'import/no-named-default': [
       2
     ]
   }

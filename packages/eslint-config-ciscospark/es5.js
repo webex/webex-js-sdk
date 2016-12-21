@@ -1,3 +1,5 @@
+'use strict';
+
 module.exports = {
   env: {
     node: true
@@ -7,103 +9,103 @@ module.exports = {
   },
   parserOptions: {
     ecmaVersion: 5,
-    sourceType: `script`
+    sourceType: 'script'
   },
   rules: {
     //
     // Possible Errors
     // http://eslint.org/docs/rules///possible-errors
     //
-    "comma-dangle": [
+    'comma-dangle': [
       2,
-      `never`
+      'never'
     ],
-    "no-cond-assign": [
+    'no-cond-assign': [
       2,
-      `always`
+      'always'
     ],
-    "no-console": [
+    'no-console': [
       2
     ],
-    "no-constant-condition": [
+    'no-constant-condition': [
       2
     ],
-    "no-control-regex": [
+    'no-control-regex': [
       2
     ],
-    "no-debugger": [
+    'no-debugger': [
       2
     ],
-    "no-dupe-args": [
+    'no-dupe-args': [
       2
     ],
-    "no-dupe-keys": [
+    'no-dupe-keys': [
       2
     ],
-    "no-duplicate-case": [
+    'no-duplicate-case': [
       2
     ],
-    "no-empty": [
+    'no-empty': [
       2
     ],
-    "no-empty-character-class": [
+    'no-empty-character-class': [
       2
     ],
-    "no-ex-assign": [
+    'no-ex-assign': [
       2
     ],
-    "no-extra-boolean-cast": [
+    'no-extra-boolean-cast': [
       2
     ],
-    "no-extra-parens": [
+    'no-extra-parens': [
       2,
-      `all`
+      'all'
     ],
-    "no-extra-semi": [
+    'no-extra-semi': [
       2
     ],
-    "no-func-assign": [
+    'no-func-assign': [
       2
     ],
-    "no-inner-declarations": [
+    'no-inner-declarations': [
       2
     ],
-    "no-invalid-regexp": [
+    'no-invalid-regexp': [
       2
     ],
-    "no-irregular-whitespace": [
+    'no-irregular-whitespace': [
       2
     ],
-    "no-negated-in-lhs": [
+    'no-negated-in-lhs': [
       2
     ],
-    "no-obj-calls": [
+    'no-obj-calls': [
       2
     ],
-    "no-regex-spaces": [
+    'no-regex-spaces': [
       2
     ],
-    "no-sparse-arrays": [
+    'no-sparse-arrays': [
       2
     ],
-    "no-unexpected-multiline": [
+    'no-unexpected-multiline': [
       2
     ],
-    "no-unreachable": [
+    'no-unreachable': [
       2
     ],
-    "use-isnan": [
+    'use-isnan': [
       2
     ],
-    "valid-jsdoc": [
+    'valid-jsdoc': [
       2,
       {
         prefer: {
-          arg: `param`,
-          argument: `param`,
-          return: `returns`,
-          virtual: `abstract`,
-          fires: `emits`
+          arg: 'param',
+          argument: 'param',
+          return: 'returns',
+          virtual: 'abstract',
+          fires: 'emits'
         },
         requireParamDescription: false,
         requireReturn: true,
@@ -111,45 +113,45 @@ module.exports = {
         requireReturnDescription: false
       }
     ],
-    "valid-typeof": [
+    'valid-typeof': [
       2
     ],
     //
     // Best Practices
     // http://eslint.org/docs/rules///best-practices
     //
-    "accessor-pairs": [
+    'accessor-pairs': [
       2,
       {
         setWithoutGet: true,
         getWithoutSet: false
       }
     ],
-    "array-callback-return": [
+    'array-callback-return': [
       2
     ],
-    "block-scoped-var": [
+    'block-scoped-var': [
       2
     ],
     complexity: [
       2,
       7
     ],
-    "consistent-return": [
+    'consistent-return': [
       2
     ],
     curly: [
       2,
-      `all`
+      'all'
     ],
-    "default-case": [
+    'default-case': [
       2
     ],
-    "dot-location": [
+    'dot-location': [
       2,
-      `property`
+      'property'
     ],
-    "dot-notation": [
+    'dot-notation': [
       2,
       {
         allowKeywords: true
@@ -158,184 +160,184 @@ module.exports = {
     eqeqeq: [
       2
     ],
-    "guard-for-in": [
+    'guard-for-in': [
       2
     ],
-    "no-alert": [
+    'no-alert': [
       2
     ],
-    "no-caller": [
+    'no-caller': [
       2
     ],
-    "no-case-declarations": [
+    'no-case-declarations': [
       2
     ],
-    "no-div-regex": [
+    'no-div-regex': [
       2
     ],
-    "no-else-return": [
+    'no-else-return': [
       2
     ],
-    "no-empty-function": [
+    'no-empty-function': [
       2
     ],
-    "no-empty-pattern": [
+    'no-empty-pattern': [
       2
     ],
-    "no-eq-null": [
+    'no-eq-null': [
       2
     ],
-    "no-eval": [
+    'no-eval': [
       2
     ],
-    "no-extend-native": [
+    'no-extend-native': [
       2
     ],
-    "no-extra-bind": [
+    'no-extra-bind': [
       2
     ],
-    "no-extra-label": [
+    'no-extra-label': [
       2
     ],
-    "no-fallthrough": [
+    'no-fallthrough': [
       2
     ],
-    "no-floating-decimal": [
+    'no-floating-decimal': [
       2
     ],
-    "no-implicit-coercion": [
+    'no-implicit-coercion': [
       2,
       {
         boolean: true,
         number: true,
-        string: true
-        // FIXME not sure why the next two lines make eslint barf
-        // allow:
-        //   - "!!"
+        string: true,
+        allow: [
+          '!!'
+        ]
       }
     ],
-    "no-implicit-globals": [
+    'no-implicit-globals': [
       2
     ],
-    "no-implied-eval": [
+    'no-implied-eval': [
       2
     ],
-    "no-invalid-this": [
+    'no-invalid-this': [
       2
     ],
-    "no-iterator": [
+    'no-iterator': [
       2
     ],
-    "no-labels": [
+    'no-labels': [
       2
     ],
-    "no-lone-blocks": [
+    'no-lone-blocks': [
       2
     ],
-    "no-loop-func": [
+    'no-loop-func': [
       2
     ],
-    "no-magic-numbers": [
+    'no-magic-numbers': [
       0
     ],
-    "no-multi-spaces": [
+    'no-multi-spaces': [
       2
     ],
-    "no-multi-str": [
+    'no-multi-str': [
       2
     ],
-    "no-native-reassign": [
+    'no-native-reassign': [
       2
     ],
-    "no-new": [
+    'no-new': [
       2
     ],
-    "no-new-func": [
+    'no-new-func': [
       2
     ],
-    "no-new-wrappers": [
+    'no-new-wrappers': [
       2
     ],
-    "no-octal": [
+    'no-octal': [
       2
     ],
-    "no-octal-escape": [
+    'no-octal-escape': [
       2
     ],
-    "no-param-reassign": [
-      // TODO make this a warning
+    'no-param-reassign': [
+      // ideally, this would be a warning, but Jenkins and XUnit
       0,
       {
         props: true
       }
     ],
-    "no-process-env": [
+    'no-process-env': [
       0
     ],
-    "no-proto": [
+    'no-proto': [
       2
     ],
-    "no-redeclare": [
+    'no-redeclare': [
       2,
       {
         builtinGlobals: true
       }
     ],
-    "no-return-assign": [
+    'no-return-assign': [
       2,
-      `always`
+      'always'
     ],
-    "no-script-url": [
+    'no-script-url': [
       2
     ],
-    "no-self-assign": [
+    'no-self-assign': [
       2
     ],
-    "no-self-compare": [
+    'no-self-compare': [
       2
     ],
-    "no-sequences": [
+    'no-sequences': [
       2
     ],
-    "no-throw-literal": [
+    'no-throw-literal': [
       2
     ],
-    "no-unmodified-loop-condition": [
+    'no-unmodified-loop-condition': [
       2
     ],
-    "no-unused-expressions": [
+    'no-unused-expressions': [
       2
     ],
-    "no-unused-labels": [
+    'no-unused-labels': [
       2
     ],
-    "no-useless-call": [
+    'no-useless-call': [
       2
     ],
-    "no-useless-concat": [
+    'no-useless-concat': [
       2
     ],
-    "no-void": [
+    'no-void': [
       2
     ],
-    "no-warning-comments": [
+    'no-warning-comments': [
       2
     ],
-    "no-with": [
+    'no-with': [
       2
     ],
     radix: [
       2
     ],
-    "vars-on-top": [
+    'vars-on-top': [
       0
     ],
-    "wrap-iife": [
+    'wrap-iife': [
       2
     ],
     yoda: [
       2,
-      `never`
+      'never'
     ],
     //
     // Strict Mode
@@ -343,43 +345,43 @@ module.exports = {
     //
     strict: [
       2,
-      `global`
+      'global'
     ],
     //
     // Variables
     // http://eslint.org/docs/rules///variables
     //
-    "init-declarations": [
+    'init-declarations': [
       0
     ],
-    "no-catch-shadow": [
+    'no-catch-shadow': [
       2
     ],
-    "no-delete-var": [
+    'no-delete-var': [
       2
     ],
-    "no-label-var": [
+    'no-label-var': [
       2
     ],
-    "no-shadow": [
+    'no-shadow': [
       2
     ],
-    "no-shadow-restricted-names": [
+    'no-shadow-restricted-names': [
       2
     ],
-    "no-undef": [
+    'no-undef': [
       2
     ],
-    "no-undef-init": [
+    'no-undef-init': [
       2
     ],
-    "no-undefined": [
+    'no-undefined': [
       0
     ],
-    "no-unused-vars": [
+    'no-unused-vars': [
       2
     ],
-    "no-use-before-define": [
+    'no-use-before-define': [
       2,
       {
         classes: true,
@@ -390,51 +392,51 @@ module.exports = {
     // Node.js and CommonJS
     // http://eslint.org/docs/rules///nodejs-and-commonjs
     //
-    "callback-return": [
+    'callback-return': [
       2
     ],
-    "global-require": [
+    'global-require': [
       2
     ],
-    "handle-callback-err": [
+    'handle-callback-err': [
       2
     ],
-    "no-mixed-requires": [
+    'no-mixed-requires': [
       0
     ],
-    "no-new-require": [
+    'no-new-require': [
       2
     ],
-    "no-path-concat": [
+    'no-path-concat': [
       2
     ],
-    "no-process-exit": [
+    'no-process-exit': [
       2
     ],
-    "no-restricted-imports": [
+    'no-restricted-imports': [
       0
     ],
-    "no-restricted-modules": [
+    'no-restricted-modules': [
       0
     ],
-    "no-sync": [
+    'no-sync': [
       2
     ],
     //
     // Stylistic Issues
     // http://eslint.org/docs/rules///stylistic-issues
     //
-    "array-bracket-spacing": [
+    'array-bracket-spacing': [
       2,
-      `never`
+      'never'
     ],
-    "block-spacing": [
+    'block-spacing': [
       2,
-      `never`
+      'never'
     ],
-    "brace-style": [
+    'brace-style': [
       2,
-      `stroustrup`,
+      'stroustrup',
       {
         allowSingleLine: true
       }
@@ -442,197 +444,198 @@ module.exports = {
     camelcase: [
       2
     ],
-    "comma-spacing": [
+    'comma-spacing': [
       2,
       {
         before: false,
         after: true
       }
     ],
-    "comma-style": [
+    'comma-style': [
       2,
-      `last`
+      'last'
     ],
-    "computed-property-spacing": [
+    'computed-property-spacing': [
       2,
-      `never`
+      'never'
     ],
-    "consistent-this": [
+    'consistent-this': [
       2,
-      `self`
+      'self'
     ],
-    "eol-last": [
+    'eol-last': [
       2
     ],
-    "func-names": [
+    'func-names': [
       2
     ],
-    "func-style": [
+    'func-style': [
       2,
-      `declaration`
+      'declaration'
     ],
-    "id-blacklist": [
+    'id-blacklist': [
       0
     ],
-    "id-length": [
+    'id-length': [
       0
     ],
-    "id-match": [
+    'id-match': [
       0
     ],
     indent: [
       2,
       2
     ],
-    "jsx-quotes": [
+    'jsx-quotes': [
       2,
-      `prefer-double`
+      'prefer-double'
     ],
-    "key-spacing": [
+    'key-spacing': [
       2,
       {
         beforeColon: false,
         afterColon: true
       }
     ],
-    "keyword-spacing": [
-      // TODO this probably needs a bit of specific config
+    'keyword-spacing': [
       2
     ],
-    "linebreak-style": [
+    'linebreak-style': [
       2
     ],
-    "lines-around-comment": [
+    'lines-around-comment': [
       0
     ],
-    "max-depth": [
+    'max-depth': [
       2,
       5
     ],
-    "max-len": [
+    'max-len': [
       0
     ],
-    "max-nested-callbacks": [
+    'max-nested-callbacks': [
       2,
       2
     ],
-    "max-params": [
+    'max-params': [
       2,
       4
     ],
-    "max-statements": [
+    'max-statements': [
       2,
       30
     ],
-    "new-cap": [
+    'new-cap': [
       2,
       {
         newIsCap: true,
         capIsNew: true,
         capIsNewExceptions: [
-          `S`
+          'S'
         ]
       }
     ],
-    "new-parens": [
+    'new-parens': [
       2
     ],
-    "newline-after-var": [
+    'newline-after-var': [
       0
     ],
-    "newline-per-chained-call": [
-      // FIXME newline-per-chained-call doesn't seem ready for primetime
+    'newline-per-chained-call': [
+      // Generally, I'm in favor of this, but it does make a lot of code look
+      // weird. Let's hold off enabling it until there's a way to only enable it
+      // on chains with at least two function calls
       0
     ],
-    "no-array-constructor": [
+    'no-array-constructor': [
       2
     ],
-    "no-bitwise": [
+    'no-bitwise': [
       2
     ],
-    "no-continue": [
+    'no-continue': [
       2
     ],
-    "no-inline-comments": [
+    'no-inline-comments': [
       2
     ],
-    "no-lonely-if": [
+    'no-lonely-if': [
       2
     ],
-    "no-mixed-spaces-and-tabs": [
+    'no-mixed-spaces-and-tabs': [
       2
     ],
-    "no-multiple-empty-lines": [
+    'no-multiple-empty-lines': [
       2,
       {
         max: 2
       }
     ],
-    "no-negated-condition": [
+    'no-negated-condition': [
       2
     ],
-    "no-nested-ternary": [
+    'no-nested-ternary': [
       2
     ],
-    "no-new-object": [
+    'no-new-object': [
       2
     ],
-    "no-plusplus": [
+    'no-plusplus': [
       2,
       {
         allowForLoopAfterthoughts: true
       }
     ],
-    "no-restricted-syntax": [
+    'no-restricted-syntax': [
       0
     ],
-    "no-spaced-func": [
+    'no-spaced-func': [
       2
     ],
-    "no-ternary": [
+    'no-ternary': [
       0
     ],
-    "no-trailing-spaces": [
+    'no-trailing-spaces': [
       2
     ],
-    "no-underscore-dangle": [
+    'no-underscore-dangle': [
       0
     ],
-    "no-unneeded-ternary": [
+    'no-unneeded-ternary': [
       2
     ],
-    "no-whitespace-before-property": [
+    'no-whitespace-before-property': [
       2
     ],
-    "object-curly-spacing": [
+    'object-curly-spacing': [
       2,
-      `never`
+      'never'
     ],
-    "one-var": [
+    'one-var': [
       0
     ],
-    "one-var-declaration-per-line": [
+    'one-var-declaration-per-line': [
       0
     ],
-    "operator-assignment": [
+    'operator-assignment': [
       0
     ],
-    "operator-linebreak": [
+    'operator-linebreak': [
       2,
-      `none`
+      'none'
     ],
-    "padded-blocks": [
+    'padded-blocks': [
       0
     ],
-    "quote-props": [
+    'quote-props': [
       2,
-      `as-needed`
+      'as-needed'
     ],
     quotes: [
       2,
-      `single`
+      'single'
     ],
-    "require-jsdoc": [
+    'require-jsdoc': [
       2,
       {
         require: {
@@ -644,53 +647,54 @@ module.exports = {
     ],
     semi: [
       2,
-      `always`
+      'always'
     ],
-    "semi-spacing": [
+    'semi-spacing': [
       2,
       {
         before: false,
         after: true
       }
     ],
-    "sort-imports": [
-      // FIXME sort-imports doesn't seem ready for primetime
+    'sort-imports': [
+      // disabled in favor of eslint-plugin-import
       0
     ],
-    "sort-vars": [
+    'sort-vars': [
       2
     ],
-    "space-before-blocks": [
+    'space-before-blocks': [
       2,
-      `always`
+      'always'
     ],
-    "space-before-function-paren": [
+    'space-before-function-paren': [
       2,
-      `never`
+      'never'
     ],
-    "space-in-parens": [
+    'space-in-parens': [
       2,
-      `never`
+      'never'
     ],
-    "space-infix-ops": [
+    'space-infix-ops': [
       2
     ],
-    "space-unary-ops": [
+    'space-unary-ops': [
       2
     ],
-    "spaced-comment": [
+    'spaced-comment': [
       2,
-      `always`,
+      'always',
       {
         exceptions: [
-          `!`
-          // markers:
-          //   - "**"
-          //   - "**!"
+          '!'
+        ],
+        markers: [
+          '**',
+          '**!'
         ]
       }
     ],
-    "wrap-regex": [
+    'wrap-regex': [
       0
     ]
   }

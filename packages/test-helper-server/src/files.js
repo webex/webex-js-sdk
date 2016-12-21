@@ -9,7 +9,7 @@ var bodyParser = require('body-parser');
 var express = require('express');
 var fs = require('fs');
 var mkdirp = require('mkdirp');
-var multer = require(`multer`);
+var multer = require('multer');
 var path = require('path');
 var reflect = require('./reflect');
 var uuid = require('uuid');
@@ -71,7 +71,7 @@ var storage = multer.memoryStorage();
 var upload = multer({storage: storage});
 
 ['put', 'patch', 'post'].forEach(function(methodName) {
-  router[methodName]('/metadata', upload.array(`files`), function(req, res) {
+  router[methodName]('/metadata', upload.array('files'), function(req, res) {
     res
       .status(200)
       .json(req.files)

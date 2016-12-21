@@ -3,7 +3,7 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {assert} from 'chai';
+import {assert} from '@ciscospark/test-helper-chai';
 import {base64, retry} from '../..';
 
 // This file doesn't prove anything, but greatly simplifies tooling. Generally

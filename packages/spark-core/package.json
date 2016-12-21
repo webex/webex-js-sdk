@@ -16,6 +16,7 @@
     "envify": "^3.4.0",
     "extend-error": "git://github.com/ianwremmel/extend-error.git",
     "lodash": "^4.5.1",
+    "string": "^3.3.3",
     "uuid": "^2.0.1"
   },
   "devDependencies": {

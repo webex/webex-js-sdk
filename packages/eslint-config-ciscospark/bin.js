@@ -1,13 +1,15 @@
+'use strict';
+
 module.exports = {
-  "rules": {
-    "no-console": [
+  rules: {
+    'no-console': [
       0
     ],
-    "no-extra-parens": [
+    'no-extra-parens': [
       0
     ],
-    "no-process-exit": [
+    'no-process-exit': [
       0
     ]
   }
-}
+};

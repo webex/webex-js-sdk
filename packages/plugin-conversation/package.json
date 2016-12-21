@@ -20,6 +20,7 @@
     "gm": "^1.23.0",
     "lodash": "^4.5.1",
     "mime-types": "^2.1.12",
+    "string": "^3.3.3",
     "uuid": "^2.0.1"
   },
   "devDependencies": {

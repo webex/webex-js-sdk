@@ -1,6 +1,7 @@
 /* eslint quotes: [2, "single"] */
 /* eslint no-var: [0] */
 /* eslint camelcase: [0] */
+/* eslint import/no-commonjs: [0] */
 
 var dotenv = require('dotenv');
 var path = require('path');

@@ -4,11 +4,10 @@
  */
 
 import {oneFlight} from '@ciscospark/common';
-import {SparkPlugin} from '@ciscospark/spark-core';
 import {omit} from 'lodash';
 import util from 'util';
 import FeaturesModel from './features-model';
-import {persist, waitForValue} from '@ciscospark/spark-core';
+import {persist, waitForValue, SparkPlugin} from '@ciscospark/spark-core';
 
 const Device = SparkPlugin.extend({
   children: {

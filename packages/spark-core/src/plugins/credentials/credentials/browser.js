@@ -6,8 +6,7 @@
 
 /* eslint-env browser */
 
-import {base64} from '@ciscospark/common';
-import {oneFlight} from '@ciscospark/common';
+import {base64, oneFlight} from '@ciscospark/common';
 import {assign, clone, has, omit, pick} from 'lodash';
 import querystring from 'querystring';
 import url from 'url';

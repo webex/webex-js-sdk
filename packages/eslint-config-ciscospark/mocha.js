@@ -1,36 +1,38 @@
+'use strict';
+
 module.exports = {
   env: {
     mocha: true
   },
   plugins: [
-    `mocha`
+    'mocha'
   ],
   rules: {
-    "arrow-body-style": [
+    'arrow-body-style': [
       0
     ],
-    "func-names": [
+    'func-names': [
       0
     ],
-    "max-nested-callbacks": [
+    'max-nested-callbacks': [
       0
     ],
-    "no-console": [
+    'no-console': [
       0
     ],
-    "no-extra-parens": [
+    'no-extra-parens': [
       0
     ],
-    "no-invalid-this": [
+    'no-invalid-this': [
       0
     ],
-    "no-shadow": [
+    'no-shadow': [
       0
     ],
-    "require-jsdoc": [
+    'require-jsdoc': [
       0
     ],
-    "mocha/no-exclusive-tests": [
+    'mocha/no-exclusive-tests': [
       2
     ]
   }

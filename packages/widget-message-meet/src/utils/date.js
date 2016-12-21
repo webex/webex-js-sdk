@@ -10,7 +10,7 @@ import moment from 'moment';
  * @param {Object} time moment object for specific time
  * @returns {String} nicely formatted timestamp
  */
-export function formatDate(time) {
+export default function formatDate(time) {
   const now = moment();
   time = time || moment();
 

@@ -16,7 +16,8 @@
   },
   "devDependencies": {
     "@ciscospark/storage-adapter-spec": "^0.7.29",
-    "@ciscospark/test-helper-mocha": "^0.7.0"
+    "@ciscospark/test-helper-mocha": "^0.7.0",
+    "babel-polyfill": "^6.20.0"
   },
   "engines": {
     "node": ">=4"

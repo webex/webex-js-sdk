@@ -4,10 +4,9 @@
  * @private
  */
 
-import {assign} from 'lodash';
 import {SparkPlugin, Page} from '@ciscospark/spark-core';
 import Realtime from './realtime';
-import {defaults, chunk, pick} from 'lodash';
+import {assign, defaults, chunk, pick} from 'lodash';
 import promiseSeries from 'es6-promise-series';
 
 const Board = SparkPlugin.extend({

@@ -9,6 +9,7 @@ import CiscoSpark from '@ciscospark/spark-core';
 import {assert} from '@ciscospark/test-helper-chai';
 import testUsers from '@ciscospark/test-helper-test-users';
 import uuid from 'uuid';
+
 describe(`plugin-conversation`, function() {
   this.timeout(30000);
   describe(`mercury processing`, () => {

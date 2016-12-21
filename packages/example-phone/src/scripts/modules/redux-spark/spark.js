@@ -1,7 +1,9 @@
 /* eslint camelcase: [0] */
 
 import ciscospark from 'ciscospark';
+
 export {default as default} from 'ciscospark';
+
 window.spark = ciscospark;
 
 const l = window.location;
