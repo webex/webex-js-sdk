@@ -218,7 +218,7 @@ export class MessageMeetWidget extends Component {
     }
     const props = this.props;
     return conversation.participants.find((user) =>
-      user.id === props.user.currentUser.id
+      user.id !== props.user.currentUser.id
     );
   }
 

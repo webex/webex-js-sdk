@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/test-helper-mock-spark",
-  "version": "0.7.29",
+  "version": "0.7.30",
   "description": "",
   "license": "MIT",
   "main": "./src",
@@ -9,7 +9,7 @@
     "@ciscospark/test-helper-sinon": "^0.7.0",
     "ampersand-state": "^5.0.0",
     "es6-promise": "^3.2.1",
-    "lodash": "^4.6.1"
+    "lodash": "^4.13.1"
   },
   "devDependencies": {
     "babel-eslint": "^6.1.2",

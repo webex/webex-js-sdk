@@ -1,16 +1,6 @@
 @import './fonts.css';
 @import './scrollbar.css';
 
-html,
-body {
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  margin: 0;
-  overflow: hidden;
-  border: 0;
-}
-
 /* stylelint-disable selector-no-attribute */
 [data-toggle='spark-message-meet'],
 [data-toggle='spark-message-meet'] > div,

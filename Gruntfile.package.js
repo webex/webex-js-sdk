@@ -422,6 +422,7 @@ module.exports = function(grunt) {
   }
   catch(error) {
     // ignore
+    console.log(error);
   }
 
   /**

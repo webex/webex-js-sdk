@@ -8,90 +8,34 @@
 'use strict';
 
 var path = require('path');
-var webpackConfig = require('./webpack.config');
-var webpack = require('webpack');
 
 module.exports = function configGrunt(grunt) {
-  grunt.config('webpack',
+  grunt.config('shell',
     {
-      options: Object.assign({}, webpackConfig, {
-        hot: false,
-        inline: false,
-        keepalive: false,
-        progress: true,
-        watch: false
-      }),
-      build: {
-        debug: false,
-        progress: false,
-        devtool: 'source-map',
-        plugins: webpackConfig.plugins.concat(
-          new webpack.DefinePlugin({
-            'process.env': {
-              NODE_ENV: JSON.stringify("production")
-            }
-          }),
-          new webpack.optimize.OccurenceOrderPlugin(),
-          new webpack.optimize.UglifyJsPlugin({
-            sourceMap: true,
-            compress: {
-              warnings: false
-            }
-          })
-        )
+      options: {
+        execOptions: {
+          cwd: __dirname
+        }
       },
-      buildDemo: {
-        debug: false,
-        entry: './demo/app.js',
-        output: {
-          filename: 'bundle.js',
-          path: path.resolve(__dirname, 'dist', 'demo'),
-          sourceMapFilename: '[file].map'
-        },
-        progress: false,
-        devtool: 'source-map',
-        plugins: webpackConfig.plugins.concat(
-          new webpack.DefinePlugin({
-            'process.env': {
-              NODE_ENV: JSON.stringify("production")
-            }
-          }),
-          new webpack.optimize.OccurenceOrderPlugin(),
-          new webpack.optimize.UglifyJsPlugin({
-            sourceMap: true,
-            compress: {
-              warnings: false
-            }
-          })
-        )
+      build: {
+        command: 'npm run build'
       }
     });
   grunt.config('webpack-dev-server',
     {
       options: {
-        compress: true,
-        historyApiFallback: true,
         host: '0.0.0.0',
         hot: true,
-        inline: true,
         keepalive: true,
         progress: true,
         watch: true,
         port: parseInt(process.env.PORT || 8000),
-        webpack: webpackConfig
+        webpack: require('./webpack/webpack.dev')
       },
-      start: {
-        keepAlive: true,
-        webpack: {
-          devtool: 'eval-source-map',
-          debug: true
-        }
-      },
+      start: {},
       demo: {
         keepAlive: true,
           webpack: {
-            devtool: 'eval-source-map',
-            debug: true,
             entry: './demo/app.js'
           }
       }
@@ -99,7 +43,7 @@ module.exports = function configGrunt(grunt) {
 
   grunt.registerTask('build', [
     'clean:dist',
-    'webpack:build'
+    'shell:build'
   ]);
 
   grunt.registerTask('build-demo', [
@@ -109,7 +53,7 @@ module.exports = function configGrunt(grunt) {
 
   grunt.registerTask('test', ['jest']);
   grunt.registerTask('test-clean', ['clean:snapshots', 'jest']);
-  grunt.registerTask('start', ['webpack-dev-server:start']);
-  grunt.registerTask('start-demo', ['webpack-dev-server:demo']);
-  grunt.registerTask('default', ['start']);
+  grunt.registerTask('serve', ['webpack-dev-server:start']);
+  grunt.registerTask('serve-demo', ['webpack-dev-server:demo']);
+  grunt.registerTask('default', ['serve']);
 };
