@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/common",
-  "version": "0.7.0",
+  "version": "0.7.30",
   "description": "Common utilities for Cisco Spark",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -17,7 +17,7 @@
     "lodash": "^4.13.1"
   },
   "devDependencies": {
-    "@ciscospark/test-helper-chai": "^0.7.0",
+    "@ciscospark/test-helper-chai": "^0.7.30",
     "@ciscospark/test-helper-sinon": "^0.7.0",
     "ampersand-state": "^5.0.2",
     "babel-eslint": "^6.1.2",
