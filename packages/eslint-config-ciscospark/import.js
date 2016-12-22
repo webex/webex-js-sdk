@@ -2,9 +2,7 @@
 
 module.exports = {
   extends: './es2015.js',
-  parser: [
-    'babel-eslint'
-  ],
+  parser: 'babel-eslint',
   plugins: [
     'import'
   ],
