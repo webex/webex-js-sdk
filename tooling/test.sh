@@ -66,7 +66,7 @@ for PACKAGE in ${PACKAGES}; do
     continue
   fi
 
-  if ! echo ${PACKAGE} | grep -qc -v eslint-config-ciscospark ; then
+  if ! echo ${PACKAGE} | grep -qc -v eslint-config ; then
     continue
   fi
 

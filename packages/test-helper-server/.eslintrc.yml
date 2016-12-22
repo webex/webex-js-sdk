@@ -1,4 +1,4 @@
-extends: "ciscospark/es5"
+extends: "@ciscospark/eslint-config/es5"
 root: true
 rules:
   func-names:

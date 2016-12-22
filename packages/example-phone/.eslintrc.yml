@@ -1,4 +1,4 @@
-extends: "ciscospark/react"
+extends: "@ciscospark/eslint-config/react"
 rules:
   # FIXME temporarily disable TODO warnings
   no-warning-comments:

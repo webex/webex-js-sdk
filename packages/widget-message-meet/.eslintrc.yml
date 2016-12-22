@@ -1,4 +1,4 @@
-extends: "ciscospark/react"
+extends: "@ciscospark/eslint-config/react"
 env:
   jasmine: true
   jest: true

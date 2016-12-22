@@ -1,5 +1,5 @@
 {
-  "name": "eslint-config-ciscospark",
+  "name": "@ciscospark/eslint-config",
   "version": "0.7.0-alpha",
   "description": "",
   "main": "ciscospark.js",

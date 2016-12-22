@@ -1,1 +1,1 @@
-extends: "ciscospark/mocha"
+extends: "@ciscospark/eslint-config/mocha"
