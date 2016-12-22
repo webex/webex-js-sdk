@@ -15,6 +15,11 @@
   height: 100%;
 }
 
+.logo {
+  width: 30%;
+  margin: auto;
+}
+
 .demo-form {
   display: flex;
   padding: 10px;

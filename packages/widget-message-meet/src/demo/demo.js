@@ -63,7 +63,7 @@ class DemoApp extends Component {
     }
     return (
       <div className={classNames(`demo-wrapper`, styles.demoWrapper)}>
-        <div className="logo">
+        <div className={classNames(`logo`, styles.logo)}>
           <SparkLogo />
         </div>
         <form className={classNames(`demo-form`, styles.demoForm)}>
@@ -131,9 +131,5 @@ class DemoApp extends Component {
     );
   }
 }
-
-DemoApp.propTypes = {
-
-};
 
 export default DemoApp;

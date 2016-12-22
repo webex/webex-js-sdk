@@ -96,7 +96,7 @@ The easiest way to get the Spark Message and Meet Widget into your web site is t
   -  Add a `<link />` tag to include `main.css`
 1.  Create a container where you would like to embed the widget and add the following attributes to configure the widget:
   - `data-toggle="spark-message-meet"`: (required)
-  - `data-access-token`: Access token for the user account initiating the messaging session. For testing purposes you can use a developer access token from <https://developers.ciscospark.com>.
+  - `data-access-token`: (required) Access token for the user account initiating the messaging session. For testing purposes you can use a developer access token from <https://developers.ciscospark.com>.
   - Include one of the following attributes:
     - `data-to-person-email`: Email of the message recipient.
     - `data-to-person-id`: User Id of the message recipient.
