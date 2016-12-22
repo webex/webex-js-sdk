@@ -151,6 +151,10 @@ export default {
   getUserToken(scope) {
     // Note: this behaves much like oneFlight, but doesn't return a unique
     // promise. Since it recursively calls iteself, oneFlight is problematic.
+    if(this.isLoggingOut) {
+      return Promise.reject('credentials: Cannot get UserToken while logging out');
+    }
+
     if (this.isRefreshing) {
       return new Promise((resolve) => {
         this.once(`change:isRefreshing`, () => {
@@ -197,6 +201,7 @@ export default {
     return Reflect.apply(SparkPlugin.prototype.initialize, this, ...args);
   },
 
+  @whileInFlight(`isLoggingOut`)
   @waitForValue(`@`)
   logout() {
     return Promise.all(this.userTokens.map((token) => token.revoke()
@@ -216,10 +221,12 @@ export default {
   @oneFlight
   @waitForValue(`@`)
   refresh() {
+    if(this.isLoggingOut) {
+      return Promise.reject(new Error(`credentials: Cannot refresh while logging out`));
+    }
     this.logger.info(`credentials: refresh requested`);
 
     const supertoken = this.supertoken;
-
     const tokens = this.userTokens;
     this.userTokens = new TokenCollection();
     this.unset(`supertoken`);

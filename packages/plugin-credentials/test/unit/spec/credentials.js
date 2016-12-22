@@ -112,6 +112,12 @@ describe(`plugin-credentials`, () => {
         spark.credentials.userTokens.add(kmsToken);
       });
 
+      it(`not trigger refresh when logging out`, () =>  {
+        spark.credentials.isLoggingOut = true;
+        return assert.isRejected(spark.credentials.getUserToken(), `credentials: Cannot get UserToken while logging out`);
+        spark.credentials.isLoggingOut = false;
+      });
+
       it(`resolves with the token identified by the specified scopes`, () => Promise.all([
         assert.becomes(spark.credentials.getUserToken(apiScope), apiToken),
         assert.becomes(spark.credentials.getUserToken(`spark:kms`), kmsToken)
@@ -282,6 +288,13 @@ describe(`plugin-credentials`, () => {
     });
 
     describe(`#refresh()`, () => {
+
+      it(`not trigger refresh when logging out`, () =>  {
+        spark.credentials.isLoggingOut = true;
+        return assert.isRejected(spark.credentials.refresh(), `credentials: Cannot refresh while logging out`);
+        spark.credentials.isLoggingOut = false;
+      });
+
       it(`sets #isRefreshing`, () => {
         spark.set({
           credentials: {
