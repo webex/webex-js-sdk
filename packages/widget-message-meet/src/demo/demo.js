@@ -1,4 +1,4 @@
-/* eslint-disable react/no-set-state, global-require */
+/* eslint-disable react/no-set-state */
 import React, {Component} from 'react';
 import classNames from 'classnames';
 
