@@ -151,8 +151,8 @@ export default {
   getUserToken(scope) {
     // Note: this behaves much like oneFlight, but doesn't return a unique
     // promise. Since it recursively calls iteself, oneFlight is problematic.
-    if(this.isLoggingOut) {
-      return Promise.reject('credentials: Cannot get UserToken while logging out');
+    if (this.isLoggingOut) {
+      return Promise.reject(`credentials: Cannot get UserToken while logging out`);
     }
 
     if (this.isRefreshing) {
@@ -221,7 +221,7 @@ export default {
   @oneFlight
   @waitForValue(`@`)
   refresh() {
-    if(this.isLoggingOut) {
+    if (this.isLoggingOut) {
       return Promise.reject(new Error(`credentials: Cannot refresh while logging out`));
     }
     this.logger.info(`credentials: refresh requested`);

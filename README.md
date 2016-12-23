@@ -71,6 +71,18 @@ This is mostly useful for the the example app(s), but also comes in handy when d
 PACKAGE=PACKAGENAME npm run grunt:package -- serve
 ```
 
+### Running eslint on
+This is mostly useful for running the eslint on the packages
+
+```bash
+PACKAGE=PACKAGENAME npm run grunt:package -- eslint
+```
+
+For all packages
+```bash
+npm run grunt:concurrent -- eslint
+```
+
 ### Run unit tests in watch mode
 
 OK, this one's a handful and requires a global package, but there were too many possible variants to hardcode it any where.
@@ -78,6 +90,10 @@ OK, this one's a handful and requires a global package, but there were too many 
 ```bash
 npm install -g nodemon
 nodemon -w packages/PACKAGENAME/src -w packages/PACKAGENAME/test -x "UNIT_ONLY=true PACKAGE=PACKAGENAME npm run --silent grunt:package express:test test:node"
+```
+Turning on verbose mode by setting env variable
+```bash
+export ENABLE_VERBOSE_NETWORK_LOGGING=true
 ```
 
 ## Contribute
