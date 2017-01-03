@@ -10,6 +10,7 @@ import SparkLogo from '../components/spark-logo';
 import ExampleCode, {MODE_REACT, MODE_INLINE} from './example-code';
 
 import Root from '../root';
+import SparkOAuth from './oauth';
 
 
 class DemoApp extends Component {
@@ -126,6 +127,7 @@ class DemoApp extends Component {
           >
             {`Load Widget`}
           </button>
+          <SparkOAuth />
         </form>
       </div>
     );
