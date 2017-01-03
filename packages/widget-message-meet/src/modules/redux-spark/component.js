@@ -9,7 +9,7 @@ import {
   storeSparkInstance
 } from './actions';
 
-import {createSpark} from './spark';
+import createSpark from './spark';
 
 class SparkComponent extends Component {
 

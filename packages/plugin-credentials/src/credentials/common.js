@@ -7,12 +7,11 @@
 /* eslint camelcase: [0] */
 
 import {base64, makeStateDataType, oneFlight, retry, tap, whileInFlight} from '@ciscospark/common';
-import {grantErrors, SparkPlugin} from '@ciscospark/spark-core';
 import TokenCollection from '../token-collection';
 import Token from '../token';
 import {filterScope, sortScope} from '../scope';
 import {clone, has, isObject, pick} from 'lodash';
-import {persist, waitForValue} from '@ciscospark/spark-core';
+import {grantErrors, persist, waitForValue, SparkPlugin} from '@ciscospark/spark-core';
 import {deprecated} from 'core-decorators';
 import querystring from 'querystring';
 

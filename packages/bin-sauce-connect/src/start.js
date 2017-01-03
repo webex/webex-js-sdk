@@ -1,7 +1,7 @@
 import 'babel-polyfill';
-import {dotSauce, logFile, pidFile, readyFile} from './lib/paths';
-import _mkdirp from 'mkdirp';
 import denodeify from 'denodeify';
+import _mkdirp from 'mkdirp';
+import {dotSauce, logFile, pidFile, readyFile} from './lib/paths';
 import exists from './lib/exists';
 import spawn from './lib/spawn';
 import rm from './lib/rm';
@@ -64,7 +64,7 @@ function connect() {
     let interval;
     // cancel the connect process if the ready file hasn't been detected within
     // 60 seconds
-    const timer = setTimeout(async function failAfter() {
+    const timer = setTimeout(async () => {
       clearInterval(interval);
       if (!await exists(readyFile)) {
         console.log(`Failed to connect to Sauce Labs`);
@@ -75,7 +75,7 @@ function connect() {
     }, 60 * 1000);
 
     // Check for the ready file once per second forever until it exists
-    interval = setInterval(async function checkConnected() {
+    interval = setInterval(async () => {
       if (await exists(readyFile)) {
         console.log(`Connected to Sauce Labs`);
         clearTimeout(timer);
@@ -110,7 +110,7 @@ function blockUntilClosed() {
   return new Promise((resolve) => {
     // eslint-disable-next-line prefer-const
     let interval;
-    const timer = setTimeout(async function removeAfter() {
+    const timer = setTimeout(async () => {
       clearInterval(interval);
       if (await exists(pidFile)) {
         console.log(`pid file not removed; forcibly removing`);
@@ -119,7 +119,7 @@ function blockUntilClosed() {
       }
     }, 60 * 1000);
 
-    interval = setInterval(async function check() {
+    interval = setInterval(async () => {
       if (!await exists(pidFile)) {
         clearTimeout(timer);
         clearInterval(interval);

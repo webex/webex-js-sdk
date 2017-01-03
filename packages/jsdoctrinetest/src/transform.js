@@ -7,7 +7,7 @@
 import parse from './parse';
 import template from 'babel-template';
 import traverse from 'babel-traverse';
-import {generateSpec} from './mocha-template';
+import generateSpec from './mocha-template';
 
 import {
   build as buildLiteralAssertion,

@@ -4,7 +4,7 @@ import {bindActionCreators} from 'redux';
 import _ from 'lodash';
 
 import browserUtilities from '../../utils/browser';
-import {getUnsentNotifications} from '../../selectors/notifications';
+import getUnsentNotifications from '../../selectors/notifications';
 import {notificationSent, setNotificationPermission, setNotificationSupported} from '../../actions/notifications';
 
 const TIMEOUT_LENGTH = 10000;
@@ -34,6 +34,7 @@ export class Notifications extends Component {
    */
   requestPermission() {
     const {props} = this;
+    // eslint-disable-next-line import/no-named-as-default-member
     return browserUtilities.requestPermissionForNotifications((permission) => props.setNotificationPermission(permission));
   }
 
@@ -44,6 +45,7 @@ export class Notifications extends Component {
    */
   checkSupported() {
     const {props} = this;
+    // eslint-disable-next-line import/no-named-as-default-member
     if (!props.isSupported && browserUtilities.isNotificationSupported()) {
       props.setNotificationSupported(true);
     }
@@ -56,12 +58,15 @@ export class Notifications extends Component {
    */
   displayNotifications() {
     const {props} = this;
+    // eslint-disable-next-line import/no-named-as-default-member
     const hasPermission = props.permission === browserUtilities.PERMISSION_GRANTED;
     if (props.notifications.length > 0) {
       props.notifications.forEach((notification) => {
         const {username, message, avatar, notificationId} = notification;
+        // eslint-disable-next-line import/no-named-as-default-member
         if (hasPermission && browserUtilities.isBrowserHidden()) {
           // Actually display notification
+          // eslint-disable-next-line import/no-named-as-default-member
           browserUtilities.spawnNotification(message, avatar, username, TIMEOUT_LENGTH);
         }
         props.notificationSent(notificationId);

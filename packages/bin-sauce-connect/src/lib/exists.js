@@ -1,5 +1,5 @@
-import denodeify from 'denodeify';
 import fs from 'fs';
+import denodeify from 'denodeify';
 
 const stat = denodeify(fs.stat);
 

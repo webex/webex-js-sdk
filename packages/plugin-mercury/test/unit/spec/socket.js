@@ -7,8 +7,7 @@ import {forEach} from 'lodash';
 import {assert} from '@ciscospark/test-helper-chai';
 import MockWebSocket from '@ciscospark/test-helper-mock-web-socket';
 import sinon from '@ciscospark/test-helper-sinon';
-import {AuthorizationError, ConnectionError, Socket} from '../..';
-import {config} from '../..';
+import {AuthorizationError, config, ConnectionError, Socket} from '../..';
 import uuid from 'uuid';
 import lolex from 'lolex';
 
