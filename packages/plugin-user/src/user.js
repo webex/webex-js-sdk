@@ -4,6 +4,7 @@
  * @private
  */
 
+import {deprecated} from 'core-decorators';
 import {isArray} from 'lodash';
 import {oneFlight, patterns, tap} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
@@ -24,6 +25,29 @@ const User = SparkPlugin.extend({
       },
       type: `any`
     }
+  },
+
+  /**
+   * Finishes the signup process for a user that signed up on a mobile device
+   * @param {Object} options
+   * @param {string} options.encryptedQueryString
+   * @returns {Promise<Object>}
+   */
+  activate(options) {
+    options = options || {};
+
+    if (!options.encryptedQueryString) {
+      throw new Error(`\`options.encryptedQueryString\` is required`);
+    }
+
+    return this.request({
+      service: `atlas`,
+      resource: `users/email/activate`,
+      method: `POST`,
+      body: options,
+      requiresClientCredentials: true
+    })
+      .then((res) => res.body);
   },
 
   /**
@@ -143,6 +167,11 @@ const User = SparkPlugin.extend({
     return this.store.add(user);
   },
 
+  @deprecated(`Use User#verify()`)
+  register(...args) {
+    return this.verify(...args);
+  },
+
   /**
    * Updates the current user's display name
    * @param {Object} options
@@ -159,6 +188,25 @@ const User = SparkPlugin.extend({
       service: `conversation`,
       resource: `users/user`,
       body: options
+    })
+      .then((res) => res.body);
+  },
+
+  /**
+   * Determines if the speicfied user needs to signup or can signin
+   * @param {Object} options
+   * @param {string} options.email
+   * @returns {Promise<Object>}
+   */
+  verify(options) {
+    options = Object.assign({}, this.config.verifyDefaults, options);
+
+    return this.request({
+      service: `atlas`,
+      resource: `users/email/verify`,
+      method: `post`,
+      body: options,
+      requiresClientCredentials: true
     })
       .then((res) => res.body);
   },

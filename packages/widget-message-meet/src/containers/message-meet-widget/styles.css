@@ -4,6 +4,7 @@
   font-weight: 200;
   background: #fff;
   border: 1px solid #ccc;
+  box-sizing: border-box;
 }
 
 .banner {
@@ -34,18 +35,6 @@
 .message-composer-wrapper {
   min-height: 0;
   flex: 0 0 auto;
-}
-
-.loading {
-  margin: 30px auto;
-  text-align: center;
-}
-
-.spinner-container {
-  position: relative;
-  width: 25px;
-  height: 25px;
-  margin: 10px auto;
 }
 
 .dropzone {

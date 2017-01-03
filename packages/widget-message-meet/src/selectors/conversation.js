@@ -14,7 +14,7 @@ export const getMostRecentReadReceipts = createSelector(
   (activities, participants) => {
     const activity = _.last(activities);
     return participants.filter((participant) =>
-      participant.roomProperties.lastSeenActivityUUID === activity.id
+      participant.roomProperties && participant.roomProperties.lastSeenActivityUUID === activity.id
     );
   }
 );

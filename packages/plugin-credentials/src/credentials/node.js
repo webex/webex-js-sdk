@@ -14,4 +14,3 @@ import common from './common';
 const Credentials = SparkPlugin.extend(common);
 
 export default Credentials;
-export {apiScope} from './common';

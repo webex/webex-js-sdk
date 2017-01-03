@@ -13,6 +13,7 @@ import testUsers from '@ciscospark/test-helper-test-users';
 import {find, map} from 'lodash';
 import uuid from 'uuid';
 import fh from '@ciscospark/test-helper-file';
+import {skipInNode} from '@ciscospark/test-helper-mocha';
 
 describe(`plugin-conversation`, function() {
   this.timeout(30000);
@@ -262,6 +263,80 @@ describe(`plugin-conversation`, function() {
           assert.lengthOf(activity.object.mentions.items, 1);
           assert.equal(activity.object.mentions.items[0].id, mccoy.id);
         }));
+
+      // disable until helper-html has node support
+      skipInNode(describe)(`when there are html tags in rich messages`, () => {
+        const allTagsUsedInThisTest = {
+          div: [],
+          b: [],
+          span: []
+        };
+
+        [
+          {
+            it: `allows allowed outbound and inbound tags`,
+            allowedOutboundTags: {div: []},
+            allowedInboundTags: {div: []},
+            outboundMessage: `<div>HELLO</div>`,
+            outboundFileredMessage: `<div>HELLO</div>`,
+            inboundMessage: `<div>HELLO</div>`
+          },
+          {
+            it: `filters disallowed outbound tags`,
+            allowedOutboundTags: {},
+            allowedInboundTags: {},
+            outboundMessage: `<div><b>HELLO</b></div>`,
+            outboundFileredMessage: `HELLO`,
+            inboundMessage: `HELLO`
+          },
+          {
+            it: `filters disallowed inbound tags`,
+            allowedOutboundTags: {div: [], b: []},
+            allowedInboundTags: {b: []},
+            outboundMessage: `<div><b>HELLO</b></div>`,
+            outboundFileredMessage: `<div><b>HELLO</b></div>`,
+            inboundMessage: `<b>HELLO</b>`
+          },
+          {
+            it: `filters the correct outbound tags`,
+            allowedOutboundTags: {div: [], span: []},
+            allowedInboundTags: {},
+            outboundMessage: `<div><b>HELLO</b><span> it's me</span></div>`,
+            outboundFileredMessage: `<div>HELLO<span> it's me</span></div>`,
+            inboundMessage: `HELLO it's me`
+          },
+          {
+            it: `filters the correct inbound and outbound tags`,
+            allowedOutboundTags: {div: [], span: []},
+            allowedInboundTags: {span: []},
+            outboundMessage: `<div><b>HELLO</b><span> it's me</span></div>`,
+            outboundFileredMessage: `<div>HELLO<span> it's me</span></div>`,
+            inboundMessage: `HELLO<span> it's me</span>`
+          }
+        ].forEach((def) => {
+          it(def.it, () => {
+            spark.config.conversation.allowedOutboundTags = def.allowedOutboundTags;
+            // since responses to spock's post will count as 'inbound', we
+            // enable all the tags for allowedInboundTags so that we know
+            // the message is filtered by only the outbound rules
+            spark.config.conversation.allowedInboundTags = allTagsUsedInThisTest;
+            return spark.conversation.post(conversation, {
+              displayName: message,
+              content: def.outboundMessage
+            })
+            .then((activity) => {
+              assert.equal(activity.object.content, def.outboundFileredMessage);
+              mccoy.spark.config.conversation.allowedInboundTags = def.allowedInboundTags;
+              return mccoy.spark.conversation.get(conversation, {activitiesLimit: 1});
+            })
+            .then((convo) => {
+              // check latest message
+              const activity = find(convo.activities.items, {verb: `post`});
+              assert.equal(activity.object.content, def.inboundMessage);
+            });
+          });
+        });
+      });
     });
 
     describe(`#update()`, () => {

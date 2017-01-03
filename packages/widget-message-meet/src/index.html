@@ -5,6 +5,13 @@
     <meta charset="utf8"/>
   </head>
   <body>
-    <main id="main" data-toggle="spark-message-meet"></main>
+    <div style="width: 500px; height: 500px;">
+      <main
+        class="spark-message-meet"
+        data-toggle="spark-message-meet"
+        data-access-token="<%= process.env.CISCOSPARK_ACCESS_TOKEN %>"
+        data-to-person-email="<%= process.env.TO_PERSON_EMAIL %>"
+      />
+    </div>
   </body>
 </html>

@@ -10,48 +10,38 @@
 var path = require('path');
 
 module.exports = function configGrunt(grunt) {
-  grunt.config('webpack',
+  grunt.config('shell',
     {
-      options: Object.assign({}, require('./webpack.config'), {
-        hot: false,
-        inline: false,
-        keepalive: false,
-        progress: true,
-        watch: false
-      }),
+      options: {
+        execOptions: {
+          cwd: __dirname
+        }
+      },
       build: {
-        progress: false
+        command: 'npm run build'
       }
     });
   grunt.config('webpack-dev-server',
     {
       options: {
-        compress: true,
-        historyApiFallback: true,
         host: '0.0.0.0',
         hot: true,
-        inline: true,
         keepalive: true,
         progress: true,
         watch: true,
         port: parseInt(process.env.PORT || 8000),
-        webpack: require('./webpack.config')
+        webpack: require('./webpack/webpack.dev')
       },
-      start: {
-        keepAlive: true,
-        webpack: {
-          devtool: 'eval',
-          debug: true
-        }
-      }
+      start: {}
     });
 
   grunt.registerTask('build', [
-    'webpack:build'
+    'clean:dist',
+    'shell:build'
   ]);
 
   grunt.registerTask('test', ['jest']);
   grunt.registerTask('test-clean', ['clean:snapshots', 'jest']);
-  grunt.registerTask('start', ['webpack-dev-server:start']);
-  grunt.registerTask('default', ['start']);
+  grunt.registerTask('serve', ['webpack-dev-server:start']);
+  grunt.registerTask('default', ['serve']);
 };

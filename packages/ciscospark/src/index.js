@@ -6,5 +6,5 @@
 
 // Reminder: babel-polyfill can't go here because babel puts it after the
 // exports
-export {default as default, init} from './ciscospark';
+export {default as default} from './ciscospark';
 export {default as config} from './config';

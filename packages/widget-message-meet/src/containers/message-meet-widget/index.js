@@ -38,7 +38,7 @@ import {constructFiles} from '../../utils/files';
 import TitleBar from '../../components/title-bar';
 import ScrollingActivity from '../scrolling-activity';
 import ScrollToBottomButton from '../../components/scroll-to-bottom-button';
-import Spinner from '../../components/spinner';
+import LoadingScreen from '../../components/loading-screen';
 import MessageComposer from '../message-composer';
 import Notifications from '../notifications';
 
@@ -63,6 +63,7 @@ export class MessageMeetWidget extends Component {
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleFileDrop = this.handleFileDrop.bind(this);
     this.handleScroll = _.debounce(this.handleScroll.bind(this), 150);
+    this.renderConversation = this.renderConversation.bind(this);
   }
 
   componentWillReceiveProps(nextProps) {
@@ -82,10 +83,10 @@ export class MessageMeetWidget extends Component {
 
     if (spark && connected && authenticated && registered) {
       if (!user.currentUser && !user.isFetchingCurrentUser) {
-        this.props.fetchCurrentUser(spark);
+        nextProps.fetchCurrentUser(spark);
       }
       if (!conversation.id && !conversation.isFetching) {
-        this.props.createConversationWithUser(toPersonId || toPersonEmail, spark);
+        nextProps.createConversationWithUser(toPersonId || toPersonEmail, spark);
       }
     }
 
@@ -144,7 +145,7 @@ export class MessageMeetWidget extends Component {
             activityList.scrollToBottom();
           }
           // Send notification of new message
-          this.props.createNotification(lastActivityFromThis.url, NOTIFICATION_TYPE_POST);
+          props.createNotification(lastActivityFromThis.url, NOTIFICATION_TYPE_POST);
         }
       }
       else if (prevProps.conversation.activities.length === 0) {
@@ -170,7 +171,7 @@ export class MessageMeetWidget extends Component {
     const {props} = this;
     const prevConversation = props.conversation;
     if (!conversation.mercuryState.isListening) {
-      this.props.listenToMercuryActivity(conversation.id, spark);
+      props.listenToMercuryActivity(conversation.id, spark);
     }
     if (!flags.hasFetched && !flags.isFetching) {
       nextProps.fetchFlags(spark);
@@ -203,7 +204,7 @@ export class MessageMeetWidget extends Component {
         const fetching = user.avatarsInFlight.indexOf(userId) !== -1;
         return !fetched || !fetching;
       });
-    userIds.forEach((userId) => this.props.fetchAvatarForUserId(userId, spark));
+    userIds.forEach((userId) => props.fetchAvatarForUserId(userId, spark));
   }
 
   /**
@@ -218,7 +219,7 @@ export class MessageMeetWidget extends Component {
     }
     const props = this.props;
     return conversation.participants.find((user) =>
-      user.id === props.user.currentUser.id
+      user.id !== props.user.currentUser.id
     );
   }
 
@@ -235,22 +236,22 @@ export class MessageMeetWidget extends Component {
       widget
     } = props;
 
-    this.props.setScrollPosition({scrollTop: this.activityList.getScrollTop()});
+    props.setScrollPosition({scrollTop: this.activityList.getScrollTop()});
 
     const lastActivity = _.last(conversation.activities);
     if (this.activityList.isScrolledToBottom()) {
-      this.props.showScrollToBottomButton(false);
-      this.props.updateHasNewMessage(false);
+      props.showScrollToBottomButton(false);
+      props.updateHasNewMessage(false);
       if (conversation.lastAcknowledgedActivityId !== lastActivity.id) {
-        this.props.acknowledgeActivityOnServer(conversation, lastActivity, spark);
+        props.acknowledgeActivityOnServer(conversation, lastActivity, spark);
       }
     }
     else if (!widget.showScrollToBottomButton) {
-      this.props.showScrollToBottomButton(true);
+      props.showScrollToBottomButton(true);
     }
 
     if (this.activityList.isScrolledToTop() && conversation.activities[0].verb !== `create`) {
-      this.props.loadPreviousMessages(conversation.id, _.first(conversation.activities), spark);
+      props.loadPreviousMessages(conversation.id, _.first(conversation.activities), spark);
     }
   }
 
@@ -273,10 +274,10 @@ export class MessageMeetWidget extends Component {
     if (activity) {
       const foundFlag = flags.flags.find((flag) => flag.activityUrl === activity.url);
       if (foundFlag) {
-        this.props.removeFlagFromServer(foundFlag, spark);
+        props.removeFlagFromServer(foundFlag, spark);
       }
       else {
-        this.props.flagActivity(activity, spark);
+        props.flagActivity(activity, spark);
       }
 
     }
@@ -290,7 +291,8 @@ export class MessageMeetWidget extends Component {
    * @returns {undefined}
    */
   handleActivityDelete(activityId) {
-    this.props.confirmDeleteActivity(activityId);
+    const props = this.props;
+    props.confirmDeleteActivity(activityId);
   }
 
   /**
@@ -308,10 +310,10 @@ export class MessageMeetWidget extends Component {
     const activityId = widget.deletingActivityId;
     const activity = conversation.activities.find((act) => act.id === activityId);
     if (activity) {
-      this.props.deleteActivityAndDismiss(conversation, activity, spark);
+      props.deleteActivityAndDismiss(conversation, activity, spark);
     }
     else {
-      this.props.hideDeleteModal();
+      props.hideDeleteModal();
     }
   }
 
@@ -321,7 +323,8 @@ export class MessageMeetWidget extends Component {
    * @returns {undefined}
    */
   handleCancelActivityDelete() {
-    this.props.hideDeleteModal();
+    const props = this.props;
+    props.hideDeleteModal();
   }
 
   /**
@@ -339,16 +342,16 @@ export class MessageMeetWidget extends Component {
       spark
     } = props;
     const files = constructFiles(acceptedFiles);
-    this.props.addFiles(conversation, activity, files, spark);
+    props.addFiles(conversation, activity, files, spark);
   }
 
-
   /**
-   * Render
+   * Renders the conversation area of the widget
    *
-   * @returns {Object}
+   * @return {object}
    */
-  render() {
+
+  renderConversation() {
     const props = this.props;
     const {
       activity,
@@ -366,139 +369,135 @@ export class MessageMeetWidget extends Component {
       currentUser
     } = user;
 
-    let main = ( // eslint-disable-line no-extra-parens
-      <div className={classNames(`loading`, styles.loading)}>
-        <FormattedMessage
-          defaultMessage={`Connecting`}
-          id={`connecting`}
-        />{`...`}
-        <div className={classNames(`spinner-container`, styles.spinnerContainer)}>
-          <Spinner />
-        </div>
-      </div>
-    );
+    const {
+      activities,
+      isLoadingHistoryUp,
+      lastAcknowledgedActivityId
+    } = conversation;
 
-    if (conversation) {
-      const {
-        activities,
-        isLoaded,
-        isLoadingHistoryUp,
-        lastAcknowledgedActivityId
-      } = conversation;
+    let scrollButton;
+    if (widget.showScrollToBottomButton) {
+      const newMessages = {
+        id: `newMessages`,
+        defaultMessage: `New Messages`
+      };
+      const label = widget.hasNewMessage ? formatMessage(newMessages) : null;
+      scrollButton = <ScrollToBottomButton label={label} onClick={this.handleScrollToBottom} />;
+    }
 
-      let scrollButton;
-      if (props.widget.showScrollToBottomButton) {
-        const newMessages = {
-          id: `newMessages`,
-          defaultMessage: `New Messages`
-        };
-        const label = widget.hasNewMessage ? formatMessage(newMessages) : null;
-        scrollButton = <ScrollToBottomButton label={label} onClick={this.handleScrollToBottom} />;
-      }
+    let deleteAlert;
+    if (props.widget.showAlertModal) {
+      const alertMessages = {
+        title: formatMessage({
+          id: `delete`,
+          defaultMessage: `Delete`
+        }),
+        body: formatMessage({
+          id: `confirmDeletingMessage`,
+          defaultMessage: `Are you sure you want to delete this message?`
+        }),
+        actionButtonText: formatMessage({
+          id: `delete`,
+          defaultMessage: `Delete`
+        }),
+        cancelButtonText: formatMessage({
+          id: `cancel`,
+          defaultMessage: `Cancel`
+        })
+      };
+      deleteAlert = ( // eslint-disable-line no-extra-parens
+        <ConfirmationModal
+          messages={alertMessages}
+          onClickActionButton={this.handleConfirmActivityDelete}
+          onClickCancelButton={this.handleCancelActivityDelete}
+        />
+      );
+    }
 
-      let deleteAlert;
-      if (props.widget.showAlertModal) {
-        const alertMessages = {
-          title: formatMessage({
-            id: `delete`,
-            defaultMessage: `Delete`
-          }),
-          body: formatMessage({
-            id: `confirmDeletingMessage`,
-            defaultMessage: `Are you sure you want to delete this message?`
-          }),
-          actionButtonText: formatMessage({
-            id: `delete`,
-            defaultMessage: `Delete`
-          }),
-          cancelButtonText: formatMessage({
-            id: `cancel`,
-            defaultMessage: `Cancel`
-          })
-        };
-        deleteAlert = ( // eslint-disable-line no-extra-parens
-          <ConfirmationModal
-            messages={alertMessages}
-            onClickActionButton={this.handleConfirmActivityDelete}
-            onClickCancelButton={this.handleCancelActivityDelete}
+    const toUser = this.getUserFromConversation(conversation);
+    const toUserAvatar = avatars[toUser.id];
+    const isTyping = indicators.typing.length > 0;
+    const {displayName} = toUser;
+    const placeholderMessage = {
+      id: `sendAMessageToRoom`,
+      defaultMessage: `Send a message to {displayName}`,
+      description: `Placeholder value to show in message input field`
+    };
+    const messagePlaceholder = formatMessage(placeholderMessage, {displayName});
+
+    const dropzoneProps = {
+      activeClassName: styles.activeDropzone,
+      className: styles.dropzone,
+      disableClick: true,
+      disablePreview: true,
+      onDrop: this.handleFileDrop
+    };
+
+    return (
+      <div className={classNames(`widget-message-meet-inner`, styles.widgetMessageMeetInner)}>
+        <div className={classNames(`title-bar-wrapper`, styles.titleBarWrapper)}>
+          <TitleBar
+            connectionStatus={sparkState}
+            displayName={displayName}
+            image={toUserAvatar}
           />
-        );
-      }
-
-      if (isLoaded) {
-        const toUser = this.getUserFromConversation(conversation);
-        const toUserAvatar = avatars[toUser.id];
-        const isTyping = indicators.typing.length > 0;
-        const {displayName} = toUser;
-        const placeholderMessage = {
-          id: `sendAMessageToRoom`,
-          defaultMessage: `Send a message to {displayName}`,
-          description: `Placeholder value to show in message input field`
-        };
-        const messagePlaceholder = formatMessage(placeholderMessage, {displayName});
-
-        const dropzoneProps = {
-          activeClassName: styles.activeDropzone,
-          className: styles.dropzone,
-          disableClick: true,
-          disablePreview: true,
-          onDrop: this.handleFileDrop
-        };
-
-        main = ( // eslint-disable-line no-extra-parens
-          <div className={classNames(`widget-message-meet-inner`, styles.widgetMessageMeetInner)}>
-            <div className={classNames(`title-bar-wrapper`, styles.titleBarWrapper)}>
-              <TitleBar
-                connectionStatus={sparkState}
-                displayName={displayName}
-                image={toUserAvatar}
+        </div>
+        <Dropzone {...dropzoneProps}>
+          <div className={classNames(`activity-list-wrapper`, styles.activityListWrapper)}>
+            <ScrollingActivity
+              activities={activities}
+              avatars={avatars}
+              currentUserId={currentUser.id}
+              flags={flags.flags}
+              isLoadingHistoryUp={isLoadingHistoryUp}
+              isTyping={isTyping}
+              lastAcknowledgedActivityId={lastAcknowledgedActivityId}
+              onActivityDelete={this.handleActivityDelete}
+              onActivityFlag={this.handleActivityFlag}
+              onScroll={this.handleScroll}
+              ref={this.getActivityList}
+            />
+            {scrollButton}
+          </div>
+          <div className={classNames(`message-composer-wrapper`, styles.messageComposerWrapper)}>
+            <MessageComposer
+              conversation={conversation}
+              onSubmit={this.handleSubmit}
+              placeholder={messagePlaceholder}
+              spark={spark}
+            />
+          </div>
+          {deleteAlert}
+          <div className={classNames(`dropzone-message`, styles.dropzoneMessage)}>
+            <div className={classNames(`dropzone-message-title`, styles.dropzoneTitle)}>
+              <FormattedMessage
+                defaultMessage="Drag and drop your files here"
+                id="dropFilesHere"
               />
             </div>
-            <Dropzone {...dropzoneProps}>
-              <div className={classNames(`activity-list-wrapper`, styles.activityListWrapper)}>
-                <ScrollingActivity
-                  activities={activities}
-                  avatars={avatars}
-                  currentUserId={currentUser.id}
-                  flags={flags.flags}
-                  inFlightActivity={activity.getIn([`status`, `isSending`])}
-                  isLoadingHistoryUp={isLoadingHistoryUp}
-                  isTyping={isTyping}
-                  lastAcknowledgedActivityId={lastAcknowledgedActivityId}
-                  onActivityDelete={this.handleActivityDelete}
-                  onActivityFlag={this.handleActivityFlag}
-                  onScroll={this.handleScroll}
-                  ref={this.getActivityList}
-                />
-                {scrollButton}
-              </div>
-              <div className={classNames(`message-composer-wrapper`, styles.messageComposerWrapper)}>
-                <MessageComposer
-                  conversation={conversation}
-                  onSubmit={this.handleSubmit}
-                  placeholder={messagePlaceholder}
-                  spark={spark}
-                />
-              </div>
-              {deleteAlert}
-              <div className={classNames(`dropzone-message`, styles.dropzoneMessage)}>
-                <div className={classNames(`dropzone-message-title`, styles.dropzoneTitle)}>
-                  <FormattedMessage
-                    defaultMessage={`Drag and drop your files here`}
-                    id={`dropFilesHere`}
-                  />
-                </div>
-              </div>
-            </Dropzone>
           </div>
-        );
-      }
-    }
+        </Dropzone>
+      </div>
+    );
+  }
+
+  /**
+   * Render
+   *
+   * @returns {Object}
+   */
+  render() {
+    const props = this.props;
+    const {
+      conversation
+    } = props;
+
+    const widgetInner = conversation && conversation.isLoaded ? this.renderConversation() : <LoadingScreen />;
 
     return (
       <div className={classNames(`widget-message-meet`, styles.widgetMessageMeet)}>
         <div className={classNames(`banner`, styles.banner)} />
-        {main}
+        {widgetInner}
         <Notifications />
       </div>
     );
@@ -506,25 +505,9 @@ export class MessageMeetWidget extends Component {
 }
 
 MessageMeetWidget.propTypes = {
-  acknowledgeActivityOnServer: PropTypes.func.isRequired,
-  addFiles: PropTypes.func.isRequired,
-  confirmDeleteActivity: PropTypes.func.isRequired,
-  createConversationWithUser: PropTypes.func.isRequired,
-  createNotification: PropTypes.func.isRequired,
-  deleteActivityAndDismiss: PropTypes.func.isRequired,
-  fetchAvatarForUserId: PropTypes.func.isRequired,
-  fetchCurrentUser: PropTypes.func.isRequired,
-  flagActivity: PropTypes.func.isRequired,
-  hideDeleteModal: PropTypes.func.isRequired,
   intl: intlShape.isRequired,
-  listenToMercuryActivity: PropTypes.func.isRequired,
-  loadPreviousMessages: PropTypes.func.isRequired,
-  removeFlagFromServer: PropTypes.func.isRequired,
-  setScrollPosition: PropTypes.func.isRequired,
-  showScrollToBottomButton: PropTypes.func.isRequired,
   toPersonEmail: PropTypes.string,
-  toPersonId: PropTypes.string,
-  updateHasNewMessage: PropTypes.func.isRequired
+  toPersonId: PropTypes.string
 };
 
 function mapStateToProps(state) {

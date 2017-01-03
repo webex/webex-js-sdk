@@ -66,6 +66,50 @@ var PersistenceService = SparkBase.extend({
       }.bind(this));
   },
 
+
+  /**
+   * Set a snapshot image for a board
+   *
+   * @param {Conversation} conversation - the current conversation that the board belongs
+   * @param {Board~Channel} channel
+   * @param {File} image
+   * @returns {Promise<Board~Channel>}
+   */
+  setSnapshotImage: function setSnapshotImage(conversation, channel, image) {
+    var imageScr;
+    return this.spark.board._uploadImage(conversation, image)
+      .then(function encryptScr(scr) {
+        imageScr = scr;
+        return this.spark.encryption.encryptScr(imageScr, conversation.defaultActivityEncryptionKeyUrl);
+      }.bind(this))
+      .then(function attachEncryptedScr(encryptedScr) {
+        imageScr.encryptedScr = encryptedScr;
+        return encryptedScr;
+      }.bind(this))
+      .then(function setSnapshotInChannel() {
+        var imageBody = {
+          image: {
+            url: imageScr.loc,
+            height: image.height || 900,
+            width: image.width || 1600,
+            mimeType: image.type || 'image/png',
+            scr: imageScr.encryptedScr,
+            encryptionKeyUrl: conversation.defaultActivityEncryptionKeyUrl,
+            fileSize: image.size
+          }
+        };
+        return this.spark.request({
+          method: 'PATCH',
+          api: 'board',
+          resource: '/channels/' + channel.channelId,
+          body: imageBody
+        });
+      }.bind(this))
+      .then(function returnSnapshotRes(res) {
+        return res.body;
+      });
+  },
+
   /**
    * Creates a Channel
    * @memberof Board.PersistenceService

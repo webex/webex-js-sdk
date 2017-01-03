@@ -15,6 +15,11 @@ var _ = require('lodash');
 var sinon = require('@ciscospark/test-helper-sinon');
 var State = require('ampersand-state');
 
+/**
+ * Mock Spark constructor
+ * @param {Object} options
+ * @returns {MockSpark}
+ */
 function makeSpark(options) {
   var requestPromise = Promise.resolve({statusCode: 200, body: {}});
   var uploadPromise = Promise.resolve({});
@@ -23,6 +28,11 @@ function makeSpark(options) {
     return requestPromise;
   };
 
+  /**
+   * produces a mock storage object
+   * @param {Object} data
+   * @returns {Storage}
+   */
   function makeMockStorage(data) {
 
     data = data || {};
@@ -38,6 +48,7 @@ function makeSpark(options) {
       del: function del(namespace, key) {
         this.data = this.data || data;
         this.data[namespace] = this.data[namespace] || {};
+        // eslint-disable-next-line prefer-reflect
         delete this.data[namespace][key];
       },
       get: function get(namespace, key) {
@@ -80,16 +91,16 @@ function makeSpark(options) {
           redirect_uri: 'http://example.com',
           // eslint-disable-next-line camelcase
           scope: 'scope:one'
-        }
+        },
+        // eslint-disable-next-line camelcase
+        client_id: 'fake',
+        // eslint-disable-next-line camelcase
+        client_secret: 'fake',
+        // eslint-disable-next-line camelcase
+        redirect_uri: 'http://example.com',
+        // eslint-disable-next-line camelcase
+        scope: 'scope:one'
       },
-      // eslint-disable-next-line camelcase
-      client_id: 'fake',
-      // eslint-disable-next-line camelcase
-      client_secret: 'fake',
-      // eslint-disable-next-line camelcase
-      redirect_uri: 'http://example.com',
-      // eslint-disable-next-line camelcase
-      scope: 'scope:one',
       conversation: {
         allowedTags: {
           'spark-mention': ['data-object-type', 'data-object-id', 'data-object-url']

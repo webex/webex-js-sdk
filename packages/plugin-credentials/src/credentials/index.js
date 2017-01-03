@@ -5,6 +5,5 @@
  */
 
 export {
-  apiScope,
   default as default
 } from './node';

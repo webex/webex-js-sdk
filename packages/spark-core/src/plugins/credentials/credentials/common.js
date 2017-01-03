@@ -410,14 +410,13 @@ export default {
     return Reflect.apply(SparkPlugin.prototype.set, this, arguments);
   },
 
-  buildLogoutUrl() {
+  buildLogoutUrl(options) {
     // eslint doesn't yet handle nested strings quite right
     /* eslint quotes: [0] */
-    return `${this.config.logoutUri}?${querystring.stringify({
-      type: 'logout',
+    return `${this.config.logoutUri}?${querystring.stringify(Object.assign({
       goto: this.config.oauth.redirect_uri,
       service: this.config.oauth.service
-    })}`;
+    }, options))}`;
   },
 
   buildOAuthUrl(options) {

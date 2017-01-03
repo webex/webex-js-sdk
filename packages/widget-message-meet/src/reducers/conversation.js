@@ -73,7 +73,10 @@ export default function reduceConversation(state = {
   mercuryState: {
     isListening: false
   },
-  participants: []
+  participants: [],
+  status: {
+    error: null
+  }
 }, action) {
   switch (action.type) {
   case ACKNOWLEDGE_ACTIVITY: {

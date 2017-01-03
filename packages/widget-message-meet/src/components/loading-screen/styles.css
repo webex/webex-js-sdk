@@ -1,0 +1,23 @@
+.loading {
+  display: flex;
+  margin: auto;
+  font-size: 36px;
+  color: #4f5051;
+  text-align: center;
+  flex-direction: column;
+}
+
+.logo {
+  width: 60px;
+  height: 60px;
+  margin: auto;
+  background: transparent url('./logo-spark.png') no-repeat;
+  background-size: cover;
+}
+
+.spinner-container {
+  position: relative;
+  width: 25px;
+  height: 25px;
+  margin: 10px auto;
+}

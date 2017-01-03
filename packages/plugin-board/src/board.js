@@ -4,10 +4,9 @@
  * @private
  */
 
-import {assign} from 'lodash';
 import {SparkPlugin, Page} from '@ciscospark/spark-core';
 import Realtime from './realtime';
-import {defaults, chunk, pick} from 'lodash';
+import {assign, defaults, chunk, pick} from 'lodash';
 import promiseSeries from 'es6-promise-series';
 
 const Board = SparkPlugin.extend({
@@ -54,6 +53,48 @@ const Board = SparkPlugin.extend({
         displayName: image.name,
         scr
       }]));
+  },
+
+  /**
+   * Set a snapshot image for a board
+   *
+   * @param {Conversation} conversation - the current conversation that the board belongs
+   * @param {Board~Channel} channel
+   * @param {File} image
+   * @returns {Promise<Board~Channel>}
+   */
+  setSnapshotImage(conversation, channel, image) {
+    let imageScr;
+    return this.spark.board._uploadImage(conversation, image)
+      .then((scr) => {
+        imageScr = scr;
+        return this.spark.encryption.encryptScr(conversation.defaultActivityEncryptionKeyUrl, imageScr);
+      })
+      .then((encryptedScr) => {
+        imageScr.encryptedScr = encryptedScr;
+        return encryptedScr;
+      })
+      .then(() => {
+        const imageBody = {
+          image: {
+            url: imageScr.loc,
+            height: image.height || 900,
+            width: image.width || 1600,
+            mimeType: image.type || `image/png`,
+            scr: imageScr.encryptedScr,
+            encryptionKeyUrl: conversation.defaultActivityEncryptionKeyUrl,
+            fileSize: image.size
+          }
+        };
+
+        return this.spark.request({
+          method: `PATCH`,
+          api: `board`,
+          resource: `/channels/${channel.channelId}`,
+          body: imageBody
+        });
+      })
+      .then((res) => res.body);
   },
 
   /**

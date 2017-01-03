@@ -18,6 +18,7 @@ echo "# CLEANING"
 echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} npm run grunt -- clean
 docker run ${DOCKER_RUN_OPTS} npm run grunt:concurrent -- clean
+docker run ${DOCKER_RUN_OPTS} npm run clean-empty-packages
 rm -rf "${SDK_ROOT_DIR}/.sauce/*/sc.*"
 rm -rf "${SDK_ROOT_DIR}/.sauce/*/sauce_connect*log"
 
@@ -49,7 +50,9 @@ PIDS=""
 # in --scope and --ignore
 PACKAGES=$(ls "${SDK_ROOT_DIR}/packages")
 PACKAGES+=" legacy-node"
-PACKAGES+=" legacy-browser"
+if [ -z "${SAUCE_IS_DOWN}" ]; then
+  PACKAGES+=" legacy-browser"
+fi
 for PACKAGE in ${PACKAGES}; do
   if ! echo ${PACKAGE} | grep -qc -v test-helper ; then
     continue
@@ -60,6 +63,10 @@ for PACKAGE in ${PACKAGES}; do
   fi
 
   if ! echo ${PACKAGE} | grep -qc -v xunit-with-logs ; then
+    continue
+  fi
+
+  if ! echo ${PACKAGE} | grep -qc -v eslint-config ; then
     continue
   fi
 

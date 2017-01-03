@@ -16,7 +16,7 @@ var options = {
     setupTestFrameworkScriptFile: path.join(__dirname, 'setup-jasmine-env.js'),
     moduleNameMapper: {
       '^.+\\.(css|less)$': '<rootDir>/test/style-mock.js',
-      '^.+\\.(gif|ttf|eot|svg)$': '<rootDir>/test/file-mock.js'
+      '^.+\\.(gif|ttf|eot|svg|png)$': '<rootDir>/test/file-mock.js'
     },
     rootDir: path.join('packages', process.env.PACKAGE)
   },

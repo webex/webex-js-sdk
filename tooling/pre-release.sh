@@ -14,6 +14,12 @@ echo "##########################################################################
 docker run -e PACKAGE=example-phone -e NODE_ENV=production ${DOCKER_RUN_OPTS} npm run grunt:package -- webpack:build
 
 echo "################################################################################"
+echo "# BUILDING WIDGETS"
+echo "################################################################################"
+docker run -e PACKAGE=widget-message-meet -e NODE_ENV=production ${DOCKER_RUN_OPTS} npm run grunt:package build
+
+
+echo "################################################################################"
 echo "# BUILDING DOCS"
 echo "################################################################################"
 npm run grunt:concurrent -- build:docs

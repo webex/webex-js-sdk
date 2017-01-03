@@ -347,6 +347,38 @@ describe('Services', function() {
         });
       });
 
+      describe('#setSnapshotImage()', function() {
+        var fixture = {
+          png: 'sample-image-small-one.png'
+        };
+
+        before(function() {
+          return fixtures.fetchFixtures(fixture)
+            .then(function() {
+              return ensureBoard();
+            });
+        });
+
+        after(function() {
+          return party.mccoy.spark.board.persistence.deleteAllContent(board);
+        });
+
+        it('uploads image to spark files and then add image to channel', function() {
+          var imageRes;
+          return party.mccoy.spark.board.persistence.setSnapshotImage(conversation, board, fixture.png)
+            .then(function(res) {
+              imageRes = res.image;
+              assert.isDefined(res.image, 'image field is included');
+              assert.equal(res.image.encryptionKeyUrl, conversation.encryptionKeyUrl);
+              assert.isAbove(res.image.scr.length, 0, 'scr string exists');
+              return party.spock.spark.board.persistence.getChannel(board);
+            })
+            .then(function(res) {
+              assert.deepEqual(res.image, imageRes);
+            });
+        });
+      });
+
       describe('#getContents()', function() {
 
         before(function() {
@@ -377,7 +409,7 @@ describe('Services', function() {
           var tonsOfContents = generateTonsOfContents(400);
           return party.mccoy.spark.board.persistence.addContent(conversation, board, tonsOfContents)
             .then(function() {
-              return party.mccoy.spark.board.persistence.getAllContent(board);
+              return party.mccoy.spark.board.persistence.getAllContent(board, {contentsLimit: 150});
             })
             .then(function(res) {
               assert.equal(res.length, tonsOfContents.length);

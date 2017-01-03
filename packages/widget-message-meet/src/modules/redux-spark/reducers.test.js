@@ -19,9 +19,9 @@ describe(`spark reducer`, () => {
       .toEqual(initialState);
   });
 
-  it(`should handle UPDATE_SPARK_STATE`, () => {
+  it(`should handle UPDATE_SPARK_STATUS`, () => {
     expect(reducer(initialState, {
-      type: `UPDATE_SPARK_STATE`,
+      type: `UPDATE_SPARK_STATUS`,
       payload: {
         status: {
           authenticated: true,

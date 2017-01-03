@@ -1,7 +1,7 @@
 import 'babel-polyfill';
+import fs from 'fs';
 import denodeify from 'denodeify';
 import exists from './lib/exists';
-import fs from 'fs';
 import {pidFile} from './lib/paths';
 import spawn from './lib/spawn';
 
@@ -19,7 +19,7 @@ const readFile = denodeify(fs.readFile);
         reject(`Failed to disconnect from Sauce Labs`);
       }, 60000);
 
-      interval = setInterval(async function checkComplete() {
+      interval = setInterval(async () => {
         clearTimeout(timeout);
         if (!await exists(pidFile)) {
           clearInterval(interval);
