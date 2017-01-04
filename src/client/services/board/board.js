@@ -227,17 +227,19 @@ var BoardService = SparkBase.extend({
   /**
    * Encrypts and uploads image to SparkFiles
    * @memberof Board.BoardService
-   * @param  {Conversation} conversation - Contains the currently selected conversation
+   * @param  {Board~Channel} channel
    * @param  {File} file - File to be uploaded
    * @private
    * @return {Object} Encrypted Scr and KeyUrl
    */
-  _uploadImage: function uploadImage(conversation, file) {
+  _uploadImage: function uploadImage(channel, file, options) {
+    options = options || {};
     var encryptedBinary;
+
     return this.spark.encryption.encryptBinary(file)
-      .then(function _uploadImageToSparkFiles(res) {
+      .then(function _uploadImageToBoardSpace(res) {
         encryptedBinary = res;
-        return this._uploadImageToSparkFiles(conversation, res.cblob);
+        return this._uploadImageToBoardSpace(channel, res.cblob, options.hiddenSpace);
       }.bind(this))
       .then(function prepareScr(res) {
         var scr = encryptedBinary.scr;
@@ -246,11 +248,8 @@ var BoardService = SparkBase.extend({
       }.bind(this));
   },
 
-  _uploadImageToSparkFiles: function _uploadImageToSparkFiles(conversation, cblob) {
-    return this.spark.request({
-      method: 'PUT',
-      uri: conversation.url + '/space'
-    })
+  _uploadImageToBoardSpace: function _uploadImageToBoardSpace(channel, cblob, hiddenSpace) {
+    return this._getSpaceUrl(channel, hiddenSpace)
       .then(function uploadFile(res) {
         return this.spark.client.upload({
           uri: res.body.spaceUrl + '/upload_sessions',
@@ -278,6 +277,18 @@ var BoardService = SparkBase.extend({
           }
         });
       }.bind(this));
+  },
+
+  _getSpaceUrl: function _getSpaceUrl(channel, hiddenSpace) {
+    var requestUri = channel.channelUrl + '/spaces/open';
+    if (hiddenSpace) {
+      requestUri = channel.channelUrl + '/spaces/hidden';
+    }
+
+    return this.spark.request({
+      method: 'PUT',
+      uri: requestUri
+    });
   }
 });
 

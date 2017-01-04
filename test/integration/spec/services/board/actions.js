@@ -130,7 +130,11 @@ describe('Services', function() {
     }
 
     before(function beamDown() {
-      return landingparty.beamDown(party);
+      return landingparty.beamDown(party)
+        .then(function() {
+          party.spock.spark.feature.setFeature('developer', 'files-acl-write', true);
+          party.mccoy.spark.feature.setFeature('developer', 'files-acl-write', true);
+        });
     });
 
     describe('#_uploadImage()', function() {
@@ -143,13 +147,13 @@ describe('Services', function() {
       });
 
       it('uploads image to spark files', function() {
-        return ensureConversation()
-          .then(function(conversation) {
+        return ensureBoard()
+          .then(function(board) {
 
-            return party.mccoy.spark.board._uploadImage(conversation, fixture.png);
+            return party.mccoy.spark.board._uploadImage(board, fixture.png);
           })
           .then(function(scr) {
-            return party.mccoy.spark.encryption.download(scr);
+            return party.spock.spark.encryption.download(scr);
           })
           .then(function(file) {
             assert(fixtures.isMatchingFile(file, fixture.png));
@@ -238,7 +242,7 @@ describe('Services', function() {
           });
 
           it('uploads file to spark files which includes loc', function() {
-            return party.mccoy.spark.board._uploadImage(conversation, fixture.png)
+            return party.mccoy.spark.board._uploadImage(board, fixture.png)
               .then(function(scr) {
                 assert.property(scr, 'loc');
                 testScr = scr;
@@ -334,7 +338,7 @@ describe('Services', function() {
         });
 
         it('uploads image to spark files', function() {
-          return party.mccoy.spark.board.persistence.addImage(conversation, board, fixture.png)
+          return party.mccoy.spark.board.persistence.addImage(board, fixture.png)
             .then(function(fileContent) {
               testContent = fileContent[0].items[0];
               assert.equal(testContent.type, 'FILE', 'content type should be image');
@@ -362,6 +366,13 @@ describe('Services', function() {
               assert(fixtures.isMatchingFile(file, fixture.png));
             });
         });
+
+        it('allows others to download the image', function() {
+          return party.spock.spark.encryption.download(testScr)
+            .then(function(file) {
+              assert(fixtures.isMatchingFile(file, fixture.png));
+            });
+        });
       });
 
       describe('#setSnapshotImage()', function() {
@@ -380,18 +391,26 @@ describe('Services', function() {
           return party.mccoy.spark.board.persistence.deleteAllContent(board);
         });
 
-        it('uploads image to spark files and then add image to channel', function() {
+        it('uploads image to board space and then add image to channel', function() {
           var imageRes;
-          return party.mccoy.spark.board.persistence.setSnapshotImage(conversation, board, fixture.png)
+          return party.mccoy.spark.board.persistence.setSnapshotImage(board, fixture.png)
             .then(function(res) {
               imageRes = res.image;
               assert.isDefined(res.image, 'image field is included');
-              assert.equal(res.image.encryptionKeyUrl, conversation.encryptionKeyUrl);
+              assert.equal(res.image.encryptionKeyUrl, board.defaultEncryptionKeyUrl);
               assert.isAbove(res.image.scr.length, 0, 'scr string exists');
               return party.spock.spark.board.persistence.getChannel(board);
             })
             .then(function(res) {
               assert.deepEqual(res.image, imageRes);
+              // ensure others can download the image
+              return party.spock.spark.encryption.decryptScr(res.image.scr, board.defaultEncryptionKeyUrl);
+            })
+            .then(function(decryptedScr) {
+              return party.spock.spark.encryption.download(decryptedScr);
+            })
+            .then(function(file) {
+              assert(fixtures.isMatchingFile(file, fixture.png));
             });
         });
       });

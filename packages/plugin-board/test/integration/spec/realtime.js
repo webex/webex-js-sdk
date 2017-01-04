@@ -143,7 +143,7 @@ describe(`plugin-board`, () => {
         let testScr;
 
         it(`uploads file to spark files which includes loc`, () => {
-          return participants[1].spark.board._uploadImage(conversation, fixture)
+          return participants[1].spark.board._uploadImage(board, fixture)
             .then((scr) => {
               assert.property(scr, `loc`);
               testScr = scr;

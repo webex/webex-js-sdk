@@ -7,6 +7,7 @@
 import '@ciscospark/plugin-mercury';
 import '@ciscospark/plugin-encryption';
 import '@ciscospark/plugin-conversation';
+import '@ciscospark/plugin-feature';
 
 import {registerPlugin} from '@ciscospark/spark-core';
 import Board from './board';

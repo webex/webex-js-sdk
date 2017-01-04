@@ -40,7 +40,9 @@ describe(`plugin-board`, () => {
               authorization: participant.token
             }
           });
-          return participant.spark.device.register();
+
+          return participant.spark.device.register()
+            .then(() => participant.spark.feature.setFeature(`developer`, `files-acl-write`, true));
         }));
       }));
 
@@ -90,13 +92,9 @@ describe(`plugin-board`, () => {
       after(() => participants[0].spark.board.deleteAllContent(board));
 
       it(`uploads image to spark files`, () => {
-        return participants[0].spark.board._uploadImage(conversation, fixture)
-          .then((scr) => {
-            return participants[0].spark.encryption.download(scr);
-          })
-          .then((downloadedFile) => {
-            assert(fh.isMatchingFile(downloadedFile, fixture));
-          });
+        return participants[0].spark.board._uploadImage(board, fixture)
+          .then((scr) => participants[1].spark.encryption.download(scr))
+          .then((downloadedFile) => assert(fh.isMatchingFile(downloadedFile, fixture)));
       });
     });
 
@@ -106,17 +104,21 @@ describe(`plugin-board`, () => {
 
       it(`uploads image to spark files and adds to channel`, () => {
         let imageRes;
-        return participants[0].spark.board.setSnapshotImage(conversation, board, fixture)
+        return participants[0].spark.board.setSnapshotImage(board, fixture)
           .then((res) => {
             imageRes = res.image;
             assert.isDefined(res.image, `image field is included`);
-            assert.equal(res.image.encryptionKeyUrl, conversation.encryptionKeyUrl);
+            assert.equal(res.image.encryptionKeyUrl, board.defaultEncryptionKeyUrl);
             assert.isAbove(res.image.scr.length, 0, `scr string exists`);
             return participants[1].spark.board.getChannel(board);
           })
           .then((res) => {
             assert.deepEqual(imageRes, res.image);
-          });
+            // ensure others can download the image
+            return participants[1].spark.encryption.decryptScr(board.defaultEncryptionKeyUrl, res.image.scr);
+          })
+          .then((decryptedScr) => participants[1].spark.encryption.download(decryptedScr))
+          .then((file) => assert(fh.isMatchingFile(file, fixture)));
       });
     });
 
@@ -135,7 +137,7 @@ describe(`plugin-board`, () => {
       after(() => participants[0].spark.board.deleteAllContent(board));
 
       it(`uploads image to spark files`, () => {
-        return participants[0].spark.board.addImage(conversation, board, fixture)
+        return participants[0].spark.board.addImage(board, fixture)
           .then((fileContent) => {
             testContent = fileContent[0].items[0];
             assert.equal(testContent.type, `FILE`, `content type should be image`);
@@ -159,9 +161,12 @@ describe(`plugin-board`, () => {
 
       it(`matches file file downloaded`, () => {
         return participants[0].spark.encryption.download(testScr)
-          .then((downloadedFile) => {
-            assert(fh.isMatchingFile(downloadedFile, fixture));
-          });
+          .then((downloadedFile) => assert(fh.isMatchingFile(downloadedFile, fixture)));
+      });
+
+      it(`allows others to download image`, () => {
+        return participants[1].spark.encryption.download(testScr)
+          .then((downloadedFile) => assert(fh.isMatchingFile(downloadedFile, fixture)));
       });
     });
 
@@ -249,9 +254,7 @@ describe(`plugin-board`, () => {
         }];
 
         return participants[0].spark.board.addContent(board, data)
-          .then(() => {
-            return participants[1].spark.board.getContents(board);
-          })
+          .then(() => participants[1].spark.board.getContents(board))
           .then((contentPage) => {
             assert.equal(contentPage.length, data.length);
             assert.equal(contentPage.items[0].payload, data[0].payload);
@@ -271,9 +274,7 @@ describe(`plugin-board`, () => {
         }];
 
         return participants[2].spark.board.addContent(board, data)
-          .then(() => {
-            return participants[1].spark.board.getContents(board);
-          })
+          .then(() => participants[1].spark.board.getContents(board))
           .then((contentPage) => {
             assert.equal(contentPage.length, data.length);
             assert.equal(contentPage.items[0].payload, data[0].payload);

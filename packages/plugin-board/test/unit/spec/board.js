@@ -153,7 +153,7 @@ describe(`plugin-board`, () => {
     });
 
     it(`requests PATCH to board service`, () => {
-      return spark.board.setSnapshotImage(conversation, channel, image)
+      return spark.board.setSnapshotImage(channel, image)
         .then(() => {
           assert.calledWith(spark.request, sinon.match({
             method: `PATCH`,
@@ -166,7 +166,7 @@ describe(`plugin-board`, () => {
                 width: image.width,
                 mimeType: `image/png`,
                 scr: `encryptedFoo`,
-                encryptionKeyUrl: conversation.defaultActivityEncryptionKeyUrl,
+                encryptionKeyUrl: channel.defaultEncryptionKeyUrl,
                 fileSize: image.size
               }
             }

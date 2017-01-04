@@ -241,7 +241,7 @@ describe('Services', function() {
         });
 
         it('requests PATCH to board service', function() {
-          return spark.board.persistence.setSnapshotImage(conversation, channel, image)
+          return spark.board.persistence.setSnapshotImage(channel, image)
             .then(function() {
               assert.calledWith(spark.request, sinon.match({
                 method: 'PATCH',
@@ -254,7 +254,7 @@ describe('Services', function() {
                     width: image.width,
                     mimeType: 'image/png',
                     scr: 'encryptedFoo',
-                    encryptionKeyUrl: conversation.defaultActivityEncryptionKeyUrl,
+                    encryptionKeyUrl: channel.defaultEncryptionKeyUrl,
                     fileSize: image.size
                   }
                 }

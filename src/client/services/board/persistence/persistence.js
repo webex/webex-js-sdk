@@ -48,13 +48,12 @@ var PersistenceService = SparkBase.extend({
    * Uploads image to spark files and adds SCR + downalodUrl to the persistence
    * service
    * @memberof Board.PersistenceService
-   * @param  {Conversation~ConversationObject} conversation
    * @param  {Board~Channel} channel
    * @param  {File} image - image to be uploaded
    * @return {Promise<Board~Content>}
    */
-  addImage: function addImage(conversation, channel, image) {
-    return this.spark.board._uploadImage(conversation, image)
+  addImage: function addImage(channel, image) {
+    return this.spark.board._uploadImage(channel, image)
       .then(function addContent(scr) {
         return this.spark.board.persistence.addContent(channel, [{
           mimeType: image.type,
@@ -69,17 +68,16 @@ var PersistenceService = SparkBase.extend({
   /**
    * Set a snapshot image for a board
    *
-   * @param {Conversation} conversation - the current conversation that the board belongs
    * @param {Board~Channel} channel
    * @param {File} image
    * @returns {Promise<Board~Channel>}
    */
-  setSnapshotImage: function setSnapshotImage(conversation, channel, image) {
+  setSnapshotImage: function setSnapshotImage(channel, image) {
     var imageScr;
-    return this.spark.board._uploadImage(conversation, image)
+    return this.spark.board._uploadImage(channel, image, {hiddenSpace: true})
       .then(function encryptScr(scr) {
         imageScr = scr;
-        return this.spark.encryption.encryptScr(imageScr, conversation.defaultActivityEncryptionKeyUrl);
+        return this.spark.encryption.encryptScr(imageScr, channel.defaultEncryptionKeyUrl);
       }.bind(this))
       .then(function attachEncryptedScr(encryptedScr) {
         imageScr.encryptedScr = encryptedScr;
@@ -93,7 +91,7 @@ var PersistenceService = SparkBase.extend({
             width: image.width || 1600,
             mimeType: image.type || 'image/png',
             scr: imageScr.encryptedScr,
-            encryptionKeyUrl: conversation.defaultActivityEncryptionKeyUrl,
+            encryptionKeyUrl: channel.defaultEncryptionKeyUrl,
             fileSize: image.size
           }
         };

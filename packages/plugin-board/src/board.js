@@ -39,13 +39,12 @@ const Board = SparkPlugin.extend({
    * Uploads image to spark files and adds SCR + downloadUrl to the persistence
    * service
    * @memberof Board.BoardService
-   * @param  {Conversation} conversation - Contains the currently selected conversation
    * @param  {Board~Channel} channel
    * @param  {File} image - image to be uploaded
    * @returns {Promise<Board~Content>}
    */
-  addImage(conversation, channel, image) {
-    return this.spark.board._uploadImage(conversation, image)
+  addImage(channel, image) {
+    return this.spark.board._uploadImage(channel, image)
       .then((scr) => this.spark.board.addContent(channel, [{
         mimeType: image.type,
         size: image.size,
@@ -57,17 +56,16 @@ const Board = SparkPlugin.extend({
   /**
    * Set a snapshot image for a board
    *
-   * @param {Conversation} conversation - the current conversation that the board belongs
    * @param {Board~Channel} channel
    * @param {File} image
    * @returns {Promise<Board~Channel>}
    */
-  setSnapshotImage(conversation, channel, image) {
+  setSnapshotImage(channel, image) {
     let imageScr;
-    return this.spark.board._uploadImage(conversation, image)
+    return this.spark.board._uploadImage(channel, image, {hiddenSpace: true})
       .then((scr) => {
         imageScr = scr;
-        return this.spark.encryption.encryptScr(conversation.defaultActivityEncryptionKeyUrl, imageScr);
+        return this.spark.encryption.encryptScr(channel.defaultEncryptionKeyUrl, imageScr);
       })
       .then((encryptedScr) => {
         imageScr.encryptedScr = encryptedScr;
@@ -81,7 +79,7 @@ const Board = SparkPlugin.extend({
             width: image.width || 1600,
             mimeType: image.type || `image/png`,
             scr: imageScr.encryptedScr,
-            encryptionKeyUrl: conversation.defaultActivityEncryptionKeyUrl,
+            encryptionKeyUrl: channel.defaultEncryptionKeyUrl,
             fileSize: image.size
           }
         };
@@ -217,7 +215,7 @@ const Board = SparkPlugin.extend({
   /**
    * Encrypts a collection of content
    * @memberof Board.BoardService
-   * @param  {string} encryptionKeyUrl conversation.defaultActivityEncryptionKeyUrl
+   * @param  {string} encryptionKeyUrl channel.defaultEncryptionKeyUrl
    * @param  {Array} contents   Array of {@link Board~Content} objects. (curves, text, and images)
    * @returns {Promise<Array>} Resolves with an array of encrypted {@link Board~Content} objects.
    */
@@ -410,29 +408,38 @@ const Board = SparkPlugin.extend({
   /**
    * Encrypts and uploads image to SparkFiles
    * @memberof Board.BoardService
-   * @param  {Conversation} conversation - Contains the currently selected conversation
+   * @param  {Board~Channel} channel
    * @param  {File} file - File to be uploaded
+   * @param  {Object} options
+   * @param  {Object} options.hiddenSpace - true for hidden, false for open space
    * @private
    * @returns {Object} Encrypted Scr and KeyUrl
    */
-  _uploadImage(conversation, file) {
+  _uploadImage(channel, file, options) {
+    options = options || {};
+
     return this.spark.encryption.encryptBinary(file)
-      .then(({scr, cdata}) => Promise.all([scr, this._uploadImageToSparkFiles(conversation, cdata)]))
+      .then(({scr, cdata}) => Promise.all([scr, this._uploadImageToSparkFiles(channel, cdata, options.hiddenSpace)]))
       .then(([scr, res]) => assign(scr, {loc: res.downloadUrl}));
   },
 
-  _getSpaceUrl(conversation) {
+  _getSpaceUrl(channel, hiddenSpace) {
+    let requestUri = `${channel.channelUrl}/spaces/open`;
+    if (hiddenSpace) {
+      requestUri = `${channel.channelUrl}/spaces/hidden`;
+    }
+
     return this.spark.request({
       method: `PUT`,
-      uri: `${conversation.url}/space`
+      uri: requestUri
     })
       .then((res) => res.body.spaceUrl);
   },
 
-  _uploadImageToSparkFiles(conversation, file) {
+  _uploadImageToSparkFiles(channel, file, hiddenSpace) {
     const fileSize = file.length || file.size || file.byteLength;
 
-    return this._getSpaceUrl(conversation)
+    return this._getSpaceUrl(channel, hiddenSpace)
       .then((spaceUrl) => this.spark.upload({
         uri: `${spaceUrl}/upload_sessions`,
         file,

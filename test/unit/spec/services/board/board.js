@@ -21,9 +21,11 @@ describe('Services', function() {
     var fakeURL = 'fakeURL';
     var file = 'dataURL://base64;';
 
-    var conversation = {
-      id: 'superUniqueId',
-      defaultActivityEncryptionKeyUrl: fakeURL
+    var channel = {
+      channelId: 'boardId',
+      channelUrl: '/channels/boardId',
+      aclUrlLink: 'aclUrlLink',
+      defaultEncryptionKeyUrl: 'key'
     };
 
     before(function() {
@@ -68,26 +70,26 @@ describe('Services', function() {
     describe('#_uploadImage()', function() {
 
       before(function() {
-        sinon.stub(spark.board, '_uploadImageToSparkFiles', sinon.stub().returns(Promise.resolve({
+        sinon.stub(spark.board, '_uploadImageToBoardSpace', sinon.stub().returns(Promise.resolve({
           downloadUrl: fakeURL
         })));
-        return spark.board._uploadImage(conversation, file);
+        return spark.board._uploadImage(channel, file);
       });
 
       after(function() {
-        spark.board._uploadImageToSparkFiles.restore();
+        spark.board._uploadImageToBoardSpace.restore();
       });
 
       it('encrypts binary file', function() {
         assert.calledWith(spark.encryption.encryptBinary, file);
       });
 
-      it('uploads to spark files', function() {
-        assert.calledWith(spark.board._uploadImageToSparkFiles, conversation, encryptedData);
+      it('uploads to board space', function() {
+        assert.calledWith(spark.board._uploadImageToBoardSpace, channel, encryptedData);
       });
     });
 
-    describe('#_uploadImageToSparkFiles()', function() {
+    describe('#_uploadImageToBoardSpace()', function() {
 
       afterEach(function() {
         spark.client.upload.reset();
@@ -100,7 +102,7 @@ describe('Services', function() {
           byteLength: 2222
         };
 
-        return spark.board._uploadImageToSparkFiles(conversation, blob)
+        return spark.board._uploadImageToBoardSpace(channel, blob)
           .then(function() {
             assert.calledWith(spark.client.upload, sinon.match({
               phases: {
@@ -123,7 +125,7 @@ describe('Services', function() {
           byteLength: 2222
         };
 
-        return spark.board._uploadImageToSparkFiles(conversation, blob)
+        return spark.board._uploadImageToBoardSpace(channel, blob)
           .then(function() {
             assert.calledWith(spark.client.upload, sinon.match({
               phases: {
@@ -145,7 +147,7 @@ describe('Services', function() {
           byteLength: 2222
         };
 
-        return spark.board._uploadImageToSparkFiles(conversation, blob)
+        return spark.board._uploadImageToBoardSpace(channel, blob)
           .then(function() {
             assert.calledWith(spark.client.upload, sinon.match({
               phases: {
