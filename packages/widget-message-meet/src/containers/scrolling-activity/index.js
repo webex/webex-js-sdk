@@ -2,7 +2,7 @@ import React, {PropTypes} from 'react';
 import classNames from 'classnames';
 import injectScrollable from '../wrapper-scrollable';
 
-import ActivityList from '../../components/activity-list';
+import ConnectedActivityList from '../../containers/connected-activity-list';
 import Spinner from '../../components/spinner';
 import ReadReceipts from '../read-receipts';
 
@@ -23,7 +23,7 @@ function ScrollingActivity(props) {
   return (
     <div>
       {spinnerUp}
-      <ActivityList {...props} />
+      <ConnectedActivityList {...props} />
       <div className={classNames(`indicators`, styles.indicators)}>
         <ReadReceipts />
       </div>
@@ -34,7 +34,6 @@ function ScrollingActivity(props) {
 /* eslint-disable react/no-unused-prop-types */
 /* eslint-disable-reason passing props via destructuring */
 ScrollingActivity.propTypes = {
-  activities: PropTypes.array,
   avatars: PropTypes.object.isRequired,
   currentUserId: PropTypes.string,
   flags: PropTypes.array,

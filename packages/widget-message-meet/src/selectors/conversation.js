@@ -1,7 +1,7 @@
 import {createSelector} from 'reselect';
 import _ from 'lodash';
 
-const getActivities = (state) => state.conversation.activities; // eslint-disable-line func-style
+const getActivities = (state) => state.conversation.activities.toArray(); // eslint-disable-line func-style
 const getParticipants = (state) => state.conversation.participants; // eslint-disable-line func-style
 
 export const getMostRecentActivity = createSelector(
@@ -17,4 +17,12 @@ export const getMostRecentReadReceipts = createSelector(
       participant.roomProperties && participant.roomProperties.lastSeenActivityUUID === activity.id
     );
   }
+);
+
+/**
+ * This creates an array to be used with the ActivityList component
+ */
+export const getActivityList = createSelector(
+  [getActivities],
+  (activities) => activities // Testing
 );

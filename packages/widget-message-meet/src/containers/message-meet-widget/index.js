@@ -128,11 +128,11 @@ export class MessageMeetWidget extends Component {
     const activityList = this.activityList;
 
     if (activityList) {
-      const lastActivityFromPrev = _.last(prevProps.conversation.activities);
-      const lastActivityFromThis = _.last(props.conversation.activities);
+      const lastActivityFromPrev = _.last(prevProps.conversation.activities.toArray());
+      const lastActivityFromThis = _.last(props.conversation.activities.toArray());
 
-      const firstActivityFromPrev = _.first(prevProps.conversation.activities);
-      const firstActivityFromThis = _.first(props.conversation.activities);
+      const firstActivityFromPrev = _.first(prevProps.conversation.activities.toArray());
+      const firstActivityFromThis = _.first(props.conversation.activities.toArray());
 
       // If new activity comes in
       if (lastActivityFromPrev && lastActivityFromThis && props.conversation.activities.length !== prevProps.conversation.activities.length && lastActivityFromPrev.id !== lastActivityFromThis.id) {
@@ -238,7 +238,7 @@ export class MessageMeetWidget extends Component {
 
     props.setScrollPosition({scrollTop: this.activityList.getScrollTop()});
 
-    const lastActivity = _.last(conversation.activities);
+    const lastActivity = _.last(conversation.activities.toArray());
     if (this.activityList.isScrolledToBottom()) {
       props.showScrollToBottomButton(false);
       props.updateHasNewMessage(false);
@@ -250,8 +250,8 @@ export class MessageMeetWidget extends Component {
       props.showScrollToBottomButton(true);
     }
 
-    if (this.activityList.isScrolledToTop() && conversation.activities[0].verb !== `create`) {
-      props.loadPreviousMessages(conversation.id, _.first(conversation.activities), spark);
+    if (this.activityList.isScrolledToTop() && conversation.activities.toArray()[0].verb !== `create`) {
+      props.loadPreviousMessages(conversation.id, _.first(conversation.activities.toArray()), spark);
     }
   }
 
@@ -354,7 +354,6 @@ export class MessageMeetWidget extends Component {
   renderConversation() {
     const props = this.props;
     const {
-      activity,
       conversation,
       flags,
       indicators,
@@ -370,7 +369,6 @@ export class MessageMeetWidget extends Component {
     } = user;
 
     const {
-      activities,
       isLoadingHistoryUp,
       lastAcknowledgedActivityId
     } = conversation;
@@ -445,7 +443,6 @@ export class MessageMeetWidget extends Component {
         <Dropzone {...dropzoneProps}>
           <div className={classNames(`activity-list-wrapper`, styles.activityListWrapper)}>
             <ScrollingActivity
-              activities={activities}
               avatars={avatars}
               currentUserId={currentUser.id}
               flags={flags.flags}

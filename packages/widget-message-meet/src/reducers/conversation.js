@@ -1,7 +1,6 @@
 /* eslint complexity: ["error", 10] */
 // Refactoring and splitting up reducer in next feature
-import _ from 'lodash';
-
+import {OrderedMap} from 'immutable';
 import {
   ACKNOWLEDGE_ACTIVITY,
   ADD_ACTIVITIES_TO_CONVERSATION,
@@ -13,15 +12,105 @@ import {
   UPDATE_MERCURY_STATE
 } from '../actions/conversation';
 
-const filteredActivities = [`delete`];
+const filteredActivityVerbs = [`delete`];
 
-function filterActivity(activity) {
-  return filteredActivities.indexOf(activity.verb) === -1;
+const initialState = {
+  activities: new OrderedMap(),
+  id: null,
+  lastAcknowledgedActivityId: null,
+  isFetching: false,
+  isLoaded: false,
+  isLoadingHistoryUp: false,
+  mercuryState: {
+    isListening: false
+  },
+  participants: [],
+  status: {
+    error: null
+  }
+};
+
+export default function reduceConversation(state = initialState, action) {
+  switch (action.type) {
+  case ACKNOWLEDGE_ACTIVITY: {
+    const activityId = action.payload.activity.id;
+    return Object.assign({}, state, {
+      lastAcknowledgedActivityId: activityId
+    });
+  }
+  case ADD_ACTIVITIES_TO_CONVERSATION: {
+    const addedActivities = new OrderedMap(action.payload.activities.map((activity) => [activity.url, activity]));
+    let activities = state.activities.mergeDeep(addedActivities);
+    activities = activities.sortBy((activity) => activity.published);
+    return Object.assign({}, state, {
+      activities
+    });
+  }
+
+  case CREATE_CONVERSATION_BEGIN: {
+    return Object.assign({}, state, {
+      isFetching: true
+    });
+  }
+
+  case CREATE_CONVERSATION: {
+    const {
+      defaultActivityEncryptionKeyUrl,
+      id,
+      kmsResourceObjectUrl,
+      participants,
+      url
+    } = action.payload.conversation;
+
+    const filteredActivities = action.payload.conversation.activities.items.filter(filterActivity);
+
+    let activities = new OrderedMap(filteredActivities.map((activity) => [activity.url, activity]));
+    activities = activities.sortBy((activity) => activity.published);
+
+    return Object.assign({}, state, {
+      activities,
+      defaultActivityEncryptionKeyUrl,
+      id,
+      kmsResourceObjectUrl,
+      url,
+      isFetching: false,
+      isLoaded: true,
+      participants: participants.items
+    });
+  }
+
+  case RECEIVE_MERCURY_ACTIVITY: {
+    return receiveMercuryActivity(state, action);
+  }
+
+  case RECEIVE_MERCURY_COMMENT: {
+    const receivedActivity = action.payload.activity;
+    let activities = state.activities.setIn(receivedActivity.url, receivedActivity);
+    activities = activities.sortBy((activity) => activity.published);
+
+    return Object.assign({}, state, {
+      activities
+    });
+  }
+
+  case UPDATE_CONVERSATION_STATE: {
+    return Object.assign({}, state, action.payload.conversationState);
+  }
+
+  case UPDATE_MERCURY_STATE: {
+    return Object.assign({}, state, {
+      mercuryState: action.payload.mercuryState
+    });
+  }
+
+  default: {
+    return state;
+  }
+  }
 }
 
-function sortActivityByTime(activities) {
-  activities = _.uniqBy(activities, `id`);
-  return _.sortBy(activities, [`published`]);
+function filterActivity(activity) {
+  return filteredActivityVerbs.indexOf(activity.verb) === -1;
 }
 
 function receiveMercuryActivity(state, action) {
@@ -31,7 +120,7 @@ function receiveMercuryActivity(state, action) {
   if (verb === `delete`) {
     // Find activity that is being deleted and change it to a tombstone
     const deletedId = activity.object.id;
-    activities = state.activities.map((activityItem) => {
+    activities = activities.map((activityItem) => {
       if (activityItem.id === deletedId) {
         return Object.assign({}, activityItem, {
           verb: `tombstone`
@@ -57,94 +146,7 @@ function receiveMercuryActivity(state, action) {
     });
   }
   return Object.assign({}, state, {
-    activities: [...activities],
+    activities,
     participants: [...participants]
   });
-}
-
-
-export default function reduceConversation(state = {
-  activities: [],
-  id: null,
-  lastAcknowledgedActivityId: null,
-  isFetching: false,
-  isLoaded: false,
-  isLoadingHistoryUp: false,
-  mercuryState: {
-    isListening: false
-  },
-  participants: [],
-  status: {
-    error: null
-  }
-}, action) {
-  switch (action.type) {
-  case ACKNOWLEDGE_ACTIVITY: {
-    const activityId = action.payload.activity.id;
-    return Object.assign({}, state, {
-      lastAcknowledgedActivityId: activityId
-    });
-  }
-  case ADD_ACTIVITIES_TO_CONVERSATION: {
-    const activities = [...action.payload.activities, ...state.activities];
-    return Object.assign({}, state, {
-      activities: sortActivityByTime(activities)
-    });
-  }
-
-  case CREATE_CONVERSATION_BEGIN: {
-    return Object.assign({}, state, {
-      isFetching: true
-    });
-  }
-
-  case CREATE_CONVERSATION: {
-    const {
-      defaultActivityEncryptionKeyUrl,
-      id,
-      kmsResourceObjectUrl,
-      participants,
-      url
-    } = action.payload.conversation;
-
-    const activities = action.payload.conversation.activities.items.filter(filterActivity);
-
-    return Object.assign({}, state, {
-      activities,
-      defaultActivityEncryptionKeyUrl,
-      id,
-      kmsResourceObjectUrl,
-      url,
-      isFetching: false,
-      isLoaded: true,
-      participants: participants.items
-    });
-  }
-
-  case RECEIVE_MERCURY_ACTIVITY: {
-    return receiveMercuryActivity(state, action);
-  }
-
-  case RECEIVE_MERCURY_COMMENT: {
-    const activities = state.activities;
-    const activity = action.payload.activity;
-    return Object.assign({}, state, {
-      activities: [...activities, activity]
-    });
-  }
-
-  case UPDATE_CONVERSATION_STATE: {
-    return Object.assign({}, state, action.payload.conversationState);
-  }
-
-  case UPDATE_MERCURY_STATE: {
-    return Object.assign({}, state, {
-      mercuryState: action.payload.mercuryState
-    });
-  }
-
-  default: {
-    return state;
-  }
-  }
 }
