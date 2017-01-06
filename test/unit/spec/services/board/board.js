@@ -185,9 +185,10 @@ describe('Services', function() {
         }];
 
         return spark.board.encryptContents(fakeURL, curveContents)
-          .then(function() {
+          .then(function(res) {
             assert.calledWith(spark.board.encryptSingleContent, fakeURL, curveContents[0]);
             assert.notCalled(spark.encryption.encryptScr);
+            assert.equal(res[0].payload, encryptedData);
           });
       });
 
@@ -195,15 +196,19 @@ describe('Services', function() {
 
         var imageContents = [{
           displayName: 'FileName',
-          scr: {
-            loc: fakeURL
+          file: {
+            scr: {
+              loc: fakeURL
+            }
           }
         }];
 
         return spark.board.encryptContents(fakeURL, imageContents)
-          .then(function() {
+          .then(function(encryptedFiles) {
             assert.calledWith(spark.encryption.encryptScr, {loc: fakeURL}, fakeURL);
             assert.calledWith(spark.encryption.encryptText, 'FileName', fakeURL);
+            assert.equal(encryptedFiles[0].type, 'FILE');
+            assert.property(encryptedFiles[0], 'file', 'file content must have file property');
           });
       });
 
@@ -252,16 +257,18 @@ describe('Services', function() {
           });
       });
 
-      it('calls decryptSingleContent when type is FILE', function() {
+      it('calls decryptSingleFileContent when type is FILE', function() {
 
         var imageContents = {
           items: [{
             type: 'FILE',
             payload: JSON.stringify({
               type: 'image',
-              scr: 'encryptedScr',
               displayName: 'encryptedDisplayName'
             }),
+            file: {
+              scr: 'encryptedScr',
+            },
             encryptionKeyUrl: fakeURL
           }]
         };
