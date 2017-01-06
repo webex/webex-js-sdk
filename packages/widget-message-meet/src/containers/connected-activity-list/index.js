@@ -4,11 +4,7 @@ import {getActivityList} from '../../selectors/conversation';
 
 function mapStateToProps(state, props) {
   return Object.assign({}, props, {
-    activities: getActivityList(state),
-    avatars: state.user.avatars,
-    currentUserId: state.user.currentUser.id,
-    flags: state.flags.flags,
-    lastAcknowledgedActivityId: state.conversation.lastAcknowledgedActivityId
+    activities: getActivityList(state)
   });
 }
 
