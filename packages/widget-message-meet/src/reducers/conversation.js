@@ -85,7 +85,7 @@ export default function reduceConversation(state = initialState, action) {
 
   case RECEIVE_MERCURY_COMMENT: {
     const receivedActivity = action.payload.activity;
-    let activities = state.activities.setIn(receivedActivity.url, receivedActivity);
+    let activities = state.activities.set(receivedActivity.url, receivedActivity);
     activities = activities.sortBy((activity) => activity.published);
 
     return Object.assign({}, state, {

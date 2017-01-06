@@ -34,9 +34,6 @@ function ScrollingActivity(props) {
 /* eslint-disable react/no-unused-prop-types */
 /* eslint-disable-reason passing props via destructuring */
 ScrollingActivity.propTypes = {
-  avatars: PropTypes.object.isRequired,
-  currentUserId: PropTypes.string,
-  flags: PropTypes.array,
   isLoadingHistoryUp: PropTypes.bool,
   onActivityDelete: PropTypes.func.isRequired,
   onActivityFlag: PropTypes.func.isRequired
