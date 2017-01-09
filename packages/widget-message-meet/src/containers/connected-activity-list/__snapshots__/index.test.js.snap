@@ -1,0 +1,4 @@
+exports[`ConnectedActivityList renders properly 1`] = `
+<div
+  className="activity-list" />
+`;

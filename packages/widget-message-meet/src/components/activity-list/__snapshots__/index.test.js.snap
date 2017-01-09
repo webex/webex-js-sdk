@@ -11,9 +11,7 @@ exports[`ActivityList component renders properly 1`] = `
           className="avatar"
           style={undefined}>
           <span
-            className="avatar-letter">
-            T
-          </span>
+            className="avatar-self" />
         </div>
       </div>
       <div
@@ -60,7 +58,16 @@ exports[`ActivityList component renders properly 1`] = `
         <div
           className="activity-post-action">
           <div
-            className="action-spacer" />
+            className="post-action-item">
+            <button
+              className="button"
+              onClick={[Function]}
+              onKeyUp={[Function]}>
+              <div
+                className="icon"
+                title="Delete this message" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -75,9 +82,7 @@ exports[`ActivityList component renders properly 1`] = `
           className="avatar"
           style={undefined}>
           <span
-            className="avatar-letter">
-            T
-          </span>
+            className="avatar-self" />
         </div>
       </div>
       <div
@@ -124,7 +129,16 @@ exports[`ActivityList component renders properly 1`] = `
         <div
           className="activity-post-action">
           <div
-            className="action-spacer" />
+            className="post-action-item">
+            <button
+              className="button"
+              onClick={[Function]}
+              onKeyUp={[Function]}>
+              <div
+                className="icon"
+                title="Delete this message" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -137,12 +151,11 @@ exports[`ActivityList component renders properly 1`] = `
         className="avatar-wrapper">
         <div
           className="avatar"
-          style={undefined}>
-          <span
-            className="avatar-letter">
-            T
-          </span>
-        </div>
+          style={
+            Object {
+              "backgroundImage": "url(\'http://google.com/img.gif\')",
+            }
+          } />
       </div>
       <div
         className="content-container">
@@ -172,7 +185,7 @@ exports[`ActivityList component renders properly 1`] = `
       <div
         className="activity-post-actions">
         <div
-          className="activity-post-action">
+          className="activity-post-action isHighlighted">
           <div
             className="post-action-item">
             <button
