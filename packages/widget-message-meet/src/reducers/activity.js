@@ -5,13 +5,11 @@ import {
   RESET_ACTIVITY,
   REMOVE_FILE_FROM_ACTIVITY,
   SAVE_SHARE_ACTIVITY,
-  SUBMIT_ACTIVITY_START,
   UPDATE_ACTIVITY_STATUS,
   UPDATE_ACTIVITY_TEXT
 } from '../actions/activity';
 
 export const initialState = new Map({
-  inFlightActivity: false,
   status: new Map({
     isSending: false,
     isTyping: false
@@ -43,15 +41,6 @@ export default function reduceActivity(state = initialState, action) {
 
   case SAVE_SHARE_ACTIVITY: {
     return state.set(`shareActivity`, action.payload.shareActivity);
-  }
-
-  case SUBMIT_ACTIVITY_START: {
-    return state
-      // Store the activity as an in flight activity before sending
-      .set(`inFlightActivity`, action.payload.activity)
-      // Clear the text from the input
-      .set(`text`, ``)
-      .setIn([`status`, `isSending`], true);
   }
 
   case UPDATE_ACTIVITY_STATUS:
