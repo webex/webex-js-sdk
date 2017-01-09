@@ -8,7 +8,7 @@ import {ACTIVITY_ITEM_TYPE_ACTIVITY_ITEM, ACTIVITY_ITEM_TYPE_DAY_SEPARATOR, ACTI
 
 const getActivities = (state) => state.conversation.activities.toArray(); // eslint-disable-line func-style
 const getAvatars = (state) => state.user.avatars;
-const getCurrentUserId = (state) => state.user.currentUser.id;
+const getCurrentUser = (state) => state.user.currentUser;
 const getFlags = (state) => state.flags.flags; // eslint-disable-line func-style
 const getLastAcknowledgedActivityId = (state) => state.conversation.lastAcknowledgedActivityId;
 const getParticipants = (state) => state.conversation.participants; // eslint-disable-line func-style
@@ -33,8 +33,8 @@ export const getMostRecentReadReceipts = createSelector(
  * of 'visible activities' to be used with the ActivityList component
  */
 export const getActivityList = createSelector(
-  [getActivities, getAvatars, getCurrentUserId, getFlags, getLastAcknowledgedActivityId],
-  (activities, avatars, currentUserId, flags, lastAcknowledgedActivityId) => {
+  [getActivities, getAvatars, getCurrentUser, getFlags, getLastAcknowledgedActivityId],
+  (activities, avatars, currentUser, flags, lastAcknowledgedActivityId) => {
     const visibleActivityList = [];
     const now = moment();
     let lastActorId, lastDay, lastVerb;
@@ -82,13 +82,13 @@ export const getActivityList = createSelector(
           avatarUrl: avatars[activity.actor.id],
           isAdditional,
           isFlagged,
-          isSelf: currentUserId === activity.actor.id
+          isSelf: currentUser.id === activity.actor.id
         }
       );
 
       // Check if this is the last read activity
       const isLastAcked = lastAcknowledgedActivityId && lastAcknowledgedActivityId === activity.id;
-      const isNotSelf = currentUserId !== activity.actor.id;
+      const isNotSelf = currentUser.id !== activity.actor.id;
       if (isLastAcked && isNotSelf) {
         shouldDisplayNewMessageMarker = true;
       }

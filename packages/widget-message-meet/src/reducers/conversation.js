@@ -14,7 +14,7 @@ import {
 
 const filteredActivityVerbs = [`delete`];
 
-const initialState = {
+export const initialState = {
   activities: new OrderedMap(),
   id: null,
   lastAcknowledgedActivityId: null,

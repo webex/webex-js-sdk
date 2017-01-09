@@ -82,7 +82,7 @@ export class MessageMeetWidget extends Component {
     } = nextProps.sparkState;
 
     if (spark && connected && authenticated && registered) {
-      if (!user.currentUser && !user.isFetchingCurrentUser) {
+      if (!user.currentUser.id && !user.isFetchingCurrentUser) {
         nextProps.fetchCurrentUser(spark);
       }
       if (!conversation.id && !conversation.isFetching) {

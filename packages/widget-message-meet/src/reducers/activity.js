@@ -10,7 +10,7 @@ import {
   UPDATE_ACTIVITY_TEXT
 } from '../actions/activity';
 
-const initialState = new Map({
+export const initialState = new Map({
   inFlightActivity: false,
   status: new Map({
     isSending: false,

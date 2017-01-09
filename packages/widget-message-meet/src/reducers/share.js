@@ -8,9 +8,11 @@ import {
   STORE_SHARES
 } from '../actions/share';
 
-export default function reduceShare(state = new Map({
+export const initialState = new Map({
   files: new OrderedMap({})
-}), action) {
+});
+
+export default function reduceShare(state = initialState, action) {
   switch (action.type) {
 
   case RECEIVE_SHARE: {
