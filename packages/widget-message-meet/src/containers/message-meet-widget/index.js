@@ -236,7 +236,7 @@ export class MessageMeetWidget extends Component {
 
     props.setScrollPosition({scrollTop: this.activityList.getScrollTop()});
 
-    const lastActivity = _.last(conversation.activities.toArray());
+    const lastActivity = conversation.activities.last();
     if (this.activityList.isScrolledToBottom()) {
       props.showScrollToBottomButton(false);
       props.updateHasNewMessage(false);
@@ -248,8 +248,8 @@ export class MessageMeetWidget extends Component {
       props.showScrollToBottomButton(true);
     }
 
-    if (this.activityList.isScrolledToTop() && conversation.activities.toArray()[0].verb !== `create`) {
-      props.loadPreviousMessages(conversation.id, _.first(conversation.activities.toArray()), spark);
+    if (this.activityList.isScrolledToTop() && conversation.activities.first().verb !== `create`) {
+      props.loadPreviousMessages(conversation.id, conversation.activities.first(), spark);
     }
   }
 
@@ -353,7 +353,6 @@ export class MessageMeetWidget extends Component {
     const props = this.props;
     const {
       conversation,
-      indicators,
       spark,
       sparkState,
       user,
