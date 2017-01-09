@@ -115,9 +115,9 @@ describe(`plugin-board`, () => {
           .then((res) => {
             assert.deepEqual(imageRes, res.image);
             // ensure others can download the image
-            return participants[1].spark.encryption.decryptScr(board.defaultEncryptionKeyUrl, res.image.scr);
+            return participants[2].spark.encryption.decryptScr(board.defaultEncryptionKeyUrl, res.image.scr);
           })
-          .then((decryptedScr) => participants[1].spark.encryption.download(decryptedScr))
+          .then((decryptedScr) => participants[2].spark.encryption.download(decryptedScr))
           .then((file) => assert(fh.isMatchingFile(file, fixture)));
       });
     });
@@ -165,7 +165,7 @@ describe(`plugin-board`, () => {
       });
 
       it(`allows others to download image`, () => {
-        return participants[1].spark.encryption.download(testScr)
+        return participants[2].spark.encryption.download(testScr)
           .then((downloadedFile) => assert(fh.isMatchingFile(downloadedFile, fixture)));
       });
     });

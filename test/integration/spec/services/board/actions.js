@@ -133,7 +133,10 @@ describe('Services', function() {
       return landingparty.beamDown(party)
         .then(function() {
           party.spock.spark.feature.setFeature('developer', 'files-acl-write', true);
-          party.mccoy.spark.feature.setFeature('developer', 'files-acl-write', true);
+          return party.checkov.spark.feature.setFeature('developer', 'files-acl-write', true);
+        })
+        .then(function() {
+          return party.mccoy.spark.feature.setFeature('developer', 'files-acl-write', true);
         });
     });
 
@@ -153,7 +156,7 @@ describe('Services', function() {
             return party.mccoy.spark.board._uploadImage(board, fixture.png);
           })
           .then(function(scr) {
-            return party.spock.spark.encryption.download(scr);
+            return party.checkov.spark.encryption.download(scr);
           })
           .then(function(file) {
             assert(fixtures.isMatchingFile(file, fixture.png));
@@ -368,7 +371,7 @@ describe('Services', function() {
         });
 
         it('allows others to download the image', function() {
-          return party.spock.spark.encryption.download(testScr)
+          return party.checkov.spark.encryption.download(testScr)
             .then(function(file) {
               assert(fixtures.isMatchingFile(file, fixture.png));
             });
@@ -404,10 +407,10 @@ describe('Services', function() {
             .then(function(res) {
               assert.deepEqual(res.image, imageRes);
               // ensure others can download the image
-              return party.spock.spark.encryption.decryptScr(res.image.scr, board.defaultEncryptionKeyUrl);
+              return party.checkov.spark.encryption.decryptScr(res.image.scr, board.defaultEncryptionKeyUrl);
             })
             .then(function(decryptedScr) {
-              return party.spock.spark.encryption.download(decryptedScr);
+              return party.checkov.spark.encryption.download(decryptedScr);
             })
             .then(function(file) {
               assert(fixtures.isMatchingFile(file, fixture.png));
