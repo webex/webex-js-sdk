@@ -4,14 +4,14 @@ import {createSelector} from 'reselect';
 import _ from 'lodash';
 import moment from 'moment';
 
-import {ACTIVITY_ITEM_TYPE_ACTIVITY_ITEM, ACTIVITY_ITEM_TYPE_DAY_SEPARATOR, ACTIVITY_ITEM_TYPE_NEW_MESSAGE_SEPARATOR} from '../components/activity-list';
+import {ITEM_TYPE_ACTIVITY, ITEM_TYPE_DAY_SEPARATOR, ITEM_TYPE_NEW_MESSAGE_SEPARATOR} from '../components/activity-list';
 
-const getActivities = (state) => state.conversation.activities.toArray(); // eslint-disable-line func-style
+const getActivities = (state) => state.conversation.activities.toArray();
 const getAvatars = (state) => state.user.avatars;
 const getCurrentUser = (state) => state.user.currentUser;
-const getFlags = (state) => state.flags.flags; // eslint-disable-line func-style
+const getFlags = (state) => state.flags.flags;
 const getLastAcknowledgedActivityId = (state) => state.conversation.lastAcknowledgedActivityId;
-const getParticipants = (state) => state.conversation.participants; // eslint-disable-line func-style
+const getParticipants = (state) => state.conversation.participants;
 
 export const getMostRecentActivity = createSelector(
   getActivities,
@@ -48,7 +48,7 @@ export const getActivityList = createSelector(
       if (lastDay && !sameDay) {
         visibleActivityList.push(
           {
-            type: ACTIVITY_ITEM_TYPE_DAY_SEPARATOR,
+            type: ITEM_TYPE_DAY_SEPARATOR,
             fromDate: lastDay,
             key: `day-separtor-${activity.id}`,
             now,
@@ -61,7 +61,7 @@ export const getActivityList = createSelector(
       // New message marker
       if (shouldDisplayNewMessageMarker) {
         visibleActivityList.push({
-          type: ACTIVITY_ITEM_TYPE_NEW_MESSAGE_SEPARATOR,
+          type: ITEM_TYPE_NEW_MESSAGE_SEPARATOR,
           key: `new-messages-${activity.id}`
         });
         shouldDisplayNewMessageMarker = false;
@@ -77,7 +77,7 @@ export const getActivityList = createSelector(
       const isFlagged = flags && flags.some((flag) => flag.activityUrl === activity.url);
       visibleActivityList.push(
         {
-          type: ACTIVITY_ITEM_TYPE_ACTIVITY_ITEM,
+          type: ITEM_TYPE_ACTIVITY,
           activity,
           avatarUrl: avatars[activity.actor.id],
           isAdditional,

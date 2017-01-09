@@ -5,15 +5,15 @@ import DaySeparator from '../day-separator';
 import NewMessagesSeparator from '../new-messages-separator';
 import formatDate from '../../utils/date';
 
-export const ACTIVITY_ITEM_TYPE_ACTIVITY_ITEM = `ACTIVITY_ITEM_TYPE_ACTIVITY_ITEM`;
-export const ACTIVITY_ITEM_TYPE_DAY_SEPARATOR = `ACTIVITY_ITEM_TYPE_DAY_SEPARATOR`;
-export const ACTIVITY_ITEM_TYPE_NEW_MESSAGE_SEPARATOR = `ACTIVITY_ITEM_TYPE_NEW_MESSAGE_SEPARATOR`;
+export const ITEM_TYPE_ACTIVITY = `ITEM_TYPE_ACITIVITY`;
+export const ITEM_TYPE_DAY_SEPARATOR = `ITEM_TYPE_DAY_SEPARATOR`;
+export const ITEM_TYPE_NEW_MESSAGE_SEPARATOR = `ITEM_TYPE_NEW_MESSAGE_SEPARATOR`;
 
 export default function ActivityList(props) {
   const {activities, onActivityDelete, onActivityFlag} = props;
   const items = activities.map((visibleActivity) => {
     switch (visibleActivity.type) {
-    case ACTIVITY_ITEM_TYPE_DAY_SEPARATOR: {
+    case ITEM_TYPE_DAY_SEPARATOR: {
       const {fromDate, key, now, toDate} = visibleActivity;
       return (
         <DaySeparator
@@ -24,7 +24,7 @@ export default function ActivityList(props) {
         />
       );
     }
-    case ACTIVITY_ITEM_TYPE_ACTIVITY_ITEM: {
+    case ITEM_TYPE_ACTIVITY: {
       const {activity, avatarUrl, isAdditional, isFlagged, isSelf} = visibleActivity;
       return (
         <ActivityItem
@@ -43,7 +43,7 @@ export default function ActivityList(props) {
         />
       );
     }
-    case ACTIVITY_ITEM_TYPE_NEW_MESSAGE_SEPARATOR: {
+    case ITEM_TYPE_NEW_MESSAGE_SEPARATOR: {
       return <NewMessagesSeparator key={visibleActivity.key} />;
     }
     default: {

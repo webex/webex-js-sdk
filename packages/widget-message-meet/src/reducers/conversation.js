@@ -84,6 +84,7 @@ export default function reduceConversation(state = initialState, action) {
   }
 
   case RECEIVE_MERCURY_COMMENT: {
+    // TODO: Remove in flight activity if it matches
     const receivedActivity = action.payload.activity;
     let activities = state.activities.set(receivedActivity.url, receivedActivity);
     activities = activities.sortBy((activity) => activity.published);
