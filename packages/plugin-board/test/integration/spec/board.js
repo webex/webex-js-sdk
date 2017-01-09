@@ -143,7 +143,8 @@ describe(`plugin-board`, () => {
             assert.equal(testContent.type, `FILE`, `content type should be image`);
             assert.property(testContent, `contentUrl`, `content should contain contentId property`);
             assert.property(testContent, `channelUrl`, `content should contain contentUrl property`);
-            assert.property(testContent, `scr`, `content should contain scr property`);
+            assert.property(testContent, `file`, `content should contain file property`);
+            assert.property(testContent.file, `scr`, `content file should contain scr property`);
           });
       });
 
@@ -152,10 +153,11 @@ describe(`plugin-board`, () => {
           .then((allContents) => {
             const imageContent = find(allContents.items, {contentId: testContent.contentId});
             assert.isDefined(imageContent);
-            assert.property(imageContent, `scr`);
+            assert.property(imageContent, `file`);
+            assert.property(imageContent.file, `scr`);
             assert.equal(imageContent.displayName, `sample-image-small-one.png`);
-            testScr = imageContent.scr;
-            return imageContent.scr;
+            testScr = imageContent.file.scr;
+            return imageContent.file.scr;
           });
       });
 

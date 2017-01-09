@@ -182,7 +182,7 @@ var BoardService = SparkBase.extend({
       .then(function returnEncryptedContent(encryptedDisplayName) {
         var metadata = {
           displayName: encryptedDisplayName
-        }
+        };
 
         return {
           file: content.file,

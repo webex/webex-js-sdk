@@ -366,8 +366,10 @@ describe(`plugin-board`, () => {
 
       const imageContents = [{
         displayName: `FileName`,
-        scr: {
-          loc: fakeURL
+        file: {
+          scr: {
+            loc: fakeURL
+          }
         }
       }];
 
@@ -430,9 +432,11 @@ describe(`plugin-board`, () => {
           type: `FILE`,
           payload: JSON.stringify({
             type: `image`,
-            scr: `encryptedScr`,
             displayName: `encryptedDisplayName`
           }),
+          file: {
+            scr: `encryptedScr`
+          },
           encryptionKeyUrl: fakeURL
         }]
       };

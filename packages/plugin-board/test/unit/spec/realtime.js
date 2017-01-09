@@ -96,7 +96,10 @@ describe(`plugin-board`, () => {
 
       beforeEach(() => {
         sinon.stub(uuid, `v4`).returns(`stubbedUUIDv4`);
-        return spark.board.realtime.publishEncrypted(`fakeURL`, `encryptedData`);
+        return spark.board.realtime.publishEncrypted({
+          encryptedData: `encryptedData`,
+          encryptedKeyUrl: `fakeURL`
+        }, `STRING`);
       });
 
       afterEach(() => {
@@ -116,6 +119,7 @@ describe(`plugin-board`, () => {
             route: `binding`
           }],
           data: {
+            contentType: `STRING`,
             eventType: `board.activity`,
             envelope: {
               encryptionKeyUrl: `fakeURL`

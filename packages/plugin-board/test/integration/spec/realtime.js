@@ -159,7 +159,10 @@ describe(`plugin-board`, () => {
             },
             payload: {
               displayName: `image.png`,
-              scr: testScr
+              type: `FILE`,
+              file: {
+                scr: testScr
+              }
             }
           };
 
@@ -167,7 +170,7 @@ describe(`plugin-board`, () => {
           // same data that was sent.
           participants[1].spark.board.realtime.once(`event:board.activity`, ({data}) => {
             assert.equal(data.contentType, `FILE`);
-            assert.equal(data.payload.scr.loc, testScr.loc);
+            assert.equal(data.payload.file.scr.loc, testScr.loc);
             assert.equal(data.payload.displayName, `image.png`);
             done();
           });
