@@ -9,6 +9,7 @@
 
 var chai = require('chai');
 var assert = chai.assert;
+var sinon = require('sinon');
 
 var landingparty = require('../../lib/landingparty');
 
@@ -29,10 +30,20 @@ describe('Services', function() {
       'user'
     ].forEach(function(key) {
       describe('#setFeature()', function() {
+        var requestSpy;
+        beforeEach(function(){
+          requestSpy = sinon.spy(party.spock.spark, 'request');
+        });
+        afterEach(function(){
+          requestSpy.restore();
+        });
 
         it('sets a value for a ' + key + ' feature toggle', function() {
+          assert.equal(party.spock.spark.device.features[key].get({key: 'testFeature'}), undefined);
+
           return party.spock.spark.feature.setFeature(key, 'testFeature', false)
             .then(function(res) {
+              assert.equal(requestSpy.getCall(0).args[0].resource, 'features/users/' + party.spock.spark.device.userId + '/' + key);
               assert.equal(res.key, 'testFeature');
               assert.equal(res.val, 'false');
               assert.equal(res.value, false);
