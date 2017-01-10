@@ -31,6 +31,10 @@ export default {
       default: false,
       type: `boolean`
     },
+    isLoggingOut: {
+      default: false,
+      type: `boolean`
+    },
     isRefreshing: {
       default: false,
       type: `boolean`
