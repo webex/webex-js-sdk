@@ -6,16 +6,22 @@ import {
   RESET_ACTIVITY,
   REMOVE_FILE_FROM_ACTIVITY,
   SAVE_SHARE_ACTIVITY,
+  SUBMIT_ACTIVITY_START,
   UPDATE_ACTIVITY_STATUS,
   UPDATE_ACTIVITY_TEXT
 } from '../actions/activity';
 
 export const initialState = new Map({
+  activity: new Map({
+    clientTempId: uuid.v4(),
+    object: new Map()
+  }),
+  files: new OrderedMap(),
+  shareActivity: undefined,
   status: new Map({
     isSending: false,
     isTyping: false
   }),
-  files: new OrderedMap(),
   text: ``
 });
 
@@ -37,11 +43,20 @@ export default function reduceActivity(state = initialState, action) {
   }
 
   case RESET_ACTIVITY: {
-    return initialState.set(`clientTempId`, uuid.v4());
+    return initialState.setIn([`activity`, `clientTempId`], uuid.v4());
   }
 
   case SAVE_SHARE_ACTIVITY: {
-    return state.set(`shareActivity`, action.payload.shareActivity);
+    return state.setIn([`shareActivity`], action.payload.shareActivity);
+  }
+
+  case SUBMIT_ACTIVITY_START: {
+    return state
+      // Store the activity as an in flight activity before sending
+      // .setIn(`inFlightActivity`, action.payload.activity)
+      // Clear the text from the input
+      .set(`text`, ``)
+      .setIn([`status`, `isSending`], true);
   }
 
   case UPDATE_ACTIVITY_STATUS:

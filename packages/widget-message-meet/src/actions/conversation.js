@@ -24,6 +24,16 @@ export function addActivitiesToConversation(activities) {
   };
 }
 
+export const ADD_INFLIGHT_ACTIVITY = `ADD_INFLIGHT_ACTIVITY`;
+function addInflightActivity(activity) {
+  return {
+    type: ADD_INFLIGHT_ACTIVITY,
+    payload: {
+      activity
+    }
+  };
+}
+
 export const CREATE_CONVERSATION_BEGIN = `CREATE_CONVERSATION_BEGIN`;
 export function createConversationBegin(userId) {
   return {
@@ -175,5 +185,29 @@ export function loadPreviousMessages(conversationId, lastActivity, spark) {
       dispatch(addActivitiesToConversation(activities));
       dispatch(updateConversationState({isLoadingHistoryUp: false}));
     });
+  };
+}
+
+/**
+ * Creates an in flight activity
+ *
+ * @export
+ * @param {any} clientTempId
+ * @param {any} content
+ * @param {any} displayName
+ * @param {any} files
+ * @returns {function}
+ */
+export function createInFlightActivity(clientTempId, content, displayName, files) {
+  return (dispatch) => {
+    const activity = {
+      clientTempId,
+      object: {
+        content,
+        displayName
+      },
+      files
+    };
+    return dispatch(addInflightActivity(activity));
   };
 }

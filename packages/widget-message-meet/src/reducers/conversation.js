@@ -1,9 +1,10 @@
 /* eslint complexity: ["error", 10] */
 // Refactoring and splitting up reducer in next feature
-import {OrderedMap} from 'immutable';
+import {Map, OrderedMap} from 'immutable';
 import {
   ACKNOWLEDGE_ACTIVITY,
   ADD_ACTIVITIES_TO_CONVERSATION,
+  ADD_INFLIGHT_ACTIVITY,
   CREATE_CONVERSATION,
   CREATE_CONVERSATION_BEGIN,
   RECEIVE_MERCURY_ACTIVITY,
@@ -17,6 +18,7 @@ const filteredActivityVerbs = [`delete`];
 export const initialState = {
   activities: new OrderedMap(),
   id: null,
+  inFlightActivities: new OrderedMap(),
   lastAcknowledgedActivityId: null,
   isFetching: false,
   isLoaded: false,
@@ -38,12 +40,22 @@ export default function reduceConversation(state = initialState, action) {
       lastAcknowledgedActivityId: activityId
     });
   }
+
   case ADD_ACTIVITIES_TO_CONVERSATION: {
     const addedActivities = new OrderedMap(action.payload.activities.map((activity) => [activity.url, activity]));
     let activities = state.activities.mergeDeep(addedActivities);
     activities = activities.sortBy((activity) => activity.published);
     return Object.assign({}, state, {
       activities
+    });
+  }
+
+  case ADD_INFLIGHT_ACTIVITY: {
+    const {activity} = action.payload;
+    const inFlightActivity = new Map([[activity.clientTempId, activity]]);
+    const inFlightActivities = state.inFlightActivities.merge(inFlightActivity);
+    return Object.assign({}, state, {
+      inFlightActivities
     });
   }
 

@@ -10,6 +10,7 @@ const getActivities = (state) => state.conversation.activities.toArray();
 const getAvatars = (state) => state.user.avatars;
 const getCurrentUser = (state) => state.user.currentUser;
 const getFlags = (state) => state.flags.flags;
+const getInFlightActivities = (state) => state.conversation.inFlightActivities.toArray();
 const getLastAcknowledgedActivityId = (state) => state.conversation.lastAcknowledgedActivityId;
 const getParticipants = (state) => state.conversation.participants;
 
@@ -32,6 +33,7 @@ export const getMostRecentReadReceipts = createSelector(
  * This loops through our conversation activities and computes an array
  * of 'visible activities' to be used with the ActivityList component
  */
+// TODO: In flight activities at the end of main activities list
 export const getActivityList = createSelector(
   [getActivities, getAvatars, getCurrentUser, getFlags, getLastAcknowledgedActivityId],
   (activities, avatars, currentUser, flags, lastAcknowledgedActivityId) => {

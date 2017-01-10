@@ -3,6 +3,8 @@ import {filterSync} from '@ciscospark/helper-html';
 
 import {isImage, sanitize} from '../utils/files';
 
+import {createInFlightActivity} from './conversation';
+
 export const ADD_FILES_TO_ACTIVITY = `ADD_FILES_TO_ACTIVITY`;
 export function addFilesToActivity(files) {
   return {
@@ -40,6 +42,13 @@ export function saveShareActivity(shareActivity) {
   };
 }
 
+export const SUBMIT_ACTIVITY_START = `SUBMIT_ACTIVITY_START`;
+export function submitActivityStart() {
+  return {
+    type: SUBMIT_ACTIVITY_START
+  };
+}
+
 export const UPDATE_ACTIVITY_STATUS = `UPDATE_ACTIVITY_STATUS`;
 export function updateActivityStatus(status) {
   return {
@@ -65,14 +74,14 @@ export function updateActivityText(text) {
  * Adds file to message, creates Share activity if not present, starts upload
  *
  * @param {object} conversation - from store
- * @param {Map} activity - from store
+ * @param {Map} activityStore - from store
  * @param {array} files
  * @param {object} spark - spark instance
  * @returns {function}
  */
-export function addFiles(conversation, activity, files, spark) {
+export function addFiles(conversation, activityStore, files, spark) {
   return (dispatch) => {
-    let shareActivity = activity.get(`shareActivity`);
+    let shareActivity = activityStore.getIn([`shareActivity`]);
     if (!shareActivity) {
       shareActivity = spark.conversation.makeShare(conversation);
       // Store shareActivity object to be used later
@@ -93,11 +102,12 @@ export function addFiles(conversation, activity, files, spark) {
     dispatch(updateActivityStatus({isUploadingShare: true}));
     dispatch(addFilesToActivity(cleanFiles));
     cleanFiles.forEach((file) => shareActivity.add(file));
+
   };
 }
 
 /**
-* Removes file from ShareActiivty and from store
+* Removes file from ShareActivty and from store
 *
 * @param {string} id - clientTempId key of stored file
 * @param {Map} activity - from store
@@ -124,17 +134,21 @@ export function removeFile(id, activity) {
 */
 export function submitActivity(conversation, activity, spark) {
   return (dispatch) => {
-    const message = _createMessageObject(activity.get(`text`));
+    const activityObject = activity.get(`activity`).toJS();
+    const message = createMessageObject(activity.get(`text`));
     const shareActivity = activity.get(`shareActivity`);
     if (shareActivity && activity.get(`files`).size) {
       shareActivity.displayName = message.displayName;
       shareActivity.content = message.content;
+      shareActivity.clientTempId = activityObject.clientTempId;
+      dispatch(createInFlightActivity(activityObject.clientTempId, message.content, message.displayName, activity.get(`files`).toArray()));
       spark.conversation.share(conversation, shareActivity)
         .then(cleanupAfterSubmit(activity, dispatch));
     }
     else if (message) {
-      spark.conversation.post(conversation, message)
-        .then(cleanupAfterSubmit(activity, dispatch));
+      dispatch(createInFlightActivity(activityObject.clientTempId, message.content, message.displayName));
+      dispatch(resetActivity());
+      spark.conversation.post(conversation, message, activityObject);
     }
   };
 }
@@ -163,7 +177,7 @@ export function setUserTyping(isTyping, conversation, spark) {
 * @returns {function}
 */
 function cleanupAfterSubmit(activity, dispatch) {
-  const files = activity.get(`files`);
+  const files = activity.getIn([`files`]);
   if (files.size) {
     files.forEach((file) => {
       revokeObjectURL(file);
@@ -195,7 +209,13 @@ function revokeObjectURL(file) {
 }
 
 
-function _createMessageObject(messageString) {
+/**
+ * Creates markdown and stripped text object
+ *
+ * @param {string} messageString
+ * @returns {object}
+ */
+function createMessageObject(messageString) {
   let content;
   let markedString = marked(messageString) || ``;
   let displayName = messageString || ``;
