@@ -59,9 +59,32 @@ describe(`plugin-feature`, () => {
     });
 
     describe(`#setFeature()`, () => {
+      beforeEach(() => {
+        spark.request = sinon.stub().returns(Promise.resolve({
+          body: {},
+          statusCode: 200
+        }));
+      });
+      afterEach(() => {
+        spark.request.reset();
+      });
       it(`does not allow entitlement keyType to be set`, () => {
         return assert.isRejected(spark.feature.setFeature(`entitlement`, `featureName`, true),
           /Only `developer` and `user` feature toggles can be set./);
+      });
+
+      [
+        `developer`,
+        `user`
+      ].forEach((keyType) => {
+        it(`sets a value for a ${keyType} feature toggle`, () => {
+          spark.device.features[keyType].add = sinon.stub();
+          spark.feature.setFeature(keyType, `featureName`, true)
+          .then(() => {
+            assert.called(spark.device.features[keyType].add);
+            assert.equal(spark.request.getCall(0).args[0].resource, `features/users/${spark.device.userId} /${keyType}`);
+          });
+        });
       });
     });
 
