@@ -201,6 +201,10 @@ export function loadPreviousMessages(conversationId, lastActivity, spark) {
  * @returns {function}
  */
 export function createInFlightActivity(clientTempId, object, verb, files) {
+  // url is used as key in share list
+  const items = files.map((file, index) => Object.assign({}, file, {
+    url: file.thumbnail ? file.thumbnail : index
+  }));
   return (dispatch) => {
     const activity = {
       clientTempId,
@@ -208,7 +212,7 @@ export function createInFlightActivity(clientTempId, object, verb, files) {
       verb,
       object,
       files: {
-        items: files
+        items
       }
     };
     return dispatch(addInflightActivity(activity));

@@ -141,9 +141,9 @@ export function submitActivity(conversation, activity, spark) {
       shareActivity.displayName = message.displayName;
       shareActivity.content = message.content;
       shareActivity.clientTempId = activityObject.clientTempId;
-      dispatch(createInFlightActivity(activityObject.clientTempId, message.content, message.displayName, activity.get(`files`).toArray()));
-      spark.conversation.share(conversation, shareActivity)
-        .then(cleanupAfterSubmit(activity, dispatch));
+      dispatch(createInFlightActivity(activityObject.clientTempId, message, `share`, activity.get(`files`).toArray()));
+      spark.conversation.share(conversation, shareActivity);
+      cleanupAfterSubmit(activity, dispatch);
     }
     else if (message) {
       dispatch(createInFlightActivity(activityObject.clientTempId, message, `post`));

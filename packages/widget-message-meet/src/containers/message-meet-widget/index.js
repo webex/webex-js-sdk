@@ -139,7 +139,7 @@ export class MessageMeetWidget extends Component {
           props.createNotification(lastActivityFromThis.url, NOTIFICATION_TYPE_POST);
         }
       }
-      else if (firstActivityFromThis.id !== firstActivityFromPrev.id) {
+      else if (firstActivityFromThis && firstActivityFromPrev && firstActivityFromThis.id !== firstActivityFromPrev.id) {
         activityList.setScrollTop(activityList.getScrollHeight() - this.scrollHeight + prevProps.widget.scrollTop);
       }
       // Scroll to bottom when needed
