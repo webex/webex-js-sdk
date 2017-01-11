@@ -33,10 +33,9 @@ export const getMostRecentReadReceipts = createSelector(
  * This loops through our conversation activities and computes an array
  * of 'visible activities' to be used with the ActivityList component
  */
-// TODO: In flight activities at the end of main activities list
 export const getActivityList = createSelector(
-  [getActivities, getAvatars, getCurrentUser, getFlags, getLastAcknowledgedActivityId],
-  (activities, avatars, currentUser, flags, lastAcknowledgedActivityId) => {
+  [getActivities, getAvatars, getCurrentUser, getInFlightActivities, getFlags, getLastAcknowledgedActivityId],
+  (activities, avatars, currentUser, inFlightActivities, flags, lastAcknowledgedActivityId) => {
     const visibleActivityList = [];
     const now = moment();
     let lastActorId, lastDay, lastVerb;
@@ -95,6 +94,30 @@ export const getActivityList = createSelector(
         shouldDisplayNewMessageMarker = true;
       }
     });
+
+    // Create a "fake" activity to display in flight activities
+    inFlightActivities.forEach((inFlightActivity) => {
+      visibleActivityList.push(
+        {
+          type: ITEM_TYPE_ACTIVITY,
+          activity: {
+            id: inFlightActivity.id,
+            object: inFlightActivity.object,
+            actor: {
+              displayName: currentUser.name
+            },
+            published: Date.now(),
+            verb: inFlightActivity.verb
+          },
+          avatarUrl: avatars[currentUser.id],
+          isAdditional: false,
+          isFlagged: false,
+          isSelf: true,
+          isPending: true
+        }
+      );
+    });
+
     return visibleActivityList;
   }
 );

@@ -146,7 +146,7 @@ export function submitActivity(conversation, activity, spark) {
         .then(cleanupAfterSubmit(activity, dispatch));
     }
     else if (message) {
-      dispatch(createInFlightActivity(activityObject.clientTempId, message.content, message.displayName));
+      dispatch(createInFlightActivity(activityObject.clientTempId, message, `post`));
       dispatch(resetActivity());
       spark.conversation.post(conversation, message, activityObject);
     }

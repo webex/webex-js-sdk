@@ -192,21 +192,24 @@ export function loadPreviousMessages(conversationId, lastActivity, spark) {
  * Creates an in flight activity
  *
  * @export
- * @param {any} clientTempId
- * @param {any} content
- * @param {any} displayName
- * @param {any} files
+ * @param {string} clientTempId
+ * @param {object} object
+ * @param {string} object.content
+ * @param {string} object.displayName
+ * @param {string} verb
+ * @param {Array} files
  * @returns {function}
  */
-export function createInFlightActivity(clientTempId, content, displayName, files) {
+export function createInFlightActivity(clientTempId, object, verb, files) {
   return (dispatch) => {
     const activity = {
       clientTempId,
-      object: {
-        content,
-        displayName
-      },
-      files
+      id: clientTempId,
+      verb,
+      object,
+      files: {
+        items: files
+      }
     };
     return dispatch(addInflightActivity(activity));
   };
