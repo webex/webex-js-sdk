@@ -104,6 +104,7 @@ export class MessageMeetWidget extends Component {
     /* eslint-disable operator-linebreak */
     /* eslint-disable-reason: Giant list of comparisons very difficult to read and diff */
     return nextProps.conversation.activities !== props.conversation.activities
+      || nextProps.conversation.inFlightActivities !== props.conversation.inFlightActivities
       || nextProps.conversation.isLoadingHistoryUp !== props.conversation.isLoadingHistoryUp
       || nextProps.flags !== props.flags
       || nextProps.indicators !== props.indicators
@@ -129,30 +130,59 @@ export class MessageMeetWidget extends Component {
     if (activityList) {
       const lastActivityFromPrev = prevProps.conversation.activities.last();
       const lastActivityFromThis = props.conversation.activities.last();
-
       const firstActivityFromPrev = prevProps.conversation.activities.first();
       const firstActivityFromThis = props.conversation.activities.first();
       // If new activity comes in
       if (lastActivityFromPrev && lastActivityFromThis && props.conversation.activities.size !== prevProps.conversation.activities.size && lastActivityFromPrev.id !== lastActivityFromThis.id) {
-        // Scroll if from ourselves
-        if (props.user.currentUser.id === lastActivityFromThis.actor.id) {
-          activityList.scrollToBottom();
-        }
-        else {
-          if (activityList.isScrolledToBottom()) {
-            activityList.scrollToBottom();
-          }
+        if (props.user.currentUser.id !== lastActivityFromThis.actor.id) {
           // Send notification of new message
           props.createNotification(lastActivityFromThis.url, NOTIFICATION_TYPE_POST);
         }
       }
-      else if (prevProps.conversation.activities.size === 0) {
-        activityList.scrollToBottom();
-      }
       else if (firstActivityFromThis.id !== firstActivityFromPrev.id) {
         activityList.setScrollTop(activityList.getScrollHeight() - this.scrollHeight + prevProps.widget.scrollTop);
       }
+      // Scroll to bottom when needed
+      if (this.shouldScrollToBottom(props, prevProps)) {
+        activityList.scrollToBottom();
+      }
     }
+  }
+
+  /**
+   * Scrolls the window to the bottom when it should
+   * (called from componentDidUpdate)
+   *
+   * @param {any} props
+   * @param {any} prevProps
+   * @returns {bool}
+   *
+   * @memberOf MessageMeetWidget
+   */
+  shouldScrollToBottom(props, prevProps) {
+    let shouldScrollToBottom = false;
+    const activityList = this.activityList;
+    const lastActivityFromPrev = prevProps.conversation.activities.last();
+    const lastActivityFromThis = props.conversation.activities.last();
+    // If new activity comes in
+    if (lastActivityFromPrev && lastActivityFromThis && props.conversation.activities.size !== prevProps.conversation.activities.size && lastActivityFromPrev.id !== lastActivityFromThis.id) {
+      // Scroll if from ourselves
+      if (props.user.currentUser.id === lastActivityFromThis.actor.id) {
+        shouldScrollToBottom = true;
+      }
+      else if (activityList.isScrolledToBottom()) {
+        shouldScrollToBottom = true;
+      }
+    }
+    else if (prevProps.conversation.activities.size === 0) {
+      shouldScrollToBottom = true;
+    }
+    // Scroll to show in flight activities
+    if (props.conversation.inFlightActivities.size) {
+      shouldScrollToBottom = true;
+    }
+
+    return shouldScrollToBottom;
   }
 
   /**
