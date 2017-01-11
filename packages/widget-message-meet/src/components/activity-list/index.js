@@ -25,7 +25,7 @@ export default function ActivityList(props) {
       );
     }
     case ITEM_TYPE_ACTIVITY: {
-      const {activity, avatarUrl, isAdditional, isFlagged, isSelf} = visibleActivity;
+      const {activity, avatarUrl, isPending, isAdditional, isFlagged, isSelf} = visibleActivity;
       return (
         <ActivityItem
           activity={activity.object}
@@ -33,6 +33,7 @@ export default function ActivityList(props) {
           id={activity.id}
           isAdditional={isAdditional}
           isFlagged={isFlagged}
+          isPending={isPending}
           isSelf={isSelf}
           key={activity.id}
           name={activity.actor.displayName}

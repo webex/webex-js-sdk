@@ -52,9 +52,9 @@
   flex: 0 0 auto;
 }
 
-.pending .content-container {
-  color: rgb(176, 176, 176);
+.pending {
   cursor: pointer;
+  opacity: 0.25;
 }
 
 .failed .status {
