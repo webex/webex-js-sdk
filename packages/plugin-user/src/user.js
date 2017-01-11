@@ -28,26 +28,48 @@ const User = SparkPlugin.extend({
   },
 
   /**
-   * Finishes the signup process for a user that signed up on a mobile device
-   * @param {Object} options
-   * @param {string} options.encryptedQueryString
-   * @returns {Promise<Object>}
+   * Activates a Spark user account and exchanges for user token.
+   * @param {Object} params
+   * @param {Object} params.verificationToken (required)
+   * @returns {Promise} Resolves with a userSession
    */
-  activate(options) {
-    options = options || {};
+  activate: function activate(params) {
+    params = params || {};
 
-    if (!options.encryptedQueryString) {
-      throw new Error(`\`options.encryptedQueryString\` is required`);
+    if (!params.verificationToken) {
+      throw new Error(`\`params.verificationToken`` is required`);
     }
+    let response;
 
     return this.request({
-      service: `atlas`,
-      resource: `users/email/activate`,
+      uri: this.config.activationUrl,
       method: `POST`,
-      body: options,
-      requiresClientCredentials: true
+      body: params,
+      auth: {
+        user: this.spark.config.credentials.oauth.client_id,
+        pass: this.spark.config.credentials.oauth.client_secret,
+        sendImmediately: true
+      },
+      withCredentials: true
     })
-      .then((res) => res.body);
+      .then((res) => {
+        response = res;
+        return this.getOauthCode();
+      })
+      .then((res) => {
+        const code = res.match(`<title>(.*)</title>`)[1];
+        return this.spark.credentials.requestAuthorizationCodeGrant({code});
+      })
+      .then(() => {
+        this.setPasswordStatus(false);
+        return response;
+      });
+      // .then(function registerDevice() {
+      //   return this.spark.device.refresh();
+      // }.bind(this))
+      // .then(function getUser() {
+      //   return this.get();
+      // }.bind(this))
   },
 
   /**
@@ -172,6 +194,50 @@ const User = SparkPlugin.extend({
     return this.verify(...args);
   },
 
+  setPasswordStatus: function setPasswordStatus(value) {
+    this.spark.credentials.supertoken.hasPassword = value;
+  },
+
+  /**
+   * Updates a user's password with spark.
+   * @param {Object} params
+   * @param {string} params.password (required)
+   * @param {string} params.userId (required)
+   * @returns {Promise} Resolves with complete user object containing new password
+   */
+  setPassword: function setPassword(params) {
+    params = params || {};
+    if (!params.password) {
+      return Promise.reject(new Error(`\`params.password\` is required`));
+    }
+    if (!params.userId) {
+      return Promise.reject(new Error(`\`params.userId\` is required`));
+    }
+
+    let headers;
+
+    const promise = this.spark.credentials.getAuthorization()
+      .then((authorization) => {
+        headers = {
+          Authorization: authorization
+        };
+      });
+
+    return promise
+      .then(this.request({
+        uri: `${this.config.setPasswordUrl}/${params.userId}`,
+        method: `PATCH`,
+        headers,
+        body: {
+          schemas: [`urn:scim:schemas:core:1.0`, `urn:scim:schemas:extension:cisco:commonidentity:1.0`],
+          password: params.password
+        }
+      }))
+      .then(() => {
+        this.setPasswordStatus(true);
+      });
+  },
+
   /**
    * Updates the current user's display name
    * @param {Object} options
@@ -193,21 +259,42 @@ const User = SparkPlugin.extend({
   },
 
   /**
-   * Determines if the speicfied user needs to signup or can signin
+   * Determines if the speicfied user needs to signup or can signin.
+   * Triggers activation email if client credentials are used
    * @param {Object} options
-   * @param {string} options.email
+   * @param {string} options.email (required)
    * @returns {Promise<Object>}
    */
   verify(options) {
     options = Object.assign({}, this.config.verifyDefaults, options);
 
-    return this.request({
-      service: `atlas`,
-      resource: `users/email/verify`,
-      method: `post`,
-      body: options,
-      requiresClientCredentials: true
-    })
+    if (!options.email) {
+      return Promise.reject(new Error(`\`options.email\` is required`));
+    }
+
+    let shouldRefreshAccessToken = true;
+    const headers = {};
+    const promise = this.spark.credentials.getAuthorization()
+      .then((authorization) => {
+        headers.Authorization = authorization;
+      })
+      .catch(() => this.spark.credentials.getClientAuthorization()
+        .then((authorization) => {
+          headers.Authorization = authorization;
+          shouldRefreshAccessToken = false;
+        })
+        .catch((err) => Promise.reject(new Error(`failed to set authorization`, err)))
+      );
+
+    return promise
+      .then(this.request({
+        service: `atlas`,
+        resource: `users/activations`,
+        method: `post`,
+        headers,
+        body: options,
+        shouldRefreshAccessToken
+      }))
       .then((res) => res.body);
   },
 
@@ -229,6 +316,29 @@ const User = SparkPlugin.extend({
    */
   _extractEmailAddress: function _extractEmailAddress(user) {
     return user.email || user.emailAddress || user.entryEmail || user;
+  },
+
+  /**
+   * Uses cookie header to request quth code
+   * @private
+   * @returns {string} html body with auth code
+   */
+  _getOauthCode: function getOauthCode() {
+    return this.request({
+      api: `oauth`,
+      withCredentials: true,
+      method: `POST`,
+      resource: `authorize`,
+      form: {
+        /* eslint camelcase: [0] */
+        response_type: `code`,
+        redirect_uri: `urn:ietf:wg:oauth:2.0:oob`,
+        client_id: this.spark.config.credentials.oauth.client_id,
+        scope: this.spark.config.credentials.oauth.scope,
+        service: `spark`
+      }
+    })
+      .then((res) => res.body);
   }
 });
 

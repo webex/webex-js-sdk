@@ -60,6 +60,13 @@ export default {
       fn() {
         return Boolean(this.supertoken && this.supertoken.canRefresh);
       }
+    },
+
+    hasPassword: {
+      deps: [`supertoken.hasPassword`],
+      fn() {
+        return Boolean(this.supertoken && this.supertoken.hasPassword);
+      }
     }
   },
 

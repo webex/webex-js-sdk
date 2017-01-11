@@ -27,6 +27,10 @@ var Token = SparkBase.extend({
     access_token: 'string',
     expires: 'number',
     expires_in: 'number',
+    hasPassword: {
+      default: true,
+      type: 'boolean'
+    },
     refresh_token: 'string',
     refresh_token_expires: 'number',
     refresh_token_expires_in: 'number',
@@ -48,6 +52,13 @@ var Token = SparkBase.extend({
       deps: ['refresh_token'],
       fn: function canRefresh() {
         return !!this.refresh_token;
+      }
+    },
+
+    hasPassword: {
+      deps: ['hasPassword'],
+      fn: function hasPassword() {
+        return !!this.hasPassword;
       }
     },
 
@@ -188,6 +199,7 @@ var Token = SparkBase.extend({
           this.unset('previousToken');
         }
 
+        res.body.hasPassword = this.hasPassword;
         res.body.previousToken = this;
 
         // this.constructor *should* be `Token`. We can't use it by name

@@ -6,13 +6,13 @@
 
 export default {
   user: {
+    activationUrl: `https://idbroker.webex.com/idb/token/v1/actions/UserActivation/invoke`,
     batcherWait: 100,
     batcherMaxCalls: 100,
     batcherMaxWait: 1500,
+    setPasswordUrl: `https://identity.webex.com/identity/scim/v1/Users`,
     verifyDefaults: {
-      deviceName: `DESKTOP`,
-      deviceId: `not a mobile device`,
-      pushId: `not a mobile device`
+      reqId: `DESKTOP`
     }
   }
 };

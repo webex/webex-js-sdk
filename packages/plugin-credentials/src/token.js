@@ -34,6 +34,10 @@ const Token = SparkPlugin.extend({
     access_token: `string`,
     expires: `number`,
     expires_in: `number`,
+    hasPassword: {
+      default: true,
+      type: `boolean`
+    },
     refresh_token: `string`,
     refresh_token_expires: `number`,
     refresh_token_expires_in: `number`,
@@ -83,6 +87,13 @@ const Token = SparkPlugin.extend({
       ],
       fn() {
         return Boolean(this.refresh_token);
+      }
+    },
+
+    hasPassword: {
+      deps: [`hasPassword`],
+      fn() {
+        return Boolean(this.hasPassword);
       }
     },
 
@@ -224,6 +235,7 @@ const Token = SparkPlugin.extend({
 
         res.body.previousToken = this;
         res.body.scope = this.scope;
+        res.body.hasPassword = this.hasPassword;
 
         return new Token(res.body, {parent: this.parent});
       })

@@ -38,6 +38,13 @@ var SparkCore = AmpersandState.extend({
       }
     },
 
+    hasPassword: {
+      deps: ['credentials.hasPassword'],
+      fn: function hasPassword() {
+        return this.credentials.hasPassword;
+      }
+    },
+
     isAuthenticated: {
       deps: ['credentials.isAuthenticated'],
       fn: function isAuthenticated() {

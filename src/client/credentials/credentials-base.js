@@ -37,6 +37,13 @@ var CredentialsBase = SparkBase.extend({
       }
     },
 
+    hasPassword: {
+      deps: ['authorization.hasPassword'],
+      fn: function hasPassword() {
+        return !!(this.authorization && this.authorization.hasPassword);
+      }
+    },
+
     isAuthenticated: {
       deps: ['authorization.isAuthenticated'],
       fn: function isAuthenticated() {

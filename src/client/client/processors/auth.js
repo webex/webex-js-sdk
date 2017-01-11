@@ -9,7 +9,6 @@ var authProcessor = {
   pre: function pre(options) {
     // If Authorizations is already set, don't overwrite it
     if ('Authorization' in options.headers) {
-
       // If Authorization is set to null, false, or undefined, delete it to
       // prevent a CORS preflight.
       if (!options.headers.Authorization) {
@@ -102,7 +101,7 @@ var authProcessor = {
   },
 
   requiresClientCredentials: function requiresClientCredentials(options) {
-    return options.api === 'atlas' && options.resource && (options.resource.indexOf('users/email/') !== -1);
+    return options.api === 'atlas' && options.resource && options.resource.indexOf('users/activations') !== -1;
   },
 
   getClientCredentials: function getClientCredentials() {

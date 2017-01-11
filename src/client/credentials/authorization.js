@@ -23,6 +23,15 @@ var Authorization = SparkBase.extend({
       }
     },
 
+    hasPassword: {
+      // TODO: do we need to cache?
+      cache: false,
+      deps: ['supertoken.hasPassword'],
+      fn: function hasPassword() {
+        return !!(this.supertoken && this.supertoken.hasPassword);
+      }
+    },
+
     isAuthenticated: {
       deps: ['supertoken.isAuthenticated'],
       fn: function isAuthenticated() {

@@ -144,10 +144,10 @@ module.exports = {
     languageCode: 'en'
   },
   user: {
+    activationUrl: 'https://idbroker.webex.com/idb/token/v1/actions/UserActivation/invoke',
+    setPasswordUrl: 'https://identity.webex.com/identity/scim/v1/Users',
     registrationDefaults: {
-      pushId: 'not a push enabled device',
-      deviceId: 'device id not yet defined',
-      deviceName: 'DESKTOP'
+      reqId: 'DESKTOP'
     },
     /**
      * browser-only Specifies the path at which your server proxies ATLAS/users/email/activate
