@@ -13,8 +13,6 @@ export {
   MemoryStoreAdapter,
   NotFoundError,
   persist,
-  SparkPluginStorage,
-  Store,
   StorageError,
   waitForValue
 } from './lib/storage';

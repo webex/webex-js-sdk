@@ -13,9 +13,8 @@ import uuid from 'uuid';
 import querystring from 'querystring';
 import url from 'url';
 import Token from '../token';
-import {persist, waitForValue} from '@ciscospark/spark-core';
+import {persist, waitForValue, SparkPlugin} from '@ciscospark/spark-core';
 import {deprecated} from 'core-decorators';
-import {SparkPlugin} from '@ciscospark/spark-core';
 
 /**
  * @private

@@ -6,6 +6,7 @@
 
 /* eslint global-require: [0] */
 /* eslint quotes: [0] */
+/* eslint import/no-commonjs: [0] */
 
 /* istanbul ignore else */
 if (!global._babelPolyfill) {

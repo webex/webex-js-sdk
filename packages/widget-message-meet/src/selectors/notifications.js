@@ -4,7 +4,7 @@ const getActivities = (state) => state.conversation.activities; // eslint-disabl
 const getNotifications = (state) => state.notifications.items; // eslint-disable-line func-style
 const getAvatars = (state) => state.user.avatars; // eslint-disable-line func-style
 
-export const getUnsentNotifications = createSelector(
+const getUnsentNotifications = createSelector(
   [getActivities, getNotifications, getAvatars],
   (activities, notifications, avatars) =>
     notifications
@@ -17,6 +17,8 @@ export const getUnsentNotifications = createSelector(
         });
       })
 );
+
+export default getUnsentNotifications;
 
 function findActivityWithUrl(activities, url) {
   return activities.find((activity) => activity.url === url);

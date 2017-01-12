@@ -1,6 +1,6 @@
 import {createBrowser} from '@ciscospark/test-helper-automation';
 import testUsers from '@ciscospark/test-helper-test-users';
-import pkg from '../../../package.json';
+import pkg from '../../../package';
 
 describe(`example-phone`, () => {
   let browser, callee, caller;
