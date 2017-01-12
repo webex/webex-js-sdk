@@ -2,6 +2,7 @@ import marked from 'marked';
 import {filterSync} from '@ciscospark/helper-html';
 
 import {isImage, sanitize} from '../utils/files';
+import {constructActivity, constructActivityWithContent} from '../utils/activity';
 
 import {createInFlightActivity} from './conversation';
 
@@ -129,26 +130,29 @@ export function removeFile(id, activity) {
 *
 * @param {object} conversation - from store
 * @param {Map} activity - from store
+* @param {object} user - from store
 * @param {object} spark - spark instance from store
 * @returns {function}
 */
-export function submitActivity(conversation, activity, spark) {
+export function submitActivity(conversation, activity, user, spark) {
   return (dispatch) => {
-    const activityObject = activity.get(`activity`).toJS();
     const message = createMessageObject(activity.get(`text`));
     const shareActivity = activity.get(`shareActivity`);
     if (shareActivity && activity.get(`files`).size) {
+      const inFlightActivity = constructActivityWithContent(conversation, message, user, activity.get(`files`).toArray());
+      dispatch(createInFlightActivity(inFlightActivity));
+      // map our temp id to the in flight temp id so we can remove it when it is received
       shareActivity.displayName = message.displayName;
       shareActivity.content = message.content;
-      shareActivity.clientTempId = activityObject.clientTempId;
-      dispatch(createInFlightActivity(activityObject.clientTempId, message, `share`, activity.get(`files`).toArray()));
-      spark.conversation.share(conversation, shareActivity);
+      shareActivity.clientTempId = inFlightActivity.clientTempId;
+      // spark.conversation.share(conversation, shareActivity);
       cleanupAfterSubmit(activity, dispatch);
     }
     else if (message) {
-      dispatch(createInFlightActivity(activityObject.clientTempId, message, `post`));
+      const inFlightActivity = constructActivity(conversation, message, user);
+      dispatch(createInFlightActivity(inFlightActivity));
       dispatch(resetActivity());
-      spark.conversation.post(conversation, message, activityObject);
+      spark.conversation.post(conversation, message, inFlightActivity);
     }
   };
 }

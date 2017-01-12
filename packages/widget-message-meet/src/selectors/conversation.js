@@ -97,21 +97,10 @@ export const getActivityList = createSelector(
 
     // Create a "fake" activity to display in flight activities
     inFlightActivities.forEach((inFlightActivity) => {
-      const object = inFlightActivity.verb === `share` ? Object.assign({}, inFlightActivity.object, {
-        files: inFlightActivity.files
-      }) : inFlightActivity.object;
       visibleActivityList.push(
         {
           type: ITEM_TYPE_ACTIVITY,
-          activity: {
-            id: inFlightActivity.id,
-            object,
-            actor: {
-              displayName: currentUser.name
-            },
-            published: Date.now(),
-            verb: inFlightActivity.verb
-          },
+          activity: inFlightActivity,
           avatarUrl: avatars[currentUser.id],
           isAdditional: false,
           isFlagged: false,

@@ -1,5 +1,4 @@
 import {Map, OrderedMap} from 'immutable';
-import uuid from 'uuid';
 
 import {
   ADD_FILES_TO_ACTIVITY,
@@ -13,7 +12,6 @@ import {
 
 export const initialState = new Map({
   activity: new Map({
-    clientTempId: uuid.v4(),
     object: new Map()
   }),
   files: new OrderedMap(),
@@ -43,7 +41,7 @@ export default function reduceActivity(state = initialState, action) {
   }
 
   case RESET_ACTIVITY: {
-    return initialState.setIn([`activity`, `clientTempId`], uuid.v4());
+    return initialState;
   }
 
   case SAVE_SHARE_ACTIVITY: {
