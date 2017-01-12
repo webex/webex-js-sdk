@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/test-helper-mocha",
-  "version": "0.7.32",
+  "version": "0.7.33",
   "description": "Helpers for controlling where tests run",
   "license": "MIT",
   "main": "./src",
