@@ -18,9 +18,16 @@ npm run lerna -- exec -- bash -c "npm publish --access public || true"
 export NPM_CONFIG_REGISTRY="${REG}"
 rm -f ~/.npmrc
 
-VERSION=$(git reflog -n 1 | grep "commit: v." | awk '{print $4}')
+# Note: the following will need to change once we
+VERSION="v$(cat lerna.json | jq .version | tr -d '\"')"
 if [ -n "${VERSION}" ]; then
+  # If we didn't publish anything on this build, the tag will already have been
+  # pushed and github will reject us; don't fail if that happens
+  set +e
   git push origin "${VERSION}":"${VERSION}"
+  set -e
+else
+  echo "Warning: could not determine tag name to push to github.com"
 fi
 
 echo "################################################################################"
