@@ -178,8 +178,7 @@ export class MessageMeetWidget extends Component {
       shouldScrollToBottom = true;
     }
     // Scroll to show in flight activities
-    // TODO: don't rescroll back down if you scroll up while in flight
-    if (props.conversation.inFlightActivities.size) {
+    if (props.conversation.inFlightActivities.size && props.conversation.inFlightActivities.size !== prevProps.conversation.inFlightActivities.size) {
       shouldScrollToBottom = true;
     }
 

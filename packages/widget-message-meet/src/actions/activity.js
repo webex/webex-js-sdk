@@ -145,7 +145,7 @@ export function submitActivity(conversation, activity, user, spark) {
       shareActivity.displayName = message.displayName;
       shareActivity.content = message.content;
       shareActivity.clientTempId = inFlightActivity.clientTempId;
-      // spark.conversation.share(conversation, shareActivity);
+      spark.conversation.share(conversation, shareActivity);
       cleanupAfterSubmit(activity, dispatch);
     }
     else if (message) {

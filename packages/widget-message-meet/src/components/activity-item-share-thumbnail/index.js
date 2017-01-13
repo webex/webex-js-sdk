@@ -10,8 +10,10 @@ import styles from './styles.css';
 function ActivityItemShareThumbnail(props) {
   const {
     file,
-    onDownloadClick,
-    thumbnail
+    isFetching,
+    isPending,
+    objectUrl,
+    onDownloadClick
   } = props;
   const {
     displayName,
@@ -21,19 +23,32 @@ function ActivityItemShareThumbnail(props) {
 
   let image;
 
-  if (thumbnail) {
-    const isFetching = thumbnail.get(`isFetching`);
-    const objectUrl = thumbnail.get(`objectUrl`);
-    if (!isFetching && objectUrl) {
-      image = <img alt="Uploaded File" src={objectUrl} />;
-    }
-    else if (isFetching) {
-      image = <div className={classNames(`spinner-container`, styles.spinnerContainer)}><Spinner /></div>;
-    }
+  if (!isFetching && objectUrl) {
+    image = <img alt="Uploaded File" src={objectUrl} />;
+  }
+  else if (isFetching) {
+    image = <div className={classNames(`spinner-container`, styles.spinnerContainer)}><Spinner /></div>;
   }
 
   function handleDownloadClick() {
     onDownloadClick(file);
+  }
+
+  let shareItemActions;
+  if (!isPending) {
+    // eslint-disable-next-line no-extra-parens
+    shareItemActions = (
+      <div className={classNames(`share-item-actions`, styles.shareActions)}>
+        <div className={classNames(`share-action-item`, styles.shareActionItem)}>
+          <Button
+            buttonClassName={styles.downloadButton}
+            iconType={ICON_TYPE_DOWNLOAD}
+            onClick={handleDownloadClick}
+            title="Download this file"
+          />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -49,16 +64,7 @@ function ActivityItemShareThumbnail(props) {
             <span className={classNames(`share-file-type`, styles.fileType)}>{objectType}</span>
           </div>
         </div>
-        <div className={classNames(`share-item-actions`, styles.shareActions)}>
-          <div className={classNames(`share-action-item`, styles.shareActionItem)}>
-            <Button
-              buttonClassName={styles.downloadButton}
-              iconType={ICON_TYPE_DOWNLOAD}
-              onClick={handleDownloadClick}
-              title="Download this file"
-            />
-          </div>
-        </div>
+        {shareItemActions}
       </div>
     </div>
   );
@@ -66,8 +72,10 @@ function ActivityItemShareThumbnail(props) {
 
 ActivityItemShareThumbnail.propTypes = {
   file: PropTypes.object,
-  onDownloadClick: PropTypes.func,
-  thumbnail: PropTypes.object
+  isFetching: PropTypes.bool,
+  isPending: PropTypes.bool,
+  objectUrl: PropTypes.string,
+  onDownloadClick: PropTypes.func
 };
 
 export default ActivityItemShareThumbnail;
