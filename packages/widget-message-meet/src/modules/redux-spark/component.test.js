@@ -11,7 +11,7 @@ describe(`spark component`, () => {
   it(`renders correctly`, () => {
     const component = renderer.create(
       <Provider store={store}>
-        <SparkComponent />
+        <SparkComponent accessToken={`abc123`} />
       </Provider>
     ).toJSON();
 

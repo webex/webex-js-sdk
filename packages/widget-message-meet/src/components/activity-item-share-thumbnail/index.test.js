@@ -1,5 +1,4 @@
 import React from 'react';
-import {Map} from 'immutable';
 import renderer from 'react-test-renderer';
 
 import ActivityShareThumbnail from '.';
@@ -15,10 +14,10 @@ describe(`ActivityShareThumbnail post component`, () => {
         fileSize: 1472837,
         objectType: `js`
       },
-      onDownloadClick: jest.fn(),
-      thumbnail: new Map({
-        isFetching: true
-      })
+      isFetching: true,
+      isPending: false,
+      objectUrl: `blob:localhost/testFile`,
+      onDownloadClick: jest.fn()
     };
   });
 
@@ -30,8 +29,15 @@ describe(`ActivityShareThumbnail post component`, () => {
   });
 
   it(`renders thumbnail properly`, () => {
-    props.thumbnail.set(`isFetching`, false);
-    props.thumbnail.set(`objectUrl`, `blob:localhost/testFile`);
+    props.isFetching = true;
+    const component = renderer.create(
+      <ActivityShareThumbnail {...props} />
+    ).toJSON();
+    expect(component).toMatchSnapshot();
+  });
+
+  it(`renders pending properly`, () => {
+    props.isPending = true;
     const component = renderer.create(
       <ActivityShareThumbnail {...props} />
     ).toJSON();

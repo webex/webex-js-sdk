@@ -49,7 +49,10 @@ describe(`MessageComposer component`, () => {
     it(`sends message properly`, () => {
       const props = {
         activity: new Map(),
-        submitActivity: jest.fn()
+        submitActivity: jest.fn(),
+        user: {
+          currentUser: {}
+        }
       };
       const messageComposer = new MessageComposer(props);
       messageComposer.handleSubmit();
