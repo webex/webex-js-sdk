@@ -7,12 +7,11 @@
 /* eslint camelcase: [0] */
 
 import {base64, makeStateDataType, oneFlight, retry, tap, whileInFlight} from '@ciscospark/common';
-import {grantErrors, SparkPlugin} from '@ciscospark/spark-core';
 import TokenCollection from '../token-collection';
 import Token from '../token';
 import {filterScope, sortScope} from '../scope';
 import {clone, has, isObject, pick} from 'lodash';
-import {persist, waitForValue} from '@ciscospark/spark-core';
+import {grantErrors, persist, waitForValue, SparkPlugin} from '@ciscospark/spark-core';
 import {deprecated} from 'core-decorators';
 import querystring from 'querystring';
 
@@ -72,14 +71,14 @@ export default {
 
   /**
    * Constructs a logout URL
+   * @param {Object} options
    * @returns {string}
    */
-  buildLogoutUrl() {
-    return `${this.config.logoutUri}?${querystring.stringify({
-      type: `logout`,
-      goto: this.config.redirect_uri,
-      service: this.config.service
-    })}`;
+  buildLogoutUrl(options) {
+    return `${this.config.logoutUri}?${querystring.stringify(Object.assign({
+      goto: this.config.oauth.redirect_uri,
+      service: this.config.oauth.service
+    }, options))}`;
   },
 
   /**
@@ -194,7 +193,7 @@ export default {
 
   @persist(`@`)
   initialize(...args) {
-    return Reflect.apply(SparkPlugin.prototype.initialize, this, args);
+    return Reflect.apply(SparkPlugin.prototype.initialize, this, ...args);
   },
 
   @waitForValue(`@`)
@@ -377,14 +376,14 @@ export default {
    */
   set(attrs, options) {
     if (isObject(attrs)) {
+      if (attrs.authorization) {
+        attrs = attrs.authorization;
+      }
+
       if (attrs.access_token) {
         attrs = {
           supertoken: attrs
         };
-      }
-
-      if (attrs.authorization) {
-        attrs = attrs.authorization;
       }
 
       attrs.userTokens = attrs.userTokens || [];

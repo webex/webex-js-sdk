@@ -13,9 +13,8 @@ import uuid from 'uuid';
 import querystring from 'querystring';
 import url from 'url';
 import Token from '../token';
-import {persist, waitForValue} from '@ciscospark/spark-core';
+import {persist, waitForValue, SparkPlugin} from '@ciscospark/spark-core';
 import {deprecated} from 'core-decorators';
-import {SparkPlugin} from '@ciscospark/spark-core';
 
 /**
  * @private
@@ -155,13 +154,13 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
   },
 
   @waitForValue(`@`)
-  logout(...args) {
+  logout(options) {
     this.logger.info(`credentials(shim): logging out`);
-
-    /* eslint prefer-rest-params: [0] */
-    return Reflect.apply(common.logout, this, args)
+    const token = this.supertoken.refresh_token || this.supertoken.access_token;
+    options = Object.assign({token}, options);
+    return Reflect.apply(common.logout, this, [options])
       .then(() => {
-        window.location = this.buildLogoutUrl();
+        window.location = this.buildLogoutUrl(options);
       });
   },
 

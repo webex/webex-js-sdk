@@ -1,9 +1,9 @@
 import 'babel-polyfill';
 import cp from 'child_process';
-import {defaults} from 'lodash';
-import denodeify from 'denodeify';
 import fs from 'fs';
 import path from 'path';
+import {defaults} from 'lodash';
+import denodeify from 'denodeify';
 
 const readdir = denodeify(fs.readdir);
 const stat = denodeify(fs.stat);
@@ -16,7 +16,7 @@ const stat = denodeify(fs.stat);
     /* eslint no-unused-vars: [0] */
     const [node, script, cmd, ...args] = process.argv;
 
-    await dirApply(path.join(cwd, `packages`), async function applyCallback(name, stats) {
+    await dirApply(path.join(cwd, `packages`), async (name, stats) => {
       if (stats.isDirectory()) {
         process.chdir(path.join(cwd, `packages`, name));
         await spawn(cmd, args);

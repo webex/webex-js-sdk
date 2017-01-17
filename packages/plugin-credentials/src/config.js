@@ -17,7 +17,7 @@ export default {
     scope: process.env.CISCOSPARK_SCOPE,
     service: `spark`,
 
-    logoutUri: process.env.CISCOSPARK_LOGOUT_URI || `https://idbroker.webex.com/idb/saml2/jsp/doSSO.jsp`
+    logoutUri: process.env.CISCOSPARK_LOGOUT_URI || `https://idbroker.webex.com/idb/oauth2/v1/logout`
   },
   device: {
     preDiscoveryServices: {

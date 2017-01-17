@@ -4,7 +4,7 @@ import moment from 'moment';
 import ActivityItem from '../activity-item';
 import DaySeparator from '../day-separator';
 import NewMessagesSeparator from '../new-messages-separator';
-import {formatDate} from '../../utils/date';
+import formatDate from '../../utils/date';
 
 export default function ActivityList(props) {
   let lastActorId, lastDay, lastVerb;

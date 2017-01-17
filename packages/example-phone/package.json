@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/example-phone",
-  "version": "0.7.24",
+  "version": "0.7.31",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -10,10 +10,10 @@
     "start": "webpack-dev-server --history-api-fallback --hot --inline --port 8000 --colors"
   },
   "dependencies": {
-    "ciscospark": "^0.7.24",
+    "ciscospark": "^0.7.31",
     "babel-runtime": "^6.3.19",
     "extract-text-webpack-plugin": "^1.0.1",
-    "lodash": "^4.5.1",
+    "lodash": "^4.13.1",
     "react": "^15.0.2",
     "react-bootstrap": "^0.29.5",
     "react-dom": "^15.0.2",
@@ -27,14 +27,14 @@
     "redux-thunk": "^2.0.1"
   },
   "devDependencies": {
-    "@ciscospark/http-core": "^0.7.24",
-    "@ciscospark/spark-core": "^0.7.24",
-    "@ciscospark/test-helper-automation": "^0.7.0",
-    "@ciscospark/test-helper-test-users": "^0.7.0",
-    "@ciscospark/xunit-with-logs": "^0.7.0",
+    "@ciscospark/http-core": "^0.7.31",
+    "@ciscospark/spark-core": "^0.7.31",
+    "@ciscospark/test-helper-automation": "^0.7.31",
+    "@ciscospark/test-helper-test-users": "^0.7.31",
+    "@ciscospark/xunit-with-logs": "^0.7.31",
     "babel-core": "^6.7.7",
     "babel-eslint": "^6.1.2",
-    "babel-plugin-lodash": "2.1.0",
+    "babel-plugin-lodash": "^3.2.11",
     "babel-polyfill": "^6.3.14",
     "babel-preset-es2015": "^6.6.0",
     "babel-preset-react": "^6.5.0",
@@ -48,6 +48,7 @@
     "html-webpack-plugin": "^2.22.0",
     "inline-environment-variables-webpack-plugin": "0.0.2",
     "require-dir": "^0.3.0",
+    "string": "^3.3.3",
     "style-loader": "^0.13.1"
   },
   "engines": {

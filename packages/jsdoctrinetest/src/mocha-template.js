@@ -28,7 +28,7 @@ const makeItBlock = template(`
  * @param {Object} a.testCase
  * @returns {[type]}
  */
-export function generateSpec(a) {
+export default function generateSpec(a) {
   let itLine = a.name;
   if (a.type.toLowerCase().includes(`function`)) {
     itLine += `()`;

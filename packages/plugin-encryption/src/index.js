@@ -16,6 +16,7 @@ import config from './config';
 import {has, isObject, isString} from 'lodash';
 
 import '@ciscospark/plugin-wdm';
+import '@ciscospark/plugin-credentials';
 import '@ciscospark/plugin-mercury';
 
 registerPlugin(`encryption`, Encryption, {

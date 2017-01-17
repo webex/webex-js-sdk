@@ -71,7 +71,6 @@ function literal(l) {
     }
     return stringLiteral(l);
   default:
-    console.warn(`Unsupported literal type`, l);
     throw new Error(`Unsupported literal type`);
   }
 }

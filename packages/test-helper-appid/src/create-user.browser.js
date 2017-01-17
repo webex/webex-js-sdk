@@ -18,5 +18,7 @@ module.exports = function createUser(options) {
     }),
     body: JSON.stringify(options)
   })
-  .then((res) => res.json());
+  .then(function toJson(res) {
+    return res.json();
+  });
 };
