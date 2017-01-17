@@ -231,6 +231,13 @@ describe('Client', function() {
           assert.equal(s.url, 'ws://example.com?queryparam=something&outboundWireFormat=text&bufferStates=true');
         });
 
+        it('does not add bufferStates if mercuryRegistrationStatus is present', function() {
+          var s = new Socket();
+          s.open('ws://example.com?mercuryRegistrationStatus=true', mockoptions);
+          assert.match(s.url, /outboundWireFormat=text/);
+          assert.equal(s.url, 'ws://example.com?mercuryRegistrationStatus=true&outboundWireFormat=text');
+        });
+
         it('does not duplicate url queries', function() {
           var s = new Socket();
           s.open('ws://example.com?outboundWireFormat=text&bufferStates=true', mockoptions);

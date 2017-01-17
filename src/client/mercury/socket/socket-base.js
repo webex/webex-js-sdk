@@ -163,19 +163,7 @@ assign(Socket.prototype, {
 
       options = options || {};
 
-      // It's unlikely we'll ever not need to add the extra parameter here.
-      /* istanbul ignore else */
-      if (url.indexOf('outboundWireFormat=text') === -1) {
-        url += ((url.indexOf('?') === -1) ? '?' : '&') + 'outboundWireFormat=text';
-      }
-
-      /* istanbul ignore else */
-      if (url.indexOf('bufferStates=true') === -1) {
-        // It's unlikely bufferStates is the first parameter as
-        // outboundingWireFormat will be there first
-        /* istanbul ignore next */
-        url += ((url.indexOf('?') === -1) ? '?' : '&') + 'bufferStates=true';
-      }
+      url = this._addQueryParametersToUrl(url);
 
       this.logger.info('socket: connecting to websocket');
       this._socket = this._open(url);
@@ -271,6 +259,28 @@ assign(Socket.prototype, {
       this._socket.send(data);
       resolve();
     }.bind(this));
+  },
+
+  _addQueryParametersToUrl: function _addQueryParametersToUrl(socketUrl) {
+    socketUrl = this._addQueryParameter('outboundWireFormat=text', socketUrl);
+
+    // It should have only one of mercuryRegistrationStatus or bufferStates
+    // note: when shared socket is stable, we won't use bufferStates anymore
+    /* istanbul ignore else */
+    if (socketUrl.indexOf('mercuryRegistrationStatus=true') === -1) {
+      socketUrl = this._addQueryParameter('bufferStates=true', socketUrl);
+    }
+
+    return socketUrl;
+  },
+
+  _addQueryParameter: function _addQueryParameter(queryParam, url) {
+    /* istanbul ignore else */
+    if (url.indexOf(queryParam) === -1) {
+      url += ((url.indexOf('?') === -1) ? '?' : '&') + queryParam;
+    }
+
+    return url;
   },
 
   _acknowledge: function _acknowledge(event) {

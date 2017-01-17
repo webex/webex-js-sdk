@@ -307,6 +307,34 @@ var PersistenceService = SparkBase.extend({
       });
   },
 
+  registerForSharingMercury: function registerForSharingMercury(channel) {
+    if (!this.spark.mercury.localClusterServiceUrls) {
+      return Promise.reject(new Error('`localClusterServiceUrls` is not defined, make sure mercury is connected'));
+    }
+    else if (!this.spark.feature.getFeature('developer', 'web-sharable-mercury')) {
+      return Promise.reject(new Error('`web-sharable-mercury` is not enabled'));
+    }
+
+    var webSocketUrl = this.spark.device.webSocketUrl;
+    var localClusterServiceUrls = this.spark.mercury.localClusterServiceUrls;
+
+    var data = {
+      mercuryConnectionServiceClusterUrl: localClusterServiceUrls.mercuryConnectionServiceClusterUrl,
+      webSocketUrl: webSocketUrl,
+      action: 'REPLACE'
+    };
+
+    return this.spark.request({
+      method: 'POST',
+      api: 'board',
+      resource: '/channels/' + channel.channelId + '/register',
+      body: data
+    })
+      .then(function resolveWithBody(res) {
+        return res.body;
+      });
+  },
+
   _addContentChunk: function _addContentHelper(channel, contentChunk) {
     return this.spark.board.encryptContents(channel.defaultEncryptionKeyUrl, contentChunk)
       .then(function addContent(res) {

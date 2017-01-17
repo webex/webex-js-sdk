@@ -67,6 +67,13 @@ describe('Services', function() {
         kmsMessage: '<encrypted>'
       };
 
+      var localClusterServiceUrls = {
+        mercuryApiServiceClusterUrl: 'https:/mercury-api-a.wbx2.com/v2',
+        mercuryConnectionServiceClusterUrl: 'https://mercury-connection-a.wbx2.com'
+      };
+
+      var webSocketUrl = 'wss://mercury-connection-a.wbx2.com/v1/app/...';
+
       var data1 = {
         contentUrl: channel.channelUrl + '/contents/data1',
         contentId: 'data1',
@@ -103,6 +110,7 @@ describe('Services', function() {
             getUnusedKey: sinon.stub().returns(Promise.resolve(mockKey))
           },
           device: {
+            webSocketUrl: webSocketUrl,
             deviceType: 'FAKE_DEVICE',
             getServiceUrl: function() {
               return boardServiceUrl;
@@ -118,7 +126,7 @@ describe('Services', function() {
           return spark.board.persistence.register({data: 'data'});
         });
 
-        it('requests POST data to registration service', function() {
+        it('requests POST data to board registration service', function() {
           assert.calledWith(spark.request, sinon.match({
             method: 'POST',
             api: 'board',
@@ -126,6 +134,42 @@ describe('Services', function() {
           }));
         });
       });
+
+      describe('#registerForSharingMercury()', function() {
+
+        beforeEach(function() {
+          spark.request.reset();
+          spark.feature.getFeature.returns(true);
+          spark.mercury.localClusterServiceUrls = localClusterServiceUrls;
+        });
+
+        it('requests POST to board service', function() {
+          return spark.board.persistence.registerForSharingMercury(channel)
+            .then(function() {
+              assert.calledWith(spark.request, sinon.match({
+                method: 'POST',
+                api: 'board',
+                resource: '/channels/' + channel.channelId + '/register',
+                body: {
+                  mercuryConnectionServiceClusterUrl: localClusterServiceUrls.mercuryConnectionServiceClusterUrl,
+                  webSocketUrl: webSocketUrl,
+                  action: 'REPLACE'
+                }
+              }));
+            });
+        });
+
+        it('rejects if `web-sharable-mercury` feature is not enabled', function() {
+          spark.feature.getFeature.returns(false);
+          return assert.isRejected(spark.board.persistence.registerForSharingMercury(channel));
+        });
+
+        it('rejects if localClusterServiceUrls is null', function() {
+          spark.mercury.localClusterServiceUrls = null;
+          return assert.isRejected(spark.board.persistence.registerForSharingMercury(channel));
+        });
+      });
+
 
       describe('#createChannel()', function() {
 

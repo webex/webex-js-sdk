@@ -96,7 +96,44 @@ var RealtimeService = Mercury.extend({
       };
     }
 
-    return this.socket.send(data);
+    // if socket is shared, we're sending using mercury's socket rather than
+    // board's instance
+    // however, if board.socket is defined, we're falling back to separate
+    // socket
+    if (this.spark.feature.getFeature('developer', 'web-sharable-mercury') && !this.socket) {
+      return this.spark.mercury.socket.send(data);
+    }
+    else {
+      return this.socket.send(data);
+    }
+  },
+
+  connectToSharedMercury: function connectToSharedMercury(channel) {
+    return this.spark.board.persistence.registerForSharingMercury(channel)
+      .then(function assignBindingAndWebSocketUrl(res) {
+        this.boardBindings = [res.binding];
+        this.boardWebSocketUrl = res.webSocketUrl;
+        return res;
+      }.bind(this));
+  },
+
+  disconnectFromSharedMercury: function disconnectFromSharedMercury(channel) {
+    var webSocketUrl = this.spark.device.webSocketUrl;
+    var data = {
+      binding: this.spark.board.realtime.boardBindings[0],
+      webSocketUrl: webSocketUrl,
+      action: 'REMOVE'
+    };
+
+    return this.spark.request({
+      method: 'POST',
+      api: 'board',
+      resource: '/channels/' + channel.channelId + '/register',
+      body: data
+    })
+      .then(function resolveWithBody(res) {
+        return res.body;
+      });
   },
 
   _attemptConnection: function _attemptConnection() {

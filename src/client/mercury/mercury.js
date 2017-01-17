@@ -40,6 +40,9 @@ var Mercury = SparkBase.extend(
     },
     socket: {
       type: 'any'
+    },
+    localClusterServiceUrls: {
+      type: 'object'
     }
   },
 
@@ -108,6 +111,10 @@ var Mercury = SparkBase.extend(
     return this.disconnect();
   },
 
+  processRegistrationStatusEvent: function processRegistrationStatusEvent(message) {
+    this.localClusterServiceUrls = message.localClusterServiceUrls;
+  },
+
   _connectWithBackoff: oneFlight('_connectWithBackoff', function _connectWithBackoff() {
     return new Promise(function _connectWithBackoff(resolve, reject) {
       this.connecting = true;
@@ -171,9 +178,16 @@ var Mercury = SparkBase.extend(
     socket.on('message', this._onmessage.bind(this));
     socket.on('sequence-mismatch', this.metrics.submitSkipSequenceMetric.bind(this.metrics));
 
+    var socketUrl = this.spark.device.webSocketUrl;
+
+    if (this.spark.feature.getFeature('developer', 'web-sharable-mercury')) {
+      socketUrl = socket._addQueryParameter('mercuryRegistrationStatus=true', socketUrl);
+      socketUrl = socket._addQueryParameter('isRegistrationRefreshEnabled=true', socketUrl);
+    }
+
     return this.spark.credentials.getAuthorization()
       .then(function connect(authorization) {
-        return socket.open(this.spark.device.webSocketUrl, {
+        return socket.open(socketUrl, {
           forceCloseDelay: this.config.forceCloseDelay,
           pingInterval: this.config.pingInterval,
           pongTimeout: this.config.pongTimeout,
