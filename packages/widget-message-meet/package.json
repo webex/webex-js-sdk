@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/widget-message-meet",
-  "version": "0.7.34",
+  "version": "0.7.35",
   "description": "The Spark Message Meet widget allows developers to easily incorporate Cisco Spark 1 on 1 messaging into an application.",
   "license": "MIT",
   "author": "Adam Weeks <adweeks@cisco.com>",
