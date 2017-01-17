@@ -13,6 +13,7 @@ export default {
   maxAuthenticationReplays: 1,
   maxReconnectAttempts: 1,
   trackingIdPrefix: `spark-js-sdk`,
+  trackingIdSuffix: ``,
   AlternateLogger: undefined,
   credentials: {
     /**
@@ -32,8 +33,9 @@ export default {
       revokeUrl: `https://idbroker.webex.com/idb/oauth2/v1/revoke`,
       tokenUrl: `https://idbroker.webex.com/idb/oauth2/v1/access_token`
     },
-    logoutUri: `https://idbroker.webex.com/idb/saml2/jsp/doSSO.jsp`,
-    samlUrl: `https://idbroker.webex.com/idb/token`
+    logoutUri: `https://idbroker.webex.com/idb/oauth2/v1/logout`,
+    samlUrl: `https://idbroker.webex.com/idb/token`,
+    hydraServiceUrl: process.env.HYDRA_SERVICE_URL || `https://api.ciscospark.com/v1`
   },
   payloadTransformer: {
     predicates: [],

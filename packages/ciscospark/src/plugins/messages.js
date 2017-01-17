@@ -5,6 +5,7 @@
  */
 
 import {SparkPlugin, Page} from '@ciscospark/spark-core';
+import {isArray} from 'lodash';
 
 /**
  * @typedef {Object} Types~Message
@@ -53,11 +54,24 @@ const Messages = SparkPlugin.extend({
    *   // => success
    */
   create(message) {
-    return this.request({
+    let key = `body`;
+    if (message.file) {
+      this.logger.warn(`Supplying a single \`file\` property is deprecated; please supply a \`files\` array`);
+      message.files = [message.file];
+      Reflect.deleteProperty(message, `file`);
+    }
+
+    if (isArray(message.files) && message.files.reduce((type, file) => type || typeof file !== `string`, false)) {
+      key = `formData`;
+    }
+
+    const options = {
       method: `POST`,
       uri: `${this.config.hydraServiceUrl}/messages`,
-      body: message
-    })
+      [key]: message
+    };
+
+    return this.request(options)
       .then((res) => res.body);
   },
 

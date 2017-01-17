@@ -7,6 +7,7 @@
 /* eslint camelcase: [0] */
 
 import '@ciscospark/plugin-phone';
+import '@ciscospark/plugin-logger';
 
 import {defaults, get, has, set} from 'lodash';
 import CiscoSpark, {children, registerPlugin} from '@ciscospark/spark-core';

@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/test-helper-make-local-url",
-  "version": "0.7.0",
+  "version": "0.7.34",
   "description": "",
   "license": "MIT",
   "main": "./src",

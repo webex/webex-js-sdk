@@ -1,0 +1,221 @@
+exports[`ActivityItem post component is self renders properly 1`] = `
+<div
+  className="activity-item-container">
+  <div
+    className="activity-item">
+    <div
+      className="avatar-wrapper">
+      <div
+        className="avatar"
+        style={undefined}>
+        <span
+          className="avatar-self" />
+      </div>
+    </div>
+    <div
+      className="content-container">
+      <div
+        className="meta">
+        <div
+          className="display-name"
+          title="{name}">
+          Test User
+        </div>
+        <div
+          className="published">
+          2016-09-20T19:52:57.186Z
+        </div>
+      </div>
+      <div
+        className="activity-content">
+        <div
+          className="activity-text"
+          dangerouslySetInnerHTML={
+            Object {
+              "__html": "Test Activity Content",
+            }
+          } />
+      </div>
+    </div>
+    <div
+      className="activity-post-actions">
+      <div
+        className="activity-post-action">
+        <div
+          className="post-action-item">
+          <button
+            className="button"
+            onClick={[Function]}
+            onKeyUp={[Function]}>
+            <div
+              className="icon"
+              title="Flag this message" />
+          </button>
+        </div>
+      </div>
+      <div
+        className="activity-post-action">
+        <div
+          className="post-action-item">
+          <button
+            className="button"
+            onClick={[Function]}
+            onKeyUp={[Function]}>
+            <div
+              className="icon"
+              title="Delete this message" />
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ActivityItem post component not self renders properly 1`] = `
+<div
+  className="activity-item-container">
+  <div
+    className="activity-item">
+    <div
+      className="avatar-wrapper">
+      <div
+        className="avatar"
+        style={undefined}>
+        <span
+          className="avatar-letter">
+          T
+        </span>
+      </div>
+    </div>
+    <div
+      className="content-container">
+      <div
+        className="meta">
+        <div
+          className="display-name"
+          title="{name}">
+          Test User
+        </div>
+        <div
+          className="published">
+          2016-09-20T19:52:57.186Z
+        </div>
+      </div>
+      <div
+        className="activity-content">
+        <div
+          className="activity-text"
+          dangerouslySetInnerHTML={
+            Object {
+              "__html": "Test Activity Content",
+            }
+          } />
+      </div>
+    </div>
+    <div
+      className="activity-post-actions">
+      <div
+        className="activity-post-action">
+        <div
+          className="post-action-item">
+          <button
+            className="button"
+            onClick={[Function]}
+            onKeyUp={[Function]}>
+            <div
+              className="icon"
+              title="Flag this message" />
+          </button>
+        </div>
+      </div>
+      <div
+        className="activity-post-action">
+        <div
+          className="action-spacer" />
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ActivityItem post component not self with html renders properly 1`] = `
+<div
+  className="activity-item-container">
+  <div
+    className="activity-item">
+    <div
+      className="avatar-wrapper">
+      <div
+        className="avatar"
+        style={undefined}>
+        <span
+          className="avatar-letter">
+          T
+        </span>
+      </div>
+    </div>
+    <div
+      className="content-container">
+      <div
+        className="meta">
+        <div
+          className="display-name"
+          title="{name}">
+          Test User
+        </div>
+        <div
+          className="published">
+          2016-09-20T19:52:57.186Z
+        </div>
+      </div>
+      <div
+        className="activity-content">
+        <div
+          className="activity-text"
+          dangerouslySetInnerHTML={
+            Object {
+              "__html": "<pre>js.func();</pre>",
+            }
+          } />
+      </div>
+    </div>
+    <div
+      className="activity-post-actions">
+      <div
+        className="activity-post-action">
+        <div
+          className="post-action-item">
+          <button
+            className="button"
+            onClick={[Function]}
+            onKeyUp={[Function]}>
+            <div
+              className="icon"
+              title="Flag this message" />
+          </button>
+        </div>
+      </div>
+      <div
+        className="activity-post-action">
+        <div
+          className="action-spacer" />
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ActivityItem tombstone component renders properly 1`] = `
+<div
+  className="activity-item-container">
+  <div
+    className="system-message">
+    <span>
+      Test User deleted their own message.
+    </span>
+     
+    2016-09-20T19:52:57.186Z
+  </div>
+</div>
+`;

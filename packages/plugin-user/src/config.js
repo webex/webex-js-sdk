@@ -8,6 +8,11 @@ export default {
   user: {
     batcherWait: 100,
     batcherMaxCalls: 100,
-    batcherMaxWait: 1500
+    batcherMaxWait: 1500,
+    verifyDefaults: {
+      deviceName: `DESKTOP`,
+      deviceId: `not a mobile device`,
+      pushId: `not a mobile device`
+    }
   }
 };

@@ -7,6 +7,7 @@
 import {proxyEvents, tap} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
 import {cloneDeep, defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
+import {readExifData} from '@ciscospark/helper-image';
 import uuid from 'uuid';
 import querystring from 'querystring';
 import ShareActivity from './share-activity';
@@ -104,6 +105,20 @@ const Conversation = SparkPlugin.extend({
       });
   },
 
+  delete(conversation, object, activity) {
+    if (!isObject(object)) {
+      return Promise.reject(new Error(`\`object\` must be an object`));
+    }
+
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb: `delete`,
+        target: this.prepareConversation(conversation),
+        object: pick(object, `id`, `url`, `objectType`)
+      }))
+      .then((a) => this.submit(a));
+  },
+
   /**
    * Downloads the file specified in item.scr or item.url
    * @param {Object} item
@@ -116,6 +131,7 @@ const Conversation = SparkPlugin.extend({
     const shunt = new EventEmitter();
     const promise = (isEncrypted ? this.spark.encryption.download(item.scr) : this._downloadUnencryptedFile(item.url))
       .on(`progress`, (...args) => shunt.emit(`progress`, ...args))
+      .then((res) => readExifData(item, res))
       .then((file) => {
         this.logger.info(`conversation: file downloaded`);
 
@@ -488,6 +504,44 @@ const Conversation = SparkPlugin.extend({
   },
 
   /**
+   * Sets the typing status of the current user in a conversation
+   *
+   * @param {Object} conversation
+   * @param {Object} options
+   * @param {boolean} options.typing
+   * @returns {Promise}
+   */
+  updateTypingStatus(conversation, options) {
+    if (!conversation.id) {
+      if (conversation.url) {
+        conversation.id = conversation.url.split(`/`).pop();
+      }
+      else {
+        return Promise.reject(new Error(`conversation: could not identify conversation`));
+      }
+    }
+
+    let eventType;
+    if (options.typing) {
+      eventType = `status.start_typing`;
+    }
+    else {
+      eventType = `status.stop_typing`;
+    }
+
+    const params = {
+      method: `POST`,
+      service: `conversation`,
+      resource: `status/typing`,
+      body: {
+        conversationId: conversation.id,
+        eventType
+      }
+    };
+    return this.request(params);
+  },
+
+  /**
    * Shares files to the specified converstion
    * @param {Object} conversation
    * @param {ShareActivity|Array<File>} activity
@@ -590,6 +644,20 @@ const Conversation = SparkPlugin.extend({
     return this.tag(conversation, {
       tags: [`MESSAGE_NOTIFICATIONS_ON`]
     }, activity);
+  },
+
+  update(conversation, object, activity) {
+    if (!isObject(object)) {
+      return Promise.reject(new Error(`\`object\` must be an object`));
+    }
+
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb: `update`,
+        target: this.prepareConversation(conversation),
+        object
+      }))
+      .then((a) => this.submit(a));
   },
 
   /**
@@ -893,25 +961,6 @@ const Conversation = SparkPlugin.extend({
         verb,
         target: c,
         object: Object.assign(c, object)
-      }))
-      .then((a) => this.submit(a));
-  };
-});
-
-[
-  `delete`,
-  `update`
-].forEach((verb) => {
-  Conversation.prototype[verb] = function submitObjectActivity(conversation, object, activity) {
-    if (!isObject(object)) {
-      return Promise.reject(new Error(`\`object\` must be an object`));
-    }
-
-    return this._inferConversationUrl(conversation)
-      .then(() => this.prepare(activity, {
-        verb,
-        target: this.prepareConversation(conversation),
-        object
       }))
       .then((a) => this.submit(a));
   };

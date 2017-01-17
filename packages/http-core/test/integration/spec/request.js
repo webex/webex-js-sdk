@@ -8,6 +8,7 @@ import file from '@ciscospark/test-helper-file';
 import {HttpError, request} from '../..';
 import makeLocalUrl from '@ciscospark/test-helper-make-local-url';
 import sinon from '@ciscospark/test-helper-sinon';
+import {flaky, nodeOnly} from '@ciscospark/test-helper-mocha';
 
 describe(`http-core`, function() {
   this.timeout(30000);
@@ -113,7 +114,7 @@ describe(`http-core`, function() {
       // browser look like network errors in browsers, so testing it isn`t that
       // critical. That said, moving the error-reformatting logic out of the
       // environment-specific implementations may make this easier to stub.
-      (typeof window === `undefined` ? it : it.skip)(`makes network errors look mostly like HTTP errors`, () => {
+      nodeOnly(it)(`makes network errors look mostly like HTTP errors`, () => {
         return assert.isRejected(request(`https://localhost:0/not-a-route`))
           .then((err) => {
             assert.instanceOf(err, HttpError.NetworkOrCORSError);
@@ -137,7 +138,7 @@ describe(`http-core`, function() {
       });
 
       // this test fails in Safari 8+
-      it.skip(`passes cookies to endpoints on other origins`, () => {
+      nodeOnly(it)(`passes cookies to endpoints on other origins`, () => {
         const p1 = request({
           uri: `http://localhost:${process.env.CORS_PORT}/cookies/set`,
           jar: true
@@ -228,6 +229,21 @@ describe(`http-core`, function() {
           });
       });
     });
+
+    flaky(it)(`submits files as multipart form data`, () => file.fetch(`sample-powerpoint-two-page.ppt`)
+      .then((f) => request({
+        method: `POST`,
+        uri: makeLocalUrl(`/files/metadata`),
+        formData: {
+          files: [f]
+        },
+        json: true
+      })
+        .then((res) => {
+          // This asserts that the server received the file and was able to
+          // decode its filename.
+          assert.equal(res.body[0].originalname, f.name);
+        })));
 
     [`PUT`, `PATCH`, `POST`].forEach((method) => {
       describe(method, () => {

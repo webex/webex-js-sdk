@@ -1,17 +1,17 @@
 {
   "name": "@ciscospark/test-helper-automation",
-  "version": "0.7.0",
+  "version": "0.7.34",
   "description": "",
   "license": "MIT",
   "main": "./src",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-automation",
   "dependencies": {
-    "@ciscospark/test-helper-chai": "^0.7.0",
-    "babel-plugin-lodash": "2.1.0",
+    "@ciscospark/test-helper-chai": "^0.7.34",
+    "babel-plugin-lodash": "^3.2.11",
     "chai": "^3.4.1",
     "chai-as-promised": "^5.1.0",
     "es6-promise": "^3.2.1",
-    "lodash": "^4.5.1",
+    "lodash": "^4.13.1",
     "require-dir": "^0.3.0",
     "wd": "^0.3.0"
   },

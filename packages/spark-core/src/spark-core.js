@@ -199,7 +199,12 @@ const SparkCore = AmpState.extend({
       interceptors: ints
     });
 
-    this.sessionId = `${get(this, `config.trackingIdPrefix`, `spark-js-sdk`)}_${get(this, `config.trackingIdBase`, uuid.v4())}`;
+    let sessionId = `${get(this, `config.trackingIdPrefix`, `spark-js-sdk`)}_${get(this, `config.trackingIdBase`, uuid.v4())}`;
+    if (has(this, `config.trackingIdPrefix`)) {
+      sessionId += `_${get(this, `config.trackingIdPrefix`)}`;
+    }
+
+    this.sessionId = sessionId;
   },
 
   logout(...args) {

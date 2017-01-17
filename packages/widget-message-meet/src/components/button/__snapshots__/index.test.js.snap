@@ -1,0 +1,10 @@
+exports[`Button component renders properly 1`] = `
+<button
+  className="button"
+  onClick={[Function]}
+  onKeyUp={[Function]}>
+  <div
+    className="icon"
+    title={undefined} />
+</button>
+`;

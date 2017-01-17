@@ -5,9 +5,9 @@ import {LinkContainer} from 'react-router-bootstrap';
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 
-import SparkComponent from '../modules/redux-spark/component.js';
+import SparkComponent from '../modules/redux-spark/component';
 import {injectSpark} from '../modules/redux-spark';
-import {ring} from '../actions/incoming-call.js';
+import {ring} from '../actions/incoming-call';
 
 import AuthStatus from '../components/auth-status';
 import ConnectionStatus from '../components/connection-status';
@@ -29,17 +29,17 @@ class App extends Component {
         <Navbar inverse>
           <Navbar.Header>
             <Navbar.Brand>
-              <Link to="/">CiscoSpark SDK Example</Link>
+              <Link to="/">{`CiscoSpark SDK Example`}</Link>
             </Navbar.Brand>
             <Navbar.Toggle />
           </Navbar.Header>
           <Navbar.Collapse>
             <Nav>
               <LinkContainer to={`/auth`}>
-                <NavItem title="Link to Auth Page">Auth</NavItem>
+                <NavItem title="Link to Auth Page">{`Auth`}</NavItem>
               </LinkContainer>
               <LinkContainer to={`/call`}>
-                <NavItem title="Link to Call Page">Call</NavItem>
+                <NavItem title="Link to Call Page">{`Call`}</NavItem>
               </LinkContainer>
             </Nav>
             <p className="navbar-text navbar-right">

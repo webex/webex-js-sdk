@@ -7,11 +7,11 @@
 import {createBrowser} from '@ciscospark/test-helper-automation';
 import {assert} from '@ciscospark/test-helper-chai';
 import testUsers from '@ciscospark/test-helper-test-users';
-import pkg from '../../../package.json';
+import pkg from '../../../package';
 
 const redirectUri = process.env.CISCOSPARK_REDIRECT_URI || process.env.REDIRECT_URI;
 
-describe(`spark-core`, function() {
+describe(`plugin-credentials`, function() {
   this.timeout(120000);
   describe(`Authorization`, () => {
     describe(`Token Refresh`, () => {

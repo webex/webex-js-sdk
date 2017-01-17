@@ -6,6 +6,7 @@ import {sparkReducer} from './modules/redux-spark';
 import createLogger from 'redux-logger';
 import thunk from 'redux-thunk';
 
+// eslint-disable-next-line import/no-namespace
 import * as reducers from './reducers';
 
 const reducer = combineReducers({

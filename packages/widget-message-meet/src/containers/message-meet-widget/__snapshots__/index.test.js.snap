@@ -1,0 +1,26 @@
+exports[`MessageMeetWidget renders properly 1`] = `
+<div>
+  <div
+    className="widget-message-meet">
+    <div
+      className="banner" />
+    <div
+      className="loading">
+      <div
+        className="spark-logo">
+        <img
+          role="presentation"
+          src={Object {}} />
+      </div>
+      <span>
+        Connecting to Spark
+      </span>
+      <div
+        className="spinner-container">
+        <div
+          className="spinner" />
+      </div>
+    </div>
+  </div>
+</div>
+`;

@@ -1,4 +1,4 @@
-extends: "../../../.eslintrc-mocha.yml"
+extends: "@ciscospark/eslint-config/mocha"
 rules:
   no-invalid-this:
     - 0

@@ -1,9 +1,11 @@
 /* eslint quotes: [2, "single"] */
 /* eslint no-var: [0] */
 /* eslint camelcase: [0] */
+/* eslint import/no-commonjs: [0] */
 
 var dotenv = require('dotenv');
 var path = require('path');
+// eslint-disable-next-line import/no-extraneous-dependencies
 var webpack = require('webpack');
 // Note that webpack is intended to be invoked via grunt, plugins
 // need to be installed in the example-phone package, but loaders need to be

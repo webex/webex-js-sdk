@@ -9,7 +9,8 @@ import Logger from './logger';
 import config from './config';
 
 registerPlugin(`logger`, Logger, {
-  config
+  config,
+  replace: true
 });
 
 export {

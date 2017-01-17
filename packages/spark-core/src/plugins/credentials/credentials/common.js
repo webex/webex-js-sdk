@@ -6,7 +6,7 @@
 
 import Authorization from '../authorization';
 import {base64, oneFlight, retry} from '@ciscospark/common';
-import {clone, has, isObject, pick} from 'lodash';
+import {clone, has, get, isObject, pick} from 'lodash';
 import grantErrors from '../grant-errors';
 import querystring from 'querystring';
 import SparkPlugin from '../../../lib/spark-plugin';
@@ -35,6 +35,9 @@ export default {
     canRefresh: {
       deps: [`authorization.canRefresh`],
       fn() {
+        if (this.config.requestJWT) {
+          return true;
+        }
         /* eslint camelcase: [0] */
         return Boolean(this.config.oauth.client_id && this.config.oauth.client_secret && this.authorization && this.authorization.canRefresh);
       }
@@ -109,6 +112,14 @@ export default {
         });
     }
 
+    if (options.jwt) {
+      return this.requestAccessTokenFromJwt(options)
+        .then((res) => {
+          this._isAuthenticating = false;
+          return res;
+        });
+    }
+
     if (this.canRefresh) {
       this.logger.info(`credentials: refreshable, refreshing`);
       return this.refresh(options)
@@ -132,6 +143,7 @@ export default {
           return Promise.reject(res);
         });
     }
+
 
     this._isAuthenticating = false;
     return Promise.reject(new Error(`not enough parameters to authenticate`));
@@ -205,16 +217,46 @@ export default {
 
     options = options || {};
 
-    if (!options.force && !this.authorization.isExpired) {
+    if (!options.force && !get(this, `authorization.isExpired`)) {
       this.logger.info(`credentials: authorization not expired, not refreshing`);
       return Promise.resolve();
     }
 
     this.logger.info(`credentials: refreshing`);
 
+    if (this.config.requestJWT) {
+      this.logger.info(`credentials: request new jwt`);
+      return this.config.requestJWT()
+        .then((jwt) => this.requestAccessTokenFromJwt(jwt));
+    }
+
     return this.authorization.refresh(options)
       .then(this._pushAuthorization.bind(this))
       .catch(this._handleRefreshFailure.bind(this));
+  },
+
+  @oneFlight
+  requestAccessTokenFromJwt(options) {
+    this.logger.info(`credentials: exchanging jwt for access token`);
+    return this.spark.request({
+      method: `POST`,
+      // I'm not thrilled by directly referencing the hydra service url, but
+      // since the spark-core credentials plugin is on the march toward
+      // deprecation, I think it's tolerable for now.
+      uri: `${this.config.hydraServiceUrl}/jwt/login`,
+      headers: {
+        authorization: options.jwt
+      }
+    })
+      .then((res) => ({
+        body: {
+          access_token: res.body.token,
+          token_type: `Bearer`,
+          expires_in: res.body.expiresIn
+        }
+      }))
+      .then(processGrant)
+      .then(this._pushAuthorization.bind(this));
   },
 
   @oneFlight
@@ -368,14 +410,13 @@ export default {
     return Reflect.apply(SparkPlugin.prototype.set, this, arguments);
   },
 
-  buildLogoutUrl() {
+  buildLogoutUrl(options) {
     // eslint doesn't yet handle nested strings quite right
     /* eslint quotes: [0] */
-    return `${this.config.logoutUri}?${querystring.stringify({
-      type: 'logout',
+    return `${this.config.logoutUri}?${querystring.stringify(Object.assign({
       goto: this.config.oauth.redirect_uri,
       service: this.config.oauth.service
-    })}`;
+    }, options))}`;
   },
 
   buildOAuthUrl(options) {

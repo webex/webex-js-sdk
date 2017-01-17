@@ -26,14 +26,47 @@ describe('Services', function() {
       var spark;
       var encryptedData = 'encryptedData';
       var fakeURL = 'fakeURL';
-      var conversation = {
-        id: 'superUniqueId',
-        defaultActivityEncryptionKeyUrl: fakeURL
+      var image = {
+        height: 900,
+        width: 1600,
+        size: 1500
       };
+      var conversation = {
+        id: '7c7e69a0-a086-11e6-8670-d7b4b51d7641',
+        defaultActivityEncryptionKeyUrl: fakeURL,
+        kmsResourceObjectUrl: 'https://encryption-a.wbx2.com/encryption/api/v1/resources/8693f702-2012-40c6-9ec4-f1392f0a620a',
+        aclUrl: 'https://acl-a.wbx2.com/acl/api/v1/acls/7ca94a30-a086-11e6-b599-d90deb9846ed'
+      };
+      var mockKey = {
+        keyUrl: 'https://encryption-a.wbx2.com/encryption/api/v1/keys/7ad503ec-854b-4fce-a7f0-182e1997bdb6',
+        keyValue: {
+          kty: 'oct',
+          kid: 'https://encryption-a.wbx2.com/encryption/api/v1/keys/7ad503ec-854b-4fce-a7f0-182e1997bdb6'
+        }
+      };
+
       var boardId = 'boardId';
       var channel = {
-        channelUrl: boardServiceUrl + '/channels/' + boardId
+        channelId: boardId,
+        channelUrl: boardServiceUrl + '/channels/' + boardId,
+        aclUrlLink: conversation.aclUrl,
+        defaultEncryptionKeyUrl: mockKey.keyUrl,
+        kmsMessage: {
+          method: 'create',
+          uri: '/resources',
+          userIds: [conversation.kmsResourceObjectUrl],
+          keyUris: []
+        }
       };
+
+      var encryptedChannel = {
+        channelId: boardId,
+        channelUrl: boardServiceUrl + '/channels/' + boardId,
+        aclUrlLink: conversation.aclUrl,
+        defaultEncryptionKeyUrl: mockKey.keyUrl,
+        kmsMessage: '<encrypted>'
+      };
+
       var data1 = {
         contentUrl: channel.channelUrl + '/contents/data1',
         contentId: 'data1',
@@ -52,6 +85,11 @@ describe('Services', function() {
           children: {
             board: Board
           },
+          conversation: {
+            encrypter: {
+              encryptProperty: sinon.stub().returns(Promise.resolve(encryptedChannel))
+            }
+          },
           encryption: {
             encryptText: sinon.stub().returns(Promise.resolve(encryptedData)),
             encryptBinary: sinon.stub().returns(Promise.resolve({
@@ -60,7 +98,9 @@ describe('Services', function() {
             download: sinon.stub().returns(Promise.resolve({
               toArrayBuffer: sinon.stub()
             })),
-            decryptScr: sinon.stub().returns(Promise.resolve('decryptedFoo'))
+            decryptScr: sinon.stub().returns(Promise.resolve('decryptedFoo')),
+            encryptScr: sinon.stub().returns(Promise.resolve('encryptedFoo')),
+            getUnusedKey: sinon.stub().returns(Promise.resolve(mockKey))
           },
           device: {
             deviceType: 'FAKE_DEVICE',
@@ -91,7 +131,7 @@ describe('Services', function() {
 
         before(function() {
           spark.request.reset();
-          return spark.board.persistence.createChannel({aclUrl: 'foo'});
+          return spark.board.persistence.createChannel(conversation);
         });
 
         it('requests POST to channels service', function() {
@@ -99,9 +139,7 @@ describe('Services', function() {
             method: 'POST',
             api: 'board',
             resource: '/channels',
-            body: {
-              aclUrl: 'foo'
-            }
+            body: encryptedChannel
           }));
         });
       });
@@ -125,14 +163,12 @@ describe('Services', function() {
       describe('#getChannels()', function() {
 
         before(function() {
-          spark.board.persistence.getChannels({
-            conversationId: 'fakeConversationId'
-          });
+          spark.board.persistence.getChannels(conversation);
         });
 
-        it('requires a conversationId as an option', function() {
+        it('requires conversation', function() {
           return Promise.all([
-            assert.isRejected(spark.board.persistence.getChannels(), '`conversationId` is required')
+            assert.isRejected(spark.board.persistence.getChannels(), '`conversation` is required')
           ]);
         });
 
@@ -141,7 +177,7 @@ describe('Services', function() {
             api: 'board',
             resource: '/channels',
             qs: {
-              conversationId: 'fakeConversationId'
+              aclUrlLink: conversation.aclUrl
             }
           }));
         });
@@ -155,7 +191,7 @@ describe('Services', function() {
         });
 
         it('requests POST all contents to contents', function() {
-          return spark.board.persistence.addContent(conversation, channel, [data1, data2])
+          return spark.board.persistence.addContent(channel, [data1, data2])
             .then(function() {
               assert.calledWith(spark.request, sinon.match({
                 method: 'POST',
@@ -163,12 +199,12 @@ describe('Services', function() {
                 body: [{
                   device: 'FAKE_DEVICE',
                   type: 'STRING',
-                  encryptionKeyUrl: 'fakeURL',
+                  encryptionKeyUrl: channel.defaultEncryptionKeyUrl,
                   payload: 'encryptedData'
                 }, {
                   device: 'FAKE_DEVICE',
                   type: 'STRING',
-                  encryptionKeyUrl: 'fakeURL',
+                  encryptionKeyUrl: channel.defaultEncryptionKeyUrl,
                   payload: 'encryptedData'
                 }]
               }));
@@ -182,12 +218,49 @@ describe('Services', function() {
             largeData.push({data: i});
           }
 
-          return spark.board.persistence.addContent(conversation, channel, largeData)
+          return spark.board.persistence.addContent(channel, largeData)
             .then(function() {
               assert.equal(spark.request.callCount, 3);
             });
         });
 
+      });
+
+      describe('#setSnapshotImage()', function() {
+        before(function() {
+          spark.request.reset();
+          sinon.stub(spark.board, '_uploadImage').returns(Promise.resolve({
+            loc: fakeURL
+          }));
+          spark.encryption.encryptScr.reset();
+        });
+
+        after(function() {
+          spark.board._uploadImage.restore();
+          spark.encryption.encryptScr.reset();
+        });
+
+        it('requests PATCH to board service', function() {
+          return spark.board.persistence.setSnapshotImage(channel, image)
+            .then(function() {
+              assert.calledWith(spark.request, sinon.match({
+                method: 'PATCH',
+                api: 'board',
+                resource: '/channels/' + boardId,
+                body: {
+                  image: {
+                    url: fakeURL,
+                    height: image.height,
+                    width: image.width,
+                    mimeType: 'image/png',
+                    scr: 'encryptedFoo',
+                    encryptionKeyUrl: channel.defaultEncryptionKeyUrl,
+                    fileSize: image.size
+                  }
+                }
+              }));
+            });
+        });
       });
 
       describe('#getAllContent()', function() {
@@ -240,6 +313,30 @@ describe('Services', function() {
           assert.calledWith(spark.request, sinon.match({
             method: 'DELETE',
             uri: boardServiceUrl + '/channels/' + boardId + '/contents'
+          }));
+        });
+      });
+
+      describe('#_getPageOfContents()', function() {
+        before(function() {
+          spark.request.returns(Promise.resolve({headers: {}}));
+          sinon.stub(spark.board, 'parseLinkHeaders');
+          sinon.stub(spark.board, 'decryptContents').returns(['foo']);
+          spark.request.reset();
+          return spark.board.persistence._getPageOfContents(channel);
+        });
+
+        after(function() {
+          spark.board.decryptContents.restore();
+          spark.board.parseLinkHeaders.restore();
+          spark.request.reset();
+        });
+
+        it('requests GET contents', function() {
+          assert.calledWith(spark.request, sinon.match({
+            method: 'GET',
+            uri: boardServiceUrl + '/channels/' + boardId + '/contents',
+            qs: {}
           }));
         });
       });

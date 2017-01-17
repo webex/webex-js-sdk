@@ -156,7 +156,7 @@ const Token = SparkPlugin.extend({
       throw new Error(`\`access_token\` is required`);
     }
 
-    if (this.access_token && this.access_token.includes(` `)) {
+    if (!args[0].token_type && this.access_token && this.access_token.includes(` `)) {
       [this.token_type, this.access_token] = this.access_token.split(` `);
     }
 
@@ -285,6 +285,10 @@ const Token = SparkPlugin.extend({
     }
 
     return this.string;
+  },
+
+  toJSON() {
+    return this.toString();
   },
 
   validate() {

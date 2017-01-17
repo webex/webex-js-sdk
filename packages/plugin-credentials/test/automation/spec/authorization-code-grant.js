@@ -6,11 +6,11 @@
 
 import {createBrowser} from '@ciscospark/test-helper-automation';
 import testUsers from '@ciscospark/test-helper-test-users';
-import pkg from '../../../package.json';
+import pkg from '../../../package';
 
 const redirectUri = process.env.CISCOSPARK_REDIRECT_URI || process.env.REDIRECT_URI;
 
-describe(`spark-core`, function() {
+describe(`plugin-credentials`, function() {
   this.timeout(120000);
   describe(`Authorization`, () => {
     describe(`Authorization Code Grant`, () => {
@@ -64,16 +64,18 @@ describe(`spark-core`, function() {
           .should.eventually.become(`Authorization Automation Test`)
         .waitForElementByCssSelector(`[title="Logout"]`)
           .click()
-        // Need to give the click action enough time to start the redirect
-        // process; this is more of a "nextTick" than an actual sleep, so I
-        // *think* we can safely use a smallish number and not be concerned
-        // about flakiness
-        .sleep(500)
+        // We need to revoke three tokens before the window.location assignment.
+        // So far, I haven't found any ques to wait for, so sleep seems to be
+        // the only option.
+        .sleep(3000)
         .title()
           .should.eventually.become(`Authorization Automation Test`)
+        .waitForElementById(`access-token`)
+          .text()
+            .should.eventually.be.empty
         .waitForElementByCssSelector(`[title="Login with Authorization Code Grant"]`)
           .click()
-        .waitForElementByCssSelector(`#IDToken1`));
+        .waitForElementById(`IDToken1`));
     });
   });
 });

@@ -1,0 +1,13 @@
+exports[`NewMessagesSeparator component renders properly 1`] = `
+<div>
+  <div
+    className="separator informative">
+    <p
+      className="separator-text informative">
+      <span>
+        NEW MESSAGES
+      </span>
+    </p>
+  </div>
+</div>
+`;

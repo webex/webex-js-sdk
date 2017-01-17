@@ -1,0 +1,15 @@
+exports[`AddFileButton component renders properly 1`] = `
+<div
+  className="add-file-container">
+  <button
+    className="add-file-button">
+    <span
+      className="add-file-icon" />
+  </button>
+  <input
+    className="file-input"
+    multiple="multiple"
+    onChange={[Function]}
+    type="file" />
+</div>
+`;

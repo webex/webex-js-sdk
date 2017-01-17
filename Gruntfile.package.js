@@ -43,6 +43,12 @@ module.exports = function(grunt) {
         src: [
           './packages/<%= package %>/dist'
         ]
+      },
+      snapshots: {
+        src: [
+          './packages/<%= package %>/src/**/__snapshots__',
+          './packages/<%= package %>/test/**/__snapshots__',
+        ]
       }
     },
 
@@ -195,6 +201,10 @@ module.exports = function(grunt) {
       }
     },
 
+    jest: {
+      options: require('./jest.config')
+    },
+
     karma: {
       test: {
         options: {
@@ -239,6 +249,10 @@ module.exports = function(grunt) {
       },
       automation: {
         options: {
+          // SAUCE TUNNEL FAILURES force an exit with non-zero in event of a
+          // browser test failure; it probably means that selenium or the sauce
+          // tunnel is flaking.
+          noFail: false,
           require: makeMochaRequires(['babel-register']),
           reporterOptions: {
             output: '<%= xunitDir %>/mocha-<%= package %>-automation.xml'
@@ -307,6 +321,16 @@ module.exports = function(grunt) {
       }
     },
 
+    stylelint: {
+      options: {
+        configFile: '.stylelintrc',
+        format: 'css'
+      },
+      src: [
+        './packages/<%= package %>/src/**/*.css'
+      ]
+    },
+
     watch: {
       serve: {
         files: [
@@ -329,6 +353,7 @@ module.exports = function(grunt) {
 
   registerTask('static-analysis', [
     'eslint',
+    'stylelint',
     'dependency-check'
   ]);
 
@@ -347,10 +372,13 @@ module.exports = function(grunt) {
   ]);
 
   registerTask('test:browser', [
-    p(process.env.XUNIT) && 'continue:on',
+    // SAUCE TUNNEL FAILURES ideally, we want to suppress failures and let xunit
+    // collect them, but until we figure out why the sauce tunnel is flaking, we
+    // need to try to rerun the suite
+    // p(process.env.XUNIT) && 'continue:on',
     'karma',
-    p(process.env.XUNIT) && 'continue:off',
-    p(process.env.XUNIT) && 'fileExists:karmaxml'
+    // p(process.env.XUNIT) && 'continue:off'
+    p(process.env.XUNIT) && 'fileExists:karmaxml',
   ]);
 
   registerTask('test:node', [
@@ -387,13 +415,6 @@ module.exports = function(grunt) {
 
   registerTask('default', []);
 
-  try {
-    require('./packages/' + process.env.PACKAGE +  '/Gruntfile.js')(grunt, p, makeMochaRequires);
-  }
-  catch(error) {
-    // ignore
-  }
-
   registerTask('serve:test', [
     'express:test'
   ]);
@@ -402,6 +423,14 @@ module.exports = function(grunt) {
     'express:test',
     'watch:serve'
   ]);
+
+  try {
+    require('./packages/' + process.env.PACKAGE +  '/Gruntfile.js')(grunt, p, makeMochaRequires);
+  }
+  catch(error) {
+    // ignore
+    console.log(error);
+  }
 
   /**
    * Helper function which converts environment strings into

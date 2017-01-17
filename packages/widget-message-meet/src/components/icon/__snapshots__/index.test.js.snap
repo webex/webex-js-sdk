@@ -1,0 +1,5 @@
+exports[`Icon component renders properly 1`] = `
+<div
+  className="icon"
+  title={undefined} />
+`;

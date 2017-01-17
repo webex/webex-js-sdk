@@ -35,6 +35,10 @@ const protorequest = curry(function protorequest(defaultOptions, options) {
 
   lodashDefaults(options, defaultOptions);
 
+  if (!options.json) {
+    Reflect.deleteProperty(options, `json`);
+  }
+
   options.logger = options.logger || console;
 
   return _request(options);
