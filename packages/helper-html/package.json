@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/helper-html",
-  "version": "0.7.30",
+  "version": "0.7.34",
   "description": "HTML Utiltities",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -13,9 +13,9 @@
     "lodash": "^4.13.1"
   },
   "devDependencies": {
-    "@ciscospark/test-helper-chai": "^0.7.30",
-    "@ciscospark/test-helper-mocha": "^0.7.0",
-    "@ciscospark/xunit-with-logs": "^0.7.30",
+    "@ciscospark/test-helper-chai": "^0.7.34",
+    "@ciscospark/test-helper-mocha": "^0.7.34",
+    "@ciscospark/xunit-with-logs": "^0.7.34",
     "babel-eslint": "^6.1.2",
     "babel-plugin-lodash": "^3.2.11",
     "babel-polyfill": "^6.3.14",

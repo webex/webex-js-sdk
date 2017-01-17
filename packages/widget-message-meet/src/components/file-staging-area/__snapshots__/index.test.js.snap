@@ -16,7 +16,7 @@ exports[`FileStagingArea component renders properly 1`] = `
               title={undefined} />
           </div>
           <img
-            role="presentation"
+            alt=""
             src={undefined} />
         </div>
         <div
@@ -63,7 +63,7 @@ exports[`FileStagingArea component renders properly 1`] = `
               title={undefined} />
           </div>
           <img
-            role="presentation"
+            alt=""
             src={undefined} />
         </div>
         <div

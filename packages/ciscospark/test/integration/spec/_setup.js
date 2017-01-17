@@ -4,7 +4,7 @@
  */
 
 import testUsers from '@ciscospark/test-helper-test-users';
-import {default as spark} from '../..';
+import spark from '../..';
 
 before(function() {
   this.timeout(60000);

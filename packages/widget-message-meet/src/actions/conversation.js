@@ -1,4 +1,4 @@
-import {updateHasNewMessage} from './widget.js';
+import {updateHasNewMessage} from './widget';
 import {setTyping} from './indicators';
 
 const VISIBLE_ACTIVITY_VERBS = [`share`, `post`];
