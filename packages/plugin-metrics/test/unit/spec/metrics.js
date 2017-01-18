@@ -11,6 +11,35 @@ import sinon from '@ciscospark/test-helper-sinon';
 describe(`plugin-metrics`, () => {
   describe(`Metrics`, () => {
     let spark;
+    let metrics;
+    const eventName = 'test_event';
+    const mockPayload = {
+      fields: {
+        testField: 123
+      },
+      tags: {
+        testTag: 'tag value'
+      },
+      metricName: eventName,
+      test: 'this field should not be included in final payload',
+      type: 'behavioral'
+    };
+    const transformedProps = {
+      fields: {
+        testField: 123
+      },
+      tags: {
+        testTag: 'tag value'
+      },
+      metricName: eventName,
+      type: 'behavioral'
+    };
+    const preLoginId = "1b90cf5e-27a6-41aa-a208-1f6eb6b9e6b6";
+    const preLoginProps = {
+      metrics: [
+        transformedProps
+      ]
+    };
 
     beforeEach(() => {
       spark = new MockSpark({
@@ -20,6 +49,7 @@ describe(`plugin-metrics`, () => {
       });
 
       spark.config.metrics = config.metrics;
+      metrics = spark.metrics;
 
       spark.request = function(options) {
         return Promise.resolve({
@@ -29,11 +59,13 @@ describe(`plugin-metrics`, () => {
         });
       };
       sinon.spy(spark, `request`);
+      sinon.spy(metrics, 'postPreLoginMetric');
+      sinon.spy(metrics, 'alias');
     });
 
     describe(`#submit()`, () => {
       it(`submits a metric`, () => {
-        return spark.metrics.submit(`testMetric`)
+        return metrics.submit(`testMetric`)
           .then(() => {
             assert.calledOnce(spark.request);
             const req = spark.request.args[0][0];
@@ -54,12 +86,12 @@ describe(`plugin-metrics`, () => {
     });
 
     describe(`#submitClientMetrics()`, () => {
-      it(`submits a metric to clientmetrics`, () => {
+      it(`submits a metric to clientmetrics if after auth`, () => {
         const testPayload = {
           tags: {success: true},
           fields: {perceivedDurationInMillis: 314}
         };
-        return spark.metrics.submitClientMetrics(`test`, testPayload)
+        return metrics.submitClientMetrics(`test`, testPayload)
           .then(() => {
             assert.calledOnce(spark.request);
             const req = spark.request.args[0][0];
@@ -74,7 +106,46 @@ describe(`plugin-metrics`, () => {
             assert.equal(metric.fields.perceivedDurationInMillis, 314);
           });
       });
+      it('posts pre-login metric if before auth', function() {
+        metrics.submitClientMetrics(eventName, mockPayload, preLoginId);
+        assert.calledWith(metrics.postPreLoginMetric, preLoginProps, preLoginId);
+      });
 
+    });
+
+    describe('#postPreLoginMetric()', function() {
+      it('should return request', function() {
+        return metrics.postPreLoginMetric(preLoginProps, preLoginId)
+          .then(() => {
+            assert.calledOnce(spark.request);
+            const req = spark.request.args[0][0];
+            const metric = req.body.metrics[0];
+            const headers = req.headers;
+
+            assert.property(headers, 'X-Prelogin-UserId');
+            assert.property(metric, `metricName`);
+            assert.property(metric, `tags`);
+            assert.property(metric, `fields`);
+
+            assert.equal(metric.metricName, eventName);
+            assert.equal(metric.tags.testTag, `tag value`);
+            assert.equal(metric.fields.testField, 123);
+          });
+      });
+    });
+
+    describe('#alias()', function() {
+      it('should return request', function() {
+        return metrics.alias(preLoginId)
+          .then(() => {
+            assert.calledOnce(spark.request);
+            const req = spark.request.args[0][0];
+            const params = req.params;
+
+            assert.equal(params[0].name, `alias`);
+            assert.equal(params[0].value, true);
+          });
+      });
     });
   });
 });

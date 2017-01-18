@@ -26,6 +26,12 @@ const Metrics = SparkPlugin.extend({
     return this.batcher.request(Object.assign({key}, value));
   },
 
+  /**
+   * This corresponds to #sendSemiStructured() in the deprecated metrics handler
+   * @param eventName
+   * @param props
+   * @param preLoginId
+   */
   submitClientMetrics(eventName, props, preLoginId) {
     const payload = {metricName: eventName};
     if (props.tags) {
@@ -58,17 +64,21 @@ const Metrics = SparkPlugin.extend({
    * @param {string} preLoginId
    */
   alias: function(preLoginId) {
-    var req = this.request({
+    return this.request({
       method: `POST`,
       api: `metrics`,
       resource: `clientmetrics`,
       headers: {
         "X-Prelogin-UserId": preLoginId
       },
-      body: {}
+      body: {},
+      params: [
+        {
+          name: 'alias',
+          value: true
+        }
+      ]
     });
-    req.setParameter("alias", true);
-    return req;
   },
 
   postPreLoginMetric: function(payload, preLoginId) {
