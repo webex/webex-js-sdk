@@ -54,7 +54,7 @@ const Feature = SparkPlugin.extend({
     return this.request({
       method: `POST`,
       api: `feature`,
-      resource: `features/users/${this.spark.device.userId}/developer`,
+      resource: `features/users/${this.spark.device.userId}/${keyType}`,
       body: {
         key,
         mutable: true,

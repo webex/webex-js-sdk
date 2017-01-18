@@ -3,12 +3,15 @@ import classNames from 'classnames';
 import {FormattedMessage} from 'react-intl';
 
 import Spinner from '../spinner';
+import SparkLogo from '../spark-logo';
 import styles from './styles.css';
 
 export default function LoadingScreen() {
   return (
     <div className={classNames(`loading`, styles.loading)}>
-      <div className={classNames(`spark-logo`, styles.logo)} />
+      <div className={classNames(`spark-logo`, styles.logo)}>
+        <SparkLogo />
+      </div>
       <FormattedMessage
         defaultMessage="Connecting to Spark"
         id="connecting"
