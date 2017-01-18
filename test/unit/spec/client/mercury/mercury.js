@@ -150,7 +150,6 @@ describe('Client', function() {
         it('sets mercuryRegistrationStatus=true to web socket url', function() {
           return mercury.connect()
             .then(function() {
-              console.log(socket._addQueryParameter);
               assert.calledWith(socket.open, sinon.match(/mercuryRegistrationStatus=true/), sinon.match.any);
               assert.calledWith(socket.open, sinon.match(/isRegistrationRefreshEnabled=true/), sinon.match.any);
             });

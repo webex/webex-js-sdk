@@ -117,6 +117,24 @@ describe(`plugin-mercury`, () => {
           });
       });
 
+      describe(`when web-sharable-socket feature is enabled`, () => {
+        beforeEach(() => {
+          spark.device.features.developer.get.returns({value: true});
+        });
+
+        afterEach(() => {
+          spark.device.features.developer.get = sinon.stub();
+        });
+
+        it(`sets mercuryRegistrationStatus=true to web socket url`, () => {
+          return mercury.connect()
+            .then(() => {
+              assert.calledWith(Socket.prototype.open, sinon.match(/mercuryRegistrationStatus=true/), sinon.match.any);
+              assert.calledWith(Socket.prototype.open, sinon.match(/isRegistrationRefreshEnabled=true/), sinon.match.any);
+            });
+        });
+      });
+
       describe(`when \`maxRetries\` is set`, () => {
         // skipping due to apparent bug with lolex in all browsers but Chrome.
         skipInBrowser(it)(`fails after \`maxRetries\` attempts`, () => {
