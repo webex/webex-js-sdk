@@ -3,7 +3,7 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 
-import detect from '../lib/detect';
+import {detect} from '../lib/detect';
 import ProgressEvent from '../progress-event';
 import request from 'request';
 
@@ -39,9 +39,11 @@ function prepareOptions(options) {
  */
 function doRequest(options) {
   return new Promise((resolve) => {
+    const logger = options.logger;
+
     const r = request(options, (error, response) => {
       if (error) {
-        options.logger.warn(error);
+        logger.warn(error);
       }
 
       if (response) {

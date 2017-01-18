@@ -1,0 +1,1833 @@
+.icon::before {
+  font-variant: normal;
+  font-feature-settings: 'liga';
+  font-variant-ligatures: discretionary-ligatures;
+  font-family: 'Atlantic Neo Icons';
+  -webkit-font-smoothing: antialiased;
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+  speak: none;
+}
+
+.icon-cisco-ac-power::before {
+  content: '\e001';
+}
+
+.icon-cisco-account::before {
+  content: '\e002';
+}
+
+.icon-cisco-acessibility::before {
+  content: '\e003';
+}
+
+.icon-cisco-active-speaker::before {
+  content: '\e005';
+}
+
+.icon-cisco-active-speaker-cross::before {
+  content: '\e004';
+}
+
+.icon-cisco-activities::before {
+  content: '\e006';
+}
+
+.icon-cisco-add::before {
+  content: '\e00a';
+}
+
+.icon-cisco-add-contact::before {
+  content: '\e007';
+}
+
+.icon-cisco-add-contact-outline::before {
+  content: '\e93f';
+}
+
+.icon-cisco-add-contain::before {
+  content: '\e008';
+}
+
+.icon-cisco-add-outline::before {
+  content: '\e009';
+}
+
+.icon-cisco-admin::before {
+  content: '\e00b';
+}
+
+.icon-cisco-alarm::before {
+  content: '\e00c';
+}
+
+.icon-cisco-alerting::before {
+  content: '\e00d';
+}
+
+.icon-cisco-analysis::before {
+  content: '\e00e';
+}
+
+.icon-cisco-android-home::before {
+  content: '\e00f';
+}
+
+.icon-cisco-animation::before {
+  content: '\e010';
+}
+
+.icon-cisco-annotation::before {
+  content: '\e011';
+}
+
+.icon-cisco-applause::before {
+  content: '\e012';
+}
+
+.icon-cisco-application::before {
+  content: '\e013';
+}
+
+.icon-cisco-applications::before {
+  content: '\e014';
+}
+
+.icon-cisco-archive::before {
+  content: '\e915';
+}
+
+.icon-cisco-archive-outline::before {
+  content: '\e91a';
+}
+
+.icon-cisco-arrow::before {
+  content: '\e931';
+}
+
+.icon-cisco-arrow-closed-contained::before {
+  content: '\e932';
+}
+
+.icon-cisco-arrow-closed-outline::before {
+  content: '\e933';
+}
+
+.icon-cisco-arrow-contain::before {
+  content: '\e934';
+}
+
+.icon-cisco-arrow-contained::before {
+  content: '\e935';
+}
+
+.icon-cisco-arrow-left-tail::before {
+  content: '\e015';
+}
+
+.icon-cisco-arrow-right-tail::before {
+  content: '\e016';
+}
+
+.icon-cisco-arrow-tail::before {
+  content: '\e930';
+}
+
+.icon-cisco-at::before {
+  content: '\e018';
+}
+
+.icon-cisco-at-contain::before {
+  content: '\e017';
+}
+
+.icon-cisco-attachment::before {
+  content: '\e019';
+}
+
+.icon-cisco-audio-broadcast::before {
+  content: '\e01a';
+}
+
+.icon-cisco-audio-min::before {
+  content: '\e01b';
+}
+
+.icon-cisco-audio-plus::before {
+  content: '\e01c';
+}
+
+.icon-cisco-audio-settings::before {
+  content: '\e01d';
+}
+
+.icon-cisco-auto-generate-password::before {
+  content: '\e918';
+}
+
+.icon-cisco-aux-camera::before {
+  content: '\e01e';
+}
+
+.icon-cisco-avatar-filled::before {
+  content: '\e940';
+}
+
+.icon-cisco-avatar-outline::before {
+  content: '\e941';
+}
+
+.icon-cisco-back::before {
+  content: '\e01f';
+}
+
+.icon-cisco-backup-data::before {
+  content: '\e020';
+}
+
+.icon-cisco-battery::before {
+  content: '\e021';
+}
+
+.icon-cisco-bell::before {
+  content: '\e023';
+}
+
+.icon-cisco-bell-cross::before {
+  content: '\e022';
+}
+
+.icon-cisco-bell-outline::before {
+  content: '\e962';
+}
+
+.icon-cisco-bell-outline-cross::before {
+  content: '\e963';
+}
+
+.icon-cisco-blocked::before {
+  content: '\e024';
+}
+
+.icon-cisco-bluetooth::before {
+  content: '\e028';
+}
+
+.icon-cisco-bluetooth-contain-cross::before {
+  content: '\e025';
+}
+
+.icon-cisco-bluetooth-contained::before {
+  content: '\e026';
+}
+
+.icon-cisco-bluetooth-outline::before {
+  content: '\e027';
+}
+
+.icon-cisco-bookmark::before {
+  content: '\e029';
+}
+
+.icon-cisco-bot-four::before {
+  content: '\e90d';
+}
+
+.icon-cisco-bot-one::before {
+  content: '\e90e';
+}
+
+.icon-cisco-bot-three::before {
+  content: '\e90f';
+}
+
+.icon-cisco-bot-two::before {
+  content: '\e910';
+}
+
+.icon-cisco-brightness::before {
+  content: '\e02a';
+}
+
+.icon-cisco-broadcast-message::before {
+  content: '\e02b';
+}
+
+.icon-cisco-broken-image::before {
+  content: '\e02c';
+}
+
+.icon-cisco-browser::before {
+  content: '\e02d';
+}
+
+.icon-cisco-bug::before {
+  content: '\e02e';
+}
+
+.icon-cisco-calendar::before {
+  content: '\e902';
+}
+
+.icon-cisco-calendar-outline::before {
+  content: '\e942';
+}
+
+.icon-cisco-call-forward-divert::before {
+  content: '\e02f';
+}
+
+.icon-cisco-call-handling::before {
+  content: '\e030';
+}
+
+.icon-cisco-call-log::before {
+  content: '\e031';
+}
+
+.icon-cisco-call-rate::before {
+  content: '\e032';
+}
+
+.icon-cisco-callback::before {
+  content: '\e033';
+}
+
+.icon-cisco-camera::before {
+  content: '\e034';
+}
+
+.icon-cisco-camera-outline::before {
+  content: '\e943';
+}
+
+.icon-cisco-caret::before {
+  content: '\e944';
+}
+
+.icon-cisco-certified::before {
+  content: '\e035';
+}
+
+.icon-cisco-chapters::before {
+  content: '\e036';
+}
+
+.icon-cisco-charging::before {
+  content: '\e037';
+}
+
+.icon-cisco-chats::before {
+  content: '\e038';
+}
+
+.icon-cisco-check::before {
+  content: '\e039';
+}
+
+.icon-cisco-checkmark::before {
+  content: '\e928';
+}
+
+.icon-cisco-checkmark-outline::before {
+  content: '\e929';
+}
+
+.icon-cisco-cisco::before {
+  content: '\e900';
+}
+
+.icon-cisco-clock::before {
+  content: '\e03a';
+}
+
+.icon-cisco-clock-outline::before {
+  content: '\e945';
+}
+
+.icon-cisco-close-keyboard::before {
+  content: '\e03b';
+}
+
+.icon-cisco-cloud::before {
+  content: '\e03c';
+}
+
+.icon-cisco-cog::before {
+  content: '\e03d';
+}
+
+.icon-cisco-cog-outline::before {
+  content: '\e946';
+}
+
+.icon-cisco-comment::before {
+  content: '\e03e';
+}
+
+.icon-cisco-community::before {
+  content: '\e03f';
+}
+
+.icon-cisco-compass::before {
+  content: '\e040';
+}
+
+.icon-cisco-compose::before {
+  content: '\e919';
+}
+
+.icon-cisco-compose-filled::before {
+  content: '\e925';
+}
+
+.icon-cisco-compose-outline::before {
+  content: '\e92a';
+}
+
+.icon-cisco-computer::before {
+  content: '\e041';
+}
+
+.icon-cisco-conference::before {
+  content: '\e042';
+}
+
+.icon-cisco-conference-outline::before {
+  content: '\e947';
+}
+
+.icon-cisco-contact-card::before {
+  content: '\e043';
+}
+
+.icon-cisco-contact-card-outline::before {
+  content: '\e92b';
+}
+
+.icon-cisco-contact-outline::before {
+  content: '\e044';
+}
+
+.icon-cisco-create-page::before {
+  content: '\e045';
+}
+
+.icon-cisco-dashboard::before {
+  content: '\e921';
+}
+
+.icon-cisco-data-usage::before {
+  content: '\e046';
+}
+
+.icon-cisco-day::before {
+  content: '\e047';
+}
+
+.icon-cisco-db-sql::before {
+  content: '\e922';
+}
+
+.icon-cisco-dc-power::before {
+  content: '\e048';
+}
+
+.icon-cisco-default-app::before {
+  content: '\e049';
+}
+
+.icon-cisco-delete::before {
+  content: '\e04a';
+}
+
+.icon-cisco-desk-phone::before {
+  content: '\e04b';
+}
+
+.icon-cisco-desk-phone-contain::before {
+  content: '\e939';
+}
+
+.icon-cisco-desk-phone-contain-outline::before {
+  content: '\e93a';
+}
+
+.icon-cisco-desk-phone-outline::before {
+  content: '\e92c';
+}
+
+.icon-cisco-diagnostics::before {
+  content: '\e04c';
+}
+
+.icon-cisco-dial::before {
+  content: '\e04d';
+}
+
+.icon-cisco-dial-outline::before {
+  content: '\e95f';
+}
+
+.icon-cisco-directory::before {
+  content: '\e04e';
+}
+
+.icon-cisco-disc::before {
+  content: '\e050';
+}
+
+.icon-cisco-disc-not-connected::before {
+  content: '\e04f';
+}
+
+.icon-cisco-display::before {
+  content: '\e051';
+}
+
+.icon-cisco-dms::before {
+  content: '\e052';
+}
+
+.icon-cisco-document::before {
+  content: '\e055';
+}
+
+.icon-cisco-document-camera::before {
+  content: '\e054';
+}
+
+.icon-cisco-document-camera-cross::before {
+  content: '\e053';
+}
+
+.icon-cisco-document-outline::before {
+  content: '\e96f';
+}
+
+.icon-cisco-download::before {
+  content: '\e057';
+}
+
+.icon-cisco-download-contain::before {
+  content: '\e056';
+}
+
+.icon-cisco-draw::before {
+  content: '\e058';
+}
+
+.icon-cisco-edit::before {
+  content: '\e05a';
+}
+
+.icon-cisco-edit-call::before {
+  content: '\e059';
+}
+
+.icon-cisco-edit-outline::before {
+  content: '\e948';
+}
+
+.icon-cisco-email::before {
+  content: '\e05b';
+}
+
+.icon-cisco-emoticons::before {
+  content: '\e05c';
+}
+
+.icon-cisco-emoticons-outline::before {
+  content: '\e949';
+}
+
+.icon-cisco-end-call::before {
+  content: '\e907';
+}
+
+.icon-cisco-endpoint::before {
+  content: '\e05d';
+}
+
+.icon-cisco-endpoint-contain::before {
+  content: '\e93b';
+}
+
+.icon-cisco-endpoint-contain-outline::before {
+  content: '\e93c';
+}
+
+.icon-cisco-endpoint-outline::before {
+  content: '\e926';
+}
+
+.icon-cisco-eraser::before {
+  content: '\e05e';
+}
+
+.icon-cisco-error::before {
+  content: '\e05f';
+}
+
+.icon-cisco-ethernet::before {
+  content: '\e060';
+}
+
+.icon-cisco-exernal-calendar::before {
+  content: '\e061';
+}
+
+.icon-cisco-exit::before {
+  content: '\e064';
+}
+
+.icon-cisco-exit-contain::before {
+  content: '\e062';
+}
+
+.icon-cisco-exit-outline::before {
+  content: '\e063';
+}
+
+.icon-cisco-export::before {
+  content: '\e065';
+}
+
+.icon-cisco-extension-mobility::before {
+  content: '\e066';
+}
+
+.icon-cisco-external-person-mobile::before {
+  content: '\e92f';
+}
+
+.icon-cisco-external-user::before {
+  content: '\e91e';
+}
+
+.icon-cisco-external-user-outline::before {
+  content: '\e92d';
+}
+
+.icon-cisco-fbw::before {
+  content: '\e067';
+}
+
+.icon-cisco-feedback::before {
+  content: '\e06a';
+}
+
+.icon-cisco-feedback-clear::before {
+  content: '\e068';
+}
+
+.icon-cisco-feedback-result::before {
+  content: '\e069';
+}
+
+.icon-cisco-ffw::before {
+  content: '\e06b';
+}
+
+.icon-cisco-filter::before {
+  content: '\e06c';
+}
+
+.icon-cisco-flagged::before {
+  content: '\e06d';
+}
+
+.icon-cisco-flagged-outline::before {
+  content: '\e94a';
+}
+
+.icon-cisco-folder::before {
+  content: '\e06e';
+}
+
+.icon-cisco-folder-outline::before {
+  content: '\e91b';
+}
+
+.icon-cisco-forced-sign-in::before {
+  content: '\e06f';
+}
+
+.icon-cisco-forward-to-mobility::before {
+  content: '\e070';
+}
+
+.icon-cisco-fullscreen::before {
+  content: '\e071';
+}
+
+.icon-cisco-funnel::before {
+  content: '\e908';
+}
+
+.icon-cisco-general-source::before {
+  content: '\e073';
+}
+
+.icon-cisco-general-source-cross::before {
+  content: '\e072';
+}
+
+.icon-cisco-graph::before {
+  content: '\e074';
+}
+
+.icon-cisco-ground::before {
+  content: '\e075';
+}
+
+.icon-cisco-group-call::before {
+  content: '\e076';
+}
+
+.icon-cisco-hand-outline::before {
+  content: '\e969';
+}
+
+.icon-cisco-headset::before {
+  content: '\e078';
+}
+
+.icon-cisco-headset-cross::before {
+  content: '\e077';
+}
+
+.icon-cisco-help::before {
+  content: '\e079';
+}
+
+.icon-cisco-help-outline::before {
+  content: '\e901';
+}
+
+.icon-cisco-highlight-line::before {
+  content: '\e07a';
+}
+
+.icon-cisco-highlighter::before {
+  content: '\e07c';
+}
+
+.icon-cisco-highlighter-check::before {
+  content: '\e07b';
+}
+
+.icon-cisco-home::before {
+  content: '\e07d';
+}
+
+.icon-cisco-hue::before {
+  content: '\e07e';
+}
+
+.icon-cisco-hunt-group::before {
+  content: '\e07f';
+}
+
+.icon-cisco-idefix::before {
+  content: '\e080';
+}
+
+.icon-cisco-image::before {
+  content: '\e082';
+}
+
+.icon-cisco-image-contain::before {
+  content: '\e081';
+}
+
+.icon-cisco-image-outline::before {
+  content: '\e94b';
+}
+
+.icon-cisco-import::before {
+  content: '\e083';
+}
+
+.icon-cisco-inbox::before {
+  content: '\e084';
+}
+
+.icon-cisco-incoming-call::before {
+  content: '\e085';
+}
+
+.icon-cisco-incoming-call-outline::before {
+  content: '\e94c';
+}
+
+.icon-cisco-info::before {
+  content: '\e920';
+}
+
+.icon-cisco-info-alt-outline::before {
+  content: '\e91f';
+}
+
+.icon-cisco-info-outline::before {
+  content: '\e94d';
+}
+
+.icon-cisco-input::before {
+  content: '\e94e';
+}
+
+.icon-cisco-instant-meeting::before {
+  content: '\e087';
+}
+
+.icon-cisco-integrations::before {
+  content: '\e923';
+}
+
+.icon-cisco-integrations-outline::before {
+  content: '\e960';
+}
+
+.icon-cisco-intercom::before {
+  content: '\e08a';
+}
+
+.icon-cisco-intercom-duplex-connected::before {
+  content: '\e088';
+}
+
+.icon-cisco-intercom-whisper::before {
+  content: '\e089';
+}
+
+.icon-cisco-invite::before {
+  content: '\e08b';
+}
+
+.icon-cisco-key::before {
+  content: '\e964';
+}
+
+.icon-cisco-key-expansion-module::before {
+  content: '\e08c';
+}
+
+.icon-cisco-key-outline::before {
+  content: '\e965';
+}
+
+.icon-cisco-keyboard::before {
+  content: '\e08d';
+}
+
+.icon-cisco-keywords::before {
+  content: '\e08e';
+}
+
+.icon-cisco-language::before {
+  content: '\e08f';
+}
+
+.icon-cisco-laser-pointer::before {
+  content: '\e090';
+}
+
+.icon-cisco-layout::before {
+  content: '\e091';
+}
+
+.icon-cisco-leave-meeting::before {
+  content: '\e092';
+}
+
+.icon-cisco-leave-meeting-outline::before {
+  content: '\e94f';
+}
+
+.icon-cisco-left-arrow::before {
+  content: '\e96a';
+}
+
+.icon-cisco-lightbulb::before {
+  content: '\e094';
+}
+
+.icon-cisco-like::before {
+  content: '\e095';
+}
+
+.icon-cisco-line-out-left::before {
+  content: '\e096';
+}
+
+.icon-cisco-line-out-right::before {
+  content: '\e097';
+}
+
+.icon-cisco-link::before {
+  content: '\e098';
+}
+
+.icon-cisco-list-menu::before {
+  content: '\e099';
+}
+
+.icon-cisco-list-view::before {
+  content: '\e09a';
+}
+
+.icon-cisco-location::before {
+  content: '\e09b';
+}
+
+.icon-cisco-lock::before {
+  content: '\e09d';
+}
+
+.icon-cisco-lock-contain::before {
+  content: '\e09c';
+}
+
+.icon-cisco-lock-outline::before {
+  content: '\e950';
+}
+
+.icon-cisco-locked-speaker::before {
+  content: '\e09e';
+}
+
+.icon-cisco-manage-cable::before {
+  content: '\e09f';
+}
+
+.icon-cisco-maximize::before {
+  content: '\e0a0';
+}
+
+.icon-cisco-media-viewer::before {
+  content: '\e0a1';
+}
+
+.icon-cisco-meet-me::before {
+  content: '\e0a2';
+}
+
+.icon-cisco-meet-me-outline::before {
+  content: '\e951';
+}
+
+.icon-cisco-meeting-room::before {
+  content: '\e0a3';
+}
+
+.icon-cisco-merge-call::before {
+  content: '\e0a4';
+}
+
+.icon-cisco-message::before {
+  content: '\e0a5';
+}
+
+.icon-cisco-message-outline::before {
+  content: '\e952';
+}
+
+.icon-cisco-message-recent::before {
+  content: '\e961';
+}
+
+.icon-cisco-mic-in::before {
+  content: '\e0a6';
+}
+
+.icon-cisco-micro-blog::before {
+  content: '\e0a7';
+}
+
+.icon-cisco-microphone::before {
+  content: '\e0a8';
+}
+
+.icon-cisco-microphone-outline::before {
+  content: '\e953';
+}
+
+.icon-cisco-minimize::before {
+  content: '\e0a9';
+}
+
+.icon-cisco-missed-call::before {
+  content: '\e0aa';
+}
+
+.icon-cisco-mobile-phone::before {
+  content: '\e0ab';
+}
+
+.icon-cisco-mobile-presenter::before {
+  content: '\e0ac';
+}
+
+.icon-cisco-month::before {
+  content: '\e0ad';
+}
+
+.icon-cisco-more::before {
+  content: '\e0ae';
+}
+
+.icon-cisco-move-page::before {
+  content: '\e0af';
+}
+
+.icon-cisco-multi-display::before {
+  content: '\e0b0';
+}
+
+.icon-cisco-music::before {
+  content: '\e0b1';
+}
+
+.icon-cisco-mute::before {
+  content: '\e0b2';
+}
+
+.icon-cisco-mute-outline::before {
+  content: '\e954';
+}
+
+.icon-cisco-no-signal::before {
+  content: '\e0b3';
+}
+
+.icon-cisco-nodes::before {
+  content: '\e924';
+}
+
+.icon-cisco-notebook-in::before {
+  content: '\e0b4';
+}
+
+.icon-cisco-notes::before {
+  content: '\e0b5';
+}
+
+.icon-cisco-numbered-input::before {
+  content: '\e0b6';
+}
+
+.icon-cisco-numbered-output::before {
+  content: '\e0b7';
+}
+
+.icon-cisco-off-hook::before {
+  content: '\e0b8';
+}
+
+.icon-cisco-other-phone::before {
+  content: '\e0b9';
+}
+
+.icon-cisco-outbox::before {
+  content: '\e0ba';
+}
+
+.icon-cisco-outgoing-call::before {
+  content: '\e0bb';
+}
+
+.icon-cisco-outgoing-call-outline::before {
+  content: '\e955';
+}
+
+.icon-cisco-paired-audio::before {
+  content: '\e909';
+}
+
+.icon-cisco-paired-call::before {
+  content: '\e90a';
+}
+
+.icon-cisco-paired-call-outline::before {
+  content: '\e911';
+}
+
+.icon-cisco-paired-video::before {
+  content: '\e96b';
+}
+
+.icon-cisco-paired-video-outlined::before {
+  content: '\e96c';
+}
+
+.icon-cisco-panel-shift-left::before {
+  content: '\e0bc';
+}
+
+.icon-cisco-panel-shift-right::before {
+  content: '\e0bd';
+}
+
+.icon-cisco-parked::before {
+  content: '\e0be';
+}
+
+.icon-cisco-participant-list::before {
+  content: '\e0bf';
+}
+
+.icon-cisco-pass-mouse::before {
+  content: '\e0c0';
+}
+
+.icon-cisco-pause::before {
+  content: '\e0c1';
+}
+
+.icon-cisco-pc::before {
+  content: '\e0c2';
+}
+
+.icon-cisco-pencil::before {
+  content: '\e0c3';
+}
+
+.icon-cisco-persistent-chat::before {
+  content: '\e0c4';
+}
+
+.icon-cisco-phone::before {
+  content: '\e0c6';
+}
+
+.icon-cisco-phone-cross::before {
+  content: '\e0c5';
+}
+
+.icon-cisco-phone-outline::before {
+  content: '\e927';
+}
+
+.icon-cisco-picture-in-picture::before {
+  content: '\e0c7';
+}
+
+.icon-cisco-pin::before {
+  content: '\e0c8';
+}
+
+.icon-cisco-play::before {
+  content: '\e0ca';
+}
+
+.icon-cisco-play-contained::before {
+  content: '\e0c9';
+}
+
+.icon-cisco-playlist::before {
+  content: '\e0cb';
+}
+
+.icon-cisco-plugin::before {
+  content: '\e0cc';
+}
+
+.icon-cisco-plugin-outline::before {
+  content: '\e966';
+}
+
+.icon-cisco-pmr::before {
+  content: '\e967';
+}
+
+.icon-cisco-pmr-outline::before {
+  content: '\e968';
+}
+
+.icon-cisco-point::before {
+  content: '\e0cd';
+}
+
+.icon-cisco-poll::before {
+  content: '\e0ce';
+}
+
+.icon-cisco-popout::before {
+  content: '\e0cf';
+}
+
+.icon-cisco-popup-dialogue::before {
+  content: '\e0d0';
+}
+
+.icon-cisco-power::before {
+  content: '\e0d2';
+}
+
+.icon-cisco-power-contain::before {
+  content: '\e0d1';
+}
+
+.icon-cisco-presentation::before {
+  content: '\e0d3';
+}
+
+.icon-cisco-prevent-download::before {
+  content: '\e0d5';
+}
+
+.icon-cisco-prevent-download-contain::before {
+  content: '\e0d4';
+}
+
+.icon-cisco-print::before {
+  content: '\e0d6';
+}
+
+.icon-cisco-priority::before {
+  content: '\e0d7';
+}
+
+.icon-cisco-privacy::before {
+  content: '\e0d8';
+}
+
+.icon-cisco-private::before {
+  content: '\e0d9';
+}
+
+.icon-cisco-profile-settings::before {
+  content: '\e0da';
+}
+
+.icon-cisco-proximity::before {
+  content: '\e0dc';
+}
+
+.icon-cisco-proximity-not-connected::before {
+  content: '\e0db';
+}
+
+.icon-cisco-q-and-a::before {
+  content: '\e917';
+}
+
+.icon-cisco-quality::before {
+  content: '\e0dd';
+}
+
+.icon-cisco-question-circle::before {
+  content: '\e0de';
+}
+
+.icon-cisco-quotes::before {
+  content: '\e937';
+}
+
+.icon-cisco-raise-hand::before {
+  content: '\e0df';
+}
+
+.icon-cisco-read-email::before {
+  content: '\e0e0';
+}
+
+.icon-cisco-recent-apps::before {
+  content: '\e0e1';
+}
+
+.icon-cisco-record::before {
+  content: '\e0e2';
+}
+
+.icon-cisco-recurring::before {
+  content: '\e916';
+}
+
+.icon-cisco-redial::before {
+  content: '\e0e3';
+}
+
+.icon-cisco-refresh::before {
+  content: '\e0e4';
+}
+
+.icon-cisco-remove::before {
+  content: '\e0e8';
+}
+
+.icon-cisco-remove-contact::before {
+  content: '\e0e5';
+}
+
+.icon-cisco-remove-contain::before {
+  content: '\e0e6';
+}
+
+.icon-cisco-remove-outline::before {
+  content: '\e0e7';
+}
+
+.icon-cisco-reply-all::before {
+  content: '\e0e9';
+}
+
+.icon-cisco-report::before {
+  content: '\e0ea';
+}
+
+.icon-cisco-reset::before {
+  content: '\e0eb';
+}
+
+.icon-cisco-right-arrow::before {
+  content: '\e0f1';
+}
+
+.icon-cisco-right-arrow-closed-contained::before {
+  content: '\e0ec';
+}
+
+.icon-cisco-right-arrow-closed-outline::before {
+  content: '\e0ed';
+}
+
+.icon-cisco-right-arrow-contain::before {
+  content: '\e0ee';
+}
+
+.icon-cisco-right-arrow-contained::before {
+  content: '\e0ef';
+}
+
+.icon-cisco-right-arrow-outline::before {
+  content: '\e0f0';
+}
+
+.icon-cisco-ringer-settings::before {
+  content: '\e0f2';
+}
+
+.icon-cisco-rotate-object-ccw::before {
+  content: '\e903';
+}
+
+.icon-cisco-rotate-object-cw::before {
+  content: '\e904';
+}
+
+.icon-cisco-rtprx::before {
+  content: '\e0f4';
+}
+
+.icon-cisco-rtprx-rtptx-duplex::before {
+  content: '\e0f3';
+}
+
+.icon-cisco-rtptx::before {
+  content: '\e0f5';
+}
+
+.icon-cisco-running-application::before {
+  content: '\e0f6';
+}
+
+.icon-cisco-save::before {
+  content: '\e0f7';
+}
+
+.icon-cisco-schedule-add::before {
+  content: '\e0f8';
+}
+
+.icon-cisco-screen-capture::before {
+  content: '\e0fa';
+}
+
+.icon-cisco-screen-capture-square::before {
+  content: '\e0f9';
+}
+
+.icon-cisco-sd::before {
+  content: '\e0fb';
+}
+
+.icon-cisco-search::before {
+  content: '\e0fc';
+}
+
+.icon-cisco-self-view::before {
+  content: '\e0ff';
+}
+
+.icon-cisco-self-view-alt::before {
+  content: '\e0fd';
+}
+
+.icon-cisco-self-view-crossed::before {
+  content: '\e0fe';
+}
+
+.icon-cisco-send::before {
+  content: '\e101';
+}
+
+.icon-cisco-send-email::before {
+  content: '\e100';
+}
+
+.icon-cisco-send-outline::before {
+  content: '\e956';
+}
+
+.icon-cisco-sent::before {
+  content: '\e102';
+}
+
+.icon-cisco-server-connection::before {
+  content: '\e96e';
+}
+
+.icon-cisco-setup-assistant::before {
+  content: '\e103';
+}
+
+.icon-cisco-share::before {
+  content: '\e106';
+}
+
+.icon-cisco-share-contain::before {
+  content: '\e104';
+}
+
+.icon-cisco-share-content::before {
+  content: '\e105';
+}
+
+.icon-cisco-share-screen::before {
+  content: '\e957';
+}
+
+.icon-cisco-sign-in::before {
+  content: '\e107';
+}
+
+.icon-cisco-sign-out::before {
+  content: '\e108';
+}
+
+.icon-cisco-signal-1::before {
+  content: '\e109';
+}
+
+.icon-cisco-signal-2::before {
+  content: '\e10a';
+}
+
+.icon-cisco-signal-3::before {
+  content: '\e10b';
+}
+
+.icon-cisco-signal-4::before {
+  content: '\e10c';
+}
+
+.icon-cisco-skip-bw::before {
+  content: '\e10d';
+}
+
+.icon-cisco-skip-fw::before {
+  content: '\e10e';
+}
+
+.icon-cisco-slides::before {
+  content: '\e10f';
+}
+
+.icon-cisco-snr::before {
+  content: '\e938';
+}
+
+.icon-cisco-soft-phone::before {
+  content: '\e110';
+}
+
+.icon-cisco-sound::before {
+  content: '\e111';
+}
+
+.icon-cisco-space::before {
+  content: '\e112';
+}
+
+.icon-cisco-spam::before {
+  content: '\e113';
+}
+
+.icon-cisco-spark::before {
+  content: '\e905';
+}
+
+.icon-cisco-sparkboard::before {
+  content: '\e96d';
+}
+
+.icon-cisco-speaker::before {
+  content: '\e116';
+}
+
+.icon-cisco-speaker-cross::before {
+  content: '\e114';
+}
+
+.icon-cisco-speaker-out-left::before {
+  content: '\e115';
+}
+
+.icon-cisco-speed-dial::before {
+  content: '\e117';
+}
+
+.icon-cisco-star::before {
+  content: '\e118';
+}
+
+.icon-cisco-star-outline::before {
+  content: '\e92e';
+}
+
+.icon-cisco-stickies::before {
+  content: '\e958';
+}
+
+.icon-cisco-stickies-outline::before {
+  content: '\e959';
+}
+
+.icon-cisco-stop::before {
+  content: '\e119';
+}
+
+.icon-cisco-stop-outline::before {
+  content: '\e95a';
+}
+
+.icon-cisco-storage::before {
+  content: '\e11a';
+}
+
+.icon-cisco-subscribe::before {
+  content: '\e11b';
+}
+
+.icon-cisco-swap-calls::before {
+  content: '\e11c';
+}
+
+.icon-cisco-swap-camera::before {
+  content: '\e11d';
+}
+
+.icon-cisco-swap-video-camera::before {
+  content: '\e11e';
+}
+
+.icon-cisco-swap-video-camera-outline::before {
+  content: '\e95b';
+}
+
+.icon-cisco-tables::before {
+  content: '\e11f';
+}
+
+.icon-cisco-tablet::before {
+  content: '\e120';
+}
+
+.icon-cisco-team-collapsed-view::before {
+  content: '\e90b';
+}
+
+.icon-cisco-team-expanded-view::before {
+  content: '\e90c';
+}
+
+.icon-cisco-text::before {
+  content: '\e124';
+}
+
+.icon-cisco-text-color::before {
+  content: '\e121';
+}
+
+.icon-cisco-text-format::before {
+  content: '\e122';
+}
+
+.icon-cisco-text-size::before {
+  content: '\e123';
+}
+
+.icon-cisco-thumbnail-view::before {
+  content: '\e125';
+}
+
+.icon-cisco-time::before {
+  content: '\e126';
+}
+
+.icon-cisco-timeline::before {
+  content: '\e127';
+}
+
+.icon-cisco-too-fast::before {
+  content: '\e128';
+}
+
+.icon-cisco-too-slow::before {
+  content: '\e129';
+}
+
+.icon-cisco-tools::before {
+  content: '\e12a';
+}
+
+.icon-cisco-touch::before {
+  content: '\e12d';
+}
+
+.icon-cisco-touch-gesture::before {
+  content: '\e12b';
+}
+
+.icon-cisco-touch-point::before {
+  content: '\e12c';
+}
+
+.icon-cisco-transcript::before {
+  content: '\e12e';
+}
+
+.icon-cisco-transfer-to-mobile::before {
+  content: '\e12f';
+}
+
+.icon-cisco-trash::before {
+  content: '\e130';
+}
+
+.icon-cisco-universal-inbox::before {
+  content: '\e131';
+}
+
+.icon-cisco-unlock::before {
+  content: '\e132';
+}
+
+.icon-cisco-unlock-outline::before {
+  content: '\e95c';
+}
+
+.icon-cisco-upload::before {
+  content: '\e134';
+}
+
+.icon-cisco-upload-contain::before {
+  content: '\e133';
+}
+
+.icon-cisco-usb::before {
+  content: '\e135';
+}
+
+.icon-cisco-user::before {
+  content: '\e136';
+}
+
+.icon-cisco-vertical-ellipsis::before {
+  content: '\e936';
+}
+
+.icon-cisco-vibrate::before {
+  content: '\e137';
+}
+
+.icon-cisco-video::before {
+  content: '\e13d';
+}
+
+.icon-cisco-video-alt::before {
+  content: '\e91d';
+}
+
+.icon-cisco-video-alt-outline::before {
+  content: '\e91c';
+}
+
+.icon-cisco-video-contain::before {
+  content: '\e93d';
+}
+
+.icon-cisco-video-contain-outline::before {
+  content: '\e93e';
+}
+
+.icon-cisco-video-cross::before {
+  content: '\e138';
+}
+
+.icon-cisco-video-cross-outline::before {
+  content: '\e95d';
+}
+
+.icon-cisco-video-group::before {
+  content: '\e913';
+}
+
+.icon-cisco-video-group-outline::before {
+  content: '\e912';
+}
+
+.icon-cisco-video-input::before {
+  content: '\e139';
+}
+
+.icon-cisco-video-layout::before {
+  content: '\e13a';
+}
+
+.icon-cisco-video-outline::before {
+  content: '\e914';
+}
+
+.icon-cisco-video-settings::before {
+  content: '\e13b';
+}
+
+.icon-cisco-video-tips::before {
+  content: '\e13c';
+}
+
+.icon-cisco-view-feed-dual::before {
+  content: '\e13e';
+}
+
+.icon-cisco-view-feed-multi::before {
+  content: '\e13f';
+}
+
+.icon-cisco-view-feed-single::before {
+  content: '\e140';
+}
+
+.icon-cisco-view-preview-telepresence::before {
+  content: '\e141';
+}
+
+.icon-cisco-view-side-by-side::before {
+  content: '\e142';
+}
+
+.icon-cisco-view-stacked::before {
+  content: '\e143';
+}
+
+.icon-cisco-voicemail::before {
+  content: '\e144';
+}
+
+.icon-cisco-volume::before {
+  content: '\e146';
+}
+
+.icon-cisco-volume-cross::before {
+  content: '\e145';
+}
+
+.icon-cisco-waffle-pad::before {
+  content: '\e95e';
+}
+
+.icon-cisco-waiting-silence::before {
+  content: '\e147';
+}
+
+.icon-cisco-wallpaper::before {
+  content: '\e148';
+}
+
+.icon-cisco-warning::before {
+  content: '\e149';
+}
+
+.icon-cisco-watchlist::before {
+  content: '\e14a';
+}
+
+.icon-cisco-way-nav::before {
+  content: '\e000';
+}
+
+.icon-cisco-web-camera::before {
+  content: '\e14b';
+}
+
+.icon-cisco-web-sharing::before {
+  content: '\e14c';
+}
+
+.icon-cisco-webex::before {
+  content: '\e14d';
+}
+
+.icon-cisco-webhook::before {
+  content: '\e906';
+}
+
+.icon-cisco-week::before {
+  content: '\e14e';
+}
+
+.icon-cisco-whiteboard::before {
+  content: '\e150';
+}
+
+.icon-cisco-whiteboard-cross::before {
+  content: '\e14f';
+}
+
+.icon-cisco-wifi::before {
+  content: '\e151';
+}
+
+.icon-cisco-work::before {
+  content: '\e152';
+}
+
+.icon-cisco-zip::before {
+  content: '\e153';
+}
+
+.icon-cisco-zip-outline::before {
+  content: '\e970';
+}
+
+.icon-cisco-zoom-in::before {
+  content: '\e154';
+}
+
+.icon-cisco-zoom-in-outline::before {
+  content: '\e971';
+}
+
+.icon-cisco-zoom-out::before {
+  content: '\e155';
+}
+
+.icon-cisco-zoom-out-outline::before {
+  content: '\e972';
+}

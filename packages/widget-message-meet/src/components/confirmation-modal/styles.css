@@ -1,0 +1,211 @@
+:root {
+  --color-white: #fefefe;
+  --color-primary: #049fd9;
+  --color-gray-light: #aeaeaf;
+  --color-gray: #858688;
+  --color-gray-ultra-light: #d7d7d8;
+}
+
+.dialogue-modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 350px;
+  min-height: 150px;
+  margin: -75px 0 0 -175px;
+  font: 'CiscoSans TT Extra Light', 'Helvetica Neue', Arial;
+  font-size: 16px;
+  background-color: var(--color-white);
+  box-shadow: 0 17px 50px 0 #000;
+}
+
+.dialogue-modal-header {
+  padding: 10px 13px 5px;
+  color: var(--color-white);
+  background-color: var(--color-primary);
+}
+
+.dialogue-modal-header.dialogue-modal-header--white {
+  font-size: 12px;
+  color: var(--color-gray);
+  background-color: var(--color-white);
+}
+
+.dialogue-modal-header.dialogue-modal-header--white .dialogue-modal-header-title {
+  display: inline;
+}
+
+.dialogue-modal-header.dialogue-modal-header--white .dialogue-modal-close-icon {
+  color: var(--color-gray);
+}
+
+.dialogue-modal-header-icon {
+  font-size: 19px;
+}
+
+.dialogue-modal-header .bg-icon {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  background-size: contain;
+}
+
+.dialogue-modal-header-title {
+  display: inline-block;
+  width: 80%;
+  margin-left: 0.5rem;
+  vertical-align: top;
+}
+
+.dialogue-modal-close-icon {
+  float: right;
+  font-size: 15px;
+  color: var(--color-white);
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+}
+
+.dialogue-modal-body-text {
+  padding: 30px 23px;
+  font-family: 'CiscoSans TT Regular', 'Helvetica Neue', Arial;
+}
+
+.dialogue-modal-btn {
+  width: 50%;
+  padding: 10px;
+  font-family: 'CiscoSans TT Regular', 'Helvetica Neue', Arial;
+  font-size: 15px;
+  cursor: pointer;
+  background-color: var(--color-white);
+  border: 1px;
+  border-top: 1px solid var(--color-gray-ultra-light);
+  border-right: 1px solid var(--color-gray-ultra-light);
+  border-radius: 0;
+  outline: none;
+}
+
+.dialogue-modal-btn:hover {
+  background-color: var(--color-gray-light);
+}
+
+.dialogue-modal-btn--inactive {
+  color: var(--color-gray-light);
+}
+
+.dialogue-modal-btn--red-text {
+  color: #e25a4b;
+}
+
+.dialogue-modal-btn--blue-text {
+  color: var(--color-primary);
+}
+
+.dialogue-modal-btn--red-bg {
+  color: var(--color-white);
+  background-color: #ff513d;
+}
+
+.dialogue-modal-btn--red-bg:hover {
+  background-color: #f04734;
+}
+
+.dialogue-modal-btn--green-bg {
+  color: var(--color-white);
+  background-color: #30d557;
+}
+
+.dialogue-modal-btn--green-bg:hover {
+  background-color: #2ac44f;
+}
+
+.dialogue-modal-btn--light-gray-bg {
+  background-color: var(--color-gray);
+}
+
+.dialogue-modal-btn--light-gray-bg:hover {
+  background-color: var(--color-gray);
+}
+
+.dialogue-modal-wide {
+  width: 380px;
+  padding: 0;
+}
+
+.dialogue-modal-action-btn {
+  font-family: 'CiscoSans TT Extra Light', 'Helvetica Neue', Arial;
+  color: var(--color-primary);
+}
+
+.dialogue-modal-action-btn:hover {
+  color: var(--color-white);
+  background-color: var(--color-primary);
+}
+
+.dialogue-modal-action-btn:active {
+  color: var(--color-white);
+  background-color: var(--color-primary);
+}
+
+.dialogue-modal-action-btn-red {
+  color: #ff513d;
+}
+
+.dialogue-modal-action-btn-red:hover {
+  color: var(--color-white);
+  background-color: #ff513d;
+}
+
+.dialogue-modal-action-btn-red:active {
+  color: var(--color-white);
+  background-color: #f04734;
+}
+
+.dialogue-modal-exit-btn {
+  font-family: 'CiscoSans TT Extra Light', 'Helvetica Neue', Arial;
+  color: var(--color-gray);
+}
+
+.dialogue-modal-title-text {
+  height: 32px;
+  margin-top: 16px;
+  font-family: 'CiscoSans TT Extra Light', 'Helvetica Neue', Arial;
+  font-size: 20px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--color-gray);
+  text-align: center;
+}
+
+.dialogue-modal-body-subtext {
+  margin: 16px 24px 32px;
+  font-family: 'CiscoSans TT Extra Light', 'Helvetica Neue', Arial;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.71;
+  color: var(--color-gray);
+  text-align: center;
+}
+
+.dialogue-modal-no-btn {
+  visibility: hidden;
+}
+
+.dialogue-modal-long-btn {
+  width: 100%;
+}
+
+.dialogue-modal-backdrop {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 8;
+  background-color: #000;
+  opacity: 0.6;
+}

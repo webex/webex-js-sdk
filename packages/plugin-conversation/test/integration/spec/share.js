@@ -5,7 +5,7 @@
 
 import '../..';
 
-import {Defer} from '@ciscospark/common';
+import {Defer, tap} from '@ciscospark/common';
 import CiscoSpark from '@ciscospark/spark-core';
 import fh from '@ciscospark/test-helper-file';
 import sinon from '@ciscospark/test-helper-sinon';
@@ -16,7 +16,7 @@ import uuid from 'uuid';
 import {skipInNode} from '@ciscospark/test-helper-mocha';
 
 describe(`plugin-conversation`, function() {
-  this.timeout(20000);
+  this.timeout(120000);
   describe(`verbs`, () => {
     let mccoy, participants, spark, spock;
 
@@ -43,8 +43,8 @@ describe(`plugin-conversation`, function() {
       }));
 
     after(() => Promise.all([
-      spark.mercury.disconnect(),
-      mccoy.spark.mercury.disconnect()
+      spark && spark.mercury.disconnect(),
+      mccoy && mccoy.spark.mercury.disconnect()
     ]));
 
     let conversation;
@@ -66,13 +66,13 @@ describe(`plugin-conversation`, function() {
     let sampleTextTwo = `sample-text-two.txt`;
 
     before(() => Promise.all([
-      fh.fetch(hashTestText),
-      fh.fetch(sampleImageSmallOnePng),
-      fh.fetch(sampleImageSmallTwoPng),
-      fh.fetch(sampleImageLargeJpg),
-      fh.fetch(samplePowerpointTwoPagePpt),
-      fh.fetch(sampleTextOne),
-      fh.fetch(sampleTextTwo)
+      fh.fetchWithoutMagic(hashTestText),
+      fh.fetchWithoutMagic(sampleImageSmallOnePng),
+      fh.fetchWithoutMagic(sampleImageSmallTwoPng),
+      fh.fetchWithoutMagic(sampleImageLargeJpg),
+      fh.fetchWithoutMagic(samplePowerpointTwoPagePpt),
+      fh.fetchWithoutMagic(sampleTextOne),
+      fh.fetchWithoutMagic(sampleTextTwo)
     ])
       .then((res) => {
         [
@@ -84,7 +84,6 @@ describe(`plugin-conversation`, function() {
           sampleTextOne,
           sampleTextTwo
         ] = res;
-        assert.equal(samplePowerpointTwoPagePpt.type, `application/vnd.ms-powerpoint`);
       }));
 
     describe(`#share()`, () => {
@@ -95,6 +94,7 @@ describe(`plugin-conversation`, function() {
           assert.isFileItem(activity.object.files.items[0]);
           return spark.conversation.download(activity.object.files.items[0]);
         })
+        .then(tap((f) => assert.equal(f.type, `text/plain`)))
         .then((f) => assert.eventually.isTrue(fh.isMatchingFile(f, sampleTextOne))));
 
       it(`shares the specified set of files to the specified conversation`, () => spark.conversation.share(conversation, [sampleTextOne, sampleTextTwo])
@@ -104,8 +104,10 @@ describe(`plugin-conversation`, function() {
           assert.isFileItem(activity.object.files.items[0]);
           assert.isFileItem(activity.object.files.items[1]);
           return Promise.all([
-            spark.conversation.download(activity.object.files.items[0]),
+            spark.conversation.download(activity.object.files.items[0])
+              .then(tap((f) => assert.equal(f.type, `text/plain`))),
             spark.conversation.download(activity.object.files.items[1])
+              .then(tap((f) => assert.equal(f.type, `text/plain`)))
           ]);
         })
         .then(([file0, file1]) => Promise.all([
@@ -121,6 +123,7 @@ describe(`plugin-conversation`, function() {
             assert.isFileItem(activity.object.files.items[0]);
             return spark.conversation.download(activity.object.files.items[0]);
           })
+          .then(tap((f) => assert.equal(f.type, `text/plain`)))
           .then((f) => assert.eventually.isTrue(fh.isMatchingFile(f, hashTestText))));
       });
 
@@ -140,6 +143,7 @@ describe(`plugin-conversation`, function() {
 
           return spark.conversation.download(activity.object.files.items[0]);
         })
+        .then(tap((f) => assert.equal(f.type, `image/jpeg`)))
         .then((f) => assert.eventually.isTrue(fh.isMatchingFile(f, sampleImageLargeJpg))));
 
       it(`shares the specified set of images the specified conversation`, () => spark.conversation.share(conversation, [sampleImageSmallOnePng, sampleImageSmallTwoPng])
@@ -151,8 +155,10 @@ describe(`plugin-conversation`, function() {
           assert.isThumbnailItem(activity.object.files.items[0].image);
           assert.isThumbnailItem(activity.object.files.items[1].image);
           return Promise.all([
-            spark.conversation.download(activity.object.files.items[0]),
+            spark.conversation.download(activity.object.files.items[0])
+              .then(tap((f) => assert.equal(f.type, `image/png`))),
             spark.conversation.download(activity.object.files.items[1])
+              .then(tap((f) => assert.equal(f.type, `image/png`)))
           ]);
         })
         .then(([file0, file1]) => Promise.all([
@@ -173,9 +179,7 @@ describe(`plugin-conversation`, function() {
           blockUntilTranscode = new Defer();
         });
 
-        afterEach(() => {
-          spark.mercury.off(`event:conversation.activity`, onMessage);
-        });
+        afterEach(() => spark && spark.mercury.off(`event:conversation.activity`, onMessage));
 
         function onMessage(message) {
           activities.push(message.data.activity);
@@ -203,12 +207,43 @@ describe(`plugin-conversation`, function() {
           .then((activity) => {
             assert.equal(activity.clientTempId, clientTempId);
             activities.push(activity);
-            return blockUntilTranscode.promise
+
+            return spark.conversation.download(activity.object.files.items[0])
+              .then((f) => assert.equal(f.type, `application/vnd.ms-powerpoint`))
+              .then(() => blockUntilTranscode.promise)
               .then((updateActivity) => {
                 assert.equal(updateActivity.object.url, activity.object.url);
                 assert.lengthOf(updateActivity.object.files.items[0].transcodedCollection.items[0].files.items, 3);
               });
           }));
+      });
+
+      it(`shares a whiteboard`, () => {
+        const activity = spark.conversation.makeShare(conversation);
+
+        activity.add(sampleImageSmallOnePng, {
+          actions: [{
+            type: `edit`,
+            mimeType: `application/x-cisco-spark-whiteboard`,
+            url: `https://boards.example.com/boards/1`
+          }]
+        })
+
+        .then((activity) => {
+          assert.isActivity(activity);
+          assert.isEncryptedActivity(activity);
+          assert.isFileItem(activity.object.files.items[0]);
+          assert.isThumbnailItem(activity.object.files.items[0].image);
+          assert.equal(activity.object.contentCategory, `documents`);
+          assert.isArray(activity.object.files.items[0].actions);
+          assert.equal(activity.object.files.items[0].actions[0].type, `edit`);
+          assert.equal(activity.object.files.items[0].actions[0].mimeType, `application/x-cisco-spark-whiteboard`);
+          assert.equal(activity.object.files.items[0].actions[0].url, `https://boards.example.com/boards/1`);
+
+          return spark.conversation.download(activity.object.files.items[0])
+            .then(tap((f) => assert.equal(f.type, `image/png`)));
+        })
+        .then((file0) => assert.eventually.isTrue(fh.isMatchingFile(file0, sampleImageSmallOnePng)));
       });
     });
 
@@ -233,6 +268,7 @@ describe(`plugin-conversation`, function() {
             assert.equal(activity.object.displayName, `a name`);
             return spark.conversation.download(activity.object.files.items[0]);
           })
+          .then(tap((f) => assert.equal(f.type, `image/png`)))
           .then((file) => fh.isMatchingFile(file, sampleImageSmallOnePng));
       });
 
@@ -248,6 +284,7 @@ describe(`plugin-conversation`, function() {
             assert.lengthOf(activity.object.files.items, 1);
             return spark.conversation.download(activity.object.files.items[0]);
           })
+          .then(tap((f) => assert.equal(f.type, `image/png`)))
           .then((file) => fh.isMatchingFile(file, sampleImageSmallTwoPng));
       });
     });

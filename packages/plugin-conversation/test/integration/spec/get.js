@@ -14,7 +14,7 @@ import makeLocalUrl from '@ciscospark/test-helper-make-local-url';
 import {map} from 'lodash';
 
 describe(`plugin-conversation`, function() {
-  this.timeout(20000);
+  this.timeout(120000);
 
   let mccoy, participants, spark, spock;
 
@@ -31,7 +31,7 @@ describe(`plugin-conversation`, function() {
       return spark.mercury.connect();
     }));
 
-  after(() => spark.mercury.disconnect());
+  after(() => spark && spark.mercury.disconnect());
 
   describe(`#download()`, () => {
     let sampleImageSmallOnePng = `sample-image-small-one.png`;
@@ -88,6 +88,16 @@ describe(`plugin-conversation`, function() {
       .then((c) => {
         assert.equal(c.id, conversation.id);
         assert.equal(c.url, conversation.url);
+      }));
+
+    it(`decrypts the contents of activities in the retrieved conversation`, () => spark.conversation.post(conversation, {
+      displayName: `Test Message`
+    })
+      .then(() => spark.conversation.get({url: conversation.url}, {activitiesLimit: 50}))
+      .then((c) => {
+        const posts = c.activities.items.filter((activity) => activity.verb === `post`);
+        assert.lengthOf(posts, 1);
+        assert.equal(posts[0].object.displayName, `Test Message`);
       }));
   });
 
@@ -156,7 +166,7 @@ describe(`plugin-conversation`, function() {
       return spark2.mercury.connect();
     });
 
-    after(() => spark2.mercury.disconnect());
+    after(() => spark2 && spark2.mercury.disconnect());
 
     let conversation;
     before(() => spark.conversation.create({participants})

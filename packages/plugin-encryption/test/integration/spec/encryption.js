@@ -21,7 +21,7 @@ describe(`Encryption`, function() {
   const PLAINTEXT = `Admiral, if we go "by the book". like Lieutenant Saavik, hours could seem like days.`;
   let FILE = makeLocalUrl(`/sample-image-small-one.png`);
 
-  before(() => testUsers.create({count: 1})
+  before(`create test user`, () => testUsers.create({count: 1})
     .then((users) => {
       const user = users[0];
       spark = new CiscoSpark({
@@ -29,19 +29,21 @@ describe(`Encryption`, function() {
           authorization: user.token
         }
       });
-      assert.isTrue(spark.isAuthenticated);
-
-      return spark.encryption.kms.createUnboundKeys({count: 1})
-        .then(([k]) => {key = k;});
+      assert.isTrue(spark.canAuthorize);
     }));
 
-  before(() => spark.request({
+  before(`create unbound key`, () => spark.encryption.kms.createUnboundKeys({count: 1})
+    .then(([k]) => {
+      key = k;
+    }));
+
+  before(`fetch file fixture`, () => spark.request({
     uri: FILE,
     responseType: `buffer`
   })
     .then((res) => {FILE = res.body;}));
 
-  after(() => spark.mercury.disconnect());
+  after(() => spark && spark.mercury.disconnect());
 
   describe(`#decryptBinary()`, () => {
     it(`decrypts a binary file`, () => spark.encryption.encryptBinary(FILE)
@@ -75,7 +77,7 @@ describe(`Encryption`, function() {
 
   describe(`#getKey()`, () => {
     let fetchKeySpy, otherSpark, otherUser, storageGetSpy;
-    before(() => testUsers.create({count: 1})
+    before(`create test user`, () => testUsers.create({count: 1})
       .then((users) => {
         otherUser = users[0];
         otherSpark = new CiscoSpark({
@@ -83,10 +85,10 @@ describe(`Encryption`, function() {
             authorization: otherUser.token
           }
         });
-        assert.isTrue(otherSpark.isAuthenticated);
+        assert.isTrue(otherSpark.canAuthorize);
       }));
 
-    before(() => spark.encryption.kms.createResource({
+    before(`create kms resource`, () => spark.encryption.kms.createResource({
       key,
       userIds: [
         spark.device.userId,
@@ -94,7 +96,7 @@ describe(`Encryption`, function() {
       ]
     }));
 
-    after(() => otherSpark.mercury.disconnect());
+    after(() => otherSpark && otherSpark.mercury.disconnect());
 
     beforeEach(() => {
       fetchKeySpy = sinon.spy(otherSpark.encryption.kms, `fetchKey`);
@@ -120,7 +122,13 @@ describe(`Encryption`, function() {
       .then(() => assert.calledOnce(fetchKeySpy)));
 
     it(`stores the newly retrieved key`, () => otherSpark.encryption.getKey(key.uri)
-      .then((k) => assert.becomes(otherSpark.encryption.unboundedStorage.get(k.uri), k)));
+      .then((k) => otherSpark.encryption.unboundedStorage.get(k.uri))
+      .then((str) => JSON.parse(str))
+      .then((k2) => {
+        assert.property(k2, `jwk`);
+        assert.property(k2.jwk, `k`);
+        assert.equal(key.jwk.kid, k2.jwk.kid);
+      }));
   });
 
   describe(`#download()`, () => {

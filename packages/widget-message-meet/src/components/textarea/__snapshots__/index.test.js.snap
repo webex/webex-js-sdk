@@ -1,0 +1,12 @@
+exports[`TextArea component renders properly 1`] = `
+<textarea
+  className="textarea"
+  onBlur={undefined}
+  onChange={[Function]}
+  onFocus={undefined}
+  onKeyDown={[Function]}
+  onSubmit={[Function]}
+  placeholder="TextArea Placeholder"
+  rows={2}
+  value="" />
+`;

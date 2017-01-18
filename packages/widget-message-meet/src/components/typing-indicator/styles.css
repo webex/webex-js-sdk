@@ -1,0 +1,44 @@
+.background {
+  position: inherit;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  text-align: center;
+  cursor: default;
+  background-color: rgba(0, 0, 0, 0.3);
+  border: none;
+  border-radius: 50%;
+}
+
+.typing-indicator {
+  margin-top: 13px;
+  margin-left: 7px;
+}
+
+.sq {
+  float: left;
+  width: 4px;
+  height: 4px;
+  margin-right: 2px;
+  background-color: #fefefe;
+  border-radius: 50%;
+  opacity: 0.1;
+}
+
+.sq:nth-child(1) {
+  animation: pulsing-dots 1s infinite;
+}
+
+.sq:nth-child(2) {
+  animation: pulsing-dots 1s 0.25s infinite;
+}
+
+.sq:nth-child(3) {
+  animation: pulsing-dots 1s 0.5s infinite;
+}
+
+@keyframes pulsing-dots {
+  0%,
+  100% { opacity: 0.1; }
+  50% { opacity: 1; }
+}

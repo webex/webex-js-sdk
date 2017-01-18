@@ -7,7 +7,7 @@ import {assert} from '@ciscospark/test-helper-chai';
 import Mercury, {config as mercuryConfig, Socket} from '../..';
 import sinon from '@ciscospark/test-helper-sinon';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
-import MockWebSocket from '../lib/mock-web-socket';
+import MockWebSocket from '@ciscospark/test-helper-mock-web-socket';
 import uuid from 'uuid';
 import promiseTick from '../lib/promise-tick';
 import lolex from 'lolex';
@@ -137,6 +137,7 @@ describe(`plugin-mercury`, () => {
         // the mercury Promise resolves.
         it(`gets emitted`, (done) => {
           const spy = mockWebSocket.send;
+          assert.notCalled(spy);
           const bufferStateSpy = sinon.spy();
           const onlineSpy = sinon.spy();
 
@@ -156,18 +157,14 @@ describe(`plugin-mercury`, () => {
                   }
                 })
               });
+              // using lengthOf because notCalled doesn't allow the helpful
+              // string assertion
               assert.lengthOf(spy.args, 0, `The client has not acked the buffer_state message`);
 
               promiseTick(1)
                 .then(() => {
                   assert.calledOnce(bufferStateSpy);
                   return assert.isFulfilled(mercury.connect())
-                    .then(() => {
-                      // spy.args.length is 3 in node and 5 in browsers; I
-                      // assume it's a timing issue and the browser tests simply
-                      // have more time to send pings.
-                      assert.isAbove(spy.args.length, 2);
-                    })
                     .then(done);
                 })
                 .catch(done);

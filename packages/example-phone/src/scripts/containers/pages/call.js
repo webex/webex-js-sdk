@@ -1,7 +1,8 @@
 import React, {Component} from 'react';
-import {Col, Grid, Row, Well} from 'react-bootstrap';
+import {Col, Grid, Jumbotron, Row, Well} from 'react-bootstrap';
 import {bindActionCreators} from 'redux';
 import {connect} from 'react-redux';
+import {Link} from 'react-router';
 
 import {injectSpark} from '../../modules/redux-spark';
 
@@ -14,6 +15,7 @@ import {answer, decline} from '../../actions/incoming-call';
 import {dial} from '../../actions/phone';
 
 class CallPage extends Component {
+  /* eslint-disable react/no-unused-prop-types */
   static propTypes = {
     answer: React.PropTypes.func.isRequired,
     calls: React.PropTypes.array.isRequired,
@@ -22,6 +24,7 @@ class CallPage extends Component {
     lastCall: React.PropTypes.object,
     spark: React.PropTypes.object.isRequired
   }
+  /* eslint-disable react/no-unused-prop-types */
 
   handleAnswer(call) {
     const {answer, spark} = this.props;
@@ -35,9 +38,16 @@ class CallPage extends Component {
 
   render() {
     const {dial, spark} = this.props;
-
+    /* eslint-disable react/forbid-component-props */
     return (
       <Grid className="call" fluid>
+        <Row>
+          <Col sm={12}>
+            <Jumbotron>
+              <p>{`The calling feature in the SDK is currently available in limited beta. If you'd like to join the beta program and share your feedback, please visit the `}<Link href="https://developer.ciscospark.com/sdkaccess/" target="_blank">{`developer portal`}</Link>{`. If you qualify, a Cisco employee will reach out to you.`}</p>
+            </Jumbotron>
+          </Col>
+        </Row>
         <Row>
           <Col sm={3}>
             <Well>
@@ -61,6 +71,7 @@ class CallPage extends Component {
         </Row>
       </Grid>
     );
+    /* eslint-enable react/forbid-component-props */
   }
 }
 

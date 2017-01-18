@@ -8,42 +8,58 @@ import {assert} from '@ciscospark/test-helper-chai';
 import testUsers from '@ciscospark/test-helper-test-users';
 
 describe(`plugin-conversation`, () => {
-  describe(`when interacting with a non-encrypted conversation`, () => {
-    let checkov, mccoy, spark, spock;
+  let checkov, mccoy, participants, spark, spock;
 
-    before(() => testUsers.create({count: 3})
-      .then((users) => {
-        [spock, mccoy, checkov] = users;
+  before(() => testUsers.create({count: 3})
+    .then((users) => {
+      participants = [spock, mccoy, checkov] = users;
 
-        spark = new CiscoSpark({
-          credentials: {
-            authorization: spock.token
-          }
-        });
+      spark = new CiscoSpark({
+        credentials: {
+          authorization: spock.token
+        }
+      });
 
-        mccoy.spark = new CiscoSpark({
-          credentials: {
-            authorization: mccoy.token
-          }
-        });
+      return spark.mercury.connect();
+    }));
 
-        checkov.spark = new CiscoSpark({
-          credentials: {
-            authorization: checkov.token
-          }
-        });
+  after(() => spark && spark.mercury.disconnect());
 
-        return Promise.all([
-          checkov.spark.mercury.connect(),
-          spark.mercury.connect(),
-          mccoy.spark.mercury.connect()
-        ]);
+  describe(`when not supplying enough encryption data`, () => {
+    let conversation;
+    before(() => spark.conversation.create({participants, comment: `first`})
+      .then((c) => {
+        conversation = c;
       }));
 
+    it(`fetches the conversation and does not alter its key`, () => spark.conversation.post({url: conversation.url}, {displayName: `second`})
+      .then(() => spark.conversation.get(conversation))
+      .then((c) => assert.equal(c.defaultActivityEncryptionKeyUrl, conversation.defaultActivityEncryptionKeyUrl)));
+  });
+
+  describe(`when interacting with a non-encrypted conversation`, () => {
+    before(() => {
+      mccoy.spark = new CiscoSpark({
+        credentials: {
+          authorization: mccoy.token
+        }
+      });
+
+      checkov.spark = new CiscoSpark({
+        credentials: {
+          authorization: checkov.token
+        }
+      });
+
+      return Promise.all([
+        checkov.spark.mercury.connect(),
+        mccoy.spark.mercury.connect()
+      ]);
+    });
+
     after(() => Promise.all([
-      checkov.spark.mercury.disconnect(),
-      spark.mercury.disconnect(),
-      mccoy.spark.mercury.disconnect()
+      checkov && checkov.spark && checkov.spark.mercury.disconnect(),
+      mccoy && mccoy.spark && mccoy.spark.mercury.disconnect()
     ]));
 
     let conversation;
@@ -51,6 +67,7 @@ describe(`plugin-conversation`, () => {
       method: `POST`,
       service: `conversation`,
       resource: `/conversations`,
+      noTransform: true,
       body: {
         objectType: `conversation`,
         activities: {
@@ -132,9 +149,21 @@ describe(`plugin-conversation`, () => {
         })
           .then(() => checkov.spark.conversation.get(conversation))
           .then((c) => {
-            assert.equal(c.displayName, `New Name!`);
             assert.property(c, `defaultActivityEncryptionKeyUrl`);
             assert.property(c, `encryptionKeyUrl`);
+            assert.equal(c.displayName, `New Name!`);
+          }));
+      });
+
+      describe(`#updateKey()`, () => {
+        it(`sets the conversation's defaultActivityEncryptionKeyUrl`, () => spark.conversation.updateKey(conversation)
+          .then(() => spark.conversation.get(conversation))
+          .then((c) => {
+            assert.property(c, `defaultActivityEncryptionKeyUrl`);
+          })
+          .then(() => checkov.spark.conversation.get(conversation))
+          .then((c) => {
+            assert.property(c, `defaultActivityEncryptionKeyUrl`);
           }));
       });
     });
@@ -145,6 +174,7 @@ describe(`plugin-conversation`, () => {
         method: `POST`,
         service: `conversation`,
         resource: `/conversations`,
+        noTransform: true,
         body: {
           objectType: `conversation`,
           activities: {

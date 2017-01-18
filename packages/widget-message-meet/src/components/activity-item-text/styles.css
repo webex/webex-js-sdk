@@ -1,0 +1,40 @@
+.activity-text {
+  width: 100%;
+  font-size: 15px;
+  color: #4f5051;
+  transition: color 0.3s, margin-left 0.3s ease 0.5s;
+}
+
+/* MARKDOWN SUPPORT */
+.activity-text strong {
+  font-family: 'CiscoSans TT Regular';
+}
+
+.activity-text pre {
+  padding: 10px;
+  overflow: auto;
+  background-color: #f5f5f6;
+}
+
+.activity-text code {
+  font-family: 'Courier New', Courier, monospace;
+  background-color: #f5f5f6;
+}
+
+.activity-text h1 {
+  padding-top: 1rem;
+  font-size: 2rem;
+  line-height: 2.5rem;
+}
+
+.activity-text h2 {
+  padding-top: 1rem;
+  font-size: 1.5rem;
+  line-height: 1.75rem;
+}
+
+.activity-text h3 {
+  padding-top: 1rem;
+  font-size: 1.25rem;
+  line-height: 1.1rem;
+}

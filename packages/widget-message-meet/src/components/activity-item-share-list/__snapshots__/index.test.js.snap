@@ -1,0 +1,101 @@
+exports[`ActivityShareList post component renders properly 1`] = `
+<div
+  className="activity-item">
+  <div
+    className="avatar-wrapper">
+    <div
+      className="avatar"
+      style={undefined}>
+      <span
+        className="avatar-letter">
+        T
+      </span>
+    </div>
+  </div>
+  <div
+    className="content-container">
+    <div
+      className="meta">
+      <div
+        className="display-name"
+        title="{name}">
+        Test User
+      </div>
+      <div
+        className="published">
+        2016-09-20T19:52:57.186Z
+      </div>
+    </div>
+    <div
+      className="activity-content">
+      <div
+        className="activity-share-list">
+        <div
+          className="activity-share-item">
+          <div
+            className="share-file-icon">
+            <div
+              className="icon"
+              title={undefined} />
+          </div>
+          <div
+            className="share-meta">
+            <div
+              className="share-file-info">
+              <div
+                className="share-name">
+                testImage.js
+              </div>
+              <div
+                className="share-file-props">
+                <span
+                  className="share-file-size">
+                  0 Bytes
+                </span>
+                <span
+                  className="share-file-type" />
+              </div>
+            </div>
+            <div
+              className="share-item-actions">
+              <div
+                className="share-action-item">
+                <button
+                  className="button"
+                  onClick={[Function]}
+                  onKeyUp={[Function]}>
+                  <div
+                    className="icon"
+                    title="Download this file" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div
+    className="activity-post-actions">
+    <div
+      className="activity-post-action">
+      <div
+        className="post-action-item">
+        <button
+          className="button"
+          onClick={[Function]}
+          onKeyUp={[Function]}>
+          <div
+            className="icon"
+            title="Flag this message" />
+        </button>
+      </div>
+    </div>
+    <div
+      className="activity-post-action">
+      <div
+        className="action-spacer" />
+    </div>
+  </div>
+</div>
+`;

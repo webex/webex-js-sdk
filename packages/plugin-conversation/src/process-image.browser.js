@@ -5,6 +5,7 @@
  */
 
 import {pick} from 'lodash';
+import {orient} from '@ciscospark/helper-image';
 import {base64} from '@ciscospark/common';
 
 /* global Blob, document, Image, URL */
@@ -47,12 +48,14 @@ export function computeDimensions({width, height}, maxWidth, maxHeight) {
 
 /**
  * Measures an image file and produces a thumbnail for it
- * @param {Blob|ArrayBuffer} file
- * @param {Number} thumbnailMaxWidth
- * @param {Number} thumbnailMaxHeight
+ * @param {Object} options
+ * @param {Blob|ArrayBuffer} options.file
+ * @param {Number} options.thumbnailMaxWidth
+ * @param {Number} options.thumbnailMaxHeight
+ * @param {Boolean} options.enableThumbnails
  * @returns {Promise<Array>} Buffer, Dimensions, thumbnailDimensions
  */
-export default function processImage(file, thumbnailMaxWidth, thumbnailMaxHeight) {
+export default function processImage({file, thumbnailMaxWidth, thumbnailMaxHeight, enableThumbnails}) {
   if (!file.type.startsWith(`image`)) {
     return Promise.resolve();
   }
@@ -69,7 +72,9 @@ export default function processImage(file, thumbnailMaxWidth, thumbnailMaxHeight
   })
     .then((img) => {
       const fileDimensions = pick(img, `height`, `width`);
-
+      if (!enableThumbnails) {
+        return [null, fileDimensions, null];
+      }
       const thumbnailDimensions = computeDimensions(fileDimensions, thumbnailMaxWidth, thumbnailMaxHeight);
 
       const canvas = document.createElement(`canvas`);
@@ -77,8 +82,17 @@ export default function processImage(file, thumbnailMaxWidth, thumbnailMaxHeight
       canvas.height = thumbnailDimensions.height;
 
       const ctx = canvas.getContext(`2d`);
-      ctx.drawImage(img, 0, 0, thumbnailDimensions.width, thumbnailDimensions.height);
-
+      orient(
+        {
+          orientation: file && file.image ? file.image.orientation : ``,
+          img,
+          x: 0,
+          y: 0,
+          width: thumbnailDimensions.width,
+          height: thumbnailDimensions.height,
+          ctx
+        },
+        file);
       const parts = canvas.toDataURL(`image/png`).split(`,`);
       const byteString = base64.decode(parts[1]);
 

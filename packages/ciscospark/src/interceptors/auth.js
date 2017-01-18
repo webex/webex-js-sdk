@@ -30,12 +30,4 @@ export default class CiscoSparkAuthInterceptor extends AuthInterceptor {
 
     return false;
   }
-
-  /**
-   * Always returns false
-   * @returns {boolean}
-   */
-  requiresClientCredentials() {
-    return false;
-  }
 }

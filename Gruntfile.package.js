@@ -9,6 +9,7 @@ var assert = require('assert');
 var isparta = require('isparta');
 var path = require('path');
 
+// eslint-disable-next-line complexity
 module.exports = function(grunt) {
   assert(process.env.PACKAGE, 'process.env.PACKAGE must be defined');
   var pkg = require('./packages/' + process.env.PACKAGE + '/package');
@@ -42,6 +43,12 @@ module.exports = function(grunt) {
         src: [
           './packages/<%= package %>/dist'
         ]
+      },
+      snapshots: {
+        src: [
+          './packages/<%= package %>/src/**/__snapshots__',
+          './packages/<%= package %>/test/**/__snapshots__',
+        ]
       }
     },
 
@@ -50,6 +57,13 @@ module.exports = function(grunt) {
         tasks: (function() {
           if (process.env.UNIT_ONLY) {
             return ['test:node'];
+          }
+
+          if (process.env.SAUCE_IS_DOWN) {
+            return [
+              'test:doc',
+              'test:node'
+            ];
           }
 
           return [
@@ -115,13 +129,6 @@ module.exports = function(grunt) {
           src: '**/*.js'
         },
         private: false
-      },
-      md: {
-        src: './packages/<%= package %>/src/index.js',
-        options: {
-          filename: 'README.md',
-          format: 'md'
-        }
       },
       json: {
         src: './packages/<%= package %>/src/index.js',
@@ -194,6 +201,10 @@ module.exports = function(grunt) {
       }
     },
 
+    jest: {
+      options: require('./jest.config')
+    },
+
     karma: {
       test: {
         options: {
@@ -238,6 +249,10 @@ module.exports = function(grunt) {
       },
       automation: {
         options: {
+          // SAUCE TUNNEL FAILURES force an exit with non-zero in event of a
+          // browser test failure; it probably means that selenium or the sauce
+          // tunnel is flaking.
+          noFail: false,
           require: makeMochaRequires(['babel-register']),
           reporterOptions: {
             output: '<%= xunitDir %>/mocha-<%= package %>-automation.xml'
@@ -304,6 +319,30 @@ module.exports = function(grunt) {
           dest: './reports/coverage/<%= package %>/mocha-final.json'
         }
       }
+    },
+
+    stylelint: {
+      options: {
+        configFile: '.stylelintrc',
+        format: 'css'
+      },
+      src: [
+        './packages/<%= package %>/src/**/*.css'
+      ]
+    },
+
+    watch: {
+      serve: {
+        files: [
+          'Gruntfile.package.js',
+          'packages/test-helper-server/*',
+          'packages/test-helper-server/src/**'
+        ],
+        options: {
+          spawn: false
+        },
+        tasks: ['express:test']
+      }
     }
   });
 
@@ -314,17 +353,13 @@ module.exports = function(grunt) {
 
   registerTask('static-analysis', [
     'eslint',
+    'stylelint',
     'dependency-check'
   ]);
 
   registerTask('build', [
     'clean:dist',
-    'babel',
-    'documentation:md'
-  ]);
-
-  registerTask('doc', [
-    'documentation:md'
+    'babel'
   ]);
 
   registerTask('test:automation', [
@@ -337,10 +372,13 @@ module.exports = function(grunt) {
   ]);
 
   registerTask('test:browser', [
-    p(process.env.XUNIT) && 'continue:on',
+    // SAUCE TUNNEL FAILURES ideally, we want to suppress failures and let xunit
+    // collect them, but until we figure out why the sauce tunnel is flaking, we
+    // need to try to rerun the suite
+    // p(process.env.XUNIT) && 'continue:on',
     'karma',
-    p(process.env.XUNIT) && 'continue:off',
-    p(process.env.XUNIT) && 'fileExists:karmaxml'
+    // p(process.env.XUNIT) && 'continue:off'
+    p(process.env.XUNIT) && 'fileExists:karmaxml',
   ]);
 
   registerTask('test:node', [
@@ -356,7 +394,7 @@ module.exports = function(grunt) {
   registerTask('test', [
     'env',
     'clean:coverage',
-    'express',
+    'serve:test',
     'concurrent:test',
     p(process.env.COVERAGE) && 'copy:coverage',
     p(process.env.COVERAGE) && 'makeReport2'
@@ -377,11 +415,21 @@ module.exports = function(grunt) {
 
   registerTask('default', []);
 
+  registerTask('serve:test', [
+    'express:test'
+  ]);
+
+  registerTask('serve', [
+    'express:test',
+    'watch:serve'
+  ]);
+
   try {
     require('./packages/' + process.env.PACKAGE +  '/Gruntfile.js')(grunt, p, makeMochaRequires);
   }
   catch(error) {
     // ignore
+    console.log(error);
   }
 
   /**

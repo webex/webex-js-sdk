@@ -1,0 +1,32 @@
+exports[`ConfirmationModal component renders properly 1`] = `
+<div>
+  <div
+    className="dialogue-modal">
+    <div
+      className="dialogue-modal-body">
+      <div
+        className="dialogue-modal-title-text">
+        Delete
+      </div>
+      <div
+        className="dialogue-modal-body-subtext">
+        Are you sure you want to delete this message?
+      </div>
+      <button
+        className="dialogue-modal-btn dialogue-modal-action-btn"
+        onClick={undefined}
+        title="Delete">
+        Delete
+      </button>
+      <button
+        className="dialogue-modal-btn dialogue-modal-exit-btn"
+        onClick={undefined}
+        title="Cancel">
+        Cancel
+      </button>
+    </div>
+  </div>
+  <div
+    className="dialogue-modal-backdrop" />
+</div>
+`;

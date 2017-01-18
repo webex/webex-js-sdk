@@ -6,24 +6,32 @@
 
 import {proxyEvents, tap} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
-import Decrypter from './decrypter';
-import Encrypter from './encrypter';
+import {cloneDeep, defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
+import {readExifData} from '@ciscospark/helper-image';
 import uuid from 'uuid';
 import querystring from 'querystring';
 import ShareActivity from './share-activity';
 import {EventEmitter} from 'events';
-import InboundNormalizer from './inbound-normalizer';
-import OutboundNormalizer from './outbound-normalizer';
 
 const Conversation = SparkPlugin.extend({
   namespace: `Conversation`,
 
-  children: {
-    decrypter: Decrypter,
-    encrypter: Encrypter,
-    inboundNormalizer: InboundNormalizer,
-    outboundNormalizer: OutboundNormalizer
+  acknowledge(conversation, object, activity) {
+    if (!isObject(object)) {
+      return Promise.reject(new Error(`\`object\` must be an object`));
+    }
+
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb: `acknowledge`,
+        target: this.prepareConversation(conversation),
+        object: {
+          objectType: `activity`,
+          id: object.id,
+          url: object.url
+        }
+      }))
+      .then((a) => this.submit(a));
   },
 
   /**
@@ -78,8 +86,8 @@ const Conversation = SparkPlugin.extend({
         participants.unshift(this.spark.device.userId);
         params.participants = uniq(participants);
 
-        if (participants.length === 2 && !(options && options.forceGrouped)) {
-          return this._maybeCreateOneOnOneThenPost(params);
+        if (params.participants.length === 2 && !(options && options.forceGrouped)) {
+          return this._maybeCreateOneOnOneThenPost(params, options);
         }
 
         return this._createGrouped(params);
@@ -97,6 +105,20 @@ const Conversation = SparkPlugin.extend({
       });
   },
 
+  delete(conversation, object, activity) {
+    if (!isObject(object)) {
+      return Promise.reject(new Error(`\`object\` must be an object`));
+    }
+
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb: `delete`,
+        target: this.prepareConversation(conversation),
+        object: pick(object, `id`, `url`, `objectType`)
+      }))
+      .then((a) => this.submit(a));
+  },
+
   /**
    * Downloads the file specified in item.scr or item.url
    * @param {Object} item
@@ -109,6 +131,7 @@ const Conversation = SparkPlugin.extend({
     const shunt = new EventEmitter();
     const promise = (isEncrypted ? this.spark.encryption.download(item.scr) : this._downloadUnencryptedFile(item.url))
       .on(`progress`, (...args) => shunt.emit(`progress`, ...args))
+      .then((res) => readExifData(item, res))
       .then((file) => {
         this.logger.info(`conversation: file downloaded`);
 
@@ -116,7 +139,7 @@ const Conversation = SparkPlugin.extend({
           file.name = item.displayName;
         }
 
-        if (typeof window === `undefined` && !file.type && item.mimeType) {
+        if (!file.type && item.mimeType) {
           file.type = item.mimeType;
         }
 
@@ -210,7 +233,7 @@ const Conversation = SparkPlugin.extend({
           .then((userId) => {
             if (userId) {
               Object.assign(params, {
-                api: `conversation`,
+                service: `conversation`,
                 resource: `conversations/user/${userId}`
               });
             }
@@ -267,7 +290,7 @@ const Conversation = SparkPlugin.extend({
    */
   list(options) {
     return this._list({
-      api: `conversation`,
+      service: `conversation`,
       resource: `conversations`,
       qs: options
     });
@@ -281,7 +304,7 @@ const Conversation = SparkPlugin.extend({
    */
   listLeft(options) {
     return this._list({
-      api: `conversation`,
+      service: `conversation`,
       resource: `conversations/left`,
       qs: options
     });
@@ -356,7 +379,7 @@ const Conversation = SparkPlugin.extend({
   },
 
   prepareConversation(conversation) {
-    return defaults(pick(conversation, `id`, `url`, `objectType`), {
+    return defaults(pick(conversation, `id`, `url`, `objectType`, `defaultActivityEncryptionKeyUrl`, `kmsResourceObjectUrl`), {
       objectType: `conversation`
     });
   },
@@ -422,8 +445,7 @@ const Conversation = SparkPlugin.extend({
    * @returns {Promise}
    */
   processActivityEvent(event) {
-    return this.decrypter.decryptObject(event.activity)
-      .then(() => this.inboundNormalizer.normalize(event.activity))
+    return this.spark.transform(`inbound`, event)
       .then(() => event);
   },
 
@@ -451,6 +473,72 @@ const Conversation = SparkPlugin.extend({
    */
   makeShare(conversation) {
     return ShareActivity.create(conversation, null, this.spark);
+  },
+
+  /**
+   * Assigns an avatar to a room
+   * @param {Object} conversation
+   * @param {File} avatar
+   * @returns {Promise<Activity>}
+   */
+  assign(conversation, avatar) {
+    if ((avatar.size || avatar.length) > 1024 * 1024) {
+      return Promise.reject(new Error(`Room avatars must be less than 1MB`));
+    }
+    return this._inferConversationUrl(conversation)
+      .then(() => {
+        const activity = ShareActivity.create(conversation, null, this.spark);
+        activity.enableThumbnails = false;
+        activity.add(avatar);
+
+        return this.prepare(activity, {
+          target: this.prepareConversation(conversation)
+        });
+      })
+      .then((a) => {
+        // yes, this seems a little hacky; will likely be resolved as a result
+        // of #213
+        a.verb = `assign`;
+        return this.submit(a);
+      });
+  },
+
+  /**
+   * Sets the typing status of the current user in a conversation
+   *
+   * @param {Object} conversation
+   * @param {Object} options
+   * @param {boolean} options.typing
+   * @returns {Promise}
+   */
+  updateTypingStatus(conversation, options) {
+    if (!conversation.id) {
+      if (conversation.url) {
+        conversation.id = conversation.url.split(`/`).pop();
+      }
+      else {
+        return Promise.reject(new Error(`conversation: could not identify conversation`));
+      }
+    }
+
+    let eventType;
+    if (options.typing) {
+      eventType = `status.start_typing`;
+    }
+    else {
+      eventType = `status.stop_typing`;
+    }
+
+    const params = {
+      method: `POST`,
+      service: `conversation`,
+      resource: `status/typing`,
+      body: {
+        conversationId: conversation.id,
+        eventType
+      }
+    };
+    return this.request(params);
   },
 
   /**
@@ -504,8 +592,34 @@ const Conversation = SparkPlugin.extend({
       });
     }
 
+    // leaky abstraction
+    if (activity.verb !== `acknowledge`) {
+      this.spark.trigger(`user-activity`);
+    }
+
     return this.request(params)
       .then((res) => res.body);
+  },
+
+  /**
+   * Remove the avatar from a room
+   * @param {Conversation~ConversationObject} conversation
+   * @param {Conversation~ActivityObject} activity
+   * @returns {Promise}
+   */
+  unassign(conversation, activity) {
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb: `unassign`,
+        target: this.prepareConversation(conversation),
+        object: {
+          objectType: `content`,
+          files: {
+            items: []
+          }
+        }
+      }))
+      .then((a) => this.submit(a));
   },
 
   /**
@@ -530,6 +644,20 @@ const Conversation = SparkPlugin.extend({
     return this.tag(conversation, {
       tags: [`MESSAGE_NOTIFICATIONS_ON`]
     }, activity);
+  },
+
+  update(conversation, object, activity) {
+    if (!isObject(object)) {
+      return Promise.reject(new Error(`\`object\` must be an object`));
+    }
+
+    return this._inferConversationUrl(conversation)
+      .then(() => this.prepare(activity, {
+        verb: `update`,
+        target: this.prepareConversation(conversation),
+        object
+      }))
+      .then((a) => this.submit(a));
   },
 
   /**
@@ -650,7 +778,7 @@ const Conversation = SparkPlugin.extend({
    */
   _listActivities(options) {
     return this._list({
-      api: `conversation`,
+      service: `conversation`,
       resource: options.mentions ? `mentions` : `activities`,
       qs: omit(options, `mentions`)
     });
@@ -688,15 +816,16 @@ const Conversation = SparkPlugin.extend({
 
   /**
    * @param {Object} params
+   * @param {Object} options
    * @private
    * @returns {Promise<Conversation>}
    */
-  _maybeCreateOneOnOneThenPost(params) {
+  _maybeCreateOneOnOneThenPost(params, options) {
     return this.get(defaults({
       // the use of uniq in Conversation#create guarantees participant[1] will
       // always be the other user
       user: params.participants[1]
-    }))
+    }), options)
       .then((conversation) => {
         if (params.comment) {
           return this.post(conversation, {displayName: params.comment})
@@ -735,7 +864,7 @@ const Conversation = SparkPlugin.extend({
       kmsMessage: {
         method: `create`,
         uri: `/resources`,
-        userIds: params.participants,
+        userIds: cloneDeep(params.participants),
         keyUris: []
       }
     };
@@ -774,7 +903,6 @@ const Conversation = SparkPlugin.extend({
     return Promise.all(conversation.participants.items.map((participant) => this.spark.user.recordUUID(participant)));
   }
 });
-
 
 [
   `favorite`,
@@ -833,26 +961,6 @@ const Conversation = SparkPlugin.extend({
         verb,
         target: c,
         object: Object.assign(c, object)
-      }))
-      .then((a) => this.submit(a));
-  };
-});
-
-[
-  `acknowledge`,
-  `delete`,
-  `update`
-].forEach((verb) => {
-  Conversation.prototype[verb] = function submitObjectActivity(conversation, object, activity) {
-    if (!isObject(object)) {
-      return Promise.reject(new Error(`\`object\` must be an object`));
-    }
-
-    return this._inferConversationUrl(conversation)
-      .then(() => this.prepare(activity, {
-        verb,
-        target: this.prepareConversation(conversation),
-        object
       }))
       .then((a) => this.submit(a));
   };

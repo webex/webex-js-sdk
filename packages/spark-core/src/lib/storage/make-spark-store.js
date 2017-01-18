@@ -72,18 +72,18 @@ export default function makeSparkStore(type, spark) {
     }
 
     /**
-     * Writes a value to the store
+     * Writes a value to the store. Deletes the specified key from the store
+     * if passed `undefined`
      * @param {string} namespace
      * @param {string} key
      * @param {any} value
      * @returns {Promise} Resolves with value (to simplify write-through caching)
      */
     put(namespace, key, value) {
-      spark.logger.info(`spark-store: setting ${namespace}:${key}`);
       if (typeof value === `undefined`) {
-        throw new Error(`cannot put \`undefined\` in storage (namespace: ${namespace}; key: ${key})`);
+        return this.del(namespace, key);
       }
-
+      spark.logger.info(`spark-store: setting ${namespace}:${key}`);
       return this._getBinding(namespace)
         .then((binding) => binding.put(key, value.serialize ? value.serialize() : value))
         .then(() => value);
@@ -94,7 +94,7 @@ export default function makeSparkStore(type, spark) {
      * @param {string} namespace
      * @returns {Promise}
      */
-    @oneFlight((namespace) => namespace)
+    @oneFlight({keyFactory: (namespace) => namespace})
     // suppress doc warning because decorators confuse eslint
     // eslint-disable-next-line require-jsdoc
     _getBinding(namespace) {

@@ -1,0 +1,4 @@
+.activity-share {
+  width: 100%;
+  transition: color 0.3s, margin-left 0.3s ease 0.5s;
+}

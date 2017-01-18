@@ -600,7 +600,6 @@ describe('Services', function() {
             displayName: 'group-conversation-' + uuid.v4(),
             participants: [
               party.kirk.id,
-              party.scotty.id
             ]
           };
 
@@ -631,12 +630,13 @@ describe('Services', function() {
               assert.equal(activity.target.id, team.id);
               assert.equal(activity.object.id, groupConversation.id);
 
-              return party.kirk.spark.team.get({id: team.id, includeTeamConversations: true});
+              return party.scotty.spark.team.get({id: team.id, includeTeamConversations: true});
             })
             .then(function assertTeam(team) {
               assert.equal(team.conversations.items.length, 2);
               var teamConversation = find(team.conversations.items, {id: groupConversation.id});
               assert.isDefined(teamConversation);
+              assert.equal(teamConversation.displayName, groupConversation.displayName);
 
               return party.kirk.spark.conversation.get({id: groupConversation.id});
             })

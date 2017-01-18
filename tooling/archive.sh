@@ -8,4 +8,5 @@ echo "#"
 echo "# GZIPPING ARTIFACTS"
 echo "#"
 
+set +e
 gzip -r ./reports

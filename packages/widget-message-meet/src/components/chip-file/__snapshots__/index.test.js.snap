@@ -1,0 +1,40 @@
+exports[`ChipFile component renders properly 1`] = `
+<div
+  className="chip">
+  <div
+    className="file-thumbnail">
+    <img
+      alt=""
+      src="blob:localhost/testFile.jpg" />
+  </div>
+  <div
+    className="file-info">
+    <div
+      className="file-name">
+      testFile.jpg
+    </div>
+    <div
+      className="file-meta">
+      <div
+        className="file-size">
+        123 KB
+      </div>
+      <div
+        className="file-type">
+        image
+      </div>
+    </div>
+  </div>
+  <div
+    className="chip-action">
+    <button
+      className="button"
+      onClick={[Function]}
+      onKeyUp={[Function]}>
+      <div
+        className="icon"
+        title={undefined} />
+    </button>
+  </div>
+</div>
+`;

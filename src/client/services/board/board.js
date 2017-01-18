@@ -7,8 +7,10 @@
 
 /* eslint-env browser */
 
+var isarray = require('lodash.isarray');
 var Persistence = require('./persistence');
 var Realtime = require('./realtime');
+var reduce = require('lodash.reduce');
 var SparkBase = require('../../../lib/spark-base');
 var defaults = require('lodash.defaults');
 
@@ -87,10 +89,29 @@ var BoardService = SparkBase.extend({
       });
   },
 
+
+  /**
+   * Encrypt a channel
+   *
+   * @param {Board~Channel} channel
+   * @param {Object} options
+   * @param {Object} options.key Key to encrypt the channel and its contents
+   * @returns {Promise<Board~EncryptedChannel>}
+   */
+  encryptChannel: function encryptChannel(channel, options) {
+    options = options || {};
+
+    return Promise.resolve(options.key || this.spark.encryption.getUnusedKey())
+      .then(function encryptKmsMessage(key) {
+        channel.defaultEncryptionKeyUrl = key.keyUrl;
+        return this.spark.conversation.encrypter.encryptProperty(channel, 'kmsMessage', key);
+      }.bind(this));
+  },
+
   /**
    * Encrypts a collection of content
    * @memberof Board.BoardService
-   * @param  {string} encryptionKeyUrl conversation.defaultActivityEncryptionKeyUrl
+   * @param  {string} encryptionKeyUrl channel.defaultEncryptionKeyUrl
    * @param  {Array} contents   Array of {@link Board~Content} objects. (curves, text, and images)
    * @return {Promise<Array>} Resolves with an array of encrypted {@link Board~Content} objects.
    */
@@ -160,6 +181,31 @@ var BoardService = SparkBase.extend({
       });
   },
 
+  /**
+   * Separate a single link header string into an actionable object
+   * @param {string} linkHeaders
+   * @private
+   * @returns {Object}
+   */
+  parseLinkHeaders: function parseLinkHeaders(linkHeaders) {
+    if (!linkHeaders) {
+      return {};
+    }
+
+    linkHeaders = isarray(linkHeaders) ? linkHeaders : [linkHeaders];
+    return reduce(linkHeaders, function reduceLinkHeaders(links, linkHeader) {
+      linkHeader = linkHeader.split(';');
+      var link = linkHeader[0]
+        .replace('<', '')
+        .replace('>', '');
+      var rel = linkHeader[1]
+        .split('=')[1]
+        .replace(/"/g, '');
+      links[rel] = link;
+      return links;
+    }, {});
+  },
+
   processActivityEvent: function processActivityEvent(message) {
     var decryptionPromise;
 
@@ -181,17 +227,19 @@ var BoardService = SparkBase.extend({
   /**
    * Encrypts and uploads image to SparkFiles
    * @memberof Board.BoardService
-   * @param  {Conversation} conversation - Contains the currently selected conversation
+   * @param  {Board~Channel} channel
    * @param  {File} file - File to be uploaded
    * @private
    * @return {Object} Encrypted Scr and KeyUrl
    */
-  _uploadImage: function uploadImage(conversation, file) {
+  _uploadImage: function uploadImage(channel, file, options) {
+    options = options || {};
     var encryptedBinary;
+
     return this.spark.encryption.encryptBinary(file)
-      .then(function _uploadImageToSparkFiles(res) {
+      .then(function _uploadImageToBoardSpace(res) {
         encryptedBinary = res;
-        return this._uploadImageToSparkFiles(conversation, res.cblob);
+        return this._uploadImageToBoardSpace(channel, res.cblob, options.hiddenSpace);
       }.bind(this))
       .then(function prepareScr(res) {
         var scr = encryptedBinary.scr;
@@ -200,11 +248,8 @@ var BoardService = SparkBase.extend({
       }.bind(this));
   },
 
-  _uploadImageToSparkFiles: function _uploadImageToSparkFiles(conversation, cblob) {
-    return this.spark.request({
-      method: 'PUT',
-      uri: conversation.url + '/space'
-    })
+  _uploadImageToBoardSpace: function _uploadImageToBoardSpace(channel, cblob, hiddenSpace) {
+    return this._getSpaceUrl(channel, hiddenSpace)
       .then(function uploadFile(res) {
         return this.spark.client.upload({
           uri: res.body.spaceUrl + '/upload_sessions',
@@ -232,6 +277,18 @@ var BoardService = SparkBase.extend({
           }
         });
       }.bind(this));
+  },
+
+  _getSpaceUrl: function _getSpaceUrl(channel, hiddenSpace) {
+    var requestUri = channel.channelUrl + '/spaces/open';
+    if (hiddenSpace) {
+      requestUri = channel.channelUrl + '/spaces/hidden';
+    }
+
+    return this.spark.request({
+      method: 'PUT',
+      uri: requestUri
+    });
   }
 });
 

@@ -15,6 +15,11 @@ var _ = require('lodash');
 var sinon = require('@ciscospark/test-helper-sinon');
 var State = require('ampersand-state');
 
+/**
+ * Mock Spark constructor
+ * @param {Object} options
+ * @returns {MockSpark}
+ */
 function makeSpark(options) {
   var requestPromise = Promise.resolve({statusCode: 200, body: {}});
   var uploadPromise = Promise.resolve({});
@@ -23,32 +28,42 @@ function makeSpark(options) {
     return requestPromise;
   };
 
-  function makeMockStorage() {
+  /**
+   * produces a mock storage object
+   * @param {Object} data
+   * @returns {Storage}
+   */
+  function makeMockStorage(data) {
+
+    data = data || {};
     return {
       on: sinon.spy(),
       once: sinon.spy(),
       listenTo: sinon.spy(),
       listenToAndRun: sinon.spy(),
       clear: function clear(namespace) {
-        this.data = this.data || {};
+        this.data = this.data || data;
         this.data[namespace] = {};
       },
       del: function del(namespace, key) {
-        this.data = this.data || {};
+        this.data = this.data || data;
         this.data[namespace] = this.data[namespace] || {};
+        // eslint-disable-next-line prefer-reflect
         delete this.data[namespace][key];
       },
       get: function get(namespace, key) {
-        this.data = this.data || {};
+        this.data = this.data || data;
         this.data[namespace] = this.data[namespace] || {};
-        var ret = this[key];
+        var ret = this.data[namespace][key];
         if (ret) {
+
           return Promise.resolve(ret);
         }
+
         return Promise.reject(new Error('MockNotFoundError'));
       },
       put: function put(namespace, key, value) {
-        this.data = this.data || {};
+        this.data = this.data || data;
         this.data[namespace] = this.data[namespace] || {};
         this.data[namespace][key] = value;
         return Promise.resolve();
@@ -76,7 +91,15 @@ function makeSpark(options) {
           redirect_uri: 'http://example.com',
           // eslint-disable-next-line camelcase
           scope: 'scope:one'
-        }
+        },
+        // eslint-disable-next-line camelcase
+        client_id: 'fake',
+        // eslint-disable-next-line camelcase
+        client_secret: 'fake',
+        // eslint-disable-next-line camelcase
+        redirect_uri: 'http://example.com',
+        // eslint-disable-next-line camelcase
+        scope: 'scope:one'
       },
       conversation: {
         allowedTags: {
@@ -92,13 +115,13 @@ function makeSpark(options) {
       support: {},
       user: {}
     },
-    initialize: function initialize() {
-      this.boundedStorage = makeMockStorage();
-      this.unboundedStorage = makeMockStorage();
+    initialize: function initialize(attrs) {
+      this.boundedStorage = makeMockStorage(attrs && attrs.initialBoundedStorage);
+      this.unboundedStorage = makeMockStorage(attrs && attrs.initialUnboundedStorage);
     }
   }));
 
-  var spark = new MockSpark();
+  var spark = new MockSpark(options && options.attrs);
 
   sinon.spy(spark, 'refresh');
   _.defaults(spark, {
@@ -128,6 +151,7 @@ function makeSpark(options) {
     metrics: {
       sendUnstructured: sinon.spy()
     },
+    sessionId: 'mock-spark_88888888-4444-4444-4444-aaaaaaaaaaaa',
     support: {},
     user: {},
     mercury: {},

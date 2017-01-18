@@ -9,7 +9,7 @@
 // error conditions that would provoke those paths are otherwise prevented and
 // reported.
 
-import {defaults, pick} from 'lodash';
+import {defaults, isArray, pick} from 'lodash';
 import qs from 'qs';
 import xhr from 'xhr';
 import {detectSync} from '../lib/detect';
@@ -176,6 +176,47 @@ export default function _request(options) {
   }
 
   /**
+   * Converts arraybuffers to blobs before uploading them
+   * @param {mixed} file
+   * @private
+   * @returns {mixed}
+   */
+  function ensureBlob(file) {
+    if (file instanceof ArrayBuffer) {
+      const ret = file.type ? new Blob([file], {type: file.type}) : new Blob([file]);
+      ret.filename = file.filename || file.name || `untitled`;
+      return ret;
+    }
+
+    return file;
+  }
+
+  /**
+   * Appends an item to a form
+   * @param {FormData} form
+   * @param {string} key
+   * @param {mixed} value
+   * @returns {undefined}
+   */
+  function append(form, key, value) {
+    if (isArray(value)) {
+      for (const v of value) {
+        append(form, key, v);
+      }
+      return;
+    }
+
+    value = ensureBlob(value);
+    if (value.name) {
+      value.filename = value.name;
+      form.append(key, value, value.name);
+    }
+    else {
+      form.append(key, value);
+    }
+  }
+
+  /**
    * @param {Object} params
    * @param {Object} o
    * @private
@@ -189,6 +230,13 @@ export default function _request(options) {
       params.headers[`Content-Type`] = `application/x-www-form-urlencoded`;
       params.body = qs.stringify(o.form);
       Reflect.deleteProperty(params, `json`);
+    }
+    else if (o.formData) {
+      params.body = Object.keys(o.formData).reduce((fd, key) => {
+        const value = o.formData[key];
+        append(fd, key, value);
+        return fd;
+      }, new FormData());
     }
     else {
       params.body = o.body;

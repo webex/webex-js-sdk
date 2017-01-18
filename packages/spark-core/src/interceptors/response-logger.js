@@ -4,8 +4,6 @@
  * @private
  */
 
- /* eslint no-console:[0] */
-
 import {get} from 'lodash';
 import util from 'util';
 import {Interceptor} from '@ciscospark/http-core';
@@ -31,22 +29,22 @@ export default class ResponseLoggerInterceptor extends Interceptor {
     const now = new Date();
     this.printResponseHeader(options, response);
 
+    const logger = get(options, `logger`, console);
     if (process.env.ENABLE_VERBOSE_NETWORK_LOGGING) {
-      console.log(`timestamp (end): `, now.getTime(), now.toISOString());
-
+      logger.log(`timestamp (end): `, now.getTime(), now.toISOString());
       if (typeof response.body === `string` || Buffer.isBuffer(response.body)) {
-        console.log(`Response: `, `Not printed, it\`s probably a file`);
+        logger.log(`Response: `, `Not printed, it\`s probably a file`);
       }
       else if (typeof response.body === `object`) {
         try {
-          console.log(`Response: `, util.inspect(response.body, {depth: null}));
+          logger.log(`Response: `, util.inspect(response.body, {depth: null}));
         }
         catch (err) {
-          console.log(`Response: `, `[Not Serializable]`, err);
+          logger.log(`Response: `, `[Not Serializable]`, err);
         }
       }
     }
-    console.log(`\\**********************************************************************/`);
+    logger.log(`\\**********************************************************************/`);
 
     return response;
   }
@@ -61,16 +59,17 @@ export default class ResponseLoggerInterceptor extends Interceptor {
     const now = new Date();
     this.printResponseHeader(options, reason);
 
+    const logger = get(options, `logger`, console);
     if (process.env.ENABLE_VERBOSE_NETWORK_LOGGING) {
-      console.log(`timestamp (end): `, now.getTime(), now.toISOString());
+      logger.log(`timestamp (end): `, now.getTime(), now.toISOString());
       try {
-        console.error(`Response: `, util.inspect(reason.body, {depth: null}));
+        logger.error(`Response: `, util.inspect(reason.body, {depth: null}));
       }
       catch (err) {
-        console.error(`Response: `, reason.body);
+        logger.error(`Response: `, reason.body);
       }
     }
-    console.log(`\\**********************************************************************/`);
+    logger.log(`\\**********************************************************************/`);
 
     return Promise.reject(reason);
   }
@@ -82,9 +81,10 @@ export default class ResponseLoggerInterceptor extends Interceptor {
    * @returns {undefined}
    */
   printResponseHeader(options, response) {
-    console.log(`Status Code:`, response.statusCode);
-    console.log(`WEBEX_TRACKINGID:`, get(options, `headers.trackingid`) || get(response, `headers.trackingid`));
-    console.log(`Network duration:`, options.$timings.networkEnd - options.$timings.networkStart);
-    console.log(`Processing duration:`, options.$timings.requestEnd - options.$timings.requestStart);
+    const logger = get(options, `logger`, console);
+    logger.log(`Status Code:`, response.statusCode);
+    logger.log(`WEBEX_TRACKINGID:`, get(options, `headers.trackingid`) || get(response, `headers.trackingid`));
+    logger.log(`Network duration:`, options.$timings.networkEnd - options.$timings.networkStart);
+    logger.log(`Processing duration:`, options.$timings.requestEnd - options.$timings.requestStart);
   }
 }

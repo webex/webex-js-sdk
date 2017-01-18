@@ -39,11 +39,11 @@ export default class AuthInterceptor extends Interceptor {
     ])
       .then((results) => {
         const [requiresCredentials, requiresClientCredentials] = results;
-        if (requiresCredentials) {
-          return this.spark.credentials.getAuthorization();
+        if (requiresClientCredentials) {
+          return this.spark.credentials.getClientCredentialsAuthorization();
         }
-        else if (requiresClientCredentials) {
-          return this.spark.credentials.getClientCredentials();
+        else if (requiresCredentials) {
+          return this.spark.credentials.getAuthorization();
         }
         return null;
       })
@@ -54,12 +54,12 @@ export default class AuthInterceptor extends Interceptor {
   }
 
   /**
-   * @see Interceptor#onRequestError
+   * @see Interceptor#onResponseError
    * @param {Object} options
    * @param {Error} reason
    * @returns {Object}
    */
-  onRequestError(options, reason) {
+  onResponseError(options, reason) {
     return this.shouldAttemptReauth(reason, options)
       .then((shouldAttemptReauth) => {
         if (shouldAttemptReauth) {
@@ -69,7 +69,7 @@ export default class AuthInterceptor extends Interceptor {
             Reflect.deleteProperty(reason.options.headers, `authorization`);
           }
 
-          return this.spark.credentials.authorize({force: true})
+          return this.spark.refresh({force: true})
             .then(() => this.replay(options));
         }
 
@@ -118,12 +118,12 @@ export default class AuthInterceptor extends Interceptor {
   }
 
   /**
-   * Indicates whether or not the current request requires client credentials
+   * Indicates whether or not the current request requires client credentials.
+   * @param {Object} options
    * @returns {Promise<boolean>}
    */
-  requiresClientCredentials() {
-    this.spark.logger.warn(`AuthInterceptor: #requiresClientCredentials should be overridden`);
-    return Promise.resolve(false);
+  requiresClientCredentials(options) {
+    return options.requiresClientCredentials;
   }
 
   /**
@@ -135,6 +135,10 @@ export default class AuthInterceptor extends Interceptor {
    */
   shouldAttemptReauth(reason, options) {
     if (options && options.shouldRefreshAccessToken === false) {
+      return Promise.resolve(false);
+    }
+
+    if (options && options.requiresClientCredentials) {
       return Promise.resolve(false);
     }
 

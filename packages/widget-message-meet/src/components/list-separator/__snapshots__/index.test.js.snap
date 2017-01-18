@@ -1,0 +1,19 @@
+exports[`ListSeparator component renders properly 1`] = `
+<div
+  className="separator">
+  <p
+    className="separator-text">
+    Testing 123
+  </p>
+</div>
+`;
+
+exports[`ListSeparator component renders properly with classes 1`] = `
+<div
+  className="separator informative">
+  <p
+    className="separator-text informative">
+    Testing 123
+  </p>
+</div>
+`;

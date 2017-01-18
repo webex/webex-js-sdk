@@ -110,6 +110,7 @@ export default function makeSparkPluginStorage(type, context) {
     // eslint-disable-next-line require-jsdoc
     initValue(key) {
       const defer = new Defer();
+      defers.get(this).set(key, defer);
 
       // Intentionally bypasses this.get so we don't resolve the promise until
       // after the parent value is set.

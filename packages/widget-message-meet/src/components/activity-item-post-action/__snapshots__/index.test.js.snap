@@ -1,0 +1,13 @@
+exports[`ActivityItemPostActions component renders properly 1`] = `
+<div
+  className="post-action-item">
+  <button
+    className="button"
+    onClick={[Function]}
+    onKeyUp={[Function]}>
+    <div
+      className="icon"
+      title="abc-123" />
+  </button>
+</div>
+`;

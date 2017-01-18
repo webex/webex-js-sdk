@@ -4,7 +4,7 @@ import {PageHeader} from 'react-bootstrap';
 
 function CallPageHeader({callStatus}) {
   return (
-    <PageHeader>Call Status: <small className="call-status">{callStatus}</small></PageHeader>
+    <PageHeader>{`Call Status: `}<small className="call-status">{callStatus}</small></PageHeader>
   );
 }
 

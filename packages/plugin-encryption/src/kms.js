@@ -315,7 +315,7 @@ const KMS = SparkPlugin.extend({
     // Remove the `Bearer` prefix from the token; we'll improve this when we add
     // token downscoping.
     return this.spark.credentials.getAuthorization()
-      .then((authorization) => authorization.replace(/[Bb]earer\s+/, ``));
+      .then((authorization) => authorization.toString().replace(/[Bb]earer\s+/, ``));
   },
 
   /**

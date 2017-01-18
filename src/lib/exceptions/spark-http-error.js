@@ -29,6 +29,9 @@ var SparkHttpError = extendError(HttpError, {
     }
 
     message += '\nWEBEX_TRACKING_ID: ' + this.options.headers.TrackingID;
+    if (this.options.headers['x-trans-id']) {
+      message += '\nX-Trans-Id: ' + this.options.headers['x-trans-id'];
+    }
 
     return message;
   },

@@ -1,0 +1,130 @@
+exports[`FileUploader container renders properly 1`] = `
+<div
+  className="file-uploader-container">
+  <div
+    className="file-staging-area">
+    <div
+      className="staged-files">
+      <div
+        className="chip-container">
+        <div
+          className="chip">
+          <div
+            className="file-thumbnail">
+            <div
+              className="file-icon">
+              <div
+                className="icon"
+                title={undefined} />
+            </div>
+            <img
+              alt=""
+              src={undefined} />
+          </div>
+          <div
+            className="file-info">
+            <div
+              className="file-name">
+              sample-text-one.txt
+            </div>
+            <div
+              className="file-meta">
+              <div
+                className="file-size">
+                0 Bytes
+              </div>
+              <div
+                className="file-type">
+                Plain file
+              </div>
+            </div>
+          </div>
+          <div
+            className="chip-action">
+            <button
+              className="button"
+              onClick={[Function]}
+              onKeyUp={[Function]}>
+              <div
+                className="icon"
+                title={undefined} />
+            </button>
+          </div>
+        </div>
+      </div>
+      <div
+        className="chip-container">
+        <div
+          className="chip">
+          <div
+            className="file-thumbnail">
+            <div
+              className="file-icon">
+              <div
+                className="icon"
+                title={undefined} />
+            </div>
+            <img
+              alt=""
+              src={undefined} />
+          </div>
+          <div
+            className="file-info">
+            <div
+              className="file-name">
+              sample-powerpoint-two-page.ppt
+            </div>
+            <div
+              className="file-meta">
+              <div
+                className="file-size">
+                0 Bytes
+              </div>
+              <div
+                className="file-type">
+                presentation
+              </div>
+            </div>
+          </div>
+          <div
+            className="chip-action">
+            <button
+              className="button"
+              onClick={[Function]}
+              onKeyUp={[Function]}>
+              <div
+                className="icon"
+                title={undefined} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      className="staging-actions">
+      <button
+        className="button"
+        onClick={[Function]}
+        onKeyUp={[Function]}>
+        Share
+      </button>
+    </div>
+  </div>
+  <div
+    className="button-container">
+    <div
+      className="add-file-container">
+      <button
+        className="add-file-button">
+        <span
+          className="add-file-icon" />
+      </button>
+      <input
+        className="file-input"
+        multiple="multiple"
+        onChange={[Function]}
+        type="file" />
+    </div>
+  </div>
+</div>
+`;

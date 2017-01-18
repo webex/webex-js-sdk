@@ -17,7 +17,8 @@ module.exports = function gruntConfig(grunt) {
   ]);
 
   grunt.registerTask(`static-analysis`, [
-    `eslint`
+    `eslint`,
+    `stylelint`
   ]);
 
   grunt.registerTask(`publish-docs`, [
@@ -60,7 +61,9 @@ module.exports = function gruntConfig(grunt) {
       `*`,
       `!test-helper*`,
       `!bin*`,
-      `!xunit-with-logs`
+      `!xunit-with-logs`,
+      `test-helper-mock-web-socket`,
+      `test-helper-mock-socket`
   ]);
 
   const CIRCLE_NODE_TOTAL = parseInt(process.env.CIRCLE_NODE_TOTAL || 1, 10);
@@ -187,6 +190,16 @@ module.exports = function gruntConfig(grunt) {
     },
 
     shell: {},
+
+    stylelint: {
+      options: {
+        configFile: `.stylelintrc`,
+        format: `css`
+      },
+      src: [
+        `./packages/*/src/**/*.css`
+      ]
+    },
 
     xunitDir: process.env.CIRCLE_TEST_REPORTS ? `${process.env.CIRCLE_TEST_REPORTS}/junit` : `./reports/junit`
   };

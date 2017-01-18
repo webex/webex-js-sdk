@@ -1,0 +1,73 @@
+.widget-message-meet {
+  font-family: 'CiscoSans TT Extra Light', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 200;
+  background: #fff;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+.banner {
+  width: 100%;
+  height: 12px;
+  background-color: #049fd9;
+}
+
+.widget-message-meet,
+.widget-message-meet-inner {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+
+.activity-list-wrapper {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.message-composer-wrapper {
+  min-height: 0;
+  flex: 0 0 auto;
+}
+
+.dropzone {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.activeDropzone {
+  border: 0 none;
+}
+
+.dropzoneMessage {
+  position: absolute;
+  z-index: 1000;
+  display: none;
+  width: 100%;
+  height: 100%;
+  margin: auto;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.6);
+  align-items: center;
+}
+
+.dropzoneTitle {
+  width: 100%;
+  font-size: 32px;
+  color: #fff;
+}
+
+.activeDropzone .dropzoneMessage {
+  display: flex;
+}

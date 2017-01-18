@@ -1,0 +1,10 @@
+.activity-item-container {
+  position: relative;
+  display: flex;
+  min-width: 300px;
+  padding: 5px 20px 0 5px;
+  margin: 0 14px;
+  overflow: initial;
+  outline: none;
+  transition: transform 0.3s;
+}

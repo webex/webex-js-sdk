@@ -1,5 +1,6 @@
 .DS_Store
 node_modules*
+node_debug.log*
 .tmp
 .tmp_uploads
 temp
@@ -24,3 +25,5 @@ _site
 string
 .sauce.tid
 .npm
+local/
+docker-env

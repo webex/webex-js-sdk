@@ -18,6 +18,18 @@ module.exports = function schemas(chai) {
 
   /* eslint no-unused-expressions: [0] */
 
+  Assertion.addProperty('AccessToken', function() {
+    assert.properties(this._obj, [
+      'access_token',
+      'token_type',
+      'expires',
+      'expires_in',
+      'refresh_token',
+      'refresh_token_expires',
+      'refresh_token_expires_in'
+    ]);
+  });
+
   Assertion.addProperty('Activity', function() {
     assert.properties(this._obj, [
       'url',
@@ -48,6 +60,35 @@ module.exports = function schemas(chai) {
     assert.property(this._obj, 'url');
   });
 
+  Assertion.addProperty('MachineAccount', function() {
+    assert.isDefined(this._obj, 'orgId');
+    assert.property(this._obj, 'orgId');
+    assert.isDefined(this._obj, 'name');
+    assert.property(this._obj, 'name');
+    assert.isDefined(this._obj, 'password');
+    assert.property(this._obj, 'password');
+    assert.isDefined(this._obj, 'email');
+    assert.property(this._obj, 'email');
+    assert.isDefined(this._obj, 'description');
+    assert.property(this._obj, 'description');
+  });
+
+  Assertion.addProperty('InternalTeam', function() {
+    assert.equal(this._obj.objectType, 'team');
+    assert.property(this._obj, 'id');
+    assert.property(this._obj, 'url');
+    assert.property(this._obj, 'generalConversationUuid');
+
+    assert.property(this._obj, 'encryptedDisplayName');
+    assert.property(this._obj, 'displayName');
+    assert.notEqual(this._obj.displayName, this._obj.encryptedDisplayName);
+
+    if (this._obj.summary) {
+      assert.property(this._obj, 'encryptedSummary');
+      assert.notEqual(this._obj.summary, this._obj.encryptedSummary);
+    }
+  });
+
   Assertion.addProperty('OneOnOneConversation', function() {
     assert.isConversation(this._obj);
     assert.include(this._obj.tags, 'ONE_ON_ONE');
@@ -58,11 +99,27 @@ module.exports = function schemas(chai) {
     assert.notInclude(this._obj.tags, 'ONE_ON_ONE');
   });
 
+  Assertion.addProperty('InternalTeamConversation', function() {
+    assert.isConversation(this._obj);
+    assert.property(this._obj, 'team');
+
+    assert.ok(this._obj.tags.includes('OPEN') || this._obj.tags.includes('TEAM'), 'Conversation must have `OPEN` or `TEAM` tag');
+
+    assert.property(this._obj, 'encryptedDisplayName');
+    assert.property(this._obj, 'displayName');
+    assert.notEqual(this._obj.displayName, this._obj.encryptedDisplayName);
+  });
+
   Assertion.addProperty('NewEncryptedConversation', function() {
     assert.property(this._obj, 'kmsMessage');
+    assert.isObject(this._obj.kmsMessage);
     assert.equal(this._obj.kmsMessage.status, 201);
     assert.property(this._obj, 'defaultActivityEncryptionKeyUrl');
     assert.property(this._obj, 'kmsResourceObjectUrl');
+  });
+
+  Assertion.addProperty('NewEncryptedInternalTeam', function() {
+    assert.isNewEncryptedConversation(this._obj);
   });
 
   Assertion.addProperty('EncryptedActivity', function() {
@@ -212,14 +269,19 @@ module.exports = function schemas(chai) {
   });
 
   shouldToAssert(chai, [
+    'AccessToken',
     'Activity',
     'Conversation',
+    'InternalTeam',
     'FileItem',
     'ThumbnailItem',
     'OneOnOneConversation',
     'GroupConversation',
+    'InternalTeamConversation',
     'NewEncryptedConversation',
+    'NewEncryptedTeam',
     'EncryptedActivity',
+    'MachineAccount',
     'Membership',
     'Message',
     'MessageFile',

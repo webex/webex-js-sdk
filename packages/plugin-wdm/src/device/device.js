@@ -4,11 +4,10 @@
  */
 
 import {oneFlight} from '@ciscospark/common';
-import {SparkPlugin} from '@ciscospark/spark-core';
 import {omit} from 'lodash';
 import util from 'util';
 import FeaturesModel from './features-model';
-import {persist, waitForValue} from '@ciscospark/spark-core';
+import {persist, waitForValue, SparkPlugin} from '@ciscospark/spark-core';
 
 const Device = SparkPlugin.extend({
   children: {
@@ -20,7 +19,10 @@ const Device = SparkPlugin.extend({
   namespace: `Device`,
 
   props: {
+    intranetInactivityDuration: `number`,
+    intranetInactivityCheckUrl: `string`,
     modificationTime: `string`,
+    searchEncryptionKeyUrl: `string`,
     services: {
       // Even though @jodykstr will tell you the docs claim you don't need to
       // initialize `object` properties, the docs lie.
@@ -41,6 +43,25 @@ const Device = SparkPlugin.extend({
         return Boolean(this.url);
       }
     }
+  },
+
+  session: {
+    // Fun Fact: setTimeout returns a Timer object instead of a Number in Node 6
+    logoutTimer: `any`,
+    lastUserActivityDate: `number`
+  },
+
+  @waitForValue(`@`)
+  determineService(url) {
+    for (const key of Object.keys(this.services)) {
+      const serviceUrl = this.services[key];
+      if (url.startsWith(serviceUrl)) {
+        // "ServiceUrl" is 10 characters
+        return Promise.resolve(key.substr(0, key.length - 10));
+      }
+    }
+
+    return Promise.reject(new Error(`${url} does not reflect a known service`));
   },
 
   @waitForValue(`@`)
@@ -66,6 +87,10 @@ const Device = SparkPlugin.extend({
         this.trigger(`change:features`, this, this.features, options);
       });
     });
+
+    this.listenToAndRun(this, `change:intranetInactivityCheckUrl`, () => this._resetLogoutTimer());
+    this.listenToAndRun(this, `change:intranetInactivityDuration`, () => this._resetLogoutTimer());
+    this.listenTo(this.spark, `user-activity`, () => {this.lastUserActivityDate = Date.now();});
   },
 
   /**
@@ -187,16 +212,56 @@ const Device = SparkPlugin.extend({
 
     return this.request({
       method: `POST`,
-      api: `wdm`,
+      service: `wdm`,
       resource: `devices`,
       body: this.config.defaults
     })
       .then((res) => this._processRegistrationSuccess(res));
   },
 
+  @oneFlight
+  @waitForValue(`@`)
+  unregister() {
+    this.logger.info(`device: unregistering`);
+
+    if (!this.url) {
+      throw new Error(`device: not registered`);
+    }
+
+    return this.request({
+      uri: this.url,
+      method: `DELETE`
+    })
+      .then(() => this.clear());
+  },
+
   _processRegistrationSuccess(res) {
     this.logger.info(`device: received registration payload`);
     this.set(res.body);
+  },
+
+  _resetLogoutTimer() {
+    clearTimeout(this.logoutTimer);
+    this.unset(`logoutTimer`);
+    if (this.intranetInactivityCheckUrl && this.intranetInactivityDuration) {
+      this.on(`change:lastUserActivityDate`, () => this._resetLogoutTimer());
+
+      const timer = setTimeout(() => {
+        this.spark.request({
+          method: `GET`,
+          uri: this.intranetInactivityCheckUrl
+        })
+          .catch(() => {
+            this.logger.info(`device: did not reach internal ping endpoint; logging out after inactivity on a public network`);
+            return this.spark.logout();
+          })
+          .catch((reason) => {
+            this.logger.warn(`device: logout failed`, reason);
+          });
+      }, this.intranetInactivityDuration * 1000);
+
+      this.logoutTimer = timer;
+    }
   }
 });
 

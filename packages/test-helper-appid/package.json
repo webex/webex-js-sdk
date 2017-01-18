@@ -1,0 +1,28 @@
+{
+  "name": "@ciscospark/test-helper-appid",
+  "version": "0.7.34",
+  "description": "",
+  "license": "MIT",
+  "author": "Ian W. Remmel <iremmel@cisco.com>",
+  "main": "./src",
+  "devMain": "src/index.js",
+  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-appid",
+  "dependencies": {
+    "@ciscospark/test-helper-make-local-url": "^0.7.34",
+    "body-parser": "^1.15.2",
+    "express": "^4.14.0",
+    "jsonwebtoken": "^7.1.9"
+  },
+  "devDependencies": {
+    "babel-eslint": "^6.1.2",
+    "eslint": "^3.5.0",
+    "eslint-plugin-mocha": "^4.5.1"
+  },
+  "engines": {
+    "node": ">=4"
+  },
+  "browser": {
+    "./src/create-user.js": "./src/create-user.browser.js",
+    "./src/router.js": false
+  }
+}

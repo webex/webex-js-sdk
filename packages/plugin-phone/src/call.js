@@ -10,6 +10,12 @@
 import {SparkPlugin} from '@ciscospark/spark-core';
 import {oneFlight, tap} from '@ciscospark/common';
 import {
+  eventKeys,
+  USE_INCOMING,
+  FETCH
+} from '@ciscospark/plugin-locus';
+import {defaults, find} from 'lodash';
+import {
   createOffer,
   acceptAnswer,
   end,
@@ -25,11 +31,6 @@ import {
   startReceivingVideo
 } from './webrtc';
 import {
-  eventKeys,
-  USE_INCOMING,
-  FETCH
-} from '@ciscospark/plugin-locus';
-import {
   activeParticipants,
   direction,
   isActive,
@@ -40,7 +41,6 @@ import {
   remoteParticipant,
   remoteVideoMuted
 } from './state-parsers';
-import {defaults, find} from 'lodash';
 
 /**
  * @event ringing

@@ -14,7 +14,7 @@ import uuid from 'uuid';
 import fh from '@ciscospark/test-helper-file';
 
 describe(`plugin-conversation`, function() {
-  this.timeout(20000);
+  this.timeout(60000);
   describe(`#create()`, () => {
     let checkov, mccoy, participants, spark, spock;
 
@@ -45,8 +45,8 @@ describe(`plugin-conversation`, function() {
       .then((f) => {sampleTextOne = f;}));
 
     after(() => Promise.all([
-      spark.mercury.disconnect(),
-      mccoy.spark.mercury.disconnect()
+      spark && spark.mercury.disconnect(),
+      mccoy && mccoy.spark.mercury.disconnect()
     ]));
 
     function makeEmailAddress() {
@@ -87,7 +87,7 @@ describe(`plugin-conversation`, function() {
       });
 
       describe(`when {forceGrouped: true} is specified`, () => {
-        it(`creates a grouped conversation`, () => spark.conversation.create({participants: [mccoy]}, {forceGrouped: true})
+        it(`creates a grouped conversation @canary`, () => spark.conversation.create({participants: [mccoy]}, {forceGrouped: true})
           .then((conversation) => {
             assert.isConversation(conversation);
             assert.isGroupConversation(conversation);

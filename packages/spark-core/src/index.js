@@ -12,7 +12,9 @@ export {
   makeSparkPluginStore,
   MemoryStoreAdapter,
   NotFoundError,
-  StorageError
+  persist,
+  StorageError,
+  waitForValue
 } from './lib/storage';
 
 export {
@@ -24,6 +26,7 @@ export {
 export {default as SparkHttpError} from './lib/spark-http-error';
 export {default as SparkPlugin} from './lib/spark-plugin';
 export {default as NetworkTimingInterceptor} from './interceptors/network-timing';
+export {default as PayloadTransformerInterceptor} from './interceptors/payload-transformer';
 export {default as RedirectInterceptor} from './interceptors/redirect';
 export {default as ResponseLoggerInterceptor} from './interceptors/response-logger';
 export {default as RequestLoggerInterceptor} from './interceptors/request-logger';
@@ -37,12 +40,5 @@ export {
   grantErrors
 } from './plugins/credentials';
 
-export {
-  SparkPluginStorage,
-  Store,
-  MemoryStoreAdapter,
-  persist,
-  waitForValue
-} from './lib/storage';
-
 export {default as Batcher} from './lib/batcher';
+export {default as Page} from './lib/page';

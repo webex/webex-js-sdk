@@ -5,14 +5,15 @@
  */
 
 import {proxyEvents, transferEvents} from '@ciscospark/common';
+import {detect} from '@ciscospark/http-core';
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {filter, map} from 'lodash';
+import {filter, map, pick, some} from 'lodash';
 import {EventEmitter} from 'events';
+import mime from 'mime-types';
+import processImage from './process-image';
 
 const EMITTER_SYMBOL = Symbol(`EMITTER_SYMBOL`);
 const PROMISE_SYMBOL = Symbol(`PROMISE_SYMBOL`);
-
-import processImage from './process-image';
 
 /**
  * @class
@@ -31,6 +32,11 @@ const ShareActivity = SparkPlugin.extend({
     clientTempId: `string`,
 
     displayName: `string`,
+
+    enableThumbnails: {
+      default: true,
+      type: `boolean`
+    },
 
     hiddenSpaceUrl: `object`,
 
@@ -68,27 +74,42 @@ const ShareActivity = SparkPlugin.extend({
    * Adds an additional file to the share and begins submitting it to spark
    * files
    * @param {File} file
+   * @param {Object} options
+   * @param {Object} options.actions
    * @returns {EventEmittingPromise}
    */
-  add(file) {
+  add(file, options) {
+    options = options || {};
     let upload = this.uploads.get(file);
+
     if (upload) {
       return upload[PROMISE_SYMBOL];
     }
-
     const emitter = new EventEmitter();
 
-    upload = {
+    upload = Object.assign({
       displayName: file.name,
       fileSize: file.size || file.byteLength || file.length,
       mimeType: file.type,
       objectType: `file`,
       [EMITTER_SYMBOL]: emitter
-    };
+    }, pick(options, `actions`));
 
     this.uploads.set(file, upload);
-
-    const promise = processImage(file, this.config.thumbnailMaxWidth, this.config.thumbnailMaxHeight, this.logger)
+    const promise = this.detect(file)
+      .then((type) => {
+        upload.mimeType = type;
+        if (!file.type) {
+          file.type = type;
+        }
+        return processImage({
+          file,
+          thumbnailMaxWidth: this.config.thumbnailMaxWidth,
+          thumbnailMaxHeight: this.config.thumbnailMaxHeight,
+          enableThumbnails: this.enableThumbnails,
+          logger: this.logger
+        });
+      })
       .then((imageData) => {
         const main = this.spark.encryption.encryptBinary(file)
           .then(({scr, cdata}) => {
@@ -110,16 +131,18 @@ const ShareActivity = SparkPlugin.extend({
           const [thumbnail, fileDimensions, thumbnailDimensions] = imageData;
           Object.assign(upload, fileDimensions);
 
-          upload.image = thumbnailDimensions;
-          thumb = this.spark.encryption.encryptBinary(thumbnail)
-            .then(({scr, cdata}) => {
-              upload.image.scr = scr;
-              return Promise.all([cdata, this.hiddenSpaceUrl]);
-            })
-            .then(([cdata, spaceUrl]) => this._upload(cdata, `${spaceUrl}/upload_sessions`))
-            .then((metadata) => {
-              upload.image.url = upload.image.scr.loc = metadata.downloadUrl;
-            });
+          if (thumbnail && thumbnailDimensions) {
+            upload.image = thumbnailDimensions;
+            thumb = this.spark.encryption.encryptBinary(thumbnail)
+              .then(({scr, cdata}) => {
+                upload.image.scr = scr;
+                return Promise.all([cdata, this.hiddenSpaceUrl]);
+              })
+              .then(([cdata, spaceUrl]) => this._upload(cdata, `${spaceUrl}/upload_sessions`))
+              .then((metadata) => {
+                upload.image.url = upload.image.scr.loc = metadata.downloadUrl;
+              });
+          }
         }
 
         return Promise.all([main, thumb]);
@@ -130,6 +153,27 @@ const ShareActivity = SparkPlugin.extend({
 
     proxyEvents(emitter, promise);
     return promise;
+  },
+
+  detect(file) {
+    if (file.type) {
+      return Promise.resolve(file.type);
+    }
+
+    if (file.mimeType) {
+      return Promise.resolve(file.mimeType);
+    }
+
+    // This kinda belongs in http core, but since we have no guarantee that
+    // buffers are expected to have names there, it'll stay here for now.
+    return detect(file)
+      .then((type) => {
+        if (type === `application/x-msi`) {
+          return mime.lookup(file.name);
+        }
+
+        return type;
+      });
   },
 
   /**
@@ -213,10 +257,26 @@ const ShareActivity = SparkPlugin.extend({
 
   /**
    * @param {Array} items
+   * @param {string} mimeType
+   * @private
+   * @returns {boolean}
+   */
+  _itemContainsActionWithMimeType(items, mimeType) {
+    return some(items.map((item) => some(item.actions, {mimeType})));
+  },
+
+  /**
+   * @param {Array} items
    * @private
    * @returns {string}
    */
   _determineContentCategory(items) {
+
+    // determine if the items contain an image
+    if (this._itemContainsActionWithMimeType(items, `application/x-cisco-spark-whiteboard`)) {
+      return `documents`;
+    }
+
     const mimeTypes = filter(map(items, `mimeType`));
     if (mimeTypes.length !== items.length) {
       return `documents`;

@@ -24,12 +24,10 @@ describe(`plugin-mercury`, function() {
         });
       }));
 
-    afterEach(() => spark.mercury.disconnect());
+    afterEach(() => spark && spark.mercury.disconnect());
 
     describe(`#connect()`, () => {
-      it(`connects to mercury`, () => {
-        return spark.mercury.connect();
-      });
+      it(`connects to mercury`, () => assert.isFulfilled(spark.mercury.connect()));
     });
 
     it(`emits messages that arrive before authorization completes`, () => {

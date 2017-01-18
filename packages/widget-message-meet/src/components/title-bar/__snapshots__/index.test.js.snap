@@ -1,0 +1,25 @@
+exports[`TitleBar component renders correctly 1`] = `
+<div
+  className="title-bar">
+  <div
+    className="avatar-container">
+    <div
+      className="avatar"
+      style={undefined}>
+      <span
+        className="avatar-letter">
+        T
+      </span>
+    </div>
+  </div>
+  <h1
+    className="title">
+    test@testing.net
+  </h1>
+  <div
+    className="connection-status-container">
+    <span
+      className="connection-status" />
+  </div>
+</div>
+`;

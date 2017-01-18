@@ -38,7 +38,6 @@ describe(`spark-core`, () => {
       let resolve;
       sinon.stub(spark.boundedStorage, `get`).returns(new Promise((r) => {resolve = r;}));
 
-
       const promise = spark.credentials.getAuthorization();
       assert.notCalled(spark.request);
       assert.isTrue(spark.credentials.isAuthenticated, `spark is authenticated`);
