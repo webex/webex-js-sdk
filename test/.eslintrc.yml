@@ -1,6 +1,6 @@
 extends:
-- "ciscospark/es5"
-- "ciscospark/mocha"
+- "@ciscospark/eslint-config/es5"
+- "@ciscospark/eslint-config/mocha"
 env:
   browser: true
   mocha: true

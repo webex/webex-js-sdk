@@ -9,6 +9,7 @@
 
 var chai = require('chai');
 var assert = chai.assert;
+var sinon = require('sinon');
 
 var landingparty = require('../../lib/landingparty');
 
@@ -29,10 +30,20 @@ describe('Services', function() {
       'user'
     ].forEach(function(key) {
       describe('#setFeature()', function() {
+        var requestSpy;
+        beforeEach(function(){
+          requestSpy = sinon.spy(party.spock.spark, 'request');
+        });
+        afterEach(function(){
+          requestSpy.restore();
+        });
 
         it('sets a value for a ' + key + ' feature toggle', function() {
+          assert.equal(party.spock.spark.device.features[key].get({key: 'testFeature'}), undefined);
+
           return party.spock.spark.feature.setFeature(key, 'testFeature', false)
             .then(function(res) {
+              assert.equal(requestSpy.getCall(0).args[0].resource, 'features/users/' + party.spock.spark.device.userId + '/' + key);
               assert.equal(res.key, 'testFeature');
               assert.equal(res.val, 'false');
               assert.equal(res.value, false);
@@ -46,5 +57,28 @@ describe('Services', function() {
       });
     });
 
+    describe('#setBundledFeatures()', function() {
+      var featureUpdateArray = [{
+        key: 'key1',
+        val: 'value1',
+        type: 'USER',
+        mutable: 'true'
+      }, {
+        key: 'key2',
+        val: 'value2',
+        mutable: 'true'
+      }];
+
+      it('sets a value for two user feature toggle', function() {
+        assert.equal(party.spock.spark.device.features.user.get({key: 'key1'}), undefined);
+        assert.equal(party.spock.spark.device.features.user.get({key: 'key2'}), undefined);
+
+        return party.spock.spark.feature.setBundledFeatures(featureUpdateArray)
+          .then(function() {
+            assert.equal(party.spock.spark.device.features.user.get({key: 'key1'}).val, 'value1');
+            assert.equal(party.spock.spark.device.features.user.get({key: 'key2'}).val, 'value2');
+          });
+      });
+    });
   });
 });

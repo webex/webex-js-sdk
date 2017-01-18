@@ -1,5 +1,5 @@
 extends:
-- "ciscospark/es5"
+- "@ciscospark/eslint-config/es5"
 root: true
 rules:
   block-spacing: 0

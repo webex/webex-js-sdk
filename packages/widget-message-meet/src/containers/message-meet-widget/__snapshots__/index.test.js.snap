@@ -7,7 +7,10 @@ exports[`MessageMeetWidget renders properly 1`] = `
     <div
       className="loading">
       <div
-        className="spark-logo" />
+        className="spark-logo">
+        <div
+          className="spark-logo" />
+      </div>
       <span>
         Connecting to Spark
       </span>
