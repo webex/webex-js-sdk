@@ -44,6 +44,45 @@ describe('Services', function() {
         });
       });
 
+      describe('#sendSemiStructured()', function(){
+        const eventName = 'test_event';
+        const mockPayload = {
+          fields: {
+            testField: 123
+          },
+          tags: {
+            testTag: 'tag value'
+          },
+          metricName: eventName,
+          test: 'this field should not be included in final payload',
+          type: 'behavioral'
+        };
+        const transformedProps = {
+          fields: {
+            testField: 123
+          },
+          tags: {
+            testTag: 'tag value'
+          },
+          metricName: eventName,
+          type: 'behavioral'
+        };
+        it('enqueues a clientMetrics fetch if NOT before auth', function() {
+          metrics.sendSemiStructured(eventName, mockPayload);
+          assert.calledWith(metrics.clientMetrics.fetch, transformedProps);
+        });
+        it('posts pre-login metric if before auth', function() {
+          const preLoginId = "1b90cf5e-27a6-41aa-a208-1f6eb6b9e6b6";
+          const preLoginProps = {
+            metrics: [
+              transformedProps
+            ]
+          };
+          metrics.sendSemiStructured('test event', mockPayload, preLoginId);
+          assert.calledWith(metrics.postPreLoginMetric, preLoginProps, preLoginId);
+        });
+      });
+
       describe('#incrementCounter()', function() {
         it('enqueues a metric fetch', function() {
           metrics.incrementCounter('key');
