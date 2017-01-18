@@ -4,8 +4,6 @@ import {filterSync} from '@ciscospark/helper-html';
 import {isImage, sanitize} from '../utils/files';
 import {constructActivity, constructActivityWithContent} from '../utils/activity';
 
-import {createInFlightActivity} from './conversation';
-
 export const ADD_FILES_TO_ACTIVITY = `ADD_FILES_TO_ACTIVITY`;
 export function addFilesToActivity(files) {
   return {
@@ -16,10 +14,30 @@ export function addFilesToActivity(files) {
   };
 }
 
+export const ADD_INFLIGHT_ACTIVITY = `ADD_INFLIGHT_ACTIVITY`;
+function addInflightActivity(activity) {
+  return {
+    type: ADD_INFLIGHT_ACTIVITY,
+    payload: {
+      activity
+    }
+  };
+}
+
 export const REMOVE_FILE_FROM_ACTIVITY = `REMOVE_FILE_FROM_ACTIVITY`;
 export function removeFileFromActivity(id) {
   return {
     type: REMOVE_FILE_FROM_ACTIVITY,
+    payload: {
+      id
+    }
+  };
+}
+
+export const REMOVE_INFLIGHT_ACTIVITY = `REMOVE_INFLIGHT_ACTIVITY`;
+export function removeInflightActivity(id) {
+  return {
+    type: REMOVE_INFLIGHT_ACTIVITY,
     payload: {
       id
     }
@@ -152,7 +170,7 @@ export function submitActivity(conversation, activity, user, spark) {
       const inFlightActivity = constructActivity(conversation, message, user);
       dispatch(createInFlightActivity(inFlightActivity));
       dispatch(resetActivity());
-      spark.conversation.post(conversation, message, inFlightActivity);
+      spark.conversation.post(conversation, message, {clientTempId: inFlightActivity.clientTempId});
     }
   };
 }
@@ -246,4 +264,15 @@ function createMessageObject(messageString) {
   };
 
   return messageObject;
+}
+
+/**
+ * Creates an in flight activity
+ *
+ * @export
+ * @param {object} activity
+ * @returns {function}
+ */
+export function createInFlightActivity(activity) {
+  return (dispatch) => dispatch(addInflightActivity(activity));
 }

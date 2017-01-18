@@ -1,6 +1,8 @@
 import {updateHasNewMessage} from './widget';
 import {setTyping} from './indicators';
 
+import {removeInflightActivity} from './activity';
+
 const VISIBLE_ACTIVITY_VERBS = [`share`, `post`];
 const VISIBLE_ACTIVITY_TYPES = [`comment`, `content`, `conversation`];
 
@@ -20,16 +22,6 @@ export function addActivitiesToConversation(activities) {
     type: ADD_ACTIVITIES_TO_CONVERSATION,
     payload: {
       activities
-    }
-  };
-}
-
-export const ADD_INFLIGHT_ACTIVITY = `ADD_INFLIGHT_ACTIVITY`;
-function addInflightActivity(activity) {
-  return {
-    type: ADD_INFLIGHT_ACTIVITY,
-    payload: {
-      activity
     }
   };
 }
@@ -164,6 +156,7 @@ export function listenToMercuryActivity(conversationId, spark) {
         if (isVisibleContent) {
           dispatch(updateHasNewMessage(true));
           dispatch(receiveMercuryComment(activity));
+          dispatch(removeInflightActivity(activity.clientTempId));
         }
         else if (activity.object.objectType === `activity`) {
           dispatch(receiveMercuryActivity(activity));
@@ -186,15 +179,4 @@ export function loadPreviousMessages(conversationId, lastActivity, spark) {
       dispatch(updateConversationState({isLoadingHistoryUp: false}));
     });
   };
-}
-
-/**
- * Creates an in flight activity
- *
- * @export
- * @param {object} activity
- * @returns {function}
- */
-export function createInFlightActivity(activity) {
-  return (dispatch) => dispatch(addInflightActivity(activity));
 }

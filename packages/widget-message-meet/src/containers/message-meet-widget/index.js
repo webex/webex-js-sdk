@@ -104,7 +104,7 @@ export class MessageMeetWidget extends Component {
     /* eslint-disable operator-linebreak */
     /* eslint-disable-reason: Giant list of comparisons very difficult to read and diff */
     return nextProps.conversation.activities !== props.conversation.activities
-      || nextProps.conversation.inFlightActivities !== props.conversation.inFlightActivities
+      || nextProps.activity.get(`inFlightActivities`) !== props.activity.get(`inFlightActivities`)
       || nextProps.conversation.isLoadingHistoryUp !== props.conversation.isLoadingHistoryUp
       || nextProps.flags !== props.flags
       || nextProps.indicators !== props.indicators
@@ -178,7 +178,7 @@ export class MessageMeetWidget extends Component {
       shouldScrollToBottom = true;
     }
     // Scroll to show in flight activities
-    if (props.conversation.inFlightActivities.size && props.conversation.inFlightActivities.size !== prevProps.conversation.inFlightActivities.size) {
+    if (props.activity.get(`inFlightActivities`).size && props.activity.get(`inFlightActivities`).size !== prevProps.activity.get(`inFlightActivities`).size) {
       shouldScrollToBottom = true;
     }
 

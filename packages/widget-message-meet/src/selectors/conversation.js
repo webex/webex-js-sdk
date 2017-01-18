@@ -10,7 +10,7 @@ const getActivities = (state) => state.conversation.activities.toArray();
 const getAvatars = (state) => state.user.avatars;
 const getCurrentUser = (state) => state.user.currentUser;
 const getFlags = (state) => state.flags.flags;
-const getInFlightActivities = (state) => state.conversation.inFlightActivities.toArray();
+const getInFlightActivities = (state) => state.activity.get(`inFlightActivities`).toArray();
 const getLastAcknowledgedActivityId = (state) => state.conversation.lastAcknowledgedActivityId;
 const getParticipants = (state) => state.conversation.participants;
 

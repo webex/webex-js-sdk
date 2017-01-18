@@ -1,6 +1,7 @@
 import configureStore from 'redux-mock-store';
 import {OrderedMap} from 'immutable';
 
+import {initialState as activity} from '../../reducers/activity';
 import {initialState as conversation} from '../../reducers/conversation';
 import {initialState as flags} from '../../reducers/flags';
 import {initialState as indicators} from '../../reducers/indicators';
@@ -94,12 +95,13 @@ const mockedCurrentUser = {
 const middlewares = [];
 const mockStore = configureStore(middlewares);
 
-const mockedActivities = new OrderedMap(activities.map((activity) => [activity.url, activity]));
+const mockedActivities = new OrderedMap(activities.map((mockedActivity) => [mockedActivity.url, mockedActivity]));
 const mockedConversation = Object.assign({}, conversation, {
   activities: conversation.activities.merge(mockedActivities)
 });
 
 const store = mockStore({
+  activity,
   conversation: mockedConversation,
   flags: Object.assign({}, flags, {
     flags: [
