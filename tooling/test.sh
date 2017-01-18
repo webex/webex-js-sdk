@@ -66,6 +66,10 @@ for PACKAGE in ${PACKAGES}; do
     continue
   fi
 
+  if ! echo ${PACKAGE} | grep -qc -v eslint-config ; then
+    continue
+  fi
+
   CONTAINER_NAME="${PACKAGE}-${BUILD_NUMBER}"
 
   if [ -n "${CONCURRENCY}" ]; then

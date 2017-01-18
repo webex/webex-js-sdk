@@ -4,7 +4,7 @@
  */
 
 import {EventEmitter} from 'events';
-import sinon from 'sinon';
+import sinon from '@ciscospark/test-helper-sinon';
 import util from 'util';
 
 /**

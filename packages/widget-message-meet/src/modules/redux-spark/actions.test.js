@@ -1,4 +1,8 @@
 /* eslint max-nested-callbacks: ["error", 3] */
+// I think I had to disable import/first because I recall there was a need to
+// use require to load createSpark.
+/* eslint import/first: 0 */
+
 jest.mock(`./spark`);
 const {createSpark} = require(`./spark`);
 

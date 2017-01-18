@@ -26,7 +26,7 @@ export default function ChipFile(props) {
     <ChipBase {...props}>
       <div className={classNames(`file-thumbnail`, styles.thumbnail)}>
         {icon}
-        <img role="presentation" src={thumbnail} />
+        <img alt="" src={thumbnail} />
       </div>
       <div className={classNames(`file-info`, styles.info)}>
         <div className={classNames(`file-name`, styles.name)}>{name}</div>

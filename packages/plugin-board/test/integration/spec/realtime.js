@@ -46,7 +46,7 @@ describe(`plugin-board`, () => {
         return conversation;
       }));
 
-    before(`create channel (board)`, () => participants[0].spark.board.createChannel({aclUrl: conversation.id})
+    before(`create channel (board)`, () => participants[0].spark.board.createChannel(conversation)
       .then((channel) => {
         board = channel;
         return channel;
@@ -135,7 +135,7 @@ describe(`plugin-board`, () => {
 
           // do not return promise because we want done() to be called on
           // board.activity
-          participants[0].spark.board.realtime.publish(conversation, data);
+          participants[0].spark.board.realtime.publish(board, data);
         });
       });
 
@@ -143,7 +143,7 @@ describe(`plugin-board`, () => {
         let testScr;
 
         it(`uploads file to spark files which includes loc`, () => {
-          return participants[1].spark.board._uploadImage(conversation, fixture)
+          return participants[1].spark.board._uploadImage(board, fixture)
             .then((scr) => {
               assert.property(scr, `loc`);
               testScr = scr;
@@ -178,7 +178,7 @@ describe(`plugin-board`, () => {
 
           // do not return promise because we want done() to be called on
           // board.activity
-          participants[0].spark.board.realtime.publish(conversation, data);
+          participants[0].spark.board.realtime.publish(board, data);
         });
       });
     });

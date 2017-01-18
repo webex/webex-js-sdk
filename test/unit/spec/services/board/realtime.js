@@ -54,15 +54,15 @@ describe('Services', function() {
           envelope: {
           }
         };
-        var conv = {
-          defaultActivityEncryptionKeyUrl: fakeURL
+        var channel = {
+          defaultEncryptionKeyUrl: fakeURL
         };
 
         var rcpnts = [{alertType:'none', headers: {}, route: boundObject[0]}];
 
         beforeEach(function() {
           sinon.stub(uuid, 'v4').returns('stubbedUUIDv4');
-          return spark.board.realtime.publish(conv, message);
+          return spark.board.realtime.publish(channel, message);
         });
 
         afterEach(function() {

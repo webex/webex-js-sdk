@@ -1,0 +1,15 @@
+.display {
+  font-family: 'CiscoSans TT Light';
+}
+
+.code {
+  min-height: 100px;
+  color: #eee;
+  background-color: #000;
+}
+
+pre {
+  padding: 10px;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}

@@ -1,0 +1,2 @@
+extends: "./es5.js"
+root: true

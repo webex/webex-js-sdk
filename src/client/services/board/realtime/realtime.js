@@ -38,20 +38,20 @@ var RealtimeService = Mercury.extend({
   /**
     * Sends the message via the socket. Assumes that the message is already properly formatted
     * @memberof Board.RealtimeService
-    * @param {Conversation} conversation
-    * @param {string} message   Contains the un-encrypted message to send.
+    * @param {Board~Channel} channel
+    * @param {string} message Contains the un-encrypted message to send.
     * @returns {Promise<Board~Content>}
     */
-  publish: function publish(conversation, message) {
+  publish: function publish(channel, message) {
     var encryptionPromise;
     var contentType = 'STRING';
 
     if (message.payload.scr) {
       contentType = 'FILE';
-      encryptionPromise = this.spark.board.encryptSingleFileContent(conversation.defaultActivityEncryptionKeyUrl, message.payload);
+      encryptionPromise = this.spark.board.encryptSingleFileContent(channel.defaultEncryptionKeyUrl, message.payload);
     }
     else {
-      encryptionPromise = this.spark.board.encryptSingleContent(conversation.defaultActivityEncryptionKeyUrl, message.payload);
+      encryptionPromise = this.spark.board.encryptSingleContent(channel.defaultEncryptionKeyUrl, message.payload);
     }
 
     return encryptionPromise

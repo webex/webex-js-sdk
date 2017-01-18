@@ -81,7 +81,7 @@ If you would just like to get running immediately follow these instructions to g
 1.  Create a `.env` file in the root of the SDK project with the following lines, replacing the Xs with the appropriate value:
 
     ```
-    CISCOSPARK_ACCESS_TOKEN=XXXXXXXXXXXXXXXXXXXXXX
+    CISCOSPARK_ACCESS_TOKEN=YOUR_ACCESS_TOKEN
     TO_PERSON_EMAIL=XXXXX@XXXXXXXXX
     ```
 1.  From the root directory run: `PACKAGE=widget-message-meet npm run grunt:package serve`
@@ -104,7 +104,7 @@ The easiest way to get the Spark Message and Meet Widget into your web site is t
     ```html
     <div
       data-toggle="spark-message-meet"
-      data-access-token="XXXXXXXXXXXXXXXXXXXXXX"
+      data-access-token="YOUR_ACCESS_TOKEN"
       data-to-person-email="XXXXX@XXXXXXXXX"
       />
     ```

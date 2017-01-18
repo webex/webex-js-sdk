@@ -29,18 +29,17 @@ var PersistenceService = SparkBase.extend({
    * will break contents into chunks and make multiple GET request to the
    * board service
    * @memberof Board.PersistenceService
-   * @param  {Conversation} conversation - Contains the currently selected conversation
    * @param  {Board~Channel} channel
    * @param  {Array} contents - Array of {@link Board~Content} objects
    * @return {Promise<Board~Content>}
    */
-  addContent: function addContent(conversation, channel, contents) {
+  addContent: function addContent(channel, contents) {
     var chunks = [];
     chunks = chunk(contents, MAX_CONTENTS_ADD);
     // we want the first promise to resolve before continuing with the next
     // chunk or else we'll have race conditions among patches
     return promiseSeries(chunks.map(function _addContent(part) {
-      return this._addContentChunk.bind(this, conversation, channel, part);
+      return this._addContentChunk.bind(this, channel, part);
     }, this));
   },
 
@@ -49,15 +48,14 @@ var PersistenceService = SparkBase.extend({
    * Uploads image to spark files and adds SCR + downalodUrl to the persistence
    * service
    * @memberof Board.PersistenceService
-   * @param  {Conversation} conversation - Contains the currently selected conversation
    * @param  {Board~Channel} channel
    * @param  {File} image - image to be uploaded
    * @return {Promise<Board~Content>}
    */
-  addImage: function addImage(conversation, channel, image) {
-    return this.spark.board._uploadImage(conversation, image)
+  addImage: function addImage(channel, image) {
+    return this.spark.board._uploadImage(channel, image)
       .then(function addContent(scr) {
-        return this.spark.board.persistence.addContent(conversation, channel, [{
+        return this.spark.board.persistence.addContent(channel, [{
           mimeType: image.type,
           size: image.size,
           displayName: image.name,
@@ -70,17 +68,16 @@ var PersistenceService = SparkBase.extend({
   /**
    * Set a snapshot image for a board
    *
-   * @param {Conversation} conversation - the current conversation that the board belongs
    * @param {Board~Channel} channel
    * @param {File} image
    * @returns {Promise<Board~Channel>}
    */
-  setSnapshotImage: function setSnapshotImage(conversation, channel, image) {
+  setSnapshotImage: function setSnapshotImage(channel, image) {
     var imageScr;
-    return this.spark.board._uploadImage(conversation, image)
+    return this.spark.board._uploadImage(channel, image, {hiddenSpace: true})
       .then(function encryptScr(scr) {
         imageScr = scr;
-        return this.spark.encryption.encryptScr(imageScr, conversation.defaultActivityEncryptionKeyUrl);
+        return this.spark.encryption.encryptScr(imageScr, channel.defaultEncryptionKeyUrl);
       }.bind(this))
       .then(function attachEncryptedScr(encryptedScr) {
         imageScr.encryptedScr = encryptedScr;
@@ -94,7 +91,7 @@ var PersistenceService = SparkBase.extend({
             width: image.width || 1600,
             mimeType: image.type || 'image/png',
             scr: imageScr.encryptedScr,
-            encryptionKeyUrl: conversation.defaultActivityEncryptionKeyUrl,
+            encryptionKeyUrl: channel.defaultEncryptionKeyUrl,
             fileSize: image.size
           }
         };
@@ -113,19 +110,44 @@ var PersistenceService = SparkBase.extend({
   /**
    * Creates a Channel
    * @memberof Board.PersistenceService
+   * @param  {Conversation~ConversationObject} conversation
    * @param  {Board~Channel} channel
    * @return {Promise<Board~Channel>}
    */
-  createChannel: function createChannel(channel) {
-    return this.spark.request({
-      method: 'POST',
-      api: 'board',
-      resource: '/channels',
-      body: channel
-    })
+  createChannel: function createChannel(conversation, channel) {
+    return this._encryptChannel(conversation, channel)
+      .then(function requestCreateChannel(preppedChannel) {
+        return this.spark.request({
+          method: 'POST',
+          api: 'board',
+          resource: '/channels',
+          body: preppedChannel
+        });
+      }.bind(this))
       .then(function resolveWithBody(res) {
         return res.body;
       });
+  },
+
+  _encryptChannel: function _encryptChannel(conversation, channel) {
+    channel = this._prepareChannel(conversation, channel);
+    return this.spark.board.encryptChannel(channel);
+  },
+
+  _prepareChannel: function _prepareChannel(conversation, channel) {
+    if (!channel) {
+      channel = {};
+    }
+
+    channel.aclUrlLink = conversation.aclUrl;
+    channel.kmsMessage = {
+      method: 'create',
+      uri: '/resources',
+      userIds: [conversation.kmsResourceObjectUrl],
+      keyUris: []
+    };
+
+    return channel;
   },
 
   /**
@@ -220,23 +242,26 @@ var PersistenceService = SparkBase.extend({
   /**
    * Gets Channels
    * @memberof Board.PersistenceService
+   * @param {Conversation~ConversationObject} conversation
    * @param {Object} options
    * @param {number} options.limit Max number of activities to return
    * @return {Promise} Resolves with an array of Channel items
    */
-  getChannels: function getChannels(options) {
+  getChannels: function getChannels(conversation, options) {
     options = options || {};
 
-    if (!options.conversationId) {
-      return Promise.reject(new Error('`conversationId` is required'));
+    if (!conversation) {
+      return Promise.reject(new Error('`conversation` is required'));
     }
 
     var params = {
       api: 'board',
       resource: '/channels',
-      qs: {}
+      qs: {
+        aclUrlLink: conversation.aclUrl
+      }
     };
-    assign(params.qs, pick(options, 'channelsLimit', 'conversationId'));
+    assign(params.qs, pick(options, 'channelsLimit'));
 
     return this.request(params)
       .then(function resolveWithBody(res) {
@@ -278,8 +303,8 @@ var PersistenceService = SparkBase.extend({
       });
   },
 
-  _addContentChunk: function _addContentHelper(conversation, channel, contentChunk) {
-    return this.spark.board.encryptContents(conversation.defaultActivityEncryptionKeyUrl, contentChunk)
+  _addContentChunk: function _addContentHelper(channel, contentChunk) {
+    return this.spark.board.encryptContents(channel.defaultEncryptionKeyUrl, contentChunk)
       .then(function addContent(res) {
         return this.spark.request({
           method: 'POST',

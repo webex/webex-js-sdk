@@ -1,6 +1,6 @@
 import uuid from 'uuid';
 
-export function constructActivity(conversation, text, actor) {
+export default function constructActivity(conversation, text, actor) {
   return {
     actor: {
       displayName: actor.name,

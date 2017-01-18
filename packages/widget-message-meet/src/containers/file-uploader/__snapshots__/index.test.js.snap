@@ -18,7 +18,7 @@ exports[`FileUploader container renders properly 1`] = `
                 title={undefined} />
             </div>
             <img
-              role="presentation"
+              alt=""
               src={undefined} />
           </div>
           <div
@@ -65,7 +65,7 @@ exports[`FileUploader container renders properly 1`] = `
                 title={undefined} />
             </div>
             <img
-              role="presentation"
+              alt=""
               src={undefined} />
           </div>
           <div

@@ -6,7 +6,7 @@
 import {createUser} from '@ciscospark/test-helper-appid';
 import {assert} from '@ciscospark/test-helper-chai';
 import retry from '@ciscospark/test-helper-retry';
-import {default as Spark, Authorization, grantErrors} from '../../..';
+import Spark, {Authorization, grantErrors} from '../../..';
 import testUsers from '@ciscospark/test-helper-test-users';
 import uuid from 'uuid';
 

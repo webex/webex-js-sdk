@@ -11,6 +11,7 @@ const KEY = Symbol(`KEY`);
 
 const encryptTextProp = curry((name, ctx, key, object) => ctx.transform(`encryptTextProp`, name, key, object));
 
+// eslint-disable-next-line import/prefer-default-export
 export const transforms = toArray(`outbound`, {
   encryptObject(ctx, key, object) {
     if (!object) {

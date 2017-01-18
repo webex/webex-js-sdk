@@ -1,6 +1,6 @@
 {
   "name": "spark-js-sdk",
-  "version": "0.5.302",
+  "version": "0.5.310",
   "description": "JavaScript sdk for interacting with the Spark API",
   "homepage": "http://sqbu-github.cisco.com/WebExSquared/squared-js-sdk",
   "bugs": {
@@ -57,7 +57,9 @@
     "lerna": "lerna",
     "distsrc": "sed -ibak 's#\"main\": \"dist/index.js#\"main\": \"src/index.js#' packages/*/package.json && rm packages/*/*bak",
     "srcdist": "sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' packages/*/package.json && rm packages/*/*bak",
-    "clean-empty-packages": "node ./scripts/clean-empty-packages.js --clean"
+    "clean-empty-packages": "node ./scripts/clean-empty-packages.js --clean",
+    "prepublish": "in-install && npm run link-lint-rules || not-in-install",
+    "link-lint-rules": "rm -rf ./node_modules/@ciscospark/eslint-config && mkdir -p node_modules/@ciscospark && ln -s $(pwd)/packages/eslint-config $(pwd)/node_modules/@ciscospark/eslint-config"
   },
   "dependencies": {
     "ampersand-collection": "^2.0.0",
@@ -127,7 +129,7 @@
     "xhr": "~2.0.1"
   },
   "devDependencies": {
-    "babel-eslint": "^6.1.2",
+    "babel-eslint": "^7.1.1",
     "babel-jest": "^15.0.0",
     "babel-loader": "^6.2.4",
     "babel-plugin-lodash": "^3.2.11",
@@ -152,9 +154,11 @@
     "documentation": "^4.0.0-beta5",
     "documentation-theme-utils": "^3.0.0",
     "eslint": "^3.5.0",
-    "eslint-plugin-jsx-a11y": "^2.2.3",
-    "eslint-plugin-mocha": "^4.5.1",
-    "eslint-plugin-react": "^6.5.0",
+    "eslint-plugin-import": "^2.2.0",
+    "eslint-plugin-jsx": "0.0.2",
+    "eslint-plugin-jsx-a11y": "^3.0.2",
+    "eslint-plugin-mocha": "^4.7.0",
+    "eslint-plugin-react": "^6.8.0",
     "file-loader": "^0.9.0",
     "fs-extra": "^1.0.0",
     "grunt": "~0.4.5",
@@ -182,6 +186,7 @@
     "grunt-stylelint": "^0.6.0",
     "grunt-webpack": "^1.0.18",
     "highlight.js": "^9.5.0",
+    "in-publish": "^2.0.0",
     "ink-docstrap": "~0.5.2",
     "isparta": "^4.0.0",
     "istanbul": "^0.4.4",

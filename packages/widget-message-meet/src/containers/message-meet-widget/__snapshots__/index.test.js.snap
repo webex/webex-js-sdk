@@ -8,9 +8,8 @@ exports[`MessageMeetWidget renders properly 1`] = `
       className="loading">
       <div
         className="spark-logo">
-        <img
-          role="presentation"
-          src={Object {}} />
+        <div
+          className="spark-logo" />
       </div>
       <span>
         Connecting to Spark

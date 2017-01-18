@@ -56,13 +56,13 @@ describe(`plugin-board`, () => {
         }
       };
 
-      const conv = {
-        defaultActivityEncryptionKeyUrl: fakeURL
+      const channel = {
+        defaultEncryptionKeyUrl: fakeURL
       };
 
       beforeEach(() => {
         sinon.stub(uuid, `v4`).returns(`stubbedUUIDv4`);
-        return spark.board.realtime.publish(conv, message);
+        return spark.board.realtime.publish(channel, message);
       });
 
       afterEach(() => {
