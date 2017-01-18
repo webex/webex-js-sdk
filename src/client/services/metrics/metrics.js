@@ -39,34 +39,34 @@ var MetricsService = SparkBase.extend(
      * @param {string} preLoginId
      */
     alias: function(preLoginId) {
-      if (this.config.enableMetrics) {
-        var req = this.request({
-          method: `POST`,
-          api: `metrics`,
-          resource: `clientmetrics`,
-          headers: {
-            "X-Prelogin-UserId": preLoginId
-          },
-          body: {}
-        });
-        req.setParameter("alias", true);
-        return req;
-      }
+      return this.request({
+        method: `POST`,
+        api: `metrics`,
+        resource: `clientmetrics`,
+        headers: {
+          "X-Prelogin-UserId": preLoginId
+        },
+        body: {},
+        params: [
+          {
+            name: 'alias',
+            value: true
+          }
+        ]
+      });
     },
 
     postPreLoginMetric: function(payload, preLoginId) {
-      if (this.config.enableMetrics) {
-        return this.request({
-          method: `POST`,
-          url: 'https://metrics-a.wbx2.com/metrics/api/v1/clientmetrics-prelogin',
-          headers: {
-            "X-Prelogin-UserId": preLoginId,
-            "content-type": "application/json",
-            "charset": "utf-8"
-          },
-          body: payload
-        });
-      }
+      return this.request({
+        method: `POST`,
+        url: 'https://metrics-a.wbx2.com/metrics/api/v1/clientmetrics-prelogin',
+        headers: {
+          "X-Prelogin-UserId": preLoginId,
+          "content-type": "application/json",
+          "charset": "utf-8"
+        },
+        body: payload
+      });
     },
 
   /**
@@ -76,7 +76,7 @@ var MetricsService = SparkBase.extend(
    * @param {string} [preLoginId]
    */
   sendSemiStructured: function sendSemiStructured(eventName, props, preLoginId) {
-    var payload = {
+    let payload = {
       metricName: eventName
     };
     if (props.tags) {

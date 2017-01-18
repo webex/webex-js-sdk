@@ -19,19 +19,61 @@ sinon.assert.expose(chai.assert, {prefix: ''});
 describe('Services', function() {
   describe('Metrics', function() {
     describe('Metrics', function() {
-      var metrics;
+      let spark;
+      let metrics;
+      const eventName = 'test_event';
+      const mockPayload = {
+        fields: {
+          testField: 123
+        },
+        tags: {
+          testTag: 'tag value'
+        },
+        metricName: eventName,
+        test: 'this field should not be included in final payload',
+        type: 'behavioral'
+      };
+      const transformedProps = {
+        fields: {
+          testField: 123
+        },
+        tags: {
+          testTag: 'tag value'
+        },
+        metricName: eventName,
+        type: 'behavioral'
+      };
+      const preLoginId = "1b90cf5e-27a6-41aa-a208-1f6eb6b9e6b6";
+      const preLoginProps = {
+        metrics: [
+          transformedProps
+        ]
+      };
+
       beforeEach(function() {
-        var spark = new MockSpark({
+        spark = new MockSpark({
           children: {
             device: Device,
             metrics: Metrics
           }
         });
 
+        spark.request = function(options) {
+          return Promise.resolve({
+            statusCode: 204,
+            body: undefined,
+            options
+          });
+        };
+
         metrics = spark.metrics;
 
         sinon.stub(metrics.circonus, 'fetch');
         sinon.stub(metrics.splunk, 'fetch');
+        sinon.stub(metrics.clientMetrics, 'fetch');
+        sinon.spy(metrics, 'postPreLoginMetric');
+        sinon.spy(metrics, 'alias');
+        sinon.spy(spark, `request`);
       });
 
       describe('#sendUnstructured()', function() {
@@ -45,41 +87,48 @@ describe('Services', function() {
       });
 
       describe('#sendSemiStructured()', function(){
-        const eventName = 'test_event';
-        const mockPayload = {
-          fields: {
-            testField: 123
-          },
-          tags: {
-            testTag: 'tag value'
-          },
-          metricName: eventName,
-          test: 'this field should not be included in final payload',
-          type: 'behavioral'
-        };
-        const transformedProps = {
-          fields: {
-            testField: 123
-          },
-          tags: {
-            testTag: 'tag value'
-          },
-          metricName: eventName,
-          type: 'behavioral'
-        };
         it('enqueues a clientMetrics fetch if NOT before auth', function() {
           metrics.sendSemiStructured(eventName, mockPayload);
           assert.calledWith(metrics.clientMetrics.fetch, transformedProps);
         });
         it('posts pre-login metric if before auth', function() {
-          const preLoginId = "1b90cf5e-27a6-41aa-a208-1f6eb6b9e6b6";
-          const preLoginProps = {
-            metrics: [
-              transformedProps
-            ]
-          };
-          metrics.sendSemiStructured('test event', mockPayload, preLoginId);
+          metrics.sendSemiStructured(eventName, mockPayload, preLoginId);
           assert.calledWith(metrics.postPreLoginMetric, preLoginProps, preLoginId);
+        });
+      });
+
+      describe('#postPreLoginMetric()', function() {
+        it('should return request', function() {
+          return metrics.postPreLoginMetric(preLoginProps, preLoginId)
+            .then(() => {
+              assert.calledOnce(spark.request);
+              const req = spark.request.args[0][0];
+              const metric = req.body.metrics[0];
+              const headers = req.headers;
+
+              assert.property(headers, 'X-Prelogin-UserId');
+              assert.property(metric, `metricName`);
+              assert.property(metric, `tags`);
+              assert.property(metric, `fields`);
+
+              assert.equal(metric.metricName, eventName);
+              assert.equal(metric.tags.testTag, `tag value`);
+              assert.equal(metric.fields.testField, 123);
+            });
+        });
+      });
+
+      describe('#alias()', function() {
+        it('should return request', function() {
+          return metrics.alias(preLoginId)
+            .then(() => {
+              assert.calledOnce(spark.request);
+              const req = spark.request.args[0][0];
+              const params = req.params;
+
+              assert.equal(params[0].name, `alias`);
+              assert.equal(params[0].value, true);
+            });
         });
       });
 
