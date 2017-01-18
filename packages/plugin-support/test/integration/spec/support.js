@@ -13,13 +13,13 @@ import testUsers from '@ciscospark/test-helper-test-users';
 
 
 describe(`plugin-support`, function() {
-  this.timeout(20000);
+  this.timeout(60000);
 
   let spark;
 
   let sampleTextOne = `sample-text-one.txt`;
 
-  before(() => Promise.all([
+  before(`fetch fixtures`, () => Promise.all([
     fh.fetch(sampleTextOne)
   ])
     .then((res) => {
@@ -28,8 +28,9 @@ describe(`plugin-support`, function() {
       ] = res;
     }));
 
-  describe(`#submitLogs()`, () => {
-    describe(`when the current user is not authorized`, () => {
+  // Disabled because rackspace is broken
+  describe.skip(`#submitLogs()`, () => {
+    describe(`when the current user is authorized`, () => {
       before(() => testUsers.create({count: 1})
         .then((users) => {
           spark = new CiscoSpark({
@@ -50,6 +51,7 @@ describe(`plugin-support`, function() {
         }));
     });
 
+    // Disabled because rackspace is broken
     describe(`when the current user is not authorized`, () => {
       it(`uploads logs`, () => {
         spark = new CiscoSpark({});

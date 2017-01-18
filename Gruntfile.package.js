@@ -249,6 +249,10 @@ module.exports = function(grunt) {
       },
       automation: {
         options: {
+          // SAUCE TUNNEL FAILURES force an exit with non-zero in event of a
+          // browser test failure; it probably means that selenium or the sauce
+          // tunnel is flaking.
+          noFail: false,
           require: makeMochaRequires(['babel-register']),
           reporterOptions: {
             output: '<%= xunitDir %>/mocha-<%= package %>-automation.xml'
@@ -368,10 +372,13 @@ module.exports = function(grunt) {
   ]);
 
   registerTask('test:browser', [
-    p(process.env.XUNIT) && 'continue:on',
+    // SAUCE TUNNEL FAILURES ideally, we want to suppress failures and let xunit
+    // collect them, but until we figure out why the sauce tunnel is flaking, we
+    // need to try to rerun the suite
+    // p(process.env.XUNIT) && 'continue:on',
     'karma',
-    p(process.env.XUNIT) && 'continue:off',
-    p(process.env.XUNIT) && 'fileExists:karmaxml'
+    // p(process.env.XUNIT) && 'continue:off'
+    p(process.env.XUNIT) && 'fileExists:karmaxml',
   ]);
 
   registerTask('test:node', [

@@ -11,8 +11,6 @@
   width: 60px;
   height: 60px;
   margin: auto;
-  background: transparent url('./logo-spark.png') no-repeat;
-  background-size: cover;
 }
 
 .spinner-container {

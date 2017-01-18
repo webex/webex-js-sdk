@@ -144,7 +144,12 @@ var methods = {
 
     fields.forEach(function checkField(key) {
       if (key in this.config.oauth) {
-        parameters[key] = this.config.oauth[key];
+        if (key === 'service') {
+          parameters.cisService = this.config.oauth[key];
+        }
+        else {
+          parameters[key] = this.config.oauth[key];
+        }
       }
       else {
         throw new Error('`' + key + '` is required');
@@ -162,7 +167,7 @@ var methods = {
     return this.config.logoutUri + '?' + querystring.stringify({
       type: 'logout',
       goto: this.config.oauth.redirect_uri,
-      service: this.config.oauth.service
+      cisService: this.config.oauth.service
     });
   },
 

@@ -10,6 +10,7 @@ export function initMessageMeetWidget(element, config) {
     <Root accessToken={config.accessToken} toPersonEmail={config.toPersonEmail} toPersonId={config.toPersonId} />,
     element
   );
+
   return element;
 }
 
@@ -24,7 +25,7 @@ function loadAllWidgets() {
   }
 }
 
-loadAllWidgets();
+document.addEventListener(`DOMContentLoaded`, loadAllWidgets, false);
 
 if (module.hot) {
   module.hot.accept();

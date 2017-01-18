@@ -1,12 +1,12 @@
 {
   "name": "@ciscospark/test-helper-mock-spark",
-  "version": "0.7.31",
+  "version": "0.7.34",
   "description": "",
   "license": "MIT",
   "main": "./src",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-mock-spark",
   "dependencies": {
-    "@ciscospark/test-helper-sinon": "^0.7.31",
+    "@ciscospark/test-helper-sinon": "^0.7.34",
     "ampersand-state": "^5.0.0",
     "es6-promise": "^3.2.1",
     "lodash": "^4.13.1"
