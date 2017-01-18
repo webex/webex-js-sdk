@@ -17,6 +17,7 @@ class DemoApp extends Component {
   constructor() {
     super();
     this.state = {
+      authenticate: false,
       mode: MODE_INLINE,
       accessToken: ``,
       toPersonEmail: ``,
@@ -26,6 +27,8 @@ class DemoApp extends Component {
     this.handleAccessTokenChange = this.handleAccessTokenChange.bind(this);
     this.handleEmailChange = this.handleEmailChange.bind(this);
     this.handleModeChange = this.handleModeChange.bind(this);
+    this.handleLoginOAuth = this.handleLoginOAuth.bind(this);
+    this.handleOnAuth = this.handleOnAuth.bind(this);
   }
 
   shouldComponentUpdate() {
@@ -48,6 +51,16 @@ class DemoApp extends Component {
   handleModeChange(e) {
     return this.setState({mode: e.target.value});
   }
+
+  handleLoginOAuth(e) {
+    e.preventDefault();
+    this.setState({authenticate: true});
+  }
+
+  handleOnAuth(token) {
+    return this.setState({accessToken: token, authenticate: false});
+  }
+
 
   createWidget(e) {
     e.preventDefault();
@@ -85,6 +98,14 @@ class DemoApp extends Component {
               type="text"
               value={this.state.accessToken}
             />
+          </div>
+          <div className={classNames(`field-wrapper`, styles.fieldWrapper)}>
+            <button
+              className={classNames(`button-small`, styles.buttonSmall)}
+              onClick={this.handleLoginOAuth}
+            >
+              {`Login with Spark`}
+            </button>
           </div>
           <div className={classNames(`field-wrapper`, styles.fieldWrapper)}>
             <a href="http://developer.ciscospark.com">{`Get access token from developer.ciscospark.com`}</a>
@@ -127,7 +148,7 @@ class DemoApp extends Component {
           >
             {`Load Widget`}
           </button>
-          <SparkOAuth />
+          <SparkOAuth doAuth={this.state.authenticate} onAuth={this.handleOnAuth} />
         </form>
       </div>
     );

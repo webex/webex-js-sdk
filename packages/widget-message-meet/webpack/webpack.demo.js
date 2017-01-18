@@ -27,7 +27,7 @@ const plugins = [
 
 module.exports = require(`./webpack.base`)({
   entry: `./demo/app.js`,
-  devtool: `source-map`,
+  devtool: `eval-source-map`,
   debug: false,
   output: {
     filename: `bundle.js`,

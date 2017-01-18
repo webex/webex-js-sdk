@@ -1,17 +1,12 @@
-/* eslint-disable react/no-set-state */
-import React, {Component} from 'react';
+/* eslint-disable react/no-set-state, camelcase */
+import {Component, PropTypes} from 'react';
 import '@ciscospark/plugin-encryption';
 import LocalStorageStoreAdapter from '@ciscospark/storage-adapter-local-storage';
 import Spark from '@ciscospark/spark-core';
 
 
 class SparkOAuth extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      accessToken: undefined
-    };
-
+  componentDidMount() {
     const l = window.location;
     const redirectUri = `${l.protocol}//${l.host}${l.pathname}`.replace(/\/$/, ``);
     this.spark = new Spark({
@@ -30,43 +25,41 @@ class SparkOAuth extends Component {
       }
     });
 
-    //TODO REMOVE FOR RELEASE
-    window.spark = this.spark;
-    this.spark.on(`loaded`, () => {
+    this.spark.listenToAndRun(this.spark, `change:canAuthorize`, () => {
       this.checkForOauthToken();
     });
-    // this.spark.listenToAndRun(this.spark, `change:canAuthorize`, () => {
-    //   this.checkForOauthToken();
-    // });
+  }
 
-    this.handleClick = this.handleClick.bind(this);
+  componentWillReceiveProps(nextProps) {
+    if (nextProps.doAuth && nextProps.doAuth !== this.props.doAuth) {
+      this.spark.authenticate();
+    }
   }
 
   shouldComponentUpdate() {
     return false;
   }
 
-  handleClick(e) {
-    e.preventDefault();
-    this.spark.authenticate();
-  }
-
   checkForOauthToken() {
-    if (this.spark.credentials.authorization && this.spark.credentials.authorization.access_token) {
-      const token = this.spark.credentials.authorization.access_token;
-      this.setState({accessToken: token});
+    const {credentials} = this.spark;
+    if (credentials.canAuthorize && credentials.supertoken) {
+      const {supertoken} = credentials;
+      this.props.onAuth(supertoken.access_token);
     }
   }
 
-
   render() {
-    return (
-      <div>
-        <button onClick={this.handleClick}>{`Oauth`}</button>
-        <div>{`Token: ${this.state.accessToken}`}</div>
-      </div>
-    );
+    return null;
   }
 }
+
+SparkOAuth.propTypes = {
+  doAuth: PropTypes.bool,
+  onAuth: PropTypes.func
+};
+
+SparkOAuth.defaultProps = {
+  doAuth: false
+};
 
 export default SparkOAuth;
