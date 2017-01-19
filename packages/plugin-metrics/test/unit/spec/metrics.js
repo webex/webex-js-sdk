@@ -60,7 +60,7 @@ describe(`plugin-metrics`, () => {
       };
       sinon.spy(spark, `request`);
       sinon.spy(metrics, 'postPreLoginMetric');
-      sinon.spy(metrics, 'alias');
+      sinon.spy(metrics, 'aliasUser');
     });
 
     describe(`#submit()`, () => {
@@ -125,7 +125,7 @@ describe(`plugin-metrics`, () => {
             const metric = req.body.metrics[0];
             const headers = req.headers;
 
-            assert.property(headers, 'X-Prelogin-UserId');
+            assert.property(headers, 'x-prelogin-userid');
             assert.property(metric, `metricName`);
             assert.property(metric, `tags`);
             assert.property(metric, `fields`);
@@ -145,7 +145,7 @@ describe(`plugin-metrics`, () => {
             const req = spark.request.args[0][0];
             const params = req.qs;
 
-            assert.equal(params, {"alias": true});
+            sinon.match(params, {alias: true});
           });
       });
     });

@@ -72,7 +72,7 @@ describe('Services', function() {
         sinon.stub(metrics.splunk, 'fetch');
         sinon.stub(metrics.clientMetrics, 'fetch');
         sinon.spy(metrics, 'postPreLoginMetric');
-        sinon.spy(metrics, 'alias');
+        sinon.spy(metrics, 'aliasUser');
         sinon.spy(spark, `request`);
       });
 
@@ -110,7 +110,7 @@ describe('Services', function() {
               const metric = req.body.metrics[0];
               const headers = req.headers;
 
-              assert.property(headers, 'X-Prelogin-UserId');
+              assert.property(headers, 'x-prelogin-userid');
               assert.property(metric, `metricName`);
               assert.property(metric, `tags`);
               assert.property(metric, `fields`);
@@ -130,7 +130,7 @@ describe('Services', function() {
               const req = spark.request.args[0][0];
               const params = req.qs;
 
-              assert.equal(params, {"alias": true});
+              sinon.match(params, {alias: true});
             });
         });
       });
