@@ -44,15 +44,12 @@ var MetricsService = SparkBase.extend(
         api: `metrics`,
         resource: `clientmetrics`,
         headers: {
-          "X-Prelogin-UserId": preLoginId
+          "x-prelogin-userid": preLoginId
         },
         body: {},
-        params: [
-          {
-            name: 'alias',
-            value: true
-          }
-        ]
+        qs: {
+          "alias": true
+        }
       });
     },
 
@@ -61,9 +58,7 @@ var MetricsService = SparkBase.extend(
         method: `POST`,
         url: 'https://metrics-a.wbx2.com/metrics/api/v1/clientmetrics-prelogin',
         headers: {
-          "X-Prelogin-UserId": preLoginId,
-          "content-type": "application/json",
-          "charset": "utf-8"
+          "x-prelogin-userId": preLoginId
         },
         body: payload
       });
@@ -76,7 +71,7 @@ var MetricsService = SparkBase.extend(
    * @param {string} [preLoginId]
    */
   sendSemiStructured: function sendSemiStructured(eventName, props, preLoginId) {
-    let payload = {
+    var payload = {
       metricName: eventName
     };
     if (props.tags) {

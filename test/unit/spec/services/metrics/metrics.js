@@ -124,10 +124,9 @@ describe('Services', function() {
             .then(() => {
               assert.calledOnce(spark.request);
               const req = spark.request.args[0][0];
-              const params = req.params;
+              const params = req.qs;
 
-              assert.equal(params[0].name, `alias`);
-              assert.equal(params[0].value, true);
+              assert.equal(params, {"alias": true});
             });
         });
       });

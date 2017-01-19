@@ -69,15 +69,12 @@ const Metrics = SparkPlugin.extend({
       api: `metrics`,
       resource: `clientmetrics`,
       headers: {
-        "X-Prelogin-UserId": preLoginId
+        "x-prelogin-userid": preLoginId
       },
       body: {},
-      params: [
-        {
-          name: 'alias',
-          value: true
-        }
-      ]
+      qs: {
+        "alias": true
+      }
     });
   },
 
@@ -86,9 +83,7 @@ const Metrics = SparkPlugin.extend({
       method: `POST`,
       url: 'https://metrics-a.wbx2.com/metrics/api/v1/clientmetrics-prelogin',
       headers: {
-        "X-Prelogin-UserId": preLoginId,
-        "content-type": "application/json",
-        "charset": "utf-8"
+        "x-prelogin-userid": preLoginId
       },
       body: payload
     });
