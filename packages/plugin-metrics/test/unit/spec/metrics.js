@@ -86,35 +86,38 @@ describe(`plugin-metrics`, () => {
     });
 
     describe(`#submitClientMetrics()`, () => {
-      it(`submits a metric to clientmetrics if after auth`, () => {
-        const testPayload = {
-          tags: {success: true},
-          fields: {perceivedDurationInMillis: 314}
-        };
-        return metrics.submitClientMetrics(`test`, testPayload)
-          .then(() => {
-            assert.calledOnce(spark.request);
-            const req = spark.request.args[0][0];
-            const metric = req.body.metrics[0];
-
-            assert.property(metric, `metricName`);
-            assert.property(metric, `tags`);
-            assert.property(metric, `fields`);
-
-            assert.equal(metric.metricName, `test`);
-            assert.equal(metric.tags.success, true);
-            assert.equal(metric.fields.perceivedDurationInMillis, 314);
-          });
+      describe("before login", () => {
+        it('posts pre-login metric', () => {
+          metrics.submitClientMetrics(eventName, mockPayload, preLoginId);
+          assert.calledWith(metrics.postPreLoginMetric, preLoginProps, preLoginId);
+        });
       });
-      it('posts pre-login metric if before auth', function() {
-        metrics.submitClientMetrics(eventName, mockPayload, preLoginId);
-        assert.calledWith(metrics.postPreLoginMetric, preLoginProps, preLoginId);
-      });
+      describe("after login", () => {
+        it(`submits a metric to clientmetrics`, () => {
+          const testPayload = {
+            tags: {success: true},
+            fields: {perceivedDurationInMillis: 314}
+          };
+          return metrics.submitClientMetrics(`test`, testPayload)
+            .then(() => {
+              assert.calledOnce(spark.request);
+              const req = spark.request.args[0][0];
+              const metric = req.body.metrics[0];
 
+              assert.property(metric, `metricName`);
+              assert.property(metric, `tags`);
+              assert.property(metric, `fields`);
+
+              assert.equal(metric.metricName, `test`);
+              assert.equal(metric.tags.success, true);
+              assert.equal(metric.fields.perceivedDurationInMillis, 314);
+            });
+        });
+      });
     });
 
     describe('#postPreLoginMetric()', function() {
-      it('should return request', function() {
+      it('returns an HttpResponse object', function() {
         return metrics.postPreLoginMetric(preLoginProps, preLoginId)
           .then(() => {
             assert.calledOnce(spark.request);
@@ -134,9 +137,9 @@ describe(`plugin-metrics`, () => {
       });
     });
 
-    describe('#alias()', function() {
-      it('should return request', function() {
-        return metrics.alias(preLoginId)
+    describe('#aliasUser()', function() {
+      it('returns an HttpResponse object', function() {
+        return metrics.aliasUser(preLoginId)
           .then(() => {
             assert.calledOnce(spark.request);
             const req = spark.request.args[0][0];

@@ -38,7 +38,7 @@ var MetricsService = SparkBase.extend(
      * Issues request to server to alias a user's pre-login ID with their CI UUID
      * @param {string} preLoginId
      */
-    alias: function(preLoginId) {
+    aliasUser: function(preLoginId) {
       return this.request({
         method: `POST`,
         api: `metrics`,
@@ -67,7 +67,7 @@ var MetricsService = SparkBase.extend(
   /**
    * Submits semi-structured metrics
    * @param {string} eventName
-   * @param {object} props
+   * @param {Object} props
    * @param {string} [preLoginId]
    */
   sendSemiStructured: function sendSemiStructured(eventName, props, preLoginId) {

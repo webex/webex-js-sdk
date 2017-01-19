@@ -87,18 +87,22 @@ describe('Services', function() {
       });
 
       describe('#sendSemiStructured()', function(){
-        it('enqueues a clientMetrics fetch if NOT before auth', function() {
-          metrics.sendSemiStructured(eventName, mockPayload);
-          assert.calledWith(metrics.clientMetrics.fetch, transformedProps);
+        describe("before login", function() {
+          it('posts pre-login metric', function() {
+            metrics.sendSemiStructured(eventName, mockPayload, preLoginId);
+            assert.calledWith(metrics.postPreLoginMetric, preLoginProps, preLoginId);
+          });
         });
-        it('posts pre-login metric if before auth', function() {
-          metrics.sendSemiStructured(eventName, mockPayload, preLoginId);
-          assert.calledWith(metrics.postPreLoginMetric, preLoginProps, preLoginId);
+        describe("after login", function() {
+          it('enqueues a clientMetrics fetch', function() {
+            metrics.sendSemiStructured(eventName, mockPayload);
+            assert.calledWith(metrics.clientMetrics.fetch, transformedProps);
+          });
         });
       });
 
       describe('#postPreLoginMetric()', function() {
-        it('should return request', function() {
+        it('returns an HttpResponse object', function() {
           return metrics.postPreLoginMetric(preLoginProps, preLoginId)
             .then(() => {
               assert.calledOnce(spark.request);
@@ -118,9 +122,9 @@ describe('Services', function() {
         });
       });
 
-      describe('#alias()', function() {
-        it('should return request', function() {
-          return metrics.alias(preLoginId)
+      describe('#aliasUser()', function() {
+        it('returns an HttpResponse object', function() {
+          return metrics.aliasUser(preLoginId)
             .then(() => {
               assert.calledOnce(spark.request);
               const req = spark.request.args[0][0];

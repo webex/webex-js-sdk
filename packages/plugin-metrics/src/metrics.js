@@ -28,9 +28,9 @@ const Metrics = SparkPlugin.extend({
 
   /**
    * This corresponds to #sendSemiStructured() in the deprecated metrics handler
-   * @param eventName
-   * @param props
-   * @param preLoginId
+   * @param {string} eventName
+   * @param {Object} props
+   * @param {string} preLoginId
    */
   submitClientMetrics(eventName, props, preLoginId) {
     const payload = {metricName: eventName};
@@ -63,7 +63,7 @@ const Metrics = SparkPlugin.extend({
    * Issue request to alias a user's pre-login ID with their CI UUID
    * @param {string} preLoginId
    */
-  alias: function(preLoginId) {
+  aliasUser: function(preLoginId) {
     return this.request({
       method: `POST`,
       api: `metrics`,
