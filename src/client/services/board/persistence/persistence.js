@@ -313,7 +313,7 @@ var PersistenceService = SparkBase.extend({
    * @param  {Board~Channel} channel
    * @return {Promise<Board~Registration>}
    */
-  registerForSharingMercury: function registerForSharingMercury(channel) {
+  registerToShareMercury: function registerToShareMercury(channel) {
     if (!this.spark.mercury.localClusterServiceUrls) {
       return Promise.reject(new Error('`localClusterServiceUrls` is not defined, make sure mercury is connected'));
     }
@@ -328,6 +328,32 @@ var PersistenceService = SparkBase.extend({
       mercuryConnectionServiceClusterUrl: localClusterServiceUrls.mercuryConnectionServiceClusterUrl,
       webSocketUrl: webSocketUrl,
       action: 'REPLACE'
+    };
+
+    return this.spark.request({
+      method: 'POST',
+      api: 'board',
+      resource: '/channels/' + channel.channelId + '/register',
+      body: data
+    })
+      .then(function resolveWithBody(res) {
+        return res.body;
+      });
+  },
+
+  /**
+   * Unregister the board from share mercury connection
+   * @memberof Board.PersistenceService
+   * @param  {Board~Channel} channel
+   * @param  {Object} binding - board binding
+   * @return {Promise<Board~Registration>}
+   */
+  unregisterFromSharedMercury: function unregisterFromSharedMercury(channel, binding) {
+    var webSocketUrl = this.spark.device.webSocketUrl;
+    var data = {
+      binding: binding,
+      webSocketUrl: webSocketUrl,
+      action: 'REMOVE'
     };
 
     return this.spark.request({

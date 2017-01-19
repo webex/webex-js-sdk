@@ -135,7 +135,7 @@ describe('Services', function() {
         });
       });
 
-      describe('#registerForSharingMercury()', function() {
+      describe('#registerToShareMercury()', function() {
 
         beforeEach(function() {
           spark.request.reset();
@@ -144,7 +144,7 @@ describe('Services', function() {
         });
 
         it('requests POST to board service', function() {
-          return spark.board.persistence.registerForSharingMercury(channel)
+          return spark.board.persistence.registerToShareMercury(channel)
             .then(function() {
               assert.calledWith(spark.request, sinon.match({
                 method: 'POST',
@@ -161,12 +161,12 @@ describe('Services', function() {
 
         it('rejects if `web-sharable-mercury` feature is not enabled', function() {
           spark.feature.getFeature.returns(false);
-          return assert.isRejected(spark.board.persistence.registerForSharingMercury(channel));
+          return assert.isRejected(spark.board.persistence.registerToShareMercury(channel));
         });
 
         it('rejects if localClusterServiceUrls is null', function() {
           spark.mercury.localClusterServiceUrls = null;
-          return assert.isRejected(spark.board.persistence.registerForSharingMercury(channel));
+          return assert.isRejected(spark.board.persistence.registerToShareMercury(channel));
         });
       });
 

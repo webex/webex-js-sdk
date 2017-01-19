@@ -98,7 +98,7 @@ describe('Services', function() {
           party.spock.spark.mercury.on('mercury.registration_status', function(event) {
             assert.property(event, 'bufferState');
             assert.property(event, 'localClusterServiceUrls');
-            assert.equal(party.spock.spark.mercury.localClusterServiceUrls, event.localClusterServiceUrls);
+            assert.deepEqual(party.spock.spark.mercury.localClusterServiceUrls, event.localClusterServiceUrls);
             done();
           });
           party.spock.spark.mercury.connect();
@@ -106,76 +106,80 @@ describe('Services', function() {
       });
 
       describe('Board Realtime', function() {
-        beforeEach(function() {
-          uniqueRealtimeData = uuid.v4();
-          return Promise.all(map(party, function(member) {
-            return member.spark.mercury.connect()
-              .then(function() {
-                return member.spark.board.realtime.connectToSharedMercury(board);
+        describe('connect and reconnect', function() {
+          it('registers and connect to the shared mercury connection', function() {
+            return party.spock.spark.board.realtime.connectToSharedMercury(board)
+              .then(function(res) {
+                assert.property(res, 'action');
+                assert.property(res, 'binding');
+                assert.property(res, 'webSocketUrl');
+                assert.property(res, 'sharedWebSocket');
+                assert.property(res, 'mercuryConnectionServiceClusterUrl');
+                assert.equal(res.action, 'REPLACE');
+                assert.deepEqual(res.mercuryConnectionServiceClusterUrl, party.spock.spark.mercury.localClusterServiceUrls.mercuryConnectionServiceClusterUrl);
               });
-          }));
-        });
-
-        afterEach(function() {
-          return Promise.all(map(party, function(member) {
-            return member.spark.mercury.disconnect()
-              .then(function() {
-                return member.spark.board.realtime.disconnectFromSharedMercury(board);
-              });
-          }));
-        });
-
-        it('can register and connect to the shared mercury connection', function() {
-          return party.spock.spark.board.realtime.connectToSharedMercury(board)
-            .then(function(res) {
-              assert.property(res, 'action');
-              assert.property(res, 'binding');
-              assert.property(res, 'webSocketUrl');
-              assert.property(res, 'sharedWebSocket');
-              assert.property(res, 'mercuryConnectionServiceClusterUrl');
-              assert.equal(res.action, 'REPLACE');
-              assert.deepEqual(res.mercuryConnectionServiceClusterUrl, party.spock.spark.mercury.localClusterServiceUrls.mercuryConnectionServiceClusterUrl);
-            });
-        });
-
-        it('can disconnect from shared mercury connection', function() {
-          return party.spock.spark.board.realtime.disconnectFromSharedMercury(board)
-            .then(function(res) {
-              assert.property(res, 'action');
-              assert.property(res, 'binding');
-              assert.property(res, 'webSocketUrl');
-              assert.property(res, 'sharedWebSocket');
-              assert.equal(res.action, 'REMOVE');
-            });
-        });
-
-        it('can send and recieve messages', function(done) {
-          var data = {
-            envelope: {
-              channelId: board,
-              roomId: conversation.id
-            },
-            payload: {
-              msg: uniqueRealtimeData
-            }
-          };
-
-          // mccoy is going to listen for mercury data and confirm that we have the
-          // same data that was sent.
-          party.mccoy.spark.mercury.once('board.activity', function(boardData) {
-            assert.equal(boardData.contentType, 'STRING');
-            assert.equal(boardData.payload.msg, uniqueRealtimeData);
-            done();
           });
 
-          // confirm that both are listening.
-          assert(party.spock.spark.mercury.connected, 'spock is not listening');
-          assert(party.mccoy.spark.mercury.connected, 'mccoy is not listening');
+          it('disconnects from shared mercury connection', function() {
+            return party.spock.spark.board.realtime.disconnectFromSharedMercury(board)
+              .then(function(res) {
+                assert.property(res, 'action');
+                assert.property(res, 'binding');
+                assert.property(res, 'webSocketUrl');
+                assert.property(res, 'sharedWebSocket');
+                assert.equal(res.action, 'REMOVE');
+              });
+          });
+        });
 
-          // do not return promise because we want done() to be called on
-          // board.activity
-          party.spock.spark.board.realtime.publish(board, data);
-          return party.mccoy.spark.board.realtime.connectToSharedMercury(board);
+        describe('sending messages', function() {
+          beforeEach(function() {
+            uniqueRealtimeData = uuid.v4();
+            return Promise.all(map(party, function(member) {
+              return member.spark.mercury.connect()
+                .then(function() {
+                  return member.spark.board.realtime.connectToSharedMercury(board);
+                });
+            }));
+          });
+
+          afterEach(function() {
+            return Promise.all(map(party, function(member) {
+              return member.spark.mercury.disconnect()
+                .then(function() {
+                  return member.spark.board.realtime.disconnectFromSharedMercury(board);
+                });
+            }));
+          });
+
+
+          it('can send and recieve messages', function(done) {
+            var data = {
+              envelope: {
+                channelId: board,
+                roomId: conversation.id
+              },
+              payload: {
+                msg: uniqueRealtimeData
+              }
+            };
+
+            // mccoy is going to listen for mercury data and confirm that we have the
+            // same data that was sent.
+            party.mccoy.spark.mercury.once('board.activity', function(boardData) {
+              assert.equal(boardData.contentType, 'STRING');
+              assert.equal(boardData.payload.msg, uniqueRealtimeData);
+              done();
+            });
+
+            // confirm that both are listening.
+            assert(party.spock.spark.mercury.connected, 'spock is not listening');
+            assert(party.mccoy.spark.mercury.connected, 'mccoy is not listening');
+
+            // do not return promise because we want done() to be called on
+            // board.activity
+            party.spock.spark.board.realtime.publish(board, data);
+          });
         });
       });
     });

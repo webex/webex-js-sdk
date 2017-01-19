@@ -108,8 +108,14 @@ var RealtimeService = Mercury.extend({
     }
   },
 
+  /**
+    * Connect to an existing sharable mercury connection
+    * @memberof Board.RealtimeService
+    * @param   {Board~Channel} channel
+    * @returns {Promise<Board~Registration>}
+    */
   connectToSharedMercury: function connectToSharedMercury(channel) {
-    return this.spark.board.persistence.registerForSharingMercury(channel)
+    return this.spark.board.persistence.registerToShareMercury(channel)
       .then(function assignBindingAndWebSocketUrl(res) {
         this.boardBindings = [res.binding];
         this.boardWebSocketUrl = res.webSocketUrl;
@@ -117,23 +123,19 @@ var RealtimeService = Mercury.extend({
       }.bind(this));
   },
 
+  /**
+    * Remove binding and stop receiving messages from mercury
+    * @memberof Board.RealtimeService
+    * @param   {Board~Channel} channel
+    * @returns {Promise<Board~Registration>}
+    */
   disconnectFromSharedMercury: function disconnectFromSharedMercury(channel) {
-    var webSocketUrl = this.spark.device.webSocketUrl;
-    var data = {
-      binding: this.spark.board.realtime.boardBindings[0],
-      webSocketUrl: webSocketUrl,
-      action: 'REMOVE'
-    };
-
-    return this.spark.request({
-      method: 'POST',
-      api: 'board',
-      resource: '/channels/' + channel.channelId + '/register',
-      body: data
-    })
-      .then(function resolveWithBody(res) {
-        return res.body;
-      });
+    return this.spark.board.persistence.unregisterFromSharedMercury(channel, this.boardBindings[0])
+      .then(function assignBindingAndWebSocketUrl(res) {
+        this.boardBindings = [];
+        this.boardWebSocketUrl = '';
+        return res;
+      }.bind(this));
   },
 
   _attemptConnection: function _attemptConnection() {
