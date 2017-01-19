@@ -16,12 +16,19 @@ import SparkOAuth from './oauth';
 class DemoApp extends Component {
   constructor() {
     super();
+    const l = window.location;
+    const redirectUri = `${l.protocol}//${l.host}${l.pathname}`.replace(/\/$/, ``);
+
     this.state = {
       authenticate: false,
       mode: MODE_INLINE,
       accessToken: ``,
       toPersonEmail: ``,
-      running: false
+      running: false,
+      clientId: process.env.MESSAGE_DEMO_CLIENT_ID,
+      clientSecret: process.env.MESSAGE_DEMO_CLIENT_SECRET,
+      scope: `spark:kms spark:rooms_read spark:rooms_write spark:memberships_read spark:memberships_write spark:messages_read spark:messages_write`,
+      redirectUri
     };
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleAccessTokenChange = this.handleAccessTokenChange.bind(this);
@@ -148,7 +155,14 @@ class DemoApp extends Component {
           >
             {`Load Widget`}
           </button>
-          <SparkOAuth doAuth={this.state.authenticate} onAuth={this.handleOnAuth} />
+          <SparkOAuth
+            clientId={this.state.clientId}
+            clientSecret={this.state.clientSecret}
+            doAuth={this.state.authenticate}
+            onAuth={this.handleOnAuth}
+            redirectUri={this.state.redirectUri}
+            scope={this.state.scope}
+          />
         </form>
       </div>
     );
