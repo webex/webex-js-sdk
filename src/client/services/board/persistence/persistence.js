@@ -307,6 +307,12 @@ var PersistenceService = SparkBase.extend({
       });
   },
 
+  /**
+   * Registers with Mercury to share mercury connection
+   * @memberof Board.PersistenceService
+   * @param  {Board~Channel} channel
+   * @return {Promise<Board~Registration>}
+   */
   registerForSharingMercury: function registerForSharingMercury(channel) {
     if (!this.spark.mercury.localClusterServiceUrls) {
       return Promise.reject(new Error('`localClusterServiceUrls` is not defined, make sure mercury is connected'));

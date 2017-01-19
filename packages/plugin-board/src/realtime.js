@@ -85,7 +85,45 @@ const RealtimeService = Mercury.extend({
         payload: encryptedPayloadAndKeyUrl.encryptedData
       };
     }
+
+    // use mercury socket if it is shared
+    // if this.socket is defined then use it instead
+    const isSharingMercuryFeatureEnabled = this.spark.device.features.developer.get(`web-sharable-mercury`);
+    if (isSharingMercuryFeatureEnabled && isSharingMercuryFeatureEnabled.value && !this.socket) {
+      return this.spark.mercury.socket.send(data);
+    }
+
     return this.socket.send(data);
+  },
+
+  /**
+   * Connect and use an exisiting mercury connection
+   * @memberof Board.RealtimeService
+   * @param  {Board~Channel} channel
+   * @returns {Promise<Board~Registration>}
+   */
+  connectToSharedMercury(channel) {
+    return this.spark.board.registerToShareMercury(channel)
+      .then((res) => {
+        this.boardBindings = [res.binding];
+        this.boardWebSocketUrl = res.webSocketUrl;
+        return res;
+      });
+  },
+
+  /**
+   * Remove board binding from existing mercury connection
+   * @memberof Board.RealtimeService
+   * @param  {Board~Channel} channel
+   * @returns {Promise<Board~Registration>}
+   */
+  disconnectFromSharedMercury(channel) {
+    return this.spark.board.unregisterFromSharedMercury(channel, this.boardBindings[0])
+      .then((res) => {
+        this.boardBindings = [];
+        this.boardWebSocketUrl = ``;
+        return res;
+      });
   },
 
   _getNewSocket() {
