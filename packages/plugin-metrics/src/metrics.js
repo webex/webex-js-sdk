@@ -81,7 +81,8 @@ const Metrics = SparkPlugin.extend({
   postPreLoginMetric: function(payload, preLoginId) {
     return this.request({
       method: `POST`,
-      url: 'https://metrics-a.wbx2.com/metrics/api/v1/clientmetrics-prelogin',
+      api: `metrics`,
+      resource: `clientmetrics-prelogin`,
       headers: {
         "x-prelogin-userid": preLoginId
       },

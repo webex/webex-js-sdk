@@ -79,6 +79,7 @@ module.exports = {
     embargoFailureMessage: 'Service is not available in your region',
     preAuthServices: {
       atlasServiceUrl: process.env.ATLAS_SERVICE_URL || 'https://atlas-a.wbx2.com/admin/api/v1',
+      metricsServiceUrl: process.env.METRICS_SERVICE_URL || `https://metrics-a.wbx2.com/metrics/api/v1`,
       oauthServiceUrl: process.env.COMMON_IDENTITY_OAUTH_SERVICE_URL || 'https://idbroker.webex.com/idb/oauth2/v1/',
       samlServiceUrl: process.env.COMMON_IDENTITY_SAML_SERVICE_URL || 'https://idbroker.webex.com/idb/token/',
       regionServiceUrl: process.env.COMMON_IDENTITY_REGION_SERVICE_URL || 'https://ds.ciscospark.com/v1/region/'
