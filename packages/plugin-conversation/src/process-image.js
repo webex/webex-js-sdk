@@ -16,8 +16,8 @@ import {pick} from 'lodash';
  * @param {Boolean} options.enableThumbnails
  * @returns {Promise<Array>} Buffer, Dimensions, thumbnailDimensions
  */
-export default function processImage({file, thumbnailMaxWidth, thumbnailMaxHeight, enableThumbnails, logger}) {
-  if (!file.type || !file.type.startsWith(`image`)) {
+export default function processImage({file, type, thumbnailMaxWidth, thumbnailMaxHeight, enableThumbnails, logger}) {
+  if (!type || !type.startsWith(`image`)) {
     return Promise.resolve();
   }
 

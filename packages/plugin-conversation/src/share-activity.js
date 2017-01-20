@@ -11,16 +11,34 @@ import {filter, map, pick, some} from 'lodash';
 import {EventEmitter} from 'events';
 import mime from 'mime-types';
 
-const EMITTER_SYMBOL = Symbol(`EMITTER_SYMBOL`);
+export const EMITTER_SYMBOL = Symbol(`EMITTER_SYMBOL`);
+export const FILE_SYMBOL = Symbol(`FILE_SYMBOL`);
 const PROMISE_SYMBOL = Symbol(`PROMISE_SYMBOL`);
 
 import processImage from './process-image';
+
 
 /**
  * @class
  */
 const ShareActivity = SparkPlugin.extend({
+  getSymbols() {
+    return {
+      file: FILE_SYMBOL,
+      emitter: EMITTER_SYMBOL
+    }
+  },
+
   namespace: `Conversation`,
+
+  derived: {
+    target: {
+      deps: [`conversation`],
+      fn() {
+        return this.conversation;
+      }
+    }
+  },
 
   session: {
     conversation: {
@@ -93,18 +111,21 @@ const ShareActivity = SparkPlugin.extend({
       fileSize: file.size || file.byteLength || file.length,
       mimeType: file.type,
       objectType: `file`,
-      [EMITTER_SYMBOL]: emitter
+      [EMITTER_SYMBOL]: emitter,
+      [FILE_SYMBOL]: file
     }, pick(options, `actions`));
 
     this.uploads.set(file, upload);
     const promise = this.detect(file)
       .then((type) => {
         upload.mimeType = type;
-        if (!file.type) {
-          file.type = type;
-        }
+        // The blow code gives an error that the file.type is a readonly property, hence refactoring the code.
+        // if (!file.type) {
+        //   file.type = type;
+        // }
         return processImage({
           file,
+          type,
           thumbnailMaxWidth: this.config.thumbnailMaxWidth,
           thumbnailMaxHeight: this.config.thumbnailMaxHeight,
           enableThumbnails: this.enableThumbnails,
@@ -178,6 +199,17 @@ const ShareActivity = SparkPlugin.extend({
   },
 
   /**
+   * @returns {Array}
+   */
+   getFiles() {
+     var files = new Array();
+     for (var [key, value] of this.uploads) {
+       files.push(this.uploads.get(key)[FILE_SYMBOL]);
+     }
+     return files;
+   },
+
+  /**
    * @param {File} file
    * @param {string} uri
    * @private
@@ -206,7 +238,7 @@ const ShareActivity = SparkPlugin.extend({
           body: {fileSize}
         }
       }
-    });
+    })
   },
 
   /**
@@ -216,7 +248,8 @@ const ShareActivity = SparkPlugin.extend({
    * @returns {Promise}
    */
   remove(file) {
-    this.uploads.delete(file);
+    let retVal = this.uploads.delete(file);
+    let hasVal = this.uploads.has(file);
     // Returns a promise for future-proofiness.
     return Promise.resolve();
   },
@@ -337,7 +370,6 @@ ShareActivity.create = function create(conversation, object, spark) {
   if (files) {
     files.forEach((file) => share.add(file));
   }
-
   return share;
 };
 
