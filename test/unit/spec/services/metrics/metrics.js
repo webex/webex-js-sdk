@@ -71,7 +71,7 @@ describe('Services', function() {
         sinon.stub(metrics.circonus, 'fetch');
         sinon.stub(metrics.splunk, 'fetch');
         sinon.stub(metrics.clientMetrics, 'fetch');
-        sinon.spy(metrics, 'postPreLoginMet ric');
+        sinon.spy(metrics, 'postPreLoginMetric');
         sinon.spy(metrics, 'aliasUser');
         sinon.spy(spark, 'request');
       });
