@@ -12,29 +12,29 @@ describe(`plugin-metrics`, () => {
   describe(`Metrics`, () => {
     let spark;
     let metrics;
-    const eventName = 'test_event';
+    const eventName = `test_event`;
     const mockPayload = {
       fields: {
         testField: 123
       },
       tags: {
-        testTag: 'tag value'
+        testTag: `tag value`
       },
       metricName: eventName,
-      test: 'this field should not be included in final payload',
-      type: 'behavioral'
+      test: `this field should not be included in final payload`,
+      type: `behavioral`
     };
     const transformedProps = {
       fields: {
         testField: 123
       },
       tags: {
-        testTag: 'tag value'
+        testTag: `tag value`
       },
       metricName: eventName,
-      type: 'behavioral'
+      type: `behavioral`
     };
-    const preLoginId = "1b90cf5e-27a6-41aa-a208-1f6eb6b9e6b6";
+    const preLoginId = `1b90cf5e-27a6-41aa-a208-1f6eb6b9e6b6`;
     const preLoginProps = {
       metrics: [
         transformedProps
@@ -59,8 +59,8 @@ describe(`plugin-metrics`, () => {
         });
       };
       sinon.spy(spark, `request`);
-      sinon.spy(metrics, 'postPreLoginMetric');
-      sinon.spy(metrics, 'aliasUser');
+      sinon.spy(metrics, `postPreLoginMetric`);
+      sinon.spy(metrics, `aliasUser`);
     });
 
     describe(`#submit()`, () => {
@@ -86,13 +86,13 @@ describe(`plugin-metrics`, () => {
     });
 
     describe(`#submitClientMetrics()`, () => {
-      describe("before login", () => {
-        it('posts pre-login metric', () => {
+      describe(`before login`, () => {
+        it(`posts pre-login metric`, () => {
           metrics.submitClientMetrics(eventName, mockPayload, preLoginId);
           assert.calledWith(metrics.postPreLoginMetric, preLoginProps, preLoginId);
         });
       });
-      describe("after login", () => {
+      describe(`after login`, () => {
         it(`submits a metric to clientmetrics`, () => {
           const testPayload = {
             tags: {success: true},
@@ -116,8 +116,8 @@ describe(`plugin-metrics`, () => {
       });
     });
 
-    describe('#postPreLoginMetric()', function() {
-      it('returns an HttpResponse object', function() {
+    describe(`#postPreLoginMetric()`, () => {
+      it(`returns an HttpResponse object`, () => {
         return metrics.postPreLoginMetric(preLoginProps, preLoginId)
           .then(() => {
             assert.calledOnce(spark.request);
@@ -125,7 +125,7 @@ describe(`plugin-metrics`, () => {
             const metric = req.body.metrics[0];
             const headers = req.headers;
 
-            assert.property(headers, 'x-prelogin-userid');
+            assert.property(headers, `x-prelogin-userid`);
             assert.property(metric, `metricName`);
             assert.property(metric, `tags`);
             assert.property(metric, `fields`);
@@ -137,8 +137,8 @@ describe(`plugin-metrics`, () => {
       });
     });
 
-    describe('#aliasUser()', function() {
-      it('returns an HttpResponse object', function() {
+    describe(`#aliasUser()`, () => {
+      it(`returns an HttpResponse object`, () => {
         return metrics.aliasUser(preLoginId)
           .then(() => {
             assert.calledOnce(spark.request);

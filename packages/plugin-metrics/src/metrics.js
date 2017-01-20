@@ -31,6 +31,7 @@ const Metrics = SparkPlugin.extend({
    * @param {string} eventName
    * @param {Object} props
    * @param {string} preLoginId
+   * @returns {Object} HttpResponse object
    */
   submitClientMetrics(eventName, props, preLoginId) {
     const payload = {metricName: eventName};
@@ -52,18 +53,18 @@ const Metrics = SparkPlugin.extend({
       // Do not batch these because pre-login events occur during onboarding, so we will be partially blind
       // to users' progress through the reg flow if we wait to persist pre-login metrics for people who drop off because
       // their metrics will not post from a queue flush in time
-      this.postPreLoginMetric(_payload, preLoginId);
-    } else {
-      return this.clientMetricsBatcher.request(payload);
+      return this.postPreLoginMetric(_payload, preLoginId);
     }
+    return this.clientMetricsBatcher.request(payload);
   },
 
 
   /**
    * Issue request to alias a user's pre-login ID with their CI UUID
    * @param {string} preLoginId
+   * @returns {Object} HttpResponse object
    */
-  aliasUser: function(preLoginId) {
+  aliasUser(preLoginId) {
     return this.request({
       method: `POST`,
       api: `metrics`,
@@ -73,12 +74,12 @@ const Metrics = SparkPlugin.extend({
       },
       body: {},
       qs: {
-        "alias": true
+        alias: true
       }
     });
   },
 
-  postPreLoginMetric: function(payload, preLoginId) {
+  postPreLoginMetric(payload, preLoginId) {
     return this.request({
       method: `POST`,
       api: `metrics`,
