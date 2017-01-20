@@ -34,36 +34,36 @@ var MetricsService = SparkBase.extend(
 
   namespace: 'Metrics',
 
-    /**
-     * Issues request to server to alias a user's pre-login ID with their CI UUID
-     * @param {string} preLoginId
-     */
-    aliasUser: function(preLoginId) {
-      return this.request({
-        method: `POST`,
-        api: `metrics`,
-        resource: `clientmetrics`,
-        headers: {
-          "x-prelogin-userid": preLoginId
-        },
-        body: {},
-        qs: {
-          "alias": true
-        }
-      });
-    },
+  /**
+   * Issues request to server to alias a user's pre-login ID with their CI UUID
+   * @param {string} preLoginId
+   */
+  aliasUser: function aliasUser(preLoginId) {
+    return this.request({
+      method: 'POST',
+      api: 'metrics',
+      resource: 'clientmetrics',
+      headers: {
+        'x-prelogin-userid': preLoginId
+      },
+      body: {},
+      qs: {
+        alias: true
+      }
+    });
+  },
 
-    postPreLoginMetric: function(payload, preLoginId) {
-      return this.request({
-        method: `POST`,
-        api: `metrics`,
-        resource: `clientmetrics-prelogin`,
-        headers: {
-          "x-prelogin-userId": preLoginId
-        },
-        body: payload
-      });
-    },
+  postPreLoginMetric: function postPreLoginMetric(payload, preLoginId) {
+    return this.request({
+      method: 'POST',
+      api: 'metrics',
+      resource: 'clientmetrics-prelogin',
+      headers: {
+        'x-prelogin-userId': preLoginId
+      },
+      body: payload
+    });
+  },
 
   /**
    * Submits semi-structured metrics
@@ -91,7 +91,8 @@ var MetricsService = SparkBase.extend(
         ]
       };
       this.postPreLoginMetric(payload, preLoginId);
-    } else {
+    }
+    else {
       this.clientMetrics.fetch(payload);
     }
   },
@@ -110,7 +111,7 @@ var MetricsService = SparkBase.extend(
 
   /**
    * Post a single metric to splunk
-   * @deprecated Please switch to `this.sendUnstructured()`. Note: it does not
+   * @deprecated Please switch to 'this.sendUnstructured()'. Note: it does not
    * return a promise.
    * @param {Object} body the payload
    * @returns {Promise}
