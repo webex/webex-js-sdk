@@ -59,7 +59,7 @@ var MetricsService = SparkBase.extend(
       api: 'metrics',
       resource: 'clientmetrics-prelogin',
       headers: {
-        'x-prelogin-userId': preLoginId
+        'x-prelogin-userid': preLoginId
       },
       body: payload
     });
