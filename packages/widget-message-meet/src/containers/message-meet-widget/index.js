@@ -104,15 +104,14 @@ export class MessageMeetWidget extends Component {
     /* eslint-disable operator-linebreak */
     /* eslint-disable-reason: Giant list of comparisons very difficult to read and diff */
     return nextProps.conversation.activities !== props.conversation.activities
-      || nextProps.activity.get(`inFlightActivities`) !== props.activity.get(`inFlightActivities`)
+      || nextProps.activity !== props.activity
       || nextProps.conversation.isLoadingHistoryUp !== props.conversation.isLoadingHistoryUp
       || nextProps.flags !== props.flags
       || nextProps.indicators !== props.indicators
       || nextProps.share !== props.share
       || nextProps.sparkState.connected !== props.sparkState.connected
       || nextProps.user !== props.user
-      || nextProps.widget !== props.widget
-      || nextProps.activity.getIn([`status`, `isSending`]) !== props.activity.getIn([`status`, `isSending`]);
+      || nextProps.widget !== props.widget;
     /* eslint-enable operator-linebreak */
   }
   /* eslint-enable complexity */

@@ -100,7 +100,7 @@ export function updateActivityText(text) {
  */
 export function addFiles(conversation, activityStore, files, spark) {
   return (dispatch) => {
-    let shareActivity = activityStore.getIn([`shareActivity`]);
+    let shareActivity = activityStore.get(`shareActivity`);
     if (!shareActivity) {
       shareActivity = spark.conversation.makeShare(conversation);
       // Store shareActivity object to be used later
@@ -126,7 +126,7 @@ export function addFiles(conversation, activityStore, files, spark) {
 }
 
 /**
-* Removes file from ShareActivty and from store
+* Removes file from ShareActivity and from store
 *
 * @param {string} id - clientTempId key of stored file
 * @param {Map} activity - from store
@@ -158,7 +158,7 @@ export function submitActivity(conversation, activity, user, spark) {
     const shareActivity = activity.get(`shareActivity`);
     if (shareActivity && activity.get(`files`).size) {
       const inFlightActivity = constructActivityWithContent(conversation, message, user, activity.get(`files`).toArray());
-      dispatch(createInFlightActivity(inFlightActivity));
+      dispatch(addInflightActivity(inFlightActivity));
       // map our temp id to the in flight temp id so we can remove it when it is received
       shareActivity.displayName = message.displayName;
       shareActivity.content = message.content;
@@ -168,7 +168,7 @@ export function submitActivity(conversation, activity, user, spark) {
     }
     else if (message) {
       const inFlightActivity = constructActivity(conversation, message, user);
-      dispatch(createInFlightActivity(inFlightActivity));
+      dispatch(addInflightActivity(inFlightActivity));
       dispatch(resetActivity());
       spark.conversation.post(conversation, message, {clientTempId: inFlightActivity.clientTempId});
     }
@@ -264,15 +264,4 @@ function createMessageObject(messageString) {
   };
 
   return messageObject;
-}
-
-/**
- * Creates an in flight activity
- *
- * @export
- * @param {object} activity
- * @returns {function}
- */
-export function createInFlightActivity(activity) {
-  return (dispatch) => dispatch(addInflightActivity(activity));
 }
