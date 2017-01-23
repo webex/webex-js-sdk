@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/recipe-private-web-client",
-  "version": "0.7.37",
+  "version": "0.7.41",
   "description": "This is a plugin recipe for the Cisco Spark JavaScript SDK. This recipe uses internal APIs to provide the features needed by the Cisco Spark Web Client. There is no guarantee of non-breaking changes. Non-Cisco engineers should stick to the `ciscospark` package.",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -20,7 +20,7 @@
     "@ciscospark/plugin-flag": "^0.7.36",
     "@ciscospark/plugin-logger": "^0.7.36",
     "@ciscospark/plugin-mercury": "^0.7.36",
-    "@ciscospark/plugin-metrics": "^0.7.36",
+    "@ciscospark/plugin-metrics": "^0.7.41",
     "@ciscospark/plugin-search": "^0.7.36",
     "@ciscospark/plugin-support": "^0.7.36",
     "@ciscospark/plugin-team": "^0.7.36",

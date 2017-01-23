@@ -82,7 +82,7 @@ export class MessageMeetWidget extends Component {
     } = nextProps.sparkState;
 
     if (spark && connected && authenticated && registered) {
-      if (!user.currentUser && !user.isFetchingCurrentUser) {
+      if (!user.currentUser.id && !user.isFetchingCurrentUser) {
         nextProps.fetchCurrentUser(spark);
       }
       if (!conversation.id && !conversation.isFetching) {
@@ -104,6 +104,7 @@ export class MessageMeetWidget extends Component {
     /* eslint-disable operator-linebreak */
     /* eslint-disable-reason: Giant list of comparisons very difficult to read and diff */
     return nextProps.conversation.activities !== props.conversation.activities
+      || nextProps.activity !== props.activity
       || nextProps.conversation.isLoadingHistoryUp !== props.conversation.isLoadingHistoryUp
       || nextProps.flags !== props.flags
       || nextProps.indicators !== props.indicators
@@ -117,7 +118,7 @@ export class MessageMeetWidget extends Component {
 
   componentWillUpdate(nextProps) {
     const props = this.props;
-    if (this.activityList && nextProps.conversation.activities.length !== props.conversation.activities.length) {
+    if (this.activityList && nextProps.conversation.activities.size !== props.conversation.activities.size) {
       this.scrollHeight = this.activityList.getScrollHeight();
     }
   }
@@ -125,35 +126,62 @@ export class MessageMeetWidget extends Component {
   componentDidUpdate(prevProps) {
     const props = this.props;
     const activityList = this.activityList;
-
     if (activityList) {
-      const lastActivityFromPrev = _.last(prevProps.conversation.activities);
-      const lastActivityFromThis = _.last(props.conversation.activities);
-
-      const firstActivityFromPrev = _.first(prevProps.conversation.activities);
-      const firstActivityFromThis = _.first(props.conversation.activities);
-
+      const lastActivityFromPrev = prevProps.conversation.activities.last();
+      const lastActivityFromThis = props.conversation.activities.last();
+      const firstActivityFromPrev = prevProps.conversation.activities.first();
+      const firstActivityFromThis = props.conversation.activities.first();
       // If new activity comes in
-      if (lastActivityFromPrev && lastActivityFromThis && props.conversation.activities.length !== prevProps.conversation.activities.length && lastActivityFromPrev.id !== lastActivityFromThis.id) {
-        // Scroll if from ourselves
-        if (props.user.currentUser.id === lastActivityFromThis.actor.id) {
-          activityList.scrollToBottom();
-        }
-        else {
-          if (activityList.isScrolledToBottom()) {
-            activityList.scrollToBottom();
-          }
+      if (lastActivityFromPrev && lastActivityFromThis && props.conversation.activities.size !== prevProps.conversation.activities.size && lastActivityFromPrev.id !== lastActivityFromThis.id) {
+        if (props.user.currentUser.id !== lastActivityFromThis.actor.id) {
           // Send notification of new message
           props.createNotification(lastActivityFromThis.url, NOTIFICATION_TYPE_POST);
         }
       }
-      else if (prevProps.conversation.activities.length === 0) {
-        activityList.scrollToBottom();
-      }
-      else if (firstActivityFromThis.id !== firstActivityFromPrev.id) {
+      else if (firstActivityFromThis && firstActivityFromPrev && firstActivityFromThis.id !== firstActivityFromPrev.id) {
         activityList.setScrollTop(activityList.getScrollHeight() - this.scrollHeight + prevProps.widget.scrollTop);
       }
+      // Scroll to bottom when needed
+      if (this.shouldScrollToBottom(props, prevProps)) {
+        activityList.scrollToBottom();
+      }
     }
+  }
+
+  /**
+   * Scrolls the window to the bottom when it should
+   * (called from componentDidUpdate)
+   *
+   * @param {any} props
+   * @param {any} prevProps
+   * @returns {bool}
+   *
+   * @memberOf MessageMeetWidget
+   */
+  shouldScrollToBottom(props, prevProps) {
+    let shouldScrollToBottom = false;
+    const activityList = this.activityList;
+    const lastActivityFromPrev = prevProps.conversation.activities.last();
+    const lastActivityFromThis = props.conversation.activities.last();
+    // If new activity comes in
+    if (lastActivityFromPrev && lastActivityFromThis && props.conversation.activities.size !== prevProps.conversation.activities.size && lastActivityFromPrev.id !== lastActivityFromThis.id) {
+      // Scroll if from ourselves
+      if (props.user.currentUser.id === lastActivityFromThis.actor.id) {
+        shouldScrollToBottom = true;
+      }
+      else if (activityList.isScrolledToBottom()) {
+        shouldScrollToBottom = true;
+      }
+    }
+    else if (prevProps.conversation.activities.size === 0) {
+      shouldScrollToBottom = true;
+    }
+    // Scroll to show in flight activities
+    if (props.activity.get(`inFlightActivities`).size && props.activity.get(`inFlightActivities`).size !== prevProps.activity.get(`inFlightActivities`).size) {
+      shouldScrollToBottom = true;
+    }
+
+    return shouldScrollToBottom;
   }
 
   /**
@@ -237,7 +265,7 @@ export class MessageMeetWidget extends Component {
 
     props.setScrollPosition({scrollTop: this.activityList.getScrollTop()});
 
-    const lastActivity = _.last(conversation.activities);
+    const lastActivity = conversation.activities.last();
     if (this.activityList.isScrolledToBottom()) {
       props.showScrollToBottomButton(false);
       props.updateHasNewMessage(false);
@@ -249,8 +277,8 @@ export class MessageMeetWidget extends Component {
       props.showScrollToBottomButton(true);
     }
 
-    if (this.activityList.isScrolledToTop() && conversation.activities[0].verb !== `create`) {
-      props.loadPreviousMessages(conversation.id, _.first(conversation.activities), spark);
+    if (this.activityList.isScrolledToTop() && conversation.activities.first().verb !== `create`) {
+      props.loadPreviousMessages(conversation.id, conversation.activities.first(), spark);
     }
   }
 
@@ -354,8 +382,6 @@ export class MessageMeetWidget extends Component {
     const props = this.props;
     const {
       conversation,
-      flags,
-      indicators,
       spark,
       sparkState,
       user,
@@ -363,14 +389,11 @@ export class MessageMeetWidget extends Component {
     } = props;
     const {formatMessage} = this.props.intl;
     const {
-      avatars,
-      currentUser
+      avatars
     } = user;
 
     const {
-      activities,
-      isLoadingHistoryUp,
-      lastAcknowledgedActivityId
+      isLoadingHistoryUp
     } = conversation;
 
     let scrollButton;
@@ -414,7 +437,6 @@ export class MessageMeetWidget extends Component {
 
     const toUser = this.getUserFromConversation(conversation);
     const toUserAvatar = avatars[toUser.id];
-    const isTyping = indicators.typing.length > 0;
     const {displayName} = toUser;
     const placeholderMessage = {
       id: `sendAMessageToRoom`,
@@ -443,13 +465,7 @@ export class MessageMeetWidget extends Component {
         <Dropzone {...dropzoneProps}>
           <div className={classNames(`activity-list-wrapper`, styles.activityListWrapper)}>
             <ScrollingActivity
-              activities={activities}
-              avatars={avatars}
-              currentUserId={currentUser.id}
-              flags={flags.flags}
               isLoadingHistoryUp={isLoadingHistoryUp}
-              isTyping={isTyping}
-              lastAcknowledgedActivityId={lastAcknowledgedActivityId}
               onActivityDelete={this.handleActivityDelete}
               onActivityFlag={this.handleActivityFlag}
               onScroll={this.handleScroll}

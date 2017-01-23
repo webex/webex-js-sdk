@@ -72,10 +72,11 @@ export class MessageComposer extends Component {
     const {
       activity,
       conversation,
-      spark
+      spark,
+      user
     } = props;
     const {onSubmit} = this.props;
-    props.submitActivity(conversation, activity, spark);
+    props.submitActivity(conversation, activity, user.currentUser, spark);
     if (onSubmit) {
       onSubmit();
     }
@@ -145,7 +146,8 @@ function mapStateToProps(state, ownProps) {
     activity: state.activity,
     spark: ownProps.spark,
     conversation: state.conversation,
-    widget: state.widget
+    widget: state.widget,
+    user: state.user
   };
 }
 

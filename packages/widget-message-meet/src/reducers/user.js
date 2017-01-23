@@ -5,11 +5,14 @@ import {
   GET_CURRENT_USER_BEGIN
 } from '../actions/user';
 
-function user(state = {
+export const initialState = {
   avatars: {},
   avatarsInFlight: [],
+  currentUser: {},
   isFetchingCurrentUser: false
-}, action) {
+};
+
+function user(state = initialState, action) {
   switch (action.type) {
   case ADD_AVATAR:
     {

@@ -15,9 +15,7 @@ exports[`ScrollingActivity container renders properly 1`] = `
               className="avatar"
               style={undefined}>
               <span
-                className="avatar-letter">
-                T
-              </span>
+                className="avatar-self" />
             </div>
           </div>
           <div
@@ -27,11 +25,11 @@ exports[`ScrollingActivity container renders properly 1`] = `
               <div
                 className="display-name"
                 title="{name}">
-                Test User 1
+                Ricky Testerson
               </div>
               <div
                 className="published">
-                9/20/16, 3:52 PM
+                1/3/17, 12:22 PM
               </div>
             </div>
             <div
@@ -40,7 +38,7 @@ exports[`ScrollingActivity container renders properly 1`] = `
                 className="activity-text"
                 dangerouslySetInnerHTML={
                   Object {
-                    "__html": "Test Activity Content 1",
+                    "__html": "hi",
                   }
                 } />
             </div>
@@ -64,9 +62,29 @@ exports[`ScrollingActivity container renders properly 1`] = `
             <div
               className="activity-post-action">
               <div
-                className="action-spacer" />
+                className="post-action-item">
+                <button
+                  className="button"
+                  onClick={[Function]}
+                  onKeyUp={[Function]}>
+                  <div
+                    className="icon"
+                    title="Delete this message" />
+                </button>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
+      <div>
+        <div
+          className="separator">
+          <p
+            className="separator-text">
+            <span>
+              January 6
+            </span>
+          </p>
         </div>
       </div>
       <div
@@ -80,7 +98,7 @@ exports[`ScrollingActivity container renders properly 1`] = `
               style={undefined}>
               <span
                 className="avatar-letter">
-                T
+                J
               </span>
             </div>
           </div>
@@ -91,11 +109,11 @@ exports[`ScrollingActivity container renders properly 1`] = `
               <div
                 className="display-name"
                 title="{name}">
-                Test User 2
+                Jon Langley
               </div>
               <div
                 className="published">
-                9/20/16, 3:53 PM
+                1/6/17, 4:17 PM
               </div>
             </div>
             <div
@@ -104,7 +122,90 @@ exports[`ScrollingActivity container renders properly 1`] = `
                 className="activity-text"
                 dangerouslySetInnerHTML={
                   Object {
-                    "__html": "Test Activity Content 2",
+                    "__html": "123",
+                  }
+                } />
+            </div>
+          </div>
+          <div
+            className="activity-post-actions">
+            <div
+              className="activity-post-action isHighlighted">
+              <div
+                className="post-action-item">
+                <button
+                  className="button"
+                  onClick={[Function]}
+                  onKeyUp={[Function]}>
+                  <div
+                    className="icon"
+                    title="Flag this message" />
+                </button>
+              </div>
+            </div>
+            <div
+              className="activity-post-action">
+              <div
+                className="action-spacer" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      className="indicators">
+      <div />
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ScrollingActivity container renders properly loading history 1`] = `
+<div
+  className={undefined}
+  onScroll={undefined}>
+  <div>
+    <div
+      className="spinner-container">
+      <div
+        className="spinner" />
+    </div>
+    <div
+      className="activity-list">
+      <div
+        className="activity-item-container">
+        <div
+          className="activity-item">
+          <div
+            className="avatar-wrapper">
+            <div
+              className="avatar"
+              style={undefined}>
+              <span
+                className="avatar-self" />
+            </div>
+          </div>
+          <div
+            className="content-container">
+            <div
+              className="meta">
+              <div
+                className="display-name"
+                title="{name}">
+                Ricky Testerson
+              </div>
+              <div
+                className="published">
+                1/3/17, 12:22 PM
+              </div>
+            </div>
+            <div
+              className="activity-content">
+              <div
+                className="activity-text"
+                dangerouslySetInnerHTML={
+                  Object {
+                    "__html": "hi",
                   }
                 } />
             </div>
@@ -128,9 +229,29 @@ exports[`ScrollingActivity container renders properly 1`] = `
             <div
               className="activity-post-action">
               <div
-                className="action-spacer" />
+                className="post-action-item">
+                <button
+                  className="button"
+                  onClick={[Function]}
+                  onKeyUp={[Function]}>
+                  <div
+                    className="icon"
+                    title="Delete this message" />
+                </button>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
+      <div>
+        <div
+          className="separator">
+          <p
+            className="separator-text">
+            <span>
+              January 6
+            </span>
+          </p>
         </div>
       </div>
       <div
@@ -144,7 +265,7 @@ exports[`ScrollingActivity container renders properly 1`] = `
               style={undefined}>
               <span
                 className="avatar-letter">
-                T
+                J
               </span>
             </div>
           </div>
@@ -155,11 +276,11 @@ exports[`ScrollingActivity container renders properly 1`] = `
               <div
                 className="display-name"
                 title="{name}">
-                Test User 3
+                Jon Langley
               </div>
               <div
                 className="published">
-                9/20/16, 3:54 PM
+                1/6/17, 4:17 PM
               </div>
             </div>
             <div
@@ -168,7 +289,7 @@ exports[`ScrollingActivity container renders properly 1`] = `
                 className="activity-text"
                 dangerouslySetInnerHTML={
                   Object {
-                    "__html": "Test Activity Content 3",
+                    "__html": "123",
                   }
                 } />
             </div>
@@ -176,7 +297,7 @@ exports[`ScrollingActivity container renders properly 1`] = `
           <div
             className="activity-post-actions">
             <div
-              className="activity-post-action">
+              className="activity-post-action isHighlighted">
               <div
                 className="post-action-item">
                 <button
