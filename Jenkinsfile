@@ -80,7 +80,8 @@ ansiColor('xterm') {
           env.ENABLE_VERBOSE_NETWORK_LOGGING = true
           env.SDK_ROOT_DIR=pwd
 
-          DOCKER_CONTAINER_NAME = "${JOB_NAME}-${BUILD_NUMBER}-builder"
+          DOCKER_IMAGE_NAME = "${JOB_NAME}-${BUILD_NUMBER}-builder"
+          def image
 
           DOCKER_ENV_FILE = "${env.WORKSPACE}/docker-env"
           ENV_FILE = "${env.WORKSPACE}/.env"
@@ -92,7 +93,7 @@ ansiColor('xterm') {
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} -e NPM_CONFIG_CACHE=${env.WORKSPACE}/.npm"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --volumes-from=\$(hostname)"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --user=\$(id -u):\$(id -g)"
-          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} ${DOCKER_CONTAINER_NAME}"
+          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} ${DOCKER_IMAGE_NAME}"
           env.DOCKER_RUN_OPTS = DOCKER_RUN_OPTS
 
           stage('checkout') {
@@ -113,7 +114,9 @@ ansiColor('xterm') {
             sh 'echo "USER $(id -u)" >> ./docker/builder/Dockerfile'
 
             retry(3) {
-              sh "docker build -t ${DOCKER_CONTAINER_NAME} ./docker/builder"
+              dir('docker/builder') {
+                image = docker.build(DOCKER_IMAGE_NAME)
+              }
               // Reset the Dockerfile to make sure we don't accidentally commit it
               // later
               sh "git checkout ./docker/builder/Dockerfile"
