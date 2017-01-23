@@ -61,7 +61,20 @@ export default function ActivityList(props) {
 }
 
 ActivityList.propTypes = {
-  activities: PropTypes.array,
+  activities: PropTypes.arrayOf(PropTypes.shape({
+    activity: PropTypes.shape({
+      id: PropTypes.string,
+      object: PropTypes.object,
+      actor: PropTypes.object,
+      published: PropTypes.string
+    }),
+    type: PropTypes.string,
+    avatarUrl: PropTypes.string,
+    isAdditional: PropTypes.bool,
+    isFlagged: PropTypes.bool,
+    isSelf: PropTypes.bool,
+    isPending: PropTypes.bool
+  })),
   onActivityDelete: PropTypes.func.isRequired,
   onActivityFlag: PropTypes.func.isRequired
 };

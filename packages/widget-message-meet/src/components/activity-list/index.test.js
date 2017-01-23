@@ -1,7 +1,7 @@
 import React from 'react';
 import createComponentWithIntl from '../../utils/createComponentWithIntl';
 
-import ActivityList, {ACTIVITY_ITEM_TYPE_ACTIVITY_ITEM} from '.';
+import ActivityList, {ITEM_TYPE_ACTIVITY} from '.';
 
 describe(`ActivityList component`, () => {
   const activities = [{
@@ -21,7 +21,7 @@ describe(`ActivityList component`, () => {
     isAdditional: false,
     isFlagged: false,
     isSelf: true,
-    type: ACTIVITY_ITEM_TYPE_ACTIVITY_ITEM
+    type: ITEM_TYPE_ACTIVITY
   }, {
     activity: {
       id: `test-456-123-456-123`,
@@ -39,7 +39,7 @@ describe(`ActivityList component`, () => {
     isAdditional: true,
     isFlagged: false,
     isSelf: true,
-    type: ACTIVITY_ITEM_TYPE_ACTIVITY_ITEM
+    type: ITEM_TYPE_ACTIVITY
   }, {
     activity: {
       id: `test-789-123-789-123`,
@@ -57,7 +57,7 @@ describe(`ActivityList component`, () => {
     isAdditional: false,
     isFlagged: true,
     isSelf: false,
-    type: ACTIVITY_ITEM_TYPE_ACTIVITY_ITEM
+    type: ITEM_TYPE_ACTIVITY
 
   }];
   const onActivityDelete = jest.fn();
