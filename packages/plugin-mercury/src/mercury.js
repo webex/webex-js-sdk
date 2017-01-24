@@ -113,7 +113,7 @@ const Mercury = SparkPlugin.extend({
 
     let webSocketUrl = this.spark.device.webSocketUrl;
 
-    const isSharingMercuryFeatureEnabled = this.spark.device.features.developer.get(`web-sharable-mercury`);
+    const isSharingMercuryFeatureEnabled = this.spark.device.features.developer.get(`web-shared-mercury`);
     if (isSharingMercuryFeatureEnabled && isSharingMercuryFeatureEnabled.value) {
       webSocketUrl += `${webSocketUrl.includes(`?`) ? `&` : `?`}mercuryRegistrationStatus=true&isRegistrationRefreshEnabled=true`;
     }

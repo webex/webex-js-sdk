@@ -23,7 +23,7 @@ describe(`plugin-mercury`, function() {
           }
         });
         return spark.device.register()
-          .then(() => spark.feature.setFeature(`developer`, `web-sharable-mercury`, true));
+          .then(() => spark.feature.setFeature(`developer`, `web-shared-mercury`, true));
       }));
 
     afterEach(() => spark && spark.mercury.disconnect());

@@ -26,7 +26,7 @@ describe(`plugin-board`, () => {
             }
           });
           return participant.spark.device.register()
-            .then(() => participant.spark.feature.setFeature(`developer`, `web-sharable-mercury`, true));
+            .then(() => participant.spark.feature.setFeature(`developer`, `web-shared-mercury`, true));
         }));
       }));
 

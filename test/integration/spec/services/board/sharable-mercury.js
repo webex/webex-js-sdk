@@ -50,10 +50,10 @@ describe('Services', function() {
     before(function beamDown() {
       return landingparty.beamDown(party)
         .then(function() {
-          return party.spock.spark.feature.setFeature('developer', 'web-sharable-mercury', true);
+          return party.spock.spark.feature.setFeature('developer', 'web-shared-mercury', true);
         })
         .then(function() {
-          return party.mccoy.spark.feature.setFeature('developer', 'web-sharable-mercury', true);
+          return party.mccoy.spark.feature.setFeature('developer', 'web-shared-mercury', true);
         });
     });
 
@@ -86,9 +86,9 @@ describe('Services', function() {
     });
 
     after(function cleanUpFeatureToggles() {
-      return party.spock.spark.feature.setFeature('developer', 'web-sharable-mercury', false)
+      return party.spock.spark.feature.setFeature('developer', 'web-shared-mercury', false)
         .then(function() {
-          return party.mccoy.spark.feature.setFeature('developer', 'web-sharable-mercury', false);
+          return party.mccoy.spark.feature.setFeature('developer', 'web-shared-mercury', false);
         });
     });
 

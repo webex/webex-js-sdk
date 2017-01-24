@@ -180,7 +180,7 @@ var Mercury = SparkBase.extend(
 
     var socketUrl = this.spark.device.webSocketUrl;
 
-    if (this.spark.feature.getFeature('developer', 'web-sharable-mercury')) {
+    if (this.spark.feature.getFeature('developer', 'web-shared-mercury')) {
       socketUrl = socket._addQueryParameter('mercuryRegistrationStatus=true', socketUrl);
       socketUrl = socket._addQueryParameter('isRegistrationRefreshEnabled=true', socketUrl);
     }

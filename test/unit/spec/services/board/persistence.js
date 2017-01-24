@@ -159,7 +159,7 @@ describe('Services', function() {
             });
         });
 
-        it('rejects if `web-sharable-mercury` feature is not enabled', function() {
+        it('rejects if `web-shared-mercury` feature is not enabled', function() {
           spark.feature.getFeature.returns(false);
           return assert.isRejected(spark.board.persistence.registerToShareMercury(channel));
         });

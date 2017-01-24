@@ -415,13 +415,13 @@ const Board = SparkPlugin.extend({
    * @returns {Promise<Board~Registration>}
    */
   registerToShareMercury(channel) {
-    const isSharingMercuryFeatureEnabled = this.spark.device.features.developer.get(`web-sharable-mercury`);
+    const isSharingMercuryFeatureEnabled = this.spark.device.features.developer.get(`web-shared-mercury`);
 
     if (!this.spark.mercury.localClusterServiceUrls) {
       return Promise.reject(new Error(`\`localClusterServiceUrls\` is not defined, make sure mercury is connected`));
     }
     else if (!isSharingMercuryFeatureEnabled || !isSharingMercuryFeatureEnabled.value) {
-      return Promise.reject(new Error(`\`web-sharable-mercury\` is not enabled`));
+      return Promise.reject(new Error(`\`web-shared-mercury\` is not enabled`));
     }
 
     const webSocketUrl = this.spark.device.webSocketUrl;

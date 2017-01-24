@@ -100,7 +100,7 @@ var RealtimeService = Mercury.extend({
     // board's instance
     // however, if board.socket is defined, we're falling back to separate
     // socket
-    if (this.spark.feature.getFeature('developer', 'web-sharable-mercury') && !this.socket) {
+    if (this.spark.feature.getFeature('developer', 'web-shared-mercury') && !this.socket) {
       return this.spark.mercury.socket.send(data);
     }
     else {
