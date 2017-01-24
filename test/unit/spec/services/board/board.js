@@ -185,9 +185,10 @@ describe('Services', function() {
         }];
 
         return spark.board.encryptContents(fakeURL, curveContents)
-          .then(function() {
+          .then(function(res) {
             assert.calledWith(spark.board.encryptSingleContent, fakeURL, curveContents[0]);
             assert.notCalled(spark.encryption.encryptScr);
+            assert.equal(res[0].payload, encryptedData);
           });
       });
 
@@ -195,15 +196,19 @@ describe('Services', function() {
 
         var imageContents = [{
           displayName: 'FileName',
-          scr: {
-            loc: fakeURL
+          file: {
+            scr: {
+              loc: fakeURL
+            }
           }
         }];
 
         return spark.board.encryptContents(fakeURL, imageContents)
-          .then(function() {
+          .then(function(encryptedFiles) {
             assert.calledWith(spark.encryption.encryptScr, {loc: fakeURL}, fakeURL);
             assert.calledWith(spark.encryption.encryptText, 'FileName', fakeURL);
+            assert.equal(encryptedFiles[0].type, 'FILE');
+            assert.property(encryptedFiles[0], 'file', 'file content must have file property');
           });
       });
 
@@ -223,15 +228,19 @@ describe('Services', function() {
 
       before(function() {
         sinon.stub(spark.board, 'decryptSingleContent', sinon.stub().returns(Promise.resolve({})));
+        sinon.spy(spark.board, 'decryptSingleFileContent');
       });
 
       after(function() {
         spark.board.decryptSingleContent.restore();
+        spark.board.decryptSingleFileContent.restore();
       });
 
       afterEach(function() {
         spark.board.decryptSingleContent.reset();
+        spark.board.decryptSingleFileContent.reset();
         spark.encryption.decryptScr.reset();
+        spark.encryption.decryptText.reset();
       });
 
       it('calls decryptSingleContent when type is not image', function() {
@@ -252,23 +261,45 @@ describe('Services', function() {
           });
       });
 
-      it('calls decryptSingleContent when type is FILE', function() {
+      it('calls decryptSingleFileContent when type is FILE', function() {
 
         var imageContents = {
           items: [{
             type: 'FILE',
             payload: JSON.stringify({
               type: 'image',
-              scr: 'encryptedScr',
               displayName: 'encryptedDisplayName'
             }),
+            file: {
+              scr: 'encryptedScr',
+            },
             encryptionKeyUrl: fakeURL
           }]
         };
 
         return spark.board.decryptContents(imageContents)
           .then(function() {
+            assert.calledOnce(spark.board.decryptSingleFileContent);
             assert.calledWith(spark.encryption.decryptText, 'encryptedDisplayName', fakeURL);
+            assert.calledWith(spark.encryption.decryptScr, 'encryptedScr', fakeURL);
+          });
+      });
+
+      it('does not require payload when type is FILE', function() {
+        var imageContents = {
+          items: [{
+            type: 'FILE',
+            file: {
+              scr: 'encryptedScr'
+            },
+            encryptionKeyUrl: fakeURL
+          }]
+        };
+
+        return spark.board.decryptContents(imageContents)
+          .then(function() {
+            assert.calledOnce(spark.board.decryptSingleFileContent);
+            assert.calledWith(spark.encryption.decryptText, undefined, fakeURL);
             assert.calledWith(spark.encryption.decryptScr, 'encryptedScr', fakeURL);
           });
       });

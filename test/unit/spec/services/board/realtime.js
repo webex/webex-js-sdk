@@ -81,6 +81,7 @@ describe('Services', function() {
             recipients: rcpnts,
             data: {
               eventType: 'board.activity',
+              contentType: 'STRING',
               envelope: {
                 encryptionKeyUrl: 'fakeURL'
               },
@@ -95,7 +96,12 @@ describe('Services', function() {
         beforeEach(function() {
           spark.board.realtime.boardBindings = ['binding'];
           sinon.stub(uuid, 'v4').returns('stubbedUUIDv4');
-          return spark.board.realtime.publishEncrypted('fakeURL', 'encryptedData');
+          return spark.board.realtime.publishEncrypted({
+              encryptedData: 'encryptedData',
+              encryptionKeyUrl: 'fakeURL'
+            },
+            'STRING'
+          );
         });
 
         afterEach(function() {
@@ -113,12 +119,13 @@ describe('Services', function() {
             id: uuid.v4(),
             type: 'publishRequest',
             recipients: [{
-              alertType:'none',
+              alertType: 'none',
               headers: {},
               route: 'binding'
             }],
             data: {
               eventType: 'board.activity',
+              contentType: 'STRING',
               envelope: {
                 encryptionKeyUrl: 'fakeURL'
               },
