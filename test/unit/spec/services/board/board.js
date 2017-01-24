@@ -228,15 +228,19 @@ describe('Services', function() {
 
       before(function() {
         sinon.stub(spark.board, 'decryptSingleContent', sinon.stub().returns(Promise.resolve({})));
+        sinon.spy(spark.board, 'decryptSingleFileContent');
       });
 
       after(function() {
         spark.board.decryptSingleContent.restore();
+        spark.board.decryptSingleFileContent.restore();
       });
 
       afterEach(function() {
         spark.board.decryptSingleContent.reset();
+        spark.board.decryptSingleFileContent.reset();
         spark.encryption.decryptScr.reset();
+        spark.encryption.decryptText.reset();
       });
 
       it('calls decryptSingleContent when type is not image', function() {
@@ -275,7 +279,27 @@ describe('Services', function() {
 
         return spark.board.decryptContents(imageContents)
           .then(function() {
+            assert.calledOnce(spark.board.decryptSingleFileContent);
             assert.calledWith(spark.encryption.decryptText, 'encryptedDisplayName', fakeURL);
+            assert.calledWith(spark.encryption.decryptScr, 'encryptedScr', fakeURL);
+          });
+      });
+
+      it('does not require payload when type is FILE', function() {
+        var imageContents = {
+          items: [{
+            type: 'FILE',
+            file: {
+              scr: 'encryptedScr'
+            },
+            encryptionKeyUrl: fakeURL
+          }]
+        };
+
+        return spark.board.decryptContents(imageContents)
+          .then(function() {
+            assert.calledOnce(spark.board.decryptSingleFileContent);
+            assert.calledWith(spark.encryption.decryptText, undefined, fakeURL);
             assert.calledWith(spark.encryption.decryptScr, 'encryptedScr', fakeURL);
           });
       });

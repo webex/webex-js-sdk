@@ -396,15 +396,19 @@ describe(`plugin-board`, () => {
 
     before(() => {
       sinon.stub(spark.board, `decryptSingleContent`, sinon.stub().returns(Promise.resolve({})));
+      sinon.spy(spark.board, `decryptSingleFileContent`);
     });
 
     after(() => {
       spark.board.decryptSingleContent.restore();
+      spark.board.decryptSingleFileContent.restore();
     });
 
     afterEach(() => {
       spark.board.decryptSingleContent.reset();
+      spark.board.decryptSingleFileContent.reset();
       spark.encryption.decryptScr.reset();
+      spark.encryption.decryptText.reset();
     });
 
     it(`calls decryptSingleContent when type is not image`, () => {
@@ -425,8 +429,7 @@ describe(`plugin-board`, () => {
         });
     });
 
-    it(`calls decryptSingleContent when type is FILE`, () => {
-
+    it(`calls decryptSingleFileContent when type is FILE`, () => {
       const imageContents = {
         items: [{
           type: `FILE`,
@@ -443,7 +446,27 @@ describe(`plugin-board`, () => {
 
       return spark.board.decryptContents(imageContents)
         .then(() => {
+          assert.calledOnce(spark.board.decryptSingleFileContent);
           assert.calledWith(spark.encryption.decryptText, fakeURL, `encryptedDisplayName`);
+          assert.calledWith(spark.encryption.decryptScr, fakeURL, `encryptedScr`);
+        });
+    });
+
+    it(`does not require payload when type is FILE`, () => {
+      const imageContents = {
+        items: [{
+          type: `FILE`,
+          file: {
+            scr: `encryptedScr`
+          },
+          encryptionKeyUrl: fakeURL
+        }]
+      };
+
+      return spark.board.decryptContents(imageContents)
+        .then(() => {
+          assert.calledOnce(spark.board.decryptSingleFileContent);
+          assert.calledWith(spark.encryption.decryptText, fakeURL, undefined);
           assert.calledWith(spark.encryption.decryptScr, fakeURL, `encryptedScr`);
         });
     });
