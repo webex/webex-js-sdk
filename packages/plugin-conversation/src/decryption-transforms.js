@@ -116,6 +116,7 @@ export const transforms = toArray(`inbound`, {
       })
       .catch((reason) => {
         ctx.spark.logger.warn(`plugin-conversation: failed to decrypt ${name}`);
+        console.log(`@@@@@ plugin-conversation: failed to decrypt ${name} for object=${object}, object.url=${object.url} with key=${key}`);
         return Promise.reject(reason);
       });
   },
