@@ -46,10 +46,14 @@ const Board = SparkPlugin.extend({
   addImage(channel, image) {
     return this.spark.board._uploadImage(channel, image)
       .then((scr) => this.spark.board.addContent(channel, [{
-        mimeType: image.type,
-        size: image.size,
+        type: `FILE`,
         displayName: image.name,
-        scr
+        file: {
+          mimeType: image.type,
+          scr,
+          size: image.size,
+          url: scr.loc
+        }
       }]));
   },
 
@@ -135,7 +139,7 @@ const Board = SparkPlugin.extend({
       let decryptPromise;
 
       if (content.type === `FILE`) {
-        decryptPromise = this.decryptSingleFileContent(content.encryptionKeyUrl, content.payload);
+        decryptPromise = this.decryptSingleFileContent(content.encryptionKeyUrl, content);
       }
       else {
         decryptPromise = this.decryptSingleContent(content.encryptionKeyUrl, content.payload);
@@ -166,20 +170,24 @@ const Board = SparkPlugin.extend({
    * Decryts a single FILE content object
    * @memberof Board.BoardService
    * @param  {string} encryptionKeyUrl
-   * @param  {string} encryptedData
+   * @param  {object} encryptedContent {file, payload}
    * @returns {Promise<Board~Content>}
    */
-  decryptSingleFileContent(encryptionKeyUrl, encryptedData) {
-    const payload = JSON.parse(encryptedData);
+  decryptSingleFileContent(encryptionKeyUrl, encryptedContent) {
+    let metadata = {};
 
-    return this.spark.encryption.decryptScr(encryptionKeyUrl, payload.scr)
+    if (encryptedContent.payload) {
+      metadata = JSON.parse(encryptedContent.payload);
+    }
+
+    return this.spark.encryption.decryptScr(encryptionKeyUrl, encryptedContent.file.scr)
       .then((scr) => {
-        payload.scr = scr;
-        return this.spark.encryption.decryptText(encryptionKeyUrl, payload.displayName);
+        encryptedContent.file.scr = scr;
+        return this.spark.encryption.decryptText(encryptionKeyUrl, metadata.displayName);
       })
       .then((displayName) => {
-        payload.displayName = displayName;
-        return payload;
+        encryptedContent.displayName = displayName;
+        return encryptedContent;
       });
   },
 
@@ -225,7 +233,7 @@ const Board = SparkPlugin.extend({
       let contentType = `STRING`;
 
       // the existence of an scr will determine if the content is a FILE.
-      if (content.scr) {
+      if (content.file) {
         contentType = `FILE`;
         encryptionPromise = this.encryptSingleFileContent(encryptionKeyUrl, content);
       }
@@ -234,12 +242,14 @@ const Board = SparkPlugin.extend({
       }
 
       return encryptionPromise
-        .then((res) => ({
+        .then((res) => assign({
           device: this.spark.device.deviceType,
           type: contentType,
           encryptionKeyUrl,
           payload: res.encryptedData
-        }));
+        },
+          pick(res, `file`)
+        ));
     }));
   },
 
@@ -266,16 +276,19 @@ const Board = SparkPlugin.extend({
    * @returns {Promise<Board~Content>}
    */
   encryptSingleFileContent(encryptionKeyUrl, content) {
-    return this.spark.encryption.encryptScr(encryptionKeyUrl, content.scr)
+    return this.spark.encryption.encryptScr(encryptionKeyUrl, content.file.scr)
       .then((encryptedScr) => {
-        content.scr = encryptedScr;
+        content.file.scr = encryptedScr;
         return this.spark.encryption.encryptText(encryptionKeyUrl, content.displayName);
       })
       .then((encryptedDisplayName) => {
-        content.displayName = encryptedDisplayName;
+        const metadata = {
+          displayName: encryptedDisplayName
+        };
 
         return {
-          encryptedData: JSON.stringify(content),
+          file: content.file,
+          encryptedData: JSON.stringify(metadata),
           encryptionKeyUrl
         };
       });

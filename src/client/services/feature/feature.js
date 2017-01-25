@@ -78,7 +78,7 @@ var FeatureService = SparkBase.extend(
    * @param {Array} featureList
    * @returns {Promise} Refreshes the local device and resolves with the features endpoint`s response.
    */
-  setBundledFeatures(featureList) {
+  setBundledFeatures: function setBundledFeatures(featureList) {
     featureList.forEach(function assignDefaults(item) {
       item.mutable = item.mutable || 'true';
       item.type = item.type || 'USER';

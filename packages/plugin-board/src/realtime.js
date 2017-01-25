@@ -37,7 +37,7 @@ const RealtimeService = Mercury.extend({
     let encryptionPromise;
     let contentType = `STRING`;
 
-    if (message.payload.scr) {
+    if (message.payload.file) {
       contentType = `FILE`;
       encryptionPromise = this.spark.board.encryptSingleFileContent(channel.defaultEncryptionKeyUrl, message.payload);
     }
@@ -46,20 +46,19 @@ const RealtimeService = Mercury.extend({
     }
 
     return encryptionPromise
-      .then((encryptedPayloadAndKeyUrl) => this.publishEncrypted(encryptedPayloadAndKeyUrl.encryptionKeyUrl, encryptedPayloadAndKeyUrl.encryptedData, contentType));
+      .then((encryptedPayloadAndKeyUrl) => this.publishEncrypted(encryptedPayloadAndKeyUrl, contentType));
   },
 
   /**
     * Sends the message via the socket. The message should already have been
     * encrypted
     * @memberof Board.RealtimeService
-    * @param {string} encryptionKeyUrl
-    * @param {string} encryptedData
+    * @param {object} encryptedPayloadAndKeyUrl
     * @param {string} contentType - provides hint for decryption. Defaults to
     * `STRING`, and could also be `FILE`
     * @returns {Promise<Board~Content>}
     */
-  publishEncrypted(encryptionKeyUrl, encryptedData, contentType) {
+  publishEncrypted(encryptedPayloadAndKeyUrl, contentType) {
     const bindings = this.spark.board.realtime.get(`boardBindings`);
     const data = {
       id: uuid.v4(),
@@ -71,16 +70,20 @@ const RealtimeService = Mercury.extend({
       }],
       data: {
         eventType: `board.activity`,
-        payload: encryptedData,
+        contentType,
+        payload: encryptedPayloadAndKeyUrl.encryptedData,
         envelope: {
-          encryptionKeyUrl
+          encryptionKeyUrl: encryptedPayloadAndKeyUrl.encryptionKeyUrl
         }
       }
     };
 
     // provide a hint for decryption
-    if (contentType) {
-      data.data.contentType = contentType;
+    if (contentType === `FILE`) {
+      data.data.payload = {
+        file: encryptedPayloadAndKeyUrl.file,
+        payload: encryptedPayloadAndKeyUrl.encryptedData
+      };
     }
     return this.socket.send(data);
   },
