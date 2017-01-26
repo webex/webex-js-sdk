@@ -367,16 +367,22 @@ ansiColor('xterm') {
                 // commands in subdirectories
                 image.inside(DOCKER_RUN_OPTS) {
                   sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > ~/.npmrc'
-                  sh 'NPM_CONFIG_REGISTRY="" npm run lerna -- exec --bash -c \'npm publish --access public || true\''
-                  if (version.length == 0) {
-                    warn('could not determine tag name to push to github.com')
-                  }
-                  else {
-                    def exitStatus = sh script: "git push origin ${version}:${version}", returnStatus: true
-                    if (exitStatus != 0) {
-                      warn('failed to push version tag to github.com')
+                  try {
+                    sh 'NPM_CONFIG_REGISTRY="" npm run lerna -- exec --bash -c \'npm publish --access public || true\''
+                    if (version.length == 0) {
+                      warn('could not determine tag name to push to github.com')
+                    }
+                    else {
+                      def exitStatus = sh script: "git push origin ${version}:${version}", returnStatus: true
+                      if (exitStatus != 0) {
+                        warn('failed to push version tag to github.com')
+                      }
                     }
                   }
+                  catch (error) {
+                    warn('failed to publish to npm')
+                  }
+
                 }
               }
 
