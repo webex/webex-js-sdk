@@ -343,9 +343,11 @@ ansiColor('xterm') {
               }
 
               stage('publish to github') {
-                def exitStatus = sh script: "git push origin HEAD:master", returnStatus: true
-                if (exitStatus != 0) {
-                  currentBuild.description += 'warning: failed to HEAD to github.com\n'
+                sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+                  def exitStatus = sh script: "git push origin HEAD:master", returnStatus: true
+                  if (exitStatus != 0) {
+                    currentBuild.description += 'warning: failed to HEAD to github.com\n'
+                  }
                 }
               }
 
@@ -370,7 +372,9 @@ ansiColor('xterm') {
 
               stage('publish docs') {
                 image.inside(DOCKER_RUN_OPTS) {
-                  sh 'npm run grunt:concurrent -- publish:docs'
+                  sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+                    sh 'npm run grunt:concurrent -- publish:docs'
+                  }
                 }
               }
 
