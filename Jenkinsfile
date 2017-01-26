@@ -1,10 +1,13 @@
 // TODO check build log for disconnect/reconnect
 
-def cleanup = { isValidatedMergeBuild ->
+def IS_VALIDATED_MERGE_BUILD = false
+def GIT_COMMIT
+
+def cleanup = { ->
   archive 'reports/**/*'
   sh 'rm -f .env'
 
-  if (isValidatedMergeBuild && currentBuild.result != 'SUCCESS') {
+  if (IS_VALIDATED_MERGE_BUILD && currentBuild.result != 'SUCCESS') {
     withCredentials([usernamePassword(
       credentialsId: '386d3445-b855-40e4-999a-dc5801336a69',
       passwordVariable: 'GAUNTLET_PASSWORD',
@@ -90,7 +93,6 @@ ansiColor('xterm') {
     timeout(90) {
 
       node("SPARK_JS_SDK_VALIDATING") {
-        def GIT_COMMIT
         try {
           env.CONCURRENCY = 4
           env.NPM_CONFIG_REGISTRY = "http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group"
@@ -284,7 +286,6 @@ ansiColor('xterm') {
             if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
               stage('build for release') {
                 env.NODE_ENV = ''
-                def code = '0'
                 def version = sh script: 'echo "v$(cat lerna.json | jq .version | tr -d \'\\"\')"', returnStdout: true
                 image.inside(DOCKER_RUN_OPTS) {
                   sh 'npm run build'
@@ -317,6 +318,13 @@ ansiColor('xterm') {
             }
 
             if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
+              stage('mark as gating') {
+                cdnPublishBuild = build job: 'spark-js-sdk--mark-as-gating', propagate: false
+                if (cdnPublishBuild.result != 'SUCCESS') {
+                  currentBuild.description += 'warning: failed to mark as gating'
+                }
+              }
+
               stage('publish to github') {
                 def exitStatus = sh script: "git push origin HEAD:master", returnStatus: true
                 if (exitStatus != 0) {
