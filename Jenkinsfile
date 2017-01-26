@@ -74,6 +74,7 @@ ansiColor('xterm') {
     timeout(90) {
 
       node("SPARK_JS_SDK_VALIDATING") {
+        def GIT_COMMIT
         try {
           env.CONCURRENCY = 4
           env.NPM_CONFIG_REGISTRY = "http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group"
@@ -98,6 +99,35 @@ ansiColor('xterm') {
 
           stage('checkout') {
             checkout scm
+            // Store the current commit to use with Gauntlet
+            GIT_COMMIT = sh script: 'git rev-parse HEAD | tr -d "\n"', returnStdout: true
+
+            sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+              // return the exit code because we don't care about failures
+              sh script: 'git remote add upstream git@github.com:ciscospark/spark-js-sdk.git', returnStatus: true
+              // Make sure local tags don't include failed releases
+              sh 'git tag | xargs git tag -d'
+              sh 'git gc'
+
+              sh 'git fetch upstream --tags'
+            }
+
+            // We need ff-only because the build process makes commits that we
+            // don't want to clobber
+            sh 'git checkout upstream/master'
+            try {
+              sh "git merge --ff-only ${GIT_COMMIT}"
+            }
+            catch (err) {
+              currentBuild.description = 'not possible to fast forward'
+              throw err;
+            }
+
+            // Copy the global git user details into the local repo so that the
+            // docker containers have access to it.
+            sh 'git config user.email spark-js-sdk.gen@cisco.com'
+            sh 'git config user.name Jenkins'
+
             generateDockerEnv()
             generateSecretsFile()
 
@@ -214,7 +244,7 @@ ansiColor('xterm') {
                 archive '.promotion-sha'
               }
 
-              noPushCount = sh script: 'git log origin/master.. | grep -c "#no-push"', returnStdout: true
+              noPushCount = sh script: 'git log upstream/master.. | grep -c "#no-push"', returnStdout: true
               if (noPushCount != '0') {
                 currentBuild.result = 'ABORTED'
                 currentBuild.description = 'Aborted: git history includes #no-push'
@@ -286,12 +316,34 @@ ansiColor('xterm') {
           }
 
           archive 'reports/**/*'
+          sh 'rm -f .env'
 
+          if (IS_VALIDATED_MERGE_BUILD && currentBuild.result != 'SUCCESS') {
+            withCredentials([usernamePassword(
+              credentialsId: '386d3445-b855-40e4-999a-dc5801336a69',
+              passwordVariable: 'GAUNTLET_PASSWORD',
+              usernameVariable: 'GAUNTLET_USERNAME'
+            )]) {
+              def url =
+              sh "curl -i --user ${GAUNTLET_USERNAME}:${GAUNTLET_PASSWORD} -X PUT 'https://gauntlet.wbx2.com/api/queues/spark-js-sdk/master?componentTestStatus=failure&commitId=${GIT_COMMIT}'"
+            }
+          }
         }
         catch(error) {
           echo error.toString();
           archive 'reports/**/*'
           sh 'rm -f .env'
+
+          if (IS_VALIDATED_MERGE_BUILD) {
+            withCredentials([usernamePassword(
+              credentialsId: '386d3445-b855-40e4-999a-dc5801336a69',
+              passwordVariable: 'GAUNTLET_PASSWORD',
+              usernameVariable: 'GAUNTLET_USERNAME'
+            )]) {
+              sh "curl -i --user ${GAUNTLET_USERNAME}:${GAUNTLET_PASSWORD} -X PUT 'https://gauntlet.wbx2.com/api/queues/spark-js-sdk/master?componentTestStatus=failure&commitId=${GIT_COMMIT}'"
+            }
+          }
+
           throw error
         }
       }
