@@ -90,12 +90,16 @@ ansiColor('xterm') {
           DOCKER_RUN_OPTS = ''
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --env-file=${DOCKER_ENV_FILE}"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --env-file=${ENV_FILE}"
-          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --rm"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} -e NPM_CONFIG_CACHE=${env.WORKSPACE}/.npm"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --volumes-from=\$(hostname)"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --user=\$(id -u):\$(id -g)"
-          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} ${DOCKER_IMAGE_NAME}"
-          env.DOCKER_RUN_OPTS = DOCKER_RUN_OPTS
+          // DOCKER_RUN_OPTS has some values in it that we want to evaluate on
+          // the node, but image.inside doesn't do subshell execution. We'll use
+          // echo to evaluate once on the node and store the values.
+          DOCKER_RUN_OPTS = sh script: "echo -n ${DOCKER_RUN_OPTS}", returnStdout: true
+          // image.inside uses the -d flag, so we can only use --rm for
+          // bash-started containers
+          env.DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --rm ${DOCKER_IMAGE_NAME}"
 
           stage('checkout') {
             checkout scm
@@ -154,14 +158,18 @@ ansiColor('xterm') {
           }
 
           stage('install') {
-            // sh "docker run ${DOCKER_RUN_OPTS} npm install"
-            // sh "docker run ${DOCKER_RUN_OPTS} npm run bootstrap"
+            image.inside(DOCKER_RUN_OPTS) {
+              sh 'npm install'
+              sh 'npm run bootstrap'
+            }
           }
 
           stage('clean') {
-            sh "docker run ${DOCKER_RUN_OPTS} npm run grunt -- clean"
-            sh "docker run ${DOCKER_RUN_OPTS} npm run grunt:concurrent -- clean"
-            sh "docker run ${DOCKER_RUN_OPTS} npm run clean-empty-packages"
+            image.inside(DOCKER_RUN_OPTS) {
+              sh 'npm run grunt -- clean'
+              sh 'npm run grunt:concurrent -- clean'
+              sh 'npm run clean-empty-packages'
+            }
             sh 'rm -rf ".sauce/*/sc.*"'
             sh 'rm -rf ".sauce/*/sauce_connect*log"'
             sh 'rm -rf reports'
@@ -176,13 +184,15 @@ ansiColor('xterm') {
 
           stage('static analysis') {
             // TODO use grunt:package so that per-package rules can kick in
-            sh script: "docker run ${DOCKER_RUN_OPTS} npm run grunt:concurrent -- eslint", returnStatus: true
-            if (!fileExists("./reports/style/eslint-concurrent.xml")) {
-              error('Static Analysis did not produce eslint-concurrent.xml')
-            }
-            sh script: "docker run ${DOCKER_RUN_OPTS} npm run grunt -- eslint", returnStatus: true
-            if (!fileExists("./reports/style/eslint-legacy.xml")) {
-              error('Static Analysis did not produce eslint-legacy.xml')
+            image.inside(DOCKER_RUN_OPTS) {
+              sh script: "npm run grunt:concurrent -- eslint", returnStatus: true
+              if (!fileExists("./reports/style/eslint-concurrent.xml")) {
+                error('Static Analysis did not produce eslint-concurrent.xml')
+              }
+              sh script: "npm run grunt -- eslint", returnStatus: true
+              if (!fileExists("./reports/style/eslint-legacy.xml")) {
+                error('Static Analysis did not produce eslint-legacy.xml')
+              }
             }
             step([$class: 'CheckStylePublisher',
               canComputeNew: false,
@@ -195,11 +205,13 @@ ansiColor('xterm') {
             ])
           }
 
-          stage('build') {
-            // sh "docker run ${DOCKER_RUN_OPTS} npm run build"
-          }
-
           if (currentBuild.result == 'SUCCESS') {
+            stage('build') {
+              image.inside(DOCKER_RUN_OPTS) {
+                sh 'npm run build'
+              }
+            }
+
             stage('test') {
               def exitCode = sh script: "./tooling/test.sh", returnStatus: true
 
@@ -213,7 +225,9 @@ ansiColor('xterm') {
 
           if (currentBuild.result == 'SUCCESS') {
             stage('process coverage') {
-              sh "docker run ${DOCKER_RUN_OPTS} npm run grunt:circle -- coverage"
+              image.inside(DOCKER_RUN_OPTS) {
+                sh 'npm run grunt:circle -- coverage'
+              }
               archive 'reports/cobertura.xml'
 
               // At the time this script was written, the cobertura plugin didn't
@@ -235,10 +249,22 @@ ansiColor('xterm') {
             if (currentBuild.result == 'SUCCESS') {
               stage('build for release') {
                 env.NODE_ENV = ''
-                sh 'docker run ${DOCKER_RUN_OPTS} npm run build'
-                sh 'docker run ${DOCKER_RUN_OPTS} npm run grunt:concurrent -- build-docs'
-                sh 'docker run ${DOCKER_RUN_OPTS} PACKAGE=example-phone npm run grunt:package -- webpack:build'
-                sh 'docker run ${DOCKER_RUN_OPTS} PACKAGE=widget-message-meet npm run grunt:package build'
+                def code = '0'
+                def version = sh script: 'echo "v$(cat lerna.json | jq .version | tr -d \'\\"\')"', returnStdout: true
+                image.inside(DOCKER_RUN_OPTS) {
+                  sh 'npm run build'
+                  sh 'npm run grunt:concurrent -- build:docs'
+                  sh 'PACKAGE=example-phone npm run grunt:package -- webpack:build'
+                  sh 'PACKAGE=widget-message-meet npm run grunt:package build'
+                  sh 'npm run grunt -- release'
+                  code = sh script: "npm run lerna --silent -- publish --skip-npm --skip-git --repo-version=${version} --yes", returnStatus: true
+                }
+
+                if (code == 0) {
+                  sh 'git add lerna.json packages/*/package.json'
+                  sh "git commit -m v${version}"
+                  sh "git tag 'v${version}'"
+                }
 
                 sh 'git rev-parse HEAD > .promotion-sha'
                 archive '.promotion-sha'
@@ -280,7 +306,9 @@ ansiColor('xterm') {
                 }
 
                 stage('publish docs') {
-                  sh 'docker run ${DOCKER_RUN_OPTS} npm run grunt:concurrent -- publish:docs'
+                  image.inside(DOCKER_RUN_OPTS) {
+                    sh 'npm run grunt:concurrent -- publish:docs'
+                  }
                 }
 
                 stage('publish to ghe') {
