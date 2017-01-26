@@ -173,11 +173,9 @@ ansiColor('xterm') {
                 sh 'git fetch upstream --tags'
               }
 
-              // We need ff-only because the build process makes commits that we
-              // don't want to clobber
               sh 'git checkout upstream/master'
               try {
-                sh "git merge --ff-only ${GIT_COMMIT}"
+                sh "git merge --ff ${GIT_COMMIT}"
               }
               catch (err) {
                 currentBuild.description = 'not possible to fast forward'
