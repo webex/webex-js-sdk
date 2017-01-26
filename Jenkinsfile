@@ -18,6 +18,14 @@ def cleanup = { ->
     archive 'reports/**/*'
     sh 'rm -f .env'
 
+    try {
+      echo IS_VALIDATED_MERGE_BUILD.toString()
+    }
+    catch(err) {
+      echo err.toString()
+    }
+    echo currentBuild.result
+
     if (IS_VALIDATED_MERGE_BUILD && currentBuild.result != 'SUCCESS') {
       withCredentials([usernamePassword(
         credentialsId: '386d3445-b855-40e4-999a-dc5801336a69',
