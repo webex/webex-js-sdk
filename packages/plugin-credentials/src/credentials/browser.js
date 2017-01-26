@@ -27,6 +27,10 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
     isLoggingIn: {
       default: false,
       type: `boolean`
+    },
+    isValidatingUser: {
+      default: true,
+      type: `boolean`
     }
   }),
 
@@ -146,6 +150,9 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
         location.hash = this._extractTokenInfo(query);
         this._updateLocation(location);
       }
+
+      // this should be set as false since we are no more validating the user for credentials. That means if the user already has credentials in his localStorage then he should be able to login without being presented the login screen.
+      this.isValidatingUser = false;
 
       return Promise.resolve();
     });
