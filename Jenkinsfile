@@ -3,17 +3,29 @@
 def IS_VALIDATED_MERGE_BUILD = false
 def GIT_COMMIT
 
-def cleanup = { ->
-  archive 'reports/**/*'
-  sh 'rm -f .env'
+def warn { msg ->
+  if (!currentBuild.description) {
+    currentBuild.description = ''
+  }
+  else if (currentBuild.description.substring(currentBuild.description.length() - 1) != '\n') {
+    currentBuild.description += '\n'
+  }
+  currentBuild.description += "warning: ${msg}\n"
+}
 
-  if (IS_VALIDATED_MERGE_BUILD && currentBuild.result != 'SUCCESS') {
-    withCredentials([usernamePassword(
-      credentialsId: '386d3445-b855-40e4-999a-dc5801336a69',
-      passwordVariable: 'GAUNTLET_PASSWORD',
-      usernameVariable: 'GAUNTLET_USERNAME'
-    )]) {
-      sh "curl -i --user ${GAUNTLET_USERNAME}:${GAUNTLET_PASSWORD} -X PUT 'https://gauntlet.wbx2.com/api/queues/spark-js-sdk/master?componentTestStatus=failure&commitId=${GIT_COMMIT}'"
+def cleanup = { ->
+  stage('cleanup') {
+    archive 'reports/**/*'
+    sh 'rm -f .env'
+
+    if (IS_VALIDATED_MERGE_BUILD && currentBuild.result != 'SUCCESS') {
+      withCredentials([usernamePassword(
+        credentialsId: '386d3445-b855-40e4-999a-dc5801336a69',
+        passwordVariable: 'GAUNTLET_PASSWORD',
+        usernameVariable: 'GAUNTLET_USERNAME'
+      )]) {
+        sh "curl -i --user ${GAUNTLET_USERNAME}:${GAUNTLET_PASSWORD} -X PUT 'https://gauntlet.wbx2.com/api/queues/spark-js-sdk/master?componentTestStatus=failure&commitId=${GIT_COMMIT}'"
+      }
     }
   }
 }
@@ -338,7 +350,7 @@ ansiColor('xterm') {
               stage('mark as gating') {
                 cdnPublishBuild = build job: 'spark-js-sdk--mark-as-gating', propagate: false
                 if (cdnPublishBuild.result != 'SUCCESS') {
-                  currentBuild.description += 'warning: failed to mark as gating'
+                  warn('failed to mark as gating')
                 }
               }
 
@@ -346,7 +358,7 @@ ansiColor('xterm') {
                 sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
                   def exitStatus = sh script: "git push origin HEAD:master", returnStatus: true
                   if (exitStatus != 0) {
-                    currentBuild.description += 'warning: failed to HEAD to github.com\n'
+                    warn('failed to HEAD to github.com')
                   }
                 }
               }
@@ -359,12 +371,12 @@ ansiColor('xterm') {
                   sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > ~/.npmrc'
                   sh 'NPM_CONFIG_REGISTRY="" npm run lerna -- exec --bash -c \'npm publish --access public || true\''
                   if (version.length == 0) {
-                    currentBuild.description += 'warning: could not determine tag name to push to github.com\n'
+                    warn('could not determine tag name to push to github.com')
                   }
                   else {
                     def exitStatus = sh script: "git push origin ${version}:${version}", returnStatus: true
                     if (exitStatus != 0) {
-                      currentBuild.description += 'warning: failed to push version tag to github.com\n'
+                      warn('failed to push version tag to github.com')
                     }
                   }
                 }
@@ -385,7 +397,7 @@ ansiColor('xterm') {
                 // }
                 // exitStatus = sh script: 'git push ghe HEAD:master', returnStatus: true
                 // if (!exitStatus) {
-                //   currentBuild.description += 'warning: failed to push to github enterprise\n'
+                //   warn('failed to push to github enterprise')
                 // }
               }
 
@@ -403,7 +415,7 @@ ansiColor('xterm') {
                 // Disabled for first pass. Will work with Lex to adjust cdn jobs
                 // cdnPublishBuild = build job: 'spark-js-sdk--publish-chat-widget-s3', parameters: [[$class: 'StringParameterValue', name: 'buildNumber', value: currentBuild.number]], propagate: false
                 // if (cdnPublishBuild.result != 'SUCCESS') {
-                //   currentBuild.description += 'warning: failed to publish to CDN'
+                //   warn('failed to publish to CDN')
                 // }
               }
             }
