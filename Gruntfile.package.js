@@ -166,7 +166,7 @@ module.exports = function configureGrunt(grunt) {
 
     eslint: {
       options: {
-        format: process.env.XUNIT ? `junit` : `stylish`,
+        format: process.env.XUNIT ? `checkstyle` : `stylish`,
         outputFile: process.env.XUNIT && `<%= xunitDir %>/eslint-<%= package %>.xml`
       },
       all: [

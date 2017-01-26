@@ -88,13 +88,10 @@ module.exports = function gruntConfig(grunt) {
       }
     },
 
-    // Note: eslint for builds is in Gruntfile.package.js; this is just for
-    // local testing
     eslint: {
       all: [
         `./packages/*/src/**/*.js`,
         `./packages/*/test/**/*.js`,
-        `!./packages/*/test/**/*.es6.js`,
         `./packages/*/*.js`
       ],
       options: {
