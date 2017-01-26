@@ -3,7 +3,7 @@
 def IS_VALIDATED_MERGE_BUILD = false
 def GIT_COMMIT
 
-def warn { msg ->
+def warn = { msg ->
   if (!currentBuild.description) {
     currentBuild.description = ''
   }
