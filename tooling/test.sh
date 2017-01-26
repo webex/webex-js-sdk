@@ -18,10 +18,9 @@ PIDS=""
 
 # Ideally, the following would be done with lerna but there seem to be some bugs
 # in --scope and --ignore
-PACKAGES="plugin-wdm"
-# PACKAGES=$(ls "packages")
-# PACKAGES+=" legacy-node"
-# PACKAGES+=" legacy-browser"
+PACKAGES=$(ls "packages")
+PACKAGES+=" legacy-node"
+PACKAGES+=" legacy-browser"
 for PACKAGE in ${PACKAGES}; do
   if ! echo ${PACKAGE} | grep -qc -v test-helper ; then
     continue
