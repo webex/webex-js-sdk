@@ -16,12 +16,19 @@ describe(`common`, () => {
       assert.isDefined(base64);
     });
 
-    it(`does btoa transforms`, () => {
+    it(`encodes string to base64`, () => {
       assert.equal(base64.toBase64Url(`abc`), `YWJj`);
     });
 
-    it(`does atob transforms`, () => {
-      assert.equal(base64.fromBase64url(`YWJj`), `abc`);
+    it(`can encode buffer to base64`, () => {
+      const buffer = new Buffer(`abc`);
+      assert.equal(base64.toBase64Url(buffer), `YWJj`);
+    });
+
+    it(`decodes base64 string to readable string`, () => {
+      const result = base64.fromBase64url(`YWJj`);
+      assert.typeOf(result, `string`, `decoded result must be type of string`);
+      assert.equal(result, `abc`);
     });
   });
 

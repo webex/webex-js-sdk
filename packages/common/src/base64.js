@@ -3,15 +3,14 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 
-import atob from './shims/atob';
-import btoa from './shims/btoa';
+import UrlSafeBase64 from 'urlsafe-base64';
 
 /**
  * @param {string} str
  * @returns {string}
  */
 export function fromBase64url(str) {
-  return atob(str.replace(/\-/g, `+`).replace(/_/g, `/`));
+  return UrlSafeBase64.decode(str).toString();
 }
 
 /**
@@ -20,10 +19,7 @@ export function fromBase64url(str) {
  * @returns {string}
  */
 export function toBase64Url(str) {
-  return btoa(str)
-    .replace(/\+/g, `-`)
-    .replace(/\//g, `_`)
-    .replace(/\=/g, ``);
+  return UrlSafeBase64.encode(new Buffer(str));
 }
 
 /**
