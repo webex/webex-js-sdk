@@ -1,6 +1,19 @@
-// TODO aborts need to kill docker containers
 // TODO check build log for disconnect/reconnect
-// TODO add --silent to npm run commands
+
+def cleanup = { isValidatedMergeBuild ->
+  archive 'reports/**/*'
+  sh 'rm -f .env'
+
+  if (isValidatedMergeBuild && currentBuild.result != 'SUCCESS') {
+    withCredentials([usernamePassword(
+      credentialsId: '386d3445-b855-40e4-999a-dc5801336a69',
+      passwordVariable: 'GAUNTLET_PASSWORD',
+      usernameVariable: 'GAUNTLET_USERNAME'
+    )]) {
+      sh "curl -i --user ${GAUNTLET_USERNAME}:${GAUNTLET_PASSWORD} -X PUT 'https://gauntlet.wbx2.com/api/queues/spark-js-sdk/master?componentTestStatus=failure&commitId=${GIT_COMMIT}'"
+    }
+  }
+}
 
 def generateDockerEnv = { ->
   def dockerEnv = ""
@@ -343,35 +356,21 @@ ansiColor('xterm') {
             }
           }
 
-          archive 'reports/**/*'
-          sh 'rm -f .env'
-
-          if (IS_VALIDATED_MERGE_BUILD && currentBuild.result != 'SUCCESS') {
-            withCredentials([usernamePassword(
-              credentialsId: '386d3445-b855-40e4-999a-dc5801336a69',
-              passwordVariable: 'GAUNTLET_PASSWORD',
-              usernameVariable: 'GAUNTLET_USERNAME'
-            )]) {
-              def url =
-              sh "curl -i --user ${GAUNTLET_USERNAME}:${GAUNTLET_PASSWORD} -X PUT 'https://gauntlet.wbx2.com/api/queues/spark-js-sdk/master?componentTestStatus=failure&commitId=${GIT_COMMIT}'"
+              stage('publish to cdn') {
+                // Disabled for first pass. Will work with Lex to adjust cdn jobs
+                // cdnPublishBuild = build job: 'spark-js-sdk--publish-chat-widget-s3', parameters: [[$class: 'StringParameterValue', name: 'buildNumber', value: currentBuild.number]], propagate: false
+                // if (cdnPublishBuild.result != 'SUCCESS') {
+                //   currentBuild.description += 'warning: failed to publish to CDN'
+                // }
+              }
             }
           }
+
+          cleanup(IS_VALIDATED_MERGE_BUILD)
         }
         catch(error) {
           echo error.toString();
-          archive 'reports/**/*'
-          sh 'rm -f .env'
-
-          if (IS_VALIDATED_MERGE_BUILD) {
-            withCredentials([usernamePassword(
-              credentialsId: '386d3445-b855-40e4-999a-dc5801336a69',
-              passwordVariable: 'GAUNTLET_PASSWORD',
-              usernameVariable: 'GAUNTLET_USERNAME'
-            )]) {
-              sh "curl -i --user ${GAUNTLET_USERNAME}:${GAUNTLET_PASSWORD} -X PUT 'https://gauntlet.wbx2.com/api/queues/spark-js-sdk/master?componentTestStatus=failure&commitId=${GIT_COMMIT}'"
-            }
-          }
-
+          cleanup(IS_VALIDATED_MERGE_BUILD)
           throw error
         }
       }
