@@ -32,6 +32,9 @@ def generateDockerEnv = { ->
   if (env.COMMON_IDENTITY_OAUTH_SERVICE_URL != null) {
     dockerEnv+="COMMON_IDENTITY_OAUTH_SERVICE_URL=${env.COMMON_IDENTITY_OAUTH_SERVICE_URL}\n"
   }
+  if (env.COVERAGE != null) {
+    dockerEnv+="COVERAGE=${env.COVERAGE}\n"
+  }
   if (env.DEVICE_REGISTRATION_URL != null) {
     dockerEnv+="DEVICE_REGISTRATION_URL=${env.DEVICE_REGISTRATION_URL}\n"
   }
@@ -236,7 +239,7 @@ ansiColor('xterm') {
             }
           }
 
-          if (currentBuild.result == 'SUCCESS') {
+          if (env.COVERAGE && currentBuild.result == 'SUCCESS') {
             stage('process coverage') {
               image.inside(DOCKER_RUN_OPTS) {
                 sh 'npm run grunt:circle -- coverage'
