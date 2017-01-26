@@ -97,6 +97,18 @@ ansiColor('xterm') {
           env.ENABLE_VERBOSE_NETWORK_LOGGING = true
           env.SDK_ROOT_DIR=pwd
 
+          if (JOB_NAME.toLowerCase().contains('validated-merge')) {
+            IS_VALIDATED_MERGE_BUILD = true
+          }
+
+          if (IS_VALIDATED_MERGE_BUILD) {
+            env.COVERAGE = true
+          }
+          else {
+            env.PIPELINE = true
+            env.SKIP_FLAKY_TESTS = true
+          }
+
           DOCKER_IMAGE_NAME = "${JOB_NAME}-${BUILD_NUMBER}-builder"
           def image
 
@@ -119,42 +131,39 @@ ansiColor('xterm') {
 
           stage('checkout') {
             checkout scm
-            // Store the current commit to use with Gauntlet
-            GIT_COMMIT = sh script: 'git rev-parse HEAD | tr -d "\n"', returnStdout: true
+            if (IS_VALIDATED_MERGE_BUILD) {
+              // Store the current commit to use with Gauntlet
+              GIT_COMMIT = sh script: 'git rev-parse HEAD | tr -d "\n"', returnStdout: true
 
-            sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
-              // return the exit code because we don't care about failures
-              sh script: 'git remote add upstream git@github.com:ciscospark/spark-js-sdk.git', returnStatus: true
-              // Make sure local tags don't include failed releases
-              sh 'git tag | xargs git tag -d'
-              sh 'git gc'
+              sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+                // return the exit code because we don't care about failures
+                sh script: 'git remote add upstream git@github.com:ciscospark/spark-js-sdk.git', returnStatus: true
+                // Make sure local tags don't include failed releases
+                sh 'git tag | xargs git tag -d'
+                sh 'git gc'
 
-              sh 'git fetch upstream --tags'
+                sh 'git fetch upstream --tags'
+              }
+
+              // We need ff-only because the build process makes commits that we
+              // don't want to clobber
+              sh 'git checkout upstream/master'
+              try {
+                sh "git merge --ff-only ${GIT_COMMIT}"
+              }
+              catch (err) {
+                currentBuild.description = 'not possible to fast forward'
+                throw err;
+              }
+
+              // Copy the global git user details into the local repo so that the
+              // docker containers have access to it.
+              sh 'git config user.email spark-js-sdk.gen@cisco.com'
+              sh 'git config user.name Jenkins'
             }
-
-            // We need ff-only because the build process makes commits that we
-            // don't want to clobber
-            sh 'git checkout upstream/master'
-            try {
-              sh "git merge --ff-only ${GIT_COMMIT}"
-            }
-            catch (err) {
-              currentBuild.description = 'not possible to fast forward'
-              throw err;
-            }
-
-            // Copy the global git user details into the local repo so that the
-            // docker containers have access to it.
-            sh 'git config user.email spark-js-sdk.gen@cisco.com'
-            sh 'git config user.name Jenkins'
 
             generateDockerEnv()
             generateSecretsFile()
-
-            lines = sh script: 'cat .env | wc -l', returnStdout: true
-            if ("${lines}" == "0") {
-              error('No secrets')
-            }
           }
 
           stage('docker build') {
@@ -198,30 +207,32 @@ ansiColor('xterm') {
             sh 'chmod -R ugo+w reports'
           }
 
-          stage('static analysis') {
-            // TODO use grunt:package so that per-package rules can kick in
-            image.inside(DOCKER_RUN_OPTS) {
-              sh script: "npm run grunt:concurrent -- eslint", returnStatus: true
-              if (!fileExists("./reports/style/eslint-concurrent.xml")) {
-                error('Static Analysis did not produce eslint-concurrent.xml')
+          if (IS_VALIDATED_MERGE_BUILD) {
+            stage('static analysis') {
+              // TODO use grunt:package so that per-package rules can kick in
+              image.inside(DOCKER_RUN_OPTS) {
+                sh script: "npm run grunt:concurrent -- eslint", returnStatus: true
+                if (!fileExists("./reports/style/eslint-concurrent.xml")) {
+                  error('Static Analysis did not produce eslint-concurrent.xml')
+                }
+                sh script: "npm run grunt -- eslint", returnStatus: true
+                if (!fileExists("./reports/style/eslint-legacy.xml")) {
+                  error('Static Analysis did not produce eslint-legacy.xml')
+                }
               }
-              sh script: "npm run grunt -- eslint", returnStatus: true
-              if (!fileExists("./reports/style/eslint-legacy.xml")) {
-                error('Static Analysis did not produce eslint-legacy.xml')
-              }
+              step([$class: 'CheckStylePublisher',
+                canComputeNew: false,
+                defaultEncoding: '',
+                healthy: '',
+                pattern: 'reports/style/**/*.xml',
+                thresholdLimit: 'high',
+                unHealthy: '',
+                unstableTotalHigh: '0'
+              ])
             }
-            step([$class: 'CheckStylePublisher',
-              canComputeNew: false,
-              defaultEncoding: '',
-              healthy: '',
-              pattern: 'reports/style/**/*.xml',
-              thresholdLimit: 'high',
-              unHealthy: '',
-              unstableTotalHigh: '0'
-            ])
           }
 
-          if (currentBuild.result == 'SUCCESS') {
+          if (!IS_VALIDATED_MERGE_BUILD || currentBuild.result == 'SUCCESS') {
             stage('build') {
               image.inside(DOCKER_RUN_OPTS) {
                 sh 'npm run build'
@@ -235,6 +246,10 @@ ansiColor('xterm') {
 
               if (exitCode != 0) {
                 error('test.sh exited with non-zero error code, but did not produce junit output to that effect')
+              }
+
+              if (currentBuild.result == 'UNSTABLE' && !IS_VALIDATED_MERGE_BUILD) {
+                error('Failing build in order to propagate UNSTABLE to parent build')
               }
             }
           }
@@ -259,10 +274,9 @@ ansiColor('xterm') {
                   currentBuild.description = "Coverage job failed. See the logged build url for more details."
                 }
               }
-
             }
 
-            if (currentBuild.result == 'SUCCESS') {
+            if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
               stage('build for release') {
                 env.NODE_ENV = ''
                 def code = '0'
@@ -285,79 +299,79 @@ ansiColor('xterm') {
                 sh 'git rev-parse HEAD > .promotion-sha'
                 archive '.promotion-sha'
               }
+            }
 
-              noPushCount = sh script: 'git log upstream/master.. | grep -c "#no-push"', returnStdout: true
-              if (noPushCount != '0') {
-                currentBuild.result = 'ABORTED'
-                currentBuild.description = 'Aborted: git history includes #no-push'
-              }
-
-              if (currentBuild.result == 'SUCCESS') {
-                stage('publish to npm') {
-                  // TODO use lerna publish directly now that npm fixed READMEs
-                  // reminder: need to write to ~ not . because lerna runs npm
-                  // commands in subdirectories
-                  sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > ~/.npmrc'
-                  try {
-                    def registry = env.NPM_CONFIG_REGISTRY
-                    env.NPM_CONFIG_REGISTRY = ''
-                    sh 'npm run lerna -- exec --bash -c \'npm publish --access public || true\''
-                    env.NPM_CONFIG_REGISTRY = registry
-                    sh 'rm -f ~/.npmrc'
-                    version = sh script: 'echo "v$(cat lerna.json | jq .version | tr -d \'\\"\')"', returnStdout: true
-                    if (version.length == 0) {
-                      currentBuild.description += 'warning: could not determine tag name to push to github.com\n'
-                    }
-                    else {
-                      def exitStatus = sh script: "git push origin ${version}:${version}", returnStatus: true
-                      if (exitStatus != 0) {
-                        currentBuild.description += 'warning: failed to push version tag to github.com\n'
-                      }
-                    }
-                  }
-                  catch (err) {
-                    sh 'rm -f ~/.npmrc'
-                    throw err
-                  }
-                }
-
-                stage('publish docs') {
-                  image.inside(DOCKER_RUN_OPTS) {
-                    sh 'npm run grunt:concurrent -- publish:docs'
-                  }
-                }
-
-                stage('publish to ghe') {
-                  def exitStatus = sh script: 'git remote | grep -qc ghe', returnStatus: true
-                  if (exitStatus == 1) {
-                    sh 'git remote add ghe git@sqbu-github.cisco.com:WebExSquared/spark-js-sdk.git'
-                  }
-                  exitStatus = sh script: 'git push ghe HEAD:master', returnStatus: true
-                  if (!exitStatus) {
-                    currentBuild.description += 'warning: failed to push to github enterprise\n'
-                  }
-                }
-
-                stage('publish to artifactory') {
-                  // using a downstream job because (a) we're going to stop
-                  // publishing to artifactory once the legacy sdk goes away and
-                  // (b) the npm secret is only recorded in that job.
-                  def artifactoryBuild = build job: 'spark-js-sdk--publish-to-artifactory', propagate: false
-                  if (artifactoryBuild.result != 'SUCCESS') {
-                    currentBuild.description += 'waring: failed to publish to Artifactory'
-                  }
-                }
-
-                stage('publish to cdn') {
-                  // Disabled for first pass. Will work with Lex to adjust cdn jobs
-                  // cdnPublishBuild = build job: 'spark-js-sdk--publish-chat-widget-s3', parameters: [[$class: 'StringParameterValue', name: 'buildNumber', value: currentBuild.number]], propagate: false
-                  // if (cdnPublishBuild.result != 'SUCCESS') {
-                  //   currentBuild.description += 'warning: failed to publish to CDN'
-                  // }
+            if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
+              stage('check #no-push') {
+                noPushCount = sh script: 'git log upstream/master.. | grep -c "#no-push"', returnStdout: true
+                if (noPushCount != '0') {
+                  currentBuild.result = 'ABORTED'
+                  currentBuild.description = 'Aborted: git history includes #no-push'
                 }
               }
             }
-          }
+
+            if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
+              stage('publish to github') {
+                def exitStatus = sh script: "git push origin HEAD:master", returnStatus: true
+                if (exitStatus != 0) {
+                  currentBuild.description += 'warning: failed to HEAD to github.com\n'
+                }
+              }
+
+              stage('publish to npm') {
+                // TODO use lerna publish directly now that npm fixed READMEs
+                // reminder: need to write to ~ not . because lerna runs npm
+                // commands in subdirectories
+                sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > ~/.npmrc'
+                try {
+                  def registry = env.NPM_CONFIG_REGISTRY
+                  env.NPM_CONFIG_REGISTRY = ''
+                  sh 'npm run lerna -- exec --bash -c \'npm publish --access public || true\''
+                  env.NPM_CONFIG_REGISTRY = registry
+                  sh 'rm -f ~/.npmrc'
+                  if (version.length == 0) {
+                    currentBuild.description += 'warning: could not determine tag name to push to github.com\n'
+                  }
+                  else {
+                    def exitStatus = sh script: "git push origin ${version}:${version}", returnStatus: true
+                    if (exitStatus != 0) {
+                      currentBuild.description += 'warning: failed to push version tag to github.com\n'
+                    }
+                  }
+                }
+                catch (err) {
+                  sh 'rm -f ~/.npmrc'
+                  throw err
+                }
+              }
+
+              stage('publish docs') {
+                image.inside(DOCKER_RUN_OPTS) {
+                  sh 'npm run grunt:concurrent -- publish:docs'
+                }
+              }
+
+              stage('publish to ghe') {
+                // def exitStatus = sh script: 'git remote | grep -qc ghe', returnStatus: true
+                // if (exitStatus == 1) {
+                //   sh 'git remote add ghe git@sqbu-github.cisco.com:WebExSquared/spark-js-sdk.git'
+                // }
+                // exitStatus = sh script: 'git push ghe HEAD:master', returnStatus: true
+                // if (!exitStatus) {
+                //   currentBuild.description += 'warning: failed to push to github enterprise\n'
+                // }
+              }
+
+              stage('publish to artifactory') {
+                // using a downstream job because (a) we're going to stop
+                // publishing to artifactory once the legacy sdk goes away and
+                // (b) the npm secret is only recorded in that job.
+                def artifactoryBuild = build job: 'spark-js-sdk--publish-to-artifactory', propagate: false
+                if (artifactoryBuild.result != 'SUCCESS') {
+                  currentBuild.description += 'waring: failed to publish to Artifactory'
+                }
+              }
 
               stage('publish to cdn') {
                 // Disabled for first pass. Will work with Lex to adjust cdn jobs
