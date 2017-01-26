@@ -1,8 +1,6 @@
 #!/bin/bash
 
 set -e
-echo '** docker run opts **'
-echo "${DOCKER_RUN_OPTS}"
 
 cd "$(dirname $0)/.."
 
