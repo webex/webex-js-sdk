@@ -253,16 +253,18 @@ ansiColor('xterm') {
             }
 
             stage('test') {
-              def exitCode = sh script: "./tooling/test.sh", returnStatus: true
+              timeout(90) {
+                def exitCode = sh script: "./tooling/test.sh", returnStatus: true
 
-              junit 'reports/junit/**/*.xml'
+                junit 'reports/junit/**/*.xml'
 
-              if (exitCode != 0) {
-                error('test.sh exited with non-zero error code, but did not produce junit output to that effect')
-              }
+                if (exitCode != 0) {
+                  error('test.sh exited with non-zero error code, but did not produce junit output to that effect')
+                }
 
-              if (currentBuild.result == 'UNSTABLE' && !IS_VALIDATED_MERGE_BUILD) {
-                error('Failing build in order to propagate UNSTABLE to parent build')
+                if (currentBuild.result == 'UNSTABLE' && !IS_VALIDATED_MERGE_BUILD) {
+                  error('Failing build in order to propagate UNSTABLE to parent build')
+                }
               }
             }
           }
@@ -315,10 +317,17 @@ ansiColor('xterm') {
 
             if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
               stage('check #no-push') {
-                noPushCount = sh script: 'git log upstream/master.. | grep -c "#no-push"', returnStdout: true
-                if (noPushCount != '0') {
-                  currentBuild.result = 'ABORTED'
-                  currentBuild.description = 'Aborted: git history includes #no-push'
+                try {
+                  noPushCount = sh script: 'git log upstream/master.. | grep -c "#no-push"', returnStdout: true
+                  if (noPushCount != '0') {
+                    currentBuild.result = 'ABORTED'
+                    currentBuild.description = 'Aborted: git history includes #no-push'
+                  }
+                }
+                catch (err) {
+                  // ignore. turns out that when there are zero #no-push
+                  // commits, sh throws. This should be improved at some point,
+                  // but gets the job done for now
                 }
               }
             }
