@@ -2,6 +2,7 @@
 
 def IS_VALIDATED_MERGE_BUILD = false
 def GIT_COMMIT
+def HAS_LEGACY_CHANGES
 
 def warn = { msg ->
   if (!currentBuild.description) {
@@ -165,6 +166,14 @@ ansiColor('xterm') {
                 sh 'git fetch upstream --tags'
               }
 
+              try {
+                sh 'git diff --name-only upstream/master | grep -v src/version.js | grep -e ^src'
+                HAS_LEGACY_CHANGES = true
+              }
+              catch (error) {
+                HAS_LEGACY_CHANGES = false
+              }
+
               sh 'git checkout upstream/master'
               try {
                 sh "git merge --ff ${GIT_COMMIT}"
@@ -312,7 +321,10 @@ ansiColor('xterm') {
                   sh 'npm run grunt:concurrent -- build:docs'
                   sh 'PACKAGE=example-phone npm run grunt:package -- webpack:build'
                   sh 'PACKAGE=widget-message-meet npm run grunt:package build'
-                  sh 'npm run grunt -- release'
+
+                  if (HAS_LEGACY_CHANGES) {
+                    sh 'npm run grunt -- release'
+                  }
                   code = sh script: "npm run lerna --silent -- publish --skip-npm --skip-git --repo-version=${version} --yes", returnStatus: true
                 }
 
@@ -380,18 +392,24 @@ ansiColor('xterm') {
                     }
                   }
                   catch (error) {
-                    warn('failed to publish to npm')
+                    warn("failed to publish to npm ${error.toString()}")
                   }
 
                 }
               }
 
               stage('publish docs') {
-                image.inside(DOCKER_RUN_OPTS) {
-                  sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
-                    sh 'npm run grunt:concurrent -- publish:docs'
+                try {
+                  image.inside(DOCKER_RUN_OPTS) {
+                    sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+                      sh 'npm run grunt:concurrent -- publish:docs'
+                    }
                   }
                 }
+                catch (error) {
+                  warn("failed to publish docs ${error.toString()}")
+                }
+
               }
 
               stage('publish to ghe') {
@@ -406,12 +424,14 @@ ansiColor('xterm') {
               }
 
               stage('publish to artifactory') {
-                // using a downstream job because (a) we're going to stop
-                // publishing to artifactory once the legacy sdk goes away and
-                // (b) the npm secret is only recorded in that job.
-                def artifactoryBuild = build job: 'spark-js-sdk--publish-to-artifactory', propagate: false
-                if (artifactoryBuild.result != 'SUCCESS') {
-                  currentBuild.description += 'waring: failed to publish to Artifactory'
+                if (HAS_LEGACY_CHANGES) {
+                  // using a downstream job because (a) we're going to stop
+                  // publishing to artifactory once the legacy sdk goes away and
+                  // (b) the npm secret is only recorded in that job.
+                  def artifactoryBuild = build job: 'spark-js-sdk--publish-to-artifactory', propagate: false
+                  if (artifactoryBuild.result != 'SUCCESS') {
+                    currentBuild.description += 'waring: failed to publish to Artifactory'
+                  }
                 }
               }
 
