@@ -100,7 +100,8 @@ def generateSecretsFile = { ->
     string(credentialsId: '9f44ab21-7e83-480d-8fb3-e6495bf7e9f3', variable: 'CISCOSPARK_CLIENT_SECRET'),
     string(credentialsId: 'CISCOSPARK_APPID_SECRET', variable: 'CISCOSPARK_APPID_SECRET'),
     usernamePassword(credentialsId: 'SAUCE_LABS_VALIDATED_MERGE_CREDENTIALS', passwordVariable: 'SAUCE_ACCESS_KEY', usernameVariable: 'SAUCE_USERNAME'),
-    string(credentialsId: 'ddfd04fb-e00a-4df0-9250-9a7cb37bce0e', variable: 'COMMON_IDENTITY_CLIENT_SECRET')
+    string(credentialsId: 'ddfd04fb-e00a-4df0-9250-9a7cb37bce0e', variable: 'COMMON_IDENTITY_CLIENT_SECRET'),
+    string(credentialsId: 'NPM_TOKEN', variable: 'NPM_TOKEN')
   ]) {
     def secrets = ""
     secrets += "COMMON_IDENTITY_CLIENT_SECRET=${COMMON_IDENTITY_CLIENT_SECRET}\n"
@@ -108,6 +109,7 @@ def generateSecretsFile = { ->
     secrets += "CISCOSPARK_CLIENT_SECRET=${CISCOSPARK_CLIENT_SECRET}\n"
     secrets += "SAUCE_USERNAME=${SAUCE_USERNAME}\n"
     secrets += "SAUCE_ACCESS_KEY=${SAUCE_ACCESS_KEY}\n"
+    secrets += "NPM_TOKEN=${NPM_TOKEN}"
     writeFile file: ENV_FILE, text: secrets
   }
 }
