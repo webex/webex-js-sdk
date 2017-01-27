@@ -9,9 +9,9 @@ def warn = { msg ->
     currentBuild.description = ''
   }
   else if (currentBuild.description.substring(currentBuild.description.length() - 1) != '\n') {
-    currentBuild.description += '\n'
+    currentBuild.description += '<br/>\n'
   }
-  currentBuild.description += "warning: ${msg}\n"
+  currentBuild.description += "warning: ${msg}<br/>\n"
 }
 
 def cleanup = { ->
