@@ -366,8 +366,8 @@ ansiColor('xterm') {
                 // reminder: need to write to ~ not . because lerna runs npm
                 // commands in subdirectories
                 image.inside(DOCKER_RUN_OPTS) {
-                  sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > ~/.npmrc'
                   try {
+                    sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > ~/.npmrc'
                     sh 'NPM_CONFIG_REGISTRY="" npm run lerna -- exec --bash -c \'npm publish --access public || true\''
                     if (version.length == 0) {
                       warn('could not determine tag name to push to github.com')
