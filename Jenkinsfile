@@ -322,7 +322,7 @@ ansiColor('xterm') {
             if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
               stage('build for release') {
                 env.NODE_ENV = ''
-                def version = sh script: 'echo "v$(cat lerna.json | jq .version | tr -d \'\\"\')"', returnStdout: true
+                def version = sh script: 'echo "$(cat lerna.json | jq .version | tr -d \'\\"\')"', returnStdout: true
                 image.inside(DOCKER_RUN_OPTS) {
                   sh 'npm run build'
                   sh 'npm run grunt:concurrent -- build:docs'
@@ -335,8 +335,8 @@ ansiColor('xterm') {
                   try {
                     sh script: "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version}"
                     sh 'git add lerna.json packages/*/package.json'
-                    sh "git commit -m ${version}"
-                    sh "git tag '${version}'"
+                    sh "git commit -m v${version}"
+                    sh "git tag 'v${version}'"
                   }
                   catch (error) {
                     // ignore: no packages to update
@@ -395,7 +395,7 @@ ansiColor('xterm') {
                       warn('could not determine tag name to push to github.com')
                     }
                     else {
-                      def exitStatus = sh script: "git push origin ${version}:${version}", returnStatus: true
+                      def exitStatus = sh script: "git push origin v${version}:v${version}", returnStatus: true
                       if (exitStatus != 0) {
                         warn('failed to push version tag to github.com')
                       }
