@@ -30,6 +30,7 @@ def cleanup = { ->
         catch (err) {
 
         }
+        sh "git fetch git-component-success"
         sh "git push git-component-success HEAD:master"
       }
     }
