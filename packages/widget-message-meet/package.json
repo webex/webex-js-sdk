@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/widget-message-meet",
-  "version": "v0.7.45",
+  "version": "vv0.7.45",
   "description": "The Spark Message Meet widget allows developers to easily incorporate Cisco Spark 1 on 1 messaging into an application.",
   "license": "MIT",
   "author": "Adam Weeks <adweeks@cisco.com>",
@@ -40,10 +40,10 @@
   "devDependencies": {
     "@ciscospark/helper-html": "^0.7.34",
     "@ciscospark/http-core": "^0.7.34",
-    "@ciscospark/plugin-avatar": "^v0.7.45",
-    "@ciscospark/plugin-conversation": "^v0.7.45",
-    "@ciscospark/plugin-encryption": "^v0.7.45",
-    "@ciscospark/plugin-flag": "^v0.7.45",
+    "@ciscospark/plugin-avatar": "^vv0.7.45",
+    "@ciscospark/plugin-conversation": "^vv0.7.45",
+    "@ciscospark/plugin-encryption": "^vv0.7.45",
+    "@ciscospark/plugin-flag": "^vv0.7.45",
     "@ciscospark/spark-core": "^0.7.36",
     "@ciscospark/storage-adapter-local-storage": "^0.7.36",
     "@ciscospark/test-helper-file": "^0.7.34",

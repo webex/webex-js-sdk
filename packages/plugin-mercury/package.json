@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-mercury",
-  "version": "v0.7.45",
+  "version": "vv0.7.45",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -10,7 +10,7 @@
   "dependencies": {
     "@ciscospark/common": "^0.7.34",
     "@ciscospark/http-core": "^0.7.34",
-    "@ciscospark/plugin-wdm": "^v0.7.45",
+    "@ciscospark/plugin-wdm": "^vv0.7.45",
     "@ciscospark/spark-core": "^0.7.36",
     "babel-runtime": "^6.3.19",
     "backoff": "^2.5.0",
