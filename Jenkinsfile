@@ -21,15 +21,15 @@ def cleanup = { ->
   sh 'rm -f .env'
 
   if (IS_VALIDATED_MERGE_BUILD) {
-    withCredentials([usernamePassword(
-      credentialsId: '386d3445-b855-40e4-999a-dc5801336a69',
-      passwordVariable: 'GAUNTLET_PASSWORD',
-      usernameVariable: 'GAUNTLET_USERNAME'
-    )]) {
-      if (currentBuild.result == 'SUCCESS') {
-        sh "curl -i --user ${GAUNTLET_USERNAME}:${GAUNTLET_PASSWORD} -X PUT 'https://gauntlet.wbx2.com/api/queues/spark-js-sdk/master?componentTestStatus=success&commitId=${GIT_COMMIT}'"
-      }
-      else {
+    if (currentBuild.result == 'SUCCESS') {
+      sh 'git push component-success HEAD:master'
+    }
+    else {
+      withCredentials([usernamePassword(
+        credentialsId: '386d3445-b855-40e4-999a-dc5801336a69',
+        passwordVariable: 'GAUNTLET_PASSWORD',
+        usernameVariable: 'GAUNTLET_USERNAME'
+      )]) {
         sh "curl -i --user ${GAUNTLET_USERNAME}:${GAUNTLET_PASSWORD} -X PUT 'https://gauntlet.wbx2.com/api/queues/spark-js-sdk/master?componentTestStatus=failure&commitId=${GIT_COMMIT}'"
       }
     }
