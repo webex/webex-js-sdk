@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-wdm",
-  "version": "0.7.36",
+  "version": "v0.7.45",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
