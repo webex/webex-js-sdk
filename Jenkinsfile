@@ -420,7 +420,8 @@ ansiColor('xterm') {
 
               stage('publish docs') {
                 try {
-                  image.inside(DOCKER_RUN_OPTS) {
+                  image.inside("${DOCKER_RUN_OPTS} -e HOME=/tmp/local-ssh-config") {
+                    sh 'mkdir -p $HOME'
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
                       sh 'npm run grunt:concurrent -- publish:docs'
                     }
