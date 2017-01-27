@@ -16,16 +16,16 @@ describe(`common`, () => {
       assert.isDefined(base64);
     });
 
-    it(`encodes string to base64`, () => {
+    it(`base64-encodes a string`, () => {
       assert.equal(base64.toBase64Url(`abc`), `YWJj`);
     });
 
-    it(`can encode buffer to base64`, () => {
+    it(`base64-encodes a buffer`, () => {
       const buffer = new Buffer(`abc`);
       assert.equal(base64.toBase64Url(buffer), `YWJj`);
     });
 
-    it(`decodes base64 string to readable string`, () => {
+    it(`base64-decodes a string`, () => {
       const result = base64.fromBase64url(`YWJj`);
       assert.typeOf(result, `string`, `decoded result must be type of string`);
       assert.equal(result, `abc`);

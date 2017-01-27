@@ -8,11 +8,9 @@
   "devMain": "src/index.js",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/common",
   "dependencies": {
-    "atob": "^1.1.2",
     "babel-polyfill": "^6.3.14",
     "babel-runtime": "^6.3.19",
     "backoff": "^2.4.1",
-    "btoa": "^1.1.2",
     "envify": "^3.4.0",
     "lodash": "^4.13.1",
     "urlsafe-base64": "^1.0.0"
@@ -31,12 +29,6 @@
   },
   "engines": {
     "node": ">=4"
-  },
-  "browser": {
-    "./src/shims/atob.js": "./src/shims/atob.shim.js",
-    "./src/shims/btoa.js": "./src/shims/btoa.shim.js",
-    "./dist/shims/atob.js": "./dist/shims/atob.shim.js",
-    "./dist/shims/btoa.js": "./dist/shims/btoa.shim.js"
   },
   "browserify": {
     "transform": [

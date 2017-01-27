@@ -6,6 +6,7 @@
 import UrlSafeBase64 from 'urlsafe-base64';
 
 /**
+ * Converts a string from a base64url-encoded string
  * @param {string} str
  * @returns {string}
  */
@@ -14,17 +15,22 @@ export function fromBase64url(str) {
 }
 
 /**
- * Converts a string to a base64url-encoded string
- * @param {string} str
+ * Converts a string to a base64url-encoded string. It also accepts a buffer
+ * @param {string|buffer} str
  * @returns {string}
  */
 export function toBase64Url(str) {
-  return UrlSafeBase64.encode(new Buffer(str));
+  let buffer = str;
+  if (!Buffer.isBuffer(buffer)) {
+    buffer = new Buffer(buffer);
+  }
+
+  return UrlSafeBase64.encode(buffer);
 }
 
 /**
- * Converts a string to a base64url-encoded string
- * @param {string} str
+ * Converts a string to a base64url-encoded string. It also accepts a buffer
+ * @param {string|buffer} str
  * @returns {string}
  */
 export function encode(str) {
