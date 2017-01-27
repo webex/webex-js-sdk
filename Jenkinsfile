@@ -22,7 +22,9 @@ def cleanup = { ->
 
   if (IS_VALIDATED_MERGE_BUILD) {
     if (currentBuild.result == 'SUCCESS') {
-      sh 'git push component-success HEAD:master'
+      withCredentials([usernameColonPassword(credentialsId: '386d3445-b855-40e4-999a-dc5801336a69', variable: 'GAUNTLET_CREDENTIALS')]) {
+        sh "git push https://${GAUNTLET_CREDENTIALS}@gauntlet.wbx2.com/api/git-component-success/spark-js-sdk HEAD:master"
+      }
     }
     else {
       withCredentials([usernamePassword(
