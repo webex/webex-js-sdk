@@ -325,13 +325,15 @@ ansiColor('xterm') {
                   if (HAS_LEGACY_CHANGES) {
                     sh 'npm run grunt -- release'
                   }
-                  code = sh script: "npm run lerna --silent -- publish --skip-npm --skip-git --repo-version=${version} --yes", returnStatus: true
-                }
-
-                if (code == 0) {
-                  sh 'git add lerna.json packages/*/package.json'
-                  sh "git commit -m v${version}"
-                  sh "git tag 'v${version}'"
+                  try {
+                    sh script: "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version}"
+                    sh 'git add lerna.json packages/*/package.json'
+                    sh "git commit -m v${version}"
+                    sh "git tag 'v${version}'"
+                  }
+                  catch (error) {
+                    // ignore: no packages to update
+                  }
                 }
 
                 sh 'git rev-parse HEAD > .promotion-sha'
