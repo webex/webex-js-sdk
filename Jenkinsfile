@@ -25,6 +25,7 @@ def cleanup = { ->
       withCredentials([usernameColonPassword(credentialsId: '386d3445-b855-40e4-999a-dc5801336a69', variable: 'GAUNTLET_CREDENTIALS')]) {
         try {
           sh "git remote add git-component-success https://${GAUNTLET_CREDENTIALS}@gauntlet.wbx2.com/api/git-component-success/spark-js-sdk"
+          sh "git fetch git-component-success"
         }
         catch (err) {
 
