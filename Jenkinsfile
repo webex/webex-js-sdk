@@ -379,9 +379,10 @@ ansiColor('xterm') {
                 // TODO use lerna publish directly now that npm fixed READMEs
                 // reminder: need to write to ~ not . because lerna runs npm
                 // commands in subdirectories
-                image.inside(DOCKER_RUN_OPTS) {
+                image.inside("${DOCKER_RUN_OPTS} -e HOME=/tmp/local-npm-config") {
                   try {
-                    sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > ~/.npmrc'
+                    sh 'mkdir -p $HOME'
+                    sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
                     sh 'NPM_CONFIG_REGISTRY="" npm run lerna -- exec --bash -c \'npm publish --access public || true\''
                     if (version.length == 0) {
                       warn('could not determine tag name to push to github.com')
