@@ -84,7 +84,7 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
       if [ ! -e "${SC_READY_FILE}" ]; then
         echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC Attempt ${SC_ITERATION}: Ready Check Failed"
         set +e
-        daemon --stop --name sauce_connect
+        STOP_SAUCE
         set -e
         continue
       fi
@@ -140,8 +140,21 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
       rm -f "${SC_READY_FILE}"
       continue
     fi
+
+    # SAUCE TUNNEL FAILURES
+    echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: Suite exited with code ${EXIT_CODE}, disconnecting/reconnecting Sauce Tunnel"
+    STOP_SAUCE
   fi
+
 done
+
+# SAUCE TUNNEL FAILURES
+# If we failed every iteration, check for the xml file. if the xml file exists,
+# let the jenkins junit parser handle the error; if it does not, assume there's
+# an infrastructure problem and fail the build.
+if [ "${EXIT_CODE}" -ne "0" ]; then
+  npm run grunt:package fileExists:karmaxml
+fi
 
 if [ "${EXIT_CODE}" -ne "0" ]; then
   echo "${PACKAGE}: Suite: Test Suite failed after ${MAX_TEST_SUITE_RETRIES} attempts"

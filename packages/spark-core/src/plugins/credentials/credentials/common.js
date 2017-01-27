@@ -410,14 +410,13 @@ export default {
     return Reflect.apply(SparkPlugin.prototype.set, this, arguments);
   },
 
-  buildLogoutUrl() {
+  buildLogoutUrl(options) {
     // eslint doesn't yet handle nested strings quite right
     /* eslint quotes: [0] */
-    return `${this.config.logoutUri}?${querystring.stringify({
-      type: 'logout',
+    return `${this.config.logoutUri}?${querystring.stringify(Object.assign({
       goto: this.config.oauth.redirect_uri,
-      service: this.config.oauth.service
-    })}`;
+      cisService: this.config.oauth.service
+    }, options))}`;
   },
 
   buildOAuthUrl(options) {
@@ -442,7 +441,12 @@ export default {
 
     fields.forEach((key) => {
       if (key in this.config.oauth) {
-        parameters[key] = this.config.oauth[key];
+        if (key === `service`) {
+          parameters.cisService = this.config.oauth[key];
+        }
+        else {
+          parameters[key] = this.config.oauth[key];
+        }
       }
       else {
         throw new Error(`\`${key}\` is required`);

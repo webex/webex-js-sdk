@@ -8,12 +8,9 @@
 }
 
 .logo {
-  width: 30%;
+  width: 60px;
+  height: 60px;
   margin: auto;
-}
-
-.logo img {
-  width: 100%;
 }
 
 .spinner-container {

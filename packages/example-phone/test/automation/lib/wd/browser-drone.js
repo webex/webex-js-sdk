@@ -1,7 +1,7 @@
 import {wd} from '@ciscospark/test-helper-automation';
 import createBrowser from '../create-browser';
 import testUsers from '@ciscospark/test-helper-test-users';
-import pkg from '../../../../package.json';
+import pkg from '../../../../package';
 
 const droneBrowsers = new WeakMap();
 const droneUsers = new WeakMap();

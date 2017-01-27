@@ -93,14 +93,13 @@ describe('Services', function() {
       return ensureConversation()
         .then(function createBoard() {
           var data = {
-            aclUrl: conversation.id,
             properties: {
               darkTheme: false
             }
           };
           if (!board) {
             console.log('Creating new board');
-            return party.spock.spark.board.persistence.createChannel(data)
+            return party.spock.spark.board.persistence.createChannel(conversation, data)
               .then(function(w) {
                 board = w;
                 console.log('created new board: ', board);
@@ -131,7 +130,14 @@ describe('Services', function() {
     }
 
     before(function beamDown() {
-      return landingparty.beamDown(party);
+      return landingparty.beamDown(party)
+        .then(function() {
+          party.spock.spark.feature.setFeature('developer', 'files-acl-write', true);
+          return party.checkov.spark.feature.setFeature('developer', 'files-acl-write', true);
+        })
+        .then(function() {
+          return party.mccoy.spark.feature.setFeature('developer', 'files-acl-write', true);
+        });
     });
 
     describe('#_uploadImage()', function() {
@@ -144,13 +150,13 @@ describe('Services', function() {
       });
 
       it('uploads image to spark files', function() {
-        return ensureConversation()
-          .then(function(conversation) {
+        return ensureBoard()
+          .then(function(board) {
 
-            return party.mccoy.spark.board._uploadImage(conversation, fixture.png);
+            return party.mccoy.spark.board._uploadImage(board, fixture.png);
           })
           .then(function(scr) {
-            return party.mccoy.spark.encryption.download(scr);
+            return party.checkov.spark.encryption.download(scr);
           })
           .then(function(file) {
             assert(fixtures.isMatchingFile(file, fixture.png));
@@ -219,7 +225,7 @@ describe('Services', function() {
 
             // do not return promise because we want done() to be called on
             // board.activity
-            party.spock.spark.board.realtime.publish(conversation, data);
+            party.spock.spark.board.realtime.publish(board, data);
           });
         });
       });
@@ -239,7 +245,7 @@ describe('Services', function() {
           });
 
           it('uploads file to spark files which includes loc', function() {
-            return party.mccoy.spark.board._uploadImage(conversation, fixture.png)
+            return party.mccoy.spark.board._uploadImage(board, fixture.png)
               .then(function(scr) {
                 assert.property(scr, 'loc');
                 testScr = scr;
@@ -255,7 +261,10 @@ describe('Services', function() {
               },
               payload: {
                 displayName: 'image.png',
-                scr: testScr
+                type: 'FILE',
+                file: {
+                  scr: testScr
+                }
               }
             };
 
@@ -263,7 +272,7 @@ describe('Services', function() {
             // same data that was sent.
             party.mccoy.spark.board.realtime.once('board.activity', function(boardData) {
               assert.equal(boardData.contentType, 'FILE');
-              assert.equal(boardData.payload.scr.loc, testScr.loc);
+              assert.equal(boardData.payload.file.scr.loc, testScr.loc);
               assert.equal(boardData.payload.displayName, 'image.png');
               done();
             });
@@ -274,13 +283,33 @@ describe('Services', function() {
 
             // do not return promise because we want done() to be called on
             // board.activity
-            party.spock.spark.board.realtime.publish(conversation, data);
+            party.spock.spark.board.realtime.publish(board, data);
           });
         });
       });
     });
 
     describe('Persistence', function() {
+      describe('#getChannel()', function() {
+        before(function() {
+          return ensureBoard();
+        });
+
+        it('gets the channel metadata', function() {
+          return party.mccoy.spark.board.persistence.getChannel(board)
+            .then(function(channel) {
+              assert.property(channel, 'kmsResourceUrl');
+              assert.property(channel, 'aclUrl');
+
+              assert.equal(channel.channelUrl, board.channelUrl);
+              assert.equal(channel.aclUrlLink, conversation.aclUrl);
+              assert.notEqual(channel.kmsResourceUrl, conversation.kmsResourceObjectUrl);
+              assert.notEqual(channel.aclUrl, conversation.aclUrl);
+              assert.notEqual(channel.defaultEncryptionKeyUrl, conversation.defaultActivityEncryptionKeyUrl);
+            });
+        });
+      });
+
       describe('#ping()', function() {
         it('pings persistence board service', function() {
           return party.mccoy.spark.board.persistence.ping()
@@ -315,11 +344,11 @@ describe('Services', function() {
         });
 
         it('uploads image to spark files', function() {
-
-          return party.mccoy.spark.board.persistence.addImage(conversation, board, fixture.png)
+          return party.mccoy.spark.board.persistence.addImage(board, fixture.png)
             .then(function(fileContent) {
               testContent = fileContent[0].items[0];
               assert.equal(testContent.type, 'FILE', 'content type should be image');
+              assert.property(testContent, 'file', 'content should contain file property');
               assert.property(testContent, 'contentId', 'content should contain contentId property');
               assert.property(testContent, 'payload', 'content should contain payload property');
               assert.property(testContent, 'encryptionKeyUrl', 'content should contain encryptionKeyUrl property');
@@ -327,20 +356,27 @@ describe('Services', function() {
         });
 
         it('adds to presistence', function() {
-
           return party.mccoy.spark.board.persistence.getAllContent(board)
             .then(function(allContents) {
               var imageContent = find(allContents, {contentId: testContent.contentId});
               assert.isDefined(imageContent);
-              assert.property(imageContent, 'scr');
+              assert.property(imageContent, 'file');
+              assert.property(imageContent.file, 'scr');
               assert.equal(imageContent.displayName, 'sample-image-small-one.png');
-              testScr = imageContent.scr;
-              return imageContent.scr;
+              testScr = imageContent.file.scr;
+              return imageContent.file.scr;
             });
         });
 
         it('matches file file downloaded', function() {
           return party.mccoy.spark.encryption.download(testScr)
+            .then(function(file) {
+              assert(fixtures.isMatchingFile(file, fixture.png));
+            });
+        });
+
+        it('allows others to download the image', function() {
+          return party.checkov.spark.encryption.download(testScr)
             .then(function(file) {
               assert(fixtures.isMatchingFile(file, fixture.png));
             });
@@ -363,18 +399,26 @@ describe('Services', function() {
           return party.mccoy.spark.board.persistence.deleteAllContent(board);
         });
 
-        it('uploads image to spark files and then add image to channel', function() {
+        it('uploads image to board space and then add image to channel', function() {
           var imageRes;
-          return party.mccoy.spark.board.persistence.setSnapshotImage(conversation, board, fixture.png)
+          return party.mccoy.spark.board.persistence.setSnapshotImage(board, fixture.png)
             .then(function(res) {
               imageRes = res.image;
               assert.isDefined(res.image, 'image field is included');
-              assert.equal(res.image.encryptionKeyUrl, conversation.encryptionKeyUrl);
+              assert.equal(res.image.encryptionKeyUrl, board.defaultEncryptionKeyUrl);
               assert.isAbove(res.image.scr.length, 0, 'scr string exists');
               return party.spock.spark.board.persistence.getChannel(board);
             })
             .then(function(res) {
               assert.deepEqual(res.image, imageRes);
+              // ensure others can download the image
+              return party.checkov.spark.encryption.decryptScr(res.image.scr, board.defaultEncryptionKeyUrl);
+            })
+            .then(function(decryptedScr) {
+              return party.checkov.spark.encryption.download(decryptedScr);
+            })
+            .then(function(file) {
+              assert(fixtures.isMatchingFile(file, fixture.png));
             });
         });
       });
@@ -396,7 +440,43 @@ describe('Services', function() {
             payload: JSON.stringify(contents[0])
           }];
 
-          return party.mccoy.spark.board.persistence.addContent(conversation, board, data)
+          return party.mccoy.spark.board.persistence.addContent(board, data)
+            .then(function() {
+              return party.mccoy.spark.board.persistence.getAllContent(board);
+            })
+            .then(function(res) {
+              assert.equal(res[0].payload, data[0].payload);
+            });
+        });
+
+        it('allows other people to read contents', function() {
+          var contents = [{type: 'curve', points: [1,2,3,4]}];
+          var data = [{
+            type: contents[0].type,
+            payload: JSON.stringify(contents[0])
+          }];
+
+          return party.spock.spark.board.persistence.addContent(board, data)
+            .then(function() {
+              return party.mccoy.spark.board.persistence.getAllContent(board);
+            })
+            .then(function(res) {
+              assert.equal(res[0].payload, data[0].payload);
+              return party.checkov.spark.board.persistence.getAllContent(board);
+            })
+            .then(function(res) {
+              assert.equal(res[0].payload, data[0].payload);
+            });
+        });
+
+        it('allows other people to write contents', function() {
+          var contents = [{type: 'curve', points: [2,2,4,4]}];
+          var data = [{
+            type: contents[0].type,
+            payload: JSON.stringify(contents[0])
+          }];
+
+          return party.checkov.spark.board.persistence.addContent(board, data)
             .then(function() {
               return party.mccoy.spark.board.persistence.getAllContent(board);
             })
@@ -407,7 +487,7 @@ describe('Services', function() {
 
         it('can deal with tons of contents by pagination', function() {
           var tonsOfContents = generateTonsOfContents(400);
-          return party.mccoy.spark.board.persistence.addContent(conversation, board, tonsOfContents)
+          return party.mccoy.spark.board.persistence.addContent(board, tonsOfContents)
             .then(function() {
               return party.mccoy.spark.board.persistence.getAllContent(board, {contentsLimit: 150});
             })
@@ -451,7 +531,7 @@ describe('Services', function() {
               payload: JSON.stringify(contents[1])
             }
           ];
-          return party.mccoy.spark.board.persistence.addContent(conversation, channel, data)
+          return party.mccoy.spark.board.persistence.addContent(channel, data)
             .then(function() {
               return party.mccoy.spark.board.persistence.deleteAllContent(channel);
             })
@@ -463,7 +543,7 @@ describe('Services', function() {
               return res;
             })
             .then(function() {
-              return party.mccoy.spark.board.persistence.addContent(conversation, channel, data);
+              return party.mccoy.spark.board.persistence.addContent(channel, data);
             })
             .then(function(res) {
               assert.equal(res[0].items.length, 2);
@@ -489,7 +569,7 @@ describe('Services', function() {
         });
 
         it('retrieves a newly created board for a specified conversation within a single page', function() {
-          return party.spock.spark.board.persistence.getChannels({conversationId: conversation.id})
+          return party.spock.spark.board.persistence.getChannels(conversation)
             .then(function(getChannelsResp) {
               var channelFound = find(getChannelsResp.items, {channelId: board.channelId});
               assert.isDefined(channelFound);
@@ -510,15 +590,12 @@ describe('Services', function() {
               var promises = [];
 
               for (var i = 0; i < pageLimit + 1; i++) {
-                promises.push(party.spock.spark.board.persistence.createChannel({
-                  aclUrl: conversation.id
-                }));
+                promises.push(party.spock.spark.board.persistence.createChannel(conversation, {}));
               }
               return Promise.all(promises);
             })
             .then(function() {
-              return party.spock.spark.board.persistence.getChannels({
-                conversationId: conversation.id,
+              return party.spock.spark.board.persistence.getChannels(conversation, {
                 channelsLimit: pageLimit
               });
             })

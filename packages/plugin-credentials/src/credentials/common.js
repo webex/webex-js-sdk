@@ -7,12 +7,11 @@
 /* eslint camelcase: [0] */
 
 import {base64, makeStateDataType, oneFlight, retry, tap, whileInFlight} from '@ciscospark/common';
-import {grantErrors, SparkPlugin} from '@ciscospark/spark-core';
 import TokenCollection from '../token-collection';
 import Token from '../token';
 import {filterScope, sortScope} from '../scope';
 import {clone, has, isObject, pick} from 'lodash';
-import {persist, waitForValue} from '@ciscospark/spark-core';
+import {grantErrors, persist, waitForValue, SparkPlugin} from '@ciscospark/spark-core';
 import {deprecated} from 'core-decorators';
 import querystring from 'querystring';
 
@@ -72,14 +71,14 @@ export default {
 
   /**
    * Constructs a logout URL
+   * @param {Object} options
    * @returns {string}
    */
-  buildLogoutUrl() {
-    return `${this.config.logoutUri}?${querystring.stringify({
-      type: `logout`,
-      goto: this.config.redirect_uri,
-      service: this.config.service
-    })}`;
+  buildLogoutUrl(options) {
+    return `${this.config.logoutUri}?${querystring.stringify(Object.assign({
+      goto: this.config.oauth.redirect_uri,
+      cisService: this.config.oauth.service
+    }, options))}`;
   },
 
   /**
@@ -111,7 +110,12 @@ export default {
 
     fields.forEach((key) => {
       if (key in this.config.oauth) {
-        parameters[key] = this.config.oauth[key];
+        if (key === `service`) {
+          parameters.cisService = this.config.oauth[key];
+        }
+        else {
+          parameters[key] = this.config.oauth[key];
+        }
       }
       else {
         throw new Error(`\`${key}\` is required`);

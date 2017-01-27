@@ -8,62 +8,62 @@
 'use strict';
 
 var path = require('path');
-var webpackConfig = require('./webpack.config');
-var webpack = require('webpack');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = function configGrunt(grunt) {
-  grunt.config('webpack',
+  grunt.config('shell',
     {
-      options: Object.assign({}, webpackConfig, {
-        hot: false,
-        inline: false,
-        keepalive: false,
-        progress: true,
-        watch: false
-      }),
+      options: {
+        execOptions: {
+          cwd: __dirname
+        }
+      },
       build: {
-        debug: false,
-        progress: false,
-        plugins: webpackConfig.plugins.concat(
-          new webpack.optimize.UglifyJsPlugin(),
-          new webpack.DefinePlugin({
-            'process.env': {
-              NODE_ENV: JSON.stringify("production")
-            }
-          })
-        )
+        command: 'npm run build'
+      },
+      buildDemo: {
+        command: 'npm run build:demo'
       }
     });
   grunt.config('webpack-dev-server',
     {
       options: {
-        compress: true,
-        historyApiFallback: true,
         host: '0.0.0.0',
         hot: true,
-        inline: true,
         keepalive: true,
         progress: true,
         watch: true,
         port: parseInt(process.env.PORT || 8000),
-        webpack: webpackConfig
+        webpack: require('./webpack/webpack.dev')
       },
-      start: {
+      start: {},
+      demo: {
         keepAlive: true,
-        webpack: {
-          devtool: 'eval-source-map',
-          debug: true
-        }
+          webpack: {
+            entry: './demo/app.js',
+            plugins: [
+              new HtmlWebpackPlugin({
+                template: 'demo/index.html'
+              })
+            ]
+          }
       }
     });
 
   grunt.registerTask('build', [
     'clean:dist',
-    'webpack:build'
+    'shell:build',
+    'shell:buildDemo'
+  ]);
+
+  grunt.registerTask('build-demo', [
+    'clean:dist',
+    'shell:buildDemo'
   ]);
 
   grunt.registerTask('test', ['jest']);
   grunt.registerTask('test-clean', ['clean:snapshots', 'jest']);
-  grunt.registerTask('start', ['webpack-dev-server:start']);
-  grunt.registerTask('default', ['start']);
+  grunt.registerTask('serve', ['webpack-dev-server:start']);
+  grunt.registerTask('serve-demo', ['webpack-dev-server:demo']);
+  grunt.registerTask('default', ['serve']);
 };

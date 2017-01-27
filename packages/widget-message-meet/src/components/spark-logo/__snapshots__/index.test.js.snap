@@ -1,0 +1,4 @@
+exports[`SparkLogo component renders properly 1`] = `
+<div
+  className="spark-logo" />
+`;

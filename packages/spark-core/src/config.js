@@ -33,7 +33,7 @@ export default {
       revokeUrl: `https://idbroker.webex.com/idb/oauth2/v1/revoke`,
       tokenUrl: `https://idbroker.webex.com/idb/oauth2/v1/access_token`
     },
-    logoutUri: `https://idbroker.webex.com/idb/saml2/jsp/doSSO.jsp`,
+    logoutUri: `https://idbroker.webex.com/idb/oauth2/v1/logout`,
     samlUrl: `https://idbroker.webex.com/idb/token`,
     hydraServiceUrl: process.env.HYDRA_SERVICE_URL || `https://api.ciscospark.com/v1`
   },

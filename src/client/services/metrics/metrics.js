@@ -35,11 +35,43 @@ var MetricsService = SparkBase.extend(
   namespace: 'Metrics',
 
   /**
+   * Issues request to server to alias a user's pre-login ID with their CI UUID
+   * @param {string} preLoginId
+   */
+  aliasUser: function aliasUser(preLoginId) {
+    return this.request({
+      method: 'POST',
+      api: 'metrics',
+      resource: 'clientmetrics',
+      headers: {
+        'x-prelogin-userid': preLoginId
+      },
+      body: {},
+      qs: {
+        alias: true
+      }
+    });
+  },
+
+  postPreLoginMetric: function postPreLoginMetric(payload, preLoginId) {
+    return this.request({
+      method: 'POST',
+      api: 'metrics',
+      resource: 'clientmetrics-prelogin',
+      headers: {
+        'x-prelogin-userid': preLoginId
+      },
+      body: payload
+    });
+  },
+
+  /**
    * Submits semi-structured metrics
    * @param {string} eventName
    * @param {Object} props
+   * @param {string} [preLoginId]
    */
-  sendSemiStructured: function sendSemiStructured(eventName, props) {
+  sendSemiStructured: function sendSemiStructured(eventName, props, preLoginId) {
     var payload = {
       metricName: eventName
     };
@@ -49,7 +81,20 @@ var MetricsService = SparkBase.extend(
     if (props.fields) {
       payload.fields = props.fields;
     }
-    this.clientMetrics.fetch(payload);
+    if (props.type) {
+      payload.type = props.type;
+    }
+    if (preLoginId) {
+      payload = {
+        metrics: [
+          payload
+        ]
+      };
+      this.postPreLoginMetric(payload, preLoginId);
+    }
+    else {
+      this.clientMetrics.fetch(payload);
+    }
   },
 
   /**
@@ -66,7 +111,7 @@ var MetricsService = SparkBase.extend(
 
   /**
    * Post a single metric to splunk
-   * @deprecated Please switch to `this.sendUnstructured()`. Note: it does not
+   * @deprecated Please switch to 'this.sendUnstructured()'. Note: it does not
    * return a promise.
    * @param {Object} body the payload
    * @returns {Promise}

@@ -4,10 +4,9 @@
  * @private
  */
 
-import {assign} from 'lodash';
 import {SparkPlugin, Page} from '@ciscospark/spark-core';
 import Realtime from './realtime';
-import {defaults, chunk, pick} from 'lodash';
+import {assign, defaults, chunk, pick} from 'lodash';
 import promiseSeries from 'es6-promise-series';
 
 const Board = SparkPlugin.extend({
@@ -23,17 +22,16 @@ const Board = SparkPlugin.extend({
    * will break contents into chunks and make multiple GET request to the
    * board service
    * @memberof Board.BoardService
-   * @param  {Conversation} conversation - Contains the currently selected conversation
    * @param  {Board~Channel} channel
    * @param  {Array} contents - Array of {@link Board~Content} objects
    * @returns {Promise<Board~Content>}
    */
-  addContent(conversation, channel, contents) {
+  addContent(channel, contents) {
     let chunks = [];
     chunks = chunk(contents, this.config.numberContentsPerPageForAdd);
     // we want the first promise to resolve before continuing with the next
     // chunk or else we'll have race conditions among patches
-    return promiseSeries(chunks.map((part) => this._addContentChunk.bind(this, conversation, channel, part)));
+    return promiseSeries(chunks.map((part) => this._addContentChunk.bind(this, channel, part)));
   },
 
   /**
@@ -41,35 +39,37 @@ const Board = SparkPlugin.extend({
    * Uploads image to spark files and adds SCR + downloadUrl to the persistence
    * service
    * @memberof Board.BoardService
-   * @param  {Conversation} conversation - Contains the currently selected conversation
    * @param  {Board~Channel} channel
    * @param  {File} image - image to be uploaded
    * @returns {Promise<Board~Content>}
    */
-  addImage(conversation, channel, image) {
-    return this.spark.board._uploadImage(conversation, image)
-      .then((scr) => this.spark.board.addContent(conversation, channel, [{
-        mimeType: image.type,
-        size: image.size,
+  addImage(channel, image) {
+    return this.spark.board._uploadImage(channel, image)
+      .then((scr) => this.spark.board.addContent(channel, [{
+        type: `FILE`,
         displayName: image.name,
-        scr
+        file: {
+          mimeType: image.type,
+          scr,
+          size: image.size,
+          url: scr.loc
+        }
       }]));
   },
 
   /**
    * Set a snapshot image for a board
    *
-   * @param {Conversation} conversation - the current conversation that the board belongs
    * @param {Board~Channel} channel
    * @param {File} image
    * @returns {Promise<Board~Channel>}
    */
-  setSnapshotImage(conversation, channel, image) {
+  setSnapshotImage(channel, image) {
     let imageScr;
-    return this.spark.board._uploadImage(conversation, image)
+    return this.spark.board._uploadImage(channel, image, {hiddenSpace: true})
       .then((scr) => {
         imageScr = scr;
-        return this.spark.encryption.encryptScr(conversation.defaultActivityEncryptionKeyUrl, imageScr);
+        return this.spark.encryption.encryptScr(channel.defaultEncryptionKeyUrl, imageScr);
       })
       .then((encryptedScr) => {
         imageScr.encryptedScr = encryptedScr;
@@ -83,7 +83,7 @@ const Board = SparkPlugin.extend({
             width: image.width || 1600,
             mimeType: image.type || `image/png`,
             scr: imageScr.encryptedScr,
-            encryptionKeyUrl: conversation.defaultActivityEncryptionKeyUrl,
+            encryptionKeyUrl: channel.defaultEncryptionKeyUrl,
             fileSize: image.size
           }
         };
@@ -101,17 +101,30 @@ const Board = SparkPlugin.extend({
   /**
    * Creates a Channel
    * @memberof Board.BoardService
+   * @param  {Conversation~ConversationObject} conversation
    * @param  {Board~Channel} channel
    * @returns {Promise<Board~Channel>}
    */
-  createChannel(channel) {
+  createChannel(conversation, channel) {
     return this.spark.request({
       method: `POST`,
       api: `board`,
       resource: `/channels`,
-      body: channel
+      body: this._prepareChannel(conversation, channel)
     })
       .then((res) => res.body);
+  },
+
+  _prepareChannel(conversation, channel) {
+    return Object.assign({
+      aclUrlLink: conversation.aclUrl,
+      kmsMessage: {
+        method: `create`,
+        uri: `/resources`,
+        userIds: [conversation.kmsResourceObjectUrl],
+        keyUris: []
+      }
+    }, channel);
   },
 
   /**
@@ -126,7 +139,7 @@ const Board = SparkPlugin.extend({
       let decryptPromise;
 
       if (content.type === `FILE`) {
-        decryptPromise = this.decryptSingleFileContent(content.encryptionKeyUrl, content.payload);
+        decryptPromise = this.decryptSingleFileContent(content.encryptionKeyUrl, content);
       }
       else {
         decryptPromise = this.decryptSingleContent(content.encryptionKeyUrl, content.payload);
@@ -157,20 +170,24 @@ const Board = SparkPlugin.extend({
    * Decryts a single FILE content object
    * @memberof Board.BoardService
    * @param  {string} encryptionKeyUrl
-   * @param  {string} encryptedData
+   * @param  {object} encryptedContent {file, payload}
    * @returns {Promise<Board~Content>}
    */
-  decryptSingleFileContent(encryptionKeyUrl, encryptedData) {
-    const payload = JSON.parse(encryptedData);
+  decryptSingleFileContent(encryptionKeyUrl, encryptedContent) {
+    let metadata = {};
 
-    return this.spark.encryption.decryptScr(encryptionKeyUrl, payload.scr)
+    if (encryptedContent.payload) {
+      metadata = JSON.parse(encryptedContent.payload);
+    }
+
+    return this.spark.encryption.decryptScr(encryptionKeyUrl, encryptedContent.file.scr)
       .then((scr) => {
-        payload.scr = scr;
-        return this.spark.encryption.decryptText(encryptionKeyUrl, payload.displayName);
+        encryptedContent.file.scr = scr;
+        return this.spark.encryption.decryptText(encryptionKeyUrl, metadata.displayName);
       })
       .then((displayName) => {
-        payload.displayName = displayName;
-        return payload;
+        encryptedContent.displayName = displayName;
+        return encryptedContent;
       });
   },
 
@@ -206,7 +223,7 @@ const Board = SparkPlugin.extend({
   /**
    * Encrypts a collection of content
    * @memberof Board.BoardService
-   * @param  {string} encryptionKeyUrl conversation.defaultActivityEncryptionKeyUrl
+   * @param  {string} encryptionKeyUrl channel.defaultEncryptionKeyUrl
    * @param  {Array} contents   Array of {@link Board~Content} objects. (curves, text, and images)
    * @returns {Promise<Array>} Resolves with an array of encrypted {@link Board~Content} objects.
    */
@@ -216,7 +233,7 @@ const Board = SparkPlugin.extend({
       let contentType = `STRING`;
 
       // the existence of an scr will determine if the content is a FILE.
-      if (content.scr) {
+      if (content.file) {
         contentType = `FILE`;
         encryptionPromise = this.encryptSingleFileContent(encryptionKeyUrl, content);
       }
@@ -225,12 +242,14 @@ const Board = SparkPlugin.extend({
       }
 
       return encryptionPromise
-        .then((res) => ({
+        .then((res) => assign({
           device: this.spark.device.deviceType,
           type: contentType,
           encryptionKeyUrl,
           payload: res.encryptedData
-        }));
+        },
+          pick(res, `file`)
+        ));
     }));
   },
 
@@ -257,16 +276,19 @@ const Board = SparkPlugin.extend({
    * @returns {Promise<Board~Content>}
    */
   encryptSingleFileContent(encryptionKeyUrl, content) {
-    return this.spark.encryption.encryptScr(encryptionKeyUrl, content.scr)
+    return this.spark.encryption.encryptScr(encryptionKeyUrl, content.file.scr)
       .then((encryptedScr) => {
-        content.scr = encryptedScr;
+        content.file.scr = encryptedScr;
         return this.spark.encryption.encryptText(encryptionKeyUrl, content.displayName);
       })
       .then((encryptedDisplayName) => {
-        content.displayName = encryptedDisplayName;
+        const metadata = {
+          displayName: encryptedDisplayName
+        };
 
         return {
-          encryptedData: JSON.stringify(content),
+          file: content.file,
+          encryptedData: JSON.stringify(metadata),
           encryptionKeyUrl
         };
       });
@@ -312,23 +334,26 @@ const Board = SparkPlugin.extend({
   /**
    * Gets Channels
    * @memberof Board.BoardService
+   * @param {Conversation~ConversationObject} conversation
    * @param {Object} options
    * @param {number} options.limit Max number of activities to return
    * @returns {Promise<Page<Board~Channel>>} Resolves with an array of Channel items
    */
-  getChannels(options) {
+  getChannels(conversation, options) {
     options = options || {};
 
-    if (!options.conversationId) {
-      return Promise.reject(new Error(`\`conversationId\` is required`));
+    if (!conversation) {
+      return Promise.reject(new Error(`\`conversation\` is required`));
     }
 
     const params = {
       api: `board`,
       resource: `/channels`,
-      qs: {}
+      qs: {
+        aclUrlLink: conversation.aclUrl
+      }
     };
-    assign(params.qs, pick(options, `channelsLimit`, `conversationId`));
+    assign(params.qs, pick(options, `channelsLimit`));
 
     return this.request(params)
       .then((res) => new Page(res, this.spark));
@@ -383,8 +408,8 @@ const Board = SparkPlugin.extend({
       .then((res) => res.body);
   },
 
-  _addContentChunk(conversation, channel, contentChunk) {
-    return this.spark.board.encryptContents(conversation.defaultActivityEncryptionKeyUrl, contentChunk)
+  _addContentChunk(channel, contentChunk) {
+    return this.spark.board.encryptContents(channel.defaultEncryptionKeyUrl, contentChunk)
       .then((res) => this.spark.request({
         method: `POST`,
         uri: `${channel.channelUrl}/contents`,
@@ -396,29 +421,38 @@ const Board = SparkPlugin.extend({
   /**
    * Encrypts and uploads image to SparkFiles
    * @memberof Board.BoardService
-   * @param  {Conversation} conversation - Contains the currently selected conversation
+   * @param  {Board~Channel} channel
    * @param  {File} file - File to be uploaded
+   * @param  {Object} options
+   * @param  {Object} options.hiddenSpace - true for hidden, false for open space
    * @private
    * @returns {Object} Encrypted Scr and KeyUrl
    */
-  _uploadImage(conversation, file) {
+  _uploadImage(channel, file, options) {
+    options = options || {};
+
     return this.spark.encryption.encryptBinary(file)
-      .then(({scr, cdata}) => Promise.all([scr, this._uploadImageToSparkFiles(conversation, cdata)]))
+      .then(({scr, cdata}) => Promise.all([scr, this._uploadImageToSparkFiles(channel, cdata, options.hiddenSpace)]))
       .then(([scr, res]) => assign(scr, {loc: res.downloadUrl}));
   },
 
-  _getSpaceUrl(conversation) {
+  _getSpaceUrl(channel, hiddenSpace) {
+    let requestUri = `${channel.channelUrl}/spaces/open`;
+    if (hiddenSpace) {
+      requestUri = `${channel.channelUrl}/spaces/hidden`;
+    }
+
     return this.spark.request({
       method: `PUT`,
-      uri: `${conversation.url}/space`
+      uri: requestUri
     })
       .then((res) => res.body.spaceUrl);
   },
 
-  _uploadImageToSparkFiles(conversation, file) {
+  _uploadImageToSparkFiles(channel, file, hiddenSpace) {
     const fileSize = file.length || file.size || file.byteLength;
 
-    return this._getSpaceUrl(conversation)
+    return this._getSpaceUrl(channel, hiddenSpace)
       .then((spaceUrl) => this.spark.upload({
         uri: `${spaceUrl}/upload_sessions`,
         file,

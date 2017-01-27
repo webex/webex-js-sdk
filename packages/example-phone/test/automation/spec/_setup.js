@@ -8,6 +8,7 @@ import pkg from '../../../package.json';
 
 import path from 'path';
 import requireDir from 'require-dir';
+
 requireDir(path.join(__dirname, `../lib/wd`), {recurse: true});
 
 describe(`example-phone`, function() {

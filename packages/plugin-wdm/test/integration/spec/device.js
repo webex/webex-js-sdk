@@ -15,7 +15,7 @@ describe(`plugin-wdm`, function() {
 
     let spark;
 
-    beforeEach(() => testUsers.create({count: 1})
+    beforeEach(`create users`, () => testUsers.create({count: 1})
       .then((users) => {
         spark = new CiscoSpark({
           credentials: {

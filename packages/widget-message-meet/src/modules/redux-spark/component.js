@@ -9,7 +9,7 @@ import {
   storeSparkInstance
 } from './actions';
 
-import {createSpark} from './spark';
+import createSpark from './spark';
 
 class SparkComponent extends Component {
 
@@ -26,8 +26,8 @@ class SparkComponent extends Component {
       props.storeSparkInstance(spark);
     }
 
-    spark.listenToAndRun(spark, `change:isAuthenticated`, () => {
-      props.updateSparkStatus({authenticated: spark.isAuthenticated});
+    spark.listenToAndRun(spark, `change:canAuthorize`, () => {
+      props.updateSparkStatus({authenticated: spark.canAuthorize});
     });
 
     spark.listenToAndRun(spark, `change:isAuthenticating`, () => {

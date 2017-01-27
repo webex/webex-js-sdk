@@ -13,7 +13,7 @@ var File = module.exports = {
   fetch: function fetch(filename) {
     return File.fetchWithoutMagic(filename)
       .then(function(data) {
-        return new Promise((resolve, reject) => {
+        return new Promise(function(resolve, reject) {
           var magic = new Magic.Magic(Magic.MAGIC_MIME_TYPE);
           magic.detect(data, function(err2, res) {
             if (err2) {

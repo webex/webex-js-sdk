@@ -3,8 +3,8 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {defaults, isFunction, wrap} from 'lodash';
 import {EventEmitter} from 'events';
+import {defaults, isFunction, wrap} from 'lodash';
 import backoff from 'backoff';
 
 /* eslint max-nested-callbacks: [0] */

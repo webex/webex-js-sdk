@@ -39,6 +39,7 @@ If you haven't already, go to the Spark for Developers Portal (<https://develope
 When you want to eventually create an integration and have your own users take advantage of the widget, you'll need to create an integration with the following scopes:
 
   ```
+  spark:kms
   spark:rooms_read
   spark:rooms_write
   spark:memberships_read
@@ -54,10 +55,10 @@ Head over to the Spark for Developers Documentation for more information about h
 Using our CDN requires the least amount of work to get started. Add the following into your HTML file:
 ```
 <!-- Latest compiled and minified CSS -->
-<link rel="stylesheet" href="https://code.s4d.io/widget-message-meet/main.css">
+<link rel="stylesheet" href="https://code.s4d.io/widget-message-meet/production/main.css">
 
 <!-- Latest compiled and minified JavaScript -->
-<script src="https://code.s4d.io/widget-message-meet/bundle.js"></script>
+<script src="https://code.s4d.io/widget-message-meet/production/bundle.js"></script>
 ```
 
 ### Build from Source
@@ -80,10 +81,10 @@ If you would just like to get running immediately follow these instructions to g
 1.  Create a `.env` file in the root of the SDK project with the following lines, replacing the Xs with the appropriate value:
 
     ```
-    CISCOSPARK_ACCESS_TOKEN=XXXXXXXXXXXXXXXXXXXXXX
+    CISCOSPARK_ACCESS_TOKEN=YOUR_ACCESS_TOKEN
     TO_PERSON_EMAIL=XXXXX@XXXXXXXXX
     ```
-1.  From the root directory run: `PACKAGE=widget-message-meet npm run grunt:package start`
+1.  From the root directory run: `PACKAGE=widget-message-meet npm run grunt:package serve`
 
 ### HTML
 
@@ -103,7 +104,7 @@ The easiest way to get the Spark Message and Meet Widget into your web site is t
     ```html
     <div
       data-toggle="spark-message-meet"
-      data-access-token="XXXXXXXXXXXXXXXXXXXXXX"
+      data-access-token="YOUR_ACCESS_TOKEN"
       data-to-person-email="XXXXX@XXXXXXXXX"
       />
     ```

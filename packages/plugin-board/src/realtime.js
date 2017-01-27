@@ -29,37 +29,36 @@ const RealtimeService = Mercury.extend({
   /**
     * Sends the message via the socket. Assumes that the message is already properly formatted
     * @memberof Board.RealtimeService
-    * @param {Conversation} conversation
+    * @param {Board~Channel} channel
     * @param {string} message   Contains the un-encrypted message to send.
     * @returns {Promise<Board~Content>}
     */
-  publish(conversation, message) {
+  publish(channel, message) {
     let encryptionPromise;
     let contentType = `STRING`;
 
-    if (message.payload.scr) {
+    if (message.payload.file) {
       contentType = `FILE`;
-      encryptionPromise = this.spark.board.encryptSingleFileContent(conversation.defaultActivityEncryptionKeyUrl, message.payload);
+      encryptionPromise = this.spark.board.encryptSingleFileContent(channel.defaultEncryptionKeyUrl, message.payload);
     }
     else {
-      encryptionPromise = this.spark.board.encryptSingleContent(conversation.defaultActivityEncryptionKeyUrl, message.payload);
+      encryptionPromise = this.spark.board.encryptSingleContent(channel.defaultEncryptionKeyUrl, message.payload);
     }
 
     return encryptionPromise
-      .then((encryptedPayloadAndKeyUrl) => this.publishEncrypted(encryptedPayloadAndKeyUrl.encryptionKeyUrl, encryptedPayloadAndKeyUrl.encryptedData, contentType));
+      .then((encryptedPayloadAndKeyUrl) => this.publishEncrypted(encryptedPayloadAndKeyUrl, contentType));
   },
 
   /**
     * Sends the message via the socket. The message should already have been
     * encrypted
     * @memberof Board.RealtimeService
-    * @param {string} encryptionKeyUrl
-    * @param {string} encryptedData
+    * @param {object} encryptedPayloadAndKeyUrl
     * @param {string} contentType - provides hint for decryption. Defaults to
     * `STRING`, and could also be `FILE`
     * @returns {Promise<Board~Content>}
     */
-  publishEncrypted(encryptionKeyUrl, encryptedData, contentType) {
+  publishEncrypted(encryptedPayloadAndKeyUrl, contentType) {
     const bindings = this.spark.board.realtime.get(`boardBindings`);
     const data = {
       id: uuid.v4(),
@@ -71,16 +70,20 @@ const RealtimeService = Mercury.extend({
       }],
       data: {
         eventType: `board.activity`,
-        payload: encryptedData,
+        contentType,
+        payload: encryptedPayloadAndKeyUrl.encryptedData,
         envelope: {
-          encryptionKeyUrl
+          encryptionKeyUrl: encryptedPayloadAndKeyUrl.encryptionKeyUrl
         }
       }
     };
 
     // provide a hint for decryption
-    if (contentType) {
-      data.data.contentType = contentType;
+    if (contentType === `FILE`) {
+      data.data.payload = {
+        file: encryptedPayloadAndKeyUrl.file,
+        payload: encryptedPayloadAndKeyUrl.encryptedData
+      };
     }
     return this.socket.send(data);
   },

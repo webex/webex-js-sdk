@@ -9,6 +9,7 @@ import styles from './styles.css';
 function ActivityItemShareFile(props) {
   const {
     file,
+    isPending,
     onDownloadClick
   } = props;
 
@@ -20,6 +21,23 @@ function ActivityItemShareFile(props) {
 
   function handleDownloadClick() {
     onDownloadClick(file);
+  }
+
+  let shareActions = ``;
+  if (!isPending) {
+    // eslint-disable-next-line no-extra-parens
+    shareActions = (
+      <div className={classNames(`share-item-actions`, styles.shareActions)}>
+        <div className={classNames(`share-action-item`, styles.shareActionItem)}>
+          <Button
+            buttonClassName={styles.downloadButton}
+            iconType={ICON_TYPE_DOWNLOAD}
+            onClick={handleDownloadClick}
+            title="Download this file"
+          />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -35,16 +53,7 @@ function ActivityItemShareFile(props) {
             <span className={classNames(`share-file-type`, styles.fileType)}>{objectType}</span>
           </div>
         </div>
-        <div className={classNames(`share-item-actions`, styles.shareActions)}>
-          <div className={classNames(`share-action-item`, styles.shareActionItem)}>
-            <Button
-              buttonClassName={styles.downloadButton}
-              iconType={ICON_TYPE_DOWNLOAD}
-              onClick={handleDownloadClick}
-              title="Download this file"
-            />
-          </div>
-        </div>
+        {shareActions}
       </div>
     </div>
   );
@@ -52,6 +61,7 @@ function ActivityItemShareFile(props) {
 
 ActivityItemShareFile.propTypes = {
   file: PropTypes.object,
+  isPending: PropTypes.bool,
   onDownloadClick: PropTypes.func
 };
 

@@ -11,7 +11,7 @@ import {Map} from 'immutable';
 import reducers from './reducers';
 
 jest.mock(`./spark`);
-const {createSpark} = require(`./spark`);
+const createSpark = require(`./spark`);
 
 export function createMockStore() {
   const mockStore = configureMockStore([thunk]);

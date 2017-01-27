@@ -4,6 +4,7 @@
   font-weight: 200;
   background: #fff;
   border: 1px solid #ccc;
+  box-sizing: border-box;
 }
 
 .banner {

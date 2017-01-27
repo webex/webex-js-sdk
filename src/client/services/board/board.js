@@ -7,12 +7,14 @@
 
 /* eslint-env browser */
 
+var assign = require('lodash.assign');
+var defaults = require('lodash.defaults');
 var isarray = require('lodash.isarray');
 var Persistence = require('./persistence');
+var pick = require('lodash.pick');
 var Realtime = require('./realtime');
 var reduce = require('lodash.reduce');
 var SparkBase = require('../../../lib/spark-base');
-var defaults = require('lodash.defaults');
 
 /**
  * @class
@@ -39,7 +41,7 @@ var BoardService = SparkBase.extend({
       var decryptPromise;
 
       if (content.type === 'FILE') {
-        decryptPromise =  this.decryptSingleFileContent(content.payload, content.encryptionKeyUrl);
+        decryptPromise =  this.decryptSingleFileContent(content, content.encryptionKeyUrl);
       }
       else {
         decryptPromise = this.decryptSingleContent(content.payload, content.encryptionKeyUrl);
@@ -71,28 +73,51 @@ var BoardService = SparkBase.extend({
   /**
    * Decryts a single FILE content object
    * @memberof Board.BoardService
-   * @param  {string} encryptedData
+   * @param  {string} encryptedFileContent
    * @param  {string} encryptionKeyUrl
    * @return {Promise<Board~Content>}
    */
-  decryptSingleFileContent: function _decryptSingleFileContent(encryptedData, encryptionKeyUrl) {
-    var payload = JSON.parse(encryptedData);
+  decryptSingleFileContent: function _decryptSingleFileContent(encryptedFileContent, encryptionKeyUrl) {
+    var metadata = {};
 
-    return this.spark.encryption.decryptScr(payload.scr, encryptionKeyUrl)
+    if (encryptedFileContent.payload) {
+      metadata = JSON.parse(encryptedFileContent.payload);
+    }
+
+    return this.spark.encryption.decryptScr(encryptedFileContent.file.scr, encryptionKeyUrl)
       .then(function setScrInPayload(scr) {
-        payload.scr = scr;
-        return this.spark.encryption.decryptText(payload.displayName, encryptionKeyUrl);
+        encryptedFileContent.file.scr = scr;
+        return this.spark.encryption.decryptText(metadata.displayName, encryptionKeyUrl);
       }.bind(this))
       .then(function setDisplayNameInPayload(displayName) {
-        payload.displayName = displayName;
-        return payload;
+        encryptedFileContent.displayName = displayName;
+        return encryptedFileContent;
       });
+  },
+
+
+  /**
+   * Encrypt a channel
+   *
+   * @param {Board~Channel} channel
+   * @param {Object} options
+   * @param {Object} options.key Key to encrypt the channel and its contents
+   * @returns {Promise<Board~EncryptedChannel>}
+   */
+  encryptChannel: function encryptChannel(channel, options) {
+    options = options || {};
+
+    return Promise.resolve(options.key || this.spark.encryption.getUnusedKey())
+      .then(function encryptKmsMessage(key) {
+        channel.defaultEncryptionKeyUrl = key.keyUrl;
+        return this.spark.conversation.encrypter.encryptProperty(channel, 'kmsMessage', key);
+      }.bind(this));
   },
 
   /**
    * Encrypts a collection of content
    * @memberof Board.BoardService
-   * @param  {string} encryptionKeyUrl conversation.defaultActivityEncryptionKeyUrl
+   * @param  {string} encryptionKeyUrl channel.defaultEncryptionKeyUrl
    * @param  {Array} contents   Array of {@link Board~Content} objects. (curves, text, and images)
    * @return {Promise<Array>} Resolves with an array of encrypted {@link Board~Content} objects.
    */
@@ -102,7 +127,7 @@ var BoardService = SparkBase.extend({
       var contentType = 'STRING';
 
       // the existence of an scr will determine if the content is a FILE.
-      if (content.scr) {
+      if (content.file) {
         contentType = 'FILE';
         encryptionPromise = this.encryptSingleFileContent(encryptionKeyUrl, content);
       }
@@ -112,12 +137,14 @@ var BoardService = SparkBase.extend({
 
       return encryptionPromise
         .then(function createEncryptedContent(res) {
-          return {
-            device: this.spark.device.deviceType,
-            type: contentType,
-            encryptionKeyUrl: encryptionKeyUrl,
-            payload: res.encryptedData
-          };
+          return assign({
+              device: this.spark.device.deviceType,
+              type: contentType,
+              encryptionKeyUrl: encryptionKeyUrl,
+              payload: res.encryptedData
+            },
+            pick(res, 'file')
+          );
         }.bind(this));
     }, this));
   },
@@ -147,16 +174,19 @@ var BoardService = SparkBase.extend({
    * @return {Promise<Board~Content>}
    */
   encryptSingleFileContent: function _encryptSingleFileContent(encryptionKeyUrl, content) {
-    return this.spark.encryption.encryptScr(content.scr, encryptionKeyUrl)
+    return this.spark.encryption.encryptScr(content.file.scr, encryptionKeyUrl)
       .then(function encryptDisplayName(encryptedScr) {
-        content.scr = encryptedScr;
+        content.file.scr = encryptedScr;
         return this.spark.encryption.encryptText(content.displayName, encryptionKeyUrl);
       }.bind(this))
-      .then(function stringifyContent(displayName) {
-        content.displayName = displayName;
+      .then(function returnEncryptedContent(encryptedDisplayName) {
+        var metadata = {
+          displayName: encryptedDisplayName
+        };
 
         return {
-          encryptedData: JSON.stringify(content),
+          file: content.file,
+          encryptedData: JSON.stringify(metadata),
           encryptionKeyUrl: encryptionKeyUrl
         };
       });
@@ -208,17 +238,19 @@ var BoardService = SparkBase.extend({
   /**
    * Encrypts and uploads image to SparkFiles
    * @memberof Board.BoardService
-   * @param  {Conversation} conversation - Contains the currently selected conversation
+   * @param  {Board~Channel} channel
    * @param  {File} file - File to be uploaded
    * @private
    * @return {Object} Encrypted Scr and KeyUrl
    */
-  _uploadImage: function uploadImage(conversation, file) {
+  _uploadImage: function uploadImage(channel, file, options) {
+    options = options || {};
     var encryptedBinary;
+
     return this.spark.encryption.encryptBinary(file)
-      .then(function _uploadImageToSparkFiles(res) {
+      .then(function _uploadImageToBoardSpace(res) {
         encryptedBinary = res;
-        return this._uploadImageToSparkFiles(conversation, res.cblob);
+        return this._uploadImageToBoardSpace(channel, res.cblob, options.hiddenSpace);
       }.bind(this))
       .then(function prepareScr(res) {
         var scr = encryptedBinary.scr;
@@ -227,11 +259,8 @@ var BoardService = SparkBase.extend({
       }.bind(this));
   },
 
-  _uploadImageToSparkFiles: function _uploadImageToSparkFiles(conversation, cblob) {
-    return this.spark.request({
-      method: 'PUT',
-      uri: conversation.url + '/space'
-    })
+  _uploadImageToBoardSpace: function _uploadImageToBoardSpace(channel, cblob, hiddenSpace) {
+    return this._getSpaceUrl(channel, hiddenSpace)
       .then(function uploadFile(res) {
         return this.spark.client.upload({
           uri: res.body.spaceUrl + '/upload_sessions',
@@ -259,6 +288,18 @@ var BoardService = SparkBase.extend({
           }
         });
       }.bind(this));
+  },
+
+  _getSpaceUrl: function _getSpaceUrl(channel, hiddenSpace) {
+    var requestUri = channel.channelUrl + '/spaces/open';
+    if (hiddenSpace) {
+      requestUri = channel.channelUrl + '/spaces/hidden';
+    }
+
+    return this.spark.request({
+      method: 'PUT',
+      uri: requestUri
+    });
   }
 });
 

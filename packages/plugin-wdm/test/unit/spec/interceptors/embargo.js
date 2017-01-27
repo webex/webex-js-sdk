@@ -5,10 +5,9 @@
 
 import makeLocalUrl from '@ciscospark/test-helper-make-local-url';
 import {assert} from '@ciscospark/test-helper-chai';
-import {HttpStatusInterceptor} from '@ciscospark/http-core';
+import {defaults, HttpStatusInterceptor} from '@ciscospark/http-core';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
-import {default as Device, EmbargoInterceptor} from '../../..';
-import {defaults} from '@ciscospark/http-core';
+import Device, {EmbargoInterceptor} from '../../..';
 import deviceFixture from '../../lib/device-fixture';
 import sinon from '@ciscospark/test-helper-sinon';
 

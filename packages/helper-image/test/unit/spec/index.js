@@ -7,6 +7,7 @@ import {assert} from '@ciscospark/test-helper-chai';
 import {readExifData, orient} from '../..';
 import file from '@ciscospark/test-helper-file';
 import sinon from '@ciscospark/test-helper-sinon';
+
 describe(`helper-image`, () => {
   describe(`readExifData()`, () => {
     it(`adds exif orientation information on the image file`, () => {

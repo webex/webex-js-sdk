@@ -5,7 +5,7 @@
 
 import createBrowser from '../lib/create-browser';
 import testUsers from '@ciscospark/test-helper-test-users';
-import pkg from '../../../package.json';
+import pkg from '../../../package';
 
 describe(`example-phone`, () => {
   let browser, user;
