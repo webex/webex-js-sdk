@@ -131,11 +131,10 @@ const Conversation = SparkPlugin.extend({
     const shunt = new EventEmitter();
     const promise = (isEncrypted ? this.spark.encryption.download(item.scr) : this._downloadUnencryptedFile(item.url))
       .on(`progress`, (...args) => shunt.emit(`progress`, ...args))
-      .then((res) => {
-        return readExifData(item, res);
-      })
+      .then((res) => readExifData(item, res))
       .then((file) => {
         this.logger.info(`conversation: file downloaded`);
+
         if (item.displayName && !file.name) {
           file.name = item.displayName;
         }
@@ -164,9 +163,7 @@ const Conversation = SparkPlugin.extend({
     };
 
     const promise = this.request(options)
-      .then((res) => {
-        return res.body;
-      })
+      .then((res) => res.body);
 
     proxyEvents(options.download, promise);
 
