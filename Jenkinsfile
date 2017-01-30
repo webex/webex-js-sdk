@@ -317,10 +317,11 @@ ansiColor('xterm') {
               }
             }
 
+            def version = ''
             if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
               stage('build for release') {
                 env.NODE_ENV = ''
-                def version = sh script: 'echo "$(cat lerna.json | jq .version | tr -d \'\\"\')"', returnStdout: true
+                version = sh script: 'echo "$(cat lerna.json | jq .version | tr -d \'\\"\')"', returnStdout: true
                 image.inside(DOCKER_RUN_OPTS) {
                   sh 'npm run build'
                   sh 'npm run grunt:concurrent -- build:docs'
@@ -387,7 +388,21 @@ ansiColor('xterm') {
                 image.inside(DOCKER_RUN_OPTS) {
                   try {
                     sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
+                    echo ''
+                    echo ''
+                    echo ''
+                    echo 'Reminder: E403 errors below are normal. They occur for any package that has no updates to publish'
+                    echo ''
+                    echo ''
+                    echo ''
                     sh 'NPM_CONFIG_REGISTRY="" npm run lerna -- exec -- bash -c \'npm publish --access public || true\''
+                    echo ''
+                    echo ''
+                    echo ''
+                    echo 'Reminder: E403 errors above are normal. They occur for any package that has no updates to publish'
+                    echo ''
+                    echo ''
+                    echo ''
                     if (version.length == 0) {
                       warn('could not determine tag name to push to github.com')
                     }
