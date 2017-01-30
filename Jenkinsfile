@@ -21,15 +21,7 @@ def cleanup = { ->
   sh 'rm -f .env'
 
   if (IS_VALIDATED_MERGE_BUILD) {
-    if (currentBuild.result == 'SUCCESS') {
-      withCredentials([usernameColonPassword(credentialsId: '386d3445-b855-40e4-999a-dc5801336a69', variable: 'GAUNTLET_GIT_CREDENTIALS')]) {
-        env.GAUNTLET_GIT_CREDENTIALS = GAUNTLET_GIT_CREDENTIALS
-        sh 'git config --local credential.helper store --file=${GAUNTLET_GIT_CREDENTIALS}'
-        sh 'GIT_CURL_VERBOSE=1 git -c core.askpass=true push https://gauntlet.wbx2.com/api/git-component-success/spark-js-sdk HEAD:refs/heads/master'
-        sh 'git config --local --remove-section credential'
-      }
-    }
-    else {
+    if (currentBuild.result != 'SUCCESS') {
       withCredentials([usernamePassword(
         credentialsId: '386d3445-b855-40e4-999a-dc5801336a69',
         passwordVariable: 'GAUNTLET_PASSWORD',
