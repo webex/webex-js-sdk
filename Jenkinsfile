@@ -387,7 +387,7 @@ ansiColor('xterm') {
                   try {
                     sh 'mkdir -p $HOME'
                     sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
-                    sh 'NPM_CONFIG_REGISTRY="" npm run lerna -- exec --bash -c \'npm publish --access public || true\''
+                    sh 'NPM_CONFIG_REGISTRY="" npm run lerna -- exec -- bash -c \'npm publish --access public || true\''
                     if (version.length == 0) {
                       warn('could not determine tag name to push to github.com')
                     }
@@ -407,8 +407,7 @@ ansiColor('xterm') {
 
               stage('publish docs') {
                 try {
-                  image.inside("${DOCKER_RUN_OPTS} -e HOME=/tmp/local-ssh-config") {
-                    sh 'mkdir -p $HOME'
+                  image.inside("${DOCKER_RUN_OPTS} -v /home/jenkins:/home/jenkins") {
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
                       sh 'npm run grunt:concurrent -- publish:docs'
                     }
