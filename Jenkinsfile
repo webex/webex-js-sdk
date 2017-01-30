@@ -146,6 +146,7 @@ ansiColor('xterm') {
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} -e NPM_CONFIG_CACHE=${env.WORKSPACE}/.npm"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --volumes-from=\$(hostname)"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --user=\$(id -u):\$(id -g)"
+          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --volume /home/jenkins:/home/jenkins"
           // DOCKER_RUN_OPTS has some values in it that we want to evaluate on
           // the node, but image.inside doesn't do subshell execution. We'll use
           // echo to evaluate once on the node and store the values.
@@ -383,9 +384,8 @@ ansiColor('xterm') {
                 // TODO use lerna publish directly now that npm fixed READMEs
                 // reminder: need to write to ~ not . because lerna runs npm
                 // commands in subdirectories
-                image.inside("${DOCKER_RUN_OPTS} -e HOME=/tmp/local-npm-config") {
+                image.inside(DOCKER_RUN_OPTS) {
                   try {
-                    sh 'mkdir -p $HOME'
                     sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
                     sh 'NPM_CONFIG_REGISTRY="" npm run lerna -- exec -- bash -c \'npm publish --access public || true\''
                     if (version.length == 0) {
@@ -407,7 +407,7 @@ ansiColor('xterm') {
 
               stage('publish docs') {
                 try {
-                  image.inside("${DOCKER_RUN_OPTS} -v /home/jenkins:/home/jenkins") {
+                  image.inside(DOCKER_RUN_OPTS) {
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
                       sh 'npm run grunt:concurrent -- publish:docs'
                     }
