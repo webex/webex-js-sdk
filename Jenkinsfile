@@ -321,8 +321,10 @@ ansiColor('xterm') {
             if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
               stage('build for release') {
                 env.NODE_ENV = ''
-                version = sh script: 'echo "$(cat lerna.json | jq .version | tr -d \'\\"\')"', returnStdout: true
                 image.inside(DOCKER_RUN_OPTS) {
+                  dir('tooling') {
+                    version = sh script: 'node ./script.js | tr -d \'\\"\'', returnStdout: true
+                  }
                   sh 'npm run build'
                   sh 'npm run grunt:concurrent -- build:docs'
                   sh 'PACKAGE=example-phone npm run grunt:package -- webpack:build'
@@ -344,6 +346,7 @@ ansiColor('xterm') {
 
                 sh 'git rev-parse HEAD > .promotion-sha'
                 archive '.promotion-sha'
+                sh 'rm .promotion-sha'
               }
             }
 
@@ -366,8 +369,8 @@ ansiColor('xterm') {
 
             if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
               stage('mark as gating') {
-                cdnPublishBuild = build job: 'spark-js-sdk--mark-as-gating', propagate: false
-                if (cdnPublishBuild.result != 'SUCCESS') {
+                markAsGatingJob = build job: 'spark-js-sdk--mark-as-gating', propagate: false
+                if (markAsGatingJob.result != 'SUCCESS') {
                   warn('failed to mark as gating')
                 }
               }
@@ -382,12 +385,12 @@ ansiColor('xterm') {
               }
 
               stage('publish to npm') {
-                // TODO use lerna publish directly now that npm fixed READMEs
-                // reminder: need to write to ~ not . because lerna runs npm
-                // commands in subdirectories
-                image.inside(DOCKER_RUN_OPTS) {
-                  try {
-                    sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
+                try {
+                  sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
+                  // TODO use lerna publish directly now that npm fixed READMEs
+                  // reminder: need to write to ~ not . because lerna runs npm
+                  // commands in subdirectories
+                  image.inside(DOCKER_RUN_OPTS) {
                     echo ''
                     echo ''
                     echo ''
@@ -413,10 +416,9 @@ ansiColor('xterm') {
                       }
                     }
                   }
-                  catch (error) {
-                    warn("failed to publish to npm ${error.toString()}")
-                  }
-
+                }
+                catch (error) {
+                  warn("failed to publish to npm ${error.toString()}")
                 }
               }
 
