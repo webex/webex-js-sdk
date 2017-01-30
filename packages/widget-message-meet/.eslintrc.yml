@@ -9,3 +9,8 @@ rules:
   # of exporting the connected version as default and the non-connected version
   # as named.
   import/no-named-as-default: 0
+  func-style:
+    - 2
+    - declaration
+    - allowArrowFunctions: true
+

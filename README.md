@@ -83,6 +83,28 @@ For all packages
 npm run grunt:concurrent -- eslint
 ```
 
+### Run automation server and test manually
+Run automation server and try to run test manually
+```bash
+PACKAGE=PACKAGENAME npm run grunt:package -- express:test test:automation --serve
+```
+
+### Run automation tests on localhost
+Make sure chrome and firefox driver is installed.
+To run test on a particular module
+
+```bash
+PACKAGE=PACKAGENAME npm run grunt:package -- test:automation --serve
+```
+
+### Run automation tests on sauce
+To run automation on sauce
+
+```bash
+npm run sauce:start
+npm run sauce:run -- PACKAGE=PACKAGENAME npm run grunt:package -- test:automation --serve
+```
+
 ### Run unit tests in watch mode
 
 OK, this one's a handful and requires a global package, but there were too many possible variants to hardcode it any where.
@@ -94,6 +116,14 @@ nodemon -w packages/PACKAGENAME/src -w packages/PACKAGENAME/test -x "UNIT_ONLY=t
 Aggressively log network requests
 ```bash
 export ENABLE_VERBOSE_NETWORK_LOGGING=true
+```
+
+### Documentation
+To compile the documentation locally, make sure you have [Jekyll](https://jekyllrb.com/) installed then run the following:
+
+```bash
+cd docs
+jekyll serve --config=_config.yml,_config.local.yml
 ```
 
 ## Contribute

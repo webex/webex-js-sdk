@@ -2,6 +2,7 @@ import marked from 'marked';
 import {filterSync} from '@ciscospark/helper-html';
 
 import {isImage, sanitize} from '../utils/files';
+import {constructActivity, constructActivityWithContent} from '../utils/activity';
 
 export const ADD_FILES_TO_ACTIVITY = `ADD_FILES_TO_ACTIVITY`;
 export function addFilesToActivity(files) {
@@ -13,10 +14,30 @@ export function addFilesToActivity(files) {
   };
 }
 
+export const ADD_INFLIGHT_ACTIVITY = `ADD_INFLIGHT_ACTIVITY`;
+function addInflightActivity(activity) {
+  return {
+    type: ADD_INFLIGHT_ACTIVITY,
+    payload: {
+      activity
+    }
+  };
+}
+
 export const REMOVE_FILE_FROM_ACTIVITY = `REMOVE_FILE_FROM_ACTIVITY`;
 export function removeFileFromActivity(id) {
   return {
     type: REMOVE_FILE_FROM_ACTIVITY,
+    payload: {
+      id
+    }
+  };
+}
+
+export const REMOVE_INFLIGHT_ACTIVITY = `REMOVE_INFLIGHT_ACTIVITY`;
+export function removeInflightActivity(id) {
+  return {
+    type: REMOVE_INFLIGHT_ACTIVITY,
     payload: {
       id
     }
@@ -40,6 +61,13 @@ export function saveShareActivity(shareActivity) {
   };
 }
 
+export const SUBMIT_ACTIVITY_START = `SUBMIT_ACTIVITY_START`;
+export function submitActivityStart() {
+  return {
+    type: SUBMIT_ACTIVITY_START
+  };
+}
+
 export const UPDATE_ACTIVITY_STATUS = `UPDATE_ACTIVITY_STATUS`;
 export function updateActivityStatus(status) {
   return {
@@ -60,18 +88,19 @@ export function updateActivityText(text) {
   };
 }
 
+
 /**
  * Adds file to message, creates Share activity if not present, starts upload
  *
  * @param {object} conversation - from store
- * @param {Map} activity - from store
+ * @param {Map} activityStore - from store
  * @param {array} files
  * @param {object} spark - spark instance
  * @returns {function}
  */
-export function addFiles(conversation, activity, files, spark) {
+export function addFiles(conversation, activityStore, files, spark) {
   return (dispatch) => {
-    let shareActivity = activity.get(`shareActivity`);
+    let shareActivity = activityStore.get(`shareActivity`);
     if (!shareActivity) {
       shareActivity = spark.conversation.makeShare(conversation);
       // Store shareActivity object to be used later
@@ -92,11 +121,12 @@ export function addFiles(conversation, activity, files, spark) {
     dispatch(updateActivityStatus({isUploadingShare: true}));
     dispatch(addFilesToActivity(cleanFiles));
     cleanFiles.forEach((file) => shareActivity.add(file));
+
   };
 }
 
 /**
-* Removes file from ShareActiivty and from store
+* Removes file from ShareActivity and from store
 *
 * @param {string} id - clientTempId key of stored file
 * @param {Map} activity - from store
@@ -118,23 +148,29 @@ export function removeFile(id, activity) {
 *
 * @param {object} conversation - from store
 * @param {Map} activity - from store
+* @param {object} user - from store
 * @param {object} spark - spark instance from store
 * @returns {function}
 */
-export function submitActivity(conversation, activity, spark) {
+export function submitActivity(conversation, activity, user, spark) {
   return (dispatch) => {
-    dispatch(updateActivityStatus({isSending: true}));
-    const message = _createMessageObject(activity.get(`text`));
+    const message = createMessageObject(activity.get(`text`));
     const shareActivity = activity.get(`shareActivity`);
     if (shareActivity && activity.get(`files`).size) {
+      const inFlightActivity = constructActivityWithContent(conversation, message, user, activity.get(`files`).toArray());
+      dispatch(addInflightActivity(inFlightActivity));
+      // map our temp id to the in flight temp id so we can remove it when it is received
       shareActivity.displayName = message.displayName;
       shareActivity.content = message.content;
-      spark.conversation.share(conversation, shareActivity)
-        .then(cleanupAfterSubmit(activity, dispatch));
+      shareActivity.clientTempId = inFlightActivity.clientTempId;
+      spark.conversation.share(conversation, shareActivity);
+      cleanupAfterSubmit(activity, dispatch);
     }
     else if (message) {
-      spark.conversation.post(conversation, message)
-        .then(cleanupAfterSubmit(activity, dispatch));
+      const inFlightActivity = constructActivity(conversation, message, user);
+      dispatch(addInflightActivity(inFlightActivity));
+      dispatch(resetActivity());
+      spark.conversation.post(conversation, message, {clientTempId: inFlightActivity.clientTempId});
     }
   };
 }
@@ -163,14 +199,13 @@ export function setUserTyping(isTyping, conversation, spark) {
 * @returns {function}
 */
 function cleanupAfterSubmit(activity, dispatch) {
-  const files = activity.get(`files`);
+  const files = activity.getIn([`files`]);
   if (files.size) {
     files.forEach((file) => {
       revokeObjectURL(file);
     });
   }
   dispatch(resetActivity());
-  dispatch(updateActivityStatus({isSending: false}));
 }
 
 /**
@@ -196,7 +231,13 @@ function revokeObjectURL(file) {
 }
 
 
-function _createMessageObject(messageString) {
+/**
+ * Creates markdown and stripped text object
+ *
+ * @param {string} messageString
+ * @returns {object}
+ */
+function createMessageObject(messageString) {
   let content;
   let markedString = marked(messageString) || ``;
   let displayName = messageString || ``;

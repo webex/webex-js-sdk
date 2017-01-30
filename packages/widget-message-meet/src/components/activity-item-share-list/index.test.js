@@ -16,6 +16,7 @@ describe(`ActivityShareList post component`, () => {
     avatar: <div />,
     id: `1234-1234-1234-1234`,
     isAdditional: false,
+    isPending: false,
     isSelf: false,
     name: `Test User`,
     onActivityDelete: jest.fn(),
@@ -24,13 +25,22 @@ describe(`ActivityShareList post component`, () => {
 
   const handleClick = jest.fn();
 
-  const component = renderer.create(
-    <Provider store={store}>
-      <ActivityShareList files={files} onDownloadClick={handleClick} {...props} />
-    </Provider>
-  ).toJSON();
-
   it(`renders properly`, () => {
+    const component = renderer.create(
+      <Provider store={store}>
+        <ActivityShareList files={files} onDownloadClick={handleClick} {...props} />
+      </Provider>
+    ).toJSON();
+    expect(component).toMatchSnapshot();
+  });
+
+  it(`renders properly while pending`, () => {
+    props.isPending = true;
+    const component = renderer.create(
+      <Provider store={store}>
+        <ActivityShareList files={files} onDownloadClick={handleClick} {...props} />
+      </Provider>
+    ).toJSON();
     expect(component).toMatchSnapshot();
   });
 });

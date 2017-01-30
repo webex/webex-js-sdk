@@ -3,13 +3,15 @@ import {
   SET_SCROLL_POSITION
 } from '../actions/widget';
 
-export default function reduceWidget(state = {
+export const initialState = {
   deletingActivityId: null,
   showAlertModal: false,
   showScrollToBottomButton: false,
   hasNewMessage: false,
   hasTextAreaFocus: false
-}, action) {
+};
+
+export default function reduceWidget(state = initialState, action) {
   switch (action.type) {
   case UPDATE_WIDGET_STATE:
     return Object.assign({}, state, action.payload.state);

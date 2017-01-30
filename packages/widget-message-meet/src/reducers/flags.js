@@ -17,12 +17,15 @@ function mapFlag(flag) {
   };
 }
 
-// eslint-disable-reason Reducer Reduction Strategy incoming...
-export default function conversation(state = { // eslint-disable-line complexity
+export const initialState = {
   flags: [],
   hasFetched: false,
   isFetching: false
-}, action) {
+};
+
+// eslint-disable-reason Reducer Reduction Strategy incoming...
+// eslint-disable-next-line complexity
+export default function conversation(state = initialState, action) {
   switch (action.type) {
 
   case ADD_FLAG: {

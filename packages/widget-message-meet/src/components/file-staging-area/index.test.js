@@ -20,7 +20,9 @@ describe(`FileStagingArea component`, () => {
     .then((res) => {
       [txtFile, pptFile] = res;
       txtFile.type = `text/plain`;
+      txtFile.id = `txtFile`;
       pptFile.type = `application/vnd.openxmlformats-officedocument.presentationml.presentation`;
+      pptFile.id = `pptFile`;
     })
   );
 

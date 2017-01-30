@@ -9,14 +9,20 @@ describe(`ActivityItemShareFile component`, () => {
       displayName: `testImage.js`,
       url: `http://cisco.com`
     },
+    isPending: false,
     onDownloadClick: jest.fn()
   };
 
-  const component = renderer.create(
-    <ActivityItemShareFile {...props} />
-  );
-
   it(`renders properly`, () => {
+    const component = renderer.create(
+      <ActivityItemShareFile {...props} />);
+    expect(component).toMatchSnapshot();
+  });
+
+  it(`renders properly while pending`, () => {
+    props.isPending = true;
+    const component = renderer.create(
+      <ActivityItemShareFile {...props} />);
     expect(component).toMatchSnapshot();
   });
 });
