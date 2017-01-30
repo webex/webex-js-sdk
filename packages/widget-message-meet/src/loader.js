@@ -1,8 +1,8 @@
 /* eslint-disable react/no-set-state, global-require */
 import React, {Component} from 'react';
 import classNames from 'classnames';
-
 import styles from './styles/loader.css';
+
 let bgImg;
 try {
   bgImg = require(`./local/bg.png`);

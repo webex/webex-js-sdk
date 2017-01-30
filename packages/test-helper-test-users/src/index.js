@@ -50,7 +50,7 @@ function _create(options) {
   return Promise.all(promises);
 
   function makeUser() {
-    const config = _.defaults({
+    var config = _.defaults({
       scopes: process.env.CISCOSPARK_SCOPE
     }, options.config);
     return tui.create(config)

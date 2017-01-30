@@ -10,13 +10,11 @@ import {SparkPlugin} from '@ciscospark/spark-core';
 import {filter, map, pick, some} from 'lodash';
 import {EventEmitter} from 'events';
 import mime from 'mime-types';
+import processImage from './process-image';
 
 export const EMITTER_SYMBOL = Symbol(`EMITTER_SYMBOL`);
 export const FILE_SYMBOL = Symbol(`FILE_SYMBOL`);
 const PROMISE_SYMBOL = Symbol(`PROMISE_SYMBOL`);
-
-import processImage from './process-image';
-
 
 /**
  * @class

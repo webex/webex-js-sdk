@@ -6,7 +6,7 @@ import '@ciscospark/plugin-flag';
 import Spark from '@ciscospark/spark-core';
 import LocalStorageStoreAdapter from '@ciscospark/storage-adapter-local-storage';
 
-export function createSpark(accessToken) {
+export default function createSpark(accessToken) {
   const credentials = JSON.parse(localStorage.getItem(`credentials`) || false);
   return new Spark({
     credentials: {

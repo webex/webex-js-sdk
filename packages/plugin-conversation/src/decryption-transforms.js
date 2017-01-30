@@ -7,6 +7,7 @@ import toArray from './to-array';
 
 const decryptTextProp = curry((name, ctx, key, object) => ctx.transform(`decryptTextProp`, name, key, object));
 
+// eslint-disable-next-line import/prefer-default-export
 export const transforms = toArray(`inbound`, {
   decryptObject(ctx, key, object) {
     if (!object) {

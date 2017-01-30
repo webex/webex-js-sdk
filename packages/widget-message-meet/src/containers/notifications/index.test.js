@@ -30,12 +30,14 @@ describe(`Notifications component`, () => {
   });
 
   it(`should set supported true if true`, () => {
+    // eslint-disable-next-line import/no-named-as-default-member
     browserUtilities.isNotificationSupported = () => true;
     component.componentDidUpdate();
     expect(setNotificationSupported).toBeCalledWith(true);
   });
 
   it(`should not set supported true if false`, () => {
+    // eslint-disable-next-line import/no-named-as-default-member
     browserUtilities.isNotificationSupported = () => false;
     component.componentDidUpdate();
     expect(setNotificationSupported).not.toBeCalledWith(true);
@@ -49,8 +51,10 @@ describe(`Notifications component`, () => {
   });
 
   it(`should request permissions and set result`, () => {
+    // eslint-disable-next-line import/no-named-as-default-member
     browserUtilities.requestPermissionForNotifications = jest.fn(() => browserUtilities.PERMISSION_GRANTED);
     component.requestPermission(() => {
+      // eslint-disable-next-line import/no-named-as-default-member
       expect(setNotificationPermission).toBeCalledWith(browserUtilities.PERMISSION_GRANTED);
     });
   });
@@ -63,6 +67,7 @@ describe(`Notifications component`, () => {
       notificationId: `abc123`
     };
     component.props.notifications = [notification];
+    // eslint-disable-next-line import/no-named-as-default-member
     component.permission = browserUtilities.PERMISSION_GRANTED;
     component.displayNotifications();
     expect(notificationSent).toBeCalled();
@@ -76,12 +81,16 @@ describe(`Notifications component`, () => {
       notificationId: `abc123`
     };
     component.props.notifications = [notification];
+    // eslint-disable-next-line import/no-named-as-default-member
     component.props.permission = browserUtilities.PERMISSION_GRANTED;
+    // eslint-disable-next-line import/no-named-as-default-member
     browserUtilities.isBrowserHidden = jest.fn(() => true);
+    // eslint-disable-next-line import/no-named-as-default-member
     browserUtilities.spawnNotification = jest.fn();
 
     component.displayNotifications();
 
+    // eslint-disable-next-line import/no-named-as-default-member
     expect(browserUtilities.spawnNotification).toBeCalled();
   });
 

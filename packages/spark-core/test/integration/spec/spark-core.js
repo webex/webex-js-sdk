@@ -4,7 +4,7 @@
  */
 
 import {assert} from '@ciscospark/test-helper-chai';
-import {SparkHttpError, default as Spark} from '../..';
+import Spark, {SparkHttpError} from '../..';
 import makeLocalUrl from '@ciscospark/test-helper-make-local-url';
 
 describe(`spark-core`, function() {

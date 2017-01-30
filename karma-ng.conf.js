@@ -97,7 +97,12 @@ module.exports = function(config) {
       'mocha'
     ],
 
-    singleRun: !process.env.KARMA_DEBUG
+    singleRun: !process.env.KARMA_DEBUG,
+
+    // video and screenshots add on the request of sauce labs support to help
+    // diagnose test user creation timeouts
+    recordVideo: true,
+    recordScreenshots: true
   };
 
   if (process.env.COVERAGE && process.env.COVERAGE !== 'undefined') {
