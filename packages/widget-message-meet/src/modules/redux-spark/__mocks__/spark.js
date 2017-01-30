@@ -136,6 +136,8 @@ const spark = {
   }
 };
 
-export default function createSpark() {
+function createSpark() {
   return spark;
 }
+
+module.exports = createSpark;

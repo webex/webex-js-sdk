@@ -1,6 +1,8 @@
 import {updateHasNewMessage} from './widget';
 import {setTyping} from './indicators';
 
+import {removeInflightActivity} from './activity';
+
 const VISIBLE_ACTIVITY_VERBS = [`share`, `post`];
 const VISIBLE_ACTIVITY_TYPES = [`comment`, `content`, `conversation`];
 
@@ -154,6 +156,7 @@ export function listenToMercuryActivity(conversationId, spark) {
         if (isVisibleContent) {
           dispatch(updateHasNewMessage(true));
           dispatch(receiveMercuryComment(activity));
+          dispatch(removeInflightActivity(activity.clientTempId));
         }
         else if (activity.object.objectType === `activity`) {
           dispatch(receiveMercuryActivity(activity));

@@ -16,6 +16,7 @@ export default function ActivityItemBase(props) {
     id,
     isAdditional,
     isFlagged,
+    isPending,
     isSelf,
     name,
     onActivityDelete,
@@ -24,6 +25,7 @@ export default function ActivityItemBase(props) {
   } = props;
 
   let deleteAction;
+  let flagAction;
 
   function handleOnDelete() {
     onActivityDelete(id);
@@ -41,37 +43,45 @@ export default function ActivityItemBase(props) {
     return actionClassNames;
   }
 
-  if (isSelf) {
-    deleteAction = ( // eslint-disable-line no-extra-parens
-      <div className={classNames(getActionClassNames())}>
+  if (!isPending) {
+    flagAction = ( // eslint-disable-line no-extra-parens
+      <div className={classNames(getActionClassNames(isFlagged))}>
         <ActivityItemPostAction
-          iconType={ICON_TYPE_DELETE}
-          onClick={handleOnDelete}
-          title="Delete this message"
+          iconType={ICON_TYPE_FLAGGED_OUTLINE}
+          onClick={handleOnFlag}
+          title="Flag this message"
         />
       </div>
     );
-  }
-  else {
-    deleteAction = ( // eslint-disable-line no-extra-parens
-      <div className={classNames(getActionClassNames())}>
-        <div className={classNames(`action-spacer`, styles.actionSpacer)} />
-      </div>
-    );
+    if (isSelf) {
+      deleteAction = ( // eslint-disable-line no-extra-parens
+        <div className={classNames(getActionClassNames())}>
+          <ActivityItemPostAction
+            iconType={ICON_TYPE_DELETE}
+            onClick={handleOnDelete}
+            title="Delete this message"
+          />
+        </div>
+      );
+    }
+    else {
+      deleteAction = ( // eslint-disable-line no-extra-parens
+        <div className={classNames(getActionClassNames())}>
+          <div className={classNames(`action-spacer`, styles.actionSpacer)} />
+        </div>
+      );
+    }
   }
 
-  const flagAction = ( // eslint-disable-line no-extra-parens
-    <div className={classNames(getActionClassNames(isFlagged))}>
-      <ActivityItemPostAction
-        iconType={ICON_TYPE_FLAGGED_OUTLINE}
-        onClick={handleOnFlag}
-        title="Flag this message"
-      />
-    </div>
-  );
+  const activityItemClasses = [
+    `activity-item`,
+    styles.activityItem,
+    isAdditional ? styles.additional : ``,
+    isPending ? styles.pending : ``
+  ];
 
   return (
-    <div className={classNames(`activity-item`, styles.activityItem, isAdditional ? styles.additional : ``)}>
+    <div className={classNames(activityItemClasses)}>
       <div className={classNames(`avatar-wrapper`, styles.avatarWrapper)}>
         <Avatar image={avatarUrl} isSelfAvatar={isSelf} name={name} />
       </div>
@@ -98,6 +108,7 @@ ActivityItemBase.propTypes = {
   id: PropTypes.string.isRequired,
   isAdditional: PropTypes.bool,
   isFlagged: PropTypes.bool,
+  isPending: PropTypes.bool,
   isSelf: PropTypes.bool,
   name: PropTypes.string.isRequired,
   onActivityDelete: PropTypes.func,

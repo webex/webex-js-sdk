@@ -3,6 +3,8 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 
+/* eslint-disable */
+
 'use strict';
 
 var path = require('path');
@@ -146,7 +148,11 @@ module.exports = function(grunt) {
         '<%= config.src %>/**/*.js',
         '<%= config.test %>/**/*.js',
         'Gruntfile.js'
-      ]
+      ],
+      options: {
+        format: process.env.XUNIT ? 'checkstyle' : 'stylish',
+        outputFile: process.env.XUNIT && 'reports/style/eslint-legacy.xml'
+      },
     },
 
     fileExists: {
@@ -353,12 +359,6 @@ module.exports = function(grunt) {
   }
 
   if (XUNIT) {
-    var eslint = grunt.config('eslint');
-    eslint.options = eslint.options || {};
-    eslint.options.format = 'junit';
-    eslint.options.outputFile = 'reports/eslint.xml';
-    grunt.config('eslint', eslint);
-
     var jscs = grunt.config('jscs');
     jscs.options.reporter = 'junit';
     jscs.options.reporterOutput = 'reports/jscs.xml';

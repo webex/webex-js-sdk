@@ -4,7 +4,7 @@
 /* eslint import/first: 0 */
 
 jest.mock(`./spark`);
-const {createSpark} = require(`./spark`);
+const createSpark = require(`./spark`);
 
 import {createMockStore} from './test-store';
 import {

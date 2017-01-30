@@ -2,43 +2,13 @@
 
 set -e
 
+cd "$(dirname $0)/.."
+
 # Kill background tasks if the script exits early
 # single quotes are intentional
 # see http://stackoverflow.com/questions/360201/how-do-i-kill-background-processes-jobs-when-my-shell-script-exits
 # and https://wiki.jenkins-ci.org/display/JENKINS/Aborting+a+build
 trap 'JOBS=$(jobs -p); if [ -n "${JOBS}" ]; then kill "${JOBS}"; fi' SIGINT SIGTERM EXIT
-
-echo "################################################################################"
-echo "# INSTALLING LEGACY DEPENDENCIES"
-echo "################################################################################"
-docker run ${DOCKER_RUN_OPTS} npm install
-
-echo "################################################################################"
-echo "# CLEANING"
-echo "################################################################################"
-docker run ${DOCKER_RUN_OPTS} npm run grunt -- clean
-docker run ${DOCKER_RUN_OPTS} npm run grunt:concurrent -- clean
-docker run ${DOCKER_RUN_OPTS} npm run clean-empty-packages
-rm -rf "${SDK_ROOT_DIR}/.sauce/*/sc.*"
-rm -rf "${SDK_ROOT_DIR}/.sauce/*/sauce_connect*log"
-
-rm -rf ${SDK_ROOT_DIR}/reports
-mkdir -p ${SDK_ROOT_DIR}/reports/coverage
-mkdir -p ${SDK_ROOT_DIR}/reports/coverage-final
-mkdir -p ${SDK_ROOT_DIR}/reports/junit
-mkdir -p ${SDK_ROOT_DIR}/reports/logs
-mkdir -p ${SDK_ROOT_DIR}/reports/sauce
-chmod -R ugo+w ${SDK_ROOT_DIR}/reports
-
-echo "################################################################################"
-echo "# BOOTSTRAPPING MODULES"
-echo "################################################################################"
-docker run ${DOCKER_RUN_OPTS} npm run bootstrap
-
-echo "################################################################################"
-echo "# BUILDING MODULES"
-echo "################################################################################"
-docker run ${DOCKER_RUN_OPTS} npm run build
 
 echo "################################################################################"
 echo "# RUNNING TESTS"
@@ -48,11 +18,9 @@ PIDS=""
 
 # Ideally, the following would be done with lerna but there seem to be some bugs
 # in --scope and --ignore
-PACKAGES=$(ls "${SDK_ROOT_DIR}/packages")
+PACKAGES=$(ls "packages")
 PACKAGES+=" legacy-node"
-if [ -z "${SAUCE_IS_DOWN}" ]; then
-  PACKAGES+=" legacy-browser"
-fi
+PACKAGES+=" legacy-browser"
 for PACKAGE in ${PACKAGES}; do
   if ! echo ${PACKAGE} | grep -qc -v test-helper ; then
     continue
@@ -87,7 +55,7 @@ for PACKAGE in ${PACKAGES}; do
   echo "################################################################################"
   # Note: using & instead of -d so that wait works
   # Note: the Dockerfile's default CMD will run package tests automatically
-  docker run --name "${CONTAINER_NAME}" -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} &
+  eval "docker run --name=${CONTAINER_NAME} -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} &"
   PID="$!"
   PIDS+=" ${PID}"
   echo "Running tests for ${PACKAGE} as ${PID}"
@@ -114,7 +82,6 @@ echo "##########################################################################
 echo "# Stripping unhelpful, jenkins breaking logs from karma xml"
 echo "################################################################################"
 
-cd ${SDK_ROOT_DIR}
 for FILE in $(find ./reports/junit -name "karma-*.xml") ; do
   awk '
   BEGIN { write = 1 }

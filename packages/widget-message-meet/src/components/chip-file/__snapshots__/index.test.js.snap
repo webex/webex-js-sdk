@@ -4,7 +4,7 @@ exports[`ChipFile component renders properly 1`] = `
   <div
     className="file-thumbnail">
     <img
-      role="presentation"
+      alt=""
       src="blob:localhost/testFile.jpg" />
   </div>
   <div

@@ -118,6 +118,14 @@ Aggressively log network requests
 export ENABLE_VERBOSE_NETWORK_LOGGING=true
 ```
 
+### Documentation
+To compile the documentation locally, make sure you have [Jekyll](https://jekyllrb.com/) installed then run the following:
+
+```bash
+cd docs
+jekyll serve --config=_config.yml,_config.local.yml
+```
+
 ## Contribute
 
 Pull requests welcome. Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.

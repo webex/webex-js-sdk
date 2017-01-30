@@ -1,12 +1,14 @@
 import {ADD_NOTIFICATION, DELETE_NOTIFICATION, UPDATE_NOTIFICATION_SETTING} from '../actions/notifications';
 
-export default function reduceNotifications(state = {
+export const initialState = {
   items: [],
   settings: {
     isSupported: false,
     permission: null
   }
-}, action) {
+};
+
+export default function reduceNotifications(state = initialState, action) {
   switch (action.type) {
   case ADD_NOTIFICATION:
     {

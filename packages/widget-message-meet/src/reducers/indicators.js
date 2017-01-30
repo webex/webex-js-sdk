@@ -1,8 +1,10 @@
 import {ADD_TYPING_INDICATOR, DELETE_TYPING_INDICATOR} from '../actions/indicators';
 
-export default function reduceIndicators(state = {
+export const initialState = {
   typing: []
-}, action) {
+};
+
+export default function reduceIndicators(state = initialState, action) {
   switch (action.type) {
   case ADD_TYPING_INDICATOR:
     if (state.typing.indexOf(action.payload.userId) === -1) {
