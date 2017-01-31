@@ -76,7 +76,7 @@ describe(`plugin-phone`, function() {
       beforeEach(() => {createLocusSpy = sinon.spy(spock.spark.locus, `create`);});
       afterEach(() => createLocusSpy.restore());
 
-      it(`initiates a video only call`, () => {
+      it.skip(`initiates a video only call`, () => {
         spock.spark.phone.dial(mccoy.email, {
           constraints: {
             video: true,
@@ -204,7 +204,7 @@ describe(`plugin-phone`, function() {
     });
 
     describe(`#defaultFacingMode`, () => {
-      it(`defaults to user`, () => {
+      it.skip(`defaults to user`, () => {
         assert.equal(spock.spark.phone.defaultFacingMode, `user`);
       });
 
