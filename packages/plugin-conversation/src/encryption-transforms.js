@@ -96,7 +96,8 @@ export const transforms = toArray(`outbound`, {
       return Promise.resolve();
     }
 
-    if (has(activity, `target.defaultActivityEncryptionKeyUrl`) && has(activity, `target.kmsResourceObjectUrl`)) {
+    if ((has(activity, `target.defaultActivityEncryptionKeyUrl`) && activity.target.defaultActivityEncryptionKeyUrl) &&
+     (has(activity, `target.kmsResourceObjectUrl`) && activity.target.kmsResourceObjectUrl)) {
       activity[KEY] = key || activity.target.defaultActivityEncryptionKeyUrl;
       return Promise.resolve();
     }
