@@ -323,7 +323,11 @@ ansiColor('xterm') {
                 env.NODE_ENV = ''
                 image.inside(DOCKER_RUN_OPTS) {
                   dir('tooling') {
-                    version = sh script: 'node ./get-version.js | tr -d \'\\"\'', returnStdout: true
+                    version = sh script: 'node ./get-version.js', returnStdout: true
+                    if (!version) {
+                      warn('failed to determine next version');
+                      error('failed to determine next version');
+                    }
                   }
                   sh 'npm run build'
                   sh 'npm run grunt:concurrent -- build:docs'
