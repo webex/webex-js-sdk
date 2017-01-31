@@ -409,7 +409,7 @@ ansiColor('xterm') {
                     echo ''
                     echo ''
                     echo ''
-                    if (version.length == 0) {
+                    if ("${version}" == '') {
                       warn('could not determine tag name to push to github.com')
                     }
                     else {
@@ -429,6 +429,9 @@ ansiColor('xterm') {
                 try {
                   image.inside(DOCKER_RUN_OPTS) {
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+                      sh 'mkdir -p $HOME/.ssh'
+                      sh 'chmod go-w $HOME/.ssh'
+                      sh 'ssh-keyscan -H github.com >> $HOME/.ssh/known_hosts'
                       sh 'npm run grunt:concurrent -- publish:docs'
                     }
                   }
