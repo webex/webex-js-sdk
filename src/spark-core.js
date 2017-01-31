@@ -144,9 +144,9 @@ var SparkCore = AmpersandState.extend({
     return this.device.remove()
       .catch(function logDeviceRemovalFailure(reason) {
         this.logger.warn(reason);
-      })
+      }.bind(this))
       .then(function clearEncryptStore() {
-        this.encryption.keystore.clear();
+        return this.encryption.keystore.clear();
       }.bind(this))
       .then(function cleanUpAndNotify() {
         this.trigger('client:logout');
