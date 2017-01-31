@@ -380,9 +380,9 @@ ansiColor('xterm') {
 
               stage('publish to github') {
                 sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
-                  def exitStatus = sh script: "git push origin HEAD:master", returnStatus: true
+                  def exitStatus = sh script: "git push upstream HEAD:master", returnStatus: true
                   if (exitStatus != 0) {
-                    warn('failed to HEAD to github.com')
+                    warn('failed to push HEAD to github.com')
                   }
                 }
               }
@@ -413,7 +413,7 @@ ansiColor('xterm') {
                       warn('could not determine tag name to push to github.com')
                     }
                     else {
-                      def exitStatus = sh script: "git push origin v${version}:v${version}", returnStatus: true
+                      def exitStatus = sh script: "git push upstream v${version}:v${version}", returnStatus: true
                       if (exitStatus != 0) {
                         warn('failed to push version tag to github.com')
                       }
