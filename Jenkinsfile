@@ -323,10 +323,11 @@ ansiColor('xterm') {
                 env.NODE_ENV = ''
                 image.inside(DOCKER_RUN_OPTS) {
                   version = sh script: 'npm run get-next-version', returnStdout: true
-                  if (!version) {
+                  if ("${version}" == '') {
                     warn('failed to determine next version');
                     error('failed to determine next version');
                   }
+                  echo "next version is ${version}"
                   sh 'npm run build'
                   sh 'npm run grunt:concurrent -- build:docs'
                   sh 'PACKAGE=example-phone npm run grunt:package -- webpack:build'
