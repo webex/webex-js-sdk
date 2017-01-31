@@ -119,11 +119,7 @@ describe(`plugin-mercury`, () => {
 
       describe(`when web-sharable-socket feature is enabled`, () => {
         beforeEach(() => {
-          spark.device.features.developer.get.returns({value: true});
-        });
-
-        afterEach(() => {
-          spark.device.features.developer.get = sinon.stub();
+          spark.feature.getFeature.returns(Promise.resolve(true));
         });
 
         it(`sets mercuryRegistrationStatus=true to web socket url`, () => {
@@ -145,16 +141,16 @@ describe(`plugin-mercury`, () => {
           assert.notCalled(Socket.prototype.open);
 
           const promise = mercury.connect();
-          return promiseTick(3)
+          return promiseTick(4)
             .then(() => {
               assert.calledOnce(Socket.prototype.open);
               clock.tick(mercury.config.backoffTimeReset);
-              return promiseTick(3);
+              return promiseTick(4);
             })
             .then(() => {
               assert.calledTwice(Socket.prototype.open);
               clock.tick(2 * mercury.config.backoffTimeReset);
-              return promiseTick(3);
+              return promiseTick(4);
             })
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
@@ -192,16 +188,16 @@ describe(`plugin-mercury`, () => {
           assert.notCalled(Socket.prototype.open);
 
           const promise = mercury.connect();
-          return promiseTick(3)
+          return promiseTick(4)
             .then(() => {
               assert.calledOnce(Socket.prototype.open);
               clock.tick(mercury.config.backoffTimeReset);
-              return promiseTick(3);
+              return promiseTick(4);
             })
             .then(() => {
               assert.calledTwice(Socket.prototype.open);
               clock.tick(2 * mercury.config.backoffTimeReset);
-              return promiseTick(3);
+              return promiseTick(4);
             })
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
@@ -211,7 +207,7 @@ describe(`plugin-mercury`, () => {
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
               clock.tick(8 * mercury.config.backoffTimeReset);
-              return promiseTick(3);
+              return promiseTick(4);
             })
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
@@ -226,7 +222,7 @@ describe(`plugin-mercury`, () => {
             socketOpenStub.onCall(0).returns(Promise.reject(new AuthorizationError()));
             assert.notCalled(spark.refresh);
             const promise = mercury.connect();
-            return promiseTick(4)
+            return promiseTick(5)
               .then(() => {
                 assert.called(spark.refresh);
                 clock.tick(1000);
@@ -250,10 +246,10 @@ describe(`plugin-mercury`, () => {
           // skipping due to apparent bug with lolex in all browsers but Chrome.
         skipInBrowser(it)(`does not continue attempting to connect`, () => {
           mercury.connect();
-          return promiseTick(1)
+          return promiseTick(2)
             .then(() => {
               clock.tick(6 * spark.mercury.config.backoffTimeReset);
-              return promiseTick(1);
+              return promiseTick(2);
             })
             .then(() => {
               assert.calledOnce(Socket.prototype.open);

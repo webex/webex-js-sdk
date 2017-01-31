@@ -113,12 +113,14 @@ const Mercury = SparkPlugin.extend({
 
     let webSocketUrl = this.spark.device.webSocketUrl;
 
-    const isSharingMercuryFeatureEnabled = this.spark.device.features.developer.get(`web-shared-mercury`);
-    if (isSharingMercuryFeatureEnabled && isSharingMercuryFeatureEnabled.value) {
-      webSocketUrl += `${webSocketUrl.includes(`?`) ? `&` : `?`}mercuryRegistrationStatus=true&isRegistrationRefreshEnabled=true`;
-    }
+    this.spark.feature.getFeature(`developer`, `web-shared-mercury`)
+      .then((isSharingMercuryFeatureEnabled) => {
+        if (isSharingMercuryFeatureEnabled) {
+          webSocketUrl += `${webSocketUrl.includes(`?`) ? `&` : `?`}mercuryRegistrationStatus=true&isRegistrationRefreshEnabled=true`;
+        }
 
-    this.spark.credentials.getAuthorization()
+        return this.spark.credentials.getAuthorization();
+      })
       .then((authorization) => socket.open(webSocketUrl, {
         forceCloseDelay: this.config.forceCloseDelay,
         pingInterval: this.config.pingInterval,
