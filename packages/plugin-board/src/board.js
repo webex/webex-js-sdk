@@ -415,30 +415,34 @@ const Board = SparkPlugin.extend({
    * @returns {Promise<Board~Registration>}
    */
   registerToShareMercury(channel) {
-    const isSharingMercuryFeatureEnabled = this.spark.device.features.developer.get(`web-shared-mercury`);
+    return this.spark.feature.getFeature(`developer`, `web-shared-mercury`)
+      .then((isSharingMercuryFeatureEnabled) => {
+        if (!this.spark.mercury.localClusterServiceUrls) {
+          return Promise.reject(new Error(`\`localClusterServiceUrls\` is not defined, make sure mercury is connected`));
+        }
+        else if (!isSharingMercuryFeatureEnabled) {
+          return Promise.reject(new Error(`\`web-shared-mercury\` is not enabled`));
+        }
 
-    if (!this.spark.mercury.localClusterServiceUrls) {
-      return Promise.reject(new Error(`\`localClusterServiceUrls\` is not defined, make sure mercury is connected`));
-    }
-    else if (!isSharingMercuryFeatureEnabled || !isSharingMercuryFeatureEnabled.value) {
-      return Promise.reject(new Error(`\`web-shared-mercury\` is not enabled`));
-    }
+        const webSocketUrl = this.spark.device.webSocketUrl;
+        const mercuryConnectionServiceClusterUrl = this.spark.mercury.localClusterServiceUrls.mercuryConnectionServiceClusterUrl;
 
-    const webSocketUrl = this.spark.device.webSocketUrl;
-    const mercuryConnectionServiceClusterUrl = this.spark.mercury.localClusterServiceUrls.mercuryConnectionServiceClusterUrl;
+        const data = {
+          mercuryConnectionServiceClusterUrl,
+          webSocketUrl,
+          action: `REPLACE`
+        };
 
-    const data = {
-      mercuryConnectionServiceClusterUrl,
-      webSocketUrl,
-      action: `REPLACE`
-    };
-
-    return this.spark.request({
-      method: `POST`,
-      api: `board`,
-      resource: `/channels/${channel.channelId}/register`,
-      body: data
-    })
+        return data;
+      })
+      .then((data) =>
+        this.spark.request({
+          method: `POST`,
+          api: `board`,
+          resource: `/channels/${channel.channelId}/register`,
+          body: data
+        })
+      )
       .then((res) => res.body);
   },
 
