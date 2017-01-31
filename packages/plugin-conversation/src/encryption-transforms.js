@@ -72,8 +72,8 @@ export const transforms = toArray(`outbound`, {
     if (activity.encryptionKeyUrl) {
       return Promise.resolve();
     }
-
     return ctx.transform(`encrypt${S(activity.verb).capitalize().s}Activity`, key, activity)
+    .then(() => ctx.transform(`maybeEncryptTarget`, key, activity))
       .then(() => {
         key = key || activity[KEY];
         return ctx.transform(`prepareActivityKmsMessage`, key, activity);
@@ -109,6 +109,7 @@ export const transforms = toArray(`outbound`, {
 
     return ctx.spark.conversation.get({url: conversationUrl})
       .then((conversation) => {
+        if(activity.verb != `leave`) {
         if (!conversation.defaultActivityEncryptionKeyUrl) {
           return ctx.spark.conversation.updateKey(conversation)
             .then((updateKeyActivity) => {
@@ -116,6 +117,7 @@ export const transforms = toArray(`outbound`, {
               activity[KEY] = activity.target.defaultActivityEncryptionKeyUrl = updateKeyActivity.object.defaultActivityEncryptionKeyUrl;
             });
         }
+      }
 
         if (!activity.target.defaultActivityEncryptionKeyUrl) {
           ctx.spark.logger.warn(`plugin-conversation: downloaded conversation to determine its defaultActivityEncryptionKeyUrl; make sure to pass all encryption related properties when calling Spark.conversation methods.`);
