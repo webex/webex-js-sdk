@@ -208,7 +208,20 @@ const SparkCore = AmpState.extend({
   },
 
   logout(...args) {
-    return this.credentials.logout(...args);
+    return Promise.resolve()
+      .then(() => this.mercury.disconnect())
+      .then(() => {
+        if (this.device) {
+          return this.device.unregister()
+            .catch(() => Promise.resolve());
+        }
+        return Promise.resolve();
+      })
+      .then(() => Promise.all([
+        this.boundedStorage.clear(),
+        this.unboundedStorage.clear()
+      ]))
+      .then(() => this.credentials.logout(...args));
   },
 
   /**
