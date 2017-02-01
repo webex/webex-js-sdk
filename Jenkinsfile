@@ -412,9 +412,11 @@ ansiColor('xterm') {
                     warn('could not determine tag name to push to github.com')
                   }
                   else {
-                    def exitStatus = sh script: "git push upstream v${version}:v${version}", returnStatus: true
-                    if (exitStatus != 0) {
-                      warn('failed to push version tag to github.com')
+                    sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+                      def exitStatus = sh script: "git push upstream v${version}:v${version}", returnStatus: true
+                      if (exitStatus != 0) {
+                        warn('failed to push version tag to github.com')
+                      }
                     }
                   }
 
