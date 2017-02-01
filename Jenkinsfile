@@ -439,11 +439,8 @@ ansiColor('xterm') {
                       sh 'npm run grunt:concurrent -- publish:docs'
                     }
                     catch(err) {
-                      dir('.grunt') {
-                        sh 'pwd'
-                        sh 'git config --global user.email spark-js-sdk.gen@cisco.com'
-                        sh 'git config --global user.name Jenkins'
-                      }
+                      sh 'cd .grunt && git config user.email spark-js-sdk.gen@cisco.com'
+                      sh 'cd .grunt && git config user.name Jenkins'
                       sh 'npm run grunt:concurrent -- publish:docs'
                     }
                   }
