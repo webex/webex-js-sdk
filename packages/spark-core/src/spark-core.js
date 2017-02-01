@@ -209,7 +209,12 @@ const SparkCore = AmpState.extend({
 
   logout(...args) {
     return Promise.resolve()
-      .then(() => this.mercury.disconnect())
+      .then(() => {
+        if (this.mercury) {
+          return this.mercury.disconnect();
+        }
+        return Promise.resolve();
+      })
       .then(() => {
         if (this.device) {
           return this.device.unregister()
