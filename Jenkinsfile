@@ -429,6 +429,8 @@ ansiColor('xterm') {
               stage('publish docs') {
                 try {
                   image.inside(DOCKER_RUN_OPTS) {
+                    sh 'git config user.email spark-js-sdk.gen@cisco.com'
+                    sh 'git config user.name Jenkins'
                     sh 'npm run grunt:concurrent -- publish:docs'
                   }
                   dir('.grunt') {
