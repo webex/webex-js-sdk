@@ -17,7 +17,7 @@ describe(`example-phone`, function() {
   describe(`__`, () => {
     let browser;
 
-    beforeEach(() => createBrowser(pkg)
+    beforeEach(() => createBrowser(pkg, {name: `_setup`})
       .then((b) => {browser = b;}));
 
     afterEach(() => Promise.resolve(browser && browser.quit())

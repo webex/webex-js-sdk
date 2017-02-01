@@ -2,7 +2,7 @@ import createBrowser from '../lib/create-browser';
 import testUsers from '@ciscospark/test-helper-test-users';
 import pkg from '../../../package';
 
-describe(`example-phone`, () => {
+describe.skip(`example-phone incoming call`, () => {
   let browser, callee, caller;
 
   beforeEach(`create users`, () => testUsers.create({count: 2})

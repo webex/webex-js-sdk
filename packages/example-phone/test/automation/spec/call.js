@@ -3,7 +3,7 @@ import testUsers from '@ciscospark/test-helper-test-users';
 import pkg from '../../../package';
 
 
-describe(`example-phone`, () => {
+describe.skip(`example-phone call`, () => {
   let browser, callee, caller;
 
   beforeEach(`create users`, () => testUsers.create({count: 2})
@@ -13,7 +13,7 @@ describe(`example-phone`, () => {
     }));
 
   beforeEach(`create browser`, () => createBrowser(pkg, {
-    name: `caller`
+    name: `call-caller`
   })
     .then((b) => {browser = b;})
     .then(() => browser

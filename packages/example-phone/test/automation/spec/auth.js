@@ -7,13 +7,13 @@ import createBrowser from '../lib/create-browser';
 import testUsers from '@ciscospark/test-helper-test-users';
 import pkg from '../../../package';
 
-describe(`example-phone`, () => {
+describe(`example-phone auth`, () => {
   let browser, user;
 
   before(`create user`, () => testUsers.create({count: 1})
     .then((users) => {user = users[0];}));
 
-  beforeEach(`create browser`, () => createBrowser(pkg)
+  beforeEach(`create browser`, () => createBrowser(pkg, {name: `auth`})
     .then((b) => {browser = b;}));
 
   afterEach(`quit browser`, () => browser && browser.quit()
@@ -36,7 +36,8 @@ describe(`example-phone`, () => {
         .text()
           .should.eventually.become(`Authenticated`));
 
-    it(`can authenticate by starting the CI login flow`, () => browser
+    it.skip(`can authenticate by starting the CI login flow`, () => browser
+      .getMainPage()
       .loginWithUI(user)
       .title()
         .should.eventually.become(`Example: Phone`)
