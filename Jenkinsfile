@@ -431,12 +431,23 @@ ansiColor('xterm') {
               stage('publish docs') {
                 try {
                   image.inside(DOCKER_RUN_OPTS) {
-                    sh 'git config --global user.email spark-js-sdk.gen@cisco.com'
-                    sh 'git config --global user.name Jenkins'
-                    sh 'npm run grunt:concurrent -- publish:docs'
+                    // It's kinda ridiculous, but this seems like the most
+                    // effective way to make sure we set the git username at the
+                    // right time without horrible bash scripts that check what
+                    // folders do or do not exist
+                    try {
+                      sh 'npm run grunt:concurrent -- publish:docs'
+                    }
+                    catch(err) {
+                      dir('.grunt') {
+                        sh 'pwd'
+                        sh 'git config --global user.email spark-js-sdk.gen@cisco.com'
+                        sh 'git config --global user.name Jenkins'
+                      }
+                      sh 'npm run grunt:concurrent -- publish:docs'
+                    }
                   }
                   dir('.grunt') {
-                    sh 'pwd'
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
                       sh 'git push upstream gh-pages'
                     }
