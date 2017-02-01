@@ -429,8 +429,12 @@ ansiColor('xterm') {
               stage('publish docs') {
                 try {
                   image.inside(DOCKER_RUN_OPTS) {
+                    sh 'npm run grunt:concurrent -- publish:docs'
+                  }
+                  dir('.grunt') {
+                    sh 'pwd'
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
-                      sh 'npm run grunt:concurrent -- publish:docs'
+                      sh 'git push upstream gh-pages'
                     }
                   }
                 }
