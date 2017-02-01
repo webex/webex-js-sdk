@@ -146,7 +146,6 @@ ansiColor('xterm') {
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} -e NPM_CONFIG_CACHE=${env.WORKSPACE}/.npm"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --volumes-from=\$(hostname)"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --user=\$(id -u):\$(id -g)"
-          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --volume /home/jenkins:/home/jenkins"
           // DOCKER_RUN_OPTS has some values in it that we want to evaluate on
           // the node, but image.inside doesn't do subshell execution. We'll use
           // echo to evaluate once on the node and store the values.
@@ -203,6 +202,7 @@ ansiColor('xterm') {
             sh 'echo "RUN useradd -u $(id -u) -g $(id -g) -m jenkins" >> ./docker/builder/Dockerfile'
             sh "echo 'WORKDIR ${env.WORKSPACE}' >> ./docker/builder/Dockerfile"
             sh 'echo "USER $(id -u)" >> ./docker/builder/Dockerfile'
+            sh 'RUN su - jenkins -c \'mkdir -p $HOME/.ssh && ssh-keyscan -H github.com >> $HOME/.ssh/known_hosts\''
 
             retry(3) {
               dir('docker/builder') {
@@ -391,7 +391,7 @@ ansiColor('xterm') {
                   // TODO use lerna publish directly now that npm fixed READMEs
                   // reminder: need to write to ~ not . because lerna runs npm
                   // commands in subdirectories
-                  image.inside(DOCKER_RUN_OPTS) {
+                  image.inside("${DOCKER_RUN_OPTS} --volume /home/jenkins:/home/jenkins") {
                     echo ''
                     echo ''
                     echo ''
@@ -428,9 +428,6 @@ ansiColor('xterm') {
                 try {
                   image.inside(DOCKER_RUN_OPTS) {
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
-                      sh 'mkdir -p $HOME/.ssh'
-                      sh 'chmod go-w $HOME/.ssh'
-                      sh 'ssh-keyscan -H github.com >> $HOME/.ssh/known_hosts'
                       sh 'npm run grunt:concurrent -- publish:docs'
                     }
                   }
