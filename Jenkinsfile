@@ -413,9 +413,11 @@ ansiColor('xterm') {
                   }
                   else {
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
-                      def exitStatus = sh script: "git push upstream v${version}:v${version}", returnStatus: true
-                      if (exitStatus != 0) {
-                        warn('failed to push version tag to github.com')
+                      try {
+                        sh "git push upstream v${version}:v${version}"
+                      }
+                      catch (err) {
+                        // ignore - we don't always have a tag to push
                       }
                     }
                   }
@@ -429,8 +431,8 @@ ansiColor('xterm') {
               stage('publish docs') {
                 try {
                   image.inside(DOCKER_RUN_OPTS) {
-                    sh 'git config user.email spark-js-sdk.gen@cisco.com'
-                    sh 'git config user.name Jenkins'
+                    sh 'git config --global user.email spark-js-sdk.gen@cisco.com'
+                    sh 'git config --global user.name Jenkins'
                     sh 'npm run grunt:concurrent -- publish:docs'
                   }
                   dir('.grunt') {
