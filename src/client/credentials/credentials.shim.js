@@ -111,11 +111,13 @@ var methods = {
     });
   },
 
-  logout: function logout() {
+  logout: function logout(options) {
     this.logger.info('credentials(shim): logging out');
 
     CredentialsBase.prototype.logout.apply(this, arguments);
-    window.location = this._buildLogoutUrl();
+    if (!options.noRedirect) {
+      window.location = this._buildLogoutUrl();
+    }
   },
 
   _buildOAuthUrl: function _buildOAuthUrl(options) {
