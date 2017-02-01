@@ -407,16 +407,17 @@ ansiColor('xterm') {
                     echo ''
                     echo ''
                     echo ''
-                    if ("${version}" == '') {
-                      warn('could not determine tag name to push to github.com')
-                    }
-                    else {
-                      def exitStatus = sh script: "git push upstream v${version}:v${version}", returnStatus: true
-                      if (exitStatus != 0) {
-                        warn('failed to push version tag to github.com')
-                      }
+                  }
+                  if ("${version}" == '') {
+                    warn('could not determine tag name to push to github.com')
+                  }
+                  else {
+                    def exitStatus = sh script: "git push upstream v${version}:v${version}", returnStatus: true
+                    if (exitStatus != 0) {
+                      warn('failed to push version tag to github.com')
                     }
                   }
+
                 }
                 catch (error) {
                   warn("failed to publish to npm ${error.toString()}")
