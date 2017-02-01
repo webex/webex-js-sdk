@@ -1,6 +1,6 @@
 {
   "name": "ciscospark",
-  "version": "0.7.47",
+  "version": "0.7.48",
   "description": "SDK for Cisco Spark",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -11,7 +11,7 @@
     "@ciscospark/common": "^0.7.34",
     "@ciscospark/http-core": "^0.7.34",
     "@ciscospark/plugin-logger": "^0.7.36",
-    "@ciscospark/plugin-phone": "^0.7.47",
+    "@ciscospark/plugin-phone": "^0.7.48",
     "@ciscospark/spark-core": "^0.7.36",
     "@ciscospark/storage-adapter-local-storage": "^0.7.36",
     "babel-polyfill": "^6.6.1",
