@@ -435,14 +435,7 @@ ansiColor('xterm') {
                     // effective way to make sure we set the git username at the
                     // right time without horrible bash scripts that check what
                     // folders do or do not exist
-                    try {
-                      sh 'npm run grunt:concurrent -- publish:docs'
-                    }
-                    catch(err) {
-                      sh 'cd .grunt && git config user.email spark-js-sdk.gen@cisco.com'
-                      sh 'cd .grunt && git config user.name Jenkins'
-                      sh 'npm run grunt:concurrent -- publish:docs'
-                    }
+                    sh 'npm run grunt:concurrent -- publish:docs'
                   }
                   dir('.grunt') {
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
