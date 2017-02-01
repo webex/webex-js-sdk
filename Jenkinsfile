@@ -435,6 +435,7 @@ ansiColor('xterm') {
                   }
                   dir('.grunt/grunt-gh-pages/gh-pages/ghc') {
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+                      sh 'git remote -v'
                       sh 'git push upstream gh-pages:gh-pages'
                     }
                   }
