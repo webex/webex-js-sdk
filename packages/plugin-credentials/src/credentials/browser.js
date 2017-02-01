@@ -160,7 +160,9 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
     options = Object.assign({token}, options);
     return Reflect.apply(common.logout, this, [options])
       .then(() => {
-        window.location = this.buildLogoutUrl(options);
+        if (!options.noRedirect) {
+          window.location = this.buildLogoutUrl(options);
+        }
       });
   },
 

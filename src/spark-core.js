@@ -138,7 +138,7 @@ var SparkCore = AmpersandState.extend({
     });
   },
 
-  logout: function logout() {
+  logout: function logout(options) {
     this.logger.info('spark: logging out');
 
     return this.device.remove()
@@ -150,7 +150,7 @@ var SparkCore = AmpersandState.extend({
       }.bind(this))
       .then(function cleanUpAndNotify() {
         this.trigger('client:logout');
-        this.credentials.logout();
+        this.credentials.logout(options);
         return Promise.resolve();
       }.bind(this));
   },
