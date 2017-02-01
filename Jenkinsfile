@@ -202,7 +202,7 @@ ansiColor('xterm') {
             sh 'echo "RUN useradd -u $(id -u) -g $(id -g) -m jenkins" >> ./docker/builder/Dockerfile'
             sh "echo 'WORKDIR ${env.WORKSPACE}' >> ./docker/builder/Dockerfile"
             sh 'echo "USER $(id -u)" >> ./docker/builder/Dockerfile'
-            sh 'RUN su - jenkins -c \'mkdir -p $HOME/.ssh && ssh-keyscan -H github.com >> $HOME/.ssh/known_hosts\''
+            sh 'echo "RUN su - jenkins -c \'mkdir -p $HOME/.ssh && ssh-keyscan -H github.com >> $HOME/.ssh/known_hosts\'"'
 
             retry(3) {
               dir('docker/builder') {
