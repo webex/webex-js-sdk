@@ -1,5 +1,3 @@
-// TODO check build log for disconnect/reconnect
-
 def IS_VALIDATED_MERGE_BUILD = false
 def GIT_COMMIT
 def HAS_LEGACY_CHANGES
@@ -277,21 +275,19 @@ ansiColor('xterm') {
             }
 
             stage('test') {
-              // FIXME disabling tests for pipeline debugging
-              currentBuild.result = 'SUCCESS'
-              // timeout(90) {
-              //   def exitCode = sh script: "./tooling/test.sh", returnStatus: true
-              //
-              //   junit 'reports/junit/**/*.xml'
-              //
-              //   if (exitCode != 0) {
-              //     error('test.sh exited with non-zero error code, but did not produce junit output to that effect')
-              //   }
-              //
-              //   if (currentBuild.result == 'UNSTABLE' && !IS_VALIDATED_MERGE_BUILD) {
-              //     error('Failing build in order to propagate UNSTABLE to parent build')
-              //   }
-              // }
+              timeout(45) {
+                def exitCode = sh script: "./tooling/test.sh", returnStatus: true
+
+                junit 'reports/junit/**/*.xml'
+
+                if (exitCode != 0) {
+                  error('test.sh exited with non-zero error code, but did not produce junit output to that effect')
+                }
+
+                if (currentBuild.result == 'UNSTABLE' && !IS_VALIDATED_MERGE_BUILD) {
+                  error('Failing build in order to propagate UNSTABLE to parent build')
+                }
+              }
             }
           }
 
@@ -437,7 +433,7 @@ ansiColor('xterm') {
                     // folders do or do not exist
                     sh 'npm run grunt:concurrent -- publish:docs'
                   }
-                  dir('.grunt') {
+                  dir('.grunt/grunt-gh-pages/gh-pages/') {
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
                       sh 'git push upstream gh-pages:gh-pages'
                     }
