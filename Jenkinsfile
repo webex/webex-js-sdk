@@ -280,7 +280,7 @@ ansiColor('xterm') {
 
                 junit 'reports/junit/**/*.xml'
 
-                if (exitCode != 0) {
+                if (currentBuild.status == 'SUCCESS' && exitCode != 0) {
                   error('test.sh exited with non-zero error code, but did not produce junit output to that effect')
                 }
 
