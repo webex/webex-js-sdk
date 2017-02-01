@@ -371,19 +371,17 @@ ansiColor('xterm') {
             }
 
             if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
+              stage('publish to github') {
+                // Note: if this stage fails, we should consider the build a failure
+                sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+                  sh "git push upstream HEAD:master"
+                }
+              }
+
               stage('mark as gating') {
                 markAsGatingJob = build job: 'spark-js-sdk--mark-as-gating', propagate: false
                 if (markAsGatingJob.result != 'SUCCESS') {
                   warn('failed to mark as gating')
-                }
-              }
-
-              stage('publish to github') {
-                sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
-                  def exitStatus = sh script: "git push upstream HEAD:master", returnStatus: true
-                  if (exitStatus != 0) {
-                    warn('failed to push HEAD to github.com')
-                  }
                 }
               }
 
