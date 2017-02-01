@@ -439,7 +439,7 @@ ansiColor('xterm') {
                   }
                   dir('.grunt') {
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
-                      sh 'git push upstream HEAD:gh-pages'
+                      sh 'git push upstream gh-pages:gh-pages'
                     }
                   }
                 }
