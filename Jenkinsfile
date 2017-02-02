@@ -346,6 +346,7 @@ ansiColor('xterm') {
                 sh 'git rev-parse HEAD > .promotion-sha'
                 archive '.promotion-sha'
                 sh 'rm .promotion-sha'
+                archive 'packages/widget-message-meet/dist/**'
               }
             }
 
