@@ -1,5 +1,3 @@
-// TODO check build log for disconnect/reconnect
-
 def IS_VALIDATED_MERGE_BUILD = false
 def GIT_COMMIT
 def HAS_LEGACY_CHANGES
@@ -21,10 +19,7 @@ def cleanup = { ->
   sh 'rm -f .env'
 
   if (IS_VALIDATED_MERGE_BUILD) {
-    if (currentBuild.result == 'SUCCESS') {
-      sh 'git push component-success HEAD:master'
-    }
-    else {
+    if (currentBuild.result != 'SUCCESS') {
       withCredentials([usernamePassword(
         credentialsId: '386d3445-b855-40e4-999a-dc5801336a69',
         passwordVariable: 'GAUNTLET_PASSWORD',
@@ -205,6 +200,7 @@ ansiColor('xterm') {
             sh 'echo "RUN useradd -u $(id -u) -g $(id -g) -m jenkins" >> ./docker/builder/Dockerfile'
             sh "echo 'WORKDIR ${env.WORKSPACE}' >> ./docker/builder/Dockerfile"
             sh 'echo "USER $(id -u)" >> ./docker/builder/Dockerfile'
+            sh 'echo "RUN su - jenkins -c \'mkdir -p $HOME/.ssh && ssh-keyscan -H github.com >> $HOME/.ssh/known_hosts\'"'
 
             retry(3) {
               dir('docker/builder') {
@@ -279,21 +275,19 @@ ansiColor('xterm') {
             }
 
             stage('test') {
-              // FIXME disabling tests for pipeline debugging
-              currentBuild.result = 'SUCCESS'
-              // timeout(90) {
-              //   def exitCode = sh script: "./tooling/test.sh", returnStatus: true
-              //
-              //   junit 'reports/junit/**/*.xml'
-              //
-              //   if (exitCode != 0) {
-              //     error('test.sh exited with non-zero error code, but did not produce junit output to that effect')
-              //   }
-              //
-              //   if (currentBuild.result == 'UNSTABLE' && !IS_VALIDATED_MERGE_BUILD) {
-              //     error('Failing build in order to propagate UNSTABLE to parent build')
-              //   }
-              // }
+              timeout(45) {
+                def exitCode = sh script: "./tooling/test.sh", returnStatus: true
+
+                junit 'reports/junit/**/*.xml'
+
+                if (currentBuild.result == 'SUCCESS' && exitCode != 0) {
+                  error('test.sh exited with non-zero error code, but did not produce junit output to that effect')
+                }
+
+                if (currentBuild.result == 'UNSTABLE' && !IS_VALIDATED_MERGE_BUILD) {
+                  error('Failing build in order to propagate UNSTABLE to parent build')
+                }
+              }
             }
           }
 
@@ -319,11 +313,17 @@ ansiColor('xterm') {
               }
             }
 
+            def version = ''
             if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
               stage('build for release') {
                 env.NODE_ENV = ''
-                def version = sh script: 'echo "$(cat lerna.json | jq .version | tr -d \'\\"\')"', returnStdout: true
                 image.inside(DOCKER_RUN_OPTS) {
+                  version = sh script: 'npm run --silent get-next-version', returnStdout: true
+                  if ("${version}" == '') {
+                    warn('failed to determine next version');
+                    error('failed to determine next version');
+                  }
+                  echo "next version is ${version}"
                   sh 'npm run build'
                   sh 'npm run grunt:concurrent -- build:docs'
                   sh 'PACKAGE=example-phone npm run grunt:package -- webpack:build'
@@ -345,6 +345,7 @@ ansiColor('xterm') {
 
                 sh 'git rev-parse HEAD > .promotion-sha'
                 archive '.promotion-sha'
+                sh 'rm .promotion-sha'
               }
             }
 
@@ -366,53 +367,76 @@ ansiColor('xterm') {
             }
 
             if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
+              stage('publish to github') {
+                // Note: if this stage fails, we should consider the build a failure
+                sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+                  sh "git push upstream HEAD:master"
+                }
+              }
+
               stage('mark as gating') {
-                cdnPublishBuild = build job: 'spark-js-sdk--mark-as-gating', propagate: false
-                if (cdnPublishBuild.result != 'SUCCESS') {
+                markAsGatingJob = build job: 'spark-js-sdk--mark-as-gating', propagate: false
+                if (markAsGatingJob.result != 'SUCCESS') {
                   warn('failed to mark as gating')
                 }
               }
 
-              stage('publish to github') {
-                sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
-                  def exitStatus = sh script: "git push origin HEAD:master", returnStatus: true
-                  if (exitStatus != 0) {
-                    warn('failed to HEAD to github.com')
-                  }
-                }
-              }
-
               stage('publish to npm') {
-                // TODO use lerna publish directly now that npm fixed READMEs
-                // reminder: need to write to ~ not . because lerna runs npm
-                // commands in subdirectories
-                image.inside("${DOCKER_RUN_OPTS} -e HOME=/tmp/local-npm-config") {
-                  try {
-                    sh 'mkdir -p $HOME'
-                    sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
-                    sh 'NPM_CONFIG_REGISTRY="" npm run lerna -- exec --bash -c \'npm publish --access public || true\''
-                    if (version.length == 0) {
-                      warn('could not determine tag name to push to github.com')
-                    }
-                    else {
-                      def exitStatus = sh script: "git push origin v${version}:v${version}", returnStatus: true
-                      if (exitStatus != 0) {
-                        warn('failed to push version tag to github.com')
+                try {
+                  sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
+                  // TODO use lerna publish directly now that npm fixed READMEs
+                  // reminder: need to write to ~ not . because lerna runs npm
+                  // commands in subdirectories
+                  image.inside("${DOCKER_RUN_OPTS} --volume /home/jenkins:/home/jenkins") {
+                    echo ''
+                    echo ''
+                    echo ''
+                    echo 'Reminder: E403 errors below are normal. They occur for any package that has no updates to publish'
+                    echo ''
+                    echo ''
+                    echo ''
+                    sh 'NPM_CONFIG_REGISTRY="" npm run lerna -- exec -- bash -c \'npm publish --access public || true\''
+                    echo ''
+                    echo ''
+                    echo ''
+                    echo 'Reminder: E403 errors above are normal. They occur for any package that has no updates to publish'
+                    echo ''
+                    echo ''
+                    echo ''
+                  }
+                  if ("${version}" == '') {
+                    warn('could not determine tag name to push to github.com')
+                  }
+                  else {
+                    sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+                      try {
+                        sh "git push upstream v${version}:v${version}"
+                      }
+                      catch (err) {
+                        // ignore - we don't always have a tag to push
                       }
                     }
                   }
-                  catch (error) {
-                    warn("failed to publish to npm ${error.toString()}")
-                  }
 
+                }
+                catch (error) {
+                  warn("failed to publish to npm ${error.toString()}")
                 }
               }
 
               stage('publish docs') {
                 try {
                   image.inside(DOCKER_RUN_OPTS) {
+                    // It's kinda ridiculous, but this seems like the most
+                    // effective way to make sure we set the git username at the
+                    // right time without horrible bash scripts that check what
+                    // folders do or do not exist
+                    sh 'npm run grunt:concurrent -- publish:docs'
+                  }
+                  dir('.grunt/grunt-gh-pages/gh-pages/ghc') {
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
-                      sh 'npm run grunt:concurrent -- publish:docs'
+                      sh 'git remote add upstream git@github.com:ciscospark/spark-js-sdk.git'
+                      sh 'git push upstream gh-pages:gh-pages'
                     }
                   }
                 }

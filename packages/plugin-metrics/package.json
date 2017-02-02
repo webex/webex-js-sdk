@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-metrics",
-  "version": "0.7.45",
+  "version": "0.7.49",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -9,7 +9,7 @@
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-metrics",
   "dependencies": {
     "@ciscospark/common": "^0.7.34",
-    "@ciscospark/plugin-wdm": "^0.7.45",
+    "@ciscospark/plugin-wdm": "^0.7.49",
     "@ciscospark/spark-core": "^0.7.36",
     "babel-runtime": "^6.3.19",
     "core-decorators": "^0.12.3",

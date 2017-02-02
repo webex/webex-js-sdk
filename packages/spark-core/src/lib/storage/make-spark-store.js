@@ -47,6 +47,19 @@ export default function makeSparkStore(type, spark) {
     }
 
     /**
+     * Deletes the store
+     * @returns {Promise}
+     */
+    clear() {
+      const promises = [];
+      this.bindings.forEach((binding) => {
+        promises.push(binding.clear());
+      });
+
+      return Promise.all(promises);
+    }
+
+    /**
      * Deletes the specified key from the store
      * @param {string} namespace
      * @param {string} key

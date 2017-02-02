@@ -99,6 +99,22 @@ export default function runAbstractStorageAdapterSpec(adapter) {
           .then(() => assert.isFulfilled(bound.del(key)))
           .then(() => assert.isRejected(bound.get(key))));
       });
+
+      describe(`#clear()`, () => {
+        it(`clears a primitive from the store`, () => bound.put(key, primitive)
+          .then(() => assert.becomes(bound.get(key), primitive))
+          .then(() => assert.isFulfilled(bound.clear()))
+          .then(() => assert.isRejected(bound.get(key))));
+
+        it(`clears an object from the store`, () => bound.put(key, obj)
+          .then(() => assert.becomes(bound.get(key), obj))
+          .then(() => assert.isFulfilled(bound.clear(key)))
+          .then(() => assert.isRejected(bound.get(key))));
+
+        it(`clears an item from the store when putting \`undefined\``, () => bound.put(key, undefined)
+          .then(() => assert.isFulfilled(bound.clear(key)))
+          .then(() => assert.isRejected(bound.get(key))));
+      });
     });
   });
 }

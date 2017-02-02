@@ -127,7 +127,12 @@ module.exports = function gruntConfig(grunt) {
       ghc: {
         src: [`**`],
         options: {
-          repo: `git@github.com:ciscospark/spark-js-sdk.git`
+          push: false,
+          repo: `https://github.com/ciscospark/spark-js-sdk.git`,
+          user: {
+            name: `Jenkins`,
+            email: `spark-js-sdk.gen@cisco.com`
+          }
         }
       }
     },
