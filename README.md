@@ -71,6 +71,40 @@ This is mostly useful for the the example app(s), but also comes in handy when d
 PACKAGE=PACKAGENAME npm run grunt:package -- serve
 ```
 
+### Running eslint on a single package
+This is mostly useful for running the eslint on the packages
+
+```bash
+PACKAGE=PACKAGENAME npm run grunt:package -- eslint
+```
+
+For all packages
+```bash
+npm run grunt:concurrent -- eslint
+```
+
+### Run automation server and test manually
+Run automation server and try to run test manually
+```bash
+PACKAGE=PACKAGENAME npm run grunt:package -- express:test test:automation --serve
+```
+
+### Run automation tests on localhost
+Make sure chrome and firefox driver is installed.
+To run test on a particular module
+
+```bash
+PACKAGE=PACKAGENAME npm run grunt:package -- test:automation --serve
+```
+
+### Run automation tests on sauce
+To run automation on sauce
+
+```bash
+npm run sauce:start
+npm run sauce:run -- PACKAGE=PACKAGENAME npm run grunt:package -- test:automation --serve
+```
+
 ### Run unit tests in watch mode
 
 OK, this one's a handful and requires a global package, but there were too many possible variants to hardcode it any where.
@@ -78,6 +112,10 @@ OK, this one's a handful and requires a global package, but there were too many 
 ```bash
 npm install -g nodemon
 nodemon -w packages/PACKAGENAME/src -w packages/PACKAGENAME/test -x "UNIT_ONLY=true PACKAGE=PACKAGENAME npm run --silent grunt:package express:test test:node"
+```
+Aggressively log network requests
+```bash
+export ENABLE_VERBOSE_NETWORK_LOGGING=true
 ```
 
 ### Documentation

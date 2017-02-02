@@ -85,7 +85,7 @@ export default class AvatarUrlStore {
     // use item suggested cache TTL or configed default if missing
     setTimeout(this.remove.bind(this, item), item.cacheControl * 1000);
     urlByUuid.get(this).set(`${item.uuid} - ${item.size}`, item);
-    return Promise.resolve(item);
+    return Promise.resolve(item.response.url);
   }
 
   /**

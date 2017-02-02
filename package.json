@@ -26,7 +26,7 @@
     "Bernie Zang <nzang@cisco.com>",
     "Vagou Zhou <vagouz@cisco.com>"
   ],
-  "main": "src/index.js",
+  "main": "packages/recipe-private-web-client/dist/index.js",
   "repository": {
     "type": "git",
     "url": "http://sqbu-github.cisco.com:WebExSquared/squared-js-sdk.git"
@@ -184,7 +184,7 @@
     "grunt-jscs": "~2.0.0",
     "grunt-karma": "^2.0.0",
     "grunt-mocha-test": "^0.13.2",
-    "grunt-selenium-webdriver": "~0.2.450",
+    "grunt-selenium-webdriver": "~0.2.482",
     "grunt-shell": "~1.1.2",
     "grunt-stylelint": "^0.6.0",
     "grunt-webpack": "^1.0.18",
