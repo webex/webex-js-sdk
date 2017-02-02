@@ -38,6 +38,16 @@ export default class StorageAdapterLocalForage {
       }
 
       /**
+       * Clears the localforage
+       * @param {string} key
+       * @returns {Promise}
+       */
+      clear() {
+        loggers.get(this).info(`local-forage-store-adapter: clearing localforage`);
+        return Promise.resolve(localforage.clear());
+      }
+
+      /**
        * Removes the specified key
        * @param {string} key
        * @returns {Promise}

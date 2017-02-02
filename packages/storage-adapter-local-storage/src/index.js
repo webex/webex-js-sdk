@@ -66,6 +66,16 @@ export default class StorageAdapterLocalStorage {
       }
 
       /**
+       * Clears the localStorage
+       * @param {string} key
+       * @returns {Promise}
+       */
+      clear() {
+        loggers.get(this).info(`local-storage-store-adapter: clearing localStorage`);
+        return Promise.resolve(localStorage.clear());
+      }
+
+      /**
        * Removes the specified key
        * @param {string} key
        * @returns {Promise}

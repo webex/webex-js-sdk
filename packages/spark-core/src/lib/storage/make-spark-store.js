@@ -47,7 +47,7 @@ export default function makeSparkStore(type, spark) {
     }
 
     /**
-     * Deletes the store
+     * Clears the store
      * @returns {Promise}
      */
     clear() {
