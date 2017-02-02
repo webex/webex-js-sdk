@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-board",
-  "version": "0.7.49",
+  "version": "0.7.50",
   "description": "",
   "license": "MIT",
   "author": "Greg Hewett <ghewett@cisco.com>",
@@ -9,11 +9,11 @@
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-board",
   "dependencies": {
     "@ciscospark/common": "^0.7.34",
-    "@ciscospark/plugin-conversation": "^0.7.49",
-    "@ciscospark/plugin-encryption": "^0.7.49",
-    "@ciscospark/plugin-feature": "^0.7.49",
-    "@ciscospark/plugin-mercury": "^0.7.49",
-    "@ciscospark/spark-core": "^0.7.36",
+    "@ciscospark/plugin-conversation": "^0.7.50",
+    "@ciscospark/plugin-encryption": "^0.7.50",
+    "@ciscospark/plugin-feature": "^0.7.50",
+    "@ciscospark/plugin-mercury": "^0.7.50",
+    "@ciscospark/spark-core": "^0.7.50",
     "babel-runtime": "^6.3.19",
     "es6-promise-series": "^0.2.2",
     "lodash": "^4.13.1"

@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-wdm",
-  "version": "0.7.49",
+  "version": "0.7.50",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -10,7 +10,7 @@
   "dependencies": {
     "@ciscospark/common": "^0.7.34",
     "@ciscospark/http-core": "^0.7.34",
-    "@ciscospark/spark-core": "^0.7.36",
+    "@ciscospark/spark-core": "^0.7.50",
     "ampersand-collection": "^2.0.0",
     "ampersand-state": "^5.0.0",
     "babel-runtime": "^6.3.19",

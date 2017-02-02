@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/spark-core",
-  "version": "0.7.36",
+  "version": "0.7.50",
   "description": "Plugin handling for Cisco Spark",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -20,7 +20,7 @@
     "uuid": "^2.0.1"
   },
   "devDependencies": {
-    "@ciscospark/storage-adapter-spec": "^0.7.34",
+    "@ciscospark/storage-adapter-spec": "^0.7.50",
     "@ciscospark/test-helper-appid": "^0.7.34",
     "@ciscospark/test-helper-automation": "^0.7.34",
     "@ciscospark/test-helper-chai": "^0.7.34",
