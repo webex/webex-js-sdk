@@ -110,6 +110,14 @@ describe(`plugin-credentials`, () => {
         spark.credentials.supertoken = supertoken;
         spark.credentials.userTokens.add(apiToken);
         spark.credentials.userTokens.add(kmsToken);
+
+      });
+
+      describe(`when logging out`, () => {
+        it(`rejects getUserToken`, () => {
+          spark.credentials.isLoggingOut = true;
+          return assert.isRejected(spark.credentials.getUserToken(), `credentials: Cannot get UserToken while logging out`);
+        });
       });
 
       it(`resolves with the token identified by the specified scopes`, () => Promise.all([
@@ -127,7 +135,7 @@ describe(`plugin-credentials`, () => {
 
       describe(`when no scope is specified`, () => {
         it(`resolves with a token containing all but the kms scopes`, () => assert.isFulfilled(spark.credentials.getUserToken())
-            .then((token) => assert.equal(token.access_token, apiToken.access_token)));
+          .then((token) => assert.equal(token.access_token, apiToken.access_token)));
       });
 
       describe(`when the kms downscope request fails`, () => {
@@ -244,14 +252,14 @@ describe(`plugin-credentials`, () => {
           }
         }
       ]
-      .forEach(({msg, credentials}) => {
-        it(msg, () => {
-          const s = new CiscoSpark({credentials});
-          assert.isTrue(s.canAuthorize);
-          assert.equal(s.credentials.supertoken.access_token, `ST`);
-          assert.equal(s.credentials.supertoken.token_type, `Fake`);
+        .forEach(({msg, credentials}) => {
+          it(msg, () => {
+            const s = new CiscoSpark({credentials});
+            assert.isTrue(s.canAuthorize);
+            assert.equal(s.credentials.supertoken.access_token, `ST`);
+            assert.equal(s.credentials.supertoken.token_type, `Fake`);
+          });
         });
-      });
 
       it(`accepts a complete set of credentials`, () => {
         const credentials = {
@@ -282,6 +290,14 @@ describe(`plugin-credentials`, () => {
     });
 
     describe(`#refresh()`, () => {
+
+      describe(`when logging out`, () => {
+        it(`rejects refresh`, () => {
+          spark.credentials.isLoggingOut = true;
+          return assert.isRejected(spark.credentials.refresh(), `credentials: Cannot refresh while logging out`);
+        });
+      });
+
       it(`sets #isRefreshing`, () => {
         spark.set({
           credentials: {
