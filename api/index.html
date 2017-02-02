@@ -23,16 +23,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Membership" class="list-group-item">Types~Membership</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Memberships" class="list-group-item">Memberships</a>
 
             
@@ -56,6 +46,26 @@ title: API
           </li>
         
           
+            <a href="#Types~Membership" class="list-group-item">Types~Membership</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Message" class="list-group-item">Types~Message</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
             <a href="#Messages" class="list-group-item">Messages</a>
 
             
@@ -71,16 +81,6 @@ title: API
                 
                   <a class="list-group-item" href="#Messages#remove">#remove</a>
                 
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Message" class="list-group-item">Types~Message</a>
-
-            
-
             
 
             
@@ -114,6 +114,16 @@ title: API
           </li>
         
           
+            <a href="#Types~Room" class="list-group-item">Types~Room</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
             <a href="#Rooms" class="list-group-item">Rooms</a>
 
             
@@ -131,16 +141,6 @@ title: API
                 
                   <a class="list-group-item" href="#Rooms#update">#update</a>
                 
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Room" class="list-group-item">Types~Room</a>
-
-            
-
             
 
             
@@ -211,6 +211,16 @@ title: API
           </li>
         
           
+            <a href="#Types~Webhook" class="list-group-item">Types~Webhook</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
             <a href="#Webhooks" class="list-group-item">Webhooks</a>
 
             
@@ -228,16 +238,6 @@ title: API
                 
                   <a class="list-group-item" href="#Webhooks#update">#update</a>
                 
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Webhook" class="list-group-item">Types~Webhook</a>
-
-            
-
             
 
             
@@ -378,7 +378,7 @@ title: API
   
     <h2 id='CiscoSpark'>CiscoSpark</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/ciscospark/src/ciscospark.js#L50-L58">packages/ciscospark/src/ciscospark.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/ciscospark/src/ciscospark.js#L50-L58">packages/ciscospark/src/ciscospark.js</a>
     
   
 
@@ -520,116 +520,9 @@ on the storage layer instead.</p>
         
           <section>
   
-    <h2 id='Types~Membership'>Types~Membership</h2>
-    
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/ciscospark/src/plugins/memberships.js#L24-L237">packages/ciscospark/src/plugins/memberships.js</a>
-    
-  
-
-  
-
-  <pre>Types~Membership</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(uuid)</code>
-      
-      : Unique identifier for the membership
-
-      </h4>
-      
-    
-      <h4>
-      roomId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The room ID
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(uuid)</code>
-      
-      : The person ID
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(email)</code>
-      
-      : The email address of the person / room member
-
-      </h4>
-      
-    
-      <h4>
-      isModerator
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Indicates whether the specified person should be a room moderator.
-
-      </h4>
-      
-    
-      <h4>
-      isMonitor
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Indicates whether the specified member is a room monitor.
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : The date and time that this membership was created.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Memberships'>Memberships</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/ciscospark/src/plugins/memberships.js#L24-L237">packages/ciscospark/src/plugins/memberships.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/ciscospark/src/plugins/memberships.js#L24-L237">packages/ciscospark/src/plugins/memberships.js</a>
     
   
 
@@ -1120,9 +1013,207 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
+    <h2 id='Types~Membership'>Types~Membership</h2>
+    
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/ciscospark/src/plugins/memberships.js#L24-L237">packages/ciscospark/src/plugins/memberships.js</a>
+    
+  
+
+  
+
+  <pre>Types~Membership</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(uuid)</code>
+      
+      : Unique identifier for the membership
+
+      </h4>
+      
+    
+      <h4>
+      roomId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The room ID
+
+      </h4>
+      
+    
+      <h4>
+      personId
+      <code>(uuid)</code>
+      
+      : The person ID
+
+      </h4>
+      
+    
+      <h4>
+      personEmail
+      <code>(email)</code>
+      
+      : The email address of the person / room member
+
+      </h4>
+      
+    
+      <h4>
+      isModerator
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Indicates whether the specified person should be a room moderator.
+
+      </h4>
+      
+    
+      <h4>
+      isMonitor
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Indicates whether the specified member is a room monitor.
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : The date and time that this membership was created.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Message'>Types~Message</h2>
+    
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/ciscospark/src/plugins/messages.js#L29-L219">packages/ciscospark/src/plugins/messages.js</a>
+    
+  
+
+  
+
+  <pre>Types~Message</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(uuid)</code>
+      
+      : (server generated) Unique identifier for the message
+
+      </h4>
+      
+    
+      <h4>
+      personId
+      <code>(uuid)</code>
+      
+      : The ID for the author of the messasge
+
+      </h4>
+      
+    
+      <h4>
+      personEmail
+      <code>(email)</code>
+      
+      : The email for the author of the messasge
+
+      </h4>
+      
+    
+      <h4>
+      roomId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The message posted to the room in plain text
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated)The source URLs for the
+message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
+supported media types.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='Messages'>Messages</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/ciscospark/src/plugins/messages.js#L29-L219">packages/ciscospark/src/plugins/messages.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/ciscospark/src/plugins/messages.js#L29-L219">packages/ciscospark/src/plugins/messages.js</a>
     
   
 
@@ -1528,100 +1619,9 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Message'>Types~Message</h2>
-    
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/ciscospark/src/plugins/messages.js#L29-L219">packages/ciscospark/src/plugins/messages.js</a>
-    
-  
-
-  
-
-  <pre>Types~Message</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(uuid)</code>
-      
-      : (server generated) Unique identifier for the message
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(uuid)</code>
-      
-      : The ID for the author of the messasge
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(email)</code>
-      
-      : The email for the author of the messasge
-
-      </h4>
-      
-    
-      <h4>
-      roomId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The message posted to the room in plain text
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated)The source URLs for the
-message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
-supported media types.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='People'>People</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/ciscospark/src/plugins/people.js#L21-L108">packages/ciscospark/src/plugins/people.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/ciscospark/src/plugins/people.js#L21-L108">packages/ciscospark/src/plugins/people.js</a>
     
   
 
@@ -1868,7 +1868,7 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   
     <h2 id='Types~Person'>Types~Person</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/ciscospark/src/plugins/people.js#L21-L108">packages/ciscospark/src/plugins/people.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/ciscospark/src/plugins/people.js#L21-L108">packages/ciscospark/src/plugins/people.js</a>
     
   
 
@@ -1946,9 +1946,92 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
+    <h2 id='Types~Room'>Types~Room</h2>
+    
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/ciscospark/src/plugins/rooms.js#L22-L205">packages/ciscospark/src/plugins/rooms.js</a>
+    
+  
+
+  
+
+  <pre>Types~Room</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (server generated) Unique identifier for the room
+
+      </h4>
+      
+    
+      <h4>
+      title
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The display name for the room. All room members
+will see the title so make it something good
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated) The date and time that the
+room was created
+
+      </h4>
+      
+    
+      <h4>
+      teamId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (optional): The id of the team to which the room
+belongs
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='Rooms'>Rooms</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/ciscospark/src/plugins/rooms.js#L22-L205">packages/ciscospark/src/plugins/rooms.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/ciscospark/src/plugins/rooms.js#L22-L205">packages/ciscospark/src/plugins/rooms.js</a>
     
   
 
@@ -2393,92 +2476,9 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Room'>Types~Room</h2>
-    
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/ciscospark/src/plugins/rooms.js#L22-L205">packages/ciscospark/src/plugins/rooms.js</a>
-    
-  
-
-  
-
-  <pre>Types~Room</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (server generated) Unique identifier for the room
-
-      </h4>
-      
-    
-      <h4>
-      title
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The display name for the room. All room members
-will see the title so make it something good
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated) The date and time that the
-room was created
-
-      </h4>
-      
-    
-      <h4>
-      teamId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (optional): The id of the team to which the room
-belongs
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Types~Team'>Types~Team</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/ciscospark/src/plugins/teams.js#L21-L156">packages/ciscospark/src/plugins/teams.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/ciscospark/src/plugins/teams.js#L21-L156">packages/ciscospark/src/plugins/teams.js</a>
     
   
 
@@ -2550,7 +2550,7 @@ team was created, in ISO8601 format.
   
     <h2 id='Teams'>Teams</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/ciscospark/src/plugins/teams.js#L21-L156">packages/ciscospark/src/plugins/teams.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/ciscospark/src/plugins/teams.js#L21-L156">packages/ciscospark/src/plugins/teams.js</a>
     
   
 
@@ -2912,7 +2912,7 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
   
     <h2 id='Types~TeamMembership'>Types~TeamMembership</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/ciscospark/src/plugins/team-memberships.js#L29-L211">packages/ciscospark/src/plugins/team-memberships.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/ciscospark/src/plugins/team-memberships.js#L29-L211">packages/ciscospark/src/plugins/team-memberships.js</a>
     
   
 
@@ -2995,7 +2995,7 @@ moderator
   
     <h2 id='TeamMemberships'>TeamMemberships</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/ciscospark/src/plugins/team-memberships.js#L29-L211">packages/ciscospark/src/plugins/team-memberships.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/ciscospark/src/plugins/team-memberships.js#L29-L211">packages/ciscospark/src/plugins/team-memberships.js</a>
     
   
 
@@ -3436,9 +3436,107 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
         
           <section>
   
+    <h2 id='Types~Webhook'>Types~Webhook</h2>
+    
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/ciscospark/src/plugins/webhooks.js#L25-L241">packages/ciscospark/src/plugins/webhooks.js</a>
+    
+  
+
+  
+
+  <pre>Types~Webhook</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The unique ID for the webhook.
+
+      </h4>
+      
+    
+      <h4>
+      resource
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The resource type for the webhook.
+
+      </h4>
+      
+    
+      <h4>
+      event
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The event type for the webhook.
+
+      </h4>
+      
+    
+      <h4>
+      filter
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The filter that defines the webhook scope.
+
+      </h4>
+      
+    
+      <h4>
+      targetUrl
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The URL that receives POST requests for each event.
+
+      </h4>
+      
+    
+      <h4>
+      name
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : A user-friendly name for this webhook.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='Webhooks'>Webhooks</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/ciscospark/src/plugins/webhooks.js#L25-L241">packages/ciscospark/src/plugins/webhooks.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/ciscospark/src/plugins/webhooks.js#L25-L241">packages/ciscospark/src/plugins/webhooks.js</a>
     
   
 
@@ -3914,107 +4012,9 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Webhook'>Types~Webhook</h2>
-    
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/ciscospark/src/plugins/webhooks.js#L25-L241">packages/ciscospark/src/plugins/webhooks.js</a>
-    
-  
-
-  
-
-  <pre>Types~Webhook</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The unique ID for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      resource
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The resource type for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      event
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The event type for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      filter
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The filter that defines the webhook scope.
-
-      </h4>
-      
-    
-      <h4>
-      targetUrl
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The URL that receives POST requests for each event.
-
-      </h4>
-      
-    
-      <h4>
-      name
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : A user-friendly name for this webhook.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Call'>Call</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/plugin-phone/src/call.js#L99-L870">packages/plugin-phone/src/call.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/plugin-phone/src/call.js#L99-L870">packages/plugin-phone/src/call.js</a>
     
   
 
@@ -5329,7 +5329,7 @@ even if renegotiation has not completed)</p>
   
     <h2 id='Types~Feedback'>Types~Feedback</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/plugin-phone/src/call.js#L99-L870">packages/plugin-phone/src/call.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/plugin-phone/src/call.js#L99-L870">packages/plugin-phone/src/call.js</a>
     
   
 
@@ -5407,7 +5407,7 @@ SDK&#x27;s logger, you should make sure to avoid logging PII as well.
   
     <h2 id='mediaDirection'>mediaDirection</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/plugin-phone/src/state-parsers.js#L81-L91">packages/plugin-phone/src/state-parsers.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/plugin-phone/src/state-parsers.js#L81-L91">packages/plugin-phone/src/state-parsers.js</a>
     
   
 
@@ -5472,7 +5472,7 @@ participant</p>
   
     <h2 id='Phone'>Phone</h2>
     
-      <a href="https://github.com/ciscospark/spark-js-sdk/blob/9aa3e6252fc100345d880e4ccca842a0f01f11a5/packages/plugin-phone/src/phone.js#L32-L192">packages/plugin-phone/src/phone.js</a>
+      <a href="https://github.com/ciscospark/spark-js-sdk/blob/7f7b24eec7114b0ce6b972ad5f198c149141ed0b/packages/plugin-phone/src/phone.js#L32-L192">packages/plugin-phone/src/phone.js</a>
     
   
 
