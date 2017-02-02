@@ -471,10 +471,10 @@ ansiColor('xterm') {
 
               stage('publish to cdn') {
                 // Disabled for first pass. Will work with Lex to adjust cdn jobs
-                // cdnPublishBuild = build job: 'spark-js-sdk--publish-chat-widget-s3', parameters: [[$class: 'StringParameterValue', name: 'buildNumber', value: currentBuild.number]], propagate: false
-                // if (cdnPublishBuild.result != 'SUCCESS') {
-                //   warn('failed to publish to CDN')
-                // }
+                 cdnPublishBuild = build job: 'spark-js-sdk--publish-chat-widget-s3', parameters: [[$class: 'StringParameterValue', name: 'buildNumber', value: currentBuild.number]], propagate: false
+                 if (cdnPublishBuild.result != 'SUCCESS') {
+                   warn('failed to publish to CDN')
+                 }
               }
             }
           }
