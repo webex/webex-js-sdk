@@ -435,7 +435,12 @@ ansiColor('xterm') {
                   }
                   dir('.grunt/grunt-gh-pages/gh-pages/ghc') {
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
-                      sh 'git remote add upstream git@github.com:ciscospark/spark-js-sdk.git'
+                      try {
+                        sh 'git remote add upstream git@github.com:ciscospark/spark-js-sdk.git'
+                      }
+                      catch(err) {
+                        // ignore; this happens when the node exist
+                      }
                       sh 'git push upstream gh-pages:gh-pages'
                     }
                   }
