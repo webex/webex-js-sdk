@@ -5,6 +5,11 @@
  */
 
 export default {
+  device: {
+    preDiscoveryServices: {
+      atlasServiceUrl: process.env.ATLAS_SERVICE_URL || `https://atlas-a.wbx2.com/admin/api/v1`
+    }
+  },
   user: {
     activationUrl: `https://idbroker.webex.com/idb/token/v1/actions/UserActivation/invoke`,
     batcherWait: 100,

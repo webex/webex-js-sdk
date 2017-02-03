@@ -42,6 +42,16 @@ describe(`plugin-credentials`, function() {
           assert.notEqual(token.access_token, supertoken.access_token);
           assert.equal(token.refresh_token, supertoken.refresh_token);
         }));
+
+      it(`sets the previous passwordSet state onto the new token`, () => {
+        supertoken.passwordSet = false;
+        return supertoken.refresh()
+        .then((token) => {
+          assert.notEqual(token.access_token, supertoken.access_token);
+          assert.equal(token.refresh_token, supertoken.refresh_token);
+          assert.equal(token.passwordSet, false);
+        });
+      });
     });
 
     describe(`#revoke()`, () => {

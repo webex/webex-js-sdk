@@ -29,22 +29,22 @@ const User = SparkPlugin.extend({
 
   /**
    * Activates a Spark user account and exchanges for user token.
-   * @param {Object} params
-   * @param {Object} params.verificationToken (required)
+   * @param {Object} options
+   * @param {Object} options.verificationToken (required)
    * @returns {Promise} Resolves with a userSession
    */
-  activate: function activate(params) {
-    params = params || {};
+  activate(options) {
+    options = options || {};
 
-    if (!params.verificationToken) {
-      throw new Error(`\`params.verificationToken`` is required`);
+    if (!options.verificationToken) {
+      throw new Error(`\`options.verificationToken\` is required`);
     }
     let response;
 
     return this.request({
       uri: this.config.activationUrl,
       method: `POST`,
-      body: params,
+      body: options,
       auth: {
         user: this.spark.config.credentials.oauth.client_id,
         pass: this.spark.config.credentials.oauth.client_secret,
@@ -62,14 +62,8 @@ const User = SparkPlugin.extend({
       })
       .then(() => {
         this.setPasswordStatus(false);
-        return response;
+        return response.body;
       });
-      // .then(function registerDevice() {
-      //   return this.spark.device.refresh();
-      // }.bind(this))
-      // .then(function getUser() {
-      //   return this.get();
-      // }.bind(this))
   },
 
   /**
@@ -194,43 +188,48 @@ const User = SparkPlugin.extend({
     return this.verify(...args);
   },
 
-  setPasswordStatus: function setPasswordStatus(value) {
-    this.spark.credentials.supertoken.hasPassword = value;
+  /**
+   * Sets password status on token
+   * @param {Boolean} value
+   * @returns {undefined}
+   */
+  setPasswordStatus(value) {
+    if (this.spark.credentials && this.spark.credentials.supertoken) {
+      this.spark.credentials.supertoken.passwordSet = value;
+    }
   },
 
   /**
    * Updates a user's password with spark.
-   * @param {Object} params
-   * @param {string} params.password (required)
-   * @param {string} params.userId (required)
+   * @param {Object} options
+   * @param {string} options.password (required)
+   * @param {string} options.userId (required)
    * @returns {Promise} Resolves with complete user object containing new password
    */
-  setPassword: function setPassword(params) {
-    params = params || {};
-    if (!params.password) {
-      return Promise.reject(new Error(`\`params.password\` is required`));
+  setPassword(options) {
+    options = options || {};
+    if (!options.password) {
+      return Promise.reject(new Error(`\`options.password\` is required`));
     }
-    if (!params.userId) {
-      return Promise.reject(new Error(`\`params.userId\` is required`));
+    if (!options.userId) {
+      return Promise.reject(new Error(`\`options.userId\` is required`));
     }
 
     let headers;
 
     const promise = this.spark.credentials.getAuthorization()
       .then((authorization) => {
-        headers = {
-          Authorization: authorization
-        };
+        headers = {authorization};
       });
 
     return promise
-      .then(this.request({
-        uri: `${this.config.setPasswordUrl}/${params.userId}`,
+      .then(() => this.request({
+        uri: `${this.config.setPasswordUrl}/${options.userId}`,
         method: `PATCH`,
         headers,
         body: {
           schemas: [`urn:scim:schemas:core:1.0`, `urn:scim:schemas:extension:cisco:commonidentity:1.0`],
-          password: params.password
+          password: options.password
         }
       }))
       .then(() => {
@@ -263,6 +262,7 @@ const User = SparkPlugin.extend({
    * Triggers activation email if client credentials are used
    * @param {Object} options
    * @param {string} options.email (required)
+   * @param {string} options.reqId required for the endpoint
    * @returns {Promise<Object>}
    */
   verify(options) {
@@ -272,28 +272,35 @@ const User = SparkPlugin.extend({
       return Promise.reject(new Error(`\`options.email\` is required`));
     }
 
+    if (!options.reqId) {
+      return Promise.reject(new Error(`\`options.reqId\` is required`));
+    }
+
     let shouldRefreshAccessToken = true;
-    const headers = {};
+    let requiresClientCredentials = false;
+    let headers;
     const promise = this.spark.credentials.getAuthorization()
       .then((authorization) => {
-        headers.Authorization = authorization;
+        headers = {authorization};
       })
-      .catch(() => this.spark.credentials.getClientAuthorization()
+      .catch(() => this.spark.credentials.getClientCredentialsAuthorization()
         .then((authorization) => {
-          headers.Authorization = authorization;
+          headers = {authorization};
           shouldRefreshAccessToken = false;
+          requiresClientCredentials = true;
         })
         .catch((err) => Promise.reject(new Error(`failed to set authorization`, err)))
       );
 
     return promise
-      .then(this.request({
+      .then(() => this.request({
         service: `atlas`,
         resource: `users/activations`,
-        method: `post`,
+        method: `POST`,
         headers,
         body: options,
-        shouldRefreshAccessToken
+        shouldRefreshAccessToken,
+        requiresClientCredentials
       }))
       .then((res) => res.body);
   },
@@ -304,7 +311,7 @@ const User = SparkPlugin.extend({
    * @private
    * @returns {string}
    */
-  _extractUUID: function _extractUUID(user) {
+  _extractUUID(user) {
     return user.entryUUID || user.id || user;
   },
 
@@ -314,7 +321,7 @@ const User = SparkPlugin.extend({
    * @private
    * @returns {string}
    */
-  _extractEmailAddress: function _extractEmailAddress(user) {
+  _extractEmailAddress(user) {
     return user.email || user.emailAddress || user.entryEmail || user;
   },
 
@@ -323,7 +330,7 @@ const User = SparkPlugin.extend({
    * @private
    * @returns {string} html body with auth code
    */
-  _getOauthCode: function getOauthCode() {
+  _getOauthCode() {
     return this.request({
       api: `oauth`,
       withCredentials: true,

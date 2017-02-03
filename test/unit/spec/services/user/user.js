@@ -116,10 +116,10 @@ describe('Services', function() {
     });
 
     describe('#activate()', function() {
-      it('requires an `encryptedQueryString`', function() {
+      it('requires an `verificationToken`', function() {
         return helpers.requiresParam(function() {
           return userService.activate();
-        }, 'encryptedQueryString');
+        }, 'verificationToken');
       });
     });
 

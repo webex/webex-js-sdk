@@ -44,6 +44,19 @@ describe('Client', function() {
               assert.notEqual(token.access_token, supertoken.access_token);
               assert.equal(token.refresh_token, supertoken.refresh_token);
               assert.equal(token.previousToken, supertoken);
+              assert.equal(token.hasPassword, true);
+            });
+        });
+
+        it('sets the previous hasPassword state onto the new token', function() {
+          supertoken.passwordSet = true;
+          return supertoken.refresh()
+            .then(function(token) {
+              assert.notEqual(token, supertoken);
+              assert.notEqual(token.access_token, supertoken.access_token);
+              assert.equal(token.refresh_token, supertoken.refresh_token);
+              assert.equal(token.previousToken, supertoken);
+              assert.equal(token.hasPassword, true);
             });
         });
       });

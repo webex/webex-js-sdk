@@ -167,8 +167,22 @@ describe('Services', function() {
     skipInBrowser(describe)('#register() @atlas', function() {
       createUnauthedSpark();
 
-      it('registers users with a valid email address @atlas', function() {
-        return spark.user.register({email: 'Collabctg+spark-js-sdk-' + Date.now() + '@gmail.com'});
+      it('registers a new user @atlas', function() {
+        return spark.user.register({email: 'Collabctg+spark-js-sdk-' + Date.now() + '@gmail.com'})
+          .then(function(res) {
+            assert(res.verificationEmailTriggered, true);
+            assert(res.sso, false);
+            assert(res.hasPassword, true);
+          });
+      });
+
+      it('does not trigger an verification email if existing user', function() {
+        return spark.user.register({email: party.spock.email})
+          .then(function(res) {
+            assert(res.verificationEmailTriggered, false);
+            assert(res.sso, false);
+            assert(res.hasPassword, true);
+          });
       });
 
       it('fails to register users with invalid email addresses @atlas', function() {
@@ -179,10 +193,27 @@ describe('Services', function() {
       });
     });
 
-    skipInBrowser(describe)('#activate() @atlas', function() {
+    describe('#setPassword()', function() {
+      it('sets the password', function() {
+        return spark.user.setPassword({userId: party.spock.id, password: 'P@ssword123'})
+          .then(function() {
+            spark.user.verify({email: party.spock.email});
+          })
+          .then(function(res) {
+            assert.property(res, 'hasPassword');
+            assert.property(res, 'verificationEmailTriggered');
+            assert.property(res, 'sso');
+            assert.isTrue(res.hasPassword);
+            assert.isFalse(res.verificationEmailTriggered);
+            assert.isFalse(res.sso);
+          });
+      });
+    });
+
+    skipInBrowser(describe)('#activate() @CI', function() {
       createUnauthedSpark();
 
-      it('registers mobile user with a valid email address and activates account @atlas', function() {
+      xit('retrieves a valid user token using verificationToken', function() {
         return spark.user.register({email: 'Collabctg+spark-js-sdk-' + Date.now() + '@gmail.com'}, {spoofMobile: true})
           .then(function(body) {
             return spark.user.activate({encryptedQueryString: body.eqp});

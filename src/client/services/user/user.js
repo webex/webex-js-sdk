@@ -217,9 +217,6 @@ var UserService = SparkBase.extend(
    * @param {Object} params
    * @param {Object} params.email (required)
    * @param {Object} params.reqId (optional)
-   * @param {Object} params.pushId (optional)
-   * @param {Object} params.deviceId (optional)
-   * @param {Object} params.deviceName (optional)
    * @returns {Promise}
    * @todo Add details to the @returnsobject once the endpoint stabilizes
    */
@@ -315,11 +312,8 @@ var UserService = SparkBase.extend(
       }.bind(this))
       .then(function returnResponse() {
         this.setPasswordStatus(false);
-        return response;
-      }.bind(this))
-      .catch(function handleError(err) {
-        return Promise.reject(err);
-      });
+        return response.body;
+      }.bind(this));
   },
 
   _getOauthCode: function getOauthCode() {
@@ -388,7 +382,9 @@ var UserService = SparkBase.extend(
   },
 
   setPasswordStatus: function setPasswordStatus(value) {
-    this.spark.credentials.authorization.supertoken.hasPassword = value;
+    if (this.spark.credentials && this.spark.credentials.authorization && this.spark.credentials.authorization.supertoken) {
+      this.spark.credentials.authorization.supertoken.passwordSet = value;
+    }
   },
 
   /**

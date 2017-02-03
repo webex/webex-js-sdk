@@ -17,51 +17,75 @@ import {nodeOnly} from '@ciscospark/test-helper-mocha';
 describe(`plugin-user`, function() {
   this.timeout(30000);
 
-  let spark, user2, user3;
+  let spark, user1, user2, user3;
 
   before(() => testUsers.create({count: 3})
     .then((users) => {
-      const user = users[0];
+      user1 = users[0];
       user2 = users[1];
       user3 = users[2];
       spark = new CiscoSpark({
         credentials: {
-          authorization: user.token
+          supertoken: user1.token
         }
       });
-      assert.isTrue(spark.isAuthenticated || spark.canAuthorize);
+      assert.isDefined(spark.credentials.supertoken);
+      assert.isTrue(spark.canAuthorize);
 
       return spark.device.register();
     }));
 
   describe(`#verify()`, () => {
-    it(`registers a new user`, () => spark.user.verify({email: `Collabctg+spark-js-sdk-${uuid.v4()}@gmail.com`})
+    const unauthSpark = new CiscoSpark();
+    it(`registers a new user`, () => unauthSpark.user.verify({email: `Collabctg+spark-js-sdk-${uuid.v4()}@gmail.com`})
       .then((res) => {
-        assert.property(res, `showPasswordPage`);
-        assert.isFalse(res.showPasswordPage);
+        assert.property(res, `hasPassword`);
+        assert.property(res, `verificationEmailTriggered`);
+        assert.property(res, `sso`);
+        assert.isFalse(res.hasPassword);
+        assert.isTrue(res.verificationEmailTriggered);
+        assert.isFalse(res.sso);
+      })
+    );
 
-        assert.isFalse(res.showConfirmationCodePage);
-        assert.isFalse(res.showPasswordPage);
-        assert.isTrue(res.isUserCreated);
-        assert.isFalse(res.isSSOUser);
-        assert.isTrue(res.newUserSignUp);
-      }));
+    it(`verifies an existing user`, () => unauthSpark.user.verify({email: user1.email})
+      .then((res) => {
+        assert.property(res, `hasPassword`);
+        assert.property(res, `verificationEmailTriggered`);
+        assert.property(res, `sso`);
+        assert.isTrue(res.hasPassword);
+        assert.isFalse(res.verificationEmailTriggered);
+        assert.isFalse(res.sso);
+      })
+    );
 
-    it(`leaves email address validation up to Atlas`, () => assert.isRejected(spark.user.register({email: `not an email address`}))
+    it(`leaves email address validation up to Atlas`, () => assert.isRejected(unauthSpark.user.register({email: `not an email address`}))
       .then((res) => assert.statusCode(res, 400)));
+  });
+
+  describe(`#setPassword()`, () => {
+    it(`sets the user's password`, () => spark.user.setPassword({userId: user1.id, password: `P@ssword123`})
+      .then(() => spark.user.verify({email: user1.email}))
+      .then((res) => {
+        assert.property(res, `hasPassword`);
+        assert.property(res, `verificationEmailTriggered`);
+        assert.property(res, `sso`);
+        assert.isTrue(res.hasPassword);
+        assert.isFalse(res.verificationEmailTriggered);
+        assert.isFalse(res.sso);
+      })
+    );
   });
 
   // This test relies on setting a specific user agent, so it doesn't work in
   // browsers
   nodeOnly(describe)(`#activate()`, () => {
-    it(`completes the mobile signup process`, () => spark.request({
+    xit(`completes the mobile signup process`, () => spark.request({
       service: `atlas`,
       resource: `users/email/verify`,
       method: `POST`,
       body: {
-        deviceName: `DESKTOP`,
-        deviceId: `not a mobile device`,
-        pushId: `not a mobile device`,
+        reqId: `DESKTOP`,
         email: `Collabctg+spark-js-sdk-${uuid.v4()}@gmail.com`
       },
       requiresClientCredentials: true,

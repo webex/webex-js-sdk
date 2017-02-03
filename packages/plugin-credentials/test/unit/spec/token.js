@@ -69,6 +69,16 @@ describe(`plugin-credentials`, () => {
       });
     });
 
+    describe(`#hasPassword`, () => {
+      it(`indicates if this token has a password set`, () => {
+        assert.isFalse(token.hasPassword);
+        token.passwordSet = true;
+        assert.isTrue(token.hasPassword);
+        token.passwordSet = false;
+        assert.isFalse(token.hasPassword);
+      });
+    });
+
     describe(`#isExpired`, () => {
       it(`derives from \`expires\``, () => {
         assert.isFalse(token.isExpired);

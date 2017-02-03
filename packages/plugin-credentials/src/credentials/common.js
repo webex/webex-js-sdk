@@ -63,7 +63,11 @@ export default {
     },
 
     hasPassword: {
-      deps: [`supertoken.hasPassword`],
+      cache: false,
+      deps: [
+        `supertoken`,
+        `supertoken.hasPassword`
+      ],
       fn() {
         return Boolean(this.supertoken && this.supertoken.hasPassword);
       }
