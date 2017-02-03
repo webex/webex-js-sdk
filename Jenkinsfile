@@ -1,5 +1,4 @@
 def IS_VALIDATED_MERGE_BUILD = false
-def GIT_COMMIT
 def HAS_LEGACY_CHANGES
 
 def warn = { msg ->
@@ -155,9 +154,6 @@ ansiColor('xterm') {
           stage('checkout') {
             checkout scm
             if (IS_VALIDATED_MERGE_BUILD) {
-              // Store the current commit to use with Gauntlet
-              GIT_COMMIT = sh script: 'git rev-parse HEAD | tr -d "\n"', returnStdout: true
-
               sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
                 // return the exit code because we don't care about failures
                 sh script: 'git remote add upstream git@github.com:ciscospark/spark-js-sdk.git', returnStatus: true
