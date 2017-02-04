@@ -63,6 +63,7 @@ app.use(function(req, res, next) {
 // --------------------
 var fixturePath = path.join(__dirname, '..', '..', process.env.PACKAGE, 'test', 'automation', 'fixtures');
 var appjs = path.join(fixturePath, 'app.js');
+var routerPath = path.join(fixturePath, 'router.js');
 
 try {
   fs.statSync(appjs);
@@ -116,6 +117,14 @@ app.get('/embargoed', function(req, res) {
 // Enable static routes
 // --------------------
 
+try {
+  // eslint-disable-next-line global-require
+  app.use(require(routerPath));
+}
+catch (err) {
+  console.error(err);
+  // ignore
+}
 app.use(express.static(fixturePath));
 app.use(express.static(path.join(__dirname, 'static')));
 

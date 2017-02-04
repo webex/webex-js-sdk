@@ -1,0 +1,34 @@
+{
+  "name": "@ciscospark/passport-ciscospark",
+  "version": "0.7.36",
+  "description": "",
+  "license": "MIT",
+  "author": "Ian W. Remmel <iremmel@cisco.com>",
+  "main": "dist/index.js",
+  "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/passport-ciscospark",
+  "dependencies": {
+    "ciscospark": "^0.7.41",
+    "passport-oauth2": "^1.4.0"
+  },
+  "devDependencies": {
+    "@ciscospark/common": "^0.7.34",
+    "@ciscospark/test-helper-automation": "^0.7.34",
+    "@ciscospark/test-helper-chai": "^0.7.34",
+    "@ciscospark/test-helper-test-users": "^0.7.34",
+    "@ciscospark/xunit-with-logs": "^0.7.34",
+    "babel-eslint": "^6.1.2",
+    "babel-plugin-lodash": "^3.2.11",
+    "babel-polyfill": "^6.3.14",
+    "babel-register": "^6.4.3",
+    "errorhandler": "^1.5.0",
+    "eslint": "^3.5.0",
+    "eslint-plugin-mocha": "^4.5.1",
+    "express": "^4.14.1",
+    "express-session": "^1.15.0",
+    "passport": "^0.3.2",
+    "supertest": "^2.0.1"
+  },
+  "engines": {
+    "node": ">=4"
+  }
+}
