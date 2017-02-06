@@ -209,7 +209,7 @@ const SparkCore = AmpState.extend({
 
   logout(...args) {
     return this.device.unregister()
-    .then(() => this.credentials.logout(...args))
+    .then(() => this.credentials.logout(...args));
   },
 
   /**

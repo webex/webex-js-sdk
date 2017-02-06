@@ -61,7 +61,7 @@ const Avatar = SparkPlugin.extend({
 
     return this.spark.user.asUUID(user)
       .then((uuid) => this._fetchAvatarUrl(uuid, options)
-      .then((res) => res)); // this should be the avatar URL
+      .then((res) => res));
   },
 
   /**

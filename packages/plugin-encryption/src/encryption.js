@@ -34,10 +34,7 @@ const Encryption = SparkPlugin.extend({
 
         return scr.decrypt(b);
       })
-      .then((res) => {
-        return res;
-      })
-      // .then(ensureBuffer);
+      .then((res) => res);
   },
 
   decryptScr(key, cipherScr) {
@@ -51,9 +48,9 @@ const Encryption = SparkPlugin.extend({
         .createDecrypt(k.jwk)
         .decrypt(ciphertext)
         .then((result) => result.plaintext.toString()))
-      .catch((error) => {
+      .catch(() => {
         // An error is being received while deciphering a room with displayName ',,,,,,,,,,,', this is a hack to return back the unencrypted text if that happens
-        console.log(`plugin-encryption: failed to decrypt ciphertext=${ciphertext}, with key=${key}`);
+        this.logger.info(`plugin-encryption: failed to decrypt ciphertext=${ciphertext}, with key=${key}`);
         return Promise.resolve(ciphertext);
       });
   },
