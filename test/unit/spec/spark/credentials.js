@@ -12,8 +12,7 @@ var Authorization = require('../../../../src/client/credentials/authorization');
 var delay = require('../../../lib/delay');
 var sinon = require('sinon');
 var skipInBrowser = require('../../../lib/mocha-helpers').skipInBrowser;
-var nodeOnly = require('../../../lib/mocha-helpers').nodeOnly;
-var browserOnly = require('../../../lib/mocha-helpers').browserOnly;
+var skipInNode = require('../../../lib/mocha-helpers').skipInNode;
 
 var assert = chai.assert;
 
@@ -383,25 +382,27 @@ describe('Spark', function() {
       });
 
       // logout redirect only happens in browser
-      browserOnly(it)('revokes the access token', function() {
+      skipInNode(it)('revokes the access token', function() {
         assert.isDefined(credentials.authorization.supertoken);
         credentials.logout();
         assert.isUndefined(credentials.authorization.supertoken);
         assert.calledOnce(credentials._redirect);
       });
 
-      nodeOnly(it)('revokes the access token', function() {
+      skipInBrowser(it)('revokes the access token', function() {
         assert.isDefined(credentials.authorization.supertoken);
         credentials.logout();
         assert.isUndefined(credentials.authorization.supertoken);
         assert.notCalled(credentials._redirect);
       });
 
-      it('revokes the access token, but does not redirect user', function() {
-        assert.isDefined(credentials.authorization.supertoken);
-        credentials.logout({noRedirect: true});
-        assert.isUndefined(credentials.authorization.supertoken);
-        assert.notCalled(credentials._redirect);
+      describe('when noRedirect: true', function() {
+        it('revokes the access token, but does not redirect user', function() {
+          assert.isDefined(credentials.authorization.supertoken);
+          credentials.logout({noRedirect: true});
+          assert.isUndefined(credentials.authorization.supertoken);
+          assert.notCalled(credentials._redirect);
+        });
       });
     });
 

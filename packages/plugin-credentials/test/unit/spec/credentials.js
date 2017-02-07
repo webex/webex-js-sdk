@@ -350,34 +350,37 @@ describe(`plugin-credentials`, () => {
           });
       });
 
-      it(`revokes the access token, but does not redirect user`, () => {
-        spark.set({
-          credentials: {
-            supertoken: {
-              access_token: `AT`,
-              token_type: `Fake`,
-              refresh_token: `RT`
+      describe(`when noRedirect:true`, () => {
+        it(`revokes the access token, but does not redirect user`, () => {
+          spark.set({
+            credentials: {
+              supertoken: {
+                access_token: `AT`,
+                token_type: `Fake`,
+                refresh_token: `RT`
+              }
             }
-          }
-        });
-        spark.credentials._redirect = sinon.spy();
-        assert.isDefined(spark.credentials.supertoken);
-        return spark.credentials.logout({noRedirect: true})
+          });
+          spark.credentials._redirect = sinon.spy();
+          assert.isDefined(spark.credentials.supertoken);
+          return spark.credentials.logout({noRedirect: true})
           .then(() => {
             assert.isUndefined(spark.credentials.supertoken.access_token);
             assert.notCalled(spark.credentials._redirect);
           });
-      });
+        });
 
-      it(`resolves successfully even if supertoken is not defined`, () => {
-        spark.credentials._redirect = sinon.spy();
-        assert.isUndefined(spark.credentials.supertoken);
-        return spark.credentials.logout({noRedirect: true})
+        it(`resolves successfully even if supertoken is not defined`, () => {
+          spark.credentials._redirect = sinon.spy();
+          assert.isUndefined(spark.credentials.supertoken);
+          return spark.credentials.logout({noRedirect: true})
           .then(() => {
             assert.isUndefined(spark.credentials.supertoken);
             assert.notCalled(spark.credentials._redirect);
           });
+        });
       });
+
     });
   });
 });

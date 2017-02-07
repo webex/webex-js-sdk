@@ -233,14 +233,17 @@ describe(`spark-core`, function() {
                 });
             });
 
-            it(`revokes the access token, but does not redirect user`, () => {
-              assert.isDefined(spark.credentials.authorization);
-              return spark.credentials.logout({noRedirect: true})
+            describe(`when noRedirect: true`, () => {
+              it(`revokes the access token, but does not redirect user`, () => {
+                assert.isDefined(spark.credentials.authorization);
+                return spark.credentials.logout({noRedirect: true})
                 .then(() => {
                   assert.isUndefined(spark.credentials.authorization);
                   assert.notCalled(spark.credentials._redirect);
                 });
+              });
             });
+
           });
 
           describe(`when invoked for an unauthenticated user`, () => {
