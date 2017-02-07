@@ -8,7 +8,7 @@
 
 import {Defer} from '@ciscospark/common';
 import {assert} from '@ciscospark/test-helper-chai';
-import {skipInNode} from '@ciscospark/test-helper-mocha';
+import {nodeOnly, browserOnly} from '@ciscospark/test-helper-mocha';
 import sinon from '@ciscospark/test-helper-sinon';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
 import uuid from 'uuid';
@@ -312,7 +312,7 @@ describe(`plugin-credentials`, () => {
     describe(`#logout`, () => {
 
       // logout redirect only happens in browser
-      skipInNode(it)(`revokes the access token`, () => {
+      browserOnly(it)(`revokes the access token`, () => {
         spark.set({
           credentials: {
             supertoken: {
@@ -328,6 +328,25 @@ describe(`plugin-credentials`, () => {
           .then(() => {
             assert.isUndefined(spark.credentials.supertoken.access_token);
             assert.calledOnce(spark.credentials._redirect);
+          });
+      });
+
+      nodeOnly(it)(`revokes the access token`, () => {
+        spark.set({
+          credentials: {
+            supertoken: {
+              access_token: `AT`,
+              token_type: `Fake`,
+              refresh_token: `RT`
+            }
+          }
+        });
+        spark.credentials._redirect = sinon.spy();
+        assert.isDefined(spark.credentials.supertoken);
+        return spark.credentials.logout()
+          .then(() => {
+            assert.isUndefined(spark.credentials.supertoken.access_token);
+            assert.notCalled(spark.credentials._redirect);
           });
       });
 
