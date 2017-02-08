@@ -45,6 +45,15 @@ const Support = SparkPlugin.extend({
       logs = this.spark.logger.buffer.join(`\n`);
     }
 
+    // upload function only accept data of type `ArrayBuffer` and `blob`
+
+    var logsBuffer = new ArrayBuffer(logs.length*2); // 2 bytes for each char
+    var bufView = new Uint16Array(logsBuffer);
+    for (var i=0, strLen=logs.length; i < strLen; i++) {
+      bufView[i] = logs.charCodeAt(i);
+    }
+    logs = logsBuffer;
+
     let filename;
     if (metadata.locusId && metadata.callStart) {
       filename = `${metadata.locusId}_${metadata.callStart}.txt`;

@@ -5,6 +5,7 @@
  */
 
 import {patterns} from '@ciscospark/common';
+import util from 'util';
 
 import {
   SparkHttpError,
@@ -182,7 +183,7 @@ levels.forEach((level) => {
         if (item instanceof SparkHttpError) {
           return item.toString();
         }
-        return item;
+        return item.toString();
       });
 
       if (this.shouldPrint(level)) {
@@ -190,9 +191,12 @@ levels.forEach((level) => {
         // eslint-disable-next-line no-console
         console[impl](...toPrint);
       }
+      var argString = stringified.map(function stringify(arg) {
+          return util.inspect(arg, {depth: null});
+      }).join(',');
 
-      stringified.unshift(Date.now());
-      this.buffer.push(stringified);
+      // stringified.unshift(new Date().toISOString());
+      this.buffer.push(util.format(`%s %s `, (new Date()).toISOString(), argString));
       if (this.buffer.length > this.config.historyLength) {
         this.buffer.shift();
       }
