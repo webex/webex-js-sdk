@@ -51,10 +51,10 @@ var methods = {
   initiateImplicitGrant: function initiateImplicitGrant(options) {
     this.logger.info('credentials(shim): initiating implicit grant flow');
 
-    window.location = this._buildOAuthUrl(assign({
+    this._redirect(this._buildOAuthUrl(assign({
       response_type: 'token',
       self_contained_token: true
-    }, options));
+    }, options)));
 
     // Return an unreasolved promise to suppress console errors.
     return new Promise(noop);
@@ -63,7 +63,7 @@ var methods = {
   initiateAuthorizationCodeGrant: function initiateAuthorizationCodeGrant(options) {
     this.logger.info('credentials(shim): initiating authorization code grant flow');
 
-    window.location = this._buildOAuthUrl(assign({response_type: 'code'}, options));
+    this._redirect(this._buildOAuthUrl(assign({response_type: 'code'}, options)));
     return new Promise(noop);
   },
 
@@ -113,11 +113,15 @@ var methods = {
 
   logout: function logout(options) {
     this.logger.info('credentials(shim): logging out');
-
+    options = options || {};
     CredentialsBase.prototype.logout.apply(this, arguments);
     if (!options.noRedirect) {
-      window.location = this._buildLogoutUrl();
+      this._redirect(this._buildLogoutUrl());
     }
+  },
+
+  _redirect: function _redirect(location) {
+    window.location = location;
   },
 
   _buildOAuthUrl: function _buildOAuthUrl(options) {

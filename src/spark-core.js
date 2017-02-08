@@ -140,7 +140,7 @@ var SparkCore = AmpersandState.extend({
 
   logout: function logout(options) {
     this.logger.info('spark: logging out');
-
+    options = options || {};
     return this.device.remove()
       .catch(function logDeviceRemovalFailure(reason) {
         this.logger.warn(reason);

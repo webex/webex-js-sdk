@@ -110,6 +110,19 @@ describe(`spark-core`, function() {
             assert.calledOnce(spark.credentials.logout);
           });
       });
+
+      it(`logouts the user, but does not redirect the user`, () => {
+        const promise = spark.logout({noRedirect: true});
+        return assert.isFulfilled(promise)
+          .then(() => {
+            assert.calledOnce(spark.mercury.disconnect);
+            assert.calledOnce(spark.device.unregister);
+            assert.calledOnce(spark.boundedStorage.clear);
+            assert.calledOnce(spark.unboundedStorage.clear);
+            assert.calledOnce(spark.credentials.logout);
+            assert.calledWith(spark.credentials.logout, {noRedirect: true});
+          });
+      });
     });
   });
 });

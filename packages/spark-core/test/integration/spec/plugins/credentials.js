@@ -5,6 +5,8 @@
 
 import {createUser} from '@ciscospark/test-helper-appid';
 import {assert} from '@ciscospark/test-helper-chai';
+import {nodeOnly, browserOnly} from '@ciscospark/test-helper-mocha';
+import sinon from '@ciscospark/test-helper-sinon';
 import retry from '@ciscospark/test-helper-retry';
 import Spark, {Authorization, grantErrors} from '../../..';
 import testUsers from '@ciscospark/test-helper-test-users';
@@ -195,6 +197,71 @@ describe(`spark-core`, function() {
             });
           });
 
+        });
+
+        describe(`#logout()`, () => {
+          describe(`when invoked for an authenticated user`, () => {
+            let spark;
+            beforeEach(() => {
+              return testUsers.create()
+                .then(([u]) => {
+                  user = u;
+                  spark = new Spark({
+                    credentials: {
+                      authorization: user.token
+                    }
+                  });
+                  spark.credentials._redirect = sinon.spy();
+                });
+            });
+
+            browserOnly(it)(`revokes the access token`, () => {
+              assert.isDefined(spark.credentials.authorization);
+              return spark.credentials.logout()
+                .then(() => {
+                  assert.isUndefined(spark.credentials.authorization);
+                  assert.calledOnce(spark.credentials._redirect);
+                });
+            });
+
+            nodeOnly(it)(`revokes the access token`, () => {
+              assert.isDefined(spark.credentials.authorization);
+              return spark.credentials.logout()
+                .then(() => {
+                  assert.isUndefined(spark.credentials.authorization);
+                  assert.notCalled(spark.credentials._redirect);
+                });
+            });
+
+            describe(`when noRedirect: true`, () => {
+              it(`revokes the access token, but does not redirect user`, () => {
+                assert.isDefined(spark.credentials.authorization);
+                return spark.credentials.logout({noRedirect: true})
+                .then(() => {
+                  assert.isUndefined(spark.credentials.authorization);
+                  assert.notCalled(spark.credentials._redirect);
+                });
+              });
+            });
+
+          });
+
+          describe(`when invoked for an unauthenticated user`, () => {
+            let spark;
+            beforeEach(() => {
+              spark = new Spark();
+              spark.credentials._redirect = sinon.spy();
+            });
+
+            it(`resolves successfully even if supertoken is not defined`, () => {
+              assert.isUndefined(spark.credentials.authorization);
+              return spark.credentials.logout({noRedirect: true})
+                .then(() => {
+                  assert.isUndefined(spark.credentials.authorization);
+                  assert.notCalled(spark.credentials._redirect);
+                });
+            });
+          });
         });
 
         describe(`when the api responds with a 401`, () => {
