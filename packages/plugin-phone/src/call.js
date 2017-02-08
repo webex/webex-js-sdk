@@ -129,7 +129,7 @@ const Call = SparkPlugin.extend({
      */
     localMediaStreamUrl: `string`,
     /**
-     * Access to the remote party’s `MediaStream`. `null` before connected.
+     * Access to the remote party’s `MediaStream`.
      * @instance
      * @memberof Call
      * @member {MediaStream}
@@ -389,7 +389,9 @@ const Call = SparkPlugin.extend({
       this.stopListening(this.spark.mercury);
       this.off();
       URL.revokeObjectURL(this.localMediaStreamUrl);
+      this.localMediaStreamUrl = undefined;
       URL.revokeObjectURL(this.remoteMediaStreamUrl);
+      this.remoteMediaStreamUrl = undefined;
     });
 
     this.pc = new RTCPeerConnection({iceServers: []});
