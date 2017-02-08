@@ -16,7 +16,7 @@ export default class RequestLoggerInterceptor extends Interceptor {
    * @returns {RequestLoggerInterceptor}
    */
   static create() {
-    return new RequestLoggerInterceptor(this);
+    return new RequestLoggerInterceptor({spark: this});
   }
 
   /**

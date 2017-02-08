@@ -16,7 +16,7 @@ export default class ResponseLoggerInterceptor extends Interceptor {
    * @returns {ResponseLoggerInterceptor}
    */
   static create() {
-    return new ResponseLoggerInterceptor(this);
+    return new ResponseLoggerInterceptor({spark: this});
   }
 
   /**
