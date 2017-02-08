@@ -16,8 +16,7 @@
     "lodash": "^4.13.1",
     "qs": "^5.2.0",
     "request": "^2.60.0",
-    "uuid": "^2.0.1",
-    "xhr": "^2.0.3"
+    "uuid": "^2.0.1"
   },
   "devDependencies": {
     "@ciscospark/test-helper-chai": "^0.7.34",
