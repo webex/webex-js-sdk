@@ -19,10 +19,8 @@ passport.deserializeUser((id, done) => {
   done(null, userDB);
 });
 
-passport.use(new CiscoSparkStrategy({
-  // eslint-disable-next-line camelcase
-  redirect_uri: `http://127.0.0.1:${process.env.PORT}`
-}, (accessToken, refreshToken, profile, done) => {
+// All options should be straight out of environment variables
+passport.use(new CiscoSparkStrategy({}, (accessToken, refreshToken, profile, done) => {
   done(null, profile);
 }));
 
