@@ -5,7 +5,6 @@
  */
 
 import {patterns} from '@ciscospark/common';
-import util from 'util';
 
 import {
   SparkHttpError,
@@ -156,8 +155,8 @@ const Logger = SparkPlugin.extend({
     // Use server-side-feature toggles to configure log levels
     const level = this.spark.device && this.spark.device.features.developer.get(`log-level`);
     if (level) {
-      if (levels.includes(level)) {
-        return level;
+      if (levels.includes(level.value)) {
+        return level.value;
       }
     }
 
@@ -183,7 +182,7 @@ levels.forEach((level) => {
         if (item instanceof SparkHttpError) {
           return item.toString();
         }
-        return item.toString();
+        return item;
       });
 
       if (this.shouldPrint(level)) {
@@ -191,12 +190,9 @@ levels.forEach((level) => {
         // eslint-disable-next-line no-console
         console[impl](...toPrint);
       }
-      var argString = stringified.map(function stringify(arg) {
-          return util.inspect(arg, {depth: null});
-      }).join(',');
 
-      // stringified.unshift(new Date().toISOString());
-      this.buffer.push(util.format(`%s %s `, (new Date()).toISOString(), argString));
+      stringified.unshift(new Date().toISOString());
+      this.buffer.push(stringified);
       if (this.buffer.length > this.config.historyLength) {
         this.buffer.shift();
       }
