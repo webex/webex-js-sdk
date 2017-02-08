@@ -471,7 +471,7 @@ ansiColor('xterm') {
               }
 
               stage('publish to cdn') {
-                 cdnPublishBuild = build job: 'spark-js-sdk--publish-chat-widget-s3', parameters: [[$class: 'StringParameterValue', name: 'buildNumber', value: currentBuild.number]], propagate: false
+                 cdnPublishBuild = build job: 'spark-js-sdk--publish-chat-widget-s3', parameters: [[$class: 'StringParameterValue', name: 'buildNumber', value: "${currentBuild.number}"]], propagate: false
                  if (cdnPublishBuild.result != 'SUCCESS') {
                    warn('failed to publish to CDN')
                  }
