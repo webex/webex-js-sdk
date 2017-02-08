@@ -471,7 +471,7 @@ describe(`plugin-phone`, function() {
 
       describe(`#toggleSendingVideo()`, () => {
         describe(`when the call is sending video`, () => {
-          it.skip(`stops sending video`, () => {
+          it(`stops sending video`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
 
             return Promise.all([
@@ -504,7 +504,7 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call has stopped sending video`, () => {
-          it.skip(`starts sending video`, () => {
+          it(`starts sending video`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
 
             return Promise.all([
@@ -548,7 +548,7 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call was started without video`, () => {
-          it.skip(`adds video to the call`, () => {
+          it(`adds video to the call`, () => {
             const call = spock.spark.phone.dial(mccoy.email, {
               constraints: {
                 video: false
