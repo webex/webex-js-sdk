@@ -169,7 +169,7 @@ describe('Services', function() {
           spark.board.realtime.on('mercury.buffer_state', bufferSpy);
           spark.board.realtime.on('online', onlineSpy);
 
-          return assert.isFulfilled(spark.board.realtime._attemptConnection())
+          return assert.isFulfilled(spark.board.realtime.connect())
             .then(function() {
               assert.callCount(bufferSpy, 1);
               assert.calledWith(bufferSpy, bufferStateMessage.data);
