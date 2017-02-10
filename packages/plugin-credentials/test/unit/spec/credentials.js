@@ -8,6 +8,7 @@
 
 import {Defer} from '@ciscospark/common';
 import {assert} from '@ciscospark/test-helper-chai';
+import {nodeOnly, browserOnly} from '@ciscospark/test-helper-mocha';
 import sinon from '@ciscospark/test-helper-sinon';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
 import uuid from 'uuid';
@@ -306,6 +307,80 @@ describe(`plugin-credentials`, () => {
         return assert.isFulfilled(promise)
           .then(() => assert.isFalse(spark.credentials.isAuthenticating));
       });
+    });
+
+    describe(`#logout`, () => {
+
+      // logout redirect only happens in browser
+      browserOnly(it)(`revokes the access token`, () => {
+        spark.set({
+          credentials: {
+            supertoken: {
+              access_token: `AT`,
+              token_type: `Fake`,
+              refresh_token: `RT`
+            }
+          }
+        });
+        spark.credentials._redirect = sinon.spy();
+        assert.isDefined(spark.credentials.supertoken);
+        return spark.credentials.logout()
+          .then(() => {
+            assert.isUndefined(spark.credentials.supertoken.access_token);
+            assert.calledOnce(spark.credentials._redirect);
+          });
+      });
+
+      nodeOnly(it)(`revokes the access token`, () => {
+        spark.set({
+          credentials: {
+            supertoken: {
+              access_token: `AT`,
+              token_type: `Fake`,
+              refresh_token: `RT`
+            }
+          }
+        });
+        spark.credentials._redirect = sinon.spy();
+        assert.isDefined(spark.credentials.supertoken);
+        return spark.credentials.logout()
+          .then(() => {
+            assert.isUndefined(spark.credentials.supertoken.access_token);
+            assert.notCalled(spark.credentials._redirect);
+          });
+      });
+
+      describe(`when noRedirect:true`, () => {
+        it(`revokes the access token, but does not redirect user`, () => {
+          spark.set({
+            credentials: {
+              supertoken: {
+                access_token: `AT`,
+                token_type: `Fake`,
+                refresh_token: `RT`
+              }
+            }
+          });
+          spark.credentials._redirect = sinon.spy();
+          assert.isDefined(spark.credentials.supertoken);
+          return spark.credentials.logout({noRedirect: true})
+          .then(() => {
+            assert.isUndefined(spark.credentials.supertoken.access_token);
+            assert.notCalled(spark.credentials._redirect);
+          });
+        });
+
+        it(`resolves successfully even if supertoken is not defined`, () => {
+          spark.credentials._redirect = sinon.spy();
+          assert.isUndefined(spark.credentials.supertoken);
+          return spark.credentials.logout({noRedirect: true})
+          .then(() => {
+            assert.isUndefined(spark.credentials.supertoken);
+            assert.notCalled(spark.credentials._redirect);
+          });
+        });
+      });
+
     });
   });
 });

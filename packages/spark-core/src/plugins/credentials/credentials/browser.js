@@ -75,7 +75,7 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
     this.logger.info(`credentials(shim): initiating implicit grant flow`);
 
     /* eslint camelcase: [0] */
-    window.location = this.buildOAuthUrl(assign({response_type: `token`}, options));
+    this._redirect(this.buildOAuthUrl(assign({response_type: `token`}, options)));
 
     // Return an unreasolved promise to suppress console errors.
     return new Promise(noop);
@@ -98,7 +98,7 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
 
     this.logger.info(`credentials(shim): initiating authorization code grant flow`);
 
-    window.location = this.buildOAuthUrl(assign({response_type: `code`}, options));
+    this._redirect(this.buildOAuthUrl(assign({response_type: `code`}, options)));
     return new Promise(noop);
   },
 
@@ -150,12 +150,21 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
 
   logout(options) {
     this.logger.info(`credentials(shim): logging out`);
-    const token = this.authorization.refresh_token || this.authorization.access_token;
-    options = Object.assign({token}, options);
+    options = options || {};
+    if (this.authorization) {
+      const token = this.authorization.refresh_token || this.authorization.access_token;
+      options = Object.assign({token}, options);
+    }
     return Reflect.apply(common.logout, this, [options])
       .then(() => {
-        window.location = this.buildLogoutUrl(options);
+        if (!options.noRedirect) {
+          this._redirect(this.buildLogoutUrl(options));
+        }
       });
+  },
+
+  _redirect(location) {
+    window.location = location;
   },
 
   _extractTokenInfo(query) {

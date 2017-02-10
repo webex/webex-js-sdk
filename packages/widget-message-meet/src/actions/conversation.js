@@ -166,13 +166,23 @@ export function listenToMercuryActivity(conversationId, spark) {
   };
 }
 
-export function loadPreviousMessages(conversationId, lastActivity, spark) {
+/**
+ * Loads activities for a conversation previous to the maxDate
+ *
+ * @export
+ * @param {string} conversationId
+ * @param {string} maxDate
+ * @param {object} spark
+ * @returns {function}
+ */
+export function loadPreviousMessages(conversationId, maxDate, spark) {
   return (dispatch) => {
     dispatch(updateConversationState({isLoadingHistoryUp: true}));
     spark.conversation.listActivities({
       conversationId,
+      lastActivityFirst: true,
       limit: 20,
-      maxDate: lastActivity.published
+      maxDate
     })
     .then((activities) => {
       dispatch(addActivitiesToConversation(activities));
