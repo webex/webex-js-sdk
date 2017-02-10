@@ -109,8 +109,9 @@ describe(`plugin-phone`, function() {
 
       describe(`#toggleReceivingAudio()`, () => {
         describe(`when the call is receiving audio`, () => {
-          // FIXME disabled due to firefox bug (it works, but renegotiation does
-          // not) See https://bugzilla.mozilla.org/show_bug.cgi?id=1285009
+          // FIXME Neil and Nathan are looking into alternatives to returning
+          // `inactive` in the answer when the offer audio attempts to be
+          // `sendonly`
           it.skip(`stops receiving audio`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
 
@@ -144,8 +145,9 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call is not receiving audio`, () => {
-          // FIXME disabled due to firefox bug (it works, but renegotiation does
-          // not) See https://bugzilla.mozilla.org/show_bug.cgi?id=1285009
+          // FIXME Neil and Nathan are looking into alternatives to returning
+          // `inactive` in the answer when the offer audio attempts to be
+          // `sendonly`
           it.skip(`starts receiving audio`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
 
@@ -190,6 +192,9 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call was started without audio`, () => {
+          // FIXME Neil and Nathan are looking into alternatives to returning
+          // `inactive` in the answer when the offer audio attempts to be
+          // `sendonly`
           it.skip(`starts receiving audio`, () => {
             const call = spock.spark.phone.dial(mccoy.email, {
               constraints: {
