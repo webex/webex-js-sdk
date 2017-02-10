@@ -138,19 +138,19 @@ var SparkCore = AmpersandState.extend({
     });
   },
 
-  logout: function logout() {
+  logout: function logout(options) {
     this.logger.info('spark: logging out');
-
+    options = options || {};
     return this.device.remove()
       .catch(function logDeviceRemovalFailure(reason) {
         this.logger.warn(reason);
-      })
+      }.bind(this))
       .then(function clearEncryptStore() {
-        this.encryption.keystore.clear();
+        return this.encryption.keystore.clear();
       }.bind(this))
       .then(function cleanUpAndNotify() {
         this.trigger('client:logout');
-        this.credentials.logout();
+        this.credentials.logout(options);
         return Promise.resolve();
       }.bind(this));
   },

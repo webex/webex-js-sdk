@@ -206,9 +206,9 @@ export default {
     return Promise.all(this.userTokens.map((token) => token.revoke()
       .catch((reason) => this.logger.warn(`credentials: token revocation failed for ${token.scope}, ignoring`, reason))))
       .then(() => this.userTokens.reset())
-      .then(() => this.supertoken.revoke())
+      .then(() => this.supertoken && this.supertoken.revoke())
       .catch((reason) => this.logger.warn(`credentials: token revocation failed for supertoken, ignoring`, reason))
-      .then(() => this.supertoken.unset())
+      .then(() => this.supertoken && this.supertoken.unset())
       .then(() => this.boundedStorage.del(`@`));
   },
 

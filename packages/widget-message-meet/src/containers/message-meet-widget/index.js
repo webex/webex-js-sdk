@@ -278,7 +278,7 @@ export class MessageMeetWidget extends Component {
     }
 
     if (this.activityList.isScrolledToTop() && conversation.activities.first().verb !== `create`) {
-      props.loadPreviousMessages(conversation.id, conversation.activities.first(), spark);
+      props.loadPreviousMessages(conversation.id, conversation.activities.first().published, spark);
     }
   }
 

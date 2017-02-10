@@ -22,6 +22,10 @@ export default {
     const map = new Map();
     logger.info(`memory-store-adapter: returning binding`);
     return Promise.resolve({
+      clear() {
+        logger.info(`memory-store-adapter: clearing the binding`);
+        return Promise.resolve(map.clear());
+      },
       del(key) {
         logger.info(`memory-store-adapter: deleting \`${key}\``);
         return Promise.resolve(map.delete(key));

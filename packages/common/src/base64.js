@@ -3,32 +3,34 @@
  * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
  */
 
-import atob from './shims/atob';
-import btoa from './shims/btoa';
+import UrlSafeBase64 from 'urlsafe-base64';
 
 /**
+ * Converts a string from a base64url-encoded string
  * @param {string} str
  * @returns {string}
  */
 export function fromBase64url(str) {
-  return atob(str.replace(/\-/g, `+`).replace(/_/g, `/`));
+  return UrlSafeBase64.decode(str).toString();
 }
 
 /**
- * Converts a string to a base64url-encoded string
- * @param {string} str
+ * Converts a string to a base64url-encoded string. It also accepts a buffer
+ * @param {string|buffer} str
  * @returns {string}
  */
 export function toBase64Url(str) {
-  return btoa(str)
-    .replace(/\+/g, `-`)
-    .replace(/\//g, `_`)
-    .replace(/\=/g, ``);
+  let buffer = str;
+  if (!Buffer.isBuffer(buffer)) {
+    buffer = new Buffer(buffer);
+  }
+
+  return UrlSafeBase64.encode(buffer);
 }
 
 /**
- * Converts a string to a base64url-encoded string
- * @param {string} str
+ * Converts a string to a base64url-encoded string. It also accepts a buffer
+ * @param {string|buffer} str
  * @returns {string}
  */
 export function encode(str) {
