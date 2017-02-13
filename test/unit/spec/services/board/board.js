@@ -330,5 +330,19 @@ describe('Services', function() {
         });
       });
     });
+
+    describe('#boardChannelIdToMercuryBinding', function() {
+      it('adds .board binding prefix', function() {
+        assert.equal(spark.board.boardChannelIdToMercuryBinding('test'), 'board.test');
+      });
+
+      it('replaces `-` with `.` and `_` with `#`', function() {
+        assert.equal(spark.board.boardChannelIdToMercuryBinding('abc-1234_bcd'), 'board.abc.1234#bcd');
+      });
+
+      it('leaves strings without - and _ alone', function() {
+        assert.equal(spark.board.boardChannelIdToMercuryBinding('abcdefghijklmnopqrstuvwxyz0123456789~!@#$%^&*()+='), 'board.abcdefghijklmnopqrstuvwxyz0123456789~!@#$%^&*()+=');
+      });
+    });
   });
 });

@@ -32,6 +32,10 @@ var RealtimeService = Mercury.extend({
     boardBindings: {
       type: 'array',
       default: function defaultBoardBinding() { return []; }
+    },
+    isSharingMercury: {
+      type: 'boolean',
+      default: false
     }
   },
 
@@ -98,14 +102,35 @@ var RealtimeService = Mercury.extend({
 
     // if socket is shared, we're sending using mercury's socket rather than
     // board's instance
-    // however, if board.socket is defined, we're falling back to separate
-    // socket
-    if (this.spark.feature.getFeature('developer', 'web-shared-mercury') && !this.socket) {
+    if (this.spark.feature.getFeature('developer', 'web-shared-mercury') && this.isSharingMercury) {
       return this.spark.mercury.socket.send(data);
     }
     else {
       return this.socket.send(data);
     }
+  },
+
+  /**
+    * Open new mercury connection
+    * @memberof Board.RealtimeService
+    * @param   {Board~Channel} channel
+    * @returns {Promise}
+    */
+  connectByOpenNewMercuryConnection: function connectByOpenNewMercuryConnection(channel) {
+    var bindings = [this.spark.board.boardChannelIdToMercuryBinding(channel.channelId)];
+    var bindingObj = {
+      bindings: bindings
+    };
+
+    return this.spark.board.persistence.register(bindingObj)
+      .then(function setWebSocketUrl(registration) {
+        this.set({boardWebSocketUrl: registration.webSocketUrl});
+        this.set({boardBindings: bindings});
+        return this.connect();
+      }.bind(this))
+      .then(function setSharingMercuryFalse() {
+        this.isSharingMercury = false;
+      }.bind(this));
   },
 
   /**
@@ -119,6 +144,7 @@ var RealtimeService = Mercury.extend({
       .then(function assignBindingAndWebSocketUrl(res) {
         this.boardBindings = [res.binding];
         this.boardWebSocketUrl = res.webSocketUrl;
+        this.isSharingMercury = true;
         return res;
       }.bind(this));
   },
@@ -134,6 +160,7 @@ var RealtimeService = Mercury.extend({
       .then(function assignBindingAndWebSocketUrl(res) {
         this.boardBindings = [];
         this.boardWebSocketUrl = '';
+        this.isSharingMercury = false;
         return res;
       }.bind(this));
   },

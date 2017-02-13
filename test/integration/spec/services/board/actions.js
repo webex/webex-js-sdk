@@ -38,30 +38,14 @@ describe('Services', function() {
 
     var board;
     var conversation;
-    var mercuryBindingsPrefix = 'board.';
 
     function ensureBoardMercury() {
       // register with mercury binding and connect to mercury socket for users spark and mccoy
       console.log('connecting to board mercury');
-      var mercuryBindingId = boardChannelToMercuryBinding(board.channelId);
-      var bindingStr = [mercuryBindingsPrefix + mercuryBindingId];
-
-      var bindingObj =  {
-        bindings: bindingStr
-      };
-
       return Promise.all(map(party, function(shouldCreateClient, name) {
-        return party[name].spark.board.persistence.register(bindingObj)
-          .then(function setWebSocketUrl(url) {
-            if (url.webSocketUrl) {
-              party[name].spark.board.realtime.set({boardWebSocketUrl: url.webSocketUrl});
-              party[name].spark.board.realtime.set({boardBindings: bindingStr});
-              return Promise.resolve(party[name].spark.board.realtime.listening ||
-                  party[name].spark.board.realtime.listen())
-                .then(function() {
-                  console.log('finished connecting mercury for user: ', name);
-                });
-            }
+        return party[name].spark.board.realtime.connectByOpenNewMercuryConnection(board)
+          .then(function() {
+            console.log('finished connecting mercury for user: ', name);
           });
       }));
     }
@@ -122,11 +106,6 @@ describe('Services', function() {
         .catch(function(reason) {
           return Promise.reject(reason);
         });
-    }
-
-    function boardChannelToMercuryBinding(channelId) {
-      // make channelId mercury compatible replace '-' with '.' and '_' with '#'
-      return channelId.replace(/-/g, '.').replace(/_/g, '#');
     }
 
     before(function beamDown() {

@@ -16,6 +16,8 @@ var Realtime = require('./realtime');
 var reduce = require('lodash.reduce');
 var SparkBase = require('../../../lib/spark-base');
 
+var MERCURY_BINDING_PREFIX = 'board.';
+
 /**
  * @class
  * @extends {SparkBase}
@@ -233,6 +235,18 @@ var BoardService = SparkBase.extend({
         message.payload = decryptedData;
         return message;
       });
+  },
+
+  /**
+   * Ensure board channelId is compatible with mercury bindings by replacing
+   * '-' with '.' and '_' with '#'
+   * @memberof Board.BoardService
+   * @param  {String} channel.channelId
+   * @return {String} mercury-binding compatible string
+   */
+  boardChannelIdToMercuryBinding: function boardChannelIdToMercuryBinding(channelId) {
+    // make channelId mercury compatible replace '-' with '.' and '_' with '#'
+    return MERCURY_BINDING_PREFIX + channelId.replace(/-/g, '.').replace(/_/g, '#');
   },
 
   /**
