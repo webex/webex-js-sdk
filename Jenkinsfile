@@ -205,9 +205,13 @@ ansiColor('xterm') {
           stage('docker build') {
             sh 'echo "RUN groupadd -g $(id -g) jenkins" >> ./docker/builder/Dockerfile'
             sh 'echo "RUN useradd -u $(id -u) -g $(id -g) -m jenkins" >> ./docker/builder/Dockerfile'
-            sh "echo 'WORKDIR ${env.WORKSPACE}' >> ./docker/builder/Dockerfile"
             sh 'echo "USER $(id -u)" >> ./docker/builder/Dockerfile'
-            sh 'echo "RUN su - jenkins -c \'mkdir -p $HOME/.ssh && ssh-keyscan -H github.com >> $HOME/.ssh/known_hosts\'"'
+            sh 'echo "RUN echo $HOME" >> ./docker/builder/Dockerfile'
+            sh 'echo "RUN ls -l $HOME" >> ./docker/builder/Dockerfile'
+            sh 'echo "RUN mkdir -p $HOME" >> ./docker/builder/Dockerfile'
+            sh 'echo "RUN mkdir -p $HOME/.ssh" >> ./docker/builder/Dockerfile'
+            sh 'echo "RUN ssh-keyscan -H github.com >> $HOME/.ssh/known_hosts" >> ./docker/builder/Dockerfile'
+            sh "echo 'WORKDIR ${env.WORKSPACE}' >> ./docker/builder/Dockerfile"
 
             retry(3) {
               dir('docker/builder') {
@@ -397,13 +401,9 @@ ansiColor('xterm') {
                   // reminder: need to write to ~ not . because lerna runs npm
                   // commands in subdirectories
                   image.inside(DOCKER_RUN_OPTS) {
-                    sh 'echo $HOME'
-                    sh 'echo ~'
-                    sh 'ls -la /'
-                    sh 'ls -la /home'
-                    sh 'ls -la /home/jenkins'
+                    def registry = env.NPM_CONFIG_REGISTRY
+                    env.NPM_CONFIG_REGISTRY = ''
                     sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
-                    sh 'npm run whoami'
                     echo ''
                     echo ''
                     echo ''
@@ -419,6 +419,7 @@ ansiColor('xterm') {
                     echo ''
                     echo ''
                     echo ''
+                    env.NPM_CONFIG_REGISTRY = registry
                   }
                   if ("${version}" == '') {
                     warn('could not determine tag name to push to github.com')

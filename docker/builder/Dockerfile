@@ -28,6 +28,4 @@ WORKDIR /work
 
 COPY cmd.sh cmd.sh
 
-WORKDIR /home/jenkins/workspace
-
 CMD '/work/cmd.sh'
