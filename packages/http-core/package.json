@@ -13,11 +13,14 @@
     "denodeify": "^1.2.1",
     "extend-error": "git://github.com/ianwremmel/extend-error.git",
     "file-type": "^3.6.0",
+    "global": "^4.3.1",
+    "is-function": "^1.0.1",
     "lodash": "^4.13.1",
+    "parse-headers": "^2.0.1",
     "qs": "^5.2.0",
     "request": "^2.60.0",
     "uuid": "^2.0.1",
-    "xhr": "^2.0.3"
+    "xtend": "^4.0.1"
   },
   "devDependencies": {
     "@ciscospark/test-helper-chai": "^0.7.34",

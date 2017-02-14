@@ -477,7 +477,9 @@ module.exports = function configureGrunt(grunt) {
     }
 
     return requires.concat([
-      `trace`,
+      // Trace has started throwing a C stack trace locally and *may* be causing
+      // unexplained errors in the pipeline
+      // `trace`,
       `clarify`,
       function() {
         Error.stackTraceLimit = Infinity;
