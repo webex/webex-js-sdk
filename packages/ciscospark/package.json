@@ -1,6 +1,6 @@
 {
   "name": "ciscospark",
-  "version": "0.7.53",
+  "version": "0.7.54",
   "description": "SDK for Cisco Spark",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -10,10 +10,10 @@
   "dependencies": {
     "@ciscospark/common": "^0.7.52",
     "@ciscospark/http-core": "^0.7.53",
-    "@ciscospark/plugin-logger": "^0.7.53",
-    "@ciscospark/plugin-phone": "^0.7.53",
-    "@ciscospark/spark-core": "^0.7.53",
-    "@ciscospark/storage-adapter-local-storage": "^0.7.53",
+    "@ciscospark/plugin-logger": "^0.7.54",
+    "@ciscospark/plugin-phone": "^0.7.54",
+    "@ciscospark/spark-core": "^0.7.54",
+    "@ciscospark/storage-adapter-local-storage": "^0.7.54",
     "babel-polyfill": "^6.6.1",
     "babel-runtime": "^6.3.19",
     "envify": "^3.4.0",
