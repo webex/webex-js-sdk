@@ -11,7 +11,7 @@
 
 import {defaults, isArray, pick} from 'lodash';
 import qs from 'qs';
-import xhr from 'xhr';
+import xhr from '../lib/xhr';
 import {detectSync} from '../lib/detect';
 
 /**
