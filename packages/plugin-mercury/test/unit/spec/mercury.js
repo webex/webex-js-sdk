@@ -117,7 +117,7 @@ describe(`plugin-mercury`, () => {
           });
       });
 
-      describe(`when web-sharable-socket feature is enabled`, () => {
+      describe(`when web-shared-socket feature is enabled`, () => {
         beforeEach(() => {
           spark.feature.getFeature.returns(Promise.resolve(true));
         });

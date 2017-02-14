@@ -435,14 +435,12 @@ const Board = SparkPlugin.extend({
 
         return data;
       })
-      .then((data) =>
-        this.spark.request({
-          method: `POST`,
-          api: `board`,
-          resource: `/channels/${channel.channelId}/register`,
-          body: data
-        })
-      )
+      .then((data) => this.spark.request({
+        method: `POST`,
+        api: `board`,
+        resource: `/channels/${channel.channelId}/register`,
+        body: data
+      }))
       .then((res) => res.body);
   },
 

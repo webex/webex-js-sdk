@@ -131,7 +131,7 @@ describe(`plugin-board`, () => {
     });
 
     describe(`#_boardChannelIdToMercuryBinding`, () => {
-      it(`adds .board binding prefix`, () => {
+      it(`adds board. binding prefix`, () => {
         assert.equal(spark.board.realtime._boardChannelIdToMercuryBinding(`test`), `board.test`);
       });
 

@@ -91,7 +91,6 @@ const RealtimeService = Mercury.extend({
     }
 
     // use mercury socket if it is shared
-    // if this.socket is defined then use it instead
     return this.spark.feature.getFeature(`developer`, `web-shared-mercury`)
       .then((isSharingMercuryFeatureEnabled) => {
         if (isSharingMercuryFeatureEnabled && this.isSharingMercury) {

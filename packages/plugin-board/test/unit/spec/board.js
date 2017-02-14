@@ -566,12 +566,12 @@ describe(`plugin-board`, () => {
 
     it(`rejects when localClusterServiceUrls is null`, () => {
       spark.mercury.localClusterServiceUrls = null;
-      assert.isRejected(spark.board.registerToShareMercury(channel));
+      return assert.isRejected(spark.board.registerToShareMercury(channel));
     });
 
     it(`rejects when web-shared-mercury is not enabled`, () => {
       spark.feature.getFeature.returns(Promise.resolve(false));
-      assert.isRejected(spark.board.registerToShareMercury(channel));
+      return assert.isRejected(spark.board.registerToShareMercury(channel));
     });
   });
 });

@@ -142,7 +142,7 @@ describe('Client', function() {
           });
       });
 
-      describe('when web-sharable-socket feature is enabled', function() {
+      describe('when web-shared-socket feature is enabled', function() {
         beforeEach(function() {
           spark.feature.getFeature.returns(true);
         });

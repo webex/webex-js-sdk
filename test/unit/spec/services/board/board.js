@@ -332,7 +332,7 @@ describe('Services', function() {
     });
 
     describe('#boardChannelIdToMercuryBinding', function() {
-      it('adds .board binding prefix', function() {
+      it('adds board. binding prefix', function() {
         assert.equal(spark.board.boardChannelIdToMercuryBinding('test'), 'board.test');
       });
 
