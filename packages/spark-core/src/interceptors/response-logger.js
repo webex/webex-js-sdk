@@ -4,7 +4,7 @@
  * @private
  */
 
-import {get} from 'lodash';
+import {get, omit} from 'lodash';
 import util from 'util';
 import {Interceptor} from '@ciscospark/http-core';
 
@@ -37,7 +37,7 @@ export default class ResponseLoggerInterceptor extends Interceptor {
       }
       else if (typeof response.body === `object`) {
         try {
-          logger.log(`Response: `, util.inspect(response.body, {depth: null}));
+          logger.log(`Response: `, util.inspect(omit(response.body, `features`), {depth: null}));
         }
         catch (err) {
           logger.log(`Response: `, `[Not Serializable]`, err);

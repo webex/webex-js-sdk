@@ -3,7 +3,7 @@ def HAS_LEGACY_CHANGES
 
 def warn = { msg ->
   if (!currentBuild.description) {
-    currentBuild.description = ''
+    currentBuild.description += ''
   }
   else if (currentBuild.description.substring(currentBuild.description.length() - 1) != '\n') {
     currentBuild.description += '<br/>\n'
@@ -114,6 +114,9 @@ ansiColor('xterm') {
 
       node("SPARK_JS_SDK_VALIDATING") {
         try {
+          // Set the description to blank so we can use +=
+          currentBuild.description = ''
+
           env.CONCURRENCY = 4
           env.NPM_CONFIG_REGISTRY = "http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group"
           env.ENABLE_VERBOSE_NETWORK_LOGGING = true
@@ -154,6 +157,14 @@ ansiColor('xterm') {
           stage('checkout') {
             checkout scm
             if (IS_VALIDATED_MERGE_BUILD) {
+              try {
+                pusher = sh script: 'git show  --quiet --format=%ae HEAD', returnStdout: true
+                currentBuild.description += "Validating push from ${pusher}"
+              }
+              catch (err) {
+                currentBuild.description += 'Could not determine pusher';
+              }
+
               sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
                 // return the exit code because we don't care about failures
                 sh script: 'git remote add upstream git@github.com:ciscospark/spark-js-sdk.git', returnStatus: true
@@ -177,7 +188,7 @@ ansiColor('xterm') {
                 sh "git merge --ff ${GIT_COMMIT}"
               }
               catch (err) {
-                currentBuild.description = 'not possible to fast forward'
+                currentBuild.description += 'not possible to fast forward'
                 throw err;
               }
 
@@ -216,11 +227,13 @@ ansiColor('xterm') {
           }
 
           stage('clean') {
+            sh 'git clean -df'
             image.inside(DOCKER_RUN_OPTS) {
               sh 'npm run grunt -- clean'
               sh 'npm run grunt:concurrent -- clean'
               sh 'npm run clean-empty-packages'
             }
+            sh 'rm -rf "packages/*/browsers.processed.js"'
             sh 'rm -rf ".sauce/*/sc.*"'
             sh 'rm -rf ".sauce/*/sauce_connect*log"'
             sh 'rm -rf reports'
@@ -301,10 +314,10 @@ ansiColor('xterm') {
               if (coverageBuild.result != 'SUCCESS') {
                 currentBuild.result = coverageBuild.result
                 if (coverageBuild.result == 'UNSTABLE') {
-                  currentBuild.description = coverageBuild.description
+                  currentBuild.description += coverageBuild.description
                 }
                 else if (coverageBuild.result == 'FAILURE') {
-                  currentBuild.description = "Coverage job failed. See the logged build url for more details."
+                  currentBuild.description += "Coverage job failed. See the logged build url for more details."
                 }
               }
             }
@@ -352,7 +365,7 @@ ansiColor('xterm') {
                   noPushCount = sh script: 'git log upstream/master.. | grep -c "#no-push"', returnStdout: true
                   if (noPushCount != '0') {
                     currentBuild.result = 'ABORTED'
-                    currentBuild.description = 'Aborted: git history includes #no-push'
+                    currentBuild.description += 'Aborted: git history includes #no-push'
                   }
                 }
                 catch (err) {
@@ -380,11 +393,17 @@ ansiColor('xterm') {
 
               stage('publish to npm') {
                 try {
-                  sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
                   // TODO use lerna publish directly now that npm fixed READMEs
                   // reminder: need to write to ~ not . because lerna runs npm
                   // commands in subdirectories
-                  image.inside("${DOCKER_RUN_OPTS} --volume /home/jenkins:/home/jenkins") {
+                  image.inside(DOCKER_RUN_OPTS) {
+                    sh 'echo $HOME'
+                    sh 'echo ~'
+                    sh 'ls -la /'
+                    sh 'ls -la /home'
+                    sh 'ls -la /home/jenkins'
+                    sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
+                    sh 'npm run whoami'
                     echo ''
                     echo ''
                     echo ''
@@ -472,10 +491,16 @@ ansiColor('xterm') {
               }
 
               stage('publish to cdn') {
-                 cdnPublishBuild = build job: 'spark-js-sdk--publish-chat-widget-s3', parameters: [[$class: 'StringParameterValue', name: 'buildNumber', value: "${currentBuild.number}"]], propagate: false
-                 if (cdnPublishBuild.result != 'SUCCESS') {
-                   warn('failed to publish to CDN')
-                 }
+                try {
+                  cdnPublishBuild = build job: 'spark-js-sdk--publish-chat-widget-s3', parameters: [[$class: 'StringParameterValue', name: 'buildNumber', value: "${currentBuild.number}"]], propagate: false
+                  if (cdnPublishBuild.result != 'SUCCESS') {
+                    warn('failed to publish to CDN')
+                  }
+                }
+                catch(err) {
+                  warn('failed to start CDN publish job');
+                }
+
               }
             }
           }

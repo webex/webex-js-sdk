@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-mercury",
-  "version": "0.7.52",
+  "version": "0.7.54",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -9,9 +9,9 @@
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-mercury",
   "dependencies": {
     "@ciscospark/common": "^0.7.52",
-    "@ciscospark/http-core": "^0.7.34",
-    "@ciscospark/plugin-wdm": "^0.7.52",
-    "@ciscospark/spark-core": "^0.7.52",
+    "@ciscospark/http-core": "^0.7.53",
+    "@ciscospark/plugin-wdm": "^0.7.54",
+    "@ciscospark/spark-core": "^0.7.54",
     "babel-runtime": "^6.3.19",
     "backoff": "^2.5.0",
     "core-decorators": "^0.12.3",
