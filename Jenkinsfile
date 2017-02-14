@@ -227,11 +227,13 @@ ansiColor('xterm') {
           }
 
           stage('clean') {
+            sh 'git clean -df'
             image.inside(DOCKER_RUN_OPTS) {
               sh 'npm run grunt -- clean'
               sh 'npm run grunt:concurrent -- clean'
               sh 'npm run clean-empty-packages'
             }
+            sh 'rm -rf "packages/*/browsers.processed.js"'
             sh 'rm -rf ".sauce/*/sc.*"'
             sh 'rm -rf ".sauce/*/sauce_connect*log"'
             sh 'rm -rf reports'
