@@ -393,11 +393,17 @@ ansiColor('xterm') {
 
               stage('publish to npm') {
                 try {
-                  sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
                   // TODO use lerna publish directly now that npm fixed READMEs
                   // reminder: need to write to ~ not . because lerna runs npm
                   // commands in subdirectories
-                  image.inside("${DOCKER_RUN_OPTS} --volume /home/jenkins:/home/jenkins") {
+                  image.inside(DOCKER_RUN_OPTS) {
+                    sh 'echo $HOME'
+                    sh 'echo ~'
+                    sh 'ls -la /'
+                    sh 'ls -la /home'
+                    sh 'ls -la /home/jenkins'
+                    sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
+                    sh 'npm run whoami'
                     echo ''
                     echo ''
                     echo ''
