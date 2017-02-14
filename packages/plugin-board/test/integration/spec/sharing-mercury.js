@@ -89,19 +89,23 @@ describe(`plugin-board`, () => {
         let uniqueRealtimeData;
 
         before(() => {
-          uniqueRealtimeData = uuid.v4();
-          return Promise.all(map(participants, (participant) => {
-            return participant.spark.board.realtime.connectToSharedMercury(board);
-          }));
+          return Promise.all([
+            participants[0].spark.board.realtime.connectToSharedMercury(board),
+            participants[1].spark.board.realtime.connectByOpenNewMercuryConnection(board)
+          ]);
         });
 
         after(() => {
           return Promise.all(map(participants, (participant) => {
-            return participant.spark.board.realtime.disconnectFromSharedMercury(board);
+            if (participant.spark.board.realtime.isSharingMercury) {
+              return participant.spark.board.realtime.disconnectFromSharedMercury(board);
+            }
+            return participant.spark.board.realtime.disconnect();
           }));
         });
 
-        it(`posts a message to the specified board`, (done) => {
+        it(`posts a message from shared connection to the specified board`, (done) => {
+          uniqueRealtimeData = uuid.v4();
           const data = {
             envelope: {
               channelId: board,
@@ -114,7 +118,38 @@ describe(`plugin-board`, () => {
 
           // participan 1 is going to listen for RT data and confirm that we
           // have the same data that was sent.
-          participants[1].spark.mercury.once(`event:board.activity`, ({data}) => {
+          participants[1].spark.board.realtime.once(`event:board.activity`, ({data}) => {
+            assert.equal(data.contentType, `STRING`);
+            assert.equal(data.payload.msg, uniqueRealtimeData);
+            done();
+          });
+
+          // confirm that both are connected.
+          assert.isTrue(participants[0].spark.board.realtime.isSharingMercury, `participant 0 is sharing mercury connection`);
+          assert.isTrue(participants[1].spark.mercury.connected, `participant 1 is connected`);
+          assert.isFalse(participants[1].spark.board.realtime.isSharingMercury, `participant 1 does not share mercury connection`);
+          assert.isTrue(participants[1].spark.mercury.connected, `participant 1 is connected`);
+
+          // do not return promise because we want done() to be called on
+          // board.activity
+          participants[0].spark.board.realtime.publish(board, data);
+        });
+
+        it(`posts a message from separated socket connection to the specified board`, (done) => {
+          uniqueRealtimeData = uuid.v4();
+          const data = {
+            envelope: {
+              channelId: board,
+              roomId: conversation.id
+            },
+            payload: {
+              msg: uniqueRealtimeData
+            }
+          };
+
+          // participan 0 is going to listen for RT data and confirm that we
+          // have the same data that was sent.
+          participants[0].spark.mercury.once(`event:board.activity`, ({data}) => {
             assert.equal(data.contentType, `STRING`);
             assert.equal(data.payload.msg, uniqueRealtimeData);
             done();
@@ -122,11 +157,13 @@ describe(`plugin-board`, () => {
 
           // confirm that both are connected.
           assert.isTrue(participants[0].spark.mercury.connected, `participant 0 is connected`);
+          assert.isTrue(participants[0].spark.board.realtime.isSharingMercury, `participant 0 is sharing mercury connection`);
           assert.isTrue(participants[1].spark.mercury.connected, `participant 1 is connected`);
+          assert.isFalse(participants[1].spark.board.realtime.isSharingMercury, `participant 1 does not share mercury connection`);
 
           // do not return promise because we want done() to be called on
           // board.activity
-          participants[0].spark.board.realtime.publish(board, data);
+          participants[1].spark.board.realtime.publish(board, data);
         });
       });
     });

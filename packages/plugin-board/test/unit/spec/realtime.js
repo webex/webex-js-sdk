@@ -130,6 +130,20 @@ describe(`plugin-board`, () => {
       });
     });
 
+    describe(`#_boardChannelIdToMercuryBinding`, () => {
+      it(`adds .board binding prefix`, () => {
+        assert.equal(spark.board.realtime._boardChannelIdToMercuryBinding(`test`), `board.test`);
+      });
+
+      it(`replaces '-' with '.' and '_' with '#'`, () => {
+        assert.equal(spark.board.realtime._boardChannelIdToMercuryBinding(`abc-1234_bcd`), `board.abc.1234#bcd`);
+      });
+
+      it(`leaves strings without - and _ alone`, () => {
+        assert.equal(spark.board.realtime._boardChannelIdToMercuryBinding(`abcdefghijklmnopqrstuvwxyz0123456789~!@#$%^&*()+=`), `board.abcdefghijklmnopqrstuvwxyz0123456789~!@#$%^&*()+=`);
+      });
+    });
+
     describe(`#_attemptConnection()`, () => {
 
       before(() => {

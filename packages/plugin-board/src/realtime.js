@@ -23,6 +23,10 @@ const RealtimeService = Mercury.extend({
     boardBindings: {
       type: `array`,
       default: () => []
+    },
+    isSharingMercury: {
+      type: `boolean`,
+      default: false
     }
   },
 
@@ -88,12 +92,47 @@ const RealtimeService = Mercury.extend({
 
     // use mercury socket if it is shared
     // if this.socket is defined then use it instead
-    const isSharingMercuryFeatureEnabled = this.spark.device.features.developer.get(`web-shared-mercury`);
-    if (isSharingMercuryFeatureEnabled && isSharingMercuryFeatureEnabled.value && !this.socket) {
-      return this.spark.mercury.socket.send(data);
-    }
+    return this.spark.feature.getFeature(`developer`, `web-shared-mercury`)
+      .then((isSharingMercuryFeatureEnabled) => {
+        if (isSharingMercuryFeatureEnabled && this.isSharingMercury) {
+          return this.spark.mercury.socket.send(data);
+        }
+        return this.socket.send(data);
+      });
+  },
 
-    return this.socket.send(data);
+  /**
+    * Open new mercury connection
+    * @memberof Board.RealtimeService
+    * @param   {Board~Channel} channel
+    * @returns {Promise}
+    */
+  connectByOpenNewMercuryConnection(channel) {
+    const bindings = [this._boardChannelIdToMercuryBinding(channel.channelId)];
+    const bindingObj = {bindings};
+
+    return this.spark.board.register(bindingObj)
+      .then((registration) => {
+        this.set({boardWebSocketUrl: registration.webSocketUrl});
+        this.set({boardBindings: bindings});
+        return this.connect();
+      })
+      .then(() => {
+        this.isSharingMercury = false;
+      });
+  },
+
+
+  /**
+   * Ensure board channelId is compatible with mercury bindings by replacing
+   * '-' with '.' and '_' with '#'
+   * @memberof Board.BoardService
+   * @param   {String} channelId channel.channelId
+   * @returns {String} mercury-binding compatible string
+   */
+  _boardChannelIdToMercuryBinding(channelId) {
+    // make channelId mercury compatible replace `-` with `.` and `_` with `#`
+    return this.config.mercuryBindingPrefix + channelId.replace(/-/g, `.`).replace(/_/g, `#`);
   },
 
   /**
@@ -107,6 +146,7 @@ const RealtimeService = Mercury.extend({
       .then((res) => {
         this.boardBindings = [res.binding];
         this.boardWebSocketUrl = res.webSocketUrl;
+        this.isSharingMercury = true;
         return res;
       });
   },
@@ -122,6 +162,7 @@ const RealtimeService = Mercury.extend({
       .then((res) => {
         this.boardBindings = [];
         this.boardWebSocketUrl = ``;
+        this.isSharingMercury = false;
         return res;
       });
   },
