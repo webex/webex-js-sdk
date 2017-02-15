@@ -169,14 +169,15 @@ describe(`plugin-board`, () => {
             });
         };
 
-        spark.board.realtime.on(`mercury.buffer_state`, bufferSpy);
+        spark.board.realtime.on(`event:mercury.buffer_state`, bufferSpy);
         spark.board.realtime.on(`online`, onlineSpy);
 
-        spark.board.realtime._attemptConnection((error) => {
-          assert(error, `_attemptConnection failed`);
-          assert.callCount(bufferSpy, 1);
-          assert.calledWith(bufferSpy, bufferStateMessage.data);
-        });
+        return assert.isFulfilled(spark.board.realtime.connect())
+          .then(() => {
+            assert.callCount(onlineSpy, 1);
+            assert.callCount(bufferSpy, 1);
+            assert.calledWith(bufferSpy, bufferStateMessage);
+          });
       });
     });
 
