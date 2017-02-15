@@ -14,7 +14,6 @@ var pick = require('lodash.pick');
 var isObject = require('lodash.isobject');
 var isArray = require('lodash.isarray');
 var SparkBase = require('../../lib/spark-base');
-var MediaClusterCollection = require('./media-cluster-collection');
 
 /**
  * @class
@@ -23,10 +22,6 @@ var MediaClusterCollection = require('./media-cluster-collection');
 var Device = SparkBase.extend({
   children: {
     features: FeaturesModel
-  },
-
-  collections: {
-    mediaClusters: MediaClusterCollection
   },
 
   props: {
@@ -63,33 +58,6 @@ var Device = SparkBase.extend({
     options = options || {};
     defaults(options, {parse: true});
     return SparkBase.prototype.constructor.call(this, attrs, options);
-  },
-
-  parse: function parse(attrs) {
-    if (!attrs) {
-      return {};
-    }
-
-    if (attrs.mediaClusters) {
-      var mediaClustersList = [];
-      for (var key in attrs.mediaClusters) {
-        if (key === 0) {
-          return attrs;
-        }
-        var urls = [];
-        var mediaCluster = attrs.mediaClusters[key];
-        for (var i = 0; i < mediaCluster.length; ++i) {
-          var url = mediaCluster[i];
-          if (url) {
-            urls.push({url: url});
-          }
-        }
-        mediaClustersList.push({id: key, urls: urls});
-      }
-      attrs.mediaClusters = mediaClustersList;
-    }
-
-    return attrs;
   },
 
   _initPolicy: function _initPolicy() {

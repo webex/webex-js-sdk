@@ -44,47 +44,6 @@ describe('Client', function() {
       clock.uninstall();
     });
 
-    describe('mediaClusters', function() {
-      it('sets media clusters in device for valid url', function(done) {
-        spark.request.returns(Promise.resolve({
-          statusCode: 200
-        }));
-
-        deviceFixture.mediaClusters = {
-          'squared.EU.*': [
-            'https://valid/ping'
-          ]
-        };
-        spark.device.set(deviceFixture);
-        assert.lengthOf(spark.device.mediaClusters, 1);
-        assert.equal(spark.device.mediaClusters.at(0).urls.at(0).url, 'https://valid/ping');
-        spark.device.mediaClusters.at(0).urls.at(0).on('change:reachable', function(url) {
-          assert.isTrue(spark.device.mediaClusters.at(0).reachable);
-          assert.isTrue(url.reachable);
-          done();
-        });
-        delete deviceFixture.mediaClusters;
-      });
-
-      it('sets media clusters in device for invalid url', function(done) {
-        spark.request.returns(Promise.reject({statusCode: 500}));
-        deviceFixture.mediaClusters = {
-          'squared.US.*': [
-            'https://invalid/ping'
-          ]
-        };
-        spark.device.set(deviceFixture);
-        assert.lengthOf(spark.device.mediaClusters, 1);
-        assert.equal(spark.device.mediaClusters.at(0).urls.at(0).url, 'https://invalid/ping');
-        spark.device.mediaClusters.at(0).urls.at(0).on('change:reachable', function(url) {
-          assert.isFalse(spark.device.mediaClusters.at(0).reachable);
-          assert.isFalse(url.reachable);
-          done();
-        });
-        delete deviceFixture.mediaClusters;
-      });
-    });
-
     describe('policy', function() {
       it('handles policy variables missing', function() {
         assert.isUndefined(spark.device.intranetInactivityDuration);
@@ -302,7 +261,6 @@ describe('Client', function() {
 
     describe('#serialize()', function() {
       it('serializes feature toggles in a format compatible with WDM', function() {
-        deviceFixture.mediaClusters = [];
         assert.deepEqual(device.serialize(), deviceFixture);
       });
     });
