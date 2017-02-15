@@ -509,11 +509,20 @@ ansiColor('xterm') {
           cleanup(IS_VALIDATED_MERGE_BUILD)
         }
         catch(error) {
+          // Read junit again because we may have gotten here due to a timeout
+          try {
+            junit 'reports/junit/**/*.xml'
+          }
+          catch(err) {
+            // ignore
+          }
+
           // If we made it to the point, we need to make sure the build is
           // definitely a failure in order to invoke the Gauntlet callback
           if (currentBuild.result != 'UNSTABLE') {
             currentBuild.result = 'FAILURE'
           }
+
           echo error.toString();
           cleanup(IS_VALIDATED_MERGE_BUILD)
           throw error
