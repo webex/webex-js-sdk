@@ -57,9 +57,9 @@ module.exports = function(grunt) {
       copy(path.join(__dirname, 'selenium', 'mac'))
         .then(encode),
       copy(path.join(__dirname, 'selenium', 'linux'))
+        .then(encode),
+      copy(path.join(__dirname, 'selenium', 'windows'))
         .then(encode)
-      // copy(path.join(__dirname, 'selenium', 'windows'))
-      //   .then(encode)
     ])
       .then(function(profiles) {
         var platforms = {

@@ -1,43 +1,53 @@
-/* eslint-disable */
-
+// eslint-disable-next-line strict
 'use strict';
 
-module.exports = function() {
-  var browsers = {
+/* eslint camelcase: [0] */
+
+module.exports = function createBrowsers() {
+  const browsers = {
     local: {
       Firefox: {},
       ChromeH264: {
-        base: 'Chrome',
+        base: `Chrome`,
         flags: [
-          '--enable-features=WebRTC-H264WithOpenH264FFmpeg',
-          '--use-fake-device-for-media-stream',
-          '--use-fake-ui-for-media-stream'
+          `--use-fake-device-for-media-stream`,
+          `--use-fake-ui-for-media-stream`
         ]
       }
     },
-
     sauce: {
-      // Reminder: the first item in this object is used by pipeline builds
-      // FIXME getUserMedia hangs on osx and windows firefox when run on sauce
-      // labs
+      sl_chrome_latest_osx11: {
+        base: `SauceLabs`,
+        platform: `OS X 10.11`,
+        browserName: `chrome`,
+        version: `latest`,
+        chromeOptions: {
+          args: [
+            `--use-fake-device-for-media-stream`,
+            `--use-fake-ui-for-media-stream`
+          ]
+        }
+      },
       sl_firefox_latest_linux: {
-        base: 'SauceLabs',
-        platform: 'Linux',
-        browserName: 'firefox',
-        version: 'latest'
-      },
-      sl_firefox_latest_osx11: {
-        base: 'SauceLabs',
-        platform: 'OS X 10.11',
-        browserName: 'firefox',
-        version: 'latest'
-      },
-      sl_firefox_latest_win7: {
-        base: 'SauceLabs',
-        platform: 'Windows 7',
-        browserName: 'firefox',
-        version: 'latest'
+        base: `SauceLabs`,
+        platform: `Linux`,
+        browserName: `firefox`,
+        version: `latest`
       }
+      // For reasons not presently clear, getUserMedia hangs in Firefox latest
+      // on mac and windows. We have a ticket open with Sauce to find out why
+      // sl_firefox_latest_osx11: {
+      //   base: `SauceLabs`,
+      //   platform: `OS X 10.11`,
+      //   browserName: `firefox`,
+      //   version: `latest`
+      // }
+      // sl_firefox_latest_win7: {
+      //   base: `SauceLabs`,
+      //   platform: `Windows 7`,
+      //   browserName: `firefox`,
+      //   version: `latest`
+      // }
     }
   };
 
