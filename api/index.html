@@ -56,16 +56,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Message" class="list-group-item">Types~Message</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Messages" class="list-group-item">Messages</a>
 
             
@@ -81,6 +71,26 @@ title: API
                 
                   <a class="list-group-item" href="#Messages#remove">#remove</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Message" class="list-group-item">Types~Message</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Person" class="list-group-item">Types~Person</a>
+
+            
+
             
 
             
@@ -104,7 +114,7 @@ title: API
           </li>
         
           
-            <a href="#Types~Person" class="list-group-item">Types~Person</a>
+            <a href="#Types~Room" class="list-group-item">Types~Room</a>
 
             
 
@@ -131,16 +141,6 @@ title: API
                 
                   <a class="list-group-item" href="#Rooms#update">#update</a>
                 
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Room" class="list-group-item">Types~Room</a>
-
-            
-
             
 
             
@@ -211,16 +211,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Webhook" class="list-group-item">Types~Webhook</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Webhooks" class="list-group-item">Webhooks</a>
 
             
@@ -238,6 +228,16 @@ title: API
                 
                   <a class="list-group-item" href="#Webhooks#update">#update</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Webhook" class="list-group-item">Types~Webhook</a>
+
+            
+
             
 
             
@@ -302,17 +302,17 @@ title: API
             
               <div class="list-group-item">Events</div>
               
-                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
-              
-                <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
+                <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
               
                 <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
+              
+                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
               
                 <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
               
                 <a class="list-group-item" href="#Call.event:remoteMediaStream:change"> ⓔ remoteMediaStream:change</a>
               
-                <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
+                <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
               
             
           </li>
@@ -1114,95 +1114,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Message'>Types~Message</h2>
-    
-  
-
-  
-
-  <pre>Types~Message</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(uuid)</code>
-      
-      : (server generated) Unique identifier for the message
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(uuid)</code>
-      
-      : The ID for the author of the messasge
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(email)</code>
-      
-      : The email for the author of the messasge
-
-      </h4>
-      
-    
-      <h4>
-      roomId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The message posted to the room in plain text
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated)The source URLs for the
-message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
-supported media types.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Messages'>Messages</h2>
     
   
@@ -1609,6 +1520,173 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
+    <h2 id='Types~Message'>Types~Message</h2>
+    
+  
+
+  
+
+  <pre>Types~Message</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(uuid)</code>
+      
+      : (server generated) Unique identifier for the message
+
+      </h4>
+      
+    
+      <h4>
+      personId
+      <code>(uuid)</code>
+      
+      : The ID for the author of the messasge
+
+      </h4>
+      
+    
+      <h4>
+      personEmail
+      <code>(email)</code>
+      
+      : The email for the author of the messasge
+
+      </h4>
+      
+    
+      <h4>
+      roomId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The message posted to the room in plain text
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated)The source URLs for the
+message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
+supported media types.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Person'>Types~Person</h2>
+    
+  
+
+  
+
+  <pre>Types~Person</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(uuid)</code>
+      
+      : Unique identifier for the person
+
+      </h4>
+      
+    
+      <h4>
+      emails
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;email&#x3E;)</code>
+      
+      : Email addresses of the person
+
+      </h4>
+      
+    
+      <h4>
+      displayName
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : Display name of the person
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : The date and time that the person was created
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='People'>People</h2>
     
   
@@ -1854,13 +1932,13 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Person'>Types~Person</h2>
+    <h2 id='Types~Room'>Types~Room</h2>
     
   
 
   
 
-  <pre>Types~Person</pre>
+  <pre>Types~Room</pre>
 
   
 
@@ -1877,27 +1955,19 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     
       <h4>
       id
-      <code>(uuid)</code>
-      
-      : Unique identifier for the person
-
-      </h4>
-      
-    
-      <h4>
-      emails
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;email&#x3E;)</code>
-      
-      : Email addresses of the person
-
-      </h4>
-      
-    
-      <h4>
-      displayName
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : Display name of the person
+      : (server generated) Unique identifier for the room
+
+      </h4>
+      
+    
+      <h4>
+      title
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The display name for the room. All room members
+will see the title so make it something good
 
       </h4>
       
@@ -1906,7 +1976,18 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       created
       <code>(isoDate)</code>
       
-      : The date and time that the person was created
+      : (server generated) The date and time that the
+room was created
+
+      </h4>
+      
+    
+      <h4>
+      teamId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (optional): The id of the team to which the room
+belongs
 
       </h4>
       
@@ -2365,87 +2446,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     </div>
   
 </section>
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Room'>Types~Room</h2>
-    
-  
-
-  
-
-  <pre>Types~Room</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (server generated) Unique identifier for the room
-
-      </h4>
-      
-    
-      <h4>
-      title
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The display name for the room. All room members
-will see the title so make it something good
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated) The date and time that the
-room was created
-
-      </h4>
-      
-    
-      <h4>
-      teamId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (optional): The id of the team to which the room
-belongs
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
 
   
 
@@ -3410,102 +3410,6 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
         
           <section>
   
-    <h2 id='Types~Webhook'>Types~Webhook</h2>
-    
-  
-
-  
-
-  <pre>Types~Webhook</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The unique ID for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      resource
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The resource type for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      event
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The event type for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      filter
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The filter that defines the webhook scope.
-
-      </h4>
-      
-    
-      <h4>
-      targetUrl
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The URL that receives POST requests for each event.
-
-      </h4>
-      
-    
-      <h4>
-      name
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : A user-friendly name for this webhook.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Webhooks'>Webhooks</h2>
     
   
@@ -3970,6 +3874,102 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     </div>
   
 </section>
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Webhook'>Types~Webhook</h2>
+    
+  
+
+  
+
+  <pre>Types~Webhook</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The unique ID for the webhook.
+
+      </h4>
+      
+    
+      <h4>
+      resource
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The resource type for the webhook.
+
+      </h4>
+      
+    
+      <h4>
+      event
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The event type for the webhook.
+
+      </h4>
+      
+    
+      <h4>
+      filter
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The filter that defines the webhook scope.
+
+      </h4>
+      
+    
+      <h4>
+      targetUrl
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The URL that receives POST requests for each event.
+
+      </h4>
+      
+    
+      <h4>
+      name
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : A user-friendly name for this webhook.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
@@ -5062,51 +5062,14 @@ even if renegotiation has not completed)</p>
     <h3>Events</h3>
     <section>
   
-    <h3 id='Call.event:disconnected'>disconnected</h3>
+    <h3 id='Call.event:error'>error</h3>
     <div>
       <section>
   
 
   
 
-  <pre>disconnected</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:connected'>connected</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>connected</pre>
+  <pre>error</pre>
 
   
 
@@ -5144,6 +5107,43 @@ even if renegotiation has not completed)</p>
   
 
   <pre>ringing</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:disconnected'>disconnected</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>disconnected</pre>
 
   
 
@@ -5247,14 +5247,14 @@ even if renegotiation has not completed)</p>
 
     </div>
   
-    <h3 id='Call.event:error'>error</h3>
+    <h3 id='Call.event:connected'>connected</h3>
     <div>
       <section>
   
 
   
 
-  <pre>error</pre>
+  <pre>connected</pre>
 
   
 
