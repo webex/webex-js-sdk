@@ -351,7 +351,7 @@ describe(`plugin-phone`, function() {
 
       describe(`#toggleSendingAudio()`, () => {
         describe(`when the call is sending audio`, () => {
-          it(`stops sending audio`, () => {
+          it.skip(`stops sending audio`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
 
             return Promise.all([
@@ -384,7 +384,7 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call has stopped sending audio`, () => {
-          it(`starts sending audio`, () => {
+          it.skip(`starts sending audio`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
 
             return Promise.all([
