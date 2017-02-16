@@ -1,5 +1,3 @@
-
-
 const path = require(`path`);
 
 module.exports = function(config) {
@@ -127,7 +125,9 @@ module.exports = function(config) {
       outputFile: `karma-${process.env.PACKAGE}.xml`,
       outputDir: process.env.XUNIT_DIR || `reports/junit`,
       suite: process.env.PACKAGE,
-      useBrowserName: true
+      useBrowserName: true,
+      recordScreenshots: true,
+      recordVideo: true
     };
 
     cfg.reporters.push(`junit`);
