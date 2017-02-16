@@ -73,13 +73,8 @@ describe(`plugin-phone`, function() {
           .then(() => mercuryDisconnectSpy.restore());
       });
 
-      it(`unregisters from wdm`, () =>
-        spock.spark.phone.deregister()
-          .then(() =>
-            spock.spark.device.on(`change:device`)
-              .then(() => assert.isUndefined(spock.spark.device.url))
-          )
-      );
+      it(`unregisters from wdm`, () => spock.spark.phone.deregister()
+        .then(() => assert.isUndefined(spock.spark.device.url)));
 
       // TODO: Does not currently noop after multiple calls
       it.skip(`is a noop when not registered`, () => {
