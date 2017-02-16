@@ -16,7 +16,7 @@ export default class RequestLoggerInterceptor extends Interceptor {
    * @returns {RequestLoggerInterceptor}
    */
   static create() {
-    return new RequestLoggerInterceptor(this);
+    return new RequestLoggerInterceptor({spark: this});
   }
 
   /**
@@ -25,7 +25,7 @@ export default class RequestLoggerInterceptor extends Interceptor {
    * @returns {Object}
    */
   onRequest(options) {
-    const logger = get(options, `logger`, console);
+    const logger = get(this, `spark.logger`, console);
     logger.log(`/**********************************************************************\\ `);
     logger.log(`Request:`, options.method || `GET`, options.uri);
     logger.log(`WEBEX_TRACKINGID: `, get(options, `headers.trackingid`));
@@ -67,7 +67,7 @@ export default class RequestLoggerInterceptor extends Interceptor {
     // We need to do the normal onRequest logging, but then log how the request
     // failed since the response logger won't be called.
     this.onRequest(options);
-    const logger = get(options, `logger`, console);
+    const logger = get(this, `spark.logger`, console);
     logger.error(`Request Failed: `, reason.stack);
     logger.log(`\\**********************************************************************/`);
 

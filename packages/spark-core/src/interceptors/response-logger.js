@@ -16,7 +16,7 @@ export default class ResponseLoggerInterceptor extends Interceptor {
    * @returns {ResponseLoggerInterceptor}
    */
   static create() {
-    return new ResponseLoggerInterceptor(this);
+    return new ResponseLoggerInterceptor({spark: this});
   }
 
   /**
@@ -29,7 +29,7 @@ export default class ResponseLoggerInterceptor extends Interceptor {
     const now = new Date();
     this.printResponseHeader(options, response);
 
-    const logger = get(options, `logger`, console);
+    const logger = get(this, `spark.logger`, console);
     if (process.env.ENABLE_VERBOSE_NETWORK_LOGGING) {
       logger.log(`timestamp (end): `, now.getTime(), now.toISOString());
       if (typeof response.body === `string` || Buffer.isBuffer(response.body)) {
@@ -59,7 +59,7 @@ export default class ResponseLoggerInterceptor extends Interceptor {
     const now = new Date();
     this.printResponseHeader(options, reason);
 
-    const logger = get(options, `logger`, console);
+    const logger = get(this, `spark.logger`, console);
     if (process.env.ENABLE_VERBOSE_NETWORK_LOGGING) {
       logger.log(`timestamp (end): `, now.getTime(), now.toISOString());
       try {
@@ -81,7 +81,7 @@ export default class ResponseLoggerInterceptor extends Interceptor {
    * @returns {undefined}
    */
   printResponseHeader(options, response) {
-    const logger = get(options, `logger`, console);
+    const logger = get(this, `spark.logger`, console);
     logger.log(`Status Code:`, response.statusCode);
     logger.log(`WEBEX_TRACKINGID:`, get(options, `headers.trackingid`) || get(response, `headers.trackingid`));
     logger.log(`Network duration:`, options.$timings.networkEnd - options.$timings.networkStart);
