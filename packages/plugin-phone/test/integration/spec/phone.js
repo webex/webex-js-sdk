@@ -56,7 +56,7 @@ describe(`plugin-phone`, function() {
     ]));
 
     describe(`#createLocalMediaStream()`, () => {
-      it(`returns a MediaStreamObject`, () => {
+      it.skip(`returns a MediaStreamObject`, () => {
         return spock.spark.phone.createLocalMediaStream()
           .then((stream) => {
             assert.instanceOf(stream, MediaStream);
@@ -94,7 +94,7 @@ describe(`plugin-phone`, function() {
           });
       });
 
-      it(`initiates an audio only call`, () => {
+      it.skip(`initiates an audio only call`, () => {
         spock.spark.phone.dial(mccoy.email, {
           constraints: {
             video: false,
@@ -110,7 +110,7 @@ describe(`plugin-phone`, function() {
           });
       });
 
-      it(`initiates a receive-only call`, () => {
+      it.skip(`initiates a receive-only call`, () => {
         spock.spark.phone.dial(mccoy.email, {
           constraints: {
             video: false,
@@ -130,7 +130,7 @@ describe(`plugin-phone`, function() {
           });
       });
 
-      it(`calls a user by email address`, () => {
+      it.skip(`calls a user by email address`, () => {
         spock.spark.phone.dial(mccoy.email);
         return mccoy.spark.phone.when(`call:incoming`)
           .then(() => assert.calledOnce(ringMccoy));
@@ -141,7 +141,7 @@ describe(`plugin-phone`, function() {
       it(`calls a user by spark uri`);
       it(`calls a user by sip uri`);
 
-      it(`places a call with an existing MediaStreamObject`, () => {
+      it.skip(`places a call with an existing MediaStreamObject`, () => {
         return spock.spark.phone.createLocalMediaStream()
           .then((localMediaStream) => {
             const call = spock.spark.phone.dial(mccoy.email, {localMediaStream});
@@ -165,12 +165,12 @@ describe(`plugin-phone`, function() {
 
       afterEach(() => kirk && kirk.spark.phone.deregister());
 
-      it(`registers with wdm`, () => {
+      it.skip(`registers with wdm`, () => {
         return kirk.spark.phone.register()
           .then(() => assert.isDefined(kirk.spark.device.url));
       });
 
-      it(`connects to mercury`, () => {
+      it.skip(`connects to mercury`, () => {
         assert.isFalse(kirk.spark.mercury.connected, `Mercury is not connected`);
         assert.isFalse(kirk.spark.phone.connected, `Mercury (proxied through spark.phone) is not conneted`);
 
@@ -187,7 +187,7 @@ describe(`plugin-phone`, function() {
         .then(() => {call = undefined;})));
 
       // TODO make this preventable
-      it(`fetches active calls`, () => {
+      it.skip(`fetches active calls`, () => {
         call = spock.spark.phone.dial(kirk.email);
         // use change:locus as the trigger for determining when the post to
         // /call completes.
@@ -218,7 +218,7 @@ describe(`plugin-phone`, function() {
     });
 
     describe(`when a call is received`, () => {
-      it(`emits a call:incoming event`, () => {
+      it.skip(`emits a call:incoming event`, () => {
         spock.spark.phone.dial(mccoy.email);
         return mccoy.spark.phone.when(`call:incoming`)
           .then(() => assert.calledOnce(ringMccoy));
