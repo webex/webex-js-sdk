@@ -317,6 +317,12 @@ var CredentialsBase = SparkBase.extend({
       });
   })),
 
+  setPasswordStatus: function setPasswordStatus(value) {
+    if (this.authorization && this.authorization.supertoken) {
+      this.authorization.supertoken.hasPassword = value;
+    }
+  },
+
   /**
    * Converts a CI SAML Bearer Token to an OAuth Bearer Token.
    * @param {Object} options

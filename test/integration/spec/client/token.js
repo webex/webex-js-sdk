@@ -49,7 +49,7 @@ describe('Client', function() {
         });
 
         it('sets the previous hasPassword state onto the new token', function() {
-          supertoken.passwordSet = true;
+          supertoken.hasPassword = true;
           return supertoken.refresh()
             .then(function(token) {
               assert.notEqual(token, supertoken);

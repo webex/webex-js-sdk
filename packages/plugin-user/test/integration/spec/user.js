@@ -80,7 +80,7 @@ describe(`plugin-user`, function() {
   // This test relies on setting a specific user agent, so it doesn't work in
   // browsers
   nodeOnly(describe)(`#activate()`, () => {
-    xit(`completes the mobile signup process`, () => spark.request({
+    it.skip(`retrieves a valid user token using verificationToken`, () => spark.request({
       service: `atlas`,
       resource: `users/email/verify`,
       method: `POST`,

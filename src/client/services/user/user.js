@@ -382,9 +382,7 @@ var UserService = SparkBase.extend(
   },
 
   setPasswordStatus: function setPasswordStatus(value) {
-    if (this.spark.credentials && this.spark.credentials.authorization && this.spark.credentials.authorization.supertoken) {
-      this.spark.credentials.authorization.supertoken.passwordSet = value;
-    }
+    this.spark.credentials.setPasswordStatus(value);
   },
 
   /**

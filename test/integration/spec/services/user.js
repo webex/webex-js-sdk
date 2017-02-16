@@ -213,7 +213,7 @@ describe('Services', function() {
     skipInBrowser(describe)('#activate() @CI', function() {
       createUnauthedSpark();
 
-      xit('retrieves a valid user token using verificationToken', function() {
+      it.skip('retrieves a valid user token using verificationToken', function() {
         return spark.user.register({email: 'Collabctg+spark-js-sdk-' + Date.now() + '@gmail.com'}, {spoofMobile: true})
           .then(function(body) {
             return spark.user.activate({encryptedQueryString: body.eqp});

@@ -57,7 +57,7 @@ const User = SparkPlugin.extend({
         return this.getOauthCode();
       })
       .then((res) => {
-        const code = res.match(`<title>(.*)</title>`)[1];
+        const code = res.match(/<title>(.*?)<\/title>/)[1];
         return this.spark.credentials.requestAuthorizationCodeGrant({code});
       })
       .then(() => {
@@ -194,9 +194,7 @@ const User = SparkPlugin.extend({
    * @returns {undefined}
    */
   setPasswordStatus(value) {
-    if (this.spark.credentials && this.spark.credentials.supertoken) {
-      this.spark.credentials.supertoken.passwordSet = value;
-    }
+    this.spark.credentials.setPasswordStatus(value);
   },
 
   /**
@@ -217,12 +215,10 @@ const User = SparkPlugin.extend({
 
     let headers;
 
-    const promise = this.spark.credentials.getAuthorization()
+    return this.spark.credentials.getAuthorization()
       .then((authorization) => {
         headers = {authorization};
-      });
-
-    return promise
+      })
       .then(() => this.request({
         uri: `${this.config.setPasswordUrl}/${options.userId}`,
         method: `PATCH`,
@@ -279,7 +275,8 @@ const User = SparkPlugin.extend({
     let shouldRefreshAccessToken = true;
     let requiresClientCredentials = false;
     let headers;
-    const promise = this.spark.credentials.getAuthorization()
+
+    return this.spark.credentials.getAuthorization()
       .then((authorization) => {
         headers = {authorization};
       })
@@ -290,9 +287,7 @@ const User = SparkPlugin.extend({
           requiresClientCredentials = true;
         })
         .catch((err) => Promise.reject(new Error(`failed to set authorization`, err)))
-      );
-
-    return promise
+      )
       .then(() => this.request({
         service: `atlas`,
         resource: `users/activations`,

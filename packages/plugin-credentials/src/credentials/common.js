@@ -419,6 +419,17 @@ export default {
   },
 
   /**
+   * Sets password status on token
+   * @param {Boolean} value
+   * @returns {undefined}
+   */
+  setPasswordStatus(value) {
+    if (this.supertoken) {
+      this.supertoken.hasPassword = value;
+    }
+  },
+
+  /**
    * Converts a CI SAML Bearer Token to an OAuth Bearer Token.
    * @param {Object} options
    * @param {string} options.scope
