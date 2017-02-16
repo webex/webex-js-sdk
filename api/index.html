@@ -23,6 +23,16 @@ title: API
           </li>
         
           
+            <a href="#Types~Membership" class="list-group-item">Types~Membership</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
             <a href="#Memberships" class="list-group-item">Memberships</a>
 
             
@@ -40,16 +50,6 @@ title: API
                 
                   <a class="list-group-item" href="#Memberships#update">#update</a>
                 
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Membership" class="list-group-item">Types~Membership</a>
-
-            
-
             
 
             
@@ -87,6 +87,16 @@ title: API
           </li>
         
           
+            <a href="#Types~Person" class="list-group-item">Types~Person</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
             <a href="#People" class="list-group-item">People</a>
 
             
@@ -98,16 +108,6 @@ title: API
                 
                   <a class="list-group-item" href="#People#list">#list</a>
                 
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Person" class="list-group-item">Types~Person</a>
-
-            
-
             
 
             
@@ -147,6 +147,16 @@ title: API
           </li>
         
           
+            <a href="#Types~Team" class="list-group-item">Types~Team</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
             <a href="#Teams" class="list-group-item">Teams</a>
 
             
@@ -162,16 +172,6 @@ title: API
                 
                   <a class="list-group-item" href="#Teams#update">#update</a>
                 
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Team" class="list-group-item">Types~Team</a>
-
-            
-
             
 
             
@@ -211,16 +211,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Webhook" class="list-group-item">Types~Webhook</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Webhooks" class="list-group-item">Webhooks</a>
 
             
@@ -238,6 +228,16 @@ title: API
                 
                   <a class="list-group-item" href="#Webhooks#update">#update</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Webhook" class="list-group-item">Types~Webhook</a>
+
+            
+
             
 
             
@@ -504,6 +504,111 @@ on the storage layer instead.</p>
     </div>
   
 </section>
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Membership'>Types~Membership</h2>
+    
+  
+
+  
+
+  <pre>Types~Membership</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(uuid)</code>
+      
+      : Unique identifier for the membership
+
+      </h4>
+      
+    
+      <h4>
+      roomId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The room ID
+
+      </h4>
+      
+    
+      <h4>
+      personId
+      <code>(uuid)</code>
+      
+      : The person ID
+
+      </h4>
+      
+    
+      <h4>
+      personEmail
+      <code>(email)</code>
+      
+      : The email address of the person / room member
+
+      </h4>
+      
+    
+      <h4>
+      isModerator
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Indicates whether the specified person should be a room moderator.
+
+      </h4>
+      
+    
+      <h4>
+      isMonitor
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Indicates whether the specified member is a room monitor.
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : The date and time that this membership was created.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
 
   
 
@@ -997,111 +1102,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     </div>
   
 </section>
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Membership'>Types~Membership</h2>
-    
-  
-
-  
-
-  <pre>Types~Membership</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(uuid)</code>
-      
-      : Unique identifier for the membership
-
-      </h4>
-      
-    
-      <h4>
-      roomId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The room ID
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(uuid)</code>
-      
-      : The person ID
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(email)</code>
-      
-      : The email address of the person / room member
-
-      </h4>
-      
-    
-      <h4>
-      isModerator
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Indicates whether the specified person should be a room moderator.
-
-      </h4>
-      
-    
-      <h4>
-      isMonitor
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Indicates whether the specified member is a room monitor.
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : The date and time that this membership was created.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
 
   
 
@@ -1609,6 +1609,84 @@ supported media types.
         
           <section>
   
+    <h2 id='Types~Person'>Types~Person</h2>
+    
+  
+
+  
+
+  <pre>Types~Person</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(uuid)</code>
+      
+      : Unique identifier for the person
+
+      </h4>
+      
+    
+      <h4>
+      emails
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;email&#x3E;)</code>
+      
+      : Email addresses of the person
+
+      </h4>
+      
+    
+      <h4>
+      displayName
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : Display name of the person
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : The date and time that the person was created
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='People'>People</h2>
     
   
@@ -1842,84 +1920,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     </div>
   
 </section>
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Person'>Types~Person</h2>
-    
-  
-
-  
-
-  <pre>Types~Person</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(uuid)</code>
-      
-      : Unique identifier for the person
-
-      </h4>
-      
-    
-      <h4>
-      emails
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;email&#x3E;)</code>
-      
-      : Email addresses of the person
-
-      </h4>
-      
-    
-      <h4>
-      displayName
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : Display name of the person
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : The date and time that the person was created
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
 
   
 
@@ -2458,6 +2458,76 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
+    <h2 id='Types~Team'>Types~Team</h2>
+    
+  
+
+  
+
+  <pre>Types~Team</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (server generated) The unique ID for the team.
+
+      </h4>
+      
+    
+      <h4>
+      name
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The name of the team.
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated) The date and time when the
+team was created, in ISO8601 format.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='Teams'>Teams</h2>
     
   
@@ -2806,76 +2876,6 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
     </div>
   
 </section>
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Team'>Types~Team</h2>
-    
-  
-
-  
-
-  <pre>Types~Team</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (server generated) The unique ID for the team.
-
-      </h4>
-      
-    
-      <h4>
-      name
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The name of the team.
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated) The date and time when the
-team was created, in ISO8601 format.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
 
   
 
@@ -3410,102 +3410,6 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
         
           <section>
   
-    <h2 id='Types~Webhook'>Types~Webhook</h2>
-    
-  
-
-  
-
-  <pre>Types~Webhook</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The unique ID for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      resource
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The resource type for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      event
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The event type for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      filter
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The filter that defines the webhook scope.
-
-      </h4>
-      
-    
-      <h4>
-      targetUrl
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The URL that receives POST requests for each event.
-
-      </h4>
-      
-    
-      <h4>
-      name
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : A user-friendly name for this webhook.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Webhooks'>Webhooks</h2>
     
   
@@ -3970,6 +3874,102 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     </div>
   
 </section>
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Webhook'>Types~Webhook</h2>
+    
+  
+
+  
+
+  <pre>Types~Webhook</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The unique ID for the webhook.
+
+      </h4>
+      
+    
+      <h4>
+      resource
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The resource type for the webhook.
+
+      </h4>
+      
+    
+      <h4>
+      event
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The event type for the webhook.
+
+      </h4>
+      
+    
+      <h4>
+      filter
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The filter that defines the webhook scope.
+
+      </h4>
+      
+    
+      <h4>
+      targetUrl
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The URL that receives POST requests for each event.
+
+      </h4>
+      
+    
+      <h4>
+      name
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : A user-friendly name for this webhook.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
