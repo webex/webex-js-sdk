@@ -64,26 +64,26 @@ describe(`plugin-phone`, function() {
     });
 
     describe(`#deregister()`, () => {
+      let mercuryDisconnectSpy;
+      beforeEach(() => {
+        mercuryDisconnectSpy = sinon.spy(spock.spark.mercury, `disconnect`);
+      });
+
+      afterEach(() => mercuryDisconnectSpy.restore());
+
       it(`disconnects from mercury`, () => {
-        const mercuryDisconnectSpy = sinon.spy(spock.spark.mercury, `disconnect`);
         return spock.spark.phone.deregister()
           .then(() => assert.calledOnce(mercuryDisconnectSpy))
           .then(() => assert.isFalse(spock.spark.mercury.connected, `Mercury is not connected`))
-          .then(() => assert.isFalse(spock.spark.phone.connected, `Mercury (proxied through spark.phone) is not conneted`))
+          .then(() => assert.isFalse(spock.spark.phone.connected, `Mercury (proxied through spark.phone) is not connected`))
           .then(() => mercuryDisconnectSpy.restore());
       });
 
       it(`unregisters from wdm`, () => spock.spark.phone.deregister()
         .then(() => assert.isUndefined(spock.spark.device.url)));
 
-      // TODO: Does not currently noop after multiple calls
-      it.skip(`is a noop when not registered`, () => {
-        const mercuryDisconnectSpy = sinon.spy(spock.spark.mercury, `disconnect`);
-        return spock.spark.phone.deregister()
-          .then(() => spock.spark.phone.deregister())
-          .then(() => assert.calledOnce(mercuryDisconnectSpy))
-          .then(() => mercuryDisconnectSpy.restore());
-      });
+      it(`is a noop when not registered`, () => assert.isFulfilled(spock.spark.phone.deregister()
+        .then(() => spock.spark.phone.deregister())));
     });
 
     describe(`#dial()`, () => {
