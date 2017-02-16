@@ -92,7 +92,8 @@ module.exports = function gruntConfig(grunt) {
       all: [
         `./packages/*/src/**/*.js`,
         `./packages/*/test/**/*.js`,
-        `./packages/*/*.js`
+        `./packages/*/*.js`,
+        `!./packages/*/browsers.processed.js`
       ],
       options: {
         format: process.env.XUNIT ? `checkstyle` : `stylish`,
@@ -179,7 +180,7 @@ module.exports = function gruntConfig(grunt) {
   };
 
   if (process.env.COVERAGE && (process.env.JENKINS || process.env.CI)) {
-    delete config.makeReport2.all.options.reporters.html;
+    Reflect.deleteProperty(config.makeReport2.all.options.reporters, `html`);
   }
 
   PACKAGES.forEach((packageName) => {

@@ -19,6 +19,8 @@ module.exports = function configGrunt(grunt, p) {
     }
   });
 
+  grunt.task.run(`inject-h264`);
+
   var env = grunt.config('env');
   env.forceNodeEnv = {
     NODE_ENV: 'test'

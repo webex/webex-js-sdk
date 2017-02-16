@@ -1,4 +1,5 @@
-import {createBrowser, wd} from '@ciscospark/test-helper-automation';
+import {wd} from '@ciscospark/test-helper-automation';
+import createBrowser from '../create-browser';
 import testUsers from '@ciscospark/test-helper-test-users';
 import pkg from '../../../../package';
 
@@ -10,9 +11,6 @@ wd.addPromiseChainMethod(`bdInit`, function(user) {
   return Promise.all([
     [user] || testUsers.create({count: 1}),
     createBrowser(pkg, {
-      platform: `Linux`,
-      browserName: `firefox`,
-      version: `latest`,
       name: `drone`
     })
   ])

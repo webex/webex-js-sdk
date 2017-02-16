@@ -29,7 +29,7 @@ describe(`Encryption`, function() {
           authorization: user.token
         }
       });
-      assert.isTrue(spark.canAuthorize);
+      assert.isTrue(spark.isAuthenticated || spark.canAuthorize);
     }));
 
   before(`create unbound key`, () => spark.encryption.kms.createUnboundKeys({count: 1})

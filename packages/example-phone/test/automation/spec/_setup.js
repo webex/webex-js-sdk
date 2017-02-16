@@ -3,8 +3,9 @@
  * Copyright (c) 2015 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {createBrowser} from '@ciscospark/test-helper-automation';
-import pkg from '../../../package';
+import createBrowser from '../lib/create-browser';
+import pkg from '../../../package.json';
+
 import path from 'path';
 import requireDir from 'require-dir';
 
@@ -16,11 +17,7 @@ describe(`example-phone`, function() {
   describe(`__`, () => {
     let browser;
 
-    beforeEach(() => createBrowser(pkg, {
-      platform: `Linux`,
-      browserName: `firefox`,
-      version: `latest`
-    })
+    beforeEach(() => createBrowser(pkg, {name: `_setup`})
       .then((b) => {browser = b;}));
 
     afterEach(() => Promise.resolve(browser && browser.quit())

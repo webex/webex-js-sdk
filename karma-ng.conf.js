@@ -1,34 +1,23 @@
+// eslint-disable-next-line strict
 'use strict';
-
-var path = require('path');
+const path = require(`path`);
 
 module.exports = function(config) {
-  var pkg = require('./packages/' + process.env.PACKAGE + '/package');
+  const pkg = require(`./packages/${process.env.PACKAGE}/package`);
   /* eslint complexity: [0] */
-  var browsers = require('./browsers-ng');
-  var launchers = Object.keys(browsers).reduce(function(launchers, browserType) {
-    if (browserType === 'local') {
-      return launchers;
-    }
+  const browsers = require(`./browsers-ng`);
+  const launchers = process.env.SC_TUNNEL_IDENTIFIER ? browsers.sauce : browsers.local;
+  const srcPath = path.join(`packages`, process.env.PACKAGE, `src`, `**`, `*.js`);
+  const integrationTestPath = path.join(`packages`, process.env.PACKAGE, `test`, `integration`, `spec`, `**`, `*.js`);
+  const unitTestPath = path.join(`packages`, process.env.PACKAGE, `test`, `unit`, `spec`, `**`, `*.js`);
 
-    Object.keys(browsers[browserType]).forEach(function(browserKey) {
-      launchers[browserKey] = browsers[browserType][browserKey];
-    });
+  const preprocessors = {};
+  preprocessors[srcPath] = [`browserify`];
+  preprocessors[integrationTestPath] = [`browserify`];
+  preprocessors[unitTestPath] = [`browserify`];
 
-    return launchers;
-  }, {});
-
-  var srcPath = path.join('packages', process.env.PACKAGE, 'src', '**', '*.js');
-  var integrationTestPath = path.join('packages', process.env.PACKAGE, 'test', 'integration', 'spec', '**', '*.js');
-  var unitTestPath = path.join('packages', process.env.PACKAGE, 'test', 'unit', 'spec', '**', '*.js');
-
-  var preprocessors = {};
-  preprocessors[srcPath] = ['browserify'];
-  preprocessors[integrationTestPath] = ['browserify'];
-  preprocessors[unitTestPath] = ['browserify'];
-
-  var cfg = {
-    basePath: '.',
+  let cfg = {
+    basePath: `.`,
 
     browserDisconnectTimeout: 10000,
 
@@ -40,8 +29,8 @@ module.exports = function(config) {
       debug: true,
       watch: true,
       transform: [
-        'babelify',
-        'envify'
+        `babelify`,
+        `envify`
       ]
     },
 
@@ -57,7 +46,7 @@ module.exports = function(config) {
     customLaunchers: launchers,
 
     files: (function() {
-      var files = [
+      const files = [
         integrationTestPath,
         unitTestPath
       ];
@@ -65,16 +54,16 @@ module.exports = function(config) {
     }()),
 
     frameworks: [
-      'browserify',
-      'mocha'
+      `browserify`,
+      `mocha`
     ],
 
-    hostname: '127.0.0.1',
+    hostname: `127.0.0.1`,
 
     client: {
       mocha: {
         // TODO figure out how to report retries
-        retries: (process.env.JENKINS || process.env.CI) ? 1 : 0,
+        retries: process.env.JENKINS || process.env.CI ? 1 : 0,
         timeout: 30000
       }
     },
@@ -86,15 +75,15 @@ module.exports = function(config) {
 
     port: parseInt(process.env.KARMA_PORT) || 9001,
 
-    preprocessors: preprocessors,
+    preprocessors,
 
     proxies: {
-      '/fixtures/': 'http://127.0.0.1:' + process.env.FIXTURE_PORT + '/',
-      '/upload': 'http://127.0.0.1:' + process.env.FIXTURE_PORT + '/upload'
+      '/fixtures/': `http://127.0.0.1:${process.env.FIXTURE_PORT}/`,
+      '/upload': `http://127.0.0.1:${process.env.FIXTURE_PORT}/upload`
     },
 
     reporters: [
-      'mocha'
+      `mocha`
     ],
 
     singleRun: !process.env.KARMA_DEBUG,
@@ -105,45 +94,49 @@ module.exports = function(config) {
     recordScreenshots: true
   };
 
-  if (process.env.COVERAGE && process.env.COVERAGE !== 'undefined') {
+  if (process.env.COVERAGE && process.env.COVERAGE !== `undefined`) {
     cfg.coverageReporter = {
       reporters: [{
-        type: 'json',
-        dir: 'reports/coverage/' + process.env.PACKAGE
+        type: `json`,
+        dir: `reports/coverage/${process.env.PACKAGE}`
       }]
     };
 
-    cfg.browserify.transform.unshift(['browserify-istanbul', {
-      ignore: ['test-helper*/**', '**/dist/**'],
-      instrumenter: require('isparta')
+    cfg.browserify.transform.unshift([`browserify-istanbul`, {
+      ignore: [`test-helper*/**`, `**/dist/**`],
+      instrumenter: require(`isparta`)
     }]);
 
-    cfg.reporters.push('coverage');
+    cfg.reporters.push(`coverage`);
   }
 
   if (process.env.SC_TUNNEL_IDENTIFIER) {
     cfg.sauceLabs = {
-      build: process.env.BUILD_NUMBER || ('local-' + process.env.USER + '-' + process.env.PACKAGE + '-' + Date.now()),
+      build: process.env.BUILD_NUMBER || `local-${process.env.USER}-${process.env.PACKAGE}-${Date.now()}`,
       startConnect: false,
-      testName: pkg.name + ' (karma)',
-      tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
+      testName: `${pkg.name} (karma)`,
+      tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER,
+      recordScreenshots: true,
+      recordVideo: true
     };
-    cfg.reporters.push('saucelabs');
+    cfg.reporters.push(`saucelabs`);
   }
 
   if (process.env.XUNIT) {
     cfg.junitReporter = {
-      outputFile: 'karma-' + process.env.PACKAGE + '.xml',
-      outputDir: process.env.XUNIT_DIR || 'reports/junit',
+      outputFile: `karma-${process.env.PACKAGE}.xml`,
+      outputDir: process.env.XUNIT_DIR || `reports/junit`,
       suite: process.env.PACKAGE,
-      useBrowserName: true
+      useBrowserName: true,
+      recordScreenshots: true,
+      recordVideo: true
     };
 
-    cfg.reporters.push('junit');
+    cfg.reporters.push(`junit`);
   }
 
   try {
-    cfg = require('./packages/' + process.env.PACKAGE + '/karma.conf.js')(cfg);
+    cfg = require(`./packages/${process.env.PACKAGE}/karma.conf.js`)(cfg);
   }
   catch (error) {
     // ignore

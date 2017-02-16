@@ -8,8 +8,8 @@ import {defaults, set} from 'lodash';
 
 wd.addPromiseChainMethod(`loginWithLocalStorage`, function(user, options) {
   options = defaults(options, {
-    key: `example-phone`,
-    path: `spark.credentials.authorization`
+    key: `ciscospark`,
+    path: `Credentials.authorization`
   });
 
   if (!user) {

@@ -190,7 +190,6 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call was started without audio`, () => {
-          // FIXME firefox is weird with vp8 vs h264
           it.skip(`starts receiving audio`, () => {
             const call = spock.spark.phone.dial(mccoy.email, {
               constraints: {
@@ -312,7 +311,6 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call was started without video`, () => {
-          // FIXME firefox is weird with vp8 vs h264
           it.skip(`starts receiving video`, () => {
             const call = spock.spark.phone.dial(mccoy.email, {
               constraints: {
@@ -473,7 +471,6 @@ describe(`plugin-phone`, function() {
 
       describe(`#toggleSendingVideo()`, () => {
         describe(`when the call is sending video`, () => {
-          // FIXME firefox is weird with vp8 vs h264
           it.skip(`stops sending video`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
 
@@ -507,7 +504,6 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call has stopped sending video`, () => {
-          // FIXME firefox is weird with vp8 vs h264
           it.skip(`starts sending video`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
 
@@ -552,7 +548,6 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call was started without video`, () => {
-          // FIXME firefox is weird with vp8 vs h264
           it.skip(`adds video to the call`, () => {
             const call = spock.spark.phone.dial(mccoy.email, {
               constraints: {
