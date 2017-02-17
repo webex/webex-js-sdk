@@ -433,14 +433,12 @@ const Board = SparkPlugin.extend({
           action: `REPLACE`
         };
 
-        return data;
+        return this.spark.request({
+          method: `POST`,
+          uri: `${channel.channelUrl}/register`,
+          body: data
+        });
       })
-      .then((data) => this.spark.request({
-        method: `POST`,
-        api: `board`,
-        resource: `/channels/${channel.channelId}/register`,
-        body: data
-      }))
       .then((res) => res.body);
   },
 
@@ -461,8 +459,7 @@ const Board = SparkPlugin.extend({
 
     return this.spark.request({
       method: `POST`,
-      api: `board`,
-      resource: `/channels/${channel.channelId}/register`,
+      uri: `${channel.channelUrl}/register`,
       body: data
     })
       .then((res) => res.body);

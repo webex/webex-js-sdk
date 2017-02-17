@@ -332,8 +332,7 @@ var PersistenceService = SparkBase.extend({
 
     return this.spark.request({
       method: 'POST',
-      api: 'board',
-      resource: '/channels/' + channel.channelId + '/register',
+      uri: channel.channelUrl + '/register',
       body: data
     })
       .then(function resolveWithBody(res) {
@@ -358,8 +357,7 @@ var PersistenceService = SparkBase.extend({
 
     return this.spark.request({
       method: 'POST',
-      api: 'board',
-      resource: '/channels/' + channel.channelId + '/register',
+      uri: channel.channelUrl + '/register',
       body: data
     })
       .then(function resolveWithBody(res) {

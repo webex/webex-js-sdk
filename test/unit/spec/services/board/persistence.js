@@ -148,8 +148,7 @@ describe('Services', function() {
             .then(function() {
               assert.calledWith(spark.request, sinon.match({
                 method: 'POST',
-                api: 'board',
-                resource: '/channels/' + channel.channelId + '/register',
+                uri: channel.channelUrl + '/register',
                 body: {
                   mercuryConnectionServiceClusterUrl: localClusterServiceUrls.mercuryConnectionServiceClusterUrl,
                   webSocketUrl: webSocketUrl,

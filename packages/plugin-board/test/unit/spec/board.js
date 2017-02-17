@@ -553,8 +553,7 @@ describe(`plugin-board`, () => {
         .then(() => {
           assert.calledWith(spark.request, sinon.match({
             method: `POST`,
-            api: `board`,
-            resource: `/channels/${channel.channelId}/register`,
+            uri: `${channel.channelUrl}/register`,
             body: {
               mercuryConnectionServiceClusterUrl: spark.mercury.localClusterServiceUrls.mercuryConnectionServiceClusterUrl,
               webSocketUrl: spark.device.webSocketUrl,
