@@ -54,6 +54,7 @@ dependencies:
 
 test:
   pre:
+    - npm run depcheck
     - npm run grunt:circle -- build:
         parallel: true
   override:

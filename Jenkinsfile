@@ -259,6 +259,7 @@ ansiColor('xterm') {
               // skipped for now. Given the widgets are moving to another repo,
               // I think this is ok.
               image.inside(DOCKER_RUN_OPTS) {
+                sh 'npm run depcheck'
                 sh script: "npm run grunt:concurrent -- eslint", returnStatus: true
                 if (!fileExists("./reports/style/eslint-concurrent.xml")) {
                   error('Static Analysis did not produce eslint-concurrent.xml')

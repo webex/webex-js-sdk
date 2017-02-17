@@ -62,7 +62,8 @@
     "clean-empty-packages": "node ./scripts/clean-empty-packages.js --clean",
     "prepublish": "in-install && npm run --silent link-lint-rules || not-in-install",
     "link-lint-rules": "rm -rf ./node_modules/@ciscospark/eslint-config && mkdir -p node_modules/@ciscospark && ln -s $(pwd)/packages/eslint-config $(pwd)/node_modules/@ciscospark/eslint-config",
-    "get-next-version": "node ./tooling/get-version.js"
+    "get-next-version": "node ./tooling/get-version.js",
+    "depcheck": "npm run lerna --silent -- exec -- bash -c 'dependency-check ./package.json $(find ./test -name \"*.js\")'"
   },
   "dependencies": {
     "ampersand-collection": "^2.0.0",
@@ -153,7 +154,7 @@
     "concat-stream": "^1.5.1",
     "css-loader": "^0.25.0",
     "denodeify": "^1.2.1",
-    "dependency-check": "^2.5.3",
+    "dependency-check": "^2.8.0",
     "doctrine": "^1.2.2",
     "documentation": "^4.0.0-beta5",
     "documentation-theme-utils": "^3.0.0",
