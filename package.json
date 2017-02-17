@@ -63,7 +63,8 @@
     "prepublish": "in-install && npm run --silent link-lint-rules || not-in-install",
     "link-lint-rules": "rm -rf ./node_modules/@ciscospark/eslint-config && mkdir -p node_modules/@ciscospark && ln -s $(pwd)/packages/eslint-config $(pwd)/node_modules/@ciscospark/eslint-config",
     "get-next-version": "node ./tooling/get-version.js",
-    "depcheck": "npm run lerna --silent -- exec -- bash -c 'dependency-check ./package.json $(find ./test -name \"*.js\")'"
+    "depcheck": "npm run lerna --silent -- exec -- bash -c 'dependency-check ./package.json $(find ./test -name \"*.js\")'",
+    "depcheck:outdated": "npm run lerna --silent -- exec -- npm outdated --depth 0"
   },
   "dependencies": {
     "ampersand-collection": "^2.0.0",
