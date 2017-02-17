@@ -148,37 +148,38 @@ describe(`plugin-phone`, function() {
       });
 
       it(`calls a user by AppID username`);
-      it(`calls a user by tropo uri`);
 
-      // FIXME: Test users currently cannot create 1:1 messages to each other
-      it.skip(`calls a user by spark uri`, () => {
-        let conversation;
-        let sparkUri;
-        return spock.spark.request({
-          method: `POST`,
-          api: `hydra`,
-          resource: `messages`,
-          body: {toPersonEmail: `adweeks@cisco.com`, text: `test message`}
-        })
-          .then((res) => {
-            conversation = res.body;
-            return conversation;
-          })
-          .then(() => {
-            return spock.spark.device.getServiceUrl(`conversation`)
-              .then((url) => {
-                const conversationId = atob(conversation.id).split(`/`).pop();
-                sparkUri = `${url}/conversations/${conversationId}`;
-                return sparkUri;
-              });
-          })
-          .then(() => {
-            spock.spark.phone.dial(sparkUri);
-            return mccoy.spark.phone.when(`call:incoming`)
-              .then(() => assert.calledOnce(ringMccoy));
-          });
+      it.skip(`calls a PSTN phone number`, () => {
+        // TODO
+        const call = spock.spark.phone.dial(`tel:...`);
       });
-      it(`calls a user by sip uri`);
+
+      it.skip(`calls a user by hydra room id`, () => spock.spark.request({
+        method: `POST`,
+        api: `hydra`,
+        resource: `messages`,
+        body: {
+          toPersonEmail: mccoy.email,
+          text: `test message`
+        }
+      })
+        .then((res) => new Promise((resolve, reject) => {
+          const call = spock.spark.phone.dial(res.body.roomId);
+          call.on(`error`, reject);
+          resolve(mccoy.spark.phone.when(`call:incoming`));
+        }))
+        .then(() => assert.calledOnce(ringMccoy)));
+
+      it(`calls a user by room url`);
+
+      it(`calls a user by hydra user id`);
+
+      it(`calls a user by uuid`);
+
+      it(`calls a user by sip uri`, () => {
+        // TODO
+        const call = spock.spark.phone.dial(`sip:...`);
+      });
 
       it(`places a call with an existing MediaStreamObject`, () => {
         return spock.spark.phone.createLocalMediaStream()
