@@ -145,6 +145,15 @@ const RealtimeService = Mercury.extend({
       .then((res) => {
         this.boardBindings = [res.binding];
         this.boardWebSocketUrl = res.webSocketUrl;
+
+        if (!res.sharedWebSocket) {
+          return this.connect()
+            .then(() => {
+              this.isSharingMercury = false;
+              return res;
+            });
+        }
+
         this.isSharingMercury = true;
         return res;
       });

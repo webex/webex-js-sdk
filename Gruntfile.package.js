@@ -227,7 +227,8 @@ module.exports = function configureGrunt(grunt) {
         }],
         options: {
           reporters: {
-            'text-summary': {}
+            'text-summary': {},
+            html: {}
           }
         }
       }
