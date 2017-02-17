@@ -11,6 +11,7 @@ import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
 import transform from 'sdp-transform';
 import {find} from 'lodash';
+import handleErrorEvent from '../lib/handle-error-event';
 
 if (process.env.NODE_ENV !== `test`) {
   throw new Error(`Cannot run the plugin-phone test suite without NODE_ENV === "test"`);
@@ -21,7 +22,7 @@ describe(`plugin-phone`, function() {
 
   describe(`Phone`, () => {
     let mccoy, spock;
-    before(() => testUsers.create({count: 2})
+    before(`create users and register`, () => testUsers.create({count: 2})
       .then((users) => {
         [mccoy, spock] = users;
         spock.spark = new CiscoSpark({
@@ -47,7 +48,7 @@ describe(`plugin-phone`, function() {
       mccoy.spark.phone.on(`call:incoming`, ringMccoy);
     });
 
-    after(() => Promise.all([
+    after(`unregister spock and mccoy`, () => Promise.all([
       spock && spock.spark.phone.deregister()
         .catch((reason) => console.warn(`could not disconnect spock from mercury`, reason)),
       mccoy && mccoy.spark.phone.deregister()
@@ -89,42 +90,40 @@ describe(`plugin-phone`, function() {
     });
 
     describe(`#dial()`, () => {
-      let call;
-
       it(`initiates a video only call`, () => {
-        call = spock.spark.phone.dial(mccoy.email, {
+        const call = spock.spark.phone.dial(mccoy.email, {
           constraints: {
             video: true,
             audio: false
           }
         });
 
-        return mccoy.spark.phone.when(`call:incoming`)
+        return handleErrorEvent(call, () => mccoy.spark.phone.when(`call:incoming`)
           .then(() => {
             const sdp = transform.parse(call.pc.localDescription.sdp);
             assert.notOk(find(sdp.media, {type: `audio`}));
             assert.equal(find(sdp.media, {type: `video`}).direction, `sendrecv`);
-          });
+          }));
       });
 
       it(`initiates an audio only call`, () => {
-        call = spock.spark.phone.dial(mccoy.email, {
+        const call = spock.spark.phone.dial(mccoy.email, {
           constraints: {
             video: false,
             audio: true
           }
         });
 
-        return mccoy.spark.phone.when(`call:incoming`)
+        return handleErrorEvent(call, () => mccoy.spark.phone.when(`call:incoming`)
           .then(() => {
             const sdp = transform.parse(call.pc.localDescription.sdp);
             assert.notOk(find(sdp.media, {type: `video`}));
             assert.equal(find(sdp.media, {type: `audio`}).direction, `sendrecv`);
-          });
+          }));
       });
 
       it(`initiates a receive-only call`, () => {
-        call = spock.spark.phone.dial(mccoy.email, {
+        const call = spock.spark.phone.dial(mccoy.email, {
           constraints: {
             video: false,
             audio: false
@@ -135,18 +134,20 @@ describe(`plugin-phone`, function() {
           }
         });
 
-        return mccoy.spark.phone.when(`call:incoming`)
+        return handleErrorEvent(call, () => mccoy.spark.phone.when(`call:incoming`)
           .then(() => {
             const sdp = transform.parse(call.pc.localDescription.sdp);
             assert.equal(find(sdp.media, {type: `audio`}).direction, `recvonly`);
             assert.equal(find(sdp.media, {type: `video`}).direction, `recvonly`);
-          });
+          }));
       });
 
       it(`calls a user by email address`, () => {
-        spock.spark.phone.dial(mccoy.email);
-        return mccoy.spark.phone.when(`call:incoming`)
-          .then(() => assert.calledOnce(ringMccoy));
+        const call = spock.spark.phone.dial(mccoy.email);
+        return handleErrorEvent(call, () => {
+          return mccoy.spark.phone.when(`call:incoming`)
+            .then(() => assert.calledOnce(ringMccoy));
+        });
       });
 
       it(`calls a user by AppID username`);
@@ -163,11 +164,10 @@ describe(`plugin-phone`, function() {
           text: `test message`
         }
       })
-        .then((res) => new Promise((resolve, reject) => {
+        .then((res) => {
           const call = spock.spark.phone.dial(res.body.roomId);
-          call.on(`error`, reject);
-          resolve(mccoy.spark.phone.when(`call:incoming`));
-        }))
+          return handleErrorEvent(call, () => mccoy.spark.phone.when(`call:incoming`));
+        })
         .then(() => assert.calledOnce(ringMccoy)));
 
       it(`calls a user by room url`);
@@ -201,7 +201,7 @@ describe(`plugin-phone`, function() {
           });
         }));
 
-      afterEach(() => kirk && kirk.spark.phone.deregister());
+      afterEach(`unregister kirk`, () => kirk && kirk.spark.phone.deregister());
 
       it(`registers with wdm`, () => {
         return kirk.spark.phone.register()
@@ -220,7 +220,7 @@ describe(`plugin-phone`, function() {
       });
 
       let call;
-      afterEach(() => Promise.resolve(call && call.hangup()
+      afterEach(`end current call`, () => Promise.resolve(call && call.hangup()
         .catch((reason) => console.warn(`failed to end call`, reason))
         .then(() => {call = undefined;})));
 
@@ -229,13 +229,13 @@ describe(`plugin-phone`, function() {
         call = spock.spark.phone.dial(kirk.email);
         // use change:locus as the trigger for determining when the post to
         // /call completes.
-        return call.when(`change:locus`)
+        return handleErrorEvent(call, () => call.when(`change:locus`)
           .then(() => {
             assert.isFalse(kirk.spark.phone.registered);
             kirk.spark.phone.register();
             return kirk.spark.phone.when(`call:incoming`)
               .then(() => assert.isTrue(kirk.spark.phone.registered, `By the time spark.phone can emit call:incoming, spark.phone.registered must be true`));
-          });
+          }));
       });
 
       it(`is a noop when already registered`, () => assert.isFulfilled(spock.spark.phone.register()));
