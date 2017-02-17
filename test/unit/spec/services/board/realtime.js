@@ -135,6 +135,43 @@ describe('Services', function() {
         });
       });
 
+      describe('#connectToSharedMercury', function() {
+        var registrationInfo;
+        beforeEach(function() {
+          registrationInfo = {
+            mercuryConnectionServiceClusterUrl: 'https://mercury-connection-a5.wbx2.com/v1',
+            binding: 'board.a85e2f70-528d-11e6-ad98-bd2acefef905',
+            webSocketUrl: 'wss://mercury-connection-a.wbx2.com/v1/apps/wx2/registrations/14d6abda-16de-4e02-bf7c-6d2a0e77ec38/messages',
+            sharedWebSocket:true,
+            action: 'REPLACE'
+          };
+
+          sinon.stub(spark.board.persistence, 'registerToShareMercury').returns(Promise.resolve(registrationInfo));
+        });
+
+        afterEach(function() {
+          spark.board.persistence.registerToShareMercury.restore();
+        });
+
+        it('registers and gets board binding', function() {
+          return spark.board.realtime.connectToSharedMercury()
+            .then(function(res) {
+              assert.deepEqual(res, registrationInfo);
+            });
+        });
+
+        describe('when connection cannot be shared', function() {
+          it('opens a second socket with provided webSocketUrl', function() {
+            registrationInfo.sharedWebSocket = false;
+            return spark.board.realtime.connectToSharedMercury()
+              .then(function(res) {
+                assert.deepEqual(res, registrationInfo);
+                assert.calledWith(socketOpenStub, registrationInfo.webSocketUrl, sinon.match.any);
+              });
+          });
+        });
+      });
+
       describe('#_attemptConnection()', function() {
         it('opens socket', function() {
           return spark.board.realtime._attemptConnection()
