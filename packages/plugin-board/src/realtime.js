@@ -166,6 +166,10 @@ const RealtimeService = Mercury.extend({
    * @returns {Promise<Board~Registration>}
    */
   disconnectFromSharedMercury(channel) {
+    if (!this.isSharingMercury && this.socket && this.connected) {
+      return this.disconnect();
+    }
+
     return this.spark.board.unregisterFromSharedMercury(channel, this.boardBindings[0])
       .then((res) => {
         this.boardBindings = [];

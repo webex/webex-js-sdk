@@ -241,8 +241,8 @@ var BoardService = SparkBase.extend({
    * Ensure board channelId is compatible with mercury bindings by replacing
    * '-' with '.' and '_' with '#'
    * @memberof Board.BoardService
-   * @param  {String} channel.channelId
-   * @returns {String} mercury-binding compatible string
+   * @param  {string} channelId channel.channelId
+   * @returns {string} mercury-binding compatible string
    */
   boardChannelIdToMercuryBinding: function boardChannelIdToMercuryBinding(channelId) {
     // make channelId mercury compatible replace '-' with '.' and '_' with '#'

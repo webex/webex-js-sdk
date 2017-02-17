@@ -135,42 +135,87 @@ describe('Services', function() {
         });
       });
 
-      describe('#connectToSharedMercury', function() {
-        var registrationInfo;
+      describe('when trying to share mercury connection', function() {
+        var replaceBindingRes;
+        var removeBindingRes;
         beforeEach(function() {
-          registrationInfo = {
+          replaceBindingRes = {
             mercuryConnectionServiceClusterUrl: 'https://mercury-connection-a5.wbx2.com/v1',
             binding: 'board.a85e2f70-528d-11e6-ad98-bd2acefef905',
             webSocketUrl: 'wss://mercury-connection-a.wbx2.com/v1/apps/wx2/registrations/14d6abda-16de-4e02-bf7c-6d2a0e77ec38/messages',
-            sharedWebSocket:true,
+            sharedWebSocket: true,
             action: 'REPLACE'
           };
 
-          sinon.stub(spark.board.persistence, 'registerToShareMercury').returns(Promise.resolve(registrationInfo));
+          removeBindingRes = {
+            binding: 'board.a85e2f70-528d-11e6-ad98-bd2acefef905',
+            webSocketUrl: 'wss://mercury-connection-a.wbx2.com/v1/apps/wx2/registrations/14d6abda-16de-4e02-bf7c-6d2a0e77ec38/messages',
+            sharedWebSocket: false,
+            action: 'REMOVE'
+          };
+
+          sinon.stub(spark.board.persistence, 'registerToShareMercury').returns(Promise.resolve(replaceBindingRes));
+          sinon.stub(spark.board.persistence, 'unregisterFromSharedMercury').returns(Promise.resolve(removeBindingRes));
         });
 
         afterEach(function() {
           spark.board.persistence.registerToShareMercury.restore();
+          spark.board.persistence.unregisterFromSharedMercury.restore();
         });
 
-        it('registers and gets board binding', function() {
-          return spark.board.realtime.connectToSharedMercury()
-            .then(function(res) {
-              assert.deepEqual(res, registrationInfo);
-            });
-        });
-
-        describe('when connection cannot be shared', function() {
-          it('opens a second socket with provided webSocketUrl', function() {
-            registrationInfo.sharedWebSocket = false;
+        describe('#connectToSharedMercury', function() {
+          it('registers and gets board binding', function() {
             return spark.board.realtime.connectToSharedMercury()
               .then(function(res) {
-                assert.deepEqual(res, registrationInfo);
-                assert.calledWith(socketOpenStub, registrationInfo.webSocketUrl, sinon.match.any);
+                assert.deepEqual(res, replaceBindingRes);
+                assert.notCalled(socketOpenStub);
+                assert.isTrue(spark.board.realtime.isSharingMercury);
               });
           });
+
+          describe('when connection cannot be shared', function() {
+            it('opens a second socket with provided webSocketUrl', function() {
+              replaceBindingRes.sharedWebSocket = false;
+              return spark.board.realtime.connectToSharedMercury()
+                .then(function(res) {
+                  assert.deepEqual(res, replaceBindingRes);
+                  assert.calledWith(socketOpenStub, replaceBindingRes.webSocketUrl, sinon.match.any);
+                  assert.isFalse(spark.board.realtime.isSharingMercury);
+                });
+            });
+          });
         });
+
+        describe('#disconnectFromSharedMercury', function() {
+          it('removes board binding', function() {
+            return spark.board.realtime.connectToSharedMercury()
+              .then(function() {
+                return spark.board.realtime.disconnectFromSharedMercury();
+              })
+              .then(function(res) {
+                assert.deepEqual(res, removeBindingRes);
+              });
+          });
+
+          describe('when a second connection is open', function() {
+            it('disconnects the socket', function() {
+              sinon.stub(spark.board.realtime, 'disconnect').returns(Promise.resolve());
+              replaceBindingRes.sharedWebSocket = false;
+              return spark.board.realtime.connectToSharedMercury()
+                .then(function() {
+                  assert.isFalse(spark.board.realtime.isSharingMercury);
+                  return spark.board.realtime.disconnectFromSharedMercury();
+                })
+                .then(function() {
+                  assert.called(spark.board.realtime.disconnect);
+                  spark.board.realtime.disconnect.restore();
+                });
+            });
+          });
+        });
+
       });
+
 
       describe('#_attemptConnection()', function() {
         it('opens socket', function() {

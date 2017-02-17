@@ -126,7 +126,7 @@ describe(`plugin-board`, () => {
 
           // confirm that both are connected.
           assert.isTrue(participants[0].spark.board.realtime.isSharingMercury, `participant 0 is sharing mercury connection`);
-          assert.isTrue(participants[1].spark.mercury.connected, `participant 1 is connected`);
+          assert.isTrue(participants[0].spark.mercury.connected, `participant 0 is connected`);
           assert.isFalse(participants[1].spark.board.realtime.isSharingMercury, `participant 1 does not share mercury connection`);
           assert.isTrue(participants[1].spark.mercury.connected, `participant 1 is connected`);
 

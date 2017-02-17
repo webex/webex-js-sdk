@@ -165,6 +165,11 @@ var RealtimeService = Mercury.extend({
     * @returns {Promise<Board~Registration>}
     */
   disconnectFromSharedMercury: function disconnectFromSharedMercury(channel) {
+    // this means a second socket was created instead of being shared
+    if (!this.isSharingMercury && this.socket && this.connected) {
+      return this.disconnect();
+    }
+
     return this.spark.board.persistence.unregisterFromSharedMercury(channel, this.boardBindings[0])
       .then(function assignBindingAndWebSocketUrl(res) {
         this.boardBindings = [];
