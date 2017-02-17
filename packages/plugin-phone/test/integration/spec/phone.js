@@ -151,10 +151,8 @@ describe(`plugin-phone`, function() {
 
       it(`calls a user by AppID username`);
 
-      it.skip(`calls a PSTN phone number`, () => {
-        // TODO
-        const call = spock.spark.phone.dial(`tel:...`);
-      });
+      // TODO const call = spock.spark.phone.dial(`tel:...`);
+      it(`calls a PSTN phone number`);
 
       it.skip(`calls a user by hydra room id`, () => spock.spark.request({
         method: `POST`,
@@ -178,10 +176,8 @@ describe(`plugin-phone`, function() {
 
       it(`calls a user by uuid`);
 
-      it(`calls a user by sip uri`, () => {
-        // TODO
-        const call = spock.spark.phone.dial(`sip:...`);
-      });
+      // TODO const call = spock.spark.phone.dial(`sip:...`);
+      it(`calls a user by sip uri`);
 
       it(`places a call with an existing MediaStreamObject`, () => {
         return spock.spark.phone.createLocalMediaStream()
