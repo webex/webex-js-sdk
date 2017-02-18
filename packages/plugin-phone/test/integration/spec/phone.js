@@ -79,19 +79,19 @@ describe(`plugin-phone`, function() {
           .then(() => mercuryDisconnectSpy.restore());
       });
 
-      it(`unregisters from wdm`, () => spock.spark.phone.deregister()
-        .then(() => assert.isUndefined(spock.spark.device.url)));
+      it(`unregisters from wdm`, () => assert.isFulfilled(spock.spark.phone.deregister()
+        .then(() => assert.isUndefined(spock.spark.device.url))
+        .then(() => spock.spark.phone.register())));
 
       it(`is a noop when not registered`, () => assert.isFulfilled(spock.spark.phone.deregister()
-        .then(() => spock.spark.phone.deregister())));
+        .then(() => spock.spark.phone.deregister())
+        .then(() => spock.spark.phone.register())));
     });
 
     describe(`#dial()`, () => {
       let call;
 
-      // FIXME seems to fail in firefox. I think I've confirmed that FF doesn't
-      // include h264 in video-only calls
-      it.skip(`initiates a video only call`, () => {
+      it(`initiates a video only call`, () => {
         call = spock.spark.phone.dial(mccoy.email, {
           constraints: {
             video: true,

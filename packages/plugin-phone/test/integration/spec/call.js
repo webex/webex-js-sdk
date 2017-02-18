@@ -386,7 +386,7 @@ describe(`plugin-phone`, function() {
       });
 
       describe(`when the local party is not sending Audio`, () => {
-        it(`is false`, () => {
+        it.skip(`is false`, () => {
           call = spock.spark.phone.dial(mccoy.email, {constraints: {audio: false}});
           return Promise.all([
             mccoy.spark.phone.when(`call:incoming`)
