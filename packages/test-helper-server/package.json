@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/test-helper-server",
-  "version": "0.7.34",
+  "version": "0.7.55",
   "description": "",
   "license": "MIT",
   "main": "./src",
