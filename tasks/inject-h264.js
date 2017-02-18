@@ -1,4 +1,5 @@
-
+// eslint-disable-next-line
+'use strict';
 
 const denodeify = require(`denodeify`);
 const FirefoxProfile = require(`firefox-profile`);
@@ -6,6 +7,7 @@ const forEach = require(`lodash.foreach`);
 const fs = require(`fs`);
 const os = require(`os`);
 const path = require(`path`);
+const cp = require(`child_process`);
 
 const copy = denodeify(FirefoxProfile.copy);
 const writeFile = denodeify(fs.writeFile);
@@ -46,8 +48,22 @@ function contains(needle, haystack) {
   return haystack.indexOf(needle) !== -1;
 }
 
+function rsync(src, dest) {
+  return new Promise((resolve, reject) => {
+    cp.exec(`rsync -r --delete ${src} ${dest}`, (err) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
 module.exports = function(grunt) {
   grunt.registerTask(`inject-h264`, function() {
+    const inPath = path.join(__dirname, `..`, `packages`, process.env.PACKAGE, `browsers.js`);
+    const outPath = path.join(__dirname, `..`, `packages`, process.env.PACKAGE, `browsers.processed.js`);
 
     try {
       fs.statSync(path.join(__dirname, `selenium`));
@@ -57,9 +73,6 @@ module.exports = function(grunt) {
       return;
     }
 
-    const inPath = path.join(__dirname, `..`, `packages`, process.env.PACKAGE, `browsers.js`);
-    const outPath = path.join(__dirname, `..`, `packages`, process.env.PACKAGE, `browsers.processed.js`);
-
     const browsers = require(inPath)();
     const done = this.async();
     Promise.all([
@@ -68,7 +81,8 @@ module.exports = function(grunt) {
       copy(path.join(__dirname, `selenium`, `linux`))
         .then(encode),
       copy(path.join(__dirname, `selenium`, `windows`))
-        .then(encode)
+        .then(encode),
+      rsync(path.join(__dirname, `selenium`, `mac`), path.join(__dirname, `..`, `.tmp`, `selenium`))
     ])
       .then((profiles) => {
         const platforms = {
@@ -78,8 +92,11 @@ module.exports = function(grunt) {
         };
 
         return new Promise((resolve) => {
-
+          const promises = [];
           forEach(browsers, (envBrowsers, env) => {
+            if (env === `local`) {
+              return;
+            }
             forEach(envBrowsers, (browser, key) => {
               const name = getBrowserName(browser, key);
               if (name.indexOf(`firefox`) !== -1) {
@@ -89,7 +106,7 @@ module.exports = function(grunt) {
             });
           });
 
-          resolve();
+          resolve(Promise.all(promises));
         });
       })
       .then(() => {

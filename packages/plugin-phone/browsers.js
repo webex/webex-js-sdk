@@ -2,11 +2,14 @@
 'use strict';
 
 /* eslint camelcase: [0] */
-
+const path = require(`path`);
 module.exports = function createBrowsers() {
   const browsers = {
     local: {
-      Firefox: {},
+      firefox_h264: {
+        base: `Firefox`,
+        profile: path.join(__dirname, `../../.tmp/selenium/mac`)
+      },
       ChromeH264: {
         base: `Chrome`,
         flags: [
