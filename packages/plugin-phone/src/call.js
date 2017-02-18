@@ -42,6 +42,28 @@ import {
   remoteVideoMuted
 } from './state-parsers';
 
+import transform from 'sdp-transform';
+
+/**
+ * Checks a given offer for the h264 codec
+ * @param {string} offer
+ * @returns {string}
+ */
+function ensureH264(offer) {
+  const sdp = transform.parse(offer);
+  const video = find(sdp.media, {type: `video`});
+  if (!video) {
+    throw new Error(`Expected video section in offer but no such section found`);
+  }
+
+  const doesHaveH264 = video.rtp.reduce((hasH264, rtp) => hasH264 || rtp.codec.includes(`264`), false);
+  if (!doesHaveH264) {
+    throw new Error(`Offer includes video section but does not include h264 codec`);
+  }
+
+  return offer;
+}
+
 /**
  * @event ringing
  * @instance
@@ -797,8 +819,16 @@ const Call = SparkPlugin.extend({
         });
     }
 
+    const wantsVideo = options.constraints.video || options.offerOptions.offerToReceiveVideo;
+
     return Promise.resolve(promise)
       .then(() => createOffer(this.pc, options.offerOptions))
+      .then((offer) => {
+        if (!wantsVideo) {
+          return offer;
+        }
+        return ensureH264(offer);
+      })
       .then((offer) => this.spark.locus[locusMethodName](target, {
         localSdp: offer
       }))
