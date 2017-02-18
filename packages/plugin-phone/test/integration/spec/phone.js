@@ -17,7 +17,7 @@ if (process.env.NODE_ENV !== `test`) {
 }
 
 describe(`plugin-phone`, function() {
-  this.timeout(60000);
+  this.timeout(30000);
 
   describe(`Phone`, () => {
     let mccoy, spock;

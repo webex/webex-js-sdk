@@ -181,7 +181,15 @@ const Call = SparkPlugin.extend({
     wasSendingAudio: `boolean`,
     wasSendingVideo: `boolean`,
     wasReceivingAudio: `boolean`,
-    wasReceivingVideo: `boolean`
+    wasReceivingVideo: `boolean`,
+    locusJoinInFlight: {
+      default: false,
+      type: `boolean`
+    },
+    locusLeaveInFlight: {
+      default: false,
+      type: `boolean`
+    }
   },
 
   // FIXME in its current form, any derived property that is an object will emit
@@ -537,9 +545,16 @@ const Call = SparkPlugin.extend({
     end(this.pc);
 
     if (!this.locus) {
-      this.logger.info(`call: no locus, waiting for rest call to complete before hanging up`);
-      return this.when(`change:locus`)
-        .then(() => this.hangup());
+      if (this.locusJoinInFlight) {
+        this.logger.info(`call: no locus, waiting for rest call to complete before hanging up`);
+        return this.when(`change:locus`)
+          .then(() => this.hangup());
+      }
+
+      this.stopListening(this.spark.mercury);
+      this.off();
+      this.logger.info(`call: hang up complete, call never created`);
+      return Promise.resolve();
     }
 
     return this._hangup();
@@ -553,9 +568,12 @@ const Call = SparkPlugin.extend({
    */
   @oneFlight
   _hangup() {
+    this.locusLeaveInFlight = true;
     return this.spark.locus.leave(this.locus)
       .then((locus) => this._setLocus(locus))
-      // TODO update sending and receving based on the peer connection's streams
+      .then(() => {
+        this.locusLeaveInFlight = false;
+      })
       .then(() => this.set({
         sendingAudio: false,
         sendingVideo: false,
@@ -797,13 +815,25 @@ const Call = SparkPlugin.extend({
         });
     }
 
+    const wantsVideo = options.constraints.video || options.offerOptions.offerToReceiveVideo;
+
     return Promise.resolve(promise)
       .then(() => createOffer(this.pc, options.offerOptions))
-      .then((offer) => this.spark.locus[locusMethodName](target, {
-        localSdp: offer
-      }))
+      .then((offer) => {
+        if (!wantsVideo) {
+          return offer;
+        }
+        return ensureH264(offer);
+      })
+      .then((offer) => {
+        this.locusJoinInFlight = true;
+        return this.spark.locus[locusMethodName](target, {
+          localSdp: offer
+        });
+      })
       .then((locus) => {
         this._setLocus(locus);
+        this.locusJoinInFlight = false;
         const answer = JSON.parse(this.mediaConnection.remoteSdp).sdp;
         return acceptAnswer(this.pc, answer);
       })

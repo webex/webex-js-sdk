@@ -11,7 +11,7 @@ import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
 
 describe(`plugin-phone`, function() {
-  this.timeout(60000);
+  this.timeout(30000);
 
   describe(`Call`, () => {
     /* eslint max-statements: [0] */
@@ -65,10 +65,10 @@ describe(`plugin-phone`, function() {
       describe(`when the remote party has not yet joined`, () => {
         // Running this test puts spock in a weird state because hangup doesn't
         // quite work
-        it.skip(`is "initiated"`, () => {
+        it(`is "initiated"`, () => {
           call = spock.spark.phone.dial(mccoy.email);
           assert.equal(call.status, `initiated`);
-          return call.hangup();
+          return handleErrorEvent(call, () => call.hangup());
         });
       });
 
@@ -792,7 +792,7 @@ describe(`plugin-phone`, function() {
     // so it's a member of the status enum
     describe.skip(`on(error)`, () => {
       it(`gets triggered when something fails in a non-promise-returning method`, () => {
-        this.timeout(60000);
+        this.timeout(30000);
         const call = spock.spark.phone.dial(`no one`);
 
         const errorSpy = sinon.spy();
