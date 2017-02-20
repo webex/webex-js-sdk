@@ -35,7 +35,6 @@ describe(`plugin-phone`, function() {
             authorization: mccoy.token
           }
         });
-
         return Promise.all([
           spock.spark.phone.register(),
           mccoy.spark.phone.register()
@@ -65,19 +64,38 @@ describe(`plugin-phone`, function() {
     });
 
     describe(`#deregister()`, () => {
-      it(`disconnects from mercury`);
-      it(`unregisters from wdm`);
-      it(`is a noop when not registered`);
+      it(`disconnects from mercury`, () => {
+        const mercuryDisconnectSpy = sinon.spy(spock.spark.mercury, `disconnect`);
+        return spock.spark.phone.deregister()
+          .then(() => assert.calledOnce(mercuryDisconnectSpy))
+          .then(() => assert.isFalse(spock.spark.mercury.connected, `Mercury is not connected`))
+          .then(() => assert.isFalse(spock.spark.phone.connected, `Mercury (proxied through spark.phone) is not conneted`))
+          .then(() => mercuryDisconnectSpy.restore());
+      });
+
+      it(`unregisters from wdm`, () =>
+        spock.spark.phone.deregister()
+          .then(() =>
+            spock.spark.device.on(`change:device`)
+              .then(() => assert.isUndefined(spock.spark.device.url))
+          )
+      );
+
+      // TODO: Does not currently noop after multiple calls
+      it.skip(`is a noop when not registered`, () => {
+        const mercuryDisconnectSpy = sinon.spy(spock.spark.mercury, `disconnect`);
+        return spock.spark.phone.deregister()
+          .then(() => spock.spark.phone.deregister())
+          .then(() => assert.calledOnce(mercuryDisconnectSpy))
+          .then(() => mercuryDisconnectSpy.restore());
+      });
     });
 
     describe(`#dial()`, () => {
-      let createLocusSpy;
+      let call;
 
-      beforeEach(() => {createLocusSpy = sinon.spy(spock.spark.locus, `create`);});
-      afterEach(() => createLocusSpy.restore());
-
-      it.skip(`initiates a video only call`, () => {
-        spock.spark.phone.dial(mccoy.email, {
+      it(`initiates a video only call`, () => {
+        call = spock.spark.phone.dial(mccoy.email, {
           constraints: {
             video: true,
             audio: false
@@ -86,16 +104,14 @@ describe(`plugin-phone`, function() {
 
         return mccoy.spark.phone.when(`call:incoming`)
           .then(() => {
-            // TODO do this without spying on locus to make changing to roap
-            // easier
-            const sdp = transform.parse(createLocusSpy.args[0][1].localSdp);
+            const sdp = transform.parse(call.pc.localDescription.sdp);
             assert.notOk(find(sdp.media, {type: `audio`}));
             assert.equal(find(sdp.media, {type: `video`}).direction, `sendrecv`);
           });
       });
 
       it(`initiates an audio only call`, () => {
-        spock.spark.phone.dial(mccoy.email, {
+        call = spock.spark.phone.dial(mccoy.email, {
           constraints: {
             video: false,
             audio: true
@@ -104,14 +120,14 @@ describe(`plugin-phone`, function() {
 
         return mccoy.spark.phone.when(`call:incoming`)
           .then(() => {
-            const sdp = transform.parse(createLocusSpy.args[0][1].localSdp);
+            const sdp = transform.parse(call.pc.localDescription.sdp);
             assert.notOk(find(sdp.media, {type: `video`}));
             assert.equal(find(sdp.media, {type: `audio`}).direction, `sendrecv`);
           });
       });
 
       it(`initiates a receive-only call`, () => {
-        spock.spark.phone.dial(mccoy.email, {
+        call = spock.spark.phone.dial(mccoy.email, {
           constraints: {
             video: false,
             audio: false
@@ -124,7 +140,7 @@ describe(`plugin-phone`, function() {
 
         return mccoy.spark.phone.when(`call:incoming`)
           .then(() => {
-            const sdp = transform.parse(createLocusSpy.args[0][1].localSdp);
+            const sdp = transform.parse(call.pc.localDescription.sdp);
             assert.equal(find(sdp.media, {type: `audio`}).direction, `recvonly`);
             assert.equal(find(sdp.media, {type: `video`}).direction, `recvonly`);
           });
@@ -138,7 +154,35 @@ describe(`plugin-phone`, function() {
 
       it(`calls a user by AppID username`);
       it(`calls a user by tropo uri`);
-      it(`calls a user by spark uri`);
+
+      // FIXME: Test users currently cannot create 1:1 messages to each other
+      it.skip(`calls a user by spark uri`, () => {
+        let conversation;
+        let sparkUri;
+        return spock.spark.request({
+          method: `POST`,
+          api: `hydra`,
+          resource: `messages`,
+          body: {toPersonEmail: `adweeks@cisco.com`, text: `test message`}
+        })
+          .then((res) => {
+            conversation = res.body;
+            return conversation;
+          })
+          .then(() => {
+            return spock.spark.device.getServiceUrl(`conversation`)
+              .then((url) => {
+                const conversationId = atob(conversation.id).split(`/`).pop();
+                sparkUri = `${url}/conversations/${conversationId}`;
+                return sparkUri;
+              });
+          })
+          .then(() => {
+            spock.spark.phone.dial(sparkUri);
+            return mccoy.spark.phone.when(`call:incoming`)
+              .then(() => assert.calledOnce(ringMccoy));
+          });
+      });
       it(`calls a user by sip uri`);
 
       it(`places a call with an existing MediaStreamObject`, () => {

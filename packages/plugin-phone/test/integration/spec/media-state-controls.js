@@ -109,8 +109,9 @@ describe(`plugin-phone`, function() {
 
       describe(`#toggleReceivingAudio()`, () => {
         describe(`when the call is receiving audio`, () => {
-          // FIXME disabled due to firefox bug (it works, but renegotiation does
-          // not) See https://bugzilla.mozilla.org/show_bug.cgi?id=1285009
+          // FIXME Neil and Nathan are looking into alternatives to returning
+          // `inactive` in the answer when the offer audio attempts to be
+          // `sendonly`
           it.skip(`stops receiving audio`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
 
@@ -144,8 +145,9 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call is not receiving audio`, () => {
-          // FIXME disabled due to firefox bug (it works, but renegotiation does
-          // not) See https://bugzilla.mozilla.org/show_bug.cgi?id=1285009
+          // FIXME Neil and Nathan are looking into alternatives to returning
+          // `inactive` in the answer when the offer audio attempts to be
+          // `sendonly`
           it.skip(`starts receiving audio`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
 
@@ -190,6 +192,9 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call was started without audio`, () => {
+          // FIXME Neil and Nathan are looking into alternatives to returning
+          // `inactive` in the answer when the offer audio attempts to be
+          // `sendonly`
           it.skip(`starts receiving audio`, () => {
             const call = spock.spark.phone.dial(mccoy.email, {
               constraints: {
@@ -471,7 +476,7 @@ describe(`plugin-phone`, function() {
 
       describe(`#toggleSendingVideo()`, () => {
         describe(`when the call is sending video`, () => {
-          it.skip(`stops sending video`, () => {
+          it(`stops sending video`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
 
             return Promise.all([
@@ -504,7 +509,7 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call has stopped sending video`, () => {
-          it.skip(`starts sending video`, () => {
+          it(`starts sending video`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
 
             return Promise.all([
@@ -548,7 +553,7 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call was started without video`, () => {
-          it.skip(`adds video to the call`, () => {
+          it(`adds video to the call`, () => {
             const call = spock.spark.phone.dial(mccoy.email, {
               constraints: {
                 video: false
