@@ -27,13 +27,13 @@ module.exports = function createBrowsers() {
             `--use-fake-ui-for-media-stream`
           ]
         }
-      },
-      sl_firefox_latest_linux: {
-        base: `SauceLabs`,
-        platform: `Linux`,
-        browserName: `firefox`,
-        version: `latest`
       }
+      // sl_firefox_latest_linux: {
+      //   base: `SauceLabs`,
+      //   platform: `Linux`,
+      //   browserName: `firefox`,
+      //   version: `latest`
+      // }
       // For reasons not presently clear, getUserMedia hangs in Firefox latest
       // on mac and windows. We have a ticket open with Sauce to find out why
       // sl_firefox_latest_osx11: {
