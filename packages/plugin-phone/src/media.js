@@ -1,10 +1,19 @@
 import AmpState from 'ampersand-state';
 
 import {
+  acceptAnswer,
   addStream,
   createOffer,
   getUserMedia,
-  mediaDirection
+  mediaDirection,
+  startReceivingAudio,
+  startReceivingVideo,
+  startSendingAudio,
+  startSendingVideo,
+  stopReceivingAudio,
+  stopReceivingVideo,
+  stopSendingAudio,
+  stopSendingVideo
 } from './webrtc';
 
 const Media = AmpState.extend({
@@ -20,6 +29,10 @@ const Media = AmpState.extend({
       type: `boolean`
     },
     receivingVideo: {
+      default: false,
+      type: `boolean`
+    },
+    renegotiate: {
       default: false,
       type: `boolean`
     },
@@ -89,11 +102,12 @@ const Media = AmpState.extend({
     }
   },
 
-  createOffer() {
-    if (!this.pc) {
-      this.pc = this.pc = new RTCPeerConnection({iceServers: []});
-    }
+  initialize(...args) {
+    this.pc = new RTCPeerConnection({iceServers: []});
+    Reflect.apply(AmpState.prototype.initialize, this, args);
+  },
 
+  createOffer() {
     let promise;
     if (!this.localMediaStream && this.constraints.audio || this.constraints.video) {
       promise = getUserMedia(this.constraints)
@@ -103,9 +117,24 @@ const Media = AmpState.extend({
     }
 
     return Promise.resolve(promise)
-      .then(() => this.localMediaStream && addStream(this.pc, this.localMediaStream))
+      .then(() => {
+        try {
+          if (this.localMediaStream) {
+            addStream(this.pc, this.localMediaStream);
+          }
+        }
+        catch (err) {
+            // ignore: addStream throws if we try to add the same stream
+        }
+      })
       .then(() => createOffer(this.pc, this.offerOptions))
       .then((offer) => {
+        if (!this.pc.onnegotiationneeded) {
+          this.pc.onnegotiationneeded = () => {
+            this.renegotiate = true;
+          };
+        }
+        this.renegotiate = false;
         if (this.wantsVideo) {
           if (!offer.includes(`m=video`)) {
             throw new Error(`No video section found in offer`);
@@ -118,24 +147,52 @@ const Media = AmpState.extend({
       });
   },
 
-  acceptAnswer() {
-
+  acceptAnswer(answer) {
+    return acceptAnswer(this.pc, answer);
   },
 
   toggleReceivingAudio() {
+    if (this.receivingAudio) {
+      stopReceivingAudio(this.pc);
+    }
+    else {
+      startReceivingAudio(this.pc);
+    }
     this.toggle(`receivingAudio`);
+    this.renegotiate = true;
   },
 
   toggleReceivingVideo() {
+    if (this.receivingAudio) {
+      stopReceivingVideo(this.pc);
+    }
+    else {
+      startReceivingVideo(this.pc);
+    }
     this.toggle(`receivingVideo`);
+    this.renegotiate = true;
   },
 
   toggleSendingAudio() {
+    if (this.sendingAudio) {
+      stopSendingAudio(this.pc);
+    }
+    else {
+      startSendingAudio(this.pc);
+    }
     this.toggle(`sendingAudio`);
+    this.renegotiate = true;
   },
 
   toggleSendingVideo() {
+    if (this.sendingVideo) {
+      stopSendingVideo(this.pc);
+    }
+    else {
+      startSendingVideo(this.pc);
+    }
     this.toggle(`sendingVideo`);
+    this.renegotiate = true;
   }
 });
 
