@@ -70,6 +70,22 @@ const Phone = SparkPlugin.extend({
   namespace: `phone`,
 
   /**
+   * Indicates if the current browser appears to support webrtc calling. Note:
+   * at this time, there's no way to determine if the current browser supports
+   * h264 without asking for camera permissions
+   * @returns {Promise<Boolean>}
+   */
+  isCallingSupported() {
+    return new Promise((resolve) => {
+      // I'm not thrilled by this, but detectrtc breaks the global namespace in
+      // a way that screws up the browserOnly/nodeOnly test helpers.
+      // eslint-disable-next-line global-require
+      const DetectRTC = require(`detectrtc`);
+      resolve(DetectRTC.isWebRTCSupported);
+    });
+  },
+
+  /**
    * Registers the client with the Cisco Spark cloud and starts listening for
    * WebSocket events.
    *
