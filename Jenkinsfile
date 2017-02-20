@@ -103,6 +103,8 @@ def generateSecretsFile = { ->
     secrets += "CISCOSPARK_CLIENT_SECRET=${CISCOSPARK_CLIENT_SECRET}\n"
     secrets += "SAUCE_USERNAME=${SAUCE_USERNAME}\n"
     secrets += "SAUCE_ACCESS_KEY=${SAUCE_ACCESS_KEY}\n"
+    secrets += "MESSAGE_DEMO_CLIENT_ID=${MESSAGE_DEMO_CLIENT_ID}\n"
+    secrets += "MESSAGE_DEMO_CLIENT_SECRET=${MESSAGE_DEMO_CLIENT_SECRET}\n"
     secrets += "NPM_TOKEN=${NPM_TOKEN}"
     writeFile file: ENV_FILE, text: secrets
   }
