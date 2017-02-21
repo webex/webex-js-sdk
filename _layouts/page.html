@@ -5,13 +5,11 @@ layout: default
 <div class="container">
   <div class="row">
     <div class="col-xs-3">
-      <ul class="nav">
+      <div class="list-group">
         {% for eg in site.categories.example reversed %}
-          <li class="{% if eg.title == page.title %} active{% endif %}">
-            <a href="{{site.baseurl}}{{eg.url}}">{{eg.title}}</a>
-          </li>
+          <a href="{{site.baseurl}}{{eg.url}}" class="list-group-item">{{eg.title}}</a>
         {% endfor %}
-      </ul>
+      </div>
     </div>
     <div class="col-xs-9">
       {{ content }}
