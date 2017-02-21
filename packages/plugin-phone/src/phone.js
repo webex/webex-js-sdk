@@ -107,7 +107,8 @@ const Phone = SparkPlugin.extend({
   deregister() {
     // TODO figure out how to hangup all calls (or possibly just disconnect all
     // streams)
-    return this.spark.mercury.disconnect();
+    return this.spark.mercury.disconnect()
+      .then(() => this.spark.device.unregister());
   },
 
   /**

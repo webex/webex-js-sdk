@@ -225,7 +225,8 @@ const Device = SparkPlugin.extend({
     this.logger.info(`device: unregistering`);
 
     if (!this.url) {
-      return Promise.reject(new Error(`device: not registered`));
+      this.logger.warn(`device: not registered`);
+      return Promise.resolve();
     }
 
     return this.request({
