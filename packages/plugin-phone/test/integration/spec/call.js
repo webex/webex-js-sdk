@@ -233,11 +233,19 @@ describe(`plugin-phone`, function() {
           return Promise.all([
             mccoy.spark.phone.when(`call:incoming`)
               .then(([c]) => c.answer()),
-            call.when(`connected`)
-              .then(() => {
-                return assert.instanceOf(call.remoteMediaStream, MediaStream);
-              })
-          ]);
+            new Promise((resolve, reject) => {
+              call.on(`connected`, () => {
+                try {
+                  assert.instanceOf(call.remoteMediaStream, MediaStream);
+                  assert.isDefined(call.remoteMediaStreamUrl);
+                  resolve();
+                }
+                catch (err) {
+                  reject(err);
+                }
+              });
+            })
+          ]));
         });
       });
     });
@@ -319,11 +327,19 @@ describe(`plugin-phone`, function() {
           return Promise.all([
             mccoy.spark.phone.when(`call:incoming`)
               .then(([c]) => c.answer()),
-            call.when(`connected`)
-              .then(() => {
-                return assert.isDefined(call.localMediaStreamUrl);
-              })
-          ]);
+            new Promise((resolve, reject) => {
+              call.on(`connected`, () => {
+                try {
+                  assert.instanceOf(call.localMediaStream, MediaStream);
+                  assert.isDefined(call.localMediaStreamUrl);
+                  resolve();
+                }
+                catch (err) {
+                  reject(err);
+                }
+              });
+            })
+          ]));
         });
       });
 
