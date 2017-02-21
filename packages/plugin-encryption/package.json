@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-encryption",
-  "version": "0.7.55",
+  "version": "0.7.57",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -10,9 +10,9 @@
   "dependencies": {
     "@ciscospark/common": "^0.7.52",
     "@ciscospark/http-core": "^0.7.53",
-    "@ciscospark/plugin-credentials": "^0.7.55",
-    "@ciscospark/plugin-mercury": "^0.7.55",
-    "@ciscospark/plugin-wdm": "^0.7.55",
+    "@ciscospark/plugin-credentials": "^0.7.57",
+    "@ciscospark/plugin-mercury": "^0.7.57",
+    "@ciscospark/plugin-wdm": "^0.7.57",
     "@ciscospark/spark-core": "^0.7.55",
     "babel-runtime": "^6.3.19",
     "extend-error": "git://github.com/ianwremmel/extend-error.git",
