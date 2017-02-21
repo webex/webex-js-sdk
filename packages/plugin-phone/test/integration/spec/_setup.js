@@ -10,8 +10,8 @@ beforeEach(() => {
   sinon.spy(Call, `make`);
 });
 
-afterEach(function() {
-  this.timeout(60000);
+afterEach(`end all calls`, function() {
+  this.timeout(30000);
   const promises = Call.make.returnValues.map((c) => c.hangup()
     .catch((reason) => console.warn(reason)));
 
