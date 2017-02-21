@@ -8,6 +8,7 @@ module.exports = function createBrowsers() {
     local: {
       firefox_h264: {
         base: `Firefox`,
+        profile: path.join(__dirname, `../../.tmp/selenium/mac`)
       },
       ChromeH264: {
         base: `Chrome`,
@@ -15,7 +16,6 @@ module.exports = function createBrowsers() {
           `--use-fake-device-for-media-stream`,
           `--use-fake-ui-for-media-stream`
         ]
-        profile: path.join(__dirname, `../../.tmp/selenium/mac`)
       }
     },
     sauce: {
