@@ -471,8 +471,9 @@ const Conversation = SparkPlugin.extend({
    * @param {Object} conversation
    * @returns {ShareActivty}
    */
-  makeShare(conversation) {
-    return ShareActivity.create(conversation, null, this.spark);
+  makeShare(conversation, activity) {
+    // if we pass activity as null then it does not take care of the clientTempId created by the web-client while making the provisional activity, hence we need to pass the activity which was created by the web-client
+    return ShareActivity.create(conversation, activity, this.spark);
   },
 
   /**

@@ -23,10 +23,18 @@ export const transforms = toArray(`inbound`, {
       return Promise.resolve();
     }
 
+    // if (object && object.objectType === 'file') {
+    //   console.log('@@@@@@ inside decryptObject for item=', object, ' and key=', key);
+    // }
+
     if (!key && object.encryptionKeyUrl) {
       key = object.encryptionKeyUrl;
     }
 
+    if (object.objectType === 'transcodedContent') {
+      console.log('@@@@@ temporarily calling decryptFile directly from here until a fix is available.');
+      return Promise.all(object.files.items.map((item) => ctx.transform(`decryptFile`, key, item)));
+    }
     return ctx.transform(`decrypt${S(object.objectType).capitalize().s}`, key, object);
   },
 
@@ -94,6 +102,7 @@ export const transforms = toArray(`inbound`, {
   },
 
   decryptTranscodedContent(ctx, key, transcodedContent) {
+    // console.log('@@@@@@ inside decryptTranscodedContent for item=', transcodedContent, ' and key=', key);
     return Promise.all(transcodedContent.files.items.map((item) => ctx.transform(`decryptFile`, key, item)));
   },
 
@@ -117,7 +126,6 @@ export const transforms = toArray(`inbound`, {
       })
       .catch((reason) => {
         ctx.spark.logger.warn(`plugin-conversation: failed to decrypt ${name}`);
-        console.log(`@@@@@ plugin-conversation: failed to decrypt ${name} for object=${object}, object.url=${object.url} with key=${key}`);
         return Promise.reject(reason);
       });
   },

@@ -35,7 +35,7 @@ const Avatar = SparkPlugin.extend({
    * @returns {Promise<Object>}
    */
   _fetchAvatarUrl(uuid, options) {
-    return this.store.get(uuid, options.size)
+    return this.store.get({uuid, size: options.size})
       .catch(() => this.batcher.request(Object.assign({}, {uuid, size: options.size}))
         .then((item) => this.store.add(defaults(item, {cacheControl: options.cacheControl, url: item.response.url}))));
   },
@@ -61,7 +61,7 @@ const Avatar = SparkPlugin.extend({
 
     return this.spark.user.asUUID(user)
       .then((uuid) => this._fetchAvatarUrl(uuid, options)
-      .then((res) => res.url));
+      .then((res) => res));
   },
 
   /**
