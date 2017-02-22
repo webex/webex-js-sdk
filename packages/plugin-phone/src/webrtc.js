@@ -10,35 +10,16 @@ import 'webrtc-adapter';
 import transform from 'sdp-transform';
 import {curry, defaults, find} from 'lodash';
 import {tap} from '@ciscospark/common';
-import {
-  addToMappedWeakMappedSet,
-  getMappedWeakMappedSet
-} from './map-utils';
-
-const tracksByKindByStream = new Map();
-const storeMediaTrackByKindByStream = addToMappedWeakMappedSet(tracksByKindByStream);
-const getMediaTracksByKindByStream = getMappedWeakMappedSet(tracksByKindByStream);
-const getVideoTracksByStream = getMediaTracksByKindByStream(`video`);
-const getAudioTracksByStream = getMediaTracksByKindByStream(`audio`);
 
 const startSendingMedia = curry((kind, pc) => {
   let foundKind = false;
   pc.getLocalStreams().forEach((stream) => {
-    // Find all the tracks we've removed from the stream/pc so we can readd them
-    const tracks = getMediaTracksByKindByStream(kind, stream);
-    tracks.forEach((track) => {
-      foundKind = foundKind || true;
-      track.enabled = true;
-      // Because adapter.js doesn't actually hide all the cross browser
-      // inconsistencies
-      if (pc.addTrack) {
-        pc.addTrack(track, stream);
-      }
-      else {
-        stream.addTrack(track);
+    stream.getTracks().forEach((track) => {
+      if (track.kind === kind) {
+        foundKind = true;
+        track.enabled = true;
       }
     });
-    tracks.delete(stream);
   });
 
   // If we didn't find any tracks for this stream/pc, we need to get new media
@@ -49,7 +30,26 @@ const startSendingMedia = curry((kind, pc) => {
     };
 
     return getUserMedia(constraints)
-      .then((stream) => addStream(pc, stream));
+      .then((stream) => {
+        if (pc.addTrack) {
+          stream.getTracks().forEach((track) => {
+            pc.addTrack(track, pc.getLocalStreams()[0]);
+          });
+        }
+        else {
+          stream.getTracks().forEach((track) => {
+            pc.getLocalStreams()[0].addTrack(track);
+          });
+
+          // The next three lines are a silly hack to deal with chrome not
+          // firing the negotiationneeded event when tracks get added to
+          // streams. We'll just have to check periodically to see if this has
+          // been fixed.
+          const localStream = pc.getLocalStreams()[0];
+          pc.removeStream(localStream);
+          pc.addStream(localStream);
+        }
+      });
   }
 
   return Promise.resolve();
@@ -60,75 +60,10 @@ const stopSendingMedia = curry((kind, pc) => {
     stream.getTracks().forEach((track) => {
       if (track.kind === kind) {
         track.enabled = false;
-        // Store the tracks so we can add them back later (should the user want
-        // to mute/unmute)
-        storeMediaTrackByKindByStream(kind, stream, track);
-        if (pc.removeTrack) {
-          const sender = find(pc.getSenders(), (s) => s.track === track);
-          pc.removeTrack(sender);
-        }
-        else {
-          stream.removeTrack(track);
-        }
       }
     });
   });
 });
-
-const startReceivingMedia = curry((kind, pc) => {
-  let foundKind = false;
-  pc.getRemoteStreams().forEach((stream) => {
-    // Find all the tracks we've removed from the stream/pc so we can readd them
-    const tracks = getMediaTracksByKindByStream(kind, stream);
-    tracks.forEach((track) => {
-      foundKind = foundKind || true;
-      track.enabled = true;
-      // Because adapter.js doesn't actually hide all the cross browser
-      // inconsistencies
-      if (pc.addTrack) {
-        pc.addTrack(track, stream);
-      }
-      else {
-        stream.addTrack(track);
-      }
-    });
-    tracks.delete(stream);
-  });
-
-  return Promise.resolve();
-});
-
-const stopReceivingMedia = curry((kind, pc) => {
-  pc.getRemoteStreams().forEach((stream) => {
-    stream.getTracks().forEach((track) => {
-      if (track.kind === kind) {
-        track.enabled = false;
-        // Store the tracks so we can add them back later (should the user want
-        // to mute/unmute)
-        storeMediaTrackByKindByStream(kind, stream, track);
-        if (pc.removeTrack) {
-          const receiver = find(pc.getSenders(), (r) => r.track === track);
-
-          try {
-            pc.removeTrack(receiver);
-          }
-          catch (reason) {
-            // eslint-disable-next-line no-console
-            console.warn(`webrtc: this browser has limited support for renegotiation; receiving ${kind} has been stopped, but will not be renegotiated`);
-          }
-        }
-        else {
-          stream.removeTrack(track);
-        }
-      }
-    });
-  });
-});
-
-export const stopReceivingAudio = stopReceivingMedia(`audio`);
-export const stopReceivingVideo = stopReceivingMedia(`video`);
-export const startReceivingAudio = startReceivingMedia(`audio`);
-export const startReceivingVideo = startReceivingMedia(`video`);
 
 /**
  * Adds a bandwith limit line to the sdp; without this line, calling fails
@@ -155,7 +90,6 @@ function limitBandwith(sdp) {
  * @returns {undefined}
  */
 function endAllStreams(pc) {
-  reattachTracks(pc);
   pc.getLocalStreams().forEach(stopStream);
   pc.getRemoteStreams().forEach(stopStream);
 }
@@ -177,34 +111,6 @@ function stopStream(stream) {
   if (stream.stop) {
     stream.stop();
   }
-}
-
-/**
- * Attaches all tracks that were removed from the specifed RTCPeerConnection
- * (e.g. while muting said tracks). Without reattaching them, the camera may
- * never turn off
- * @param {RTCPeerConnection} pc The RTCPeerConnection for which to reattach tracks
- * @private
- * @returns {undefined}
- */
-function reattachTracks(pc) {
-  pc.getLocalStreams().forEach(reattachTracksForStream);
-}
-
-/**
- * Reattaches tracks for specifed stream
- * @param {MediaStream} stream The MediaStream to which to reattach tracks
- * @private
- * @returns {undefined}
- */
-function reattachTracksForStream(stream) {
-  const vt = getVideoTracksByStream(stream);
-  vt.forEach((track) => stream.addTrack(track));
-  vt.clear();
-
-  const at = getAudioTracksByStream(stream);
-  at.forEach((track) => stream.addTrack(track));
-  at.clear();
 }
 
 /**
@@ -345,7 +251,6 @@ export {curriedAddStream as addStream};
  * @returns {undefined}
  */
 function addStream(pc, stream) {
-  // TODO do either of these return promises?
   if (pc.addTrack) {
     stream.getTracks().forEach((track) => pc.addTrack(track, stream));
   }
@@ -385,3 +290,21 @@ export function mediaDirection(type, pc) {
 
   return media.direction;
 }
+
+/**
+ * Checks a given sdp to ensure it contains an offer for the h264 codec
+ * @param {Boolean} wantsVideo
+ * @param {String} offer
+ * @returns {String} returns the offer to simplify use in promise chains
+ */
+export const ensureH264 = curry((wantsVideo, offer) => {
+  if (wantsVideo) {
+    if (!offer.includes(`m=video`)) {
+      throw new Error(`No video section found in offer`);
+    }
+    if (!/[hH]264/.test(offer)) {
+      throw new Error(`Offer does not include h264 codec`);
+    }
+  }
+  return offer;
+});
