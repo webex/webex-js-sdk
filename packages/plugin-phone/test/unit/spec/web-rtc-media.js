@@ -1,7 +1,7 @@
 import sinon from '@ciscospark/test-helper-sinon';
 import {assert} from '@ciscospark/test-helper-chai';
 import {WebRTCMedia} from '../..';
-import {parse} from 'sdp-transform';
+
 let pc;
 function mockAnswer(offer) {
   pc = new RTCPeerConnection();
@@ -40,8 +40,16 @@ describe(`plugin-phone`, () => {
           .then(mockAnswer)
           .then((answer) => m.acceptAnswer(answer))
           .then(() => {
+            const p = Promise.race([
+              new Promise((resolve) => setTimeout(resolve, 1000)),
+              new Promise((resolve) => m.once(`change:remoteMediaStream`, resolve))
+            ]);
             assert.equal(m.peer.signalingState, `stable`);
-            // TODO assert remote stream
+            return p;
+          })
+          .then(() => {
+            assert.property(m, `remoteMediaStream`);
+            assert.instanceOf(m.remoteMediaStream, MediaStream);
           });
       });
     });
