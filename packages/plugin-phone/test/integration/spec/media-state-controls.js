@@ -73,7 +73,7 @@ function assertPeerConnectionState(sdp, type, sending, receiving) {
 }
 
 describe(`plugin-phone`, function() {
-  this.timeout(60000);
+  this.timeout(30000);
 
   describe(`Call`, () => {
     describe(`Media State Controls`, () => {
