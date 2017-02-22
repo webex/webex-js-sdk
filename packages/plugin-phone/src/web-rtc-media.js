@@ -39,6 +39,9 @@ const WebRTCMedia = AmpState.extend({
       default: false,
       type: `boolean`
     },
+    remoteMediaStream: {
+      type: `object`
+    },
     sendingAudio: {
       default: false,
       type: `boolean`
@@ -74,7 +77,7 @@ const WebRTCMedia = AmpState.extend({
         offerToReceiveAudio: this.offerToReceiveAudio,
         offerToReceiveVideo: this.offerToReceiveVideo
       }))
-      .then(ensureH264(true))
+      .then(ensureH264(wantsVideo))
       .then((sdp) => {
         this.bindNegotiationEvents();
         return sdp;
@@ -84,6 +87,10 @@ const WebRTCMedia = AmpState.extend({
   initialize(...args) {
     Reflect.apply(AmpState.prototype.initialize, this, args);
     this.peer = new RTCPeerConnection({iceServers: []});
+
+    this.peer.ontrack = (event) => {
+      this.remoteMediaStream = event.streams[0];
+    };
 
     this.on(`change:audio`, () => {
       this.audio ? startSendingAudio(this.peer) : stopSendingAudio(this.peer);
