@@ -5,7 +5,7 @@
 
 import extendError from 'extend-error';
 import makeSubTypes from './http-error-subtypes';
-import {isArray, pick} from 'lodash';
+import {pick} from 'lodash';
 
 /**
  * @class HttpError
@@ -16,22 +16,18 @@ const HttpError = extendError({
     /* eslint complexity: [0] */
     let body = res.body;
     let message;
-    let rawDescription;
     switch (typeof body) {
     case `string`:
       try {
         body = JSON.parse(body);
         message = parseObject(body);
-        rawDescription = parseDescription(body);
       }
       catch (error) {
         message = body;
-        rawDescription = body;
       }
       break;
     case `object`:
       message = parseObject(body);
-      rawDescription = parseDescription(body);
       break;
     default:
       // do nothing
@@ -40,18 +36,11 @@ const HttpError = extendError({
     if (!message) {
       message = this.defaultMessage;
     }
-    if (!rawDescription) {
-      rawDescription = this.defaultRawDescription;
-    }
 
     Object.defineProperties(this, {
       body: {
         enumerable: false,
         value: body
-      },
-      rawDescription: {
-        enumerable: false,
-        value: rawDescription
       },
       httpVersion: {
         enumerable: false,
@@ -102,8 +91,7 @@ const HttpError = extendError({
     return message;
   },
   properties: {
-    defaultMessage: `An error was received while trying to fulfill the request`,
-    defaultRawDescription: `none`
+    defaultMessage: `An error was received while trying to fulfill the request`
   },
   subTypeName: `HttpError`
 });
@@ -128,37 +116,6 @@ function parseObject(body) {
   // If the explanation is an object, recurse and try again
   if (typeof message === `object`) {
     return parseObject(message);
-  }
-
-  // Return the first key
-  return message;
-}
-
-/**
- * @param {object} body
- * @private
- * @returns {string}
- */
-function parseDescription(body) {
-  // Search body for common names of error strings
-  const messages = Object.values(pick(body, `message`, `error`, `Errors`, `errorString`, `response`, `errorResponse`, `msg`, `description`));
-
-  // If no error candidate was found, stringify the entire body
-  if (messages.length === 0) {
-    return JSON.stringify(body, null, 2);
-  }
-
-  // Assume the first key found was the error explanation
-  const message = messages[0];
-
-  // if explanation is an array, recurse and try again with first element
-  if (isArray(message) && message.length) {
-    return parseDescription(message[0]);
-  }
-
-  // If the explanation is an object, recurse and try again
-  if (typeof message === `object`) {
-    return parseDescription(message);
   }
 
   // Return the first key

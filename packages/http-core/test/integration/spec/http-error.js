@@ -76,7 +76,6 @@ describe(`http-core`, () => {
       const error = new HttpError(res);
 
       assert.equal(error.message, `An error was received while trying to fulfill the request`);
-      assert.equal(error.rawDescription, `none`);
     });
 
     it(`parses string responses`, () => {
@@ -89,7 +88,6 @@ describe(`http-core`, () => {
       const error = new HttpError(res);
 
       assert.equal(error.message, message);
-      assert.equal(error.rawDescription, message);
     });
 
     it(`parses JSON responses`, () => {
@@ -105,7 +103,6 @@ describe(`http-core`, () => {
       const error = new HttpError(res);
 
       assert.equal(error.message, JSON.stringify(message, null, 2));
-      assert.equal(error.rawDescription, JSON.stringify(message, null, 2));
     });
 
     it(`parses stringified JSON responses`, () => {
@@ -121,7 +118,6 @@ describe(`http-core`, () => {
       const error = new HttpError(res);
 
       assert.equal(error.message, JSON.stringify(JSON.parse(message), null, 2));
-      assert.equal(error.rawDescription, JSON.stringify(JSON.parse(message), null, 2));
     });
 
     it(`parses JSON responses for candidate error messages`, () => {
@@ -135,7 +131,6 @@ describe(`http-core`, () => {
 
       const error = new HttpError(res);
       assert.equal(error.message, message);
-      assert.equal(error.rawDescription, message);
     });
 
     it(`parses JSON responses for candidate error messages recursively`, () => {
@@ -151,7 +146,6 @@ describe(`http-core`, () => {
 
       const error = new HttpError(res);
       assert.equal(error.message, message);
-      assert.equal(error.rawDescription, message);
     });
 
     it(`parses JSON responses for candidate error messages with arrays`, () => {
@@ -170,7 +164,6 @@ describe(`http-core`, () => {
 
       const error = new HttpError(res);
       assert.equal(error.message, JSON.stringify(res.body.Errors, null, 2));
-      assert.equal(error.rawDescription, message);
     });
 
     it(`parses JSON responses for candidate error messages with arrays recursively`, () => {
@@ -191,7 +184,6 @@ describe(`http-core`, () => {
 
       const error = new HttpError(res);
       assert.equal(error.message, JSON.stringify(res.body.error.message, null, 2));
-      assert.equal(error.rawDescription, message);
     });
 
     describe(`.select()`, () => {
