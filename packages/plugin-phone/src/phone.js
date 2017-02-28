@@ -170,7 +170,7 @@ const Phone = SparkPlugin.extend({
 
   /**
    * Determines if the {@link call:incoming} event should be emitted for the
-   * specifed {@link Types~MercuryEvent}
+   * specified {@link Types~MercuryEvent}
    * @emits call:incoming
    * @instance
    * @memberof Phone

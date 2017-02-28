@@ -21,7 +21,7 @@ const tpl = template(`
 `);
 
 /**
- * Indicates whether the specifed value defines a literal assertion
+ * Indicates whether the specified value defines a literal assertion
  * @param {string} value
  * @returns {Boolean}
  */
