@@ -11,6 +11,16 @@ import {
   stopSendingVideo
 } from './webrtc';
 
+/**
+ * Determines if the peer connection is sending the specified kind of media
+ * @param {string} kind audio|video
+ * @param {RTCPeerConnection} pc
+ * @returns {bool} true if sending, false if not
+ */
+function getLocalMediaStatus(kind, pc) {
+  return pc.getLocalStreams().reduce((sending, stream) => sending || stream.getTracks().reduce((trackSending, track) => trackSending || track.kind === kind && track.enabled, false), false);
+}
+
 const WebRTCMedia = AmpState.extend({
   props: {
     audio: {
@@ -61,6 +71,15 @@ const WebRTCMedia = AmpState.extend({
   },
 
   createOffer() {
+    if (!this.peer) {
+      this.peer = new RTCPeerConnection({iceServers: []});
+
+      this.peer.ontrack = (event) => {
+        // TODO does this fire when we add the local stream?
+        this.remoteMediaStream = event.streams[0];
+      };
+    }
+
     const wantsVideo = this.video;
     return Promise.resolve(this.localMediaStream || getUserMedia({
       audio: this.audio,
@@ -79,6 +98,10 @@ const WebRTCMedia = AmpState.extend({
       }))
       .then(ensureH264(wantsVideo))
       .then((sdp) => {
+        this.set({
+          sendingAudio: getLocalMediaStatus(`audio`, this.peer),
+          sendingVideo: getLocalMediaStatus(`video`, this.peer)
+        });
         this.bindNegotiationEvents();
         return sdp;
       });
@@ -86,18 +109,30 @@ const WebRTCMedia = AmpState.extend({
 
   initialize(...args) {
     Reflect.apply(AmpState.prototype.initialize, this, args);
-    this.peer = new RTCPeerConnection({iceServers: []});
-
-    this.peer.ontrack = (event) => {
-      this.remoteMediaStream = event.streams[0];
-    };
-
     this.on(`change:audio`, () => {
-      this.audio ? startSendingAudio(this.peer) : stopSendingAudio(this.peer);
+      if (!this.peer) {
+        return;
+      }
+      Promise.resolve(this.audio ? startSendingAudio(this.peer) : stopSendingAudio(this.peer))
+        .then(() => {
+          this.sendingAudio = getLocalMediaStatus(`audio`, this.peer);
+        })
+        .catch((reason) => {
+          this.emit(`error`, reason);
+        });
     });
 
     this.on(`change:video`, () => {
-      this.video ? startSendingVideo(this.peer) : stopSendingVideo(this.peer);
+      if (!this.peer) {
+        return;
+      }
+      Promise.resolve(this.video ? startSendingVideo(this.peer) : stopSendingVideo(this.peer))
+        .then(() => {
+          this.sendingVideo = getLocalMediaStatus(`video`, this.peer);
+        })
+        .catch((reason) => {
+          this.emit(`error`, reason);
+        });
     });
 
     this.on(`change:localMediaStream`, () => {
