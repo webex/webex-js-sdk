@@ -83,7 +83,7 @@ function limitBandwith(sdp) {
 }
 
 /**
- * Ends all streams for the specifed RTCPeerConnection
+ * Ends all streams for the specified RTCPeerConnection
  * @param {RTCPeerConnection} pc The RTCPeerConnection for which to end all
  * streams
  * @private
@@ -95,7 +95,7 @@ function endAllStreams(pc) {
 }
 
 /**
- * Stops the specifed stream's tracks and the stream (depending on browser
+ * Stops the specified stream's tracks and the stream (depending on browser
  * capabilities)
  * @param {MediaStream} stream The MediaStream to stop
  * @private
@@ -114,28 +114,28 @@ function stopStream(stream) {
 }
 
 /**
- * Stops sending audio via the specifed RTCPeerConnection
+ * Stops sending audio via the specified RTCPeerConnection
  * @param {RTCPeerConnection} pc The RTCPeerConnection for which to stop audio
  * @private
  * @returns {Promise}
  */
 export const startSendingAudio = startSendingMedia(`audio`);
 /**
- * Stops sending video via the specifed RTCPeerConnection
+ * Stops sending video via the specified RTCPeerConnection
  * @param {RTCPeerConnection} pc The RTCPeerConnection for which to stop video
  * @private
  * @returns {Promise}
  */
 export const startSendingVideo = startSendingMedia(`video`);
 /**
- * Starts sending audio via the specifed RTCPeerConnection
+ * Starts sending audio via the specified RTCPeerConnection
  * @param {RTCPeerConnection} pc The RTCPeerConnection for which to start audio
  * @private
  * @returns {Promise}
  */
 export const stopSendingAudio = stopSendingMedia(`audio`);
 /**
- * Stops sending video via the specifed RTCPeerConnection
+ * Stops sending video via the specified RTCPeerConnection
  * @param {RTCPeerConnection} pc The RTCPeerConnection for which to start video
  * @private
  * @returns {Promise}
@@ -156,7 +156,7 @@ export function getUserMedia(constraints) {
 }
 
 /**
- * Creates an offer sdp based on the state of the specifed RTCPeerConnection and
+ * Creates an offer sdp based on the state of the specified RTCPeerConnection and
  * offer options
  * @param {RTCPeerConnection} pc
  * @param { RTCOfferOptions} offerOptions
@@ -201,7 +201,7 @@ export const createOffer = curry((pc, offerOptions) => {
 });
 
 /**
- * Applies an incoming answer sdp to the specifed RTCPeerConnection
+ * Applies an incoming answer sdp to the specified RTCPeerConnection
  * @param {RTCPeerConnection} pc
  * @param {string} sdp
  * @private
@@ -219,7 +219,7 @@ export const acceptAnswer = curry((pc, sdp) => {
 });
 
 /**
- * Terminates the specifed RTCPeerConnection
+ * Terminates the specified RTCPeerConnection
  * @param {RTCPeerConnection} pc
  * @private
  * @returns {undefined}
@@ -234,7 +234,7 @@ export const end = curry((pc) => {
 const curriedAddStream = curry(addStream);
 
 /**
- * Adds the specifed stream to the specifed RTCPeerConnection
+ * Adds the specified stream to the specified RTCPeerConnection
  * @name addStream
  * @param {PeerConnection} pc The RTCPeerConnection to which to add the stream
  * @param {MediaStream} stream The stream to add
@@ -244,7 +244,7 @@ const curriedAddStream = curry(addStream);
 export {curriedAddStream as addStream};
 
 /**
- * Adds the specifed stream to the specifed RTCPeerConnection
+ * Adds the specified stream to the specified RTCPeerConnection
  * @param {PeerConnection} pc The RTCPeerConnection to which to add the stream
  * @param {MediaStream} stream The stream to add
  * @private
@@ -260,7 +260,7 @@ function addStream(pc, stream) {
 }
 
 /**
- * returns the direction line for the specifed media type.
+ * returns the direction line for the specified media type.
  * @param {string} type
  * @param {RTCPeerConnection} pc
  * @private
