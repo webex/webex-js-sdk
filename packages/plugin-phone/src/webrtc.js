@@ -31,23 +31,36 @@ const startSendingMedia = curry((kind, pc) => {
 
     return getUserMedia(constraints)
       .then((stream) => {
-        if (pc.addTrack) {
-          stream.getTracks().forEach((track) => {
-            pc.addTrack(track, pc.getLocalStreams()[0]);
-          });
-        }
-        else {
-          stream.getTracks().forEach((track) => {
-            pc.getLocalStreams()[0].addTrack(track);
-          });
+        const localStream = pc.getLocalStreams()[0];
+        if (localStream) {
+          if (pc.addTrack) {
+            stream.getTracks().forEach((track) => {
+              if (localStream.addTrack) {
+                localStream.addTrack(track);
+              }
+              if (stream.removeTrack) {
+                stream.removeTrack(track);
+              }
+              pc.addTrack(track, localStream);
+            });
+          }
+          else {
+            stream.getTracks().forEach((track) => {
+              localStream.addTrack(track);
+            });
+          }
 
-          // The next three lines are a silly hack to deal with chrome not
+          // The next few lines are a silly hack to deal with chrome not
           // firing the negotiationneeded event when tracks get added to
           // streams. We'll just have to check periodically to see if this has
           // been fixed.
-          const localStream = pc.getLocalStreams()[0];
-          pc.removeStream(localStream);
-          pc.addStream(localStream);
+          if (pc.removeStream) {
+            pc.removeStream(localStream);
+            pc.addStream(localStream);
+          }
+        }
+        else {
+          addStream(pc, stream);
         }
       });
   }

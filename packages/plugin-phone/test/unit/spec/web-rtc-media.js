@@ -1,6 +1,14 @@
 import sinon from '@ciscospark/test-helper-sinon';
+import handleErrorEvent from '../../integration/lib/handle-error-event';
 import {assert} from '@ciscospark/test-helper-chai';
 import {WebRTCMedia} from '../..';
+
+function maxWaitForEvent(max, event, emitter) {
+  return Promise.race([
+    new Promise((resolve) => setTimeout(resolve, 1000)),
+    new Promise((resolve) => emitter.once(event, resolve))
+  ]);
+}
 
 let pc;
 function mockAnswer(offer) {
@@ -40,10 +48,7 @@ describe(`plugin-phone`, () => {
           .then(mockAnswer)
           .then((answer) => m.acceptAnswer(answer))
           .then(() => {
-            const p = Promise.race([
-              new Promise((resolve) => setTimeout(resolve, 1000)),
-              new Promise((resolve) => m.once(`change:remoteMediaStream`, resolve))
-            ]);
+            const p = maxWaitForEvent(1000, `change:remoteMediaStream`, m);
             assert.equal(m.peer.signalingState, `stable`);
             return p;
           })
@@ -88,15 +93,16 @@ describe(`plugin-phone`, () => {
                   }
                   assert.notCalled(negSpy);
 
-                  return m.createOffer()
+                  return handleErrorEvent(m, () => m.createOffer()
                     .then(mockAnswer)
                     .then((answer) => m.acceptAnswer(answer))
                     .then(() => {
-                      const p = Promise.race([
-                        new Promise((resolve) => setTimeout(resolve, 1000)),
-                        new Promise((resolve) => m.once(`renegotiationneeded`, resolve))
-                      ]);
+                      assert.lengthOf(m.peer.getLocalStreams(), 1);
+                      assert.equal(m[mediaType === `audio` ? `sendingAudio` : `sendingVideo`], sending, `sending${mediaType === `audio` ? `Audio` : `Video`} is in the initial state of ${sending}`);
+                      const p = maxWaitForEvent(1000, `renegotiationneeded`, m);
                       m.toggle(mediaType);
+                      assert.lengthOf(m.peer.getLocalStreams(), 1);
+
                       m.peer.getLocalStreams().forEach((stream) => {
                         stream.getTracks().forEach((track) => {
                           if (track.kind === mediaType) {
@@ -108,11 +114,28 @@ describe(`plugin-phone`, () => {
                         });
                       });
 
-                      // TODO need assertions for sending/receving
-                      return p;
+                      if (sending) {
+                        // We want to stop the stream as soon as the user asks us to
+                        return Promise.all([
+                          p,
+                          new Promise((resolve) => process.nextTick(() => {
+                            // Yes, it says synchronously, but one tick is close
+                            // enough; there's a promise.then in there
+                            // somewhere.
+                            assert.isFalse(m[mediaType === `audio` ? `sendingAudio` : `sendingVideo`], `sending${mediaType === `audio` ? `Audio` : `Video`} has synchronously left the initial state`);
+                            resolve();
+                          }))
+                        ]);
+                      }
+
+                      return Promise.all([
+                        p,
+                        maxWaitForEvent(1000, `change:sending${mediaType === `audio` ? `Audio` : `Video`}`, m)
+                          .then(() => assert.isTrue(m[mediaType === `audio` ? `sendingAudio` : `sendingVideo`], `sending${mediaType === `audio` ? `Audio` : `Video`} has (possibly asynchronously) left the initial state`))
+                      ]);
                     })
                     .then(() => assert[shouldRenegotiate ? `called` : `notCalled`](negSpy))
-                    .then(() => assert.isBelow(m.peer.getLocalStreams().length, 2));
+                    .then(() => assert.isBelow(m.peer.getLocalStreams().length, 2)));
                 });
               });
             });
