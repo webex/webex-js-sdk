@@ -1,8 +1,10 @@
 ---
-layout:      example
+layout:      guide
 title:       "Storage Layer"
-categories:  example
+categories:  guides
 description: "This guide explains how the storage layer works and how to write your own storage adapter"
+redirect_from:
+  - /example/storage-layer/
 ---
 
 The storage layer takes care of storing and loading bounded data like user credentials and unbounded data like encryption keys. Note that the storage layer is *not* intended to be your application's database (though may interface with your application's database).
