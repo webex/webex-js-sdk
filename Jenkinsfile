@@ -360,7 +360,6 @@ ansiColor('xterm') {
                 sh 'git rev-parse HEAD > .promotion-sha'
                 archive '.promotion-sha'
                 sh 'rm .promotion-sha'
-                archive 'packages/widget-message-meet/dist/**'
               }
             }
 
@@ -490,19 +489,6 @@ ansiColor('xterm') {
                     currentBuild.description += 'waring: failed to publish to Artifactory'
                   }
                 }
-              }
-
-              stage('publish to cdn') {
-                try {
-                  cdnPublishBuild = build job: 'spark-js-sdk--publish-chat-widget-s3', parameters: [[$class: 'StringParameterValue', name: 'buildNumber', value: "${currentBuild.number}"]], propagate: false
-                  if (cdnPublishBuild.result != 'SUCCESS') {
-                    warn('failed to publish to CDN')
-                  }
-                }
-                catch(err) {
-                  warn('failed to start CDN publish job');
-                }
-
               }
             }
           }
