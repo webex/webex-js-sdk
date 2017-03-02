@@ -1,4 +1,5 @@
 import AmpState from 'ampersand-state';
+
 import {
   acceptAnswer,
   addStream,
@@ -12,13 +13,64 @@ import {
 } from './webrtc';
 
 /**
+ * Determines if the peer connection is receiving the specified kind of media
+ * @param {string} kind audio|video
+ * @param {RTCPeerConnection} pc
+ * @returns {bool} true if receiving, false if not
+ */
+function getRemoteMediaStatus(kind, pc) {
+  const streams = pc.getRemoteStreams();
+
+  if (streams.length === 0) {
+    return false;
+  }
+
+  const res = streams.reduce((areStreamsFlowing, stream) => {
+    const tracks = stream.getTracks().filter((track) => track.kind === kind);
+
+    if (tracks.length === 0) {
+      return false;
+    }
+
+    return tracks.reduce((isTrackReceiving, track) => {
+      if (isTrackReceiving) {
+        return isTrackReceiving;
+      }
+
+      if (track.readyState === `ended`) {
+        return false;
+      }
+
+      if (track.ended) {
+        return false;
+      }
+
+      return true;
+    }, undefined);
+  }, undefined);
+
+  if (res) {
+    return res;
+  }
+
+  return false;
+}
+
+/**
  * Determines if the peer connection is sending the specified kind of media
  * @param {string} kind audio|video
  * @param {RTCPeerConnection} pc
  * @returns {bool} true if sending, false if not
  */
 function getLocalMediaStatus(kind, pc) {
-  return pc.getLocalStreams().reduce((sending, stream) => sending || stream.getTracks().reduce((trackSending, track) => trackSending || track.kind === kind && track.enabled, false), false);
+  const res = pc.getLocalStreams().reduce((isFlowing, stream) => {
+    const isStreamFlowing = stream.getTracks().reduce((isFlowingForTracks, track) => {
+      const isTrackFlowing = track.kind === kind && track.enabled;
+      return isFlowingForTracks || isTrackFlowing;
+    }, false);
+    return isFlowing || isStreamFlowing;
+  }, false);
+  return res;
 }
 
 const WebRTCMedia = AmpState.extend({
@@ -77,6 +129,24 @@ const WebRTCMedia = AmpState.extend({
       this.peer.ontrack = (event) => {
         // TODO does this fire when we add the local stream?
         this.remoteMediaStream = event.streams[0];
+        this.remoteMediaStream.getTracks().forEach((track) => {
+          track.onended = () => {
+            try {
+              if (track.kind === `audio`) {
+                this.receivingAudio = getRemoteMediaStatus(`audio`, this.peer);
+              }
+              else {
+                this.receivingVideo = getRemoteMediaStatus(`video`, this.peer);
+              }
+            }
+            catch (e) {
+              this.emit(`error`, e);
+            }
+          };
+        });
+
+        this.receivingAudio = getRemoteMediaStatus(`audio`, this.peer);
+        this.receivingVideo = getRemoteMediaStatus(`video`, this.peer);
       };
     }
 
@@ -91,7 +161,11 @@ const WebRTCMedia = AmpState.extend({
 
         return stream;
       })
-      .then((stream) => addStream(this.peer, stream))
+      .then((stream) => {
+        if (!this.peer.getLocalStreams().includes(stream)) {
+          addStream(this.peer, stream);
+        }
+      })
       .then(() => createOffer(this.peer, {
         offerToReceiveAudio: this.offerToReceiveAudio,
         offerToReceiveVideo: this.offerToReceiveVideo
