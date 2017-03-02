@@ -1,6 +1,6 @@
 /**!
  *
- * Copyright (c) 2015 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
 import createBrowser from '../lib/create-browser';
