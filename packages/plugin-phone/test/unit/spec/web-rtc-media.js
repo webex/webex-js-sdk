@@ -2,6 +2,8 @@ import sinon from '@ciscospark/test-helper-sinon';
 import handleErrorEvent from '../../integration/lib/handle-error-event';
 import {assert} from '@ciscospark/test-helper-chai';
 import {WebRTCMedia} from '../..';
+import {parse} from 'sdp-transform';
+import {find} from 'lodash';
 
 function maxWaitForEvent(max, event, emitter) {
   return Promise.race([
@@ -13,6 +15,7 @@ function maxWaitForEvent(max, event, emitter) {
 let pc;
 function mockAnswer(offer) {
   pc = new RTCPeerConnection();
+
   return navigator.mediaDevices.getUserMedia({
     audio: true,
     video: true,
@@ -23,8 +26,50 @@ function mockAnswer(offer) {
     })
     .then(() => pc.setRemoteDescription({type: `offer`, sdp: offer}))
     .then(() => pc.createAnswer())
-    .then((answer) => answer.sdp);
+    .then((answer) => pc.setLocalDescription(answer)
+      .then(() => answer.sdp));
 }
+
+function mockRenegotiate(offer) {
+  const sdp = parse(offer);
+
+  const audio = find(sdp.media, {type: `audio`}).direction.includes(`recv`);
+  const video = find(sdp.media, {type: `video`}).direction.includes(`recv`);
+
+  const hasAudio = !!pc.getLocalStreams()[0].getAudioTracks().length;
+  const hasVideo = !!pc.getLocalStreams()[0].getVideoTracks().length;
+
+  if (hasAudio && !audio) {
+    pc.getLocalStreams()[0].getAudioTracks()[0].stop();
+    pc.getLocalStreams()[0].removeTrack(pc.getLocalStreams()[0].getAudioTracks()[0]);
+  }
+
+  if (hasVideo && !video) {
+    pc.getLocalStreams()[0].getVideoTracks()[0].stop();
+    pc.getLocalStreams()[0].removeTrack(pc.getLocalStreams()[0].getVideoTracks()[0]);
+  }
+
+  let p;
+  if (audio && !hasAudio || video && !hasVideo) {
+    p = navigator.mediaDevices.getUserMedia({
+      audio,
+      video,
+      fake: true
+    })
+      .then((newstream) => {
+        newstream.getTracks().forEach((track) => {
+          pc.getLocalStreams()[0].addTrack(track);
+        });
+      });
+  }
+
+  return Promise.resolve(p)
+    .then(() => pc.setRemoteDescription({type: `offer`, sdp: offer}))
+    .then(() => pc.createAnswer())
+    .then((answer) => pc.setLocalDescription(answer)
+      .then(() => answer.sdp));
+}
+
 describe(`plugin-phone`, () => {
   describe(`WebRTCMedia`, () => {
     let negSpy;
@@ -177,20 +222,33 @@ describe(`plugin-phone`, () => {
                   }
                   assert.notCalled(negSpy);
 
-                  return m.createOffer()
+                  return handleErrorEvent(m, () => m.createOffer()
                     .then(mockAnswer)
                     .then((answer) => m.acceptAnswer(answer))
+                    .then(() => maxWaitForEvent(1000, `change:receiving${mediaType}`, m))
                     .then(() => {
-                      const p = Promise.race([
-                        new Promise((resolve) => setTimeout(resolve, 1000)),
-                        new Promise((resolve) => m.once(`renegotiationneeded`, resolve))
-                      ]);
+                      assert.lengthOf(m.peer.getRemoteStreams(), 1);
+                      assert.equal(m[`receiving${mediaType}`], receiving, `receiving${mediaType} is in the initial state of ${receiving}`);
+
+                      const p = maxWaitForEvent(1000, `renegotiationneeded`, m);
                       m.toggle(`offerToReceive${mediaType}`);
+                      assert.lengthOf(m.peer.getRemoteStreams(), 1);
+
+                      m.peer.getRemoteStreams().forEach((stream) => {
+                        assert.lengthOf(stream.getTracks().filter((track) => track.kind === mediaType.toLowerCase()), receiving ? 1 : 0);
+                      });
                       return p;
                     })
                     .then(() => assert[shouldRenegotiate ? `called` : `notCalled`](negSpy))
-                    // TODO need assertions for sending/receving
-                    .then(() => console.log(`renegotiationneeded call count`, negSpy.callCount));
+                    .then(() => m.createOffer())
+                    .then(mockRenegotiate)
+                    .then((answer) => Promise.all([
+                      m.acceptAnswer(answer),
+                      maxWaitForEvent(1000, `change:receiving${mediaType}`, m)
+                    ]))
+                    .then(() => {
+                      assert.notEqual(m[`receiving${mediaType}`], receiving, `receiving${mediaType} left the initial state of ${receiving}`);
+                    }));
                 });
               });
             });
@@ -200,3 +258,6 @@ describe(`plugin-phone`, () => {
 
   });
 });
+
+// TODO figure out how to get renegotiation working in firefox
+// TODO need a test for replacing the local media stream
