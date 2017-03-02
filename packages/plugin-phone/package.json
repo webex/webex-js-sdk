@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@ciscospark/test-helper-chai": "^0.7.34",
+    "@ciscospark/test-helper-mocha": "^0.7.34",
     "@ciscospark/test-helper-sinon": "^0.7.34",
     "@ciscospark/test-helper-test-users": "^0.7.55",
     "babel-eslint": "^6.1.2",

@@ -129,6 +129,7 @@ const WebRTCMedia = AmpState.extend({
       this.peer.ontrack = (event) => {
         // TODO does this fire when we add the local stream?
         this.remoteMediaStream = event.streams[0];
+
         this.remoteMediaStream.getTracks().forEach((track) => {
           track.onended = () => {
             try {
