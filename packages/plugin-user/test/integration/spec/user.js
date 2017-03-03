@@ -11,8 +11,9 @@ import sinon from '@ciscospark/test-helper-sinon';
 import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
 import {patterns} from '@ciscospark/common';
+import querystring from 'querystring';
+import url from 'url';
 import uuid from 'uuid';
-import {nodeOnly} from '@ciscospark/test-helper-mocha';
 
 describe(`plugin-user`, function() {
   this.timeout(30000);
@@ -59,7 +60,7 @@ describe(`plugin-user`, function() {
       })
     );
 
-    it(`leaves email address validation up to Atlas`, () => assert.isRejected(unauthSpark.user.register({email: `not an email address`}))
+    it(`leaves email address validation up to Atlas`, () => assert.isRejected(unauthSpark.user.verify({email: `not an email address`}))
       .then((res) => assert.statusCode(res, 400)));
   });
 
@@ -77,34 +78,73 @@ describe(`plugin-user`, function() {
     );
   });
 
-  // This test relies on setting a specific user agent, so it doesn't work in
-  // browsers
-  nodeOnly(describe)(`#activate()`, () => {
-    it.skip(`retrieves a valid user token using verificationToken`, () => spark.request({
-      service: `atlas`,
-      resource: `users/email/verify`,
-      method: `POST`,
-      body: {
-        reqId: `DESKTOP`,
-        email: `Collabctg+spark-js-sdk-${uuid.v4()}@gmail.com`
-      },
-      requiresClientCredentials: true,
-      headers: {
-        'user-agent': `wx2-android`
-      }
-    })
-      .then((res) => {
-        assert.property(res.body, `eqp`);
-        return assert.isFulfilled(spark.user.activate({encryptedQueryString: res.body.eqp}));
-      })
-      .then((res) => spark.user.verify({email: res.email}))
-      .then((res) => {
-        assert.isFalse(res.showConfirmationCodePage);
-        assert.isFalse(res.showPasswordPage);
-        assert.isFalse(res.isUserCreated);
-        assert.isFalse(res.isSSOUser);
-        assert.isFalse(res.newUserSignUp);
-      }));
+  // NOTE: need collabctg+*@gmail.com to get verifyEmailURL
+  describe(`#activate()`, () => {
+    const unauthSpark = new CiscoSpark();
+    it(`retrieves a valid user token`, () => {
+      assert.isUndefined(unauthSpark.credentials.supertoken);
+      const email = `collabctg+spark-js-sdk-${uuid.v4()}@gmail.com`;
+      return unauthSpark.user.verify({email})
+        .then((res) => {
+          assert.isTrue(res.verificationEmailTriggered);
+          assert.property(res, `verifyEmailURL`);
+          const query = url.parse(res.verifyEmailURL).query;
+          const token = querystring.parse(query).t;
+          return assert.isFulfilled(unauthSpark.user.activate({verificationToken: token}));
+        })
+        .then((res) => {
+          assert.property(res, `email`);
+          assert.property(res, `cookieName`);
+          assert.property(res, `cookieValue`);
+          assert.property(res, `cookieDomain`);
+          assert.equal(res.email, email);
+          assert.isDefined(unauthSpark.credentials.supertoken.access_token);
+          return unauthSpark.user.verify({email});
+        })
+        .then((res) => {
+          // verification email should not trigger if already have valid user token
+          assert.property(res, `hasPassword`);
+          assert.property(res, `verificationEmailTriggered`);
+          assert.property(res, `sso`);
+          assert.isFalse(res.hasPassword);
+          assert.isFalse(res.verificationEmailTriggered);
+          assert.isFalse(res.sso);
+        });
+    });
+
+    it(`retrieves a valid user token and sets the password`, () => {
+      const unauthSpark = new CiscoSpark();
+      assert.isUndefined(unauthSpark.credentials.supertoken);
+      const email = `collabctg+spark-js-sdk-${uuid.v4()}@gmail.com`;
+      return unauthSpark.user.verify({email})
+        .then((res) => {
+          assert.isTrue(res.verificationEmailTriggered);
+          assert.property(res, `verifyEmailURL`);
+          const query = url.parse(res.verifyEmailURL).query;
+          const token = querystring.parse(query).t;
+          return assert.isFulfilled(unauthSpark.user.activate({verificationToken: token}));
+        })
+        .then((res) => {
+          assert.property(res, `email`);
+          assert.property(res, `cookieName`);
+          assert.property(res, `cookieValue`);
+          assert.property(res, `cookieDomain`);
+          assert.equal(res.email, email);
+          assert.isDefined(unauthSpark.credentials.supertoken.access_token);
+        })
+        .then(() => unauthSpark.device.register())
+        .then(() => unauthSpark.user.get())
+        .then((user) => unauthSpark.user.setPassword({userId: user.id, password: `P@ssword123`}))
+        .then(() => unauthSpark.user.verify({email}))
+        .then((res) => {
+          assert.property(res, `hasPassword`);
+          assert.property(res, `verificationEmailTriggered`);
+          assert.property(res, `sso`);
+          assert.isTrue(res.hasPassword);
+          assert.isFalse(res.verificationEmailTriggered);
+          assert.isFalse(res.sso);
+        });
+    });
   });
 
   describe(`#get()`, () => {

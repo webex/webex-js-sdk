@@ -54,7 +54,7 @@ const User = SparkPlugin.extend({
     })
       .then((res) => {
         response = res;
-        return this.getOauthCode();
+        return this._getOauthCode();
       })
       .then((res) => {
         const code = res.match(/<title>(.*?)<\/title>/)[1];
@@ -321,7 +321,7 @@ const User = SparkPlugin.extend({
   },
 
   /**
-   * Uses cookie header to request quth code
+   * Uses cookie header to request auth code
    * @private
    * @returns {string} html body with auth code
    */
@@ -337,7 +337,7 @@ const User = SparkPlugin.extend({
         redirect_uri: `urn:ietf:wg:oauth:2.0:oob`,
         client_id: this.spark.config.credentials.oauth.client_id,
         scope: this.spark.config.credentials.oauth.scope,
-        service: `spark`
+        cisService: `spark`
       }
     })
       .then((res) => res.body);

@@ -9,8 +9,9 @@ var assert = require('chai').assert;
 var landingparty = require('../../lib/landingparty');
 var patterns = require('../../../../src/util/patterns');
 var sinon = require('sinon');
-var skipInBrowser = require('../../../lib/mocha-helpers').skipInBrowser;
 var Spark = require('../../../../src');
+var querystring = require('querystring');
+var url = require('url');
 var uuid = require('uuid');
 
 describe('Services', function() {
@@ -141,51 +142,51 @@ describe('Services', function() {
     var spark;
     function createUnauthedSpark() {
       /* eslint camelcase: [0] */
-      before(function() {
-        spark = new Spark({
-          config: {
-            trackingIdPrefix: 'spark-js-sdk',
-            credentials: {
-              oauth: {
-                client_id: process.env.COMMON_IDENTITY_CLIENT_ID,
-                client_secret: process.env.COMMON_IDENTITY_CLIENT_SECRET,
-                redirect_uri: process.env.COMMON_IDENTITY_REDIRECT_URI,
-                service: process.env.COMMON_IDENTITY_SERVICE
-              }
-            },
-            metrics: {
-              enableMetrics: false
-            },
-            mercury: {
-              enablePingPong: false
+      spark = new Spark({
+        config: {
+          trackingIdPrefix: 'spark-js-sdk',
+          credentials: {
+            oauth: {
+              client_id: process.env.COMMON_IDENTITY_CLIENT_ID,
+              client_secret: process.env.COMMON_IDENTITY_CLIENT_SECRET,
+              redirect_uri: process.env.COMMON_IDENTITY_REDIRECT_URI,
+              service: process.env.COMMON_IDENTITY_SERVICE,
+              scope: process.env.COMMON_IDENTITY_SCOPE
             }
+          },
+          metrics: {
+            enableMetrics: false
+          },
+          mercury: {
+            enablePingPong: false
           }
-        });
+        }
       });
     }
 
-    skipInBrowser(describe)('#register() @atlas', function() {
-      createUnauthedSpark();
-
+    describe('#register() @atlas', function() {
       it('registers a new user @atlas', function() {
+        createUnauthedSpark();
         return spark.user.register({email: 'Collabctg+spark-js-sdk-' + Date.now() + '@gmail.com'})
           .then(function(res) {
-            assert(res.verificationEmailTriggered, true);
-            assert(res.sso, false);
-            assert(res.hasPassword, true);
+            assert.isTrue(res.verificationEmailTriggered);
+            assert.isFalse(res.sso);
+            assert.isFalse(res.hasPassword);
           });
       });
 
       it('does not trigger an verification email if existing user', function() {
+        createUnauthedSpark();
         return spark.user.register({email: party.spock.email})
           .then(function(res) {
-            assert(res.verificationEmailTriggered, false);
-            assert(res.sso, false);
-            assert(res.hasPassword, true);
+            assert.isFalse(res.verificationEmailTriggered);
+            assert.isFalse(res.sso);
+            assert.isTrue(res.hasPassword);
           });
       });
 
       it('fails to register users with invalid email addresses @atlas', function() {
+        createUnauthedSpark();
         return assert.isRejected(spark.user.register({email: 'not-an-email-address'}))
           .then(function(res) {
             assert(res.statusCode === 400);
@@ -195,9 +196,9 @@ describe('Services', function() {
 
     describe('#setPassword()', function() {
       it('sets the password', function() {
-        return spark.user.setPassword({userId: party.spock.id, password: 'P@ssword123'})
+        return party.spock.spark.user.setPassword({userId: party.spock.id, password: 'P@ssword123'})
           .then(function() {
-            spark.user.verify({email: party.spock.email});
+            return party.spock.spark.user.register({email: party.spock.email});
           })
           .then(function(res) {
             assert.property(res, 'hasPassword');
@@ -210,13 +211,79 @@ describe('Services', function() {
       });
     });
 
-    skipInBrowser(describe)('#activate() @CI', function() {
-      createUnauthedSpark();
+    // NOTE: need collabctg+*@gmail.com to get verifyEmailURL
+    describe('#activate() @CI', function() {
 
-      it.skip('retrieves a valid user token using verificationToken', function() {
-        return spark.user.register({email: 'Collabctg+spark-js-sdk-' + Date.now() + '@gmail.com'}, {spoofMobile: true})
-          .then(function(body) {
-            return spark.user.activate({encryptedQueryString: body.eqp});
+      it('retrieves a valid user token', function() {
+        createUnauthedSpark();
+        assert.isUndefined(spark.credentials.authorization);
+        var email = 'collabctg+spark-js-sdk-' + Date.now() + '@gmail.com';
+        return spark.user.register({email: email})
+          .then(function(res) {
+            assert.isTrue(res.verificationEmailTriggered);
+            assert.property(res, 'verifyEmailURL');
+            var query = url.parse(res.verifyEmailURL).query;
+            var token = querystring.parse(query).t;
+            return assert.isFulfilled(spark.user.activate({verificationToken: token}));
+          })
+          .then(function(res) {
+            assert.property(res, 'email');
+            assert.property(res, 'cookieName');
+            assert.property(res, 'cookieValue');
+            assert.property(res, 'cookieDomain');
+            assert.equal(res.email, email);
+            assert.isDefined(spark.credentials.authorization.supertoken);
+            return spark.user.register({email: email});
+          })
+          .then(function(res) {
+            assert.property(res, 'hasPassword');
+            assert.property(res, 'verificationEmailTriggered');
+            assert.property(res, 'sso');
+            assert.isFalse(res.hasPassword);
+            assert.isFalse(res.verificationEmailTriggered);
+            assert.isFalse(res.sso);
+          });
+      });
+
+      it('retrieves a valid user token and sets the password', function() {
+        createUnauthedSpark();
+        assert.isUndefined(spark.credentials.authorization);
+        var email = 'collabctg+spark-js-sdk-' + Date.now() + '@gmail.com';
+        return spark.user.register({email: email})
+          .then(function(res) {
+            assert.isTrue(res.verificationEmailTriggered);
+            assert.property(res, 'verifyEmailURL');
+            var query = url.parse(res.verifyEmailURL).query;
+            var token = querystring.parse(query).t;
+            return assert.isFulfilled(spark.user.activate({verificationToken: token}));
+          })
+          .then(function(res) {
+            assert.property(res, 'email');
+            assert.property(res, 'cookieName');
+            assert.property(res, 'cookieValue');
+            assert.property(res, 'cookieDomain');
+            assert.equal(res.email, email);
+            assert.isDefined(spark.credentials.authorization.supertoken);
+          })
+          .then(function() {
+            return spark.device.register();
+          })
+          .then(function() {
+            return spark.user.get();
+          })
+          .then(function(user) {
+            return spark.user.setPassword({userId: user.id, password: 'P@ssword123'});
+          })
+          .then(function() {
+            return spark.user.register({email: email});
+          })
+          .then(function(res) {
+            assert.property(res, 'hasPassword');
+            assert.property(res, 'verificationEmailTriggered');
+            assert.property(res, 'sso');
+            assert.isTrue(res.hasPassword);
+            assert.isFalse(res.verificationEmailTriggered);
+            assert.isFalse(res.sso);
           });
       });
     });
