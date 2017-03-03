@@ -32,7 +32,7 @@ describe.skip(`example-phone`, () => {
           .answerCall()
           .assertIsInCallWith(caller));
 
-        it(`answers the call with audio only`, () => browser
+        it(`answers the call with audio-only`, () => browser
           .bdPlaceCall(callee.email)
           .clickOnTitle(`Answer Call with Audio`)
           .assertIsInCallWith(caller)
@@ -41,7 +41,7 @@ describe.skip(`example-phone`, () => {
         );
 
         // FIXME seems broken
-        it.skip(`answers the call with video only`, () => browser
+        it.skip(`answers the call with video-only`, () => browser
           .bdPlaceCall(callee.email)
           .clickOnTitle(`Answer Call with Video`)
           .assertIsInCallWith(caller)

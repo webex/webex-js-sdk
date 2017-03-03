@@ -16,21 +16,6 @@ import {
 } from '@ciscospark/plugin-locus';
 import {defaults, find} from 'lodash';
 import {
-  createOffer,
-  acceptAnswer,
-  end,
-  mediaDirection as mediaDirectionFromPeerConnection,
-  addStream,
-  stopSendingAudio,
-  stopSendingVideo,
-  startSendingAudio,
-  startSendingVideo,
-  stopReceivingAudio,
-  stopReceivingVideo,
-  startReceivingAudio,
-  startReceivingVideo
-} from './webrtc';
-import {
   activeParticipants,
   direction,
   isActive,
@@ -42,27 +27,7 @@ import {
   remoteVideoMuted
 } from './state-parsers';
 
-import transform from 'sdp-transform';
-
-/**
- * Checks a given offer for the h264 codec
- * @param {string} offer
- * @returns {string}
- */
-function ensureH264(offer) {
-  const sdp = transform.parse(offer);
-  const video = find(sdp.media, {type: `video`});
-  if (!video) {
-    throw new Error(`Expected video section in offer but no such section found`);
-  }
-
-  const doesHaveH264 = video.rtp.reduce((hasH264, rtp) => hasH264 || rtp.codec.includes(`264`), false);
-  if (!doesHaveH264) {
-    throw new Error(`Offer includes video section but does not include h264 codec`);
-  }
-
-  return offer;
-}
+import WebRTCMedia from './web-rtc-media';
 
 /**
  * @event ringing
@@ -121,9 +86,12 @@ function ensureH264(offer) {
 const Call = SparkPlugin.extend({
   namespace: `Phone`,
 
+  children: {
+    media: WebRTCMedia
+  },
+
   session: {
     locus: `object`,
-    pc: `object`,
     /**
      * Returns the local MediaStream for the call. May initially be `null`
      * between the time @{Phone#dial is invoked and the  media stream is
@@ -151,14 +119,6 @@ const Call = SparkPlugin.extend({
      */
     localMediaStreamUrl: `string`,
     /**
-     * Access to the remote party’s `MediaStream`.
-     * @instance
-     * @memberof Call
-     * @member {MediaStream}
-     * @readonly
-     */
-    remoteMediaStream: `object`,
-    /**
      * Object URL that refers to {@link Call#remoteMediaStream}. Will be
      * automatically deallocated when the call ends
      * @instance
@@ -166,52 +126,7 @@ const Call = SparkPlugin.extend({
      * @member {string}
      * @readonly
      */
-    remoteMediaStreamUrl: `string`,
-    /**
-     * Indicates if the client is sending audio
-     * @instance
-     * @memberof Call
-     * @member {Boolean}
-     * @readonly
-     */
-    sendingAudio: `boolean`,
-    /**
-     * Indicates if the client is sending video
-     * @instance
-     * @memberof Call
-     * @member {Boolean}
-     * @readonly
-     */
-    sendingVideo: `boolean`,
-    /**
-     * Indicates if the client is receiving audio
-     * @instance
-     * @memberof Call
-     * @member {Boolean}
-     * @readonly
-     */
-    receivingAudio: `boolean`,
-    /**
-     * Indicates if the client is receiving video
-     * @instance
-     * @memberof Call
-     * @member {Boolean}
-     * @readonly
-     */
-    receivingVideo: `boolean`,
-
-    wasSendingAudio: `boolean`,
-    wasSendingVideo: `boolean`,
-    wasReceivingAudio: `boolean`,
-    wasReceivingVideo: `boolean`,
-    locusJoinInFlight: {
-      default: false,
-      type: `boolean`
-    },
-    locusLeaveInFlight: {
-      default: false,
-      type: `boolean`
-    }
+    remoteMediaStreamUrl: `string`
   },
 
   // FIXME in its current form, any derived property that is an object will emit
@@ -367,32 +282,41 @@ const Call = SparkPlugin.extend({
         return `initiated`;
       }
     },
-    localAudioDirection: {
-      deps: [`locus`],
+    /**
+     * Access to the remote party’s `MediaStream`.
+     * @instance
+     * @memberof Call
+     * @member {MediaStream}
+     * @readonly
+     */
+    remoteMediaStream: {
+      deps: [`media.remoteMediaStream`],
       fn() {
-        return mediaDirectionFromPeerConnection(`audio`, this.pc).toLowerCase();
+        return this.media.remoteMediaStream;
       }
     },
-    localVideoDirection: {
-      deps: [`locus`],
+    receivingAudio: {
+      deps: [`media.receivingAudio`],
       fn() {
-        return mediaDirectionFromPeerConnection(`video`, this.pc).toLowerCase();
+        return this.media.receivingAudio;
       }
     },
-    remoteAudioDirection: {
-      deps: [`locus`],
+    receivingVideo: {
+      deps: [`media.receivingVideo`],
       fn() {
-        // Until Locus fixes the bug that prevents do both renegotiation and
-        // state update, we can't trust the remote direction from the locus
-        return `unknown`;
+        return this.media.receivingVideo;
       }
     },
-    remoteVideoDirection: {
-      deps: [`locus`],
+    sendingAudio: {
+      deps: [`media.sendingAudio`],
       fn() {
-        // Until Locus fixes the bug that prevents do both renegotiation and
-        // state update, we can't trust the remote direction from the locus
-        return `unknown`;
+        return this.media.sendingAudio;
+      }
+    },
+    sendingVideo: {
+      deps: [`media.sendingVideo`],
+      fn() {
+        return this.media.sendingVideo;
       }
     }
   },
@@ -423,13 +347,6 @@ const Call = SparkPlugin.extend({
       URL.revokeObjectURL(this.remoteMediaStreamUrl);
       this.remoteMediaStreamUrl = undefined;
     });
-
-    this.pc = new RTCPeerConnection({iceServers: []});
-    // TODO given all the other chrome/ff discrepancies, make sure this works in
-    // both browsers
-    this.pc.ontrack = (event) => {
-      this.remoteMediaStream = event.streams[0];
-    };
 
     this.on(`change:remoteMediaStream`, () => {
       if (this.remoteMediaStreamUrl) {
@@ -537,6 +454,9 @@ const Call = SparkPlugin.extend({
    */
   dial(invitee, options) {
     this.logger.info(`call: dialing`);
+    if (options && options.localMediaStream) {
+      this.localMediaStream = options.localMediaStream;
+    }
     this._join(`create`, invitee, options)
       .then(tap(() => this.logger.info(`call: dialed`)))
       .catch((reason) => {
@@ -564,7 +484,7 @@ const Call = SparkPlugin.extend({
     // invoking reject()
     this.logger.info(`call: hanging up`);
 
-    end(this.pc);
+    this.media.end();
 
     if (!this.locus) {
       if (this.locusJoinInFlight) {
@@ -596,12 +516,6 @@ const Call = SparkPlugin.extend({
       .then(() => {
         this.locusLeaveInFlight = false;
       })
-      .then(() => this.set({
-        sendingAudio: false,
-        sendingVideo: false,
-        receivingAudio: false,
-        receivingVideo: false
-      }))
       .then(tap(() => this.stopListening(this.spark.mercury)))
       .then(tap(() => this.off()))
       .then(tap(() => this.logger.info(`call: hung up`)));
@@ -748,70 +662,7 @@ const Call = SparkPlugin.extend({
 
   _changeMedia(constraints) {
     return new Promise((resolve) => {
-      /* eslint complexity: [0] */
-      if (!this.pc) {
-        resolve();
-        return;
-      }
 
-      constraints = defaults({}, constraints, {
-        sendingVideo: this.sendingVideo,
-        sendingAudio: this.sendingAudio,
-        receivingVideo: this.receivingVideo,
-        receivingAudio: this.receivingAudio
-      });
-
-      constraints = Object.assign({}, constraints, {
-        wasSendingAudio: this.sendingAudio,
-        wasSendingVideo: this.sendingVideo,
-        wasReceivingAudio: this.receivingAudio,
-        wasReceivingVideo: this.receivingVideo
-      });
-
-      this.set(constraints);
-
-      const promises = [];
-      if (constraints.sendingAudio && !constraints.wasSendingAudio) {
-        promises.push(startSendingAudio(this.pc));
-      }
-
-      if (!constraints.sendingAudio && constraints.wasSendingAudio) {
-        promises.push(stopSendingAudio(this.pc));
-      }
-
-      if (constraints.sendingVideo && !constraints.wasSendingVideo) {
-        promises.push(startSendingVideo(this.pc));
-      }
-
-      if (!constraints.sendingVideo && constraints.wasSendingVideo) {
-        promises.push(stopSendingVideo(this.pc));
-      }
-
-      if (constraints.receivingAudio && !constraints.wasReceivingAudio) {
-        promises.push(startReceivingAudio(this.pc));
-      }
-
-      if (!constraints.receivingAudio && constraints.wasReceivingAudio) {
-        promises.push(stopReceivingAudio(this.pc));
-      }
-
-      if (constraints.receivingVideo && !constraints.wasReceivingVideo) {
-        promises.push(startReceivingVideo(this.pc));
-      }
-
-      if (!constraints.receivingVideo && constraints.wasReceivingVideo) {
-        promises.push(stopReceivingVideo(this.pc));
-      }
-
-
-      resolve(Promise.all(promises)
-        .then(() => this._updateMedia())
-        .then(() => this.unset([
-          `wasSendingAudio`,
-          `wasSendingVideo`,
-          `wasReceivingAudio`,
-          `wasReceivingVideo`
-        ])));
     });
   },
 
@@ -827,45 +678,22 @@ const Call = SparkPlugin.extend({
       offerToReceiveVideo: recvOnly || options.constraints.video
     });
 
-    let promise;
-    if (!recvOnly) {
-      promise = Promise.resolve(options.localMediaStream || this.spark.phone.createLocalMediaStream(options))
-        .then((localMediaStream) => {
-          this.localMediaStream = localMediaStream;
-          this.localMediaStreamUrl = URL.createObjectURL(localMediaStream);
-          addStream(this.pc, localMediaStream);
-        });
-    }
+    this.media.set({
+      audio: options.constraints.audio,
+      video: options.constraints.video,
+      offerToReceiveAudio: options.offerOptions.offerToReceiveAudio,
+      offerToReceiveVideo: options.offerOptions.offerToReceiveVideo
+    });
 
-    const wantsVideo = options.constraints.video || options.offerOptions.offerToReceiveVideo;
-
-    return Promise.resolve(promise)
-      .then(() => createOffer(this.pc, options.offerOptions))
-      .then((offer) => {
-        if (!wantsVideo) {
-          return offer;
-        }
-        return ensureH264(offer);
-      })
-      .then((offer) => {
-        this.locusJoinInFlight = true;
-        return this.spark.locus[locusMethodName](target, {
-          localSdp: offer
-        });
-      })
+    return this.media.createOffer()
+      .then((offer) => this.spark.locus[locusMethodName](target, {
+        localSdp: offer
+      }))
       .then((locus) => {
         this._setLocus(locus);
         this.locusJoinInFlight = false;
         const answer = JSON.parse(this.mediaConnection.remoteSdp).sdp;
-        return acceptAnswer(this.pc, answer);
-      })
-      .then(() => {
-        this.set({
-          sendingAudio: options.constraints.audio,
-          sendingVideo: options.constraints.video,
-          receivingAudio: options.offerOptions.offerToReceiveAudio,
-          receivingVideo: options.offerOptions.offerToReceiveVideo
-        });
+        return this.media.acceptAnswer(answer);
       });
   },
 
@@ -903,10 +731,7 @@ const Call = SparkPlugin.extend({
     /* eslint max-nested-callbacks: [0] */
     return new Promise((resolve) => {
       process.nextTick(() => {
-        resolve(createOffer(this.pc, {
-          offerToReceiveAudio: this.receivingAudio,
-          offerToReceiveVideo: this.receivingVideo
-        })
+        resolve(this.media.createOffer()
           .then((offer) => this.spark.locus.updateMedia(this.locus, {
             localSdp: offer,
             mediaId: this.mediaId,
@@ -916,7 +741,7 @@ const Call = SparkPlugin.extend({
           .then((locus) => {
             this._setLocus(locus);
             const sdp = JSON.parse(this.mediaConnection.remoteSdp).sdp;
-            return acceptAnswer(this.pc, sdp);
+            this.media.acceptAnswer(sdp);
           }));
       });
     });

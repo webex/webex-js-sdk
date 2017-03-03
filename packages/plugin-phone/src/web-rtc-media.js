@@ -4,6 +4,7 @@ import {
   acceptAnswer,
   addStream,
   createOffer,
+  end,
   ensureH264,
   getUserMedia,
   startSendingAudio,
@@ -151,27 +152,27 @@ const WebRTCMedia = AmpState.extend({
       };
     }
 
-    const wantsVideo = this.video;
-    return Promise.resolve(this.localMediaStream || getUserMedia({
-      audio: this.audio,
-      video: wantsVideo,
-      fake: true
-    }))
-      .then((stream) => {
-        this.localMediaStream = stream;
+    let p;
+    if (this.audio || this.video) {
+      p = Promise.resolve(this.localMediaStream || getUserMedia({
+        audio: this.audio,
+        video: this.video,
+        fake: true
+      }))
+        .then((stream) => {
+          this.localMediaStream = stream;
+          if (!this.peer.getLocalStreams().includes(stream)) {
+            addStream(this.peer, stream);
+          }
+        });
+    }
 
-        return stream;
-      })
-      .then((stream) => {
-        if (!this.peer.getLocalStreams().includes(stream)) {
-          addStream(this.peer, stream);
-        }
-      })
+    return Promise.resolve(p)
       .then(() => createOffer(this.peer, {
         offerToReceiveAudio: this.offerToReceiveAudio,
         offerToReceiveVideo: this.offerToReceiveVideo
       }))
-      .then(ensureH264(wantsVideo))
+      .then(ensureH264(this.video))
       .then((sdp) => {
         this.set({
           sendingAudio: getLocalMediaStatus(`audio`, this.peer),
@@ -180,6 +181,12 @@ const WebRTCMedia = AmpState.extend({
         this.bindNegotiationEvents();
         return sdp;
       });
+  },
+
+  end() {
+    if (this.peer) {
+      end(this.peer);
+    }
   },
 
   initialize(...args) {

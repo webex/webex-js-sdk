@@ -4,14 +4,7 @@ import {assert} from '@ciscospark/test-helper-chai';
 import {WebRTCMedia} from '../..';
 import {parse} from 'sdp-transform';
 import {find} from 'lodash';
-import {skipInFirefox} from '@ciscospark/test-helper-mocha';
-
-function maxWaitForEvent(max, event, emitter) {
-  return Promise.race([
-    new Promise((resolve) => setTimeout(resolve, 1000)),
-    new Promise((resolve) => emitter.once(event, resolve))
-  ]);
-}
+import {maxWaitForEvent, skipInFirefox} from '@ciscospark/test-helper-mocha';
 
 let pc;
 function mockAnswer(offer) {
