@@ -108,5 +108,27 @@ module.exports = {
    */
   nodeOnly: function nodeOnly(mochaMethod) {
     return inNode() ? mochaMethod : noop;
+  },
+
+  maxWaitForEvent: function maxWaitForEvent(max, event, emitter) {
+    return Promise.race([
+      new Promise(function(resolve) {
+        setTimeout(resolve, 1000);
+      }),
+      new Promise(function(resolve) {
+        emitter.once(event, resolve);
+      })
+    ]);
+  },
+
+  maxWaitForPromise: function maxWaitForPromise(timeout, promise) {
+    return Promise.race([
+      promise,
+      new Promise(function(resolve, reject) {
+        setTimeout(function() {
+          reject(new Error('Timeout of ' + timeout + ' expired before promise completed'));
+        }, timeout);
+      })
+    ]);
   }
 };

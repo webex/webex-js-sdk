@@ -6,11 +6,10 @@
 import '../..';
 
 import {assert} from '@ciscospark/test-helper-chai';
+import {maxWaitForEvent} from '@ciscospark/test-helper-mocha';
 import sinon from '@ciscospark/test-helper-sinon';
 import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
-import transform from 'sdp-transform';
-import {find} from 'lodash';
 import handleErrorEvent from '../lib/handle-error-event';
 
 if (process.env.NODE_ENV !== `test`) {
@@ -90,7 +89,7 @@ describe(`plugin-phone`, function() {
     });
 
     describe(`#dial()`, () => {
-      it(`initiates a video only call`, () => {
+      it(`initiates a video-only call`, () => {
         const call = spock.spark.phone.dial(mccoy.email, {
           constraints: {
             video: true,
@@ -98,15 +97,21 @@ describe(`plugin-phone`, function() {
           }
         });
 
-        return handleErrorEvent(call, () => mccoy.spark.phone.when(`call:incoming`)
+        return handleErrorEvent(call, () => Promise.all([
+          mccoy.spark.phone.when(`call:incoming`)
+          // FIXME This next line shouldn't need to be in a then block, but I
+          // can't get it to work otherwise
+            .then(() => maxWaitForEvent(10000, `connected`, call))
+        ])
           .then(() => {
-            const sdp = transform.parse(call.pc.localDescription.sdp);
-            assert.notOk(find(sdp.media, {type: `audio`}));
-            assert.equal(find(sdp.media, {type: `video`}).direction, `sendrecv`);
+            assert.isFalse(call.sendingAudio);
+            assert.isTrue(call.sendingVideo);
+            assert.isFalse(call.receivingAudio);
+            assert.isTrue(call.receivingVideo);
           }));
       });
 
-      it(`initiates an audio only call`, () => {
+      it(`initiates an audio-only call`, () => {
         const call = spock.spark.phone.dial(mccoy.email, {
           constraints: {
             video: false,
@@ -114,11 +119,17 @@ describe(`plugin-phone`, function() {
           }
         });
 
-        return handleErrorEvent(call, () => mccoy.spark.phone.when(`call:incoming`)
+        return handleErrorEvent(call, () => Promise.all([
+          mccoy.spark.phone.when(`call:incoming`)
+          // FIXME This next line shouldn't need to be in a then block, but I
+          // can't get it to work otherwise
+            .then(() => maxWaitForEvent(10000, `connected`, call))
+        ])
           .then(() => {
-            const sdp = transform.parse(call.pc.localDescription.sdp);
-            assert.notOk(find(sdp.media, {type: `video`}));
-            assert.equal(find(sdp.media, {type: `audio`}).direction, `sendrecv`);
+            assert.isTrue(call.sendingAudio);
+            assert.isFalse(call.sendingVideo);
+            assert.isTrue(call.receivingAudio);
+            assert.isFalse(call.receivingVideo);
           }));
       });
 
@@ -134,11 +145,17 @@ describe(`plugin-phone`, function() {
           }
         });
 
-        return handleErrorEvent(call, () => mccoy.spark.phone.when(`call:incoming`)
+        return handleErrorEvent(call, () => Promise.all([
+          mccoy.spark.phone.when(`call:incoming`)
+          // FIXME This next line shouldn't need to be in a then block, but I
+          // can't get it to work otherwise
+            .then(() => maxWaitForEvent(10000, `connected`, call))
+        ])
           .then(() => {
-            const sdp = transform.parse(call.pc.localDescription.sdp);
-            assert.equal(find(sdp.media, {type: `audio`}).direction, `recvonly`);
-            assert.equal(find(sdp.media, {type: `video`}).direction, `recvonly`);
+            assert.isFalse(call.sendingAudio);
+            assert.isFalse(call.sendingVideo);
+            assert.isTrue(call.receivingAudio);
+            assert.isTrue(call.receivingVideo);
           }));
       });
 
