@@ -216,8 +216,6 @@ describe(`plugin-phone`, function() {
         return c.hangup().catch((reason) => console.warn(reason));
       });
 
-      // TODO we may get a stream from the remote party before signalling
-      // catches up to tell us we're in the connected state
       describe(`before the call is connected`, () => {
         it(`is null`, () => {
           call = spock.spark.phone.dial(mccoy.email);
@@ -403,7 +401,7 @@ describe(`plugin-phone`, function() {
       });
 
       describe(`when the local party is not sending Audio`, () => {
-        it.skip(`is false`, () => {
+        it(`is false`, () => {
           call = spock.spark.phone.dial(mccoy.email, {constraints: {audio: false}});
           return handleErrorEvent(call, () => Promise.all([
             mccoy.spark.phone.when(`call:incoming`)
@@ -689,7 +687,7 @@ describe(`plugin-phone`, function() {
         });
       });
 
-      describe(`in-progress events`, () => {
+      describe.skip(`in-progress events`, () => {
         let call;
         beforeEach(() => {
           call = spock.spark.phone.dial(mccoy.email);
@@ -699,7 +697,7 @@ describe(`plugin-phone`, function() {
         describe(`on(remoteAudioMuted:change)`, () => {
           // TODO: When the remote party calls stopSendingAudio,
           // it doesn't trigger this change, but it should
-          it.skip(`gets triggered when the remote party mutes their audio`, () => {
+          it(`gets triggered when the remote party mutes their audio`, () => {
             let remoteCall;
             let remoteAudioSpy;
             return handleErrorEvent(call, () => Promise.all([
@@ -752,7 +750,7 @@ describe(`plugin-phone`, function() {
         describe(`on(remoteVideoMuted:change)`, () => {
           // TODO: When the remote party calls stopSendingAudio,
           // it doesn't trigger this change, but it should
-          it.skip(`gets triggered when the remote party mutes their video`, () => {
+          it(`gets triggered when the remote party mutes their video`, () => {
             let remoteCall;
             let remoteVideoSpy;
             return handleErrorEvent(call, () => Promise.all([
@@ -803,10 +801,6 @@ describe(`plugin-phone`, function() {
       });
     });
 
-
-    // FIXME: this test makes the afterEach timeout because hangup waits
-    // for a locus to arrive forever; let's refactor the way error gets emitted
-    // so it's a member of the status enum
     describe.skip(`on(error)`, () => {
       it(`gets triggered when something fails in a non-promise-returning method`, () => {
         this.timeout(30000);
