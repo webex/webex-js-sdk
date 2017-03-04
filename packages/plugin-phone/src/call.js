@@ -355,8 +355,29 @@ const Call = SparkPlugin.extend({
       this.remoteMediaStreamUrl = URL.createObjectURL(this.remoteMediaStream);
     });
 
+    // Reminder: this is not a derived property so that we can reassign the
+    // stream midcall
+    this.on(`change:media.localMediaStream`, () => {
+      this.localMediaStream = this.media.localMediaStream;
+      if (this.localMediaStreamUrl) {
+        URL.revokeObjectURL(this.localMediaStreamUrl);
+      }
+      this.localMediaStreamUrl = URL.createObjectURL(this.localMediaStream);
+    });
+
+    this.on(`change:localMediaStream`, () => {
+      if (this.media.localMediaStream !== this.localMediaStream) {
+        this.media.localMediaStream = this.localMediaStream;
+      }
+    });
+
     this.on(`change:remoteMediaStreamUrl`, () => {
       this.trigger(`remoteMediaStream:change`);
+    });
+
+
+    this.on(`change:localMediaStreamUrl`, () => {
+      this.trigger(`localMediaStream:change`);
     });
 
     this.on(`change:localMediaStreamUrl`, () => {
