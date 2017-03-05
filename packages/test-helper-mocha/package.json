@@ -5,6 +5,9 @@
   "license": "MIT",
   "main": "./src",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/test-helper-mocha",
+  "dependencies": {
+    "bowser": "^1.6.0"
+  },
   "devDependencies": {
     "babel-eslint": "^6.1.2",
     "eslint": "^3.5.0",
@@ -12,8 +15,5 @@
   },
   "engines": {
     "node": ">=4"
-  },
-  "dependencies": {
-    "bowser": "^1.6.0"
   }
 }
