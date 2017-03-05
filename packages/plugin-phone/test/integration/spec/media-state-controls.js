@@ -7,10 +7,8 @@ import '../..';
 
 import {assert} from '@ciscospark/test-helper-chai';
 import CiscoSpark from '@ciscospark/spark-core';
-import transform from 'sdp-transform';
-import {find} from 'lodash';
 import testUsers from '@ciscospark/test-helper-test-users';
-
+import handleErrorEvent from '../lib/handle-error-event';
 
 function boolToStatus(sending, receiving) {
   if (sending && receiving) {
@@ -32,7 +30,7 @@ function boolToStatus(sending, receiving) {
   throw new Error(`If you see this error, your JavaScript engine has a major flaw`);
 }
 
-function assertMedia(call, {
+function assertLocusMediaState(call, {
   sendingAudio,
   sendingVideo,
   receivingAudio,
@@ -43,33 +41,14 @@ function assertMedia(call, {
   assert.equal(call.sendingVideo, sendingVideo, `The call ${sendingVideo ? `is` : `is not`} sending video`);
 
   // Locus State
-  // FIXME reenable locus state tests once Locus team fixes cloud-apps #3939
-  // assert.equal(call.local.status.audioStatus.toLowerCase(), boolToStatus(sendingAudio, receivingAudio), `Locus State`);
-  // assert.equal(call.local.status.videoStatus.toLowerCase(), boolToStatus(sendingVideo, receivingVideo), `Locus State`);
-  //
-  // assert.equal(call.remote.status.audioStatus.toLowerCase(), boolToStatus(remoteSendingAudio, remoteReceivingAudio), `Locus State`);
-  // assert.equal(call.remote.status.videoStatus.toLowerCase(), boolToStatus(remoteSendingVideo, remoteReceivingVideo), `Locus State`);
+  assert.equal(call.local.status.audioStatus.toLowerCase(), boolToStatus(sendingAudio, receivingAudio), `Locus State`);
+  assert.equal(call.local.status.videoStatus.toLowerCase(), boolToStatus(sendingVideo, receivingVideo), `Locus State`);
 
   // Media State
-  const offer = transform.parse(call.pc.localDescription.sdp);
-  assertPeerConnectionState(offer, `audio`, sendingAudio, receivingAudio);
-  assertPeerConnectionState(offer, `video`, sendingVideo, receivingVideo);
-
-  const answer = transform.parse(call.pc.remoteDescription.sdp);
-  assertPeerConnectionState(answer, `audio`, receivingAudio, sendingAudio);
-  assertPeerConnectionState(answer, `video`, receivingVideo, sendingVideo);
-}
-
-function assertPeerConnectionState(sdp, type, sending, receiving) {
-  const media = find(sdp.media, {type});
-  if (!sending && !receiving) {
-    if (media) {
-      assert.equal(media.direction, `inactive`);
-    }
-    return;
-  }
-
-  assert.equal(media.direction, boolToStatus(sending, receiving));
+  assert.equal(call.media.sendingAudio, sendingAudio, `The call's media layer's sendingAudio is ${sendingAudio}`);
+  assert.equal(call.media.sendingVideo, sendingVideo, `The call's media layer's sendingVideo is ${sendingVideo}`);
+  assert.equal(call.media.receivingAudio, receivingAudio, `The call's media layer's receivingAudio is ${receivingAudio}`);
+  assert.equal(call.media.receivingVideo, receivingVideo, `The call's media layer's receivingVideo is ${receivingVideo}`);
 }
 
 describe(`plugin-phone`, function() {
@@ -79,7 +58,7 @@ describe(`plugin-phone`, function() {
     describe(`Media State Controls`, () => {
       /* eslint max-statements: [0] */
       let mccoy, spock;
-      before(() => testUsers.create({count: 2})
+      before(`create test users`, () => testUsers.create({count: 2})
         .then((users) => {
           [mccoy, spock] = users;
           spock.spark = new CiscoSpark({
@@ -478,31 +457,33 @@ describe(`plugin-phone`, function() {
         describe(`when the call is sending video`, () => {
           it(`stops sending video`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
-
+            let mccoyCall;
             return Promise.all([
               mccoy.spark.phone.when(`call:incoming`)
-                .then(([c]) => c.answer()),
-              call.when(`connected`)
-                .then(() => assertMedia(call, {
+                .then(([c]) => {
+                  mccoyCall = c;
+                  return handleErrorEvent(c, () => c.answer());
+                }),
+              handleErrorEvent(call, () => call.when(`connected`)
+                .then(() => assert.isDefined(call.media.peer))
+                .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: true,
                   receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
+                  receivingVideo: true
                 }))
+                .then(() => assert.isDefined(call.media.peer))
                 .then(() => call.toggleSendingVideo())
-                .then(() => assertMedia(call, {
+                .then(() => assert.isDefined(call.media.peer))
+                .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: false,
                   receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
+                  receivingVideo: true
+                }))
+                .then(() => {
+                  assert.equal(mccoyCall.remote.status.audioStatus.toLowerCase(), boolToStatus(true, true));
+                  assert.equal(mccoyCall.remote.status.videoStatus.toLowerCase(), boolToStatus(false, true));
                 }))
             ]);
           });

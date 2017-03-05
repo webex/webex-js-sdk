@@ -107,8 +107,6 @@ const Call = SparkPlugin.extend({
      * @readonly
      */
     localMediaStream: `object`,
-    // TODO determine if stream URLs can be deprecated; it looks like the video
-    // tag may accept streams directly these days.
     /**
      * Object URL that refers to {@link Call#localMediaStream}. Will be
      * automatically deallocated when the call ends
@@ -331,6 +329,7 @@ const Call = SparkPlugin.extend({
     Reflect.apply(SparkPlugin.prototype.initialize, this, args);
 
     this.listenTo(this.spark.mercury, `event:locus`, (event) => this._onLocusEvent(event));
+    this.listenTo(this.media, `error`, (error) => this.trigger(`error`, error));
     this.on(`disconnected`, () => {
       this.stopListening(this.spark.mercury);
       this.off();
@@ -572,7 +571,7 @@ const Call = SparkPlugin.extend({
    * @returns {Promise}
    */
   startSendingAudio() {
-    return this._changeMedia({sendingAudio: true});
+    return this._changeLocalMedia(`audio`, true);
   },
 
   /**
@@ -582,7 +581,7 @@ const Call = SparkPlugin.extend({
    * @returns {Promise}
    */
   startSendingVideo() {
-    return this._changeMedia({sendingVideo: true});
+    return this._changeLocalMedia(`video`, true);
   },
 
   startReceivingAudio() {
@@ -660,7 +659,7 @@ const Call = SparkPlugin.extend({
    * @returns {Promise}
    */
   stopSendingAudio() {
-    return this._changeMedia({sendingAudio: false});
+    return this._changeLocalMedia(`audio`, false);
   },
 
   /**
@@ -671,12 +670,37 @@ const Call = SparkPlugin.extend({
    * @returns {Promise}
    */
   stopSendingVideo() {
-    return this._changeMedia({sendingVideo: false});
+    return this._changeLocalMedia(`video`, false);
+  },
+
+  @oneFlight
+  _changeLocalMedia(key, value) {
+    return new Promise((resolve) => {
+      this.once(`change:sending${key === `audio` ? `Audio` : `Video`}`, () => {
+        resolve(this._updateLocalMedia());
+      });
+      this.media.set(key, value);
+    });
+  },
+
+  @oneFlight
+  _updateLocalMedia() {
+    return this.spark.locus.updateMedia(this.locus, {
+      sdp: this.media.peer.localDescription.sdp,
+      mediaId: this.mediaId,
+      audioMuted: !this.sendingAudio,
+      videoMuted: !this.sendingVideo
+    })
+      .then(() => this.spark.locus.get(this.locus))
+      .then((locus) => this._setLocus(locus));
   },
 
   _changeMedia(constraints) {
     return new Promise((resolve) => {
-
+      this.media.once(`negotiationneeded`, () => {
+        resolve(this._updateMedia());
+      });
+      this.media.set(constraints);
     });
   },
 
@@ -747,7 +771,7 @@ const Call = SparkPlugin.extend({
       process.nextTick(() => {
         resolve(this.media.createOffer()
           .then((offer) => this.spark.locus.updateMedia(this.locus, {
-            localSdp: offer,
+            sdp: offer,
             mediaId: this.mediaId,
             audioMuted: !this.sendingAudio,
             videoMuted: !this.sendingVideo
