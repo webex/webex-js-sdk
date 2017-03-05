@@ -300,6 +300,8 @@ const Mercury = SparkPlugin.extend({
       }), Promise.resolve())
       .then(() => {
         this._emit(`event`, event.data);
+        const [namespace] = data.eventType.split(`.`);
+        this._emit(`event:${namespace}`, envelope);
         this._emit(`event:${data.eventType}`, envelope);
       })
       .catch((reason) => {

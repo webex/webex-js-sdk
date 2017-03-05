@@ -10,7 +10,6 @@
 import {SparkPlugin} from '@ciscospark/spark-core';
 import {oneFlight, tap} from '@ciscospark/common';
 import {
-  eventKeys,
   USE_INCOMING,
   FETCH
 } from '@ciscospark/plugin-locus';
@@ -335,10 +334,7 @@ const Call = SparkPlugin.extend({
     // events through the same handler.
     // TODO adjust plugin-mercury to emit events by namespace so we can listen
     // for incoming locus events in a single handler.
-    eventKeys.forEach((key) => {
-      this.listenTo(this.spark.mercury, `event:${key}`, (event) => this._onLocusEvent(event));
-    });
-
+    this.listenTo(this.spark.mercury, `event:locus`, (event) => this._onLocusEvent(event));
     this.on(`disconnected`, () => {
       this.stopListening(this.spark.mercury);
       this.off();

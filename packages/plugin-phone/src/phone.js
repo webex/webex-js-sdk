@@ -5,7 +5,6 @@
  */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {eventKeys} from '@ciscospark/plugin-locus';
 import {defaults} from 'lodash';
 import Call from './call';
 import {shouldRing} from './state-parsers';
@@ -163,9 +162,7 @@ const Phone = SparkPlugin.extend({
   initialize(...args) {
     Reflect.apply(SparkPlugin.prototype.initialize, this, args);
 
-    eventKeys.forEach((key) => {
-      this.listenTo(this.spark.mercury, `event:${key}`, (event) => this._onLocusEvent(event));
-    });
+    this.listenTo(this.spark.mercury, `event:locus`, (event) => this._onLocusEvent(event));
   },
 
   /**
