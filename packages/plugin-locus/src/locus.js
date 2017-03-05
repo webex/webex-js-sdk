@@ -173,7 +173,7 @@ const Locus = SparkPlugin.extend({
    * @param {Object} options.mediaId
    * @returns {Promise<Types~Locus>}
    */
-  updateMedia(locus, options) {
+  updateMedia(locus, {sdp, audioMuted, videoMuted, mediaId}) {
     return this.request({
       method: `PUT`,
       uri: `${locus.self.url}/media`,
@@ -183,9 +183,11 @@ const Locus = SparkPlugin.extend({
           type: `SDP`,
           localSdp: JSON.stringify({
             type: `SDP`,
-            sdp: options.localSdp
+            sdp,
+            audioMuted,
+            videoMuted
           }),
-          mediaId: options.mediaId
+          mediaId
         }]
       }
     })
