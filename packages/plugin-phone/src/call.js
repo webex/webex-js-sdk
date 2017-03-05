@@ -330,10 +330,6 @@ const Call = SparkPlugin.extend({
   initialize(...args) {
     Reflect.apply(SparkPlugin.prototype.initialize, this, args);
 
-    // We can't trust the mercury event name, so we need to pipe all locus
-    // events through the same handler.
-    // TODO adjust plugin-mercury to emit events by namespace so we can listen
-    // for incoming locus events in a single handler.
     this.listenTo(this.spark.mercury, `event:locus`, (event) => this._onLocusEvent(event));
     this.on(`disconnected`, () => {
       this.stopListening(this.spark.mercury);
@@ -474,7 +470,8 @@ const Call = SparkPlugin.extend({
     if (options && options.localMediaStream) {
       this.localMediaStream = options.localMediaStream;
     }
-    this._join(`create`, invitee, options)
+    this.spark.phone.register()
+      .then(() => this._join(`create`, invitee, options))
       .then(tap(() => this.logger.info(`call: dialed`)))
       .catch((reason) => {
         this.trigger(`error`, reason);

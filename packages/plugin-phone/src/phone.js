@@ -197,7 +197,6 @@ const Phone = SparkPlugin.extend({
    * @returns {Call}
    */
   dial(dialString, options) {
-    // TODO call register if it has not been called.
     const call = Call.make({}, {parent: this.spark});
 
     call.dial(dialString, options);
