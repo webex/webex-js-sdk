@@ -263,7 +263,9 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call is started without audio`, () => {
-          it(`starts sending audio and stops sending audio`, () => {
+          // TODO [SSDK-566] Work with locus/linus to figure out why Calliope
+          // blows up when adding video to an audio-only call
+          it.skip(`starts sending audio and stops sending audio`, () => {
             const call = spock.spark.phone.dial(mccoy.email, {
               constraints: {
                 audio: false
@@ -347,7 +349,9 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call is started without video`, () => {
-          it(`starts sending video and stops sending video`, () => {
+          // TODO [SSDK-565] Work with locus to figure out why the remote party
+          // does not get notified when we add video to the call.
+          it.skip(`starts sending video and stops sending video`, () => {
             const call = spock.spark.phone.dial(mccoy.email, {
               constraints: {
                 video: false
