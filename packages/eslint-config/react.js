@@ -242,7 +242,7 @@ module.exports = {
     'jsx-a11y/no-access-key': [
       2
     ],
-    'jsx-a11y/no-marquee': [
+    'jsx-a11y/no-distracting-elements': [
       2
     ],
     'jsx-a11y/no-onchange': [
