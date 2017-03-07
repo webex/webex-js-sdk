@@ -137,7 +137,7 @@ describe(`plugin-phone`, () => {
                     .then(() => {
                       assert.lengthOf(m.peer.getLocalStreams(), 1);
                       assert.equal(m[mediaType === `audio` ? `sendingAudio` : `sendingVideo`], sending, `sending${mediaType === `audio` ? `Audio` : `Video`} is in the initial state of ${sending}`);
-                      const p = maxWaitForEvent(1000, `renegotiationneeded`, m);
+                      const p = maxWaitForEvent(1000, `negotiationneeded`, m);
                       m.toggle(mediaType);
                       assert.lengthOf(m.peer.getLocalStreams(), 1);
 
@@ -167,8 +167,11 @@ describe(`plugin-phone`, () => {
                       }
 
                       return Promise.all([
-                        p,
-                        maxWaitForEvent(1000, `change:sending${mediaType === `audio` ? `Audio` : `Video`}`, m)
+                        p
+                          .then(() => m.createOffer())
+                          .then(mockRenegotiate)
+                          .then((answer) => m.acceptAnswer(answer))
+                          .then(() => maxWaitForEvent(1000, `change:sending${mediaType === `audio` ? `Audio` : `Video`}`, m))
                           .then(() => assert.isTrue(m[mediaType === `audio` ? `sendingAudio` : `sendingVideo`], `sending${mediaType === `audio` ? `Audio` : `Video`} has (possibly asynchronously) left the initial state`))
                       ]);
                     })
@@ -227,7 +230,7 @@ describe(`plugin-phone`, () => {
                       assert.lengthOf(m.peer.getRemoteStreams(), 1);
                       assert.equal(m[`receiving${mediaType}`], receiving, `receiving${mediaType} is in the initial state of ${receiving}`);
 
-                      const p = maxWaitForEvent(1000, `renegotiationneeded`, m);
+                      const p = maxWaitForEvent(1000, `negotiationneeded`, m);
                       m.toggle(`offerToReceive${mediaType}`);
                       assert.lengthOf(m.peer.getRemoteStreams(), 1);
 
