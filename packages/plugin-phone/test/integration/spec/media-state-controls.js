@@ -85,254 +85,185 @@ describe(`plugin-phone`, function() {
         mccoy && mccoy.spark.phone.deregister()
           .catch((reason) => console.warn(`could not disconnect mccoy from mercury`, reason))
       ]));
-
-      describe(`#toggleReceivingAudio()`, () => {
-        describe(`when the call is receiving audio`, () => {
-          // FIXME Neil and Nathan are looking into alternatives to returning
-          // `inactive` in the answer when the offer audio attempts to be
-          // `sendonly`
-          it.skip(`stops receiving audio`, () => {
-            const call = spock.spark.phone.dial(mccoy.email);
-
-            return Promise.all([
-              mccoy.spark.phone.when(`call:incoming`)
-                .then(([c]) => c.answer()),
-              call.when(`connected`)
-                .then(() => assertMedia(call, {
-                  sendingAudio: true,
-                  sendingVideo: true,
-                  receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-                .then(() => call.toggleReceivingAudio())
-                .then(() => assertMedia(call, {
-                  sendingAudio: true,
-                  sendingVideo: true,
-                  receivingAudio: false,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-            ]);
-          });
-        });
-
-        describe(`when the call is not receiving audio`, () => {
-          // FIXME Neil and Nathan are looking into alternatives to returning
-          // `inactive` in the answer when the offer audio attempts to be
-          // `sendonly`
-          it.skip(`starts receiving audio`, () => {
-            const call = spock.spark.phone.dial(mccoy.email);
-
-            return Promise.all([
-              mccoy.spark.phone.when(`call:incoming`)
-                .then(([c]) => c.answer()),
-              call.when(`connected`)
-                .then(() => assertMedia(call, {
-                  sendingAudio: true,
-                  sendingVideo: true,
-                  receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-                .then(() => call.toggleReceivingAudio())
-                .then(() => assertMedia(call, {
-                  sendingAudio: true,
-                  sendingVideo: true,
-                  receivingAudio: false,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-                .then(() => call.toggleReceivingAudio())
-                .then(() => assertMedia(call, {
-                  sendingAudio: true,
-                  sendingVideo: true,
-                  receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-            ]);
-          });
-        });
-
-        describe(`when the call was started without audio`, () => {
-          // FIXME Neil and Nathan are looking into alternatives to returning
-          // `inactive` in the answer when the offer audio attempts to be
-          // `sendonly`
-          it.skip(`starts receiving audio`, () => {
-            const call = spock.spark.phone.dial(mccoy.email, {
-              constraints: {
-                audio: false
-              }
-            });
-
-            return Promise.all([
-              mccoy.spark.phone.when(`call:incoming`)
-                .then(([c]) => c.answer()),
-              call.when(`connected`)
-                .then(() => assertMedia(call, {
-                  sendingAudio: false,
-                  sendingVideo: true,
-                  receivingAudio: false,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-                .then(() => assert.isFalse(call.sendingAudio, `The call is not sending audio`))
-                .then(() => call.toggleReceivingAudio())
-                .then(() => assertMedia(call, {
-                  sendingAudio: false,
-                  sendingVideo: true,
-                  receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-            ]);
-          });
-        });
-      });
-
-      describe(`#toggleReceivingVideo()`, () => {
-        describe(`when the call is receiving video`, () => {
-          // FIXME disabled due to firefox bug (it works, but renegotiation does
-          // not) See https://bugzilla.mozilla.org/show_bug.cgi?id=1285009
-          it.skip(`stops receiving video`, () => {
-            const call = spock.spark.phone.dial(mccoy.email);
-
-            return Promise.all([
-              mccoy.spark.phone.when(`call:incoming`)
-                .then(([c]) => c.answer()),
-              call.when(`connected`)
-                .then(() => assertMedia(call, {
-                  sendingAudio: true,
-                  sendingVideo: true,
-                  receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-                .then(() => call.toggleReceivingVideo())
-                .then(() => assertMedia(call, {
-                  sendingAudio: true,
-                  sendingVideo: true,
-                  receivingAudio: true,
-                  receivingVideo: false,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-            ]);
-          });
-        });
-
-        describe(`when the call is not receiving video`, () => {
-          // FIXME disabled due to firefox bug (it works, but renegotiation does
-          // not) See https://bugzilla.mozilla.org/show_bug.cgi?id=1285009
-          it.skip(`starts receiving video`, () => {
-            const call = spock.spark.phone.dial(mccoy.email);
-
-            return Promise.all([
-              mccoy.spark.phone.when(`call:incoming`)
-                .then(([c]) => c.answer()),
-              call.when(`connected`)
-                .then(() => assertMedia(call, {
-                  sendingAudio: true,
-                  sendingVideo: true,
-                  receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-                .then(() => call.toggleReceivingVideo())
-                .then(() => assertMedia(call, {
-                  sendingAudio: true,
-                  sendingVideo: true,
-                  receivingAudio: true,
-                  receivingVideo: false,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-                .then(() => call.toggleReceivingVideo())
-                .then(() => assertMedia(call, {
-                  sendingAudio: true,
-                  sendingVideo: true,
-                  receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-            ]);
-          });
-        });
-
-        describe(`when the call was started without video`, () => {
-          it.skip(`starts receiving video`, () => {
-            const call = spock.spark.phone.dial(mccoy.email, {
-              constraints: {
-                video: false
-              }
-            });
-
-            return Promise.all([
-              mccoy.spark.phone.when(`call:incoming`)
-                .then(([c]) => c.answer()),
-              call.when(`connected`)
-                .then(() => assertMedia(call, {
-                  sendingAudio: true,
-                  sendingVideo: false,
-                  receivingAudio: true,
-                  receivingVideo: false,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-                .then(() => assert.isFalse(call.sendingVideo, `The call is not sending video`))
-                .then(() => call.toggleReceivingVideo())
-                .then(() => assertMedia(call, {
-                  sendingAudio: true,
-                  sendingVideo: false,
-                  receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-            ]);
-          });
-        });
-      });
-
+      //
+      // describe(`#toggleReceivingAudio()`, () => {
+      //   describe(`when the call is receiving audio`, () => {
+      //     it(`stops receiving audio`, () => {
+      //       const call = spock.spark.phone.dial(mccoy.email);
+      //
+      //       return Promise.all([
+      //         mccoy.spark.phone.when(`call:incoming`)
+      //           .then(([c]) => c.answer()),
+      //         call.when(`connected`)
+      //           .then(() => assertLocusMediaState(call, {
+      //             sendingAudio: true,
+      //             sendingVideo: true,
+      //             receivingAudio: true,
+      //             receivingVideo: true
+      //           }))
+      //           .then(() => call.toggleReceivingAudio())
+      //           .then(() => assertLocusMediaState(call, {
+      //             sendingAudio: true,
+      //             sendingVideo: true,
+      //             receivingAudio: false,
+      //             receivingVideo: true
+      //           }))
+      //       ]);
+      //     });
+      //   });
+      //
+      //   describe(`when the call is not receiving audio`, () => {
+      //     it(`starts receiving audio`, () => {
+      //       const call = spock.spark.phone.dial(mccoy.email);
+      //
+      //       return Promise.all([
+      //         mccoy.spark.phone.when(`call:incoming`)
+      //           .then(([c]) => c.answer()),
+      //         call.when(`connected`)
+      //           .then(() => assertLocusMediaState(call, {
+      //             sendingAudio: true,
+      //             sendingVideo: true,
+      //             receivingAudio: true,
+      //             receivingVideo: true
+      //           }))
+      //           .then(() => call.toggleReceivingAudio())
+      //           .then(() => assertLocusMediaState(call, {
+      //             sendingAudio: true,
+      //             sendingVideo: true,
+      //             receivingAudio: false,
+      //             receivingVideo: true
+      //           }))
+      //           .then(() => call.toggleReceivingAudio())
+      //           .then(() => assertLocusMediaState(call, {
+      //             sendingAudio: true,
+      //             sendingVideo: true,
+      //             receivingAudio: true,
+      //             receivingVideo: true
+      //           }))
+      //       ]);
+      //     });
+      //   });
+      //
+      //   describe(`when the call was started without audio`, () => {
+      //     it(`starts receiving audio`, () => {
+      //       const call = spock.spark.phone.dial(mccoy.email, {
+      //         constraints: {
+      //           audio: false
+      //         }
+      //       });
+      //
+      //       return Promise.all([
+      //         mccoy.spark.phone.when(`call:incoming`)
+      //           .then(([c]) => c.answer()),
+      //         call.when(`connected`)
+      //           .then(() => assertLocusMediaState(call, {
+      //             sendingAudio: false,
+      //             sendingVideo: true,
+      //             receivingAudio: false,
+      //             receivingVideo: true
+      //           }))
+      //           .then(() => assert.isFalse(call.sendingAudio, `The call is not sending audio`))
+      //           .then(() => call.toggleReceivingAudio())
+      //           .then(() => assertLocusMediaState(call, {
+      //             sendingAudio: false,
+      //             sendingVideo: true,
+      //             receivingAudio: true,
+      //             receivingVideo: true
+      //           }))
+      //       ]);
+      //     });
+      //   });
+      // });
+      //
+      // describe(`#toggleReceivingVideo()`, () => {
+      //   describe(`when the call is receiving video`, () => {
+      //     it(`stops receiving video`, () => {
+      //       const call = spock.spark.phone.dial(mccoy.email);
+      //
+      //       return Promise.all([
+      //         mccoy.spark.phone.when(`call:incoming`)
+      //           .then(([c]) => c.answer()),
+      //         call.when(`connected`)
+      //           .then(() => assertLocusMediaState(call, {
+      //             sendingAudio: true,
+      //             sendingVideo: true,
+      //             receivingAudio: true,
+      //             receivingVideo: true
+      //           }))
+      //           .then(() => call.toggleReceivingVideo())
+      //           .then(() => assertLocusMediaState(call, {
+      //             sendingAudio: true,
+      //             sendingVideo: true,
+      //             receivingAudio: true,
+      //             receivingVideo: false
+      //           }))
+      //       ]);
+      //     });
+      //   });
+      //
+      //   describe(`when the call is not receiving video`, () => {
+      //     it(`starts receiving video`, () => {
+      //       const call = spock.spark.phone.dial(mccoy.email);
+      //
+      //       return Promise.all([
+      //         mccoy.spark.phone.when(`call:incoming`)
+      //           .then(([c]) => c.answer()),
+      //         call.when(`connected`)
+      //           .then(() => assertLocusMediaState(call, {
+      //             sendingAudio: true,
+      //             sendingVideo: true,
+      //             receivingAudio: true,
+      //             receivingVideo: true
+      //           }))
+      //           .then(() => call.toggleReceivingVideo())
+      //           .then(() => assertLocusMediaState(call, {
+      //             sendingAudio: true,
+      //             sendingVideo: true,
+      //             receivingAudio: true,
+      //             receivingVideo: false
+      //           }))
+      //           .then(() => call.toggleReceivingVideo())
+      //           .then(() => assertLocusMediaState(call, {
+      //             sendingAudio: true,
+      //             sendingVideo: true,
+      //             receivingAudio: true,
+      //             receivingVideo: true
+      //           }))
+      //       ]);
+      //     });
+      //   });
+      //
+      //   describe(`when the call was started without video`, () => {
+      //     it(`starts receiving video`, () => {
+      //       const call = spock.spark.phone.dial(mccoy.email, {
+      //         constraints: {
+      //           video: false
+      //         }
+      //       });
+      //
+      //       return Promise.all([
+      //         mccoy.spark.phone.when(`call:incoming`)
+      //           .then(([c]) => c.answer()),
+      //         call.when(`connected`)
+      //           .then(() => assertLocusMediaState(call, {
+      //             sendingAudio: true,
+      //             sendingVideo: false,
+      //             receivingAudio: true,
+      //             receivingVideo: false
+      //           }))
+      //           .then(() => assert.isFalse(call.sendingVideo, `The call is not sending video`))
+      //           .then(() => call.toggleReceivingVideo())
+      //           .then(() => assertLocusMediaState(call, {
+      //             sendingAudio: true,
+      //             sendingVideo: false,
+      //             receivingAudio: true,
+      //             receivingVideo: true
+      //           }))
+      //       ]);
+      //     });
+      //   });
+      // });
+      //
       describe(`#toggleSendingAudio()`, () => {
         describe(`when the call is sending audio`, () => {
           it(`stops sending audio`, () => {
@@ -342,26 +273,18 @@ describe(`plugin-phone`, function() {
               mccoy.spark.phone.when(`call:incoming`)
                 .then(([c]) => c.answer()),
               call.when(`connected`)
-                .then(() => assertMedia(call, {
+                .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: true,
                   receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
+                  receivingVideo: true
                 }))
                 .then(() => call.toggleSendingAudio())
-                .then(() => assertMedia(call, {
+                .then(() => assertLocusMediaState(call, {
                   sendingAudio: false,
                   sendingVideo: true,
                   receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
+                  receivingVideo: true
                 }))
             ]);
           });
@@ -375,47 +298,32 @@ describe(`plugin-phone`, function() {
               mccoy.spark.phone.when(`call:incoming`)
                 .then(([c]) => c.answer()),
               call.when(`connected`)
-                .then(() => assertMedia(call, {
+                .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: true,
                   receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
+                  receivingVideo: true
                 }))
                 .then(() => call.toggleSendingAudio())
-                .then(() => assertMedia(call, {
+                .then(() => assertLocusMediaState(call, {
                   sendingAudio: false,
                   sendingVideo: true,
                   receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
+                  receivingVideo: true
                 }))
                 .then(() => call.toggleSendingAudio())
-                .then(() => assertMedia(call, {
+                .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: true,
                   receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
+                  receivingVideo: true
                 }))
             ]);
           });
         });
 
         describe(`when the call was started without audio`, () => {
-          // FIXME Neil and Nathan are looking into alternatives to returning
-          // `inactive` in the answer when the offer audio attempts to be
-          // `sendonly`
-          it.skip(`adds audio to the call`, () => {
+          it(`adds audio to the call`, () => {
             const call = spock.spark.phone.dial(mccoy.email, {
               constraints: {
                 audio: false
@@ -426,27 +334,19 @@ describe(`plugin-phone`, function() {
               mccoy.spark.phone.when(`call:incoming`)
                 .then(([c]) => c.answer()),
               call.when(`connected`)
-                .then(() => assertMedia(call, {
+                .then(() => assertLocusMediaState(call, {
                   sendingAudio: false,
                   sendingVideo: true,
                   receivingAudio: false,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
+                  receivingVideo: true
                 }))
                 .then(() => assert.isFalse(call.sendingAudio, `The call is not sending audio`))
                 .then(() => call.toggleSendingAudio())
-                .then(() => assertMedia(call, {
+                .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: true,
                   receivingAudio: false,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
+                  receivingVideo: true
                 }))
             ]);
           });
@@ -454,8 +354,8 @@ describe(`plugin-phone`, function() {
       });
 
       describe(`#toggleSendingVideo()`, () => {
-        describe(`when the call is sending video`, () => {
-          it(`stops sending video`, () => {
+        describe(`when the call is started with video`, () => {
+          it(`stops sending video then starts sending video`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
             let mccoyCall;
             return Promise.all([
@@ -465,16 +365,13 @@ describe(`plugin-phone`, function() {
                   return handleErrorEvent(c, () => c.answer());
                 }),
               handleErrorEvent(call, () => call.when(`connected`)
-                .then(() => assert.isDefined(call.media.peer))
                 .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: true,
                   receivingAudio: true,
                   receivingVideo: true
                 }))
-                .then(() => assert.isDefined(call.media.peer))
                 .then(() => call.toggleSendingVideo())
-                .then(() => assert.isDefined(call.media.peer))
                 .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: false,
@@ -484,87 +381,56 @@ describe(`plugin-phone`, function() {
                 .then(() => {
                   assert.equal(mccoyCall.remote.status.audioStatus.toLowerCase(), boolToStatus(true, true));
                   assert.equal(mccoyCall.remote.status.videoStatus.toLowerCase(), boolToStatus(false, true));
+                  return call.toggleSendingVideo();
+                }))
+                .then(() => assertLocusMediaState(call, {
+                  sendingAudio: true,
+                  sendingVideo: true,
+                  receivingAudio: true,
+                  receivingVideo: true
                 }))
             ]);
           });
         });
 
-        describe(`when the call has stopped sending video`, () => {
-          it(`starts sending video`, () => {
-            const call = spock.spark.phone.dial(mccoy.email);
-
-            return Promise.all([
-              mccoy.spark.phone.when(`call:incoming`)
-                .then(([c]) => c.answer()),
-              call.when(`connected`)
-                .then(() => assertMedia(call, {
-                  sendingAudio: true,
-                  sendingVideo: true,
-                  receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-                .then(() => call.toggleSendingVideo())
-                .then(() => assertMedia(call, {
-                  sendingAudio: true,
-                  sendingVideo: false,
-                  receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-                .then(() => call.toggleSendingVideo())
-                .then(() => assertMedia(call, {
-                  sendingAudio: true,
-                  sendingVideo: true,
-                  receivingAudio: true,
-                  receivingVideo: true,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
-                }))
-            ]);
-          });
-        });
-
-        describe(`when the call was started without video`, () => {
-          it(`adds video to the call`, () => {
+        describe(`when the call is started without video`, () => {
+          it(`starts sending video and stops sending video`, () => {
             const call = spock.spark.phone.dial(mccoy.email, {
               constraints: {
                 video: false
               }
             });
-
+            let mccoyCall;
             return Promise.all([
               mccoy.spark.phone.when(`call:incoming`)
-                .then(([c]) => c.answer()),
-              call.when(`connected`)
-                .then(() => assertMedia(call, {
+                .then(([c]) => {
+                  mccoyCall = c;
+                  return handleErrorEvent(c, () => c.answer());
+                }),
+              handleErrorEvent(call, () => call.when(`connected`)
+                .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: false,
                   receivingAudio: true,
-                  receivingVideo: false,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
+                  receivingVideo: false
                 }))
                 .then(() => call.toggleSendingVideo())
-                .then(() => assertMedia(call, {
+                .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: true,
                   receivingAudio: true,
-                  receivingVideo: false,
-                  remoteSendingAudio: true,
-                  remoteSendingVideo: true,
-                  remoteReceivingAudio: true,
-                  remoteReceivingVideo: true
+                  receivingVideo: false
+                }))
+                .then(() => {
+                  assert.equal(mccoyCall.remote.status.audioStatus.toLowerCase(), boolToStatus(true, true));
+                  assert.equal(mccoyCall.remote.status.videoStatus.toLowerCase(), boolToStatus(true, false));
+                  return call.toggleSendingVideo();
+                }))
+                .then(() => assertLocusMediaState(call, {
+                  sendingAudio: true,
+                  sendingVideo: false,
+                  receivingAudio: true,
+                  receivingVideo: false
                 }))
             ]);
           });
