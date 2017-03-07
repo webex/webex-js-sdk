@@ -264,15 +264,19 @@ describe(`plugin-phone`, function() {
       //   });
       // });
       //
+
       describe(`#toggleSendingAudio()`, () => {
-        describe(`when the call is sending audio`, () => {
-          it(`stops sending audio`, () => {
+        describe(`when the call is started with audio`, () => {
+          it(`stops sending audio then starts sending audio`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
-
+            let mccoyCall;
             return Promise.all([
               mccoy.spark.phone.when(`call:incoming`)
-                .then(([c]) => c.answer()),
-              call.when(`connected`)
+                .then(([c]) => {
+                  mccoyCall = c;
+                  return handleErrorEvent(c, () => c.answer());
+                }),
+              handleErrorEvent(call, () => call.when(`connected`)
                 .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: true,
@@ -286,32 +290,11 @@ describe(`plugin-phone`, function() {
                   receivingAudio: true,
                   receivingVideo: true
                 }))
-            ]);
-          });
-        });
-
-        describe(`when the call has stopped sending audio`, () => {
-          it(`starts sending audio`, () => {
-            const call = spock.spark.phone.dial(mccoy.email);
-
-            return Promise.all([
-              mccoy.spark.phone.when(`call:incoming`)
-                .then(([c]) => c.answer()),
-              call.when(`connected`)
-                .then(() => assertLocusMediaState(call, {
-                  sendingAudio: true,
-                  sendingVideo: true,
-                  receivingAudio: true,
-                  receivingVideo: true
+                .then(() => {
+                  assert.equal(mccoyCall.remote.status.audioStatus.toLowerCase(), boolToStatus(false, true));
+                  assert.equal(mccoyCall.remote.status.videoStatus.toLowerCase(), boolToStatus(true, true));
+                  return call.toggleSendingAudio();
                 }))
-                .then(() => call.toggleSendingAudio())
-                .then(() => assertLocusMediaState(call, {
-                  sendingAudio: false,
-                  sendingVideo: true,
-                  receivingAudio: true,
-                  receivingVideo: true
-                }))
-                .then(() => call.toggleSendingAudio())
                 .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: true,
@@ -322,28 +305,41 @@ describe(`plugin-phone`, function() {
           });
         });
 
-        describe(`when the call was started without audio`, () => {
-          it(`adds audio to the call`, () => {
+        describe(`when the call is started without audio`, () => {
+          it(`starts sending audio and stops sending audio`, () => {
             const call = spock.spark.phone.dial(mccoy.email, {
               constraints: {
                 audio: false
               }
             });
-
+            let mccoyCall;
             return Promise.all([
               mccoy.spark.phone.when(`call:incoming`)
-                .then(([c]) => c.answer()),
-              call.when(`connected`)
+                .then(([c]) => {
+                  mccoyCall = c;
+                  return handleErrorEvent(c, () => c.answer());
+                }),
+              handleErrorEvent(call, () => call.when(`connected`)
                 .then(() => assertLocusMediaState(call, {
                   sendingAudio: false,
                   sendingVideo: true,
                   receivingAudio: false,
                   receivingVideo: true
                 }))
-                .then(() => assert.isFalse(call.sendingAudio, `The call is not sending audio`))
                 .then(() => call.toggleSendingAudio())
                 .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
+                  sendingVideo: true,
+                  receivingAudio: false,
+                  receivingVideo: true
+                }))
+                .then(() => {
+                  assert.equal(mccoyCall.remote.status.audioStatus.toLowerCase(), boolToStatus(true, false));
+                  assert.equal(mccoyCall.remote.status.videoStatus.toLowerCase(), boolToStatus(true, true));
+                  return call.toggleSendingAudio();
+                }))
+                .then(() => assertLocusMediaState(call, {
+                  sendingAudio: false,
                   sendingVideo: true,
                   receivingAudio: false,
                   receivingVideo: true
@@ -439,3 +435,5 @@ describe(`plugin-phone`, function() {
     });
   });
 });
+
+// TODO add assertions about locus send/receive values in addition to peer connection values
