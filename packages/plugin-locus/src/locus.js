@@ -169,8 +169,10 @@ const Locus = SparkPlugin.extend({
    * start or stop sending audio or video)
    * @param {Types~Locus} locus
    * @param {Object} options
-   * @param {Object} options.localSdp
-   * @param {Object} options.mediaId
+   * @param {string} options.localSdp
+   * @param {string} options.mediaId
+   * @param {Boolean} options.audioMuted
+   * @param {Boolean} options.videoMuted
    * @returns {Promise<Types~Locus>}
    */
   updateMedia(locus, {sdp, audioMuted, videoMuted, mediaId}) {
