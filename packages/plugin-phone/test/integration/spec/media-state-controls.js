@@ -406,6 +406,58 @@ describe(`plugin-phone`, function() {
           });
         });
       });
+
+      describe(`toggle both`, () => {
+        describe(`when the call starts as an audio only call`, () => {
+          // TODO this test doesn't pass
+          it.skip(`adds video to the call`, () => {
+            const call = spock.spark.phone.dial(mccoy.email, {
+              constraints: {
+                video: false
+              }
+            });
+            let mccoyCall;
+            return Promise.all([
+              mccoy.spark.phone.when(`call:incoming`)
+                .then(([c]) => {
+                  mccoyCall = c;
+                  return handleErrorEvent(c, () => c.answer());
+                }),
+              handleErrorEvent(call, () => call.when(`connected`)
+                .then(() => assertLocusMediaState(call, {
+                  sendingAudio: true,
+                  sendingVideo: false,
+                  receivingAudio: true,
+                  receivingVideo: false
+                }))
+                .then(() => Promise.all([
+                  call.toggleSendingAudio(),
+                  call.toggleSendingVideo()
+                ]))
+                .then(() => assertLocusMediaState(call, {
+                  sendingAudio: true,
+                  sendingVideo: true,
+                  receivingAudio: true,
+                  receivingVideo: true
+                }))
+                .then(() => {
+                  assert.equal(mccoyCall.remote.status.audioStatus.toLowerCase(), boolToStatus(true, true));
+                  assert.equal(mccoyCall.remote.status.videoStatus.toLowerCase(), boolToStatus(true, false));
+                  return Promise.all([
+                    call.toggleSendingAudio(),
+                    call.toggleSendingVideo()
+                  ]);
+                }))
+                .then(() => assertLocusMediaState(call, {
+                  sendingAudio: true,
+                  sendingVideo: false,
+                  receivingAudio: true,
+                  receivingVideo: false
+                }))
+            ]);
+          });
+        });
+      });
     });
   });
 });
