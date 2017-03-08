@@ -604,41 +604,41 @@ const Call = SparkPlugin.extend({
     return this._changeSendingMedia(`video`, true);
   },
 
-  // startReceivingAudio() {
-  //   return this._changeMedia({offerToReceiveAudio: true});
-  // },
-  //
-  // startReceivingVideo() {
-  //   return this._changeMedia({offerToReceiveVideo: true});
-  // },
-  //
-  // /**
-  //  * Toggles receiving audio to the Cisco Spark Cloud
-  //  * @instance
-  //  * @memberof Call
-  //  * @returns {Promise}
-  //  */
-  // toggleReceivingAudio() {
-  //   return this.receivingAudio ? this.stopReceivingAudio() : this.startReceivingAudio();
-  // },
-  //
-  // /**
-  //  * Toggles receiving video to the Cisco Spark Cloud
-  //  * @instance
-  //  * @memberof Call
-  //  * @returns {Promise}
-  //  */
-  // toggleReceivingVideo() {
-  //   return this.receivingVideo ? this.stopReceivingVideo() : this.startReceivingVideo();
-  // },
+  startReceivingAudio() {
+    return this._changeReceivingMedia(`offerToReceiveAudio`, true);
+  },
 
-  // stopReceivingAudio() {
-  //   return this._changeMedia({offerToReceiveAudio: false});
-  // },
-  //
-  // stopReceivingVideo() {
-  //   return this._changeMedia({offerToReceiveVideo: false});
-  // },
+  startReceivingVideo() {
+    return this._changeReceivingMedia(`offerToReceiveVideo`, true);
+  },
+
+  /**
+   * Toggles receiving audio from the Cisco Spark Cloud
+   * @instance
+   * @memberof Call
+   * @returns {Promise}
+   */
+  toggleReceivingAudio() {
+    return this.receivingAudio ? this.stopReceivingAudio() : this.startReceivingAudio();
+  },
+
+  /**
+   * Toggles receiving video from the Cisco Spark Cloud
+   * @instance
+   * @memberof Call
+   * @returns {Promise}
+   */
+  toggleReceivingVideo() {
+    return this.receivingVideo ? this.stopReceivingVideo() : this.startReceivingVideo();
+  },
+
+  stopReceivingAudio() {
+    return this._changeReceivingMedia(`offerToReceiveAudio`, false);
+  },
+
+  stopReceivingVideo() {
+    return this._changeReceivingMedia(`offerToReceiveVideo`, false);
+  },
 
   /**
    * Toggles sending audio to the Cisco Spark Cloud
@@ -693,22 +693,15 @@ const Call = SparkPlugin.extend({
     return this._changeSendingMedia(`video`, false);
   },
 
-  @oneFlight
   _changeSendingMedia(key, value) {
-    this.logger.log(`@@_changeSendingMedia1`);
-
     return new Promise((resolve) => {
-      this.logger.log(`@@_changeSendingMedia2`);
       this.once(`change:sending${key === `audio` ? `Audio` : `Video`}`, () => resolve(this._updateSendingMedia()));
       this.media.set(key, value);
-      this.logger.log(`@@_changeSendingMedia3`);
-
     });
   },
 
   @oneFlight
   _updateSendingMedia() {
-    this.logger.log(`@@_updateSendingMedia1`);
     // This method should never send a new sdp; if we performed an action that
     // would cause a new sdp, the onnegotiationneeded handler should exchange
     // it. this means that for a number of scenarios, we must call update media
@@ -722,15 +715,6 @@ const Call = SparkPlugin.extend({
     .then(() => this.spark.locus.get(this.locus))
     .then((locus) => this._setLocus(locus));
   },
-
-  // _changeMedia(constraints) {
-  //   return new Promise((resolve) => {
-  //     this.media.once(`negotiationneeded`, () => {
-  //       resolve(this._updateMedia());
-  //     });
-  //     this.media.set(constraints);
-  //   });
-  // },
 
   _join(locusMethodName, target, options) {
     options = options || {};
@@ -790,37 +774,30 @@ const Call = SparkPlugin.extend({
     }
 
     return Promise.resolve();
-  }
+  },
 
-  // @oneFlight
-  // _updateMedia() {
-  //   /* eslint max-nested-callbacks: [0] */
-  //   return new Promise((resolve) => {
-  //     process.nextTick(() => {
-  //       resolve(this.media.createOffer()
-  //         .then((offer) => {
-  //           console.log(offer);
-  //           console.log({
-  //             audioMuted: !this.sendingAudio,
-  //             videoMuted: !this.sendingVideo
-  //           });
-  //           return offer;
-  //         })
-  //         .then((offer) => this.spark.locus.updateMedia(this.locus, {
-  //           sdp: offer,
-  //           mediaId: this.mediaId,
-  //           audioMuted: !this.sendingAudio,
-  //           videoMuted: !this.sendingVideo
-  //         }))
-  //         .then((offer) => this.spark.locus.get(this.locus))
-  //         .then((locus) => {
-  //           this._setLocus(locus);
-  //           const sdp = JSON.parse(this.mediaConnection.remoteSdp).sdp;
-  //           this.media.acceptAnswer(sdp);
-  //         }));
-  //     });
-  //   });
-  // }
+  _changeReceivingMedia(key, value) {
+    return new Promise((resolve) => {
+      this.once(`change:receiving${key === `offerToReceiveAudio` ? `Audio` : `Video`}`, () => resolve());
+      this.media.set(key, value);
+    });
+  },
+
+  @oneFlight
+  _updateReceivingMedia() {
+    // This method should never send a new sdp; if we performed an action that
+    // would cause a new sdp, the onnegotiationneeded handler should exchange
+    // it. this means that for a number of scenarios, we must call update media
+    // twice.
+    return this.spark.locus.updateMedia(this.locus, {
+      sdp: this.media.peer.localDescription.sdp,
+      mediaId: this.mediaId,
+      audioMuted: !this.sendingAudio,
+      videoMuted: !this.sendingVideo
+    })
+      .then(() => this.spark.locus.get(this.locus))
+      .then((locus) => this._setLocus(locus));
+  }
 });
 
 Call.make = function make(attrs, options) {
