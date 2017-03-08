@@ -31,7 +31,7 @@ describe(`plugin-mercury`, () => {
       clock.uninstall();
     });
 
-    beforeEach(() => {
+    beforeEach(`mock WebSocket and open a Socket`, () => {
       sinon.stub(Socket, `getWebSocketConstructor`, () => {
         return function(...args) {
           mockWebSocket = new MockWebSocket(...args);
@@ -121,8 +121,9 @@ describe(`plugin-mercury`, () => {
 
         mockWebSocket.emit(`message`, {
           data: JSON.stringify({
-            id: JSON.parse(mockWebSocket.send.args[1][0]).id,
-            type: `pong`
+            data: {
+              eventType: `mercury.buffer_state`
+            }
           })
         });
 
@@ -303,8 +304,9 @@ describe(`plugin-mercury`, () => {
           mockWebSocket.emit(`open`);
           mockWebSocket.emit(`message`, {
             data: JSON.stringify({
-              id: JSON.parse(mockWebSocket.send.args[1][0]).id,
-              type: `pong`
+              data: {
+                eventType: `mercury.buffer_state`
+              }
             })
           });
           return assert.isFulfilled(promise)
@@ -342,8 +344,9 @@ describe(`plugin-mercury`, () => {
         mockWebSocket.emit(`open`);
         mockWebSocket.emit(`message`, {
           data: JSON.stringify({
-            id: JSON.parse(mockWebSocket.send.args[1][0]).id,
-            type: `pong`
+            data: {
+              eventType: `mercury.buffer_state`
+            }
           })
         });
         return promise

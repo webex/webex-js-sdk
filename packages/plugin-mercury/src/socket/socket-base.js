@@ -329,7 +329,7 @@ export default class Socket extends EventEmitter {
    * @returns {Promise}
    */
   _authorize() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       this.logger.info(`socket: authorizing`);
       this.send({
         id: uuid.v4(),
@@ -341,29 +341,14 @@ export default class Socket extends EventEmitter {
         logLevelToken: this.logLevelToken
       });
 
-      const id = uuid.v4();
-      this.once(`pong`, (event) => {
-        try {
-          if (event.data.id === id) {
-            this._ping();
-            return resolve();
-          }
-          return reject(new Error(`socket: received response to wrong ping`));
+      const waitForBufferState = (event) => {
+        if (!event.data.type && event.data.data.eventType === `mercury.buffer_state`) {
+          this.removeListener(`message`, waitForBufferState);
+          this._ping();
+          resolve();
         }
-        catch (error) {
-          // This try/catch block was added as a debugging step; to the best of
-          // my knowledge, the above can never throw.
-          /* istanbul ignore next */
-          this.logger.error(`socket: failed to receive initial pong`, error);
-          /* istanbul ignore next */
-          return reject(error);
-        }
-      });
-
-      this.send({
-        id,
-        type: `ping`
-      });
+      };
+      this.once(`message`, waitForBufferState);
     });
   }
 

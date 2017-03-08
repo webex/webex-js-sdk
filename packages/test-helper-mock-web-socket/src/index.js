@@ -90,6 +90,15 @@ export default class MockWebSocket extends EventEmitter {
   open() {
     this.readyState = 1;
     this.emit(`open`);
+    process.nextTick(() => {
+      this.emit(`message`, {
+        data: JSON.stringify({
+          data: {
+            eventType: `mercury.buffer_state`
+          }
+        })
+      });
+    });
   }
 
   send(obj) {
