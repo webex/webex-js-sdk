@@ -182,7 +182,7 @@ const Call = SparkPlugin.extend({
     mediaConnection: {
       deps: [`device`],
       fn() {
-        return this.device && this.device.mediaConnections[0];
+        return this.device && this.device.mediaConnections && this.device.mediaConnections[0];
       }
     },
     mediaId: {
