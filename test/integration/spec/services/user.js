@@ -231,6 +231,7 @@ describe('Services', function() {
             assert.property(res, 'cookieName');
             assert.property(res, 'cookieValue');
             assert.property(res, 'cookieDomain');
+            assert.property(res, 'tokenData');
             assert.equal(res.email, email);
             assert.isDefined(spark.credentials.authorization.supertoken);
             return spark.user.register({email: email});
@@ -262,6 +263,7 @@ describe('Services', function() {
             assert.property(res, 'cookieName');
             assert.property(res, 'cookieValue');
             assert.property(res, 'cookieDomain');
+            assert.property(res, 'tokenData');
             assert.equal(res.email, email);
             assert.isDefined(spark.credentials.authorization.supertoken);
           })

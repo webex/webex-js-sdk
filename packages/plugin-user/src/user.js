@@ -39,8 +39,8 @@ const User = SparkPlugin.extend({
     if (!options.verificationToken) {
       throw new Error(`\`options.verificationToken\` is required`);
     }
+    options.scope = this.spark.config.credentials.oauth.scope;
     let response;
-
     return this.request({
       uri: this.config.activationUrl,
       method: `POST`,
@@ -53,17 +53,11 @@ const User = SparkPlugin.extend({
       withCredentials: true
     })
       .then((res) => {
-        response = res;
-        return this._getOauthCode();
+        response = res.body;
+        response.tokenData.hasPassword = false;
+        return this.spark.credentials.receiveSupertoken(response.tokenData);
       })
-      .then((res) => {
-        const code = res.match(/<title>(.*?)<\/title>/)[1];
-        return this.spark.credentials.requestAuthorizationCodeGrant({code});
-      })
-      .then(() => {
-        this.setPasswordStatus(false);
-        return response.body;
-      });
+      .then(() => response);
   },
 
   /**
@@ -318,30 +312,8 @@ const User = SparkPlugin.extend({
    */
   _extractEmailAddress(user) {
     return user.email || user.emailAddress || user.entryEmail || user;
-  },
-
-  /**
-   * Uses cookie header to request auth code
-   * @private
-   * @returns {string} html body with auth code
-   */
-  _getOauthCode() {
-    return this.request({
-      api: `oauth`,
-      withCredentials: true,
-      method: `POST`,
-      resource: `authorize`,
-      form: {
-        /* eslint camelcase: [0] */
-        response_type: `code`,
-        redirect_uri: `urn:ietf:wg:oauth:2.0:oob`,
-        client_id: this.spark.config.credentials.oauth.client_id,
-        scope: this.spark.config.credentials.oauth.scope,
-        cisService: `spark`
-      }
-    })
-      .then((res) => res.body);
   }
+
 });
 
 export default User;

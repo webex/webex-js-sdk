@@ -289,7 +289,7 @@ var UserService = SparkBase.extend(
     if (!params.verificationToken) {
       throw new Error('`params.verificationToken` is required');
     }
-    var response;
+    params.scope = this.spark.config.credentials.oauth.scope;
 
     return this.request({
       uri: this.config.activationUrl,
@@ -300,43 +300,14 @@ var UserService = SparkBase.extend(
         pass: this.spark.config.credentials.oauth.client_secret,
         sendImmediately: true
       },
-      withCredentials: true,
-      jar: true,
-      disableCookies: false
+      withCredentials: true
     })
       .then(function processResponse(res) {
-        response = res;
-        return this._getOauthCode();
-      }.bind(this))
-      .then(function authorize(res) {
-        var code = res.match(/<title>(.*?)<\/title>/)[1];
-        return this.spark.credentials.requestAuthorizationCodeGrant({code: code});
-      }.bind(this))
-      .then(function returnResponse() {
-        this.setPasswordStatus(false);
-        return response.body;
+        var response = res.body;
+        response.tokenData.hasPassword = false;
+        this.spark.credentials.setToken(response.tokenData);
+        return response;
       }.bind(this));
-  },
-
-  _getOauthCode: function _getOauthCode() {
-    return this.request({
-      api: 'oauth',
-      withCredentials: true,
-      method: 'POST',
-      resource: 'authorize',
-      jar: true,
-      form: {
-        /* eslint camelcase: [0] */
-        response_type: 'code',
-        redirect_uri: 'urn:ietf:wg:oauth:2.0:oob',
-        client_id: this.spark.config.credentials.oauth.client_id,
-        scope: this.spark.config.credentials.oauth.scope,
-        cisService: 'spark'
-      }
-    })
-      .then(function processResponse(res) {
-        return res.body;
-      });
   },
 
   /**

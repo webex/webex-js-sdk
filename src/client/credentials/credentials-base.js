@@ -323,6 +323,10 @@ var CredentialsBase = SparkBase.extend({
     }
   },
 
+  setToken: function setToken(token) {
+    this.authorization = new Authorization(token, {parent: this});
+  },
+
   /**
    * Converts a CI SAML Bearer Token to an OAuth Bearer Token.
    * @param {Object} options

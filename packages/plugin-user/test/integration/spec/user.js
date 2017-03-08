@@ -97,6 +97,7 @@ describe(`plugin-user`, function() {
           assert.property(res, `cookieName`);
           assert.property(res, `cookieValue`);
           assert.property(res, `cookieDomain`);
+          assert.property(res, `tokenData`);
           assert.equal(res.email, email);
           assert.isDefined(unauthSpark.credentials.supertoken.access_token);
           return unauthSpark.user.verify({email});
@@ -129,6 +130,7 @@ describe(`plugin-user`, function() {
           assert.property(res, `cookieName`);
           assert.property(res, `cookieValue`);
           assert.property(res, `cookieDomain`);
+          assert.property(res, `tokenData`);
           assert.equal(res.email, email);
           assert.isDefined(unauthSpark.credentials.supertoken.access_token);
         })

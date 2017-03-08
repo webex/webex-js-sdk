@@ -223,6 +223,10 @@ export default {
       .then(() => this.boundedStorage.del(`@`));
   },
 
+  receiveSupertoken(tokenData) {
+    return this._receiveSupertoken(new Token(tokenData, {parent: this}));
+  },
+
   /**
    * Refreshes the supertoken and redownscopes the child tokens
    * @returns {Promise}
