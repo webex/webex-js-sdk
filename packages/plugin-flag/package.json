@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-flag",
-  "version": "0.7.57",
+  "version": "0.7.65",
   "description": "",
   "license": "MIT",
   "author": "Saurabh Jain <saurjai3@cisco.com>",
@@ -10,7 +10,7 @@
   "dependencies": {
     "@ciscospark/common": "^0.7.52",
     "@ciscospark/spark-core": "^0.7.55",
-    "@ciscospark/plugin-conversation": "^0.7.57",
+    "@ciscospark/plugin-conversation": "^0.7.65",
     "@ciscospark/plugin-wdm": "^0.7.57",
     "babel-runtime": "^6.3.19",
     "lodash": "^4.13.1"

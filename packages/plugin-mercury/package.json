@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-mercury",
-  "version": "0.7.57",
+  "version": "0.7.65",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -27,7 +27,7 @@
     "@ciscospark/test-helper-make-local-url": "^0.7.34",
     "@ciscospark/test-helper-mocha": "^0.7.34",
     "@ciscospark/test-helper-mock-spark": "^0.7.34",
-    "@ciscospark/test-helper-mock-web-socket": "^0.7.34",
+    "@ciscospark/test-helper-mock-web-socket": "^0.7.65",
     "@ciscospark/test-helper-sinon": "^0.7.34",
     "@ciscospark/test-helper-test-users": "^0.7.55",
     "@ciscospark/xunit-with-logs": "^0.7.34",

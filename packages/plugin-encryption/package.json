@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-encryption",
-  "version": "0.7.57",
+  "version": "0.7.65",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -11,7 +11,7 @@
     "@ciscospark/common": "^0.7.52",
     "@ciscospark/http-core": "^0.7.53",
     "@ciscospark/plugin-credentials": "^0.7.57",
-    "@ciscospark/plugin-mercury": "^0.7.57",
+    "@ciscospark/plugin-mercury": "^0.7.65",
     "@ciscospark/plugin-wdm": "^0.7.57",
     "@ciscospark/spark-core": "^0.7.55",
     "babel-runtime": "^6.3.19",

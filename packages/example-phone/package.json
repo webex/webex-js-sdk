@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/example-phone",
-  "version": "0.7.63",
+  "version": "0.7.65",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -10,7 +10,7 @@
     "start": "webpack-dev-server --history-api-fallback --hot --inline --port 8000 --colors"
   },
   "dependencies": {
-    "ciscospark": "^0.7.63",
+    "ciscospark": "^0.7.65",
     "babel-runtime": "^6.3.19",
     "extract-text-webpack-plugin": "^1.0.1",
     "lodash": "^4.13.1",
