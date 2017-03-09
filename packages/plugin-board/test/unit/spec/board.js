@@ -192,21 +192,6 @@ describe(`plugin-board`, () => {
     });
   });
 
-  describe(`#deleteContent()`, () => {
-
-    before(() => {
-      spark.request.reset();
-      return spark.board.deleteContent(channel, data1);
-    });
-
-    it(`requests DELETE content`, () => {
-      assert.calledWith(spark.request, sinon.match({
-        method: `DELETE`,
-        uri: `${boardServiceUrl}/channels/${boardId}/contents/${data1.contentId}`
-      }));
-    });
-  });
-
   describe(`#deleteAllContent()`, () => {
 
     before(() => {

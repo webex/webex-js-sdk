@@ -171,23 +171,6 @@ var PersistenceService = SparkBase.extend({
   },
 
   /**
-   * Deletes a specified Content from a Channel
-   * @memberof Board.PersistenceService
-   * @param  {Board~Channel} channel
-   * @param  {Board~Content} content
-   * @return {Promise} Resolves with an content response
-   */
-  deleteContent: function deleteContent(channel, content) {
-    return this.spark.request({
-      method: 'DELETE',
-      uri: content.contentUrl
-    })
-      .then(function resolveWithBody(res) {
-        return res.body;
-      });
-  },
-
-  /**
    * Gets all Content from a Channel
    * It will make multiple GET requests if contents length are greater than
    * MAX_CONTENTS_GET, the number is currently determined and hard-coded

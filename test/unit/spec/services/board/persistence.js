@@ -330,21 +330,6 @@ describe('Services', function() {
         });
       });
 
-      describe('#deleteContent()', function() {
-
-        before(function() {
-          spark.request.reset();
-          return spark.board.persistence.deleteContent(channel, data1);
-        });
-
-        it('requests DELETE content', function() {
-          assert.calledWith(spark.request, sinon.match({
-            method: 'DELETE',
-            uri: boardServiceUrl + '/channels/' + boardId + '/contents/' + data1.contentId
-          }));
-        });
-      });
-
       describe('#deleteAllContent()', function() {
 
         before(function() {

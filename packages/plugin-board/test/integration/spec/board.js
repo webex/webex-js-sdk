@@ -319,11 +319,11 @@ describe(`plugin-board`, () => {
       });
     });
 
-    describe(`#deleteContent()`, () => {
+    describe(`#deleteAllContent()`, () => {
 
       after(() => participants[0].spark.board.deleteAllContent(board));
 
-      it(`delete contents from the specified board`, () => {
+      it(`delete all contents from the specified board`, () => {
         const channel = board;
         const contents = [
           {
@@ -351,18 +351,6 @@ describe(`plugin-board`, () => {
           .then(() => participants[0].spark.board.getContents(channel))
           .then((res) => {
             assert.lengthOf(res, 0);
-            return res;
-          })
-          .then(() => participants[0].spark.board.addContent(channel, data))
-          .then((res) => {
-            assert.lengthOf(res[0].items, 2);
-            const content = res[0].items[0];
-            return participants[0].spark.board.deleteContent(channel, content);
-          })
-          .then(() => participants[0].spark.board.getContents(channel))
-          .then((res) => {
-            assert.lengthOf(res, 1);
-            assert.equal(res.items[0].payload, data[1].payload);
             return res;
           });
       });

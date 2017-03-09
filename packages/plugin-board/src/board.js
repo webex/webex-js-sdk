@@ -206,21 +206,6 @@ const Board = SparkPlugin.extend({
   },
 
   /**
-   * Deletes a specified Content from a Channel
-   * @memberof Board.BoardService
-   * @param  {Board~Channel} channel
-   * @param  {Board~Content} content
-   * @returns {Promise} Resolves with an content response
-   */
-  deleteContent(channel, content) {
-    return this.spark.request({
-      method: `DELETE`,
-      uri: content.contentUrl
-    })
-      .then((res) => res.body);
-  },
-
-  /**
    * Encrypts a collection of content
    * @memberof Board.BoardService
    * @param  {string} encryptionKeyUrl channel.defaultEncryptionKeyUrl
