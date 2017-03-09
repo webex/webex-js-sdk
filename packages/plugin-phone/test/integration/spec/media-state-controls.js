@@ -10,25 +10,7 @@ import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
 import handleErrorEvent from '../lib/handle-error-event';
 
-function boolToStatus(sending, receiving) {
-  if (sending && receiving) {
-    return `sendrecv`;
-  }
-
-  if (sending && !receiving) {
-    return `sendonly`;
-  }
-
-  if (!sending && receiving) {
-    return `recvonly`;
-  }
-
-  if (!sending && !receiving) {
-    return `inactive`;
-  }
-
-  throw new Error(`If you see this error, your JavaScript engine has a major flaw`);
-}
+import {boolToStatus} from '../..';
 
 function assertLocusMediaState(call, {
   sendingAudio,
@@ -180,7 +162,6 @@ describe(`plugin-phone`, function() {
                   receivingVideo: true
                 }))
                 .then(() => call.toggleReceivingVideo())
-                .then(() => new Promise((resolve) => setTimeout(resolve, 4000)))
                 .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: true,
@@ -188,7 +169,6 @@ describe(`plugin-phone`, function() {
                   receivingVideo: false
                 }))
                 .then(() => call.toggleReceivingVideo()))
-                .then(() => new Promise((resolve) => setTimeout(resolve, 4000)))
                 .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: true,

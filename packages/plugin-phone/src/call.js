@@ -8,7 +8,7 @@
 /* global RTCPeerConnection, RTCSessionDescription */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {oneFlight, tap} from '@ciscospark/common';
+import {oneFlight, retry, tap} from '@ciscospark/common';
 import {
   USE_INCOMING,
   FETCH
@@ -25,6 +25,7 @@ import {
   remoteParticipant,
   remoteVideoMuted
 } from './state-parsers';
+import boolToStatus from './bool-to-status';
 
 import WebRTCMedia from './web-rtc-media';
 
@@ -351,12 +352,13 @@ const Call = SparkPlugin.extend({
           sdp: offer,
           mediaId: this.mediaId
         }))
-        .then((locus) => this.spark.locus.get(locus))
+        .then(() => this._fetchExpectedLocus())
         .then((locus) => {
           this._setLocus(locus);
           const sdp = JSON.parse(this.mediaConnection.remoteSdp).sdp;
           return this.media.acceptAnswer(sdp);
-        });
+        })
+        .catch((reason) => this.emit(`error`, reason));
     }));
 
     this.on(`change:remoteMediaStream`, () => {
@@ -783,20 +785,26 @@ const Call = SparkPlugin.extend({
     });
   },
 
-  @oneFlight
-  _updateReceivingMedia() {
-    // This method should never send a new sdp; if we performed an action that
-    // would cause a new sdp, the onnegotiationneeded handler should exchange
-    // it. this means that for a number of scenarios, we must call update media
-    // twice.
-    return this.spark.locus.updateMedia(this.locus, {
-      sdp: this.media.peer.localDescription.sdp,
-      mediaId: this.mediaId,
-      audioMuted: !this.sendingAudio,
-      videoMuted: !this.sendingVideo
-    })
-      .then(() => this.spark.locus.get(this.locus))
-      .then((locus) => this._setLocus(locus));
+  /**
+   * The response to a PUT to LOCUS/media may not be fully up-to-dat when we
+   * receive it. This method polls locus until we get a locus with the status
+   * properties we expect (or three errors occur)
+   * @returns {Promise<Types~Locus>}
+   */
+   @retry
+  _fetchExpectedLocus() {
+    return this.spark.locus.get(this.locus)
+      .then((locus) => {
+        if (locus.self.status.audioStatus.toLowerCase() !== boolToStatus(this.media.audio, this.media.offerToReceiveAudio)) {
+          throw new Error(`locus.self.status.audioStatus indicate the received DTO is out of date`);
+        }
+
+        if (locus.self.status.videoStatus.toLowerCase() !== boolToStatus(this.media.video, this.media.offerToReceiveVideo)) {
+          throw new Error(`locus.self.status.videoStatus indicate the received DTO is out of date`);
+        }
+
+        return locus;
+      });
   }
 });
 

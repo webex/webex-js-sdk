@@ -6,6 +6,8 @@
 
 /* eslint max-nested-callbacks: [0] */
 
+// TODO remember to remove map-utils.js
+
 import 'webrtc-adapter';
 import transform from 'sdp-transform';
 import {curry, defaults, find} from 'lodash';

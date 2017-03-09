@@ -13,6 +13,19 @@ import {
   stopSendingVideo
 } from './webrtc';
 
+// at some point, this could potentially move into webrtc.js, but it gets the
+// job done for now.
+const sending = {
+  audio: {
+    start: startSendingAudio,
+    stop: stopSendingAudio
+  },
+  video: {
+    start: startSendingVideo,
+    stop: stopSendingVideo
+  }
+};
+
 /**
  * Determines if the peer connection is receiving the specified kind of media
  * @param {string} kind audio|video
@@ -135,7 +148,6 @@ const WebRTCMedia = AmpState.extend({
       this.peer = new RTCPeerConnection({iceServers: []});
 
       this.peer.ontrack = (event) => {
-        // TODO does this fire when we add the local stream?
         this.remoteMediaStream = event.streams[0];
 
         this.remoteMediaStream.getTracks().forEach((track) => {
@@ -193,53 +205,53 @@ const WebRTCMedia = AmpState.extend({
   },
 
   initialize(...args) {
-    this.on(`all`, (eventName) => console.log(eventName), this.toJSON());
     Reflect.apply(AmpState.prototype.initialize, this, args);
-    this.on(`change:audio`, () => {
-      if (!this.peer) {
-        return;
-      }
-      Promise.resolve(this.audio ? startSendingAudio(this.peer) : stopSendingAudio(this.peer))
-        .then(() => {
-          this.sendingAudio = getLocalMediaStatus(`audio`, this.peer);
-        })
-        .catch((reason) => {
-          this.emit(`error`, reason);
-        });
-    });
 
-    this.on(`change:video`, () => {
-      if (!this.peer) {
-        return;
-      }
+    [
+      `audio`,
+      `video`
+    ].forEach((mediaType) => {
+      this.on(`change:${mediaType}`, () => {
+        if (!this.peer) {
+          return;
+        }
 
-      let p;
-      if (this.video) {
-        const hasVideoTrack = this.localMediaStream.getVideoTracks().length;
+        let p;
+        if (this[mediaType]) {
+          const hasTrack = this.localMediaStream
+            .getTracks()
+            // I really don't see a more readable way to implement this
+            // eslint-disable-next-line max-nested-callbacks
+            .filter((track) => track.kind === mediaType)
+            .length;
 
-        if (hasVideoTrack) {
-          p = startSendingVideo(this.peer);
+          if (hasTrack) {
+            p = sending[mediaType].start(this.peer);
+          }
+          else {
+            p = new Promise((resolve) => {
+              // I really don't see a more readable way to implement this
+              // eslint-disable-next-line max-nested-callbacks
+              this.once(`negotiationneeded`, () => {
+                this.once(`answeraccepted`, resolve);
+              });
+            });
+            sending[mediaType].start(this.peer);
+          }
         }
         else {
-          p = new Promise((resolve) => {
-            this.once(`negotiationneeded`, () => {
-              this.once(`answeraccepted`, () => resolve());
-            });
-          });
-          startSendingVideo(this.peer);
+          p = sending[mediaType].stop(this.peer);
         }
-      }
-      else {
-        p = stopSendingVideo(this.peer);
-      }
 
-      Promise.resolve(p)
-        .then(() => {
-          this.sendingVideo = getLocalMediaStatus(`video`, this.peer);
-        })
-        .catch((reason) => {
-          this.emit(`error`, reason);
-        });
+        Promise.resolve(p)
+          .then(() => {
+            this[mediaType === `audio` ? `sendingAudio` : `sendingVideo`] = getLocalMediaStatus(mediaType, this.peer);
+          })
+          .catch((reason) => {
+            this.emit(`error`, reason);
+          });
+      });
+
     });
 
     this.on(`change:localMediaStream`, () => {

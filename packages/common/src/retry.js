@@ -21,7 +21,9 @@ import backoff from 'backoff';
  *
  * @returns {Function}
  */
-export default function retry(options) {
+export default function retry(...params) {
+  let options = params[0] || {};
+
   options = Object.assign({}, options);
   defaults(options, {
     backoff: true,
@@ -43,7 +45,20 @@ export default function retry(options) {
     };
   }
 
-  return function retryDecorator(target, prop, descriptor) {
+  if (params.length === 3) {
+    return Reflect.apply(retryDecorator, null, params);
+  }
+
+  return retryDecorator;
+
+  /**
+   * @param {Object} target
+   * @param {string} prop
+   * @param {Object} descriptor
+   * @private
+   * @returns {Object}
+   */
+  function retryDecorator(target, prop, descriptor) {
     descriptor.value = wrap(descriptor.value, function retryExecutor(fn, ...args) {
       const emitter = new EventEmitter();
       const promise = new Promise((resolve, reject) => {
@@ -104,5 +119,5 @@ export default function retry(options) {
     }
 
     return descriptor;
-  };
+  }
 }
