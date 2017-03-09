@@ -89,6 +89,8 @@ function getLocalMediaStatus(kind, pc) {
 
 const WebRTCMedia = AmpState.extend({
   props: {
+    // TODO audio and video need to allow full constraints objects, not just
+    // booleans
     audio: {
       default: false,
       type: `boolean`

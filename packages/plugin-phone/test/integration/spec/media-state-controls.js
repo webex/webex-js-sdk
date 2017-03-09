@@ -6,6 +6,7 @@
 import '../..';
 
 import {assert} from '@ciscospark/test-helper-chai';
+import sinon from '@ciscospark/test-helper-sinon';
 import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
 import handleErrorEvent from '../lib/handle-error-event';
@@ -220,10 +221,12 @@ describe(`plugin-phone`, function() {
           it(`stops sending audio then starts sending audio`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
             let mccoyCall;
+            const spy = sinon.spy();
             return Promise.all([
               mccoy.spark.phone.when(`call:incoming`)
                 .then(([c]) => {
                   mccoyCall = c;
+                  mccoyCall.on(`remoteAudioMuted:change`, spy);
                   return handleErrorEvent(c, () => c.answer());
                 }),
               handleErrorEvent(call, () => call.when(`connected`)
@@ -241,6 +244,7 @@ describe(`plugin-phone`, function() {
                   receivingVideo: true
                 }))
                 .then(() => {
+                  assert.calledOnce(spy);
                   assert.equal(mccoyCall.remote.status.audioStatus.toLowerCase(), boolToStatus(false, true));
                   assert.equal(mccoyCall.remote.status.videoStatus.toLowerCase(), boolToStatus(true, true));
                   return call.toggleSendingAudio();
@@ -251,6 +255,11 @@ describe(`plugin-phone`, function() {
                   receivingAudio: true,
                   receivingVideo: true
                 }))
+                .then(() => {
+                  assert.calledTwice(spy);
+                  assert.equal(mccoyCall.remote.status.audioStatus.toLowerCase(), boolToStatus(true, true));
+                  assert.equal(mccoyCall.remote.status.videoStatus.toLowerCase(), boolToStatus(true, true));
+                })
             ]);
           });
         });
@@ -265,10 +274,12 @@ describe(`plugin-phone`, function() {
               }
             });
             let mccoyCall;
+            const spy = sinon.spy();
             return Promise.all([
               mccoy.spark.phone.when(`call:incoming`)
                 .then(([c]) => {
                   mccoyCall = c;
+                  mccoyCall.on(`remoteAudioMuted:change`, spy);
                   return handleErrorEvent(c, () => c.answer());
                 }),
               handleErrorEvent(call, () => call.when(`connected`)
@@ -286,6 +297,7 @@ describe(`plugin-phone`, function() {
                   receivingVideo: true
                 }))
                 .then(() => {
+                  assert.calledOnce(spy);
                   assert.equal(mccoyCall.remote.status.audioStatus.toLowerCase(), boolToStatus(true, false));
                   assert.equal(mccoyCall.remote.status.videoStatus.toLowerCase(), boolToStatus(true, true));
                   return call.toggleSendingAudio();
@@ -296,6 +308,11 @@ describe(`plugin-phone`, function() {
                   receivingAudio: false,
                   receivingVideo: true
                 }))
+                .then(() => {
+                  assert.calledTwice(spy);
+                  assert.equal(mccoyCall.remote.status.audioStatus.toLowerCase(), boolToStatus(false, false));
+                  assert.equal(mccoyCall.remote.status.videoStatus.toLowerCase(), boolToStatus(true, true));
+                })
             ]);
           });
         });
@@ -306,10 +323,12 @@ describe(`plugin-phone`, function() {
           it(`stops sending video then starts sending video`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
             let mccoyCall;
+            const spy = sinon.spy();
             return Promise.all([
               mccoy.spark.phone.when(`call:incoming`)
                 .then(([c]) => {
                   mccoyCall = c;
+                  mccoyCall.on(`remoteVideoMuted:change`, spy);
                   return handleErrorEvent(c, () => c.answer());
                 }),
               handleErrorEvent(call, () => call.when(`connected`)
@@ -327,6 +346,7 @@ describe(`plugin-phone`, function() {
                   receivingVideo: true
                 }))
                 .then(() => {
+                  assert.calledOnce(spy);
                   assert.equal(mccoyCall.remote.status.audioStatus.toLowerCase(), boolToStatus(true, true));
                   assert.equal(mccoyCall.remote.status.videoStatus.toLowerCase(), boolToStatus(false, true));
                   return call.toggleSendingVideo();
@@ -337,6 +357,11 @@ describe(`plugin-phone`, function() {
                   receivingAudio: true,
                   receivingVideo: true
                 }))
+                .then(() => {
+                  assert.calledTwice(spy);
+                  assert.equal(mccoyCall.remote.status.audioStatus.toLowerCase(), boolToStatus(true, true));
+                  assert.equal(mccoyCall.remote.status.videoStatus.toLowerCase(), boolToStatus(true, true));
+                })
             ]);
           });
         });
@@ -351,10 +376,12 @@ describe(`plugin-phone`, function() {
               }
             });
             let mccoyCall;
+            const spy = sinon.spy();
             return Promise.all([
               mccoy.spark.phone.when(`call:incoming`)
                 .then(([c]) => {
                   mccoyCall = c;
+                  mccoyCall.on(`remoteVideoMuted:change`, spy);
                   return handleErrorEvent(c, () => c.answer());
                 }),
               handleErrorEvent(call, () => call.when(`connected`)
@@ -372,6 +399,7 @@ describe(`plugin-phone`, function() {
                   receivingVideo: false
                 }))
                 .then(() => {
+                  assert.calledOnce(spy);
                   assert.equal(mccoyCall.remote.status.audioStatus.toLowerCase(), boolToStatus(true, true));
                   assert.equal(mccoyCall.remote.status.videoStatus.toLowerCase(), boolToStatus(true, false));
                   return call.toggleSendingVideo();
@@ -382,6 +410,11 @@ describe(`plugin-phone`, function() {
                   receivingAudio: true,
                   receivingVideo: false
                 }))
+                .then(() => {
+                  assert.calledTwice(spy);
+                  assert.equal(mccoyCall.remote.status.audioStatus.toLowerCase(), boolToStatus(true, true));
+                  assert.equal(mccoyCall.remote.status.videoStatus.toLowerCase(), boolToStatus(false, false));
+                })
             ]);
           });
         });

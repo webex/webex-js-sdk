@@ -352,6 +352,7 @@ const Call = SparkPlugin.extend({
           sdp: offer,
           mediaId: this.mediaId
         }))
+        // TODO move _fetchExpectedLocus to plugin-locus
         .then(() => this._fetchExpectedLocus())
         .then((locus) => {
           this._setLocus(locus);
