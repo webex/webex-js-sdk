@@ -10,6 +10,7 @@ import sinon from '@ciscospark/test-helper-sinon';
 import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
 import handleErrorEvent from '../lib/handle-error-event';
+import {skipInFirefox} from '@ciscospark/test-helper-mocha';
 
 import {boolToStatus} from '../..';
 
@@ -150,7 +151,8 @@ describe(`plugin-phone`, function() {
 
       describe(`#toggleReceivingVideo()`, () => {
         describe(`when the call is started with video`, () => {
-          it(`stops receiving video and starts receiving video`, () => {
+          // See comment in web-rtc-media unit tests regarding firefox
+          skipInFirefox(it)(`stops receiving video and starts receiving video`, () => {
             const call = spock.spark.phone.dial(mccoy.email);
             return Promise.all([
               mccoy.spark.phone.when(`call:incoming`)
@@ -181,7 +183,8 @@ describe(`plugin-phone`, function() {
         });
 
         describe(`when the call is started without video`, () => {
-          it(`starts receiving video and stops receiving video`, () => {
+          // See comment in web-rtc-media unit tests regarding firefox
+          skipInFirefox(it)(`starts receiving video and stops receiving video`, () => {
             const call = spock.spark.phone.dial(mccoy.email, {
               constraints: {
                 video: false
