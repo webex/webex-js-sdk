@@ -96,6 +96,7 @@ const WebRTCMedia = AmpState.extend({
       type: `boolean`
     },
     localMediaStream: {
+      default: undefined,
       type: `object`
     },
     offerToReceiveAudio: {
@@ -118,6 +119,7 @@ const WebRTCMedia = AmpState.extend({
       type: `boolean`
     },
     remoteMediaStream: {
+      default: undefined,
       type: `object`
     },
     sendingAudio: {
@@ -204,6 +206,8 @@ const WebRTCMedia = AmpState.extend({
     if (this.peer) {
       end(this.peer);
     }
+    this.unset(`localMediaStream`);
+    this.unset(`remoteMediaStream`);
   },
 
   initialize(...args) {
