@@ -496,14 +496,6 @@ describe(`plugin-phone`, function() {
       });
     });
 
-    describe(`#sendFeedback()`, () => {
-      // TODO move to unit test?
-      it(`sends feedback to the metrics backend`);
-      it(`accepts a "userRating" integer`);
-      it(`accepts a "userComments" string`);
-      it(`accepts a "includeLogs" boolean`);
-    });
-
     describe(`triggered events`, () => {
       describe(`connection events`, () => {
         let call;
