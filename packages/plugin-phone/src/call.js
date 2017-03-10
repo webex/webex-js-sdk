@@ -821,11 +821,11 @@ const Call = SparkPlugin.extend({
     return this.spark.locus.get(this.locus)
       .then((locus) => {
         if (locus.self.status.audioStatus.toLowerCase() !== boolToStatus(this.media.audio, this.media.offerToReceiveAudio)) {
-          throw new Error(`locus.self.status.audioStatus indicate the received DTO is out of date`);
+          throw new Error(`locus.self.status.audioStatus indicates the received DTO is out of date`);
         }
 
         if (locus.self.status.videoStatus.toLowerCase() !== boolToStatus(this.media.video, this.media.offerToReceiveVideo)) {
-          throw new Error(`locus.self.status.videoStatus indicate the received DTO is out of date`);
+          throw new Error(`locus.self.status.videoStatus indicates the received DTO is out of date`);
         }
 
         return locus;

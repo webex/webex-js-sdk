@@ -33,6 +33,10 @@ const sending = {
  * @returns {bool} true if receiving, false if not
  */
 function getRemoteMediaStatus(kind, pc) {
+  if (pc.signalingState === `closed`) {
+    return false;
+  }
+
   const streams = pc.getRemoteStreams();
 
   if (streams.length === 0) {
