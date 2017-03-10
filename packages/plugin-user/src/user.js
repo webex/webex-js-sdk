@@ -49,8 +49,7 @@ const User = SparkPlugin.extend({
         user: this.spark.config.credentials.oauth.client_id,
         pass: this.spark.config.credentials.oauth.client_secret,
         sendImmediately: true
-      },
-      withCredentials: true
+      }
     })
       .then((res) => {
         response = res.body;
@@ -195,7 +194,6 @@ const User = SparkPlugin.extend({
    * Updates a user's password with spark.
    * @param {Object} options
    * @param {string} options.password (required)
-   * @param {string} options.userId (required)
    * @returns {Promise} Resolves with complete user object containing new password
    */
   setPassword(options) {
@@ -203,18 +201,15 @@ const User = SparkPlugin.extend({
     if (!options.password) {
       return Promise.reject(new Error(`\`options.password\` is required`));
     }
-    if (!options.userId) {
-      return Promise.reject(new Error(`\`options.userId\` is required`));
-    }
 
     let headers;
 
-    return this.spark.credentials.getAuthorization()
+    return this.spark.credentials.getUserToken()
       .then((authorization) => {
         headers = {authorization};
       })
       .then(() => this.request({
-        uri: `${this.config.setPasswordUrl}/${options.userId}`,
+        uri: `${this.config.setPasswordUrl}/${this.spark.device.userId}`,
         method: `PATCH`,
         headers,
         body: {
@@ -252,7 +247,7 @@ const User = SparkPlugin.extend({
    * Triggers activation email if client credentials are used
    * @param {Object} options
    * @param {string} options.email (required)
-   * @param {string} options.reqId required for the endpoint
+   * @param {string} options.reqId required if need to check email status
    * @returns {Promise<Object>}
    */
   verify(options) {
@@ -270,11 +265,11 @@ const User = SparkPlugin.extend({
     let requiresClientCredentials = false;
     let headers;
 
-    return this.spark.credentials.getAuthorization()
+    return this.spark.credentials.getUserToken()
       .then((authorization) => {
         headers = {authorization};
       })
-      .catch(() => this.spark.credentials.getClientCredentialsAuthorization()
+      .catch(() => this.spark.credentials.getClientToken()
         .then((authorization) => {
           headers = {authorization};
           shouldRefreshAccessToken = false;

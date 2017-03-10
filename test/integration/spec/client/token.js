@@ -44,7 +44,7 @@ describe('Client', function() {
               assert.notEqual(token.access_token, supertoken.access_token);
               assert.equal(token.refresh_token, supertoken.refresh_token);
               assert.equal(token.previousToken, supertoken);
-              assert.equal(token.hasPassword, true);
+              assert.equal(token.hasPassword, false);
             });
         });
 

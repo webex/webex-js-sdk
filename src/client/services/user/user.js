@@ -216,7 +216,7 @@ var UserService = SparkBase.extend(
    * authenticate.
    * @param {Object} params
    * @param {Object} params.email (required)
-   * @param {Object} params.reqId (optional)
+   * @param {Object} params.reqId required if need to check email status
    * @returns {Promise}
    * @todo Add details to the @returnsobject once the endpoint stabilizes
    */
@@ -228,6 +228,9 @@ var UserService = SparkBase.extend(
 
     if (!params.email) {
       throw new Error('`params.email` is required');
+    }
+    if (!params.reqId) {
+      throw new Error('`params.reqId` is required');
     }
 
     // Spoof mobile client for testing of activate and reverify APIs
@@ -299,8 +302,7 @@ var UserService = SparkBase.extend(
         user: this.spark.config.credentials.oauth.client_id,
         pass: this.spark.config.credentials.oauth.client_secret,
         sendImmediately: true
-      },
-      withCredentials: true
+      }
     })
       .then(function processResponse(res) {
         var response = res.body;
@@ -314,16 +316,12 @@ var UserService = SparkBase.extend(
    * Updates a user's password with spark.
    * @param {Object} params
    * @param {string} params.password (required)
-   * @param {string} params.userId (required)
    * @returns {Promise} Resolves with complete user object containing new password
    */
   setPassword: function setPassword(params) {
     params = params || {};
     if (!params.password) {
       return Promise.reject(new Error('`params.password` is required'));
-    }
-    if (!params.userId) {
-      return Promise.reject(new Error('`params.userId` is required'));
     }
 
     var headers;
@@ -341,7 +339,7 @@ var UserService = SparkBase.extend(
     return promise
       .then(function setPassword() {
         return this.request({
-          uri: this.config.setPasswordUrl + '/' + params.userId,
+          uri: this.config.setPasswordUrl + '/' + this.spark.device.userId,
           method: 'PATCH',
           headers: headers,
           body: {

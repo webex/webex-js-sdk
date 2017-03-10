@@ -17,7 +17,7 @@ export default {
     batcherMaxWait: 1500,
     setPasswordUrl: `https://identity.webex.com/identity/scim/v1/Users`,
     verifyDefaults: {
-      reqId: `DESKTOP`
+      reqId: `WEBCLIENT`
     }
   }
 };

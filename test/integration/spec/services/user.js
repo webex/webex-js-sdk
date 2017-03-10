@@ -228,9 +228,6 @@ describe('Services', function() {
           })
           .then(function(res) {
             assert.property(res, 'email');
-            assert.property(res, 'cookieName');
-            assert.property(res, 'cookieValue');
-            assert.property(res, 'cookieDomain');
             assert.property(res, 'tokenData');
             assert.equal(res.email, email);
             assert.isDefined(spark.credentials.authorization.supertoken);
@@ -260,9 +257,6 @@ describe('Services', function() {
           })
           .then(function(res) {
             assert.property(res, 'email');
-            assert.property(res, 'cookieName');
-            assert.property(res, 'cookieValue');
-            assert.property(res, 'cookieDomain');
             assert.property(res, 'tokenData');
             assert.equal(res.email, email);
             assert.isDefined(spark.credentials.authorization.supertoken);
