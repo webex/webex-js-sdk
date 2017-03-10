@@ -8,7 +8,7 @@
 /* global RTCPeerConnection, RTCSessionDescription */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {oneFlight, retry, tap} from '@ciscospark/common';
+import {base64, oneFlight, retry, tap} from '@ciscospark/common';
 import {
   USE_INCOMING,
   FETCH
@@ -352,7 +352,6 @@ const Call = SparkPlugin.extend({
           sdp: offer,
           mediaId: this.mediaId
         }))
-        // TODO move _fetchExpectedLocus to plugin-locus
         .then(() => this._fetchExpectedLocus())
         .then((locus) => {
           this._setLocus(locus);
@@ -492,6 +491,17 @@ const Call = SparkPlugin.extend({
     if (options && options.localMediaStream) {
       this.localMediaStream = options.localMediaStream;
     }
+
+    if (base64.validate(invitee)) {
+      // eslint-disable-next-line no-unused-vars
+      const parsed = base64.decode(invitee).split(`/`);
+      const resourceType = parsed[3];
+      const id = parsed[4];
+      if (resourceType === `PEOPLE`) {
+        invitee = id;
+      }
+    }
+
     this.spark.phone.register()
       .then(() => this._join(`create`, invitee, options))
       .then(tap(() => this.logger.info(`call: dialed`)))
@@ -725,6 +735,7 @@ const Call = SparkPlugin.extend({
       audio: true,
       video: true
     });
+
     const recvOnly = !options.constraints.audio && !options.constraints.video;
     options.offerOptions = defaults(options.offerOptions, {
       offerToReceiveAudio: recvOnly || options.constraints.audio,

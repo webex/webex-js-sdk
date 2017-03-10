@@ -46,9 +46,19 @@ export function decode(str) {
   return fromBase64url(str);
 }
 
+/**
+ * Indicates if the provided string is, in fact, a base64 string
+ * @param {String} str
+ * @returns {Boolean}
+ */
+export function validate(str) {
+  return UrlSafeBase64.validate(str);
+}
+
 export default {
   fromBase64url,
   toBase64Url,
   encode,
-  decode
+  decode,
+  validate
 };

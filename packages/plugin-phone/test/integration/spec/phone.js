@@ -169,12 +169,19 @@ describe(`plugin-phone`, function() {
 
       it(`calls a user by AppID username`);
 
-      // TODO const call = spock.spark.phone.dial(`tel:...`);
-      it(`calls a PSTN phone number`);
+      // TODO currently timing out because the PSTN participant is showing up as
+      // inactive
+      it.skip(`calls a PSTN phone number`, () => {
+        const call = spock.spark.phone.dial(`3175276955`);
+        return handleErrorEvent(call, () => call.when(`connected`)
+          .then(() => call.hangup()));
+      });
 
+      // Not implementing this feature at this time: doing so would introduce a
+      // dependency on an internal microservice (convo).
       it.skip(`calls a user by hydra room id`, () => spock.spark.request({
         method: `POST`,
-        api: `hydra`,
+        service: `hydra`,
         resource: `messages`,
         body: {
           toPersonEmail: mccoy.email,
@@ -187,11 +194,22 @@ describe(`plugin-phone`, function() {
         })
         .then(() => assert.calledOnce(ringMccoy)));
 
+      // Not implementing this feature at this time: doing so would introduce a
+      // dependency on an internal microservice (convo).
       it(`calls a user by room url`);
 
-      it(`calls a user by hydra user id`);
+      it(`calls a user by hydra user id`, () => mccoy.spark.request({
+        method: `GET`,
+        service: `hydra`,
+        resource: `people/me`
+      })
+        .then((res) => handleErrorEvent(spock.spark.phone.dial(res.body.id),
+          (call) => mccoy.spark.phone.when(`call:incoming`)
+            .then(() => call.hangup()))));
 
-      it(`calls a user by uuid`);
+      it(`calls a user by uuid`, () => handleErrorEvent(spock.spark.phone.dial(mccoy.id),
+          (call) => mccoy.spark.phone.when(`call:incoming`)
+            .then(() => call.hangup())));
 
       // TODO const call = spock.spark.phone.dial(`sip:...`);
       it(`calls a user by sip uri`);

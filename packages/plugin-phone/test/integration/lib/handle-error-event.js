@@ -2,18 +2,18 @@
  * A lot of failures get produced by EventEmitters, which makes them difficult to
  * detect in tests (they just look like timeouts). This is a test helper that
  * captures that error and turns it into a rejected promise
- * @param {Call} call
+ * @param {EventEmitter} emitter
  * @param {Function} fn
  * @returns {Promise}
  */
-export default function handleErrorEvent(call, fn) {
+export default function handleErrorEvent(emitter, fn) {
   let r;
   const p = new Promise((resolve, reject) => {
     r = reject;
-    call.on(`error`, reject);
+    emitter.on(`error`, reject);
   });
 
-  return Promise.race([p, fn()])
+  return Promise.race([p, fn(emitter)])
     .then(unbind)
     .catch((reason) => {
       unbind();
@@ -22,7 +22,7 @@ export default function handleErrorEvent(call, fn) {
 
   function unbind() {
     try {
-      call.off(`error`, r);
+      emitter.off(`error`, r);
     }
     catch (err) {
       // ignore
