@@ -41,12 +41,18 @@ const Locus = SparkPlugin.extend({
    */
   create(invitee, options) {
     options = options || {};
+    const {correlationId} = options;
+
+    if (!correlationId) {
+      throw new Error(`options.correlationId is required`);
+    }
 
     return this.request({
       method: `POST`,
       service: `locus`,
       resource: `loci/call`,
       body: {
+        correlationId,
         deviceUrl: this.spark.device.url,
         invitee: {
           invitee
@@ -99,11 +105,17 @@ const Locus = SparkPlugin.extend({
   join(locus, options) {
     options = options || {};
 
-    // TODO should options.localSdp be an array?
+    const correlationId = locus.correlationId || options.correlationId;
+
+    if (!correlationId) {
+      throw new Error(`locus.correlationId or options.correlationId is required`);
+    }
+
     return this.request({
       method: `POST`,
       uri: `${locus.url}/participant`,
       body: {
+        correlationId,
         deviceUrl: this.spark.device.url,
         localMedias: [{
           localSdp: JSON.stringify({
@@ -148,8 +160,6 @@ const Locus = SparkPlugin.extend({
   decline(locus) {
     return this.request({
       method: `PUT`,
-      // TODO can this be locus.self.url? or does self only work once we've
-      // joined?
       uri: `${locus.url}/participant/decline`,
       body: {
         deviceUrl: this.spark.device.url

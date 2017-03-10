@@ -28,6 +28,7 @@ import {
 import boolToStatus from './bool-to-status';
 
 import WebRTCMedia from './web-rtc-media';
+import uuid from 'uuid';
 
 /**
  * @event ringing
@@ -91,6 +92,7 @@ const Call = SparkPlugin.extend({
   },
 
   session: {
+    correlationId: `string`,
     locus: `object`,
     /**
      * Returns the local MediaStream for the call. May initially be `null`
@@ -749,9 +751,18 @@ const Call = SparkPlugin.extend({
       offerToReceiveVideo: options.offerOptions.offerToReceiveVideo
     });
 
+    if (!target.correlationId) {
+      this.correlationId = options.correlationId = uuid.v4();
+    }
+
+    if (!this.correlationId) {
+      this.correlationId = target.correlationId;
+    }
+
     return this.media.createOffer()
       .then((offer) => this.spark.locus[locusMethodName](target, {
-        localSdp: offer
+        localSdp: offer,
+        correlationId: this.correlationId
       }))
       .then((locus) => {
         this._setLocus(locus);
@@ -762,7 +773,8 @@ const Call = SparkPlugin.extend({
   },
 
   _onLocusEvent(event) {
-    if (this.locus && event.data.locus.url === this.locus.url) {
+    const device = find(event.data.locus.self.devices, (item) => item.url === this.spark.device.url);
+    if (this.locus && event.data.locus.url === this.locus.url || this.correlationId && this.correlationId === device.correlationId) {
       this.logger.info(`locus event: ${event.data.eventType}`);
       this._setLocus(event.data.locus);
     }
@@ -779,6 +791,7 @@ const Call = SparkPlugin.extend({
     switch (action) {
     case USE_INCOMING:
       this.locus = incoming;
+      this.correlationId = this.device.correlationId;
       break;
     case FETCH:
       return this.spark.locus.get(current)

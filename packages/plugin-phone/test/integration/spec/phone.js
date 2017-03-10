@@ -160,11 +160,21 @@ describe(`plugin-phone`, function() {
       });
 
       it(`calls a user by email address`, () => {
-        const call = spock.spark.phone.dial(mccoy.email);
-        return handleErrorEvent(call, () => {
-          return mccoy.spark.phone.when(`call:incoming`)
-            .then(() => assert.calledOnce(ringMccoy));
-        });
+        let mccoyCall;
+        return handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => Promise.all([
+          call.when(`connected`)
+            .then(() => {
+              assert.isDefined(call.correlationId);
+              assert.equal(call.locus.self.devices[0].correlationId, call.correlationId);
+              assert.isDefined(mccoyCall.correlationId);
+              assert.equal(mccoyCall.locus.self.devices[0].correlationId, mccoyCall.correlationId);
+            }),
+          mccoy.spark.phone.when(`call:incoming`)
+            .then(([c]) => {
+              mccoyCall = c;
+              return c.answer();
+            })
+        ]));
       });
 
       it(`calls a user by AppID username`);
