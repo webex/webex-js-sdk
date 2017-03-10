@@ -452,13 +452,15 @@ const Call = SparkPlugin.extend({
    * @returns {Promise}
    */
   answer(options) {
-    // TODO make this a noop for outbound calls
     this.logger.info(`call: answering`);
-    // Locus may *think* we're connected if we e.g. reload the page mid-call. If
-    // the user decides to answer the in-progress call that locus thinks they're
-    // a part of, we should immediately emit the connected event.
-    if (this.joinedOnThisDevice) {
+    if (!this.locus || this.direction === `out`) {
+      return Promise.resolve();
+    }
+    // Locus may think we're joined on this device if we e.g. reload the page,
+    // so, we need to check if we also have a working peer connection
+    if (this.joinedOnThisDevice && this.media.peer) {
       this.logger.info(`call: already joined on this device`);
+      return Promise.resolve();
     }
     return this._join(`join`, this.locus, options)
       .then(tap(() => this.logger.info(`call: answered`)));

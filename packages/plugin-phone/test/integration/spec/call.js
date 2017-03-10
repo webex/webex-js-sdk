@@ -426,9 +426,22 @@ describe(`plugin-phone`, function() {
             .then(() => assert.equal(call.status, `connected`))
         ]));
       });
-      it(`reconnects to an in-progress call (e.g. in event of media disconnect due to page reload)`);
-      it(`is a noop for outbound calls`);
-      it(`is a noop for answered calls`);
+
+      it(`is a noop for outbound calls`, () => handleErrorEvent(spock.spark.phone.dial(mccoy.id), (call) => {
+        sinon.spy(call, `_join`);
+        return assert.isFulfilled(call.answer())
+          .then(() => assert.notCalled(call._join));
+      }));
+
+      it(`is a noop for answered calls`, () => handleErrorEvent(spock.spark.phone.dial(mccoy.id), (call) => {
+        return mccoy.spark.phone.when(`call:incoming`)
+          .then(([c]) => {
+            sinon.spy(c, `_join`);
+            return c.answer()
+            .then(() => assert.isFulfilled(c.answer()))
+              .then(() => assert.calledOnce(c._join));
+          });
+      }));
     });
 
     describe(`#hangup()`, () => {
