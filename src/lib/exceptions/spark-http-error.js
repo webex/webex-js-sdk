@@ -13,26 +13,15 @@ var values = require('lodash.values');
 
 var SparkHttpError = extendError(HttpError, {
   parseFn: function parseFn(res) {
-    /* eslint complexity: [0] */
     var message = HttpError.prototype.parseFn.apply(this, arguments);
 
-    var body = res.body;
     var rawMessage;
-    switch (typeof body) {
-      case 'string':
-        try {
-          body = JSON.parse(body);
-          rawMessage = parseDescription(body);
-        }
-        catch (error) {
-          rawMessage = body;
-        }
-        break;
-      case 'object':
-        rawMessage = parseDescription(body);
-        break;
-      default:
-      // does nothing
+    try {
+      rawMessage = JSON.parse(message);
+      rawMessage = parseDescription(rawMessage);
+    }
+    catch (error) {
+      rawMessage = message;
     }
 
     Object.defineProperties(this, {
@@ -68,8 +57,14 @@ var SparkHttpError = extendError(HttpError, {
 });
 
 function parseDescription(body) {
+
+  // if explanation is an array, recurse and try again with first element
+  if (isArray(body) && body.length) {
+    return parseDescription(body[0]);
+  }
+
   // Search body for common names of error strings
-  var messages = values(pick(body, 'message', 'error', 'Errors', 'errorString', 'response', 'errorResponse', 'msg', 'description'));
+  var messages = values(pick(body, 'description'));
   // If no error candidate was found, stringify the entire body
   if (messages.length === 0) {
     return JSON.stringify(body);
@@ -77,11 +72,6 @@ function parseDescription(body) {
 
   // Assume the first key found was the error explanation
   var message = messages[0];
-  // if explanation is an array, recurse and try again with first element
-  if (isArray(message) && message.length) {
-    return parseDescription(message[0]);
-  }
-
   // If the explanation is an object, recurse and try again
   if (typeof message === 'object') {
     return parseDescription(message);
