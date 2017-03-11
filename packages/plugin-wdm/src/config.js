@@ -11,6 +11,7 @@ export default {
     defaults: {
       name: process.title || typeof window !== `undefined` && `browser` || `javascript`,
       deviceType: `UNKNOWN`
-    }
+    },
+    enableInactivityEnforcement: false
   }
 };

@@ -244,7 +244,7 @@ const Device = SparkPlugin.extend({
   _resetLogoutTimer() {
     clearTimeout(this.logoutTimer);
     this.unset(`logoutTimer`);
-    if (this.intranetInactivityCheckUrl && this.intranetInactivityDuration) {
+    if (this.config.enableInactivityEnforcement && this.intranetInactivityCheckUrl && this.intranetInactivityDuration) {
       this.on(`change:lastUserActivityDate`, () => this._resetLogoutTimer());
 
       const timer = setTimeout(() => {

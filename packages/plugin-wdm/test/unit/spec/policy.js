@@ -56,6 +56,26 @@ describe(`plugin-wdm`, () => {
         });
       });
 
+      describe(`when the local config indicates the policy should be disabled`, () => {
+        it(`stays dormant`, () => {
+          spark.config.device.enableInactivityEnforcement = false;
+          spark.device.set({
+            intranetInactivityDuration: 8 * 60 * 60,
+            intranetInactivityCheckUrl: `http://ping.example.com/ping`
+          });
+          assert.isUndefined(spark.device.logoutTimer);
+
+          spark.device.intranetInactivityCheckUrl = `http://ping.example.com/ping`;
+          assert.isUndefined(spark.device.logoutTimer);
+
+          spark.device.intranetInactivityDuration = 2;
+          assert.isUndefined(spark.device.logoutTimer);
+
+          spark.device.unset(`intranetInactivityCheckUrl`);
+          assert.isUndefined(spark.device.logoutTimer);
+        });
+      });
+
       describe(`when the policy configuration is specified`, () => {
         it(`logs the user out according to the policy configuration`, () => {
           spark.request.returns(Promise.reject());
