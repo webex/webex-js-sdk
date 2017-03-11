@@ -1,6 +1,6 @@
 import AmpState from 'ampersand-state';
 
-import {debounce} from 'lodash';
+import {debounce, isBoolean, isObject} from 'lodash';
 
 import {
   acceptAnswer,
@@ -96,12 +96,11 @@ function getLocalMediaStatus(kind, pc) {
 
 const WebRTCMedia = AmpState.extend({
   props: {
-    // TODO audio and video need to allow full constraints objects, not just
-    // booleans
     audio: {
       default: false,
       type: `boolean`
     },
+    audioConstraint: `any`,
     localMediaStream: {
       default: undefined,
       type: `object`
@@ -140,7 +139,8 @@ const WebRTCMedia = AmpState.extend({
     video: {
       default: false,
       type: `boolean`
-    }
+    },
+    videoConstraint: `any`
   },
 
   acceptAnswer(answer) {
@@ -185,9 +185,8 @@ const WebRTCMedia = AmpState.extend({
     let p;
     if (this.audio || this.video) {
       p = Promise.resolve(this.localMediaStream || getUserMedia({
-        audio: this.audio,
-        video: this.video,
-        fake: true
+        audio: this.audioConstraint,
+        video: this.videoConstraint
       }))
         .then((stream) => {
           this.localMediaStream = stream;
@@ -277,9 +276,14 @@ const WebRTCMedia = AmpState.extend({
           removeStream(this.peer, stream);
         });
         addStream(this.peer, this.localMediaStream);
+
+        const sendingAudio = getLocalMediaStatus(`audio`, this.peer);
+        const sendingVideo = getLocalMediaStatus(`video`, this.peer);
         this.set({
-          sendingAudio: getLocalMediaStatus(`audio`, this.peer),
-          sendingVideo: getLocalMediaStatus(`video`, this.peer)
+          sendingAudio,
+          audio: sendingAudio,
+          sendingVideo,
+          video: sendingVideo
         });
       }
     });
@@ -307,6 +311,37 @@ const WebRTCMedia = AmpState.extend({
     this.on(`change:offerToReceiveVideo`, () => {
       this.trigger(`negotiationneeded`);
     });
+  },
+
+  set(key, value, options) {
+    let attrs;
+    // Handle both `"key", value` and `{key: value}` -style arguments.
+    if (isObject(key) || key === null) {
+      attrs = key;
+      options = value;
+    }
+    else {
+      attrs = {};
+      attrs[key] = value;
+    }
+
+    options = options || {};
+
+    Object.keys(attrs).forEach((k) => {
+      [`audio`, `video`].forEach((mediaType) => {
+        if (k === mediaType) {
+          if (isObject(attrs[k])) {
+            attrs[`${mediaType}Constraint`] = attrs[k];
+            attrs[k] = true;
+          }
+          else if (isBoolean(attrs[k])) {
+            attrs[`${mediaType}Constraint`] = attrs[k];
+          }
+        }
+      });
+    });
+
+    Reflect.apply(AmpState.prototype.set, this, [attrs, options]);
   }
 
 });

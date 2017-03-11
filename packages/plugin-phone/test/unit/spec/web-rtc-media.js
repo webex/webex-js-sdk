@@ -97,6 +97,29 @@ describe(`plugin-phone`, () => {
       });
     });
 
+    it(`supports complex constraints`, () => {
+      m.set({
+        audio: true,
+        video: {
+          width: {min: 1280},
+          height: {min: 720}
+        }
+      });
+
+      sinon.spy(navigator.mediaDevices, `getUserMedia`);
+      return m.createOffer()
+        .then(() => {
+          assert.calledWith(navigator.mediaDevices.getUserMedia, {
+            audio: true,
+            fake: true,
+            video: {
+              width: {min: 1280},
+              height: {min: 720}
+            }
+          });
+        });
+    });
+
     describe(`sending media state changes`, () => {
       [
         `audio`,
@@ -260,6 +283,7 @@ describe(`plugin-phone`, () => {
     // offerToReceiveAudio/offerToReceiveVideo when renegotiating. That said,
     // while frustrating, I think all this means is firefox will use extra
     // bandwith; everything should still *work*.
+    // TODO [SSDK-571]
     skipInFirefox(describe)(`receiving media state changes`, () => {
       [
         `Audio`,
@@ -339,6 +363,3 @@ describe(`plugin-phone`, () => {
 
   });
 });
-
-// TODO figure out how to get renegotiation working in firefox
-// TODO need a test for replacing the local media stream
