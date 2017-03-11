@@ -166,13 +166,15 @@ describe(`plugin-phone`, function() {
             .then(() => {
               assert.isDefined(call.correlationId);
               assert.equal(call.locus.self.devices[0].correlationId, call.correlationId);
-              assert.isDefined(mccoyCall.correlationId);
-              assert.equal(mccoyCall.locus.self.devices[0].correlationId, mccoyCall.correlationId);
             }),
           mccoy.spark.phone.when(`call:incoming`)
             .then(([c]) => {
               mccoyCall = c;
-              return c.answer();
+              return c.answer()
+                .then(() => {
+                  assert.equal(mccoyCall.locus.self.devices[0].correlationId, mccoyCall.correlationId);
+                  assert.isDefined(mccoyCall.correlationId);
+                });
             })
         ]));
       });

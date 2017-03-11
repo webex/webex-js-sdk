@@ -407,6 +407,8 @@ const Call = SparkPlugin.extend({
       this.on(`change:${key}`, () => this.trigger(`${key}:change`));
     });
 
+    // This handler is untested because there's no way to provoke it. It's
+    // probably actually only relevant for group calls.
     this.on(`change:isActive`, () => {
       if (!this.isActive) {
         if (this.joinedOnThisDevice) {
@@ -525,13 +527,10 @@ const Call = SparkPlugin.extend({
    * @returns {Promise}
    */
   hangup() {
-    // TODO For example, hangup may be invoked immediately after invoking dial()
-    // but before the “locus” has been created. In this case  invoking  hangup()
-    // should short circuit the call setup process and take whatever action is
-    // necessary to ensure all parties are notified that the call is
-    // disconnected.
-    // TODO For incoming calls, invoking hangup should be synonymous with
-    // invoking reject()
+    if (this.direction === `in` && !this.joinedOnThisDevice) {
+      return this.reject();
+    }
+
     this.logger.info(`call: hanging up`);
 
     this.media.end();
@@ -591,7 +590,10 @@ const Call = SparkPlugin.extend({
    */
   @oneFlight
   reject() {
-    // TODO should be a noop for outgoing calls
+    if (this.direction === `out`) {
+      return Promise.resolve();
+    }
+
     this.logger.info(`call: rejecting`);
     /* eslint no-invalid-this: [0] */
     return this.spark.locus.decline(this.locus)
@@ -793,7 +795,11 @@ const Call = SparkPlugin.extend({
     switch (action) {
     case USE_INCOMING:
       this.locus = incoming;
-      this.correlationId = this.device.correlationId;
+      // certain reasons for setting a locus (such as from calling
+      // acknowledge())
+      if (this.device) {
+        this.correlationId = this.device.correlationId;
+      }
       break;
     case FETCH:
       return this.spark.locus.get(current)
