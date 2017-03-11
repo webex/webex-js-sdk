@@ -180,8 +180,80 @@ describe(`plugin-phone`, () => {
                 });
               });
             });
+
+            describe(`when the local media stream gets replaced`, () => {
+              describe(`when the new stream is ${sending ? `sending` : `not sending`} ${mediaType}`, () => {
+                describe(`when the original stream was ${sending ? `not sending` : `sending`} ${mediaType}`, () => {
+                  describe(`when the peer was ${receiving ? `receiving` : `not receiving`} ${mediaType}`, () => {
+                    it(`always renegotiates`, () => {
+                      if (mediaType === `audio`) {
+                        m.set({
+                          audio: sending,
+                          offerToReceiveAudio: receiving,
+                          video: true,
+                          offerToReceiveVideo: true
+                        });
+                      }
+                      else {
+                        m.set({
+                          audio: true,
+                          offerToReceiveAudio: true,
+                          video: sending,
+                          offerToReceiveVideo: receiving
+                        });
+                      }
+
+                      return handleErrorEvent(m, () => m.createOffer()
+                        .then(mockAnswer)
+                        .then((answer) => m.acceptAnswer(answer))
+                        .then(() => navigator.mediaDevices.getUserMedia({
+                          audio: mediaType === `audio` ? !sending : true,
+                          video: mediaType === `video` ? !sending : true,
+                          fake: true
+                        }))
+                        .then((stream) => {
+                          const p = maxWaitForEvent(1000, `negotiationneeded`, m);
+                          m.localMediaStream = stream;
+
+                          assert.lengthOf(m.peer.getLocalStreams(), 1);
+                          assert.equal(m.peer.getLocalStreams()[0], stream);
+
+                          if (sending) {
+                            // We want to stop the stream as soon as the user asks us to
+                            return Promise.all([
+                              p,
+                              new Promise((resolve) => process.nextTick(() => {
+                                // Yes, it says synchronously, but one tick is close
+                                // enough; there's a promise.then in there
+                                // somewhere.
+                                assert.isFalse(m[mediaType === `audio` ? `sendingAudio` : `sendingVideo`], `sending${mediaType === `audio` ? `Audio` : `Video`} has synchronously left the initial state`);
+                                resolve();
+                              }))
+                            ]);
+                          }
+
+                          return Promise.all([
+                            p
+                              .then(() => assert.called(negSpy))
+                              .then(() => m.createOffer())
+                              .then(mockRenegotiate)
+                              .then((answer) => m.acceptAnswer(answer))
+                              .then(() => maxWaitForEvent(1000, `change:sending${mediaType === `audio` ? `Audio` : `Video`}`, m))
+                              .then(() => assert.isTrue(m[mediaType === `audio` ? `sendingAudio` : `sendingVideo`], `sending${mediaType === `audio` ? `Audio` : `Video`} has (possibly asynchronously) left the initial state`))
+                          ]);
+                        })
+                        .then(() => assert.calledOnce(negSpy))
+                        .then(() => assert.isBelow(m.peer.getLocalStreams().length, 2))
+                      );
+                    });
+                  });
+                });
+              });
+            });
           });
         });
+
+
     });
 
     // So this sucks: as far as I can tell, Firefox doesn't honor

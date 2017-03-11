@@ -42,7 +42,7 @@ describe(`plugin-phone`, function() {
             fake: true
           })
             .then((stream) => {
-              call.media.localMediaStream = stream;
+              call.localMediaStream = stream;
               assert.isDefined(call.localMediaStream);
               assert.equal(call.localMediaStream, stream);
               assert.isDefined(call.localMediaStreamUrl);
@@ -65,7 +65,7 @@ describe(`plugin-phone`, function() {
             fake: true
           })
             .then((stream) => {
-              call.media.localMediaStream = stream;
+              call.localMediaStream = stream;
               assert.isDefined(call.localMediaStreamUrl);
               orig = call.localMediaStreamUrl;
               return navigator.mediaDevices.getUserMedia({
@@ -75,7 +75,7 @@ describe(`plugin-phone`, function() {
               });
             })
             .then((stream) => {
-              call.media.localMediaStream = stream;
+              call.localMediaStream = stream;
               assert.notEqual(call.localMediaStream, orig);
               assert.calledWith(URL.revokeObjectURL, orig);
             });
@@ -96,7 +96,7 @@ describe(`plugin-phone`, function() {
             fake: true
           })
             .then((stream) => {
-              call.media.localMediaStream = stream;
+              call.localMediaStream = stream;
               assert.isDefined(call.localMediaStreamUrl);
               const orig = call.localMediaStreamUrl;
 
@@ -123,7 +123,7 @@ describe(`plugin-phone`, function() {
             fake: true
           })
             .then((stream) => {
-              call.media.localMediaStream = stream;
+              call.localMediaStream = stream;
               assert.isDefined(call.localMediaStreamUrl);
               orig = call.localMediaStreamUrl;
               return call.hangup();
@@ -266,7 +266,7 @@ describe(`plugin-phone`, function() {
         })
           .then((stream) => {
             assert.notCalled(spy);
-            call.media.localMediaStream = stream;
+            call.localMediaStream = stream;
             assert.calledOnce(spy);
           });
       });

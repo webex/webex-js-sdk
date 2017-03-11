@@ -247,6 +247,7 @@ export const end = curry((pc) => {
 });
 
 const curriedAddStream = curry(addStream);
+const curriedRemoveStream = curry(removeStream);
 
 /**
  * Adds the specified stream to the specified RTCPeerConnection
@@ -257,6 +258,17 @@ const curriedAddStream = curry(addStream);
  * @returns {undefined}
  */
 export {curriedAddStream as addStream};
+
+/**
+ * Removes the specified stream from the specified RTCPeerConnection
+ * @name addStream
+ * @param {PeerConnection} pc
+ * @param {MediaStream} stream
+ * @private
+ * @returns {undefined}
+ */
+
+export {curriedRemoveStream as removeStream};
 
 /**
  * Adds the specified stream to the specified RTCPeerConnection
@@ -271,6 +283,26 @@ function addStream(pc, stream) {
   }
   else {
     pc.addStream(stream);
+  }
+}
+
+/**
+ * Removes the specified stream from the specified RTCPeerConnection
+ * @param {PeerConnection} pc
+ * @param {MediaStream} stream
+ * @private
+ * @returns {undefined}
+ */
+function removeStream(pc, stream) {
+  if (pc.removeTrack && pc.getSenders) {
+    const senders = pc.getSenders();
+    stream.getTracks().forEach((track) => {
+      // Becuase why would `removeTrack` accept a MediaStreamTrack?
+      pc.removeTrack(senders.find((sender) => sender.track === track), stream);
+    });
+  }
+  else {
+    pc.removeStream(stream);
   }
 }
 

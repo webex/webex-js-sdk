@@ -1,5 +1,7 @@
 import AmpState from 'ampersand-state';
 
+import {debounce} from 'lodash';
+
 import {
   acceptAnswer,
   addStream,
@@ -7,6 +9,7 @@ import {
   end,
   ensureH264,
   getUserMedia,
+  removeStream,
   startSendingAudio,
   startSendingVideo,
   stopSendingAudio,
@@ -265,7 +268,20 @@ const WebRTCMedia = AmpState.extend({
     });
 
     this.on(`change:localMediaStream`, () => {
-      // TODO introspect the stream and update audio/video accordingly
+      if (!this.peer) {
+        return;
+      }
+      const streams = this.peer.getLocalStreams();
+      if (!streams.includes(this.localMediaStream)) {
+        streams.forEach((stream) => {
+          removeStream(this.peer, stream);
+        });
+        addStream(this.peer, this.localMediaStream);
+        this.set({
+          sendingAudio: getLocalMediaStatus(`audio`, this.peer),
+          sendingVideo: getLocalMediaStatus(`video`, this.peer)
+        });
+      }
     });
   },
 
@@ -280,9 +296,9 @@ const WebRTCMedia = AmpState.extend({
     }
     this.bound = true;
 
-    this.peer.onnegotiationneeded = () => {
+    this.peer.onnegotiationneeded = debounce(() => {
       this.emit(`negotiationneeded`);
-    };
+    });
 
     this.on(`change:offerToReceiveAudio`, () => {
       this.trigger(`negotiationneeded`);
