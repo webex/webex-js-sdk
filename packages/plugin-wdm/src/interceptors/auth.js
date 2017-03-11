@@ -37,12 +37,12 @@ export default class DeviceAuthInterceptor extends AuthInterceptor {
       return Promise.resolve(false);
     }
 
-    if (options.service && this.spark.device.isService(options.service)) {
-      return Promise.resolve(true);
+    if (options.service) {
+      return this.spark.device.isService(options.service);
     }
 
-    if (options.uri && this.spark.device.isServiceUrl(options.uri)) {
-      return Promise.resolve(true);
+    if (options.uri) {
+      return this.spark.device.isServiceUrl(options.uri);
     }
 
     return Promise.resolve(false);
