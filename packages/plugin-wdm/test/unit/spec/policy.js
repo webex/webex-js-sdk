@@ -5,6 +5,7 @@
 
 import {assert} from '@ciscospark/test-helper-chai';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
+import sinon from '@ciscospark/test-helper-sinon';
 import Device from '../..';
 import deviceFixture from '../lib/device-fixture';
 import lolex from 'lolex';
@@ -17,10 +18,16 @@ describe(`plugin-wdm`, () => {
       spark = new MockSpark({
         children: {
           device: Device
+        },
+        config: {
+          device: {
+            enableInactivityEnforcement: true
+          }
         }
       });
 
       spark.device.set(cloneDeep(deviceFixture));
+      spark.logout = sinon.spy();
     });
 
     let clock;
@@ -65,7 +72,31 @@ describe(`plugin-wdm`, () => {
             method: `GET`,
             uri: `http://ping.example.com/ping`
           });
-          return Promise.resolve(() => assert.calledOnce(spark.logout));
+          return Promise.resolve()
+            .then(() => assert.calledOnce(spark.logout));
+        });
+
+        describe(`when the ping url can be reached`, () => {
+          it(`resets the logout timer`, () => {
+            spark.request.returns(Promise.resolve({
+              statusCode: 200
+            }));
+
+            spark.device.set({
+              intranetInactivityDuration: 8 * 60 * 60,
+              intranetInactivityCheckUrl: `http://ping.example.com/ping`
+            });
+            assert.isDefined(spark.device.logoutTimer);
+
+            clock.tick(8 * 60 * 60 * 1000);
+            assert.calledOnce(spark.request);
+            assert.calledWith(spark.request, {
+              method: `GET`,
+              uri: `http://ping.example.com/ping`
+            });
+            return Promise.resolve()
+              .then(() => assert.notCalled(spark.logout));
+          });
         });
 
         describe(`when there is user activity`, () => {
@@ -89,6 +120,8 @@ describe(`plugin-wdm`, () => {
               method: `GET`,
               uri: `http://ping.example.com/ping`
             });
+            return Promise.resolve()
+              .then(() => assert.notCalled(spark.logout));
           });
         });
       });
