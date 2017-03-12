@@ -46,12 +46,12 @@ describe(`plugin-phone`, function() {
     ]));
 
     describe(`#id`, () => {
+      // TODO [SSDK-572] need call id
       it(`identifies the local party's leg of the call`);
     });
 
     describe(`#sessionId`, () => {
-      // This is the locus sessionId which is not currently available at call
-      // start
+      // TODO [SSDK-573]
       it(`identifies the call`);
     });
 
@@ -102,7 +102,6 @@ describe(`plugin-phone`, function() {
       });
 
       describe(`when the local party has left the call`, () => {
-        // TODO do we need states for local and remote decline?
         it(`is "disconnected"`, () => {
           call = spock.spark.phone.dial(mccoy.email);
           assert.equal(call.status, `initiated`);
@@ -121,7 +120,6 @@ describe(`plugin-phone`, function() {
       });
 
       describe(`when the remote party has left the call`, () => {
-        // TODO do we need states for local and remote decline?
         it(`is "disconnected"`, () => {
           call = spock.spark.phone.dial(mccoy.email);
           assert.equal(call.status, `initiated`);
@@ -247,12 +245,6 @@ describe(`plugin-phone`, function() {
             })
           ]));
         });
-      });
-    });
-
-    describe(`#localMediaStream`, () => {
-      describe(`when it is replaced mid-call`, () => {
-        it(`triggers a renegotiation`);
       });
     });
 
@@ -405,16 +397,6 @@ describe(`plugin-phone`, function() {
               .then(() => assert.isFalse(call.receivingVideo))
           ]));
         });
-      });
-    });
-
-    describe(`#facingMode`, () => {
-      describe(`when using the out-facing camera`, () => {
-        it(`is "environment"`);
-      });
-
-      describe(`when using the user-facing camera`, () => {
-        it(`is "user"`);
       });
     });
 

@@ -179,10 +179,11 @@ describe(`plugin-phone`, function() {
         ]));
       });
 
+      // TODO [SSDK-574]
       it(`calls a user by AppID username`);
 
-      // TODO currently timing out because the PSTN participant is showing up as
-      // inactive
+      // TODO [SSDK-507] currently timing out because the PSTN participant is
+      // showing up as inactive
       it.skip(`calls a PSTN phone number`, () => {
         const call = spock.spark.phone.dial(`3175276955`);
         return handleErrorEvent(call, () => call.when(`connected`)
@@ -223,7 +224,10 @@ describe(`plugin-phone`, function() {
           (call) => mccoy.spark.phone.when(`call:incoming`)
             .then(() => call.hangup())));
 
-      // TODO const call = spock.spark.phone.dial(`sip:...`);
+      // TODO [SSDK-233, SSDK-508, SSDK-56, SSDK-149, SSDK-3] need to figure out
+      // what entitlements are required to dial sip addresses. Also, might be
+      // blocked by the sip calling test app being offline.
+      // const call = spock.spark.phone.dial(`sip:...`);
       it(`calls a user by sip uri`);
 
       it(`places a call with an existing MediaStreamObject`, () => {
@@ -297,16 +301,3 @@ describe(`plugin-phone`, function() {
     });
   });
 });
-
-// TODO needs tests that go from no media only to audio/video
-
-// TODO move to ciscospark/spark-core
-// describe(`.init()`, () => {
-//   it(`initializes the sdk with an access_token`);
-//   it(`initializes the sdk with a refresh_token`);
-//   it(`initializes the sdk with an AppID`);
-// });
-//
-// describe(`.version`, () => {
-//   it(`provides the current semantic version of the sdk`);
-// });

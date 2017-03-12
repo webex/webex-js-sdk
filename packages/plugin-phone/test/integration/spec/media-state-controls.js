@@ -477,6 +477,3 @@ describe(`plugin-phone`, function() {
     });
   });
 });
-
-// TODO add assertions about locus send/receive values in addition to peer connection values
-// TODO need test for add video to audioonly call, etc
