@@ -255,18 +255,25 @@ describe(`plugin-phone`, function() {
       afterEach(`unregister kirk`, () => kirk && kirk.spark.phone.deregister());
 
       it(`registers with wdm`, () => {
+        const spy = sinon.spy();
+        kirk.spark.phone.on(`change:registered`, spy);
         return kirk.spark.phone.register()
-          .then(() => assert.isDefined(kirk.spark.device.url));
+          .then(() => {
+            assert.isDefined(kirk.spark.device.url);
+            assert.called(spy);
+          });
       });
 
       it(`connects to mercury`, () => {
         assert.isFalse(kirk.spark.mercury.connected, `Mercury is not connected`);
         assert.isFalse(kirk.spark.phone.connected, `Mercury (proxied through spark.phone) is not conneted`);
-
+        const spy = sinon.spy();
+        kirk.spark.phone.on(`change:connected`, spy);
         return kirk.spark.phone.register()
           .then(() => {
             assert.isTrue(kirk.spark.mercury.connected, `Mercury is connected after calling register`);
             assert.isTrue(kirk.spark.phone.connected, `spark.phone.connected proxies to spark.mercury.connected`);
+            assert.called(spy);
           });
       });
 

@@ -29,44 +29,18 @@ import {getUserMedia} from './webrtc';
  * The calling feature in the SDK is currently available in limited beta. If you'd like to join the beta program and share your feedback, please visit the [developer portal](https://developer.ciscospark.com/sdkaccess/). If you qualify, a Cisco employee will reach out to you.
  */
 const Phone = SparkPlugin.extend({
-  derived: {
+  session: {
     /**
-     * connected Indicates whether or not the WebSocket is connected
+     * Indicates whether or not the WebSocket is connected
      * @instance
      * @memberof Phone
      * @member {Boolean}
      * @readonly
      */
     connected: {
-      deps: [`parent.mercury.connected`],
-      // FIXME this prop must be cacheable so it can emit change events
-      cache: false,
-      fn() {
-        return Boolean(this.spark.mercury.connected);
-      }
+      default: false,
+      type: `boolean`
     },
-    /**
-     * indicates whether or not the client is registered with the Cisco Spark
-     * cloud
-     * @instance
-     * @memberof Phone
-     * @member {Boolean}
-     * @readonly
-     */
-    registered: {
-      deps: [
-        `parent.device.url`,
-        `connected`
-      ],
-      // FIXME this prop must be cacheable so it can emit change events
-      cache: false,
-      fn() {
-        return Boolean(this.spark.device.url && this.connected);
-      }
-    }
-  },
-
-  session: {
     /**
      * Specifies the facingMode to be used by {@link Phone#dial} and
      * {@link Call#answer} when no constraint is specified. Does not apply if
@@ -84,6 +58,18 @@ const Phone = SparkPlugin.extend({
       default: `user`,
       type: `string`,
       values: [`user`, `environment`]
+    },
+    /**
+     * indicates whether or not the client is registered with the Cisco Spark
+     * cloud
+     * @instance
+     * @memberof Phone
+     * @member {Boolean}
+     * @readonly
+     */
+    registered: {
+      default: false,
+      type: `boolean`
     }
   },
 
@@ -180,6 +166,19 @@ const Phone = SparkPlugin.extend({
     Reflect.apply(SparkPlugin.prototype.initialize, this, args);
 
     this.listenTo(this.spark.mercury, `event:locus`, (event) => this._onLocusEvent(event));
+
+    // Note: we need to manually wire up change:connected because derived props
+    // can't read through this.parent
+    this.listenTo(this.spark.mercury, `change:connected`, () => {
+      this.connected = this.spark.mercury.connected;
+      this.registered = !!this.spark.device.url && this.connected;
+    });
+
+    // Note: we need to manually wire up change:url because derived props
+    // can't read through this.parent
+    this.listenTo(this.spark.device, `change:url`, () => {
+      this.registered = !!this.spark.device.url && this.connected;
+    });
   },
 
   /**
