@@ -270,6 +270,11 @@ const WebRTCMedia = AmpState.extend({
       if (!this.peer) {
         return;
       }
+
+      if (this.peer.signalingState === `closed`) {
+        return;
+      }
+
       const streams = this.peer.getLocalStreams();
       if (!streams.includes(this.localMediaStream)) {
         streams.forEach((stream) => {

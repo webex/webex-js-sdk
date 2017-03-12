@@ -13,7 +13,7 @@ import {
   USE_INCOMING,
   FETCH
 } from '@ciscospark/plugin-locus';
-import {debounce, defaults, find} from 'lodash';
+import {debounce, defaults, find, get, set} from 'lodash';
 import {
   activeParticipants,
   direction,
@@ -93,6 +93,16 @@ const Call = SparkPlugin.extend({
 
   session: {
     correlationId: `string`,
+    /**
+     * @instance
+     * @memberof Call
+     * @type {string}
+     * @readonly
+     */
+    facingMode: {
+      type: `string`,
+      values: [`user`, `environment`]
+    },
     locus: `object`,
     /**
      * Returns the local MediaStream for the call. May initially be `null`
@@ -106,8 +116,7 @@ const Call = SparkPlugin.extend({
      * listeners that we are now sending media from a new source.
      * @instance
      * @memberof Call
-     * @member {MediaStream}
-     * @readonly
+     * @type {MediaStream}
      */
     localMediaStream: `object`,
     /**
@@ -115,7 +124,8 @@ const Call = SparkPlugin.extend({
      * automatically deallocated when the call ends
      * @instance
      * @memberof Call
-     * @member {string}
+     * @type {string}
+     * @readonly
      */
     localMediaStreamUrl: `string`,
     /**
@@ -123,7 +133,7 @@ const Call = SparkPlugin.extend({
      * automatically deallocated when the call ends
      * @instance
      * @memberof Call
-     * @member {string}
+     * @type {string}
      * @readonly
      */
     remoteMediaStreamUrl: `string`
@@ -394,6 +404,18 @@ const Call = SparkPlugin.extend({
       if (this.media.localMediaStream !== this.localMediaStream) {
         this.media.localMediaStream = this.localMediaStream;
       }
+
+
+      if (this.facingMode) {
+        const mode = get(this, `media.videoConstraint.facingMode.exact`);
+        if (mode === `user`) {
+          this.facingMode = `user`;
+        }
+
+        if (mode === `environment`) {
+          this.facingMode = `environment`;
+        }
+      }
     });
 
     [
@@ -477,7 +499,6 @@ const Call = SparkPlugin.extend({
    */
   acknowledge() {
     this.logger.info(`call: acknowledging`);
-    // TODO call this method automatically unless config says otherwise
     return this.spark.locus.alert(this.locus)
       .then((locus) => this._setLocus(locus))
       .then(tap(() => this.logger.info(`call: acknowledged`)));
@@ -601,6 +622,52 @@ const Call = SparkPlugin.extend({
       .then(tap(() => this.stopListening(this.spark.mercury)))
       .then(tap(() => this.off()))
       .then(tap(() => this.logger.info(`call: rejected`)));
+  },
+
+  /**
+   * Replaces the current mediaStrem with one with identical constraints, except
+   * for an opposite facing mode. If the current facing mode cannot be
+   * determined, the facing mode will be set to `user`. If the call is audio
+   * only, this function will throw.
+   * @returns {undefined}
+   */
+  toggleFacingMode() {
+    const constraints = {
+      audio: Object.assign({}, this.media.audioConstraint),
+      video: this.media.videoConstraint
+    };
+
+    if (!constraints.video) {
+      throw new Error(`Cannot toggle facignMode on audio-only call`);
+    }
+
+    if (this.facingMode !== `user` && this.facingMode !== `environment`) {
+      throw new Error(`Cannot determine current facing mode; specify a new localMediaStream to change cameras`);
+    }
+
+    if (constraints.video === true) {
+      constraints.video = {
+        facingMode: {
+          exact: this.facingMode
+        }
+      };
+    }
+
+    if (this.facingMode === `user`) {
+      set(constraints, `video.facingMode.exact`, `environment`);
+    }
+    else {
+      set(constraints, `video.facingMode.exact`, `user`);
+    }
+
+    return this.spark.phone.createLocalMediaStream(constraints)
+      .then((stream) => new Promise((resolve) => {
+        this.media.once(`answeraccepted`, resolve);
+        this.localMediaStream = stream;
+      }))
+      .then(() => {
+        this.facingMode = constraints.video.facingMode.exact;
+      });
   },
 
   /**
@@ -735,25 +802,41 @@ const Call = SparkPlugin.extend({
     .then((locus) => this._setLocus(locus));
   },
 
-  _join(locusMethodName, target, options) {
-    options = options || {};
-    options.constraints = defaults(options.constraints, {
-      audio: true,
-      video: true
-    });
+  // The complexity in _join is largely driven up by fairly readable `||`s
+  // eslint-disable-next-line complexity
+  _join(locusMethodName, target, options = {}) {
+    if (options.localMediaStream) {
+      this.media.set(`localMediaStream`, options.localMediaStream);
+    }
+    else {
+      if (!options.constraints) {
+        options.constraints = {
+          audio: true,
+          video: {
+            facingMode: {
+              exact: this.spark.phone.defaultFacingMode
+            }
+          }
+        };
+      }
+      const mode = get(options, `constraints.video.facingMode.exact`);
+      if (mode === `user` || mode === `environment`) {
+        this.facingMode = mode;
+      }
 
-    const recvOnly = !options.constraints.audio && !options.constraints.video;
-    options.offerOptions = defaults(options.offerOptions, {
-      offerToReceiveAudio: recvOnly || options.constraints.audio,
-      offerToReceiveVideo: recvOnly || options.constraints.video
-    });
+      const recvOnly = !options.constraints.audio && !options.constraints.video;
+      options.offerOptions = defaults(options.offerOptions, {
+        offerToReceiveAudio: recvOnly || !!options.constraints.audio,
+        offerToReceiveVideo: recvOnly || !!options.constraints.video
+      });
 
-    this.media.set({
-      audio: options.constraints.audio,
-      video: options.constraints.video,
-      offerToReceiveAudio: options.offerOptions.offerToReceiveAudio,
-      offerToReceiveVideo: options.offerOptions.offerToReceiveVideo
-    });
+      this.media.set({
+        audio: options.constraints.audio,
+        video: options.constraints.video,
+        offerToReceiveAudio: options.offerOptions.offerToReceiveAudio,
+        offerToReceiveVideo: options.offerOptions.offerToReceiveVideo
+      });
+    }
 
     if (!target.correlationId) {
       this.correlationId = options.correlationId = uuid.v4();

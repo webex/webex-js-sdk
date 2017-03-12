@@ -537,11 +537,28 @@ describe(`plugin-phone`, function() {
 
     describe(`#toggleFacingMode`, () => {
       describe(`when the facing mode is "user"`, () => {
-        it(`changes the facing mode to "environment"`);
+        it(`changes the facing mode to "environment"`, () => handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => Promise.all([
+          mccoy.spark.phone.when(`call:incoming`)
+            .then(([c]) => c.answer()),
+          call.when(`connected`)
+            .then(() => assert.equal(call.facingMode, `user`))
+            .then(() => call.toggleFacingMode())
+            .then(() => assert.equal(call.facingMode, `environment`))
+        ])));
       });
 
       describe(`when the facing mode is "environment"`, () => {
-        it(`changes the facing mode to "user"`);
+        it(`changes the facing mode to "user"`, () => {
+          spock.spark.phone.defaultFacingMode = `environment`;
+          return handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => Promise.all([
+            mccoy.spark.phone.when(`call:incoming`)
+              .then(([c]) => c.answer()),
+            call.when(`connected`)
+              .then(() => assert.equal(call.facingMode, `environment`))
+              .then(() => call.toggleFacingMode())
+              .then(() => assert.equal(call.facingMode, `user`))
+          ]));
+        });
       });
     });
 

@@ -288,20 +288,6 @@ describe(`plugin-phone`, function() {
       it(`is a noop when already registered`, () => assert.isFulfilled(spock.spark.phone.register()));
     });
 
-    describe(`#defaultFacingMode`, () => {
-      it.skip(`defaults to user`, () => {
-        assert.equal(spock.spark.phone.defaultFacingMode, `user`);
-      });
-
-      describe(`when video constraints are not specified`, () => {
-        it(`gets passed as the video constraint`);
-      });
-
-      describe(`when video constraints are not specified`, () => {
-        it(`does not get passed as the video constraint`);
-      });
-    });
-
     describe(`when a call is received`, () => {
       it(`emits a call:incoming event`, () => {
         spock.spark.phone.dial(mccoy.email);

@@ -66,6 +66,27 @@ const Phone = SparkPlugin.extend({
     }
   },
 
+  session: {
+    /**
+     * Specifies the facingMode to be used by {@link Phone#dial} and
+     * {@link Call#answer} when no constraint is specified. Does not apply if
+     * - a {@link MediaStream} is passed to {@link Phone#dial} or
+     * {@link Call#answer}
+     * - constraints are passed to {@link Phone#dial} or  {@link Call#answer}
+     * The only valid values are `user` and `environment`. For any other values,
+     * you must provide your own constrains or {@link MediaStream}
+     * @default `user`
+     * @instance
+     * @memberof {Phone}
+     * @type {string}
+     */
+    defaultFacingMode: {
+      default: `user`,
+      type: `string`,
+      values: [`user`, `environment`]
+    }
+  },
+
   namespace: `phone`,
 
   /**
@@ -138,8 +159,6 @@ const Phone = SparkPlugin.extend({
    * @returns {Promise<MediaStream>}
    */
   createLocalMediaStream(options) {
-    // TODO need to figure out a way to manage the stream internally. currently,
-    // misuse makes it really easy to lock the camera in the on state.
     options = options || {};
     const constraints = options.constraints || options;
     defaults(constraints, {
