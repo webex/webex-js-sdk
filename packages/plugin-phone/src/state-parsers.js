@@ -148,7 +148,7 @@ export function remoteVideoMuted(participant) {
  * @returns {Boolean}
  */
 export function shouldRing(event, spark) {
-  // FIXME this is not correct, but it's the best i've got until locus gets back
-  // to me
+  // TODO [SSDK-575] this is not correct, but it's the best i've got until locus
+  // gets back to me
   return event.data.eventType === `locus.participant_joined` && isCall(event.data.locus) && !joinedOnThisDevice(event.data.locus, spark.device.url);
 }

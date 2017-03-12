@@ -139,8 +139,10 @@ const Call = SparkPlugin.extend({
     remoteMediaStreamUrl: `string`
   },
 
-  // FIXME in its current form, any derived property that is an object will emit
-  // a change event everytime a locus gets replaced, even if no values change
+  // Note, in its current form, any derived property that is an object will emit
+  // a change event everytime a locus gets replaced, even if no values change.
+  // For the moment, this is probably ok; once we have multi-party, regular
+  // change events on activeParticipants may be a problem.
   derived: {
     id: {
       deps: [`locus`],
@@ -442,7 +444,6 @@ const Call = SparkPlugin.extend({
 
     this.on(`change:activeParticipantsCount`, () => {
       const previousLocus = this.previousAttributes().locus;
-      // TODO this logic probably goes in state-parsers
       if (this.joinedOnThisDevice && this.activeParticipantsCount === 1 && previousLocus && activeParticipants(previousLocus).length > 1) {
         this.logger.info(`call: hanging up due to last participant in call`);
         this.hangup();

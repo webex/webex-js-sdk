@@ -85,7 +85,6 @@ const stopSendingMedia = curry((kind, pc) => {
  * @returns {string} The modified SDP
  */
 function limitBandwith(sdp) {
-  // TODO can limitBandwith be done with the sender/reciever apis?
   return sdp.split(`\r\n`).reduce((lines, line) => {
     lines.push(line);
     if (line.startsWith(`m=`)) {
