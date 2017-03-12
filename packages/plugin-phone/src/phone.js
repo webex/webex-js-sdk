@@ -104,17 +104,35 @@ const Phone = SparkPlugin.extend({
     // Ideally, we could call spark.refresh via spark-core, but it doesn't know
     // about the wdm plugin, and all of the leaky abstractions I can think of
     // seem risky.
+
     return this.spark.device.refresh()
-      .then(() => this.spark.mercury.connect())
-      .then(() => this.spark.locus.list())
-      .then((loci) => {
-        loci.forEach((locus) => {
-          this.trigger(`call:incoming`, Call.make({
-            locus
-          }, {
-            parent: this.spark
-          }));
-        });
+      .then(() => {
+        if (this.connected) {
+          return Promise.resolve();
+        }
+        return Promise.all([
+          this.spark.mercury.when(`event:mercury.buffer_state`)
+            .then(([message]) => {
+              if (message.data.bufferState.locus === `UNKNOWN`) {
+                return this.spark.locus.list();
+              }
+              return Promise.resolve();
+            })
+            .then((loci) => {
+              if (!loci) {
+                return;
+              }
+              // eslint-disable-next-line max-nested-callbacks
+              loci.forEach((locus) => {
+                this.trigger(`call:incoming`, Call.make({
+                  locus
+                }, {
+                  parent: this.spark
+                }));
+              });
+            }),
+          this.spark.mercury.connect()
+        ]);
       });
   },
 
