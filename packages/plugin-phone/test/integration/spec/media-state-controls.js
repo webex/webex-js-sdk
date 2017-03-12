@@ -425,14 +425,16 @@ describe(`plugin-phone`, function() {
 
       describe(`toggle both`, () => {
         describe(`when the call starts as an audio only call`, () => {
-          // TODO this test doesn't pass
+          // TODO [SSDK-576]
           it.skip(`adds video to the call`, () => {
             const call = spock.spark.phone.dial(mccoy.email, {
               constraints: {
+                audio: true,
                 video: false
               }
             });
             let mccoyCall;
+            sinon.spy(spock.spark.locus, `updateMedia`);
             return Promise.all([
               mccoy.spark.phone.when(`call:incoming`)
                 .then(([c]) => {
@@ -447,9 +449,13 @@ describe(`plugin-phone`, function() {
                   receivingVideo: false
                 }))
                 .then(() => Promise.all([
-                  call.toggleSendingAudio(),
-                  call.toggleSendingVideo()
+                  call.toggleSendingVideo(),
+                  call.toggleReceivingVideo()
                 ]))
+                // Yes, twice: once for both updates and once because
+                // toggleSendingVideo requires to PUTs, one with mute flags, and
+                // one without
+                .then(() => assert.calledTwice(spock.spark.locus.updateMedia))
                 .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: true,
@@ -460,10 +466,13 @@ describe(`plugin-phone`, function() {
                   assert.equal(mccoyCall.remote.status.audioStatus.toLowerCase(), boolToStatus(true, true));
                   assert.equal(mccoyCall.remote.status.videoStatus.toLowerCase(), boolToStatus(true, false));
                   return Promise.all([
-                    call.toggleSendingAudio(),
-                    call.toggleSendingVideo()
+                    call.toggleSendingVideo(),
+                    call.toggleReceivingVideo()
                   ]);
                 }))
+                // two from the initial toggling, once to send the mute flag,
+                // once to remove the video section
+                .then(() => assert.calledTwice(spock.spark.locus.updateMedia))
                 .then(() => assertLocusMediaState(call, {
                   sendingAudio: true,
                   sendingVideo: false,

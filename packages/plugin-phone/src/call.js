@@ -912,11 +912,17 @@ const Call = SparkPlugin.extend({
   _fetchExpectedLocus() {
     return this.spark.locus.get(this.locus)
       .then((locus) => {
-        if (locus.self.status.audioStatus.toLowerCase() !== boolToStatus(this.media.audio, this.media.offerToReceiveAudio)) {
+        const locusAudio = locus.self.status.audioStatus.toLowerCase();
+        const mediaAudio = boolToStatus(this.media.audio, this.media.offerToReceiveAudio);
+        if (locusAudio !== mediaAudio) {
+          this.logger.warn(`expected audio ${locusAudio} (locus) to equal ${mediaAudio} (local media)`);
           throw new Error(`locus.self.status.audioStatus indicates the received DTO is out of date`);
         }
 
-        if (locus.self.status.videoStatus.toLowerCase() !== boolToStatus(this.media.video, this.media.offerToReceiveVideo)) {
+        const locusVideo = locus.self.status.videoStatus.toLowerCase();
+        const mediaVideo = boolToStatus(this.media.video, this.media.offerToReceiveVideo);
+        if (locusVideo !== mediaVideo) {
+          this.logger.warn(`expected video ${locusVideo} (locus) to equal ${mediaVideo} (local media)`);
           throw new Error(`locus.self.status.videoStatus indicates the received DTO is out of date`);
         }
 
