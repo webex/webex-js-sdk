@@ -97,12 +97,8 @@ describe(`plugin-phone`, function() {
           }
         });
 
-        return handleErrorEvent(call, () => Promise.all([
-          mccoy.spark.phone.when(`call:incoming`)
-          // FIXME This next line shouldn't need to be in a then block, but I
-          // can't get it to work otherwise
-            .then(() => maxWaitForEvent(10000, `connected`, call))
-        ])
+        return handleErrorEvent(call, () => mccoy.spark.phone.when(`call:incoming`)
+          .then(() => maxWaitForEvent(10000, `connected`, call))
           .then(() => {
             assert.isFalse(call.sendingAudio);
             assert.isTrue(call.sendingVideo);
@@ -119,12 +115,8 @@ describe(`plugin-phone`, function() {
           }
         });
 
-        return handleErrorEvent(call, () => Promise.all([
-          mccoy.spark.phone.when(`call:incoming`)
-          // FIXME This next line shouldn't need to be in a then block, but I
-          // can't get it to work otherwise
-            .then(() => maxWaitForEvent(10000, `connected`, call))
-        ])
+        return handleErrorEvent(call, () => mccoy.spark.phone.when(`call:incoming`)
+          .then(() => maxWaitForEvent(10000, `connected`, call))
           .then(() => {
             assert.isTrue(call.sendingAudio);
             assert.isFalse(call.sendingVideo);
@@ -145,12 +137,8 @@ describe(`plugin-phone`, function() {
           }
         });
 
-        return handleErrorEvent(call, () => Promise.all([
-          mccoy.spark.phone.when(`call:incoming`)
-          // FIXME This next line shouldn't need to be in a then block, but I
-          // can't get it to work otherwise
-            .then(() => maxWaitForEvent(10000, `connected`, call))
-        ])
+        return handleErrorEvent(call, () => mccoy.spark.phone.when(`call:incoming`)
+          .then(() => maxWaitForEvent(10000, `connected`, call))
           .then(() => {
             assert.isFalse(call.sendingAudio);
             assert.isFalse(call.sendingVideo);

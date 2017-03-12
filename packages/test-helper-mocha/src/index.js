@@ -113,7 +113,7 @@ module.exports = {
   maxWaitForEvent: function maxWaitForEvent(max, event, emitter) {
     return Promise.race([
       new Promise(function(resolve) {
-        setTimeout(resolve, 1000);
+        setTimeout(resolve, max);
       }),
       new Promise(function(resolve) {
         emitter.once(event, resolve);
