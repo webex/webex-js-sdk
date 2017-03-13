@@ -37,15 +37,22 @@ export default class DeviceAuthInterceptor extends AuthInterceptor {
       return Promise.resolve(false);
     }
 
-    if (options.service) {
-      return this.spark.device.isService(options.service);
-    }
+    return this.spark.device.isSpecificService(`hydra`, options.uri)
+      .then((isHydra) => {
+        if (isHydra) {
+          return true;
+        }
 
-    if (options.uri) {
-      return this.spark.device.isServiceUrl(options.uri);
-    }
+        if (options.service) {
+          return this.spark.device.isService(options.service);
+        }
 
-    return Promise.resolve(false);
+        if (options.uri) {
+          return this.spark.device.isServiceUrl(options.uri);
+        }
+
+        return Promise.resolve(false);
+      });
   }
   /* eslint-enable complexity */
 }
