@@ -19,6 +19,9 @@ const Device = SparkPlugin.extend({
   namespace: `Device`,
 
   props: {
+    // deviceType doesn't have any real value, but we need to send it during
+    // device refresh to make sure we don't get back an ios device url
+    deviceType: `string`,
     intranetInactivityDuration: `number`,
     intranetInactivityCheckUrl: `string`,
     modificationTime: `string`,

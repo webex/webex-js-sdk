@@ -42,15 +42,19 @@ describe(`plugin-wdm`, function() {
           modificationTime = spark.device.modificationTime;
         }));
 
-      it(`refreshes a device`, () => spark.device.refresh()
-        .then(() => {
-          assert.property(spark.device, `modificationTime`);
-          assert.property(spark.device, `services`);
-          assert.property(spark.device, `url`);
-          assert.property(spark.device, `userId`);
-          assert.property(spark.device, `webSocketUrl`);
-          assert.notEqual(spark.device.modificationTime, modificationTime);
-        }));
+      it(`refreshes a device`, () => {
+        const url = spark.device.url;
+        return spark.device.refresh()
+          .then(() => {
+            assert.property(spark.device, `modificationTime`);
+            assert.property(spark.device, `services`);
+            assert.property(spark.device, `url`);
+            assert.property(spark.device, `userId`);
+            assert.property(spark.device, `webSocketUrl`);
+            assert.notEqual(spark.device.modificationTime, modificationTime);
+            assert.equal(spark.device.url, url, `Refreshing the device without sending the entire original payload must not give us a new registration`);
+          });
+      });
     });
 
     describe(`#unregister()`, () => {
