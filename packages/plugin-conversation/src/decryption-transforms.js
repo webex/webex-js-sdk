@@ -27,6 +27,12 @@ export const transforms = toArray(`inbound`, {
       key = object.encryptionKeyUrl;
     }
 
+    // Fixed issue with transcoded content
+    if (object.objectType === 'transcodedContent') {
+      console.log('@@@@@ temporarily calling decryptFile directly from here until a fix is available.');
+      return Promise.all(object.files.items.map((item) => ctx.transform(`decryptFile`, key, item)));
+    }
+
     return ctx.transform(`decrypt${S(object.objectType).capitalize().s}`, key, object);
   },
 
