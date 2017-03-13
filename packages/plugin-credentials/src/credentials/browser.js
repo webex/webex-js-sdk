@@ -111,17 +111,17 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
     // depends on this.config needs to run after SparkCore#initialize executes,
     // so, we'll use process.nextTick to run the following block on the next
     // execution cycle.
+    const location = url.parse(window.location.href, true);
+    let query = clone(location.query);
+    if (query.code) {
+      this.isAuthenticating = true;
+      Reflect.deleteProperty(location.query, `code`);
+      Reflect.deleteProperty(location.query, `state`);
+      this._updateLocation(location);
+    }
+
     process.nextTick(() => {
-      const location = url.parse(window.location.href, true);
-
-      let query = clone(location.query);
-
       if (query.code) {
-        Reflect.deleteProperty(location.query, `code`);
-        Reflect.deleteProperty(location.query, `state`);
-
-        this._updateLocation(location);
-
         // Though initialize is a synchronous call, it should be safe to
         // call authenticate() because it'll get called again later but end
         // up cached via oneFlight.
