@@ -342,7 +342,7 @@ export default class Socket extends EventEmitter {
       });
 
       const waitForBufferState = (event) => {
-        if (!event.data.type && event.data.data.eventType === `mercury.buffer_state`) {
+        if (!event.data.type && (event.data.data.eventType === `mercury.buffer_state` || event.data.data.eventType === `mercury.registration_status`)) {
           this.removeListener(`message`, waitForBufferState);
           this._ping();
           resolve();

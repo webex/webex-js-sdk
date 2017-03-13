@@ -322,6 +322,22 @@ describe(`plugin-mercury`, () => {
           return assert.isFulfilled(promise)
             .then(() => s.close());
         });
+
+        it(`resolves upon receiving registration status`, () => {
+          const s = new Socket();
+          const promise = s.open(`ws://example.com`, mockoptions);
+          mockWebSocket.readyState = 1;
+          mockWebSocket.emit(`open`);
+          mockWebSocket.emit(`message`, {
+            data: JSON.stringify({
+              data: {
+                eventType: `mercury.registration_status`
+              }
+            })
+          });
+          return assert.isFulfilled(promise)
+            .then(() => s.close());
+        });
       });
     });
 
