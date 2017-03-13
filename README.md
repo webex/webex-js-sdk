@@ -70,7 +70,7 @@ This is mostly useful for the the example app(s), but also comes in handy when d
 ```bash
 PACKAGE=PACKAGENAME npm run grunt:package -- serve
 ```
-### Running eslint on a single package
+### Run eslint on a single package
 This is mostly useful for running the eslint on the packages
 
 ```bash
