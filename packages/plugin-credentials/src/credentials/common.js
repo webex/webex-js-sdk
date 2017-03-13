@@ -215,7 +215,7 @@ export default {
       .then(() => this.userTokens.reset())
       .then(() => this.supertoken && this.supertoken.revoke())
       .catch((reason) => this.logger.warn(`credentials: token revocation failed for supertoken, ignoring`, reason))
-      .then(() => this.supertoken && this.supertoken.unset())
+      .then(() => this.unset(`supertoken`))
       .then(() => this.boundedStorage.del(`@`));
   },
 
