@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/storage-adapter-local-forage",
-  "version": "0.7.55",
+  "version": "0.7.66",
   "description": "",
   "license": "MIT",
   "author": "Matt Norris <matthew.g.norris@gmail.com>",
