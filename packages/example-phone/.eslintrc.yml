@@ -9,3 +9,5 @@ rules:
   - 0
   react/require-optimization:
   - 0
+  react/prop-types:
+  - 0

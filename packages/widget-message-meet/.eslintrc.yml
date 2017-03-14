@@ -13,4 +13,5 @@ rules:
     - 2
     - declaration
     - allowArrowFunctions: true
-
+  react/prop-types:
+  - 0
