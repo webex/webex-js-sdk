@@ -156,6 +156,10 @@ ansiColor('xterm') {
 
           stage('checkout') {
             checkout scm
+            // Copy the global git user details into the local repo so that the
+            // docker containers have access to it.
+            sh 'git config user.email spark-js-sdk.gen@cisco.com'
+            sh 'git config user.name Jenkins'
             if (IS_VALIDATED_MERGE_BUILD) {
               try {
                 pusher = sh script: 'git show  --quiet --format=%ae HEAD', returnStdout: true
@@ -191,11 +195,6 @@ ansiColor('xterm') {
                 currentBuild.description += 'not possible to fast forward'
                 throw err;
               }
-
-              // Copy the global git user details into the local repo so that the
-              // docker containers have access to it.
-              sh 'git config user.email spark-js-sdk.gen@cisco.com'
-              sh 'git config user.name Jenkins'
             }
 
             generateDockerEnv()
