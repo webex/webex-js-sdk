@@ -11,7 +11,7 @@ import UrlSafeBase64 from 'urlsafe-base64';
  * @returns {string}
  */
 export function fromBase64url(str) {
-  return UrlSafeBase64.decode(str).toString(`binary`);
+  return UrlSafeBase64.decode(str).toString();
 }
 
 /**
