@@ -8,11 +8,10 @@ import '../..';
 import {assert} from '@ciscospark/test-helper-chai';
 import sinon from '@ciscospark/test-helper-sinon';
 import CiscoSpark from '@ciscospark/spark-core';
-import Phone, {Call, WebRTCMedia} from '../..';
+import Phone from '../..';
 import Locus from '@ciscospark/plugin-locus';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
 import AmpState from 'ampersand-state';
-import handleErrorEvent from '../../integration/lib/handle-error-event';
 
 describe(`plugin-phone`, () => {
   describe(`Phone`, () => {

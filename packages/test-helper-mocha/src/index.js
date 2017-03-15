@@ -112,10 +112,10 @@ module.exports = {
 
   maxWaitForEvent: function maxWaitForEvent(max, event, emitter) {
     return Promise.race([
-      new Promise(function(resolve) {
+      new Promise(function timer(resolve) {
         setTimeout(resolve, max);
       }),
-      new Promise(function(resolve) {
+      new Promise(function eventEmitter(resolve) {
         emitter.once(event, resolve);
       })
     ]);
@@ -124,8 +124,8 @@ module.exports = {
   maxWaitForPromise: function maxWaitForPromise(timeout, promise) {
     return Promise.race([
       promise,
-      new Promise(function(resolve, reject) {
-        setTimeout(function() {
+      new Promise(function executor(resolve, reject) {
+        setTimeout(function timer() {
           reject(new Error('Timeout of ' + timeout + ' expired before promise completed'));
         }, timeout);
       })
