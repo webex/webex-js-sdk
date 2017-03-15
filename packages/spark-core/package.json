@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/spark-core",
-  "version": "0.7.55",
+  "version": "0.7.68",
   "description": "Plugin handling for Cisco Spark",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -26,7 +26,7 @@
     "@ciscospark/test-helper-chai": "^0.7.34",
     "@ciscospark/test-helper-make-local-url": "^0.7.34",
     "@ciscospark/test-helper-mocha": "^0.7.34",
-    "@ciscospark/test-helper-mock-spark": "^0.7.34",
+    "@ciscospark/test-helper-mock-spark": "^0.7.68",
     "@ciscospark/test-helper-retry": "^0.7.34",
     "@ciscospark/test-helper-sinon": "^0.7.34",
     "@ciscospark/test-helper-test-users": "^0.7.55",
