@@ -258,10 +258,6 @@ const User = SparkPlugin.extend({
       return Promise.reject(new Error(`\`options.email\` is required`));
     }
 
-    if (!options.reqId) {
-      return Promise.reject(new Error(`\`options.reqId\` is required`));
-    }
-
     let shouldRefreshAccessToken = true;
     let requiresClientCredentials = false;
     let headers;

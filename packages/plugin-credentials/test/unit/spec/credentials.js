@@ -300,13 +300,43 @@ describe(`plugin-credentials`, () => {
       });
     });
 
+    describe(`#buildOAuthUrl`, () => {
+      it(`requires a \`state\` to be an object`, () => {
+        assert.throws(() => {spark.credentials.buildOAuthUrl({state: `state`});}, /if specified, `options.state` must be an object/);
+      });
+
+      it(`requires a \`response_type\``, () => {
+        assert.throws(() => {spark.credentials.buildOAuthUrl({state: {}});}, /`options.response_type` is required/);
+      });
+
+    });
+
     describe(`#requestAuthorizationCodeGrant`, () => {
+      it(`requires a \`code\``, () => {
+        return assert.isRejected(spark.credentials.requestAuthorizationCodeGrant(), /`options.code` is required/);
+      });
+
       it(`sets #isAuthenticating`, () => {
         const promise = spark.credentials.requestAuthorizationCodeGrant({code: 5});
         assert.isTrue(spark.credentials.isAuthenticating);
         return assert.isFulfilled(promise)
           .then(() => assert.isFalse(spark.credentials.isAuthenticating));
       });
+    });
+
+    describe(`#_getSamlBearerToken`, () => {
+      it(`requires an \`orgId\``, () => {
+        return assert.isRejected(spark.credentials._getSamlBearerToken({}), /`options.orgId` is required/);
+      });
+
+      it(`requires a \`name\``, () => {
+        return assert.isRejected(spark.credentials._getSamlBearerToken({orgId: 123}), /`options.name` is required/);
+      });
+
+      it(`requires a \`password\``, () => {
+        return assert.isRejected(spark.credentials._getSamlBearerToken({orgId: 123, name: `name`}), /`options.password` is required/);
+      });
+
     });
 
     describe(`#logout`, () => {
@@ -364,10 +394,10 @@ describe(`plugin-credentials`, () => {
           spark.credentials._redirect = sinon.spy();
           assert.isDefined(spark.credentials.supertoken);
           return spark.credentials.logout({noRedirect: true})
-          .then(() => {
-            assert.isUndefined(spark.credentials.supertoken.access_token);
-            assert.notCalled(spark.credentials._redirect);
-          });
+            .then(() => {
+              assert.isUndefined(spark.credentials.supertoken.access_token);
+              assert.notCalled(spark.credentials._redirect);
+            });
         });
 
         it(`resolves successfully even if supertoken is not defined`, () => {
@@ -380,7 +410,58 @@ describe(`plugin-credentials`, () => {
           });
         });
       });
+    });
 
+    describe(`#receiveSupertoken`, () => {
+      it(`sets the supertoken`, () => {
+        const token = {
+          access_token: `ST`,
+          token_type: `Fake`,
+          expires_in: 6000,
+          refresh_token: `RT`,
+          refresh_token_expires_in: 24000,
+          hasPassword: true
+        };
+        const s = new CiscoSpark();
+        assert.isFalse(s.hasPassword);
+        assert.isFalse(s.canAuthorize);
+        assert.isUndefined(s.credentials.supertoken);
+        assert.isUndefined(s.credentials.supertoken);
+        return s.credentials.receiveSupertoken(token)
+          .then(() => {
+            assert.isTrue(s.hasPassword);
+            assert.isTrue(s.canAuthorize);
+            assert.equal(s.credentials.supertoken.access_token, `ST`);
+            assert.equal(s.credentials.supertoken.token_type, `Fake`);
+          });
+      });
+    });
+
+    describe(`#setPasswordStatus`, () => {
+      it(`sets the password status`, () => {
+        const credentials = {
+          authorization: {
+            supertoken: {
+              access_token: `ST`,
+              token_type: `Fake`
+            }
+          }
+        };
+        const s = new CiscoSpark({credentials});
+        assert.isTrue(s.canAuthorize);
+        assert.equal(s.credentials.supertoken.access_token, `ST`);
+        assert.equal(s.credentials.supertoken.token_type, `Fake`);
+        assert.isFalse(s.credentials.hasPassword);
+        s.credentials.setPasswordStatus(true);
+        assert.isTrue(s.credentials.hasPassword);
+      });
+
+      it(`does not set the password status if supertoken doesn't exist`, () => {
+        const s = new CiscoSpark();
+        assert.isUndefined(s.credentials.supertoken);
+        s.credentials.setPasswordStatus(true);
+        assert.isUndefined(s.credentials.supertoken);
+      });
     });
   });
 });

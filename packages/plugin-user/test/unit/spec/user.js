@@ -24,32 +24,60 @@ describe(`plugin-user`, () => {
       userService = spark.user;
     });
 
+    describe(`#activate()`, () => {
+      it(`requires a \`verificationToken\``, () => {
+        return assert.isRejected(userService.activate(), /`options.verificationToken` is required/);
+      });
+    });
+
+    describe(`#asUUID()`, () => {
+      it(`requires a \`user\``, () => {
+        return assert.isRejected(userService.asUUID(), /`user` is required/);
+      });
+
+      it(`requires a \`user\` in the array`, () => {
+        return assert.isRejected(userService.asUUID([``]), /`user` is required/);
+      });
+
+      it(`requires a valid email`, () => {
+        return assert.isRejected(userService.asUUID(`not valid email`), /Provided user object does not appear to identify a user/);
+      });
+
+      it(`resolves id if id is passed`, () => {
+        const id = uuid.v4();
+        return assert.isFulfilled(userService.asUUID(id))
+          .then((res) => {
+            assert.equal(res, id);
+          });
+      });
+    });
+
     describe(`#recordUUID()`, () => {
       it(`requires a \`user\``, () => {
         return assert.isRejected(userService.recordUUID(), /`user` is required/);
       });
 
       it(`requires an \`id\``, () => {
-        return assert.isRejected(userService.recordUUID({}, /`user.id` is required/));
+        return assert.isRejected(userService.recordUUID({}), /`user.id` is required/);
       });
 
       it(`requires the \`id\` to be a uuid`, () => {
         return assert.isRejected(userService.recordUUID({
           id: `not a uuid`
-        }, /`user.id` must be a uuid/));
+        }), /`user.id` must be a uuid/);
       });
 
       it(`requires an \`emailAddress\``, () => {
         return assert.isRejected(userService.recordUUID({
           id: uuid.v4()
-        }, /`user.emailAddress` is required/));
+        }), /`user.emailAddress` is required/);
       });
 
       it(`requires the \`emailAddress\` to be a uuid`, () => {
         return assert.isRejected(userService.recordUUID({
           id: uuid.v4(),
           emailAddress: `not an email address`
-        }, /`user.emailAddress` must be an email address/));
+        }), /`user.emailAddress` must be an email address/);
       });
 
       it(`places the user in the userstore`, () => {
@@ -66,15 +94,9 @@ describe(`plugin-user`, () => {
       });
     });
 
-    describe(`#verify()`, () => {
-      it(`requires an \`email\` param`, () => {
-        return assert.isRejected(userService.verify(), /`options.email` is required/);
-      });
-    });
-
-    describe(`#activate()`, () => {
-      it(`requires a \`verificationToken\``, () => {
-        return assert.isRejected(userService.activate(), /`options.verificationToken` is required/);
+    describe(`#setPassword()`, () => {
+      it(`requires a \`password\``, () => {
+        return assert.isRejected(userService.setPassword(), /`options.password` is required/);
       });
     });
 
@@ -83,5 +105,12 @@ describe(`plugin-user`, () => {
         return assert.isRejected(userService.update(), /`options.displayName` is required/);
       });
     });
+
+    describe(`#verify()`, () => {
+      it(`requires an \`email\` param`, () => {
+        return assert.isRejected(userService.verify(), /`options.email` is required/);
+      });
+    });
+
   });
 });
