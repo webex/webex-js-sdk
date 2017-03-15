@@ -469,6 +469,7 @@ const Conversation = SparkPlugin.extend({
   /**
    * Creates a ShareActivty for the specified conversation
    * @param {Object} conversation
+   * @param {Object} activity
    * @returns {ShareActivty}
    */
   makeShare(conversation, activity) {

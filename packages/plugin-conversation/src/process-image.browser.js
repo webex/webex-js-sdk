@@ -6,7 +6,6 @@
 
 import {pick} from 'lodash';
 import {orient} from '@ciscospark/helper-image';
-import {base64} from '@ciscospark/common';
 
 /* global Blob, document, Image, URL */
 

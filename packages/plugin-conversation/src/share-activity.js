@@ -24,7 +24,7 @@ const ShareActivity = SparkPlugin.extend({
     return {
       file: FILE_SYMBOL,
       emitter: EMITTER_SYMBOL
-    }
+    };
   },
 
   namespace: `Conversation`,
@@ -195,13 +195,13 @@ const ShareActivity = SparkPlugin.extend({
 /**
  * @returns {Array}
  */
-getFiles() {
-  var files = new Array();
-  for (var [key, value] of this.uploads) {
-    files.push(this.uploads.get(key)[FILE_SYMBOL]);
-  }
-  return files;
-},
+  getFiles() {
+    let files = [];
+    for (let [key] of this.uploads) {
+      files.push(this.uploads.get(key)[FILE_SYMBOL]);
+    }
+    return files;
+  },
 
   /**
    * @param {File} file
@@ -232,7 +232,7 @@ getFiles() {
           body: {fileSize}
         }
       }
-    })
+    });
   },
 
   /**
