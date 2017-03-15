@@ -479,7 +479,7 @@ const Conversation = SparkPlugin.extend({
     // web-client. This fixes the issue where the image activities do not come
     // back properly oriented from the server since the clientTempId is missing
     return ShareActivity.create(conversation, activity, this.spark);
-   },
+  },
 
   /**
    * Assigns an avatar to a room
