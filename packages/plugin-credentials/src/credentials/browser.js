@@ -27,6 +27,11 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
     isLoggingIn: {
       default: false,
       type: `boolean`
+    },
+    // variable to check if there are user credentials with which auto login is possible, hence the client needs to wait until the credentails validation is completed.
+    isValidatingUser: {
+      default: true,
+      type: `boolean`
     }
   }),
 
@@ -111,17 +116,17 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
     // depends on this.config needs to run after SparkCore#initialize executes,
     // so, we'll use process.nextTick to run the following block on the next
     // execution cycle.
+    const location = url.parse(window.location.href, true);
+    let query = clone(location.query);
+    if (query.code) {
+      this.isAuthenticating = true;
+      Reflect.deleteProperty(location.query, `code`);
+      Reflect.deleteProperty(location.query, `state`);
+      this._updateLocation(location);
+    }
+
     process.nextTick(() => {
-      const location = url.parse(window.location.href, true);
-
-      let query = clone(location.query);
-
       if (query.code) {
-        Reflect.deleteProperty(location.query, `code`);
-        Reflect.deleteProperty(location.query, `state`);
-
-        this._updateLocation(location);
-
         // Though initialize is a synchronous call, it should be safe to
         // call authenticate() because it'll get called again later but end
         // up cached via oneFlight.
@@ -147,6 +152,8 @@ const Credentials = SparkPlugin.extend(Object.assign({}, common, {
         this._updateLocation(location);
       }
 
+      // this should be set as false since we are no more validating the user for credentials. That means if the user already has credentials in his localStorage then he should be able to login without being presented the login screen.
+      this.isValidatingUser = false;
       return Promise.resolve();
     });
 

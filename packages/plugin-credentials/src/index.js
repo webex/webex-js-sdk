@@ -12,7 +12,9 @@ import config from './config';
 import AdvancedAuthInterceptor from './interceptor';
 
 const proxies = [
-  `canAuthorize`
+  `canAuthorize`,
+  `isAuthenticating`,
+  `isValidatingUser`
 ];
 
 if (typeof window !== `undefined`) {
