@@ -6,8 +6,7 @@
 
 import {pick} from 'lodash';
 import {orient} from '@ciscospark/helper-image';
-
-/* global Blob, document, Image, URL */
+/* eslint-env browser */
 
 /**
  * Determins the dimensions of an image
