@@ -6,7 +6,6 @@
 
 import {pick} from 'lodash';
 import {orient} from '@ciscospark/helper-image';
-import {base64} from '@ciscospark/common';
 
 /* global Blob, document, Image, URL */
 
@@ -94,7 +93,7 @@ export default function processImage({file, thumbnailMaxWidth, thumbnailMaxHeigh
         },
         file);
       const parts = canvas.toDataURL(`image/png`).split(`,`);
-      const byteString = base64.decode(parts[1]);
+      const byteString = atob(parts[1]);
 
       const buffer = new ArrayBuffer(byteString.length);
       const view = new DataView(buffer);
