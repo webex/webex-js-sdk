@@ -1,0 +1,87 @@
+/**!
+ *
+ * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import UserService from '../..';
+
+import {assert} from '@ciscospark/test-helper-chai';
+import MockSpark from '@ciscospark/test-helper-mock-spark';
+import sinon from '@ciscospark/test-helper-sinon';
+import uuid from 'uuid';
+
+describe(`plugin-user`, () => {
+  describe(`User`, () => {
+    let spark, userService;
+
+    beforeEach(() => {
+      spark = new MockSpark({
+        children: {
+          user: UserService
+        }
+      });
+
+      userService = spark.user;
+    });
+
+    describe(`#recordUUID()`, () => {
+      it(`requires a \`user\``, () => {
+        return assert.isRejected(userService.recordUUID(), /`user` is required/);
+      });
+
+      it(`requires an \`id\``, () => {
+        return assert.isRejected(userService.recordUUID({}, /`user.id` is required/));
+      });
+
+      it(`requires the \`id\` to be a uuid`, () => {
+        return assert.isRejected(userService.recordUUID({
+          id: `not a uuid`
+        }, /`user.id` must be a uuid/));
+      });
+
+      it(`requires an \`emailAddress\``, () => {
+        return assert.isRejected(userService.recordUUID({
+          id: uuid.v4()
+        }, /`user.emailAddress` is required/));
+      });
+
+      it(`requires the \`emailAddress\` to be a uuid`, () => {
+        return assert.isRejected(userService.recordUUID({
+          id: uuid.v4(),
+          emailAddress: `not an email address`
+        }, /`user.emailAddress` must be an email address/));
+      });
+
+      it(`places the user in the userstore`, () => {
+        const spy = sinon.stub(userService.store, `add`).returns(Promise.resolve());
+
+        const user = {
+          id: uuid.v4(),
+          emailAddress: `test@example.com`
+        };
+
+        userService.recordUUID(user);
+
+        assert.calledWith(spy, user);
+      });
+    });
+
+    describe(`#verify()`, () => {
+      it(`requires an \`email\` param`, () => {
+        return assert.isRejected(userService.verify(), /`options.email` is required/);
+      });
+    });
+
+    describe(`#activate()`, () => {
+      it(`requires a \`verificationToken\``, () => {
+        return assert.isRejected(userService.activate(), /`options.verificationToken` is required/);
+      });
+    });
+
+    describe(`#update()`, () => {
+      it(`requires a \`displayName\``, () => {
+        return assert.isRejected(userService.update(), /`options.displayName` is required/);
+      });
+    });
+  });
+});

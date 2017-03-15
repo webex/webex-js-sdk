@@ -37,7 +37,7 @@ const User = SparkPlugin.extend({
     options = options || {};
 
     if (!options.verificationToken) {
-      throw new Error(`\`options.verificationToken\` is required`);
+      return Promise.reject(new Error(`\`options.verificationToken\` is required`));
     }
     options.scope = this.spark.config.credentials.oauth.scope;
     let response;
@@ -229,6 +229,7 @@ const User = SparkPlugin.extend({
    * @returns {Promise<Object>}
    */
   update(options) {
+    options = options || {};
     if (!options.displayName) {
       return Promise.reject(new Error(`\`options.displayName\` is required`));
     }
