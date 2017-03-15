@@ -117,10 +117,6 @@ const ShareActivity = SparkPlugin.extend({
     const promise = this.detect(file)
       .then((type) => {
         upload.mimeType = type;
-        // The blow code gives an error that the file.type is a readonly property, hence refactoring the code.
-        // if (!file.type) {
-        //   file.type = type;
-        // }
         return processImage({
           file,
           type,
