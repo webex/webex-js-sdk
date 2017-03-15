@@ -192,12 +192,13 @@ const ShareActivity = SparkPlugin.extend({
       });
   },
 
-/**
- * @returns {Array}
- */
+  /**
+   * Fetches the files from the share
+   * @returns {Array}
+   */
   getFiles() {
-    let files = [];
-    for (let [key] of this.uploads) {
+    const files = [];
+    for (const [key] of this.uploads) {
       files.push(this.uploads.get(key)[FILE_SYMBOL]);
     }
     return files;
