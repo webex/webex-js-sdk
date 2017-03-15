@@ -31,7 +31,8 @@ const Mercury = SparkPlugin.extend({
       default: false,
       type: `boolean`
     },
-    socket: `object`
+    socket: `object`,
+    localClusterServiceUrls: `object`
   },
 
   derived: {
@@ -90,6 +91,10 @@ const Mercury = SparkPlugin.extend({
     return this.disconnect();
   },
 
+  processRegistrationStatusEvent(message) {
+    this.localClusterServiceUrls = message.localClusterServiceUrls;
+  },
+
   _applyOverrides(event) {
     if (!event.headers) {
       return;
@@ -106,8 +111,17 @@ const Mercury = SparkPlugin.extend({
     socket.on(`message`, (...args) => this._onmessage(...args));
     socket.on(`sequence-mismatch`, (...args) => this._emit(`sequence-mismatch`, ...args));
 
-    this.spark.credentials.getAuthorization()
-      .then((authorization) => socket.open(this.spark.device.webSocketUrl, {
+    let webSocketUrl = this.spark.device.webSocketUrl;
+
+    this.spark.feature.getFeature(`developer`, `web-shared-mercury`)
+      .then((isSharingMercuryFeatureEnabled) => {
+        if (isSharingMercuryFeatureEnabled) {
+          webSocketUrl += `${webSocketUrl.includes(`?`) ? `&` : `?`}mercuryRegistrationStatus=true&isRegistrationRefreshEnabled=true`;
+        }
+
+        return this.spark.credentials.getAuthorization();
+      })
+      .then((authorization) => socket.open(webSocketUrl, {
         forceCloseDelay: this.config.forceCloseDelay,
         pingInterval: this.config.pingInterval,
         pongTimeout: this.config.pongTimeout,

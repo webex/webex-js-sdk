@@ -23,6 +23,10 @@ const RealtimeService = Mercury.extend({
     boardBindings: {
       type: `array`,
       default: () => []
+    },
+    isSharingMercury: {
+      type: `boolean`,
+      default: false
     }
   },
 
@@ -85,7 +89,94 @@ const RealtimeService = Mercury.extend({
         payload: encryptedPayloadAndKeyUrl.encryptedData
       };
     }
-    return this.socket.send(data);
+
+    // use mercury socket if it is shared
+    return this.spark.feature.getFeature(`developer`, `web-shared-mercury`)
+      .then((isSharingMercuryFeatureEnabled) => {
+        if (isSharingMercuryFeatureEnabled && this.isSharingMercury) {
+          return this.spark.mercury.socket.send(data);
+        }
+        return this.socket.send(data);
+      });
+  },
+
+  /**
+    * Open new mercury connection
+    * @memberof Board.RealtimeService
+    * @param   {Board~Channel} channel
+    * @returns {Promise}
+    */
+  connectByOpenNewMercuryConnection(channel) {
+    const bindings = [this._boardChannelIdToMercuryBinding(channel.channelId)];
+    const bindingObj = {bindings};
+
+    return this.spark.board.register(bindingObj)
+      .then((registration) => {
+        this.set({boardWebSocketUrl: registration.webSocketUrl});
+        this.set({boardBindings: bindings});
+        return this.connect();
+      })
+      .then(() => {
+        this.isSharingMercury = false;
+      });
+  },
+
+
+  /**
+   * Ensure board channelId is compatible with mercury bindings by replacing
+   * '-' with '.' and '_' with '#'
+   * @memberof Board.BoardService
+   * @param   {String} channelId channel.channelId
+   * @returns {String} mercury-binding compatible string
+   */
+  _boardChannelIdToMercuryBinding(channelId) {
+    // make channelId mercury compatible replace `-` with `.` and `_` with `#`
+    return this.config.mercuryBindingPrefix + channelId.replace(/-/g, `.`).replace(/_/g, `#`);
+  },
+
+  /**
+   * Connect and use an exisiting mercury connection
+   * @memberof Board.RealtimeService
+   * @param  {Board~Channel} channel
+   * @returns {Promise<Board~Registration>}
+   */
+  connectToSharedMercury(channel) {
+    return this.spark.board.registerToShareMercury(channel)
+      .then((res) => {
+        this.boardBindings = [res.binding];
+        this.boardWebSocketUrl = res.webSocketUrl;
+
+        if (!res.sharedWebSocket) {
+          return this.connect()
+            .then(() => {
+              this.isSharingMercury = false;
+              return res;
+            });
+        }
+
+        this.isSharingMercury = true;
+        return res;
+      });
+  },
+
+  /**
+   * Remove board binding from existing mercury connection
+   * @memberof Board.RealtimeService
+   * @param  {Board~Channel} channel
+   * @returns {Promise<Board~Registration>}
+   */
+  disconnectFromSharedMercury(channel) {
+    if (!this.isSharingMercury && this.socket && this.connected) {
+      return this.disconnect();
+    }
+
+    return this.spark.board.unregisterFromSharedMercury(channel, this.boardBindings[0])
+      .then((res) => {
+        this.boardBindings = [];
+        this.boardWebSocketUrl = ``;
+        this.isSharingMercury = false;
+        return res;
+      });
   },
 
   _getNewSocket() {

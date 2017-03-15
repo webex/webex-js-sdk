@@ -536,4 +536,41 @@ describe(`plugin-board`, () => {
       }));
     });
   });
+
+  describe(`#registerToShareMercury()`, () => {
+
+    beforeEach(() => {
+      spark.request.reset();
+      spark.mercury.localClusterServiceUrls = {
+        mercuryApiServiceClusterUrl: `https://mercury-api-a5.wbx2.com/v1`,
+        mercuryConnectionServiceClusterUrl: `https://mercury-connection-a5.wbx2.com/v1`
+      };
+      spark.feature.getFeature.returns(Promise.resolve(true));
+    });
+
+    it(`requests POST data to registration service`, () => {
+      return spark.board.registerToShareMercury(channel)
+        .then(() => {
+          assert.calledWith(spark.request, sinon.match({
+            method: `POST`,
+            uri: `${channel.channelUrl}/register`,
+            body: {
+              mercuryConnectionServiceClusterUrl: spark.mercury.localClusterServiceUrls.mercuryConnectionServiceClusterUrl,
+              webSocketUrl: spark.device.webSocketUrl,
+              action: `REPLACE`
+            }
+          }));
+        });
+    });
+
+    it(`rejects when localClusterServiceUrls is null`, () => {
+      spark.mercury.localClusterServiceUrls = null;
+      return assert.isRejected(spark.board.registerToShareMercury(channel));
+    });
+
+    it(`rejects when web-shared-mercury is not enabled`, () => {
+      spark.feature.getFeature.returns(Promise.resolve(false));
+      return assert.isRejected(spark.board.registerToShareMercury(channel));
+    });
+  });
 });

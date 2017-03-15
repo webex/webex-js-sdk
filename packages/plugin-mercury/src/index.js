@@ -4,6 +4,7 @@
  */
 
 import '@ciscospark/plugin-wdm';
+import '@ciscospark/plugin-feature';
 
 import {registerPlugin} from '@ciscospark/spark-core';
 import Mercury from './mercury';

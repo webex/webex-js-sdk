@@ -408,6 +408,63 @@ const Board = SparkPlugin.extend({
       .then((res) => res.body);
   },
 
+  /**
+   * Registers with Mercury for sharing web socket
+   * @memberof Board.BoardService
+   * @param  {Board~Channel} channel
+   * @returns {Promise<Board~Registration>}
+   */
+  registerToShareMercury(channel) {
+    return this.spark.feature.getFeature(`developer`, `web-shared-mercury`)
+      .then((isSharingMercuryFeatureEnabled) => {
+        if (!this.spark.mercury.localClusterServiceUrls) {
+          return Promise.reject(new Error(`\`localClusterServiceUrls\` is not defined, make sure mercury is connected`));
+        }
+        else if (!isSharingMercuryFeatureEnabled) {
+          return Promise.reject(new Error(`\`web-shared-mercury\` is not enabled`));
+        }
+
+        const webSocketUrl = this.spark.device.webSocketUrl;
+        const mercuryConnectionServiceClusterUrl = this.spark.mercury.localClusterServiceUrls.mercuryConnectionServiceClusterUrl;
+
+        const data = {
+          mercuryConnectionServiceClusterUrl,
+          webSocketUrl,
+          action: `REPLACE`
+        };
+
+        return this.spark.request({
+          method: `POST`,
+          uri: `${channel.channelUrl}/register`,
+          body: data
+        });
+      })
+      .then((res) => res.body);
+  },
+
+  /**
+   * Remove board binding from existing mercury connection
+   * @memberof Board.BoardService
+   * @param  {Board~Channel} channel
+   * @param  {String} binding - the binding as provided in board registration
+   * @returns {Promise<Board~Registration>}
+   */
+  unregisterFromSharedMercury(channel, binding) {
+    const webSocketUrl = this.spark.device.webSocketUrl;
+    const data = {
+      binding,
+      webSocketUrl,
+      action: `REMOVE`
+    };
+
+    return this.spark.request({
+      method: `POST`,
+      uri: `${channel.channelUrl}/register`,
+      body: data
+    })
+      .then((res) => res.body);
+  },
+
   _addContentChunk(channel, contentChunk) {
     return this.spark.board.encryptContents(channel.defaultEncryptionKeyUrl, contentChunk)
       .then((res) => this.spark.request({

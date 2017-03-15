@@ -13,14 +13,8 @@ import fh from '@ciscospark/test-helper-file';
 import {map} from 'lodash';
 import uuid from 'uuid';
 
-function boardChannelToMercuryBinding(channelId) {
-  // make channelId mercury compatible replace `-` with `.` and `_` with `#`
-  return channelId.replace(/-/g, `.`).replace(/_/g, `#`);
-}
-
 describe(`plugin-board`, () => {
   describe(`realtime`, () => {
-    const mercuryBindingsPrefix = `board.`;
     let board, conversation, fixture, participants;
 
     before(`create users`, () => testUsers.create({count: 2})
@@ -53,19 +47,8 @@ describe(`plugin-board`, () => {
       }));
 
     before(`connect to realtime channel`, () => {
-      const mercuryBindingId = boardChannelToMercuryBinding(board.channelId);
-      const bindingStr = [mercuryBindingsPrefix + mercuryBindingId];
-      const bindingObj = {bindings: bindingStr};
-
       return Promise.all(map(participants, (participant) => {
-        return participant.spark.board.register(bindingObj)
-          .then((url) => {
-            participant.spark.board.realtime.set({
-              boardWebSocketUrl: url.webSocketUrl,
-              boardBindings: bindingStr
-            });
-            return participant.spark.board.realtime.connect();
-          });
+        return participant.spark.board.realtime.connectByOpenNewMercuryConnection(board);
       }));
     });
 

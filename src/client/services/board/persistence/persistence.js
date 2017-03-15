@@ -307,6 +307,64 @@ var PersistenceService = SparkBase.extend({
       });
   },
 
+  /**
+   * Registers with Mercury to share mercury connection
+   * @memberof Board.PersistenceService
+   * @param  {Board~Channel} channel
+   * @return {Promise<Board~Registration>}
+   */
+  registerToShareMercury: function registerToShareMercury(channel) {
+    if (!this.spark.mercury.localClusterServiceUrls) {
+      return Promise.reject(new Error('`localClusterServiceUrls` is not defined, make sure mercury is connected'));
+    }
+    else if (!this.spark.feature.getFeature('developer', 'web-shared-mercury')) {
+      return Promise.reject(new Error('`web-shared-mercury` is not enabled'));
+    }
+
+    var webSocketUrl = this.spark.device.webSocketUrl;
+    var localClusterServiceUrls = this.spark.mercury.localClusterServiceUrls;
+
+    var data = {
+      mercuryConnectionServiceClusterUrl: localClusterServiceUrls.mercuryConnectionServiceClusterUrl,
+      webSocketUrl: webSocketUrl,
+      action: 'REPLACE'
+    };
+
+    return this.spark.request({
+      method: 'POST',
+      uri: channel.channelUrl + '/register',
+      body: data
+    })
+      .then(function resolveWithBody(res) {
+        return res.body;
+      });
+  },
+
+  /**
+   * Unregister the board from share mercury connection
+   * @memberof Board.PersistenceService
+   * @param  {Board~Channel} channel
+   * @param  {Object} binding - board binding
+   * @return {Promise<Board~Registration>}
+   */
+  unregisterFromSharedMercury: function unregisterFromSharedMercury(channel, binding) {
+    var webSocketUrl = this.spark.device.webSocketUrl;
+    var data = {
+      binding: binding,
+      webSocketUrl: webSocketUrl,
+      action: 'REMOVE'
+    };
+
+    return this.spark.request({
+      method: 'POST',
+      uri: channel.channelUrl + '/register',
+      body: data
+    })
+      .then(function resolveWithBody(res) {
+        return res.body;
+      });
+  },
+
   _addContentChunk: function _addContentHelper(channel, contentChunk) {
     return this.spark.board.encryptContents(channel.defaultEncryptionKeyUrl, contentChunk)
       .then(function addContent(res) {

@@ -35,7 +35,10 @@ describe('Client', function() {
 
       spark.logger = console;
 
+      spark.feature.getFeature.returns(false);
+
       socket = new MockSocket();
+      socket._addQueryParameter = Socket.prototype._addQueryParameter;
       socketOpenStub = socket.open;
       socketOpenStub.returns(Promise.resolve());
 
@@ -137,6 +140,20 @@ describe('Client', function() {
           .then(function() {
             assert.calledOnce(socket.open);
           });
+      });
+
+      describe('when web-shared-socket feature is enabled', function() {
+        beforeEach(function() {
+          spark.feature.getFeature.returns(true);
+        });
+
+        it('sets mercuryRegistrationStatus=true to web socket url', function() {
+          return mercury.connect()
+            .then(function() {
+              assert.calledWith(socket.open, sinon.match(/mercuryRegistrationStatus=true/), sinon.match.any);
+              assert.calledWith(socket.open, sinon.match(/isRegistrationRefreshEnabled=true/), sinon.match.any);
+            });
+        });
       });
 
       describe('when `maxRetries` is set', function() {

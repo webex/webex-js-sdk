@@ -187,7 +187,7 @@ export default class Socket extends EventEmitter {
 
       // always add buffer_states query param
       /* istanbul ignore else */
-      if (!url.includes(`bufferStates`)) {
+      if (!url.includes(`bufferStates`) && !url.includes(`mercuryRegistrationStatus`)) {
         url += `${url.includes(`?`) ? `&` : `?`}bufferStates=true`;
       }
 
@@ -342,7 +342,7 @@ export default class Socket extends EventEmitter {
       });
 
       const waitForBufferState = (event) => {
-        if (!event.data.type && event.data.data.eventType === `mercury.buffer_state`) {
+        if (!event.data.type && (event.data.data.eventType === `mercury.buffer_state` || event.data.data.eventType === `mercury.registration_status`)) {
           this.removeListener(`message`, waitForBufferState);
           this._ping();
           resolve();

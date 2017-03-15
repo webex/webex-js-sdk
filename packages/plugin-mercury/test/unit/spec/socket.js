@@ -197,14 +197,24 @@ describe(`plugin-mercury`, () => {
         assert.match(s.url, /outboundWireFormat=text/);
         assert.equal(s.url, `ws://example.com?outboundWireFormat=text&bufferStates=true`);
         const p1 = s.close();
+
         s = new Socket();
         s.open(`ws://example.com?queryparam=something`, mockoptions);
         assert.match(s.url, /outboundWireFormat=text/);
         assert.equal(s.url, `ws://example.com?queryparam=something&outboundWireFormat=text&bufferStates=true`);
+
         return Promise.all([
           p1,
           s.close()
         ]);
+      });
+
+      it(`doesn't set bufferStates if mercuryRegistrationStatus is already set`, () => {
+        const s = new Socket();
+        s.open(`ws://example.com?mercuryRegistrationStatus=true`, mockoptions);
+        assert.notMatch(s.url, /bufferStates/);
+        assert.equal(s.url, `ws://example.com?mercuryRegistrationStatus=true&outboundWireFormat=text`);
+        return s.close();
       });
 
       it(`sets the underlying socket\'s binary type`, () => assert.equal(socket.binaryType, `arraybuffer`));
@@ -306,6 +316,22 @@ describe(`plugin-mercury`, () => {
             data: JSON.stringify({
               data: {
                 eventType: `mercury.buffer_state`
+              }
+            })
+          });
+          return assert.isFulfilled(promise)
+            .then(() => s.close());
+        });
+
+        it(`resolves upon receiving registration status`, () => {
+          const s = new Socket();
+          const promise = s.open(`ws://example.com`, mockoptions);
+          mockWebSocket.readyState = 1;
+          mockWebSocket.emit(`open`);
+          mockWebSocket.emit(`message`, {
+            data: JSON.stringify({
+              data: {
+                eventType: `mercury.registration_status`
               }
             })
           });

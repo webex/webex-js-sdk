@@ -147,6 +147,10 @@ function makeSpark(options) {
       registered: true,
       register: sinon.stub().returns(Promise.resolve())
     },
+    feature: {
+      setFeature: sinon.stub().returns(Promise.resolve(false)),
+      getFeature: sinon.stub().returns(Promise.resolve(false))
+    },
     encryption: {},
     metrics: {
       sendUnstructured: sinon.spy()
