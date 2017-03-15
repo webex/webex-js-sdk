@@ -94,7 +94,8 @@ export default function processImage({file, thumbnailMaxWidth, thumbnailMaxHeigh
         },
         file);
       const parts = canvas.toDataURL(`image/png`).split(`,`);
-      const byteString = base64.decode(parts[1]);
+      // Thumbnail uploads were failing with common/base64 decoding
+      const byteString = atob(parts[1]);
 
       const buffer = new ArrayBuffer(byteString.length);
       const view = new DataView(buffer);
