@@ -9,7 +9,7 @@ import LocalStorageStoreAdapter from '@ciscospark/storage-adapter-local-storage'
 
 export default {
   device: {
-    enableInactivityEnforcement: true
+    enableInactivityEnforcement: false
   },
   storage: {
     boundedAdapter: new LocalStorageStoreAdapter(`web-client-internal`),

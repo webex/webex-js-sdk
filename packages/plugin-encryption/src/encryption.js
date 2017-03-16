@@ -47,13 +47,10 @@ const Encryption = SparkPlugin.extend({
         .createDecrypt(k.jwk)
         .decrypt(ciphertext)
           .then((result) => result.plaintext.toString()))
-          .catch((error) => {
-            // An error is being received while deciphering a room with
-            // displayName ',,,,,,,,,,,', this is a hack to return back the
-            // unencrypted text if that happens
-            console.error(`plugin-encryption: failed to decrypt ciphertext=${ciphertext}, with key=${key}`);
-            return Promise.resolve(ciphertext);
-          });
+          // An error is being received while deciphering a room with
+          // displayName ',,,,,,,,,,,', this is a hack to return back the
+          // unencrypted text if that happens
+          .catch(() => Promise.resolve(ciphertext));
   },
 
   download(scr) {
