@@ -5,12 +5,18 @@
 
 'use strict';
 
+var browser = require('bowser');
+
 function inNode() {
   return typeof window === 'undefined';
 }
 
 function inBrowser() {
   return !inNode();
+}
+
+function inFirefox() {
+  return browser.firefox;
 }
 
 function noop() {
@@ -71,6 +77,15 @@ module.exports = {
       return mochaMethod;
     }
     return inNode() ? mochaMethod.skip : mochaMethod;
+  },
+
+  skipInFirefox: function skipInFirefox(mochaMethod) {
+    // If mochaMethod doesn't have a skip method, assume that mochaMethod is
+    // already either a .skip or a .only
+    if (!mochaMethod.skip) {
+      return mochaMethod;
+    }
+    return inFirefox() ? mochaMethod.skip : mochaMethod;
   },
 
   /**

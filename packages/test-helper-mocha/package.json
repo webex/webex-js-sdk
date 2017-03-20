@@ -12,5 +12,8 @@
   },
   "engines": {
     "node": ">=4"
+  },
+  "dependencies": {
+    "bowser": "^1.6.0"
   }
 }

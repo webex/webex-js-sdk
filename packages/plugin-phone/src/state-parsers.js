@@ -30,7 +30,7 @@ export function direction(locus) {
 }
 
 /**
- * Indicates of the specifed locus is active
+ * Indicates of the specified locus is active
  * @param {Types~Locus} locus
  * @private
  * @returns {Boolean}
