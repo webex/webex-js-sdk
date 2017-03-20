@@ -11,7 +11,7 @@
     "outputSourcePath": true,
     "systemName": "spark-js-sdk",
     "footer": "",
-    "copyright": "2014-2015 Cisco Systems, Inc",
+    "copyright": "2014-2017 Cisco Systems, Inc",
     "navType": "vertical",
     "theme": "spacelab",
     "linenums": true,

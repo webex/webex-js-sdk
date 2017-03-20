@@ -81,11 +81,18 @@ nodemon -w packages/PACKAGENAME/src -w packages/PACKAGENAME/test -x "UNIT_ONLY=t
 ```
 
 ### Documentation
-To compile the documentation locally, make sure you have [Jekyll](https://jekyllrb.com/) installed then run the following:
+To compile the documentation locally, make sure you have [Bundler](http://bundler.io/) or [Jekyll](https://jekyllrb.com/) installed then run the following:
 
+**Set Up Environment (with Bundler)**
 ```bash
 cd docs
-jekyll serve --config=_config.yml,_config.local.yml
+bundle install
+```
+
+**Compile and Serve Docs**
+```bash
+cd docs
+bundle exec jekyll serve --config=_config.yml,_config.local.yml
 ```
 
 ## Contribute
@@ -94,4 +101,4 @@ Pull requests welcome. Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for more 
 
 ## License
 
-&copy; 2016 Cisco and/or its affiliates. All Rights Reserved.
+&copy; 2016-2017 Cisco and/or its affiliates. All Rights Reserved.

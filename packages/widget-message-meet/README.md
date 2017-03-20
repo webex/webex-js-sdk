@@ -139,4 +139,4 @@ Please see [CONTRIBUTING.md](../../CONTRIBUTING.md) for more details.
 
 ## License
 
-&copy; 2016 Cisco and/or its affiliates. All Rights Reserved.
+&copy; 2016-2017 Cisco and/or its affiliates. All Rights Reserved.
