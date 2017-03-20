@@ -6,6 +6,7 @@
 'use strict';
 
 var assign = require('lodash.assign');
+var querystring = require('querystring');
 var SparkBase = require('../../../../lib/spark-base');
 var chunk = require('lodash.chunk');
 var pick = require('lodash.pick');
@@ -119,6 +120,7 @@ var PersistenceService = SparkBase.extend({
    * @return {Promise<Board~Channel>}
    */
   createChannel: function createChannel(conversation, channel) {
+    var decryptedChannel;
     return this._encryptChannel(conversation, channel)
       .then(function requestCreateChannel(preppedChannel) {
         return this.spark.request({
@@ -129,7 +131,24 @@ var PersistenceService = SparkBase.extend({
         });
       }.bind(this))
       .then(function resolveWithBody(res) {
-        return res.body;
+        return this.spark.conversation.decrypter.decryptObject(res.body);
+      }.bind(this))
+      // kms server also authorizes create kro requester, which we don't want
+      .then(function prepareDeleteAuthorizationKmsMessage(decryptedData) {
+        decryptedChannel = decryptedData;
+        var kmsMessage = {
+          method: 'delete',
+          uri: decryptedChannel.kmsMessage.resource.uri + '/authorizations?' + querystring.stringify({
+            authId: decryptedChannel.creatorId
+          })
+        };
+        return this.spark.encryption.kms.prepareRequest(kmsMessage);
+      }.bind(this))
+      .then(function makeRequestToKms(req) {
+        return this.spark.encryption.kms.request(req);
+      }.bind(this))
+      .then(function returnsChannel() {
+        return decryptedChannel;
       });
   },
 
