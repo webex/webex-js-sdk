@@ -100,7 +100,7 @@ DOCKER_ENV_KEYS+="SDK_BUILD_DEBUG "
 DOCKER_ENV_KEYS+="SKIP_FLAKY_TESTS "
 DOCKER_ENV_KEYS+="WDM_SERVICE_URL "
 DOCKER_ENV_KEYS+="WORKSPACE "
-# We don't want to fail if grep doesn't find the specifed var
+# We don't want to fail if grep doesn't find the specified var
 set +e
 for KEY in $DOCKER_ENV_KEYS; do
   env | grep "${KEY}" >> ${DOCKER_ENV_FILE}

@@ -5,12 +5,18 @@
 
 'use strict';
 
+var browser = require('bowser');
+
 function inNode() {
   return typeof window === 'undefined';
 }
 
 function inBrowser() {
   return !inNode();
+}
+
+function inFirefox() {
+  return browser.firefox;
 }
 
 function noop() {
@@ -73,6 +79,15 @@ module.exports = {
     return inNode() ? mochaMethod.skip : mochaMethod;
   },
 
+  skipInFirefox: function skipInFirefox(mochaMethod) {
+    // If mochaMethod doesn't have a skip method, assume that mochaMethod is
+    // already either a .skip or a .only
+    if (!mochaMethod.skip) {
+      return mochaMethod;
+    }
+    return inFirefox() ? mochaMethod.skip : mochaMethod;
+  },
+
   /**
    * Similar to skipInNode in that it prevents the test from running, but goes a
    * step further to hide it from the list of skipped tests. Should be used when
@@ -93,5 +108,27 @@ module.exports = {
    */
   nodeOnly: function nodeOnly(mochaMethod) {
     return inNode() ? mochaMethod : noop;
+  },
+
+  maxWaitForEvent: function maxWaitForEvent(max, event, emitter) {
+    return Promise.race([
+      new Promise(function(resolve) {
+        setTimeout(resolve, 1000);
+      }),
+      new Promise(function(resolve) {
+        emitter.once(event, resolve);
+      })
+    ]);
+  },
+
+  maxWaitForPromise: function maxWaitForPromise(timeout, promise) {
+    return Promise.race([
+      promise,
+      new Promise(function(resolve, reject) {
+        setTimeout(function() {
+          reject(new Error('Timeout of ' + timeout + ' expired before promise completed'));
+        }, timeout);
+      })
+    ]);
   }
 };

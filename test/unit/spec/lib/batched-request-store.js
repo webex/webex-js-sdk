@@ -47,7 +47,7 @@ describe('BatchedRequestStore', function() {
       assert.equal(defer2, defer);
     });
 
-    it('throws if a request with the specifed identifier has already been added', function() {
+    it('throws if a request with the specified identifier has already been added', function() {
       store.create('some-id');
       assert.throws(function() {
         store.create('some-id');

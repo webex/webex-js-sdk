@@ -5,7 +5,6 @@
  */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {eventKeys} from '@ciscospark/plugin-locus';
 import {defaults} from 'lodash';
 import Call from './call';
 import {shouldRing} from './state-parsers';
@@ -163,14 +162,12 @@ const Phone = SparkPlugin.extend({
   initialize(...args) {
     Reflect.apply(SparkPlugin.prototype.initialize, this, args);
 
-    eventKeys.forEach((key) => {
-      this.listenTo(this.spark.mercury, `event:${key}`, (event) => this._onLocusEvent(event));
-    });
+    this.listenTo(this.spark.mercury, `event:locus`, (event) => this._onLocusEvent(event));
   },
 
   /**
    * Determines if the {@link call:incoming} event should be emitted for the
-   * specifed {@link Types~MercuryEvent}
+   * specified {@link Types~MercuryEvent}
    * @emits call:incoming
    * @instance
    * @memberof Phone
@@ -200,7 +197,6 @@ const Phone = SparkPlugin.extend({
    * @returns {Call}
    */
   dial(dialString, options) {
-    // TODO call register if it has not been called.
     const call = Call.make({}, {parent: this.spark});
 
     call.dial(dialString, options);

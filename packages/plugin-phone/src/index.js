@@ -14,3 +14,4 @@ registerPlugin(`phone`, Phone);
 
 export default Phone;
 export {default as Call} from './call';
+export {default as WebRTCMedia} from './web-rtc-media';
