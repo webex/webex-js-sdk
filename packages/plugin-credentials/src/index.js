@@ -13,7 +13,7 @@ import AdvancedAuthInterceptor from './interceptor';
 
 const proxies = [
   `canAuthorize`,
-  `hasPassword`
+  `hasPassword`,
   `isAuthenticating`,
   `isValidatingUser`
 ];

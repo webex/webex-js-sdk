@@ -252,7 +252,7 @@ const Device = SparkPlugin.extend({
         this.spark.request({
           headers: {
             'cisco-no-http-redirect': null,
-            trackingid: null,
+            trackingid: null
           },
           method: `GET`,
           uri: this.intranetInactivityCheckUrl
