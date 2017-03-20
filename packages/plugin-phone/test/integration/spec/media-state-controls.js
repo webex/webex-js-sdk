@@ -187,6 +187,7 @@ describe(`plugin-phone`, function() {
           skipInFirefox(it)(`starts receiving video and stops receiving video`, () => {
             const call = spock.spark.phone.dial(mccoy.email, {
               constraints: {
+                audio: true,
                 video: false
               }
             });

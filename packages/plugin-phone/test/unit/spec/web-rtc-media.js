@@ -97,28 +97,28 @@ describe(`plugin-phone`, () => {
       });
     });
 
-    it(`supports complex constraints`, () => {
-      m.set({
-        audio: true,
-        video: {
-          width: {min: 1280},
-          height: {min: 720}
-        }
-      });
-
-      sinon.spy(navigator.mediaDevices, `getUserMedia`);
-      return m.createOffer()
-        .then(() => {
-          assert.calledWith(navigator.mediaDevices.getUserMedia, {
-            audio: true,
-            fake: true,
-            video: {
-              width: {min: 1280},
-              height: {min: 720}
-            }
-          });
+    it(`supports complex constraints`, () => Promise.resolve()
+      .then(() => {
+        m.set({
+          audio: true,
+          video: {
+            height: {min: 100}
+          }
         });
-    });
+
+        sinon.spy(navigator.mediaDevices, `getUserMedia`);
+        return m.createOffer()
+          .then(() => {
+            assert.calledWith(navigator.mediaDevices.getUserMedia, {
+              audio: true,
+              fake: true,
+              video: {
+                height: {min: 100}
+              }
+            });
+          });
+      })
+    );
 
     describe(`sending media state changes`, () => {
       [

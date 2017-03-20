@@ -476,6 +476,7 @@ const Call = SparkPlugin.extend({
    * @param {MediaStreamConstraints} options.constraints
    * @returns {Promise}
    */
+  @oneFlight
   answer(options) {
     this.logger.info(`call: answering`);
     if (!this.locus || this.direction === `out`) {
@@ -498,6 +499,7 @@ const Call = SparkPlugin.extend({
    * @memberof Call
    * @returns {Promise}
    */
+  @oneFlight
   acknowledge() {
     this.logger.info(`call: acknowledging`);
     return this.spark.locus.alert(this.locus)
@@ -514,11 +516,9 @@ const Call = SparkPlugin.extend({
    * @private
    * @returns {[type]}
    */
+  @oneFlight
   dial(invitee, options) {
     this.logger.info(`call: dialing`);
-    if (options && options.localMediaStream) {
-      this.localMediaStream = options.localMediaStream;
-    }
 
     if (base64.validate(invitee)) {
       // eslint-disable-next-line no-unused-vars
@@ -549,6 +549,7 @@ const Call = SparkPlugin.extend({
    * @returns {Promise}
    */
   hangup() {
+    // Note: not a @oneFlight because this function must call itself
     if (this.direction === `in` && !this.joinedOnThisDevice) {
       return this.reject();
     }
@@ -805,6 +806,7 @@ const Call = SparkPlugin.extend({
 
   // The complexity in _join is largely driven up by fairly readable `||`s
   // eslint-disable-next-line complexity
+  @oneFlight
   _join(locusMethodName, target, options = {}) {
     if (options.localMediaStream) {
       this.media.set(`localMediaStream`, options.localMediaStream);
@@ -908,7 +910,7 @@ const Call = SparkPlugin.extend({
    * properties we expect (or three errors occur)
    * @returns {Promise<Types~Locus>}
    */
-   @retry
+  @retry
   _fetchExpectedLocus() {
     return this.spark.locus.get(this.locus)
       .then((locus) => {

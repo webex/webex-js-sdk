@@ -183,20 +183,25 @@ const WebRTCMedia = AmpState.extend({
     }
 
     let p;
-    if (this.audio || this.video) {
-      p = Promise.resolve(this.localMediaStream || getUserMedia({
+    if (this.localMediaStream) {
+      p = Promise.resolve();
+    }
+    else if (this.audio || this.video) {
+      p = Promise.resolve(getUserMedia({
         audio: this.audioConstraint,
         video: this.videoConstraint
-      }))
+      })
         .then((stream) => {
           this.localMediaStream = stream;
-          if (!this.peer.getLocalStreams().includes(stream)) {
-            addStream(this.peer, stream);
-          }
-        });
+        }));
     }
 
     return Promise.resolve(p)
+      .then(() => {
+        if (this.localMediaStream && !this.peer.getLocalStreams().includes(this.localMediaStream)) {
+          addStream(this.peer, this.localMediaStream);
+        }
+      })
       .then(() => createOffer(this.peer, {
         offerToReceiveAudio: this.offerToReceiveAudio,
         offerToReceiveVideo: this.offerToReceiveVideo
@@ -209,7 +214,7 @@ const WebRTCMedia = AmpState.extend({
   },
 
   end() {
-    if (this.peer) {
+    if (this.peer && this.peer.signalingState !== `closed`) {
       end(this.peer);
     }
     this.unset(`localMediaStream`);

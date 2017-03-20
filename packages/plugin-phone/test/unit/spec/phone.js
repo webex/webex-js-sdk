@@ -30,10 +30,20 @@ describe(`plugin-phone`, () => {
       beforeEach(() => {
         spark = new MockSpark({
           children: {
+            device: AmpState.extend({}),
             locus: Locus,
             mercury: AmpState.extend({
               connect() {
                 return Promise.resolve();
+              },
+              when() {
+                return Promise.resolve([{
+                  data: {
+                    bufferState: {
+                      locus: `BUFFERED`
+                    }
+                  }
+                }]);
               }
             }),
             phone: Phone
@@ -57,6 +67,7 @@ describe(`plugin-phone`, () => {
         it(`gets passed as the video constraint`, (done) => {
 
           const call = spark.phone.dial(`blarg`);
+          call.once(`error`, done);
           sinon.stub(call.media, `createOffer`, () => {
             try {
               assert.isTrue(call.media.audioConstraint);
@@ -82,6 +93,7 @@ describe(`plugin-phone`, () => {
               audio: true
             }
           });
+          call.once(`error`, done);
           sinon.stub(call.media, `createOffer`, () => {
             try {
               assert.isTrue(call.media.audioConstraint);

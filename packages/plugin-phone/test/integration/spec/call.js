@@ -258,7 +258,7 @@ describe(`plugin-phone`, function() {
 
       describe(`when the local party is sending Audio`, () => {
         it(`is true`, () => {
-          call = spock.spark.phone.dial(mccoy.email, {constraints: {audio: true}});
+          call = spock.spark.phone.dial(mccoy.email, {constraints: {audio: true, video: true}});
           return handleErrorEvent(call, () => Promise.all([
             mccoy.spark.phone.when(`call:incoming`)
               .then(([c]) => c.answer()),
@@ -271,7 +271,7 @@ describe(`plugin-phone`, function() {
 
       describe(`when the local party is not sending Audio`, () => {
         it(`is false`, () => {
-          call = spock.spark.phone.dial(mccoy.email, {constraints: {audio: false}});
+          call = spock.spark.phone.dial(mccoy.email, {constraints: {audio: false, video: true}});
           return handleErrorEvent(call, () => Promise.all([
             mccoy.spark.phone.when(`call:incoming`)
               .then(([c]) => c.answer()),
@@ -294,7 +294,7 @@ describe(`plugin-phone`, function() {
 
       describe(`when the local party is sending Video`, () => {
         it(`is true`, () => {
-          call = spock.spark.phone.dial(mccoy.email, {constraints: {video: true}});
+          call = spock.spark.phone.dial(mccoy.email, {constraints: {audio: true, video: true}});
           return handleErrorEvent(call, () => Promise.all([
             mccoy.spark.phone.when(`call:incoming`)
               .then(([c]) => c.answer()),
@@ -307,7 +307,7 @@ describe(`plugin-phone`, function() {
 
       describe(`when the local party is not sending Video`, () => {
         it(`is false`, () => {
-          call = spock.spark.phone.dial(mccoy.email, {constraints: {video: false}});
+          call = spock.spark.phone.dial(mccoy.email, {constraints: {audio: true, video: false}});
           return handleErrorEvent(call, () => Promise.all([
             mccoy.spark.phone.when(`call:incoming`)
               .then(([c]) => c.answer()),
@@ -330,7 +330,7 @@ describe(`plugin-phone`, function() {
 
       describe(`when the local party is receiving Audio`, () => {
         it(`is true`, () => {
-          call = spock.spark.phone.dial(mccoy.email, {constraints: {audio: true}});
+          call = spock.spark.phone.dial(mccoy.email, {constraints: {audio: true, video: true}});
           return handleErrorEvent(call, () => Promise.all([
             mccoy.spark.phone.when(`call:incoming`)
               .then(([c]) => c.answer()),
@@ -343,7 +343,7 @@ describe(`plugin-phone`, function() {
 
       describe(`when the local party is not receiving Audio`, () => {
         it(`is false`, () => {
-          call = spock.spark.phone.dial(mccoy.email, {constraints: {audio: false}});
+          call = spock.spark.phone.dial(mccoy.email, {constraints: {audio: false, video: true}});
           return handleErrorEvent(call, () => Promise.all([
             mccoy.spark.phone.when(`call:incoming`)
               .then(([c]) => c.answer()),
@@ -375,7 +375,7 @@ describe(`plugin-phone`, function() {
 
       describe(`when the local party is receiving Video`, () => {
         it(`is true`, () => {
-          call = spock.spark.phone.dial(mccoy.email, {constraints: {video: true}});
+          call = spock.spark.phone.dial(mccoy.email, {constraints: {audio: true, video: true}});
           return handleErrorEvent(call, () => Promise.all([
             mccoy.spark.phone.when(`call:incoming`)
               .then(([c]) => c.answer()),
@@ -388,7 +388,7 @@ describe(`plugin-phone`, function() {
 
       describe(`when the local party is not receiving Video`, () => {
         it(`is false`, () => {
-          call = spock.spark.phone.dial(mccoy.email, {constraints: {video: false}});
+          call = spock.spark.phone.dial(mccoy.email, {constraints: {audio: true, video: false}});
           return handleErrorEvent(call, () => Promise.all([
             mccoy.spark.phone.when(`call:incoming`)
               .then(([c]) => c.answer()),
@@ -451,7 +451,6 @@ describe(`plugin-phone`, function() {
       }));
 
       it(`gets called when the local party is the last member of the call`, () => handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => {
-        call.on(`all`, (e) => console.log(`XXXXXXXXXXX`, e));
         let mccoyCall;
         return Promise.all([
           mccoy.spark.phone.when(`call:incoming`)

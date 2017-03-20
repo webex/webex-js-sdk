@@ -220,11 +220,10 @@ describe(`plugin-phone`, function() {
 
       it(`places a call with an existing MediaStreamObject`, () => {
         return spock.spark.phone.createLocalMediaStream()
-          .then((localMediaStream) => {
-            const call = spock.spark.phone.dial(mccoy.email, {localMediaStream});
+          .then((localMediaStream) => handleErrorEvent(spock.spark.phone.dial(mccoy.email, {localMediaStream}), (call) => {
             return mccoy.spark.phone.when(`call:incoming`, ([c]) => c.answer())
               .then(() => assert.equal(call.localMediaStream, localMediaStream));
-          });
+          }));
       });
     });
 
