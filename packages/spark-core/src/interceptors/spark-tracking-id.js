@@ -37,6 +37,16 @@ export default class SparkTrackingIdInterceptor extends Interceptor {
    */
   onRequest(options) {
     options.headers = options.headers || {};
+    // If trackingid is already set, don't overwrite it
+    if (`trackingid` in options.headers) {
+      // If trackingid is set to null, false, or undefined, delete it to
+      // prevent a CORS preflight.
+      if (!options.headers.trackingid) {
+        Reflect.deleteProperty(options.headers, `trackingid`);
+      }
+      return options;
+    }
+
     if (this.requiresTrackingId(options)) {
       options.headers.trackingid = `${this.spark.sessionId}_${this.sequence}`;
     }
