@@ -6,7 +6,7 @@ layout: default
   <div class="row">
     <div class="col-xs-3">
       <div class="list-group">
-        {% for eg in site.categories.example reversed %}
+        {% for eg in site.categories.guides reversed %}
           <a href="{{site.baseurl}}{{eg.url}}" class="list-group-item">{{eg.title}}</a>
         {% endfor %}
       </div>
