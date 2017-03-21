@@ -403,10 +403,10 @@ describe(`plugin-phone`, function() {
 
     describe(`#answer()`, () => {
       beforeEach(() => {
-        return retry(() => spock.spark.locus.list())
-          .then(() => {
-            return retry(() => mccoy.spark.locus.list());
-          });
+        return Promise.all([
+          retry(() => spock.spark.locus.list()),
+          retry(() => mccoy.spark.locus.list())
+        ]);
       });
 
       it(`accepts an incoming call`, () => {
