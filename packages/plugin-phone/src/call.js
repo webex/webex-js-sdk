@@ -805,8 +805,8 @@ const Call = SparkPlugin.extend({
   },
 
   // The complexity in _join is largely driven up by fairly readable `||`s
-  // eslint-disable-next-line complexity
   @oneFlight
+  // eslint-disable-next-line complexity
   _join(locusMethodName, target, options = {}) {
     if (options.localMediaStream) {
       this.media.set(`localMediaStream`, options.localMediaStream);
