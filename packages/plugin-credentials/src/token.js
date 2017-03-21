@@ -72,10 +72,20 @@ const Token = SparkPlugin.extend({
     canDownscope: {
       cache: false,
       deps: [
+        // In theory, this also depends on `config`, but (a) that creates a loop
+        // that ampersand-state can't handle and (b) this prop isn't cached, so
+        // it's ok.
         `canAuthorize`
       ],
       fn() {
-        return this.canAuthorize;
+        // This function may be invoked during initialize(), in which case we
+        // won't yet have access to config
+        try {
+          return this.canAuthorize && !!this.config.oauth.client_id;
+        }
+        catch (err) {
+          return this.canAuthorize;
+        }
       }
     },
 
@@ -124,7 +134,12 @@ const Token = SparkPlugin.extend({
     }
 
     if (!this.canDownscope) {
-      this.logger.info(`token: request received to downscope invalid access_token`);
+      if (this.config.oauth.client_id) {
+        this.logger.info(`token: request received to downscope invalid access_token`);
+      }
+      else {
+        this.logger.warn(`token: cannot downscope without client_id`);
+      }
       return Promise.reject(new Error(`cannot downscope access token`));
     }
 
@@ -141,12 +156,8 @@ const Token = SparkPlugin.extend({
       form: {
         grant_type: `urn:cisco:oauth:grant-type:scope-reduction`,
         token: this.access_token,
-        scope
-      },
-      auth: {
-        user: this.config.oauth.client_id,
-        pass: this.config.oauth.client_secret,
-        sendImmediately: true
+        scope,
+        client_id: this.config.oauth.client_id
       }
     })
       .then((res) => {
