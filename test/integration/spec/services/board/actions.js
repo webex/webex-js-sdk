@@ -1,6 +1,6 @@
 /**!
  *
- * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
 'use strict';
@@ -479,7 +479,7 @@ describe('Services', function() {
         });
       });
 
-      describe('#deleteContent()', function() {
+      describe('#deleteAllContent()', function() {
         beforeEach(function() {
           return ensureBoard();
         });
@@ -519,23 +519,6 @@ describe('Services', function() {
             })
             .then(function(res) {
               assert.equal(res.length, 0);
-              return res;
-            })
-            .then(function() {
-              return party.mccoy.spark.board.persistence.addContent(channel, data);
-            })
-            .then(function(res) {
-              assert.equal(res[0].items.length, 2);
-              var content = res[0].items[0];
-              console.log('contentId: ', content.contentId);
-              return party.mccoy.spark.board.persistence.deleteContent(channel, content);
-            })
-            .then(function() {
-              return party.mccoy.spark.board.persistence.getAllContent(channel);
-            })
-            .then(function(res) {
-              assert.equal(res.length, 1);
-              assert.equal(res[0].payload, data[1].payload);
               return res;
             });
         });

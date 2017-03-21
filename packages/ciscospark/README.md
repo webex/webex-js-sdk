@@ -77,4 +77,4 @@ Pull requests welcome. Please see [CONTRIBUTING.md](../../CONTRIBUTING.md) for m
 
 ## License
 
-&copy; 2016 Cisco and/or its affiliates. All Rights Reserved.
+&copy; 2016-2017 Cisco and/or its affiliates. All Rights Reserved.

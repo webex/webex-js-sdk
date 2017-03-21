@@ -1,6 +1,6 @@
 /**!
  *
- * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
 'use strict';
@@ -164,23 +164,6 @@ var PersistenceService = SparkBase.extend({
     return this.spark.request({
       method: 'DELETE',
       uri: channel.channelUrl + '/contents'
-    })
-      .then(function resolveWithBody(res) {
-        return res.body;
-      });
-  },
-
-  /**
-   * Deletes a specified Content from a Channel
-   * @memberof Board.PersistenceService
-   * @param  {Board~Channel} channel
-   * @param  {Board~Content} content
-   * @return {Promise} Resolves with an content response
-   */
-  deleteContent: function deleteContent(channel, content) {
-    return this.spark.request({
-      method: 'DELETE',
-      uri: content.contentUrl
     })
       .then(function resolveWithBody(res) {
         return res.body;

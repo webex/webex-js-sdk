@@ -1,8 +1,10 @@
 ---
-layout:      example
+layout:      guide
 title:       "Getting Started"
-categories:  example
+categories:  guides
 description: "Getting Started with the Cisco Spark JavaScript SDK"
+redirect_from:
+  - /example/getting-started/
 ---
 
 # Creating your first NodeJS project

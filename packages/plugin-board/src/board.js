@@ -1,6 +1,6 @@
 /**!
  *
- * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  * @private
  */
 
@@ -201,21 +201,6 @@ const Board = SparkPlugin.extend({
     return this.spark.request({
       method: `DELETE`,
       uri: `${channel.channelUrl}/contents`
-    })
-      .then((res) => res.body);
-  },
-
-  /**
-   * Deletes a specified Content from a Channel
-   * @memberof Board.BoardService
-   * @param  {Board~Channel} channel
-   * @param  {Board~Content} content
-   * @returns {Promise} Resolves with an content response
-   */
-  deleteContent(channel, content) {
-    return this.spark.request({
-      method: `DELETE`,
-      uri: content.contentUrl
     })
       .then((res) => res.body);
   },

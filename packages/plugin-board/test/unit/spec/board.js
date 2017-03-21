@@ -1,6 +1,6 @@
 /**!
  *
- * Copyright (c) 2015-2016 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
 import {assert} from '@ciscospark/test-helper-chai';
@@ -188,21 +188,6 @@ describe(`plugin-board`, () => {
         api: `board`,
         resource: `/channels`,
         body: channelRequestBody
-      }));
-    });
-  });
-
-  describe(`#deleteContent()`, () => {
-
-    before(() => {
-      spark.request.reset();
-      return spark.board.deleteContent(channel, data1);
-    });
-
-    it(`requests DELETE content`, () => {
-      assert.calledWith(spark.request, sinon.match({
-        method: `DELETE`,
-        uri: `${boardServiceUrl}/channels/${boardId}/contents/${data1.contentId}`
       }));
     });
   });

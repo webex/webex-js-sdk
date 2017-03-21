@@ -1,8 +1,10 @@
 ---
-layout:      example
+layout:      guide
 title:       "Plugin Development"
-categories:  example
+categories:  guides
 description: "Adding new plugins to the Cisco Spark JavaScript SDK"
+redirect_from:
+  - /example/plugin-development/
 ---
 
 # External Dependencies
