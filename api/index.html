@@ -23,16 +23,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Membership" class="list-group-item">Types~Membership</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Memberships" class="list-group-item">Memberships</a>
 
             
@@ -56,7 +46,7 @@ title: API
           </li>
         
           
-            <a href="#Types~Message" class="list-group-item">Types~Message</a>
+            <a href="#Types~Membership" class="list-group-item">Types~Membership</a>
 
             
 
@@ -87,7 +77,7 @@ title: API
           </li>
         
           
-            <a href="#Types~Person" class="list-group-item">Types~Person</a>
+            <a href="#Types~Message" class="list-group-item">Types~Message</a>
 
             
 
@@ -114,7 +104,7 @@ title: API
           </li>
         
           
-            <a href="#Types~Room" class="list-group-item">Types~Room</a>
+            <a href="#Types~Person" class="list-group-item">Types~Person</a>
 
             
 
@@ -141,6 +131,16 @@ title: API
                 
                   <a class="list-group-item" href="#Rooms#update">#update</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Room" class="list-group-item">Types~Room</a>
+
+            
+
             
 
             
@@ -178,16 +178,6 @@ title: API
           </li>
         
           
-            <a href="#Types~TeamMembership" class="list-group-item">Types~TeamMembership</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#TeamMemberships" class="list-group-item">TeamMemberships</a>
 
             
@@ -205,6 +195,16 @@ title: API
                 
                   <a class="list-group-item" href="#TeamMemberships#update">#update</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~TeamMembership" class="list-group-item">Types~TeamMembership</a>
+
+            
+
             
 
             
@@ -244,16 +244,6 @@ title: API
           </li>
         
           
-            <a href="#ensureH264" class="list-group-item">ensureH264</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Call" class="list-group-item">Call</a>
 
             
@@ -261,33 +251,27 @@ title: API
             
                 <div class="list-group-item">Instance members</div>
                 
+                  <a class="list-group-item" href="#Call#facingMode">#facingMode</a>
+                
                   <a class="list-group-item" href="#Call#localMediaStream">#localMediaStream</a>
                 
                   <a class="list-group-item" href="#Call#localMediaStreamUrl">#localMediaStreamUrl</a>
                 
-                  <a class="list-group-item" href="#Call#remoteMediaStream">#remoteMediaStream</a>
-                
                   <a class="list-group-item" href="#Call#remoteMediaStreamUrl">#remoteMediaStreamUrl</a>
-                
-                  <a class="list-group-item" href="#Call#sendingAudio">#sendingAudio</a>
-                
-                  <a class="list-group-item" href="#Call#sendingVideo">#sendingVideo</a>
-                
-                  <a class="list-group-item" href="#Call#receivingAudio">#receivingAudio</a>
-                
-                  <a class="list-group-item" href="#Call#receivingVideo">#receivingVideo</a>
                 
                   <a class="list-group-item" href="#Call#status">#status</a>
                 
-                  <a class="list-group-item" href="#Call#answer">#answer</a>
+                  <a class="list-group-item" href="#Call#remoteMediaStream">#remoteMediaStream</a>
                 
-                  <a class="list-group-item" href="#Call#acknowledge">#acknowledge</a>
+                  <a class="list-group-item" href="#Call#oneFlight">#oneFlight</a>
+                
+                  <a class="list-group-item" href="#Call#oneFlight">#oneFlight</a>
+                
+                  <a class="list-group-item" href="#Call#oneFlight">#oneFlight</a>
                 
                   <a class="list-group-item" href="#Call#hangup">#hangup</a>
                 
                   <a class="list-group-item" href="#Call#decline">#decline</a>
-                
-                  <a class="list-group-item" href="#Call#oneFlight">#oneFlight</a>
                 
                   <a class="list-group-item" href="#Call#startSendingAudio">#startSendingAudio</a>
                 
@@ -312,17 +296,17 @@ title: API
             
               <div class="list-group-item">Events</div>
               
-                <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
-              
-                <a class="list-group-item" href="#Call.event:remoteMediaStream:change"> ⓔ remoteMediaStream:change</a>
-              
-                <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
-              
-                <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
+                <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
               
                 <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
               
-                <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
+                <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
+              
+                <a class="list-group-item" href="#Call.event:remoteMediaStream:change"> ⓔ remoteMediaStream:change</a>
+              
+                <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
+              
+                <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
               
             
           </li>
@@ -338,7 +322,77 @@ title: API
           </li>
         
           
+            <a href="#toggleFacingMode" class="list-group-item">toggleFacingMode</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
+            <a href="#retry" class="list-group-item">retry</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
             <a href="#mediaDirection" class="list-group-item">mediaDirection</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
+            <a href="#getRemoteMediaStatus" class="list-group-item">getRemoteMediaStatus</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
+            <a href="#getLocalMediaStatus" class="list-group-item">getLocalMediaStatus</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
+            <a href="#bindNegotiationEvents" class="list-group-item">bindNegotiationEvents</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
+            <a href="#ensureH264" class="list-group-item">ensureH264</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
+            <a href="#bool-to-status" class="list-group-item">bool-to-status</a>
 
             
 
@@ -376,6 +430,16 @@ title: API
               
                 <a class="list-group-item" href="#Phone.event:call:incoming"> ⓔ call:incoming</a>
               
+            
+          </li>
+        
+          
+            <a href="##defaultFacingMode" class="list-group-item">defaultFacingMode</a>
+
+            
+
+            
+
             
           </li>
         
@@ -524,111 +588,6 @@ on the storage layer instead.</p>
     </div>
   
 </section>
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Membership'>Types~Membership</h2>
-    
-  
-
-  
-
-  <pre>Types~Membership</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(uuid)</code>
-      
-      : Unique identifier for the membership
-
-      </h4>
-      
-    
-      <h4>
-      roomId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The room ID
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(uuid)</code>
-      
-      : The person ID
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(email)</code>
-      
-      : The email address of the person / room member
-
-      </h4>
-      
-    
-      <h4>
-      isModerator
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Indicates whether the specified person should be a room moderator.
-
-      </h4>
-      
-    
-      <h4>
-      isMonitor
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Indicates whether the specified member is a room monitor.
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : The date and time that this membership was created.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
 
   
 
@@ -1134,13 +1093,13 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Message'>Types~Message</h2>
+    <h2 id='Types~Membership'>Types~Membership</h2>
     
   
 
   
 
-  <pre>Types~Message</pre>
+  <pre>Types~Membership</pre>
 
   
 
@@ -1159,25 +1118,7 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       id
       <code>(uuid)</code>
       
-      : (server generated) Unique identifier for the message
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(uuid)</code>
-      
-      : The ID for the author of the messasge
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(email)</code>
-      
-      : The email for the author of the messasge
+      : Unique identifier for the membership
 
       </h4>
       
@@ -1186,7 +1127,43 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       roomId
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : The message posted to the room in plain text
+      : The room ID
+
+      </h4>
+      
+    
+      <h4>
+      personId
+      <code>(uuid)</code>
+      
+      : The person ID
+
+      </h4>
+      
+    
+      <h4>
+      personEmail
+      <code>(email)</code>
+      
+      : The email address of the person / room member
+
+      </h4>
+      
+    
+      <h4>
+      isModerator
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Indicates whether the specified person should be a room moderator.
+
+      </h4>
+      
+    
+      <h4>
+      isMonitor
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Indicates whether the specified member is a room monitor.
 
       </h4>
       
@@ -1195,9 +1172,7 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       created
       <code>(isoDate)</code>
       
-      : (server generated)The source URLs for the
-message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
-supported media types.
+      : The date and time that this membership was created.
 
       </h4>
       
@@ -1629,13 +1604,13 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Person'>Types~Person</h2>
+    <h2 id='Types~Message'>Types~Message</h2>
     
   
 
   
 
-  <pre>Types~Person</pre>
+  <pre>Types~Message</pre>
 
   
 
@@ -1654,25 +1629,34 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       id
       <code>(uuid)</code>
       
-      : Unique identifier for the person
+      : (server generated) Unique identifier for the message
 
       </h4>
       
     
       <h4>
-      emails
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;email&#x3E;)</code>
+      personId
+      <code>(uuid)</code>
       
-      : Email addresses of the person
+      : The ID for the author of the messasge
 
       </h4>
       
     
       <h4>
-      displayName
+      personEmail
+      <code>(email)</code>
+      
+      : The email for the author of the messasge
+
+      </h4>
+      
+    
+      <h4>
+      roomId
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : Display name of the person
+      : The message posted to the room in plain text
 
       </h4>
       
@@ -1681,7 +1665,9 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       created
       <code>(isoDate)</code>
       
-      : The date and time that the person was created
+      : (server generated)The source URLs for the
+message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
+supported media types.
 
       </h4>
       
@@ -1952,13 +1938,13 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Room'>Types~Room</h2>
+    <h2 id='Types~Person'>Types~Person</h2>
     
   
 
   
 
-  <pre>Types~Room</pre>
+  <pre>Types~Person</pre>
 
   
 
@@ -1975,19 +1961,27 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     
       <h4>
       id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      <code>(uuid)</code>
       
-      : (server generated) Unique identifier for the room
+      : Unique identifier for the person
 
       </h4>
       
     
       <h4>
-      title
+      emails
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;email&#x3E;)</code>
+      
+      : Email addresses of the person
+
+      </h4>
+      
+    
+      <h4>
+      displayName
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : The display name for the room. All room members
-will see the title so make it something good
+      : Display name of the person
 
       </h4>
       
@@ -1996,18 +1990,7 @@ will see the title so make it something good
       created
       <code>(isoDate)</code>
       
-      : (server generated) The date and time that the
-room was created
-
-      </h4>
-      
-    
-      <h4>
-      teamId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (optional): The id of the team to which the room
-belongs
+      : The date and time that the person was created
 
       </h4>
       
@@ -2478,6 +2461,87 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
+    <h2 id='Types~Room'>Types~Room</h2>
+    
+  
+
+  
+
+  <pre>Types~Room</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (server generated) Unique identifier for the room
+
+      </h4>
+      
+    
+      <h4>
+      title
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The display name for the room. All room members
+will see the title so make it something good
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated) The date and time that the
+room was created
+
+      </h4>
+      
+    
+      <h4>
+      teamId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (optional): The id of the team to which the room
+belongs
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='Types~Team'>Types~Team</h2>
     
   
@@ -2896,87 +2960,6 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
     </div>
   
 </section>
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~TeamMembership'>Types~TeamMembership</h2>
-    
-  
-
-  
-
-  <pre>Types~TeamMembership</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (server generated) The team ID
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The person ID
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The email address of the person
-
-      </h4>
-      
-    
-      <h4>
-      isModerator
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Set to 
-<code>true</code>
- to make the person a team
-moderator
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
 
   
 
@@ -3418,6 +3401,87 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
     </div>
   
 </section>
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~TeamMembership'>Types~TeamMembership</h2>
+    
+  
+
+  
+
+  <pre>Types~TeamMembership</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (server generated) The team ID
+
+      </h4>
+      
+    
+      <h4>
+      personId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The person ID
+
+      </h4>
+      
+    
+      <h4>
+      personEmail
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The email address of the person
+
+      </h4>
+      
+    
+      <h4>
+      isModerator
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Set to 
+<code>true</code>
+ to make the person a team
+moderator
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
@@ -4002,59 +4066,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='ensureH264'>ensureH264</h2>
-    
-  
-
-  <p>Checks a given offer for the h264 codec</p>
-
-
-  <pre>ensureH264(offer: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-    <h3>Parameters</h3>
-    
-      
-    
-  
-
-  
-
-  
-    
-      <h3>Returns</h3>
-      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>:
-        
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Call'>Call</h2>
     
   
@@ -4091,6 +4102,43 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   
     <h3>Instance Members</h3>
     <section>
+  
+    <h3 id='Call#facingMode'>facingMode</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>facingMode</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
   
     <h3 id='Call#localMediaStream'>localMediaStream</h3>
     <div>
@@ -4176,44 +4224,6 @@ automatically deallocated when the call ends</p>
 
     </div>
   
-    <h3 id='Call#remoteMediaStream'>remoteMediaStream</h3>
-    <div>
-      <section>
-  
-
-  <p>Access to the remote party’s <code>MediaStream</code>.</p>
-
-
-  <pre>remoteMediaStream</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
     <h3 id='Call#remoteMediaStreamUrl'>remoteMediaStreamUrl</h3>
     <div>
       <section>
@@ -4224,158 +4234,6 @@ automatically deallocated when the call ends</p>
 
 
   <pre>remoteMediaStreamUrl</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call#sendingAudio'>sendingAudio</h3>
-    <div>
-      <section>
-  
-
-  <p>Indicates if the client is sending audio</p>
-
-
-  <pre>sendingAudio</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call#sendingVideo'>sendingVideo</h3>
-    <div>
-      <section>
-  
-
-  <p>Indicates if the client is sending video</p>
-
-
-  <pre>sendingVideo</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call#receivingAudio'>receivingAudio</h3>
-    <div>
-      <section>
-  
-
-  <p>Indicates if the client is receiving audio</p>
-
-
-  <pre>receivingAudio</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call#receivingVideo'>receivingVideo</h3>
-    <div>
-      <section>
-  
-
-  <p>Indicates if the client is receiving video</p>
-
-
-  <pre>receivingVideo</pre>
 
   
 
@@ -4446,7 +4304,45 @@ automatically deallocated when the call ends</p>
 
     </div>
   
-    <h3 id='Call#answer'>answer(options)</h3>
+    <h3 id='Call#remoteMediaStream'>remoteMediaStream</h3>
+    <div>
+      <section>
+  
+
+  <p>Access to the remote party’s <code>MediaStream</code>.</p>
+
+
+  <pre>remoteMediaStream</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call#oneFlight'>oneFlight</h3>
     <div>
       <section>
   
@@ -4455,7 +4351,7 @@ automatically deallocated when the call ends</p>
 method on an outgoing call is a noop</p>
 
 
-  <pre>answer(options: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></pre>
+  <pre>oneFlight</pre>
 
   
 
@@ -4518,7 +4414,7 @@ method on an outgoing call is a noop</p>
 
     </div>
   
-    <h3 id='Call#acknowledge'>acknowledge()</h3>
+    <h3 id='Call#oneFlight'>oneFlight</h3>
     <div>
       <section>
   
@@ -4527,7 +4423,54 @@ method on an outgoing call is a noop</p>
 initiator&#x27;s Call instance to emit the ringing event.</p>
 
 
-  <pre>acknowledge(): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></pre>
+  <pre>oneFlight</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <h3>Returns</h3>
+      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call#oneFlight'>oneFlight</h3>
+    <div>
+      <section>
+  
+
+  <p>Rejects an incoming call. Only applies to incoming calls. Invoking this
+method on an outgoing call is a no-op.</p>
+
+
+  <pre>oneFlight</pre>
 
   
 
@@ -4622,53 +4565,6 @@ to tear down the call and free up all resources regardless of the state.</p>
 
 
   <pre>decline(): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-    
-      <h3>Returns</h3>
-      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
-        
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call#oneFlight'>oneFlight</h3>
-    <div>
-      <section>
-  
-
-  <p>Rejects an incoming call. Only applies to incoming calls. Invoking this
-method on an outgoing call is a no-op.</p>
-
-
-  <pre>oneFlight</pre>
 
   
 
@@ -4803,7 +4699,7 @@ method on an outgoing call is a no-op.</p>
       <section>
   
 
-  <p>Toggles receiving audio to the Cisco Spark Cloud</p>
+  <p>Toggles receiving audio from the Cisco Spark Cloud</p>
 
 
   <pre>toggleReceivingAudio(): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></pre>
@@ -4849,7 +4745,7 @@ method on an outgoing call is a no-op.</p>
       <section>
   
 
-  <p>Toggles receiving video to the Cisco Spark Cloud</p>
+  <p>Toggles receiving video from the Cisco Spark Cloud</p>
 
 
   <pre>toggleReceivingVideo(): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></pre>
@@ -5135,125 +5031,14 @@ even if renegotiation has not completed)</p>
     <h3>Events</h3>
     <section>
   
-    <h3 id='Call.event:error'>error</h3>
+    <h3 id='Call.event:connected'>connected</h3>
     <div>
       <section>
   
 
   
 
-  <pre>error</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:remoteMediaStream:change'>remoteMediaStream:change</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>remoteMediaStream:change</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:ringing'>ringing</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>ringing</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:localMediaStream:change'>localMediaStream:change</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>localMediaStream:change</pre>
+  <pre>connected</pre>
 
   
 
@@ -5320,14 +5105,125 @@ even if renegotiation has not completed)</p>
 
     </div>
   
-    <h3 id='Call.event:connected'>connected</h3>
+    <h3 id='Call.event:localMediaStream:change'>localMediaStream:change</h3>
     <div>
       <section>
   
 
   
 
-  <pre>connected</pre>
+  <pre>localMediaStream:change</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:remoteMediaStream:change'>remoteMediaStream:change</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>remoteMediaStream:change</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:error'>error</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>error</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:ringing'>ringing</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>ringing</pre>
 
   
 
@@ -5444,6 +5340,107 @@ SDK&#x27;s logger, you should make sure to avoid logging PII as well.
         
           <section>
   
+    <h2 id='toggleFacingMode'>toggleFacingMode</h2>
+    
+  
+
+  <p>Replaces the current mediaStrem with one with identical constraints, except
+for an opposite facing mode. If the current facing mode cannot be
+determined, the facing mode will be set to <code>user</code>. If the call is audio
+only, this function will throw.</p>
+
+
+  <pre>toggleFacingMode(): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <h3>Returns</h3>
+      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='retry'>retry</h2>
+    
+  
+
+  <p>The response to a PUT to LOCUS/media may not be fully up-to-dat when we
+receive it. This method polls locus until we get a locus with the status
+properties we expect (or three errors occur)</p>
+
+
+  <pre>retry</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <h3>Returns</h3>
+      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;Types~Locus&#x3E;</code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='mediaDirection'>mediaDirection</h2>
     
   
@@ -5507,6 +5504,275 @@ participant</p>
         
           <section>
   
+    <h2 id='getRemoteMediaStatus'>getRemoteMediaStatus</h2>
+    
+  
+
+  <p>Determines if the peer connection is receiving the specified kind of media</p>
+
+
+  <pre>getRemoteMediaStatus(kind: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, pc: RTCPeerConnection): bool</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+    <h3>Parameters</h3>
+    
+      
+    
+      
+    
+  
+
+  
+
+  
+    
+      <h3>Returns</h3>
+      <code>bool</code>:
+        true if receiving, false if not
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='getLocalMediaStatus'>getLocalMediaStatus</h2>
+    
+  
+
+  <p>Determines if the peer connection is sending the specified kind of media</p>
+
+
+  <pre>getLocalMediaStatus(kind: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, pc: RTCPeerConnection): bool</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+    <h3>Parameters</h3>
+    
+      
+    
+      
+    
+  
+
+  
+
+  
+    
+      <h3>Returns</h3>
+      <code>bool</code>:
+        true if sending, false if not
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='bindNegotiationEvents'>bindNegotiationEvents</h2>
+    
+  
+
+  <p>Binds events that should be bound one time only once the session has been
+fully negotiated</p>
+
+
+  <pre>bindNegotiationEvents(): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <h3>Returns</h3>
+      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='ensureH264'>ensureH264</h2>
+    
+  
+
+  <p>Checks a given sdp to ensure it contains an offer for the h264 codec</p>
+
+
+  <pre>ensureH264</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+    <h3>Parameters</h3>
+    
+      
+    
+      
+    
+  
+
+  
+
+  
+    
+      <h3>Returns</h3>
+      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">String</a></code>:
+        returns the offer to simplify use in promise chains
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='bool-to-status'>bool-to-status</h2>
+    
+  
+
+  <p>Helper for converting booleans into an sdp-style direction string</p>
+
+
+  <pre>bool-to-status</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+    <h3>Parameters</h3>
+    
+      
+    
+      
+    
+  
+
+  
+
+  
+    
+      <h3>Returns</h3>
+      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">String</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='Phone'>Phone</h2>
     
   
@@ -5544,7 +5810,7 @@ participant</p>
       <section>
   
 
-  <p>connected Indicates whether or not the WebSocket is connected</p>
+  <p>Indicates whether or not the WebSocket is connected</p>
 
 
   <pre>connected</pre>
@@ -5790,7 +6056,7 @@ or <a href="#Phone#dial()">Phone#dial()</a></p>
   
 
   <p>Determines if the <a href="#call:incoming">call:incoming</a> event should be emitted for the
-specifed <a href="#Types~MercuryEvent">Types~MercuryEvent</a></p>
+specified <a href="#Types~MercuryEvent">Types~MercuryEvent</a></p>
 
 
   <pre>_onLocusEvent(event: Types~MercuryEvent): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></pre>
@@ -5981,6 +6247,54 @@ there are active calls.</p>
     </div>
   
 </section>
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='#defaultFacingMode'>defaultFacingMode</h2>
+    
+  
+
+  <p>Specifies the facingMode to be used by <a href="#Phone#dial">Phone#dial</a> and</p>
+<p><a href="#Call#answer">Call#answer</a> when no constraint is specified. Does not apply if</p>
+<ul>
+<li>a <a href="#MediaStream">MediaStream</a> is passed to <a href="#Phone#dial">Phone#dial</a> or
+<a href="#Call#answer">Call#answer</a></li>
+<li>constraints are passed to <a href="#Phone#dial">Phone#dial</a> or  <a href="#Call#answer">Call#answer</a>
+The only valid values are <code>user</code> and <code>environment</code>. For any other values,
+you must provide your own constrains or <a href="#MediaStream">MediaStream</a></li>
+</ul>
+
+
+  <pre>defaultFacingMode</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
