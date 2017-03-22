@@ -4,13 +4,20 @@
  * @private
  */
 
-import extendError from 'extend-error';
 import {HttpError} from '@ciscospark/http-core';
 
-const SparkHttpError = extendError(HttpError, {
-  parseFn(res, ...rest) {
-    /* eslint prefer-reflect: [0] */
-    let message = HttpError.prototype.parseFn.call(this, res, ...rest);
+/**
+ * Spark-specific http error class
+ */
+export default class SparkHttpError extends HttpError {
+  /**
+   * Very similar to {@link HttpError#parse()}, but additionally adds some
+   * useful headers to the message string
+   * @param {HttpResponse} res
+   * @returns {string}
+   */
+  parse(res) {
+    let message = Reflect.apply(HttpError.prototype.parse, this, [res]);
 
     Reflect.defineProperty(this, `options`, {
       enumerable: false,
@@ -33,10 +40,7 @@ const SparkHttpError = extendError(HttpError, {
     message += `\n`;
 
     return message;
-  },
-  subTypeName: `SparkHttpError`
-});
+  }
+}
 
 HttpError.makeSubTypes(SparkHttpError);
-
-export default SparkHttpError;
