@@ -3,10 +3,17 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-import extendError from 'extend-error';
+import {Exception} from '@ciscospark/common';
 
-export const ConnectionError = extendError({
-  parseFn(event) {
+/**
+ * Exception thrown when a websocket gets closed
+ */
+export class ConnectionError extends Exception {
+  /**
+   * @param {CloseEvent} event
+   * @returns {string}
+   */
+  parse(event) {
     Object.defineProperties(this, {
       code: {
         value: event.code
@@ -17,11 +24,10 @@ export const ConnectionError = extendError({
     });
 
     return event.reason;
-  },
+  }
+}
 
-  subTypeName: `ConnectionError`
-});
-
-export const AuthorizationError = extendError(ConnectionError, {
-  subTypeName: `AuthorizationError`
-});
+/**
+ * Exception thrown when a websocket gets closed for auth reasons
+ */
+export class AuthorizationError extends ConnectionError {}
