@@ -4,17 +4,19 @@
  * @private
  */
 
-import extendError from 'extend-error';
+import {Exception} from '@ciscospark/common';
 
 /**
- * @class
+ * Error class for KMS errors
  */
-const KmsError = extendError({
+export default class KmsError extends Exception {
+  static defaultMessage = `An error was received while communicating with the KMS`;
+
   /**
-   * @param {Object} body
+   * @param {HttpResponse} body
    * @returns {string}
    */
-  parseFn(body) {
+  parse(body) {
     body = body.body || body;
 
     Object.defineProperties(this, {
@@ -37,13 +39,5 @@ const KmsError = extendError({
     });
 
     return body.reason;
-  },
-
-  properties: {
-    defaultMessage: `An error was received while communicating with the KMS`
-  },
-
-  subTypeName: `KmsError`
-});
-
-export default KmsError;
+  }
+}

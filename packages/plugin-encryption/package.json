@@ -15,7 +15,6 @@
     "@ciscospark/plugin-wdm": "^0.7.69",
     "@ciscospark/spark-core": "^0.7.69",
     "babel-runtime": "^6.3.19",
-    "extend-error": "git://github.com/ianwremmel/extend-error.git",
     "lodash": "^4.13.1",
     "node-jose": "^0.9.1",
     "node-kms": "^0.3.2",
