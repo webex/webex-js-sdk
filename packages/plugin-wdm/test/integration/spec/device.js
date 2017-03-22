@@ -55,6 +55,18 @@ describe(`plugin-wdm`, function() {
             assert.equal(spark.device.url, url, `Refreshing the device without sending the entire original payload must not give us a new registration`);
           });
       });
+
+      it(`refreshes the device even if the device has expired`, () => {
+        const url = spark.device.url;
+        return spark.request({
+          url,
+          method: `DELETE`
+        })
+          .then(() => spark.device.refresh())
+          .then(() => {
+            assert.equal(spark.device.url, url);
+          });
+      });
     });
 
     describe(`#unregister()`, () => {
