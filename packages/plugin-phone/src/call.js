@@ -832,14 +832,14 @@ const Call = SparkPlugin.extend({
         offerToReceiveAudio: recvOnly || !!options.constraints.audio,
         offerToReceiveVideo: recvOnly || !!options.constraints.video
       });
-
-      this.media.set({
-        audio: options.constraints.audio,
-        video: options.constraints.video,
-        offerToReceiveAudio: options.offerOptions.offerToReceiveAudio,
-        offerToReceiveVideo: options.offerOptions.offerToReceiveVideo
-      });
     }
+
+    this.media.set({
+      audio: options.constraints.audio,
+      video: options.constraints.video,
+      offerToReceiveAudio: options.offerOptions.offerToReceiveAudio,
+      offerToReceiveVideo: options.offerOptions.offerToReceiveVideo
+    });
 
     if (!target.correlationId) {
       this.correlationId = options.correlationId = uuid.v4();
