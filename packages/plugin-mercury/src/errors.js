@@ -13,7 +13,7 @@ export class ConnectionError extends Exception {
    * @param {CloseEvent} event
    * @returns {string}
    */
-  parse(event) {
+  parse(event = {}) {
     Object.defineProperties(this, {
       code: {
         value: event.code
