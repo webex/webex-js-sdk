@@ -342,7 +342,6 @@ ansiColor('xterm') {
                   sh 'npm run build'
                   sh 'npm run grunt:concurrent -- build:docs'
                   sh 'PACKAGE=example-phone npm run grunt:package -- webpack:build'
-                  sh 'PACKAGE=widget-message-meet npm run grunt:package build'
 
                   if (HAS_LEGACY_CHANGES) {
                     sh 'npm run grunt -- release'
