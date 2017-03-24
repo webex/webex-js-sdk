@@ -15,7 +15,7 @@ const proxies = [
   `canAuthorize`,
   `hasPassword`,
   `isAuthenticating`,
-  `isValidatingUser`
+  `queryStringProcessed`
 ];
 
 if (typeof window !== `undefined`) {
