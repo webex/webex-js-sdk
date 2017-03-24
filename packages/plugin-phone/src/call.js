@@ -839,10 +839,14 @@ const Call = SparkPlugin.extend({
       });
     }
 
-    this.media.set({
-      offerToReceiveAudio: options.offerOptions.offerToReceiveAudio,
-      offerToReceiveVideo: options.offerOptions.offerToReceiveVideo
-    });
+    if (options.offerOptions) {
+      if (options.offerToReceiveAudio) {
+        this.media.set({offerToReceiveAudio: options.offerOptions.offerToReceiveAudio});
+      }
+      if (options.offerToReceiveVideo) {
+        this.media.set({offerToReceiveVideo: options.offerOptions.offerToReceiveVideo});
+      }
+    }
 
     if (!target.correlationId) {
       this.correlationId = options.correlationId = uuid.v4();
