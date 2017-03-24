@@ -13,8 +13,7 @@ import AdvancedAuthInterceptor from './interceptor';
 
 const proxies = [
   `canAuthorize`,
-  `isAuthenticating`,
-  `queryStringProcessed`
+  `isAuthenticating`
 ];
 
 if (typeof window !== `undefined`) {
