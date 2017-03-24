@@ -195,10 +195,6 @@ module.exports = function configureGrunt(grunt) {
       }
     },
 
-    jest: {
-      options: require(`./jest.config`)
-    },
-
     karma: {
       test: {
         options: {
@@ -315,16 +311,6 @@ module.exports = function configureGrunt(grunt) {
       }
     },
 
-    stylelint: {
-      options: {
-        configFile: `.stylelintrc`,
-        format: `css`
-      },
-      src: [
-        `./packages/<%= package %>/src/**/*.css`
-      ]
-    },
-
     watch: {
       serve: {
         files: [
@@ -346,8 +332,7 @@ module.exports = function configureGrunt(grunt) {
   ]);
 
   registerTask(`static-analysis`, [
-    `eslint`,
-    `stylelint`
+    `eslint`
   ]);
 
   registerTask(`build`, [

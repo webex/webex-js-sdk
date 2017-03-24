@@ -253,10 +253,7 @@ ansiColor('xterm') {
             stage('static analysis') {
               // running eslint on a per-package basis is really slow, so we're
               // giving up a little bit of per-package static analysis config by
-              // running eslint once across all package. We still get
-              // per-package eslint config, it just means that e.g. stylelint is
-              // skipped for now. Given the widgets are moving to another repo,
-              // I think this is ok.
+              // running eslint once across all package.
               image.inside(DOCKER_RUN_OPTS) {
                 sh script: "npm run grunt:concurrent -- eslint", returnStatus: true
                 if (!fileExists("./reports/style/eslint-concurrent.xml")) {

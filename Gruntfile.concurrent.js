@@ -108,16 +108,6 @@ module.exports = function gruntConfig(grunt) {
       ]
     },
 
-    stylelint: {
-      options: {
-        configFile: `.stylelintrc`,
-        format: `css`
-      },
-      src: [
-        `./packages/*/src/**/*.css`
-      ]
-    },
-
     'gh-pages': {
       options: {
         base: `docs`

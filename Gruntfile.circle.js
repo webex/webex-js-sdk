@@ -17,8 +17,7 @@ module.exports = function gruntConfig(grunt) {
   ]);
 
   grunt.registerTask(`static-analysis`, [
-    `eslint`,
-    `stylelint`
+    `eslint`
   ]);
 
   grunt.registerTask(`publish-docs`, [
@@ -191,16 +190,6 @@ module.exports = function gruntConfig(grunt) {
     },
 
     shell: {},
-
-    stylelint: {
-      options: {
-        configFile: `.stylelintrc`,
-        format: `css`
-      },
-      src: [
-        `./packages/*/src/**/*.css`
-      ]
-    },
 
     xunitDir: process.env.CIRCLE_TEST_REPORTS ? `${process.env.CIRCLE_TEST_REPORTS}/junit` : `./reports/junit`
   };
