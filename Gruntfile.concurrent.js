@@ -10,10 +10,13 @@ module.exports = function gruntConfig(grunt) {
   grunt.loadTasks(`tasks`);
 
   const PACKAGES = grunt.file.expand({
-    cwd: `packages`
+    cwd: `packages/node_modules`,
+    filter: `isDirectory`
   }, [
-    `*/*`,
     `*`,
+    `!*/*`,
+    `@ciscospark/*`,
+    `!@ciscospark`,
     `!@ciscospark/example*`,
     `!@ciscospark/test-helper*`,
     `!@ciscospark/bin*`,

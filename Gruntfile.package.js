@@ -243,7 +243,15 @@ module.exports = function configureGrunt(grunt) {
           // browser test failure; it probably means that selenium or the sauce
           // tunnel is flaking.
           noFail: false,
-          require: makeMochaRequires([`babel-register`]),
+          require: makeMochaRequires([
+            () => {
+              require(`babel-register`)({
+                only: [
+                  `./packages/node_modules/**/*`
+                ]
+              });
+            }
+          ]),
           reporterOptions: {
             output: `<%= xunitDir %>/mocha-<%= package %>-automation.xml`
           }
@@ -254,7 +262,16 @@ module.exports = function configureGrunt(grunt) {
       },
       node: {
         options: {
-          require: makeMochaRequires([`babel-register`]),
+          require: makeMochaRequires([
+            () => {
+              require(`babel-register`)({
+                only: [
+                  `./packages/node_modules/**/*`
+                ]
+              });
+            }
+          ]),
+          // require: makeMochaRequires([`babelhook`]),
           reporterOptions: {
             output: `<%= xunitDir %>/mocha-<%= package %>.xml`
           }
