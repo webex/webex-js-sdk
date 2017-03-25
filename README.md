@@ -2,7 +2,7 @@
 
 > Monorepo containing the Cisco Spark JavaScript SDKs (both current and legacy).
 
-[ciscospark](/packages/ciscospark) is a collection of node modules targeting our [external APIs](https://developers.ciscospark.com). Its core libraries take inspiration from our web client's Legacy SDK.
+[ciscospark](/packages/node_modules/ciscospark) is a collection of node modules targeting our [external APIs](https://developer.ciscospark.com). Its core libraries take inspiration from our web client's Legacy SDK.
 
 This README primarily discusses the tooling required to develop the Cisco Spark SDK.
 
@@ -20,12 +20,6 @@ Install tooling dependencies with
 ```bash
 npm install
 ```
-
-Install module dependencies with
-```bash
-npm run bootstrap
-```
-(This installs dependencies to packages/\*/node_modules)
 
 ## Usage
 

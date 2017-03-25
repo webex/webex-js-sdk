@@ -14,7 +14,7 @@ const path = require(`path`);
 module.exports = function configureGrunt(grunt) {
   assert(process.env.PACKAGE, `process.env.PACKAGE must be defined`);
   // eslint-disable-next-line global-require
-  const pkg = require(`./packages/${process.env.PACKAGE}/package`);
+  const pkg = require(`./packages/node_modules/${process.env.PACKAGE}/package`);
 
   // eslint-disable-next-line global-require
   require(`load-grunt-tasks`)(grunt);
@@ -26,8 +26,8 @@ module.exports = function configureGrunt(grunt) {
     babel: {
       dist: {
         files: [{
-          cwd: `./packages/<%= package %>/src`,
-          dest: `./packages/<%= package %>/dist`,
+          cwd: `./packages/node_modules/<%= package %>/src`,
+          dest: `./packages/node_modules/<%= package %>/dist`,
           expand: true,
           filter: `isFile`,
           src: `**/*.js`
@@ -38,18 +38,18 @@ module.exports = function configureGrunt(grunt) {
     clean: {
       coverage: {
         src: [
-          `./packages/<%= package %>/.coverage`
+          `./packages/node_modules/<%= package %>/.coverage`
         ]
       },
       dist: {
         src: [
-          `./packages/<%= package %>/dist`
+          `./packages/node_modules/<%= package %>/dist`
         ]
       },
       snapshots: {
         src: [
-          `./packages/<%= package %>/src/**/__snapshots__`,
-          `./packages/<%= package %>/test/**/__snapshots__`
+          `./packages/node_modules/<%= package %>/src/**/__snapshots__`,
+          `./packages/node_modules/<%= package %>/test/**/__snapshots__`
         ]
       }
     },
@@ -115,9 +115,9 @@ module.exports = function configureGrunt(grunt) {
 
     documentation: {
       options: {
-        destination: `./packages/<%= package %>`,
+        destination: `./packages/node_modules/<%= package %>`,
         externals: {
-          cwd: `./packages/<%= package %>/test/documentation/spec`,
+          cwd: `./packages/node_modules/<%= package %>/test/documentation/spec`,
           dest: `.`,
           expand: true,
           src: `**/*.js`
@@ -125,15 +125,15 @@ module.exports = function configureGrunt(grunt) {
         private: false
       },
       json: {
-        src: `./packages/<%= package %>/src/index.js`,
+        src: `./packages/node_modules/<%= package %>/src/index.js`,
         options: {
           format: `json`
         }
       },
       html: {
-        src: `./packages/<%= package %>/src/index.js`,
+        src: `./packages/node_modules/<%= package %>/src/index.js`,
         options: {
-          destination: `./packages/<%= package %>/doc`,
+          destination: `./packages/node_modules/<%= package %>/doc`,
           format: `html`
         }
       }
@@ -160,17 +160,17 @@ module.exports = function configureGrunt(grunt) {
         outputFile: process.env.XUNIT && `<%= xunitDir %>/eslint-<%= package %>.xml`
       },
       all: [
-        `./packages/<%= package %>/src/**/*.js`,
-        `./packages/<%= package %>/test/**/*.js`,
-        `!./packages/<%= package %>/test/**/*.es6.js`,
-        `./packages/<%= package %>/*.js`
+        `./packages/node_modules/<%= package %>/src/**/*.js`,
+        `./packages/node_modules/<%= package %>/test/**/*.js`,
+        `!./packages/node_modules/<%= package %>/test/**/*.es6.js`,
+        `./packages/node_modules/<%= package %>/*.js`
       ]
     },
 
     express: {
       test: {
         options: {
-          script: `./packages/test-helper-server`
+          script: `./packages/node_modules/test-helper-server`
         }
       }
     },
@@ -184,8 +184,8 @@ module.exports = function configureGrunt(grunt) {
     instrument2: {
       src: {
         files: [{
-          cwd: `./packages/<%= package %>`,
-          dest: `./packages/<%= package %>/.coverage`,
+          cwd: `./packages/node_modules/<%= package %>`,
+          dest: `./packages/node_modules/<%= package %>/.coverage`,
           expand: true,
           src: `./src/**/*.js`
         }]
@@ -231,7 +231,7 @@ module.exports = function configureGrunt(grunt) {
 
     mochaTest: {
       options: {
-        reporter: process.env.XUNIT ? path.join(__dirname, `./packages/xunit-with-logs`) : `spec`,
+        reporter: process.env.XUNIT ? path.join(__dirname, `./packages/node_modules/xunit-with-logs`) : `spec`,
         // TODO figure out how to detect retried tests
         retries: process.env.JENKINS || process.env.CI ? 1 : 0,
         timeout: 30000,
@@ -249,7 +249,7 @@ module.exports = function configureGrunt(grunt) {
           }
         },
         src: [
-          `./packages/<%= package %>/test/automation/spec/**/*.js`
+          `./packages/node_modules/<%= package %>/test/automation/spec/**/*.js`
         ]
       },
       node: {
@@ -261,31 +261,31 @@ module.exports = function configureGrunt(grunt) {
         },
         src: (function() {
           if (process.env.UNIT_ONLY) {
-            return [`./packages/<%= package %>/test/unit/spec/**/*.js`];
+            return [`./packages/node_modules/<%= package %>/test/unit/spec/**/*.js`];
           }
 
           const src = [
-            `./packages/<%= package %>/test/*/spec/**/*.js`,
-            `!./packages/<%= package %>/test/automation/spec/**/*.js`,
-            `!./packages/<%= package %>/test/documentation/spec/**/*.js`
+            `./packages/node_modules/<%= package %>/test/*/spec/**/*.js`,
+            `!./packages/node_modules/<%= package %>/test/automation/spec/**/*.js`,
+            `!./packages/node_modules/<%= package %>/test/documentation/spec/**/*.js`
           ];
           if (process.env.PIPELINE) {
-            src.push(`!./packages/<%= package %>/test/unit/spec/**/*.js`);
+            src.push(`!./packages/node_modules/<%= package %>/test/unit/spec/**/*.js`);
           }
           return src;
         }())
       },
       doc: {
         options: {
-          require: makeMochaRequires([`./packages/jsdoctrinetest`]),
+          require: makeMochaRequires([`./packages/node_modules/jsdoctrinetest`]),
           reporterOptions: {
             output: `<%= xunitDir %>/mocha-<%= package %>-doc.xml`
           }
         },
         src: [
-          `./packages/<%= package %>/dist/**/*.js`,
+          `./packages/node_modules/<%= package %>/dist/**/*.js`,
           // Exclude browser implementations; this is only running in node
-          `!./packages/<%= package %>/dist/**/*.shim.js`
+          `!./packages/node_modules/<%= package %>/dist/**/*.shim.js`
         ]
       }
     },
@@ -315,8 +315,8 @@ module.exports = function configureGrunt(grunt) {
       serve: {
         files: [
           `Gruntfile.package.js`,
-          `packages/test-helper-server/*`,
-          `packages/test-helper-server/src/**`
+          `packages/node_modules/test-helper-server/*`,
+          `packages/node_modules/test-helper-server/src/**`
         ],
         options: {
           spawn: false
@@ -403,11 +403,11 @@ module.exports = function configureGrunt(grunt) {
   ]);
 
   try {
-    require(`./packages/${process.env.PACKAGE}/Gruntfile.js`)(grunt, p, makeMochaRequires);
+    require(`./packages/node_modules/${process.env.PACKAGE}/Gruntfile.js`)(grunt, p, makeMochaRequires);
   }
   catch (error) {
     // ignore
-    console.info(`No custom gruntfile found at ./packages/${process.env.PACKAGE}/Gruntfile.js; assuming no override intended`);
+    console.info(`No custom gruntfile found at ./packages/node_modules/${process.env.PACKAGE}/Gruntfile.js; assuming no override intended`);
   }
 
   /**

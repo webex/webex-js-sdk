@@ -62,8 +62,8 @@ function rsync(src, dest) {
 
 module.exports = function(grunt) {
   grunt.registerTask(`inject-h264`, function() {
-    const inPath = path.join(__dirname, `..`, `packages`, process.env.PACKAGE, `browsers.js`);
-    const outPath = path.join(__dirname, `..`, `packages`, process.env.PACKAGE, `browsers.processed.js`);
+    const inPath = path.join(__dirname, `..`, `packages`, `node_modules`, process.env.PACKAGE, `browsers.js`);
+    const outPath = path.join(__dirname, `..`, `packages`, `node_modules`, process.env.PACKAGE, `browsers.processed.js`);
 
     try {
       fs.statSync(path.join(__dirname, `selenium`));

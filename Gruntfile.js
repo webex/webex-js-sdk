@@ -39,7 +39,8 @@ module.exports = function(grunt) {
           '<%= config.src %>/version.js',
           // 'CHANGELOG.md',
           'README.md',
-          'packages/*/README.md'
+          'packages/node_modules/*/README.md'
+          'packages/node_modules/*/*/README.md'
         ],
         globalReplace: true,
         tagName: '%VERSION%',

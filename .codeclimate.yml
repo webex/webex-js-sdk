@@ -4,6 +4,7 @@ exclude_paths:
   - examples
   # skip the test directories because it the spec blocks aggressively show up as
   # duplicates
-  - packages/*/test
+  - packages/node_modules/*/test
+  - packages/node_modules/@ciscospark/*/test
   - src
   - test

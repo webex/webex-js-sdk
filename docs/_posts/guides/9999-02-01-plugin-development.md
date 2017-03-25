@@ -50,7 +50,7 @@ redirect_from:
     The sdk ships with a yeoman generator to aid in getting your plugin started. In order to stay in sync with the current preferred layout, use the generator that ships with the sdk rather than the one published to npm.
 
     ```bash
-    cd packages/generator-ciscospark
+    cd packages/node_modules/generator-ciscospark
     npm link
     ```
 
@@ -70,7 +70,7 @@ yo ciscospark:plugin plugin-PLUGINNAME
 
 > If you're creating a new sdk package that's not intended to be a plugin (e.g helper-html), you can use `yo ciscospark:package PACKAGENAME`
 
-You'll get a new folder in `/packages` with eslint files in the right place, a `package.json` with the bare minimum to create a plugin, some scaffolding for your test directory, and just enough files for your plugin to load and do nothing.
+You'll get a new folder in `/packages/node_modules` with eslint files in the right place, a `package.json` with the bare minimum to create a plugin, some scaffolding for your test directory, and just enough files for your plugin to load and do nothing.
 
 ## Plugin Structure
 
@@ -129,10 +129,10 @@ OK, this one's a handful and requires a global package, but there were too many 
 
 ```bash
 npm install -g nodemon
-nodemon -w packages/PACKAGENAME/src -w packages/PACKAGENAME/test -x "UNIT_ONLY=true PACKAGE=PACKAGENAME npm run --silent grunt:package express:test test:node"
+nodemon -w packages/node_modules/PACKAGENAME/src -w packages/node_modules/PACKAGENAME/test -x "UNIT_ONLY=true PACKAGE=PACKAGENAME npm run --silent grunt:package express:test test:node"
 ```
 
 ## Tips
-- During development, you can avoid rebuilding before each test run by replacing `"main": "dist/index.js"` with `"main": "src/index.js"` in `packages/*/package.json`. This won't quite work in Karma, but if you apply the same replacement to *only* the package under test, that package will recompile on change; other packages will need to be rebuilt.
+- During development, you can avoid rebuilding before each test run by replacing `"main": "dist/index.js"` with `"main": "src/index.js"` in `packages/node_modules/*/package.json`. This won't quite work in Karma, but if you apply the same replacement to *only* the package under test, that package will recompile on change; other packages will need to be rebuilt.
 - If your git history has a comment containing `#no-push`, you can push to jenkins, run all your tests, and see the result without merging to master.
 - CircleCI runs static-analysis and unit tests on every PR update.

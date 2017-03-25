@@ -242,7 +242,8 @@ ansiColor('xterm') {
               sh 'npm run grunt:concurrent -- clean'
               sh 'npm run clean-empty-packages'
             }
-            sh 'rm -rf "packages/*/browsers.processed.js"'
+            sh 'rm -rf "packages/node_modules/*/browsers.processed.js"'
+            sh 'rm -rf "packages/node_modules/@ciscospark/*/browsers.processed.js"'
             sh 'rm -rf ".sauce/*/sc.*"'
             sh 'rm -rf ".sauce/*/sauce_connect*log"'
             sh 'rm -rf reports'
@@ -351,7 +352,7 @@ ansiColor('xterm') {
                   }
                   try {
                     sh script: "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version}"
-                    sh 'git add lerna.json packages/*/package.json'
+                    sh 'git add lerna.json packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
                     sh "git commit -m v${version} --no-verify"
                     sh "git tag 'v${version}'"
                   }

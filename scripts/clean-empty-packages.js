@@ -1,31 +1,39 @@
-var fs = require('fs-extra');
-var argv = require('yargs').argv;
+/* eslint no-console: [0] */
+/* eslint no-process-exit: [0] */
+/* eslint no-sync: [0] */
 
-var packagesDir = './packages';
-var packageJson = 'package.json';
+const fs = require(`fs-extra`);
+const argv = require(`yargs`).argv;
 
-var files = fs.readdirSync(packagesDir);
-var invalidPackages = [];
+const packagesDir = `./packages/node_modules`;
+const packageJson = `package.json`;
+
+const files = fs
+  .readdirSync(packagesDir)
+  .concat(fs.readdirSync(`${packagesDir}/@ciscospark`))
+  .filter((p) => p === `@ciscospark`);
+
+const invalidPackages = [];
 
 files.forEach((file) => {
-    var packageDir = `${packagesDir}/${file}`;
+  const packageDir = `${packagesDir}/${file}`;
+  try {
+    const stats = fs.statSync(packageDir);
+    if (!stats.isDirectory()) {
+      return;
+    }
+    const packagePackageJson = `${packageDir}/${packageJson}`;
     try {
-      var stats = fs.statSync(packageDir);
-      if (!stats.isDirectory()) {
-        return;
-      }
-      var packagePackageJson = `${packageDir}/${packageJson}`;
-      try {
-        fs.statSync(packagePackageJson);
-      }
-      catch(jsonE) {
-        invalidPackages.push(packageDir);
-      }
+      fs.statSync(packagePackageJson);
+    }
+    catch (jsonE) {
+      invalidPackages.push(packageDir);
+    }
 
-    }
-    catch(e) {
-      console.error(e);
-    }
+  }
+  catch (e) {
+    console.error(e);
+  }
 });
 
 console.log(`(${invalidPackages.length}) INVALID PACKAGES:`);

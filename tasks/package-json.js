@@ -1,6 +1,5 @@
 /* eslint quotes: [2, backtick] */
 
-'use strict';
 
 const _ = require(`lodash`);
 
@@ -80,7 +79,7 @@ module.exports = function(grunt) {
 
         grunt.file.write(filename, `${JSON.stringify(result, null, 2)}\n`);
       }
-      catch(reason) {
+      catch (reason) {
         grunt.log.warn(reason);
       }
     });

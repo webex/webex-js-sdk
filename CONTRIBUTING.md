@@ -76,7 +76,7 @@ Install dependencies:
 ```
 # Install top-level dependencies
 npm install
-# Install dependencies for each module in ./packages and locally link unpublished modules as needed
+# Install dependencies for each module in ./packages/node_modules and locally link unpublished modules as needed
 npm run bootstrap
 ```
 

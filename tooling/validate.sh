@@ -24,7 +24,7 @@ set -e
 
 cd "${SDK_ROOT_DIR}"
 if [ "${EXIT_CODE}" -eq "0" ]; then
-  git add lerna.json packages/*/package.json
+  git add lerna.json packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json
   git commit -m "v${VERSION}"
   git tag "v${VERSION}"
 fi

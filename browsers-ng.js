@@ -61,14 +61,14 @@ try {
   // Check if the package generated a browsers package dynamically. This is
   // necessary when the package needs to e.g. use FirefoxProfile to manipulate
   // the browser environment
-  browsers = require('./packages/' + process.env.PACKAGE + '/browsers.processed.js')(browsers);
+  browsers = require('./packages/node_modules/' + process.env.PACKAGE + '/browsers.processed.js')(browsers);
 }
 catch (error) {
   if (error.code !== `MODULE_NOT_FOUND`) {
     throw error;
   }
   try {
-    browsers = require('./packages/' + process.env.PACKAGE + '/browsers.js')(browsers);
+    browsers = require('./packages/node_modules/' + process.env.PACKAGE + '/browsers.js')(browsers);
   }
   catch (error2) {
     if (error2.code !== `MODULE_NOT_FOUND`) {
