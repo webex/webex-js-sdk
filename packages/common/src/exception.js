@@ -26,6 +26,8 @@ export default class Exception extends Error {
       message = this.constructor.defaultMessage;
     }
 
+    this.name = this.constructor.name;
+
     this.message = message;
   }
 

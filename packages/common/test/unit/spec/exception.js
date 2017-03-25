@@ -19,5 +19,14 @@ describe(`common`, () => {
         assert.match(exception.toString(), /My exception occurred/);
       });
     });
+
+    it(`stringifies usefully`, () => {
+      class MyException extends Exception {
+        static defaultMessage = `My exception occurred`;
+      }
+
+      const m = new MyException();
+      assert.match(m.toString(), /MyException:/);
+    });
   });
 });
