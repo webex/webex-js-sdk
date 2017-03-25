@@ -18,7 +18,6 @@ dependencies:
     # TODO deploy script should update this list automatically
     # circleci doesn't appear to support cache wildcards
     - packages/node_modules/@ciscospark/bin-sauce-connect/node_modules
-    - packages/node_modules/@ciscospark/bin-walk/node_modules
     - packages/node_modules/@ciscospark/common/node_modules
     - packages/node_modules/@ciscospark/example-phone/node_modules
     - packages/node_modules/@ciscospark/helper-html/node_modules
