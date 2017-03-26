@@ -9,7 +9,7 @@ redirect_from:
 
 # External Dependencies
 
-- You'll need node 4 or later (We use [nvm](https://github.com/creationix/nvm) but there are numerous options available for getting the right node version)
+- We test against the current LTS version of Node JS, but node 4 or later should work. We use [nvm](https://github.com/creationix/nvm) but there are numerous options available for getting the right node version.
 - Depending on what you're working on, you'll need [graphicsmagick](http://www.graphicsmagick.org/)
 
 # Get the code and build the SDK
