@@ -42,7 +42,6 @@ redirect_from:
 
     ```bash
     npm install
-    npm run bootstrap
     npm run build
     ```
 

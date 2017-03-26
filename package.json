@@ -34,7 +34,7 @@
   "scripts": {
     "precommit": "npm run --silent lint:staged",
     "commitmsg": "npm run --silent lint:commitmsg",
-    "bootstrap": "lerna bootstrap",
+    "bootstrap": "echo 'npm run bootstrap is no longer required. Hooray!'",
     "clean": "lerna clean",
     "build": "npm run --silent grunt:concurrent -- build",
     "check-karma-output": "./scripts/analyze-output.sh",

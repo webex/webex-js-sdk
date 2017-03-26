@@ -27,11 +27,6 @@ mkdir -p ${SDK_ROOT_DIR}/reports/sauce
 chmod -R ugo+w ${SDK_ROOT_DIR}/reports
 
 echo "################################################################################"
-echo "# BOOTSTRAPPING MODULES"
-echo "################################################################################"
-docker run ${DOCKER_RUN_OPTS} npm run bootstrap
-
-echo "################################################################################"
 echo "# BUILDING MODULES"
 echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} npm run build
