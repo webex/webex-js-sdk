@@ -287,9 +287,17 @@ ansiColor('xterm') {
             stage('build') {
               image.inside(DOCKER_RUN_OPTS) {
                 sh 'npm run build'
-                // Reminder: depcheck has to come after build so that it can
+                // Generate deps so that we can run dep:check. This is more of a
+                // sanity checkout confirming the generate works correctly than
+                // an actually necessary step
+                sh 'npm run deps:generate'
+                // Reminder: deps:check has to come after build so that it can
                 // walk the tree in */dist
-                sh 'npm run depcheck'
+                sh 'npm run deps:check'
+                // Now that we've confirmed deps:generate works, undo the
+                // generated deps. They'll be regenerated once we use lerna to
+                // set the new package versions.
+                sh 'git checkout ./packages'
               }
             }
 
@@ -355,6 +363,7 @@ ansiColor('xterm') {
                     sh 'git add lerna.json packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
                     sh "git commit -m v${version} --no-verify"
                     sh "git tag 'v${version}'"
+                    sh "npm run deps:generate"
                   }
                   catch (error) {
                     // ignore: no packages to update

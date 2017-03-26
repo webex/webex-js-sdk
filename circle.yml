@@ -14,7 +14,7 @@ general:
 
 test:
   pre:
-    - npm run depcheck
+    - npm run deps:check
     - npm run grunt:circle -- build:
         parallel: true
   override:
