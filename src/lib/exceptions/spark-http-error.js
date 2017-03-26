@@ -7,14 +7,32 @@
 
 var extendError = require('extend-error');
 var HttpError = require('./http-error');
+var isArray = require('lodash.isArray');
+var pick = require('lodash.pick');
+var values = require('lodash.values');
 
 var SparkHttpError = extendError(HttpError, {
   parseFn: function parseFn(res) {
     var message = HttpError.prototype.parseFn.apply(this, arguments);
 
-    Object.defineProperty(this, 'options', {
-      enumerable: false,
-      value: res.options
+    var rawMessage;
+    try {
+      rawMessage = JSON.parse(message);
+      rawMessage = parseDescription(rawMessage);
+    }
+    catch (error) {
+      rawMessage = message;
+    }
+
+    Object.defineProperties(this, {
+      options: {
+        enumerable: false,
+        value: res.options
+      },
+      rawMessage: {
+        enumerable: false,
+        value: rawMessage || ''
+      }
     });
 
     if (this.options.url) {
@@ -37,5 +55,29 @@ var SparkHttpError = extendError(HttpError, {
   },
   subTypeName: 'SparkHttpError'
 });
+
+function parseDescription(body) {
+
+  // if explanation is an array, recurse and try again with first element
+  if (isArray(body) && body.length) {
+    return parseDescription(body[0]);
+  }
+
+  // Search body for common names of error strings
+  var messages = values(pick(body, 'description'));
+  // If no error candidate was found, stringify the entire body
+  if (messages.length === 0) {
+    return JSON.stringify(body);
+  }
+
+  // Assume the first key found was the error explanation
+  var message = messages[0];
+  // If the explanation is an object, recurse and try again
+  if (typeof message === 'object') {
+    return parseDescription(message);
+  }
+  // Return the first key
+  return message;
+}
 
 module.exports = SparkHttpError;

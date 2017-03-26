@@ -96,8 +96,7 @@ var HttpError = extendError({
 
 function parseObject(body) {
   // Search body for common names of error strings
-  var messages = values(pick(body, 'message', 'error', 'errorString', 'response', 'errorResponse', 'msg'));
-
+  var messages = values(pick(body, 'message', 'error', 'Errors', 'errorString', 'response', 'errorResponse', 'msg'));
   // If no error candidate was found, stringify the entire body
   if (messages.length === 0) {
     return JSON.stringify(body);
@@ -110,7 +109,6 @@ function parseObject(body) {
   if (typeof message === 'object') {
     return parseObject(message);
   }
-
   // Return the first key
   return message;
 }

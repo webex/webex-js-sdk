@@ -148,6 +148,44 @@ describe(`http-core`, () => {
       assert.equal(error.message, message);
     });
 
+    it(`parses JSON responses for candidate error messages with arrays`, () => {
+      const message = `an error occurred`;
+      const res = {
+        statusCode: 400,
+        body: {
+          Errors: [
+            {
+              code: 10001,
+              description: message
+            }
+          ]
+        }
+      };
+
+      const error = new HttpError(res);
+      assert.equal(error.message, JSON.stringify(res.body.Errors, null, 2));
+    });
+
+    it(`parses JSON responses for candidate error messages with arrays recursively`, () => {
+      const message = `an error occurred`;
+      const res = {
+        statusCode: 400,
+        body: {
+          error: {
+            message: [
+              {
+                code: 10001,
+                description: message
+              }
+            ]
+          }
+        }
+      };
+
+      const error = new HttpError(res);
+      assert.equal(error.message, JSON.stringify(res.body.error.message, null, 2));
+    });
+
     describe(`.select()`, () => {
       it(`determines the correct Error object for the specified status code`, () => {
         assert.equal(HttpError.select(), HttpError);

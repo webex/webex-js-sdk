@@ -103,7 +103,7 @@ const HttpError = extendError({
  */
 function parseObject(body) {
   // Search body for common names of error strings
-  const messages = Object.values(pick(body, `message`, `error`, `errorString`, `response`, `errorResponse`, `msg`));
+  const messages = Object.values(pick(body, `message`, `error`, `Errors`, `errorString`, `response`, `errorResponse`, `msg`));
 
   // If no error candidate was found, stringify the entire body
   if (messages.length === 0) {
@@ -121,7 +121,6 @@ function parseObject(body) {
   // Return the first key
   return message;
 }
-
 
 makeSubTypes(HttpError);
 HttpError.makeSubTypes = makeSubTypes;
