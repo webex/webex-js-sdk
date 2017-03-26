@@ -14,9 +14,9 @@ general:
 
 test:
   pre:
-    - npm run deps:check
     - npm run grunt:circle -- build:
         parallel: true
+    - npm run deps:check
   override:
     - npm run grunt:circle -- static-analysis test:
         parallel: true
