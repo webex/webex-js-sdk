@@ -17,7 +17,6 @@
     "backoff": "^2.5.0",
     "core-decorators": "^0.12.3",
     "envify": "^3.4.0",
-    "extend-error": "git://github.com/ianwremmel/extend-error.git",
     "lodash": "^4.13.1",
     "string": "^3.3.1",
     "uuid": "^2.0.1",

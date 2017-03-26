@@ -6,10 +6,17 @@
 
 /* eslint camelcase: [0] */
 
-import extendError from 'extend-error';
+import {Exception} from '@ciscospark/common';
 
-const OAuthError = extendError({
-  parseFn: function parseFn(res) {
+/**
+ * Error thrown during oauth flow
+ */
+export class OAuthError extends Exception {
+  /**
+   * @param {HttpResponse} res
+   * @returns {string}
+   */
+  parse(res) {
     Object.defineProperties(this, {
       error: {
         enumerable: true,
@@ -30,16 +37,38 @@ const OAuthError = extendError({
     });
 
     return this.errorDescription;
-  },
-  subTypeName: `OAuthError`
-});
+  }
+}
+/**
+ * InvalidRequestError
+ */
+class InvalidRequestError extends OAuthError {}
 
-const InvalidRequestError = extendError(OAuthError, `InvalidRequestError`);
-const InvalidClientError = extendError(OAuthError, `InvalidClientError`);
-const InvalidGrantError = extendError(OAuthError, `InvalidGrantError`);
-const UnauthorizedClientError = extendError(OAuthError, `UnauthorizedClientError`);
-const UnsupportGrantTypeError = extendError(OAuthError, `UnsupportGrantTypeError`);
-const InvalidScopeError = extendError(OAuthError, `InvalidScopeError`);
+/**
+ * InvalidClientError
+ */
+class InvalidClientError extends OAuthError {}
+
+/**
+ * InvalidGrantError
+ */
+class InvalidGrantError extends OAuthError {}
+
+/**
+ * UnauthorizedClientError
+ */
+class UnauthorizedClientError extends OAuthError {}
+
+/**
+ * UnsupportGrantTypeError
+ */
+class UnsupportGrantTypeError extends OAuthError {}
+
+/**
+ * InvalidScopeError
+ */
+class InvalidScopeError extends OAuthError {}
+
 
 const errors = {
   OAuthError,

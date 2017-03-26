@@ -3,34 +3,67 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-import extendError from 'extend-error';
-import makeSubTypes from './http-error-subtypes';
 import {pick} from 'lodash';
+import {Exception} from '@ciscospark/common';
+import makeSubTypes from './http-error-subtypes';
 
 /**
- * @class HttpError
- * @extends Error
+ * Base HttpError class. Unlikely to be thrown directly, but handy for general
+ * type comparison.
  */
-const HttpError = extendError({
-  parseFn: function parseFn(res) {
+export default class HttpError extends Exception {
+  /**
+   * @example Extend via
+   * MyError extends HttpError {
+   *  static errorKeys = HttpError.errorKeys.concat([
+   *    `key1`,
+   *    `key2`
+   *  ])
+   * }
+   *
+   * @type {Array}
+   */
+  static errorKeys = [
+    `error`,
+    `errorString`,
+    `response`,
+    `errorResponse`,
+    `message`,
+    `msg`
+  ];
+
+  /**
+   * Default error string if no error can be extracted from the http response
+   * @type {string}
+   */
+  static defaultMessage = `An error was received while trying to fulfill the request`;
+
+  /**
+   * Parses HttpResponse objects for useful information (status, headers, etc)
+   * as well as attempting to extract a useful error message.
+   * @param {HttpResponse} res
+   * @returns {string}
+   */
+  parse(res) {
+    // complexity is high here because of all the default values below.
     /* eslint complexity: [0] */
     let body = res.body;
     let message;
+
     switch (typeof body) {
     case `string`:
       try {
         body = JSON.parse(body);
-        message = parseObject(body);
+        message = this.parseObject(body);
       }
-      catch (error) {
+      catch (err) {
         message = body;
       }
       break;
     case `object`:
-      message = parseObject(body);
+      message = this.parseObject(body);
       break;
     default:
-      // do nothing
     }
 
     if (!message) {
@@ -89,41 +122,34 @@ const HttpError = extendError({
     });
 
     return message;
-  },
-  properties: {
-    defaultMessage: `An error was received while trying to fulfill the request`
-  },
-  subTypeName: `HttpError`
-});
-
-/**
- * @param {object} body
- * @private
- * @returns {string}
- */
-function parseObject(body) {
-  // Search body for common names of error strings
-  const messages = Object.values(pick(body, `message`, `error`, `errorString`, `response`, `errorResponse`, `msg`));
-
-  // If no error candidate was found, stringify the entire body
-  if (messages.length === 0) {
-    return JSON.stringify(body, null, 2);
   }
 
-  // Assume the first key found was the error explanation
-  const message = messages[0];
+  /**
+   * Recursively parses an error body looking for a likely error candidate
+   * @param {object} body
+   * @returns {string}
+   */
+  parseObject(body) {
+    // Search body for common names of error strings
+    const messages = Object.values(pick(body, HttpError.errorKeys));
 
-  // If the explanation is an object, recurse and try again
-  if (typeof message === `object`) {
-    return parseObject(message);
+    // If no error candidate was found, stringify the entire body
+    if (messages.length === 0) {
+      return JSON.stringify(body, null, 2);
+    }
+
+    // Assume the first key found was the error explanation
+    const message = messages[0];
+
+    // If the explanation is an object, recurse and try again
+    if (typeof message === `object`) {
+      return this.parseObject(message);
+    }
+
+    // Return the first key
+    return message;
   }
-
-  // Return the first key
-  return message;
 }
-
 
 makeSubTypes(HttpError);
 HttpError.makeSubTypes = makeSubTypes;
-
-export default HttpError;

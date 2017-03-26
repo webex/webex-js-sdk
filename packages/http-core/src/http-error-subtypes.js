@@ -3,137 +3,111 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-import extendError from 'extend-error';
-
 /**
  * @param {Error} Base
  * @returns {undefined}
  */
 export default function makeSubTypes(Base) {
-  const NetworkOrCORSError = extendError(Base, {
-    subTypeName: `NetworkOrCORSError`,
-    code: 0
-  });
-
-  const BadRequest = extendError(Base, {
-    subTypeName: `BadRequest`,
-    code: 400
-  });
-
-  const Unauthorized = extendError(BadRequest, {
-    subTypeName: `Unauthorized`,
-    code: 401
-  });
-
-  const PaymentRequired = extendError(BadRequest, {
-    subTypeName: `PaymentRequired`,
-    code: 402
-  });
-
-  const Forbidden = extendError(BadRequest, {
-    subTypeName: `Forbidden`,
-    code: 403
-  });
-
-  const NotFound = extendError(BadRequest, {
-    subTypeName: `NotFound`,
-    code: 404
-  });
-
-  const MethodNotAllowed = extendError(BadRequest, {
-    subTypeName: `MethodNotAllowed`,
-    code: 405
-  });
-
-  const NotAcceptable = extendError(BadRequest, {
-    subTypeName: `NotAcceptable`,
-    code: 406
-  });
-
-  const ProxyAuthenticationRequired = extendError(BadRequest, {
-    subTypeName: `ProxyAuthenticationRequired`,
-    code: 407
-  });
-
-  const RequestTimeout = extendError(BadRequest, {
-    subTypeName: `RequestTimeout`,
-    code: 408
-  });
-
-  const Conflict = extendError(BadRequest, {
-    subTypeName: `Conflict`,
-    code: 409
-  });
-
-  const Gone = extendError(BadRequest, {
-    subTypeName: `Gone`,
-    code: 410
-  });
-
-  const LengthRequired = extendError(BadRequest, {
-    subTypeName: `LengthRequired`,
-    code: 411
-  });
-
-  const PreconditionFailed = extendError(BadRequest, {
-    subTypeName: `PreconditionFailed`,
-    code: 412
-  });
-
-  const RequestEntityTooLarge = extendError(BadRequest, {
-    subTypeName: `RequestEntityTooLarge`,
-    code: 413
-  });
-
-  const RequestUriTooLong = extendError(BadRequest, {
-    subTypeName: `RequestUriTooLong`,
-    code: 414
-  });
-
-  const UnsupportedMediaType = extendError(BadRequest, {
-    subTypeName: `UnsupportedMediaType`,
-    code: 415
-  });
-
-  const RequestRangeNotSatisfiable = extendError(BadRequest, {
-    subTypeName: `RequestRangeNotSatisfiable`,
-    code: 416
-  });
-
-  const ExpectationFailed = extendError(BadRequest, {
-    subTypeName: `ExpectationFailed`,
-    code: 417
-  });
-
-  const InternalServerError = extendError(Base, {
-    subTypeName: `InternalServerError`,
-    code: 500
-  });
-
-  const NotImplemented = extendError(InternalServerError, {
-    subTypeName: `NotImplemented`,
-    code: 501
-  });
-
-  const BadGateway = extendError(InternalServerError, {
-    subTypeName: `BadGateway`,
-    code: 502
-  });
-
-  const ServiceUnavailable = extendError(InternalServerError, {
-    subTypeName: `ServiceUnavailable`,
-    code: 503
-  });
-
-  const GatewayTimeout = extendError(InternalServerError, {
-    subTypeName: `GatewayTimeout`,
-    code: 504
-  });
-
-  const HttpVersionNotSupported = extendError(InternalServerError, {
-    subTypeName: `HttpVersionNotSupported`,
-    code: 505
-  });
+  /**
+   * NetworkOrCORSError
+   */
+  class NetworkOrCORSError extends Base {}
+  /**
+   * BadRequest
+   */
+  class BadRequest extends Base {}
+  /**
+   * Unauthorized
+   */
+  class Unauthorized extends BadRequest {}
+  /**
+   * PaymentRequired
+   */
+  class PaymentRequired extends BadRequest {}
+  /**
+   * Forbidden
+   */
+  class Forbidden extends BadRequest {}
+  /**
+   * NotFound
+   */
+  class NotFound extends BadRequest {}
+  /**
+   * MethodNotAllowed
+   */
+  class MethodNotAllowed extends BadRequest {}
+  /**
+   * NotAcceptable
+   */
+  class NotAcceptable extends BadRequest {}
+  /**
+   * ProxyAuthenticationRequired
+   */
+  class ProxyAuthenticationRequired extends BadRequest {}
+  /**
+   * RequestTimeout
+   */
+  class RequestTimeout extends BadRequest {}
+  /**
+   * Conflict
+   */
+  class Conflict extends BadRequest {}
+  /**
+   * Gone
+   */
+  class Gone extends BadRequest {}
+  /**
+   * LengthRequired
+   */
+  class LengthRequired extends BadRequest {}
+  /**
+   * PreconditionFailed
+   */
+  class PreconditionFailed extends BadRequest {}
+  /**
+   * RequestEntityTooLarge
+   */
+  class RequestEntityTooLarge extends BadRequest {}
+  /**
+   * RequestUriTooLong
+   */
+  class RequestUriTooLong extends BadRequest {}
+  /**
+   * UnsupportedMediaType
+   */
+  class UnsupportedMediaType extends BadRequest {}
+  /**
+   * RequestRangeNotSatisfiable
+   */
+  class RequestRangeNotSatisfiable extends BadRequest {}
+  /**
+   * ExpectationFailed
+   */
+  class ExpectationFailed extends BadRequest {}
+  /**
+   * InternalServerError
+   */
+  class InternalServerError extends Base {}
+  /**
+   * NotImplemented
+   */
+  class NotImplemented extends InternalServerError {}
+  /**
+   * BadGateway
+   */
+  class BadGateway extends InternalServerError {}
+  /**
+   * ServiceUnavailable
+   */
+  class ServiceUnavailable extends InternalServerError {}
+  /**
+   * GatewayTimeout
+   */
+  class GatewayTimeout extends InternalServerError {}
+  /**
+   * HttpVersionNotSupported
+   */
+  class HttpVersionNotSupported extends InternalServerError {}
 
   Object.assign(Base, {
     0: NetworkOrCORSError,
