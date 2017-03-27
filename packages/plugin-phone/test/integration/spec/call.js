@@ -6,6 +6,7 @@
 import '../..';
 
 import {assert} from '@ciscospark/test-helper-chai';
+import retry from '@ciscospark/test-helper-retry';
 import sinon from '@ciscospark/test-helper-sinon';
 import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
@@ -44,6 +45,28 @@ describe(`plugin-phone`, function() {
       mccoy && mccoy.spark.phone.deregister()
         .catch((reason) => console.warn(`could not disconnect mccoy from mercury`, reason))
     ]));
+
+    beforeEach(() => retry(() => spock && spock.spark.locus.list()
+      .then((loci) => {
+        if (loci.length) {
+          return spock.spark.locus.leave({self: {url: loci[0].self.url}})
+            .then(() => {
+              throw new Error(`spock still has active calls`);
+            });
+        }
+        return Promise.resolve();
+      })));
+
+    beforeEach(() => retry(() => mccoy && mccoy.spark.locus.list()
+      .then((loci) => {
+        if (loci.length) {
+          return mccoy.spark.locus.leave({self: {url: loci[0].self.url}})
+            .then(() => {
+              throw new Error(`mccoy still has active calls`);
+            });
+        }
+        return Promise.resolve();
+      })));
 
     describe(`#id`, () => {
       // TODO [SSDK-572] need call id
