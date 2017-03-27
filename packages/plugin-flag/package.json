@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-flag",
-  "version": "0.7.69",
+  "version": "0.7.71",
   "description": "",
   "license": "MIT",
   "author": "Saurabh Jain <saurjai3@cisco.com>",
@@ -8,10 +8,10 @@
   "devMain": "src/index.js",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-flag",
   "dependencies": {
-    "@ciscospark/common": "^0.7.69",
-    "@ciscospark/spark-core": "^0.7.69",
-    "@ciscospark/plugin-conversation": "^0.7.69",
-    "@ciscospark/plugin-wdm": "^0.7.69",
+    "@ciscospark/common": "^0.7.71",
+    "@ciscospark/spark-core": "^0.7.71",
+    "@ciscospark/plugin-conversation": "^0.7.71",
+    "@ciscospark/plugin-wdm": "^0.7.71",
     "babel-runtime": "^6.3.19",
     "lodash": "^4.13.1"
   },
