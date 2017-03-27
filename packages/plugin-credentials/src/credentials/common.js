@@ -27,7 +27,7 @@ export default {
   session: {
     clientToken: makeStateDataType(Token, `token`).prop,
     isAuthenticating: {
-      default: true,
+      default: false,
       type: `boolean`
     },
     isRefreshing: {
