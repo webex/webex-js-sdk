@@ -482,6 +482,7 @@ describe('Services', function() {
           it('does not allow board user to access contents', function() {
             var currentConvo;
             var currentBoard;
+            var encryptedData = {};
             var data = [{
               type: 'curve',
               payload: JSON.stringify({type: 'curve'})
@@ -497,9 +498,10 @@ describe('Services', function() {
               })
               .then(function(b) {
                 currentBoard = b;
-                return party.spock.spark.board.persistence.addContent(currentBoard, data);
+                return party.spock.spark.board.encryptContents(currentBoard.defaultEncryptionKeyUrl, data);
               })
-              .then(function() {
+              .then(function(encryptedResult) {
+                encryptedData.items = encryptedResult;
                 return party.spock.spark.conversation.leave(currentConvo);
               })
               .then(function() {
@@ -509,25 +511,14 @@ describe('Services', function() {
                 return party.spock.spark.encryption.keystore.clear();
               })
               .then(function() {
-                return Promise.all([
-                  party.spock.spark.encryption.keystore.clear(),
-                  party.mccoy.spark.encryption.keystore.clear()
-                ]);
-              })
-              .then(function() {
-                return party.mccoy.spark.request({
-                  method: 'GET',
-                  uri: currentBoard.channelUrl + '/contents'
-                });
-              })
-              .then(function(result) {
-                return assert.isRejected(party.spock.spark.board.decryptContents(result.body));
+                return assert.isRejected(party.spock.spark.board.decryptContents(encryptedData));
               });
           });
 
           it('does not allow board creator to access and decrypt contents', function() {
             var currentConvo;
             var currentBoard;
+            var encryptedData = {};
             var data = [{
               type: 'curve',
               payload: JSON.stringify({type: 'curve'})
@@ -546,25 +537,17 @@ describe('Services', function() {
                 return party.spock.spark.conversation.leave(currentConvo);
               })
               .then(function() {
-                return party.mccoy.spark.board.persistence.addContent(currentBoard, data);
+                return party.mccoy.spark.board.encryptContents(currentBoard.defaultEncryptionKeyUrl, data);
               })
-              .then(function() {
+              .then(function(encrypted) {
+                encryptedData.items = encrypted;
                 return assert.isRejected(party.spock.spark.board.persistence.getAllContent(currentBoard));
               })
               .then(function() {
-                return Promise.all([
-                  party.spock.spark.encryption.keystore.clear(),
-                  party.mccoy.spark.encryption.keystore.clear()
-                ]);
+                return party.spock.spark.encryption.keystore.clear();
               })
               .then(function() {
-                return party.mccoy.spark.request({
-                  method: 'GET',
-                  uri: currentBoard.channelUrl + '/contents'
-                });
-              })
-              .then(function(res) {
-                return assert.isRejected(party.spock.spark.board.decryptContents(res.body));
+                return assert.isRejected(party.spock.spark.board.decryptContents(encryptedData));
               });
           });
         });
