@@ -122,7 +122,7 @@
     "lodash.values": "^3.0.0",
     "lodash.where": "^3.1.0",
     "mmmagic": "~0.3.14",
-    "node-jose": "~0.9.0",
+    "node-jose": "~0.9.3",
     "node-kms": "~0.3.1",
     "node-scr": "~0.2.1",
     "request": "~2.55.0",

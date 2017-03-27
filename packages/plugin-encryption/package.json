@@ -16,7 +16,7 @@
     "@ciscospark/spark-core": "^0.7.71",
     "babel-runtime": "^6.3.19",
     "lodash": "^4.13.1",
-    "node-jose": "^0.9.1",
+    "node-jose": "^0.9.3",
     "node-kms": "^0.3.2",
     "node-scr": "^0.2.2"
   },
