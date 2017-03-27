@@ -56,16 +56,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Message" class="list-group-item">Types~Message</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Messages" class="list-group-item">Messages</a>
 
             
@@ -81,6 +71,26 @@ title: API
                 
                   <a class="list-group-item" href="#Messages#remove">#remove</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Message" class="list-group-item">Types~Message</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Person" class="list-group-item">Types~Person</a>
+
+            
+
             
 
             
@@ -104,7 +114,7 @@ title: API
           </li>
         
           
-            <a href="#Types~Person" class="list-group-item">Types~Person</a>
+            <a href="#Types~Room" class="list-group-item">Types~Room</a>
 
             
 
@@ -137,26 +147,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Room" class="list-group-item">Types~Room</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Team" class="list-group-item">Types~Team</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Teams" class="list-group-item">Teams</a>
 
             
@@ -172,6 +162,16 @@ title: API
                 
                   <a class="list-group-item" href="#Teams#update">#update</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Team" class="list-group-item">Types~Team</a>
+
+            
+
             
 
             
@@ -244,16 +244,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Feedback" class="list-group-item">Types~Feedback</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Call" class="list-group-item">Call</a>
 
             
@@ -306,18 +296,28 @@ title: API
             
               <div class="list-group-item">Events</div>
               
-                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
-              
-                <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
-              
-                <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
-              
                 <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
               
                 <a class="list-group-item" href="#Call.event:remoteMediaStream:change"> ⓔ remoteMediaStream:change</a>
               
                 <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
               
+                <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
+              
+                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
+              
+                <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
+              
+            
+          </li>
+        
+          
+            <a href="#Types~Feedback" class="list-group-item">Types~Feedback</a>
+
+            
+
+            
+
             
           </li>
         
@@ -382,16 +382,6 @@ title: API
           </li>
         
           
-            <a href="#ensureH264" class="list-group-item">ensureH264</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#bool-to-status" class="list-group-item">bool-to-status</a>
 
             
@@ -445,6 +435,16 @@ title: API
         
           
             <a href="#isCallingSupported" class="list-group-item">isCallingSupported</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
+            <a href="#ensureH264" class="list-group-item">ensureH264</a>
 
             
 
@@ -1198,95 +1198,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Message'>Types~Message</h2>
-    
-  
-
-  
-
-  <pre>Types~Message</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(uuid)</code>
-      
-      : (server generated) Unique identifier for the message
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(uuid)</code>
-      
-      : The ID for the author of the messasge
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(email)</code>
-      
-      : The email for the author of the messasge
-
-      </h4>
-      
-    
-      <h4>
-      roomId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The message posted to the room in plain text
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated)The source URLs for the
-message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
-supported media types.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Messages'>Messages</h2>
     
   
@@ -1693,6 +1604,173 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
+    <h2 id='Types~Message'>Types~Message</h2>
+    
+  
+
+  
+
+  <pre>Types~Message</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(uuid)</code>
+      
+      : (server generated) Unique identifier for the message
+
+      </h4>
+      
+    
+      <h4>
+      personId
+      <code>(uuid)</code>
+      
+      : The ID for the author of the messasge
+
+      </h4>
+      
+    
+      <h4>
+      personEmail
+      <code>(email)</code>
+      
+      : The email for the author of the messasge
+
+      </h4>
+      
+    
+      <h4>
+      roomId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The message posted to the room in plain text
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated)The source URLs for the
+message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
+supported media types.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Person'>Types~Person</h2>
+    
+  
+
+  
+
+  <pre>Types~Person</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(uuid)</code>
+      
+      : Unique identifier for the person
+
+      </h4>
+      
+    
+      <h4>
+      emails
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;email&#x3E;)</code>
+      
+      : Email addresses of the person
+
+      </h4>
+      
+    
+      <h4>
+      displayName
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : Display name of the person
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : The date and time that the person was created
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='People'>People</h2>
     
   
@@ -1938,13 +2016,13 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Person'>Types~Person</h2>
+    <h2 id='Types~Room'>Types~Room</h2>
     
   
 
   
 
-  <pre>Types~Person</pre>
+  <pre>Types~Room</pre>
 
   
 
@@ -1961,27 +2039,19 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     
       <h4>
       id
-      <code>(uuid)</code>
-      
-      : Unique identifier for the person
-
-      </h4>
-      
-    
-      <h4>
-      emails
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;email&#x3E;)</code>
-      
-      : Email addresses of the person
-
-      </h4>
-      
-    
-      <h4>
-      displayName
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : Display name of the person
+      : (server generated) Unique identifier for the room
+
+      </h4>
+      
+    
+      <h4>
+      title
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The display name for the room. All room members
+will see the title so make it something good
 
       </h4>
       
@@ -1990,7 +2060,18 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       created
       <code>(isoDate)</code>
       
-      : The date and time that the person was created
+      : (server generated) The date and time that the
+room was created
+
+      </h4>
+      
+    
+      <h4>
+      teamId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (optional): The id of the team to which the room
+belongs
 
       </h4>
       
@@ -2461,157 +2542,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Room'>Types~Room</h2>
-    
-  
-
-  
-
-  <pre>Types~Room</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (server generated) Unique identifier for the room
-
-      </h4>
-      
-    
-      <h4>
-      title
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The display name for the room. All room members
-will see the title so make it something good
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated) The date and time that the
-room was created
-
-      </h4>
-      
-    
-      <h4>
-      teamId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (optional): The id of the team to which the room
-belongs
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Team'>Types~Team</h2>
-    
-  
-
-  
-
-  <pre>Types~Team</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (server generated) The unique ID for the team.
-
-      </h4>
-      
-    
-      <h4>
-      name
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The name of the team.
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated) The date and time when the
-team was created, in ISO8601 format.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Teams'>Teams</h2>
     
   
@@ -2960,6 +2890,76 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
     </div>
   
 </section>
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Team'>Types~Team</h2>
+    
+  
+
+  
+
+  <pre>Types~Team</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (server generated) The unique ID for the team.
+
+      </h4>
+      
+    
+      <h4>
+      name
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The name of the team.
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated) The date and time when the
+team was created, in ISO8601 format.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
@@ -4066,82 +4066,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Feedback'>Types~Feedback</h2>
-    
-  
-
-  <p>Payload for <a href="#Call#sendFeedback">Call#sendFeedback</a></p>
-
-
-  <pre>Types~Feedback</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      userRating
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>)</code>
-      
-      : Number between 1 and 5 (5 being best) to let
-the user score the call
-
-      </h4>
-      
-    
-      <h4>
-      userComments
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : Freeform feedback from the user about the
-call
-
-      </h4>
-      
-    
-      <h4>
-      includeLogs
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
-      
-      : set to true to submit client logs to the
-Cisco Spark cloud. Note: at this time, all logs, not just call logs,
-generated by the sdk will be uploaded to the Spark Cloud. Care has been taken
-to avoid including PII in these logs, but if you&#x27;ve taken advantage of the
-SDK&#x27;s logger, you should make sure to avoid logging PII as well.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Call'>Call</h2>
     
   
@@ -5107,117 +5031,6 @@ even if renegotiation has not completed)</p>
     <h3>Events</h3>
     <section>
   
-    <h3 id='Call.event:disconnected'>disconnected</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>disconnected</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:connected'>connected</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>connected</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:ringing'>ringing</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>ringing</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
     <h3 id='Call.event:localMediaStream:change'>localMediaStream:change</h3>
     <div>
       <section>
@@ -5329,7 +5142,194 @@ even if renegotiation has not completed)</p>
 
     </div>
   
+    <h3 id='Call.event:ringing'>ringing</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>ringing</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
 </section>
+
+    </div>
+  
+    <h3 id='Call.event:disconnected'>disconnected</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>disconnected</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:connected'>connected</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>connected</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+</section>
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Feedback'>Types~Feedback</h2>
+    
+  
+
+  <p>Payload for <a href="#Call#sendFeedback">Call#sendFeedback</a></p>
+
+
+  <pre>Types~Feedback</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      userRating
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>)</code>
+      
+      : Number between 1 and 5 (5 being best) to let
+the user score the call
+
+      </h4>
+      
+    
+      <h4>
+      userComments
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : Freeform feedback from the user about the
+call
+
+      </h4>
+      
+    
+      <h4>
+      includeLogs
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
+      
+      : set to true to submit client logs to the
+Cisco Spark cloud. Note: at this time, all logs, not just call logs,
+generated by the sdk will be uploaded to the Spark Cloud. Care has been taken
+to avoid including PII in these logs, but if you&#x27;ve taken advantage of the
+SDK&#x27;s logger, you should make sure to avoid logging PII as well.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
@@ -5641,61 +5641,6 @@ fully negotiated</p>
       <h3>Returns</h3>
       <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
         
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='ensureH264'>ensureH264</h2>
-    
-  
-
-  <p>Checks a given sdp to ensure it contains an offer for the h264 codec</p>
-
-
-  <pre>ensureH264</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-    <h3>Parameters</h3>
-    
-      
-    
-      
-    
-  
-
-  
-
-  
-    
-      <h3>Returns</h3>
-      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">String</a></code>:
-        returns the offer to simplify use in promise chains
 
       
     
@@ -6333,6 +6278,61 @@ h264 without asking for camera permissions</p>
       <h3>Returns</h3>
       <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>&#x3E;</code>:
         
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='ensureH264'>ensureH264</h2>
+    
+  
+
+  <p>Checks a given sdp to ensure it contains an offer for the h264 codec</p>
+
+
+  <pre>ensureH264</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+    <h3>Parameters</h3>
+    
+      
+    
+      
+    
+  
+
+  
+
+  
+    
+      <h3>Returns</h3>
+      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">String</a></code>:
+        returns the offer to simplify use in promise chains
 
       
     
