@@ -840,10 +840,10 @@ const Call = SparkPlugin.extend({
     }
 
     if (options.offerOptions) {
-      if (options.offerToReceiveAudio) {
+      if (options.offerOptions.offerToReceiveAudio) {
         this.media.set({offerToReceiveAudio: options.offerOptions.offerToReceiveAudio});
       }
-      if (options.offerToReceiveVideo) {
+      if (options.offerOptions.offerToReceiveVideo) {
         this.media.set({offerToReceiveVideo: options.offerOptions.offerToReceiveVideo});
       }
     }
