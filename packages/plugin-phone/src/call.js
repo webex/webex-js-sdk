@@ -890,6 +890,7 @@ const Call = SparkPlugin.extend({
             .then(() => this.logger.info(`offer accepted`));
         }
         this.logger.info(`call: already ended, not accepting answer`);
+        return Promise.resolve();
       });
   },
 
