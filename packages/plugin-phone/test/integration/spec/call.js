@@ -11,6 +11,7 @@ import sinon from '@ciscospark/test-helper-sinon';
 import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
 import handleErrorEvent from '../lib/handle-error-event';
+import {SparkHttpError} from '@ciscospark/spark-core';
 
 describe(`plugin-phone`, function() {
   this.timeout(30000);
@@ -47,11 +48,16 @@ describe(`plugin-phone`, function() {
     ]));
 
     beforeEach(`wait for spock's calls to end`, function() {
-      this.timeout(120000);
+      this.timeout(retry.timeout(20000));
       return retry(() => spock && spock.spark.locus.list()
         .then((loci) => {
           if (loci.length) {
             return spock.spark.locus.leave({self: {url: loci[0].self.url}})
+              .catch((reason) => {
+                if (!(reason instanceof SparkHttpError.NotFound)) {
+                  throw reason;
+                }
+              })
               .then(() => {
                 throw new Error(`spock still has active calls`);
               });
@@ -61,11 +67,16 @@ describe(`plugin-phone`, function() {
     });
 
     beforeEach(`wait for mccoy's calls to end`, function() {
-      this.timeout(120000);
+      this.timeout(retry.timeout(20000));
       return retry(() => mccoy && mccoy.spark.locus.list()
         .then((loci) => {
           if (loci.length) {
             return mccoy.spark.locus.leave({self: {url: loci[0].self.url}})
+              .catch((reason) => {
+                if (!(reason instanceof SparkHttpError.NotFound)) {
+                  throw reason;
+                }
+              })
               .then(() => {
                 throw new Error(`mccoy still has active calls`);
               });
