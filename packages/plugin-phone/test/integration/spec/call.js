@@ -477,7 +477,7 @@ describe(`plugin-phone`, function() {
       it(`ends an in-progress call`, () => {
         const handler = handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => {
           let mccoyCall;
-          const handler = Promise.all([
+          return Promise.all([
             mccoy.spark.phone.when(`call:incoming`)
               .then(([c]) => {
                 handler.add(c);
