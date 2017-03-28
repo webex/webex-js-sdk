@@ -530,7 +530,12 @@ const Call = SparkPlugin.extend({
       }
     }
 
-    this.spark.phone.register()
+    this.logger.info(this.registered, !!this.spark.device.url, this.connected, this.spark.mercury.connected, this.spark.device.url);
+
+    // Note: mercury.connect() will call device.register() if need. We're not
+    // using phone.register() here because it guarantees a device refresh, which
+    // is probably unnecessary.
+    this.spark.mercury.connect()
       .then(() => this._join(`create`, invitee, options))
       .then(tap(() => this.logger.info(`call: dialed`)))
       .catch((reason) => {
