@@ -8,7 +8,7 @@
 /* global RTCPeerConnection, RTCSessionDescription */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {base64, oneFlight, retry, tap} from '@ciscospark/common';
+import {base64, oneFlight, retry, tap, whileInFlight} from '@ciscospark/common';
 import {
   USE_INCOMING,
   FETCH
@@ -128,6 +128,15 @@ const Call = SparkPlugin.extend({
      * @readonly
      */
     localMediaStreamUrl: `string`,
+
+    locusJoinInFlight: {
+      default: false,
+      type: `boolean`
+    },
+    locusLeaveInFlight: {
+      default: false,
+      type: `boolean`
+    },
     /**
      * Object URL that refers to {@link Call#remoteMediaStream}. Will be
      * automatically deallocated when the call ends
@@ -477,6 +486,7 @@ const Call = SparkPlugin.extend({
    * @returns {Promise}
    */
   @oneFlight
+  @whileInFlight(`locusJoinInFlight`)
   answer(options) {
     this.logger.info(`call: answering`);
     if (!this.locus || this.direction === `out`) {
@@ -519,6 +529,7 @@ const Call = SparkPlugin.extend({
    */
   @oneFlight
   dial(invitee, options) {
+    this.locusJoinInFlight = true;
     this.logger.info(`call: dialing`);
 
     if (base64.validate(invitee)) {
@@ -541,6 +552,9 @@ const Call = SparkPlugin.extend({
       .then(tap(() => this.logger.info(`call: dialed`)))
       .catch((reason) => {
         this.trigger(`error`, reason);
+      })
+      .then(() => {
+        this.locusJoinInFlight = false;
       });
 
     return this;
@@ -564,13 +578,13 @@ const Call = SparkPlugin.extend({
 
     this.media.end();
 
-    if (!this.locus) {
-      if (this.locusJoinInFlight) {
-        this.logger.info(`call: no locus, waiting for rest call to complete before hanging up`);
-        return this.when(`change:locus`)
-          .then(() => this.hangup());
-      }
+    if (this.locusJoinInFlight) {
+      this.logger.info(`call: locus join in flight, waiting for rest call to complete before hanging up`);
+      return this.when(`change:locusJoinInFlight`)
+        .then(() => this.hangup());
+    }
 
+    if (!this.locus) {
       this.stopListening(this.spark.mercury);
       this.off();
       this.logger.info(`call: hang up complete, call never created`);
@@ -587,13 +601,10 @@ const Call = SparkPlugin.extend({
    * @returns {Promise}
    */
   @oneFlight
+  @whileInFlight(`locusLeaveInFlight`)
   _hangup() {
-    this.locusLeaveInFlight = true;
     return this.spark.locus.leave(this.locus)
       .then((locus) => this._setLocus(locus))
-      .then(() => {
-        this.locusLeaveInFlight = false;
-      })
       .then(tap(() => this.stopListening(this.spark.mercury)))
       .then(tap(() => this.off()))
       .then(tap(() => this.logger.info(`call: hung up`)));
@@ -871,9 +882,14 @@ const Call = SparkPlugin.extend({
       }))
       .then((locus) => {
         this._setLocus(locus);
-        this.locusJoinInFlight = false;
         const answer = JSON.parse(this.mediaConnection.remoteSdp).sdp;
-        return this.media.acceptAnswer(answer);
+        this.logger.info(`accepting offer`);
+        this.logger.info(`peer state`, this.media.peer && this.media.peer.signalingState);
+        if (!this.media.ended) {
+          return this.media.acceptAnswer(answer)
+            .then(() => this.logger.info(`offer accepted`));
+        }
+        this.logger.info(`call: already ended, not accepting answer`);
       });
   },
 

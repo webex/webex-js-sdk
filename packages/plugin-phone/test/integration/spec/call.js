@@ -521,8 +521,10 @@ describe(`plugin-phone`, function() {
               .then(([c]) => {
                 handler.add(c);
                 assert.equal(c.status, `initiated`);
-                return call.hangup()
-                  .then(() => c.when(`disconnected`, () => assert.equal(c.status, `disconnected`)));
+                return Promise.all([
+                  call.hangup(),
+                  c.when(`disconnected`, () => assert.equal(c.status, `disconnected`))
+                ]);
               });
             return p;
           });

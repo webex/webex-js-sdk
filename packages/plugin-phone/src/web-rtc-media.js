@@ -101,6 +101,10 @@ const WebRTCMedia = AmpState.extend({
       type: `boolean`
     },
     audioConstraint: `any`,
+    ended: {
+      default: false,
+      type: `boolean`
+    },
     localMediaStream: {
       default: undefined,
       type: `object`
@@ -214,11 +218,14 @@ const WebRTCMedia = AmpState.extend({
   },
 
   end() {
-    if (this.peer && this.peer.signalingState !== `closed`) {
-      end(this.peer);
+    if (!this.ended) {
+      if (this.peer && this.peer.signalingState !== `closed`) {
+        end(this.peer);
+      }
+      this.unset(`localMediaStream`);
+      this.unset(`remoteMediaStream`);
+      this.ended = true;
     }
-    this.unset(`localMediaStream`);
-    this.unset(`remoteMediaStream`);
   },
 
   initialize(...args) {
