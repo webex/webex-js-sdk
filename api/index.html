@@ -87,16 +87,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Person" class="list-group-item">Types~Person</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#People" class="list-group-item">People</a>
 
             
@@ -108,6 +98,16 @@ title: API
                 
                   <a class="list-group-item" href="#People#list">#list</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Person" class="list-group-item">Types~Person</a>
+
+            
+
             
 
             
@@ -178,6 +178,16 @@ title: API
           </li>
         
           
+            <a href="#Types~TeamMembership" class="list-group-item">Types~TeamMembership</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
             <a href="#TeamMemberships" class="list-group-item">TeamMemberships</a>
 
             
@@ -195,16 +205,6 @@ title: API
                 
                   <a class="list-group-item" href="#TeamMemberships#update">#update</a>
                 
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~TeamMembership" class="list-group-item">Types~TeamMembership</a>
-
-            
-
             
 
             
@@ -238,6 +238,16 @@ title: API
                 
                   <a class="list-group-item" href="#Webhooks#update">#update</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Feedback" class="list-group-item">Types~Feedback</a>
+
+            
+
             
 
             
@@ -296,28 +306,18 @@ title: API
             
               <div class="list-group-item">Events</div>
               
-                <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
-              
-                <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
+                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
               
                 <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
               
-                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
+                <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
+              
+                <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
               
                 <a class="list-group-item" href="#Call.event:remoteMediaStream:change"> ⓔ remoteMediaStream:change</a>
               
                 <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
               
-            
-          </li>
-        
-          
-            <a href="#Types~Feedback" class="list-group-item">Types~Feedback</a>
-
-            
-
-            
-
             
           </li>
         
@@ -1693,84 +1693,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Person'>Types~Person</h2>
-    
-  
-
-  
-
-  <pre>Types~Person</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(uuid)</code>
-      
-      : Unique identifier for the person
-
-      </h4>
-      
-    
-      <h4>
-      emails
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;email&#x3E;)</code>
-      
-      : Email addresses of the person
-
-      </h4>
-      
-    
-      <h4>
-      displayName
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : Display name of the person
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : The date and time that the person was created
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='People'>People</h2>
     
   
@@ -2004,6 +1926,84 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     </div>
   
 </section>
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Person'>Types~Person</h2>
+    
+  
+
+  
+
+  <pre>Types~Person</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(uuid)</code>
+      
+      : Unique identifier for the person
+
+      </h4>
+      
+    
+      <h4>
+      emails
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;email&#x3E;)</code>
+      
+      : Email addresses of the person
+
+      </h4>
+      
+    
+      <h4>
+      displayName
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : Display name of the person
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : The date and time that the person was created
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
@@ -2972,6 +2972,87 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
         
           <section>
   
+    <h2 id='Types~TeamMembership'>Types~TeamMembership</h2>
+    
+  
+
+  
+
+  <pre>Types~TeamMembership</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (server generated) The team ID
+
+      </h4>
+      
+    
+      <h4>
+      personId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The person ID
+
+      </h4>
+      
+    
+      <h4>
+      personEmail
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The email address of the person
+
+      </h4>
+      
+    
+      <h4>
+      isModerator
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Set to 
+<code>true</code>
+ to make the person a team
+moderator
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='TeamMemberships'>TeamMemberships</h2>
     
   
@@ -3401,87 +3482,6 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
     </div>
   
 </section>
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~TeamMembership'>Types~TeamMembership</h2>
-    
-  
-
-  
-
-  <pre>Types~TeamMembership</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (server generated) The team ID
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The person ID
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The email address of the person
-
-      </h4>
-      
-    
-      <h4>
-      isModerator
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Set to 
-<code>true</code>
- to make the person a team
-moderator
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
 
   
 
@@ -4054,6 +4054,82 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     </div>
   
 </section>
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Feedback'>Types~Feedback</h2>
+    
+  
+
+  <p>Payload for <a href="#Call#sendFeedback">Call#sendFeedback</a></p>
+
+
+  <pre>Types~Feedback</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      userRating
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>)</code>
+      
+      : Number between 1 and 5 (5 being best) to let
+the user score the call
+
+      </h4>
+      
+    
+      <h4>
+      userComments
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : Freeform feedback from the user about the
+call
+
+      </h4>
+      
+    
+      <h4>
+      includeLogs
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
+      
+      : set to true to submit client logs to the
+Cisco Spark cloud. Note: at this time, all logs, not just call logs,
+generated by the sdk will be uploaded to the Spark Cloud. Care has been taken
+to avoid including PII in these logs, but if you&#x27;ve taken advantage of the
+SDK&#x27;s logger, you should make sure to avoid logging PII as well.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
@@ -5031,51 +5107,14 @@ even if renegotiation has not completed)</p>
     <h3>Events</h3>
     <section>
   
-    <h3 id='Call.event:localMediaStream:change'>localMediaStream:change</h3>
+    <h3 id='Call.event:disconnected'>disconnected</h3>
     <div>
       <section>
   
 
   
 
-  <pre>localMediaStream:change</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:ringing'>ringing</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>ringing</pre>
+  <pre>disconnected</pre>
 
   
 
@@ -5142,14 +5181,51 @@ even if renegotiation has not completed)</p>
 
     </div>
   
-    <h3 id='Call.event:disconnected'>disconnected</h3>
+    <h3 id='Call.event:ringing'>ringing</h3>
     <div>
       <section>
   
 
   
 
-  <pre>disconnected</pre>
+  <pre>ringing</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:localMediaStream:change'>localMediaStream:change</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>localMediaStream:change</pre>
 
   
 
@@ -5254,82 +5330,6 @@ even if renegotiation has not completed)</p>
     </div>
   
 </section>
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Feedback'>Types~Feedback</h2>
-    
-  
-
-  <p>Payload for <a href="#Call#sendFeedback">Call#sendFeedback</a></p>
-
-
-  <pre>Types~Feedback</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      userRating
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>)</code>
-      
-      : Number between 1 and 5 (5 being best) to let
-the user score the call
-
-      </h4>
-      
-    
-      <h4>
-      userComments
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : Freeform feedback from the user about the
-call
-
-      </h4>
-      
-    
-      <h4>
-      includeLogs
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
-      
-      : set to true to submit client logs to the
-Cisco Spark cloud. Note: at this time, all logs, not just call logs,
-generated by the sdk will be uploaded to the Spark Cloud. Care has been taken
-to avoid including PII in these logs, but if you&#x27;ve taken advantage of the
-SDK&#x27;s logger, you should make sure to avoid logging PII as well.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
 
   
 
