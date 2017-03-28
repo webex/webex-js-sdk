@@ -835,19 +835,25 @@ const Call = SparkPlugin.extend({
       });
     }
 
-    this.media.set({
-      audio: options.constraints.audio,
-      video: options.constraints.video
-    });
+    const mediaOptions = {};
+    if (options.constraints) {
+      mediaOptions.constraints = {
+        audio: options.constraints.audio,
+        video: options.constraints.video
+      };
+    }
 
     if (options.offerOptions) {
-      if (options.offerOptions.offerToReceiveAudio) {
-        this.media.set({offerToReceiveAudio: options.offerOptions.offerToReceiveAudio});
-      }
-      if (options.offerOptions.offerToReceiveVideo) {
-        this.media.set({offerToReceiveVideo: options.offerOptions.offerToReceiveVideo});
-      }
+      mediaOptions.offerOptions = {
+        offerToReceiveAudio: options.offerOptions.offerToReceiveAudio,
+        offerToReceiveVideo: options.offerOptions.offerToReceiveVideo
+      };
     }
+
+    if (mediaOptions.offerOptions || mediaOptions.constraints) {
+      this.media.set(mediaOptions);
+    }
+
 
     if (!target.correlationId) {
       this.correlationId = options.correlationId = uuid.v4();
