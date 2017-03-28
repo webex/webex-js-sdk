@@ -443,7 +443,12 @@ describe(`plugin-phone`, function() {
       it(`is a noop for outbound calls`, () => handleErrorEvent(spock.spark.phone.dial(mccoy.id), (call) => {
         sinon.spy(call, `_join`);
         return assert.isFulfilled(call.answer())
-          .then(() => assert.notCalled(call._join));
+          .then(() => {
+            // We called _join to create the call
+            assert.calledWith(call._join, `create`);
+            // But we did not call _join when we invoked answer()
+            assert.neverCalledWith(call._join, `join`);
+          });
       }));
 
       it(`is a noop for answered calls`, () => handleErrorEvent(spock.spark.phone.dial(mccoy.id), () => {

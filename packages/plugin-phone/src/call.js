@@ -480,6 +480,7 @@ const Call = SparkPlugin.extend({
   answer(options) {
     this.logger.info(`call: answering`);
     if (!this.locus || this.direction === `out`) {
+      this.logger.info(`call: outbound call, answer() is a noop`);
       return Promise.resolve();
     }
     // Locus may think we're joined on this device if we e.g. reload the page,
