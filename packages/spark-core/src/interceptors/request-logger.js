@@ -26,27 +26,27 @@ export default class RequestLoggerInterceptor extends Interceptor {
    */
   onRequest(options) {
     const logger = get(this, `spark.logger`, console);
-    logger.log(`/**********************************************************************\\ `);
-    logger.log(`Request:`, options.method || `GET`, options.uri);
-    logger.log(`WEBEX_TRACKINGID: `, get(options, `headers.trackingid`));
+    logger.info(`/**********************************************************************\\ `);
+    logger.info(`Request:`, options.method || `GET`, options.uri);
+    logger.info(`WEBEX_TRACKINGID: `, get(options, `headers.trackingid`));
     /* istanbul ignore next */
     if (has(options, `headers.x-trans-id`)) {
-      logger.log(`X-Trans-ID: `, get(options, `headers.x-trans-id`));
+      logger.info(`X-Trans-ID: `, get(options, `headers.x-trans-id`));
     }
     if (has(this, `spark.device.userId`)) {
-      logger.log(`User ID:`, get(this, `spark.device.userId`));
+      logger.info(`User ID:`, get(this, `spark.device.userId`));
     }
     const now = new Date();
     if (process.env.ENABLE_VERBOSE_NETWORK_LOGGING) {
-      logger.log(`timestamp (start): `, now.getTime(), now.toISOString());
+      logger.info(`timestamp (start): `, now.getTime(), now.toISOString());
       try {
         // Determine if body is a buffer without relying on Buffer to avoid
         // node/browser conflicts.
         if (options.body && options.body.length && !isArray(options.body) && !isString(options.body)) {
-          logger.log(`Request Options:`, util.inspect(omit(options, `body`), {depth: null}));
+          logger.info(`Request Options:`, util.inspect(omit(options, `body`), {depth: null}));
         }
         else {
-          logger.log(`Request Options:`, util.inspect(options, {depth: null}));
+          logger.info(`Request Options:`, util.inspect(options, {depth: null}));
         }
       }
       catch (e) {
@@ -69,7 +69,7 @@ export default class RequestLoggerInterceptor extends Interceptor {
     this.onRequest(options);
     const logger = get(this, `spark.logger`, console);
     logger.error(`Request Failed: `, reason.stack);
-    logger.log(`\\**********************************************************************/`);
+    logger.info(`\\**********************************************************************/`);
 
     return Promise.reject(reason);
   }

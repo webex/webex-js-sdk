@@ -31,20 +31,20 @@ export default class ResponseLoggerInterceptor extends Interceptor {
 
     const logger = get(this, `spark.logger`, console);
     if (process.env.ENABLE_VERBOSE_NETWORK_LOGGING) {
-      logger.log(`timestamp (end): `, now.getTime(), now.toISOString());
+      logger.info(`timestamp (end): `, now.getTime(), now.toISOString());
       if (typeof response.body === `string` || Buffer.isBuffer(response.body)) {
-        logger.log(`Response: `, `Not printed, it\`s probably a file`);
+        logger.info(`Response: `, `Not printed, it\`s probably a file`);
       }
       else if (typeof response.body === `object`) {
         try {
-          logger.log(`Response: `, util.inspect(omit(response.body, `features`), {depth: null}));
+          logger.info(`Response: `, util.inspect(omit(response.body, `features`), {depth: null}));
         }
         catch (err) {
-          logger.log(`Response: `, `[Not Serializable]`, err);
+          logger.info(`Response: `, `[Not Serializable]`, err);
         }
       }
     }
-    logger.log(`\\**********************************************************************/`);
+    logger.info(`\\**********************************************************************/`);
 
     return response;
   }
@@ -61,7 +61,7 @@ export default class ResponseLoggerInterceptor extends Interceptor {
 
     const logger = get(this, `spark.logger`, console);
     if (process.env.ENABLE_VERBOSE_NETWORK_LOGGING) {
-      logger.log(`timestamp (end): `, now.getTime(), now.toISOString());
+      logger.info(`timestamp (end): `, now.getTime(), now.toISOString());
       try {
         logger.error(`Response: `, util.inspect(reason.body, {depth: null}));
       }
@@ -69,7 +69,7 @@ export default class ResponseLoggerInterceptor extends Interceptor {
         logger.error(`Response: `, reason.body);
       }
     }
-    logger.log(`\\**********************************************************************/`);
+    logger.info(`\\**********************************************************************/`);
 
     return Promise.reject(reason);
   }
@@ -82,9 +82,9 @@ export default class ResponseLoggerInterceptor extends Interceptor {
    */
   printResponseHeader(options, response) {
     const logger = get(this, `spark.logger`, console);
-    logger.log(`Status Code:`, response.statusCode);
-    logger.log(`WEBEX_TRACKINGID:`, get(options, `headers.trackingid`) || get(response, `headers.trackingid`));
-    logger.log(`Network duration:`, options.$timings.networkEnd - options.$timings.networkStart);
-    logger.log(`Processing duration:`, options.$timings.requestEnd - options.$timings.requestStart);
+    logger.info(`Status Code:`, response.statusCode);
+    logger.info(`WEBEX_TRACKINGID:`, get(options, `headers.trackingid`) || get(response, `headers.trackingid`));
+    logger.info(`Network duration:`, options.$timings.networkEnd - options.$timings.networkStart);
+    logger.info(`Processing duration:`, options.$timings.requestEnd - options.$timings.requestStart);
   }
 }
