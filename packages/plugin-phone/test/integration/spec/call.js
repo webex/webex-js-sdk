@@ -46,27 +46,33 @@ describe(`plugin-phone`, function() {
         .catch((reason) => console.warn(`could not disconnect mccoy from mercury`, reason))
     ]));
 
-    beforeEach(() => retry(() => spock && spock.spark.locus.list()
-      .then((loci) => {
-        if (loci.length) {
-          return spock.spark.locus.leave({self: {url: loci[0].self.url}})
-            .then(() => {
-              throw new Error(`spock still has active calls`);
-            });
-        }
-        return Promise.resolve();
-      })));
+    beforeEach(`wait for spock's calls to end`, function() {
+      this.timeout(120000);
+      return retry(() => spock && spock.spark.locus.list()
+        .then((loci) => {
+          if (loci.length) {
+            return spock.spark.locus.leave({self: {url: loci[0].self.url}})
+              .then(() => {
+                throw new Error(`spock still has active calls`);
+              });
+          }
+          return Promise.resolve();
+        }));
+    });
 
-    beforeEach(() => retry(() => mccoy && mccoy.spark.locus.list()
-      .then((loci) => {
-        if (loci.length) {
-          return mccoy.spark.locus.leave({self: {url: loci[0].self.url}})
-            .then(() => {
-              throw new Error(`mccoy still has active calls`);
-            });
-        }
-        return Promise.resolve();
-      })));
+    beforeEach(`wait for mccoy's calls to end`, function() {
+      this.timeout(120000);
+      return retry(() => mccoy && mccoy.spark.locus.list()
+        .then((loci) => {
+          if (loci.length) {
+            return mccoy.spark.locus.leave({self: {url: loci[0].self.url}})
+              .then(() => {
+                throw new Error(`mccoy still has active calls`);
+              });
+          }
+          return Promise.resolve();
+        }));
+    });
 
     describe(`#id`, () => {
       // TODO [SSDK-572] need call id
