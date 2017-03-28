@@ -452,57 +452,71 @@ describe(`plugin-phone`, function() {
     });
 
     describe(`#hangup()`, () => {
-      it(`ends an in-progress call`, () => handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => {
-        let mccoyCall;
-        return Promise.all([
-          mccoy.spark.phone.when(`call:incoming`)
-            .then(([c]) => {
-              mccoyCall = c;
-              c.answer();
-            }),
-          call.when(`connected`)
-        ])
-          .then(() => {
-            call.hangup();
-            return Promise.all([
-              call.when(`disconnected`)
-                .then(() => assert.equal(call.status, `disconnected`)),
-              mccoyCall.when(`disconnected`)
-                .then(() => assert.equal(mccoyCall.status, `disconnected`))
-            ]);
-          });
-      }));
+      it(`ends an in-progress call`, () => {
+        const handler = handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => {
+          let mccoyCall;
+          const handler = Promise.all([
+            mccoy.spark.phone.when(`call:incoming`)
+              .then(([c]) => {
+                handler.add(c);
+                mccoyCall = c;
+                c.answer();
+              }),
+            call.when(`connected`)
+          ])
+            .then(() => {
+              call.hangup();
+              return Promise.all([
+                call.when(`disconnected`)
+                  .then(() => assert.equal(call.status, `disconnected`)),
+                mccoyCall.when(`disconnected`)
+                  .then(() => assert.equal(mccoyCall.status, `disconnected`))
+              ]);
+            });
+        });
 
-      it(`gets called when the local party is the last member of the call`, () => handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => {
-        let mccoyCall;
-        return Promise.all([
-          mccoy.spark.phone.when(`call:incoming`)
-            .then(([c]) => {
-              mccoyCall = c;
-              return c.answer();
-            }),
-          call.when(`connected`)
-        ])
-          .then(() => {
-            assert.equal(call.status, `connected`);
-            assert.equal(mccoyCall.status, `connected`);
-            const hangupSpy = sinon.spy(call, `hangup`);
-            mccoyCall.hangup();
-            return call.when(`disconnected`)
-              .then(() => assert.called(hangupSpy));
-          });
-      }));
+        return handler;
+      });
+
+      it(`gets called when the local party is the last member of the call`, () => {
+        const handler = handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => {
+          let mccoyCall;
+          const handler = Promise.all([
+            mccoy.spark.phone.when(`call:incoming`)
+              .then(([c]) => {
+                handler.add(c);
+                mccoyCall = c;
+                return c.answer();
+              }),
+            call.when(`connected`)
+          ])
+            .then(() => {
+              assert.equal(call.status, `connected`);
+              assert.equal(mccoyCall.status, `connected`);
+              const hangupSpy = sinon.spy(call, `hangup`);
+              mccoyCall.hangup();
+              return call.when(`disconnected`)
+                .then(() => assert.called(hangupSpy));
+            });
+        });
+
+        return handler;
+      });
 
       describe(`when the remote party has not yet answered`, () => {
-        it(`ends the call`, () => handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => {
-          const p = mccoy.spark.phone.when(`call:incoming`)
-            .then(([c]) => {
-              assert.equal(c.status, `initiated`);
-              return call.hangup()
-                .then(() => c.when(`disconnected`, () => assert.equal(c.status, `disconnected`)));
-            });
-          return p;
-        }));
+        it(`ends the call`, () => {
+          const handler = handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => {
+            const p = mccoy.spark.phone.when(`call:incoming`)
+              .then(([c]) => {
+                handler.add(c);
+                assert.equal(c.status, `initiated`);
+                return call.hangup()
+                  .then(() => c.when(`disconnected`, () => assert.equal(c.status, `disconnected`)));
+              });
+            return p;
+          });
+          return handler;
+        });
       });
     });
 

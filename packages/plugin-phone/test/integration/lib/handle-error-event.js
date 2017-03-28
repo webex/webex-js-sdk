@@ -10,15 +10,20 @@ export default function handleErrorEvent(emitter, fn) {
   let r;
   const p = new Promise((resolve, reject) => {
     r = reject;
-    emitter.on(`error`, reject);
+    emitter.once(`error`, reject);
   });
 
-  return Promise.race([p, fn(emitter)])
+  const handler = Promise.race([p, fn(emitter)])
     .then(unbind)
     .catch((reason) => {
       unbind();
       throw reason;
     });
+
+  // Make it possible to add additional emitters
+  handler.add = (e) => e.once(`error`, r);
+
+  return handler;
 
   function unbind() {
     try {
