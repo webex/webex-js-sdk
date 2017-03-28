@@ -837,10 +837,8 @@ const Call = SparkPlugin.extend({
 
     const mediaOptions = {};
     if (options.constraints) {
-      mediaOptions.constraints = {
-        audio: options.constraints.audio,
-        video: options.constraints.video
-      };
+      mediaOptions.audio = options.constraints.audio;
+      mediaOptions.video = options.constraints.video;
     }
 
     if (options.offerOptions) {
