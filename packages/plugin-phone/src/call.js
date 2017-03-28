@@ -808,6 +808,7 @@ const Call = SparkPlugin.extend({
   @oneFlight
   // eslint-disable-next-line complexity
   _join(locusMethodName, target, options = {}) {
+
     if (options.localMediaStream) {
       this.media.set(`localMediaStream`, options.localMediaStream);
     }
@@ -832,12 +833,12 @@ const Call = SparkPlugin.extend({
         offerToReceiveAudio: recvOnly || !!options.constraints.audio,
         offerToReceiveVideo: recvOnly || !!options.constraints.video
       });
-
-      this.media.set({
-        audio: options.constraints.audio,
-        video: options.constraints.video
-      });
     }
+
+    this.media.set({
+      audio: options.constraints.audio,
+      video: options.constraints.video
+    });
 
     if (options.offerOptions) {
       if (options.offerOptions.offerToReceiveAudio) {
