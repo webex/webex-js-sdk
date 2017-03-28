@@ -202,7 +202,7 @@ export const createOffer = curry((pc, offerOptions) => {
     .then(tap((offer) => {
       if (process.env.LOG_SDP) {
         // eslint-disable-next-line no-console
-        console.log(`offer`, offer.sdp);
+        console.info(`offer`, offer.sdp);
       }
     }))
     .then((offer) => pc.setLocalDescription(offer))
@@ -222,7 +222,7 @@ export const createOffer = curry((pc, offerOptions) => {
 export const acceptAnswer = curry((pc, sdp) => {
   if (process.env.LOG_SDP) {
     // eslint-disable-next-line no-console
-    console.log(`answer`, sdp);
+    console.info(`answer`, sdp);
   }
   return pc.setRemoteDescription(new RTCSessionDescription({
     sdp,

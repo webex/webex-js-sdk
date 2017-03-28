@@ -178,11 +178,9 @@ const Device = SparkPlugin.extend({
     this.logger.info(`device: refreshing`);
 
     if (!this.registered) {
-      this.logger.info(`device: device not registered, refreshing`);
+      this.logger.info(`device: device not registered, registering`);
       return this.register();
     }
-
-    this.logger.info(`device: refreshing`);
 
     return this.request({
       method: `PUT`,
