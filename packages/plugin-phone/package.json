@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-phone",
-  "version": "0.7.72",
+  "version": "0.7.73",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
