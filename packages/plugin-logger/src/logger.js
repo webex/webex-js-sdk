@@ -187,6 +187,10 @@ levels.forEach((level) => {
 
       if (this.shouldPrint(level)) {
         const toPrint = typeof window === `undefined` ? filtered : stringified;
+        /* istanbul ignore if */
+        if (process.env.NODE_ENV === `test` && this.spark && this.spark.device && this.spark.device.url) {
+          toPrint.unshift(this.spark.device.url.slice(-3));
+        }
         // eslint-disable-next-line no-console
         console[impl](...toPrint);
       }
