@@ -54,7 +54,7 @@ describe(`plugin-credentials`, () => {
         assert.isTrue(token.canDownscope);
 
         token.spark.config.credentials.oauth.client_secret = undefined;
-        assert.isFalse(token.canDownscope);
+        assert.isTrue(token.canDownscope);
 
         token.spark.config.credentials.oauth.client_secret = `blarg`;
         assert.isTrue(token.canDownscope);
