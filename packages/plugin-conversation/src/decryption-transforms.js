@@ -42,7 +42,7 @@ export const transforms = toArray(`inbound`, {
     if (usableKey) {
       promises.push(ctx.transform(`decryptPropDisplayName`, usableKey, conversation)
         .catch((error) => {
-          console.error(error.stack);
+          ctx.spark.logger.error(`plugin-conversation: failed to handle decryption `, error.stack || error.toString());
           Promise.resolve(decryptionFailureMessage);
         })
       );
