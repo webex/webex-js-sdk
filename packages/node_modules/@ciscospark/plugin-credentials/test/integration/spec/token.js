@@ -55,12 +55,16 @@ describe(`plugin-credentials`, function() {
     });
 
     describe(`#revoke()`, () => {
-      it(`revokes the token`, () => supertoken.revoke()
-        .then(() => {
-          assert.isUndefined(supertoken.access_token);
-          assert.isDefined(supertoken.refresh_token);
-          assert.isUndefined(supertoken.expires_in);
-        }));
+      it(`revokes the token`, () => {
+        supertoken.hasPassword = true;
+        return supertoken.revoke()
+          .then(() => {
+            assert.isUndefined(supertoken.access_token);
+            assert.isDefined(supertoken.refresh_token);
+            assert.isUndefined(supertoken.expires_in);
+            assert.isFalse(supertoken.hasPassword);
+          });
+      });
     });
   });
 });
