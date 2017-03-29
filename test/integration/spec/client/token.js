@@ -63,13 +63,16 @@ describe('Client', function() {
 
       describe('#revoke()', function() {
         it('revokes the token', function() {
+          supertoken.hasPassword = true;
           return supertoken.refresh()
             .then(function(token) {
+              assert.isTrue(token.hasPassword);
               return token.revoke()
                 .then(function() {
                   assert.isUndefined(token.access_token);
                   assert.isDefined(token.refresh_token);
                   assert.isUndefined(token.expires_in);
+                  assert.isFalse(token.hasPassword);
                   assert.isUndefined(token.token_type);
                 });
             });

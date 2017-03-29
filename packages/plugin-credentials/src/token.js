@@ -288,6 +288,7 @@ const Token = SparkPlugin.extend({
           `access_token`,
           `expires`,
           `expires_in`,
+          `hasPassword`,
           `token_type`
         ]);
         this.logger.info(`token: access token revoked`);
