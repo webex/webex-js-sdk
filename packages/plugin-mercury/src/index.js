@@ -18,4 +18,10 @@ export {default as default} from './mercury';
 export {default as Mercury} from './mercury';
 export {default as Socket} from './socket';
 export {default as config} from './config';
-export {AuthorizationError, ConnectionError} from './errors';
+export {
+  BadRequest,
+  ConnectionError,
+  Forbidden,
+  NotAuthorized
+  // NotFound
+} from './errors';

@@ -4,7 +4,13 @@
  */
 
 import {EventEmitter} from 'events';
-import {AuthorizationError, ConnectionError} from '../errors';
+import {
+  BadRequest,
+  ConnectionError,
+  Forbidden,
+  NotAuthorized
+  // NotFound
+} from '../errors';
 import {checkRequired} from '@ciscospark/common';
 import {defaults, has, isObject} from 'lodash';
 import uuid from 'uuid';
@@ -191,6 +197,11 @@ export default class Socket extends EventEmitter {
         url += `${url.includes(`?`) ? `&` : `?`}bufferStates=true`;
       }
 
+      // always request verbose close codes
+      if (!url.includes(`aliasHttpStatus`)) {
+        url += `${url.includes(`?`) ? `&` : `?`}aliasHttpStatus=true`;
+      }
+
       const WebSocket = Socket.getWebSocketConstructor();
 
       this.logger.info(`socket: creating WebSocket`);
@@ -200,10 +211,18 @@ export default class Socket extends EventEmitter {
 
       socket.onclose = (event) => {
         this.logger.info(`socket: closed while connecting`, event.code, event.reason);
-        if (event.code === 1008) {
-          return reject(new AuthorizationError(event));
+        switch (event.code) {
+        case 4400:
+          return reject(new BadRequest(event));
+        case 4401:
+          return reject(new NotAuthorized(event));
+        case 4403:
+          return reject(new Forbidden(event));
+        // case 4404:
+        //   return reject(new NotFound(event));
+        default:
+          return reject(new ConnectionError(event));
         }
-        return reject(new ConnectionError(event));
       };
 
       socket.onopen = () => {

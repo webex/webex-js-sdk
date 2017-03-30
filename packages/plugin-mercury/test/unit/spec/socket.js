@@ -7,7 +7,15 @@ import {forEach} from 'lodash';
 import {assert} from '@ciscospark/test-helper-chai';
 import MockWebSocket from '@ciscospark/test-helper-mock-web-socket';
 import sinon from '@ciscospark/test-helper-sinon';
-import {AuthorizationError, config, ConnectionError, Socket} from '../..';
+import {
+  BadRequest,
+  NotAuthorized,
+  Forbidden,
+  // NotFound,
+  config,
+  ConnectionError,
+  Socket
+} from '../..';
 import uuid from 'uuid';
 import lolex from 'lolex';
 
@@ -195,13 +203,13 @@ describe(`plugin-mercury`, () => {
         let s = new Socket();
         s.open(`ws://example.com`, mockoptions);
         assert.match(s.url, /outboundWireFormat=text/);
-        assert.equal(s.url, `ws://example.com?outboundWireFormat=text&bufferStates=true`);
+        assert.equal(s.url, `ws://example.com?outboundWireFormat=text&bufferStates=true&aliasHttpStatus=true`);
         const p1 = s.close();
 
         s = new Socket();
         s.open(`ws://example.com?queryparam=something`, mockoptions);
         assert.match(s.url, /outboundWireFormat=text/);
-        assert.equal(s.url, `ws://example.com?queryparam=something&outboundWireFormat=text&bufferStates=true`);
+        assert.equal(s.url, `ws://example.com?queryparam=something&outboundWireFormat=text&bufferStates=true&aliasHttpStatus=true`);
 
         return Promise.all([
           p1,
@@ -213,14 +221,14 @@ describe(`plugin-mercury`, () => {
         const s = new Socket();
         s.open(`ws://example.com?mercuryRegistrationStatus=true`, mockoptions);
         assert.notMatch(s.url, /bufferStates/);
-        assert.equal(s.url, `ws://example.com?mercuryRegistrationStatus=true&outboundWireFormat=text`);
+        assert.equal(s.url, `ws://example.com?mercuryRegistrationStatus=true&outboundWireFormat=text&aliasHttpStatus=true`);
         return s.close();
       });
 
       it(`sets the underlying socket\'s binary type`, () => assert.equal(socket.binaryType, `arraybuffer`));
 
-      describe(`when connection fails for authorization reasons`, () => {
-        it(`rejects with an AuthorizationError`, () => {
+      describe(`when connection fails because this is a service account`, () => {
+        it(`rejects with a BadRequest`, () => {
           const s = new Socket();
           const promise = s.open(`ws://example.com`, mockoptions);
           mockWebSocket.readyState = 1;
@@ -230,20 +238,98 @@ describe(`plugin-mercury`, () => {
           assert.equal(firstCallArgs.type, `authorization`);
 
           mockWebSocket.emit(`close`, {
-            code: 1008,
-            reason: `Authentication Failed`
+            code: 4400,
+            reason: `Service accounts can't use this endpoint`
           });
 
           return assert.isRejected(promise)
             .then((reason) => {
-              assert.instanceOf(reason, AuthorizationError);
-              assert.match(reason.code, 1008);
-              assert.match(reason.reason, /Authentication Failed/);
-              assert.match(reason.message, /Authentication Failed/);
+              assert.instanceOf(reason, BadRequest);
+              assert.match(reason.code, 4400);
+              assert.match(reason.reason, /Service accounts can't use this endpoint/);
+              assert.match(reason.message, /Service accounts can't use this endpoint/);
               return s.close();
             });
         });
       });
+
+      describe(`when connection fails because of an invalid token`, () => {
+        it(`rejects with a NotAuthorized`, () => {
+          const s = new Socket();
+          const promise = s.open(`ws://example.com`, mockoptions);
+          mockWebSocket.readyState = 1;
+          mockWebSocket.emit(`open`);
+
+          const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
+          assert.equal(firstCallArgs.type, `authorization`);
+
+          mockWebSocket.emit(`close`, {
+            code: 4401,
+            reason: `Authorization Failed`
+          });
+
+          return assert.isRejected(promise)
+            .then((reason) => {
+              assert.instanceOf(reason, NotAuthorized);
+              assert.match(reason.code, 4401);
+              assert.match(reason.reason, /Authorization Failed/);
+              assert.match(reason.message, /Authorization Failed/);
+              return s.close();
+            });
+        });
+      });
+
+      describe(`when connection fails because of a missing entitlement`, () => {
+        it(`rejects with a Forbidden`, () => {
+          const s = new Socket();
+          const promise = s.open(`ws://example.com`, mockoptions);
+          mockWebSocket.readyState = 1;
+          mockWebSocket.emit(`open`);
+
+          const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
+          assert.equal(firstCallArgs.type, `authorization`);
+
+          mockWebSocket.emit(`close`, {
+            code: 4403,
+            reason: `Not entitled`
+          });
+
+          return assert.isRejected(promise)
+            .then((reason) => {
+              assert.instanceOf(reason, Forbidden);
+              assert.match(reason.code, 4403);
+              assert.match(reason.reason, /Not entitled/);
+              assert.match(reason.message, /Not entitled/);
+              return s.close();
+            });
+        });
+      });
+
+      // describe(`when connection fails because the websocket registation has expired`, () => {
+      //   it(`rejects with a NotFound`, () => {
+      //     const s = new Socket();
+      //     const promise = s.open(`ws://example.com`, mockoptions);
+      //     mockWebSocket.readyState = 1;
+      //     mockWebSocket.emit(`open`);
+      //
+      //     const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
+      //     assert.equal(firstCallArgs.type, `authorization`);
+      //
+      //     mockWebSocket.emit(`close`, {
+      //       code: 4404,
+      //       reason: `Expired registration`
+      //     });
+      //
+      //     return assert.isRejected(promise)
+      //       .then((reason) => {
+      //         assert.instanceOf(reason, NotFound);
+      //         assert.match(reason.code, 4404);
+      //         assert.match(reason.reason, /Expired registration/);
+      //         assert.match(reason.message, /Expired registration/);
+      //         return s.close();
+      //       });
+      //   });
+      // });
 
       describe(`when connection fails for non-authorization reasons`, () => {
         it(`rejects with the close event's reason`, () => {

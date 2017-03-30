@@ -10,7 +10,12 @@ import {set} from 'lodash';
 import S from 'string';
 import backoff from 'backoff';
 import Socket from './socket';
-import {AuthorizationError} from './errors';
+import {
+  BadRequest,
+  Forbidden,
+  NotAuthorized
+  // NotFound
+} from './errors';
 
 const normalReconnectReasons = [
   `idle`,
@@ -142,16 +147,29 @@ const Mercury = SparkPlugin.extend({
           this._emit(`connection_failed`, reason, {retries: this.backoffCall.getNumRetries()});
         }
         this.logger.info(`mercury: connection attempt failed`, reason);
-        if (reason instanceof AuthorizationError) {
+        // NotAuthorized implies expired token
+        if (reason instanceof NotAuthorized) {
           this.logger.info(`mercury: received authorization error, reauthorizing`);
-          return this.spark.refresh()
+          return this.spark.credentials.refresh({force: true})
             .then(() => callback(reason));
         }
-
+        // // NotFound implies expired web socket url
+        // else if (reason instanceof NotFound) {
+        //   this.logger.info(`mercury: received not found error, refreshing device registration`);
+        //   return this.spark.device.refresh()
+        //     .then(() => callback(reason));
+        // }
+        // BadRequest implies current credentials are for a Service Account
+        // Forbidden implies current user is not entitle for Spark
+        else if (reason instanceof BadRequest || reason instanceof Forbidden) {
+          this.logger.warn(`mercury: received unrecoverable response from mercury`);
+          this.backoffCall.abort();
+          return callback(reason);
+        }
         return callback(reason);
       })
       .catch((reason) => {
-        this.logger.error(`mercury: failed to handle connection failured`, reason);
+        this.logger.error(`mercury: failed to handle connection failure`, reason);
         callback(reason);
       });
   },

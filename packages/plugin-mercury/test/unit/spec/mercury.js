@@ -4,7 +4,15 @@
  */
 
 import {assert} from '@ciscospark/test-helper-chai';
-import Mercury, {AuthorizationError, config as mercuryConfig, ConnectionError, Socket} from '../..';
+import Mercury, {
+  BadRequest,
+  NotAuthorized,
+  Forbidden,
+  // NotFound,
+  config as mercuryConfig,
+  ConnectionError,
+  Socket
+} from '../..';
 import sinon from '@ciscospark/test-helper-sinon';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
 import MockWebSocket from '@ciscospark/test-helper-mock-web-socket';
@@ -48,6 +56,15 @@ describe(`plugin-mercury`, () => {
           mercury: Mercury
         }
       });
+      spark.credentials = {
+        refresh: sinon.stub().returns(Promise.resolve()),
+        getAuthorization: sinon.stub().returns(Promise.resolve(`Bearer FAKE`))
+      };
+      spark.device = {
+        register: sinon.stub().returns(Promise.resolve()),
+        refresh: sinon.stub().returns(Promise.resolve()),
+        webSocketUrl: `ws://example.com`
+      };
 
       spark.trackingId = `fakeTrackingId`;
       spark.config.mercury = mercuryConfig.mercury;
@@ -144,6 +161,9 @@ describe(`plugin-mercury`, () => {
           return promiseTick(4)
             .then(() => {
               assert.calledOnce(Socket.prototype.open);
+              return promiseTick(4);
+            })
+            .then(() => {
               clock.tick(mercury.config.backoffTimeReset);
               return promiseTick(4);
             })
@@ -177,12 +197,12 @@ describe(`plugin-mercury`, () => {
           });
       });
 
-      describe(`when the connection fails`, () => {
-        // skipping due to apparent bug with lolex in all browsers but Chrome.
-        skipInBrowser(it)(`backs off exponentially`, () => {
+      // skipping due to apparent bug with lolex in all browsers but Chrome.
+      skipInBrowser(describe)(`when the connection fails`, () => {
+        it(`backs off exponentially`, () => {
           socketOpenStub.restore();
           socketOpenStub = sinon.stub(Socket.prototype, `open`);
-          socketOpenStub.returns(Promise.reject(new ConnectionError()));
+          socketOpenStub.returns(Promise.reject(new ConnectionError({code: 4001})));
           // Note: onCall is zero-based
           socketOpenStub.onCall(2).returns(Promise.resolve(new MockWebSocket()));
           assert.notCalled(Socket.prototype.open);
@@ -191,6 +211,11 @@ describe(`plugin-mercury`, () => {
           return promiseTick(4)
             .then(() => {
               assert.calledOnce(Socket.prototype.open);
+              // I'm not sure why, but it's important the clock doesn't advance
+              // until a tick happens
+              return promiseTick(4);
+            })
+            .then(() => {
               clock.tick(mercury.config.backoffTimeReset);
               return promiseTick(4);
             })
@@ -214,22 +239,59 @@ describe(`plugin-mercury`, () => {
             });
         });
 
-        describe(`with \`AuthorizationError\``, () => {
-          // skipping due to an apparent bug with lolex in all browsers but Chrome.
-          skipInBrowser(it)(`refreshes the access token, reregisters the device, and reconnects the WebSocket`, () => {
+        describe(`with \`BadRequest\``, () => {
+          it(`fails permanently`, () => {
+            clock.uninstall();
             socketOpenStub.restore();
-            socketOpenStub = sinon.stub(Socket.prototype, `open`);
-            socketOpenStub.onCall(0).returns(Promise.reject(new AuthorizationError()));
-            assert.notCalled(spark.refresh);
+            socketOpenStub = sinon.stub(Socket.prototype, `open`).returns(Promise.reject(new BadRequest({code: 4400})));
+            return assert.isRejected(mercury.connect());
+          });
+        });
+
+        describe(`with \`NotAuthorized\``, () => {
+          it(`triggers a token refresh`, () => {
+            socketOpenStub.restore();
+            socketOpenStub = sinon.stub(Socket.prototype, `open`).returns(Promise.resolve());
+            socketOpenStub.onCall(0).returns(Promise.reject(new NotAuthorized({code: 4401})));
+            assert.notCalled(spark.credentials.refresh);
+            assert.notCalled(spark.device.refresh);
             const promise = mercury.connect();
-            return promiseTick(5)
+            return promiseTick(6)
               .then(() => {
-                assert.called(spark.refresh);
+                assert.called(spark.credentials.refresh);
+                assert.notCalled(spark.device.refresh);
                 clock.tick(1000);
-                return promise;
+                return assert.isFulfilled(promise);
               });
           });
         });
+
+        describe(`with \`Forbidden\``, () => {
+          it(`fails permanently`, () => {
+            clock.uninstall();
+            socketOpenStub.restore();
+            socketOpenStub = sinon.stub(Socket.prototype, `open`).returns(Promise.reject(new Forbidden({code: 4403})));
+            return assert.isRejected(mercury.connect());
+          });
+        });
+
+        // describe(`with \`NotFound\``, () => {
+        //   it(`triggers a device refresh`, () => {
+        //     socketOpenStub.restore();
+        //     socketOpenStub = sinon.stub(Socket.prototype, `open`).returns(Promise.resolve());
+        //     socketOpenStub.onCall(0).returns(Promise.reject(new NotFound({code: 4404})));
+        //     assert.notCalled(spark.credentials.refresh);
+        //     assert.notCalled(spark.device.refresh);
+        //     const promise = mercury.connect();
+        //     return promiseTick(6)
+        //       .then(() => {
+        //         assert.notCalled(spark.credentials.refresh);
+        //         assert.called(spark.device.refresh);
+        //         clock.tick(1000);
+        //         return assert.isFulfilled(promise);
+        //       });
+        //   });
+        // });
       });
 
       describe(`when connected`, () => {

@@ -9,6 +9,7 @@ import {Exception} from '@ciscospark/common';
  * Exception thrown when a websocket gets closed
  */
 export class ConnectionError extends Exception {
+  static defaultMessage = `Failed to connect to socket`;
   /**
    * @param {CloseEvent} event
    * @returns {string}
@@ -28,6 +29,29 @@ export class ConnectionError extends Exception {
 }
 
 /**
- * Exception thrown when a websocket gets closed for auth reasons
+ * thrown for CloseCode 4400
  */
-export class AuthorizationError extends ConnectionError {}
+export class BadRequest extends ConnectionError {
+  static defaultMessage = `BadRequest usually implies an attempt to use service account credentials`;
+}
+
+/**
+ * thrown for CloseCode 4401
+ */
+export class NotAuthorized extends ConnectionError {
+  static defaultMessage = `Please refresh your access token`
+}
+
+/**
+ * thrown for CloseCode 4403
+ */
+export class Forbidden extends ConnectionError {
+  static defaultMessage = `Forbidden usually implies these credentials are not entitled for Spark`;
+}
+
+// /**
+//  * thrown for CloseCode 4404
+//  */
+// export class NotFound extends ConnectionError {
+//   static defaultMessage = `Please refresh your Mercury registration (typically via a WDM refresh)`;
+// }
