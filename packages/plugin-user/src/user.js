@@ -274,15 +274,20 @@ const User = SparkPlugin.extend({
         })
         .catch((err) => Promise.reject(new Error(`failed to set authorization`, err)))
       )
-      .then(() => this.request({
-        service: `atlas`,
-        resource: `users/activations`,
-        method: `POST`,
-        headers,
-        body: options,
-        shouldRefreshAccessToken,
-        requiresClientCredentials
-      }))
+      .then(() => {
+        if (options.spoofUserAgent) {
+          headers['user-agent'] = 'wx2-android';
+        }
+        return this.request({
+          service: `atlas`,
+          resource: `users/activations`,
+          method: `POST`,
+          headers,
+          body: options,
+          shouldRefreshAccessToken,
+          requiresClientCredentials
+        });
+      })
       .then((res) => res.body);
   },
 
