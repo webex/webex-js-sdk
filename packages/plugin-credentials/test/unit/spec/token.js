@@ -47,6 +47,18 @@ describe(`plugin-credentials`, () => {
       it(`indicates if this token can be used to get a token of lesser scope`, () => {
         assert.isTrue(token.canDownscope);
 
+        token.spark.config.credentials.oauth.client_id = undefined;
+        assert.isFalse(token.canDownscope);
+
+        token.spark.config.credentials.oauth.client_id = `blarg`;
+        assert.isTrue(token.canDownscope);
+
+        token.spark.config.credentials.oauth.client_secret = undefined;
+        assert.isTrue(token.canDownscope);
+
+        token.spark.config.credentials.oauth.client_secret = `blarg`;
+        assert.isTrue(token.canDownscope);
+
         token.expires = Date.now() - 10000;
         assert.isFalse(token.canDownscope);
 
