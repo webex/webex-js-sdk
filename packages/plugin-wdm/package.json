@@ -30,7 +30,7 @@
     "babel-register": "^6.4.3",
     "eslint": "^3.5.0",
     "eslint-plugin-mocha": "^4.5.1",
-    "lolex": "^1.5.2"
+    "lolex": "^1.6.0"
   },
   "engines": {
     "node": ">=4"

@@ -221,7 +221,7 @@
     "lint-staged": "^3.3.0",
     "load-grunt-tasks": "^3.5.0",
     "lodash": "^4.13.1",
-    "lolex": "^1.5.1",
+    "lolex": "^1.6.0",
     "mkdirp": "^0.5.1",
     "mocha": "^2.5.3",
     "nue": "~0.7.0-dev",
