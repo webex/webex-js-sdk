@@ -4,6 +4,7 @@
  * @private
  */
 
+import {oneFlight} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
 import {Context, Request, Response} from 'node-kms';
 import KMSBatcher, {TIMEOUT_SYMBOL} from './kms-batcher';
@@ -134,6 +135,13 @@ const KMS = SparkPlugin.extend({
    * @param {string} options.uri
    * @returns {Promise<Key>}
    */
+  // Ideally, this would be done via the kms batcher, but other than request id,
+  // there isn't any other userful key in a kms response to match it to a
+  // request. as such, we need the batcher to group requests, but one flight to
+  // make sure we don't make the same request multiple times.
+  @oneFlight({
+    keyFactory: ({uri}) => uri
+  })
   fetchKey({uri}) {
     /* istanbul ignore if */
     if (!uri) {
@@ -212,6 +220,12 @@ const KMS = SparkPlugin.extend({
         return Promise.resolve(isECDHMessage ? partialContexts.get(this) : contexts.get(this))
           // eslint-disable-next-line max-nested-callbacks
           .then((context) => res.unwrap(context))
+          // eslint-disable-next-line max-nested-callbacks
+          .then(() => {
+            if (process.env.NODE_ENV !== `production`) {
+              this.logger.info(`kms: response payload`, omit(JSON.parse(JSON.stringify(res)), `wrapped`));
+            }
+          })
           // eslint-disable-next-line max-nested-callbacks
           .then(() => {event.encryption.kmsMessages[index] = res;})
           // eslint-disable-next-line max-nested-callbacks
