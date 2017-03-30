@@ -38,7 +38,7 @@ describe(`plugin-user`, function() {
 
   describe(`#verify()`, () => {
     const unauthSpark = new CiscoSpark();
-    it(`registers a new user`, () => unauthSpark.user.verify({email: `Collabctg+spark-js-sdk-${uuid.v4()}@gmail.com`, spoofUserAgent: true})
+    it(`registers a new user`, () => unauthSpark.user.verify({email: `Collabctg+spark-js-sdk-${uuid.v4()}@gmail.com`})
       .then((res) => {
         assert.property(res, `hasPassword`);
         assert.property(res, `verificationEmailTriggered`);
@@ -49,7 +49,7 @@ describe(`plugin-user`, function() {
       })
     );
 
-    it(`verifies an existing user`, () => unauthSpark.user.verify({email: user1.email, spoofUserAgent: true})
+    it(`verifies an existing user`, () => unauthSpark.user.verify({email: user1.email})
       .then((res) => {
         assert.property(res, `hasPassword`);
         assert.property(res, `verificationEmailTriggered`);
@@ -60,13 +60,13 @@ describe(`plugin-user`, function() {
       })
     );
 
-    it(`leaves email address validation up to Atlas`, () => assert.isRejected(unauthSpark.user.verify({email: `not an email address`, spoofUserAgent: true}))
+    it(`leaves email address validation up to Atlas`, () => assert.isRejected(unauthSpark.user.verify({email: `not an email address`}))
       .then((res) => assert.statusCode(res, 400)));
   });
 
   describe(`#setPassword()`, () => {
     it(`sets the user's password`, () => spark.user.setPassword({userId: user1.id, password: `P@ssword123`})
-      .then(() => spark.user.verify({email: user1.email, spoofUserAgent: true}))
+      .then(() => spark.user.verify({email: user1.email}))
       .then((res) => {
         assert.property(res, `hasPassword`);
         assert.property(res, `verificationEmailTriggered`);
@@ -84,7 +84,7 @@ describe(`plugin-user`, function() {
     it(`retrieves a valid user token`, () => {
       assert.isUndefined(unauthSpark.credentials.supertoken);
       const email = `collabctg+spark-js-sdk-${uuid.v4()}@gmail.com`;
-      return unauthSpark.user.verify({email, spoofUserAgent: true})
+      return unauthSpark.user.verify({email})
         .then((res) => {
           assert.isTrue(res.verificationEmailTriggered);
           assert.property(res, `verifyEmailURL`);
@@ -97,7 +97,7 @@ describe(`plugin-user`, function() {
           assert.property(res, `tokenData`);
           assert.equal(res.email, email);
           assert.isDefined(unauthSpark.credentials.supertoken.access_token);
-          return unauthSpark.user.verify({email, spoofUserAgent: true});
+          return unauthSpark.user.verify({email});
         })
         .then((res) => {
           // verification email should not trigger if already have valid user token
@@ -114,7 +114,7 @@ describe(`plugin-user`, function() {
       const unauthSpark = new CiscoSpark();
       assert.isUndefined(unauthSpark.credentials.supertoken);
       const email = `collabctg+spark-js-sdk-${uuid.v4()}@gmail.com`;
-      return unauthSpark.user.verify({email, spoofUserAgent: true})
+      return unauthSpark.user.verify({email})
         .then((res) => {
           assert.isTrue(res.verificationEmailTriggered);
           assert.property(res, `verifyEmailURL`);
@@ -131,7 +131,7 @@ describe(`plugin-user`, function() {
         .then(() => unauthSpark.device.register())
         .then(() => unauthSpark.user.get())
         .then((user) => unauthSpark.user.setPassword({userId: user.id, password: `P@ssword123`}))
-        .then(() => unauthSpark.user.verify({email, spoofUserAgent: true}))
+        .then(() => unauthSpark.user.verify({email}))
         .then((res) => {
           assert.property(res, `hasPassword`);
           assert.property(res, `verificationEmailTriggered`);
