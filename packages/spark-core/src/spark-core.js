@@ -329,7 +329,7 @@ const SparkCore = AmpState.extend({
     /* istanbul ignore else */
     if (process.env.NODE_ENV === `test`) {
       promise.on(`progress`, (event) => {
-        this.logger.log(`upload progress`, event.loaded, event.total);
+        this.logger.info(`upload progress`, event.loaded, event.total);
       });
     }
 

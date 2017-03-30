@@ -1,14 +1,12 @@
 {
   "plugins": [
+    ["babel-plugin-transform-builtin-extend", {
+        "globals": ["Error"]
+    }],
     "transform-decorators-legacy",
+    "transform-class-properties",
     "lodash",
-    "transform-runtime",
-    [
-      "react-intl", {
-        "enforceDescriptions": false,
-        "extractSourceLocation": true
-      }
-    ]
+    "transform-runtime"
   ],
   "presets": ["es2015"],
   "sourceMaps": true

@@ -37,6 +37,10 @@ export default class DeviceAuthInterceptor extends AuthInterceptor {
       return Promise.resolve(false);
     }
 
+    if (options.uri.includes(this.spark.config.hydraServiceUrl)) {
+      return Promise.resolve(true);
+    }
+
     return this.spark.device.isSpecificService(`hydra`, options.uri)
       .then((isHydra) => {
         if (isHydra) {

@@ -8,7 +8,7 @@
 /* global RTCPeerConnection, RTCSessionDescription */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {base64, oneFlight, retry, tap} from '@ciscospark/common';
+import {base64, oneFlight, retry, tap, whileInFlight} from '@ciscospark/common';
 import {
   USE_INCOMING,
   FETCH
@@ -128,6 +128,15 @@ const Call = SparkPlugin.extend({
      * @readonly
      */
     localMediaStreamUrl: `string`,
+
+    locusJoinInFlight: {
+      default: false,
+      type: `boolean`
+    },
+    locusLeaveInFlight: {
+      default: false,
+      type: `boolean`
+    },
     /**
      * Object URL that refers to {@link Call#remoteMediaStream}. Will be
      * automatically deallocated when the call ends
@@ -477,9 +486,11 @@ const Call = SparkPlugin.extend({
    * @returns {Promise}
    */
   @oneFlight
+  @whileInFlight(`locusJoinInFlight`)
   answer(options) {
     this.logger.info(`call: answering`);
     if (!this.locus || this.direction === `out`) {
+      this.logger.info(`call: outbound call, answer() is a noop`);
       return Promise.resolve();
     }
     // Locus may think we're joined on this device if we e.g. reload the page,
@@ -518,6 +529,7 @@ const Call = SparkPlugin.extend({
    */
   @oneFlight
   dial(invitee, options) {
+    this.locusJoinInFlight = true;
     this.logger.info(`call: dialing`);
 
     if (base64.validate(invitee)) {
@@ -530,11 +542,19 @@ const Call = SparkPlugin.extend({
       }
     }
 
-    this.spark.phone.register()
+    this.logger.info(this.registered, !!this.spark.device.url, this.connected, this.spark.mercury.connected, this.spark.device.url);
+
+    // Note: mercury.connect() will call device.register() if need. We're not
+    // using phone.register() here because it guarantees a device refresh, which
+    // is probably unnecessary.
+    this.spark.mercury.connect()
       .then(() => this._join(`create`, invitee, options))
       .then(tap(() => this.logger.info(`call: dialed`)))
       .catch((reason) => {
         this.trigger(`error`, reason);
+      })
+      .then(() => {
+        this.locusJoinInFlight = false;
       });
 
     return this;
@@ -558,13 +578,13 @@ const Call = SparkPlugin.extend({
 
     this.media.end();
 
-    if (!this.locus) {
-      if (this.locusJoinInFlight) {
-        this.logger.info(`call: no locus, waiting for rest call to complete before hanging up`);
-        return this.when(`change:locus`)
-          .then(() => this.hangup());
-      }
+    if (this.locusJoinInFlight) {
+      this.logger.info(`call: locus join in flight, waiting for rest call to complete before hanging up`);
+      return this.when(`change:locusJoinInFlight`)
+        .then(() => this.hangup());
+    }
 
+    if (!this.locus) {
       this.stopListening(this.spark.mercury);
       this.off();
       this.logger.info(`call: hang up complete, call never created`);
@@ -581,13 +601,10 @@ const Call = SparkPlugin.extend({
    * @returns {Promise}
    */
   @oneFlight
+  @whileInFlight(`locusLeaveInFlight`)
   _hangup() {
-    this.locusLeaveInFlight = true;
     return this.spark.locus.leave(this.locus)
       .then((locus) => this._setLocus(locus))
-      .then(() => {
-        this.locusLeaveInFlight = false;
-      })
       .then(tap(() => this.stopListening(this.spark.mercury)))
       .then(tap(() => this.off()))
       .then(tap(() => this.logger.info(`call: hung up`)));
@@ -808,6 +825,7 @@ const Call = SparkPlugin.extend({
   @oneFlight
   // eslint-disable-next-line complexity
   _join(locusMethodName, target, options = {}) {
+
     if (options.localMediaStream) {
       this.media.set(`localMediaStream`, options.localMediaStream);
     }
@@ -832,13 +850,21 @@ const Call = SparkPlugin.extend({
         offerToReceiveAudio: recvOnly || !!options.constraints.audio,
         offerToReceiveVideo: recvOnly || !!options.constraints.video
       });
+    }
 
-      this.media.set({
-        audio: options.constraints.audio,
-        video: options.constraints.video,
-        offerToReceiveAudio: options.offerOptions.offerToReceiveAudio,
-        offerToReceiveVideo: options.offerOptions.offerToReceiveVideo
-      });
+    const mediaOptions = {};
+    if (options.constraints) {
+      mediaOptions.audio = options.constraints.audio;
+      mediaOptions.video = options.constraints.video;
+    }
+
+    if (options.offerOptions) {
+      mediaOptions.offerToReceiveAudio = options.offerOptions.offerToReceiveAudio;
+      mediaOptions.offerToReceiveVideo = options.offerOptions.offerToReceiveVideo;
+    }
+
+    if (mediaOptions.offerOptions || options.constraints) {
+      this.media.set(mediaOptions);
     }
 
     if (!target.correlationId) {
@@ -856,9 +882,15 @@ const Call = SparkPlugin.extend({
       }))
       .then((locus) => {
         this._setLocus(locus);
-        this.locusJoinInFlight = false;
         const answer = JSON.parse(this.mediaConnection.remoteSdp).sdp;
-        return this.media.acceptAnswer(answer);
+        this.logger.info(`accepting offer`);
+        this.logger.info(`peer state`, this.media.peer && this.media.peer.signalingState);
+        if (!this.media.ended) {
+          return this.media.acceptAnswer(answer)
+            .then(() => this.logger.info(`offer accepted`));
+        }
+        this.logger.info(`call: already ended, not accepting answer`);
+        return Promise.resolve();
       });
   },
 

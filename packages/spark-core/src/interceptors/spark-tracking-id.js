@@ -40,6 +40,13 @@ export default class SparkTrackingIdInterceptor extends Interceptor {
     if (this.requiresTrackingId(options)) {
       options.headers.trackingid = `${this.spark.sessionId}_${this.sequence}`;
     }
+
+    if (options.headers.trackingid && options.replayCount) {
+      const tid = options.headers.trackingid.split(`+`);
+      tid[1] = options.replayCount;
+      options.headers.trackingid = tid.join(`+`);
+    }
+
     return options;
   }
 

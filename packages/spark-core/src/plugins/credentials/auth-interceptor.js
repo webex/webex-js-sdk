@@ -83,14 +83,19 @@ export default class AuthInterceptor extends Interceptor {
    * @returns {Object}
    */
   replay(options) {
-    options.replayCount = options.replayCount || 1;
+    if (options.replayCount) {
+      options.replayCount += 1;
+    }
+    else {
+      options.replayCount = 1;
+    }
+
+    if (options.replayCount > this.spark.config.maxAuthenticationReplays) {
+      this.spark.logger.error(`auth: failed after ${this.spark.config.maxAuthenticationReplays} replay attempts`);
+      return Promise.reject(new Error(`Failed after ${this.spark.config.maxAuthenticationReplays} replay attempts`));
+    }
 
     this.spark.logger.info(`auth: replaying request ${options.replayCount} time`);
-
-    if (options.replayCount > this.spark.config.maxReplayAttempts) {
-      this.spark.logger.error(`auth: failed after ${this.spark.config.maxReplayAttempts} replay attempts`);
-      return Promise.reject(new Error(`Failed after ${this.spark.config.maxReplayAttempts} replay attempts`));
-    }
 
     return this.spark.request(options);
   }

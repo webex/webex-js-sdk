@@ -27,7 +27,7 @@ export default function makeSparkStore(type, spark) {
      * @returns {Store}
      */
     constructor() {
-      spark.logger.log(`spark-store: constructing ${type}Storage`);
+      spark.logger.info(`spark-store: constructing ${type}Storage`);
       bindings.set(this, new Map());
     }
 

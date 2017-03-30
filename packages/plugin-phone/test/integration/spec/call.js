@@ -6,10 +6,12 @@
 import '../..';
 
 import {assert} from '@ciscospark/test-helper-chai';
+import retry from '@ciscospark/test-helper-retry';
 import sinon from '@ciscospark/test-helper-sinon';
 import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
 import handleErrorEvent from '../lib/handle-error-event';
+import {SparkHttpError} from '@ciscospark/spark-core';
 
 describe(`plugin-phone`, function() {
   this.timeout(30000);
@@ -44,6 +46,44 @@ describe(`plugin-phone`, function() {
       mccoy && mccoy.spark.phone.deregister()
         .catch((reason) => console.warn(`could not disconnect mccoy from mercury`, reason))
     ]));
+
+    beforeEach(`wait for spock's calls to end`, function() {
+      this.timeout(retry.timeout(20000));
+      return retry(() => spock && spock.spark.locus.list()
+        .then((loci) => {
+          if (loci.length) {
+            return spock.spark.locus.leave({self: {url: loci[0].self.url}})
+              .catch((reason) => {
+                if (!(reason instanceof SparkHttpError.NotFound)) {
+                  throw reason;
+                }
+              })
+              .then(() => {
+                throw new Error(`spock still has active calls`);
+              });
+          }
+          return Promise.resolve();
+        }));
+    });
+
+    beforeEach(`wait for mccoy's calls to end`, function() {
+      this.timeout(retry.timeout(20000));
+      return retry(() => mccoy && mccoy.spark.locus.list()
+        .then((loci) => {
+          if (loci.length) {
+            return mccoy.spark.locus.leave({self: {url: loci[0].self.url}})
+              .catch((reason) => {
+                if (!(reason instanceof SparkHttpError.NotFound)) {
+                  throw reason;
+                }
+              })
+              .then(() => {
+                throw new Error(`mccoy still has active calls`);
+              });
+          }
+          return Promise.resolve();
+        }));
+    });
 
     describe(`#id`, () => {
       // TODO [SSDK-572] need call id
@@ -414,7 +454,12 @@ describe(`plugin-phone`, function() {
       it(`is a noop for outbound calls`, () => handleErrorEvent(spock.spark.phone.dial(mccoy.id), (call) => {
         sinon.spy(call, `_join`);
         return assert.isFulfilled(call.answer())
-          .then(() => assert.notCalled(call._join));
+          .then(() => {
+            // We called _join to create the call
+            assert.calledWith(call._join, `create`);
+            // But we did not call _join when we invoked answer()
+            assert.neverCalledWith(call._join, `join`);
+          });
       }));
 
       it(`is a noop for answered calls`, () => handleErrorEvent(spock.spark.phone.dial(mccoy.id), () => {
@@ -429,57 +474,73 @@ describe(`plugin-phone`, function() {
     });
 
     describe(`#hangup()`, () => {
-      it(`ends an in-progress call`, () => handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => {
-        let mccoyCall;
-        return Promise.all([
-          mccoy.spark.phone.when(`call:incoming`)
-            .then(([c]) => {
-              mccoyCall = c;
-              c.answer();
-            }),
-          call.when(`connected`)
-        ])
-          .then(() => {
-            call.hangup();
-            return Promise.all([
-              call.when(`disconnected`)
-                .then(() => assert.equal(call.status, `disconnected`)),
-              mccoyCall.when(`disconnected`)
-                .then(() => assert.equal(mccoyCall.status, `disconnected`))
-            ]);
-          });
-      }));
+      it(`ends an in-progress call`, () => {
+        const handler = handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => {
+          let mccoyCall;
+          return Promise.all([
+            mccoy.spark.phone.when(`call:incoming`)
+              .then(([c]) => {
+                handler.add(c);
+                mccoyCall = c;
+                c.answer();
+              }),
+            call.when(`connected`)
+          ])
+            .then(() => {
+              call.hangup();
+              return Promise.all([
+                call.when(`disconnected`)
+                  .then(() => assert.equal(call.status, `disconnected`)),
+                mccoyCall.when(`disconnected`)
+                  .then(() => assert.equal(mccoyCall.status, `disconnected`))
+              ]);
+            });
+        });
 
-      it(`gets called when the local party is the last member of the call`, () => handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => {
-        let mccoyCall;
-        return Promise.all([
-          mccoy.spark.phone.when(`call:incoming`)
-            .then(([c]) => {
-              mccoyCall = c;
-              return c.answer();
-            }),
-          call.when(`connected`)
-        ])
-          .then(() => {
-            assert.equal(call.status, `connected`);
-            assert.equal(mccoyCall.status, `connected`);
-            const hangupSpy = sinon.spy(call, `hangup`);
-            mccoyCall.hangup();
-            return call.when(`disconnected`)
-              .then(() => assert.called(hangupSpy));
-          });
-      }));
+        return handler;
+      });
+
+      it(`gets called when the local party is the last member of the call`, () => {
+        const handler = handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => {
+          let mccoyCall;
+          const handler = Promise.all([
+            mccoy.spark.phone.when(`call:incoming`)
+              .then(([c]) => {
+                handler.add(c);
+                mccoyCall = c;
+                return c.answer();
+              }),
+            call.when(`connected`)
+          ])
+            .then(() => {
+              assert.equal(call.status, `connected`);
+              assert.equal(mccoyCall.status, `connected`);
+              const hangupSpy = sinon.spy(call, `hangup`);
+              mccoyCall.hangup();
+              return call.when(`disconnected`)
+                .then(() => assert.called(hangupSpy));
+            });
+        });
+
+        return handler;
+      });
 
       describe(`when the remote party has not yet answered`, () => {
-        it(`ends the call`, () => handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => {
-          const p = mccoy.spark.phone.when(`call:incoming`)
-            .then(([c]) => {
-              assert.equal(c.status, `initiated`);
-              return call.hangup()
-                .then(() => c.when(`disconnected`, () => assert.equal(c.status, `disconnected`)));
-            });
-          return p;
-        }));
+        it(`ends the call`, () => {
+          const handler = handleErrorEvent(spock.spark.phone.dial(mccoy.email), (call) => {
+            const p = mccoy.spark.phone.when(`call:incoming`)
+              .then(([c]) => {
+                handler.add(c);
+                assert.equal(c.status, `initiated`);
+                return Promise.all([
+                  call.hangup(),
+                  c.when(`disconnected`, () => assert.equal(c.status, `disconnected`))
+                ]);
+              });
+            return p;
+          });
+          return handler;
+        });
       });
     });
 

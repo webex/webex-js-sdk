@@ -32,7 +32,14 @@ function wrapConsoleMethod(level) {
     }
   }
 
-  return console[level].bind(console);
+  return function wrappedConsoleMethod(...args) {
+    /* eslint no-invalid-this: [0] */
+    /* istanbul ignore if */
+    if (process.env.NODE_ENV === `test` && this.spark && this.spark.device && this.spark.device.url) {
+      args.unshift(this.spark.device.url.slice(-3));
+    }
+    console[level](...args);
+  };
 }
 
 const Logger = SparkPlugin.extend({
