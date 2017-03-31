@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-credentials",
-  "version": "0.7.74",
+  "version": "0.7.76",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",

@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-avatar",
-  "version": "0.7.74",
+  "version": "0.7.76",
   "description": "",
   "license": "MIT",
   "author": "Joe Fuhrman <jofuhrma@cisco.com>",
@@ -10,7 +10,7 @@
   "dependencies": {
     "@ciscospark/common": "^0.7.71",
     "@ciscospark/plugin-wdm": "^0.7.74",
-    "@ciscospark/plugin-user": "^0.7.74",
+    "@ciscospark/plugin-user": "^0.7.76",
     "@ciscospark/spark-core": "^0.7.74",
     "babel-runtime": "^6.3.19",
     "envify": "^3.4.0",
