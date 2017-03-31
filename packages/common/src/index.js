@@ -20,3 +20,4 @@ export {default as retry} from './retry';
 export {default as tap} from './tap';
 export {default as whileInFlight} from './while-in-flight';
 export {default as Exception} from './exception';
+export {default as deprecated} from './deprecated';
