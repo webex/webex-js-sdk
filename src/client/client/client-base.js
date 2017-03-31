@@ -118,6 +118,9 @@ var ClientBase = SparkBase.extend({
     defaults(options, cloneDeep(this.requestDefaults));
 
     options.headers = options.headers || {};
+    defaults(options.headers, {
+      'user-agent': typeof window === 'undefined' ? 'spark-js-sdk' : undefined
+    });
 
     options.download = new EventEmitter();
     options.upload = new EventEmitter();

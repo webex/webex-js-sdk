@@ -5,6 +5,7 @@
 
 import _request from './request';
 import {EventEmitter} from 'events';
+import {defaults} from 'lodash';
 
 /**
  * @param {Object} options
@@ -17,6 +18,9 @@ export default function request(options) {
   }
 
   options.headers = options.headers || {};
+  defaults(options.headers, {
+    'user-agent': typeof window === `undefined` ? `@ciscospark/http-core` : undefined
+  });
 
   options.download = new EventEmitter();
   options.upload = new EventEmitter();
