@@ -6,7 +6,7 @@
 
 /* eslint-env browser */
 
-import {base64, whileInFlight} from '@ciscospark/common';
+import {base64, deprecated, whileInFlight} from '@ciscospark/common';
 import common from './common';
 import {clone, has, omit, pick} from 'lodash';
 import uuid from 'uuid';
@@ -14,7 +14,6 @@ import querystring from 'querystring';
 import url from 'url';
 import Token from '../token';
 import {persist, waitForValue, SparkPlugin} from '@ciscospark/spark-core';
-import {deprecated} from 'core-decorators';
 
 /**
  * @private
