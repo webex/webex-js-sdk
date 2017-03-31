@@ -7,7 +7,7 @@ import {deprecated} from 'core-decorators';
 
 /**
  * @private
- * @returns {undefined}
+ * @returns {function}
  */
 function emptyDecorator() {
   return function noop() {/* eslint no-empty:[0] */};
