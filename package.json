@@ -33,6 +33,7 @@
   },
   "scripts": {
     "precommit": "npm run --silent lint:staged",
+    "commitmsg": "npm run --silent lint:commitmsg",
     "bootstrap": "lerna bootstrap",
     "clean": "lerna clean",
     "build": "npm run --silent grunt:concurrent -- build",
@@ -45,6 +46,7 @@
     "grunt:concurrent": "grunt --gruntfile Gruntfile.concurrent.js",
     "pregrunt:package": "npm run --silent check-package",
     "grunt:package": "grunt --gruntfile Gruntfile.package.js",
+    "lint:commitmsg": "conventional-changelog-lint -e",
     "lint:jenkinsfile": "grep -qc '.status' Jenkinsfile && echo 'Use result, not status, in Jenkinsfile' || true",
     "lint:staged": "lint-staged",
     "release": "npm run grunt --silent -- release",
