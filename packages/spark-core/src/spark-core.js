@@ -210,6 +210,12 @@ const SparkCore = AmpState.extend({
   logout(...args) {
     return Promise.resolve()
       .then(() => {
+        if (this.mercury) {
+          return this.mercury.disconnect();
+        }
+        return Promise.resolve();
+      })
+      .then(() => {
         if (this.device) {
           return this.device.unregister()
             .catch(() => Promise.resolve());
@@ -220,7 +226,11 @@ const SparkCore = AmpState.extend({
         this.boundedStorage.clear(),
         this.unboundedStorage.clear()
       ]))
-      .then(() => this.credentials.logout(...args));
+      .then(() => {
+        this.trigger('client:logout');
+        this.credentials.logout(...args);
+        return Promise.resolve();
+      });
   },
 
   /**
