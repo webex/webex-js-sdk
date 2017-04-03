@@ -4,7 +4,6 @@
  */
 
 import {assert} from '@ciscospark/test-helper-chai';
-import sinon from '@ciscospark/test-helper-sinon';
 import {SparkTrackingIdInterceptor} from '../../..';
 
 describe(`spark-core`, () => {

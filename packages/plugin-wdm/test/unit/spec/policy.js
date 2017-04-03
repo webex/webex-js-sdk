@@ -91,7 +91,7 @@ describe(`plugin-wdm`, () => {
           assert.calledWith(spark.request, {
             headers: {
               'cisco-no-http-redirect': null,
-              'trackingid': null
+              trackingid: null
             },
             method: `GET`,
             uri: `http://ping.example.com/ping`
@@ -117,7 +117,7 @@ describe(`plugin-wdm`, () => {
             assert.calledWith(spark.request, {
               headers: {
                 'cisco-no-http-redirect': null,
-                'trackingid': null
+                trackingid: null
               },
               method: `GET`,
               uri: `http://ping.example.com/ping`
@@ -147,7 +147,7 @@ describe(`plugin-wdm`, () => {
             assert.calledWith(spark.request, {
               headers: {
                 'cisco-no-http-redirect': null,
-                'trackingid': null
+                trackingid: null
               },
               method: `GET`,
               uri: `http://ping.example.com/ping`
