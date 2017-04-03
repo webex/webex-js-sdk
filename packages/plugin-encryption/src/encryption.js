@@ -46,7 +46,7 @@ const Encryption = SparkPlugin.extend({
       .then((k) => jose.JWE
         .createDecrypt(k.jwk)
         .decrypt(ciphertext)
-          .then((result) => result.plaintext.toString()))
+          .then((result) => result.plaintext.toString()));
   },
 
   download(scr) {

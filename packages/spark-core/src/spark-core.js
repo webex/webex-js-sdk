@@ -227,7 +227,7 @@ const SparkCore = AmpState.extend({
         this.unboundedStorage.clear()
       ]))
       .then(() => {
-        this.trigger('client:logout');
+        this.trigger(`client:logout`);
         this.credentials.logout(...args);
         return Promise.resolve();
       });
