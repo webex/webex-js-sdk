@@ -118,7 +118,6 @@ ansiColor('xterm') {
           currentBuild.description = ''
 
           env.CONCURRENCY = 4
-          env.NPM_CONFIG_REGISTRY = "http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group"
           env.ENABLE_VERBOSE_NETWORK_LOGGING = true
           env.SDK_ROOT_DIR=pwd
 
@@ -224,8 +223,12 @@ ansiColor('xterm') {
 
           stage('install') {
             image.inside(DOCKER_RUN_OPTS) {
+              env.NPM_CONFIG_REGISTRY = ""
               sh 'npm install'
               sh 'npm run bootstrap'
+              env.NPM_CONFIG_REGISTRY = "http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group"
+              sh 'npm install --loglevel info'
+              sh 'cd packages/test-helper-test-users && npm install'
             }
           }
 
