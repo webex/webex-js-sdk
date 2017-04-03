@@ -228,8 +228,7 @@ const SparkCore = AmpState.extend({
       ]))
       .then(() => {
         this.trigger(`client:logout`);
-        this.credentials.logout(...args);
-        return Promise.resolve();
+        return this.credentials.logout(...args);
       });
   },
 
