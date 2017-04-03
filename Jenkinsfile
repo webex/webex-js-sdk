@@ -14,7 +14,13 @@ def warn = { msg ->
 def cleanup = { ->
   // Reminder: cleanup can't be a stage because it will cause Jenkins to drop
   // discard the stage view for any build that happened before a failed build
-  archive 'reports/**/*'
+  try {
+    archive 'reports/**/*'
+    archive 'html-report/**/*'
+  }
+  catch(err) {
+    // ignore; not sure if this'll throw if no reports have been generated
+  }
   sh 'rm -f .env'
 
   if (IS_VALIDATED_MERGE_BUILD) {
