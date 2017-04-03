@@ -32,6 +32,7 @@
     "url": "http://sqbu-github.cisco.com:WebExSquared/squared-js-sdk.git"
   },
   "scripts": {
+    "precommit": "npm run --silent lint:staged",
     "bootstrap": "lerna bootstrap",
     "clean": "lerna clean",
     "build": "npm run --silent grunt:concurrent -- build",
@@ -155,6 +156,8 @@
     "chai-as-promised": "~5.0.0",
     "chalk": "^1.1.3",
     "concat-stream": "^1.5.1",
+    "conventional-changelog-lint": "^1.1.8",
+    "conventional-changelog-lint-config-angular": "^0.4.1",
     "denodeify": "^1.2.1",
     "dependency-check": "^2.8.0",
     "doctrine": "^1.2.2",
@@ -193,6 +196,7 @@
     "grunt-shell": "~1.1.2",
     "grunt-webpack": "^1.0.18",
     "highlight.js": "^9.5.0",
+    "husky": "^0.13.3",
     "in-publish": "^2.0.0",
     "ink-docstrap": "~0.5.2",
     "isparta": "^4.0.0",
@@ -219,7 +223,6 @@
     "mkdirp": "^0.5.1",
     "mocha": "^2.5.3",
     "nue": "~0.7.0-dev",
-    "pre-commit": "^1.2.2",
     "remark": "^5.0.1",
     "remark-html": "^4.0.0",
     "shelljs": "~0.5.0",
@@ -267,6 +270,5 @@
   },
   "lint-staged": {
     "Jenkinsfile": "lint:jenkinsfile"
-  },
-  "pre-commit": "lint:staged"
+  }
 }
