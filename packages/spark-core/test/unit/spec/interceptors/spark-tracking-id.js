@@ -55,15 +55,13 @@ describe(`spark-core`, () => {
         });
 
         it(`does not add a tracking id if one is already specified`, () => {
-          const spy = sinon.spy(interceptor, `requiresTrackingId`);
-          interceptor.onRequest({
-            headers: {
-              trackingid: `some id`
-            }
-          });
+          const options = {headers: {trackingid: `some id`}};
+          interceptor.onRequest(options);
 
-          assert.lengthOf(spy.returnValues, 1);
-          assert.isFalse(spy.returnValues[0]);
+          assert.property(options, `headers`);
+          assert.property(options.headers, `trackingid`);
+          assert.equal(options.headers.trackingid, `some id`);
+
         });
       });
 

@@ -89,6 +89,10 @@ describe(`plugin-wdm`, () => {
           clock.tick(8 * 60 * 60 * 1000);
           assert.calledOnce(spark.request);
           assert.calledWith(spark.request, {
+            headers: {
+              'cisco-no-http-redirect': null,
+              'trackingid': null
+            },
             method: `GET`,
             uri: `http://ping.example.com/ping`
           });
@@ -111,6 +115,10 @@ describe(`plugin-wdm`, () => {
             clock.tick(8 * 60 * 60 * 1000);
             assert.calledOnce(spark.request);
             assert.calledWith(spark.request, {
+              headers: {
+                'cisco-no-http-redirect': null,
+                'trackingid': null
+              },
               method: `GET`,
               uri: `http://ping.example.com/ping`
             });
@@ -137,6 +145,10 @@ describe(`plugin-wdm`, () => {
 
             clock.tick(1 * 60 * 60 * 1000);
             assert.calledWith(spark.request, {
+              headers: {
+                'cisco-no-http-redirect': null,
+                'trackingid': null
+              },
               method: `GET`,
               uri: `http://ping.example.com/ping`
             });
