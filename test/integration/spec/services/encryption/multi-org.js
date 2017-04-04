@@ -3,7 +3,7 @@
 var assert = require('chai').assert;
 var find = require('lodash.find');
 var landingparty = require('../../../lib/landingparty');
-var TestUsers = require('@ciscospark/test-helper-legacy');
+var TestUsers = require('@ciscospark/test-users-legacy');
 
 
 describe('Client', function() {

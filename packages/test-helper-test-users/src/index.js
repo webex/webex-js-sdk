@@ -21,7 +21,7 @@ var retry = require('@ciscospark/test-helper-retry');
 var TestUsers;
 try {
   /* eslint global-require: [0] */
-  TestUsers = require('@ciscospark/test-helper-legacy');
+  TestUsers = require('@ciscospark/test-users-legacy');
 }
 catch (e) {
   // ignore

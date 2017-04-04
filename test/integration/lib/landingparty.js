@@ -13,7 +13,7 @@ var helpers = require('./helpers');
 var map = require('lodash.map');
 var remove = require('lodash.remove');
 var Spark = require('../../../src');
-var TestUsers = require('@ciscospark/test-helper-legacy');
+var TestUsers = require('@ciscospark/test-users-legacy');
 
 function formatUser(user) {
   console.log(JSON.stringify(user, null, 2));

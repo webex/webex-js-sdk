@@ -14,7 +14,7 @@ var grantErrors = require('../../../../src/client/credentials/grant-errors');
 var landingparty = require('../../lib/landingparty');
 var retry = require('../../lib/retry');
 var Spark = require('../../../../src');
-var TestUsers = require('@ciscospark/test-helper-legacy');
+var TestUsers = require('@ciscospark/test-users-legacy');
 var uuid = require('uuid');
 
 describe('Client', function() {
