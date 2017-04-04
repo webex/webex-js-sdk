@@ -38,6 +38,6 @@ export default class DeviceUrlInterceptor extends Interceptor {
   * @returns {boolean}
   */
   requiresDeviceUrl(options) {
-    return !!(this.spark.device && this.spark.device.url) && Object.keys(options.headers).length > 0 && options.api !== `oauth` && options.api !== `saml`;
+    return !!(this.spark.device && this.spark.device.url) && Object.keys(options.headers).length > 0 && options.service !== `oauth` && options.service !== `saml`;
   }
 }
