@@ -101,6 +101,9 @@ function _extractFromEnv(options) {
 
 function _remove(users) {
   return Promise.all(users.map(function(user) {
+    if (user.token && !user.token.authorization) {
+      delete user.token;
+    }
     return TestUsers.remove(user)
       .catch(function(reason) {
         console.warn('failed to delete test user', reason);
