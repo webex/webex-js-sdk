@@ -16,9 +16,6 @@ fi
 # CONFIGURE NODE
 #
 
-# Ensure all internal tools are using the internal registry
-export NPM_CONFIG_REGISTRY=http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group
-
 # The first time Jenkins runs a job on a machine, it executes from the Jenkins
 # home directory instead of the workspace directory. Make sure we're always
 # running this script in the right place.

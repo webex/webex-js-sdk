@@ -223,12 +223,9 @@ ansiColor('xterm') {
 
           stage('install') {
             image.inside(DOCKER_RUN_OPTS) {
-              env.NPM_CONFIG_REGISTRY = ""
+              sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
               sh 'npm install'
               sh 'npm run bootstrap'
-              env.NPM_CONFIG_REGISTRY = "http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group"
-              sh 'npm install --loglevel info'
-              sh 'cd packages/test-helper-test-users && npm install'
             }
           }
 
@@ -401,8 +398,6 @@ ansiColor('xterm') {
                   // reminder: need to write to ~ not . because lerna runs npm
                   // commands in subdirectories
                   image.inside(DOCKER_RUN_OPTS) {
-                    def registry = env.NPM_CONFIG_REGISTRY
-                    env.NPM_CONFIG_REGISTRY = ''
                     sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
                     echo ''
                     echo ''
@@ -411,7 +406,7 @@ ansiColor('xterm') {
                     echo ''
                     echo ''
                     echo ''
-                    sh 'NPM_CONFIG_REGISTRY="" npm run lerna -- exec -- bash -c \'npm publish --access public || true\''
+                    sh 'npm run lerna -- exec -- bash -c \'npm publish --access public || true\''
                     echo ''
                     echo ''
                     echo ''
@@ -419,7 +414,6 @@ ansiColor('xterm') {
                     echo ''
                     echo ''
                     echo ''
-                    env.NPM_CONFIG_REGISTRY = registry
                   }
                   if ("${version}" == '') {
                     warn('could not determine tag name to push to github.com')
