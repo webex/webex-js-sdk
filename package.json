@@ -238,7 +238,7 @@
   },
   "optionalDependencies": {
     "clarify": "^1.0.5",
-    "@ciscospark/test-users-legacy": "^1.0.1",
+    "@ciscospark/test-users-legacy": "^1.0.2",
     "trace": "^2.0.2"
   },
   "browser": {
