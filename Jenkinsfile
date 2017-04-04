@@ -346,7 +346,7 @@ ansiColor('xterm') {
                   try {
                     sh script: "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version}"
                     sh 'git add lerna.json packages/*/package.json'
-                    sh "git commit -m v${version}"
+                    sh "git commit -m v${version} --no-verify"
                     sh "git tag 'v${version}'"
                   }
                   catch (error) {
