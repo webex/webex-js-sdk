@@ -15,7 +15,7 @@ export default {
     // eslint-disable-next-line camelcase
     redirect_uri: process.env.CISCOSPARK_REDIRECT_URI,
     scope: process.env.CISCOSPARK_SCOPE,
-    service: `spark`,
+    cisService: `spark`,
 
     logoutUri: process.env.CISCOSPARK_LOGOUT_URI || `https://idbroker.webex.com/idb/oauth2/v1/logout`
   },
