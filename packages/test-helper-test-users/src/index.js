@@ -18,10 +18,10 @@ var _ = require('lodash');
 var assert = require('assert');
 var retry = require('@ciscospark/test-helper-retry');
 
-var tui;
+var TestUsers;
 try {
   /* eslint global-require: [0] */
-  tui = require('spark-js-sdk--test-users');
+  TestUsers = require('@ciscospark/test-helper-legacy');
 }
 catch (e) {
   // ignore
@@ -53,7 +53,7 @@ function _create(options) {
     var config = _.defaults({
       scopes: process.env.CISCOSPARK_SCOPE
     }, options.config);
-    return tui.create(config)
+    return TestUsers.create(config)
       .then(function(user) {
         allUsers.push(user);
         return user;
@@ -101,7 +101,7 @@ function _extractFromEnv(options) {
 
 function _remove(users) {
   return Promise.all(users.map(function(user) {
-    return tui.remove(user)
+    return TestUsers.remove(user)
       .catch(function(reason) {
         console.warn('failed to delete test user', reason);
       });
@@ -110,16 +110,16 @@ function _remove(users) {
 
 module.exports = {
   create: function create(options) {
-    assert(process.env.COMMON_IDENTITY_CLIENT_ID, 'COMMON_IDENTITY_CLIENT_ID must be defined');
-    assert(process.env.COMMON_IDENTITY_CLIENT_SECRET, 'COMMON_IDENTITY_CLIENT_SECRET must be defined');
+    assert(process.env.CISCOSPARK_CLIENT_ID, 'CISCOSPARK_CLIENT_ID must be defined');
+    assert(process.env.CISCOSPARK_CLIENT_SECRET, 'CISCOSPARK_CLIENT_SECRET must be defined');
 
     return new Promise(function(resolve) {
-      resolve(tui ? _create(options) : _extractFromEnv(options));
+      resolve(TestUsers ? _create(options) : _extractFromEnv(options));
     });
   },
 
   remove: function remove(users) {
-    if (!tui) {
+    if (!TestUsers) {
       return Promise.resolve();
     }
 

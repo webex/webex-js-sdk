@@ -19,7 +19,7 @@
     "eslint-plugin-mocha": "^4.5.1"
   },
   "optionalDependencies": {
-    "spark-js-sdk--test-users": "0.3.4"
+    "@ciscospark/test-users-legacy": "^1.0.0"
   },
   "engines": {
     "node": ">=4"

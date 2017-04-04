@@ -238,7 +238,7 @@
   },
   "optionalDependencies": {
     "clarify": "^1.0.5",
-    "spark-js-sdk--test-users": "~0.3.3",
+    "@ciscospark/test-users-legacy": "^1.0.0",
     "trace": "^2.0.2"
   },
   "browser": {
