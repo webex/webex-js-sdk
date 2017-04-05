@@ -13,7 +13,8 @@ import Socket from './socket';
 import {
   BadRequest,
   Forbidden,
-  NotAuthorized
+  NotAuthorized,
+  UnknownResponse
   // NotFound
 } from './errors';
 
@@ -147,8 +148,15 @@ const Mercury = SparkPlugin.extend({
           this._emit(`connection_failed`, reason, {retries: this.backoffCall.getNumRetries()});
         }
         this.logger.info(`mercury: connection attempt failed`, reason);
+        // UnknownResponse is produced by IE for any 4XXX; treated it like a bad
+        // web socket url and let WDM handle the token checking
+        if (reason instanceof UnknownResponse) {
+          this.logger.info(`mercury: received unknown response code, refreshing device registration`);
+          return this.spark.device.refresh()
+            .then(() => callback(reason));
+        }
         // NotAuthorized implies expired token
-        if (reason instanceof NotAuthorized) {
+        else if (reason instanceof NotAuthorized) {
           this.logger.info(`mercury: received authorization error, reauthorizing`);
           return this.spark.credentials.refresh({force: true})
             .then(() => callback(reason));

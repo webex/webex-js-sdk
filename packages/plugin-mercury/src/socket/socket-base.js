@@ -8,7 +8,8 @@ import {
   BadRequest,
   ConnectionError,
   Forbidden,
-  NotAuthorized
+  NotAuthorized,
+  UnknownResponse
   // NotFound
 } from '../errors';
 import {checkRequired} from '@ciscospark/common';
@@ -210,8 +211,14 @@ export default class Socket extends EventEmitter {
       socket.onmessage = this.onmessage;
 
       socket.onclose = (event) => {
-        this.logger.info(`socket: closed while connecting`, event.code, event.reason);
+        event = this._fixCloseCode(event);
         switch (event.code) {
+        case 1005:
+          // IE 11 doesn't seem to allow 4XXX codes, so if we get a 1005, assume
+          // it's a bad websocket url. That'll trigger a device refresh; if it
+          // turns out we had a bad token, the device refresh should 401 and
+          // trigger a token refresh.
+          return reject(new UnknownResponse(event));
         case 4400:
           return reject(new BadRequest(event));
         case 4401:
