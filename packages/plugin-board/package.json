@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/plugin-board",
-  "version": "0.7.76",
+  "version": "0.7.77",
   "description": "",
   "license": "MIT",
   "author": "Greg Hewett <ghewett@cisco.com>",
@@ -9,11 +9,11 @@
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/plugin-board",
   "dependencies": {
     "@ciscospark/common": "^0.7.71",
-    "@ciscospark/plugin-conversation": "^0.7.76",
-    "@ciscospark/plugin-encryption": "^0.7.76",
-    "@ciscospark/plugin-feature": "^0.7.74",
-    "@ciscospark/plugin-mercury": "^0.7.74",
-    "@ciscospark/spark-core": "^0.7.74",
+    "@ciscospark/plugin-conversation": "^0.7.77",
+    "@ciscospark/plugin-encryption": "^0.7.77",
+    "@ciscospark/plugin-feature": "^0.7.77",
+    "@ciscospark/plugin-mercury": "^0.7.77",
+    "@ciscospark/spark-core": "^0.7.77",
     "babel-runtime": "^6.3.19",
     "es6-promise-series": "^0.2.2",
     "lodash": "^4.13.1"
@@ -26,7 +26,7 @@
     "@ciscospark/test-helper-mock-spark": "^0.7.69",
     "@ciscospark/test-helper-server": "^0.7.69",
     "@ciscospark/test-helper-sinon": "^0.7.69",
-    "@ciscospark/test-helper-test-users": "^0.7.69",
+    "@ciscospark/test-helper-test-users": "^0.7.77",
     "@ciscospark/xunit-with-logs": "^0.7.69",
     "babel-eslint": "^6.1.2",
     "babel-plugin-lodash": "^3.2.11",

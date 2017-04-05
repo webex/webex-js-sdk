@@ -1,6 +1,6 @@
 {
   "name": "spark-js-sdk",
-  "version": "0.5.337",
+  "version": "0.5.338",
   "description": "JavaScript sdk for interacting with the Spark API",
   "homepage": "http://sqbu-github.cisco.com/WebExSquared/squared-js-sdk",
   "bugs": {
@@ -32,6 +32,8 @@
     "url": "http://sqbu-github.cisco.com:WebExSquared/squared-js-sdk.git"
   },
   "scripts": {
+    "precommit": "npm run --silent lint:staged",
+    "commitmsg": "npm run --silent lint:commitmsg",
     "bootstrap": "lerna bootstrap",
     "clean": "lerna clean",
     "build": "npm run --silent grunt:concurrent -- build",
@@ -44,6 +46,7 @@
     "grunt:concurrent": "grunt --gruntfile Gruntfile.concurrent.js",
     "pregrunt:package": "npm run --silent check-package",
     "grunt:package": "grunt --gruntfile Gruntfile.package.js",
+    "lint:commitmsg": "conventional-changelog-lint -e",
     "lint:jenkinsfile": "grep -qc '.status' Jenkinsfile && echo 'Use result, not status, in Jenkinsfile' || true",
     "lint:staged": "lint-staged",
     "release": "npm run grunt --silent -- release",
@@ -155,6 +158,8 @@
     "chai-as-promised": "~5.0.0",
     "chalk": "^1.1.3",
     "concat-stream": "^1.5.1",
+    "conventional-changelog-lint": "^1.1.8",
+    "conventional-changelog-lint-config-angular": "^0.4.1",
     "denodeify": "^1.2.1",
     "dependency-check": "^2.8.0",
     "doctrine": "^1.2.2",
@@ -193,6 +198,7 @@
     "grunt-shell": "~1.1.2",
     "grunt-webpack": "^1.0.18",
     "highlight.js": "^9.5.0",
+    "husky": "^0.13.3",
     "in-publish": "^2.0.0",
     "ink-docstrap": "~0.5.2",
     "isparta": "^4.0.0",
@@ -219,7 +225,6 @@
     "mkdirp": "^0.5.1",
     "mocha": "^2.5.3",
     "nue": "~0.7.0-dev",
-    "pre-commit": "^1.2.2",
     "remark": "^5.0.1",
     "remark-html": "^4.0.0",
     "shelljs": "~0.5.0",
@@ -238,7 +243,7 @@
   },
   "optionalDependencies": {
     "clarify": "^1.0.5",
-    "spark-js-sdk--test-users": "~0.3.3",
+    "@ciscospark/test-users-legacy": "^1.0.2",
     "trace": "^2.0.2"
   },
   "browser": {
@@ -267,6 +272,5 @@
   },
   "lint-staged": {
     "Jenkinsfile": "lint:jenkinsfile"
-  },
-  "pre-commit": "lint:staged"
+  }
 }

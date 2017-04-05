@@ -17,6 +17,10 @@ export default function request(options) {
   }
 
   options.headers = options.headers || {};
+  if (typeof window === `undefined` && !options.headers[`user-agent`]) {
+    options.headers[`user-agent`] = `@ciscospark/http-core`;
+  }
+
 
   options.download = new EventEmitter();
   options.upload = new EventEmitter();

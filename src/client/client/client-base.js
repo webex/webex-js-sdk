@@ -118,6 +118,10 @@ var ClientBase = SparkBase.extend({
     defaults(options, cloneDeep(this.requestDefaults));
 
     options.headers = options.headers || {};
+    options.headers = options.headers || {};
+    if (typeof window === 'undefined' && !options.headers['user-agent']) {
+      options.headers['user-agent'] = '@ciscospark/http-core';
+    }
 
     options.download = new EventEmitter();
     options.upload = new EventEmitter();

@@ -12,10 +12,7 @@ echo "##########################################################################
 
 cd "${SDK_ROOT_DIR}"
 echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > ~/.npmrc
-REG="${NPM_CONFIG_REGISTRY}"
-unset NPM_CONFIG_REGISTRY
 npm run lerna -- exec -- bash -c "npm publish --access public || true"
-export NPM_CONFIG_REGISTRY="${REG}"
 rm -f ~/.npmrc
 
 # Note: the following will need to change once we

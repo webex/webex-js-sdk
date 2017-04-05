@@ -169,9 +169,7 @@ module.exports = function gruntConfig(grunt) {
     shell: {}
   };
 
-  if (process.env.COVERAGE && (process.env.JENKINS || process.env.CI)) {
-    Reflect.deleteProperty(config.makeReport2.all.options.reporters, `html`);
-  }
+  Reflect.deleteProperty(config.makeReport2.all.options.reporters, `html`);
 
   PACKAGES.forEach((packageName) => {
     const shellBuildKey = `build_${packageName}`;

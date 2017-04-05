@@ -14,7 +14,13 @@ def warn = { msg ->
 def cleanup = { ->
   // Reminder: cleanup can't be a stage because it will cause Jenkins to drop
   // discard the stage view for any build that happened before a failed build
-  archive 'reports/**/*'
+  try {
+    archive 'reports/**/*'
+    archive 'html-report/**/*'
+  }
+  catch(err) {
+    // ignore; not sure if this'll throw if no reports have been generated
+  }
   sh 'rm -f .env'
 
   if (IS_VALIDATED_MERGE_BUILD) {
@@ -118,7 +124,6 @@ ansiColor('xterm') {
           currentBuild.description = ''
 
           env.CONCURRENCY = 4
-          env.NPM_CONFIG_REGISTRY = "http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group"
           env.ENABLE_VERBOSE_NETWORK_LOGGING = true
           env.SDK_ROOT_DIR=pwd
 
@@ -224,6 +229,7 @@ ansiColor('xterm') {
 
           stage('install') {
             image.inside(DOCKER_RUN_OPTS) {
+              sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
               sh 'npm install'
               sh 'npm run bootstrap'
             }
@@ -346,7 +352,7 @@ ansiColor('xterm') {
                   try {
                     sh script: "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version}"
                     sh 'git add lerna.json packages/*/package.json'
-                    sh "git commit -m v${version}"
+                    sh "git commit -m v${version} --no-verify"
                     sh "git tag 'v${version}'"
                   }
                   catch (error) {
@@ -398,8 +404,6 @@ ansiColor('xterm') {
                   // reminder: need to write to ~ not . because lerna runs npm
                   // commands in subdirectories
                   image.inside(DOCKER_RUN_OPTS) {
-                    def registry = env.NPM_CONFIG_REGISTRY
-                    env.NPM_CONFIG_REGISTRY = ''
                     sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
                     echo ''
                     echo ''
@@ -408,7 +412,7 @@ ansiColor('xterm') {
                     echo ''
                     echo ''
                     echo ''
-                    sh 'NPM_CONFIG_REGISTRY="" npm run lerna -- exec -- bash -c \'npm publish --access public || true\''
+                    sh 'npm run lerna -- exec -- bash -c \'npm publish --access public || true\''
                     echo ''
                     echo ''
                     echo ''
@@ -416,7 +420,6 @@ ansiColor('xterm') {
                     echo ''
                     echo ''
                     echo ''
-                    env.NPM_CONFIG_REGISTRY = registry
                   }
                   if ("${version}" == '') {
                     warn('could not determine tag name to push to github.com')

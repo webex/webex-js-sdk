@@ -3,7 +3,7 @@
 var assert = require('chai').assert;
 var find = require('lodash.find');
 var landingparty = require('../../../lib/landingparty');
-var TestUsersInterface = require('spark-js-sdk--test-users');
+var TestUsers = require('@ciscospark/test-users-legacy');
 
 
 describe('Client', function() {
@@ -14,7 +14,7 @@ describe('Client', function() {
 
         var kang;
         before(function makeKmsFedUser() {
-          return TestUsersInterface.create({
+          return TestUsers.create({
             email: 'spark-js-sdk--kang--' + Date.now() + '@wx2.example.com',
             entitlements: [
               'spark',
