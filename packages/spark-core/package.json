@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/spark-core",
-  "version": "0.7.77",
+  "version": "0.7.78",
   "description": "Plugin handling for Cisco Spark",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -8,8 +8,8 @@
   "devMain": "src/index.js",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/spark-core",
   "dependencies": {
-    "@ciscospark/common": "^0.7.71",
-    "@ciscospark/http-core": "^0.7.77",
+    "@ciscospark/common": "^0.7.78",
+    "@ciscospark/http-core": "^0.7.78",
     "ampersand-events": "^2.0.0",
     "ampersand-state": "^5.0.0",
     "babel-runtime": "^6.3.19",

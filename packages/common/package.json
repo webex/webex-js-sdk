@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/common",
-  "version": "0.7.71",
+  "version": "0.7.78",
   "description": "Common utilities for Cisco Spark",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",

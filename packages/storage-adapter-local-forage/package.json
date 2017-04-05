@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/storage-adapter-local-forage",
-  "version": "0.7.77",
+  "version": "0.7.78",
   "description": "",
   "license": "MIT",
   "author": "Matt Norris <matthew.g.norris@gmail.com>",
@@ -8,8 +8,8 @@
   "devMain": "src/index.js",
   "repository": "https://github.com/ciscospark/spark-js-sdk/tree/master/packages/storage-adapter-local-forage",
   "dependencies": {
-    "@ciscospark/common": "^0.7.71",
-    "@ciscospark/spark-core": "^0.7.77",
+    "@ciscospark/common": "^0.7.78",
+    "@ciscospark/spark-core": "^0.7.78",
     "babel-runtime": "^6.3.19",
     "localforage": "~1.4.2",
     "lodash": "^4.13.1"
