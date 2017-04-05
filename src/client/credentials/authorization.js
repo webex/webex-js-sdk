@@ -149,7 +149,7 @@ var Authorization = SparkBase.extend({
         }.bind(this))
     ])
       .then(function revokeSupertoken() {
-        return supertoken.revoke()
+        return supertoken && supertoken.revoke()
           .catch(function suppressError(reason) {
             this.logger.warn('authorization: failed to revoke supertoken', reason);
           }.bind(this));
