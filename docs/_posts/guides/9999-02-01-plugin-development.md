@@ -38,10 +38,9 @@ redirect_from:
 
 5. Install dependencies and build packages
 
-    In order to interact with test users, we need a module that is not publicly available, so point at the internal npm registry during install. Unless you completely blow away your node modules directory, you won't need to worry about this again. (Yes, this means that, for now, you'll need to be on a cisco network to setup your development environment)
+    In order to interact with test users, we need a module that is not publicly available. You'll need access to the @ciscospark npm org which means that, for now, only Cisco employees will be able to run tests.
 
     ```bash
-    export NPM_CONFIG_REGISTRY=http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group
     npm install
     npm run bootstrap
     npm run build

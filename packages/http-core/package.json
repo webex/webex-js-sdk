@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/http-core",
-  "version": "0.7.71",
+  "version": "0.7.77",
   "description": "Core HTTP library for the Cisco Spark",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",

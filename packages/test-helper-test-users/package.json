@@ -1,6 +1,6 @@
 {
   "name": "@ciscospark/test-helper-test-users",
-  "version": "0.7.69",
+  "version": "0.7.77",
   "description": "",
   "license": "MIT",
   "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -19,7 +19,7 @@
     "eslint-plugin-mocha": "^4.5.1"
   },
   "optionalDependencies": {
-    "spark-js-sdk--test-users": "0.3.4"
+    "@ciscospark/test-users-legacy": "^1.0.2"
   },
   "engines": {
     "node": ">=4"
