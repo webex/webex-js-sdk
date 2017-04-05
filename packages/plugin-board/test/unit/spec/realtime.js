@@ -6,7 +6,7 @@
 import {assert} from '@ciscospark/test-helper-chai';
 import MockSpark from '@ciscospark/test-helper-mock-spark';
 import MockSocket from '@ciscospark/test-helper-mock-socket';
-import {ConnectionError, AuthorizationError} from '@ciscospark/plugin-mercury';
+import {ConnectionError, NotAuthorized} from '@ciscospark/plugin-mercury';
 import sinon from '@ciscospark/test-helper-sinon';
 import Board, {config} from '../..';
 import uuid from 'uuid';
@@ -294,7 +294,7 @@ describe(`plugin-board`, () => {
 
       it(`rejects on AuthorizationError`, () => {
         spark.board.config.maxRetries = 1;
-        spark.credentials.getAuthorization.returns(Promise.reject(new AuthorizationError()));
+        spark.credentials.getAuthorization.returns(Promise.reject(new NotAuthorized()));
         return assert.isRejected(spark.board.realtime.connect());
       });
     });
