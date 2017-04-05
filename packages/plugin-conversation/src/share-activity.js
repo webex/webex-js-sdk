@@ -261,9 +261,9 @@ const ShareActivity = SparkPlugin.extend({
       verb: `share`,
       object: {
         objectType: `content`,
-        displayName: this.displayName,
-        content: this.content,
-        mentions: this.mentions,
+        displayName: this.object.displayName,
+        content: this.object.content,
+        mentions: this.object.mentions,
         files: {
           items: []
         }
