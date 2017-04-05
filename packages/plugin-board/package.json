@@ -16,7 +16,8 @@
     "@ciscospark/spark-core": "^0.7.74",
     "babel-runtime": "^6.3.19",
     "es6-promise-series": "^0.2.2",
-    "lodash": "^4.13.1"
+    "lodash": "^4.13.1",
+    "uuid": "^3.0.1"
   },
   "devDependencies": {
     "@ciscospark/test-helper-chai": "^0.7.69",
@@ -33,8 +34,7 @@
     "babel-polyfill": "^6.3.14",
     "babel-register": "^6.4.3",
     "eslint": "^3.5.0",
-    "eslint-plugin-mocha": "^4.5.1",
-    "uuid": "^3.0.1"
+    "eslint-plugin-mocha": "^4.5.1"
   },
   "engines": {
     "node": ">=4"

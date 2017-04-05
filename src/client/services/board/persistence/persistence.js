@@ -363,7 +363,7 @@ var PersistenceService = SparkBase.extend({
   },
 
   _getPageOfContents: function _getPageOfContents(channel, query) {
-    query = query ? pick(query, 'sinceDate', 'contentsLimit') : {};
+    query = query ? pick(query, 'contentsLimit') : {};
     var nextLink;
 
     return this.spark.request({
