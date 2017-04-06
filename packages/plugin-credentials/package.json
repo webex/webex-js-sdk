@@ -13,7 +13,6 @@
     "@ciscospark/spark-core": "^0.7.78",
     "ampersand-collection": "^2.0.0",
     "babel-runtime": "^6.3.19",
-    "core-decorators": "^0.12.3",
     "envify": "^3.4.1",
     "lodash": "^4.13.1",
     "uuid": "^2.0.2"

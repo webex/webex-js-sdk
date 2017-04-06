@@ -4,8 +4,7 @@
  */
 
 import {SparkPlugin} from '@ciscospark/spark-core';
-import {deprecated} from 'core-decorators';
-import {oneFlight} from '@ciscospark/common';
+import {deprecated, oneFlight} from '@ciscospark/common';
 import {set} from 'lodash';
 import S from 'string';
 import backoff from 'backoff';

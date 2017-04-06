@@ -4,9 +4,8 @@
  * @private
  */
 
-import {deprecated} from 'core-decorators';
 import {isArray} from 'lodash';
-import {oneFlight, patterns, tap} from '@ciscospark/common';
+import {deprecated, oneFlight, patterns, tap} from '@ciscospark/common';
 import {SparkPlugin} from '@ciscospark/spark-core';
 import UserUUIDBatcher from './user-uuid-batcher';
 import UserUUIDStore from './user-uuid-store';
