@@ -97,7 +97,7 @@ export function mediaDirection(mediaType, participant) {
  * @returns {Boolean}
  */
 export function participantIsJoined(participant) {
-  return participant.state === `JOINED`;
+  return participant && participant.state === `JOINED`;
 }
 
 /**
