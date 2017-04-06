@@ -58,7 +58,7 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
 
       set +e
       daemon -U --name sauce_connect -- ${SC_BINARY} \
-        -D *.ciscospark.com,*.wbx2.com,*.webex.com*,storage101.dfw1.clouddrive.com \
+        -t internal-testing-services.wbx2.com,127.0.0.1 \
         -vv \
         -l "$(pwd)/reports/sauce/sauce_connect.${PACKAGE}.${SC_ITERATION}.log" \
         --tunnel-identifier "${SC_TUNNEL_IDENTIFIER}" \

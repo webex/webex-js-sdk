@@ -85,11 +85,9 @@ function connect() {
     }, 1000);
 
     spawn(`sc/bin/sc`, [
-      `-D`, [
-        `*.ciscospark.com`,
-        `*.wbx2.com`,
-        `*.webex.com`,
-        `storage101.dfw1.clouddrive.com`
+      `-t`, [
+        `internal-testing-services.wbx2.com`,
+        `127.0.0.1`
       ].join(`,`),
       `-vv`,
       `-l`, `${logFile}`,
