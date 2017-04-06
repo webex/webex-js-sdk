@@ -355,8 +355,37 @@ ansiColor('xterm') {
                   sh 'PACKAGE=example-phone npm run grunt:package -- webpack:build'
 
                   if (HAS_LEGACY_CHANGES) {
+                    try {
+                      sh 'mv .git/hooks/pre-commit .git/hooks/pre-commit.bak'
+                    }
+                    catch (error) {
+                      // this is fine
+                    }
+
+                    try {
+                      sh 'mv .git/hooks/commit-msg .git/hooks/commit-msg.bak'
+                    }
+                    catch (error) {
+                      // this is fine
+                    }
+
                     sh 'npm run grunt -- release'
+
+                    try {
+                      sh 'mv .git/hooks/pre-commit.bak .git/hooks/pre-commit'
+                    }
+                    catch (error) {
+                      // this is fine
+                    }
+
+                    try {
+                      sh 'mv .git/hooks/commit-msg.bak .git/hooks/commit-msg'
+                    }
+                    catch (error) {
+                      // this is fine
+                    }
                   }
+
                   try {
                     sh script: "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version}"
                     sh 'git add lerna.json packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
