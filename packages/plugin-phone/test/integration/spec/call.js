@@ -10,6 +10,7 @@ import retry from '@ciscospark/test-helper-retry';
 import sinon from '@ciscospark/test-helper-sinon';
 import CiscoSpark from '@ciscospark/spark-core';
 import testUsers from '@ciscospark/test-helper-test-users';
+import retry from '@ciscospark/test-helper-retry';
 import handleErrorEvent from '../lib/handle-error-event';
 import {SparkHttpError} from '@ciscospark/spark-core';
 
@@ -441,6 +442,13 @@ describe(`plugin-phone`, function() {
     });
 
     describe(`#answer()`, () => {
+      beforeEach(() => {
+        return Promise.all([
+          retry(() => spock.spark.locus.list()),
+          retry(() => mccoy.spark.locus.list())
+        ]);
+      });
+
       it(`accepts an incoming call`, () => {
         const call = mccoy.spark.phone.dial(spock.email);
         return handleErrorEvent(call, () => Promise.all([
