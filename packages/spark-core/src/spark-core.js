@@ -226,7 +226,10 @@ const SparkCore = AmpState.extend({
         this.boundedStorage.clear(),
         this.unboundedStorage.clear()
       ]))
-      .then(() => this.credentials.logout(...args));
+      .then(() => {
+        this.trigger(`client:logout`);
+        return this.credentials.logout(...args);
+      });
   },
 
   /**
