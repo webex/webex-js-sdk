@@ -29,9 +29,7 @@ var ShareActivity = ShareActivityBase.extend({
           }
         });
       })
-        .then(function addFileBase(file) {
-          return ShareActivityBase.prototype.addFile(file, options).bind(this);
-        });
+      .then(ShareActivityBase.prototype.addFile.bind(this,file,options));
     }
     else {
       return ShareActivityBase.prototype.addFile.apply(this, arguments);

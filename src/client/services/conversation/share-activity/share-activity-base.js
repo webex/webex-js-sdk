@@ -143,8 +143,13 @@ var ShareActivityBase = SparkBase.extend(
 
     var emitter = new EventEmitter();
     var uploadPromise;
-    this.target._spaceUrl = this.target._spaceUrl || this._retrieveSpaceUrl(this.target);
-    this.target._hiddenSpaceUrl = this.target._hiddenSpaceUrl || this._retrieveHiddenSpaceUrl(this.target);
+
+    // When the bot is in multiple rooms, always using the first spaceURL encountered
+    //           via the state object causes him/her to only be able to post to the first room
+    //this.target._spaceUrl = this.target._spaceUrl || this._retrieveSpaceUrl(this.target);
+    //this.target._hiddenSpaceUrl = this.target._hiddenSpaceUrl || this._retrieveHiddenSpaceUrl(this.target);
+    this.target._spaceUrl = this._retrieveSpaceUrl(this.target);
+    this.target._hiddenSpaceUrl = this._retrieveHiddenSpaceUrl(this.target);
 
     uploadPromise = Promise.all([
       this.target._spaceUrl,
