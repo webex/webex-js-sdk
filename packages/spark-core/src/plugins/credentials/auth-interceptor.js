@@ -24,7 +24,7 @@ export default class AuthInterceptor extends Interceptor {
    */
   onRequest(options) {
     // If Authorizations is already set, don't overwrite it
-    if (`authorization` in options.headers) {
+    if (`authorization` in options.headers || options.auth) {
       // If Authorization is set to null, false, or undefined, delete it to
       // prevent a CORS preflight.
       if (!options.headers.authorization) {

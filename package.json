@@ -194,7 +194,7 @@
     "grunt-jscs": "~2.0.0",
     "grunt-karma": "^2.0.0",
     "grunt-mocha-test": "^0.13.2",
-    "grunt-selenium-webdriver": "~0.2.450",
+    "grunt-selenium-webdriver": "~0.2.482",
     "grunt-shell": "~1.1.2",
     "grunt-webpack": "^1.0.18",
     "highlight.js": "^9.5.0",
