@@ -210,7 +210,8 @@ module.exports = function gruntConfig(grunt) {
   }
 
   grunt.registerTask(`build`, [
-    `package-json`,
+    // TODO reenable package-json at some point; perhaps by adding it to deps.js
+    // `package-json`,
     `concurrent:build`
   ]);
 
