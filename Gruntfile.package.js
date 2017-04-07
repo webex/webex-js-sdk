@@ -423,11 +423,12 @@ module.exports = function configureGrunt(grunt) {
     require(`./packages/node_modules/${process.env.PACKAGE}/Gruntfile.js`)(grunt, p, makeMochaRequires);
   }
   catch (error) {
-    if (error.code !== `ENOENT`) {
+    if (error.code === `MODULE_NOT_FOUND` || error.code === `ENOENT`) {
+      console.info(`No custom gruntfile found at ./packages/node_modules/${process.env.PACKAGE}/Gruntfile.js; assuming no override intended`);
+    }
+    else {
       throw error;
     }
-    // ignore
-    console.info(`No custom gruntfile found at ./packages/node_modules/${process.env.PACKAGE}/Gruntfile.js; assuming no override intended`);
   }
 
   /**
