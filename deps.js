@@ -22,6 +22,7 @@ const fs = require(`fs`);
 const {curry, uniq} = require(`lodash`);
 const path = require(`path`);
 const rpj = require(`read-package-json`);
+const _ = require(`values`);
 
 const readPackage = denodeify(rpj);
 
@@ -32,7 +33,7 @@ function findDepsForPackage(packagePath) {
        return walkDeps(path.resolve(path.dirname(packagePath), pkg.main));
      }
      else if (pkg.bin) {
-       return Object.values(pkg.bin).reduce((acc, bin) => acc.concat(walkDeps(path.resolve(path.dirname(packagePath), bin))), []);
+       return _.values(pkg.bin).reduce((acc, bin) => acc.concat(walkDeps(path.resolve(path.dirname(packagePath), bin))), []);
      }
 
      try {
