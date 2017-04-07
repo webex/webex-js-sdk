@@ -12,6 +12,7 @@ export env $(cat .env | xargs)
 cd ${WORKSPACE}
 
 GRUNT_LOG_FILE="$(pwd)/reports/logs/${PACKAGE}.log"
+mkdir -p $(dirname ${GRUNT_LOG_FILE})
 export BABEL_CACHE_PATH=$(pwd)/.tmp/babel-cache/${PACKAGE}.babel.json
 mkdir -p "$(pwd)/.tmp/babel-cache"
 
