@@ -170,7 +170,7 @@ module.exports = function configureGrunt(grunt) {
     express: {
       test: {
         options: {
-          script: `./packages/node_modules/test-helper-server`
+          script: `./packages/node_modules/@ciscospark/test-helper-server`
         }
       }
     },
@@ -231,7 +231,7 @@ module.exports = function configureGrunt(grunt) {
 
     mochaTest: {
       options: {
-        reporter: process.env.XUNIT ? path.join(__dirname, `./packages/node_modules/xunit-with-logs`) : `spec`,
+        reporter: process.env.XUNIT ? path.join(__dirname, `./packages/node_modules/@ciscospark/xunit-with-logs`) : `spec`,
         // TODO figure out how to detect retried tests
         retries: process.env.JENKINS || process.env.CI ? 1 : 0,
         timeout: 30000,
@@ -294,7 +294,7 @@ module.exports = function configureGrunt(grunt) {
       },
       doc: {
         options: {
-          require: makeMochaRequires([`./packages/node_modules/jsdoctrinetest`]),
+          require: makeMochaRequires([`./packages/node_modules/@ciscospark/jsdoctrinetest`]),
           reporterOptions: {
             output: `<%= xunitDir %>/mocha-<%= package %>-doc.xml`
           }
