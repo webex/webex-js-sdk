@@ -240,7 +240,6 @@ ansiColor('xterm') {
             image.inside(DOCKER_RUN_OPTS) {
               sh 'npm run grunt -- clean'
               sh 'npm run grunt:concurrent -- clean'
-              sh 'npm run clean-empty-packages'
             }
             sh 'rm -rf "packages/node_modules/*/browsers.processed.js"'
             sh 'rm -rf "packages/node_modules/@ciscospark/*/browsers.processed.js"'
