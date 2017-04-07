@@ -81,6 +81,12 @@ const assignDeps = curry((pkgPath, deps) => {
   }
   const pkg = require(pkgPath);
   pkg.dependencies = deps;
+
+  // This next little bit has nothing to do with dependencies, but makes it a
+  // whole lot easier to run tests
+  // eslint-disable-next-line
+  delete pkg.browserify;
+
   fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
 });
 
