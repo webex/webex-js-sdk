@@ -261,9 +261,9 @@ const ShareActivity = SparkPlugin.extend({
       verb: `share`,
       object: {
         objectType: `content`,
-        displayName: this.object.displayName,
-        content: this.object.content,
-        mentions: this.object.mentions,
+        displayName: (this.object && this.object.displayName) ? this.object.displayName : ``,
+        content: (this.object && this.object.content) ? this.object.content : ``,
+        mentions: (this.object && this.object.mentions) ? this.object.mentions : {},
         files: {
           items: []
         }
@@ -361,8 +361,8 @@ ShareActivity.create = function create(conversation, object, spark) {
     parent: spark
   });
 
-  if (files) {
-    files.forEach((file) => share.add(file));
+  if (files && files.items) {
+    files.items.forEach((file) => share.add(file));
   }
 
   return share;
