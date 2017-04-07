@@ -136,7 +136,7 @@
     "in-publish": "^2.0.0",
     "is-function": "^1.0.1",
     "jsonwebtoken": "^7.3.0",
-    "localforage": "^1.4.3",
+    "localforage": "~1.4.3",
     "lodash": "^4.17.4",
     "lodash.assign": "^3.1.0",
     "lodash.bindall": "^3.1.0",
