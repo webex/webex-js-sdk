@@ -340,6 +340,7 @@
   "browser": {
     "mmmagic": false,
     "crypto": false,
+    "gm": false,
     "underscore": "lodash",
     "./src/client/client/client.js": "./src/client/client/client.shim.js",
     "./src/client/client/processors/request/request.js": "./src/client/client/processors/request/request.shim.js",
