@@ -33,6 +33,8 @@ export default {
      * sister property with the original encrypted string
      * @type {Boolean}
      */
-    keepEncryptedProperties: false
+    keepEncryptedProperties: false,
+
+    decryptionFailureMessage: `This message cannot be decrypted`
   }
 };

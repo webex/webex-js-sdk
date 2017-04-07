@@ -27,6 +27,13 @@ export const transforms = toArray(`inbound`, {
       key = object.encryptionKeyUrl;
     }
 
+    // Transcoded content was not showing up on the activities since the
+    // decryptFile was not being called. Calling decryptFile for
+    // transcodedContent fixes the issue.
+    if (object.objectType === `transcodedContent`) {
+      return Promise.all(object.files.items.map((item) => ctx.transform(`decryptFile`, key, item)));
+    }
+
     return ctx.transform(`decrypt${S(object.objectType).capitalize().s}`, key, object);
   },
 
@@ -37,8 +44,15 @@ export const transforms = toArray(`inbound`, {
     }
 
     const usableKey = conversation.encryptionKeyUrl || key;
+    const decryptionFailureMessage = ctx.spark.conversation.config.decryptionFailureMessage;
+
     if (usableKey) {
-      promises.push(ctx.transform(`decryptPropDisplayName`, usableKey, conversation));
+      promises.push(ctx.transform(`decryptPropDisplayName`, usableKey, conversation)
+        .catch((error) => {
+          ctx.spark.logger.error(`plugin-conversation: failed to decrypt display name of `, conversation.url, error);
+          Promise.resolve(decryptionFailureMessage);
+        })
+      );
       promises.push(ctx.transform(`decryptPropContent`, usableKey, conversation));
     }
     if (conversation.avatarEncryptionKeyUrl) {
