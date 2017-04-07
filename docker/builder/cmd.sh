@@ -54,7 +54,7 @@ fi
 for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
   if [[ -z "${SAUCE_IS_DOWN}" && ! -e "${SC_PID_FILE}" ]]; then
     for SC_ITERATION in $(seq 1 "${MAX_SAUCE_CONNECT_RETRIES}"); do
-      export SC_TUNNEL_IDENTIFIER=$(cat /proc/sys/kernel/random/uuid)
+      export SC_TUNNEL_IDENTIFIER="${PACKAGE}-$(cat /proc/sys/kernel/random/uuid)"
       echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC Attempt ${SC_ITERATION}: Connecting with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
 
       set +e
