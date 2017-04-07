@@ -163,8 +163,6 @@ module.exports = function gruntConfig(grunt) {
     shell: {}
   };
 
-  Reflect.deleteProperty(config.makeReport2.all.options.reporters, `html`);
-
   PACKAGES.forEach((packageName) => {
     const shellBuildKey = `build_${packageName}`;
     const buildKey = `build:${packageName}`;
