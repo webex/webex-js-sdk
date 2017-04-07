@@ -90,7 +90,8 @@ describe('Services', function() {
             items: []
           }
         });
-        assert.called(getSpy, 'team general conversation was fetched from server if not present');
+        // , 'team general conversation was fetched from server if not present'
+        assert.called(getSpy);
       });
     });
 

@@ -108,10 +108,10 @@ describe('Spark', function() {
             expires: Date.now() - 10000
           };
           assert.isTrue(authorization.isExpired, 0);
-          assert.notCalled(spark.request, 1);
+          assert.notCalled(spark.request);
           return authorization.revoke()
             .then(function() {
-              assert.notCalled(spark.request, 2);
+              assert.notCalled(spark.request);
             });
         });
 
