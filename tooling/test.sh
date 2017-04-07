@@ -40,7 +40,7 @@ for PACKAGE in ${PACKAGES}; do
     continue
   fi
 
-  CONTAINER_NAME="${PACKAGE}-${BUILD_NUMBER}"
+  CONTAINER_NAME="$(echo ${PACKAGE} | awk -F '/' '{ print $NF }')-${BUILD_NUMBER}"
 
   if [ -n "${CONCURRENCY}" ]; then
     echo "Keeping concurrent job count below ${CONCURRENCY}"
