@@ -352,7 +352,7 @@ ansiColor('xterm') {
                   echo "next version is ${version}"
                   sh 'npm run build'
                   sh 'npm run grunt:concurrent -- build:docs'
-                  sh 'PACKAGE=example-phone npm run grunt:package -- webpack:build'
+                  sh 'PACKAGE=@ciscospark/example-phone npm run grunt:package -- webpack:build'
 
                   if (HAS_LEGACY_CHANGES) {
                     try {
