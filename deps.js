@@ -22,7 +22,7 @@ const fs = require(`fs`);
 const {curry, uniq} = require(`lodash`);
 const path = require(`path`);
 const rpj = require(`read-package-json`);
-const _ = require(`values`);
+const _ = require(`lodash`);
 
 const readPackage = denodeify(rpj);
 
