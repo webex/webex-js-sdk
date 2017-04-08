@@ -308,7 +308,7 @@
     "karma-mocha-reporter": "^2.0.4",
     "karma-safari-launcher": "^1.0.0",
     "karma-sauce-launcher": "^1.0.0",
-    "lerna": "2.0.0-beta.38",
+    "lerna": "^2.0.0-rc.1",
     "lint-staged": "^3.3.0",
     "load-grunt-tasks": "^3.5.0",
     "lodash": "^4.13.1",
@@ -334,8 +334,8 @@
     "yargs": "^6.5.0"
   },
   "optionalDependencies": {
-    "clarify": "^1.0.5",
     "@ciscospark/test-users-legacy": "^1.0.2",
+    "clarify": "^1.0.5",
     "trace": "^2.0.2"
   },
   "browser": {
