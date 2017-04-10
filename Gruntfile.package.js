@@ -154,19 +154,6 @@ module.exports = function configureGrunt(grunt) {
       }
     },
 
-    eslint: {
-      options: {
-        format: process.env.XUNIT ? `checkstyle` : `stylish`,
-        outputFile: process.env.XUNIT && `<%= xunitDir %>/eslint-<%= package %>.xml`
-      },
-      all: [
-        `./packages/node_modules/<%= package %>/src/**/*.js`,
-        `./packages/node_modules/<%= package %>/test/**/*.js`,
-        `!./packages/node_modules/<%= package %>/test/**/*.es6.js`,
-        `./packages/node_modules/<%= package %>/*.js`
-      ]
-    },
-
     express: {
       test: {
         options: {
@@ -346,10 +333,6 @@ module.exports = function configureGrunt(grunt) {
   grunt.task.run([
     `env:default`,
     `env:secrets`
-  ]);
-
-  registerTask(`static-analysis`, [
-    `eslint`
   ]);
 
   registerTask(`build`, [

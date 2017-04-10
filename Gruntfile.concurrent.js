@@ -78,23 +78,6 @@ module.exports = function gruntConfig(grunt) {
       }
     },
 
-    eslint: {
-      all: [
-        `./packages/node_modules/*/src/**/*.js`,
-        `./packages/node_modules/*/test/**/*.js`,
-        `./packages/node_modules/*/*.js`,
-        `./packages/node_modules/@ciscospark/*/src/**/*.js`,
-        `./packages/node_modules/@ciscospark/*/test/**/*.js`,
-        `./packages/node_modules/@ciscospark/*/*.js`,
-        `!./packages/node_modules/*/browsers.processed.js`,
-        `!./packages/node_modules/@ciscospark/*/browsers.processed.js`
-      ],
-      options: {
-        format: process.env.XUNIT ? `checkstyle` : `stylish`,
-        outputFile: process.env.XUNIT && `reports/style/eslint-concurrent.xml`
-      }
-    },
-
     fileExists: {
       checkstylexml: [
         `./reports/style/eslint-concurrent.xml`,
@@ -184,7 +167,6 @@ module.exports = function gruntConfig(grunt) {
 
   grunt.registerTask(`test`, [
     `clean:reports`,
-    `eslint`,
     `concurrent:test`,
     p(process.env.COVERAGE) && `makeReport2`
   ].filter((key) => typeof key === `string`));

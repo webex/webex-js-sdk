@@ -15,10 +15,6 @@ module.exports = function gruntConfig(grunt) {
     `makeReport2:all`
   ]);
 
-  grunt.registerTask(`static-analysis`, [
-    `eslint`
-  ]);
-
   grunt.registerTask(`publish-docs`, [
     `documentation`,
     `gh-pages:ghc`
@@ -121,23 +117,6 @@ module.exports = function gruntConfig(grunt) {
         XUNIT: true,
         XUNIT_DIR: `<%= xunitDir %>`
       }
-    },
-
-    eslint: {
-      options: {
-        format: process.env.XUNIT ? `junit` : `stylish`,
-        outputFile: process.env.XUNIT && `<%= xunitDir %>/eslint.xml`
-      },
-      all: [
-        `./packages/node_modules/*/src/**/*.js`,
-        `./packages/node_modules/*/test/**/*.js`,
-        `./packages/node_modules/*/*.js`,
-        `./packages/node_modules/@ciscospark/*/src/**/*.js`,
-        `./packages/node_modules/@ciscospark/*/test/**/*.js`,
-        `./packages/node_modules/@ciscospark/*/*.js`,
-        `!./packages/node_modules/*/browsers.processed.js`,
-        `!./packages/node_modules/@ciscospark/*/browsers.processed.js`
-      ]
     },
 
     'gh-pages': {
