@@ -1,3 +1,6 @@
+/* eslint-disable func-names */
+/* eslint-disable global-require */
+
 // eslint-disable-next-line strict
 'use strict';
 const path = require(`path`);
@@ -73,7 +76,7 @@ module.exports = function(config) {
       ignoreSkipped: true
     },
 
-    port: parseInt(process.env.KARMA_PORT) || 9001,
+    port: parseInt(process.env.KARMA_PORT, 10) || 9001,
 
     preprocessors,
 

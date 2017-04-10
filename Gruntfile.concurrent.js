@@ -3,6 +3,9 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
+/* eslint-disable global-require */
+/* eslint-disable no-console */
+/* eslint-disable no-shadow */
 
 module.exports = function gruntConfig(grunt) {
   require(`load-grunt-tasks`)(grunt);

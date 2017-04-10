@@ -3,6 +3,13 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
+/* eslint-disable func-names */
+/* eslint-disable global-require */
+/* eslint-disable no-console */
+/* eslint-disable no-shadow */
+/* eslint-disable prefer-reflect */
+/* eslint-disable require-jsdoc */
+
 // eslint-disable-next-line strict
 'use strict';
 
@@ -437,7 +444,7 @@ module.exports = function configureGrunt(grunt) {
   function makeMochaRequires(requires) {
     requires = requires || [];
     // Don't include trace and clarify in environments that can't use them
-    if (parseInt(process.versions.node.split(`.`)[0]) < 4) {
+    if (parseInt(process.versions.node.split(`.`)[0], 10) < 4) {
       return requires.concat([
         function() {
           Error.stackTraceLimit = Infinity;
@@ -445,7 +452,7 @@ module.exports = function configureGrunt(grunt) {
       ]);
     }
 
-    if (parseInt(process.versions.node.split(`.`)[0]) <= 5) {
+    if (parseInt(process.versions.node.split(`.`)[0], 10) <= 5) {
       return requires.concat([
         `clarify`,
         function() {

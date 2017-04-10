@@ -1,23 +1,26 @@
-'use strict';
+/* eslint-disable complexity */
+/* eslint-disable func-names */
+/* eslint-disable global-require */
+/* eslint-disable no-shadow */
 
-var pkg = require('./package');
+const pkg = require(`./package`);
 
 module.exports = function(config) {
-  var browsers = require('./browsers');
-  var launchers = Object.keys(browsers).reduce(function(launchers, browserType) {
-    if (browserType === 'local') {
+  const browsers = require(`./browsers`);
+  const launchers = Object.keys(browsers).reduce((launchers, browserType) => {
+    if (browserType === `local`) {
       return launchers;
     }
 
-    Object.keys(browsers[browserType]).forEach(function(browserKey) {
+    Object.keys(browsers[browserType]).forEach((browserKey) => {
       launchers[browserKey] = browsers[browserType][browserKey];
     });
 
     return launchers;
   }, {});
 
-  var cfg = {
-    basePath: '.',
+  const cfg = {
+    basePath: `.`,
 
     browserDisconnectTimeout: 10000,
 
@@ -29,7 +32,7 @@ module.exports = function(config) {
       debug: true,
       watch: true,
       transform: [
-        'envify'
+        `envify`
       ]
     },
 
@@ -43,20 +46,20 @@ module.exports = function(config) {
     customLaunchers: launchers,
 
     files: [
-      'test/unit/spec/**/*.js',
-      'test/integration/spec/**/*.js'
+      `test/unit/spec/**/*.js`,
+      `test/integration/spec/**/*.js`
     ],
 
     frameworks: [
-      'browserify',
-      'mocha'
+      `browserify`,
+      `mocha`
     ],
 
-    hostname: '127.0.0.1',
+    hostname: `127.0.0.1`,
 
     client: {
       mocha: {
-        retries: (process.env.JENKINS || process.env.CI) ? 1 : 0,
+        retries: process.env.JENKINS || process.env.CI ? 1 : 0,
         timeout: 30000
       }
     },
@@ -66,58 +69,58 @@ module.exports = function(config) {
       ignoreSkipped: true
     },
 
-    port: parseInt(process.env.KARMA_PORT) || 9001,
+    port: parseInt(process.env.KARMA_PORT, 10) || 9001,
 
     preprocessors: {
-      'src/**/*.js': ['browserify'],
-      'test/unit/spec/**/*.js': ['browserify'],
-      'test/integration/spec/**/*.js': ['browserify']
+      'src/**/*.js': [`browserify`],
+      'test/unit/spec/**/*.js': [`browserify`],
+      'test/integration/spec/**/*.js': [`browserify`]
     },
 
     proxies: {
-      '/fixtures/': 'http://127.0.0.1:' + process.env.FIXTURE_PORT + '/',
-      '/upload': 'http://127.0.0.1:' + process.env.FIXTURE_PORT + '/upload'
+      '/fixtures/': `http://127.0.0.1:${process.env.FIXTURE_PORT}/`,
+      '/upload': `http://127.0.0.1:${process.env.FIXTURE_PORT}/upload`
     },
 
     reporters: [
-      'mocha'
+      `mocha`
     ],
 
     singleRun: true
   };
 
-  if (process.env.COVERAGE && process.env.COVERAGE !== 'undefined') {
+  if (process.env.COVERAGE && process.env.COVERAGE !== `undefined`) {
     cfg.coverageReporter = {
       reporters: [{
-        type: 'json',
-        dir: 'reports/coverage/legacy'
+        type: `json`,
+        dir: `reports/coverage/legacy`
       }]
     };
 
-    cfg.browserify.transform.push('browserify-istanbul');
+    cfg.browserify.transform.push(`browserify-istanbul`);
 
-    cfg.reporters.push('coverage');
+    cfg.reporters.push(`coverage`);
   }
 
   if (process.env.SC_TUNNEL_IDENTIFIER) {
     cfg.sauceLabs = {
-      build: process.env.BUILD_NUMBER || ('local-' + process.env.USER + '-' + Date.now()),
+      build: process.env.BUILD_NUMBER || `local-${process.env.USER}-${Date.now()}`,
       startConnect: false,
-      testName: pkg.name + ' (karma)',
+      testName: `${pkg.name} (karma)`,
       tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
     };
-    cfg.reporters.push('saucelabs');
+    cfg.reporters.push(`saucelabs`);
   }
 
   if (process.env.XUNIT) {
     cfg.junitReporter = {
-      outputFile: 'karma-legacy.xml',
-      outputDir: process.env.XUNIT_DIR || 'reports/junit',
-      suite: 'karma-legacy',
+      outputFile: `karma-legacy.xml`,
+      outputDir: process.env.XUNIT_DIR || `reports/junit`,
+      suite: `karma-legacy`,
       useBrowserName: true
     };
 
-    cfg.reporters.push('junit');
+    cfg.reporters.push(`junit`);
   }
 
   config.set(cfg);
