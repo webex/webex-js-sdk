@@ -29,24 +29,33 @@ const readPackage = denodeify(rpj);
 function findDepsForPackage(packagePath) {
   return readPackage(packagePath)
    .then((pkg) => {
+     let paths = [];
+
      if (pkg.main) {
-       return walkDeps(path.resolve(path.dirname(packagePath), pkg.main));
-     }
-     else if (pkg.bin) {
-       return _.values(pkg.bin).reduce((acc, bin) => acc.concat(walkDeps(path.resolve(path.dirname(packagePath), bin))), []);
+       paths.push(path.resolve(path.dirname(packagePath), pkg.main));
      }
 
-     try {
-       const p = path.resolve(path.dirname(packagePath), `index.js`);
-       fs.statSync(p);
-       return walkDeps(p);
-     }
-     catch (err) {
-       if (err.code === `ENOENT`) {
-         throw new Error(`cannot determine entrypoint for ${pkg.name}`);
+     if (paths.length === 0) {
+       try {
+         const p = path.resolve(path.dirname(packagePath), `index.js`);
+         fs.statSync(p);
        }
-       throw err;
+       catch (err) {
+         if (err.code !== `ENOENT`) {
+           throw err;
+         }
+       }
      }
+
+     if (pkg.bin) {
+       paths = paths.concat(_.values(pkg.bin));
+     }
+
+     if (pkg.browser) {
+       paths = paths.concat(_.values(pkg.browser).filter((p) => p));
+     }
+
+     return paths.reduce((acc, bin) => acc.concat(walkDeps(path.resolve(path.dirname(packagePath), bin))), []);
    })
    .catch((err) => {
      if (err.code === `EISDIR`) {
@@ -108,6 +117,10 @@ function walkDeps(filePath) {
       return acc;
     }, []);
     return uniq(deps.map((d) => {
+      // The following block makes sure the dep is a package name and not a file
+      // reference. Given a require of `@scope/foo/bar/baz`, the following will
+      // return `@scope/foo`. Given a require of `foo/bar/baz`, the folling will
+      // return `foo`.
       d = d.split(`/`);
       if (d[0].startsWith(`@`)) {
         return d.slice(0, 2).join(`/`);
