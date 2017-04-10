@@ -1,98 +1,89 @@
 # spark-js-sdk
 
-> Monorepo containing the Cisco Spark JavaScript SDKs (both current and legacy).
+[![npm](https://img.shields.io/npm/v/ciscospark.svg?maxAge=86400)](https://www.npmjs.com/package/ciscospark)
+[![license](https://img.shields.io/github/license/ciscospark/spark-js-sdk.svg)](https://github.com/ciscospark/spark-js-sdk/blob/master/LICENSE)
 
-[ciscospark](/packages/node_modules/ciscospark) is a collection of node modules targeting our [external APIs](https://developer.ciscospark.com). Its core libraries take inspiration from our web client's Legacy SDK.
+> The Cisco Spark JavaScript SDK
 
-This README primarily discusses the tooling required to develop the Cisco Spark SDK.
+This is a monorepo containing all officially maintained Cisco Spark JavaScript SDK modules in the same repo.
+
+[ciscospark](/packages/node_modules/ciscospark) is a collection of node modules targeting our [external APIs](https://developers.ciscospark.com).
 
 ## Table of Contents
 
-- [Install](#Install)
-- [Usage](#Usage)
-- [Contribute](#Contribute)
-- [License](#License)
+- [Install](#install)
+- [Usage](#usage)
+- [Contribute](#contribute)
+- [License](#license)
 
 ## Install
 
-Install tooling dependencies with
+We test against the current LTS version of Node.js (6.10) but the SDK should work with any supported version of Node.js.
 
-```bash
-npm install
-```
+To install the latest stable version from NPM:
+
+    npm install --save ciscospark
 
 ## Usage
 
-The following commands should be run from the SDK root directory. Tooling dependencies are typically defined only in the root node_modules directory to avoid duplicates. (eslint is installed in each package directory because many editors, or at least Atom, get confused by the monorepo layout and which eslint binary to use).
+To use the SDK, you will need Cisco Spark credentials. If you do not already have a Cisco Spark account, visit
+[Spark for Developers](https://developer.ciscospark.com/) to create your account and retrieve your access token.
 
-### Build
+See [the detailed docs](https://ciscospark.github.io/spark-js-sdk/) for more usage examples.
 
-```bash
-PACKAGE=PACKAGENAME npm run grunt:package -- build
+### Node.js
+
+You will need to set the following environment variable:
+- `CISCOSPARK_ACCESS_TOKEN`
+
+```javascript
+const assert = require(`assert`);
+assert(process.env.CISCOSPARK_ACCESS_TOKEN, 'This example assumes you have set your access token as an environment variable');
+const ciscospark = require(`ciscospark`);
+ciscospark.rooms.create({title: `My First Room`})
+  .then((room) => {
+    return Promise.all([
+      ciscospark.memberships.create({
+        roomId: room.id,
+        personEmail: `alice@example.com`
+      }),
+      ciscospark.memberships.create({
+        roomId: room.id,
+        personEmail: `bob@example.com`
+      }),
+    ])
+      .then(() => ciscospark.messages.create({
+        markdown: `**Hi Everyone**`,
+        roomId: room.id
+      }));
+  });
 ```
 
-### Run tests
+### Browsers
 
-```bash
-PACKAGE=PACKAGENAME npm run grunt:package -- test
-```
+We do not provide a pre-built version of `ciscospark`.
 
-### Run just unit tests
-Handy during early plugin development when you can write a bunch of unit tests.
+If you've already got a commonjs or es6 build process in place, you can simply
+use `const ciscospark = require('ciscospark')`.
 
-```bash
-UNIT_ONLY=true PACKAGE=PACKAGENAME npm run grunt:package -- test
-```
+If you need to load `ciscospark` via a script tag, you will need to build it first:
 
-### Run the tests, but only in nodejs
-Usually faster, and can build on the fly, thus no need to rebuild everything between test runs
+    npm install ciscospark
+    npm install -g browserify
+    echo "window.ciscospark = require(`ciscospark`)" > ./index.js
+    browserify index.js > bundle.js
 
-```bash
-PACKAGE=PACKAGENAME npm run grunt:package -- express:test test:node
-```
-
-### Run tests in-browser in debug mode
-Keeps the browser open so that you can reload set break points and reload the page
-
-```bash
-KARMA_DEBUG=true PACKAGE=PACKAGENAME npm run grunt:package -- express:test test:browser
-```
-
-### Serve the package
-This is mostly useful for the the example app(s), but also comes in handy when debugging the credentials plugins automation tests.
-
-```bash
-PACKAGE=PACKAGENAME npm run grunt:package -- serve
-```
-
-### Run unit tests in watch mode
-
-OK, this one's a handful and requires a global package, but there were too many possible variants to hardcode it any where.
-
-```bash
-npm install -g nodemon
-nodemon -w packages/PACKAGENAME/src -w packages/PACKAGENAME/test -x "UNIT_ONLY=true PACKAGE=PACKAGENAME npm run --silent grunt:package express:test test:node"
-```
-
-### Documentation
-To compile the documentation locally, make sure you have [Bundler](http://bundler.io/) or [Jekyll](https://jekyllrb.com/) installed then run the following:
-
-**Set Up Environment (with Bundler)**
-```bash
-cd docs
-bundle install
-```
-
-**Compile and Serve Docs**
-```bash
-cd docs
-bundle exec jekyll serve --config=_config.yml,_config.local.yml
-```
+In-browser usage is pretty much the same as Node.js usage, with the addition of handling
+the user authentication flow for you. See the guide on the
+[docs site](https://ciscospark.github.io/spark-js-sdk/guides/browsers/) for more information.
 
 ## Contribute
 
-Pull requests welcome. Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
+Pull requests welcome. Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for more details about building the packages
+and submitting pull requests for suggested changes.
 
 ## License
 
-&copy; 2016-2017 Cisco and/or its affiliates. All Rights Reserved.
+&copy; 2016-2017 Cisco Systems, Inc. and/or its affiliates. All Rights Reserved.
+
+See [LICENSE](LICENSE) for details.
