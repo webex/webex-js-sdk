@@ -1,4 +1,4 @@
-FROM node:4
+FROM node:6.10.1
 
 RUN apt-get update && apt-get install -y graphicsmagick curl wget jq daemon
 

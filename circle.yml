@@ -5,55 +5,15 @@ machine:
     XUNIT: true
     UNIT_ONLY: true
   node:
-    version: 4
+    version: 6.10.1
 
 general:
   artifacts:
     - lerna-debug.log
     - npm-debug.log
 
-dependencies:
-  cache_directories:
-    - node_modules
-    # TODO deploy script should update this list automatically
-    # circleci doesn't appear to support cache wildcards
-    - packages/bin-sauce-connect/node_modules
-    - packages/bin-walk/node_modules
-    - packages/ciscospark/node_modules
-    - packages/common/node_modules
-    - packages/example-phone/node_modules
-    - packages/generator-ciscospark/node_modules
-    - packages/helper-html/node_modules
-    - packages/http-core/node_modules
-    - packages/jsdoctrinetest/node_modules
-    - packages/plugin-encryption/node_modules
-    - packages/plugin-locus/node_modules
-    - packages/plugin-mercury/node_modules
-    - packages/plugin-metrics/node_modules
-    - packages/plugin-phone/node_modules
-    - packages/plugin-user/node_modules
-    - packages/plugin-wdm/node_modules
-    - packages/spark-core/node_modules
-    - packages/storage-adapter-local-storage/node_modules
-    - packages/storage-adapter-spec/node_modules
-    - packages/test-helper-automation/node_modules
-    - packages/test-helper-chai/node_modules
-    - packages/test-helper-file/node_modules
-    - packages/test-helper-make-local-url/node_modules
-    - packages/test-helper-mocha/node_modules
-    - packages/test-helper-mock-spark/node_modules
-    - packages/test-helper-retry/node_modules
-    - packages/test-helper-server/node_modules
-    - packages/test-helper-sinon/node_modules
-    - packages/test-helper-test-users/node_modules
-    - packages/xunit-with-logs/node_modules
-  post:
-    - npm run bootstrap:
-        timeout: 1200 # this step takes a long time with no output in CI environments; bump it to 20 minutes
-
 test:
   pre:
-    - npm run depcheck
     - npm run grunt:circle -- build:
         parallel: true
   override:

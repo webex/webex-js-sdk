@@ -74,10 +74,7 @@ The footer should contain any information about **Breaking changes** and is also
 Install dependencies:
 
 ```
-# Install top-level dependencies
 npm install
-# Install dependencies for each module in ./packages and locally link unpublished modules as needed
-npm run bootstrap
 ```
 
 You'll need to create a file called `.env` that defines, at a minimum:

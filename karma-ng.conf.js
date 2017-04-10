@@ -3,13 +3,13 @@
 const path = require(`path`);
 
 module.exports = function(config) {
-  const pkg = require(`./packages/${process.env.PACKAGE}/package`);
+  const pkg = require(`./packages/node_modules/${process.env.PACKAGE}/package`);
   /* eslint complexity: [0] */
   const browsers = require(`./browsers-ng`);
   const launchers = process.env.SC_TUNNEL_IDENTIFIER ? browsers.sauce : browsers.local;
-  const srcPath = path.join(`packages`, process.env.PACKAGE, `src`, `**`, `*.js`);
-  const integrationTestPath = path.join(`packages`, process.env.PACKAGE, `test`, `integration`, `spec`, `**`, `*.js`);
-  const unitTestPath = path.join(`packages`, process.env.PACKAGE, `test`, `unit`, `spec`, `**`, `*.js`);
+  const srcPath = path.join(`packages`, `node_modules`, process.env.PACKAGE, `src`, `**`, `*.js`);
+  const integrationTestPath = path.join(`packages`, `node_modules`, process.env.PACKAGE, `test`, `integration`, `spec`, `**`, `*.js`);
+  const unitTestPath = path.join(`packages`, `node_modules`, process.env.PACKAGE, `test`, `unit`, `spec`, `**`, `*.js`);
 
   const preprocessors = {};
   preprocessors[srcPath] = [`browserify`];
@@ -136,7 +136,7 @@ module.exports = function(config) {
   }
 
   try {
-    cfg = require(`./packages/${process.env.PACKAGE}/karma.conf.js`)(cfg);
+    cfg = require(`./packages/node_modules/${process.env.PACKAGE}/karma.conf.js`)(cfg);
   }
   catch (error) {
     // ignore

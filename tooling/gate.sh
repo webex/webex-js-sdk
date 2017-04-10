@@ -14,7 +14,7 @@ echo "# CLEANING"
 echo "################################################################################"
 docker run ${DOCKER_RUN_OPTS} npm run grunt -- clean
 docker run ${DOCKER_RUN_OPTS} npm run grunt:concurrent -- clean
-docker run ${DOCKER_RUN_OPTS} npm run clean-empty-packages
+
 rm -rf "${SDK_ROOT_DIR}/.sauce/*/sc.*"
 rm -rf "${SDK_ROOT_DIR}/.sauce/*/sauce_connect*log"
 
@@ -25,11 +25,6 @@ mkdir -p ${SDK_ROOT_DIR}/reports/junit
 mkdir -p ${SDK_ROOT_DIR}/reports/logs
 mkdir -p ${SDK_ROOT_DIR}/reports/sauce
 chmod -R ugo+w ${SDK_ROOT_DIR}/reports
-
-echo "################################################################################"
-echo "# BOOTSTRAPPING MODULES"
-echo "################################################################################"
-docker run ${DOCKER_RUN_OPTS} npm run bootstrap
 
 echo "################################################################################"
 echo "# BUILDING MODULES"

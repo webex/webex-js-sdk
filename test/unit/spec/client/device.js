@@ -80,12 +80,16 @@ describe('Client', function() {
 
         return spark.device._initPolicy()
           .then(function() {
-            assert.called(convoOnSpy, 'monitoring activity in order to reset logout timer');
+            // , 'monitoring activity in order to reset logout timer'
+            assert.called(convoOnSpy);
             clock.tick(1*1000);
-            assert.notCalled(logoutSpy, 'timer has not expired');
+            // , 'timer has not expired'
+            assert.notCalled(logoutSpy);
             clock.tick(3*1000);
-            assert.called(logoutSpy, 'logging out since time has run out');
-            assert.called(logoutNotifySpy, 'notified upstream that logout occurred');
+            // , 'logging out since time has run out'
+            assert.called(logoutSpy);
+            // , 'notified upstream that logout occurred'
+            assert.called(logoutNotifySpy);
           });
       });
     });

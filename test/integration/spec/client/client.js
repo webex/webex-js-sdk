@@ -163,8 +163,10 @@ describe('Client', function() {
       var req = party.spock.spark.request(options)
         .on('download-progress', promiseSpy)
         .then(function() {
-          assert.called(optionsSpy, 'A progress event was fired by the event-emitter placed in the options hash that was passed to Spark#request()');
-          assert.called(promiseSpy, 'A download-progress event was fired by the promise return by Spark#request()');
+          // , 'A progress event was fired by the event-emitter placed in the options hash that was passed to Spark#request()'
+          assert.called(optionsSpy);
+          // , 'A download-progress event was fired by the promise return by Spark#request()'
+          assert.called(promiseSpy);
         });
 
       options.download.on('progress', optionsSpy);
@@ -197,8 +199,10 @@ describe('Client', function() {
           var req = party.spock.spark.request(options)
             .on('upload-progress', promiseSpy)
             .then(function() {
-              assert.called(optionsSpy, 'A progress event was fired by the event-emitter placed in the options hash that was passed to Spark#request()');
-              assert.called(promiseSpy, 'An upload-progress event was fired by the promise return by Spark#request()');
+              // , 'A progress event was fired by the event-emitter placed in the options hash that was passed to Spark#request()'
+              assert.called(optionsSpy);
+              // , 'An upload-progress event was fired by the promise return by Spark#request()'
+              assert.called(promiseSpy);
             });
 
           options.upload.on('progress', optionsSpy);

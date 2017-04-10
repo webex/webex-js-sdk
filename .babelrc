@@ -8,6 +8,15 @@
     "lodash",
     "transform-runtime"
   ],
-  "presets": ["es2015"],
+  "presets": [
+    ["env", {
+      "targets": {
+        "browsers": [
+          "last 2 versions",
+          "safari >= 7"
+        ]
+      }
+    }]
+  ],
   "sourceMaps": true
 }
