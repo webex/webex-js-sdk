@@ -184,6 +184,12 @@ ansiColor('xterm') {
                 sh 'git fetch upstream --tags'
               }
 
+              changedFiles = sh script: 'git diff --name-only upstream/master..$(git merge-base HEAD upstream/master)', returnStdout: true
+              if (changedFiles.contains('Jenkinsfile')) {
+                currentBuild.description += "Jenkinsfile has been updated in master. Please rebase and push again."
+                error(currentBuild.description)
+              }
+
               try {
                 sh 'git diff --name-only upstream/master | grep -v src/version.js | grep -e ^src'
                 HAS_LEGACY_CHANGES = true
