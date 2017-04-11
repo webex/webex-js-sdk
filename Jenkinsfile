@@ -383,7 +383,13 @@ ansiColor('xterm') {
                   }
 
                   try {
-                    sh script: "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version}"
+                    def publishScript = "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version} --exact"
+                    def shouldNotForce = sh script: 'git log -n 1 | grep -cq #force-publish', returnStatus: true
+                    if (!shouldNotForce) {
+                      publishScript = "${publishScript} --force-publish=*"
+                    }
+
+                    sh script: publishScript
                     sh 'git add lerna.json packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
                     sh "git commit -m v${version} --no-verify"
                     sh "git tag 'v${version}'"
