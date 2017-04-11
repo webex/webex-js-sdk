@@ -145,7 +145,7 @@ ansiColor('xterm') {
           DOCKER_ENV_FILE = "${env.WORKSPACE}/docker-env"
           ENV_FILE = "${env.WORKSPACE}/.env"
 
-          DOCKER_RUN_OPTS = ''
+          DOCKER_RUN_OPTS = '-e JENKINS=true'
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --env-file=${DOCKER_ENV_FILE}"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --env-file=${ENV_FILE}"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} -e NPM_CONFIG_CACHE=${env.WORKSPACE}/.npm"
@@ -261,13 +261,9 @@ ansiColor('xterm') {
               // giving up a little bit of per-package static analysis config by
               // running eslint once across all package.
               image.inside(DOCKER_RUN_OPTS) {
-                sh script: "npm run grunt:concurrent -- eslint", returnStatus: true
-                if (!fileExists("./reports/style/eslint-concurrent.xml")) {
-                  error('Static Analysis did not produce eslint-concurrent.xml')
-                }
-                sh script: "npm run grunt -- eslint", returnStatus: true
-                if (!fileExists("./reports/style/eslint-legacy.xml")) {
-                  error('Static Analysis did not produce eslint-legacy.xml')
+                sh script: "npm run lint", returnStatus: true
+                if (!fileExists("./reports/style/eslint.xml")) {
+                  error('Static Analysis did not produce eslint.xml')
                 }
               }
               step([$class: 'CheckStylePublisher',

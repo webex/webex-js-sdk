@@ -1,3 +1,6 @@
+/* eslint-disable func-names */
+/* eslint-disable global-require */
+
 // eslint-disable-next-line strict
 'use strict';
 

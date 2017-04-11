@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
+/* eslint-disable complexity */
 /* eslint global-require: [0] */
 /* eslint no-sync: [0] */
 /* eslint require-jsdoc: [0] */
 
-// Idealy, this file belongs in ./tooling, but the first iteration is a *lot*
+// Idealy, this file belongs in ./tooling, but the second iteration is a *lot*
 // simpler if we don't have to deal with adding `../` to every file operation.
 
 // Reminder: because this script uses the package.jsons in

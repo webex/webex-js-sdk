@@ -14,9 +14,9 @@ var Syntax = require('doctrine').Syntax;
 function formatParameter(param, short) {
   if (short) {
     return param.type.type == Syntax.OptionalType ? '[' + param.name + ']' : param.name;
-  } else {
-    return param.name + ': ' + formatMarkdown.type(param.type).replace(/\n/g, '');
   }
+  return param.name + ': ' + formatMarkdown.type(param.type).replace(/\n/g, '');
+
 }
 
 /**
@@ -29,10 +29,11 @@ function formatParameter(param, short) {
  */
 module.exports = function formatParams(section, short) {
   if (section.params) {
-    return '(' + section.params.map(function (param) {
+    return '(' + section.params.map(function(param) {
       return formatParameter(param, short);
     }).join(', ') + ')';
-  } else if (!section.params && (section.kind === 'function' || section.kind === 'class')) {
+  }
+  else if (!section.params && (section.kind === 'function' || section.kind === 'class')) {
     return '()';
   }
   return '';

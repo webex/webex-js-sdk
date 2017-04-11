@@ -3,6 +3,9 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
+/* eslint-disable global-require */
+/* eslint-disable no-console */
+/* eslint-disable no-shadow */
 
 module.exports = function gruntConfig(grunt) {
   require(`load-grunt-tasks`)(grunt);
@@ -75,23 +78,6 @@ module.exports = function gruntConfig(grunt) {
       },
       secrets: {
         src: `.env`
-      }
-    },
-
-    eslint: {
-      all: [
-        `./packages/node_modules/*/src/**/*.js`,
-        `./packages/node_modules/*/test/**/*.js`,
-        `./packages/node_modules/*/*.js`,
-        `./packages/node_modules/@ciscospark/*/src/**/*.js`,
-        `./packages/node_modules/@ciscospark/*/test/**/*.js`,
-        `./packages/node_modules/@ciscospark/*/*.js`,
-        `!./packages/node_modules/*/browsers.processed.js`,
-        `!./packages/node_modules/@ciscospark/*/browsers.processed.js`
-      ],
-      options: {
-        format: process.env.XUNIT ? `checkstyle` : `stylish`,
-        outputFile: process.env.XUNIT && `reports/style/eslint-concurrent.xml`
       }
     },
 
@@ -184,7 +170,6 @@ module.exports = function gruntConfig(grunt) {
 
   grunt.registerTask(`test`, [
     `clean:reports`,
-    `eslint`,
     `concurrent:test`,
     p(process.env.COVERAGE) && `makeReport2`
   ].filter((key) => typeof key === `string`));

@@ -144,18 +144,6 @@ module.exports = function(grunt) {
       }
     },
 
-    eslint: {
-      all: [
-        '<%= config.src %>/**/*.js',
-        '<%= config.test %>/**/*.js',
-        'Gruntfile.js'
-      ],
-      options: {
-        format: process.env.XUNIT ? 'checkstyle' : 'stylish',
-        outputFile: process.env.XUNIT && 'reports/style/eslint-legacy.xml'
-      },
-    },
-
     fileExists: {
       karmaxml: [
         './reports/junit/*/karma-legacy.xml'
@@ -184,17 +172,6 @@ module.exports = function(grunt) {
           src: '<%= config.src %>/**/*.js'
         }]
       }
-    },
-
-    jscs: {
-      options: {
-        config: '.jscsrc'
-      },
-      all: [
-        '<%= config.src %>/**/*.js',
-        '<%= config.test %>/**/*.js',
-        '!<%= config.test %>/xunit-with-logs.js'
-      ]
     },
 
     karma: {
@@ -360,11 +337,6 @@ module.exports = function(grunt) {
   }
 
   if (XUNIT) {
-    var jscs = grunt.config('jscs');
-    jscs.options.reporter = 'junit';
-    jscs.options.reporterOutput = 'reports/jscs.xml';
-    grunt.config('jscs', jscs);
-
     mochaTest = grunt.config('mochaTest');
     mochaTest.options.reporter = path.join(__dirname, 'test/xunit-with-logs');
     grunt.config('mochaTest', mochaTest);
@@ -394,11 +366,6 @@ module.exports = function(grunt) {
 
   // Public Tasks
   // ------------
-
-  grunt.registerTask('static-analysis', [
-    'eslint',
-    'jscs'
-  ]);
 
   grunt.registerTask('test', function(target) {
     /* eslint complexity:[0] */

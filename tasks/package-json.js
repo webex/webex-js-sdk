@@ -1,5 +1,7 @@
 /* eslint quotes: [2, backtick] */
-
+/* eslint-disable func-names */
+/* eslint-disable max-nested-callbacks */
+/* eslint-disable no-invalid-this */
 
 const _ = require(`lodash`);
 

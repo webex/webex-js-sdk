@@ -1,3 +1,12 @@
+/* eslint-disable complexity */
+/* eslint-disable func-names */
+/* eslint-disable global-require */
+/* eslint-disable max-nested-callbacks */
+/* eslint-disable no-console */
+/* eslint-disable no-invalid-this */
+/* eslint-disable no-sync */
+/* eslint-disable require-jsdoc */
+
 // eslint-disable-next-line
 'use strict';
 

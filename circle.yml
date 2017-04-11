@@ -17,5 +17,6 @@ test:
     - npm run grunt:circle -- build:
         parallel: true
   override:
-    - npm run grunt:circle -- static-analysis test:
+    - npm run lint
+    - npm run grunt:circle -- test:
         parallel: true

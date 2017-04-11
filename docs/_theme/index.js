@@ -1,24 +1,24 @@
 'use strict';
 
-var fs = require('fs'),
-  path = require('path'),
-  File = require('vinyl'),
-  vfs = require('vinyl-fs'),
-  _ = require('lodash'),
-  concat = require('concat-stream'),
-  formatMarkdown = require('./lib/format_markdown'),
-  formatParameters = require('./lib/format_parameters');
+var fs = require('fs');
+var path = require('path');
+var File = require('vinyl');
+var vfs = require('vinyl-fs');
+var _ = require('lodash');
+var concat = require('concat-stream');
+var formatMarkdown = require('./lib/format_markdown');
+var formatParameters = require('./lib/format_parameters');
 
-module.exports = function (comments, options, callback) {
+module.exports = function(comments, options, callback) {
 
   var highlight = require('./lib/highlight')(options.hljs || {});
 
-  var namespaces = comments.map(function (comment) {
+  var namespaces = comments.map(function(comment) {
     return comment.namespace;
   });
 
   var imports = {
-    shortSignature: function (section, hasSectionName) {
+    shortSignature: function(section, hasSectionName) {
       var prefix = '';
       if (section.kind === 'class') {
         prefix = 'new ';
@@ -28,32 +28,33 @@ module.exports = function (comments, options, callback) {
       }
       if (hasSectionName) {
         return prefix + section.name + formatParameters(section, true);
-      } else if (!hasSectionName && formatParameters(section)) {
+      }
+      else if (!hasSectionName && formatParameters(section)) {
         return formatParameters(section, true);
       }
       return '()';
     },
-    signature: function (section, hasSectionName) {
+    signature: function(section, hasSectionName) {
       var returns = '';
       var prefix = '';
       if (section.kind === 'class') {
         prefix = 'new ';
-      } else if (section.kind !== 'function') {
+      }
+      else if (section.kind !== 'function') {
         return section.name;
       }
       if (section.returns) {
-        returns = ': ' +
-          formatMarkdown.type(section.returns[0].type, namespaces);
+        returns = ': ' + formatMarkdown.type(section.returns[0].type, namespaces);
       }
       if (hasSectionName) {
-        return prefix + section.name +
-          formatParameters(section) + returns;
-      } else if (!hasSectionName && formatParameters(section)) {
+        return prefix + section.name + formatParameters(section) + returns;
+      }
+      else if (!hasSectionName && formatParameters(section)) {
         return section.name + formatParameters(section) + returns;
       }
       return section.name + '()' + returns;
     },
-    md: function (ast, inline) {
+    md: function(ast, inline) {
       if (inline && ast && ast.children.length && ast.children[0].type === 'paragraph') {
         ast = {
           type: 'root',
@@ -62,13 +63,13 @@ module.exports = function (comments, options, callback) {
       }
       return formatMarkdown(ast, namespaces);
     },
-    formatType: function (section) {
+    formatType: function(section) {
       return formatMarkdown.type(section.type, namespaces);
     },
-    autolink: function (text) {
+    autolink: function(text) {
       return formatMarkdown.link(namespaces, text);
     },
-    highlight: function (str) {
+    highlight: function(str) {
       return highlight(str);
     }
   };
@@ -88,8 +89,8 @@ module.exports = function (comments, options, callback) {
   });
 
   // push assets into the pipeline as well.
-  vfs.src([__dirname + '/assets/**'], { base: __dirname })
-    .pipe(concat(function (files) {
+  vfs.src([__dirname + '/assets/**'], {base: __dirname})
+    .pipe(concat(function(files) {
       callback(null, files.concat(new File({
         path: 'index.html',
         contents: new Buffer(pageTemplate({
