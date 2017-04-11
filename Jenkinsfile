@@ -14,7 +14,13 @@ def warn = { msg ->
 def cleanup = { ->
   // Reminder: cleanup can't be a stage because it will cause Jenkins to drop
   // discard the stage view for any build that happened before a failed build
-  archive 'reports/**/*'
+  try {
+    archive 'reports/**/*'
+    archive 'html-report/**/*'
+  }
+  catch(err) {
+    // ignore; not sure if this'll throw if no reports have been generated
+  }
   sh 'rm -f .env'
 
   if (IS_VALIDATED_MERGE_BUILD) {
@@ -118,7 +124,6 @@ ansiColor('xterm') {
           currentBuild.description = ''
 
           env.CONCURRENCY = 4
-          env.NPM_CONFIG_REGISTRY = "http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group"
           env.ENABLE_VERBOSE_NETWORK_LOGGING = true
           env.SDK_ROOT_DIR=pwd
 
@@ -140,7 +145,7 @@ ansiColor('xterm') {
           DOCKER_ENV_FILE = "${env.WORKSPACE}/docker-env"
           ENV_FILE = "${env.WORKSPACE}/.env"
 
-          DOCKER_RUN_OPTS = ''
+          DOCKER_RUN_OPTS = '-e JENKINS=true'
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --env-file=${DOCKER_ENV_FILE}"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --env-file=${ENV_FILE}"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} -e NPM_CONFIG_CACHE=${env.WORKSPACE}/.npm"
@@ -224,8 +229,9 @@ ansiColor('xterm') {
 
           stage('install') {
             image.inside(DOCKER_RUN_OPTS) {
+              sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
               sh 'npm install'
-              sh 'npm run bootstrap'
+              sh 'npm run link-lint-rules'
             }
           }
 
@@ -234,9 +240,9 @@ ansiColor('xterm') {
             image.inside(DOCKER_RUN_OPTS) {
               sh 'npm run grunt -- clean'
               sh 'npm run grunt:concurrent -- clean'
-              sh 'npm run clean-empty-packages'
             }
-            sh 'rm -rf "packages/*/browsers.processed.js"'
+            sh 'rm -rf "packages/node_modules/*/browsers.processed.js"'
+            sh 'rm -rf "packages/node_modules/@ciscospark/*/browsers.processed.js"'
             sh 'rm -rf ".sauce/*/sc.*"'
             sh 'rm -rf ".sauce/*/sauce_connect*log"'
             sh 'rm -rf reports'
@@ -255,13 +261,9 @@ ansiColor('xterm') {
               // giving up a little bit of per-package static analysis config by
               // running eslint once across all package.
               image.inside(DOCKER_RUN_OPTS) {
-                sh script: "npm run grunt:concurrent -- eslint", returnStatus: true
-                if (!fileExists("./reports/style/eslint-concurrent.xml")) {
-                  error('Static Analysis did not produce eslint-concurrent.xml')
-                }
-                sh script: "npm run grunt -- eslint", returnStatus: true
-                if (!fileExists("./reports/style/eslint-legacy.xml")) {
-                  error('Static Analysis did not produce eslint-legacy.xml')
+                sh script: "npm run lint", returnStatus: true
+                if (!fileExists("./reports/style/eslint.xml")) {
+                  error('Static Analysis did not produce eslint.xml')
                 }
               }
               step([$class: 'CheckStylePublisher',
@@ -280,9 +282,17 @@ ansiColor('xterm') {
             stage('build') {
               image.inside(DOCKER_RUN_OPTS) {
                 sh 'npm run build'
-                // Reminder: depcheck has to come after build so that it can
+                // Generate deps so that we can run dep:check. This is more of a
+                // sanity checkout confirming the generate works correctly than
+                // an actually necessary step
+                sh 'npm run deps:generate'
+                // Reminder: deps:check has to come after build so that it can
                 // walk the tree in */dist
-                sh 'npm run depcheck'
+                sh 'npm run deps:check'
+                // Now that we've confirmed deps:generate works, undo the
+                // generated deps. They'll be regenerated once we use lerna to
+                // set the new package versions.
+                sh 'git checkout ./packages'
               }
             }
 
@@ -338,16 +348,46 @@ ansiColor('xterm') {
                   echo "next version is ${version}"
                   sh 'npm run build'
                   sh 'npm run grunt:concurrent -- build:docs'
-                  sh 'PACKAGE=example-phone npm run grunt:package -- webpack:build'
+                  sh 'PACKAGE=@ciscospark/example-phone npm run grunt:package -- webpack:build'
 
                   if (HAS_LEGACY_CHANGES) {
+                    try {
+                      sh 'mv .git/hooks/pre-commit .git/hooks/pre-commit.bak'
+                    }
+                    catch (error) {
+                      // this is fine
+                    }
+
+                    try {
+                      sh 'mv .git/hooks/commit-msg .git/hooks/commit-msg.bak'
+                    }
+                    catch (error) {
+                      // this is fine
+                    }
+
                     sh 'npm run grunt -- release'
+
+                    try {
+                      sh 'mv .git/hooks/pre-commit.bak .git/hooks/pre-commit'
+                    }
+                    catch (error) {
+                      // this is fine
+                    }
+
+                    try {
+                      sh 'mv .git/hooks/commit-msg.bak .git/hooks/commit-msg'
+                    }
+                    catch (error) {
+                      // this is fine
+                    }
                   }
+
                   try {
                     sh script: "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version}"
-                    sh 'git add lerna.json packages/*/package.json'
-                    sh "git commit -m v${version}"
+                    sh 'git add lerna.json packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
+                    sh "git commit -m v${version} --no-verify"
                     sh "git tag 'v${version}'"
+                    sh "npm run deps:generate"
                   }
                   catch (error) {
                     // ignore: no packages to update
@@ -398,8 +438,6 @@ ansiColor('xterm') {
                   // reminder: need to write to ~ not . because lerna runs npm
                   // commands in subdirectories
                   image.inside(DOCKER_RUN_OPTS) {
-                    def registry = env.NPM_CONFIG_REGISTRY
-                    env.NPM_CONFIG_REGISTRY = ''
                     sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
                     echo ''
                     echo ''
@@ -408,7 +446,7 @@ ansiColor('xterm') {
                     echo ''
                     echo ''
                     echo ''
-                    sh 'NPM_CONFIG_REGISTRY="" npm run lerna -- exec -- bash -c \'npm publish --access public || true\''
+                    sh 'npm run lerna -- exec -- bash -c \'npm publish --access public || true\''
                     echo ''
                     echo ''
                     echo ''
@@ -416,7 +454,6 @@ ansiColor('xterm') {
                     echo ''
                     echo ''
                     echo ''
-                    env.NPM_CONFIG_REGISTRY = registry
                   }
                   if ("${version}" == '') {
                     warn('could not determine tag name to push to github.com')

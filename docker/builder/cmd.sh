@@ -12,6 +12,7 @@ export env $(cat .env | xargs)
 cd ${WORKSPACE}
 
 GRUNT_LOG_FILE="$(pwd)/reports/logs/${PACKAGE}.log"
+mkdir -p $(dirname ${GRUNT_LOG_FILE})
 export BABEL_CACHE_PATH=$(pwd)/.tmp/babel-cache/${PACKAGE}.babel.json
 mkdir -p "$(pwd)/.tmp/babel-cache"
 
@@ -53,14 +54,14 @@ fi
 for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
   if [[ -z "${SAUCE_IS_DOWN}" && ! -e "${SC_PID_FILE}" ]]; then
     for SC_ITERATION in $(seq 1 "${MAX_SAUCE_CONNECT_RETRIES}"); do
-      export SC_TUNNEL_IDENTIFIER=$(cat /proc/sys/kernel/random/uuid)
+      export SC_TUNNEL_IDENTIFIER="${PACKAGE}-$(cat /proc/sys/kernel/random/uuid)"
       echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC Attempt ${SC_ITERATION}: Connecting with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
 
       set +e
       daemon -U --name sauce_connect -- ${SC_BINARY} \
         -D *.ciscospark.com,*.wbx2.com,*.webex.com*,storage101.dfw1.clouddrive.com \
         -vv \
-        -l "$(pwd)/reports/sauce/sauce_connect.${PACKAGE}.${SC_ITERATION}.log" \
+        -l "$(pwd)/reports/sauce/sauce_connect.$(echo ${PACKAGE} | awk -F '/' '{ print $NF }').${SC_ITERATION}.log" \
         --tunnel-identifier "${SC_TUNNEL_IDENTIFIER}" \
         --pidfile "${SC_PID_FILE}" \
         --readyfile "${SC_READY_FILE}"

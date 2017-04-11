@@ -6,7 +6,7 @@ var remark = require('remark'),
   utils = require('documentation-theme-utils');
 
 function getHref(paths) {
-  return function (text) {
+  return function(text) {
     if (paths && paths.indexOf(text) >= 0) {
       return '#' + text;
     }
@@ -14,7 +14,7 @@ function getHref(paths) {
 }
 
 function rerouteLinks(ast) {
-  visit(ast, 'link', function (node) {
+  visit(ast, 'link', function(node) {
     if (node.jsdoc && !node.url.match(/^(http|https|\.)/)) {
       node.url = '#' + node.url;
     }
@@ -35,13 +35,13 @@ function rerouteLinks(ast) {
  * // {{ md x }}
  * // generates <h2>foo</h2>
  */
-module.exports = function (ast) {
+module.exports = function(ast) {
   if (ast) {
     return remark().use(html).stringify(rerouteLinks(ast));
   }
 };
 
-module.exports.type = function (type, paths) {
+module.exports.type = function(type, paths) {
   return module.exports({
     type: 'root',
     children: utils.formatType(type, getHref(paths))
@@ -55,7 +55,7 @@ module.exports.type = function (type, paths) {
  * @param {string} description link text override
  * @returns {string} potentially linked HTML
  */
-module.exports.link = function (paths, text, description) {
+module.exports.link = function(paths, text, description) {
   return module.exports({
     type: 'root',
     children: [utils.link(text, getHref(paths), description)]

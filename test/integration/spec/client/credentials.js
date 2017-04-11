@@ -14,7 +14,7 @@ var grantErrors = require('../../../../src/client/credentials/grant-errors');
 var landingparty = require('../../lib/landingparty');
 var retry = require('../../lib/retry');
 var Spark = require('../../../../src');
-var TestUsersInterface = require('spark-js-sdk--test-users');
+var TestUsers = require('@ciscospark/test-users-legacy');
 var uuid = require('uuid');
 
 describe('Client', function() {
@@ -25,7 +25,7 @@ describe('Client', function() {
       var redshirt;
 
       beforeEach(function() {
-        return TestUsersInterface.create({
+        return TestUsers.create({
           authCodeOnly: true,
           scopes: process.env.COMMON_IDENTITY_SCOPE
         })

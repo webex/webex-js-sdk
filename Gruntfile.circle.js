@@ -1,3 +1,8 @@
+/* eslint-disable global-require */
+/* eslint-disable no-console */
+/* eslint-disable no-shadow */
+/* eslint-disable require-jsdoc */
+
 /**!
  *
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
@@ -5,7 +10,6 @@
 
 /* eslint quotes: [2, "backtick"] */
 
-'use strict';
 
 module.exports = function gruntConfig(grunt) {
   require(`load-grunt-tasks`)(grunt);
@@ -14,10 +18,6 @@ module.exports = function gruntConfig(grunt) {
 
   grunt.registerTask(`coverage`, [
     `makeReport2:all`
-  ]);
-
-  grunt.registerTask(`static-analysis`, [
-    `eslint`
   ]);
 
   grunt.registerTask(`publish-docs`, [
@@ -34,35 +34,19 @@ module.exports = function gruntConfig(grunt) {
   ];
 
   const ALL_NODE_PACKAGES = grunt.file.expand({
-    cwd: `packages`
+    cwd: `packages/node_modules`,
+    filter: `isDirectory`
   }, [
-      // packages are order to optimize build time while keep flaky tests near
-      // the start of the build
-      // odd numbered blocks should be ordered fastest to slowest in the group
-      // even numbered blocks should be ordered slowest to fastest in the
-      // group
-      `plugin-phone`,
-      `ciscospark`,
-      `spark-core`,
-
-      `http-core`,
-      `plugin-mercury`,
-      `example-phone`,
-
-      `helper-html`,
-      `plugin-wdm`,
-      `plugin-locus`,
-
-      `common`,
-      `generator-ciscospark`,
-      `jsdoctrinetest`,
-
-      `*`,
-      `!test-helper*`,
-      `!bin*`,
-      `!xunit-with-logs`,
-      `test-helper-mock-web-socket`,
-      `test-helper-mock-socket`
+    `*`,
+    `!*/*`,
+    `@ciscospark/*`,
+    `!@ciscospark`,
+    `!@ciscospark/example*`,
+    `!@ciscospark/test-helper*`,
+    `!@ciscospark/bin*`,
+    `!@ciscospark/xunit-with-logs`,
+    `@ciscospark/test-helper-mock-web-socket`,
+    `@ciscospark/test-helper-mock-socket`
   ]);
 
   const CIRCLE_NODE_TOTAL = parseInt(process.env.CIRCLE_NODE_TOTAL || 1, 10);
@@ -117,8 +101,8 @@ module.exports = function gruntConfig(grunt) {
       },
       html: {
         src: [
-          `./packages/ciscospark/src/index.js`,
-          `./packages/plugin-phone/src/index.js`
+          `./packages/node_modules/ciscospark/src/index.js`,
+          `./packages/node_modules/@ciscospark/plugin-phone/src/index.js`
         ],
         options: {
           destination: `./docs/api/`,
@@ -138,19 +122,6 @@ module.exports = function gruntConfig(grunt) {
         XUNIT: true,
         XUNIT_DIR: `<%= xunitDir %>`
       }
-    },
-
-    eslint: {
-      options: {
-        format: process.env.XUNIT ? `junit` : `stylish`,
-        outputFile: process.env.XUNIT && `<%= xunitDir %>/eslint.xml`
-      },
-      all: [
-        `./packages/*/src/**/*.js`,
-        `./packages/*/test/**/*.js`,
-        `./packages/*/*.js`,
-        `!./packages/*/browsers.processed.js`
-      ]
     },
 
     'gh-pages': {

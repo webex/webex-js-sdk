@@ -18,7 +18,9 @@ PIDS=""
 
 # Ideally, the following would be done with lerna but there seem to be some bugs
 # in --scope and --ignore
-PACKAGES=$(ls "packages")
+PACKAGES=$(ls ./packages/node_modules | grep -v @ciscospark)
+PACKAGES+=" "
+PACKAGES+="$(cd ./packages/node_modules/ && find @ciscospark -maxdepth 1 -type d | egrep -v @ciscospark$)"
 PACKAGES+=" legacy-node"
 PACKAGES+=" legacy-browser"
 for PACKAGE in ${PACKAGES}; do
@@ -38,7 +40,7 @@ for PACKAGE in ${PACKAGES}; do
     continue
   fi
 
-  CONTAINER_NAME="${PACKAGE}-${BUILD_NUMBER}"
+  CONTAINER_NAME="$(echo ${PACKAGE} | awk -F '/' '{ print $NF }')-${BUILD_NUMBER}"
 
   if [ -n "${CONCURRENCY}" ]; then
     echo "Keeping concurrent job count below ${CONCURRENCY}"

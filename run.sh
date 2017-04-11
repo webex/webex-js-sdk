@@ -16,9 +16,6 @@ fi
 # CONFIGURE NODE
 #
 
-# Ensure all internal tools are using the internal registry
-export NPM_CONFIG_REGISTRY=http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group
-
 # The first time Jenkins runs a job on a machine, it executes from the Jenkins
 # home directory instead of the workspace directory. Make sure we're always
 # running this script in the right place.
@@ -30,7 +27,6 @@ fi
 if [[ $NODE_LABELS == *"DOCKER_SLAVE"* ]]; then
   # I have no idea why the next line is required
   source ~/.nvm/nvm.sh
-  nvm use 4
 else
   NVM_DIR="`pwd`/.nvm"
   mkdir -p $NVM_DIR
@@ -46,10 +42,12 @@ else
     curl https://raw.githubusercontent.com/creationix/nvm/v0.25.3/install.sh | NVM_DIR="$NVM_DIR" bash
     source $NVM_DIR/nvm.sh
   fi
-
-  # Use node 0.10.40
-  nvm install 4
 fi
+
+# Always use install. If that version is installed, it's the same as use and if
+# it's not installed, you won't spend half an hour trying to figure out what
+# exit code 3 is.
+nvm install 6.10.1
 
 # Make sure we're using npm 2.x
 NPM_MAJOR_VERSION=$(npm --version | awk -F'.' '{print $1}')
@@ -100,6 +98,7 @@ DOCKER_ENV_KEYS+="SDK_BUILD_DEBUG "
 DOCKER_ENV_KEYS+="SKIP_FLAKY_TESTS "
 DOCKER_ENV_KEYS+="WDM_SERVICE_URL "
 DOCKER_ENV_KEYS+="WORKSPACE "
+DOCKER_ENV_KEYS+="NPM_TOKEN "
 # We don't want to fail if grep doesn't find the specified var
 set +e
 for KEY in $DOCKER_ENV_KEYS; do
@@ -114,6 +113,9 @@ if ! docker images | grep -qc ${DOCKER_CONTAINER_NAME}; then
   cat <<EOT >>./docker/builder/Dockerfile
 RUN groupadd -g $(id -g) jenkins
 RUN useradd -u $(id -u) -g $(id -g) -m jenkins
+RUN echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > $HOME/.npmrc
+RUN mkdir -p /home/jenkins && chown $(id -u):$(id -g) /home/jenkins
+RUN echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > /home/jenkins/.npmrc
 WORKDIR ${WORKDIR}
 USER $(id -u)
 EOT

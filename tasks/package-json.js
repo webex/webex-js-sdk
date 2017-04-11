@@ -1,6 +1,7 @@
 /* eslint quotes: [2, backtick] */
-
-'use strict';
+/* eslint-disable func-names */
+/* eslint-disable max-nested-callbacks */
+/* eslint-disable no-invalid-this */
 
 const _ = require(`lodash`);
 
@@ -80,7 +81,7 @@ module.exports = function(grunt) {
 
         grunt.file.write(filename, `${JSON.stringify(result, null, 2)}\n`);
       }
-      catch(reason) {
+      catch (reason) {
         grunt.log.warn(reason);
       }
     });

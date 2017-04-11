@@ -3,6 +3,9 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
+/* eslint-disable global-require */
+/* eslint-disable no-console */
+/* eslint-disable no-shadow */
 
 module.exports = function gruntConfig(grunt) {
   require(`load-grunt-tasks`)(grunt);
@@ -10,29 +13,19 @@ module.exports = function gruntConfig(grunt) {
   grunt.loadTasks(`tasks`);
 
   const PACKAGES = grunt.file.expand({
-    cwd: `packages`
+    cwd: `packages/node_modules`,
+    filter: `isDirectory`
   }, [
-      // note: packages are ordered on approximate flakiness of their respective
-      // test suites
-    `example-phone`,
-    `ciscospark`,
-    `plugin-phone`,
-    `http-core`,
-    `spark-core`,
-    `plugin-wdm`,
-    `plugin-mercury`,
-    `plugin-locus`,
-    `generator-ciscospark`,
-    `common`,
-    `helper-html`,
-    `jsdoctrinetest`,
     `*`,
-    `!example*`,
-    `!test-helper*`,
-    `!bin*`,
-    `!xunit-with-logs`,
-    `test-helper-mock-web-socket`,
-    `test-helper-mock-socket`
+    `!*/*`,
+    `@ciscospark/*`,
+    `!@ciscospark`,
+    `!@ciscospark/example*`,
+    `!@ciscospark/test-helper*`,
+    `!@ciscospark/bin*`,
+    `!@ciscospark/xunit-with-logs`,
+    `@ciscospark/test-helper-mock-web-socket`,
+    `@ciscospark/test-helper-mock-socket`
   ]);
 
   const config = {
@@ -67,8 +60,8 @@ module.exports = function gruntConfig(grunt) {
       },
       html: {
         src: [
-          `./packages/ciscospark/src/index.js`,
-          `./packages/plugin-phone/src/index.js`
+          `./packages/node_modules/ciscospark/src/index.js`,
+          `./packages/node_modules/@ciscospark/plugin-phone/src/index.js`
         ],
         options: {
           destination: `./docs/api/`,
@@ -85,19 +78,6 @@ module.exports = function gruntConfig(grunt) {
       },
       secrets: {
         src: `.env`
-      }
-    },
-
-    eslint: {
-      all: [
-        `./packages/*/src/**/*.js`,
-        `./packages/*/test/**/*.js`,
-        `./packages/*/*.js`,
-        `!./packages/*/browsers.processed.js`
-      ],
-      options: {
-        format: process.env.XUNIT ? `checkstyle` : `stylish`,
-        outputFile: process.env.XUNIT && `reports/style/eslint-concurrent.xml`
       }
     },
 
@@ -156,7 +136,7 @@ module.exports = function gruntConfig(grunt) {
           overrides(packageName) {
             return {
               license: `MIT`,
-              repository: `https://github.com/ciscospark/spark-js-sdk/tree/master/packages/${packageName}`,
+              repository: `https://github.com/ciscospark/spark-js-sdk/tree/master/packages/node_modules${packageName}`,
               engines: {
                 node: `>=4`
               }
@@ -168,10 +148,6 @@ module.exports = function gruntConfig(grunt) {
 
     shell: {}
   };
-
-  if (process.env.COVERAGE && (process.env.JENKINS || process.env.CI)) {
-    Reflect.deleteProperty(config.makeReport2.all.options.reporters, `html`);
-  }
 
   PACKAGES.forEach((packageName) => {
     const shellBuildKey = `build_${packageName}`;
@@ -194,7 +170,6 @@ module.exports = function gruntConfig(grunt) {
 
   grunt.registerTask(`test`, [
     `clean:reports`,
-    `eslint`,
     `concurrent:test`,
     p(process.env.COVERAGE) && `makeReport2`
   ].filter((key) => typeof key === `string`));
@@ -220,7 +195,8 @@ module.exports = function gruntConfig(grunt) {
   }
 
   grunt.registerTask(`build`, [
-    `package-json`,
+    // TODO reenable package-json at some point; perhaps by adding it to deps.js
+    // `package-json`,
     `concurrent:build`
   ]);
 

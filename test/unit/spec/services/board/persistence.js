@@ -67,6 +67,25 @@ describe('Services', function() {
         kmsMessage: '<encrypted>'
       };
 
+      var decryptedChannel = {
+        channelId: boardId,
+        channelUrl: boardServiceUrl + '/channels/' + boardId,
+        creatorId: 'c321e329-28d6-4d52-a9d1-374010411530',
+        aclUrlLink: conversation.aclUrl,
+        defaultEncryptionKeyUrl: mockKey.keyUrl,
+        kmsMessage: {
+          status: 201,
+          resource: {
+            uri: 'https://encryption-a.wbx2.com/encryption/api/v1/resources/2853285c-c46b-4b35-9542-9a81d4e3c87f',
+            keyUris: ['https://encryption-a.wbx2.com/encryption/api/v1/keys/5042787d-510b-46f3-b83c-ea73032de851'],
+            authorizationUris: [
+              'https://encryption-a.wbx2.com/encryption/api/v1/authorizations/aHR0cHM6Ly9lbmNyeXB0aW9uLWEud2J4Mi5jb20vZW5jcnlwdGlvbi9hcGkvdjEvcmVzb3VyY2VzLzI3OWIyMjgyLWZmYTItNGM3ZC04NGRmLTRkNDVlZmUzYTMzNQBodHRwczovL2VuY3J5cHRpb24tYS53YngyLmNvbS9lbmNyeXB0aW9uL2FwaS92MS9yZXNvdXJjZXMvMjg1MzI4NWMtYzQ2Yi00YjM1LTk1NDItOWE4MWQ0ZTNjODdm',
+              'https://encryption-a.wbx2.com/encryption/api/v1/authorizations/YzMyMWUzMjktMjhkNi00ZDUyLWE5ZDEtMzc0MDEwNDExNTMwAGh0dHBzOi8vZW5jcnlwdGlvbi1hLndieDIuY29tL2VuY3J5cHRpb24vYXBpL3YxL3Jlc291cmNlcy8yODUzMjg1Yy1jNDZiLTRiMzUtOTU0Mi05YTgxZDRlM2M4N2Y'
+            ]
+          }
+        }
+      };
+
       var localClusterServiceUrls = {
         mercuryApiServiceClusterUrl: 'https:/mercury-api-a.wbx2.com/v2',
         mercuryConnectionServiceClusterUrl: 'https://mercury-connection-a.wbx2.com'
@@ -95,6 +114,9 @@ describe('Services', function() {
           conversation: {
             encrypter: {
               encryptProperty: sinon.stub().returns(Promise.resolve(encryptedChannel))
+            },
+            decrypter: {
+              decryptObject: sinon.stub().returns(Promise.resolve(decryptedChannel))
             }
           },
           encryption: {
@@ -107,7 +129,11 @@ describe('Services', function() {
             })),
             decryptScr: sinon.stub().returns(Promise.resolve('decryptedFoo')),
             encryptScr: sinon.stub().returns(Promise.resolve('encryptedFoo')),
-            getUnusedKey: sinon.stub().returns(Promise.resolve(mockKey))
+            getUnusedKey: sinon.stub().returns(Promise.resolve(mockKey)),
+            kms: {
+              prepareRequest: sinon.stub().returns(Promise.resolve()),
+              request: sinon.stub().returns(Promise.resolve())
+            }
           },
           device: {
             webSocketUrl: webSocketUrl,
@@ -174,7 +200,17 @@ describe('Services', function() {
 
         before(function() {
           spark.request.reset();
+          spark.request.returns(Promise.resolve({statusCode: 200, body: decryptedChannel}));
+          spark.encryption.kms.request.reset();
+          spark.encryption.kms.prepareRequest.reset();
           return spark.board.persistence.createChannel(conversation);
+        });
+
+        after(function() {
+          // reset request to its original behavior
+          spark.request.returns(Promise.resolve({
+            body: {}
+          }));
         });
 
         it('requests POST to channels service', function() {
@@ -184,6 +220,43 @@ describe('Services', function() {
             resource: '/channels',
             body: encryptedChannel
           }));
+        });
+
+        it('requests to KMS to remove board creator authorization', function() {
+          assert.calledWith(spark.encryption.kms.prepareRequest, sinon.match({
+            method: 'delete',
+            uri: decryptedChannel.kmsMessage.resource.uri + '/authorizations?authId=' + decryptedChannel.creatorId
+          }));
+          assert.called(spark.encryption.kms.request);
+        });
+
+        it('does not request to KMS to remove board creator if board creator is not authorized', function() {
+          var channelRes = {
+            channelId: boardId,
+            channelUrl: boardServiceUrl + '/channels/' + boardId,
+            creatorId: 'c321e329-28d6-4d52-a9d1-374010411530',
+            aclUrlLink: conversation.aclUrl,
+            defaultEncryptionKeyUrl: mockKey.keyUrl,
+            kmsMessage: {
+              status: 201,
+              resource: {
+                uri: 'https://encryption-a.wbx2.com/encryption/api/v1/resources/2853285c-c46b-4b35-9542-9a81d4e3c87f',
+                keyUris: ['https://encryption-a.wbx2.com/encryption/api/v1/keys/5042787d-510b-46f3-b83c-ea73032de851'],
+                authorizationUris: [
+                  'https://encryption-a.wbx2.com/encryption/api/v1/authorizations/aHR0cHM6Ly9lbmNyeXB0aW9uLWEud2J4Mi5jb20vZW5jcnlwdGlvbi9hcGkvdjEvcmVzb3VyY2VzLzI3OWIyMjgyLWZmYTItNGM3ZC04NGRmLTRkNDVlZmUzYTMzNQBodHRwczovL2VuY3J5cHRpb24tYS53YngyLmNvbS9lbmNyeXB0aW9uL2FwaS92MS9yZXNvdXJjZXMvMjg1MzI4NWMtYzQ2Yi00YjM1LTk1NDItOWE4MWQ0ZTNjODdm'
+                ]
+              }
+            }
+          };
+
+          spark.conversation.decrypter.decryptObject.returns(Promise.resolve(channelRes));
+          spark.encryption.kms.request.reset();
+          spark.encryption.kms.prepareRequest.reset();
+          return spark.board.persistence.createChannel(conversation)
+            .then(function() {
+              assert.notCalled(spark.encryption.kms.prepareRequest);
+              assert.notCalled(spark.encryption.kms.request);
+            });
         });
       });
 

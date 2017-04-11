@@ -1,18 +1,24 @@
+/* eslint-disable func-names */
+/* eslint-disable global-require */
+
 // eslint-disable-next-line strict
 'use strict';
+
 const path = require(`path`);
 
-module.exports = function(config) {
-  const pkg = require(`./packages/${process.env.PACKAGE}/package`);
+/* eslint-disable global-require */
+
+module.exports = function configureKarma(config) {
+  const pkg = require(`./packages/node_modules/${process.env.PACKAGE}/package`);
   /* eslint complexity: [0] */
   const browsers = require(`./browsers-ng`);
   const launchers = process.env.SC_TUNNEL_IDENTIFIER ? browsers.sauce : browsers.local;
-  const srcPath = path.join(`packages`, process.env.PACKAGE, `src`, `**`, `*.js`);
-  const integrationTestPath = path.join(`packages`, process.env.PACKAGE, `test`, `integration`, `spec`, `**`, `*.js`);
-  const unitTestPath = path.join(`packages`, process.env.PACKAGE, `test`, `unit`, `spec`, `**`, `*.js`);
+  const integrationTestPath = path.join(`packages`, `node_modules`, process.env.PACKAGE, `test`, `integration`, `spec`, `**`, `*.js`);
+  const unitTestPath = path.join(`packages`, `node_modules`, process.env.PACKAGE, `test`, `unit`, `spec`, `**`, `*.js`);
 
-  const preprocessors = {};
-  preprocessors[srcPath] = [`browserify`];
+  const preprocessors = {
+    'packages/**': [`browserify`]
+  };
   preprocessors[integrationTestPath] = [`browserify`];
   preprocessors[unitTestPath] = [`browserify`];
 
@@ -45,13 +51,10 @@ module.exports = function(config) {
 
     customLaunchers: launchers,
 
-    files: (function() {
-      const files = [
-        integrationTestPath,
-        unitTestPath
-      ];
-      return files;
-    }()),
+    files: [
+      integrationTestPath,
+      unitTestPath
+    ],
 
     frameworks: [
       `browserify`,
@@ -73,7 +76,7 @@ module.exports = function(config) {
       ignoreSkipped: true
     },
 
-    port: parseInt(process.env.KARMA_PORT) || 9001,
+    port: parseInt(process.env.KARMA_PORT, 10) || 9001,
 
     preprocessors,
 
@@ -136,7 +139,7 @@ module.exports = function(config) {
   }
 
   try {
-    cfg = require(`./packages/${process.env.PACKAGE}/karma.conf.js`)(cfg);
+    cfg = require(`./packages/node_modules/${process.env.PACKAGE}/karma.conf.js`)(cfg);
   }
   catch (error) {
     // ignore

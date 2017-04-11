@@ -6,11 +6,9 @@
 'use strict';
 
 var chai = require('chai');
-var difference = require('lodash.difference');
 var fh2 = require('../../lib/fixtures-v2');
 var HttpError = require('../../../../src/lib/exceptions/http-error');
 var landingparty = require('../../lib/landingparty');
-var map = require('lodash.map');
 var pluck = require('lodash.pluck');
 var sinon = require('sinon');
 var skipInNode = require('../../../lib/mocha-helpers').skipInNode;
@@ -163,8 +161,10 @@ describe('Client', function() {
       var req = party.spock.spark.request(options)
         .on('download-progress', promiseSpy)
         .then(function() {
-          assert.called(optionsSpy, 'A progress event was fired by the event-emitter placed in the options hash that was passed to Spark#request()');
-          assert.called(promiseSpy, 'A download-progress event was fired by the promise return by Spark#request()');
+          // , 'A progress event was fired by the event-emitter placed in the options hash that was passed to Spark#request()'
+          assert.called(optionsSpy);
+          // , 'A download-progress event was fired by the promise return by Spark#request()'
+          assert.called(promiseSpy);
         });
 
       options.download.on('progress', optionsSpy);
@@ -197,8 +197,10 @@ describe('Client', function() {
           var req = party.spock.spark.request(options)
             .on('upload-progress', promiseSpy)
             .then(function() {
-              assert.called(optionsSpy, 'A progress event was fired by the event-emitter placed in the options hash that was passed to Spark#request()');
-              assert.called(promiseSpy, 'An upload-progress event was fired by the promise return by Spark#request()');
+              // , 'A progress event was fired by the event-emitter placed in the options hash that was passed to Spark#request()'
+              assert.called(optionsSpy);
+              // , 'An upload-progress event was fired by the promise return by Spark#request()'
+              assert.called(promiseSpy);
             });
 
           options.upload.on('progress', optionsSpy);
@@ -252,119 +254,6 @@ describe('Client', function() {
         }), /Maximum redirects exceeded/);
       });
     });
-
-    describe('Ping: ', function() {
-      var knownServices = [
-        'apheleia',
-        'argonaut',
-        'atlas',
-        'avatar',
-        'calendar',
-        'conversation',
-        'encryption',
-        'feature',
-        'files',
-        'identityLookup',
-        'janus',
-        'locus',
-        'metrics',
-        'raindrop',
-        'squaredFiles',
-        'stickies',
-        'wdm'
-      ];
-
-      var knownServicesWithoutPingEndpoints = [
-        'swupgrade'
-      ];
-
-      // disable auth-free ping tests because the rate limit on flags also
-      // applies to the ping endpoint
-      [true].forEach(function(shouldIncludeAuth) {
-        knownServices.forEach(function(serviceName) {
-          it('can ping the ' + serviceName + ' service (with' + (shouldIncludeAuth ? '' : 'out') + ' auth)', function() {
-            var options = {
-              api: serviceName,
-              resource: '/ping'
-            };
-
-            if (!shouldIncludeAuth) {
-              options.headers = {
-                Authorization: undefined
-              };
-            }
-
-            return party.spock.spark.request(options)
-              .catch(function(res) {
-                if (res && res.statsuCode === 0) {
-                  console.log('reattempting to ping ' + serviceName);
-                  return party.spock.spark.request(options);
-                }
-
-                throw res;
-              })
-              .catch(function(res) {
-                if (res && res.statusCode === 0) {
-                  throw new Error('Network failure or CORS misconfigured for the ' + serviceName + ' service');
-                }
-
-                throw res;
-              });
-          });
-        });
-
-        // These tests should always be skipped until the corresponding services
-        // have ping interfaces
-        knownServicesWithoutPingEndpoints.forEach(function(serviceName) {
-          it('can ping the ' + serviceName + ' service (with' + (shouldIncludeAuth ? '' : 'out') + ' auth)');
-        });
-
-        it('can ping services added to the catalog not known to the test suite (with' + (shouldIncludeAuth ? '' : 'out') + ' auth)', function() {
-          // set the timeout fairly high in case a bunch of services get added
-          // before the list gets updated.
-          this.timeout(60000);
-          var services = map(party.spock.spark.device.services, function(value, key) {
-            return key.substr(0, key.indexOf('ServiceUrl'));
-          });
-
-          var unknownServices = difference(services, knownServices, knownServicesWithoutPingEndpoints);
-          return unknownServices.reduce(function(promise, serviceName) {
-            return promise.then(function() {
-              var options = {
-                api: serviceName,
-                resource: '/ping'
-              };
-
-              if (!shouldIncludeAuth) {
-                options.headers = {
-                  Authorization: undefined
-                };
-              }
-
-              console.log('Pinging ' + serviceName);
-              return party.spock.spark.request(options)
-                .catch(function(res) {
-                  if (res && res.statsuCode === 0) {
-                    console.log('reattempting to ping unknown service ' + serviceName);
-                    return party.spock.spark.request(options);
-                  }
-
-                  throw res;
-                })
-                .catch(function(res) {
-                  if (res && res.statusCode === 0) {
-                    throw new Error('Network failure or CORS misconfigured for the ' + serviceName + ' service');
-                  }
-                  console.error(res.body || res);
-                  throw new Error('Failed to ping ' + serviceName);
-                });
-            });
-          }, Promise.resolve());
-        });
-
-      });
-    });
-
   });
 
   describe('#authenticate()', function() {

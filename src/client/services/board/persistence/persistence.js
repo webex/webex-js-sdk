@@ -6,10 +6,13 @@
 'use strict';
 
 var assign = require('lodash.assign');
+var querystring = require('querystring');
 var SparkBase = require('../../../../lib/spark-base');
 var chunk = require('lodash.chunk');
 var pick = require('lodash.pick');
+var some = require('lodash.some');
 var promiseSeries = require('es6-promise-series');
+var base64 = require('../../../../util/base64');
 
 var MAX_CONTENTS_ADD = 150;
 var MAX_CONTENTS_GET = 1000;
@@ -129,8 +132,11 @@ var PersistenceService = SparkBase.extend({
         });
       }.bind(this))
       .then(function resolveWithBody(res) {
-        return res.body;
-      });
+        return this.spark.conversation.decrypter.decryptObject(res.body);
+      }.bind(this))
+      .then(function _ensureOnlyConversationAuthorization(decryptedChannel) {
+        return this._ensureOnlyConversationAuthorization(decryptedChannel);
+      }.bind(this));
   },
 
   _encryptChannel: function _encryptChannel(conversation, channel) {
@@ -152,6 +158,37 @@ var PersistenceService = SparkBase.extend({
     };
 
     return channel;
+  },
+
+  _ensureOnlyConversationAuthorization: function _ensureOnlyConversationAuthorization(channel) {
+    // kms server also authorizes create kro requester, which we don't want
+    if (!this._isChannelCreatorAuthorized(channel.creatorId, channel.kmsMessage)) {
+      return Promise.resolve(channel);
+    }
+
+    // remove user from board KRO
+    var kmsMessage = {
+      method: 'delete',
+      uri: channel.kmsMessage.resource.uri + '/authorizations?' + querystring.stringify({
+        authId: channel.creatorId
+      })
+    };
+
+    return this.spark.encryption.kms.prepareRequest(kmsMessage)
+      .then(function makeRequestToKms(req) {
+        return this.spark.encryption.kms.request(req);
+      }.bind(this))
+      .then(function returnsChannel() {
+        return channel;
+      });
+  },
+
+  _isChannelCreatorAuthorized: function _isChannelCreatorAuthorized(creatorId, kmsMessage) {
+    var authorizationUris = kmsMessage.resource.authorizationUris;
+    return some(authorizationUris, function isCreatorInAuthorizationList(uri) {
+      var encodedString = uri.split('/').pop();
+      return base64.fromBase64url(encodedString).includes(creatorId);
+    });
   },
 
   /**

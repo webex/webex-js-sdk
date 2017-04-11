@@ -477,6 +477,60 @@ describe('Services', function() {
               }
             });
         });
+
+        describe('when a user leaves conversation', function() {
+          it('does not allow board user to create board', function() {
+            var currentConvo;
+
+            return party.mccoy.spark.conversation.create({
+              displayName: 'Test Board Member Leave Conversation',
+              participants: pluck(party, 'id')
+            })
+              .then(function(c) {
+                currentConvo = c;
+                return party.spock.spark.conversation.leave(currentConvo);
+              })
+              .then(function() {
+                return assert.isRejected(party.spock.spark.board.persistence.createChannel(currentConvo));
+              });
+          });
+
+          it('does not allow board creator to access and decrypt contents', function() {
+            var currentConvo;
+            var currentBoard;
+            var encryptedData = {};
+            var data = [{
+              type: 'curve',
+              payload: JSON.stringify({type: 'curve'})
+            }];
+
+            return party.mccoy.spark.conversation.create({
+              displayName: 'Test Board Creator Leave Conversation',
+              participants: pluck(party, 'id')
+            })
+              .then(function(c) {
+                currentConvo = c;
+                return party.spock.spark.board.persistence.createChannel(currentConvo);
+              })
+              .then(function(b) {
+                currentBoard = b;
+                return party.spock.spark.conversation.leave(currentConvo);
+              })
+              .then(function() {
+                return party.mccoy.spark.board.encryptContents(currentBoard.defaultEncryptionKeyUrl, data);
+              })
+              .then(function(encrypted) {
+                encryptedData.items = encrypted;
+                return assert.isRejected(party.spock.spark.board.persistence.getAllContent(currentBoard));
+              })
+              .then(function() {
+                return party.spock.spark.encryption.keystore.clear();
+              })
+              .then(function() {
+                return assert.isRejected(party.spock.spark.board.decryptContents(encryptedData));
+              });
+          });
+        });
       });
 
       describe('#deleteAllContent()', function() {

@@ -13,7 +13,7 @@ var helpers = require('./helpers');
 var map = require('lodash.map');
 var remove = require('lodash.remove');
 var Spark = require('../../../src');
-var TestUsersInterface = require('spark-js-sdk--test-users');
+var TestUsers = require('@ciscospark/test-users-legacy');
 
 function formatUser(user) {
   console.log(JSON.stringify(user, null, 2));
@@ -148,7 +148,7 @@ assign(LandingParty.prototype, {
       });
     }
 
-    return Promise.resolve(user || TestUsersInterface.create(userOptions))
+    return Promise.resolve(user || TestUsers.create(userOptions))
       .catch(function(reason) {
         if (process.env.ENABLE_VERBOSE_NETWORK_LOGGING) {
           console.error('failed to create ' + type, reason, reason.stack);
@@ -205,7 +205,7 @@ assign(LandingParty.prototype, {
         }
       })
       .then(function() {
-        return TestUsersInterface.remove(user);
+        return TestUsers.remove(user);
       })
       .then(function() {
         if (process.env.ENABLE_VERBOSE_NETWORK_LOGGING) {
