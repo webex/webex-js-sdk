@@ -2,10 +2,10 @@
 
 var hljs = require('highlight.js');
 
-module.exports = function (hljsOptions) {
+module.exports = function(hljsOptions) {
   hljs.configure(hljsOptions);
 
-  return function (example) {
+  return function(example) {
     if (hljsOptions.highlightAuto) {
       return hljs.highlightAuto(example).value;
     }
