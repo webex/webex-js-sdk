@@ -61,6 +61,7 @@
     "grunt:concurrent": "grunt --gruntfile Gruntfile.concurrent.js",
     "pregrunt:package": "npm run --silent check-package",
     "grunt:package": "grunt --gruntfile Gruntfile.package.js",
+    "lint": "npm run --silent lint:js && npm run --silent lint:jenkinsfile",
     "lint:commitmsg": "conventional-changelog-lint -e",
     "lint:eslint": "eslint --ignore-pattern 'packages/node_modules/generator-ciscospark/generators/*/templates/**' --ignore-path .gitignore $(npm run lint:eslint:ci-reporter)",
     "lint:eslint:ci-reporter": "bash -c '[[ -n \"${JENKINS}\" ]]' && echo \"-f checkstyle -o reports/style/eslint.xml\" || echo ''",
