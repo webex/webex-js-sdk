@@ -6,11 +6,9 @@
 'use strict';
 
 var chai = require('chai');
-var difference = require('lodash.difference');
 var fh2 = require('../../lib/fixtures-v2');
 var HttpError = require('../../../../src/lib/exceptions/http-error');
 var landingparty = require('../../lib/landingparty');
-var map = require('lodash.map');
 var pluck = require('lodash.pluck');
 var sinon = require('sinon');
 var skipInNode = require('../../../lib/mocha-helpers').skipInNode;
