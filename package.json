@@ -83,7 +83,7 @@
     "srcdist": "sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' packages/node_modules/{*,@ciscospark/*}/package.json && rm packages/node_modules/{*,@ciscospark/*}/*bak",
     "prepublish": "in-install && npm run --silent link-lint-rules || not-in-install",
     "link-lint-rules": "rm -rf ./node_modules/@ciscospark/eslint-config && mkdir -p node_modules/@ciscospark && ln -s $(pwd)/packages/node_modules/@ciscospark/eslint-config $(pwd)/node_modules/@ciscospark/eslint-config",
-    "get-next-version": "node ./tooling/get-version.js",
+    "get-next-version": "./tooling/version.sh",
     "deps:check": "npm run lerna --silent -- exec -- bash -c 'dependency-check ./package.json $(find ./test -name \"*.js\")'",
     "deps:generate": "./deps.js"
   },
