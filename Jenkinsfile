@@ -145,7 +145,7 @@ ansiColor('xterm') {
           DOCKER_ENV_FILE = "${env.WORKSPACE}/docker-env"
           ENV_FILE = "${env.WORKSPACE}/.env"
 
-          DOCKER_RUN_OPTS = ''
+          DOCKER_RUN_OPTS = '-e JENKINS=true'
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --env-file=${DOCKER_ENV_FILE}"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --env-file=${ENV_FILE}"
           DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} -e NPM_CONFIG_CACHE=${env.WORKSPACE}/.npm"
