@@ -290,15 +290,8 @@ describe('Services', function() {
       });
 
       describe('#ping()', function() {
-        it('pings persistence board service', function() {
-          return party.mccoy.spark.board.persistence.ping()
-            .then(function(res) {
-              assert.property(res, 'serviceName');
-              assert.equal(res.serviceName, 'Board');
-            })
-            .catch(function(reason) {
-              assert.fail(reason, 0, 'ping fails');
-            });
+        it('pings board service', function() {
+          return assert.isFulfilled(party.mccoy.spark.board.persistence.ping());
         });
       });
 
