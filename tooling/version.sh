@@ -13,11 +13,12 @@ if [ -z "${NEXT_VERSION}" ]; then
   NEXT_VERSION_TYPE=patch
   # If there are breaking changes, make it a minor bump. post-1.0, this logic
   # will need to be revised
+  set +e
   BREAKING_COUNT=$(git log --oneline upstream/master.. | grep -c '$BREAKING CHANGE:')
   if [ $BREAKING_COUNT -gt 0 ]; then
     NEXT_VERSION_TYPE=minor
   fi
-
+  set -e
   # Now that we know the type, do some silly things to make npm version work
   #
   # Figure out the current version
