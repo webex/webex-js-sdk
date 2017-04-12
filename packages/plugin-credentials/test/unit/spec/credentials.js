@@ -101,6 +101,13 @@ describe(`plugin-credentials`, () => {
       });
     });
 
+    describe(`when logging out`, () => {
+      it(`rejects getUserToken`, () => {
+        spark.credentials.isLoggingOut = true;
+        return assert.isRejected(spark.credentials.getUserToken(), `credentials: Cannot get UserToken while logging out`);
+      });
+    });
+
     describe(`#getUserToken()`, () => {
       let apiToken, kmsToken, supertoken;
       beforeEach(() => {
@@ -283,6 +290,12 @@ describe(`plugin-credentials`, () => {
     });
 
     describe(`#refresh()`, () => {
+      describe(`when logging out`, () => {
+        it(`rejects refresh`, () => {
+          spark.credentials.isLoggingOut = true;
+          return assert.isRejected(spark.credentials.refresh(), `credentials: Cannot refresh while logging out`);
+        });
+      });
       it(`sets #isRefreshing`, () => {
         spark.set({
           credentials: {
