@@ -223,7 +223,6 @@ const SparkCore = AmpState.extend({
         return Promise.resolve();
       })
       .then(() => Promise.all([
-        this.boundedStorage.clear(),
         this.unboundedStorage.clear()
       ]))
       .then(() => {
