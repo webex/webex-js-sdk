@@ -384,8 +384,14 @@ ansiColor('xterm') {
 
                   try {
                     def publishScript = "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version} --exact"
-                    def shouldNotForce = sh script: 'git log -n 1 | grep -cq "#force-publish"', returnStatus: true
-                    if (!shouldNotForce) {
+                    def out = sh script: 'git log -n 1 | grep -cq "#force-publish"', returnStdout: true
+                    echo('DEBUG')
+                    echo(out)
+                    echo('DEBUG')
+                    if (out.contains('#force-publish')) {
+                      echo('DEBUG')
+                      echo('out contains #force-publish')
+                      echo('DEBUG')
                       publishScript = "${publishScript} --force-publish=*"
                     }
 
