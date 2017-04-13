@@ -388,6 +388,16 @@ title: API
           </li>
         
           
+            <a href="#Types~TeamMembership" class="list-group-item">Types~TeamMembership</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
             <a href="#TeamMemberships" class="list-group-item">TeamMemberships</a>
 
             
@@ -411,7 +421,7 @@ title: API
           </li>
         
           
-            <a href="#Types~TeamMembership" class="list-group-item">Types~TeamMembership</a>
+            <a href="#Types~Webhook" class="list-group-item">Types~Webhook</a>
 
             
 
@@ -438,16 +448,6 @@ title: API
                 
                   <a class="list-group-item" href="#Webhooks#update">#update</a>
                 
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Webhook" class="list-group-item">Types~Webhook</a>
-
-            
-
             
 
             
@@ -5261,6 +5261,87 @@ team was created, in ISO8601 format.
         
           <section>
   
+    <h2 id='Types~TeamMembership'>Types~TeamMembership</h2>
+    
+  
+
+  
+
+  <pre>Types~TeamMembership</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (server generated) The team ID
+
+      </h4>
+      
+    
+      <h4>
+      personId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The person ID
+
+      </h4>
+      
+    
+      <h4>
+      personEmail
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The email address of the person
+
+      </h4>
+      
+    
+      <h4>
+      isModerator
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Set to 
+<code>true</code>
+ to make the person a team
+moderator
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='TeamMemberships'>TeamMemberships</h2>
     
   
@@ -5702,13 +5783,13 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
         
           <section>
   
-    <h2 id='Types~TeamMembership'>Types~TeamMembership</h2>
+    <h2 id='Types~Webhook'>Types~Webhook</h2>
     
   
 
   
 
-  <pre>Types~TeamMembership</pre>
+  <pre>Types~Webhook</pre>
 
   
 
@@ -5727,37 +5808,52 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
       id
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : (server generated) The team ID
+      : The unique ID for the webhook.
 
       </h4>
       
     
       <h4>
-      personId
+      resource
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : The person ID
+      : The resource type for the webhook.
 
       </h4>
       
     
       <h4>
-      personEmail
+      event
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : The email address of the person
+      : The event type for the webhook.
 
       </h4>
       
     
       <h4>
-      isModerator
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      filter
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : Set to 
-<code>true</code>
- to make the person a team
-moderator
+      : The filter that defines the webhook scope.
+
+      </h4>
+      
+    
+      <h4>
+      targetUrl
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The URL that receives POST requests for each event.
+
+      </h4>
+      
+    
+      <h4>
+      name
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : A user-friendly name for this webhook.
 
       </h4>
       
@@ -6247,102 +6343,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     </div>
   
 </section>
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Webhook'>Types~Webhook</h2>
-    
-  
-
-  
-
-  <pre>Types~Webhook</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The unique ID for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      resource
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The resource type for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      event
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The event type for the webhook.
-
-      </h4>
-      
-    
-      <h4>
-      filter
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The filter that defines the webhook scope.
-
-      </h4>
-      
-    
-      <h4>
-      targetUrl
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The URL that receives POST requests for each event.
-
-      </h4>
-      
-    
-      <h4>
-      name
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : A user-friendly name for this webhook.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
 
   
 
