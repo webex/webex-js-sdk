@@ -60,17 +60,17 @@ title: API
             
               <div class="list-group-item">Events</div>
               
-                <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
-              
-                <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
-              
-                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
-              
                 <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
+              
+                <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
               
                 <a class="list-group-item" href="#Call.event:remoteMediaStream:change"> ⓔ remoteMediaStream:change</a>
               
-                <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
+                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
+              
+                <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
+              
+                <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
               
             
           </li>
@@ -1425,117 +1425,6 @@ even if renegotiation has not completed)</p>
     <h3>Events</h3>
     <section>
   
-    <h3 id='Call.event:ringing'>ringing</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>ringing</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:connected'>connected</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>connected</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:disconnected'>disconnected</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>disconnected</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
     <h3 id='Call.event:localMediaStream:change'>localMediaStream:change</h3>
     <div>
       <section>
@@ -1544,6 +1433,43 @@ even if renegotiation has not completed)</p>
   
 
   <pre>localMediaStream:change</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:error'>error</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>error</pre>
 
   
 
@@ -1610,14 +1536,88 @@ even if renegotiation has not completed)</p>
 
     </div>
   
-    <h3 id='Call.event:error'>error</h3>
+    <h3 id='Call.event:disconnected'>disconnected</h3>
     <div>
       <section>
   
 
   
 
-  <pre>error</pre>
+  <pre>disconnected</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:connected'>connected</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>connected</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:ringing'>ringing</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>ringing</pre>
 
   
 
