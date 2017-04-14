@@ -390,11 +390,13 @@ ansiColor('xterm') {
                     echo('DEBUG')
                     if (out.contains('#force-publish')) {
                       echo('out contains #force-publish')
-                      sh "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version} --exact  --force-publish=*"
+                      // reminder: put --repo-version=${version} at the end of the script because it has a \n in it
+                      sh "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --exact  --force-publish=* --repo-version=${version} "
                     }
                     else {
                       echo('out does not contains #force-publish')
-                      sh "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version} --exact"
+                      // reminder: put --repo-version=${version} at the end of the script because it has a \n in it
+                      sh "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --exact --repo-version=${version} "
                     }
 
                     sh 'git add lerna.json packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
