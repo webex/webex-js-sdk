@@ -223,9 +223,15 @@ const SparkCore = AmpState.extend({
         return Promise.resolve();
       })
       .then(() => Promise.all([
+        // we do not need to clear the boundedStorage here since we delete @
+        // values while executing credentials.common.logout() below
         this.unboundedStorage.clear()
       ]))
-      .then(() => this.credentials.logout(...args));
+      .then(() => this.credentials.logout(...args))
+      .then(() => {
+        // this event gives opportunity to clear the localStorage on web-client
+        this.trigger(`client:logout`);
+      });
   },
 
   /**

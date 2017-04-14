@@ -178,8 +178,9 @@ export default {
     scope = sortScope(scope);
 
     const token = this.userTokens.get(scope);
-
-    if (!token) {
+    // we should also check for the token.access_token since token object does
+    // not get cleared on unsetting while logging out.
+    if (!token || !token.access_token) {
       return this.supertoken.downscope(scope)
         .catch((reason) => this._handleDownscopeFailure(this.supertoken, scope, reason))
         .then(tap((t) => this.userTokens.add(t)));
@@ -205,9 +206,11 @@ export default {
   logout() {
     return Promise.all(this.userTokens.map((token) => token.revoke()
       .catch((reason) => this.logger.warn(`credentials: token revocation failed for ${token.scope}, ignoring`, reason))))
-      .then(() => this.unset(`userTokens`))
       .then(() => this.supertoken && this.supertoken.revoke())
       .catch((reason) => this.logger.warn(`credentials: token revocation failed for supertoken, ignoring`, reason))
+      // userTokens should be unset here because supertoken.revoke tends to
+      // recreate the userTokens.
+      .then(() => this.unset(`userTokens`))
       .then(() => this.unset(`supertoken`))
       .then(() => this.boundedStorage.del(`@`));
   },
