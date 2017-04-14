@@ -392,7 +392,8 @@ ansiColor('xterm') {
                       echo('DEBUG')
                       echo('out contains #force-publish')
                       echo('DEBUG')
-                      publishScript = "${publishScript} --force-publish=*"
+                      publishScript += " --force-publish=*"
+                      echo(publishScript)
                     }
 
                     sh script: publishScript
