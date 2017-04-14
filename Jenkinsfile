@@ -389,14 +389,14 @@ ansiColor('xterm') {
                     echo(out)
                     echo('DEBUG')
                     if (out.contains('#force-publish')) {
-                      echo('DEBUG')
                       echo('out contains #force-publish')
-                      echo('DEBUG')
-                      publishScript += " --force-publish=*"
-                      echo(publishScript)
+                      sh "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version} --exact  --force-publish=*"
+                    }
+                    else {
+                      echo('out does not contains #force-publish')
+                      sh "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version} --exact"
                     }
 
-                    sh script: publishScript
                     sh 'git add lerna.json packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
                     sh "git commit -m v${version} --no-verify"
                     sh "git tag 'v${version}'"
