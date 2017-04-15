@@ -142,6 +142,14 @@ ansiColor('xterm') {
           DOCKER_IMAGE_NAME = "${JOB_NAME}-${BUILD_NUMBER}-builder"
           def image
 
+          // Kill any zombie containers from previous jobs
+          try {
+            sh "docker kill \$(docker ps | grep ${JOB_NAME} | grep -v '-${BUILD_NUMBER}-builder' | awk '{print \$1}')"
+          }
+          catch(err) {
+            // ignore - just means there were no zombie containers to kill
+          }
+
           DOCKER_ENV_FILE = "${env.WORKSPACE}/docker-env"
           ENV_FILE = "${env.WORKSPACE}/.env"
 
