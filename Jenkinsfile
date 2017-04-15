@@ -341,6 +341,7 @@ ansiColor('xterm') {
                 env.NODE_ENV = ''
                 image.inside(DOCKER_RUN_OPTS) {
                   version = sh script: 'npm run --silent get-next-version', returnStdout: true
+                  version = version.trim()
                   if ("${version}" == '') {
                     warn('failed to determine next version');
                     error('failed to determine next version');
@@ -400,7 +401,7 @@ ansiColor('xterm') {
                     }
 
                     sh 'git add lerna.json packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
-                    sh "git commit -m v${version} --no-verify"
+                    sh "git commit --no-verify -m v${version}"
                     sh "git tag 'v${version}'"
                     sh "npm run deps:generate"
                   }
