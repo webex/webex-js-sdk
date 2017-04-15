@@ -14,8 +14,7 @@ general:
 
 test:
   pre:
-    - npm run grunt:circle -- build:
-        parallel: true
+    - npm run build
   override:
     - npm run lint
     - npm run grunt:circle -- test:

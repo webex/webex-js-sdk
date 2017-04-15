@@ -30,12 +30,6 @@ module.exports = function gruntConfig(grunt) {
 
   const config = {
     concurrent: {
-      build: {
-        tasks: [],
-        options: {
-          logConcurrentOutput: true
-        }
-      },
       test: {
         tasks: [],
         options: {
@@ -150,16 +144,8 @@ module.exports = function gruntConfig(grunt) {
   };
 
   PACKAGES.forEach((packageName) => {
-    const shellBuildKey = `build_${packageName}`;
-    const buildKey = `build:${packageName}`;
     const shellTestKey = `test_${packageName}`;
     const testKey = `test:${packageName}`;
-
-    config.shell[shellBuildKey] = {
-      command: `PACKAGE=${packageName} grunt --gruntfile Gruntfile.package.js --no-color build`
-    };
-    grunt.registerTask(buildKey, `shell:${shellBuildKey}`);
-    config.concurrent.build.tasks.push(buildKey);
 
     config.shell[shellTestKey] = {
       command: `PACKAGE=${packageName} grunt --gruntfile Gruntfile.package.js --no-color test`
@@ -193,12 +179,6 @@ module.exports = function gruntConfig(grunt) {
     }
     throw new Error(`p(): \`env\`"${env}" is not a recognized string`);
   }
-
-  grunt.registerTask(`build`, [
-    // TODO reenable package-json at some point; perhaps by adding it to deps.js
-    // `package-json`,
-    `concurrent:build`
-  ]);
 
   grunt.registerTask(`build:docs`, [
     `documentation`
