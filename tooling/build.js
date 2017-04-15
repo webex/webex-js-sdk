@@ -42,7 +42,7 @@ async function buildFile({src, dist}) {
   await mkdirp(path.dirname(dist));
   debug(`writing ${dist}`);
   await fs.writeFile(dist, code);
-  await fs.writeFile(`${dist}.map`, JSON.stringify(map));
+  await fs.writeFile(`${dist}.map`, map);
   debug(`wrote ${dist}`);
 }
 
