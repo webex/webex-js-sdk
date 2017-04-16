@@ -6,6 +6,7 @@ const dotenv = require(`dotenv`);
 dotenv.config({path: `.env.default`});
 dotenv.config();
 
+const g = require(`glob`);
 const debug = require(`debug`)(`test`);
 const {glob, list} = require(`./util/package`);
 const path = require(`path`);
@@ -98,12 +99,11 @@ if (argv.grep.length > 1 && argv.browser) {
   throw new Error(`Karma only supports a single pattern; only specify --grep once when running browser tests`);
 }
 
-// TODO xunit needs to exit cleanly when tests run
 // TODO parallelize automation tests
 
 async function runMochaSuite(packageName) {
   const cfg = {};
-  if (process.env.XUNIT) {
+  if (argv.xunit) {
     cfg.reporter = `packages/node_modules/@ciscospark/xunit-with-logs`;
     cfg.reporterOptions = {
       output: `reports/junit/${packageName}-mocha.xml`
@@ -132,7 +132,18 @@ async function runMochaSuite(packageName) {
   files.forEach((f) => mocha.addFile(path.join(`packages/node_modules`, packageName, f)));
   return new Promise((resolve, reject) => {
     mocha.run((failures) => {
-      if (!failures || process.env.XUNIT) {
+      if (argv.xunit) {
+        const reports = g.sync(`reports/junit/${packageName}-mocha.xml`);
+        if (reports.length === 0) {
+          reject(new Error(`No mocha reports generated for ${packageName}`));
+        }
+        else {
+          resolve();
+        }
+        return;
+      }
+
+      if (!failures) {
         resolve();
         return;
       }
@@ -158,7 +169,18 @@ async function runKarmaSuite(packageName) {
   const cfg = makeConfig(packageName, argv);
   return new Promise((resolve, reject) => {
     const server = new Server(cfg, (code) => {
-      if (!code || process.env.XUNIT) {
+      if (argv.xunit) {
+        const reports = g.sync(`reports/junit/*/${packageName}-karma.xml`);
+        if (reports.length === 0) {
+          reject(new Error(`No karma reports generated for ${packageName}`));
+        }
+        else {
+          resolve();
+        }
+        return;
+      }
+
+      if (!code) {
         resolve();
         return;
       }

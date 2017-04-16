@@ -57,7 +57,7 @@ function makeConfig(packageName, argv) {
     // Inspired by Angular's karma config as recommended by Sauce Labs
     captureTimeout: 0,
 
-    colors: !process.env.XUNIT,
+    colors: !(argv && argv.xunit),
 
     concurrency: 3,
 
@@ -143,7 +143,7 @@ function makeConfig(packageName, argv) {
     cfg.reporters.push(`saucelabs`);
   }
 
-  if (process.env.XUNIT) {
+  if (argv && argv.xunit) {
     cfg.junitReporter = {
       outputFile: `${packageName}-karma.xml`,
       outputDir: `reports/junit`,
