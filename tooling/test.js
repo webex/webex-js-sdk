@@ -111,7 +111,10 @@ if (argv.grep.length > 1 && argv.browser) {
 }
 
 async function runMochaSuite(packageName) {
-  const cfg = {};
+  debug(`mocha: testing ${packageName}`);
+  const cfg = {
+    timeout: 30000
+  };
   if (argv.xunit) {
     cfg.reporter = `packages/node_modules/@ciscospark/xunit-with-logs`;
     cfg.reporterOptions = {
@@ -141,6 +144,7 @@ async function runMochaSuite(packageName) {
   files.forEach((f) => mocha.addFile(path.join(`packages/node_modules`, packageName, f)));
   return new Promise((resolve, reject) => {
     mocha.run((failures) => {
+      debug(`mocha: tested ${packageName}`);
       if (argv.xunit) {
         const reports = g.sync(`reports/junit/${packageName}-mocha.xml`);
         if (reports.length === 0) {
@@ -162,6 +166,7 @@ async function runMochaSuite(packageName) {
 }
 
 async function runKarmaSuite(packageName) {
+  debug(`karma: testing ${packageName}`);
   let files = [];
   if (argv.unit) {
     files = files.concat(await glob(`test/unit/spec/**/*.js`, {packageName}));
@@ -178,6 +183,7 @@ async function runKarmaSuite(packageName) {
   const cfg = makeConfig(packageName, argv);
   return new Promise((resolve, reject) => {
     const server = new Server(cfg, (code) => {
+      debug(`karma: tested ${packageName}`);
       if (argv.xunit) {
         const reports = g.sync(`reports/junit/*/${packageName}-karma.xml`);
         if (reports.length === 0) {
@@ -265,22 +271,32 @@ async function testAllPackages() {
 (async function main() {
   try {
     if (argv.serve) {
+      debug(`starting test server`);
       await start();
+      debug(`started test server`);
     }
 
     if (argv.package) {
+      debug(`testing single package ${argv.package}`);
       await testSinglePackage(argv.package);
+      debug(`tested single package ${argv.package}`);
     }
     else {
+      debug(`testing all packages`);
       await testAllPackages();
+      debug(`tested all packages`);
     }
 
     if (argv.serve) {
+      debug(`stopping test server`);
       await stop();
+      debug(`stopped test server`);
     }
 
     if (argv.coverage) {
+      debug(`generating overall coverage report`);
       await report();
+      debug(`generated overall coverage report`);
     }
   }
   catch (err) {
