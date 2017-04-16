@@ -15,7 +15,7 @@ module.exports = function configureKarma(config) {
 };
 
 module.exports.makeConfig = makeConfig;
-function makeConfig(packageName) {
+function makeConfig(packageName, argv) {
   const pkg = require(`./packages/node_modules/${packageName}/package`);
   /* eslint complexity: [0] */
   const browsers = require(`./browsers-ng`);
@@ -26,8 +26,14 @@ function makeConfig(packageName) {
   const preprocessors = {
     'packages/**': [`browserify`]
   };
-  preprocessors[integrationTestPath] = [`browserify`];
-  preprocessors[unitTestPath] = [`browserify`];
+
+  const files = [];
+  if (!argv || argv.unit) {
+    files.push(unitTestPath);
+  }
+  if (!argv || argv.integration) {
+    files.push(integrationTestPath);
+  }
 
   let cfg = {
     basePath: `.`,
@@ -58,10 +64,7 @@ function makeConfig(packageName) {
 
     customLaunchers: launchers,
 
-    files: [
-      integrationTestPath,
-      unitTestPath
-    ],
+    files,
 
     frameworks: [
       `browserify`,

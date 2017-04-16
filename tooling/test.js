@@ -47,21 +47,20 @@ const argv = yargs
     node: {
       default: false,
       type: `boolean`
-    }
+    },
 
-    // TODO unit/integration/automation
-    // unit: {
-    //   default: false,
-    //   type: `boolean`
-    // },
-    // integration: {
-    //   default: false,
-    //   type: `boolean`
-    // },
-    // automation: {
-    //   default: false,
-    //   type: `boolean`
-    // }
+    unit: {
+      default: false,
+      type: `boolean`
+    },
+    integration: {
+      default: false,
+      type: `boolean`
+    },
+    automation: {
+      default: false,
+      type: `boolean`
+    }
   })
   .argv;
 
@@ -69,9 +68,14 @@ if (!argv.browser && !argv.node) {
   argv.browser = argv.node = true;
 }
 
-// if (!argv.unit && !argv.integration && !argv.automation) {
-//   argv.unit = argv.integration = argv.automation = true;
-// }
+if (!argv.unit && !argv.integration && !argv.automation) {
+  argv.unit = argv.integration = argv.automation = true;
+}
+
+if (argv.automation && !argv.unit && !argv.integration) {
+  argv.browser = false;
+}
+
 // TODO test server
 // TODO automation
 // TODO all packages
@@ -90,8 +94,17 @@ async function runMochaSuite(packageName) {
   }
 
   const mocha = new Mocha(cfg);
-  const pattern = `test/*/spec/**/*.js`;
-  const files = await glob(pattern, {packageName});
+  let files = [];
+  if (argv.unit) {
+    files = files.concat(await glob(`test/unit/spec/**/*.js`, {packageName}));
+  }
+  if (argv.integration) {
+    files = files.concat(await glob(`test/integration/spec/**/*.js`, {packageName}));
+  }
+  if (argv.automation) {
+    files = files.concat(await glob(`test/automation/spec/**/*.js`, {packageName}));
+  }
+
   files.forEach((f) => mocha.addFile(path.join(`packages/node_modules`, packageName, f)));
   return new Promise((resolve, reject) => {
     mocha.run((failures) => {
@@ -105,7 +118,7 @@ async function runMochaSuite(packageName) {
 }
 
 async function runKarmaSuite(packageName) {
-  const cfg = makeConfig(packageName);
+  const cfg = makeConfig(packageName, argv);
   return new Promise((resolve, reject) => {
     const server = new Server(cfg, (code) => {
       if (!code || process.env.XUNIT) {
