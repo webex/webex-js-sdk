@@ -19,6 +19,7 @@ const {
   instrument,
   report
 } = require(`./util/coverage`);
+const {start, stop} = require(`./util/server`);
 
 const yargs = require(`yargs`);
 
@@ -72,6 +73,11 @@ const argv = yargs
     karmaDebug: {
       default: false,
       type: `boolean`
+    },
+
+    serve: {
+      default: true,
+      type: `boolean`
     }
   })
   .argv;
@@ -92,8 +98,8 @@ if (argv.grep.length > 1 && argv.browser) {
   throw new Error(`Karma only supports a single pattern; only specify --grep once when running browser tests`);
 }
 
-// TODO launch test server automatically
 // TODO xunit needs to exit cleanly when tests run
+// TODO parallelize automation tests
 
 async function runMochaSuite(packageName) {
   const cfg = {};
@@ -222,12 +228,21 @@ async function testAllPackages() {
 // eslint-disable-next-line no-extra-parens
 (async function main() {
   try {
+    if (argv.serve) {
+      await start();
+    }
+
     if (argv.package) {
       await testSinglePackage(argv.package);
     }
     else {
       await testAllPackages();
     }
+
+    if (argv.serve) {
+      await stop();
+    }
+
     if (argv.coverage) {
       await report();
     }
