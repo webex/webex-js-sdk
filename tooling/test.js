@@ -61,6 +61,11 @@ const argv = yargs
     automation: {
       default: false,
       type: `boolean`
+    },
+
+    grep: {
+      default: [],
+      type: `array`
     }
   })
   .argv;
@@ -76,12 +81,17 @@ if (!argv.unit && !argv.integration && !argv.automation) {
 if (argv.automation && !argv.unit && !argv.integration) {
   argv.browser = false;
 }
+
+if (argv.grep.length > 1 && argv.browser) {
+  throw new Error(`Karma only supports a single pattern; only specify --grep once when running browser tests`);
+}
+
+// TODO --debug
 // TODO launch test server automatically
 // TODO all packages
+// TODO --package
 // TODO support circle node distribution
-// FIXME xunit logger isn't collecting logs
-// TODO doc tests
-// FIXME karma coverage reporter isn't producing output
+// TODO xunit needs to exit cleanly when tests run
 
 async function runMochaSuite(packageName) {
   const cfg = {};
@@ -91,6 +101,8 @@ async function runMochaSuite(packageName) {
       output: `reports/junit/${packageName}-mocha.xml`
     };
   }
+
+  cfg.grep = new RegExp(argv.grep.join(`|`));
 
   const mocha = new Mocha(cfg);
   let files = [];

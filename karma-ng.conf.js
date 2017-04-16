@@ -76,7 +76,8 @@ function makeConfig(packageName, argv) {
       mocha: {
         // TODO figure out how to report retries
         retries: process.env.JENKINS || process.env.CI ? 1 : 0,
-        timeout: 30000
+        timeout: 30000,
+        grep: argv && argv.grep[0]
       }
     },
 
