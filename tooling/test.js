@@ -18,6 +18,8 @@ const {
   report
 } = require(`./util/coverage`);
 
+const yargs = require(`yargs`);
+
 require(`babel-register`)({
   only: [
     `./packages/node_modules/{*,*/*}/test/**/*.js`
@@ -25,11 +27,57 @@ require(`babel-register`)({
   sourceMaps: true
 });
 
-// TODO xunit
-// TODO doc tests
+const argv = yargs
+  // .env(``)
+  .options({
+    coverage: {
+      default: false,
+      type: `boolean`
+    },
+
+    xunit: {
+      default: false,
+      type: `boolean`
+    },
+
+    browser: {
+      default: false,
+      type: `boolean`
+    },
+    node: {
+      default: false,
+      type: `boolean`
+    }
+
+    // TODO unit/integration/automation
+    // unit: {
+    //   default: false,
+    //   type: `boolean`
+    // },
+    // integration: {
+    //   default: false,
+    //   type: `boolean`
+    // },
+    // automation: {
+    //   default: false,
+    //   type: `boolean`
+    // }
+  })
+  .argv;
+
+if (!argv.browser && !argv.node) {
+  argv.browser = argv.node = true;
+}
+
+// if (!argv.unit && !argv.integration && !argv.automation) {
+//   argv.unit = argv.integration = argv.automation = true;
+// }
+// TODO test server
+// TODO automation
+// TODO all packages
 // TODO support circle node distribution
-// TODO remove coverage before publishing
-// TODO node only, browser only, unit only, automation only, doc only
+// FIXME xunit logger isn't collecting logs
+// TODO doc tests
 // FIXME karma coverage reporter isn't producing output
 
 async function runMochaSuite(packageName) {
@@ -71,26 +119,35 @@ async function runKarmaSuite(packageName) {
   });
 }
 
+// eslint-disable-next-line complexity
 async function testSinglePackage(packageName) {
-  if (process.env.COVERAGE) {
+  if (argv.coverage) {
     await instrument(packageName);
   }
   let err;
   try {
-    await runMochaSuite(packageName);
+    const promises = [];
+    if (argv.node) {
+      promises.push(runMochaSuite(packageName));
+    }
+    if (argv.browser) {
+      promises.push(runKarmaSuite(packageName));
+    }
+
+    await Promise.all(promises);
   }
   catch (error) {
     err = error;
   }
-  await runKarmaSuite(packageName);
-  if (process.env.COVERAGE) {
+
+  if (argv.coverage) {
     await collect(packageName);
     await deinstrument(packageName);
   }
   if (err) {
     throw err;
   }
-  if (process.env.COVERAGE) {
+  if (argv.coverage) {
     await combine(packageName);
   }
 }
@@ -99,7 +156,7 @@ async function testSinglePackage(packageName) {
 (async function main() {
   try {
     await testSinglePackage(`@ciscospark/common`);
-    if (process.env.COVERAGE) {
+    if (argv.coverage) {
       await report();
     }
   }
