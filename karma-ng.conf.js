@@ -6,7 +6,6 @@
 'use strict';
 
 const path = require(`path`);
-const {makeCoverageVariable} = require(`./tooling/util/coverage`);
 
 /* eslint-disable global-require */
 

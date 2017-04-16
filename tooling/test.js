@@ -75,9 +75,7 @@ if (!argv.unit && !argv.integration && !argv.automation) {
 if (argv.automation && !argv.unit && !argv.integration) {
   argv.browser = false;
 }
-
-// TODO test server
-// TODO automation
+// TODO launch test server automatically
 // TODO all packages
 // TODO support circle node distribution
 // FIXME xunit logger isn't collecting logs
