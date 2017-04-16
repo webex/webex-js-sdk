@@ -125,7 +125,7 @@ module.exports = function configureGrunt(grunt) {
 
     env: {
       default: {
-        src: `.env.default.json`
+        src: `.env.default`
       },
       defaults: {
         BUILD_NUMBER: process.env.BUILD_NUMBER || `local-${process.env.USER}-${pkg.name}-${Date.now()}`

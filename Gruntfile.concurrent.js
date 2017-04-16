@@ -68,7 +68,7 @@ module.exports = function gruntConfig(grunt) {
 
     env: {
       default: {
-        src: `.env.default.json`
+        src: `.env.default`
       },
       secrets: {
         src: `.env`

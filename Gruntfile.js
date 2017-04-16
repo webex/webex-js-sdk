@@ -121,7 +121,7 @@ module.exports = function(grunt) {
         COMMON_IDENTITY_SCOPE: 'webexsquare:get_conversation Identity:SCIM'
       },
       default: {
-        src: '.env.default.json'
+        src: '.env.default'
       },
       secrets: {
         src: '.env'

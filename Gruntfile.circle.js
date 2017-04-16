@@ -115,7 +115,7 @@ module.exports = function gruntConfig(grunt) {
 
     env: {
       default: {
-        src: `.env.default.json`
+        src: `.env.default`
       },
       'default-overrides': {
         BUILD_NUMBER: process.env.CIRCLE_BUILD_NUM,

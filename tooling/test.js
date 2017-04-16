@@ -2,8 +2,9 @@
 
 /* eslint-disable require-jsdoc */
 
-require(`dotenv`).config({path: `.env.default.json`});
-require(`dotenv`).config();
+const dotenv = require(`dotenv`);
+dotenv.config({path: `.env.default`});
+dotenv.config();
 
 const {glob} = require(`./util/package`);
 const path = require(`path`);
