@@ -348,9 +348,7 @@ ansiColor('xterm') {
 
           if (env.COVERAGE && currentBuild.result == 'SUCCESS') {
             stage('process coverage') {
-              image.inside(DOCKER_RUN_OPTS) {
-                sh 'npm run grunt:circle -- coverage'
-              }
+
               archive 'reports/cobertura.xml'
 
               // At the time this script was written, the cobertura plugin didn't
