@@ -29,7 +29,7 @@ require(`babel-register`)({
 });
 
 const argv = yargs
-  // .env(``)
+  .env(``)
   .options({
     coverage: {
       default: false,
@@ -66,6 +66,11 @@ const argv = yargs
     grep: {
       default: [],
       type: `array`
+    },
+
+    karmaDebug: {
+      default: false,
+      type: `boolean`
     }
   })
   .argv;
@@ -86,7 +91,6 @@ if (argv.grep.length > 1 && argv.browser) {
   throw new Error(`Karma only supports a single pattern; only specify --grep once when running browser tests`);
 }
 
-// TODO --debug
 // TODO launch test server automatically
 // TODO all packages
 // TODO --package

@@ -45,7 +45,7 @@ function makeConfig(packageName, argv) {
 
     browserify: {
       debug: true,
-      watch: true,
+      watch: argv && argv.karmaDebug,
       transform: [
         `babelify`,
         `envify`
@@ -99,7 +99,7 @@ function makeConfig(packageName, argv) {
       `mocha`
     ],
 
-    singleRun: !process.env.KARMA_DEBUG,
+    singleRun: !(argv && argv.karmaDebug),
 
     // video and screenshots add on the request of sauce labs support to help
     // diagnose test user creation timeouts
