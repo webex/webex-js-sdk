@@ -89,11 +89,11 @@ You can get these values by registering a new integration on the [developer port
 Finally, to run all tests:
 
 ```bash
-npm run grunt:concurrent -- test
+npm test
 ```
 
 And to run the tests for a specific package
 
 ```bash
-PACKAGE=<package name> npm run grunt:package -- test
+npm test -- --package @ciscospark/spark-core
 ```

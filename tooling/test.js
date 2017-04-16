@@ -33,50 +33,61 @@ require(`babel-register`)({
 
 const argv = yargs
   .env(``)
+  .help()
   .options({
     coverage: {
+      description: `Generate code coverage report`,
       default: false,
       type: `boolean`
     },
 
     xunit: {
+      description: `Generate xunit xml reports. Note: exit code will always be zero of reports are generated successfully, even if tests fail`,
       default: false,
       type: `boolean`
     },
 
     browser: {
+      description: `Run tests in browser( defaults to true if --node is not specified)`,
       default: false,
       type: `boolean`
     },
     node: {
+      description: `Run tests in node (defaults to true if --browser is not specified)`,
       default: false,
       type: `boolean`
     },
 
     unit: {
+      description: `Run unit tests (defaults to true if --integration and --automation are not specified)`,
       default: false,
       type: `boolean`
     },
     integration: {
+      description: `Run integration tests (defaults to true if --unit and --automation are not specified)`,
       default: false,
       type: `boolean`
     },
     automation: {
+      description: `Run automation tests (defaults to true if --unit and --integration are not specified)`,
       default: false,
       type: `boolean`
     },
 
     grep: {
+      description: `Run a subset of tests`,
       default: [],
       type: `array`
     },
 
     karmaDebug: {
+      description: `Start karma in watch mode`,
       default: false,
       type: `boolean`
     },
 
     serve: {
+      description: `Start the fixture server. Since this defaults to true, you find --no-serve useful`,
       default: true,
       type: `boolean`
     }
@@ -98,8 +109,6 @@ if (argv.automation && !argv.unit && !argv.integration) {
 if (argv.grep.length > 1 && argv.browser) {
   throw new Error(`Karma only supports a single pattern; only specify --grep once when running browser tests`);
 }
-
-// TODO parallelize automation tests
 
 async function runMochaSuite(packageName) {
   const cfg = {};
@@ -199,6 +208,11 @@ async function testSinglePackage(packageName) {
   let err;
   try {
     const promises = [];
+    // TODO we can probably speed up the suite by splitting the automation tests
+    // out from the rest of the mocha tests, but let's do that after we switch
+    // to webdriver.io. We may find that we can elliminate the automation tests
+    // entirely with the upcoming credentials refactor.
+
     if (argv.node) {
       promises.push(runMochaSuite(packageName));
     }
