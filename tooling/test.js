@@ -6,7 +6,8 @@ const dotenv = require(`dotenv`);
 dotenv.config({path: `.env.default`});
 dotenv.config();
 
-const {glob} = require(`./util/package`);
+const debug = require(`debug`)(`test`);
+const {glob, list} = require(`./util/package`);
 const path = require(`path`);
 const {Server} = require(`karma`);
 const {makeConfig} = require(`../karma-ng.conf`);
@@ -92,9 +93,6 @@ if (argv.grep.length > 1 && argv.browser) {
 }
 
 // TODO launch test server automatically
-// TODO all packages
-// TODO --package
-// TODO support circle node distribution
 // TODO xunit needs to exit cleanly when tests run
 
 async function runMochaSuite(packageName) {
@@ -120,6 +118,11 @@ async function runMochaSuite(packageName) {
     files = files.concat(await glob(`test/automation/spec/**/*.js`, {packageName}));
   }
 
+  if (files.length === 0) {
+    debug(`mocha: no tests found for ${packageName}`);
+    return Promise.resolve();
+  }
+
   files.forEach((f) => mocha.addFile(path.join(`packages/node_modules`, packageName, f)));
   return new Promise((resolve, reject) => {
     mocha.run((failures) => {
@@ -133,6 +136,19 @@ async function runMochaSuite(packageName) {
 }
 
 async function runKarmaSuite(packageName) {
+  let files = [];
+  if (argv.unit) {
+    files = files.concat(await glob(`test/unit/spec/**/*.js`, {packageName}));
+  }
+  if (argv.integration) {
+    files = files.concat(await glob(`test/integration/spec/**/*.js`, {packageName}));
+  }
+
+  if (files.length === 0) {
+    debug(`karma: no tests found for ${packageName}`);
+    return Promise.resolve();
+  }
+
   const cfg = makeConfig(packageName, argv);
   return new Promise((resolve, reject) => {
     const server = new Server(cfg, (code) => {
@@ -180,10 +196,38 @@ async function testSinglePackage(packageName) {
   }
 }
 
+async function testAllPackages() {
+  // TODO a future revision should check for test files rather than assuming all
+  // the following patterns indicate a lack of tests.
+  let packages = (await list())
+    .filter((p) => !p.includes(`test-helper`))
+    .filter((p) => !p.includes(`bin-`))
+    .filter((p) => !p.includes(`example-phone`));
+
+  // TODO a future revision should figure out how to get timing data into and
+  // out of circle to use its node balancing helpers.
+  const CIRCLE_NODE_TOTAL = parseInt(process.env.CIRCLE_NODE_TOTAL || 1, 10);
+  const CIRCLE_NODE_INDEX = parseInt(process.env.CIRCLE_NODE_INDEX || 0, 10);
+
+  if (CIRCLE_NODE_TOTAL !== 1) {
+    packages = packages.filter((packageName, index) => index % CIRCLE_NODE_TOTAL === CIRCLE_NODE_INDEX);
+  }
+
+  for (const packageName of packages) {
+    debug(`Testing ${packageName} on this node`);
+    await testSinglePackage(packageName);
+  }
+}
+
 // eslint-disable-next-line no-extra-parens
 (async function main() {
   try {
-    await testSinglePackage(`@ciscospark/common`);
+    if (argv.package) {
+      await testSinglePackage(argv.package);
+    }
+    else {
+      await testAllPackages();
+    }
     if (argv.coverage) {
       await report();
     }
