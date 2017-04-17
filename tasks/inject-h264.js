@@ -22,8 +22,12 @@ const copy = denodeify(FirefoxProfile.copy);
 const writeFile = denodeify(fs.writeFile);
 
 function encode(fp) {
-  return new Promise((resolve) => {
-    fp.encode((encoded) => {
+  return new Promise((resolve, reject) => {
+    fp.encode((err, encoded) => {
+      if (err) {
+        reject(err);
+        return;
+      }
       resolve(encoded);
     });
   });
