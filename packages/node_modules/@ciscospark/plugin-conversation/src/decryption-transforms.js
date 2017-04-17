@@ -27,6 +27,13 @@ export const transforms = toArray(`inbound`, {
       key = object.encryptionKeyUrl;
     }
 
+    // Transcoded content was not showing up on the activities since the
+    // decryptFile was not being called. Calling decryptFile for
+    // transcodedContent fixes the issue.
+    if (object.objectType === `transcodedContent`) {
+      return Promise.all(object.files.items.map((item) => ctx.transform(`decryptFile`, key, item)));
+    }
+
     return ctx.transform(`decrypt${S(object.objectType).capitalize().s}`, key, object);
   },
 
