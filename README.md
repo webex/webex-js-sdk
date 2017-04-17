@@ -22,7 +22,9 @@ We test against the current LTS version of Node.js (6.10) but the SDK should wor
 
 To install the latest stable version from NPM:
 
-    npm install --save ciscospark
+```bash
+npm install --save ciscospark
+```
 
 ## Usage
 
@@ -68,10 +70,12 @@ use `const ciscospark = require('ciscospark')`.
 
 If you need to load `ciscospark` via a script tag, you will need to build it first:
 
-    npm install ciscospark
-    npm install -g browserify
-    echo "window.ciscospark = require(`ciscospark`)" > ./index.js
-    browserify index.js > bundle.js
+```bash
+npm install ciscospark
+npm install -g browserify
+echo "window.ciscospark = require(`ciscospark`)" > ./index.js
+browserify index.js > bundle.js
+```
 
 In-browser usage is pretty much the same as Node.js usage, with the addition of handling
 the user authentication flow for you. See the guide on the
