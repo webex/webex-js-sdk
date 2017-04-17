@@ -48,42 +48,59 @@ You can get these values by registering a new integration on the [Spark for Deve
 
 Fork the [spark-js-sdk](https://github.com/ciscospark/spark-js-sdk/) repository and `git clone` your fork:
 
-    git clone https://github.com/your-username/spark-js-sdk.git
+```bash
+git clone https://github.com/your-username/spark-js-sdk.git
+```
 
 Install tooling dependencies with:
 
-    npm install
+```bash
+npm install
+```
 
-Specify which package to build by using the `PACKAGE` environment variable. To build the entire SDK, use `ciscospark`:
+Specify which package to build by using the `PACKAGE` environment variable. To build the SDK, use `ciscospark`:
 
-    PACKAGE=ciscospark npm run grunt:package -- build
+```bash
+npm run build
+```
 
 ### Running Tests
 
 #### Run All Tests
-    npm run grunt:concurrent -- test
+
+```bash
+npm run grunt:concurrent -- test
+```
 
 #### Run Unit Tests
 Handy during early plugin development when you can write a bunch of unit tests.
 
-    UNIT_ONLY=true PACKAGE=PACKAGENAME npm run grunt:package -- test
+```bash
+UNIT_ONLY=true PACKAGE=PACKAGENAME npm run grunt:package -- test
+```
 
 ### Run unit tests in watch mode
 OK, this one's a handful and requires a global package, but there were too many possible variants to
 hardcode it any where.
 
-    npm install -g nodemon
-    nodemon -w packages/PACKAGENAME/src -w packages/PACKAGENAME/test -x "UNIT_ONLY=true PACKAGE=PACKAGENAME npm run --silent grunt:package express:test test:node"
+```bash
+npm install -g nodemon
+nodemon -w packages/PACKAGENAME/src -w packages/PACKAGENAME/test -x "UNIT_ONLY=true PACKAGE=PACKAGENAME npm run --silent grunt:package express:test test:node"
+```
 
 #### Run Node.js Tests
 Usually faster, and can build on the fly, thus no need to rebuild everything between test runs
 
-    PACKAGE=PACKAGENAME npm run grunt:package -- express:test test:node
+```bash
+PACKAGE=PACKAGENAME npm run grunt:package -- express:test test:node
+```
 
 #### Run Browser Tests
 Keeps the browser open so that you can reload set break points and reload the page
 
-    KARMA_DEBUG=true PACKAGE=PACKAGENAME npm run grunt:package -- express:test test:browser
+```bash
+KARMA_DEBUG=true PACKAGE=PACKAGENAME npm run grunt:package -- express:test test:browser
+```
 
 ### Git Commit Guidelines
 
@@ -152,10 +169,14 @@ To compile the documentation locally, make sure you have [Bundler](http://bundle
 
 ### Set Up Environment (with Bundler)
 
-    cd docs
-    bundle install
+```bash
+cd docs
+bundle install
+```
 
 ### Compile and Serve Docs
 
-    cd docs
-    bundle exec jekyll serve --config=_config.yml,_config.local.yml
+```bash
+cd docs
+bundle exec jekyll serve --config=_config.yml,_config.local.yml
+```
