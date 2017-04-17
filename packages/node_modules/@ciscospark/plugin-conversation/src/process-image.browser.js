@@ -54,7 +54,7 @@ export function computeDimensions({width, height}, maxWidth, maxHeight) {
  * @returns {Promise<Array>} Buffer, Dimensions, thumbnailDimensions
  */
 export default function processImage({file, thumbnailMaxWidth, thumbnailMaxHeight, enableThumbnails}) {
-  if (!file.type.startsWith(`image`)) {
+  if (!file.type || !file.type.startsWith(`image`)) {
     return Promise.resolve();
   }
 

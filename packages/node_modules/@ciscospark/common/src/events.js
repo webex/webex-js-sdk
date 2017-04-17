@@ -35,7 +35,9 @@ export function proxyEvents(emitter, proxy) {
 export function transferEvents(events, source, drain) {
   events = isArray(events) ? events : [events];
   events.forEach((event) => {
-    source.on(event, (...args) => emit(drain, event, ...args));
+    if (source.on) {
+      source.on(event, (...args) => emit(drain, event, ...args));
+    }
   });
 }
 
