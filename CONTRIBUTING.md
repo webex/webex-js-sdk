@@ -58,10 +58,18 @@ Install tooling dependencies with:
 npm install
 ```
 
-Specify which package to build by using the `PACKAGE` environment variable. To build the SDK, use `ciscospark`:
+Build the SDK:
 
 ```bash
 npm run build
+```
+
+#### Building Packages Individually
+
+To build packages individually, specify the package name in an environment variable, `PACKAGE`, and run: 
+
+```bash
+PACKAGE=PACKAGENAME npm run grunt:package -- build
 ```
 
 ### Running Tests
