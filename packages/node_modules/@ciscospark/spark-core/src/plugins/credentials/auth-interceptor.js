@@ -48,7 +48,9 @@ export default class AuthInterceptor extends Interceptor {
         return null;
       })
       .then((authorization) => {
-        options.headers.authorization = authorization;
+        if (authorization) {
+          options.headers.authorization = authorization;
+        }
         return options;
       });
   }
