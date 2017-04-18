@@ -1,6 +1,6 @@
 {
   "lerna": "2.0.0-rc.1",
-  "version": "0.7.87",
+  "version": "0.7.88",
   "packages": [
     "./packages/node_modules/*",
     "./packages/node_modules/@ciscospark/*"
