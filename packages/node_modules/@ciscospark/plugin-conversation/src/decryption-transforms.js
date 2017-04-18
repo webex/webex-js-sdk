@@ -37,8 +37,15 @@ export const transforms = toArray(`inbound`, {
     }
 
     const usableKey = conversation.encryptionKeyUrl || key;
+    const decryptionFailureMessage = ctx.spark.conversation.config.decryptionFailureMessage;
+
     if (usableKey) {
-      promises.push(ctx.transform(`decryptPropDisplayName`, usableKey, conversation));
+      promises.push(ctx.transform(`decryptPropDisplayName`, usableKey, conversation)
+        .catch((error) => {
+          ctx.spark.logger.error(`plugin-conversation: failed to decrypt display name of `, conversation.url, error);
+          Promise.resolve(decryptionFailureMessage);
+        })
+      );
       promises.push(ctx.transform(`decryptPropContent`, usableKey, conversation));
     }
     if (conversation.avatarEncryptionKeyUrl) {
