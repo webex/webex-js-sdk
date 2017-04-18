@@ -60,17 +60,17 @@ title: API
             
               <div class="list-group-item">Events</div>
               
-                <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
-              
-                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
-              
                 <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
-              
-                <a class="list-group-item" href="#Call.event:remoteMediaStream:change"> ⓔ remoteMediaStream:change</a>
               
                 <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
               
+                <a class="list-group-item" href="#Call.event:remoteMediaStream:change"> ⓔ remoteMediaStream:change</a>
+              
+                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
+              
                 <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
+              
+                <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
               
             
           </li>
@@ -233,16 +233,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Membership" class="list-group-item">Types~Membership</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Memberships" class="list-group-item">Memberships</a>
 
             
@@ -266,7 +256,7 @@ title: API
           </li>
         
           
-            <a href="#Types~Message" class="list-group-item">Types~Message</a>
+            <a href="#Types~Membership" class="list-group-item">Types~Membership</a>
 
             
 
@@ -291,6 +281,16 @@ title: API
                 
                   <a class="list-group-item" href="#Messages#remove">#remove</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Message" class="list-group-item">Types~Message</a>
+
+            
+
             
 
             
@@ -324,16 +324,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Room" class="list-group-item">Types~Room</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Rooms" class="list-group-item">Rooms</a>
 
             
@@ -357,7 +347,7 @@ title: API
           </li>
         
           
-            <a href="#Types~Team" class="list-group-item">Types~Team</a>
+            <a href="#Types~Room" class="list-group-item">Types~Room</a>
 
             
 
@@ -382,6 +372,16 @@ title: API
                 
                   <a class="list-group-item" href="#Teams#update">#update</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Team" class="list-group-item">Types~Team</a>
+
+            
+
             
 
             
@@ -1425,80 +1425,6 @@ even if renegotiation has not completed)</p>
     <h3>Events</h3>
     <section>
   
-    <h3 id='Call.event:ringing'>ringing</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>ringing</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:disconnected'>disconnected</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>disconnected</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
     <h3 id='Call.event:localMediaStream:change'>localMediaStream:change</h3>
     <div>
       <section>
@@ -1507,43 +1433,6 @@ even if renegotiation has not completed)</p>
   
 
   <pre>localMediaStream:change</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:remoteMediaStream:change'>remoteMediaStream:change</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>remoteMediaStream:change</pre>
 
   
 
@@ -1610,6 +1499,80 @@ even if renegotiation has not completed)</p>
 
     </div>
   
+    <h3 id='Call.event:remoteMediaStream:change'>remoteMediaStream:change</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>remoteMediaStream:change</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:disconnected'>disconnected</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>disconnected</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
     <h3 id='Call.event:connected'>connected</h3>
     <div>
       <section>
@@ -1618,6 +1581,43 @@ even if renegotiation has not completed)</p>
   
 
   <pre>connected</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:ringing'>ringing</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>ringing</pre>
 
   
 
@@ -2891,111 +2891,6 @@ on the storage layer instead.</p>
         
           <section>
   
-    <h2 id='Types~Membership'>Types~Membership</h2>
-    
-  
-
-  
-
-  <pre>Types~Membership</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(uuid)</code>
-      
-      : Unique identifier for the membership
-
-      </h4>
-      
-    
-      <h4>
-      roomId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The room ID
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(uuid)</code>
-      
-      : The person ID
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(email)</code>
-      
-      : The email address of the person / room member
-
-      </h4>
-      
-    
-      <h4>
-      isModerator
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Indicates whether the specified person should be a room moderator.
-
-      </h4>
-      
-    
-      <h4>
-      isMonitor
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Indicates whether the specified member is a room monitor.
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : The date and time that this membership was created.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Memberships'>Memberships</h2>
     
   
@@ -3487,13 +3382,13 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Message'>Types~Message</h2>
+    <h2 id='Types~Membership'>Types~Membership</h2>
     
   
 
   
 
-  <pre>Types~Message</pre>
+  <pre>Types~Membership</pre>
 
   
 
@@ -3512,25 +3407,7 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       id
       <code>(uuid)</code>
       
-      : (server generated) Unique identifier for the message
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(uuid)</code>
-      
-      : The ID for the author of the messasge
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(email)</code>
-      
-      : The email for the author of the messasge
+      : Unique identifier for the membership
 
       </h4>
       
@@ -3539,7 +3416,43 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       roomId
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : The message posted to the room in plain text
+      : The room ID
+
+      </h4>
+      
+    
+      <h4>
+      personId
+      <code>(uuid)</code>
+      
+      : The person ID
+
+      </h4>
+      
+    
+      <h4>
+      personEmail
+      <code>(email)</code>
+      
+      : The email address of the person / room member
+
+      </h4>
+      
+    
+      <h4>
+      isModerator
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Indicates whether the specified person should be a room moderator.
+
+      </h4>
+      
+    
+      <h4>
+      isMonitor
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Indicates whether the specified member is a room monitor.
 
       </h4>
       
@@ -3548,9 +3461,7 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       created
       <code>(isoDate)</code>
       
-      : (server generated)The source URLs for the
-message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
-supported media types.
+      : The date and time that this membership was created.
 
       </h4>
       
@@ -3982,6 +3893,95 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
+    <h2 id='Types~Message'>Types~Message</h2>
+    
+  
+
+  
+
+  <pre>Types~Message</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(uuid)</code>
+      
+      : (server generated) Unique identifier for the message
+
+      </h4>
+      
+    
+      <h4>
+      personId
+      <code>(uuid)</code>
+      
+      : The ID for the author of the messasge
+
+      </h4>
+      
+    
+      <h4>
+      personEmail
+      <code>(email)</code>
+      
+      : The email for the author of the messasge
+
+      </h4>
+      
+    
+      <h4>
+      roomId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The message posted to the room in plain text
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated)The source URLs for the
+message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
+supported media types.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='People'>People</h2>
     
   
@@ -4280,87 +4280,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       <code>(isoDate)</code>
       
       : The date and time that the person was created
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Room'>Types~Room</h2>
-    
-  
-
-  
-
-  <pre>Types~Room</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (server generated) Unique identifier for the room
-
-      </h4>
-      
-    
-      <h4>
-      title
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The display name for the room. All room members
-will see the title so make it something good
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated) The date and time that the
-room was created
-
-      </h4>
-      
-    
-      <h4>
-      teamId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (optional): The id of the team to which the room
-belongs
 
       </h4>
       
@@ -4831,13 +4750,13 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Team'>Types~Team</h2>
+    <h2 id='Types~Room'>Types~Room</h2>
     
   
 
   
 
-  <pre>Types~Team</pre>
+  <pre>Types~Room</pre>
 
   
 
@@ -4856,16 +4775,17 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       id
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : (server generated) The unique ID for the team.
+      : (server generated) Unique identifier for the room
 
       </h4>
       
     
       <h4>
-      name
+      title
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : The name of the team.
+      : The display name for the room. All room members
+will see the title so make it something good
 
       </h4>
       
@@ -4874,8 +4794,18 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       created
       <code>(isoDate)</code>
       
-      : (server generated) The date and time when the
-team was created, in ISO8601 format.
+      : (server generated) The date and time that the
+room was created
+
+      </h4>
+      
+    
+      <h4>
+      teamId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (optional): The id of the team to which the room
+belongs
 
       </h4>
       
@@ -5249,6 +5179,76 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
     </div>
   
 </section>
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Team'>Types~Team</h2>
+    
+  
+
+  
+
+  <pre>Types~Team</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (server generated) The unique ID for the team.
+
+      </h4>
+      
+    
+      <h4>
+      name
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The name of the team.
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated) The date and time when the
+team was created, in ISO8601 format.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
