@@ -17,5 +17,3 @@ test:
     - npm run build
   override:
     - npm run lint
-    - npm run grunt:circle -- test:
-        parallel: true
