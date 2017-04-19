@@ -30,33 +30,10 @@ module.exports = function configureGrunt(grunt) {
   grunt.loadTasks(`tasks`);
 
   grunt.initConfig({
-    babel: {
-      dist: {
-        files: [{
-          cwd: `./packages/node_modules/<%= package %>/src`,
-          dest: `./packages/node_modules/<%= package %>/dist`,
-          expand: true,
-          filter: `isFile`,
-          src: `**/*.js`
-        }]
-      }
-    },
-
     clean: {
       coverage: {
         src: [
           `./packages/node_modules/<%= package %>/.coverage`
-        ]
-      },
-      dist: {
-        src: [
-          `./packages/node_modules/<%= package %>/dist`
-        ]
-      },
-      snapshots: {
-        src: [
-          `./packages/node_modules/<%= package %>/src/**/__snapshots__`,
-          `./packages/node_modules/<%= package %>/test/**/__snapshots__`
         ]
       }
     },
@@ -340,11 +317,6 @@ module.exports = function configureGrunt(grunt) {
   grunt.task.run([
     `env:default`,
     `env:secrets`
-  ]);
-
-  registerTask(`build`, [
-    `clean:dist`,
-    `babel`
   ]);
 
   registerTask(`test:automation`, [
