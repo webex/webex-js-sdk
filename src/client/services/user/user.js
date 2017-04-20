@@ -9,6 +9,7 @@ var assign = require('lodash.assign');
 var defaults = require('lodash.defaults');
 var isArray = require('lodash.isarray');
 var noop = require('lodash.noop');
+var omit = require('lodash.omit');
 var patterns = require('../../../util/patterns');
 var SparkBase = require('../../../lib/spark-base');
 var UserStore = require('./user-store');
@@ -217,6 +218,7 @@ var UserService = SparkBase.extend(
    * @param {Object} params
    * @param {Object} params.email (required)
    * @param {Object} params.reqId required if need to check email status
+   * @param {string} params.preloginId
    * @returns {Promise}
    * @todo Add details to the @returnsobject once the endpoint stabilizes
    */
@@ -238,6 +240,10 @@ var UserService = SparkBase.extend(
     var headers = {};
     if (options.spoofMobile) {
       headers = {'User-Agent': 'wx2-android'};
+    }
+    if (params.preloginId) {
+      headers = assign(headers, {'X-Prelogin-UserId': params.preloginId});
+      params = omit(params, ['preloginId']);
     }
     var promise = this.spark.credentials.getAuthorization()
       .then(function addAuthHeader(authorization) {
