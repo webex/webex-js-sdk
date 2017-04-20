@@ -60,15 +60,15 @@ title: API
             
               <div class="list-group-item">Events</div>
               
-                <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
+                <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
               
                 <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
               
                 <a class="list-group-item" href="#Call.event:remoteMediaStream:change"> ⓔ remoteMediaStream:change</a>
               
-                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
+                <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
               
-                <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
+                <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
               
                 <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
               
@@ -233,6 +233,16 @@ title: API
           </li>
         
           
+            <a href="#Types~Membership" class="list-group-item">Types~Membership</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
             <a href="#Memberships" class="list-group-item">Memberships</a>
 
             
@@ -250,16 +260,6 @@ title: API
                 
                   <a class="list-group-item" href="#Memberships#update">#update</a>
                 
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Membership" class="list-group-item">Types~Membership</a>
-
-            
-
             
 
             
@@ -297,43 +297,6 @@ title: API
           </li>
         
           
-            <a href="#People" class="list-group-item">People</a>
-
-            
-
-            
-                <div class="list-group-item">Instance members</div>
-                
-                  <a class="list-group-item" href="#People#get">#get</a>
-                
-                  <a class="list-group-item" href="#People#list">#list</a>
-                
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Person" class="list-group-item">Types~Person</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Room" class="list-group-item">Types~Room</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Rooms" class="list-group-item">Rooms</a>
 
             
@@ -351,6 +314,16 @@ title: API
                 
                   <a class="list-group-item" href="#Rooms#update">#update</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Room" class="list-group-item">Types~Room</a>
+
+            
+
             
 
             
@@ -1425,14 +1398,14 @@ even if renegotiation has not completed)</p>
     <h3>Events</h3>
     <section>
   
-    <h3 id='Call.event:localMediaStream:change'>localMediaStream:change</h3>
+    <h3 id='Call.event:connected'>connected</h3>
     <div>
       <section>
   
 
   
 
-  <pre>localMediaStream:change</pre>
+  <pre>connected</pre>
 
   
 
@@ -1536,14 +1509,14 @@ even if renegotiation has not completed)</p>
 
     </div>
   
-    <h3 id='Call.event:disconnected'>disconnected</h3>
+    <h3 id='Call.event:localMediaStream:change'>localMediaStream:change</h3>
     <div>
       <section>
   
 
   
 
-  <pre>disconnected</pre>
+  <pre>localMediaStream:change</pre>
 
   
 
@@ -1573,14 +1546,14 @@ even if renegotiation has not completed)</p>
 
     </div>
   
-    <h3 id='Call.event:connected'>connected</h3>
+    <h3 id='Call.event:disconnected'>disconnected</h3>
     <div>
       <section>
   
 
   
 
-  <pre>connected</pre>
+  <pre>disconnected</pre>
 
   
 
@@ -2891,6 +2864,111 @@ on the storage layer instead.</p>
         
           <section>
   
+    <h2 id='Types~Membership'>Types~Membership</h2>
+    
+  
+
+  
+
+  <pre>Types~Membership</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(uuid)</code>
+      
+      : Unique identifier for the membership
+
+      </h4>
+      
+    
+      <h4>
+      roomId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The room ID
+
+      </h4>
+      
+    
+      <h4>
+      personId
+      <code>(uuid)</code>
+      
+      : The person ID
+
+      </h4>
+      
+    
+      <h4>
+      personEmail
+      <code>(email)</code>
+      
+      : The email address of the person / room member
+
+      </h4>
+      
+    
+      <h4>
+      isModerator
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Indicates whether the specified person should be a room moderator.
+
+      </h4>
+      
+    
+      <h4>
+      isMonitor
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+      
+      : Indicates whether the specified member is a room monitor.
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : The date and time that this membership was created.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='Memberships'>Memberships</h2>
     
   
@@ -3370,111 +3448,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     </div>
   
 </section>
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Membership'>Types~Membership</h2>
-    
-  
-
-  
-
-  <pre>Types~Membership</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(uuid)</code>
-      
-      : Unique identifier for the membership
-
-      </h4>
-      
-    
-      <h4>
-      roomId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The room ID
-
-      </h4>
-      
-    
-      <h4>
-      personId
-      <code>(uuid)</code>
-      
-      : The person ID
-
-      </h4>
-      
-    
-      <h4>
-      personEmail
-      <code>(email)</code>
-      
-      : The email address of the person / room member
-
-      </h4>
-      
-    
-      <h4>
-      isModerator
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Indicates whether the specified person should be a room moderator.
-
-      </h4>
-      
-    
-      <h4>
-      isMonitor
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-      
-      : Indicates whether the specified member is a room monitor.
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : The date and time that this membership was created.
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
 
   
 
@@ -3982,410 +3955,6 @@ supported media types.
         
           <section>
   
-    <h2 id='People'>People</h2>
-    
-  
-
-  
-
-  <pre>People()</pre>
-
-  
-    <p>
-      Extends
-      SparkPlugin
-    </p>
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-    <h3>Instance Members</h3>
-    <section>
-  
-    <h3 id='People#get'>get(person)</h3>
-    <div>
-      <section>
-  
-
-  <p>Returns a single person by ID</p>
-
-
-  <pre>get(person: (Types~Person | uuid)): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#Types~Person">Types~Person</a>&#x3E;</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-    <h3>Parameters</h3>
-    
-      
-    
-  
-
-  
-
-  
-    
-      <h3>Returns</h3>
-      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#Types~Person">Types~Person</a>&#x3E;</code>:
-        
-
-      
-    
-  
-
-  
-
-  
-    <h3>Example</h3>
-    
-      
-      <pre><span class="hljs-keyword">var</span> ciscospark = <span class="hljs-built_in">require</span>(<span class="hljs-string">'../..'</span>);
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Get Person Example'</span>})
-  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.memberships.create({
-      <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'alice@example.com'</span>,
-      <span class="hljs-attr">roomId</span>: room.id
-    });
-  })
-  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">membership</span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.people.get(membership.personId);
-  })
-  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">alice</span>) </span>{
-    <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
-    assert(alice.id);
-    assert(<span class="hljs-built_in">Array</span>.isArray(alice.emails));
-    assert.equal(alice.emails.filter(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">email</span>) </span>{
-      <span class="hljs-keyword">return</span> email === <span class="hljs-string">'alice@example.com'</span>;
-    }).length, <span class="hljs-number">1</span>);
-    assert(alice.displayName);
-    assert(alice.created);
-    <span class="hljs-keyword">return</span> <span class="hljs-string">'success'</span>;
-  });
-  <span class="hljs-comment">// => success</span></pre>
-    
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='People#list'>list(options)</h3>
-    <div>
-      <section>
-  
-
-  <p>Returns a list of people</p>
-
-
-  <pre>list(options: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;Page&#x3C;<a href="#Types~Person">Types~Person</a>&#x3E;&#x3E;</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-    <h3>Parameters</h3>
-    
-      
-        <table class="table table-bordered">
-          <thead>
-            <tr>
-              <td>Name</td>
-              <td>Description</td>
-            </tr>
-          </thead>
-          <tbody>
-          
-            <tr>
-              <td>options.email
-                <code>email</code>
-                
-              </td>
-              <td>Returns people with an email that contains this string
-</td>
-            </tr>
-          
-            <tr>
-              <td>options.name
-                <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
-                
-              </td>
-              <td>Returns people with a name that contains this string
-</td>
-            </tr>
-          
-          </tbody>
-        </table>
-      
-    
-  
-
-  
-
-  
-    
-      <h3>Returns</h3>
-      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;Page&#x3C;<a href="#Types~Person">Types~Person</a>&#x3E;&#x3E;</code>:
-        
-
-      
-    
-  
-
-  
-
-  
-    <h3>Example</h3>
-    
-      
-      <pre><span class="hljs-keyword">var</span> ciscospark = <span class="hljs-built_in">require</span>(<span class="hljs-string">'../..'</span>);
-<span class="hljs-keyword">var</span> room;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List People Example'</span>})
-  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
-    room = r;
-    <span class="hljs-keyword">return</span> ciscospark.memberships.create({
-      <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'alice@example.com'</span>,
-      <span class="hljs-attr">roomId</span>: room.id
-    });
-  })
-  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.memberships.create({
-      <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'bob@example.com'</span>,
-      <span class="hljs-attr">roomId</span>: room.id
-    });
-  })
-  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.people.list({<span class="hljs-attr">email</span>: <span class="hljs-string">'alice@example.com'</span>});
-  })
-  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">people</span>) </span>{
-    <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
-    assert.equal(people.length, <span class="hljs-number">1</span>);
-    <span class="hljs-keyword">var</span> person = people.items[<span class="hljs-number">0</span>];
-    assert(person.id);
-    assert(<span class="hljs-built_in">Array</span>.isArray(person.emails));
-    assert(person.displayName);
-    assert(person.created);
-    <span class="hljs-keyword">return</span> <span class="hljs-string">'success'</span>;
-  });
-  <span class="hljs-comment">// => success</span></pre>
-    
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-</section>
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Person'>Types~Person</h2>
-    
-  
-
-  
-
-  <pre>Types~Person</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(uuid)</code>
-      
-      : Unique identifier for the person
-
-      </h4>
-      
-    
-      <h4>
-      emails
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;email&#x3E;)</code>
-      
-      : Email addresses of the person
-
-      </h4>
-      
-    
-      <h4>
-      displayName
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : Display name of the person
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : The date and time that the person was created
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Room'>Types~Room</h2>
-    
-  
-
-  
-
-  <pre>Types~Room</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (server generated) Unique identifier for the room
-
-      </h4>
-      
-    
-      <h4>
-      title
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The display name for the room. All room members
-will see the title so make it something good
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated) The date and time that the
-room was created
-
-      </h4>
-      
-    
-      <h4>
-      teamId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (optional): The id of the team to which the room
-belongs
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Rooms'>Rooms</h2>
     
   
@@ -4819,6 +4388,87 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     </div>
   
 </section>
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Room'>Types~Room</h2>
+    
+  
+
+  
+
+  <pre>Types~Room</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (server generated) Unique identifier for the room
+
+      </h4>
+      
+    
+      <h4>
+      title
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The display name for the room. All room members
+will see the title so make it something good
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated) The date and time that the
+room was created
+
+      </h4>
+      
+    
+      <h4>
+      teamId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (optional): The id of the team to which the room
+belongs
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
