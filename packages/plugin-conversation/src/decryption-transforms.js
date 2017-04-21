@@ -49,7 +49,7 @@ export const transforms = toArray(`inbound`, {
     if (usableKey) {
       promises.push(ctx.transform(`decryptPropDisplayName`, usableKey, conversation)
         .catch((error) => {
-          ctx.spark.logger.error(`plugin-conversation: failed to decrypt display name of `, conversation.url, error);
+          ctx.spark.logger.warn(`plugin-conversation: failed to decrypt display name of `, conversation.url, error);
           Promise.resolve(decryptionFailureMessage);
         })
       );
@@ -119,6 +119,7 @@ export const transforms = toArray(`inbound`, {
     if (!object[name]) {
       return Promise.resolve();
     }
+    const decryptionFailureMessage = ctx.spark.conversation.config.decryptionFailureMessage;
 
     return ctx.spark.encryption.decryptText(key, object[name])
       .then((plaintext) => {
@@ -130,8 +131,9 @@ export const transforms = toArray(`inbound`, {
         object[name] = plaintext;
       })
       .catch((reason) => {
-        ctx.spark.logger.warn(`plugin-conversation: failed to decrypt ${name}`);
-        return Promise.reject(reason);
+        ctx.spark.logger.warn(`plugin-conversation: failed to decrypt ${name} `, reason);
+        object[name] = decryptionFailureMessage;
+        Promise.resolve(decryptionFailureMessage);
       });
   },
 
