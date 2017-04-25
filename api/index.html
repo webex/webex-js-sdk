@@ -33,13 +33,19 @@ title: API
                 
                   <a class="list-group-item" href="#Call#oneFlight">#oneFlight</a>
                 
+                  <a class="list-group-item" href="#Call#decline">#decline</a>
+                
                   <a class="list-group-item" href="#Call#hangup">#hangup</a>
                 
-                  <a class="list-group-item" href="#Call#decline">#decline</a>
+                  <a class="list-group-item" href="#Call#sendFeedback">#sendFeedback</a>
                 
                   <a class="list-group-item" href="#Call#startSendingAudio">#startSendingAudio</a>
                 
                   <a class="list-group-item" href="#Call#startSendingVideo">#startSendingVideo</a>
+                
+                  <a class="list-group-item" href="#Call#stopSendingAudio">#stopSendingAudio</a>
+                
+                  <a class="list-group-item" href="#Call#stopSendingVideo">#stopSendingVideo</a>
                 
                   <a class="list-group-item" href="#Call#toggleReceivingAudio">#toggleReceivingAudio</a>
                 
@@ -48,12 +54,6 @@ title: API
                   <a class="list-group-item" href="#Call#toggleSendingAudio">#toggleSendingAudio</a>
                 
                   <a class="list-group-item" href="#Call#toggleSendingVideo">#toggleSendingVideo</a>
-                
-                  <a class="list-group-item" href="#Call#sendFeedback">#sendFeedback</a>
-                
-                  <a class="list-group-item" href="#Call#stopSendingAudio">#stopSendingAudio</a>
-                
-                  <a class="list-group-item" href="#Call#stopSendingVideo">#stopSendingVideo</a>
                 
             
 
@@ -714,6 +714,53 @@ automatically deallocated when the call ends</p>
       <section>
   
 
+  <p>Use to acknowledge (without answering) an incoming call. Will cause the
+initiator&#x27;s Call instance to emit the ringing event.</p>
+
+
+  <pre>oneFlight</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <h3>Returns</h3>
+      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call#oneFlight'>oneFlight</h3>
+    <div>
+      <section>
+  
+
   <p>Answers an incoming call. Only applies to incoming calls. Invoking this
 method on an outgoing call is a noop</p>
 
@@ -786,8 +833,8 @@ method on an outgoing call is a noop</p>
       <section>
   
 
-  <p>Use to acknowledge (without answering) an incoming call. Will cause the
-initiator&#x27;s Call instance to emit the ringing event.</p>
+  <p>Rejects an incoming call. Only applies to incoming calls. Invoking this
+method on an outgoing call is a no-op.</p>
 
 
   <pre>oneFlight</pre>
@@ -828,16 +875,15 @@ initiator&#x27;s Call instance to emit the ringing event.</p>
 
     </div>
   
-    <h3 id='Call#oneFlight'>oneFlight</h3>
+    <h3 id='Call#decline'>decline()</h3>
     <div>
       <section>
   
 
-  <p>Rejects an incoming call. Only applies to incoming calls. Invoking this
-method on an outgoing call is a no-op.</p>
+  <p>Alias of <a href="#Call#reject">Call#reject</a></p>
 
 
-  <pre>oneFlight</pre>
+  <pre>decline(): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></pre>
 
   
 
@@ -923,15 +969,15 @@ to tear down the call and free up all resources regardless of the state.</p>
 
     </div>
   
-    <h3 id='Call#decline'>decline()</h3>
+    <h3 id='Call#sendFeedback'>sendFeedback(feedback)</h3>
     <div>
       <section>
   
 
-  <p>Alias of <a href="#Call#reject">Call#reject</a></p>
+  <p>Sends feedback about the call to the Cisco Spark cloud</p>
 
 
-  <pre>decline(): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></pre>
+  <pre>sendFeedback(feedback: Types~Feedback): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></pre>
 
   
 
@@ -941,6 +987,11 @@ to tear down the call and free up all resources regardless of the state.</p>
   
   
 
+  
+    <h3>Parameters</h3>
+    
+      
+    
   
 
   
@@ -1024,6 +1075,100 @@ to tear down the call and free up all resources regardless of the state.</p>
 
 
   <pre>startSendingVideo(): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <h3>Returns</h3>
+      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call#stopSendingAudio'>stopSendingAudio()</h3>
+    <div>
+      <section>
+  
+
+  <p>Stops sending audio to the Cisco Spark Cloud. (stops broadcast immediately,
+even if renegotiation has not completed)</p>
+
+
+  <pre>stopSendingAudio(): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <h3>Returns</h3>
+      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call#stopSendingVideo'>stopSendingVideo()</h3>
+    <div>
+      <section>
+  
+
+  <p>Stops sending video to the Cisco Spark Cloud. (stops broadcast immediately,
+even if renegotiation has not completed)</p>
+
+
+  <pre>stopSendingVideo(): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></pre>
 
   
 
@@ -1208,151 +1353,6 @@ to tear down the call and free up all resources regardless of the state.</p>
 
 
   <pre>toggleSendingVideo(): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-    
-      <h3>Returns</h3>
-      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
-        
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call#sendFeedback'>sendFeedback(feedback)</h3>
-    <div>
-      <section>
-  
-
-  <p>Sends feedback about the call to the Cisco Spark cloud</p>
-
-
-  <pre>sendFeedback(feedback: Types~Feedback): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-    <h3>Parameters</h3>
-    
-      
-    
-  
-
-  
-
-  
-    
-      <h3>Returns</h3>
-      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
-        
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call#stopSendingAudio'>stopSendingAudio()</h3>
-    <div>
-      <section>
-  
-
-  <p>Stops sending audio to the Cisco Spark Cloud. (stops broadcast immediately,
-even if renegotiation has not completed)</p>
-
-
-  <pre>stopSendingAudio(): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-    
-      <h3>Returns</h3>
-      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
-        
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call#stopSendingVideo'>stopSendingVideo()</h3>
-    <div>
-      <section>
-  
-
-  <p>Stops sending video to the Cisco Spark Cloud. (stops broadcast immediately,
-even if renegotiation has not completed)</p>
-
-
-  <pre>stopSendingVideo(): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></pre>
 
   
 
