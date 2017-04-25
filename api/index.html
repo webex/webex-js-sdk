@@ -297,16 +297,6 @@ title: API
           </li>
         
           
-            <a href="#Types~Room" class="list-group-item">Types~Room</a>
-
-            
-
-            
-
-            
-          </li>
-        
-          
             <a href="#Rooms" class="list-group-item">Rooms</a>
 
             
@@ -330,7 +320,7 @@ title: API
           </li>
         
           
-            <a href="#Types~Team" class="list-group-item">Types~Team</a>
+            <a href="#Types~Room" class="list-group-item">Types~Room</a>
 
             
 
@@ -355,6 +345,16 @@ title: API
                 
                   <a class="list-group-item" href="#Teams#update">#update</a>
                 
+            
+
+            
+          </li>
+        
+          
+            <a href="#Types~Team" class="list-group-item">Types~Team</a>
+
+            
+
             
 
             
@@ -3955,87 +3955,6 @@ supported media types.
         
           <section>
   
-    <h2 id='Types~Room'>Types~Room</h2>
-    
-  
-
-  
-
-  <pre>Types~Room</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (server generated) Unique identifier for the room
-
-      </h4>
-      
-    
-      <h4>
-      title
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The display name for the room. All room members
-will see the title so make it something good
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated) The date and time that the
-room was created
-
-      </h4>
-      
-    
-      <h4>
-      teamId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (optional): The id of the team to which the room
-belongs
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
     <h2 id='Rooms'>Rooms</h2>
     
   
@@ -4481,13 +4400,13 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
         
           <section>
   
-    <h2 id='Types~Team'>Types~Team</h2>
+    <h2 id='Types~Room'>Types~Room</h2>
     
   
 
   
 
-  <pre>Types~Team</pre>
+  <pre>Types~Room</pre>
 
   
 
@@ -4506,16 +4425,17 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       id
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : (server generated) The unique ID for the team.
+      : (server generated) Unique identifier for the room
 
       </h4>
       
     
       <h4>
-      name
+      title
       <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
       
-      : The name of the team.
+      : The display name for the room. All room members
+will see the title so make it something good
 
       </h4>
       
@@ -4524,8 +4444,18 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       created
       <code>(isoDate)</code>
       
-      : (server generated) The date and time when the
-team was created, in ISO8601 format.
+      : (server generated) The date and time that the
+room was created
+
+      </h4>
+      
+    
+      <h4>
+      teamId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (optional): The id of the team to which the room
+belongs
 
       </h4>
       
@@ -4899,6 +4829,76 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
     </div>
   
 </section>
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
+    <h2 id='Types~Team'>Types~Team</h2>
+    
+  
+
+  
+
+  <pre>Types~Team</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (server generated) The unique ID for the team.
+
+      </h4>
+      
+    
+      <h4>
+      name
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The name of the team.
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated) The date and time when the
+team was created, in ISO8601 format.
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
