@@ -144,10 +144,29 @@ ansiColor('xterm') {
 
           // Kill any zombie containers from previous jobs
           try {
-            sh "docker kill \$(docker ps | grep ${JOB_NAME} | grep -v '-${BUILD_NUMBER}-builder' | awk '{print \$1}')"
+            sh "docker kill \$(docker ps | grep ${JOB_NAME} | grep -v '${BUILD_NUMBER}-builder' | awk '{print \$1}')"
           }
           catch(err) {
-            // ignore - just means there were no zombie containers to kill
+            try {
+              echo "Failed to kill docker containers from previous builds. this *should* mean their weren't any"
+              echo err.toString()
+              echo 'The following docker containers are running on this host'
+              def containers = sh script: 'docker ps', returnStdout: true
+              echo containers.toString()
+              echo 'The following build containers are running on this host'
+              def builders = sh script: "docker ps | grep ${JOB_NAME}", returnStdout: true
+              echo builders.toString()
+              echo 'The following build containers (excluding this build) are running on this host'
+              def filtered = sh script: "docker ps | grep ${JOB_NAME} | grep -v '${BUILD_NUMBER}-builder'", returnStdout: true
+              echo filtered.toString()
+              echo 'The following build container ids (excluding this build) are running on this host'
+              def ids = sh script: "docker ps | grep ${JOB_NAME} | grep -v '${BUILD_NUMBER}-builder' | awk '{print \$1}'", returnStdout: true
+              echo ids.toString()
+            }
+            catch (err2) {
+              echo 'This failure probably means there were no docker containers to kill'
+              echo err2.toString()
+            }
           }
 
           DOCKER_ENV_FILE = "${env.WORKSPACE}/docker-env"
