@@ -48,24 +48,6 @@ module.exports = function gruntConfig(grunt) {
       }
     },
 
-    documentation: {
-      options: {
-        private: false
-      },
-      html: {
-        src: [
-          `./packages/node_modules/ciscospark/src/index.js`,
-          `./packages/node_modules/@ciscospark/plugin-phone/src/index.js`
-        ],
-        options: {
-          destination: `./docs/api/`,
-          format: `html`,
-          github: true,
-          theme: `./docs/_theme`
-        }
-      }
-    },
-
     env: {
       default: {
         src: `.env.default.json`
@@ -179,10 +161,6 @@ module.exports = function gruntConfig(grunt) {
     }
     throw new Error(`p(): \`env\`"${env}" is not a recognized string`);
   }
-
-  grunt.registerTask(`build:docs`, [
-    `documentation`
-  ]);
 
   grunt.registerTask(`publish:docs`, [
     `gh-pages:ghc`

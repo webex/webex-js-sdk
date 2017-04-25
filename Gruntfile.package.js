@@ -97,32 +97,6 @@ module.exports = function configureGrunt(grunt) {
       }
     },
 
-    documentation: {
-      options: {
-        destination: `./packages/node_modules/<%= package %>`,
-        externals: {
-          cwd: `./packages/node_modules/<%= package %>/test/documentation/spec`,
-          dest: `.`,
-          expand: true,
-          src: `**/*.js`
-        },
-        private: false
-      },
-      json: {
-        src: `./packages/node_modules/<%= package %>/src/index.js`,
-        options: {
-          format: `json`
-        }
-      },
-      html: {
-        src: `./packages/node_modules/<%= package %>/src/index.js`,
-        options: {
-          destination: `./packages/node_modules/<%= package %>/doc`,
-          format: `html`
-        }
-      }
-    },
-
     env: {
       default: {
         src: `.env.default.json`
@@ -254,8 +228,7 @@ module.exports = function configureGrunt(grunt) {
 
           const src = [
             `./packages/node_modules/<%= package %>/test/*/spec/**/*.js`,
-            `!./packages/node_modules/<%= package %>/test/automation/spec/**/*.js`,
-            `!./packages/node_modules/<%= package %>/test/documentation/spec/**/*.js`
+            `!./packages/node_modules/<%= package %>/test/automation/spec/**/*.js`
           ];
           if (process.env.PIPELINE) {
             src.push(`!./packages/node_modules/<%= package %>/test/unit/spec/**/*.js`);
