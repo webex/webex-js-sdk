@@ -54,6 +54,7 @@
     "build": "./tooling/build.js",
     "check-karma-output": "./scripts/analyze-output.sh",
     "build:package": "echo 'deprecated; just use \"npm run --silent build\"'./tooling/build.js",
+    "grunt": "grunt",
     "lint": "npm run --silent lint:js && npm run --silent lint:jenkinsfile",
     "lint:commitmsg": "conventional-changelog-lint -e",
     "lint:eslint": "eslint --ignore-pattern 'packages/node_modules/generator-ciscospark/generators/*/templates/**' --ignore-path .gitignore $(npm run --silent lint:eslint:ci-reporter)",
