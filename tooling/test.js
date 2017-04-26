@@ -323,5 +323,4 @@ async function testAllPackages() {
       handle.unref();
     }
   }
-
 }());
