@@ -60,17 +60,17 @@ title: API
             
               <div class="list-group-item">Events</div>
               
+                <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
+              
                 <a class="list-group-item" href="#Call.event:connected"> ⓔ connected</a>
-              
-                <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
-              
-                <a class="list-group-item" href="#Call.event:remoteMediaStream:change"> ⓔ remoteMediaStream:change</a>
-              
-                <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
               
                 <a class="list-group-item" href="#Call.event:disconnected"> ⓔ disconnected</a>
               
-                <a class="list-group-item" href="#Call.event:ringing"> ⓔ ringing</a>
+                <a class="list-group-item" href="#Call.event:localMediaStream:change"> ⓔ localMediaStream:change</a>
+              
+                <a class="list-group-item" href="#Call.event:remoteMediaStream:change"> ⓔ remoteMediaStream:change</a>
+              
+                <a class="list-group-item" href="#Call.event:error"> ⓔ error</a>
               
             
           </li>
@@ -297,6 +297,16 @@ title: API
           </li>
         
           
+            <a href="#Types~Room" class="list-group-item">Types~Room</a>
+
+            
+
+            
+
+            
+          </li>
+        
+          
             <a href="#Rooms" class="list-group-item">Rooms</a>
 
             
@@ -314,16 +324,6 @@ title: API
                 
                   <a class="list-group-item" href="#Rooms#update">#update</a>
                 
-            
-
-            
-          </li>
-        
-          
-            <a href="#Types~Room" class="list-group-item">Types~Room</a>
-
-            
-
             
 
             
@@ -1398,6 +1398,43 @@ even if renegotiation has not completed)</p>
     <h3>Events</h3>
     <section>
   
+    <h3 id='Call.event:ringing'>ringing</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>ringing</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
     <h3 id='Call.event:connected'>connected</h3>
     <div>
       <section>
@@ -1406,117 +1443,6 @@ even if renegotiation has not completed)</p>
   
 
   <pre>connected</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:error'>error</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>error</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:remoteMediaStream:change'>remoteMediaStream:change</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>remoteMediaStream:change</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-</section>
-
-    </div>
-  
-    <h3 id='Call.event:localMediaStream:change'>localMediaStream:change</h3>
-    <div>
-      <section>
-  
-
-  
-
-  <pre>localMediaStream:change</pre>
 
   
 
@@ -1583,14 +1509,88 @@ even if renegotiation has not completed)</p>
 
     </div>
   
-    <h3 id='Call.event:ringing'>ringing</h3>
+    <h3 id='Call.event:localMediaStream:change'>localMediaStream:change</h3>
     <div>
       <section>
   
 
   
 
-  <pre>ringing</pre>
+  <pre>localMediaStream:change</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:remoteMediaStream:change'>remoteMediaStream:change</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>remoteMediaStream:change</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+    </div>
+  
+    <h3 id='Call.event:error'>error</h3>
+    <div>
+      <section>
+  
+
+  
+
+  <pre>error</pre>
 
   
 
@@ -3955,6 +3955,87 @@ supported media types.
         
           <section>
   
+    <h2 id='Types~Room'>Types~Room</h2>
+    
+  
+
+  
+
+  <pre>Types~Room</pre>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+    <h3>Properties</h3>
+    
+      <h4>
+      id
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (server generated) Unique identifier for the room
+
+      </h4>
+      
+    
+      <h4>
+      title
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : The display name for the room. All room members
+will see the title so make it something good
+
+      </h4>
+      
+    
+      <h4>
+      created
+      <code>(isoDate)</code>
+      
+      : (server generated) The date and time that the
+room was created
+
+      </h4>
+      
+    
+      <h4>
+      teamId
+      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+      
+      : (optional): The id of the team to which the room
+belongs
+
+      </h4>
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</section>
+
+        
+      
+        
+          <section>
+  
     <h2 id='Rooms'>Rooms</h2>
     
   
@@ -4388,87 +4469,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     </div>
   
 </section>
-
-  
-
-  
-
-</section>
-
-        
-      
-        
-          <section>
-  
-    <h2 id='Types~Room'>Types~Room</h2>
-    
-  
-
-  
-
-  <pre>Types~Room</pre>
-
-  
-
-  
-  
-  
-  
-  
-
-  
-
-  
-    <h3>Properties</h3>
-    
-      <h4>
-      id
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (server generated) Unique identifier for the room
-
-      </h4>
-      
-    
-      <h4>
-      title
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : The display name for the room. All room members
-will see the title so make it something good
-
-      </h4>
-      
-    
-      <h4>
-      created
-      <code>(isoDate)</code>
-      
-      : (server generated) The date and time that the
-room was created
-
-      </h4>
-      
-    
-      <h4>
-      teamId
-      <code>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-      
-      : (optional): The id of the team to which the room
-belongs
-
-      </h4>
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
 
   
 
