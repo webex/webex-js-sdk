@@ -16,6 +16,11 @@ exports.glob = function glob(pattern, options = {}) {
   }));
 };
 
+/**
+ * Reads a package.json into an object
+ * @param {string} packageName
+ * @returns {Promise<Object>}
+ */
 async function read(packageName) {
   const packagePath = path.join(cwd, packageName, `package.json`);
   return JSON.parse(await fs.readFile(packagePath));
@@ -23,6 +28,12 @@ async function read(packageName) {
 
 exports.read = read;
 
+/**
+ * Writes an object to a package.json
+ * @param {string} packageName
+ * @param {Object} pkg
+ * @returns {Promise}
+ */
 async function write(packageName, pkg) {
   const packagePath = path.join(cwd, packageName, `package.json`);
   await fs.writeFile(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
