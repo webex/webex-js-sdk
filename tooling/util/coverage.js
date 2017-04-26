@@ -1,6 +1,6 @@
 /* eslint-disable require-jsdoc */
 
-const debug = require(`debug`)(`test`);
+const debug = require(`debug`)(`monorepo:test`);
 
 const denodeify = require(`denodeify`);
 const {Instrumenter} = require(`isparta`);

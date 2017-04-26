@@ -1,13 +1,14 @@
 #!/usr/bin/env babel-node
 
 /* eslint-disable require-jsdoc */
+/* eslint-disable complexity */
 
 const dotenv = require(`dotenv`);
 dotenv.config({path: `.env.default`});
 dotenv.config();
 
 const g = require(`glob`);
-const debug = require(`debug`)(`test`);
+const debug = require(`debug`)(`monorepo:test`);
 const {glob, list} = require(`./util/package`);
 const path = require(`path`);
 const {Server} = require(`karma`);
@@ -21,7 +22,7 @@ const {
   report
 } = require(`./util/coverage`);
 const {start, stop} = require(`./util/server`);
-
+const spawn = require(`./util/spawn`);
 const yargs = require(`yargs`);
 
 require(`babel-register`)({
@@ -263,34 +264,42 @@ async function testAllPackages() {
 
   for (const packageName of packages) {
     debug(`Testing ${packageName} on this node`);
-    await testSinglePackage(packageName);
+    const argString = Object.keys(argv).reduce((acc, key) => {
+      const value = argv[key];
+      if (typeof value === `boolean`) {
+        acc += value ? ` --${key}` : ` --no-${key}`;
+      }
+      return acc;
+    }, ``);
+    const [cmd, ...args] = `npm run test --silent -- --package ${packageName}${argString}`.split(` `);
+    await spawn(cmd, args);
   }
 }
 
 // eslint-disable-next-line no-extra-parens
 (async function main() {
   try {
-    if (argv.serve) {
-      debug(`starting test server`);
-      await start();
-      debug(`started test server`);
-    }
-
     if (argv.package) {
+      if (argv.serve) {
+        debug(`starting test server`);
+        await start();
+        debug(`started test server`);
+      }
+
       debug(`testing single package ${argv.package}`);
       await testSinglePackage(argv.package);
       debug(`tested single package ${argv.package}`);
+
+      if (argv.serve) {
+        debug(`stopping test server`);
+        await stop();
+        debug(`stopped test server`);
+      }
     }
     else {
       debug(`testing all packages`);
       await testAllPackages();
       debug(`tested all packages`);
-    }
-
-    if (argv.serve) {
-      debug(`stopping test server`);
-      await stop();
-      debug(`stopped test server`);
     }
 
     if (argv.coverage) {
@@ -305,4 +314,14 @@ async function testAllPackages() {
     // eslint-disable-next-line no-process-exit
     process.exit(64);
   }
+
+  for (const handle of process._getActiveHandles()) {
+    // Yes, even though we left a `Timeout` reffed, the handle is a `Timer`
+    if (handle.constructor && handle.constructor.name === `Timer`) {
+      // eslint-disable-next-line no-console
+      console.warn(`unreffing rogue Timer`);
+      handle.unref();
+    }
+  }
+
 }());

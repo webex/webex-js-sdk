@@ -2,7 +2,7 @@
 
 /* eslint-disable require-jsdoc */
 
-const debug = require(`debug`)(`build`);
+const debug = require(`debug`)(`monorepo:build`);
 const denodeify = require(`denodeify`);
 const fs = require(`fs-promise`);
 const glob = denodeify(require(`glob`));

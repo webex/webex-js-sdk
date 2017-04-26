@@ -1,4 +1,4 @@
-const debug = require(`debug`)(`test:server`);
+const debug = require(`debug`)(`monorepo:test:server`);
 const path = require(`path`);
 const {spawn} = require(`child_process`);
 
