@@ -270,15 +270,13 @@ ansiColor('xterm') {
 
           stage('clean') {
             sh 'git clean -df'
-            image.inside(DOCKER_RUN_OPTS) {
-              sh 'npm run grunt -- clean'
-              sh 'npm run grunt:concurrent -- clean'
-            }
             sh 'rm -rf "packages/node_modules/*/browsers.processed.js"'
             sh 'rm -rf "packages/node_modules/@ciscospark/*/browsers.processed.js"'
             sh 'rm -rf ".sauce/*/sc.*"'
             sh 'rm -rf ".sauce/*/sauce_connect*log"'
             sh 'rm -rf reports'
+            sh 'rm -rf .tmp'
+            sh 'rm -rf .tmp_uploads'
             sh 'mkdir -p reports/coverage'
             sh 'mkdir -p reports/coverage-final'
             sh 'mkdir -p reports/junit'
