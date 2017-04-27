@@ -15,7 +15,7 @@ const {Collector, Report} = require(`istanbul`);
 const mains = new Map();
 
 function makeCoverageVariable(packageName) {
-  return `__coverage${packageName.replace(`@`, `_`).replace(`.`, `_`).replace(`/`, `_`)}__`;
+  return `__coverage${packageName.replace(/@/g, `_`).replace(/./g, `_`).replace(/\//g, `_`)}__`;
 }
 
 async function instrument(packageName) {
