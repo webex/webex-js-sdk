@@ -157,7 +157,7 @@ done
 # let the jenkins junit parser handle the error; if it does not, assume there's
 # an infrastructure problem and fail the build.
 if [ "${EXIT_CODE}" -ne "0" ]; then
-  if [ -f "./reports/junit/*/${PACKAGE}-karma.xml"]; then
+  if [ -f "./reports/junit/*/${PACKAGE}-karma.xml" ]; then
     exit 0
   fi
 fi
