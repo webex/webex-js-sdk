@@ -85,7 +85,11 @@
     "link-lint-rules": "rm -rf ./node_modules/@ciscospark/eslint-config && mkdir -p node_modules/@ciscospark && ln -s $(pwd)/packages/node_modules/@ciscospark/eslint-config $(pwd)/node_modules/@ciscospark/eslint-config",
     "get-next-version": "./tooling/version.sh",
     "deps:check": "npm run lerna --silent -- exec -- bash -c 'dependency-check ./package.json $(find ./test -name \"*.js\")'",
-    "deps:generate": "./deps.js"
+    "deps:generate": "./deps.js",
+    "doc:build": "documentation build --document-exported --private",
+    "doc:serve": "documentation serve --document-exported --private --watch",
+    "docs:build:spark-core": "documentation readme --section API --readme-file ./packages/node_modules/@ciscospark/spark-core/README.md ./packages/node_modules/@ciscospark/spark-core/src/lib/credentials",
+    "docs:build:spark-core:html": "documentation build -f html -o ./htmldocs  ./packages/node_modules/@ciscospark/spark-core/src/lib/credentials"
   },
   "dependencies": {
     "ampersand-collection": "^2.0.0",
@@ -238,7 +242,7 @@
     "dependency-check": "^2.8.0",
     "detective": "^4.5.0",
     "doctrine": "^1.2.2",
-    "documentation": "^4.0.0-beta5",
+    "documentation": "^4.0.0-rc.0",
     "documentation-theme-utils": "^3.0.0",
     "eslint": "^3.14.1",
     "eslint-plugin-import": "^2.2.0",
