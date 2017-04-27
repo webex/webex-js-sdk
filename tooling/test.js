@@ -209,37 +209,41 @@ async function runKarmaSuite(packageName) {
 
 // eslint-disable-next-line complexity
 async function testSinglePackage(packageName) {
-  if (argv.coverage) {
-    await instrument(packageName);
-  }
-  let err;
-  try {
-    const promises = [];
+
+  const promises = [];
     // TODO we can probably speed up the suite by splitting the automation tests
     // out from the rest of the mocha tests, but let's do that after we switch
     // to webdriver.io. We may find that we can elliminate the automation tests
     // entirely with the upcoming credentials refactor.
 
-    if (argv.node) {
-      promises.push(runMochaSuite(packageName));
+  if (argv.node) {
+    let err;
+    if (argv.coverage) {
+      await instrument(packageName);
     }
-    if (argv.browser) {
-      promises.push(runKarmaSuite(packageName));
+    try {
+      await runMochaSuite(packageName);
     }
+    catch (error) {
+      err = error;
+    }
+    if (argv.coverage) {
+      await deinstrument(packageName);
+    }
+    if (err) {
+      throw err;
+    }
+  }
+  if (argv.browser) {
+    promises.push(runKarmaSuite(packageName));
+  }
 
-    await Promise.all(promises);
-  }
-  catch (error) {
-    err = error;
-  }
+  await Promise.all(promises);
 
   if (argv.coverage) {
     await collect(packageName);
-    await deinstrument(packageName);
   }
-  if (err) {
-    throw err;
-  }
+
   if (argv.coverage) {
     await combine(packageName);
   }
