@@ -4,5 +4,8 @@
   "packages": [
     "./packages/node_modules/*",
     "./packages/node_modules/@ciscospark/*"
-  ]
+  ],
+  "init": {
+    "exact": true
+  }
 }
