@@ -126,6 +126,21 @@ async function runNodeSuite(packageName) {
   if (argv.integration) {
     files = files.concat(await glob(`test/integration/spec/**/*.js`, {packageName}));
   }
+
+  // Intercept require statements for the module under test and instead load the
+  // instrumented files. This *should* continue to isolate code coverage since
+  // we're running each package's test in a separate process, even when simply
+  // running `npm test`.
+  if (argv.coverage) {
+    const load = require.extensions[`.js`];
+    require.extensions[`.js`] = function loadCoveredFile(m, filename) {
+      if (filename.includes(packageName)) {
+        filename = filename.replace(`${packageName}/dist`, `${packageName}/.coverage/src`);
+      }
+      return load(m, filename);
+    };
+  }
+
   await runMochaSuite(packageName, `automation`, files);
 }
 

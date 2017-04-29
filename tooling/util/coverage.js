@@ -6,30 +6,17 @@ const denodeify = require(`denodeify`);
 const {Instrumenter} = require(`isparta`);
 const mkdirp = denodeify(require(`mkdirp`));
 const rimraf = denodeify(require(`rimraf`));
-const {getMain, glob, setMain} = require(`./package`);
+const {glob} = require(`./package`);
 const g = denodeify(require(`glob`));
 const path = require(`path`);
 const fs = require(`fs-promise`);
 const {Collector, Report} = require(`istanbul`);
-
-const mains = new Map();
 
 function makeCoverageVariable(packageName) {
   return `__coverage${packageName.replace(/@/g, `_`).replace(/./g, `_`).replace(/\//g, `_`)}__`;
 }
 
 async function instrument(packageName) {
-  const main = await getMain(packageName);
-  mains.set(packageName, main);
-  let newMain;
-  if (packageName === `ciscospark`) {
-    newMain = path.join(`.coverage`, `src`, `index.js`);
-  }
-  else {
-    newMain = path.join(`.coverage`, main.replace(`dist`, `src`));
-  }
-  await setMain(packageName, newMain);
-
   const instrumenter = new Instrumenter({
     coverageVariable: makeCoverageVariable(packageName)
   });
@@ -48,7 +35,6 @@ async function instrument(packageName) {
 }
 
 async function deinstrument(packageName) {
-  await setMain(packageName, mains.get(packageName));
   await rimraf(path.join(`packages/node_modules`, packageName, `.coverage`));
 }
 
