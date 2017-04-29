@@ -26,7 +26,10 @@ function makeConfig(packageName, argv) {
     'packages/**': [`browserify`]
   };
 
-  const files = [];
+  const files = [
+    `node_modules/babel-polyfill/dist/polyfill.js`
+  ];
+
   if (!argv || argv.unit) {
     files.push(unitTestPath);
   }
