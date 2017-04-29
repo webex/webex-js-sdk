@@ -21,7 +21,13 @@ function makeCoverageVariable(packageName) {
 async function instrument(packageName) {
   const main = await getMain(packageName);
   mains.set(packageName, main);
-  const newMain = path.join(`.coverage`, main.replace(`dist`, `src`));
+  let newMain;
+  if (packageName === `ciscospark`) {
+    newMain = path.join(`.coverage`, `src`, `index.js`);
+  }
+  else {
+    newMain = path.join(`.coverage`, main.replace(`dist`, `src`));
+  }
   await setMain(packageName, newMain);
 
   const instrumenter = new Instrumenter({

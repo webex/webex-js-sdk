@@ -216,6 +216,11 @@ async function runKarmaSuite(packageName) {
 
 // eslint-disable-next-line complexity
 async function testSinglePackage(packageName) {
+  if (packageName === `generator-ciscospark`) {
+    await runNodeSuite(packageName);
+    return;
+  }
+
   if (argv.node) {
     let err;
     if (argv.coverage) {
