@@ -6,6 +6,7 @@
 const dotenv = require(`dotenv`);
 dotenv.config({path: `.env.default`});
 dotenv.config();
+process.env.NODE_ENV = `test`;
 
 const g = require(`glob`);
 const debug = require(`debug`)(`monorepo:test`);
