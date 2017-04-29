@@ -320,11 +320,7 @@ async function testAllPackages() {
   }
 
   for (const handle of process._getActiveHandles()) {
-    // Yes, even though we left a `Timeout` reffed, the handle is a `Timer`
-    if (handle.constructor && handle.constructor.name === `Timer`) {
-      // eslint-disable-next-line no-console
-      console.warn(`unreffing rogue Timer`);
-      handle.unref();
-    }
+    // unref any outstanding timers/sockets/streams/processes.
+    handle.unref();
   }
 }());
