@@ -7,6 +7,12 @@
 
 'use strict';
 
+// grunt-env doesn't seem to be working on Jenkins, so let's try this hack for
+// the next three days
+const dotenv = require(`dotenv`);
+dotenv.config({path: `.env.default`});
+dotenv.config();
+
 var path = require('path');
 var mkdirp = require('mkdirp');
 

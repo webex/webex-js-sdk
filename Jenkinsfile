@@ -86,12 +86,6 @@ def generateDockerEnv = { ->
   if (env.WORKSPACE != null) {
     dockerEnv+="WORKSPACE=${env.WORKSPACE}\n"
   }
-  if (env.MESSAGE_DEMO_CLIENT_ID != null) {
-    dockerEnv+="MESSAGE_DEMO_CLIENT_ID=${env.MESSAGE_DEMO_CLIENT_ID}\n"
-  }
-  if (env.MESSAGE_DEMO_CLIENT_SECRET != null) {
-    dockerEnv+="MESSAGE_DEMO_CLIENT_SECRET=${env.MESSAGE_DEMO_CLIENT_SECRET}\n"
-  }
   writeFile file: DOCKER_ENV_FILE, text: dockerEnv
 }
 
