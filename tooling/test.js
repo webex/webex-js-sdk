@@ -115,7 +115,7 @@ if (argv.grep.length > 1 && argv.browser) {
 async function runAutomationSuite(packageName) {
   let files = [];
   files = files.concat(await glob(`test/automation/spec/**/*.js`, {packageName}));
-  await runMochaSuite(packageName, `node`, files);
+  await runMochaSuite(packageName, `automation`, files);
 }
 
 async function runNodeSuite(packageName) {
@@ -141,7 +141,7 @@ async function runNodeSuite(packageName) {
     };
   }
 
-  await runMochaSuite(packageName, `automation`, files);
+  await runMochaSuite(packageName, `node`, files);
 }
 
 async function runMochaSuite(packageName, suite, files) {
@@ -170,7 +170,7 @@ async function runMochaSuite(packageName, suite, files) {
     mocha.run((failures) => {
       debug(`mocha: tested ${packageName}`);
       if (argv.xunit) {
-        const reports = g.sync(`reports/junit/${packageName}-mocha.xml`);
+        const reports = g.sync(`reports/junit/${packageName}-${suite}.xml`);
         if (reports.length === 0) {
           reject(new Error(`No mocha reports generated for ${packageName}`));
         }
