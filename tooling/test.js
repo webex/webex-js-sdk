@@ -111,21 +111,13 @@ if (argv.grep.length > 1 && argv.browser) {
   throw new Error(`Karma only supports a single pattern; only specify --grep once when running browser tests`);
 }
 
-async function runMochaSuite(packageName) {
-  debug(`mocha: testing ${packageName}`);
-  const cfg = {
-    timeout: 30000
-  };
-  if (argv.xunit) {
-    cfg.reporter = `packages/node_modules/@ciscospark/xunit-with-logs`;
-    cfg.reporterOptions = {
-      output: `reports/junit/${packageName}-mocha.xml`
-    };
-  }
+async function runAutomationSuite(packageName) {
+  let files = [];
+  files = files.concat(await glob(`test/automation/spec/**/*.js`, {packageName}));
+  await runMochaSuite(packageName, `node`, files);
+}
 
-  cfg.grep = new RegExp(argv.grep.join(`|`));
-
-  const mocha = new Mocha(cfg);
+async function runNodeSuite(packageName) {
   let files = [];
   if (argv.unit) {
     files = files.concat(await glob(`test/unit/spec/**/*.js`, {packageName}));
@@ -133,9 +125,24 @@ async function runMochaSuite(packageName) {
   if (argv.integration) {
     files = files.concat(await glob(`test/integration/spec/**/*.js`, {packageName}));
   }
-  if (argv.automation) {
-    files = files.concat(await glob(`test/automation/spec/**/*.js`, {packageName}));
+  await runMochaSuite(packageName, `automation`, files);
+}
+
+async function runMochaSuite(packageName, suite, files) {
+  debug(`mocha: testing ${packageName}`);
+  const cfg = {
+    timeout: 30000
+  };
+  if (argv.xunit) {
+    cfg.reporter = `packages/node_modules/@ciscospark/xunit-with-logs`;
+    cfg.reporterOptions = {
+      output: `reports/junit/${packageName}-${suite}.xml`
+    };
   }
+
+  cfg.grep = new RegExp(argv.grep.join(`|`));
+
+  const mocha = new Mocha(cfg);
 
   if (files.length === 0) {
     debug(`mocha: no tests found for ${packageName}`);
@@ -209,20 +216,13 @@ async function runKarmaSuite(packageName) {
 
 // eslint-disable-next-line complexity
 async function testSinglePackage(packageName) {
-
-  const promises = [];
-    // TODO we can probably speed up the suite by splitting the automation tests
-    // out from the rest of the mocha tests, but let's do that after we switch
-    // to webdriver.io. We may find that we can elliminate the automation tests
-    // entirely with the upcoming credentials refactor.
-
   if (argv.node) {
     let err;
     if (argv.coverage) {
       await instrument(packageName);
     }
     try {
-      await runMochaSuite(packageName);
+      await runNodeSuite(packageName);
     }
     catch (error) {
       err = error;
@@ -234,11 +234,14 @@ async function testSinglePackage(packageName) {
       throw err;
     }
   }
+
   if (argv.browser) {
-    promises.push(runKarmaSuite(packageName));
+    await runKarmaSuite(packageName);
   }
 
-  await Promise.all(promises);
+  if (argv.automation) {
+    await runAutomationSuite(packageName);
+  }
 
   if (argv.coverage) {
     await collect(packageName);
