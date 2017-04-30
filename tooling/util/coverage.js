@@ -87,6 +87,10 @@ async function report() {
     file: `reports/coverage/lcov.info`
   }).writeReport(collector, true);
 
+  Report.create(`cobertura`, {
+    file: `reports/cobertura.xml`
+  }).writeReport(collector, true);
+
   Report.create(`html`).writeReport(collector, true);
 }
 
