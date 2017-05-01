@@ -76,7 +76,9 @@ async function combine(packageName) {
 async function report() {
   const collector = new Collector();
   const pattern = `reports/coverage/**/*.json`;
-  const files = await g(pattern);
+  const files = await g(pattern, {
+    ignore: `legacy/**`
+  });
   for (const f of files) {
     collector.add(JSON.parse(await fs.readFile(f)));
   }
