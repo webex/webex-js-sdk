@@ -84,7 +84,7 @@ echo "##########################################################################
 echo "# Stripping unhelpful, jenkins breaking logs from karma xml"
 echo "################################################################################"
 
-for FILE in $(find ./reports/junit -name "karma-*.xml") ; do
+for FILE in ./reports/junit/{*,*/*}/*-karma.xml ; do
   awk '
   BEGIN { write = 1 }
   /<system-out/{ write = 0 }
