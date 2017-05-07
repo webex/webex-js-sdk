@@ -28,7 +28,7 @@ const yargs = require(`yargs`);
 
 require(`babel-register`)({
   only: [
-    `./packages/node_modules/{*,*/*}/test/**/*.js`
+    `./packages/node_modules/{*,*/*}/{src,test}/**/*.js`
   ],
   sourceMaps: true
 });
