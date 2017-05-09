@@ -6,7 +6,7 @@
 'use strict';
 
 const path = require(`path`);
-
+const makeBrowsers = require(`./browsers-ng`);
 /* eslint-disable global-require */
 
 module.exports = function configureKarma(config) {
@@ -17,8 +17,7 @@ module.exports.makeConfig = makeConfig;
 function makeConfig(packageName, argv) {
   const pkg = require(`./packages/node_modules/${packageName}/package`);
   /* eslint complexity: [0] */
-  const browsers = require(`./browsers-ng`);
-  const launchers = process.env.SC_TUNNEL_IDENTIFIER ? browsers.sauce : browsers.local;
+  const launchers = makeBrowsers(packageName, argv);
   const integrationTestPath = path.join(`packages`, `node_modules`, packageName, `test`, `integration`, `spec`, `**`, `*.js`);
   const unitTestPath = path.join(`packages`, `node_modules`, packageName, `test`, `unit`, `spec`, `**`, `*.js`);
 
@@ -44,7 +43,7 @@ function makeConfig(packageName, argv) {
 
     browserDisconnectTolerance: 3,
 
-    browsers: process.env.SC_TUNNEL_IDENTIFIER ? Object.keys(launchers) : Object.keys(browsers.local),
+    browsers: Object.keys(launchers),
 
     browserify: {
       debug: true,
