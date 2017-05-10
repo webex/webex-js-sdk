@@ -86,12 +86,6 @@ def generateDockerEnv = { ->
   if (env.WORKSPACE != null) {
     dockerEnv+="WORKSPACE=${env.WORKSPACE}\n"
   }
-  if (env.MESSAGE_DEMO_CLIENT_ID != null) {
-    dockerEnv+="MESSAGE_DEMO_CLIENT_ID=${env.MESSAGE_DEMO_CLIENT_ID}\n"
-  }
-  if (env.MESSAGE_DEMO_CLIENT_SECRET != null) {
-    dockerEnv+="MESSAGE_DEMO_CLIENT_SECRET=${env.MESSAGE_DEMO_CLIENT_SECRET}\n"
-  }
   writeFile file: DOCKER_ENV_FILE, text: dockerEnv
 }
 
@@ -270,15 +264,13 @@ ansiColor('xterm') {
 
           stage('clean') {
             sh 'git clean -df'
-            image.inside(DOCKER_RUN_OPTS) {
-              sh 'npm run grunt -- clean'
-              sh 'npm run grunt:concurrent -- clean'
-            }
             sh 'rm -rf "packages/node_modules/*/browsers.processed.js"'
             sh 'rm -rf "packages/node_modules/@ciscospark/*/browsers.processed.js"'
             sh 'rm -rf ".sauce/*/sc.*"'
             sh 'rm -rf ".sauce/*/sauce_connect*log"'
             sh 'rm -rf reports'
+            sh 'rm -rf .tmp'
+            sh 'rm -rf .tmp_uploads'
             sh 'mkdir -p reports/coverage'
             sh 'mkdir -p reports/coverage-final'
             sh 'mkdir -p reports/junit'
@@ -348,9 +340,7 @@ ansiColor('xterm') {
 
           if (env.COVERAGE && currentBuild.result == 'SUCCESS') {
             stage('process coverage') {
-              image.inside(DOCKER_RUN_OPTS) {
-                sh 'npm run grunt:circle -- coverage'
-              }
+
               archive 'reports/cobertura.xml'
 
               // At the time this script was written, the cobertura plugin didn't

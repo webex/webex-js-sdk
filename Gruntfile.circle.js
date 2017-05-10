@@ -115,12 +115,11 @@ module.exports = function gruntConfig(grunt) {
 
     env: {
       default: {
-        src: `.env.default.json`
+        src: `.env.default`
       },
       'default-overrides': {
         BUILD_NUMBER: process.env.CIRCLE_BUILD_NUM,
-        XUNIT: true,
-        XUNIT_DIR: `<%= xunitDir %>`
+        XUNIT: true
       }
     },
 
@@ -160,9 +159,7 @@ module.exports = function gruntConfig(grunt) {
       }
     },
 
-    shell: {},
-
-    xunitDir: process.env.CIRCLE_TEST_REPORTS ? `${process.env.CIRCLE_TEST_REPORTS}/junit` : `./reports/junit`
+    shell: {}
   };
 
   grunt.task.run([

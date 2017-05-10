@@ -125,7 +125,7 @@ module.exports = function configureGrunt(grunt) {
 
     env: {
       default: {
-        src: `.env.default.json`
+        src: `.env.default`
       },
       defaults: {
         BUILD_NUMBER: process.env.BUILD_NUMBER || `local-${process.env.USER}-${pkg.name}-${Date.now()}`
@@ -224,7 +224,7 @@ module.exports = function configureGrunt(grunt) {
             }
           ]),
           reporterOptions: {
-            output: `<%= xunitDir %>/mocha-<%= package %>-automation.xml`
+            output: `reports/junit/mocha-<%= package %>-automation.xml`
           }
         },
         src: [
@@ -244,7 +244,7 @@ module.exports = function configureGrunt(grunt) {
           ]),
           // require: makeMochaRequires([`babelhook`]),
           reporterOptions: {
-            output: `<%= xunitDir %>/mocha-<%= package %>.xml`
+            output: `reports/junit/mocha-<%= package %>.xml`
           }
         },
         src: (function() {
@@ -267,7 +267,7 @@ module.exports = function configureGrunt(grunt) {
         options: {
           require: makeMochaRequires([`./packages/node_modules/@ciscospark/jsdoctrinetest`]),
           reporterOptions: {
-            output: `<%= xunitDir %>/mocha-<%= package %>-doc.xml`
+            output: `reports/junit/mocha-<%= package %>-doc.xml`
           }
         },
         src: [
@@ -279,8 +279,6 @@ module.exports = function configureGrunt(grunt) {
     },
 
     package: process.env.PACKAGE,
-
-    xunitDir: process.env.XUNIT_DIR || `./reports/junit`,
 
     shell: {
       'move-babelrc': {
