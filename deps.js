@@ -16,11 +16,13 @@
 // Instead, make it a package in its own right and let the react-ciscospark
 // project depend on it.
 
+const debug = require(`debug`)(`deps`);
 const builtins = require(`builtins`);
 const detective = require(`detective`);
 const fs = require(`fs`);
 const _ = require(`lodash`);
 const path = require(`path`);
+const util = require(`util`);
 
 const FILTERED_TRANSFORMS = [`babelify`];
 const DEFAULT_TRANSFORMS = [`envify`];
@@ -81,7 +83,7 @@ const findEntryPoints = _.curry((pkg, pkgPath) => {
     }
 
     if (pkg.browser) {
-      paths = paths.concat(_.values(pkg.browser).filter((p) => p));
+      paths = paths.concat(_.values(pkg.browser).filter((p) => p && !p.startsWith(`@`)));
     }
 
     return paths;
@@ -107,12 +109,17 @@ const findRequires = _.curry(function findRequires(filePath) {
   }
   try {
     visited.add(filePath);
+    debug(`finding requires for ${filePath}`);
     const requires = detective(fs.readFileSync(filePath));
+    debug(util.inspect(requires, {depth: null}));
     return requires.reduce((acc, dep) => {
+      debug(`checking ${dep}`);
       if (dep.startsWith(`.`)) {
+        debug(`descending into ${dep}`);
         acc = acc.concat(findRequires(path.resolve(path.dirname(filePath), dep)));
       }
       else {
+        debug(`${dep} is a dependency for ${filePath}`);
         acc.push(dep);
       }
       return acc;
@@ -216,6 +223,7 @@ function findPkgPath(pkgPath) {
  * @returns {Promise}
  */
 const updateSinglePackage = _.curry((rootPkgPath, pkgPath) => {
+  debug(`\n\nFinding dependencies for package ${pkgPath}\n\n`);
   rootPkgPath = findPkgPath(rootPkgPath);
   pkgPath = findPkgPath(pkgPath);
 
@@ -229,7 +237,11 @@ const updateSinglePackage = _.curry((rootPkgPath, pkgPath) => {
     .then(appendBrowserifyTransforms(pkg))
     .then(depsToVersions(rootPkg))
     .then(assignDeps(pkg))
-    .then(() => writeFile(pkgPath, pkg));
+    .then(() => writeFile(pkgPath, pkg))
+    .catch((err) => {
+      debug(`failed at package ${pkgPath}`);
+      throw err;
+    });
 });
 
 /**
@@ -264,7 +276,7 @@ function findPackages(packagesPath) {
  */
 function updateAllPackages(rootPkgPath, packagesPath) {
   const paths = findPackages(packagesPath);
-  return Promise.all(paths.map(updateSinglePackage(rootPkgPath)));
+  return paths.reduce((promise, pkgPath) => promise.then(() => updateSinglePackage(rootPkgPath, pkgPath)), Promise.resolve());
 }
 
 if (require.main === module) {
