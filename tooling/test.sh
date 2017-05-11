@@ -21,8 +21,14 @@ PIDS=""
 PACKAGES=$(ls ./packages/node_modules | grep -v @ciscospark)
 PACKAGES+=" "
 PACKAGES+="$(cd ./packages/node_modules/ && find @ciscospark -maxdepth 1 -type d | egrep -v @ciscospark$)"
-PACKAGES+=" legacy-node"
-PACKAGES+=" legacy-browser"
+# copied from http://www.tldp.org/LDP/abs/html/comparison-ops.html because I can
+# never remember which is which
+# > -z string is null, that is, has zero length
+# > -n string is not null.
+if [ -n "${PIPELINE}" ]; then
+  PACKAGES+=" legacy-node"
+  PACKAGES+=" legacy-browser"
+fi
 for PACKAGE in ${PACKAGES}; do
   if ! echo ${PACKAGE} | grep -qc -v test-helper ; then
     continue
