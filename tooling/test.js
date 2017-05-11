@@ -34,6 +34,9 @@ require(`babel-register`)({
   only: [
     `./packages/node_modules/{*,*/*}/{src,test}/**/*.js`
   ],
+  plugins: [
+    path.resolve(__dirname, `./babel-plugin-inject-package-version`)
+  ],
   sourceMaps: true
 });
 

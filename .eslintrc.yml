@@ -1,2 +1,4 @@
 extends: "@ciscospark"
+globals:
+  PACKAGE_VERSION: false
 root: true
