@@ -52,6 +52,8 @@
     "bootstrap": "echo 'npm run bootstrap is no longer required. Hooray!'",
     "clean": "lerna clean",
     "build": "./tooling/build.js",
+    "prebuild:docs": "rimraf ./docs/api",
+    "build:docs": "documentation build --np --project-name ciscospark --project-version $(jq -r .version lerna.json) --format html --output ./docs/api --github ./packages/node_modules/ciscospark/src/index.js ./packages/node_modules/@ciscospark/plugin-phone/src/index.js",
     "check-karma-output": "./scripts/analyze-output.sh",
     "build:package": "echo 'deprecated; just use \"npm run --silent build\"'./tooling/build.js",
     "grunt": "grunt",
@@ -74,14 +76,11 @@
     "distsrc": "sed -ibak 's#\"main\": \"dist/index.js#\"main\": \"src/index.js#' packages/node_modules/{*,@ciscospark/*}/package.json && rm packages/node_modules/{*,@ciscospark/*}/*bak",
     "srcdist": "sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' packages/node_modules/{*,@ciscospark/*}/package.json && rm packages/node_modules/{*,@ciscospark/*}/*bak",
     "prepublish": "in-install && npm run --silent link-lint-rules || not-in-install",
+    "publish:docs": "grunt --gruntfile Gruntfile.concurrent.js publish:docs",
     "link-lint-rules": "rm -rf ./node_modules/@ciscospark/eslint-config && mkdir -p node_modules/@ciscospark && ln -s $(pwd)/packages/node_modules/@ciscospark/eslint-config $(pwd)/node_modules/@ciscospark/eslint-config",
     "get-next-version": "./tooling/version.sh",
     "deps:check": "lerna exec -- bash -c 'dependency-check ./package.json $(find ./test -name \"*.js\")'",
-    "deps:generate": "./deps.js",
-    "doc:build": "documentation build --document-exported --private",
-    "doc:serve": "documentation serve --document-exported --private --watch",
-    "docs:build:spark-core": "documentation readme --section API --readme-file ./packages/node_modules/@ciscospark/spark-core/README.md ./packages/node_modules/@ciscospark/spark-core/src/lib/credentials",
-    "docs:build:spark-core:html": "documentation build -f html -o ./htmldocs  ./packages/node_modules/@ciscospark/spark-core/src/lib/credentials"
+    "deps:generate": "./deps.js"
   },
   "dependencies": {
     "ampersand-collection": "^2.0.0",

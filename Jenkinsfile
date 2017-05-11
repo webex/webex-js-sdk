@@ -371,7 +371,6 @@ ansiColor('xterm') {
                   }
                   echo "next version is ${version}"
                   sh 'npm run build'
-                  sh 'npm run grunt:concurrent -- build:docs'
 
                   if (HAS_LEGACY_CHANGES) {
                     try {
@@ -431,6 +430,10 @@ ansiColor('xterm') {
                     // ignore: no packages to update
                   }
                 }
+
+                // Rebuild with correct version number
+                sh 'npm run build'
+                sh 'npm run build:docs'
 
                 sh 'git rev-parse HEAD > .promotion-sha'
                 archive '.promotion-sha'
@@ -520,7 +523,7 @@ ansiColor('xterm') {
                     // effective way to make sure we set the git username at the
                     // right time without horrible bash scripts that check what
                     // folders do or do not exist
-                    sh 'npm run grunt:concurrent -- publish:docs'
+                    sh 'npm run publish:docs'
                   }
                   dir('.grunt/grunt-gh-pages/gh-pages/ghc') {
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
