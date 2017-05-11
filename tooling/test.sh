@@ -48,6 +48,9 @@ for PACKAGE in ${PACKAGES}; do
       echo "."
       sleep 5
     done
+
+    echo "The following containers are still running on this host"
+    docker ps --format "table {{.ID}}\t{{.Names}}"
   else
     echo "Warning: CONCURRENCY limit not set; running all suites at once"
   fi
@@ -61,6 +64,9 @@ for PACKAGE in ${PACKAGES}; do
   PID="$!"
   PIDS+=" ${PID}"
   echo "Running tests for ${PACKAGE} as ${PID}"
+
+  echo "The following containers are running on this host"
+  docker ps --format "table {{.ID}}\t{{.Names}}"
 done
 
 FINAL_EXIT_CODE=0
@@ -77,7 +83,12 @@ for PID in $PIDS; do
   if [ "${EXIT_CODE}" -ne "0" ]; then
     echo "${PID} exited with code ${EXIT_CODE}; search for ${PID} above to determine which suite failed"
     FINAL_EXIT_CODE=1
+  else
+    echo "${PID} exited cleanly"
   fi
+
+  echo "The following containers are still running on this host"
+  docker ps --format "table {{.ID}}\t{{.Names}}"
 done
 
 echo "################################################################################"
