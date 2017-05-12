@@ -14,7 +14,7 @@ if [ -z "${NEXT_VERSION}" ]; then
   # If there are breaking changes, make it a minor bump. post-1.0, this logic
   # will need to be revised
   set +e
-  BREAKING_COUNT=$(git log --oneline upstream/master.. | grep -c '$BREAKING CHANGE:')
+  BREAKING_COUNT=$(git log upstream/master.. | grep -c '$BREAKING CHANGE:')
   if [ $BREAKING_COUNT -gt 0 ]; then
     NEXT_VERSION_TYPE=minor
   fi
