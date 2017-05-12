@@ -291,6 +291,7 @@
     "lolex": "^1.6.0",
     "mkdirp": "^0.5.1",
     "mocha": "^2.5.3",
+    "ps-node": "^0.1.6",
     "read-package-json": "^2.0.5",
     "remark": "^5.0.1",
     "remark-html": "^4.0.0",

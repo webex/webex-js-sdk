@@ -26,6 +26,8 @@ const {start, stop} = require(`./util/server`);
 const spawn = require(`./util/spawn`);
 const yargs = require(`yargs`);
 
+const {watchSauce} = require(`./karma`);
+
 require(`babel-register`)({
   only: [
     `./packages/node_modules/{*,*/*}/{src,test}/**/*.js`
@@ -226,6 +228,11 @@ async function runKarmaSuite(packageName) {
 
       reject(new Error(`Karma suite failed`));
     });
+
+    if (process.env.SC_TUNNEL_IDENTIFIER) {
+      watchSauce(server, cfg);
+    }
+
     server.start(cfg);
   });
 }
