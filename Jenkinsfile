@@ -571,8 +571,12 @@ ansiColor('xterm') {
           cleanup(IS_VALIDATED_MERGE_BUILD)
         }
         catch(error) {
+          echo "An error occurred. The following containers are still running on this host"
+          sh 'docker ps --format "table {{.ID}}\t{{.Names}}"'
+
           // Read junit again because we may have gotten here due to a timeout
           try {
+            sh script: 'tooling/xunit-strip-logs.sh', returnStatus: true;
             junit 'reports/junit/**/*.xml'
           }
           catch(err) {
