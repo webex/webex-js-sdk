@@ -284,7 +284,7 @@
     "karma-mocha-reporter": "^2.0.4",
     "karma-safari-launcher": "^1.0.0",
     "karma-sauce-launcher": "^1.0.0",
-    "lerna": "^2.0.0-rc.1",
+    "lerna": "^2.0.0-rc.4",
     "lint-staged": "^3.3.0",
     "load-grunt-tasks": "^3.5.0",
     "lodash": "^4.13.1",
