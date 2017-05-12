@@ -429,11 +429,11 @@ ansiColor('xterm') {
                   catch (error) {
                     // ignore: no packages to update
                   }
-                }
 
-                // Rebuild with correct version number
-                sh 'npm run build'
-                sh 'npm run build:docs'
+                  // Rebuild with correct version number
+                  sh 'npm run build'
+                  sh 'npm run build:docs'
+                }
 
                 sh 'git rev-parse HEAD > .promotion-sha'
                 archive '.promotion-sha'
