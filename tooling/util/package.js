@@ -1,7 +1,10 @@
+'use strict';
+
 const denodeify = require(`denodeify`);
 const g = denodeify(require(`glob`));
 const path = require(`path`);
 const fs = require(`fs-promise`);
+const _spawn = require(`./spawn`);
 
 const cwd = `packages/node_modules`;
 
@@ -50,4 +53,10 @@ exports.setMain = async function setMain(packageName, main) {
   const pkg = await read(packageName);
   pkg.main = main;
   await write(packageName, pkg);
+};
+
+exports.spawn = async function spawn(packageName, cmd, args, options = {}) {
+  return _spawn(cmd, args, Object.assign({
+    cwd: path.join(cwd, packageName)
+  }, options));
 };
