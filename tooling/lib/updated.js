@@ -7,11 +7,12 @@ const {last} = require(`./version`);
 const {diff} = require(`./git`);
 
 /**
- * Lists all of the udpated packages in the repo
+ * Lists all of the updated packages in the repo
  * @param {Object} options
- * @param {boolean} options.dependents
- * @param {boolean} options.npm
- * @param {boolean} options.upstream
+ * @param {boolean} options.dependents if true, also includes dependents of
+ * updated packages
+ * @param {boolean} options.npm if true, compares to the last tag published to
+ * npm instead of upstream/master
  * @returns {Promise<Array<string>>}
  */
 exports.updated = async function updated({dependents, npm}) {

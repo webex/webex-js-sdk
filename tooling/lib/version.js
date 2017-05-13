@@ -5,6 +5,8 @@ const Git = require(`nodegit`);
 const {getDistTag} = require(`./npm`);
 const {list} = require(`./package`);
 const {exec} = require(`./async`);
+const {read, write} = require(`../util/package`);
+const updated = require(`./updated`);
 
 /**
  * Determines the latest published package version for the repo
@@ -49,6 +51,25 @@ exports.next = async function next() {
   return increment(type, currentVersion);
 };
 
+exports.set = async function set(version, {all}) {
+  // reminder, can't destructure updated because it's a circular dependency
+  const packages = Array.from(all ? await list() : await updated.updated({dependents: true}))
+    .filter((p) => ![`docs`, `legacy`, `tooling`].includes(p));
+
+  if (packages.length === 0) {
+    // eslint-disable-next-line no-console
+    console.info(`no packages to update`);
+    return;
+  }
+
+  for (const packageName of packages) {
+    debug(`updating ${packageName} to ${version}`);
+    const pkg = await read(packageName);
+    debug(`${packageName} was at ${pkg.version}`);
+    pkg.version = version;
+    await write(packageName, pkg);
+  }
+};
 
 /**
  * Determines if the last commit specified an explicit version to set
