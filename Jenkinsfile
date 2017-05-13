@@ -308,15 +308,15 @@ ansiColor('xterm') {
               image.inside(DOCKER_RUN_OPTS) {
                 sh 'npm run build'
                 // Generate deps so that we can run dep:check. This is more of a
-                // sanity checkout confirming the generate works correctly than
+                // sanity checkout confirming that generate works correctly than
                 // an actually necessary step
                 sh 'npm run deps:generate'
                 // Reminder: deps:check has to come after build so that it can
                 // walk the tree in */dist
                 sh 'npm run deps:check'
                 // Now that we've confirmed deps:generate works, undo the
-                // generated deps. They'll be regenerated once we use lerna to
-                // set the new package versions.
+                // generated deps. They'll be regenerated after we set new
+                // package versions.
                 sh 'git checkout ./packages'
               }
             }
@@ -363,14 +363,13 @@ ansiColor('xterm') {
               stage('build for release') {
                 env.NODE_ENV = ''
                 image.inside(DOCKER_RUN_OPTS) {
+                  echo 'getting latest published versions from npm; this might take a moment'
                   version = sh script: 'npm run --silent get-next-version', returnStdout: true
                   version = version.trim()
-                  if ("${version}" == '') {
-                    warn('failed to determine next version');
-                    error('failed to determine next version');
-                  }
                   echo "next version is ${version}"
                   sh 'npm run build'
+
+                  sh "npm run tooling -- version set --last-log ${version}"
 
                   if (HAS_LEGACY_CHANGES) {
                     try {
@@ -404,31 +403,10 @@ ansiColor('xterm') {
                     }
                   }
 
-                  try {
-                    def publishScript = "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version} --exact"
-                    def out = sh script: 'git log -n 1', returnStdout: true
-                    echo('DEBUG')
-                    echo(out)
-                    echo('DEBUG')
-                    if (out.contains('#force-publish')) {
-                      echo('out contains #force-publish')
-                      // reminder: put --repo-version=${version} at the end of the script because it has a \n in it
-                      sh "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --exact  --force-publish=* --repo-version=${version} "
-                    }
-                    else {
-                      echo('out does not contains #force-publish')
-                      // reminder: put --repo-version=${version} at the end of the script because it has a \n in it
-                      sh "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --exact --repo-version=${version} "
-                    }
-
-                    sh 'git add lerna.json packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
-                    sh "git commit --no-verify -m v${version}"
-                    sh "git tag 'v${version}'"
-                    sh "npm run deps:generate"
-                  }
-                  catch (error) {
-                    // ignore: no packages to update
-                  }
+                  sh 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
+                  sh "git commit --no-verify -m v${version}"
+                  sh "git tag 'v${version}'"
+                  sh "npm run deps:generate"
 
                   // Rebuild with correct version number
                   sh 'npm run build'
@@ -475,9 +453,6 @@ ansiColor('xterm') {
 
               stage('publish to npm') {
                 try {
-                  // TODO use lerna publish directly now that npm fixed READMEs
-                  // reminder: need to write to ~ not . because lerna runs npm
-                  // commands in subdirectories
                   image.inside(DOCKER_RUN_OPTS) {
                     sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
                     echo ''
@@ -487,7 +462,7 @@ ansiColor('xterm') {
                     echo ''
                     echo ''
                     echo ''
-                    sh 'npm run lerna -- exec -- bash -c \'npm publish --access public || true\''
+                    sh 'npm run tooling -- exec -- npm publish --access public || true'
                     echo ''
                     echo ''
                     echo ''

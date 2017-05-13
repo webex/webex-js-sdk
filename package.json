@@ -50,11 +50,10 @@
     "precommit": "npm run --silent lint:staged",
     "commitmsg": "npm run --silent lint:commitmsg",
     "bootstrap": "echo 'npm run bootstrap is no longer required. Hooray!'",
-    "clean": "lerna clean",
     "prebuild": "./tooling/index.js exec -- rimraf dist",
     "build": "./tooling/index.js build",
     "prebuild:docs": "rimraf ./docs/api",
-    "build:docs": "documentation build --np --project-name ciscospark --project-version $(jq -r .version lerna.json) --format html --output ./docs/api --github ./packages/node_modules/ciscospark/src/index.js ./packages/node_modules/@ciscospark/plugin-phone/src/index.js",
+    "build:docs": "documentation build --np --project-name ciscospark --project-version 0.8.X --format html --output ./docs/api --github ./packages/node_modules/ciscospark/src/index.js ./packages/node_modules/@ciscospark/plugin-phone/src/index.js",
     "check-karma-output": "./scripts/analyze-output.sh",
     "build:package": "echo 'deprecated; just use \"npm run --silent build\"'./tooling/build.js",
     "grunt": "grunt",
@@ -77,9 +76,10 @@
     "prepublish": "in-install && npm run --silent link-lint-rules || not-in-install",
     "publish:docs": "grunt --gruntfile Gruntfile.concurrent.js publish:docs",
     "link-lint-rules": "rimraf ./node_modules/@ciscospark/eslint-config && mkdirp node_modules/@ciscospark && ln -s $(pwd)/packages/node_modules/@ciscospark/eslint-config $(pwd)/node_modules/@ciscospark/eslint-config",
-    "get-next-version": "./tooling/version.sh",
+    "get-next-version": "./tooling/index.js version next",
     "deps:check": "./tooling/index.js exec -- dependency-check ./package.json",
-    "deps:generate": "./deps.js"
+    "deps:generate": "./deps.js",
+    "tooling": "./tooling/index.js"
   },
   "dependencies": {
     "ampersand-collection": "^2.0.0",
@@ -283,7 +283,6 @@
     "karma-mocha-reporter": "^2.0.4",
     "karma-safari-launcher": "^1.0.0",
     "karma-sauce-launcher": "^1.0.0",
-    "lerna": "^2.0.0-rc.4",
     "lint-staged": "^3.3.0",
     "load-grunt-tasks": "^3.5.0",
     "lodash": "^4.13.1",
