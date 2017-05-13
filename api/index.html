@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset='utf-8' />
-  <title>ciscospark 0.7.100 | Documentation</title>
+  <title>ciscospark 0.8.X | Documentation</title>
   <meta name='viewport' content='width=device-width,initial-scale=1'>
   <link href='assets/bass.css' type='text/css' rel='stylesheet' />
   <link href='assets/style.css' type='text/css' rel='stylesheet' />
@@ -14,7 +14,7 @@
       <div class='fixed xs-hide fix-3 overflow-auto max-height-100'>
         <div class='py1 px2'>
           <h3 class='mb0 no-anchor'>ciscospark</h3>
-          <div class='mb1'><code>0.7.100</code></div>
+          <div class='mb1'><code>0.8.X</code></div>
           <input
             placeholder='Filter'
             id='filter-input'
@@ -649,6 +649,16 @@
               
                 
                 <li><a
+                  href='#typesteammembership'
+                  class="">
+                  Types~TeamMembership
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
                   href='#teammemberships'
                   class=" toggle-sibling">
                   TeamMemberships
@@ -696,16 +706,6 @@
                   
                   
                 </div>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#typesteammembership'
-                  class="">
-                  Types~TeamMembership
-                  
-                </a>
                 
                 </li>
               
@@ -6162,6 +6162,93 @@ team was created, in ISO8601 format.
   
   <div class='clearfix'>
     
+    <h3 class='fl m0' id='typesteammembership'>
+      Types~TeamMembership
+    </h3>
+    
+    
+  </div>
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>Types~TeamMembership</div>
+  
+    <p>
+      Type:
+      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : (server generated) The team ID
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>personId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The person ID
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>personEmail</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The email address of the person
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>isModerator</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+          : Set to 
+<code>true</code>
+ to make the person a team
+moderator
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
     <h3 class='fl m0' id='teammemberships'>
       TeamMemberships
     </h3>
@@ -6680,93 +6767,6 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
     </div>
   
 </div>
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='typesteammembership'>
-      Types~TeamMembership
-    </h3>
-    
-    
-  </div>
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>Types~TeamMembership</div>
-  
-    <p>
-      Type:
-      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
-    </p>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : (server generated) The team ID
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>personId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The person ID
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>personEmail</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The email address of the person
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>isModerator</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-          : Set to 
-<code>true</code>
- to make the person a team
-moderator
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
 
   
 
