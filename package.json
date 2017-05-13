@@ -292,6 +292,8 @@
     "lolex": "^1.6.0",
     "mkdirp": "^0.5.1",
     "mocha": "^2.5.3",
+    "nodegit": "^0.18.3",
+    "nodegit-kit": "^0.16.0",
     "ps-node": "^0.1.6",
     "read-package-json": "^2.0.5",
     "remark": "^5.0.1",
