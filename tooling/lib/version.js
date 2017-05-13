@@ -1,20 +1,18 @@
 'use strict';
 const debug = require(`debug`)(`tooling:version`);
 const _ = require(`lodash`);
-const Git = require(`nodegit`);
 const {getDistTag} = require(`./npm`);
 const {list} = require(`./package`);
 const {exec} = require(`./async`);
 const {read, write} = require(`../util/package`);
 const updated = require(`./updated`);
+const git = require(`./git`);
 
 /**
  * Determines the latest published package version for the repo
  * @returns {Promise<string>}
  */
 exports.last = async function last() {
-  // eslint-disable-next-line no-console
-  console.info(`querying npm to determing latest published package version; this may take a moment`);
   const packages = Array.from(await list());
   const version = _(await Promise.all(packages
     .map(getDistTag)))
@@ -51,7 +49,14 @@ exports.next = async function next() {
   return increment(type, currentVersion);
 };
 
-exports.set = async function set(version, {all}) {
+exports.set = async function set(version, {all, lastLog}) {
+  if (lastLog) {
+    const log = await git.lastLog();
+    if (log.includes(`#force-publish`)) {
+      all = true;
+    }
+  }
+
   // reminder, can't destructure updated because it's a circular dependency
   const packages = Array.from(all ? await list() : await updated.updated({dependents: true}))
     .filter((p) => ![`docs`, `legacy`, `tooling`].includes(p));
@@ -77,10 +82,9 @@ exports.set = async function set(version, {all}) {
  */
 async function checkLastCommit() {
   debug(`checking if the last commit message has explicit release instructions`);
-  const repo = await Git.Repository.open(`${process.cwd()}/.git`);
-  const commit = await repo.getHeadCommit();
+  const summary = await git.lastLog();
   const re = /^#release v(.+?)(\s.+)?$/;
-  const match = commit.summary().match(re);
+  const match = summary.match(re);
   if (match) {
     const version = match[1];
     if (version) {

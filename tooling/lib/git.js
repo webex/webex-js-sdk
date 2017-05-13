@@ -11,3 +11,9 @@ exports.diff = async function diff(tag) {
   const d = await kit.diff(repo, `HEAD`, tag);
   return d;
 };
+
+exports.lastLog = async function lastLog() {
+  const repo = await Git.Repository.open(`${process.cwd()}/.git`);
+  const commit = await repo.getHeadCommit();
+  return commit.summary();
+};

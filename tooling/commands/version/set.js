@@ -10,9 +10,14 @@ module.exports = {
     all: {
       default: false,
       type: `boolean`
+    },
+    lastLog: {
+      default: false,
+      description: `when set, check the last commit message to determin if which packages should be published`,
+      type: `boolean`
     }
   },
-  handler: wrapHandler(async ({all, version}) => {
-    await set(version, {all});
+  handler: wrapHandler(async ({all, version, lastLog}) => {
+    await set(version, {all, lastLog});
   })
 };
