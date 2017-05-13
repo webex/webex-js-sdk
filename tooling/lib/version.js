@@ -1,0 +1,153 @@
+'use strict';
+const debug = require(`debug`)(`tooling:version`);
+const _ = require(`lodash`);
+const Git = require(`nodegit`);
+const {getDistTag} = require(`./npm`);
+const {list} = require(`./package`);
+const {exec} = require(`./async`);
+
+/**
+ * Determines the latest published package version for the repo
+ * @returns {Promise<string>}
+ */
+exports.last = async function last() {
+  // eslint-disable-next-line no-console
+  console.info(`querying npm to determing latest published package version; this may take a moment`);
+  const packages = Array.from(await list());
+  const version = _(await Promise.all(packages
+    .map(getDistTag)))
+    .sort()
+    .filter()
+    .last()
+    .trim();
+
+  const tag = `v${version}`;
+  return tag;
+};
+
+/**
+ * Determines the next appropriate version to publish
+ * @returns {Promise<string>}
+ */
+exports.next = async function next() {
+  const version = await checkLastCommit();
+  if (version) {
+    return version;
+  }
+
+  const currentVersion = await exports.last();
+
+  if (await hasBreakingChange()) {
+    return increment(`major`, currentVersion);
+  }
+
+  const type = await getChangeType();
+  if (!type) {
+    return currentVersion;
+  }
+
+  return increment(type, currentVersion);
+};
+
+
+/**
+ * Determines if the last commit specified an explicit version to set
+ * @returns {Promise<string>}
+ */
+async function checkLastCommit() {
+  debug(`checking if the last commit message has explicit release instructions`);
+  const repo = await Git.Repository.open(`${process.cwd()}/.git`);
+  const commit = await repo.getHeadCommit();
+  const re = /^#release v(.+?)(\s.+)?$/;
+  const match = commit.summary().match(re);
+  if (match) {
+    const version = match[1];
+    if (version) {
+      return version;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Determines if there are any breaking changes between HEAD and upstream/master
+ * @returns {boolean}
+ */
+async function hasBreakingChange() {
+  debug(`checking for breaking changes between HEAD and upstream/master`);
+  const bodies = await exec(`git log upstream/master.. --format=%b`);
+  if (/^BREAKING CHANGE:/.test(bodies)) {
+    debug(`found breaking change`);
+    return true;
+  }
+  debug(`no breaking changes detected`);
+  return false;
+}
+
+/**
+ * Checks commit messages to determine change type
+ * @returns {Promise<boolean>}
+ */
+async function getChangeType() {
+  const subjects = await exec(`git log upstream/master.. --format=%s`);
+  if (/^feat\(/.test(subjects)) {
+    return `minor`;
+  }
+
+  if (/^(?:fix|perf|refactor)/.test(subjects)) {
+    return `patch`;
+  }
+
+  return undefined;
+}
+
+/* eslint-disable complexity */
+/**
+ * Increments a semver
+ * @param {string} type
+ * @param {string} version
+ * @returns {string}
+ */
+function increment(type, version) {
+  let [major, minor, patch] = version
+    .replace(`v`, ``)
+    .split(`.`)
+    .map((v) => parseInt(v, 10));
+
+  if (major === 0) {
+    switch (type) {
+    case `major`:
+      minor += 1;
+      patch = 0;
+      break;
+    case `minor`:
+      patch += 1;
+      break;
+    case `patch`:
+      patch += 1;
+      break;
+    default:
+      throw new Error(`unrecognized change type`);
+    }
+  }
+  else {
+    switch (type) {
+    case `major`:
+      major += 1;
+      minor = 0;
+      patch = 0;
+      break;
+    case `minor`:
+      minor += 1;
+      patch = 0;
+      break;
+    case `patch`:
+      patch += 1;
+      break;
+    default:
+      throw new Error(`unrecognized change type`);
+    }
+  }
+
+  return `${major}.${minor}.${patch}`;
+}

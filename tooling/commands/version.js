@@ -1,11 +1,11 @@
 'use strict';
 
 module.exports = {
-  command: `dependencies`,
-  desc: `Work with dependencies`,
+  command: `version`,
+  desc: `Work with version`,
   builder(yargs) {
     return yargs
       .demandCommand(1)
-      .commandDir(`./dependencies`);
+      .commandDir(`./version`);
   }
 };

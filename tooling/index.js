@@ -5,6 +5,6 @@
 // eslint-disable-next-line no-unused-expressions
 require(`yargs`)
   .commandDir(`./commands`)
-  .demandCommand()
+  .demandCommand(1)
   .help()
   .argv;
