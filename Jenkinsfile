@@ -369,7 +369,7 @@ ansiColor('xterm') {
                   echo "next version is ${version}"
                   sh 'npm run build'
 
-                  sh "npm run tooling -- version set --last-log ${version}"
+                  sh "npm run tooling -- version set ${version} --last-log"
 
                   if (HAS_LEGACY_CHANGES) {
                     try {
