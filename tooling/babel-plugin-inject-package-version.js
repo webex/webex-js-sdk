@@ -1,3 +1,5 @@
+'use strict';
+
 const pkgUp = require(`pkg-up`);
 const t = require(`babel-types`);
 /**
