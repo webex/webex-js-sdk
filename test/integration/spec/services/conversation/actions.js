@@ -1188,30 +1188,6 @@ describe('Services', function() {
           });
         });
 
-        it('posts the specified sticker to the specified conversation', function() {
-          return party.spock.spark.request({
-            api: 'stickies',
-            resource: 'pack'
-          })
-          .then(function(res) {
-            var pads = res.body.pads;
-            var stickies = pads[0].stickies;
-            var stickerLocation = stickies[0].location;
-
-            return party.spock.spark.conversation.post(conversation, {
-              location: stickerLocation,
-              objectType: 'imageURI'
-            })
-            .then(function(activity) {
-              assert.isDefined(activity.encryptionKeyUrl, 'The activity is encrypted');
-              assert.equal(activity.encryptionKeyUrl, conversation.defaultActivityEncryptionKeyUrl);
-              assert.equal(activity.object.location, stickerLocation);
-              assert.isDefined(activity.object.encryptedLocation);
-              assert.notEqual(activity.object.encryptedLocation, stickerLocation);
-            });
-          });
-        });
-
         it('accepts a `content` property', function() {
           var richComment = '<spark-mention>' + comment + '</spark-mention>';
           return party.spock.spark.conversation.post(conversation, {
