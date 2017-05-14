@@ -115,12 +115,14 @@ async function hasBreakingChange() {
  */
 async function getChangeType() {
   const subjects = await exec(`git log upstream/master.. --format=%s`);
-  if (/^feat\(/.test(subjects)) {
-    return `minor`;
-  }
+  for (const subject of subjects.split(`\n`)) {
+    if (subject.startsWith(`feat`)) {
+      return `minor`;
+    }
 
-  if (/^(?:fix|perf|refactor)/.test(subjects)) {
-    return `patch`;
+    if (subject.startsWith(`fix`) || subject.startsWith(`perf`) || subject.startsWith(`refactor`)) {
+      return `patch`;
+    }
   }
 
   return undefined;
