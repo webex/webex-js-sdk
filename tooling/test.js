@@ -32,7 +32,7 @@ const {watchSauce} = require(`./karma`);
 
 require(`babel-register`)({
   only: [
-    `./packages/node_modules/{*,*/*}/{src,test}/**/*.js`
+    `./packages/node_modules/**/*.js`
   ],
   plugins: [
     path.resolve(__dirname, `./babel-plugin-inject-package-version`)
