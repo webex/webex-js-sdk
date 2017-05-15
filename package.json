@@ -85,6 +85,7 @@
   },
   "dependencies": {
     "ampersand-collection": "^2.0.0",
+    "ampersand-collection-lodash-mixin": "^4.0.0",
     "ampersand-events": "^2.0.2",
     "ampersand-state": "^5.0.2",
     "atob": "~1.1.2",
