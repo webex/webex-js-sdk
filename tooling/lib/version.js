@@ -32,10 +32,10 @@ exports.last = async function last() {
 exports.next = async function next() {
   const version = await checkLastCommit();
   if (version) {
-    return version;
+    return version.replace(`v`, ``);
   }
 
-  const currentVersion = await exports.last();
+  const currentVersion = (await exports.last()).replace(`v`, ``);
 
   if (await hasBreakingChange()) {
     return increment(`major`, currentVersion);
