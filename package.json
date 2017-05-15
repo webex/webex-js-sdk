@@ -49,6 +49,7 @@
   "scripts": {
     "precommit": "npm run --silent lint:staged",
     "commitmsg": "npm run --silent lint:commitmsg",
+    "clean": "./tooling/index.js exec -- rimraf dist .coverage",
     "bootstrap": "echo 'npm run bootstrap is no longer required. Hooray!'",
     "prebuild": "./tooling/index.js exec -- rimraf dist",
     "build": "./tooling/index.js build",
