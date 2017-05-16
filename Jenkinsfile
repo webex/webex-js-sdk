@@ -86,12 +86,6 @@ def generateDockerEnv = { ->
   if (env.WORKSPACE != null) {
     dockerEnv+="WORKSPACE=${env.WORKSPACE}\n"
   }
-  if (env.MESSAGE_DEMO_CLIENT_ID != null) {
-    dockerEnv+="MESSAGE_DEMO_CLIENT_ID=${env.MESSAGE_DEMO_CLIENT_ID}\n"
-  }
-  if (env.MESSAGE_DEMO_CLIENT_SECRET != null) {
-    dockerEnv+="MESSAGE_DEMO_CLIENT_SECRET=${env.MESSAGE_DEMO_CLIENT_SECRET}\n"
-  }
   writeFile file: DOCKER_ENV_FILE, text: dockerEnv
 }
 
@@ -270,15 +264,13 @@ ansiColor('xterm') {
 
           stage('clean') {
             sh 'git clean -df'
-            image.inside(DOCKER_RUN_OPTS) {
-              sh 'npm run grunt -- clean'
-              sh 'npm run grunt:concurrent -- clean'
-            }
             sh 'rm -rf "packages/node_modules/*/browsers.processed.js"'
             sh 'rm -rf "packages/node_modules/@ciscospark/*/browsers.processed.js"'
             sh 'rm -rf ".sauce/*/sc.*"'
             sh 'rm -rf ".sauce/*/sauce_connect*log"'
             sh 'rm -rf reports'
+            sh 'rm -rf .tmp'
+            sh 'rm -rf .tmp_uploads'
             sh 'mkdir -p reports/coverage'
             sh 'mkdir -p reports/coverage-final'
             sh 'mkdir -p reports/junit'
@@ -316,15 +308,15 @@ ansiColor('xterm') {
               image.inside(DOCKER_RUN_OPTS) {
                 sh 'npm run build'
                 // Generate deps so that we can run dep:check. This is more of a
-                // sanity checkout confirming the generate works correctly than
+                // sanity checkout confirming that generate works correctly than
                 // an actually necessary step
                 sh 'npm run deps:generate'
                 // Reminder: deps:check has to come after build so that it can
                 // walk the tree in */dist
                 sh 'npm run deps:check'
                 // Now that we've confirmed deps:generate works, undo the
-                // generated deps. They'll be regenerated once we use lerna to
-                // set the new package versions.
+                // generated deps. They'll be regenerated after we set new
+                // package versions.
                 sh 'git checkout ./packages'
               }
             }
@@ -348,9 +340,7 @@ ansiColor('xterm') {
 
           if (env.COVERAGE && currentBuild.result == 'SUCCESS') {
             stage('process coverage') {
-              image.inside(DOCKER_RUN_OPTS) {
-                sh 'npm run grunt:circle -- coverage'
-              }
+
               archive 'reports/cobertura.xml'
 
               // At the time this script was written, the cobertura plugin didn't
@@ -373,15 +363,13 @@ ansiColor('xterm') {
               stage('build for release') {
                 env.NODE_ENV = ''
                 image.inside(DOCKER_RUN_OPTS) {
+                  echo 'getting latest published versions from npm; this might take a moment'
                   version = sh script: 'npm run --silent get-next-version', returnStdout: true
                   version = version.trim()
-                  if ("${version}" == '') {
-                    warn('failed to determine next version');
-                    error('failed to determine next version');
-                  }
                   echo "next version is ${version}"
                   sh 'npm run build'
-                  sh 'npm run grunt:concurrent -- build:docs'
+
+                  sh "npm run tooling -- version set ${version} --last-log"
 
                   if (HAS_LEGACY_CHANGES) {
                     try {
@@ -415,31 +403,14 @@ ansiColor('xterm') {
                     }
                   }
 
-                  try {
-                    def publishScript = "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --repo-version=${version} --exact"
-                    def out = sh script: 'git log -n 1', returnStdout: true
-                    echo('DEBUG')
-                    echo(out)
-                    echo('DEBUG')
-                    if (out.contains('#force-publish')) {
-                      echo('out contains #force-publish')
-                      // reminder: put --repo-version=${version} at the end of the script because it has a \n in it
-                      sh "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --exact  --force-publish=* --repo-version=${version} "
-                    }
-                    else {
-                      echo('out does not contains #force-publish')
-                      // reminder: put --repo-version=${version} at the end of the script because it has a \n in it
-                      sh "npm run lerna --silent -- publish --skip-npm --skip-git  --yes --exact --repo-version=${version} "
-                    }
+                  sh 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
+                  sh "git commit --no-verify -m v${version}"
+                  sh "git tag 'v${version}'"
+                  sh "npm run deps:generate"
 
-                    sh 'git add lerna.json packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
-                    sh "git commit --no-verify -m v${version}"
-                    sh "git tag 'v${version}'"
-                    sh "npm run deps:generate"
-                  }
-                  catch (error) {
-                    // ignore: no packages to update
-                  }
+                  // Rebuild with correct version number
+                  sh 'npm run build'
+                  sh 'npm run build:docs'
                 }
 
                 sh 'git rev-parse HEAD > .promotion-sha'
@@ -482,9 +453,6 @@ ansiColor('xterm') {
 
               stage('publish to npm') {
                 try {
-                  // TODO use lerna publish directly now that npm fixed READMEs
-                  // reminder: need to write to ~ not . because lerna runs npm
-                  // commands in subdirectories
                   image.inside(DOCKER_RUN_OPTS) {
                     sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
                     echo ''
@@ -494,7 +462,7 @@ ansiColor('xterm') {
                     echo ''
                     echo ''
                     echo ''
-                    sh 'npm run lerna -- exec -- bash -c \'npm publish --access public || true\''
+                    sh 'npm run tooling -- exec -- npm publish --access public || true'
                     echo ''
                     echo ''
                     echo ''
@@ -530,7 +498,7 @@ ansiColor('xterm') {
                     // effective way to make sure we set the git username at the
                     // right time without horrible bash scripts that check what
                     // folders do or do not exist
-                    sh 'npm run grunt:concurrent -- publish:docs'
+                    sh 'npm run publish:docs'
                   }
                   dir('.grunt/grunt-gh-pages/gh-pages/ghc') {
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
@@ -578,8 +546,12 @@ ansiColor('xterm') {
           cleanup(IS_VALIDATED_MERGE_BUILD)
         }
         catch(error) {
+          echo "An error occurred. The following containers are still running on this host"
+          sh 'docker ps --format "table {{.ID}}\t{{.Names}}"'
+
           // Read junit again because we may have gotten here due to a timeout
           try {
+            sh script: 'tooling/xunit-strip-logs.sh', returnStatus: true;
             junit 'reports/junit/**/*.xml'
           }
           catch(err) {

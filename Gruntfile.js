@@ -7,6 +7,12 @@
 
 'use strict';
 
+// grunt-env doesn't seem to be working on Jenkins, so let's try this hack for
+// the next three days
+const dotenv = require(`dotenv`);
+dotenv.config({path: `.env.default`});
+dotenv.config();
+
 var path = require('path');
 var mkdirp = require('mkdirp');
 
@@ -121,7 +127,7 @@ module.exports = function(grunt) {
         COMMON_IDENTITY_SCOPE: 'webexsquare:get_conversation Identity:SCIM'
       },
       default: {
-        src: '.env.default.json'
+        src: '.env.default'
       },
       secrets: {
         src: '.env'
@@ -224,7 +230,7 @@ module.exports = function(grunt) {
       automation: {
         options: {
           reporterOptions: {
-            output: '<%= xunitDir %>/xunit-automation.xml'
+            output: 'reports/junit/xunit-automation.xml'
           }
         },
         src: ['<%= config.test %>/automation/spec/**/*.js']
@@ -232,7 +238,7 @@ module.exports = function(grunt) {
       integration: {
         options: {
           reporterOptions: {
-            output: '<%= xunitDir %>/xunit-integration.xml'
+            output: 'reports/junit/xunit-integration.xml'
           }
         },
         src: ['<%= config.test %>/integration/spec/**/*.js']
@@ -240,7 +246,7 @@ module.exports = function(grunt) {
       unit: {
         options: {
           reporterOptions: {
-            output: '<%= xunitDir %>/xunit-unit.xml'
+            output: 'reports/junit/xunit-unit.xml'
           }
         },
         src: ['<%= config.test %>/unit/spec/**/*.js']
@@ -281,9 +287,7 @@ module.exports = function(grunt) {
           ]
         }
       }
-    },
-
-    xunitDir: process.env.XUNIT_DIR || './reports/junit'
+    }
   });
 
   // Private task for removing SQUARED_JS_SDK from the beginning of env
