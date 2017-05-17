@@ -403,7 +403,7 @@ ansiColor('xterm') {
                     }
                   }
 
-                  def addResult = sh script: 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json', returnStatus
+                  def addResult = sh script: 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json', returnStatus: true
                   if (addResult.toString() == "0") {
                     sh "git commit --no-verify -m v${version}"
                     sh "git tag 'v${version}'"
