@@ -11,8 +11,10 @@ fi
 
 if [ -n "${PACKAGE}" ]; then
   TID_FILE=.sauce/${PACKAGE}/sc.tid
+  export SC_PID_FILE=.sauce/${PACKAGE}/sc.pid
 else
   TID_FILE=.sauce/sc.tid
+  export SC_PID_FILE=.sauce/sc.pid
 fi
 mkdir -p .sauce/${PACKAGE}
 

@@ -16,13 +16,17 @@ echo "##########################################################################
 
 PIDS=""
 
-# Ideally, the following would be done with lerna but there seem to be some bugs
-# in --scope and --ignore
 PACKAGES=$(ls ./packages/node_modules | grep -v @ciscospark)
 PACKAGES+=" "
 PACKAGES+="$(cd ./packages/node_modules/ && find @ciscospark -maxdepth 1 -type d | egrep -v @ciscospark$)"
-PACKAGES+=" legacy-node"
-PACKAGES+=" legacy-browser"
+# copied from http://www.tldp.org/LDP/abs/html/comparison-ops.html because I can
+# never remember which is which
+# > -z string is null, that is, has zero length
+# > -n string is not null.
+if [ -n "${PIPELINE}" ]; then
+  PACKAGES+=" legacy-node"
+  PACKAGES+=" legacy-browser"
+fi
 for PACKAGE in ${PACKAGES}; do
   if ! echo ${PACKAGE} | grep -qc -v test-helper ; then
     continue
@@ -48,6 +52,9 @@ for PACKAGE in ${PACKAGES}; do
       echo "."
       sleep 5
     done
+
+    echo "The following containers are still running on this host"
+    docker ps --format "table {{.ID}}\t{{.Names}}"
   else
     echo "Warning: CONCURRENCY limit not set; running all suites at once"
   fi
@@ -61,6 +68,9 @@ for PACKAGE in ${PACKAGES}; do
   PID="$!"
   PIDS+=" ${PID}"
   echo "Running tests for ${PACKAGE} as ${PID}"
+
+  echo "The following containers are running on this host"
+  docker ps --format "table {{.ID}}\t{{.Names}}"
 done
 
 FINAL_EXIT_CODE=0
@@ -77,28 +87,15 @@ for PID in $PIDS; do
   if [ "${EXIT_CODE}" -ne "0" ]; then
     echo "${PID} exited with code ${EXIT_CODE}; search for ${PID} above to determine which suite failed"
     FINAL_EXIT_CODE=1
+  else
+    echo "${PID} exited cleanly"
   fi
+
+  echo "The following containers are still running on this host"
+  docker ps --format "table {{.ID}}\t{{.Names}}"
 done
 
-echo "################################################################################"
-echo "# Stripping unhelpful, jenkins breaking logs from karma xml"
-echo "################################################################################"
-
-for FILE in $(find ./reports/junit -name "karma-*.xml") ; do
-  awk '
-  BEGIN { write = 1 }
-  /<system-out/{ write = 0 }
-  (write) { print $0 }
-  /<\/system-out/ { write = 1 }
-  ' < $FILE > ${FILE}-out.xml
-
-  # Backup the raw data in case we want to look at it later. We'll just put in
-  # .tmp because exporting it as a build artifact will massively grow the build.
-  mkdir -p ".tmp/$(dirname ${FILE})"
-  mv ${FILE} .tmp/${FILE}
-
-  mv ${FILE}-out.xml ${FILE}
-done
+./tooling/xunit-strip-logs.sh
 
 if [ "${FINAL_EXIT_CODE}" -ne "0" ]; then
   echo "################################################################################"

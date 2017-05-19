@@ -9,7 +9,6 @@ machine:
 
 general:
   artifacts:
-    - lerna-debug.log
     - npm-debug.log
 
 test:
