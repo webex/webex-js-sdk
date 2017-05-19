@@ -8,5 +8,5 @@
 // Reminder: this file exists because code coverage testing breaks if we try to
 // `require()` a JSON file (e.g. package.json)
 module.exports = {
-  version: '0.5.343'
+  version: '0.5.344'
 };
