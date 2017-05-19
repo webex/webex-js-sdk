@@ -147,8 +147,8 @@ function makeConfig(packageName, argv) {
 
   if (argv && argv.xunit) {
     cfg.junitReporter = {
-      outputFile: `${packageName}-karma.xml`,
-      outputDir: `reports/junit`,
+      outputFile: `${packageName}.xml`,
+      outputDir: `reports/junit/karma`,
       suite: packageName,
       useBrowserName: true,
       recordScreenshots: true,

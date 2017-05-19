@@ -76,6 +76,15 @@ module.exports = function(packageName, argv) {
     };
   }
 
+  try {
+    browsers = require(`./packages/node_modules/${packageName}/browsers.js`)(browsers);
+  }
+  catch (err) {
+    if (err.code !== `MODULE_NOT_FOUND`) {
+      throw err;
+    }
+  }
+
   if (process.env.PIPELINE) {
     var keys = Object.keys(browsers);
     return {
