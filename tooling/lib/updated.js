@@ -29,6 +29,7 @@ exports.updated = async function updated({dependents, npm}) {
     for (const packageName of changedPackages) {
       transitive = new Set([...transitive, ...await listDependents(packageName, {includeTransitive: true})]);
     }
+    return Array.from(transitive);
   }
 
   return changedPackages;
