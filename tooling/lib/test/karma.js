@@ -7,13 +7,19 @@ const {readFile} = require(`fs-promise`);
 const ps = require(`ps-node`);
 const {expectNonEmptyReports, expectNoKmsErrors} = require(`./common`);
 const {glob} = require(`../async`);
+const {inject} = require(`../openh264`);
 
 /* eslint-disable no-console */
+/* eslint-disable complexity */
 
 exports.test = async function test(options, packageName, files) {
   debug(`testing ${files}`);
 
   const cfg = makeConfig(packageName, options);
+
+  if (packageName === `@ciscospark/plugin-phone`) {
+    await inject(cfg.customLaunchers);
+  }
 
   if (options.xunit) {
     for (let i = 0; i < 3; i++) {
@@ -45,7 +51,7 @@ exports.test = async function test(options, packageName, files) {
     }
     else {
       debug(`${files} failed`);
-      throw new Error(`Karms suite failed`);
+      throw new Error(`Karma suite failed`);
     }
   }
 

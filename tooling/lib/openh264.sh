@@ -1,5 +1,5 @@
 #!/bin/bash
-# MOZ_GMP_PATH=$(pwd)/.tmp2/gmp-gmpopenh264/1.5.0
+
 MOZ_GMP_PATH=./.tmp/selenium/mac/gmp-gmpopenh264/1.6
 
 curl -O http://ciscobinary.openh264.org/libopenh264-1.6.0-osx64.dylib.bz2

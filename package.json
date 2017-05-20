@@ -197,7 +197,6 @@
     "uglifyify": "~3.0.1",
     "urlsafe-base64": "^1.0.0",
     "uuid": "^3.0.1",
-    "wd": "^0.3.12",
     "webrtc-adapter": "^3.2.0",
     "ws": "^1.1.4",
     "xhr": "^2.4.0",
@@ -304,7 +303,7 @@
     "vinyl": "^1.1.1",
     "vinyl-fs": "^2.4.3",
     "watchify": "^3.7.0",
-    "wd": "~0.3.11",
+    "wd": "^1.2.0",
     "yargs": "^6.5.0"
   },
   "optionalDependencies": {
