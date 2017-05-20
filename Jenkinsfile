@@ -322,7 +322,7 @@ ansiColor('xterm') {
             }
 
             stage('test') {
-              timeout(45) {
+              timeout(60) {
                 def exitCode = sh script: "./tooling/test.sh", returnStatus: true
 
                 junit 'reports/junit/**/*.xml'
@@ -403,9 +403,11 @@ ansiColor('xterm') {
                     }
                   }
 
-                  sh 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
-                  sh "git commit --no-verify -m v${version}"
-                  sh "git tag 'v${version}'"
+                  def addResult = sh script: 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json', returnStatus: true
+                  if (addResult.toString() == "0") {
+                    sh "git commit --no-verify -m v${version}"
+                    sh "git tag 'v${version}'"
+                  }
                   sh "npm run deps:generate"
 
                   // Rebuild with correct version number
@@ -462,7 +464,7 @@ ansiColor('xterm') {
                     echo ''
                     echo ''
                     echo ''
-                    sh 'npm run tooling -- exec -- npm publish --access public || true'
+                    sh 'npm run tooling -- exec -- bash -c \'npm publish --access public || true\''
                     echo ''
                     echo ''
                     echo ''

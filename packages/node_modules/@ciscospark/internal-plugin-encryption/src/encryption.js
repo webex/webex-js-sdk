@@ -33,8 +33,7 @@ const Encryption = SparkPlugin.extend({
         }
 
         return scr.decrypt(b);
-      })
-      .then(ensureBuffer);
+      });
   },
 
   decryptScr(key, cipherScr) {

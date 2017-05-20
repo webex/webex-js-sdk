@@ -469,10 +469,16 @@ const Conversation = SparkPlugin.extend({
   /**
    * Creates a ShareActivty for the specified conversation
    * @param {Object} conversation
+   * @param {Object} activity
    * @returns {ShareActivty}
    */
-  makeShare(conversation) {
-    return ShareActivity.create(conversation, null, this.spark);
+  makeShare(conversation, activity) {
+    // if we pass activity as null then it does not take care of the
+    // clientTempId created by the web-client while making the provisional
+    // activity, hence we need to pass the activity which was created by the
+    // web-client. This fixes the issue where the image activities do not come
+    // back properly oriented from the server since the clientTempId is missing
+    return ShareActivity.create(conversation, activity, this.spark);
   },
 
   /**
