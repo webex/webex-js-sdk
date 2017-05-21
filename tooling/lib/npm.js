@@ -11,7 +11,19 @@ const {exec} = require(`./async`);
  * @returns {Promise<string>}
  */
 exports.getDistTag = async function getDistTag(packageName) {
-  const pkg = await read(packageName);
+  let pkg;
+  try {
+    pkg = await read(packageName);
+  }
+  catch (err) {
+    // Assume this is a not-yet-cleaned-up, removed package.
+    if (err.code === `ENOENT`) {
+      return undefined;
+    }
+
+    throw err;
+  }
+
   if (!pkg.private) {
     debug(`fetching dist-tag for ${packageName}`);
     try {

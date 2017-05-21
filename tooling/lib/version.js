@@ -8,6 +8,8 @@ const {read, write} = require(`../util/package`);
 const updated = require(`./updated`);
 const git = require(`./git`);
 
+/* eslint-disable complexity */
+
 /**
  * Determines the latest published package version for the repo
  * @returns {Promise<string>}
@@ -69,10 +71,17 @@ exports.set = async function set(version, {all, lastLog}) {
 
   for (const packageName of packages) {
     debug(`updating ${packageName} to ${version}`);
-    const pkg = await read(packageName);
-    debug(`${packageName} was at ${pkg.version}`);
-    pkg.version = version;
-    await write(packageName, pkg);
+    try {
+      const pkg = await read(packageName);
+      debug(`${packageName} was at ${pkg.version}`);
+      pkg.version = version;
+      await write(packageName, pkg);
+    }
+    catch (err) {
+      if (err.code !== `ENOENT`) {
+        throw err;
+      }
+    }
   }
 };
 
