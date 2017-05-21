@@ -43,12 +43,7 @@ exports.getDistTag = async function getDistTag(packageName) {
       return tags.latest;
     }
     catch (err) {
-      // ignore 404s; they're normal for new packages
-      if (!/npm ERR! 404 Registry returned 404 for GET on/.test(err)) {
-        debug(`error occurred for ${packageName}`, err);
-        throw err;
-      }
-      debug(`received 404 for ${packageName}, skipping`);
+      debug(`Something went wrong, but we had to use --silent, so it's hard to tell what`, err);
     }
   }
   return undefined;
