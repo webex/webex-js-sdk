@@ -177,15 +177,15 @@
                         </a></li>
                       
                         <li><a
-                          href='#Call.event:ringing'
-                          class='regular pre-open'>
-                          ⓔ ringing
-                        </a></li>
-                      
-                        <li><a
                           href='#Call.event:connected'
                           class='regular pre-open'>
                           ⓔ connected
+                        </a></li>
+                      
+                        <li><a
+                          href='#Call.event:ringing'
+                          class='regular pre-open'>
+                          ⓔ ringing
                         </a></li>
                       
                     </ul>
@@ -471,16 +471,6 @@
               
                 
                 <li><a
-                  href='#typesmessage'
-                  class="">
-                  Types~Message
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
                   href='#messages'
                   class=" toggle-sibling">
                   Messages
@@ -522,6 +512,16 @@
                   
                   
                 </div>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#typesmessage'
+                  class="">
+                  Types~Message
+                  
+                </a>
                 
                 </li>
               
@@ -589,16 +589,6 @@
               
                 
                 <li><a
-                  href='#typesteam'
-                  class="">
-                  Types~Team
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
                   href='#teams'
                   class=" toggle-sibling">
                   Teams
@@ -640,6 +630,16 @@
                   
                   
                 </div>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#typesteam'
+                  class="">
+                  Types~Team
+                  
+                </a>
                 
                 </li>
               
@@ -707,16 +707,6 @@
               
                 
                 <li><a
-                  href='#typeswebhook'
-                  class="">
-                  Types~Webhook
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
                   href='#webhooks'
                   class=" toggle-sibling">
                   Webhooks
@@ -764,6 +754,16 @@
                   
                   
                 </div>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#typeswebhook'
+                  class="">
+                  Types~Webhook
+                  
+                </a>
                 
                 </li>
               
@@ -2028,11 +2028,11 @@ even if renegotiation has not completed)</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='Call.event:ringing'>
+    <div class='border-bottom' id='Call.event:connected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>ringing</span>
+            <span class='code strong strong truncate'>connected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -2042,7 +2042,7 @@ even if renegotiation has not completed)</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>ringing</div>
+  <div class='pre p1 fill-light mt0'>connected</div>
   
   
 
@@ -2073,11 +2073,11 @@ even if renegotiation has not completed)</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='Call.event:connected'>
+    <div class='border-bottom' id='Call.event:ringing'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>connected</span>
+            <span class='code strong strong truncate'>ringing</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -2087,7 +2087,7 @@ even if renegotiation has not completed)</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>connected</div>
+  <div class='pre p1 fill-light mt0'>ringing</div>
   
   
 
@@ -4335,99 +4335,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='typesmessage'>
-      Types~Message
-    </h3>
-    
-    
-  </div>
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>Types~Message</div>
-  
-    <p>
-      Type:
-      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
-    </p>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>id</span> <code class='quiet'>(uuid)</code>
-          : (server generated) Unique identifier for the message
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>personId</span> <code class='quiet'>(uuid)</code>
-          : The ID for the author of the messasge
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>personEmail</span> <code class='quiet'>(email)</code>
-          : The email for the author of the messasge
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>roomId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The message posted to the room in plain text
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>created</span> <code class='quiet'>(isoDate)</code>
-          : (server generated)The source URLs for the
-message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
-supported media types.
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
     <h3 class='fl m0' id='messages'>
       Messages
     </h3>
@@ -4893,6 +4800,99 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     </div>
   
 </div>
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='typesmessage'>
+      Types~Message
+    </h3>
+    
+    
+  </div>
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>Types~Message</div>
+  
+    <p>
+      Type:
+      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>id</span> <code class='quiet'>(uuid)</code>
+          : (server generated) Unique identifier for the message
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>personId</span> <code class='quiet'>(uuid)</code>
+          : The ID for the author of the messasge
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>personEmail</span> <code class='quiet'>(email)</code>
+          : The email for the author of the messasge
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>roomId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The message posted to the room in plain text
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>created</span> <code class='quiet'>(isoDate)</code>
+          : (server generated)The source URLs for the
+message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
+supported media types.
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
@@ -5536,84 +5536,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='typesteam'>
-      Types~Team
-    </h3>
-    
-    
-  </div>
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>Types~Team</div>
-  
-    <p>
-      Type:
-      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
-    </p>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : (server generated) The unique ID for the team.
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>name</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The name of the team.
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>created</span> <code class='quiet'>(isoDate)</code>
-          : (server generated) The date and time when the
-team was created, in ISO8601 format.
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
     <h3 class='fl m0' id='teams'>
       Teams
     </h3>
@@ -6041,6 +5963,84 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
     </div>
   
 </div>
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='typesteam'>
+      Types~Team
+    </h3>
+    
+    
+  </div>
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>Types~Team</div>
+  
+    <p>
+      Type:
+      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : (server generated) The unique ID for the team.
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>name</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The name of the team.
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>created</span> <code class='quiet'>(isoDate)</code>
+          : (server generated) The date and time when the
+team was created, in ISO8601 format.
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
@@ -6674,104 +6674,6 @@ moderator
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='typeswebhook'>
-      Types~Webhook
-    </h3>
-    
-    
-  </div>
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>Types~Webhook</div>
-  
-    <p>
-      Type:
-      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
-    </p>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The unique ID for the webhook.
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>resource</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The resource type for the webhook.
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>event</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The event type for the webhook.
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>filter</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The filter that defines the webhook scope.
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>targetUrl</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The URL that receives POST requests for each event.
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>name</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : A user-friendly name for this webhook.
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
     <h3 class='fl m0' id='webhooks'>
       Webhooks
     </h3>
@@ -7325,6 +7227,104 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     </div>
   
 </div>
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='typeswebhook'>
+      Types~Webhook
+    </h3>
+    
+    
+  </div>
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>Types~Webhook</div>
+  
+    <p>
+      Type:
+      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The unique ID for the webhook.
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>resource</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The resource type for the webhook.
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>event</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The event type for the webhook.
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>filter</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The filter that defines the webhook scope.
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>targetUrl</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The URL that receives POST requests for each event.
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>name</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : A user-friendly name for this webhook.
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
