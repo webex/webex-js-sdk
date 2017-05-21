@@ -1,5 +1,6 @@
 def IS_VALIDATED_MERGE_BUILD = false
 def HAS_LEGACY_CHANGES
+skipTests = false
 
 def warn = { msg ->
   if (!currentBuild.description) {
@@ -322,17 +323,23 @@ ansiColor('xterm') {
             }
 
             stage('test') {
-              timeout(60) {
-                def exitCode = sh script: "./tooling/test.sh", returnStatus: true
+              def lastLog = sh script: 'git log -n 1', returnStdout: true
+              if (lastLog.contains('[ci skip]')) {
+                skipTests = true
+              }
+              if (!skipTests) {
+                timeout(60) {
+                  def exitCode = sh script: "./tooling/test.sh", returnStatus: true
 
-                junit 'reports/junit/**/*.xml'
+                  junit 'reports/junit/**/*.xml'
 
-                if (currentBuild.result == 'SUCCESS' && exitCode != 0) {
-                  error('test.sh exited with non-zero error code, but did not produce junit output to that effect')
-                }
+                  if (currentBuild.result == 'SUCCESS' && exitCode != 0) {
+                    error('test.sh exited with non-zero error code, but did not produce junit output to that effect')
+                  }
 
-                if (currentBuild.result == 'UNSTABLE' && !IS_VALIDATED_MERGE_BUILD) {
-                  error('Failing build in order to propagate UNSTABLE to parent build')
+                  if (currentBuild.result == 'UNSTABLE' && !IS_VALIDATED_MERGE_BUILD) {
+                    error('Failing build in order to propagate UNSTABLE to parent build')
+                  }
                 }
               }
             }
@@ -340,20 +347,21 @@ ansiColor('xterm') {
 
           if (env.COVERAGE && currentBuild.result == 'SUCCESS') {
             stage('process coverage') {
+              if (!skipTests) {
+                archive 'reports/cobertura.xml'
 
-              archive 'reports/cobertura.xml'
-
-              // At the time this script was written, the cobertura plugin didn't
-              // support pipelines, so we need to use a freeform job to process
-              // code coverage
-              coverageBuild = build job: 'spark-js-sdk--validated-merge--coverage-processor', propagate: false
-              if (coverageBuild.result != 'SUCCESS') {
-                currentBuild.result = coverageBuild.result
-                if (coverageBuild.result == 'UNSTABLE') {
-                  currentBuild.description += coverageBuild.description
-                }
-                else if (coverageBuild.result == 'FAILURE') {
-                  currentBuild.description += "Coverage job failed. See the logged build url for more details."
+                // At the time this script was written, the cobertura plugin didn't
+                // support pipelines, so we need to use a freeform job to process
+                // code coverage
+                coverageBuild = build job: 'spark-js-sdk--validated-merge--coverage-processor', propagate: false
+                if (coverageBuild.result != 'SUCCESS') {
+                  currentBuild.result = coverageBuild.result
+                  if (coverageBuild.result == 'UNSTABLE') {
+                    currentBuild.description += coverageBuild.description
+                  }
+                  else if (coverageBuild.result == 'FAILURE') {
+                    currentBuild.description += "Coverage job failed. See the logged build url for more details."
+                  }
                 }
               }
             }
