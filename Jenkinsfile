@@ -364,7 +364,9 @@ ansiColor('xterm') {
                 env.NODE_ENV = ''
                 image.inside(DOCKER_RUN_OPTS) {
                   echo 'getting latest published versions from npm; this might take a moment'
-                  version = sh script: 'npm run --silent get-next-version', returnStdout: true
+                  // NOTE: get-next-version MUST NOT be --silenced or the build
+                  // will fail if includes new packages
+                  version = sh script: 'npm run get-next-version', returnStdout: true
                   version = version.trim()
                   echo "next version is ${version}"
                   sh 'npm run build'
