@@ -24,6 +24,7 @@ exports.last = async function last() {
     .trim();
 
   const tag = `v${version}`;
+  debug(`last version tag is ${version}`);
   return tag;
 };
 
@@ -31,24 +32,37 @@ exports.last = async function last() {
  * Determines the next appropriate version to publish
  * @returns {Promise<string>}
  */
-exports.next = async function next() {
+exports.next = async function next({always}) {
   const version = await checkLastCommit();
   if (version) {
+    debug(`found ${version} in last commit message`);
     return version.replace(`v`, ``);
   }
 
   const currentVersion = (await exports.last()).replace(`v`, ``);
+  debug(`current versoin is ${currentVersion}`);
 
   if (await hasBreakingChange()) {
+    debug(`detected breaking changes`);
     return increment(`major`, currentVersion);
   }
 
+  debug(`no breaking changes detected`);
+
   const type = await getChangeType();
   if (!type) {
+    debug(`no changes to make`);
+    if (always) {
+      const nextVersion = increment(`patch`, currentVersion);
+      debug(`next version is ${version}`);
+      return nextVersion;
+    }
     return currentVersion;
   }
 
-  return increment(type, currentVersion);
+  const nextVersion = increment(type, currentVersion);
+  debug(`next version is ${version}`);
+  return nextVersion;
 };
 
 exports.set = async function set(version, {all, lastLog}) {

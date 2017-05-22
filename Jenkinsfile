@@ -411,11 +411,14 @@ ansiColor('xterm') {
                     }
                   }
 
-                  def addResult = sh script: 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json', returnStatus: true
-                  if (addResult.toString() == "0") {
-                    sh "git commit --no-verify -m v${version}"
+                  sh 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
+
+                  def commitResult = sh script: "git commit --no-verify -m v${version}", returnStatus: true
+                  // commit will fail if we had no files to commit
+                  if (commitResult.toString() == '0') {
                     sh "git tag 'v${version}'"
                   }
+
                   sh "npm run deps:generate"
 
                   // Rebuild with correct version number

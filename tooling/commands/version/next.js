@@ -6,9 +6,15 @@ const {next} = require(`../../lib/version`);
 module.exports = {
   command: `next`,
   desc: `Determine the next version`,
-  builder: {},
-  handler: wrapHandler(async () => {
+  builder: {
+    always: {
+      default: false,
+      description: `always increment patch version even of no changes detected`,
+      type: `boolean`
+    }
+  },
+  handler: wrapHandler(async ({always}) => {
     // eslint-disable-next-line callback-return
-    console.log(await next());
+    console.log(await next({always}));
   })
 };
