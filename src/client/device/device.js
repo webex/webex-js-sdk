@@ -277,7 +277,8 @@ var Device = SparkBase.extend({
     this.logger.info('device: unregister requested');
 
     if (!this.url) {
-      return Promise.reject(new Error('device is not registered'));
+      this.logger.warn('device: not registered');
+      return Promise.resolve();
     }
 
     var options = {

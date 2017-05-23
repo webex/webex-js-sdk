@@ -115,7 +115,10 @@ describe('Spark', function() {
             });
         });
 
-        it('revokes the authorization');
+        it('resolves successfully even if supertoken is not defined', function() {
+          authorization.supertoken = undefined;
+          return assert.isFulfilled(authorization.revoke());
+        });
 
         it('allows only one inflight request', function() {
           authorization.access_token = 'ACCESS TOKEN';
