@@ -1,0 +1,7 @@
+parserOptions:
+  ecmaVersion: 2015
+  sourceType: "script"
+rules:
+  strict:
+  - 2
+  - global

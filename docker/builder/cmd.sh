@@ -12,8 +12,9 @@ export env $(cat .env | xargs)
 cd ${WORKSPACE}
 
 GRUNT_LOG_FILE="$(pwd)/reports/logs/${PACKAGE}.log"
-mkdir -p $(dirname ${GRUNT_LOG_FILE})
-export BABEL_CACHE_PATH=$(pwd)/.tmp/babel-cache/${PACKAGE}.babel.json
+mkdir -p "$(dirname ${GRUNT_LOG_FILE})"
+export BABEL_CACHE_PATH
+BABEL_CACHE_PATH=$(pwd)/.tmp/babel-cache/${PACKAGE}.babel.json
 mkdir -p "$(pwd)/.tmp/babel-cache"
 
 if [ -n "${SDK_BUILD_DEBUG}" ]; then
@@ -54,7 +55,8 @@ fi
 for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
   if [[ -z "${SAUCE_IS_DOWN}" && ! -e "${SC_PID_FILE}" ]]; then
     for SC_ITERATION in $(seq 1 "${MAX_SAUCE_CONNECT_RETRIES}"); do
-      export SC_TUNNEL_IDENTIFIER="${PACKAGE}-$(cat /proc/sys/kernel/random/uuid)"
+      export SC_TUNNEL_IDENTIFIER
+      SC_TUNNEL_IDENTIFIER="${PACKAGE}-$(cat /proc/sys/kernel/random/uuid)"
       echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC Attempt ${SC_ITERATION}: Connecting with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
 
       set +e
@@ -114,7 +116,7 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
   elif [ "${PACKAGE}" == "legacy-browser" ]; then
     npm run test:legacy-browser >> ${GRUNT_LOG_FILE} 2>&1
   else
-    npm run test:package >> ${GRUNT_LOG_FILE} 2>&1
+    npm run test >> ${GRUNT_LOG_FILE} 2>&1
   fi
   EXIT_CODE=$?
   set -e
@@ -155,7 +157,9 @@ done
 # let the jenkins junit parser handle the error; if it does not, assume there's
 # an infrastructure problem and fail the build.
 if [ "${EXIT_CODE}" -ne "0" ]; then
-  npm run grunt:package fileExists:karmaxml
+  if [ -f "./reports/junit/*/${PACKAGE}-karma.xml" ]; then
+    exit 0
+  fi
 fi
 
 if [ "${EXIT_CODE}" -ne "0" ]; then

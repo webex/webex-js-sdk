@@ -1,26 +1,40 @@
 /* eslint-disable func-names */
 /* eslint-disable global-require */
+/* eslint-disable require-jsdoc */
 
 // eslint-disable-next-line strict
 'use strict';
 
 const path = require(`path`);
-
+const makeBrowsers = require(`./browsers-ng`);
 /* eslint-disable global-require */
 
 module.exports = function configureKarma(config) {
-  const pkg = require(`./packages/node_modules/${process.env.PACKAGE}/package`);
+  config.set(makeConfig(process.env.PACKAGE));
+};
+
+module.exports.makeConfig = makeConfig;
+function makeConfig(packageName, argv) {
+  const pkg = require(`./packages/node_modules/${packageName}/package`);
   /* eslint complexity: [0] */
-  const browsers = require(`./browsers-ng`);
-  const launchers = process.env.SC_TUNNEL_IDENTIFIER ? browsers.sauce : browsers.local;
-  const integrationTestPath = path.join(`packages`, `node_modules`, process.env.PACKAGE, `test`, `integration`, `spec`, `**`, `*.js`);
-  const unitTestPath = path.join(`packages`, `node_modules`, process.env.PACKAGE, `test`, `unit`, `spec`, `**`, `*.js`);
+  const launchers = makeBrowsers(packageName, argv);
+  const integrationTestPath = path.join(`packages`, `node_modules`, packageName, `test`, `integration`, `spec`, `**`, `*.js`);
+  const unitTestPath = path.join(`packages`, `node_modules`, packageName, `test`, `unit`, `spec`, `**`, `*.js`);
 
   const preprocessors = {
     'packages/**': [`browserify`]
   };
-  preprocessors[integrationTestPath] = [`browserify`];
-  preprocessors[unitTestPath] = [`browserify`];
+
+  const files = [
+    `node_modules/babel-polyfill/dist/polyfill.js`
+  ];
+
+  if (!argv || argv.unit) {
+    files.push(unitTestPath);
+  }
+  if (!argv || argv.integration) {
+    files.push(integrationTestPath);
+  }
 
   let cfg = {
     basePath: `.`,
@@ -29,11 +43,11 @@ module.exports = function configureKarma(config) {
 
     browserDisconnectTolerance: 3,
 
-    browsers: process.env.SC_TUNNEL_IDENTIFIER ? Object.keys(launchers) : Object.keys(browsers.local),
+    browsers: Object.keys(launchers),
 
     browserify: {
       debug: true,
-      watch: true,
+      watch: argv && argv.karmaDebug,
       transform: [
         `babelify`,
         `envify`
@@ -45,16 +59,13 @@ module.exports = function configureKarma(config) {
     // Inspired by Angular's karma config as recommended by Sauce Labs
     captureTimeout: 0,
 
-    colors: !process.env.XUNIT,
+    colors: !(argv && argv.xunit),
 
     concurrency: 3,
 
     customLaunchers: launchers,
 
-    files: [
-      integrationTestPath,
-      unitTestPath
-    ],
+    files,
 
     frameworks: [
       `browserify`,
@@ -67,7 +78,8 @@ module.exports = function configureKarma(config) {
       mocha: {
         // TODO figure out how to report retries
         retries: process.env.JENKINS || process.env.CI ? 1 : 0,
-        timeout: 30000
+        timeout: 30000,
+        grep: argv && argv.grep[0]
       }
     },
 
@@ -89,7 +101,7 @@ module.exports = function configureKarma(config) {
       `mocha`
     ],
 
-    singleRun: !process.env.KARMA_DEBUG,
+    singleRun: !(argv && argv.karmaDebug),
 
     // video and screenshots add on the request of sauce labs support to help
     // diagnose test user creation timeouts
@@ -99,23 +111,31 @@ module.exports = function configureKarma(config) {
 
   if (process.env.COVERAGE && process.env.COVERAGE !== `undefined`) {
     cfg.coverageReporter = {
+      instrumenters: {isparta: require(`isparta`)},
+      instrumenter: {
+        '**/*.js': `isparta`
+      },
+      // includeAllSources: true,
+      // instrumenterOptions: {
+      //   coverageVariable: makeCoverageVariable(packageName)
+      // },
       reporters: [{
         type: `json`,
-        dir: `reports/coverage/${process.env.PACKAGE}`
+        dir: `reports/coverage/intermediate/${packageName}`
       }]
     };
 
-    cfg.browserify.transform.unshift([`browserify-istanbul`, {
-      ignore: [`test-helper*/**`, `**/dist/**`],
-      instrumenter: require(`isparta`)
-    }]);
+    // cfg.browserify.transform.unshift([`browserify-istanbul`, {
+    //   instrumenter: require(`isparta`),
+    //   defaultIgnore: false
+    // }]);
 
     cfg.reporters.push(`coverage`);
   }
 
   if (process.env.SC_TUNNEL_IDENTIFIER) {
     cfg.sauceLabs = {
-      build: process.env.BUILD_NUMBER || `local-${process.env.USER}-${process.env.PACKAGE}-${Date.now()}`,
+      build: process.env.BUILD_NUMBER || `local-${process.env.USER}-${packageName}-${Date.now()}`,
       startConnect: false,
       testName: `${pkg.name} (karma)`,
       tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER,
@@ -125,11 +145,11 @@ module.exports = function configureKarma(config) {
     cfg.reporters.push(`saucelabs`);
   }
 
-  if (process.env.XUNIT) {
+  if (argv && argv.xunit) {
     cfg.junitReporter = {
-      outputFile: `karma-${process.env.PACKAGE}.xml`,
-      outputDir: process.env.XUNIT_DIR || `reports/junit`,
-      suite: process.env.PACKAGE,
+      outputFile: `${packageName}.xml`,
+      outputDir: `reports/junit/karma`,
+      suite: packageName,
       useBrowserName: true,
       recordScreenshots: true,
       recordVideo: true
@@ -139,11 +159,11 @@ module.exports = function configureKarma(config) {
   }
 
   try {
-    cfg = require(`./packages/node_modules/${process.env.PACKAGE}/karma.conf.js`)(cfg);
+    cfg = require(`./packages/node_modules/${packageName}/karma.conf.js`)(cfg);
   }
   catch (error) {
     // ignore
   }
 
-  config.set(cfg);
-};
+  return cfg;
+}

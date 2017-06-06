@@ -1,0 +1,65 @@
+'use strict';
+
+const debug = require(`debug`)(`tooling:updated`);
+const _ = require(`lodash`);
+const {listDependents} = require(`./dependencies`);
+const {last} = require(`./version`);
+const {diff} = require(`./git`);
+
+/**
+ * Lists all of the updated packages in the repo
+ * @param {Object} options
+ * @param {boolean} options.dependents if true, also includes dependents of
+ * updated packages
+ * @param {boolean} options.npm if true, compares to the last tag published to
+ * npm instead of upstream/master
+ * @returns {Promise<Array<string>>}
+ */
+exports.updated = async function updated({dependents, npm}) {
+  const tag = npm ? await last() : `upstream/master`;
+  const changedPackages = _(await diff(tag))
+    .map((d) => d.path)
+    .map(fileToPackage)
+    .filter()
+    .uniq()
+    .value();
+
+  if (dependents) {
+    let transitive = new Set([...changedPackages]);
+    for (const packageName of changedPackages) {
+      transitive = new Set([...transitive, ...await listDependents(packageName, {includeTransitive: true})]);
+    }
+    return Array.from(transitive);
+  }
+
+  return changedPackages;
+};
+
+/**
+ * Determins the package to which a given file belongs. Includes the meta
+ * packages "docs", "legacy", and "tooling"
+ * @param {string} d
+ * @private
+ * @returns {string}
+ */
+function fileToPackage(d) {
+  debug(d);
+  if (d.startsWith(`packages/node_modules/`)) {
+    d = d.replace(`packages/node_modules/`, ``);
+    d = d.split(`/`);
+    if (d[0].startsWith(`@`)) {
+      return d.slice(0, 2).join(`/`);
+    }
+    return d[0];
+  }
+
+  if (d.startsWith(`docs`)) {
+    return `docs`;
+  }
+
+  if (d.startsWith(`src`) || d.startsWith(`test`)) {
+    return `legacy`;
+  }
+
+  return `tooling`;
+}

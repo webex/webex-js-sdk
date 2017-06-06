@@ -64,27 +64,21 @@ Build the SDK:
 npm run build
 ```
 
-#### Building Packages Individually
-
-To build packages individually, specify the package name in an environment variable, `PACKAGE`, and run: 
-
-```bash
-PACKAGE=PACKAGENAME npm run grunt:package -- build
-```
+> There used to be a means of building individual packages, but they now build quickly enough that there's no need.
 
 ### Running Tests
 
 #### Run All Tests
 
 ```bash
-npm run grunt:concurrent -- test
+npm test
 ```
 
 #### Run Unit Tests
 Handy during early plugin development when you can write a bunch of unit tests.
 
 ```bash
-UNIT_ONLY=true PACKAGE=PACKAGENAME npm run grunt:package -- test
+npm test -- --package PACKAGENAME --unit
 ```
 
 ### Run unit tests in watch mode
@@ -93,21 +87,21 @@ hardcode it any where.
 
 ```bash
 npm install -g nodemon
-nodemon -w packages/PACKAGENAME/src -w packages/PACKAGENAME/test -x "UNIT_ONLY=true PACKAGE=PACKAGENAME npm run --silent grunt:package express:test test:node"
+nodemon -w packages/PACKAGENAME/src -w packages/PACKAGENAME/test -x "npm test -- --package PACKAGENAME --node"
 ```
 
 #### Run Node.js Tests
 Usually faster, and can build on the fly, thus no need to rebuild everything between test runs
 
 ```bash
-PACKAGE=PACKAGENAME npm run grunt:package -- express:test test:node
+npm test -- --package PACKAGENAME --node
 ```
 
 #### Run Browser Tests
 Keeps the browser open so that you can reload set break points and reload the page
 
 ```bash
-KARMA_DEBUG=true PACKAGE=PACKAGENAME npm run grunt:package -- express:test test:browser
+npm test -- --package PACKAGENAME --browser --karma-debug
 ```
 
 ### Git Commit Guidelines

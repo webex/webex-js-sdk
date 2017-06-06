@@ -43,7 +43,7 @@ So, you want to send a message. First, you need an access token. For demonstrati
 Create a new file in your project directory named `index.js` and add the following to it:
 
 ```javascript
-var spark = require('ciscospark');
+var spark = require('ciscospark/env');
 spark.rooms.create({
   title: `My First Room!`
 })
