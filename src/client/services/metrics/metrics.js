@@ -34,25 +34,6 @@ var MetricsService = SparkBase.extend(
 
   namespace: 'Metrics',
 
-  /**
-   * Issues request to server to alias a user's pre-login ID with their CI UUID
-   * @param {string} preLoginId
-   */
-  aliasUser: function aliasUser(preLoginId) {
-    return this.request({
-      method: 'POST',
-      api: 'metrics',
-      resource: 'clientmetrics',
-      headers: {
-        'x-prelogin-userid': preLoginId
-      },
-      body: {},
-      qs: {
-        alias: true
-      }
-    });
-  },
-
   postPreLoginMetric: function postPreLoginMetric(payload, preLoginId) {
     return this.request({
       method: 'POST',
