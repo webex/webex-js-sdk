@@ -72,6 +72,7 @@ describe('Services', function() {
         sinon.stub(metrics.splunk, 'fetch');
         sinon.stub(metrics.clientMetrics, 'fetch');
         sinon.spy(metrics, 'postPreLoginMetric');
+        sinon.spy(metrics, 'aliasUser');
         sinon.spy(spark, 'request');
       });
 
@@ -117,6 +118,19 @@ describe('Services', function() {
               assert.equal(metric.metricName, eventName);
               assert.equal(metric.tags.testTag, 'tag value');
               assert.equal(metric.fields.testField, 123);
+            });
+        });
+      });
+
+      describe('#aliasUser()', function() {
+        it('returns an HttpResponse object', function() {
+          return metrics.aliasUser(preLoginId)
+            .then(function() {
+              assert.calledOnce(spark.request);
+              var req = spark.request.args[0][0];
+              var params = req.qs;
+
+              sinon.match(params, {alias: true});
             });
         });
       });
