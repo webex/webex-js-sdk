@@ -7,6 +7,7 @@
   - [Building the SDK](#building-the-sdk)
   - [Running Tests](#running-tests)
   - [Git Commit Guidelines](#git-commit-guidelines)
+  - [Submitting a Pull Request](#submitting-a-pull-request)
 - [Updating the Documentation](#updating-the-documentation)
 
 ## Reporting Issues
@@ -163,6 +164,27 @@ Just as in the **subject** the imperative, present tense: "change" not "changed"
 The footer should contain any information about **Breaking changes** and is also the place to reference GitHub issues that this commit **closes**.
 
 **Breaking Changes** should start with the word `BREAKING CHANGE:` with a space or two newlines. The rest of the commit message is then used for this.
+
+### Submitting a Pull Request
+
+Prior to developing a new feature, be sure to search the [Pull Requests](https://github.com/ciscospark/spark-js-sdk/pulls) for your idea to ensure you're not creating a duplicate change. Then, create a development branch in your forked repository for your idea and start coding!
+
+When you're ready to submit your change, first check that new commits haven't been made in the upstream's `master` branch. If there are new commits, rebase your development branch to ensure a fast-forward merge when your Pull Request is approved:
+
+```bash
+# Fetch upstream master and update your local master branch
+git fetch upstream
+git checkout master
+git merge upstream/master
+
+# Rebase your development branch
+git checkout feature
+git rebase master
+```
+
+Make sure all tests pass with your changes. See [Running Tests](#running-tests) above for details about running tests.
+
+Finally, open a Pull Request with your changes. Be sure to mention the issues this request addresses in the body of the request. Once your request is opened, a developer will review, comment, and, when approved, merge your changes!
 
 ## Updating the Documentation
 
