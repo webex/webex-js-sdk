@@ -182,8 +182,6 @@ git checkout feature
 git rebase master
 ```
 
-Make sure all tests pass with your changes. See [Running Tests](#running-tests) above for details about running tests.
-
 Finally, open a Pull Request with your changes. Be sure to mention the issues this request addresses in the body of the request. Once your request is opened, a developer will review, comment, and, when approved, merge your changes!
 
 ## Updating the Documentation
