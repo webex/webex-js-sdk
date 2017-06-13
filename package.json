@@ -110,7 +110,6 @@
     "browserify-middleware": "^7.1.0",
     "btoa": "^1.1.2",
     "chalk": "^1.1.3",
-    "ciscospark": "^0.7.69",
     "compression": "^1.6.2",
     "cookie-parser": "^1.4.3",
     "core-decorators": "^0.14.0",
