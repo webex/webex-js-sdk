@@ -175,7 +175,9 @@ var ShareActivityBase = SparkBase.extend(
           },
           phases: {
             initialize: {
-              fileSize: fileSize
+              body: {
+                fileSize: fileSize
+              }
             },
             upload: {
               $uri: function $uri(session) {
