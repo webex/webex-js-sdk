@@ -189,7 +189,7 @@ var ShareActivityBase = SparkBase.extend(
                 return session.finishUploadUrl;
               },
               body: {
-                fileSize: fileSize
+                size: fileSize
               }
             }
           }
