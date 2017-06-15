@@ -72,7 +72,7 @@ function makeConfig(packageName, argv) {
       `mocha`
     ],
 
-    hostname: `127.0.0.1`,
+    hostname: `localhost`,
 
     client: {
       mocha: {
@@ -93,8 +93,8 @@ function makeConfig(packageName, argv) {
     preprocessors,
 
     proxies: {
-      '/fixtures/': `http://127.0.0.1:${process.env.FIXTURE_PORT}/`,
-      '/upload': `http://127.0.0.1:${process.env.FIXTURE_PORT}/upload`
+      '/fixtures/': `http://localhost:${process.env.FIXTURE_PORT}/`,
+      '/upload': `http://localhost:${process.env.FIXTURE_PORT}/upload`
     },
 
     reporters: [
