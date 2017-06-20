@@ -2,6 +2,7 @@
 
 /* eslint-disable require-jsdoc */
 const debug = require(`debug`)(`tooling:test`);
+const Module = require(`module`);
 
 const dotenv = require(`dotenv`);
 dotenv.config({path: `.env.default`});
@@ -21,6 +22,7 @@ const {
   instrument
 } = require(`../../util/coverage`);
 const {glob} = require(`../../util/package`);
+const wrap = require(`../wrap-unwrap`);
 
 /* eslint-disable complexity */
 
@@ -38,7 +40,7 @@ exports.testPackage = async function testPackage(options, packageName) {
 
   debug(`testing ${packageName}`);
   if (packageName === `generator-ciscospark`) {
-    await runNodeSuite(packageName);
+    await runNodeSuite(options, packageName);
     return;
   }
 
@@ -82,19 +84,36 @@ async function runNodeSuite(options, packageName) {
   // instrumented files. This *should* continue to isolate code coverage since
   // we're running each package's test in a separate process, even when simply
   // running `npm test`.
-  const load = require.extensions[`.js`];
   if (options.coverage) {
-    require.extensions[`.js`] = function loadCoveredFile(m, filename) {
+    debug(`injecting coverage hook`);
+    require.extensions[`.js`] = wrap(require.extensions[`.js`], function loadCoveredFile(fn, m, filename) {
       if (filename.includes(packageName)) {
         filename = filename.replace(`${packageName}/dist`, `${packageName}/.coverage/src`);
       }
-      return load(m, filename);
-    };
+      // eslint-disable-next-line no-invalid-this
+      return Reflect.apply(fn, this, [m, filename]);
+    });
+  }
+
+  if (!options.building) {
+    debug(`injecting src hook`);
+    Module._resolveFilename = wrap(Module._resolveFilename, function resolveToSrcIndex(_resolveFilename, request, parent, isMain) {
+      if (request.startsWith(`@ciscospark`) && request.split(`/`).length === 2 || request === `ciscospark`) {
+        request = path.resolve(process.cwd(), `packages`, `node_modules`, request, `src/index.js`);
+      }
+      // eslint-disable-next-line no-invalid-this
+      return Reflect.apply(_resolveFilename, this, [request, parent, isMain]);
+    });
   }
 
   await mochaTest(options, packageName, `node`, files);
+  if (!options.building) {
+    debug(`removing src hook`);
+    Module._resolveFilename = Module._resolveFilename.unwrap();
+  }
   if (options.coverage) {
-    require.extensions[`.js`] = load;
+    debug(`removing coverage hook`);
+    require.extensions[`.js`] = require.extensions[`.js`].unwrap();
   }
 
   debug(`Finished node suite for ${packageName}`);

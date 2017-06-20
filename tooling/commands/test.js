@@ -75,6 +75,12 @@ module.exports = {
       description: `Start the fixture server. Since this defaults to true, you find --no-serve useful`,
       default: true,
       type: `boolean`
+    },
+
+    building: {
+      description: `Set --no-building to enable various hacks to test the src dir instead of the dest dir to avoid rebuilding during development`,
+      default: true,
+      type: `boolean`
     }
   },
   handler: wrapHandler(async (argv) => {
