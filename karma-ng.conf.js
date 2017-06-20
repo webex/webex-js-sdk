@@ -5,7 +5,6 @@
 // eslint-disable-next-line strict
 'use strict';
 
-const path = require(`path`);
 const makeBrowsers = require(`./browsers-ng`);
 /* eslint-disable global-require */
 
@@ -18,22 +17,22 @@ function makeConfig(packageName, argv) {
   const pkg = require(`./packages/node_modules/${packageName}/package`);
   /* eslint complexity: [0] */
   const launchers = makeBrowsers(packageName, argv);
-  const integrationTestPath = path.join(`packages`, `node_modules`, packageName, `test`, `integration`, `spec`, `**`, `*.js`);
-  const unitTestPath = path.join(`packages`, `node_modules`, packageName, `test`, `unit`, `spec`, `**`, `*.js`);
 
   const preprocessors = {
-    'packages/**': [`browserify`]
+    'packages/node_modules/**/src/**/*.js': [`browserify`]
   };
 
-  const files = [
-    `node_modules/babel-polyfill/dist/polyfill.js`
-  ];
+  const files = [];
 
   if (!argv || argv.unit) {
+    const unitTestPath = `packages/node_modules/${packageName}/test/unit/spec/**/*.js`;
     files.push(unitTestPath);
+    preprocessors[unitTestPath] = [`browserify`];
   }
   if (!argv || argv.integration) {
+    const integrationTestPath = `packages/node_modules/${packageName}/test/integration/spec/**/*.js`;
     files.push(integrationTestPath);
+    preprocessors[integrationTestPath] = [`browserify`];
   }
 
   let cfg = {
@@ -47,11 +46,7 @@ function makeConfig(packageName, argv) {
 
     browserify: {
       debug: true,
-      watch: argv && argv.karmaDebug,
-      transform: [
-        `babelify`,
-        `envify`
-      ]
+      watch: argv && argv.karmaDebug
     },
 
     browserNoActivityTimeout: 240000,
