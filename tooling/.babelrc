@@ -1,0 +1,11 @@
+{
+  "presets": [
+    ["env", {
+      "browsers": false,
+      "targets": {
+        "node": "current"
+      }
+    }]
+  ],
+  "sourceMaps": true
+}
