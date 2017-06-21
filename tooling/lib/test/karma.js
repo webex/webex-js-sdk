@@ -7,13 +7,46 @@ const {readFile} = require(`fs-promise`);
 const ps = require(`ps-node`);
 const {expectNonEmptyReports, expectNoKmsErrors} = require(`./common`);
 const {glob} = require(`../async`);
+const {applyTransform} = require(`../package`);
 
 /* eslint-disable no-console */
+
+/**
+ * This is silly, but some combination of karma-browserify, browserifybabelify,
+ * and babel prevent transforms from being configurable via the karma config.
+ * Seemingly the only means available for applying transforms during test runs
+ * is to inject the transform config into package.json.
+ * @param {Object} pkg
+ * @returns {Promise<Object>}
+ */
+function addTransforms(pkg) {
+  debug(`adding browserify transform config to ${pkg.name}`);
+  pkg.browserify = {
+    transform: [
+      `babelify`,
+      `envify`
+    ]
+  };
+
+  return Promise.resolve(pkg);
+}
+
+/**
+ * Remove browserify transforms
+ * @param {Object} pkg
+ * @returns {Promise}
+ */
+function removeTransforms(pkg) {
+  debug(`removing browserify transform config from ${pkg.name}`);
+  Reflect.deleteProperty(pkg, `browserify`);
+  return Promise.resolve(pkg);
+}
 
 exports.test = async function test(options, packageName, files) {
   debug(`testing ${files}`);
 
   const cfg = makeConfig(packageName, options);
+  await applyTransform(addTransforms);
 
   if (options.xunit) {
     for (let i = 0; i < 3; i++) {
@@ -40,6 +73,8 @@ exports.test = async function test(options, packageName, files) {
   }
   else {
     const success = await run(cfg, files);
+    await applyTransform(removeTransforms);
+
     if (success) {
       debug(`${files} succeeded`);
     }

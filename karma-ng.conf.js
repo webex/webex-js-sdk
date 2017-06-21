@@ -18,9 +18,7 @@ function makeConfig(packageName, argv) {
   /* eslint complexity: [0] */
   const launchers = makeBrowsers(packageName, argv);
 
-  const preprocessors = {
-    'packages/node_modules/**/src/**/*.js': [`browserify`]
-  };
+  const preprocessors = {};
 
   const files = [];
 
@@ -36,6 +34,8 @@ function makeConfig(packageName, argv) {
   }
 
   let cfg = {
+    autoWatch: argv && argv.karmaDebug,
+
     basePath: `.`,
 
     browserDisconnectTimeout: 10000,
@@ -103,30 +103,6 @@ function makeConfig(packageName, argv) {
     recordVideo: true,
     recordScreenshots: true
   };
-
-  if (process.env.COVERAGE && process.env.COVERAGE !== `undefined`) {
-    cfg.coverageReporter = {
-      instrumenters: {isparta: require(`isparta`)},
-      instrumenter: {
-        '**/*.js': `isparta`
-      },
-      // includeAllSources: true,
-      // instrumenterOptions: {
-      //   coverageVariable: makeCoverageVariable(packageName)
-      // },
-      reporters: [{
-        type: `json`,
-        dir: `reports/coverage/intermediate/${packageName}`
-      }]
-    };
-
-    // cfg.browserify.transform.unshift([`browserify-istanbul`, {
-    //   instrumenter: require(`isparta`),
-    //   defaultIgnore: false
-    // }]);
-
-    cfg.reporters.push(`coverage`);
-  }
 
   if (process.env.SC_TUNNEL_IDENTIFIER) {
     cfg.sauceLabs = {

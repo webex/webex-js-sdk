@@ -1,8 +1,8 @@
 {
   "presets": [
     ["env", {
-      "browsers": false,
       "targets": {
+        "browsers": false,
         "node": "current"
       }
     }]
