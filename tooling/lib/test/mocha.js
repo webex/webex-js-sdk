@@ -16,9 +16,18 @@ exports.test = async function test(options, packageName, suite, files) {
       nodeConfig.plugins[index] = path.resolve(process.cwd(), item);
     }
   });
-  nodeConfig.only = [
-    `./packages/node_modules/**/test/**/*.js`
-  ];
+
+  if (options.building) {
+    nodeConfig.only = [
+      `./packages/node_modules/**/test/**/*.js`
+    ];
+  }
+  else {
+    nodeConfig.only = [
+      `./packages/node_modules/**`
+    ];
+  }
+
   nodeConfig.babelrc = false;
 
   // eslint-disable-next-line global-require
