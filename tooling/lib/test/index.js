@@ -23,20 +23,28 @@ const {
 } = require(`../../util/coverage`);
 const {glob} = require(`../../util/package`);
 const wrap = require(`../wrap-unwrap`);
+const {cloneDeep} = require(`lodash`);
+const {readFile} = require(`fs-promise`);
 
 /* eslint-disable complexity */
 
 exports.testPackage = async function testPackage(options, packageName) {
-  // eslint-disable-next-line global-require
-  require(`babel-register`)({
-    only: [
-      `./packages/node_modules/**/*.js`
-    ],
-    plugins: [
-      path.resolve(__dirname, `../../babel-plugin-inject-package-version`)
-    ],
-    sourceMaps: true
+  const config = JSON.parse(await readFile(path.join(process.cwd(), `.babelrc`)));
+  const nodeConfig = cloneDeep(config);
+  Reflect.deleteProperty(nodeConfig.presets.find((item) => Array.isArray(item) && item[0] === `env`)[1].targets, `browsers`);
+  nodeConfig.plugins.forEach((item, index) => {
+    if (!Array.isArray(item) && item.startsWith(`./`)) {
+      nodeConfig.plugins[index] = path.resolve(process.cwd(), item);
+    }
   });
+  nodeConfig.only = [
+    `./packages/node_modules/**/test/**/*.js`
+  ];
+  nodeConfig.babelrc = false;
+
+  // eslint-disable-next-line global-require
+  require(`babel-register`)(nodeConfig);
+
 
   debug(`testing ${packageName}`);
   if (packageName === `generator-ciscospark`) {

@@ -11,7 +11,10 @@
       "polyfill": false
     }],
     "transform-inline-environment-variables",
-    "transform-node-env-inline"
+    "transform-node-env-inline",
+    ["transform-es2015-block-scoping",{
+      "throwIfClosureRequired": true
+    }]
   ],
   "presets": [
     ["env", {
