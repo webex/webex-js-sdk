@@ -3,8 +3,27 @@
 const debug = require(`debug`)(`tooling:test:mocha`);
 const Mocha = require(`mocha`);
 const {expectReports, expectNonEmptyReports, expectNoKmsErrors} = require(`./common`);
+const {readFile} = require(`fs-promise`);
+const path = require(`path`);
+const {cloneDeep} = require(`lodash`);
 
 exports.test = async function test(options, packageName, suite, files) {
+  const config = JSON.parse(await readFile(path.join(process.cwd(), `.babelrc`)));
+  const nodeConfig = cloneDeep(config);
+  Reflect.deleteProperty(nodeConfig.presets.find((item) => Array.isArray(item) && item[0] === `env`)[1].targets, `browsers`);
+  nodeConfig.plugins.forEach((item, index) => {
+    if (!Array.isArray(item) && item.startsWith(`./`)) {
+      nodeConfig.plugins[index] = path.resolve(process.cwd(), item);
+    }
+  });
+  nodeConfig.only = [
+    `./packages/node_modules/**/test/**/*.js`
+  ];
+  nodeConfig.babelrc = false;
+
+  // eslint-disable-next-line global-require
+  require(`babel-register`)(nodeConfig);
+
   debug(`testing ${files}`);
 
   options.output = `reports/junit/mocha/${packageName}-${suite}.xml`;
