@@ -21,6 +21,8 @@ const {applyTransform} = require(`../package`);
  */
 function addTransforms(pkg) {
   debug(`adding browserify transform config to ${pkg.name}`);
+  // TODO can these transforms be applied using the plugin that karma-ng is
+  // applying?
   pkg.browserify = {
     transform: [
       `babelify`,
@@ -164,7 +166,7 @@ async function watchSauce(server, cfg) {
     // communicate back to test.js that karma failed because the tunnel
     // disappeared. By exiting here, cmd.sh should restart sauce and run the
     // suite again
-    //  eslint-disable-next-line no-process-exit
+    // eslint-disable-next-line no-process-exit
     process.exit(65);
   }
 }

@@ -6,6 +6,8 @@
 'use strict';
 
 const makeBrowsers = require(`./browsers-ng`);
+const path = require(`path`);
+
 /* eslint-disable global-require */
 
 module.exports = function configureKarma(config) {
@@ -127,6 +129,12 @@ function makeConfig(packageName, argv) {
     };
 
     cfg.reporters.push(`junit`);
+  }
+
+  if (!argv.building) {
+    cfg.browserify.plugin = [
+      path.resolve(process.cwd(), `tooling`, `browserify`, `dot-browser`)
+    ];
   }
 
   try {
