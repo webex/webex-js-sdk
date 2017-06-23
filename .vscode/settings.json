@@ -1,0 +1,24 @@
+// Place your settings in this file to overwrite default and user settings.
+{
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    ".tmp/**": true
+  },
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": false,
+    "node_modules/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": false,
+    "**/bower_components": true,
+    "**/dist": true,
+    "node_modules/**": true,
+    "packages/node_modules/**": false
+  }
+}
