@@ -53,6 +53,11 @@ module.exports = {
       default: false,
       type: `boolean`
     },
+    documentation: {
+      description: `Check source code for examples and run any containing assertions`,
+      default: false,
+      type: `boolean`
+    },
     automation: {
       description: `Run automation tests (defaults to true if --unit and --integration are not specified)`,
       default: false,
@@ -82,11 +87,11 @@ module.exports = {
       argv.browser = argv.node = true;
     }
 
-    if (!argv.unit && !argv.integration && !argv.automation) {
-      argv.unit = argv.integration = argv.automation = true;
+    if (!argv.unit && !argv.integration && !argv.automation && !argv.documentation) {
+      argv.unit = argv.integration = argv.automation = argv.documentation = true;
     }
 
-    if (argv.automation && !argv.unit && !argv.integration) {
+    if (argv.automation && !argv.unit && !argv.integration && !argv.documentation) {
       argv.browser = false;
     }
 
