@@ -48,7 +48,7 @@ exports.test = async function test(options, packageName, suite, files) {
  * Runs test
  * @param {Object} options
  * @param {Array<string>} files
- * @returns {Promise<Number>}
+ * @returns {Promise<number>}
  */
 async function run(options, files) {
   const cfg = {
