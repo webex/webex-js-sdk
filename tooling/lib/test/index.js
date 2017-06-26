@@ -56,16 +56,19 @@ exports.testPackage = async function testPackage(options, packageName) {
     }
   }
 
-  if (options.documentation) {
-    await runDocsSuite(options, packageName);
-  }
-
   if (options.browser) {
     await runBrowserSuite(options, packageName);
   }
 
   if (options.automation) {
     await runAutomationSuite(options, packageName);
+  }
+
+  // Note: running docs test last because the babel transform interferes with
+  // other test suites' test code. We should probably look at how to unload the
+  // jsdoctrine transform once the doc tests complete.
+  if (options.documentation) {
+    await runDocsSuite(options, packageName);
   }
 
   if (options.coverage) {
