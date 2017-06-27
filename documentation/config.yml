@@ -20,10 +20,12 @@ toc:
   # - Roles
   - name: Types
     description: |
-      The following typedefs describes the responses of the above methods above
-  - Types~Membership
-  - Types~Message
-  - Types~Room
-  - Types~Team
-  - Types~TeamMembership
-  - Types~Webhook
+      The following typedefs describes the responses of the various API calls.
+  - FeedbackObject
+  - MembershipObject
+  - MessageObject
+  - PersonObject
+  - RoomObject
+  - TeamObject
+  - TeamMembershipObject
+  - WebhookObject
