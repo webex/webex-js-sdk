@@ -298,7 +298,7 @@
     "vinyl": "^1.1.1",
     "vinyl-fs": "^2.4.3",
     "watchify": "^3.7.0",
-    "wd": "~0.3.11",
+    "wd": "^1.2.0",
     "yargs": "^6.5.0"
   },
   "optionalDependencies": {
