@@ -166,14 +166,14 @@ describe('Client', function() {
           }), /`options.token` is required/);
         });
 
-        it('requires a trackingI option', function() {
+        it('requires a trackingId option', function() {
           var s = new Socket();
-          return assert.isRejected(s.open('ws://example.com'), {
+          return assert.isRejected(s.open('ws://example.com', {
             forceCloseDelay: 100,
             pingInterval: 100,
             pongTimeout: 90,
             token: 'mocktoken'
-          }, /`options.trackingId` is required/);
+          }), /`options.trackingId` is required/);
         });
 
         it('requires a logger option', function() {
