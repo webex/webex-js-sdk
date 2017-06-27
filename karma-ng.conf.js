@@ -39,7 +39,7 @@ function makeConfig(packageName, argv) {
   let cfg = {
     basePath: `.`,
 
-    browserDisconnectTimeout: 10000,
+    browserDisconnectTimeout: 60000,
 
     browserDisconnectTolerance: 3,
 
@@ -54,7 +54,7 @@ function makeConfig(packageName, argv) {
       ]
     },
 
-    browserNoActivityTimeout: 240000,
+    browserNoActivityTimeout: 480000,
 
     // Inspired by Angular's karma config as recommended by Sauce Labs
     captureTimeout: 0,
