@@ -110,7 +110,7 @@ function filterSync(processCallback, allowedTags, allowedStyles, html) {
           node.removeAttribute(attrName);
         }
         else if (attrName === 'href' || attrName === 'src') {
-          var attrValue = node.attributes.getNamedItem(attrName).value;
+          var attrValue = node.attributes.getNamedItem(attrName).value.trim();
           if (attrValue.indexOf('javascript:') === 0) {
             _reparent(node);
           }
