@@ -240,7 +240,7 @@
     "eslint-plugin-jsx-a11y": "^4.0.0",
     "eslint-plugin-mocha": "^4.8.0",
     "eslint-plugin-react": "^6.9.0",
-    "firefox-profile": "^0.4.5",
+    "firefox-profile": "^1.0.0",
     "fs-extra": "^1.0.0",
     "fs-promise": "^2.0.2",
     "glob": "^7.1.1",
@@ -302,7 +302,7 @@
     "vinyl": "^1.1.1",
     "vinyl-fs": "^2.4.3",
     "watchify": "^3.7.0",
-    "wd": "~0.3.11",
+    "wd": "^1.2.0",
     "yargs": "^6.5.0"
   },
   "optionalDependencies": {
