@@ -58,12 +58,13 @@
     "check-karma-output": "./scripts/analyze-output.sh",
     "build:package": "echo 'deprecated; just use \"npm run --silent build\"'./tooling/build.js",
     "grunt": "grunt",
-    "lint": "npm run --silent lint:js && npm run --silent lint:jenkinsfile",
+    "lint": "npm run --silent lint:js && npm run --silent lint:jenkinsfile && npm run --silent lint:package-names",
     "lint:commitmsg": "conventional-changelog-lint -e",
     "lint:eslint": "eslint --ignore-pattern 'packages/node_modules/generator-ciscospark/generators/*/templates/**' --ignore-path .gitignore $(npm run --silent lint:eslint:ci-reporter)",
     "lint:eslint:ci-reporter": "bash -c '[[ -n \"${JENKINS}\" ]]' && echo \"-f checkstyle -o reports/style/eslint.xml\" || echo ''",
     "lint:jenkinsfile": "grep -qc '.status' Jenkinsfile && echo 'Use result, not status, in Jenkinsfile' || true",
     "lint:js": "npm run --silent lint:eslint -- .",
+    "lint:package-names": "./tooling/lint-package-names.sh",
     "lint:staged": "lint-staged",
     "release": "grunt release",
     "sauce:start": "./scripts/run-with-sauce.sh ./packages/node_modules/@ciscospark/bin-sauce-connect/bin/sauce-connect start",
@@ -337,6 +338,7 @@
   },
   "lint-staged": {
     "*.js": "lint:eslint",
-    "Jenkinsfile": "lint:jenkinsfile"
+    "Jenkinsfile": "lint:jenkinsfile",
+    "*package.json": "lint:package-names"
   }
 }
