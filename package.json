@@ -123,6 +123,7 @@
     "builtins": "^1.0.3",
     "chai": "^3.5.0",
     "chai-as-promised": "^6.0.0",
+    "check-error": "^1.0.2",
     "compression": "^1.6.2",
     "conventional-changelog-lint": "^1.1.8",
     "conventional-changelog-lint-config-angular": "^0.4.1",
