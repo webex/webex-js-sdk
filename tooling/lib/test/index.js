@@ -21,26 +21,19 @@ const {
   instrument
 } = require(`../../util/coverage`);
 const {glob} = require(`../../util/package`);
+const wrap = require(`../wrap-unwrap`);
+const Module = require(`module`);
 
 /* eslint-disable complexity */
 
 exports.testPackage = async function testPackage(options, packageName) {
-  // eslint-disable-next-line global-require
-  require(`babel-register`)({
-    only: [
-      `./packages/node_modules/**/*.js`
-    ],
-    plugins: [
-      path.resolve(__dirname, `../../babel-plugin-inject-package-version`)
-    ],
-    sourceMaps: true
-  });
-
   debug(`testing ${packageName}`);
   if (packageName === `generator-ciscospark`) {
     await runNodeSuite(packageName);
     return;
   }
+
+  registerBabel(options, packageName);
 
   if (options.node) {
     if (options.coverage) {
@@ -77,7 +70,36 @@ exports.testPackage = async function testPackage(options, packageName) {
   }
 };
 
+function registerBabel(options) {
+  let pattern;
+  if (options.raw) {
+    pattern = `./packages/node_modules/**/*.js`;
+  }
+  else {
+    pattern = `./packages/node_modules/**/test/**/*.js`;
+  }
+
+  // eslint-disable-next-line global-require
+  require(`babel-register`)({
+    only: [pattern],
+    plugins: [
+      path.resolve(__dirname, `../../babel-plugin-inject-package-version`)
+    ],
+    sourceMaps: true
+  });
+}
+
 async function runDocsSuite(options, packageName) {
+  if (options.raw) {
+    // eslint-disable-next-line no-console
+    console.warn(`Skipping doc tests due to "raw" specification`);
+    // eslint-disable-next-line no-console
+    console.warn(`At this time, jsdoctrinetest doesn't play nicely with other babel transforms`);
+    // eslint-disable-next-line no-console
+    console.warn(`Please run documentation tests against built code`);
+    return;
+  }
+
   debug(`Running documentation tests for ${packageName}`);
   const files = await glob(`dist/**/*.js`, {packageName});
   // eslint-disable-next-line global-require
@@ -98,19 +120,39 @@ async function runNodeSuite(options, packageName) {
   // instrumented files. This *should* continue to isolate code coverage since
   // we're running each package's test in a separate process, even when simply
   // running `npm test`.
-  const load = require.extensions[`.js`];
   if (options.coverage) {
-    require.extensions[`.js`] = function loadCoveredFile(m, filename) {
+    debug(`injecting coverage hook`);
+    // FIXME this should load dist code
+    require.extensions[`.js`] = wrap(require.extensions[`.js`], function loadCoveredFile(fn, m, filename) {
       if (filename.includes(packageName)) {
         filename = filename.replace(`${packageName}/dist`, `${packageName}/.coverage/src`);
       }
-      return load(m, filename);
-    };
+      // eslint-disable-next-line no-invalid-this
+      return Reflect.apply(fn, this, [m, filename]);
+    });
+  }
+
+  if (options.raw) {
+    debug(`injecting raw hook`);
+
+    Module._resolveFilename = wrap(Module._resolveFilename, function resolveToSrcIndex(_resolveFilename, request, parent, isMain) {
+      if (request.startsWith(`@ciscospark`) && request.split(`/`).length === 2 || request === `ciscospark`) {
+        request = path.resolve(process.cwd(), `packages`, `node_modules`, request, `src/index.js`);
+      }
+      // eslint-disable-next-line no-invalid-this
+      return Reflect.apply(_resolveFilename, this, [request, parent, isMain]);
+    });
   }
 
   await mochaTest(options, packageName, `node`, files);
+  if (options.raw) {
+    debug(`removing raw hook`);
+    Module._resolveFilename = Module._resolveFilename.unwrap();
+  }
+
   if (options.coverage) {
-    require.extensions[`.js`] = load;
+    debug(`removing coverage hook`);
+    require.extensions[`.js`] = require.extensions[`.js`].unwrap();
   }
 
   debug(`Finished node suite for ${packageName}`);

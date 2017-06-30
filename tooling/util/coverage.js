@@ -19,6 +19,7 @@ function makeCoverageVariable(packageName) {
 }
 
 async function instrument(packageName) {
+  // FIXME this should instrumet dist code
   const instrumenter = new Instrumenter({
     coverageVariable: makeCoverageVariable(packageName)
   });
