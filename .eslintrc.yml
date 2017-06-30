@@ -1,4 +1,4 @@
-extends: "@ciscospark"
+extends: "@ciscospark/eslint-config/es2015.js"
 globals:
   PACKAGE_VERSION: false
 root: true
