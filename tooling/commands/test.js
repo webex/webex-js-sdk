@@ -28,6 +28,12 @@ module.exports = {
       type: 'boolean'
     },
 
+    raw: {
+      description: 'Load files-under-test from their src directories instead of dist directories',
+      default: false,
+      type: 'boolean'
+    },
+
     xunit: {
       description: 'Generate xunit xml reports. Note: exit code will always be zero of reports are generated successfully, even if tests fail',
       default: false,
