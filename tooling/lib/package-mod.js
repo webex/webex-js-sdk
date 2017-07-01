@@ -5,6 +5,10 @@ const {read, write} = require(`../util/package`);
 const path = require(`path`);
 const requireDir = require(`require-dir`);
 
+exports.apply = apply;
+exports.combineMods = combineMods;
+exports.modPackage = modPackage;
+
 /**
  * Applies $mod to the specifed package's package.json
  * @param {Function} mod
@@ -43,7 +47,7 @@ function combineMods(dir) {
  * @param {string} options.packageName
  * @returns {Promise}
  */
-exports.modPackage = async function modPackage({dir, mod, packageName}) {
+async function modPackage({dir, mod, packageName}) {
   if (typeof mod === `string`) {
     if (!mod.startsWith(`/`)) {
       mod = path.resolve(process.cwd(), mod);
@@ -62,4 +66,4 @@ exports.modPackage = async function modPackage({dir, mod, packageName}) {
   }
 
   apply(mod, packageName);
-};
+}

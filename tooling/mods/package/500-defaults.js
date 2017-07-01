@@ -2,6 +2,11 @@
 
 module.exports = function addDefaults(pkg) {
   Object.assign(pkg, {
+    browserify: {
+      transform: [
+        `envify`
+      ]
+    },
     engines: {
       node: `>=6`
     },

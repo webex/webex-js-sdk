@@ -5,9 +5,8 @@
 // eslint-disable-next-line strict
 'use strict';
 
-const path = require(`path`);
 const makeBrowsers = require(`./browsers-ng`);
-/* eslint-disable global-require */
+const path = require(`path`);
 
 module.exports = function configureKarma(config) {
   config.set(makeConfig(process.env.PACKAGE));
@@ -18,21 +17,22 @@ function makeConfig(packageName, argv) {
   const pkg = require(`./packages/node_modules/${packageName}/package`);
   /* eslint complexity: [0] */
   const launchers = makeBrowsers(packageName, argv);
-  const integrationTestPath = path.join(`packages`, `node_modules`, packageName, `test`, `integration`, `spec`, `**`, `*.js`);
-  const unitTestPath = path.join(`packages`, `node_modules`, packageName, `test`, `unit`, `spec`, `**`, `*.js`);
 
-  const preprocessors = {
-    'packages/**': [`browserify`]
-  };
+  const preprocessors = {};
 
-  const files = [
-    `node_modules/babel-polyfill/dist/polyfill.js`
-  ];
+  if (argv.raw) {
+    preprocessors[`packages/node_modules/**/src/**/*.js`] = [`browserify`];
+  }
+
+  const files = [];
 
   if (!argv || argv.unit) {
+    const unitTestPath = `packages/node_modules/${packageName}/test/unit/spec/**/*.js`;
     files.push(unitTestPath);
+    preprocessors[unitTestPath] = [`browserify`];
   }
   if (!argv || argv.integration) {
+    const integrationTestPath = `packages/node_modules/${packageName}/test/integration/spec/**/*.js`;
     files.push(integrationTestPath);
   }
 
@@ -47,11 +47,7 @@ function makeConfig(packageName, argv) {
 
     browserify: {
       debug: true,
-      watch: argv && argv.karmaDebug,
-      transform: [
-        `babelify`,
-        `envify`
-      ]
+      watch: argv && argv.karmaDebug
     },
 
     browserNoActivityTimeout: 480000,
@@ -109,28 +105,13 @@ function makeConfig(packageName, argv) {
     recordScreenshots: true
   };
 
-  if (process.env.COVERAGE && process.env.COVERAGE !== `undefined`) {
-    cfg.coverageReporter = {
-      instrumenters: {isparta: require(`isparta`)},
-      instrumenter: {
-        '**/*.js': `isparta`
-      },
-      // includeAllSources: true,
-      // instrumenterOptions: {
-      //   coverageVariable: makeCoverageVariable(packageName)
-      // },
-      reporters: [{
-        type: `json`,
-        dir: `reports/coverage/intermediate/${packageName}`
-      }]
-    };
-
-    // cfg.browserify.transform.unshift([`browserify-istanbul`, {
-    //   instrumenter: require(`isparta`),
-    //   defaultIgnore: false
-    // }]);
-
-    cfg.reporters.push(`coverage`);
+  if (argv.raw) {
+    // Note: this works because it's a plugin and not a transform; one (or more)
+    // of karma-browserify, browserify, babelify, or babel prevents transforms
+    // from being applied from here.
+    cfg.browserify.plugin = [
+      path.resolve(process.cwd(), `tooling`, `browserify`, `resolve-src`)
+    ];
   }
 
   if (process.env.SC_TUNNEL_IDENTIFIER) {
