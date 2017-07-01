@@ -2,8 +2,11 @@ const path = require('path');
 
 const debug = require('debug')('tooling:lib:mod:package');
 const requireDir = require('require-dir');
-
 const {read, write} = require('../util/package');
+
+exports.apply = apply;
+exports.combineMods = combineMods;
+exports.modPackage = modPackage;
 
 /**
  * Applies $mod to the specifed package's package.json
@@ -41,7 +44,7 @@ function combineMods(dir) {
  * @param {string} options.mod
  * @param {string} options.packageName
  */
-exports.modPackage = async function modPackage({dir, mod, packageName}) {
+async function modPackage({dir, mod, packageName}) {
   if (typeof mod === 'string') {
     if (!mod.startsWith('/')) {
       mod = path.resolve(process.cwd(), mod);
@@ -60,4 +63,4 @@ exports.modPackage = async function modPackage({dir, mod, packageName}) {
   }
 
   apply(mod, packageName);
-};
+}

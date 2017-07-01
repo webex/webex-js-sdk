@@ -2,16 +2,48 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-const debug = require('debug')('tooling:test:karma');
-const {Server, stopper} = require('karma');
-const {makeConfig} = require('../../../karma-ng.conf');
 const {readFile} = require('fs-promise');
+const {Server, stopper} = require('karma');
 const ps = require('ps-node');
-const {expectNonEmptyReports, expectNoKmsErrors} = require('./common');
+const debug = require('debug')('tooling:test:karma');
+
 const {glob} = require('../async');
 const {inject} = require('../openh264');
+const {apply} = require('../package-mod');
+const {makeConfig} = require('../../../karma-ng.conf');
 
-/* eslint-disable no-console */
+const {expectNonEmptyReports, expectNoKmsErrors} = require('./common');
+
+/**
+ * This is silly, but some combination of karma-browserify, browserify, babelify,
+ * and babel prevent transforms from being configurable via the karma config.
+ * Seemingly the only means available for applying transforms during test runs
+ * is to inject the transform config into each package.json.
+ * @param {Object} pkg
+ * @returns {Promise<Object>}
+ */
+function addTransforms(pkg) {
+  debug(`adding browserify transform config to ${pkg.name}`);
+  pkg.browserify = {
+    transform: [
+      'babelify',
+      'envify'
+    ]
+  };
+
+  return Promise.resolve(pkg);
+}
+
+/**
+ * Remove browserify transforms
+ * @param {Object} pkg
+ * @returns {Promise}
+ */
+function removeTransforms(pkg) {
+  debug(`removing browserify transform config from ${pkg.name}`);
+  Reflect.deleteProperty(pkg, 'browserify');
+  return Promise.resolve(pkg);
+}
 
 // Splitting this function to reduce complexity would not aid in readability
 // eslint-disable-next-line complexity
@@ -19,6 +51,7 @@ exports.test = async function test(options, packageName, files) {
   debug(`testing ${files}`);
 
   const cfg = makeConfig(packageName, options);
+  await apply(addTransforms, packageName);
 
   if (packageName === '@ciscospark/plugin-phone' || packageName === '@ciscospark/media-engine-webrtc') {
     await inject(cfg.customLaunchers);
@@ -57,6 +90,8 @@ exports.test = async function test(options, packageName, files) {
       throw new Error('Karma suite failed');
     }
   }
+
+  await apply(removeTransforms, packageName);
 };
 
 /**
@@ -128,7 +163,9 @@ async function watchSauce(server, cfg) {
     }
   }
   catch (err) {
+    // eslint-disable-next-line no-console
     console.error(err);
+    // eslint-disable-next-line no-console
     console.error('Sauce Tunnel is not running, stopping server and exiting');
     stopper.stop(cfg);
     // so, this is a bit harsh, but due to karma's api,there's no great way to

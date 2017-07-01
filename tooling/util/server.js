@@ -12,13 +12,16 @@ let child;
  * Starts the test server
  * @returns {Promise}
  */
-async function start() {
+async function start({raw = false} = {}) {
   if (child) {
     await stop();
   }
 
   return new Promise((resolve) => {
-    const serverPath = path.resolve(process.cwd(), 'packages/node_modules/@ciscospark/test-helper-server');
+    let serverPath = path.resolve(process.cwd(), 'packages/node_modules/@ciscospark/test-helper-server');
+    if (raw) {
+      serverPath = path.resolve(serverPath, 'src', 'index.js');
+    }
     child = spawn(process.argv[0], [serverPath], {
       env: process.env,
       stdio: ['ignore', 'pipe', process.stderr]

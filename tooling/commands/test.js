@@ -117,7 +117,7 @@ module.exports = {
       if (argv.package) {
         if (argv.serve) {
           debug('starting test server');
-          await start();
+          await start(argv);
           debug('started test server');
         }
 
@@ -125,7 +125,7 @@ module.exports = {
 
         if (argv.serve) {
           debug('stopping test server');
-          await stop();
+          await stop(argv);
           debug('stopped test server');
         }
       }
