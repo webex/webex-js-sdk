@@ -1,4 +1,4 @@
-'use strict';
+
 
 const debug = require(`debug`)(`tooling:git`);
 const Git = require(`nodegit`);

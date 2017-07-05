@@ -1,4 +1,4 @@
-'use strict';
+
 
 const wrapHandler = require(`../lib/wrap-handler`);
 const {list, spawn} = require(`../util/package`);
