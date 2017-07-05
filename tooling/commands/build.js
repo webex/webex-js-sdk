@@ -1,4 +1,3 @@
-'use strict';
 
 const wrapHandler = require(`../lib/wrap-handler`);
 const {list} = require(`../util/package`);

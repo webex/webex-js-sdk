@@ -1,4 +1,4 @@
-'use strict';
+
 
 const debug = require(`debug`)(`tooling:dependencies`);
 const builtins = require(`builtins`);

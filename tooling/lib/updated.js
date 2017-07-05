@@ -1,4 +1,4 @@
-'use strict';
+
 
 const debug = require(`debug`)(`tooling:updated`);
 const _ = require(`lodash`);
