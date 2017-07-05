@@ -1,4 +1,4 @@
-'use strict';
+
 
 const debug = require(`debug`)(`tooling:test:karma`);
 const {Server, stopper} = require(`karma`);
