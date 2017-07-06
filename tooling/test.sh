@@ -16,9 +16,13 @@ echo "##########################################################################
 
 PIDS=""
 
-PACKAGES=$(ls ./packages/node_modules | grep -v @ciscospark)
+# The webrtc test is *very* slow in firefox, so we'll start it at the top of the
+# suite
+PACKAGES="@ciscospark/media-adapter-webrtc"
 PACKAGES+=" "
-PACKAGES+="$(cd ./packages/node_modules/ && find @ciscospark -maxdepth 1 -type d | egrep -v @ciscospark$)"
+PACKAGES+=$(ls ./packages/node_modules | grep -v @ciscospark)
+PACKAGES+=" "
+PACKAGES+="$(cd ./packages/node_modules/ && find @ciscospark -maxdepth 1 -type d | egrep -v @ciscospark$) | grep -v media-adapter-webrtc"
 # copied from http://www.tldp.org/LDP/abs/html/comparison-ops.html because I can
 # never remember which is which
 # > -z string is null, that is, has zero length
