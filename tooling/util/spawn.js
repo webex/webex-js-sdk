@@ -1,4 +1,4 @@
-'use strict';
+
 
 const debug = require(`debug`)(`monorepo:util`);
 const cp = require(`child_process`);
