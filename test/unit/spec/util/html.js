@@ -92,9 +92,14 @@ skipInNode(describe)('html()', function() {
       output: '<strong><span>text</span></strong>'
     },
     {
-      it: 'filters javascript: from a href',
-      input: '<p><a href="javascript:window.close(); return false">click here</a></p>',
-      output: '<p>click here</p>'
+      it: 'correctly cleans nested a/img tags with javscript: href/src',
+      input: '<p><a href="javascript:window.close()">Click here<img src="http://example.com/img">bar</img></a> for something with <a href="http://www.cisco.com/">MORE<img src="javascript:window.location=\'http://www.cisco.com\'">of my</img>MOJO</a></p>',
+      output: '<p>Click here<img src="http://example.com/img">bar for something with <a href="http://www.cisco.com/">MOREof myMOJO</a></p>'
+    },
+    {
+      it: 'correctly cleans nested a/img tags with javscript: href/src, even cleverly obfuscated with whitespace',
+      input: '<p><a href=" javascript:window.close()">Click here<img src="http://example.com/img">bar</img></a> for something with <a href="http://www.cisco.com/">MORE<img src=" javascript:window.location=\'http://www.cisco.com\'">of my</img>MOJO</a></p>',
+      output: '<p>Click here<img src="http://example.com/img">bar for something with <a href="http://www.cisco.com/">MOREof myMOJO</a></p>'
     },
     {
       it: 'does not filter arbitrary strings from a href',

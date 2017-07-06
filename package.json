@@ -1,6 +1,6 @@
 {
   "name": "spark-js-sdk",
-  "version": "0.5.346",
+  "version": "0.5.349",
   "description": "JavaScript sdk for interacting with the Spark API",
   "homepage": "http://sqbu-github.cisco.com/WebExSquared/squared-js-sdk",
   "bugs": {
@@ -58,12 +58,13 @@
     "check-karma-output": "./scripts/analyze-output.sh",
     "build:package": "echo 'deprecated; just use \"npm run --silent build\"'./tooling/build.js",
     "grunt": "grunt",
-    "lint": "npm run --silent lint:js && npm run --silent lint:jenkinsfile",
+    "lint": "npm run --silent lint:js && npm run --silent lint:jenkinsfile && npm run --silent lint:package-names",
     "lint:commitmsg": "conventional-changelog-lint -e",
     "lint:eslint": "eslint --ignore-pattern 'packages/node_modules/generator-ciscospark/generators/*/templates/**' --ignore-path .gitignore $(npm run --silent lint:eslint:ci-reporter)",
     "lint:eslint:ci-reporter": "bash -c '[[ -n \"${JENKINS}\" ]]' && echo \"-f checkstyle -o reports/style/eslint.xml\" || echo ''",
     "lint:jenkinsfile": "grep -qc '.status' Jenkinsfile && echo 'Use result, not status, in Jenkinsfile' || true",
     "lint:js": "npm run --silent lint:eslint -- .",
+    "lint:package-names": "./tooling/lint-package-names.sh",
     "lint:staged": "lint-staged",
     "release": "grunt release",
     "sauce:start": "./scripts/run-with-sauce.sh ./packages/node_modules/@ciscospark/bin-sauce-connect/bin/sauce-connect start",
@@ -192,6 +193,7 @@
     "uuid": "^3.0.1",
     "wd": "^0.3.12",
     "webrtc-adapter": "3.2.0",
+    "whatwg-fetch": "^2.0.3",
     "ws": "^1.1.4",
     "xhr": "^2.4.0",
     "xtend": "^4.0.1",
@@ -234,9 +236,9 @@
     "eslint-plugin-import": "^2.6.0",
     "eslint-plugin-jsx": "0.0.2",
     "eslint-plugin-jsx-a11y": "^4.0.0",
-    "eslint-plugin-mocha": "^4.11.0",
-    "eslint-plugin-react": "^6.10.3",
-    "firefox-profile": "^0.4.5",
+    "eslint-plugin-mocha": "^4.8.0",
+    "eslint-plugin-react": "^6.9.0",
+    "firefox-profile": "^1.0.0",
     "fs-extra": "^1.0.0",
     "fs-promise": "^2.0.2",
     "glob": "^7.1.1",
@@ -298,7 +300,7 @@
     "vinyl": "^1.1.1",
     "vinyl-fs": "^2.4.3",
     "watchify": "^3.7.0",
-    "wd": "~0.3.11",
+    "wd": "^1.2.0",
     "yargs": "^6.5.0"
   },
   "optionalDependencies": {
@@ -333,6 +335,7 @@
   },
   "lint-staged": {
     "*.js": "lint:eslint",
-    "Jenkinsfile": "lint:jenkinsfile"
+    "Jenkinsfile": "lint:jenkinsfile",
+    "*package.json": "lint:package-names"
   }
 }

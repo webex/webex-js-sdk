@@ -1,4 +1,4 @@
-'use strict';
+
 
 const wrapHandler = require(`../../lib/wrap-handler`);
 const {set} = require(`../../lib/version`);

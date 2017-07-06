@@ -1,7 +1,8 @@
-'use strict';
+
 
 const denodeify = require(`denodeify`);
 
+exports.rimraf = denodeify(require(`rimraf`));
 exports.glob = denodeify(require(`glob`));
 exports.mkdirp = denodeify(require(`mkdirp`));
 exports.transformFile = denodeify(require(`babel-core`).transformFile);
