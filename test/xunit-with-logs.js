@@ -12,10 +12,10 @@
  */
 
 var Base = require('mocha/lib/reporters/base');
-var utils = require('mocha/lib/utils');
+// var utils = require('mocha/lib/utils');
 var util = require('util');
 var fs = require('fs');
-var escape = utils.escape;
+// var escape = utils.escape;
 var mkdirp = require('mkdirp');
 var path = require('path');
 var pick = require('lodash.pick');
