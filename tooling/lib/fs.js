@@ -1,4 +1,4 @@
-'use strict';
+
 
 const debug = require(`debug`)(`tooling:lib:fs`);
 const {access} = require(`fs-promise`);

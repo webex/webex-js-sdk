@@ -1,4 +1,4 @@
-'use strict';
+
 
 const debug = require(`debug`)(`tooling:lib:mod:package`);
 const {read, write} = require(`../util/package`);

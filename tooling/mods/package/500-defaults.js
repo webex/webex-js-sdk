@@ -1,4 +1,4 @@
-'use strict';
+
 
 module.exports = function addDefaults(pkg) {
   Object.assign(pkg, {
