@@ -12,7 +12,6 @@ docker run ${DOCKER_RUN_OPTS} npm install
 echo "################################################################################"
 echo "# CLEANING"
 echo "################################################################################"
-docker run ${DOCKER_RUN_OPTS} npm run grunt -- clean
 
 rm -rf "${SDK_ROOT_DIR}/.sauce/*/sc.*"
 rm -rf "${SDK_ROOT_DIR}/.sauce/*/sauce_connect*log"
