@@ -38,8 +38,8 @@ exports.updated = async function updated({dependents, npm}) {
 };
 
 /**
- * Determins the package to which a given file belongs. Includes the meta
- * packages "docs", "legacy", and "tooling"
+ * Determines the package to which a given file belongs. Includes the meta
+ * packages "docs" and "tooling"
  * @param {string} d
  * @private
  * @returns {string}
@@ -57,10 +57,6 @@ function fileToPackage(d) {
 
   if (d.startsWith(`docs`)) {
     return `docs`;
-  }
-
-  if (d.startsWith(`src`) || d.startsWith(`test`)) {
-    return `legacy`;
   }
 
   return `tooling`;

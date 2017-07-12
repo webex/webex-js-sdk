@@ -109,7 +109,7 @@ exports.set = async function set(version, {all, lastLog}) {
 
   // reminder, can't destructure updated because it's a circular dependency
   const packages = Array.from(all ? await list() : await updated.updated({dependents: true}))
-    .filter((p) => ![`docs`, `legacy`, `tooling`].includes(p));
+    .filter((p) => ![`docs`, `tooling`].includes(p));
 
   if (packages.length === 0) {
     // eslint-disable-next-line no-console

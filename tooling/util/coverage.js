@@ -80,7 +80,7 @@ async function combine(packageName) {
 async function report() {
   const collector = new Collector();
   const pattern = `reports/coverage/**/*.json`;
-  await rimraf(`reports/coverage/legacy`);
+
   const files = await g(pattern);
   for (const f of files) {
     collector.add(JSON.parse(await fs.readFile(f)));
