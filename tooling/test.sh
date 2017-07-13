@@ -15,35 +15,8 @@ echo "# RUNNING TESTS"
 echo "################################################################################"
 
 PIDS=""
-
-PACKAGES=$(ls ./packages/node_modules | grep -v @ciscospark)
-PACKAGES+=" "
-PACKAGES+="$(cd ./packages/node_modules/ && find @ciscospark -maxdepth 1 -type d | egrep -v @ciscospark$)"
-# copied from http://www.tldp.org/LDP/abs/html/comparison-ops.html because I can
-# never remember which is which
-# > -z string is null, that is, has zero length
-# > -n string is not null.
-if [ -n "${PIPELINE}" ]; then
-  PACKAGES+=" legacy-node"
-  PACKAGES+=" legacy-browser"
-fi
+PACKAGES=$(docker run ${DOCKER_RUN_OPTS} bash -c 'npm run tooling --silent -- list --fortests')
 for PACKAGE in ${PACKAGES}; do
-  if ! echo ${PACKAGE} | grep -qc -v test-helper ; then
-    continue
-  fi
-
-  if ! echo ${PACKAGE} | grep -qc -v bin- ; then
-    continue
-  fi
-
-  if ! echo ${PACKAGE} | grep -qc -v xunit-with-logs ; then
-    continue
-  fi
-
-  if ! echo ${PACKAGE} | grep -qc -v eslint-config ; then
-    continue
-  fi
-
   CONTAINER_NAME="$(echo ${PACKAGE} | awk -F '/' '{ print $NF }')-${BUILD_NUMBER}"
 
   if [ -n "${CONCURRENCY}" ]; then
