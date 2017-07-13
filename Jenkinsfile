@@ -328,6 +328,14 @@ ansiColor('xterm') {
                 skipTests = true
               }
               if (!skipTests) {
+                step([
+                  $class: 'CopyArtifact',
+                  excludes: '**/lcov.info',
+                  filter: 'reports/coverage/**',
+                  fingerprintArtifacts: true,
+                  projectName: 'spark-js-sdk--validated-merge--pipeline2'
+                ])
+
                 timeout(60) {
                   def exitCode = sh script: "./tooling/test.sh", returnStatus: true
 

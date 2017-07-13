@@ -40,6 +40,9 @@ for PACKAGE in ${PACKAGES}; do
   eval "docker run --name=${CONTAINER_NAME} -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} &"
   PID="$!"
   PIDS+=" ${PID}"
+  # In the event we're merging coverage from a previous build, we want to delete
+  # the old coverage info for the package(s) under test in this build.
+  rm -rf "./reports/{coverage,coverage-final}/${PACKAGE}"
   echo "Running tests for ${PACKAGE} as ${PID}"
 
   echo "The following containers are running on this host"
