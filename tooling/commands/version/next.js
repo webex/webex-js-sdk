@@ -13,7 +13,7 @@ module.exports = {
       type: `boolean`
     }
   },
-  handler: wrapHandler(async ({always}) => {
+  handler: wrapHandler(async({always}) => {
     // eslint-disable-next-line callback-return
     console.log(await next({always}));
   })

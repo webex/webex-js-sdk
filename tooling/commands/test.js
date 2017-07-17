@@ -82,7 +82,7 @@ module.exports = {
       type: `boolean`
     }
   },
-  handler: wrapHandler(async (argv) => {
+  handler: wrapHandler(async(argv) => {
     if (!argv.browser && !argv.node) {
       argv.browser = argv.node = true;
     }

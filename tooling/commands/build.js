@@ -9,7 +9,7 @@ module.exports = {
   builder: {
 
   },
-  handler: wrapHandler(async ({packageName}) => {
+  handler: wrapHandler(async({packageName}) => {
     if (packageName) {
       await buildPackage(packageName);
     }
