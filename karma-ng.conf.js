@@ -39,7 +39,7 @@ function makeConfig(packageName, argv) {
   let cfg = {
     basePath: `.`,
 
-    browserDisconnectTimeout: 10000,
+    browserDisconnectTimeout: 60000,
 
     browserDisconnectTolerance: 3,
 
@@ -54,7 +54,7 @@ function makeConfig(packageName, argv) {
       ]
     },
 
-    browserNoActivityTimeout: 240000,
+    browserNoActivityTimeout: 480000,
 
     // Inspired by Angular's karma config as recommended by Sauce Labs
     captureTimeout: 0,
@@ -72,7 +72,7 @@ function makeConfig(packageName, argv) {
       `mocha`
     ],
 
-    hostname: `127.0.0.1`,
+    hostname: `localhost`,
 
     client: {
       mocha: {
@@ -93,8 +93,8 @@ function makeConfig(packageName, argv) {
     preprocessors,
 
     proxies: {
-      '/fixtures/': `http://127.0.0.1:${process.env.FIXTURE_PORT}/`,
-      '/upload': `http://127.0.0.1:${process.env.FIXTURE_PORT}/upload`
+      '/fixtures/': `http://localhost:${process.env.FIXTURE_PORT}/`,
+      '/upload': `http://localhost:${process.env.FIXTURE_PORT}/upload`
     },
 
     reporters: [

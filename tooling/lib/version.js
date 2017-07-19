@@ -1,4 +1,4 @@
-'use strict';
+
 const debug = require(`debug`)(`tooling:version`);
 const _ = require(`lodash`);
 const {getDistTag} = require(`./npm`);

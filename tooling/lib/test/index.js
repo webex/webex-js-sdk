@@ -1,4 +1,4 @@
-'use strict';
+
 
 /* eslint-disable require-jsdoc */
 const debug = require(`debug`)(`tooling:test`);
@@ -64,11 +64,27 @@ exports.testPackage = async function testPackage(options, packageName) {
     await runAutomationSuite(options, packageName);
   }
 
+  // Note: running docs test last because the babel transform interferes with
+  // other test suites' test code. We should probably look at how to unload the
+  // jsdoctrine transform once the doc tests complete.
+  if (options.documentation) {
+    await runDocsSuite(options, packageName);
+  }
+
   if (options.coverage) {
     await collect(packageName);
     await combine(packageName);
   }
 };
+
+async function runDocsSuite(options, packageName) {
+  debug(`Running documentation tests for ${packageName}`);
+  const files = await glob(`dist/**/*.js`, {packageName});
+  // eslint-disable-next-line global-require
+  require(`${process.cwd()}/packages/node_modules/@ciscospark/jsdoctrinetest`);
+  await mochaTest(options, packageName, `documentation`, files.map((f) => `packages/node_modules/${packageName}/${f}`));
+  debug(`Finished documentation suite for ${packageName}`);
+}
 
 async function runNodeSuite(options, packageName) {
   debug(`Running node suite for ${packageName}`);

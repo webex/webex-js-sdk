@@ -4,15 +4,15 @@ module.exports = {
   env: {
     node: true
   },
-  ecmaFeatures: {
-    globalReturn: false
-  },
   globals: {
     Promise: false
   },
   parserOptions: {
     ecmaVersion: 5,
-    sourceType: 'script'
+    sourceType: 'script',
+    ecmaFeatures: {
+      globalReturn: false
+    }
   },
   rules: {
     //
