@@ -111,13 +111,7 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
   echo "" >> ${GRUNT_LOG_FILE}
   echo "### Attempt ${SUITE_ITERATION} ###" >> ${GRUNT_LOG_FILE}
   echo "" >> ${GRUNT_LOG_FILE}
-  if [ "${PACKAGE}" == "legacy-node" ]; then
-    npm run test:legacy-node >> ${GRUNT_LOG_FILE} 2>&1
-  elif [ "${PACKAGE}" == "legacy-browser" ]; then
-    npm run test:legacy-browser >> ${GRUNT_LOG_FILE} 2>&1
-  else
-    npm run test >> ${GRUNT_LOG_FILE} 2>&1
-  fi
+  npm run test >> ${GRUNT_LOG_FILE} 2>&1
   EXIT_CODE=$?
   set -e
 

@@ -36,7 +36,7 @@ exports.updated = async function updated({dependents, npm}) {
 };
 
 /**
- * Determins the package to which a given file belongs. Includes the meta
+ * Determines the package to which a given file belongs. Includes the meta
  * packages "docs", "legacy", and "tooling"
  * @param {string} d
  * @private
