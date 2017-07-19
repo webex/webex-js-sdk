@@ -16,9 +16,12 @@ echo "##########################################################################
 
 PIDS=""
 
-PACKAGES=$(ls ./packages/node_modules | grep -v @ciscospark)
+# The webrtc test is *very* slow in firefox, so we'll start it at the top of the
+# suite
+PACKAGES=" "
+PACKAGES+=$(ls ./packages/node_modules | grep -v @ciscospark)
 PACKAGES+=" "
-PACKAGES+="$(cd ./packages/node_modules/ && find @ciscospark -maxdepth 1 -type d | egrep -v @ciscospark$)"
+PACKAGES+="$(cd ./packages/node_modules/ && find @ciscospark -maxdepth 1 -type d | egrep -v @ciscospark$) | grep -v media-adapter-webrtc"
 # copied from http://www.tldp.org/LDP/abs/html/comparison-ops.html because I can
 # never remember which is which
 # > -z string is null, that is, has zero length
@@ -26,6 +29,10 @@ PACKAGES+="$(cd ./packages/node_modules/ && find @ciscospark -maxdepth 1 -type d
 if [ -n "${PIPELINE}" ]; then
   PACKAGES+=" legacy-node"
   PACKAGES+=" legacy-browser"
+else
+  # the adapter tests are only unit tests so we don't want to run them in gating
+  # pipelines
+  PACKAGES="@ciscospark/media-adapter-webrtc ${PACKAGES}"
 fi
 for PACKAGE in ${PACKAGES}; do
   if ! echo ${PACKAGE} | grep -qc -v test-helper ; then
