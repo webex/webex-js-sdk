@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
 
-
 const debug = require(`debug`)(`monorepo:test:karma`);
 const {readFile} = require(`fs-promise`);
 const {stopper} = require(`karma`);

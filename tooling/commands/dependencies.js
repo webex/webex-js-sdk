@@ -1,5 +1,4 @@
 
-
 module.exports = {
   command: `dependencies`,
   desc: `Work with dependencies`,
