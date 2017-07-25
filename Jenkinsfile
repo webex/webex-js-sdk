@@ -324,8 +324,14 @@ ansiColor('xterm') {
 
             stage('test') {
               def lastLog = sh script: 'git log -n 1', returnStdout: true
+              echo "checking if tests should be skipped"
               if (lastLog.contains('[ci skip]')) {
+                echo "tests should be skipped"
                 skipTests = true
+                warn('Bypassing tests according to commit message instruction');
+              }
+              else {
+                echo "tests should not be skipped"
               }
               if (!skipTests) {
                 step([
