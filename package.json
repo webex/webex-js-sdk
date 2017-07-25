@@ -75,7 +75,7 @@
     "test:legacy-browser": "PACKAGE=legacy UPLOAD_DIR=browser grunt test:karma",
     "distsrc": "sed -ibak 's#\"main\": \"dist/index.js#\"main\": \"src/index.js#' packages/node_modules/{*,@ciscospark/*}/package.json && rimraf packages/node_modules/{*,@ciscospark/*}/*bak",
     "srcdist": "sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' packages/node_modules/{*,@ciscospark/*}/package.json && rimraf packages/node_modules/{*,@ciscospark/*}/*bak",
-    "prepublish": "in-install && npm run --silent link-lint-rules || not-in-install",
+    "prepublish": "in-install",
     "publish:docs": "grunt --gruntfile Gruntfile.concurrent.js publish:docs",
     "link-lint-rules": "rimraf ./node_modules/@ciscospark/eslint-config && mkdirp node_modules/@ciscospark && ln -s $(pwd)/packages/node_modules/@ciscospark/eslint-config $(pwd)/node_modules/@ciscospark/eslint-config",
     "get-next-version": "./tooling/index.js version next --always",
@@ -206,6 +206,7 @@
     "yosay": "^1.2.1"
   },
   "devDependencies": {
+    "@ciscospark/eslint-config": "^2.0.1",
     "babel-cli": "^6.24.1",
     "babel-eslint": "^7.1.1",
     "babel-plugin-lodash": "^3.2.11",
@@ -236,7 +237,7 @@
     "documentation": "^4.0.0-rc.0",
     "documentation-theme-utils": "^3.0.0",
     "dotenv": "^2.0.0",
-    "eslint": "^3.14.1",
+    "eslint": "^3.19.0",
     "eslint-plugin-import": "^2.2.0",
     "eslint-plugin-jsx": "0.0.2",
     "eslint-plugin-jsx-a11y": "^4.0.0",

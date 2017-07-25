@@ -1,4 +1,4 @@
-'use strict';
+
 
 const debug = require(`debug`)(`tooling:test:mocha`);
 const Mocha = require(`mocha`);

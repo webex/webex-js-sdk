@@ -1,4 +1,4 @@
-'use strict';
+
 
 /* eslint-disable require-jsdoc */
 const debug = require(`debug`)(`tooling:test`);

@@ -1,5 +1,3 @@
-'use strict';
-
 const debug = require(`debug`)(`tooling:npm`);
 const {read} = require(`../util/package`);
 const {exec} = require(`./async`);

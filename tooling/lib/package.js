@@ -1,5 +1,3 @@
-'use strict';
-
 const _list = require(`../util/package`).list;
 
 let packages;

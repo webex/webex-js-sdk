@@ -1,4 +1,4 @@
-'use strict';
+
 
 const debug = require(`debug`)(`tooling:test:common`);
 const {glob} = require(`../../util/package`);

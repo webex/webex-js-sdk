@@ -1,5 +1,3 @@
-'use strict';
-
 const debug = require(`debug`)(`tooling:openh264`);
 const denodeify = require(`denodeify`);
 const {rimraf} = require(`./async`);
