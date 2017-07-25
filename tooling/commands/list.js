@@ -19,15 +19,20 @@ module.exports = {
   },
   handler: wrapHandler(async ({fortests, forpipeline}) => {
     let packages;
-    if (fortests || forpipeline) {
+    if (fortests) {
       const changed = await updated({});
-      if (changed.includes(`tooling`) || forpipeline) {
+      if (changed.includes(`tooling`)) {
         packages = await list();
       }
       else {
         packages = await updated({dependents: true});
       }
+    }
+    else {
+      packages = await list();
+    }
 
+    if (forpipeline || fortests) {
       if (packages.includes(`legacy`)) {
         packages = packages.filter((p) => p !== `legacy`);
         packages.push(`legacy-node`);
@@ -39,9 +44,6 @@ module.exports = {
         .filter((p) => !p.includes(`test-helper-`))
         .filter((p) => !p.includes(`eslint-config`))
         .filter((p) => !p.includes(`xunit-with-logs`));
-    }
-    else {
-      packages = await list();
     }
 
     for (const pkg of packages) {
