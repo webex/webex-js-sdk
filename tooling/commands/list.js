@@ -10,13 +10,18 @@ module.exports = {
       default: false,
       description: `list packages that should be tested in CI`,
       type: `boolean`
+    },
+    forpipeline: {
+      default: false,
+      description: `list packages that should be tested in a pipeline gating job`,
+      type: `boolean`
     }
   },
-  handler: wrapHandler(async ({fortests}) => {
+  handler: wrapHandler(async ({fortests, forpipeline}) => {
     let packages;
-    if (fortests) {
+    if (fortests || forpipeline) {
       const changed = await updated({});
-      if (changed.includes(`tooling`)) {
+      if (changed.includes(`tooling`) || forpipeline) {
         packages = await list();
       }
       else {
