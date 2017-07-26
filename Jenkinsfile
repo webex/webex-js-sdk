@@ -333,15 +333,18 @@ ansiColor('xterm') {
               else {
                 echo "tests should not be skipped"
               }
-              if (!skipTests) {
-                step([
-                  $class: 'CopyArtifact',
-                  excludes: '**/lcov.info',
-                  filter: 'reports/coverage/**',
-                  fingerprintArtifacts: true,
-                  projectName: 'spark-js-sdk--validated-merge--pipeline2'
-                ])
 
+              // Need to disable until we get a full build through.
+              // step([
+              //   $class: 'CopyArtifact',
+              //   excludes: '**/lcov.info',
+              //   filter: 'reports/coverage/**',
+              //   fingerprintArtifacts: true,
+              //   projectName: 'spark-js-sdk--validated-merge--pipeline2'
+              // ])
+              // echo 'copy complete'
+
+              if (!skipTests) {
                 timeout(60) {
                   def exitCode = sh script: "./tooling/test.sh", returnStatus: true
 
