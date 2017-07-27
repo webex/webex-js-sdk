@@ -257,9 +257,9 @@ ansiColor('xterm') {
 
           stage('install') {
             image.inside(DOCKER_RUN_OPTS) {
-              sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
+              sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > ${HOME}/.npmrc'
+              sh 'npm prune'
               sh 'npm install'
-              sh 'npm run link-lint-rules'
             }
           }
 

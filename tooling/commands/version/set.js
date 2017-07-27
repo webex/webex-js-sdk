@@ -17,7 +17,7 @@ module.exports = {
       type: `boolean`
     }
   },
-  handler: wrapHandler(async ({all, version, lastLog}) => {
+  handler: wrapHandler(async({all, version, lastLog}) => {
     await set(version, {all, lastLog});
   })
 };
