@@ -1,113 +1,17 @@
-def IS_VALIDATED_MERGE_BUILD = false
-def HAS_LEGACY_CHANGES
-skipTests = false
+def skipTests = false
 
-def warn = { msg ->
-  if (!currentBuild.description) {
-    currentBuild.description += ''
-  }
-  else if (currentBuild.description.substring(currentBuild.description.length() - 1) != '\n') {
-    currentBuild.description += '<br/>\n'
-  }
-  currentBuild.description += "warning: ${msg}<br/>\n"
-}
+env.CONCURRENCY = 4
+env.ENABLE_VERBOSE_NETWORK_LOGGING = true
+env.SDK_ROOT_DIR=pwd
+env.COVERAGE = true
 
-def cleanup = { ->
-  // Reminder: cleanup can't be a stage because it will cause Jenkins to drop
-  // discard the stage view for any build that happened before a failed build
-  try {
-    archive 'reports/**/*'
-    archive 'html-report/**/*'
-  }
-  catch(err) {
-    // ignore; not sure if this'll throw if no reports have been generated
-  }
-  sh 'rm -f .env'
+def DOCKER_IMAGE_NAME = "${JOB_NAME}-${BUILD_NUMBER}-builder"
 
-  if (IS_VALIDATED_MERGE_BUILD) {
-    if (currentBuild.result != 'SUCCESS') {
-      withCredentials([usernamePassword(
-        credentialsId: '386d3445-b855-40e4-999a-dc5801336a69',
-        passwordVariable: 'GAUNTLET_PASSWORD',
-        usernameVariable: 'GAUNTLET_USERNAME'
-      )]) {
-        sh "curl -i --user ${GAUNTLET_USERNAME}:${GAUNTLET_PASSWORD} -X PUT 'https://gauntlet.wbx2.com/api/queues/spark-js-sdk/master?componentTestStatus=failure&commitId=${GIT_COMMIT}'"
-      }
-    }
-  }
-}
+def helpers
+def image
 
-def generateDockerEnv = { ->
-  def dockerEnv = ""
-  if (env.ATLAS_SERVICE_URL != null) {
-    dockerEnv+="ATLAS_SERVICE_URL=${env.ATLAS_SERVICE_URL}\n"
-  }
-  if (env.BUILD_NUMBER != null) {
-    dockerEnv+="BUILD_NUMBER=${env.BUILD_NUMBER}\n"
-  }
-  if (env.CISCOSPARK_APPID_ORGID != null) {
-    dockerEnv+="CISCOSPARK_APPID_ORGID=${env.CISCOSPARK_APPID_ORGID}\n"
-  }
-  if (env.CONVERSATION_SERVICE != null) {
-    dockerEnv+="CONVERSATION_SERVICE=${env.CONVERSATION_SERVICE}\n"
-  }
-  if (env.COMMON_IDENTITY_OAUTH_SERVICE_URL != null) {
-    dockerEnv+="COMMON_IDENTITY_OAUTH_SERVICE_URL=${env.COMMON_IDENTITY_OAUTH_SERVICE_URL}\n"
-  }
-  if (env.COVERAGE != null) {
-    dockerEnv+="COVERAGE=${env.COVERAGE}\n"
-  }
-  if (env.DEVICE_REGISTRATION_URL != null) {
-    dockerEnv+="DEVICE_REGISTRATION_URL=${env.DEVICE_REGISTRATION_URL}\n"
-  }
-  if (env.ENABLE_NETWORK_LOGGING != null) {
-    dockerEnv+="ENABLE_NETWORK_LOGGING=${env.ENABLE_NETWORK_LOGGING}\n"
-  }
-  if (env.ENABLE_VERBOSE_NETWORK_LOGGING != null) {
-    dockerEnv+="ENABLE_VERBOSE_NETWORK_LOGGING=${env.ENABLE_VERBOSE_NETWORK_LOGGING}\n"
-  }
-  if (env.HYDRA_SERVICE_URL != null) {
-    dockerEnv+="HYDRA_SERVICE_URL=${env.HYDRA_SERVICE_URL}\n"
-  }
-  if (env.PIPELINE != null) {
-    dockerEnv+="PIPELINE=${env.PIPELINE}\n"
-  }
-  if (env.SAUCE_IS_DOWN != null) {
-    dockerEnv+="SAUCE_IS_DOWN=${env.SAUCE_IS_DOWN}\n"
-  }
-  if (env.SDK_BUILD_DEBUG != null) {
-    dockerEnv+="SDK_BUILD_DEBUG=${env.SDK_BUILD_DEBUG}\n"
-  }
-  if (env.SKIP_FLAKY_TESTS != null) {
-    dockerEnv+="SKIP_FLAKY_TESTS=${env.SKIP_FLAKY_TESTS}\n"
-  }
-  if (env.WDM_SERVICE_URL != null) {
-    dockerEnv+="WDM_SERVICE_URL=${env.WDM_SERVICE_URL}\n"
-  }
-  if (env.WORKSPACE != null) {
-    dockerEnv+="WORKSPACE=${env.WORKSPACE}\n"
-  }
-  writeFile file: DOCKER_ENV_FILE, text: dockerEnv
-}
-
-def generateSecretsFile = { ->
-  withCredentials([
-    string(credentialsId: '9f44ab21-7e83-480d-8fb3-e6495bf7e9f3', variable: 'CISCOSPARK_CLIENT_SECRET'),
-    string(credentialsId: 'CISCOSPARK_APPID_SECRET', variable: 'CISCOSPARK_APPID_SECRET'),
-    usernamePassword(credentialsId: 'SAUCE_LABS_VALIDATED_MERGE_CREDENTIALS', passwordVariable: 'SAUCE_ACCESS_KEY', usernameVariable: 'SAUCE_USERNAME'),
-    string(credentialsId: 'ddfd04fb-e00a-4df0-9250-9a7cb37bce0e', variable: 'COMMON_IDENTITY_CLIENT_SECRET'),
-    string(credentialsId: 'NPM_TOKEN', variable: 'NPM_TOKEN')
-  ]) {
-    def secrets = ""
-    secrets += "COMMON_IDENTITY_CLIENT_SECRET=${COMMON_IDENTITY_CLIENT_SECRET}\n"
-    secrets += "CISCOSPARK_APPID_SECRET=${CISCOSPARK_APPID_SECRET}\n"
-    secrets += "CISCOSPARK_CLIENT_SECRET=${CISCOSPARK_CLIENT_SECRET}\n"
-    secrets += "SAUCE_USERNAME=${SAUCE_USERNAME}\n"
-    secrets += "SAUCE_ACCESS_KEY=${SAUCE_ACCESS_KEY}\n"
-    secrets += "NPM_TOKEN=${NPM_TOKEN}"
-    writeFile file: ENV_FILE, text: secrets
-  }
-}
+// Set the description to blank so we can use +=
+currentBuild.description = ''
 
 ansiColor('xterm') {
   timestamps {
@@ -115,27 +19,22 @@ ansiColor('xterm') {
 
       node("SPARK_JS_SDK_VALIDATING") {
         try {
-          // Set the description to blank so we can use +=
-          currentBuild.description = ''
+          DOCKER_ENV_FILE = "${env.WORKSPACE}/docker-env"
+          ENV_FILE = "${env.WORKSPACE}/.env"
 
-          env.CONCURRENCY = 4
-          env.ENABLE_VERBOSE_NETWORK_LOGGING = true
-          env.SDK_ROOT_DIR=pwd
-
-          if (JOB_NAME.toLowerCase().contains('validated-merge')) {
-            IS_VALIDATED_MERGE_BUILD = true
-          }
-
-          if (IS_VALIDATED_MERGE_BUILD) {
-            env.COVERAGE = true
-          }
-          else {
-            env.PIPELINE = true
-            env.SKIP_FLAKY_TESTS = true
-          }
-
-          DOCKER_IMAGE_NAME = "${JOB_NAME}-${BUILD_NUMBER}-builder"
-          def image
+          DOCKER_RUN_OPTS = '-e JENKINS=true'
+          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --env-file=${DOCKER_ENV_FILE}"
+          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --env-file=${ENV_FILE}"
+          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} -e NPM_CONFIG_CACHE=${env.WORKSPACE}/.npm"
+          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --volumes-from=\$(hostname)"
+          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --user=\$(id -u):\$(id -g)"
+          // DOCKER_RUN_OPTS has some values in it that we want to evaluate on
+          // the node, but image.inside doesn't do subshell execution. We'll use
+          // echo to evaluate once on the node and store the values.
+          DOCKER_RUN_OPTS = sh script: "echo -n ${DOCKER_RUN_OPTS}", returnStdout: true
+          // image.inside uses the -d flag, so we can only use --rm for
+          // bash-started containers
+          env.DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --rm ${DOCKER_IMAGE_NAME}"
 
           // Kill any zombie containers from previous jobs
           try {
@@ -164,74 +63,37 @@ ansiColor('xterm') {
             }
           }
 
-          DOCKER_ENV_FILE = "${env.WORKSPACE}/docker-env"
-          ENV_FILE = "${env.WORKSPACE}/.env"
-
-          DOCKER_RUN_OPTS = '-e JENKINS=true'
-          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --env-file=${DOCKER_ENV_FILE}"
-          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --env-file=${ENV_FILE}"
-          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} -e NPM_CONFIG_CACHE=${env.WORKSPACE}/.npm"
-          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --volumes-from=\$(hostname)"
-          DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --user=\$(id -u):\$(id -g)"
-          // DOCKER_RUN_OPTS has some values in it that we want to evaluate on
-          // the node, but image.inside doesn't do subshell execution. We'll use
-          // echo to evaluate once on the node and store the values.
-          DOCKER_RUN_OPTS = sh script: "echo -n ${DOCKER_RUN_OPTS}", returnStdout: true
-          // image.inside uses the -d flag, so we can only use --rm for
-          // bash-started containers
-          env.DOCKER_RUN_OPTS = "${DOCKER_RUN_OPTS} --rm ${DOCKER_IMAGE_NAME}"
-
           stage('checkout') {
             checkout scm
+            helpers = load './helpers.groovy'
+
             // Copy the global git user details into the local repo so that the
             // docker containers have access to it.
             sh 'git config user.email spark-js-sdk.gen@cisco.com'
             sh 'git config user.name Jenkins'
-            if (IS_VALIDATED_MERGE_BUILD) {
-              try {
-                pusher = sh script: 'git show  --quiet --format=%ae HEAD', returnStdout: true
-                currentBuild.description += "Validating push from ${pusher}"
-              }
-              catch (err) {
-                currentBuild.description += 'Could not determine pusher';
-              }
+            helpers.setPusher()
 
-              sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
-                // return the exit code because we don't care about failures
-                sh script: 'git remote add upstream git@github.com:ciscospark/spark-js-sdk.git', returnStatus: true
-                // Make sure local tags don't include failed releases
-                sh 'git tag | xargs git tag -d'
-                sh 'git gc'
+            sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+              // return the exit code because we don't care about failures
+              sh script: 'git remote add upstream git@github.com:ciscospark/spark-js-sdk.git', returnStatus: true
+              // Make sure local tags don't include failed releases
+              sh 'git tag | xargs git tag -d'
+              sh 'git gc'
 
-                sh 'git fetch upstream --tags'
-              }
-
-              changedFiles = sh script: 'git diff --name-only upstream/master..$(git merge-base HEAD upstream/master)', returnStdout: true
-              if (changedFiles.contains('Jenkinsfile')) {
-                currentBuild.description += "Jenkinsfile has been updated in master. Please rebase and push again."
-                error(currentBuild.description)
-              }
-
-              try {
-                sh 'git diff --name-only upstream/master | grep -v src/version.js | grep -e ^src'
-                HAS_LEGACY_CHANGES = true
-              }
-              catch (error) {
-                HAS_LEGACY_CHANGES = false
-              }
-
-              sh 'git checkout upstream/master'
-              try {
-                sh "git merge --ff ${GIT_COMMIT}"
-              }
-              catch (err) {
-                currentBuild.description += 'not possible to fast forward'
-                throw err;
-              }
+              sh 'git fetch upstream --tags'
             }
 
-            generateDockerEnv()
-            generateSecretsFile()
+            sh 'git checkout upstream/master'
+            try {
+              sh "git merge --ff ${GIT_COMMIT}"
+            }
+            catch (err) {
+              currentBuild.description += 'not possible to fast forward'
+              throw err;
+            }
+
+            helpers.generateDockerEnv(DOCKER_ENV_FILE)
+            helpers.generateSecretsFile(ENV_FILE)
           }
 
           stage('docker build') {
@@ -281,30 +143,28 @@ ansiColor('xterm') {
             sh 'chmod -R ugo+w reports'
           }
 
-          if (IS_VALIDATED_MERGE_BUILD) {
-            stage('static analysis') {
-              // running eslint on a per-package basis is really slow, so we're
-              // giving up a little bit of per-package static analysis config by
-              // running eslint once across all package.
-              image.inside(DOCKER_RUN_OPTS) {
-                sh script: "npm run lint", returnStatus: true
-                if (!fileExists("./reports/style/eslint.xml")) {
-                  error('Static Analysis did not produce eslint.xml')
-                }
+          stage('static analysis') {
+            // running eslint on a per-package basis is really slow, so we're
+            // giving up a little bit of per-package static analysis config by
+            // running eslint once across all package.
+            image.inside(DOCKER_RUN_OPTS) {
+              sh script: "npm run lint", returnStatus: true
+              if (!fileExists("./reports/style/eslint.xml")) {
+                error('Static Analysis did not produce eslint.xml')
               }
-              step([$class: 'CheckStylePublisher',
-                canComputeNew: false,
-                defaultEncoding: '',
-                healthy: '',
-                pattern: 'reports/style/**/*.xml',
-                thresholdLimit: 'high',
-                unHealthy: '',
-                unstableTotalHigh: '0'
-              ])
             }
+            step([$class: 'CheckStylePublisher',
+              canComputeNew: false,
+              defaultEncoding: '',
+              healthy: '',
+              pattern: 'reports/style/**/*.xml',
+              thresholdLimit: 'high',
+              unHealthy: '',
+              unstableTotalHigh: '0'
+            ])
           }
 
-          if (!IS_VALIDATED_MERGE_BUILD || currentBuild.result == 'SUCCESS') {
+          if (currentBuild.result == 'SUCCESS') {
             stage('build') {
               image.inside(DOCKER_RUN_OPTS) {
                 sh 'npm run build'
@@ -353,10 +213,6 @@ ansiColor('xterm') {
                   if (currentBuild.result == 'SUCCESS' && exitCode != 0) {
                     error('test.sh exited with non-zero error code, but did not produce junit output to that effect')
                   }
-
-                  if (currentBuild.result == 'UNSTABLE' && !IS_VALIDATED_MERGE_BUILD) {
-                    error('Failing build in order to propagate UNSTABLE to parent build')
-                  }
                 }
               }
             }
@@ -384,7 +240,7 @@ ansiColor('xterm') {
             }
 
             def version = ''
-            if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
+            if (currentBuild.result == 'SUCCESS') {
               stage('build for release') {
                 env.NODE_ENV = ''
                 image.inside(DOCKER_RUN_OPTS) {
@@ -395,38 +251,6 @@ ansiColor('xterm') {
                   sh 'npm run build'
 
                   sh "npm run tooling -- version set ${version} --last-log"
-
-                  if (HAS_LEGACY_CHANGES) {
-                    try {
-                      sh 'mv .git/hooks/pre-commit .git/hooks/pre-commit.bak'
-                    }
-                    catch (error) {
-                      // this is fine
-                    }
-
-                    try {
-                      sh 'mv .git/hooks/commit-msg .git/hooks/commit-msg.bak'
-                    }
-                    catch (error) {
-                      // this is fine
-                    }
-
-                    sh 'npm run grunt -- release'
-
-                    try {
-                      sh 'mv .git/hooks/pre-commit.bak .git/hooks/pre-commit'
-                    }
-                    catch (error) {
-                      // this is fine
-                    }
-
-                    try {
-                      sh 'mv .git/hooks/commit-msg.bak .git/hooks/commit-msg'
-                    }
-                    catch (error) {
-                      // this is fine
-                    }
-                  }
 
                   sh 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
 
@@ -449,7 +273,7 @@ ansiColor('xterm') {
               }
             }
 
-            if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
+            if (currentBuild.result == 'SUCCESS') {
               stage('check #no-push') {
                 try {
                   noPushCount = sh script: 'git log upstream/master.. | grep -c "#no-push"', returnStdout: true
@@ -466,7 +290,7 @@ ansiColor('xterm') {
               }
             }
 
-            if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
+            if (currentBuild.result == 'SUCCESS') {
               stage('publish to github') {
                 // Note: if this stage fails, we should consider the build a failure
                 sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
@@ -477,7 +301,7 @@ ansiColor('xterm') {
               stage('mark as gating') {
                 markAsGatingJob = build job: 'spark-js-sdk--mark-as-gating', propagate: false
                 if (markAsGatingJob.result != 'SUCCESS') {
-                  warn('failed to mark as gating')
+                  helpers.warn('failed to mark as gating')
                 }
               }
 
@@ -502,7 +326,7 @@ ansiColor('xterm') {
                     echo ''
                   }
                   if ("${version}" == '') {
-                    warn('could not determine tag name to push to github.com')
+                    helpers.warn('could not determine tag name to push to github.com')
                   }
                   else {
                     sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
@@ -517,7 +341,7 @@ ansiColor('xterm') {
 
                 }
                 catch (error) {
-                  warn("failed to publish to npm ${error.toString()}")
+                  helpers.warn("failed to publish to npm ${error.toString()}")
                 }
               }
 
@@ -543,7 +367,7 @@ ansiColor('xterm') {
                   }
                 }
                 catch (error) {
-                  warn("failed to publish docs ${error.toString()}")
+                  helpers.warn("failed to publish docs ${error.toString()}")
                 }
 
               }
@@ -555,25 +379,13 @@ ansiColor('xterm') {
                 // }
                 // exitStatus = sh script: 'git push ghe HEAD:master', returnStatus: true
                 // if (!exitStatus) {
-                //   warn('failed to push to github enterprise')
+                //   helpers.warn('failed to push to github enterprise')
                 // }
-              }
-
-              stage('publish to artifactory') {
-                if (HAS_LEGACY_CHANGES) {
-                  // using a downstream job because (a) we're going to stop
-                  // publishing to artifactory once the legacy sdk goes away and
-                  // (b) the npm secret is only recorded in that job.
-                  def artifactoryBuild = build job: 'spark-js-sdk--publish-to-artifactory', propagate: false
-                  if (artifactoryBuild.result != 'SUCCESS') {
-                    currentBuild.description += 'waring: failed to publish to Artifactory'
-                  }
-                }
               }
             }
           }
 
-          cleanup(IS_VALIDATED_MERGE_BUILD)
+          helpers.cleanup()
         }
         catch(error) {
           echo "An error occurred. The following containers are still running on this host"
@@ -595,7 +407,7 @@ ansiColor('xterm') {
           }
 
           echo error.toString();
-          cleanup(IS_VALIDATED_MERGE_BUILD)
+          helpers.cleanup()
           throw error
         }
       }
