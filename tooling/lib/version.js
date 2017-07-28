@@ -21,6 +21,7 @@ exports.last = async function last() {
     .filter((p) => p !== `@ciscospark/eslint-config`)
     .map(getDistTag)))
     .sort()
+    .filter()
     .map((v) => v.trim())
     // TODO stop omitting v2 packages once the last once is unpublished
     .filter((v) => !v.startsWith(`2.`))
