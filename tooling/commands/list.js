@@ -50,6 +50,36 @@ module.exports = {
         .filter((p) => !p.includes(`test-helper-`))
         .filter((p) => !p.includes(`eslint-config`))
         .filter((p) => !p.includes(`xunit-with-logs`));
+
+      // this array is ranked in the order of approximate slowness. At this
+      // time, that order is based on eyeballing some xml files rather than
+      // empirical measurements of overall suite duration.
+      const slow = [
+        `@ciscospark/media-engine-webrtc`,
+        `@ciscospark/plugin-phone`,
+        `@ciscospark/internal-plugin-conversation`,
+        `ciscospark`,
+        `@ciscospark/plugin-authorization-browser`
+      ];
+
+      packages.sort((a, b) => {
+        const aIsSlow = slow.includes(a);
+        const bIsSlow = slow.includes(b);
+
+        if (aIsSlow === bIsSlow) {
+          return slow.indexOf(a) - slow.indexOf(b);
+        }
+
+        if (aIsSlow) {
+          return -1;
+        }
+
+        if (bIsSlow) {
+          return 1;
+        }
+
+        return 0;
+      });
     }
 
     for (const pkg of packages) {
