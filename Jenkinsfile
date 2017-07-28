@@ -24,6 +24,15 @@ def cleanup = { ->
   }
   sh 'rm -f .env'
 
+  try {
+    if (fileExists('./reports/timings')) {
+      currentBuild.description += readFile('./reports/timings')
+    }
+  }
+  catch(err) {
+    warn('could not read timings file');
+  }
+
   if (IS_VALIDATED_MERGE_BUILD) {
     if (currentBuild.result != 'SUCCESS') {
       withCredentials([usernamePassword(

@@ -6,13 +6,27 @@
 
 set -e
 
+SUITE_START_TIME=$(date +%s)
+
+function reportTime {
+  if [ "$?" == "0" ]; then
+    SUITE_END_TIME=$(date +%s)
+    DURATION=$((SUITE_END_TIME - SUITE_START_TIME))
+    echo "${PACKAGE} start/end/duration/suite_retries/sauce_retries: ${SUITE_START_TIME}/${SUITE_END_TIME}/${DURATION}/${SUITE_ITERATION}/${SC_ITERATION}"
+    echo "${PACKAGE},${SUITE_START_TIME},${SUITE_END_TIME},${DURATION},${SUITE_ITERATION},${SC_ITERATION}" >> ./reports/timings
+  fi
+  echo "EXIT detected with exit status $?"
+}
+
+trap 'reportTime' EXIT
+
 # Load secrets
 export env $(cat .env | xargs)
 
-cd ${WORKSPACE}
+cd "${WORKSPACE}"
 
 GRUNT_LOG_FILE="$(pwd)/reports/logs/${PACKAGE}.log"
-mkdir -p "$(dirname ${GRUNT_LOG_FILE})"
+mkdir -p "$(dirname "${GRUNT_LOG_FILE}")"
 export BABEL_CACHE_PATH
 BABEL_CACHE_PATH=$(pwd)/.tmp/babel-cache/${PACKAGE}.babel.json
 mkdir -p "$(pwd)/.tmp/babel-cache"
@@ -60,11 +74,11 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
       echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC Attempt ${SC_ITERATION}: Connecting with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
 
       set +e
-      daemon -U --name sauce_connect -- ${SC_BINARY} \
+      daemon -U --name sauce_connect -- "${SC_BINARY}" \
         -B *.wbx2.com,*.ciscospark.com,idbroker.webex.com,127.0.0.1,localhost \
         -t internal-testing-services.wbx2.com,127.0.0.1,localhost \
         -vv \
-        -l "$(pwd)/reports/sauce/sauce_connect.$(echo ${PACKAGE} | awk -F '/' '{ print $NF }').${SC_ITERATION}.log" \
+        -l "$(pwd)/reports/sauce/sauce_connect.$(echo "${PACKAGE}" | awk -F '/' '{ print $NF }').${SC_ITERATION}.log" \
         --tunnel-identifier "${SC_TUNNEL_IDENTIFIER}" \
         --pidfile "${SC_PID_FILE}" \
         --readyfile "${SC_READY_FILE}"
@@ -108,15 +122,15 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
   fi
 
   set +e
-  echo "" >> ${GRUNT_LOG_FILE}
-  echo "### Attempt ${SUITE_ITERATION} ###" >> ${GRUNT_LOG_FILE}
-  echo "" >> ${GRUNT_LOG_FILE}
+  echo "" >> "${GRUNT_LOG_FILE}"
+  echo "### Attempt ${SUITE_ITERATION} ###" >> "${GRUNT_LOG_FILE}"
+  echo "" >> "${GRUNT_LOG_FILE}"
   if [ "${PACKAGE}" == "legacy-node" ]; then
-    npm run test:legacy-node >> ${GRUNT_LOG_FILE} 2>&1
+    npm run test:legacy-node >> "${GRUNT_LOG_FILE}" 2>&1
   elif [ "${PACKAGE}" == "legacy-browser" ]; then
-    npm run test:legacy-browser >> ${GRUNT_LOG_FILE} 2>&1
+    npm run test:legacy-browser >> "${GRUNT_LOG_FILE}" 2>&1
   else
-    npm run test >> ${GRUNT_LOG_FILE} 2>&1
+    npm run test >> "${GRUNT_LOG_FILE}" 2>&1
   fi
   EXIT_CODE=$?
   set -e
