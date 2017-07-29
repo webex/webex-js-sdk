@@ -1,28 +1,105 @@
 #!/bin/bash
 
+set -e
+
+E_NO_PACKAGE=10
+E_SAUCE_CONNECT_FAILED=20
+E_NO_SAUCE_CONNECT_PID=30
 #
 # This is the entry point for the docker suite.
 #
 
-set -e
+# copied from http://www.tldp.org/LDP/abs/html/comparison-ops.html because I can
+# never remember which is which
+# > -z string is null, that is, has zero length
+# > -n string is not null.
 
-SUITE_START_TIME=$(date +%s)
+trap 'onExit' EXIT
+
+function log {
+  OUT="${PACKAGE}: "
+  if [ -n "${SUITE_ITERATION}" ]; then
+    OUT="${OUT}Suite Attempt ${SUITE_ITERATION}: "
+  fi
+  if [ -n "${SC_ITERATION}" ]; then
+    OUT="${OUT}SC Attempt ${SC_ITERATION} "
+  fi
+  echo "${OUT}${1}"
+}
+
+function onExit {
+  SCRIPT_EXIT_CODE=$?
+  stopSauce
+  reportTime $SCRIPT_EXIT_CODE
+}
 
 function reportTime {
-  if [ "$?" == "0" ]; then
+  if [ "$1" == "0" ]; then
     SUITE_END_TIME=$(date +%s)
     DURATION=$((SUITE_END_TIME - SUITE_START_TIME))
     echo "${PACKAGE} start/end/duration/suite_retries/sauce_retries: ${SUITE_START_TIME}/${SUITE_END_TIME}/${DURATION}/${SUITE_ITERATION}/${SC_ITERATION}"
     echo "${PACKAGE},${SUITE_START_TIME},${SUITE_END_TIME},${DURATION},${SUITE_ITERATION},${SC_ITERATION}" >> ./reports/timings
   fi
-  echo "EXIT detected with exit status $?"
+  echo "Suite for ${PACKAGE} exited with status ${1}"
 }
 
-trap 'reportTime' EXIT
+function startSauce {
+  "${SC_BINARY}" \
+    -B "*.wbx2.com,*.ciscospark.com,idbroker.webex.com,127.0.0.1,localhost" \
+    -t internal-testing-services.wbx2.com,127.0.0.1,localhost \
+    -vv \
+    -l "$(pwd)/reports/sauce/sauce_connect.$(echo "${PACKAGE}" | awk -F '/' '{ print $NF }').${SC_ITERATION}.log" \
+    --tunnel-identifier "${SC_TUNNEL_IDENTIFIER}" \
+    --pidfile "${SC_PID_FILE}" \
+    --readyfile "${SC_READY_FILE}" \
+    &
+  SAUCE_PID=$!
+  export SAUCE_PID
+
+  kill -0 "${SAUCE_PID}"
+  EXIT_CODE="$?"
+  # Succesfully launched sauce, wait for ready file
+  if [ "${EXIT_CODE}" == "0" ]; then
+    log "Succeeded, waiting for readyfile"
+    READY_CHECK=0
+    while [[ ! -e "${SC_READY_FILE}" && ${READY_CHECK} -lt 24 ]]; do
+      sleep 5
+      let READY_CHECK+=1
+      log "Ready Check: ${READY_CHECK}"
+    done
+
+    if [ ! -e "${SC_READY_FILE}" ]; then
+      log "Ready Check Failed"
+      set +e
+      stopSauce
+      set -e
+      return 1
+    fi
+  else
+    log "Failed"
+    return 2
+  fi
+
+  return 0
+}
+
+function stopSauce {
+  # This would be a terrible place to fail the build
+  set +e
+
+  echo "${PACKAGE}: Shutting down Sauce tunnel with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
+
+  kill -9 "${SAUCE_PID}"
+}
+
+set -e
+
+SUITE_START_TIME=$(date +%s)
 
 # Load secrets
 export env $(cat .env | xargs)
 
+# Make sur we're in the workspace directory
 cd "${WORKSPACE}"
 
 GRUNT_LOG_FILE="$(pwd)/reports/logs/${PACKAGE}.log"
@@ -35,89 +112,38 @@ if [ -n "${SDK_BUILD_DEBUG}" ]; then
   set -x
 fi
 
-function STOP_SAUCE {
-  # This would be a terrible place to fail the build
-  set +e
-
-  echo "${PACKAGE}: Shutting down Sauce tunnel with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
-  daemon --stop --name sauce_connect
-  PID_CHECK=0
-  while [[ -e "${SC_PID_FILE}" && ${PID_CHECK} -lt 24 ]]; do
-    sleep 5
-    let PID_CHECK+=1
-    echo "${PACKAGE}: SC Shutdown Check: ${PID_CHECK}"
-  done
-
-  if [ -e "${SC_PID_FILE}" ]; then
-    echo "${PACKAGE}: SC PID file still exists after two minutes; exiting anyway"
-  else
-    echo "${PACKAGE}: SC Tunnel closed successfully"
-  fi
-}
-
-# copied from http://www.tldp.org/LDP/abs/html/comparison-ops.html because I can
-# never remember which is which
-# > -z string is null, that is, has zero length
-# > -n string is not null.
-
 if [ -z "${PACKAGE}" ]; then
   echo "${PACKAGE}: PACKAGE must be defined"
-  exit 20
+  exit "${E_NO_PACKAGE}"
 fi
 
 # FIXME prefix every log statement with $PACKAGE
 for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
-  if [[ -z "${SAUCE_IS_DOWN}" && ! -e "${SC_PID_FILE}" ]]; then
+  if [ -z "${SAUCE_IS_DOWN}" ]; then
     for SC_ITERATION in $(seq 1 "${MAX_SAUCE_CONNECT_RETRIES}"); do
       export SC_TUNNEL_IDENTIFIER
       SC_TUNNEL_IDENTIFIER="${PACKAGE}-$(cat /proc/sys/kernel/random/uuid)"
-      echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC Attempt ${SC_ITERATION}: Connecting with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
+      log "Connecting with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
 
-      set +e
-      daemon -U --name sauce_connect -- "${SC_BINARY}" \
-        -B *.wbx2.com,*.ciscospark.com,idbroker.webex.com,127.0.0.1,localhost \
-        -t internal-testing-services.wbx2.com,127.0.0.1,localhost \
-        -vv \
-        -l "$(pwd)/reports/sauce/sauce_connect.$(echo "${PACKAGE}" | awk -F '/' '{ print $NF }').${SC_ITERATION}.log" \
-        --tunnel-identifier "${SC_TUNNEL_IDENTIFIER}" \
-        --pidfile "${SC_PID_FILE}" \
-        --readyfile "${SC_READY_FILE}"
-      EXIT_CODE=$?
-      set -e
-
-      if [ "${EXIT_CODE}" -ne "0" ]; then
-        echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC Attempt ${SC_ITERATION}: Failed"
-        continue
+      startSauce
+      SAUCE_CONNECTED=$?
+      if [ "${SAUCE_CONNECTED}" == "0" ]; then
+        unset SC_ITERATION
+        break
       fi
-
-      echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC Attempt ${SC_ITERATION}: Succeeded, waiting for readyfile"
-
-      READY_CHECK=0
-      while [[ ! -e "${SC_READY_FILE}" && ${READY_CHECK} -lt 24 ]]; do
-        sleep 5
-        let READY_CHECK+=1
-        echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC Attempt ${SC_ITERATION}: Ready Check: ${READY_CHECK}"
-      done
-
-      if [ ! -e "${SC_READY_FILE}" ]; then
-        echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC Attempt ${SC_ITERATION}: Ready Check Failed"
-        set +e
-        STOP_SAUCE
-        set -e
-        continue
-      fi
-
-      # Make sure to kill Sauce Connect when the script exits
-      trap "STOP_SAUCE" EXIT
-
-      break;
     done
 
-    if [ -e "${SC_PID_FILE}" ]; then
-      echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC: Connected with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
-    else
-      echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC: Failed to connect to Sauce Labs"
-      exit 10
+    kill -0 "${SAUCE_PID}"
+    EXIT_CODE=$?
+
+    if [ "${EXIT_CODE}" == "0" ]; then
+      log "Connected with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
+    elif [ "${EXIT_CODE}" == "1" ]; then
+      log "Failed to connect to Sauce Labs"
+      exit "${E_SAUCE_CONNECT_FAILED}"
+    elif [ "${EXIT_CODE}" == "2" ]; then
+      log "Sauce Lab Tunnel PID is not defined"
+      exit "${E_NO_SAUCE_CONNECT_PID}"
     fi
   fi
 
@@ -137,33 +163,25 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
 
   # No need to repeat if there was a success
   if [ "${EXIT_CODE}" -eq "0" ]; then
+    echo "${PACKAGE} Suite completed successfully"
     exit 0
   fi
 
   if [ -z "${SAUCE_IS_DOWN}" ]; then
-    if [ ! -e "${SC_PID_FILE}" ]; then
-      echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC_PID_FILE missing after suite exited with ${EXIT_CODE}"
-      rm -f "${SC_READY_FILE}"
-      continue
-    fi
-
-    PID=$(cat "${SC_PID_FILE}")
-
-    if ps -p "${PID}" > /dev/null; then
+    if ps -p "${SAUCE_PID}" > /dev/null; then
       # Sauce is still connected (as expected)
-      echo "${PACKAGE}: "
+      log "Suite failed, but sauce still appears connected"
     else
-      echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC_PID_FILE present but identified process not running after suite exited with ${EXIT_CODE}"
+      log "Process identified by SAUCE_PID not running after suite exited with ${EXIT_CODE}"
       rm -f "${SC_PID_FILE}"
       rm -f "${SC_READY_FILE}"
       continue
     fi
 
     # SAUCE TUNNEL FAILURES
-    echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: Suite exited with code ${EXIT_CODE}, disconnecting/reconnecting Sauce Tunnel"
-    STOP_SAUCE
+    log "Suite exited with code ${EXIT_CODE}, disconnecting/reconnecting Sauce Tunnel"
+    stopSauce
   fi
-
 done
 
 # SAUCE TUNNEL FAILURES

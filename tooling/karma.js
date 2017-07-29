@@ -1,15 +1,17 @@
 /* eslint-disable no-console */
 
 const debug = require(`debug`)(`monorepo:test:karma`);
-const {readFile} = require(`fs-promise`);
 const {stopper} = require(`karma`);
 const ps = require(`ps-node`);
 
 module.exports = {
   watchSauce: async function watchSauce(server, cfg) {
     try {
+      if (!process.env.SAUCE_PID) {
+        return;
+      }
       debug(`reading sauce pid`);
-      const pid = parseInt(await readFile(process.env.SC_PID_FILE), 10);
+      const pid = parseInt(process.env.SAUCE_PID, 10);
       debug(`sauce pid is ${pid}`);
 
       let done = false;
