@@ -24,6 +24,15 @@ def cleanup = { ->
   }
   sh 'rm -f .env'
 
+  try {
+    if (fileExists('./reports/timings')) {
+      currentBuild.description += readFile('./reports/timings')
+    }
+  }
+  catch(err) {
+    warn('could not read timings file');
+  }
+
   if (IS_VALIDATED_MERGE_BUILD) {
     if (currentBuild.result != 'SUCCESS') {
       withCredentials([usernamePassword(
@@ -118,7 +127,7 @@ ansiColor('xterm') {
           // Set the description to blank so we can use +=
           currentBuild.description = ''
 
-          env.CONCURRENCY = 4
+          env.CONCURRENCY = 5
           env.ENABLE_VERBOSE_NETWORK_LOGGING = true
           env.SDK_ROOT_DIR=pwd
 
@@ -334,15 +343,13 @@ ansiColor('xterm') {
                 echo "tests should not be skipped"
               }
 
-              // Need to disable until we get a full build through.
-              // step([
-              //   $class: 'CopyArtifact',
-              //   excludes: '**/lcov.info',
-              //   filter: 'reports/coverage/**',
-              //   fingerprintArtifacts: true,
-              //   projectName: 'spark-js-sdk--validated-merge--pipeline2'
-              // ])
-              // echo 'copy complete'
+              step([
+                $class: 'CopyArtifact',
+                excludes: '**/lcov.info',
+                filter: 'reports/coverage/**',
+                fingerprintArtifacts: true,
+                projectName: 'spark-js-sdk--validated-merge--pipeline2'
+              ])
 
               if (!skipTests) {
                 timeout(60) {

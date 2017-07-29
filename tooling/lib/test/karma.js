@@ -3,7 +3,6 @@
 const debug = require(`debug`)(`tooling:test:karma`);
 const {Server, stopper} = require(`karma`);
 const {makeConfig} = require(`../../../karma-ng.conf`);
-const {readFile} = require(`fs-promise`);
 const ps = require(`ps-node`);
 const {expectNonEmptyReports, expectNoKmsErrors} = require(`./common`);
 const {glob} = require(`../async`);
@@ -86,8 +85,11 @@ async function run(cfg) {
  */
 async function watchSauce(server, cfg) {
   try {
+    if (!process.env.SAUCE_PID) {
+      return;
+    }
     debug(`reading sauce pid`);
-    const pid = parseInt(await readFile(process.env.SC_PID_FILE), 10);
+    const pid = parseInt(process.env.SAUCE_PID, 10);
     debug(`sauce pid is ${pid}`);
 
     let done = false;

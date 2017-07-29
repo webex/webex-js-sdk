@@ -152,7 +152,7 @@ module.exports = function(grunt) {
 
     fileExists: {
       karmaxml: [
-        './reports/junit/*/karma-legacy.xml'
+        './reports/junit/karma/*/karma-legacy.xml'
       ]
     },
 
