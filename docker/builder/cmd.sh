@@ -9,12 +9,10 @@ set -e
 SUITE_START_TIME=$(date +%s)
 
 function reportTime {
-  if [ "$?" == "0" ]; then
-    SUITE_END_TIME=$(date +%s)
-    DURATION=$((SUITE_END_TIME - SUITE_START_TIME))
-    echo "${PACKAGE} start/end/duration/suite_retries/sauce_retries: ${SUITE_START_TIME}/${SUITE_END_TIME}/${DURATION}/${SUITE_ITERATION}/${SC_ITERATION}"
-    echo "${PACKAGE},${SUITE_START_TIME},${SUITE_END_TIME},${DURATION},${SUITE_ITERATION},${SC_ITERATION}" >> ./reports/timings
-  fi
+  SUITE_END_TIME=$(date +%s)
+  DURATION=$((SUITE_END_TIME - SUITE_START_TIME))
+  echo "${PACKAGE} start/end/duration/suite_retries/sauce_retries: ${SUITE_START_TIME}/${SUITE_END_TIME}/${DURATION}/${SUITE_ITERATION}/${SC_ITERATION}"
+  echo "${PACKAGE},${SUITE_START_TIME},${SUITE_END_TIME},${DURATION},${SUITE_ITERATION},${SC_ITERATION}" >> ./reports/timings
   echo "EXIT detected with exit status $?"
 }
 
