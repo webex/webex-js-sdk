@@ -371,16 +371,6 @@
               
                 
                 <li><a
-                  href='#typesmembership'
-                  class="">
-                  Types~Membership
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
                   href='#memberships'
                   class=" toggle-sibling">
                   Memberships
@@ -428,6 +418,16 @@
                   
                   
                 </div>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#typesmembership'
+                  class="">
+                  Types~Membership
+                  
+                </a>
                 
                 </li>
               
@@ -551,6 +551,16 @@
               
                 
                 <li><a
+                  href='#typesteam'
+                  class="">
+                  Types~Team
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
                   href='#teams'
                   class=" toggle-sibling">
                   Teams
@@ -592,16 +602,6 @@
                   
                   
                 </div>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#typesteam'
-                  class="">
-                  Types~Team
-                  
-                </a>
                 
                 </li>
               
@@ -3485,111 +3485,6 @@ on the storage layer instead.</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='typesmembership'>
-      Types~Membership
-    </h3>
-    
-    
-  </div>
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>Types~Membership</div>
-  
-    <p>
-      Type:
-      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
-    </p>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>id</span> <code class='quiet'>(uuid)</code>
-          : Unique identifier for the membership
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>roomId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The room ID
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>personId</span> <code class='quiet'>(uuid)</code>
-          : The person ID
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>personEmail</span> <code class='quiet'>(email)</code>
-          : The email address of the person / room member
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>isModerator</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-          : Indicates whether the specified person should be a room moderator.
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>isMonitor</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-          : Indicates whether the specified member is a room monitor.
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>created</span> <code class='quiet'>(isoDate)</code>
-          : The date and time that this membership was created.
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
     <h3 class='fl m0' id='memberships'>
       Memberships
     </h3>
@@ -4147,6 +4042,111 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     </div>
   
 </div>
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='typesmembership'>
+      Types~Membership
+    </h3>
+    
+    
+  </div>
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>Types~Membership</div>
+  
+    <p>
+      Type:
+      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>id</span> <code class='quiet'>(uuid)</code>
+          : Unique identifier for the membership
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>roomId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The room ID
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>personId</span> <code class='quiet'>(uuid)</code>
+          : The person ID
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>personEmail</span> <code class='quiet'>(email)</code>
+          : The email address of the person / room member
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>isModerator</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+          : Indicates whether the specified person should be a room moderator.
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>isMonitor</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
+          : Indicates whether the specified member is a room monitor.
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>created</span> <code class='quiet'>(isoDate)</code>
+          : The date and time that this membership was created.
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
@@ -5353,6 +5353,84 @@ belongs
   
   <div class='clearfix'>
     
+    <h3 class='fl m0' id='typesteam'>
+      Types~Team
+    </h3>
+    
+    
+  </div>
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>Types~Team</div>
+  
+    <p>
+      Type:
+      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : (server generated) The unique ID for the team.
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>name</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The name of the team.
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>created</span> <code class='quiet'>(isoDate)</code>
+          : (server generated) The date and time when the
+team was created, in ISO8601 format.
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
     <h3 class='fl m0' id='teams'>
       Teams
     </h3>
@@ -5776,84 +5854,6 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
     </div>
   
 </div>
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='typesteam'>
-      Types~Team
-    </h3>
-    
-    
-  </div>
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>Types~Team</div>
-  
-    <p>
-      Type:
-      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
-    </p>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : (server generated) The unique ID for the team.
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>name</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The name of the team.
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>created</span> <code class='quiet'>(isoDate)</code>
-          : (server generated) The date and time when the
-team was created, in ISO8601 format.
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
 
   
 
