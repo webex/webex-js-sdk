@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-const wrapHandler = require(`../../lib/wrap-handler`);
 const {
   list,
   listDependents,
@@ -34,7 +33,7 @@ module.exports = {
       type: `boolean`
     }
   },
-  handler: wrapHandler(async ({packageName, includeTransitive, localOnly, versions, dependents}) => {
+  async handler({packageName, includeTransitive, localOnly, versions, dependents}) {
     let deps;
     if (dependents) {
       deps = await listDependents(packageName, {includeTransitive});
@@ -47,5 +46,5 @@ module.exports = {
     }
 
     console.log(Array.from(deps).sort());
-  })
+  }
 };

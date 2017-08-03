@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-const wrapHandler = require(`../../lib/wrap-handler`);
 const {next} = require(`../../lib/version`);
 
 module.exports = {
@@ -15,8 +14,8 @@ module.exports = {
       type: `boolean`
     }
   },
-  handler: wrapHandler(async ({always}) => {
+  async handler({always}) {
     // eslint-disable-next-line callback-return
     console.log(await next({always}));
-  })
+  }
 };

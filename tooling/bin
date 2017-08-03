@@ -1,13 +1,37 @@
 #!/usr/bin/env babel-node
 
+const E_UNHANDLED_REJECTION = 64;
+
+
+/* eslint-disable no-console */
+
 const dotenv = require(`dotenv`);
 dotenv.config({path: `.env.default`});
 dotenv.config();
 
 // eslint-disable-next-line no-unused-expressions
-require(`yargs`)
+const argv = require(`yargs`)
+  .options({
+    debug: {
+      default: false,
+      description: `Print stacktraces`,
+      type: `boolean`
+    }
+  })
   .env(``)
   .commandDir(`./commands`)
   .demandCommand(1)
   .help()
   .argv;
+
+
+process.on(`unhandledRejection`, (err) => {
+  const cmd = `bowman ${process.argv.slice(2).join(` `)}`;
+  console.error(`Failed to execute "${cmd}"`);
+  console.error(err.toString());
+  if (argv.debug) {
+    console.error(err);
+  }
+  // eslint-disable-next-line no-process-exit
+  process.exit(E_UNHANDLED_REJECTION);
+});

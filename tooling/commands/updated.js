@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-const wrapHandler = require(`../lib/wrap-handler`);
 const {updated} = require(`../lib/updated`);
 module.exports = {
   command: `updated`,
@@ -24,7 +23,7 @@ module.exports = {
       type: `boolean`
     }
   },
-  handler: wrapHandler(async ({dependents, npm, upstream}) => {
+  async handler({dependents, npm, upstream}) {
     if (npm) {
       upstream = false;
     }
@@ -32,5 +31,5 @@ module.exports = {
       npm = false;
     }
     console.log(await updated({dependents, npm, upstream}));
-  })
+  }
 };

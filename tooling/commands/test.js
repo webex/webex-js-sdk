@@ -5,7 +5,6 @@
 /* eslint-disable complexity */
 
 const debug = require(`debug`)(`tooling:test:command`);
-const wrapHandler = require(`../lib/wrap-handler`);
 const {testPackage} = require(`../lib/test`);
 const {list} = require(`../lib/package`);
 const spawn = require(`../util/spawn`);
@@ -84,7 +83,7 @@ module.exports = {
       type: `boolean`
     }
   },
-  handler: wrapHandler(async (argv) => {
+  async handler(argv) {
     if (!argv.browser && !argv.node) {
       argv.browser = argv.node = true;
     }
@@ -136,5 +135,5 @@ module.exports = {
       // unref any outstanding timers/sockets/streams/processes.
       handle.unref();
     }
-  })
+  }
 };

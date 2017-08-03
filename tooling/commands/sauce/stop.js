@@ -1,5 +1,4 @@
 const Sauce = require(`../../lib/sauce`);
-const wrapHandler = require(`../../lib/wrap-handler`);
 
 module.exports = {
   command: `stop`,
@@ -10,7 +9,7 @@ module.exports = {
       type: `number`
     }
   },
-  handler: wrapHandler(async (args) => {
+  async handler(args) {
     await Sauce.stop(args);
-  })
+  }
 };

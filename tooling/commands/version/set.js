@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-const wrapHandler = require(`../../lib/wrap-handler`);
 const {set} = require(`../../lib/version`);
 
 module.exports = {
@@ -19,7 +18,7 @@ module.exports = {
       type: `boolean`
     }
   },
-  handler: wrapHandler(async ({all, version, lastLog}) => {
+  async handler({all, version, lastLog}) {
     await set(version, {all, lastLog});
-  })
+  }
 };

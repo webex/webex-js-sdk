@@ -3,7 +3,6 @@
  */
 
 const {updated} = require(`../lib/updated`);
-const wrapHandler = require(`../lib/wrap-handler`);
 const {list} = require(`../util/package`);
 
 module.exports = {
@@ -22,7 +21,7 @@ module.exports = {
     }
   },
   // eslint-disable-next-line complexity
-  handler: wrapHandler(async ({fortests, forpipeline}) => {
+  async handler({fortests, forpipeline}) {
     let packages;
     if (fortests) {
       const changed = await updated({});
@@ -89,5 +88,5 @@ module.exports = {
     for (const pkg of packages) {
       console.info(pkg);
     }
-  })
+  }
 };

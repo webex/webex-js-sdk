@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-const wrapHandler = require(`../lib/wrap-handler`);
 const {list} = require(`../util/package`);
 const {buildPackage} = require(`../lib/build`);
 
@@ -12,7 +11,7 @@ module.exports = {
   builder: {
 
   },
-  handler: wrapHandler(async ({packageName}) => {
+  async handler({packageName}) {
     if (packageName) {
       await buildPackage(packageName);
     }
@@ -21,5 +20,5 @@ module.exports = {
         await buildPackage(pName);
       }
     }
-  })
+  }
 };
