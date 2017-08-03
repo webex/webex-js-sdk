@@ -6,6 +6,7 @@
     }],
     "transform-decorators-legacy",
     "transform-class-properties",
+    "transform-object-rest-spread",
     "lodash",
     "transform-runtime"
   ],

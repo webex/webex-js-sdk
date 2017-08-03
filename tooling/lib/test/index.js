@@ -4,10 +4,6 @@
 
 /* eslint-disable require-jsdoc */
 const debug = require(`debug`)(`tooling:test`);
-
-const dotenv = require(`dotenv`);
-dotenv.config({path: `.env.default`});
-dotenv.config();
 process.env.NODE_ENV = `test`;
 
 const {

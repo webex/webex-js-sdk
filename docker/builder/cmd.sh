@@ -56,19 +56,7 @@ function stopSauce {
   set +e
 
   log "Shutting down Sauce tunnel with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
-  daemon --stop --name sauce_connect
-  PID_CHECK=0
-  while [[ -e "${SC_PID_FILE}" && ${PID_CHECK} -lt 24 ]]; do
-    sleep 5
-    let PID_CHECK+=1
-    log "SC Shutdown Check: ${PID_CHECK}"
-  done
-
-  if [ -e "${SC_PID_FILE}" ]; then
-    log "SC PID file still exists after two minutes; exiting anyway"
-  else
-    log "SC Tunnel closed successfully"
-  fi
+  npm run sauce:stop
 }
 
 # copied from http://www.tldp.org/LDP/abs/html/comparison-ops.html because I can
@@ -90,36 +78,12 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
       log "Connecting with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
 
       set +e
-      daemon -U --name sauce_connect -- "${SC_BINARY}" \
-        -B *.wbx2.com,*.ciscospark.com,idbroker.webex.com,127.0.0.1,localhost \
-        -t internal-testing-services.wbx2.com,127.0.0.1,localhost \
-        -vv \
-        -l "$(pwd)/reports/sauce/sauce_connect.$(echo "${PACKAGE}" | awk -F '/' '{ print $NF }').${SC_ITERATION}.log" \
-        --tunnel-identifier "${SC_TUNNEL_IDENTIFIER}" \
-        --pidfile "${SC_PID_FILE}" \
-        --readyfile "${SC_READY_FILE}"
+      npm run sauce:start
       EXIT_CODE=$?
       set -e
 
       if [ "${EXIT_CODE}" -ne "0" ]; then
         log "Failed"
-        continue
-      fi
-
-      log "Succeeded, waiting for readyfile"
-
-      READY_CHECK=0
-      while [[ ! -e "${SC_READY_FILE}" && ${READY_CHECK} -lt 24 ]]; do
-        sleep 5
-        let READY_CHECK+=1
-        log "Ready Check: ${READY_CHECK}"
-      done
-
-      if [ ! -e "${SC_READY_FILE}" ]; then
-        log "Ready Check Failed"
-        set +e
-        stopSauce
-        set -e
         continue
       fi
 
