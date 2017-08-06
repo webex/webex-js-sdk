@@ -1,3 +1,7 @@
+/*!
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ */
+
 const {updated} = require(`../lib/updated`);
 const wrapHandler = require(`../lib/wrap-handler`);
 const {list} = require(`../util/package`);

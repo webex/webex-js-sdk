@@ -1,4 +1,6 @@
-
+/*!
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ */
 
 const pkgUp = require(`pkg-up`);
 const t = require(`babel-types`);
