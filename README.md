@@ -73,7 +73,7 @@ If you need to load `ciscospark` via a script tag, you will need to build it fir
 ```bash
 npm install ciscospark
 npm install -g browserify
-echo "window.ciscospark = require(`ciscospark`)" > ./index.js
+echo "window.ciscospark = require('ciscospark')" > ./index.js
 browserify index.js > bundle.js
 ```
 
