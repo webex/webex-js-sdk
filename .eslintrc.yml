@@ -2,3 +2,28 @@ extends: "@ciscospark"
 globals:
   PACKAGE_VERSION: false
 root: true
+rules:
+  # This rule belongs in the eslint config repo and will be move there once that
+  # repo is ready
+  valid-jsdoc:
+    - error
+    -
+      prefer:
+        arg: param
+        argument: param
+        return: returns
+        virtual: abstract
+        fires: emits
+      preferType:
+        Boolean: boolean
+        Null: 'null'
+        Number: number
+        String: string
+        Undefined: undefined
+        function: Function
+        object: Object
+        symbol: Symbol
+      requireParamDescription: false
+      requireReturn: true
+      requireReturnType: true
+      requireReturnDescription: false
