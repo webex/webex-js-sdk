@@ -201,9 +201,7 @@
     "whatwg-fetch": "^2.0.3",
     "ws": "^1.1.4",
     "xhr": "^2.4.0",
-    "xtend": "^4.0.1",
-    "yeoman-generator": "^0.22.6",
-    "yosay": "^1.2.1"
+    "xtend": "^4.0.1"
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",
