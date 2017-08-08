@@ -1,7 +1,6 @@
 // FIXME add docs
 /* eslint-disable require-jsdoc */
 
-const debug = require(`debug`)(`tooling:sauce`);
 const assert = require(`assert`);
 const {spawn} = require(`child_process`);
 const asyncSpawn = require(`../util/spawn`);
@@ -11,6 +10,28 @@ const {readFile, rename, writeFile, unlink} = require(`fs-promise`);
 const {exists, mkdirp} = require(`./async`);
 const path = require(`path`);
 const {defaults, wrap} = require(`lodash`);
+
+const debug = wrap(require(`debug`)(`tooling:sauce`), (fn, msg, ...rest) => {
+  if (typeof msg !== `string`) {
+    rest.unshift(msg);
+    msg = ``;
+  }
+
+  if (process.env.SAUCE_ITERATION) {
+    msg = `SC attempt ${process.env.SAUCE_ITERATION}: ${msg}`;
+  }
+
+  if (process.env.SUITE_ITERATION) {
+    msg = `Suite attempt ${process.env.SUITE_ITERATION}: ${msg}`;
+  }
+
+  if (process.env.PACKAGE) {
+    msg = `${process.env.PACKAGE}: ${msg}`;
+  }
+
+  fn(msg, ...rest);
+});
+
 
 const SAUCE_CONNECT_VERSION = process.env.SAUCE_CONNECT_VERSION || `4.4.8`;
 
