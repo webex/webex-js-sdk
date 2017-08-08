@@ -26,7 +26,7 @@ const argv = require(`yargs`)
 
 
 process.on(`unhandledRejection`, (err) => {
-  const cmd = `bowman ${process.argv.slice(2).join(` `)}`;
+  const cmd = `tooling ${process.argv.slice(2).join(` `)}`;
   console.error(`Failed to execute "${cmd}"`);
   console.error(err.toString());
   if (argv.debug) {
