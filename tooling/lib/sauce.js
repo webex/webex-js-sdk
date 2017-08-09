@@ -370,7 +370,7 @@ class Sauce extends EventEmitter {
   }
 
   /**
-   * Stops the sauce conenct tunnel
+   * Stops the sauce connect tunnel
    * @returns {Promise}
    */
   async stop() {
