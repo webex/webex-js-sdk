@@ -14,8 +14,8 @@ const debug = wrap(require(`debug`)(`tooling:sauce`), (fn, msg, ...rest) => {
     msg = ``;
   }
 
-  if (process.env.SAUCE_ITERATION) {
-    msg = `SC attempt ${process.env.SAUCE_ITERATION}: ${msg}`;
+  if (process.env.SC_ITERATION) {
+    msg = `SC attempt ${process.env.SC_ITERATION}: ${msg}`;
   }
 
   if (process.env.SUITE_ITERATION) {
@@ -116,7 +116,7 @@ function applyDefaults(target, prop, descriptor) {
     defaults(options, {
       package: process.env.PACKAGE,
       suiteIteration: process.env.SUITE_ITERATION,
-      sauceIteration: process.env.SAUCE_ITERATION,
+      sauceIteration: process.env.SC_ITERATION,
       tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuid.v4()
     });
 
@@ -134,7 +134,7 @@ function applyDefaults(target, prop, descriptor) {
     if (!options.logFile) {
       let lf;
       if (options.package) {
-        lf = path.resolve(`reports/sauce/sauce_conect`);
+        lf = path.resolve(`reports/sauce/sauce_connect.${options.package}`);
       }
       else {
         lf = `${options.dir}/sc`;

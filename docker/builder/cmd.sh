@@ -71,8 +71,10 @@ fi
 
 # FIXME prefix every log statement with $PACKAGE
 for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
+  export SUITE_ITERATION
   if [[ -z "${SAUCE_IS_DOWN}" && ! -e "${SC_PID_FILE}" ]]; then
     for SC_ITERATION in $(seq 1 "${MAX_SAUCE_CONNECT_RETRIES}"); do
+      export SC_ITERATION
       export SC_TUNNEL_IDENTIFIER
       SC_TUNNEL_IDENTIFIER="${PACKAGE}-$(cat /proc/sys/kernel/random/uuid)"
       log "Connecting with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
