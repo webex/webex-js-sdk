@@ -1,6 +1,3 @@
-// FIXME add docs
-/* eslint-disable require-jsdoc */
-
 const assert = require(`assert`);
 const {spawn} = require(`child_process`);
 const asyncSpawn = require(`../util/spawn`);
@@ -35,6 +32,12 @@ const debug = wrap(require(`debug`)(`tooling:sauce`), (fn, msg, ...rest) => {
 
 const SAUCE_CONNECT_VERSION = process.env.SAUCE_CONNECT_VERSION || `4.4.8`;
 
+/**
+ * Returns a rejected promise after ms millseconds
+ * @param {number} ms
+ * @private
+ * @returns {Promise}
+ */
 function failAfterTime(ms) {
   return new Promise((resolve, reject) => {
     const ref = setTimeout(() => reject(new Error(`Ready file does not exist after ${ms}ms`)), ms);
@@ -42,6 +45,12 @@ function failAfterTime(ms) {
   });
 }
 
+/**
+ * Resolves when the ready file exists
+ * @param {string} readyFile
+ * @private
+ * @returns {Promise}
+ */
 async function waitForReadyFile(readyFile) {
   debug(`waiting for ready file`);
   while (!await exists(readyFile)) {
@@ -51,6 +60,12 @@ async function waitForReadyFile(readyFile) {
   debug(`ready file found`);
 }
 
+/**
+ * Resolves when the ready file does not exist
+ * @param {string} readyFile
+ * @private
+ * @returns {Promise}
+ */
 async function waitForReadyFileRemoval(readyFile) {
   debug(`waiting for ready file removal`);
   while (await exists(readyFile)) {
@@ -60,10 +75,24 @@ async function waitForReadyFileRemoval(readyFile) {
   debug(`ready file gone`);
 }
 
+/**
+ * Resolves the returned Promise after s seconds
+ * @param {number} s seconds
+ * @private
+ * @returns {Promise}
+ */
 async function sleep(s) {
   return new Promise((resolve) => setTimeout(resolve, s * 1000));
 }
 
+/**
+ * Determines the sauce connect pid based on either the passed in pid or the
+ * path to the written pidFile
+ * @param {number} pid
+ * @param {string} pidFile
+ * @private
+ * @returns {number}
+ */
 async function getPid(pid, pidFile) {
   if (!pid) {
     debug(`no pid specifed, reading from ${pidFile}`);
@@ -73,6 +102,14 @@ async function getPid(pid, pidFile) {
   return pid;
 }
 
+/**
+ * Adds defaults to all of the Sauce class's method calls.
+ * @param {Object} target
+ * @param {string} prop
+ * @param {Object} descriptor
+ * @private
+ * @returns {undefined}
+ */
 function applyDefaults(target, prop, descriptor) {
   // eslint-disable-next-line complexity
   descriptor.value = wrap(descriptor.value, function wrapper(fn, options, ...rest) {
@@ -116,8 +153,17 @@ function applyDefaults(target, prop, descriptor) {
   });
 }
 
+/**
+ * Abstraction around sauce connect shell commands
+ */
 class Sauce extends EventEmitter {
   @applyDefaults
+  /**
+   * Downloads sauce connect
+   * @param {Object} options
+   * @param {string} options.dir
+   * @returns {Promise}
+   */
   static async download({dir}) {
     dir = path.resolve(dir);
     debug(`creating ${dir}`);
@@ -153,6 +199,18 @@ class Sauce extends EventEmitter {
   }
 
   @applyDefaults
+  /**
+   * Runs a command with the right env vars set to use the sauce tunnel
+   * @param {Object} options
+   * @param {bymber} options.pid
+   * @param {string} options.pidFile
+   * @param {string} options.readyFile
+   * @param {number} options.tid
+   * @param {string} options.tidFile
+   * @param {string} cmd
+   * @param {Array} args
+   * @returns {Promise}
+   */
   static async run({pid, pidFile, readyFile, tid, tidFile}, cmd, args) {
     pid = await getPid(pid, pidFile);
     tid = tid || await readFile(tidFile);
@@ -167,6 +225,12 @@ class Sauce extends EventEmitter {
   }
 
   @applyDefaults
+  /**
+   * Starts sauce connect and exits
+   * @param {Object} options
+   * @see @{link Sauce#start()}
+   * @returns {Promise}
+   */
   static async start(...args) {
     // TODO fail if already running
     const sauce = new Sauce({detached: true});
@@ -174,6 +238,15 @@ class Sauce extends EventEmitter {
   }
 
   @applyDefaults
+  /**
+   * Stops sauce connect and exits
+   * @param {Object} options
+   * @param {bymber} options.pid
+   * @param {string} options.pidFile
+   * @param {string} options.readyFile
+   * @param {string} options.tidFile
+   * @returns {Promise}
+   */
   static async stop({pid, pidFile, readyFile, tidFile}) {
     debug(`preparing to stop sauce connect`);
     pid = await getPid(pid, pidFile);
@@ -200,6 +273,10 @@ class Sauce extends EventEmitter {
     await unlink(tidFile);
   }
 
+  /**
+   * Constructor
+   * @param {Object} options
+   */
   constructor(options = {}) {
     super();
     assert(process.env.SAUCE_USERNAME, `SAUCE_USERNAME must be set`);
@@ -208,6 +285,17 @@ class Sauce extends EventEmitter {
   }
 
   @applyDefaults
+  /**
+   * Starts the sauce connect tunnel
+   * @param {Object} options
+   * @param {bymber} options.binFile
+   * @param {bymber} options.logFile
+   * @param {string} options.pidFile
+   * @param {string} options.readyFile
+   * @param {string} options.tidFile
+   * @param {string} options.tunnelIdentifier
+   * @returns {Promise}
+   */
   async start({binFile, logFile, pidFile, readyFile, tidFile, tunnelIdentifier}) {
     if (!await exists(binFile)) {
       // eslint-disable-next-line prefer-rest-params
@@ -281,6 +369,10 @@ class Sauce extends EventEmitter {
     debug(`wrote tunnel id to ${tidFile}`);
   }
 
+  /**
+   * Stops the sauce conenct tunnel
+   * @returns {Promise}
+   */
   async stop() {
     await new Promise((resolve) => {
       this.child.once(`close`, resolve);
