@@ -8,6 +8,23 @@ const {exists, mkdirp} = require(`./async`);
 const path = require(`path`);
 const {defaults, wrap} = require(`lodash`);
 
+
+/**
+ * Unlinks a file but fails silently if it doesn't exist
+ * @param {string} filename
+ * @returns {Promise}
+ */
+async function safeUnlink(filename) {
+  try {
+    await unlink(filename);
+  }
+  catch (err) {
+    if (err.code !== `ENOENT`) {
+      throw err;
+    }
+  }
+}
+
 const debug = wrap(require(`debug`)(`tooling:sauce`), (fn, msg, ...rest) => {
   if (typeof msg !== `string`) {
     rest.unshift(msg);
@@ -112,7 +129,7 @@ async function getPid(pid, pidFile) {
  */
 function applyDefaults(target, prop, descriptor) {
   // eslint-disable-next-line complexity
-  descriptor.value = wrap(descriptor.value, function wrapper(fn, options, ...rest) {
+  descriptor.value = wrap(descriptor.value, async function wrapper(fn, options, ...rest) {
     defaults(options, {
       package: process.env.PACKAGE,
       suiteIteration: process.env.SUITE_ITERATION,
@@ -134,7 +151,7 @@ function applyDefaults(target, prop, descriptor) {
     if (!options.logFile) {
       let lf;
       if (options.package) {
-        lf = path.resolve(`reports/sauce/sauce_connect.${options.package}`);
+        lf = path.resolve(`reports/sauce/sauce_connect.${options.package.replace(`/`, `_`)}`);
       }
       else {
         lf = `${options.dir}/sc`;
@@ -265,12 +282,12 @@ class Sauce extends EventEmitter {
     catch (err) {
       debug(`ready file was not removed after 2 minutes, sending kill signal`);
       await spawn(`kill`, [`-TERM`, pid]);
-      await unlink(readyFile);
-      await unlink(pidFile);
+      await safeUnlink(readyFile);
+      await safeUnlink(pidFile);
     }
 
     debug(`removing ${tidFile}`);
-    await unlink(tidFile);
+    await safeUnlink(tidFile);
   }
 
   /**
@@ -317,12 +334,7 @@ class Sauce extends EventEmitter {
       };
     }
 
-    try {
-      await unlink(logFile);
-    }
-    catch (err) {
-      // ignore
-    }
+    await safeUnlink(logFile);
 
     const child = this.child = spawn(path.resolve(binFile), [
       `-B`, [
@@ -357,7 +369,8 @@ class Sauce extends EventEmitter {
       new Promise((resolve, reject) => {
         child.on(`exit`, (code) => {
           if (code) {
-            reject(new Error(`Sauce Connect exited unexpectedly`));
+            debug(`Sauce Connect exited unexpectedly with code ${code}`);
+            reject(new Error(`Sauce Connect exited unexpectedly with code ${code}`));
           }
         });
       })
