@@ -268,7 +268,6 @@ ansiColor('xterm') {
             image.inside(DOCKER_RUN_OPTS) {
               sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
               sh 'npm prune'
-              sh 'npm uninstall -g @ciscospark/eslint-config'
               sh 'npm install'
             }
           }
