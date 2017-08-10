@@ -267,6 +267,13 @@ ansiColor('xterm') {
           stage('install') {
             image.inside(DOCKER_RUN_OPTS) {
               sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
+              // TODO remove this block after the transitional period of removing eslint config from the repo
+              try {
+                sh 'rm -f ./node_modules/@ciscospark/eslint-config'
+              }
+              catch (err) {
+                // ignore 
+              }
               sh 'npm prune'
               sh 'npm install'
             }
