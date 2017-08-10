@@ -45,31 +45,9 @@ redirect_from:
     npm run build
     ```
 
-6. Link the yeoman generator
-    The sdk ships with a yeoman generator to aid in getting your plugin started. In order to stay in sync with the current preferred layout, use the generator that ships with the sdk rather than the one published to npm.
-
-    ```bash
-    cd packages/node_modules/generator-ciscospark
-    npm link
-    ```
-
-7. Install the `yo` cli tool
-
-    ```bash
-    npm install -g yo
-    ```
-
 # Creating your plugin
 
-Now that you've got your environment set up, adding a new plugin is as simple as
-
-```bash
-yo ciscospark:plugin plugin-PLUGINNAME
-```
-
-> If you're creating a new sdk package that's not intended to be a plugin (e.g helper-html), you can use `yo ciscospark:package PACKAGENAME`
-
-You'll get a new folder in `/packages/node_modules` with eslint files in the right place, a `package.json` with the bare minimum to create a plugin, some scaffolding for your test directory, and just enough files for your plugin to load and do nothing.
+  Use one of the existing packages or plugins as a template. It's important your package's name matches the folder it's in.
 
 ## Plugin Structure
 

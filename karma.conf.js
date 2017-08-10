@@ -115,7 +115,7 @@ module.exports = function(config) {
   if (process.env.XUNIT) {
     cfg.junitReporter = {
       outputFile: `karma-legacy.xml`,
-      outputDir: `reports/junit`,
+      outputDir: `reports/junit/karma`,
       suite: `karma-legacy`,
       useBrowserName: true
     };

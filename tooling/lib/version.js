@@ -1,3 +1,7 @@
+/*!
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ */
+
 const debug = require(`debug`)(`tooling:version`);
 const _ = require(`lodash`);
 const {getDistTag} = require(`./npm`);
@@ -16,9 +20,14 @@ const git = require(`./git`);
 exports.last = async function last() {
   const packages = Array.from(await list());
   const version = _(await Promise.all(packages
+    // TODO stop omitting eslint config once it's fully removed from the repo
+    .filter((p) => p !== `@ciscospark/eslint-config`)
     .map(getDistTag)))
     .sort()
     .filter()
+    .map((v) => v.trim())
+    // TODO stop omitting v2 packages once the last once is unpublished
+    .filter((v) => !v.startsWith(`2.`))
     .last()
     .trim();
 

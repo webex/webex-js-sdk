@@ -24,6 +24,15 @@ def cleanup = { ->
   }
   sh 'rm -f .env'
 
+  try {
+    if (fileExists('./reports/timings')) {
+      currentBuild.description += readFile('./reports/timings')
+    }
+  }
+  catch(err) {
+    warn('could not read timings file');
+  }
+
   if (IS_VALIDATED_MERGE_BUILD) {
     if (currentBuild.result != 'SUCCESS') {
       withCredentials([usernamePassword(
@@ -324,9 +333,24 @@ ansiColor('xterm') {
 
             stage('test') {
               def lastLog = sh script: 'git log -n 1', returnStdout: true
+              echo "checking if tests should be skipped"
               if (lastLog.contains('[ci skip]')) {
+                echo "tests should be skipped"
                 skipTests = true
+                warn('Bypassing tests according to commit message instruction');
               }
+              else {
+                echo "tests should not be skipped"
+              }
+
+              step([
+                $class: 'CopyArtifact',
+                excludes: '**/lcov.info',
+                filter: 'reports/coverage/**',
+                fingerprintArtifacts: true,
+                projectName: 'spark-js-sdk--validated-merge--pipeline2'
+              ])
+
               if (!skipTests) {
                 timeout(60) {
                   def exitCode = sh script: "./tooling/test.sh", returnStatus: true

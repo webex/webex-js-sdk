@@ -6,13 +6,43 @@
 
 set -e
 
+SUITE_START_TIME=$(date +%s)
+
+trap 'onExit' EXIT
+
+function log {
+  OUT="${PACKAGE}: "
+  if [ -n "${SUITE_ITERATION}" ]; then
+    OUT="${OUT}Suite Attempt ${SUITE_ITERATION}: "
+  fi
+  if [ -n "${SC_ITERATION}" ]; then
+    OUT="${OUT}SC Attempt ${SC_ITERATION} "
+  fi
+  echo "${OUT}${1}"
+}
+
+function reportTime {
+  SUITE_END_TIME=$(date +%s)
+  DURATION=$((SUITE_END_TIME - SUITE_START_TIME))
+  log "start/end/duration/suite_attempts/sauce_attempts: ${SUITE_START_TIME}/${SUITE_END_TIME}/${DURATION}/${SUITE_ITERATION}/${SC_ITERATION}"
+  echo "${PACKAGE},${SUITE_START_TIME},${SUITE_END_TIME},${DURATION},${SUITE_ITERATION},${SC_ITERATION}" >> ./reports/timings
+  log "EXIT detected with exit status $1"
+}
+
+function onExit {
+  SCRIPT_EXIT_CODE=$?
+  stopSauce
+  reportTime $SCRIPT_EXIT_CODE
+}
+
+
 # Load secrets
 export env $(cat .env | xargs)
 
-cd ${WORKSPACE}
+cd "${WORKSPACE}"
 
 GRUNT_LOG_FILE="$(pwd)/reports/logs/${PACKAGE}.log"
-mkdir -p "$(dirname ${GRUNT_LOG_FILE})"
+mkdir -p "$(dirname "${GRUNT_LOG_FILE}")"
 export BABEL_CACHE_PATH
 BABEL_CACHE_PATH=$(pwd)/.tmp/babel-cache/${PACKAGE}.babel.json
 mkdir -p "$(pwd)/.tmp/babel-cache"
@@ -21,23 +51,23 @@ if [ -n "${SDK_BUILD_DEBUG}" ]; then
   set -x
 fi
 
-function STOP_SAUCE {
+function stopSauce {
   # This would be a terrible place to fail the build
   set +e
 
-  echo "${PACKAGE}: Shutting down Sauce tunnel with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
+  log "Shutting down Sauce tunnel with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
   daemon --stop --name sauce_connect
   PID_CHECK=0
   while [[ -e "${SC_PID_FILE}" && ${PID_CHECK} -lt 24 ]]; do
     sleep 5
     let PID_CHECK+=1
-    echo "${PACKAGE}: SC Shutdown Check: ${PID_CHECK}"
+    log "SC Shutdown Check: ${PID_CHECK}"
   done
 
   if [ -e "${SC_PID_FILE}" ]; then
-    echo "${PACKAGE}: SC PID file still exists after two minutes; exiting anyway"
+    log "SC PID file still exists after two minutes; exiting anyway"
   else
-    echo "${PACKAGE}: SC Tunnel closed successfully"
+    log "SC Tunnel closed successfully"
   fi
 }
 
@@ -47,7 +77,7 @@ function STOP_SAUCE {
 # > -n string is not null.
 
 if [ -z "${PACKAGE}" ]; then
-  echo "${PACKAGE}: PACKAGE must be defined"
+  log "PACKAGE must be defined"
   exit 20
 fi
 
@@ -57,14 +87,14 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
     for SC_ITERATION in $(seq 1 "${MAX_SAUCE_CONNECT_RETRIES}"); do
       export SC_TUNNEL_IDENTIFIER
       SC_TUNNEL_IDENTIFIER="${PACKAGE}-$(cat /proc/sys/kernel/random/uuid)"
-      echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC Attempt ${SC_ITERATION}: Connecting with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
+      log "Connecting with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
 
       set +e
-      daemon -U --name sauce_connect -- ${SC_BINARY} \
+      daemon -U --name sauce_connect -- "${SC_BINARY}" \
         -B *.wbx2.com,*.ciscospark.com,idbroker.webex.com,127.0.0.1,localhost \
         -t internal-testing-services.wbx2.com,127.0.0.1,localhost \
         -vv \
-        -l "$(pwd)/reports/sauce/sauce_connect.$(echo ${PACKAGE} | awk -F '/' '{ print $NF }').${SC_ITERATION}.log" \
+        -l "$(pwd)/reports/sauce/sauce_connect.$(echo "${PACKAGE}" | awk -F '/' '{ print $NF }').${SC_ITERATION}.log" \
         --tunnel-identifier "${SC_TUNNEL_IDENTIFIER}" \
         --pidfile "${SC_PID_FILE}" \
         --readyfile "${SC_READY_FILE}"
@@ -72,51 +102,48 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
       set -e
 
       if [ "${EXIT_CODE}" -ne "0" ]; then
-        echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC Attempt ${SC_ITERATION}: Failed"
+        log "Failed"
         continue
       fi
 
-      echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC Attempt ${SC_ITERATION}: Succeeded, waiting for readyfile"
+      log "Succeeded, waiting for readyfile"
 
       READY_CHECK=0
       while [[ ! -e "${SC_READY_FILE}" && ${READY_CHECK} -lt 24 ]]; do
         sleep 5
         let READY_CHECK+=1
-        echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC Attempt ${SC_ITERATION}: Ready Check: ${READY_CHECK}"
+        log "Ready Check: ${READY_CHECK}"
       done
 
       if [ ! -e "${SC_READY_FILE}" ]; then
-        echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC Attempt ${SC_ITERATION}: Ready Check Failed"
+        log "Ready Check Failed"
         set +e
-        STOP_SAUCE
+        stopSauce
         set -e
         continue
       fi
-
-      # Make sure to kill Sauce Connect when the script exits
-      trap "STOP_SAUCE" EXIT
 
       break;
     done
 
     if [ -e "${SC_PID_FILE}" ]; then
-      echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC: Connected with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
+      log "SC: Connected with Tunnel Identifier ${SC_TUNNEL_IDENTIFIER}"
     else
-      echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC: Failed to connect to Sauce Labs"
+      log "SC: Failed to connect to Sauce Labs"
       exit 10
     fi
   fi
 
   set +e
-  echo "" >> ${GRUNT_LOG_FILE}
-  echo "### Attempt ${SUITE_ITERATION} ###" >> ${GRUNT_LOG_FILE}
-  echo "" >> ${GRUNT_LOG_FILE}
+  echo "" >> "${GRUNT_LOG_FILE}"
+  echo "### Attempt ${SUITE_ITERATION} ###" >> "${GRUNT_LOG_FILE}"
+  echo "" >> "${GRUNT_LOG_FILE}"
   if [ "${PACKAGE}" == "legacy-node" ]; then
-    npm run test:legacy-node >> ${GRUNT_LOG_FILE} 2>&1
+    npm run test:legacy-node >> "${GRUNT_LOG_FILE}" 2>&1
   elif [ "${PACKAGE}" == "legacy-browser" ]; then
-    npm run test:legacy-browser >> ${GRUNT_LOG_FILE} 2>&1
+    npm run test:legacy-browser >> "${GRUNT_LOG_FILE}" 2>&1
   else
-    npm run test >> ${GRUNT_LOG_FILE} 2>&1
+    npm run test >> "${GRUNT_LOG_FILE}" 2>&1
   fi
   EXIT_CODE=$?
   set -e
@@ -128,7 +155,7 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
 
   if [ -z "${SAUCE_IS_DOWN}" ]; then
     if [ ! -e "${SC_PID_FILE}" ]; then
-      echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC_PID_FILE missing after suite exited with ${EXIT_CODE}"
+      log "SC_PID_FILE missing after suite exited with ${EXIT_CODE}"
       rm -f "${SC_READY_FILE}"
       continue
     fi
@@ -137,17 +164,17 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
 
     if ps -p "${PID}" > /dev/null; then
       # Sauce is still connected (as expected)
-      echo "${PACKAGE}: "
+      log "sc still running after suite exited with ${EXIT_CODE}"
     else
-      echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: SC_PID_FILE present but identified process not running after suite exited with ${EXIT_CODE}"
+      log "SC_PID_FILE present but identified process not running after suite exited with ${EXIT_CODE}"
       rm -f "${SC_PID_FILE}"
       rm -f "${SC_READY_FILE}"
       continue
     fi
 
     # SAUCE TUNNEL FAILURES
-    echo "${PACKAGE}: Suite Attempt ${SUITE_ITERATION}: Suite exited with code ${EXIT_CODE}, disconnecting/reconnecting Sauce Tunnel"
-    STOP_SAUCE
+    log "Suite exited with code ${EXIT_CODE}, disconnecting/reconnecting Sauce Tunnel"
+    stopSauce
   fi
 
 done
@@ -163,8 +190,8 @@ if [ "${EXIT_CODE}" -ne "0" ]; then
 fi
 
 if [ "${EXIT_CODE}" -ne "0" ]; then
-  echo "${PACKAGE}: Suite: Test Suite failed after ${MAX_TEST_SUITE_RETRIES} attempts"
+  log "Test Suite failed after ${MAX_TEST_SUITE_RETRIES} attempts"
   exit "${EXIT_CODE}"
 fi
 
-echo "${PACKAGE}: Suite: succeeded"
+log "succeeded"
