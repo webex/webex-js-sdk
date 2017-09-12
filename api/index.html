@@ -288,9 +288,21 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
+                          href='#calleventdisconnected'
+                          class='regular pre-open'>
+                          ⓔ disconnected
+                        </a></li>
+                      
+                        <li><a
                           href='#calleventringing'
                           class='regular pre-open'>
                           ⓔ ringing
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventerror'
+                          class='regular pre-open'>
+                          ⓔ error
                         </a></li>
                       
                         <li><a
@@ -300,27 +312,15 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventdisconnected'
-                          class='regular pre-open'>
-                          ⓔ disconnected
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventlocalmediastreamchange'
-                          class='regular pre-open'>
-                          ⓔ localMediaStream:change
-                        </a></li>
-                      
-                        <li><a
                           href='#calleventremotemediastreamchange'
                           class='regular pre-open'>
                           ⓔ remoteMediaStream:change
                         </a></li>
                       
                         <li><a
-                          href='#calleventerror'
+                          href='#calleventlocalmediastreamchange'
                           class='regular pre-open'>
-                          ⓔ error
+                          ⓔ localMediaStream:change
                         </a></li>
                       
                     </ul>
@@ -818,6 +818,16 @@
                   href='#submithttprequest'
                   class="">
                   submitHttpRequest
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#makeinternalcallid'
+                  class="">
+                  makeInternalCallId
                   
                 </a>
                 
@@ -1915,7 +1925,13 @@ listeners that we are now sending media from a new source.</p>
   <p><b>initiated</b> - Offer was sent to remote party but they have not yet accepted <br>
 <b>ringing</b> - Remote party has acknowledged the call <br>
 <b>connected</b> - At least one party is still on the call <br>
-<b>disconnected</b> - All parties have dropped <br></p>
+<b>disconnected</b> - All parties have dropped <br>
+<b>replaced</b> - In (hopefully) rare cases, the underlying data backing
+a Call instance may change in such a way that further interaction with
+that Call is handled by a different instance. In such cases, the first
+Call's status, will transition to <code>replaced</code>, which is almost the same
+state as <code>disconnected</code>. Generally speaking, such a transition should not
+happen for a Call instance that is actively sending/receiving media.</p>
 
 
   <div class='pre p1 fill-light mt0'>status</div>
@@ -2880,6 +2896,51 @@ only, this function will throw.</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
+    <div class='border-bottom' id='calleventdisconnected'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>disconnected</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>disconnected</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='calleventringing'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -2895,6 +2956,51 @@ only, this function will throw.</p>
   
 
   <div class='pre p1 fill-light mt0'>ringing</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventerror'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>error</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>error</div>
   
   
 
@@ -2970,96 +3076,6 @@ only, this function will throw.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventdisconnected'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>disconnected</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>disconnected</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventlocalmediastreamchange'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>localMediaStream:change</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>localMediaStream:change</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
     <div class='border-bottom' id='calleventremotemediastreamchange'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -3105,11 +3121,11 @@ only, this function will throw.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventerror'>
+    <div class='border-bottom' id='calleventlocalmediastreamchange'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>error</span>
+            <span class='code strong strong truncate'>localMediaStream:change</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -3119,7 +3135,7 @@ only, this function will throw.</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>error</div>
+  <div class='pre p1 fill-light mt0'>localMediaStream:change</div>
   
   
 
@@ -7659,6 +7675,75 @@ moderator
     
       <div class='py1 quiet mt1 prose-big'>Returns</div>
       <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;HttpResponseObject></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='makeinternalcallid'>
+      makeInternalCallId
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Creates a unique identifier for a call (but not necessarily the "callId" that
+we'll someday expose as a first-class property)</p>
+
+
+  <div class='pre p1 fill-light mt0'>makeInternalCallId(locus: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>locus</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>:
         
 
       
