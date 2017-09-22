@@ -186,7 +186,7 @@
     "node-kms": "^0.3.2",
     "node-scr": "^0.2.2",
     "parse-headers": "^2.0.1",
-    "qs": "^5.2.1",
+    "qs": "^6.5.0",
     "request": "^2.81.0",
     "require-dir": "^0.3.1",
     "sdp-transform": "^2.3.0",
