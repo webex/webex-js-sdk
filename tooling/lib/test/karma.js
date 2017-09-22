@@ -20,7 +20,7 @@ exports.test = async function test(options, packageName, files) {
 
   const cfg = makeConfig(packageName, options);
 
-  if (packageName === `@ciscospark/plugin-phone`) {
+  if (packageName === `@ciscospark/plugin-phone` || packageName === `@ciscospark/media-adapter-webrtc`) {
     await inject(cfg.customLaunchers);
   }
 
