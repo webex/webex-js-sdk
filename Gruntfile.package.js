@@ -319,9 +319,7 @@ module.exports = function configureGrunt(grunt) {
 
   registerTask(`test:automation`, [
     !process.env.SC_TUNNEL_IDENTIFIER && !process.env.XUNIT && `continue:on`,
-    !process.env.SC_TUNNEL_IDENTIFIER && `selenium_start`,
     `mochaTest:automation`,
-    !process.env.SC_TUNNEL_IDENTIFIER && `selenium_stop`,
     !process.env.SC_TUNNEL_IDENTIFIER && !process.env.XUNIT && `continue:off`,
     !process.env.SC_TUNNEL_IDENTIFIER && !process.env.XUNIT && `continue:fail-on-warning`
   ]);
