@@ -294,6 +294,12 @@
                         </a></li>
                       
                         <li><a
+                          href='#calleventlocalmediastreamchange'
+                          class='regular pre-open'>
+                          ⓔ localMediaStream:change
+                        </a></li>
+                      
+                        <li><a
                           href='#calleventringing'
                           class='regular pre-open'>
                           ⓔ ringing
@@ -315,12 +321,6 @@
                           href='#calleventremotemediastreamchange'
                           class='regular pre-open'>
                           ⓔ remoteMediaStream:change
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventlocalmediastreamchange'
-                          class='regular pre-open'>
-                          ⓔ localMediaStream:change
                         </a></li>
                       
                     </ul>
@@ -833,6 +833,26 @@
                 
                 </li>
               
+                
+                <li><a
+                  href='#email'
+                  class="">
+                  email
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#isodate'
+                  class="">
+                  isoDate
+                  
+                </a>
+                
+                </li>
+              
             </ul>
           </div>
           <div class='mt1 h6 quiet'>
@@ -1007,7 +1027,7 @@ app.get(`/oauth/redirect`, (req, res, next) =&gt; {
 
   
 
-  <p>Create a new ciscospark instance</p>
+  <p>Create a new <a href="#ciscospark">CiscoSpark</a> instance</p>
 
 
   <div class='pre p1 fill-light mt0'>init(attrs: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="#ciscospark">CiscoSpark</a></div>
@@ -2941,6 +2961,51 @@ only, this function will throw.</p>
       </div>
     </div>
   
+    <div class='border-bottom' id='calleventlocalmediastreamchange'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>localMediaStream:change</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>localMediaStream:change</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='calleventringing'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -3121,51 +3186,6 @@ only, this function will throw.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventlocalmediastreamchange'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>localMediaStream:change</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>localMediaStream:change</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
 </div>
 
   
@@ -3202,7 +3222,11 @@ only, this function will throw.</p>
   </div>
   
 
-  
+  <p>Memberships represent a person's relationship to a room. Use this API to list
+members of any room that you're in or create memberships to invite someone
+to a room. Memberships can also be updated to make someone a moderator
+or deleted to remove them from the room.</p>
+
 
   <div class='pre p1 fill-light mt0'>new Memberships()</div>
   
@@ -3243,8 +3267,8 @@ only, this function will throw.</p>
 
   
 
-  <p>Adds a person to a room. The person can be added by ID (personId) or by
-Email Address (personEmail). The person can be optionally added to the room
+  <p>Adds a person to a room. The person can be added by ID (<code>personId</code>) or by
+Email Address (<code>personEmail</code>). The person can be optionally added to the room
 as a moderator.</p>
 
 
@@ -3769,7 +3793,8 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   <p>Messages are how people communicate in rooms. Each message timestamped and
 represented in Spark as a distinct block of content. Messages can contain
 plain text and a single file attachment. See the
-<a href="Message">Attachments Guide</a> for a list of supported media types.</p>
+<a href="https://developer.ciscospark.com/attachments.html">Message Attachments</a> Guide
+for a list of supported media types.</p>
 
 
   <div class='pre p1 fill-light mt0'>new Messages()</div>
@@ -4408,7 +4433,7 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.email</span> <code class='quiet'>email</code>
+                  <td class='break-word'><span class='code bold'>options.email</span> <code class='quiet'><a href="#email">email</a></code>
                   </td>
                   <td class='break-word'><span>Returns people with an email that contains this string
 </span></td>
@@ -4553,9 +4578,9 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   
 
   <p>Rooms are virtual meeting places for getting stuff done. This resource
-represents the room itself. Check out the Memberships API to learn how to add
-and remove people from rooms and the Messages API for posting and managing
-content.</p>
+represents the room itself. Check out the <a href="#memberships">Memberships</a> API to learn
+how to add and remove people from rooms and the <a href="#messages">Messages</a> API for
+posting and managing content.</p>
 
 
   <div class='pre p1 fill-light mt0'>new Rooms()</div>
@@ -4598,9 +4623,8 @@ content.</p>
   
 
   <p>Creates a new room. The authenticated user is automatically added as a
-member of the room. See the @{link Memberships} to learn how to add more
-people to the room.
-<a href="Membership">Membership</a></p>
+member of the room. See the <a href="#memberships">Memberships</a> API to learn how to add
+more people to the room.</p>
 
 
   <div class='pre p1 fill-light mt0'>create(room: <a href="#roomobject">RoomObject</a>): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#roomobject">RoomObject</a>></div>
@@ -6033,8 +6057,9 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
   </div>
   
 
-  <p>A webhook notifies an application when an event for which the application is
-registered has occurred.</p>
+  <p>Webhooks allow your app to be notified via HTTP when a specific event
+occurs on Spark. For example, your app can register a webhook to be
+notified when a new message is posted into a specific room.</p>
 
 
   <div class='pre p1 fill-light mt0'>new Webhooks()</div>
@@ -6712,7 +6737,7 @@ SDK's logger, you should make sure to avoid logging PII as well.
     <div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>id</span> <code class='quiet'>(uuid)</code>
+          <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
           : Unique identifier for the membership
 
           
@@ -6726,14 +6751,14 @@ SDK's logger, you should make sure to avoid logging PII as well.
         </div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>personId</span> <code class='quiet'>(uuid)</code>
+          <span class='code bold'>personId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
           : The person ID
 
           
         </div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>personEmail</span> <code class='quiet'>(email)</code>
+          <span class='code bold'>personEmail</span> <code class='quiet'>(<a href="#email">email</a>)</code>
           : The email address of the person / room member
 
           
@@ -6741,21 +6766,21 @@ SDK's logger, you should make sure to avoid logging PII as well.
       
         <div class='space-bottom0'>
           <span class='code bold'>isModerator</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-          : Indicates whether the specified person should be a room moderator.
+          : Indicates whether the specified person should be a room moderator
 
           
         </div>
       
         <div class='space-bottom0'>
           <span class='code bold'>isMonitor</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>)</code>
-          : Indicates whether the specified member is a room monitor.
+          : Indicates whether the specified member is a room monitor
 
           
         </div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>created</span> <code class='quiet'>(isoDate)</code>
-          : The date and time that this membership was created.
+          <span class='code bold'>created</span> <code class='quiet'>(<a href="#isodate">isoDate</a>)</code>
+          : The date and time that this membership was created
 
           
         </div>
@@ -6817,21 +6842,21 @@ SDK's logger, you should make sure to avoid logging PII as well.
     <div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>id</span> <code class='quiet'>(uuid)</code>
+          <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
           : (server generated) Unique identifier for the message
 
           
         </div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>personId</span> <code class='quiet'>(uuid)</code>
+          <span class='code bold'>personId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
           : The ID for the author of the messasge
 
           
         </div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>personEmail</span> <code class='quiet'>(email)</code>
+          <span class='code bold'>personEmail</span> <code class='quiet'>(<a href="#email">email</a>)</code>
           : The email for the author of the messasge
 
           
@@ -6839,16 +6864,39 @@ SDK's logger, you should make sure to avoid logging PII as well.
       
         <div class='space-bottom0'>
           <span class='code bold'>roomId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The ID for the room of the message
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>text</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
           : The message posted to the room in plain text
 
           
         </div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>created</span> <code class='quiet'>(isoDate)</code>
-          : (server generated)The source URLs for the
-message attachment. See the {@link Content &#x26; Attachments{ Guide for a list of
-supported media types.
+          <span class='code bold'>markdown</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The message posted to the room in markdown
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>files</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>>)</code>
+          : The source URL(s) for the message attachment(s).
+See the 
+<a href="https://developer.ciscospark.com/attachments.html">Message Attachments</a>
+
+Guide for a list of supported media types.
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>created</span> <code class='quiet'>(<a href="#isodate">isoDate</a>)</code>
+          : (server generated) The date and time that the message was created
 
           
         </div>
@@ -6910,14 +6958,14 @@ supported media types.
     <div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>id</span> <code class='quiet'>(uuid)</code>
-          : Unique identifier for the person
+          <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : (server generated) Unique identifier for the person
 
           
         </div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>emails</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;email>)</code>
+          <span class='code bold'>emails</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;<a href="#email">email</a>>)</code>
           : Email addresses of the person
 
           
@@ -6931,8 +6979,8 @@ supported media types.
         </div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>created</span> <code class='quiet'>(isoDate)</code>
-          : The date and time that the person was created
+          <span class='code bold'>created</span> <code class='quiet'>(<a href="#isodate">isoDate</a>)</code>
+          : (server generated) The date and time that the person was created
 
           
         </div>
@@ -7009,17 +7057,17 @@ will see the title so make it something good
         </div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>created</span> <code class='quiet'>(isoDate)</code>
-          : (server generated) The date and time that the
-room was created
+          <span class='code bold'>teamId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : (optional) The ID of the team to which the room
+belongs
 
           
         </div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>teamId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : (optional): The id of the team to which the room
-belongs
+          <span class='code bold'>created</span> <code class='quiet'>(<a href="#isodate">isoDate</a>)</code>
+          : (server generated) The date and time that the
+room was created
 
           
         </div>
@@ -7082,22 +7130,22 @@ belongs
       
         <div class='space-bottom0'>
           <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : (server generated) The unique ID for the team.
+          : (server generated) Unique identifier for the team
 
           
         </div>
       
         <div class='space-bottom0'>
           <span class='code bold'>name</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The name of the team.
+          : The name of the team
 
           
         </div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>created</span> <code class='quiet'>(isoDate)</code>
-          : (server generated) The date and time when the
-team was created, in ISO8601 format.
+          <span class='code bold'>created</span> <code class='quiet'>(<a href="#isodate">isoDate</a>)</code>
+          : (server generated) The date and time that the
+team was created
 
           
         </div>
@@ -7160,7 +7208,14 @@ team was created, in ISO8601 format.
       
         <div class='space-bottom0'>
           <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : (server generated) The team ID
+          : (server generated) Unique identifier for the team membership
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>teamId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The team ID
 
           
         </div>
@@ -7185,6 +7240,13 @@ team was created, in ISO8601 format.
 <code>true</code>
  to make the person a team
 moderator
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>created</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : (server generated) The date and time that the team membership was created
 
           
         </div>
@@ -7247,42 +7309,49 @@ moderator
       
         <div class='space-bottom0'>
           <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The unique ID for the webhook.
+          : (server generated) Unique identifier for the webhook
 
           
         </div>
       
         <div class='space-bottom0'>
           <span class='code bold'>resource</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The resource type for the webhook.
+          : The resource type for the webhook
 
           
         </div>
       
         <div class='space-bottom0'>
           <span class='code bold'>event</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The event type for the webhook.
+          : The event type for the webhook
 
           
         </div>
       
         <div class='space-bottom0'>
           <span class='code bold'>filter</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The filter that defines the webhook scope.
+          : The filter that defines the webhook scope
 
           
         </div>
       
         <div class='space-bottom0'>
           <span class='code bold'>targetUrl</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : The URL that receives POST requests for each event.
+          : The URL that receives POST requests for each event
 
           
         </div>
       
         <div class='space-bottom0'>
           <span class='code bold'>name</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-          : A user-friendly name for this webhook.
+          : A user-friendly name for this webhook
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>created</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : (server generated) The date and time that the webhook was created
 
           
         </div>
@@ -7748,6 +7817,111 @@ we'll someday expose as a first-class property)</p>
 
       
     
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='email'>
+      email
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>An email address, as a string.</p>
+
+
+  <div class='pre p1 fill-light mt0'>email</div>
+  
+    <p>
+      Type:
+      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='isodate'>
+      isoDate
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>The date and time, specified in ISO 8601 extended offset date/time
+format (e.g. <code>2015-10-18T14:26:16+00:00</code>).</p>
+
+
+  <div class='pre p1 fill-light mt0'>isoDate</div>
+  
+    <p>
+      Type:
+      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
   
 
   
