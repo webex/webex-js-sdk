@@ -2,3 +2,10 @@ extends: "@ciscospark"
 globals:
   PACKAGE_VERSION: false
 root: true
+rules:
+  indent:
+    - error
+    - 2
+    -
+      SwitchCase: 1
+      MemberExpression: 1
