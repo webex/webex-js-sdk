@@ -108,8 +108,18 @@ exports.set = async function set(version, {all, lastLog}) {
   }
 
   // reminder, can't destructure updated because it's a circular dependency
-  const packages = Array.from(all ? await list() : await updated.updated({dependents: true}))
-    .filter((p) => ![`docs`, `legacy`, `tooling`].includes(p));
+
+  // First, get all the packages we should update
+  let packages = Array.from(all ? await list() : await updated.updated({dependents: true}));
+  // if we used updated() and it told us there's a tooling update, then there's
+  // a chance we changed a dependency or build rule, so we need to republish
+  // everything;
+  if (!all && packages.includes(`tooling`)) {
+    all = true;
+    packages = Array.from(await list());
+  }
+  // now, filter out the things that aren't really packages
+  packages = packages.filter((p) => ![`docs`, `legacy`, `tooling`].includes(p));
 
   if (packages.length === 0) {
     // eslint-disable-next-line no-console
