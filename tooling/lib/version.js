@@ -1,3 +1,6 @@
+/*!
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ */
 
 const debug = require(`debug`)(`tooling:version`);
 const _ = require(`lodash`);
@@ -11,15 +14,46 @@ const git = require(`./git`);
 /* eslint-disable complexity */
 
 /**
+ * Recursive compareFunction for sorting version strings
+ * @param {number} l
+ * @param {Array<number>} left
+ * @param {number} r
+ * @param {Array<number>} right
+ * @returns {number}
+ */
+function compare([l, ...left], [r, ...right]) {
+  if (l < r) {
+    return -1;
+  }
+  if (l > r) {
+    return 1;
+  }
+
+  if (left.length === 0) {
+    return 0;
+  }
+
+  return compare(left, right);
+}
+
+/**
  * Determines the latest published package version for the repo
  * @returns {Promise<string>}
  */
 exports.last = async function last() {
   const packages = Array.from(await list());
-  const version = _(await Promise.all(packages
-    .map(getDistTag)))
-    .sort()
+  const version = _(
+      await Promise.all(packages
+        // TODO stop omitting eslint config once it's fully removed from the repo
+        .filter((p) => p !== `@ciscospark/eslint-config`)
+        .map(getDistTag))
+    )
     .filter()
+    .map((v) => v.split(`.`).map((n) => parseInt(n, 10)))
+    .sort(compare)
+    .map((v) => v.join(`.`))
+    // TODO stop omitting v2 packages once the last once is unpublished
+    .filter((v) => !v.startsWith(`2.`))
     .last()
     .trim();
 
@@ -54,14 +88,14 @@ exports.next = async function next({always}) {
     debug(`no changes to make`);
     if (always) {
       const nextVersion = increment(`patch`, currentVersion);
-      debug(`next version is ${version}`);
+      debug(`next version is ${nextVersion}`);
       return nextVersion;
     }
     return currentVersion;
   }
 
   const nextVersion = increment(type, currentVersion);
-  debug(`next version is ${version}`);
+  debug(`next version is ${nextVersion}`);
   return nextVersion;
 };
 
@@ -159,6 +193,8 @@ async function getChangeType() {
  * @returns {string}
  */
 function increment(type, version) {
+  debug(`incrementing ${version} by ${type}`);
+
   let [major, minor, patch] = version
     .replace(`v`, ``)
     .split(`.`)

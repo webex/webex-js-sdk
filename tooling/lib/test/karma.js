@@ -1,4 +1,6 @@
-
+/*!
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ */
 
 const debug = require(`debug`)(`tooling:test:karma`);
 const {Server, stopper} = require(`karma`);

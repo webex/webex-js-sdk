@@ -15,35 +15,19 @@ echo "# RUNNING TESTS"
 echo "################################################################################"
 
 PIDS=""
-
-PACKAGES=$(ls ./packages/node_modules | grep -v @ciscospark)
-PACKAGES+=" "
-PACKAGES+="$(cd ./packages/node_modules/ && find @ciscospark -maxdepth 1 -type d | egrep -v @ciscospark$)"
+PACKAGES=""
 # copied from http://www.tldp.org/LDP/abs/html/comparison-ops.html because I can
 # never remember which is which
 # > -z string is null, that is, has zero length
 # > -n string is not null.
 if [ -n "${PIPELINE}" ]; then
-  PACKAGES+=" legacy-node"
-  PACKAGES+=" legacy-browser"
+  # list all packages
+  PACKAGES=$(docker run ${DOCKER_RUN_OPTS} bash -c 'npm run tooling --silent -- list --forpipeline')
+else
+  # list changed packages
+  PACKAGES=$(docker run ${DOCKER_RUN_OPTS} bash -c 'npm run tooling --silent -- list --fortests')
 fi
 for PACKAGE in ${PACKAGES}; do
-  if ! echo ${PACKAGE} | grep -qc -v test-helper ; then
-    continue
-  fi
-
-  if ! echo ${PACKAGE} | grep -qc -v bin- ; then
-    continue
-  fi
-
-  if ! echo ${PACKAGE} | grep -qc -v xunit-with-logs ; then
-    continue
-  fi
-
-  if ! echo ${PACKAGE} | grep -qc -v eslint-config ; then
-    continue
-  fi
-
   CONTAINER_NAME="$(echo ${PACKAGE} | awk -F '/' '{ print $NF }')-${BUILD_NUMBER}"
 
   if [ -n "${CONCURRENCY}" ]; then
@@ -67,6 +51,9 @@ for PACKAGE in ${PACKAGES}; do
   eval "docker run --name=${CONTAINER_NAME} -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} &"
   PID="$!"
   PIDS+=" ${PID}"
+  # In the event we're merging coverage from a previous build, we want to delete
+  # the old coverage info for the package(s) under test in this build.
+  rm -rf "./reports/{coverage,coverage-final}/${PACKAGE}"
   echo "Running tests for ${PACKAGE} as ${PID}"
 
   echo "The following containers are running on this host"
