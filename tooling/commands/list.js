@@ -44,6 +44,12 @@ module.exports = {
         .filter((p) => !p.includes(`eslint-config`))
         .filter((p) => !p.includes(`xunit-with-logs`));
 
+      if (forpipeline) {
+        packages = packages
+          .filter((p) => !p.includes(`media-engine-webrtc`))
+          .filter((p) => !p.includes(`media-adapter-webrtc`));
+      }
+
       // this array is ranked in the order of approximate slowness. At this
       // time, that order is based on eyeballing some xml files rather than
       // empirical measurements of overall suite duration.
