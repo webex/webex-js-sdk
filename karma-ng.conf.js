@@ -76,6 +76,7 @@ function makeConfig(packageName, argv) {
 
     client: {
       mocha: {
+        bail: argv.bail,
         // TODO figure out how to report retries
         retries: process.env.JENKINS || process.env.CI ? 1 : 0,
         timeout: 30000,
