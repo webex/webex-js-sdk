@@ -32,7 +32,7 @@ const depsToVersions = _.curry((rootPkg, deps) => deps.reduce((acc, dep) => {
     return acc;
   }
 
-  acc[dep] = rootPkg.dependencies[dep] || rootPkg.devDependencies[dep] || rootPkg.optionalDependencies[dep];
+  acc[dep] = _.get(rootPkg, `dependencies[${dep}]`) || _.get(rootPkg, `devDependencies[${dep}]`) || _.get(rootPkg, `optionalDependencies[${dep}]`);
 
   if (!acc[dep]) {
     try {
