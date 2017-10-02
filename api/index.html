@@ -318,33 +318,9 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#calleventmembershipchange'
+                          href='#calleventerror'
                           class='regular pre-open'>
-                          ⓔ membership:change
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventmembershipwaiting'
-                          class='regular pre-open'>
-                          ⓔ membership:waiting
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventmembershipdisconnected'
-                          class='regular pre-open'>
-                          ⓔ membership:disconnected
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventmembershipdeclined'
-                          class='regular pre-open'>
-                          ⓔ membership:declined
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventmembershipconnected'
-                          class='regular pre-open'>
-                          ⓔ membership:connected
+                          ⓔ error
                         </a></li>
                       
                         <li><a
@@ -354,21 +330,33 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventerror'
+                          href='#calleventmembershipconnected'
                           class='regular pre-open'>
-                          ⓔ error
+                          ⓔ membership:connected
                         </a></li>
                       
                         <li><a
-                          href='#calleventconnected'
+                          href='#calleventmembershipdeclined'
                           class='regular pre-open'>
-                          ⓔ connected
+                          ⓔ membership:declined
                         </a></li>
                       
                         <li><a
-                          href='#calleventlocalmediastreamchange'
+                          href='#calleventmembershipdisconnected'
                           class='regular pre-open'>
-                          ⓔ localMediaStream:change
+                          ⓔ membership:disconnected
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventmembershipwaiting'
+                          class='regular pre-open'>
+                          ⓔ membership:waiting
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventmembershipchange'
+                          class='regular pre-open'>
+                          ⓔ membership:change
                         </a></li>
                       
                         <li><a
@@ -378,9 +366,21 @@
                         </a></li>
                       
                         <li><a
+                          href='#calleventconnected'
+                          class='regular pre-open'>
+                          ⓔ connected
+                        </a></li>
+                      
+                        <li><a
                           href='#calleventringing'
                           class='regular pre-open'>
                           ⓔ ringing
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventlocalmediastreamchange'
+                          class='regular pre-open'>
+                          ⓔ localMediaStream:change
                         </a></li>
                       
                         <li><a
@@ -893,16 +893,6 @@
               
                 
                 <li><a
-                  href='#eventmembershipsremove'
-                  class="">
-                  memberships:remove
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
                   href='#eventmembershipsadd'
                   class="">
                   memberships:add
@@ -913,9 +903,9 @@
               
                 
                 <li><a
-                  href='#eventterminating'
+                  href='#eventmembershipsremove'
                   class="">
-                  terminating
+                  memberships:remove
                   
                 </a>
                 
@@ -923,9 +913,9 @@
               
                 
                 <li><a
-                  href='#eventinactive'
+                  href='#eventactive'
                   class="">
-                  inactive
+                  active
                   
                 </a>
                 
@@ -943,9 +933,19 @@
               
                 
                 <li><a
-                  href='#eventactive'
+                  href='#eventinactive'
                   class="">
-                  active
+                  inactive
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#eventterminating'
+                  class="">
+                  terminating
                   
                 </a>
                 
@@ -3357,11 +3357,11 @@ only, this function will throw.</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='calleventmembershipchange'>
+    <div class='border-bottom' id='calleventerror'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:change</span>
+            <span class='code strong strong truncate'>error</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -3371,187 +3371,7 @@ only, this function will throw.</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>membership:change</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventmembershipwaiting'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:waiting</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>membership:waiting</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventmembershipdisconnected'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:disconnected</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>membership:disconnected</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventmembershipdeclined'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:declined</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>membership:declined</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventmembershipconnected'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:connected</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>membership:connected</div>
+  <div class='pre p1 fill-light mt0'>error</div>
   
   
 
@@ -3627,11 +3447,11 @@ only, this function will throw.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventerror'>
+    <div class='border-bottom' id='calleventmembershipconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>error</span>
+            <span class='code strong strong truncate'>membership:connected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -3641,7 +3461,7 @@ only, this function will throw.</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>error</div>
+  <div class='pre p1 fill-light mt0'>membership:connected</div>
   
   
 
@@ -3672,11 +3492,11 @@ only, this function will throw.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventconnected'>
+    <div class='border-bottom' id='calleventmembershipdeclined'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>connected</span>
+            <span class='code strong strong truncate'>membership:declined</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -3686,16 +3506,11 @@ only, this function will throw.</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>connected</div>
+  <div class='pre p1 fill-light mt0'>membership:declined</div>
   
   
 
-  <div>Deprecated: with 
-<a href="config.phone.enableExperimentalGroupCallingSupport">config.phone.enableExperimentalGroupCallingSupport</a>
- enabled;
-instead, listen for 
-<a href="Call.active">Call.active</a>
-</div>
+  
   
   
   
@@ -3722,11 +3537,11 @@ instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventlocalmediastreamchange'>
+    <div class='border-bottom' id='calleventmembershipdisconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>localMediaStream:change</span>
+            <span class='code strong strong truncate'>membership:disconnected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -3736,7 +3551,97 @@ instead, listen for
 
   
 
-  <div class='pre p1 fill-light mt0'>localMediaStream:change</div>
+  <div class='pre p1 fill-light mt0'>membership:disconnected</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventmembershipwaiting'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>membership:waiting</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>membership:waiting</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventmembershipchange'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>membership:change</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>membership:change</div>
   
   
 
@@ -3817,6 +3722,56 @@ instead, listen for
       </div>
     </div>
   
+    <div class='border-bottom' id='calleventconnected'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>connected</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>connected</div>
+  
+  
+
+  <div>Deprecated: with 
+<a href="config.phone.enableExperimentalGroupCallingSupport">config.phone.enableExperimentalGroupCallingSupport</a>
+ enabled;
+instead, listen for 
+<a href="Call.active">Call.active</a>
+</div>
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='calleventringing'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -3841,6 +3796,51 @@ instead, listen for
 instead, listen for 
 <a href="Call.membership:notified">Call.membership:notified</a>
 </div>
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventlocalmediastreamchange'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>localMediaStream:change</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>localMediaStream:change</div>
+  
+  
+
+  
   
   
   
@@ -8440,52 +8440,6 @@ moderator
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='eventmembershipsremove'>
-      memberships:remove
-    </h3>
-    
-    
-  </div>
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>memberships:remove</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
     <h3 class='fl m0' id='eventmembershipsadd'>
       memberships:add
     </h3>
@@ -8532,8 +8486,8 @@ moderator
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='eventterminating'>
-      terminating
+    <h3 class='fl m0' id='eventmembershipsremove'>
+      memberships:remove
     </h3>
     
     
@@ -8542,7 +8496,7 @@ moderator
 
   
 
-  <div class='pre p1 fill-light mt0'>terminating</div>
+  <div class='pre p1 fill-light mt0'>memberships:remove</div>
   
   
 
@@ -8578,8 +8532,8 @@ moderator
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='eventinactive'>
-      inactive
+    <h3 class='fl m0' id='eventactive'>
+      active
     </h3>
     
     
@@ -8588,7 +8542,7 @@ moderator
 
   
 
-  <div class='pre p1 fill-light mt0'>inactive</div>
+  <div class='pre p1 fill-light mt0'>active</div>
   
   
 
@@ -8670,8 +8624,8 @@ moderator
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='eventactive'>
-      active
+    <h3 class='fl m0' id='eventinactive'>
+      inactive
     </h3>
     
     
@@ -8680,7 +8634,53 @@ moderator
 
   
 
-  <div class='pre p1 fill-light mt0'>active</div>
+  <div class='pre p1 fill-light mt0'>inactive</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='eventterminating'>
+      terminating
+    </h3>
+    
+    
+  </div>
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>terminating</div>
   
   
 
