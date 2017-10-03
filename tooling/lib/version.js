@@ -202,36 +202,36 @@ function increment(type, version) {
 
   if (major === 0) {
     switch (type) {
-    case `major`:
-      minor += 1;
-      patch = 0;
-      break;
-    case `minor`:
-      patch += 1;
-      break;
-    case `patch`:
-      patch += 1;
-      break;
-    default:
-      throw new Error(`unrecognized change type`);
+      case `major`:
+        minor += 1;
+        patch = 0;
+        break;
+      case `minor`:
+        patch += 1;
+        break;
+      case `patch`:
+        patch += 1;
+        break;
+      default:
+        throw new Error(`unrecognized change type`);
     }
   }
   else {
     switch (type) {
-    case `major`:
-      major += 1;
-      minor = 0;
-      patch = 0;
-      break;
-    case `minor`:
-      minor += 1;
-      patch = 0;
-      break;
-    case `patch`:
-      patch += 1;
-      break;
-    default:
-      throw new Error(`unrecognized change type`);
+      case `major`:
+        major += 1;
+        minor = 0;
+        patch = 0;
+        break;
+      case `minor`:
+        minor += 1;
+        patch = 0;
+        break;
+      case `patch`:
+        patch += 1;
+        break;
+      default:
+        throw new Error(`unrecognized change type`);
     }
   }
 
