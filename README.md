@@ -1,5 +1,7 @@
 # spark-js-sdk
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/ciscospark/spark-js-sdk.svg)](https://greenkeeper.io/)
+
 [![npm](https://img.shields.io/npm/v/ciscospark.svg?maxAge=86400)](https://www.npmjs.com/package/ciscospark)
 [![license](https://img.shields.io/github/license/ciscospark/spark-js-sdk.svg)](https://github.com/ciscospark/spark-js-sdk/blob/master/LICENSE)
 
