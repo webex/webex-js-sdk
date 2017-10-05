@@ -23,7 +23,7 @@ module.exports = {
     }
   },
   // eslint-disable-next-line complexity
-  handler: wrapHandler(async ({fortests, forpipeline}) => {
+  handler: wrapHandler(async({fortests, forpipeline}) => {
     let packages;
     if (fortests) {
       const changed = await updated({});

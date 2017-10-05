@@ -9,7 +9,7 @@ module.exports = {
   command: `last`,
   desc: `Go to npm to read the highest published version of any package in the repo`,
   builder: {},
-  handler: wrapHandler(async () => {
+  handler: wrapHandler(async() => {
     console.log(await last());
   })
 };

@@ -34,7 +34,7 @@ module.exports = {
       type: `boolean`
     }
   },
-  handler: wrapHandler(async ({packageName, includeTransitive, localOnly, versions, dependents}) => {
+  handler: wrapHandler(async({packageName, includeTransitive, localOnly, versions, dependents}) => {
     let deps;
     if (dependents) {
       deps = await listDependents(packageName, {includeTransitive});

@@ -24,7 +24,7 @@ module.exports = {
       type: `boolean`
     }
   },
-  handler: wrapHandler(async ({dependents, npm, upstream}) => {
+  handler: wrapHandler(async({dependents, npm, upstream}) => {
     if (npm) {
       upstream = false;
     }
