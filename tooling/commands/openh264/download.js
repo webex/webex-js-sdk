@@ -9,7 +9,7 @@ module.exports = {
   command: `download`,
   desc: `Download the openh264 code`,
   builder: {},
-  handler: wrapHandler(async () => {
+  handler: wrapHandler(async() => {
     await download();
   })
 };
