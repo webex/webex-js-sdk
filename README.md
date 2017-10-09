@@ -81,6 +81,25 @@ In-browser usage is pretty much the same as Node.js usage, with the addition of 
 the user authentication flow for you. See the guide on the
 [docs site](https://ciscospark.github.io/spark-js-sdk/guides/browsers/) for more information.
 
+## Samples
+
+Sample code can be found in [packages/node_modules/*](./packages/node_modules). You can run them yourself with the following commands:
+
+> Note: this installs all of the sdk's tooling dependencies, so you'll need libgcrypt and (possibly) graphicsmagick. On a mac, you can install these with `brew install graphicsmagick libgrcrypt`.
+
+```bash
+git clone git@github.com:ciscospark/spark-js-sdk.git
+cd spark-js-sdk
+npm install
+npm run serve:samples
+```
+
+You'll be able to load the samples by visiting `https://localhost:8000/packages/node_modules/<PACKAGE NAME>`.
+
+### Available Samples
+
+- Single Party Calling: [local app](`https://localhost:8000/packages/node_modules/sample-browser-single-party-call`) | [code](./packages/node_modules/sample-browser-single-party-call)
+
 ## Contribute
 
 Pull requests welcome. Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for more details about building the packages
