@@ -349,6 +349,11 @@ ansiColor('xterm') {
                 timeout(60) {
                   def exitCode = sh script: "./tooling/test.sh", returnStatus: true
 
+                  image.inside(DOCKER_RUN_OPTS) {
+                    echo 'Testing samples'
+                    sh 'npm run test:samples'
+                  }
+
                   junit 'reports/junit/**/*.xml'
 
                   if (currentBuild.result == 'SUCCESS' && exitCode != 0) {

@@ -2,6 +2,7 @@ const dotenv = require(`dotenv`);
 const glob = require(`glob`);
 const path = require(`path`);
 const webpackConfig = require(`./webpack.config`);
+const uuid = require(`uuid`).v4();
 
 dotenv.config({path: `.env.default`});
 dotenv.config();
@@ -14,11 +15,10 @@ require(`babel-register`)({
 });
 
 const PORT = process.env.PORT || 8000;
-// FIXME CI needs to be configured
-const CI = false;
+const CI = !!(process.env.JENKINS || process.env.CI);
+
 
 exports.config = {
-
   //
   // ==================
   // Specify Test Files
@@ -140,11 +140,13 @@ exports.config = {
   // Services take over a specific job you don't want to take care of. They enhance
   // your test setup with almost no effort. Unlike plugins, they don't add new
   // commands. Instead, they hook themselves up into the test process.
-  services: CI ? [] : [
+  services: CI ? [
+    `sauce`,
+    `static-server`,
+    `webpack`
+  ] : [
     `selenium-standalone`,
     `static-server`,
-    // `sauce`,
-    // `firefox-profile`,
     `webpack`
   ],
   staticServerFolders: [
@@ -152,6 +154,34 @@ exports.config = {
   ],
   staticServerPort: PORT,
   webpackConfig,
+
+  // Sauce Config
+  user: process.env.SAUCE_USERNAME,
+  key: process.env.SAUCE_ACCESS_KEY,
+  sauceConnect: !process.env.SC_TUNNEL_IDENTIFIER,
+  sauceConnectOpts: {
+    build: process.env.BUILD_NUMBER || `local-${process.env.USER}-wdio-${Date.now()}`,
+    recordScreenshots: true,
+    recordVideo: true,
+    tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuid.v4(),
+    tunnelDomains: [
+      `127.0.0.1`,
+      `calendar-whistler.onint.ciscospark.com`,
+      `internal-testing-services.wbx2.com`,
+      `localhost`,
+      `whistler.onint.ciscospark.com`
+    ],
+    noSslBumpDomains: [
+      `*.ciscospark.com`,
+      `*.wbx2.com`,
+      `127.0.0.1`,
+      `idbroker.webex.com`,
+      `localhost`
+    ]
+  },
+  // End Sauce Config
+
+
   //
   // Framework you want to run your specs with.
   // The following are supported: Mocha, Jasmine, and Cucumber
@@ -165,7 +195,11 @@ exports.config = {
   // The only one supported by default is 'dot'
   // see also: http://webdriver.io/guide/testrunner/reporters.html
   reporters: CI ? [`spec`, `junit`] : [`spec`],
-
+  reporterOptions: {
+    junit: {
+      outputDir: `./reports/junit/wdio`
+    }
+  },
   //
   // Options to be passed to Mocha.
   // See the full list at http://mochajs.org/
