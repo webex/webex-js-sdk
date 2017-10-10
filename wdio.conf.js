@@ -2,7 +2,7 @@ const dotenv = require(`dotenv`);
 const glob = require(`glob`);
 const path = require(`path`);
 const webpackConfig = require(`./webpack.config`);
-const uuid = require(`uuid`).v4();
+const uuid = require(`uuid`);
 
 dotenv.config({path: `.env.default`});
 dotenv.config();
@@ -16,7 +16,6 @@ require(`babel-register`)({
 
 const PORT = process.env.PORT || 8000;
 const CI = !!(process.env.JENKINS || process.env.CI);
-
 
 exports.config = {
   //
@@ -154,33 +153,6 @@ exports.config = {
   ],
   staticServerPort: PORT,
   webpackConfig,
-
-  // Sauce Config
-  user: process.env.SAUCE_USERNAME,
-  key: process.env.SAUCE_ACCESS_KEY,
-  sauceConnect: !process.env.SC_TUNNEL_IDENTIFIER,
-  sauceConnectOpts: {
-    build: process.env.BUILD_NUMBER || `local-${process.env.USER}-wdio-${Date.now()}`,
-    recordScreenshots: true,
-    recordVideo: true,
-    tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuid.v4(),
-    tunnelDomains: [
-      `127.0.0.1`,
-      `calendar-whistler.onint.ciscospark.com`,
-      `internal-testing-services.wbx2.com`,
-      `localhost`,
-      `whistler.onint.ciscospark.com`
-    ],
-    noSslBumpDomains: [
-      `*.ciscospark.com`,
-      `*.wbx2.com`,
-      `127.0.0.1`,
-      `idbroker.webex.com`,
-      `localhost`
-    ]
-  },
-  // End Sauce Config
-
 
   //
   // Framework you want to run your specs with.
@@ -331,3 +303,32 @@ exports.config = {
   // onComplete: function(exitCode) {
   // }
 };
+
+
+if (CI) {
+  Object.assign(exports.config, {
+    user: process.env.SAUCE_USERNAME,
+    key: process.env.SAUCE_ACCESS_KEY,
+    sauceConnect: !process.env.SC_TUNNEL_IDENTIFIER,
+    sauceConnectOpts: {
+      build: process.env.BUILD_NUMBER || `local-${process.env.USER}-wdio-${Date.now()}`,
+      recordScreenshots: true,
+      recordVideo: true,
+      tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuid.v4(),
+      tunnelDomains: [
+        `127.0.0.1`,
+        `calendar-whistler.onint.ciscospark.com`,
+        `internal-testing-services.wbx2.com`,
+        `localhost`,
+        `whistler.onint.ciscospark.com`
+      ],
+      noSslBumpDomains: [
+        `*.ciscospark.com`,
+        `*.wbx2.com`,
+        `127.0.0.1`,
+        `idbroker.webex.com`,
+        `localhost`
+      ]
+    }
+  });
+}
