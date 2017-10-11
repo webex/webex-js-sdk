@@ -199,7 +199,7 @@
     "urlsafe-base64": "^1.0.0",
     "uuid": "^3.0.1",
     "wd": "^1.4.0",
-    "webrtc-adapter": "~5.0.4",
+    "webrtc-adapter": "^5.0.6",
     "whatwg-fetch": "^2.0.3",
     "ws": "^1.1.4",
     "xhr": "^2.4.0",
