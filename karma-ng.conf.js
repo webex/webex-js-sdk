@@ -54,6 +54,10 @@ function makeConfig(packageName, argv) {
       ]
     },
 
+    browserConsoleLogOptions: {
+      terminal: !(process.env.JENKINS || process.env.CI)
+    },
+
     browserNoActivityTimeout: 480000,
 
     // Inspired by Angular's karma config as recommended by Sauce Labs
