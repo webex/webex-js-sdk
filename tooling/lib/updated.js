@@ -55,7 +55,7 @@ function fileToPackage(d) {
     return d[0];
   }
 
-  if (d.startsWith(`docs`)) {
+  if (d.startsWith(`docs`) || d.startsWith(`documentation`)) {
     return `docs`;
   }
 
