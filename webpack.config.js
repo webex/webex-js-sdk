@@ -12,6 +12,7 @@ module.exports = {
   },
   devtool: `source-map`,
   devServer: {
+    https: true,
     disableHostCheck: true,
     port: 8000
   },
