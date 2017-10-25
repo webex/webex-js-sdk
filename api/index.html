@@ -318,27 +318,9 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#calleventmembershipchange'
+                          href='#calleventmembershipnotified'
                           class='regular pre-open'>
-                          ⓔ membership:change
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventmembershipwaiting'
-                          class='regular pre-open'>
-                          ⓔ membership:waiting
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventmembershipdisconnected'
-                          class='regular pre-open'>
-                          ⓔ membership:disconnected
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventmembershipdeclined'
-                          class='regular pre-open'>
-                          ⓔ membership:declined
+                          ⓔ membership:notified
                         </a></li>
                       
                         <li><a
@@ -348,27 +330,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventmembershipnotified'
-                          class='regular pre-open'>
-                          ⓔ membership:notified
-                        </a></li>
-                      
-                        <li><a
                           href='#calleventringing'
                           class='regular pre-open'>
                           ⓔ ringing
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventremotemediastreamchange'
-                          class='regular pre-open'>
-                          ⓔ remoteMediaStream:change
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventlocalmediastreamchange'
-                          class='regular pre-open'>
-                          ⓔ localMediaStream:change
                         </a></li>
                       
                         <li><a
@@ -384,9 +348,45 @@
                         </a></li>
                       
                         <li><a
+                          href='#calleventlocalmediastreamchange'
+                          class='regular pre-open'>
+                          ⓔ localMediaStream:change
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventremotemediastreamchange'
+                          class='regular pre-open'>
+                          ⓔ remoteMediaStream:change
+                        </a></li>
+                      
+                        <li><a
                           href='#calleventerror'
                           class='regular pre-open'>
                           ⓔ error
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventmembershipdeclined'
+                          class='regular pre-open'>
+                          ⓔ membership:declined
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventmembershipdisconnected'
+                          class='regular pre-open'>
+                          ⓔ membership:disconnected
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventmembershipwaiting'
+                          class='regular pre-open'>
+                          ⓔ membership:waiting
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventmembershipchange'
+                          class='regular pre-open'>
+                          ⓔ membership:change
                         </a></li>
                       
                     </ul>
@@ -903,9 +903,9 @@
               
                 
                 <li><a
-                  href='#eventmembershipsremove'
+                  href='#eventactive'
                   class="">
-                  memberships:remove
+                  active
                   
                 </a>
                 
@@ -913,19 +913,9 @@
               
                 
                 <li><a
-                  href='#eventmembershipsadd'
+                  href='#eventinitializing'
                   class="">
-                  memberships:add
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#eventterminating'
-                  class="">
-                  terminating
+                  initializing
                   
                 </a>
                 
@@ -943,9 +933,9 @@
               
                 
                 <li><a
-                  href='#eventactive'
+                  href='#eventterminating'
                   class="">
-                  active
+                  terminating
                   
                 </a>
                 
@@ -953,9 +943,19 @@
               
                 
                 <li><a
-                  href='#eventinitializing'
+                  href='#eventmembershipsadd'
                   class="">
-                  initializing
+                  memberships:add
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#eventmembershipsremove'
+                  class="">
+                  memberships:remove
                   
                 </a>
                 
@@ -1033,9 +1033,9 @@
               
                 
                 <li><a
-                  href='#email'
+                  href='#isodate'
                   class="">
-                  email
+                  isoDate
                   
                 </a>
                 
@@ -1043,9 +1043,9 @@
               
                 
                 <li><a
-                  href='#isodate'
+                  href='#email'
                   class="">
-                  isoDate
+                  email
                   
                 </a>
                 
@@ -1087,7 +1087,7 @@
 <h3>Shell Script (Quick Start)</h3>
 <p>This is the quickest way to get up and running with our JavaScript SDK. Simply set the environment variable <code>CISCOSPARK_ACCESS_TOKEN</code> to your access token and add the following line at the top of your JavaScript file to get a ready-to-use instance.</p>
 <blockquote>
-<p>You can get your <code>CISCOSPARK_ACCESS_TOKEN</code> from the <a href="https://developer.ciscospark.com">developer portal</a>.</p>
+<p>You can get your <code>CISCOSPARK_ACCESS_TOKEN</code> from the <a href="https://developer.ciscospark.com">Cisco Spark for Developers portal</a>.</p>
 </blockquote>
 <pre class='hljs'><span class="hljs-keyword">const</span> ciscospark = <span class="hljs-built_in">require</span>(<span class="hljs-string">`ciscospark/env`</span>);</pre>
 <blockquote>
@@ -1098,10 +1098,10 @@
 <blockquote>
 <p>You'll need to <a href="https://developer.ciscospark.com/add-integration.html">register an OAuth Client</a> to get your "authorization string"</p>
 </blockquote>
-<p>Use the steps under <a href="#bundling">Bundling</a> (or something similar) to get the sdk into your browser, Then the following use the following JavaScript to get started.</p>
+<p>Use the steps under <a href="#bundling">Bundling</a> (or something similar) to get the SDK into your browser, then use the following JavaScript to get started:</p>
 <pre class='hljs'><span class="hljs-keyword">const</span> ciscospark = CiscoSpark.init({
   <span class="hljs-attr">config</span>: {
-    <span class="hljs-attr">authorizationString</span>: <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-name">your</span> <span class="hljs-attr">auth</span> <span class="hljs-attr">url</span>&gt;</span>,
+    <span class="hljs-attr">authorizationString</span>: <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-name">your</span> <span class="hljs-attr">auth</span> <span class="hljs-attr">URL</span>&gt;</span>,
   }
 });
 
@@ -1115,19 +1115,19 @@ ciscospark.once(`ready`, () =&gt; {
     /*
       The following is a naive example of how to log in a user. Note that login should probably require a user action, otherwise errors can lead you into an infinite redirect loop.
 
-      This will direct the user agent to the Cisco login page. Once the user logs in, they'll be redirected back to your app and the sdk will handle parsing the url.
+      This will direct the user agent to the Cisco login page. Once the user logs in, they'll be redirected back to your app and the SDK will handle parsing the URL.
     */
     ciscospark.authorization.initiateLogin();
   }
 });</span></pre>
 <h4>Bundling</h4>
-<p>You'll need to bundle the SDK to use it in a web browser. Right now, we do all our SDK testing with browserify, but our <a href="https://github.com/ciscospark/react-ciscospark">Widgets Project</a> uses <a href="https://webpack.github.io/">webpack</a>.</p>
-<p>The following snippet is the bare minimum to get our code into a form suitable for a web browser. You'll probably want to additionally pipe it through a minifier like <a href="https://github.com/mishoo/UglifyJS2">uglify</a> before going to production.</p>
+<p>You'll need to bundle the SDK to use it in a web browser. Right now, we do all our SDK testing with <a href="http://browserify.org/">Browserify</a>, but our <a href="https://github.com/ciscospark/react-ciscospark">Cisco Spark Widgets</a> use <a href="https://webpack.github.io/">webpack</a>.</p>
+<p>The following snippet is the bare minimum to get our code into a form suitable for a web browser. You'll probably want to additionally pipe it through a minifier like <a href="https://github.com/mishoo/UglifyJS2">UglifyJS</a> before going to production.</p>
 <pre class='hljs'>npm install ciscospark
 npm install -g browserify
 <span class="hljs-built_in">echo</span> <span class="hljs-string">"window.CiscoSpark = require('ciscospark')"</span> &gt; ./index.js
 browserify index.js &gt; bundle.js</pre>
-<p>Then, just load your bundle using</p>
+<p>Then, just load your bundle using:</p>
 <pre class='hljs'><span class="hljs-tag">&lt;<span class="hljs-name">script</span> <span class="hljs-attr">src</span>=<span class="hljs-string">"/bundle.js"</span>&gt;</span><span class="undefined"></span><span class="hljs-tag">&lt;/<span class="hljs-name">script</span>&gt;</span></pre>
 <h3>NodeJS</h3>
 <p>Though the implicit flow is great for single page apps, it's not ideal for integrations that might need to do things on your users' behalf months in the future. We additionally support the <a href="https://tools.ietf.org/html/rfc6749#section-4.1">OAuth 2.0 Authorization Code Grant</a> flow, but due to its complexity, there's a bit you'll need to wire up in your app to take advantage of it. The following is an example of how an Express app might do authentication.</p>
@@ -1138,7 +1138,7 @@ app.use(<span class="hljs-function"><span class="hljs-keyword">function</span>(<
   req.spark = CiscoSpark.init({
     <span class="hljs-attr">config</span>: {
       <span class="hljs-attr">credentials</span>: {
-        <span class="hljs-attr">authorizationString</span>: &lt;your auth url&gt;,
+        <span class="hljs-attr">authorizationString</span>: &lt;your auth URL&gt;,
         client_secret: &lt;your client secret&gt;
       },
     }
@@ -1149,7 +1149,7 @@ app.use(<span class="hljs-function"><span class="hljs-keyword">function</span>(<
 
 app.get(`/login`, (req, res) =&gt; {
   // buildLoginUrl() defaults to the implicit grant flow so explicitly pass
-  // `confidential` to generate a url suitable to the Authorization Code grant
+  // `confidential` to generate a URL suitable to the Authorization Code grant
   // flow.
   res
     .redirect(req.spark.credentials.buildLoginUrl({clientType: 'confidential'}))
@@ -3367,11 +3367,11 @@ only, this function will throw.</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='calleventmembershipchange'>
+    <div class='border-bottom' id='calleventmembershipnotified'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:change</span>
+            <span class='code strong strong truncate'>membership:notified</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -3381,142 +3381,7 @@ only, this function will throw.</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>membership:change</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventmembershipwaiting'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:waiting</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>membership:waiting</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventmembershipdisconnected'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:disconnected</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>membership:disconnected</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventmembershipdeclined'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:declined</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>membership:declined</div>
+  <div class='pre p1 fill-light mt0'>membership:notified</div>
   
   
 
@@ -3592,51 +3457,6 @@ only, this function will throw.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventmembershipnotified'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:notified</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>membership:notified</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
     <div class='border-bottom' id='calleventringing'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -3661,96 +3481,6 @@ only, this function will throw.</p>
 instead, listen for 
 <a href="Call.membership:notified">Call.membership:notified</a>
 </div>
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventremotemediastreamchange'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>remoteMediaStream:change</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>remoteMediaStream:change</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventlocalmediastreamchange'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>localMediaStream:change</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>localMediaStream:change</div>
-  
-  
-
-  
   
   
   
@@ -3877,6 +3607,96 @@ instead, listen for
       </div>
     </div>
   
+    <div class='border-bottom' id='calleventlocalmediastreamchange'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>localMediaStream:change</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>localMediaStream:change</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventremotemediastreamchange'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>remoteMediaStream:change</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>remoteMediaStream:change</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='calleventerror'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -3892,6 +3712,186 @@ instead, listen for
   
 
   <div class='pre p1 fill-light mt0'>error</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventmembershipdeclined'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>membership:declined</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>membership:declined</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventmembershipdisconnected'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>membership:disconnected</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>membership:disconnected</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventmembershipwaiting'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>membership:waiting</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>membership:waiting</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventmembershipchange'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>membership:change</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>membership:change</div>
   
   
 
@@ -8508,8 +8508,8 @@ even if the type is not "person" (e.g.: SX10, webhook_intergation, etc.)</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='eventmembershipsremove'>
-      memberships:remove
+    <h3 class='fl m0' id='eventactive'>
+      active
     </h3>
     
     
@@ -8518,7 +8518,7 @@ even if the type is not "person" (e.g.: SX10, webhook_intergation, etc.)</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>memberships:remove</div>
+  <div class='pre p1 fill-light mt0'>active</div>
   
   
 
@@ -8554,8 +8554,8 @@ even if the type is not "person" (e.g.: SX10, webhook_intergation, etc.)</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='eventmembershipsadd'>
-      memberships:add
+    <h3 class='fl m0' id='eventinitializing'>
+      initializing
     </h3>
     
     
@@ -8564,53 +8564,7 @@ even if the type is not "person" (e.g.: SX10, webhook_intergation, etc.)</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>memberships:add</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='eventterminating'>
-      terminating
-    </h3>
-    
-    
-  </div>
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>terminating</div>
+  <div class='pre p1 fill-light mt0'>initializing</div>
   
   
 
@@ -8692,8 +8646,8 @@ even if the type is not "person" (e.g.: SX10, webhook_intergation, etc.)</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='eventactive'>
-      active
+    <h3 class='fl m0' id='eventterminating'>
+      terminating
     </h3>
     
     
@@ -8702,7 +8656,7 @@ even if the type is not "person" (e.g.: SX10, webhook_intergation, etc.)</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>active</div>
+  <div class='pre p1 fill-light mt0'>terminating</div>
   
   
 
@@ -8738,8 +8692,8 @@ even if the type is not "person" (e.g.: SX10, webhook_intergation, etc.)</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='eventinitializing'>
-      initializing
+    <h3 class='fl m0' id='eventmembershipsadd'>
+      memberships:add
     </h3>
     
     
@@ -8748,7 +8702,53 @@ even if the type is not "person" (e.g.: SX10, webhook_intergation, etc.)</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>initializing</div>
+  <div class='pre p1 fill-light mt0'>memberships:add</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='eventmembershipsremove'>
+      memberships:remove
+    </h3>
+    
+    
+  </div>
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>memberships:remove</div>
   
   
 
@@ -9160,18 +9160,19 @@ the experience</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='email'>
-      email
+    <h3 class='fl m0' id='isodate'>
+      isoDate
     </h3>
     
     
   </div>
   
 
-  <p>An email address, as a string.</p>
+  <p>The date and time, specified in ISO 8601 extended offset date/time
+format (e.g. <code>2015-10-18T14:26:16+00:00</code>).</p>
 
 
-  <div class='pre p1 fill-light mt0'>email</div>
+  <div class='pre p1 fill-light mt0'>isoDate</div>
   
     <p>
       Type:
@@ -9212,19 +9213,18 @@ the experience</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='isodate'>
-      isoDate
+    <h3 class='fl m0' id='email'>
+      email
     </h3>
     
     
   </div>
   
 
-  <p>The date and time, specified in ISO 8601 extended offset date/time
-format (e.g. <code>2015-10-18T14:26:16+00:00</code>).</p>
+  <p>An email address, as a string.</p>
 
 
-  <div class='pre p1 fill-light mt0'>isoDate</div>
+  <div class='pre p1 fill-light mt0'>email</div>
   
     <p>
       Type:
