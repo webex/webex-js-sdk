@@ -1,5 +1,6 @@
 const glob = require(`glob`);
 const path = require(`path`);
+const {EnvironmentPlugin} = require(`webpack`);
 
 module.exports = {
   entry: `./packages/node_modules/ciscospark`,
@@ -39,5 +40,12 @@ module.exports = {
         }
       }
     ]
-  }
+  },
+  plugins: [
+    new EnvironmentPlugin({
+      CISCOSPARK_LOG_LEVEL: `log`,
+      DEBUG: ``,
+      NODE_ENV: `development`
+    })
+  ]
 };
