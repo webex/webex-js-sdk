@@ -5,6 +5,7 @@
 const {updated} = require(`../lib/updated`);
 const wrapHandler = require(`../lib/wrap-handler`);
 const {list} = require(`../util/package`);
+const {lastLog} = require(`../lib/git`);
 
 module.exports = {
   command: `list`,
@@ -26,7 +27,8 @@ module.exports = {
     let packages;
     if (fortests) {
       const changed = await updated({});
-      if (changed.includes(`tooling`)) {
+      const ignoreTooling = (await lastLog()).includes(`#ignore-tooling`);
+      if (!ignoreTooling && changed.includes(`tooling`)) {
         packages = await list();
       }
       else {
@@ -42,7 +44,8 @@ module.exports = {
         .filter((p) => !p.includes(`bin-`))
         .filter((p) => !p.includes(`test-helper-`))
         .filter((p) => !p.includes(`eslint-config`))
-        .filter((p) => !p.includes(`xunit-with-logs`));
+        .filter((p) => !p.includes(`xunit-with-logs`))
+        .filter((p) => !p.includes(`tooling`));
 
       // this array is ranked in the order of approximate slowness. At this
       // time, that order is based on eyeballing some xml files rather than
