@@ -100,11 +100,14 @@ exports.next = async function next({always}) {
 };
 
 exports.set = async function set(version, {all, lastLog}) {
+  let ignoreTooling = false;
   if (lastLog) {
     const log = await git.lastLog();
     if (log.includes(`#force-publish`)) {
       all = true;
     }
+
+    ignoreTooling = log.includes(`#ignore-tooling`);
   }
 
   // reminder, can't destructure updated because it's a circular dependency
@@ -114,7 +117,7 @@ exports.set = async function set(version, {all, lastLog}) {
   // if we used updated() and it told us there's a tooling update, then there's
   // a chance we changed a dependency or build rule, so we need to republish
   // everything;
-  if (!all && packages.includes(`tooling`)) {
+  if (!all && !ignoreTooling && packages.includes(`tooling`)) {
     all = true;
     packages = Array.from(await list());
   }
