@@ -23,6 +23,7 @@ broken or desired.
 While quibbling about grammar in issue titles may seem a bit pedantic, adhering to some simple rules can make it much
 easier to understand a Bug or an Enhancement from the title alone. For example, is the title **"Browsers should support
 blinking text"** a bug or a feature request?
+
 - Enhancements: The title should be an imperative statement of how things should be. **"Add support for blinking text"**
 - Bugs: The title should be a declarative statement of how things are. **"Text does not blink"**
 
@@ -31,6 +32,7 @@ blinking text"** a bug or a feature request?
 ### Build Dependencies
 
 Before you can build the Cisco Spark JS SDK, you will need the following dependencies:
+
 - [Node.js](https://nodejs.org/) 6.x (LTS)
   - We recommend using [nvm](https://github.com/creationix/nvm) (or [nvm-windows](https://github.com/coreybutler/nvm-windows))
     to easily switch between Node.js versions
@@ -76,6 +78,7 @@ npm test
 ```
 
 #### Run Unit Tests
+
 Handy during early plugin development when you can write a bunch of unit tests.
 
 ```bash
@@ -83,6 +86,7 @@ npm test -- --package PACKAGENAME --unit
 ```
 
 ### Run unit tests in watch mode
+
 OK, this one's a handful and requires a global package, but there were too many possible variants to
 hardcode it any where.
 
@@ -92,6 +96,7 @@ nodemon -w packages/PACKAGENAME/src -w packages/PACKAGENAME/test -x "npm test --
 ```
 
 #### Run Node.js Tests
+
 Usually faster, and can build on the fly, thus no need to rebuild everything between test runs
 
 ```bash
@@ -99,6 +104,7 @@ npm test -- --package PACKAGENAME --node
 ```
 
 #### Run Browser Tests
+
 Keeps the browser open so that you can reload set break points and reload the page
 
 ```bash
@@ -164,6 +170,28 @@ Just as in the **subject** the imperative, present tense: "change" not "changed"
 The footer should contain any information about **Breaking changes** and is also the place to reference GitHub issues that this commit **closes**.
 
 **Breaking Changes** should start with the word `BREAKING CHANGE:` with a space or two newlines. The rest of the commit message is then used for this.
+
+#### Special Commit Messages
+
+These are commit messages that will have an impact on how the build pipeline behaves. With the exception of `#no-push`, they are not to be used without prior approval.
+
+All of these commit messages should include an explanation for why you're using them. You'll need to commit with `-n` or `--no-verify` to bypass the commit message linter.
+
+##### `#force-publish`
+
+Force all packages to be published under the new version, not just the changed packages.
+
+##### `#ignore-tooling`
+
+Normally, we run all test suites when tooling changes, however, not all categories of tooling changes need to be tested quite so strictly. This message will omit the `tooling` meta package when determining what packages to test.
+
+##### `#no-push`
+
+Have Jenkins run all the tests, but abort the build before merging into master.
+
+##### `[ci skip]`
+
+Do not run tests for this build.
 
 ### Submitting a Pull Request
 
