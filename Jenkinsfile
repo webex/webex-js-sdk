@@ -6,9 +6,9 @@ def warn = { msg ->
     currentBuild.description += ''
   }
   else if (currentBuild.description.substring(currentBuild.description.length() - 1) != '\n') {
-    currentBuild.description += '<br/>\n'
+    currentBuild.description += '<br />\n'
   }
-  currentBuild.description += "warning: ${msg}<br/>\n"
+  currentBuild.description += "warning: ${msg}<br />\n"
 }
 
 def cleanup = { ->
@@ -198,10 +198,10 @@ ansiColor('xterm') {
             if (IS_VALIDATED_MERGE_BUILD) {
               try {
                 pusher = sh script: 'git show  --quiet --format=%ae HEAD', returnStdout: true
-                currentBuild.description += "Validating push from ${pusher}"
+                currentBuild.description += "Validating push from ${pusher} <br />"
               }
               catch (err) {
-                currentBuild.description += 'Could not determine pusher';
+                currentBuild.description += 'Could not determine pusher <br />';
               }
 
               sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
@@ -216,7 +216,7 @@ ansiColor('xterm') {
 
               changedFiles = sh script: 'git diff --name-only upstream/master..$(git merge-base HEAD upstream/master)', returnStdout: true
               if (changedFiles.contains('Jenkinsfile')) {
-                currentBuild.description += "Jenkinsfile has been updated in master. Please rebase and push again."
+                currentBuild.description += "Jenkinsfile has been updated in master. Please rebase and push again. <br />"
                 error(currentBuild.description)
               }
 
@@ -225,7 +225,7 @@ ansiColor('xterm') {
                 sh "git merge --ff ${GIT_COMMIT}"
               }
               catch (err) {
-                currentBuild.description += 'not possible to fast forward'
+                currentBuild.description += 'not possible to fast forward <br />'
                 throw err;
               }
             }
@@ -375,10 +375,10 @@ ansiColor('xterm') {
                 if (coverageBuild.result != 'SUCCESS') {
                   currentBuild.result = coverageBuild.result
                   if (coverageBuild.result == 'UNSTABLE') {
-                    currentBuild.description += coverageBuild.description
+                    currentBuild.description += coverageBuild.description + '<br />'
                   }
                   else if (coverageBuild.result == 'FAILURE') {
-                    currentBuild.description += "Coverage job failed. See the logged build url for more details."
+                    currentBuild.description += "Coverage job failed. See the logged build url for more details. <br />"
                   }
                 }
               }
@@ -424,7 +424,7 @@ ansiColor('xterm') {
                   noPushCount = sh script: 'git log upstream/master.. | grep -c "#no-push"', returnStdout: true
                   if (noPushCount != '0') {
                     currentBuild.result = 'ABORTED'
-                    currentBuild.description += 'Aborted: git history includes #no-push'
+                    currentBuild.description += 'Aborted: git history includes #no-push <br />'
                   }
                 }
                 catch (err) {
