@@ -323,15 +323,18 @@ ansiColor('xterm') {
             }
 
             stage('test') {
-              def lastLog = sh script: 'git log -n 1', returnStdout: true
-              echo "checking if tests should be skipped"
-              if (lastLog.contains('[ci skip]')) {
-                echo "tests should be skipped"
-                skipTests = true
-                warn('Bypassing tests according to commit message instruction');
-              }
-              else {
-                echo "tests should not be skipped"
+              image.inside(DOCKER_RUN_OPTS) {
+                echo "checking if tests should be skipped"
+                def action = sh script: 'npm run --silent tooling -- check-testable', returnStdout: true
+                echo "npm run --silent tooling -- check-testable production '${action}'"
+                if (action.contains('skip')) {
+                  echo "tests should be skipped"
+                  skipTests = true
+                  warn('Bypassing tests according to commit message instruction (or no changes requiring testing)');
+                }
+                else {
+                  echo "tests should not be skipped"
+                }
               }
 
               step([
