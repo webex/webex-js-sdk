@@ -94,7 +94,7 @@ exports.inject = async function inject(browsers) {
  * @param {string} platform
  * @returns {string}
  */
-function platformToShortName(platform) {
+export function platformToShortName(platform) {
   if (platform.toLowerCase().includes(`os x`) || platform === `darwin`) {
     return `mac`;
   }
@@ -112,19 +112,31 @@ async function injectLocal(def) {
   if (def.base.toLowerCase().includes(`firefox`)) {
     debug(`def is a firefox def`);
     const platform = platformToShortName(os.platform());
-    if (platform !== `mac`) {
-      throw new Error(`No tooling implemented for injecting h264 into ${platform} (${def.platform})`);
-    }
-    // Note: the `/` has to come outside path.resolve for rsync to behave as
-    // intended
-    const src = `${path.resolve(`${PROFILE_DIR}/${platform}`)}/`;
-    const dest = path.resolve(`${PROFILE_DIR}/${platform}.safe`);
-
     debug(`injecting ${platform} profile into ${def.base}`);
-    await rsync(src, dest);
+    const dest = await prepareLocalProfile(platform);
     def.profile = dest;
     debug(`injected ${dest} profile into ${def.base}`);
   }
+}
+
+/**
+ * Prepares the local firefox profile directory for other tasks to reference it.
+ * @param {string} platform
+ * @returns {Promise}
+ */
+export async function prepareLocalProfile(platform) {
+  if (platform !== `mac`) {
+    throw new Error(`No tooling implemented for injecting h264 into ${platform}`);
+  }
+  // Note: the `/` has to come outside path.resolve for rsync to behave as
+  // intended
+  const src = `${path.resolve(`${PROFILE_DIR}/${platform}`)}/`;
+  const dest = path.resolve(`${PROFILE_DIR}/${platform}.safe`);
+
+  debug(`rsyncing firefox profile at ${src} to ${dest}`);
+  await rsync(src, dest);
+  debug(`done`);
+  return dest;
 }
 
 /**

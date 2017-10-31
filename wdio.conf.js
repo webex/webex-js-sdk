@@ -1,8 +1,13 @@
+/* eslint-disable no-console */
+/* global browser: false */
+
+require(`babel-register`);
+const {inject} = require(`./tooling/lib/openh264`);
 const dotenv = require(`dotenv`);
 const glob = require(`glob`);
 const path = require(`path`);
+const os = require(`os`);
 const webpackConfig = require(`./webpack.config`);
-const uuid = require(`uuid`);
 
 dotenv.config({path: `.env.default`});
 dotenv.config();
@@ -64,7 +69,8 @@ exports.config = {
   capabilities: {
     browserSpock: {
       desiredCapabilities: {
-        browserName: `firefox`
+        browserName: `firefox`,
+        tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
       }
     },
     browserMccoy: {
@@ -75,7 +81,8 @@ exports.config = {
             `--use-fake-device-for-media-stream`,
             `--use-fake-ui-for-media-stream`
           ]
-        }
+        },
+        tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
       }
     }
   },
@@ -91,7 +98,7 @@ exports.config = {
   sync: true,
   //
   // Level of logging verbosity: silent | verbose | command | data | result | error
-  logLevel: `silent`,
+  logLevel: `error`,
   //
   // Enables colors for log output.
   coloredLogs: true,
@@ -177,8 +184,9 @@ exports.config = {
   // See the full list at http://mochajs.org/
   mochaOpts: {
     require: [`mocha-steps`],
+    timeout: 20000,
     ui: `bdd`
-  }
+  },
   //
   // =====
   // Hooks
@@ -191,9 +199,39 @@ exports.config = {
    * Gets executed once before all workers get launched.
    * @param {Object} config wdio configuration object
    * @param {Array.<Object>} capabilities list of capabilities details
+   * @returns {Promise}
    */
-  // onPrepare: function (config, capabilities) {
-  // },
+  onPrepare(config, capabilities) {
+    const defs = [
+      capabilities.browserSpock.desiredCapabilities,
+      capabilities.browserMccoy.desiredCapabilities
+    ];
+
+    const build = process.env.BUILD_NUMBER || `local-${process.env.USER}-wdio-${Date.now()}`;
+    defs.forEach((d) => {
+      if (process.env.CI) {
+        d.build = build;
+        // Set the base to SauceLabs so that inject() does its thing.
+        d.base = `SauceLabs`;
+
+        d.version = d.version || `latest`;
+        d.platform = d.platform || `OS X 10.12`;
+      }
+      else {
+        // Copy the base over so that inject() does its thing.
+        d.base = d.browserName;
+        d.platform = os.platform();
+      }
+    });
+
+    // The openh264 profile seems to break tests locally; run the tests twice
+    // and the plugin should download automatically.
+    return CI ? inject(defs) : Promise.resolve()
+      .then(() => {
+        // Remove the base because it's not actually a selenium property
+        defs.forEach((d) => Reflect.deleteProperty(d, `base`));
+      });
+  },
   /**
    * Gets executed just before initialising the webdriver session and test framework. It allows you
    * to manipulate configurations depending on the capability or spec.
@@ -255,23 +293,34 @@ exports.config = {
   /**
    * Function to be executed after a test (in Mocha/Jasmine) or a step (in Cucumber) starts.
    * @param {Object} test test details
+   * @returns {undefined}
    */
-  // afterTest(test) {
-  //   if (!test.passed) {
-  //     if (browser.logTypes().value.includes(`browser`)) {
-  //       console.error(`Test ${test.fullTitle} failed with the following log output`);
-  //       console.error(
-  //         browser
-  //           .log(`browser`)
-  //           .value
-  //           .map((v) => `> ${v.message}`)
-  //           .join(`\n`));
-  //     }
-  //     else {
-  //       console.error(`${test.fullTitle}failed but this browser doesn't support log collection`);
-  //     }
-  //   }
-  // }
+  afterTest(test) {
+    if (!test.passed) {
+      const logTypes = browser.logTypes();
+
+      Object.keys(logTypes).forEach((browserId) => {
+        console.log(logTypes[browserId].value);
+        if (logTypes[browserId].value.includes(`browser`)) {
+          const logs = browser.select(browserId).log(`browser`);
+          if (logs.value.length) {
+            console.error(`Test ${test.fullTitle} failed with the following log output from browser ${browserId}`);
+            console.log(logs);
+            console.error(logs
+              .value
+              .map((v) => `> ${v.message}`)
+              .join(`\n`));
+          }
+          else {
+            console.error(`Test ${test.fullTitle} failed but no logs were produced by browser ${browserId}`);
+          }
+        }
+        else {
+          console.error(`${test.fullTitle} failed but browser ${browserId} doesn't support log collection`);
+        }
+      });
+    }
+  }
   /**
    * Hook that gets executed after the suite has ended
    * @param {Object} suite suite details
@@ -306,29 +355,12 @@ exports.config = {
 
 
 if (CI) {
-  Object.assign(exports.config, {
+  // I couldn't get multiremote + sauce to work while letting wdio handle the
+  // tunnel setup. use `npm run sauce:start` and `npm run sauce:run` to start
+  // the tunnel and run tests
+  exports.config = Object.assign(exports.config, {
     user: process.env.SAUCE_USERNAME,
     key: process.env.SAUCE_ACCESS_KEY,
-    sauceConnect: !process.env.SC_TUNNEL_IDENTIFIER,
-    sauceConnectOpts: {
-      build: process.env.BUILD_NUMBER || `local-${process.env.USER}-wdio-${Date.now()}`,
-      recordScreenshots: true,
-      recordVideo: true,
-      tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuid.v4(),
-      tunnelDomains: [
-        `127.0.0.1`,
-        `calendar-whistler.onint.ciscospark.com`,
-        `internal-testing-services.wbx2.com`,
-        `localhost`,
-        `whistler.onint.ciscospark.com`
-      ],
-      noSslBumpDomains: [
-        `*.ciscospark.com`,
-        `*.wbx2.com`,
-        `127.0.0.1`,
-        `idbroker.webex.com`,
-        `localhost`
-      ]
-    }
+    sauceConnect: false
   });
 }

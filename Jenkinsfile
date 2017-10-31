@@ -351,7 +351,11 @@ ansiColor('xterm') {
 
                   image.inside(DOCKER_RUN_OPTS) {
                     echo 'Testing samples'
-                    sh 'npm run test:samples'
+                    sh '''#!/bin/bash
+                    trap 'npm run sauce:stop' EXIT
+                    npm run sauce:start
+                    npm run sauce:run -- npm run test:samples
+                    '''
                   }
 
                   junit 'reports/junit/**/*.xml'
