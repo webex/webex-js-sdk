@@ -354,7 +354,7 @@ ansiColor('xterm') {
                     sh '''#!/bin/bash
                     trap 'npm run sauce:stop' EXIT
                     npm run sauce:start
-                    npm run sauce:run -- npm run test:samples
+                    npm run sauce:run -- npm run samples:test
                     '''
                   }
 

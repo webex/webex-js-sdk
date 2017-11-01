@@ -1,0 +1,3 @@
+[build]
+  publish = "packages/node_modules/samples"
+  command = "npm run samples:build"

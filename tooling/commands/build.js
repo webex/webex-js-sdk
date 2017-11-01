@@ -4,22 +4,32 @@
 
 const wrapHandler = require(`../lib/wrap-handler`);
 const {list} = require(`../util/package`);
-const {buildPackage} = require(`../lib/build`);
+const {buildPackage, buildSamples} = require(`../lib/build`);
 
 module.exports = {
   command: `build [packageName]`,
   desc: `Build one or all packages`,
   builder: {
-
-  },
-  handler: wrapHandler(async ({packageName}) => {
-    if (packageName) {
-      await buildPackage(packageName);
+    onlySamples: {
+      default: false,
+      description: `Only build samples`,
+      type: `boolean`
     }
-    else {
-      for (const pName of await list()) {
-        await buildPackage(pName);
+  },
+  handler: wrapHandler(async ({packageName, onlySamples}) => {
+    if (!onlySamples) {
+      if (packageName) {
+        await buildPackage(packageName);
       }
+      else {
+        for (const pName of await list()) {
+          await buildPackage(pName);
+        }
+      }
+    }
+
+    if (!packageName) {
+      await buildSamples();
     }
   })
 };

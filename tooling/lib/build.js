@@ -4,12 +4,16 @@
 
 const debug = require(`debug`)(`tooling:build`);
 const {
+  exec,
   mkdirp,
+  rimraf,
   transformFile
 } = require(`../lib/async`);
+const g = require(`../lib/async`).glob;
 const path = require(`path`);
-const {writeFile} = require(`fs-promise`);
+const {rename, writeFile} = require(`fs-promise`);
 const {glob} = require(`../util/package`);
+const S = require(`string`);
 
 exports.buildFile = async function buildFile({src, dest}) {
   debug(`transforming ${src}`);
@@ -36,4 +40,26 @@ exports.buildPackage = async function buildPackage(packageName) {
   for (const file of mapped) {
     await exports.buildFile(file);
   }
+};
+
+exports.buildSamples = async function buildSamples() {
+  await rimraf(`packages/node_modules/samples/bundle*`);
+  await exec(`webpack`);
+  await rename(`bundle.js`, `packages/node_modules/samples/bundle.js`);
+  await rename(`bundle.js.map`, `packages/node_modules/samples/bundle.js.map`);
+
+  const samples = await g(`browser-*`, {cwd: path.resolve(process.cwd(), `packages/node_modules/samples`)});
+
+  const out = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Samples</title>
+</head><body>
+<ul>
+${samples.map((s) => `<a href="${s}">${S(s).humanize().capitalize().s}</a>`)}
+</ul>
+</body>
+</html>`;
+
+  await writeFile(`packages/node_modules/samples/index.html`, out);
 };
