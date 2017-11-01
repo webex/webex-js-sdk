@@ -83,7 +83,7 @@
     "samples:build": "./tooling/index.js build --only-samples",
     "samples:serve": "webpack-dev-server",
     "presamples:test": "rimraf bundle.js bundle.js.map; npm run --silent tooling -- inject openh264",
-    "samples:test": "wdio",
+    "samples:test": "NODE_ENV=test wdio",
     "tooling": "./tooling/index.js"
   },
   "dependencies": {
