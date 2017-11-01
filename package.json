@@ -188,8 +188,6 @@
     "node-jose": "^0.9.3",
     "node-kms": "^0.3.2",
     "node-scr": "^0.2.2",
-    "nodegit": "^0.18.3",
-    "nodegit-kit": "^0.16.0",
     "parse-headers": "^2.0.1",
     "pkg-up": "^2.0.0",
     "ps-node": "^0.1.6",
