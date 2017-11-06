@@ -56,7 +56,7 @@ exports.buildSamples = async function buildSamples() {
   <title>Samples</title>
 </head><body>
 <ul>
-${samples.map((s) => `<a href="${s}">${S(s).humanize().capitalize().s}</a>`)}
+${samples.map((s) => `<li><a href="${s}">${S(s).humanize().capitalize().s}</a></li>`).join(`\n`)}
 </ul>
 </body>
 </html>`;
