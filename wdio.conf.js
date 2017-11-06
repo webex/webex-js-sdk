@@ -33,14 +33,14 @@ exports.config = {
   // directory is where your package.json resides, so `wdio` will be called from there.
   //
   specs: [
-    `./packages/node_modules/{*,*/*}/test/wdio/specs/**/*.js`
+    `./packages/node_modules/{*,*/*}/test/wdio/spec/**/*.js`
   ],
   suites: glob
     .sync(`**/package.json`, {cwd: `./packages/node_modules`})
     .map((p) => path.dirname(p))
     .reduce((suites, p) => {
       suites[p] = [
-        `./packages/node_modules/${p}/test/wdio/specs/**/*.js`
+        `./packages/node_modules/${p}/test/wdio/spec/**/*.js`
       ];
       return suites;
     }, {}),
