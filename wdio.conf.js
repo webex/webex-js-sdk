@@ -184,7 +184,7 @@ exports.config = {
   // See the full list at http://mochajs.org/
   mochaOpts: {
     require: [`mocha-steps`],
-    timeout: 20000,
+    timeout: 40000,
     ui: `bdd`
   },
   //
