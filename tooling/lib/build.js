@@ -21,7 +21,7 @@ exports.buildFile = async function buildFile({src, dest}) {
   debug(`transformFileed ${src}`);
   await mkdirp(path.dirname(dest));
   debug(`writing ${dest}`);
-  await writeFile(dest, code);
+  await writeFile(dest, `${code}\n//# sourceMappingURL=${path.basename(dest)}.map\n`);
   await writeFile(`${dest}.map`, JSON.stringify(map));
   debug(`wrote ${dest}`);
 };
