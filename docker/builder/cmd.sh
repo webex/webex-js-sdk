@@ -143,6 +143,11 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
     EXIT_CODE=$?
     # Generate the coverage report
     npm run tooling -- test --no-tests
+  elif [ "${PACKAGE}" == "@ciscospark/sparkd" ]; then
+    npm test -- --package @ciscospark/sparkd --node >> "${GRUNT_LOG_FILE}" 2>&1
+    EXIT_CODE=$?
+    # Generate the coverage report
+    npm run tooling -- test --no-tests --node
   else
     npm run test >> "${GRUNT_LOG_FILE}" 2>&1
     EXIT_CODE=$?
