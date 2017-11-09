@@ -209,7 +209,7 @@ exports.config = {
 
     const build = process.env.BUILD_NUMBER || `local-${process.env.USER}-wdio-${Date.now()}`;
     defs.forEach((d) => {
-      if (process.env.CI) {
+      if (CI) {
         d.build = build;
         // Set the base to SauceLabs so that inject() does its thing.
         d.base = `SauceLabs`;
