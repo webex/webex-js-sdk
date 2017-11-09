@@ -82,7 +82,7 @@
     "test:samples": "echo 'Deprecated. Please use npm run samples:test'; npm run --silent samples:test",
     "samples:build": "./tooling/index.js build --only-samples",
     "samples:serve": "webpack-dev-server",
-    "presamples:test": "rimraf bundle.js bundle.js.map; npm run --silent tooling -- inject openh264",
+    "presamples:test": "rimraf bundle.js bundle.js.map",
     "samples:test": "NODE_ENV=test wdio",
     "tooling": "./tooling/index.js"
   },
