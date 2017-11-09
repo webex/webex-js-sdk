@@ -5,7 +5,11 @@ set -e
 echo "################################################################################"
 echo "# Stripping unhelpful, jenkins breaking logs from karma xml"
 echo "################################################################################"
-for FILE in $(find ./reports/junit/karma -name *.xml); do
+
+# Make sure there's alays a reports dir, even if it has no contents, to prevent
+# the next "find" from failing
+mkdir -p ./reports/junit/karma
+for FILE in $(find ./reports/junit/karma -name '*.xml'); do
   awk '
   BEGIN { write = 1 }
   /<system-out/{ write = 0 }
