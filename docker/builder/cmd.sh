@@ -141,6 +141,8 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
   if [ "${PACKAGE}" == "samples" ]; then
     npm run test:samples >> "${GRUNT_LOG_FILE}" 2>&1
     EXIT_CODE=$?
+    # Generate the coverage report
+    npm run tooling -- test --no-tests
   else
     npm run test >> "${GRUNT_LOG_FILE}" 2>&1
     EXIT_CODE=$?

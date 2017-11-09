@@ -82,6 +82,12 @@ module.exports = {
       description: `Start the fixture server. Since this defaults to true, you find --no-serve useful`,
       default: true,
       type: `boolean`
+    },
+
+    tests: {
+      description: `Set to false to skip tests but do the other work that happens during a test run (e.g. generate the coverage report)`,
+      default: true,
+      type: `boolean`
     }
   },
   handler: wrapHandler(async (argv) => {
@@ -97,32 +103,34 @@ module.exports = {
       argv.browser = false;
     }
 
-    if (argv.package) {
-      if (argv.serve) {
-        debug(`starting test server`);
-        await start();
-        debug(`started test server`);
-      }
+    if (argv.tests) {
+      if (argv.package) {
+        if (argv.serve) {
+          debug(`starting test server`);
+          await start();
+          debug(`started test server`);
+        }
 
-      await testPackage(argv, argv.package);
+        await testPackage(argv, argv.package);
 
-      if (argv.serve) {
-        debug(`stopping test server`);
-        await stop();
-        debug(`stopped test server`);
+        if (argv.serve) {
+          debug(`stopping test server`);
+          await stop();
+          debug(`stopped test server`);
+        }
       }
-    }
-    else {
-      for (const packageName of await list()) {
-        const argString = Object.keys(argv).reduce((acc, key) => {
-          const value = argv[key];
-          if (typeof value === `boolean`) {
-            acc += value ? ` --${key}` : ` --no-${key}`;
-          }
-          return acc;
-        }, ``);
-        const [cmd, ...args] = `npm run test --silent -- --no-coverage-report --package ${packageName}${argString}`.split(` `);
-        await spawn(cmd, args);
+      else {
+        for (const packageName of await list()) {
+          const argString = Object.keys(argv).reduce((acc, key) => {
+            const value = argv[key];
+            if (typeof value === `boolean`) {
+              acc += value ? ` --${key}` : ` --no-${key}`;
+            }
+            return acc;
+          }, ``);
+          const [cmd, ...args] = `npm run test --silent -- --no-coverage-report --package ${packageName}${argString}`.split(` `);
+          await spawn(cmd, args);
+        }
       }
     }
 
