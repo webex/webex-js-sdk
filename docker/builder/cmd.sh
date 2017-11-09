@@ -138,8 +138,13 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
   echo "" >> "${GRUNT_LOG_FILE}"
   echo "### Attempt ${SUITE_ITERATION} ###" >> "${GRUNT_LOG_FILE}"
   echo "" >> "${GRUNT_LOG_FILE}"
-  npm run test >> "${GRUNT_LOG_FILE}" 2>&1
-  EXIT_CODE=$?
+  if [ "${PACKAGE}" == "samples" ]; then
+    npm run test:samples >> "${GRUNT_LOG_FILE}" 2>&1
+    EXIT_CODE=$?
+  else
+    npm run test >> "${GRUNT_LOG_FILE}" 2>&1
+    EXIT_CODE=$?
+  fi
   set -e
 
   # No need to repeat if there was a success

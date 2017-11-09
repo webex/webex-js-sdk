@@ -345,15 +345,6 @@ ansiColor('xterm') {
                 timeout(60) {
                   def exitCode = sh script: "./tooling/test.sh", returnStatus: true
 
-                  image.inside(DOCKER_RUN_OPTS) {
-                    echo 'Testing samples'
-                    sh '''#!/bin/bash
-                    trap 'npm run sauce:stop' EXIT
-                    npm run sauce:start
-                    npm run sauce:run -- npm run samples:test
-                    '''
-                  }
-
                   junit 'reports/junit/**/*.xml'
 
                   if (currentBuild.result == 'SUCCESS' && exitCode != 0) {
