@@ -24,4 +24,4 @@ test_script:
 
 # Prove babel builds
 build_script:
-- npm run build
+- npm run build -- --skip-samples
