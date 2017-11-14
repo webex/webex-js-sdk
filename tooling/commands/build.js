@@ -14,9 +14,14 @@ module.exports = {
       default: false,
       description: `Only build samples`,
       type: `boolean`
+    },
+    skipSamples: {
+      default: false,
+      description: `Do not build samples`,
+      type: `boolean`
     }
   },
-  handler: wrapHandler(async ({packageName, onlySamples}) => {
+  handler: wrapHandler(async ({packageName, onlySamples, skipSamples}) => {
     if (!onlySamples) {
       if (packageName) {
         await buildPackage(packageName);
@@ -28,8 +33,10 @@ module.exports = {
       }
     }
 
-    if (!packageName) {
-      await buildSamples();
+    if (!skipSamples) {
+      if (!packageName) {
+        await buildSamples();
+      }
     }
   })
 };
