@@ -318,15 +318,15 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#calleventmembershipdisconnected'
-                          class='regular pre-open'>
-                          ⓔ membership:disconnected
-                        </a></li>
-                      
-                        <li><a
                           href='#calleventringing'
                           class='regular pre-open'>
                           ⓔ ringing
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventconnected'
+                          class='regular pre-open'>
+                          ⓔ connected
                         </a></li>
                       
                         <li><a
@@ -354,12 +354,6 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventmembershipnotified'
-                          class='regular pre-open'>
-                          ⓔ membership:notified
-                        </a></li>
-                      
-                        <li><a
                           href='#calleventmembershipconnected'
                           class='regular pre-open'>
                           ⓔ membership:connected
@@ -372,9 +366,15 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventconnected'
+                          href='#calleventmembershipdisconnected'
                           class='regular pre-open'>
-                          ⓔ connected
+                          ⓔ membership:disconnected
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventmembershipnotified'
+                          class='regular pre-open'>
+                          ⓔ membership:notified
                         </a></li>
                       
                         <li><a
@@ -1033,9 +1033,9 @@
               
                 
                 <li><a
-                  href='#isodate'
+                  href='#email'
                   class="">
-                  isoDate
+                  email
                   
                 </a>
                 
@@ -1043,9 +1043,9 @@
               
                 
                 <li><a
-                  href='#email'
+                  href='#isodate'
                   class="">
-                  email
+                  isoDate
                   
                 </a>
                 
@@ -3367,11 +3367,11 @@ only, this function will throw.</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='calleventmembershipdisconnected'>
+    <div class='border-bottom' id='calleventringing'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:disconnected</span>
+            <span class='code strong strong truncate'>ringing</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -3381,11 +3381,16 @@ only, this function will throw.</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>membership:disconnected</div>
+  <div class='pre p1 fill-light mt0'>ringing</div>
   
   
 
-  
+  <div>Deprecated: with 
+<a href="config.phone.enableExperimentalGroupCallingSupport">config.phone.enableExperimentalGroupCallingSupport</a>
+ enabled;
+instead, listen for 
+<a href="Call.membership:notified">Call.membership:notified</a>
+</div>
   
   
   
@@ -3412,11 +3417,11 @@ only, this function will throw.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventringing'>
+    <div class='border-bottom' id='calleventconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>ringing</span>
+            <span class='code strong strong truncate'>connected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -3426,7 +3431,7 @@ only, this function will throw.</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>ringing</div>
+  <div class='pre p1 fill-light mt0'>connected</div>
   
   
 
@@ -3434,7 +3439,7 @@ only, this function will throw.</p>
 <a href="config.phone.enableExperimentalGroupCallingSupport">config.phone.enableExperimentalGroupCallingSupport</a>
  enabled;
 instead, listen for 
-<a href="Call.membership:notified">Call.membership:notified</a>
+<a href="Call.active">Call.active</a>
 </div>
   
   
@@ -3647,51 +3652,6 @@ instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventmembershipnotified'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:notified</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>membership:notified</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
     <div class='border-bottom' id='calleventmembershipconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -3782,11 +3742,11 @@ instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventconnected'>
+    <div class='border-bottom' id='calleventmembershipdisconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>connected</span>
+            <span class='code strong strong truncate'>membership:disconnected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -3796,16 +3756,56 @@ instead, listen for
 
   
 
-  <div class='pre p1 fill-light mt0'>connected</div>
+  <div class='pre p1 fill-light mt0'>membership:disconnected</div>
   
   
 
-  <div>Deprecated: with 
-<a href="config.phone.enableExperimentalGroupCallingSupport">config.phone.enableExperimentalGroupCallingSupport</a>
- enabled;
-instead, listen for 
-<a href="Call.active">Call.active</a>
-</div>
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventmembershipnotified'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>membership:notified</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>membership:notified</div>
+  
+  
+
+  
   
   
   
@@ -9160,19 +9160,18 @@ the experience</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='isodate'>
-      isoDate
+    <h3 class='fl m0' id='email'>
+      email
     </h3>
     
     
   </div>
   
 
-  <p>The date and time, specified in ISO 8601 extended offset date/time
-format (e.g. <code>2015-10-18T14:26:16+00:00</code>).</p>
+  <p>An email address, as a string.</p>
 
 
-  <div class='pre p1 fill-light mt0'>isoDate</div>
+  <div class='pre p1 fill-light mt0'>email</div>
   
     <p>
       Type:
@@ -9213,18 +9212,19 @@ format (e.g. <code>2015-10-18T14:26:16+00:00</code>).</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='email'>
-      email
+    <h3 class='fl m0' id='isodate'>
+      isoDate
     </h3>
     
     
   </div>
   
 
-  <p>An email address, as a string.</p>
+  <p>The date and time, specified in ISO 8601 extended offset date/time
+format (e.g. <code>2015-10-18T14:26:16+00:00</code>).</p>
 
 
-  <div class='pre p1 fill-light mt0'>email</div>
+  <div class='pre p1 fill-light mt0'>isoDate</div>
   
     <p>
       Type:
