@@ -47,9 +47,6 @@ module.exports = {
   },
   plugins: [
     new EnvironmentPlugin({
-      CISCOSPARK_CLIENT_ID: ``,
-      CISCOSPARK_REDIRECT_URI: ``,
-      CISCOSPARK_SCOPE: ``,
       CISCOSPARK_LOG_LEVEL: `log`,
       DEBUG: ``,
       NODE_ENV: `development`

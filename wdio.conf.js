@@ -112,7 +112,7 @@ exports.config = {
   //
   // Set a base URL in order to shorten url command calls. If your url parameter starts
   // with "/", then the base url gets prepended.
-  baseUrl: `http://localhost:${PORT}/packages/node_modules`,
+  baseUrl: `http://localhost:${PORT}/`,
   //
   // Default timeout for all waitFor* commands.
   waitforTimeout: 10000,
@@ -156,6 +156,7 @@ exports.config = {
     `webpack`
   ],
   staticServerFolders: [
+    {mount: `/`, path: `./packages/node_modules/samples`},
     {mount: `/`, path: `.`}
   ],
   staticServerPort: PORT,
@@ -305,7 +306,6 @@ exports.config = {
           const logs = browser.select(browserId).log(`browser`);
           if (logs.value.length) {
             console.error(`Test ${test.fullTitle} failed with the following log output from browser ${browserId}`);
-            console.log(logs);
             console.error(logs
               .value
               .map((v) => `> ${v.message}`)
