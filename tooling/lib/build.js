@@ -59,11 +59,8 @@ exports.buildSamples = async function buildSamples() {
 </head><body>
 <h1>Hosted Samples</h1>
 <ul>
-${samples.filter((s) => !s.includes(`auth`)).filter(Boolean).map((s) => `<li><a href="${s}">${S(s).humanize().capitalize().s}</a></li>`)}
+${samples.map((s) => `<li><a href="${s}">${S(s).humanize().capitalize().s}</a></li>`)}
 </ul>
-<blockquote>
-  There's a working authorization sample in the git repository, though we don't have it hosted just yet (but it's coming soon).
-</blockquote>
 </body>
 </html>`;
 
