@@ -49,7 +49,7 @@ module.exports = {
     new EnvironmentPlugin({
       CISCOSPARK_LOG_LEVEL: `log`,
       DEBUG: ``,
-      NODE_ENV: `development`
+      NODE_ENV: process.env.NODE_ENV || `development`
     })
   ]
 };
