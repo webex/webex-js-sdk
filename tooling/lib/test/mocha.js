@@ -10,7 +10,8 @@ exports.test = async function test(options, packageName, suite, files) {
   debug(`testing ${files}`);
 
   options.output = `reports/junit/mocha/${packageName}-${suite}.xml`;
-
+  options.suite = suite;
+  options.packageName = packageName;
   if (options.xunit) {
     for (let i = 0; i < 3; i++) {
       try {
@@ -60,7 +61,11 @@ async function run(options, files) {
   if (options.xunit) {
     cfg.reporter = `packages/node_modules/@ciscospark/xunit-with-logs`;
     cfg.reporterOptions = {
-      output: options.output
+      collectLogs: true,
+      suppressLogs: false,
+      output: options.output,
+      suite: options.suite,
+      className: options.packageName
     };
   }
 
