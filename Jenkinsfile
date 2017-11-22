@@ -287,7 +287,7 @@ ansiColor('xterm') {
               // giving up a little bit of per-package static analysis config by
               // running eslint once across all package.
               image.inside(DOCKER_RUN_OPTS) {
-                sh script: "npm run lint", returnStatus: true
+                sh script: "npm run lint:ci", returnStatus: true
                 if (!fileExists("./reports/style/eslint.xml")) {
                   error('Static Analysis did not produce eslint.xml')
                 }
