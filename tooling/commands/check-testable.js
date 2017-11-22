@@ -11,7 +11,7 @@ module.exports = {
   command: `check-testable`,
   desc: `Check if this build has anything to test. Prints "run" or "skip"`,
   builder: {},
-  handler: wrapHandler(async () => {
+  handler: wrapHandler(async() => {
     const log = await lastLog();
     if (log.includes(`[ci skip]`) || log.includes(`[ci-skip]`)) {
       console.log(`skip`);
