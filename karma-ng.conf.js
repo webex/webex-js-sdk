@@ -159,12 +159,19 @@ function makeConfig(packageName, argv) {
 
   if (argv && argv.xunit) {
     cfg.junitReporter = {
+      classNameFormatter(browser) {
+        let name = argv.package;
+
+        name = `${name}.${browser.name
+          .replace(/ /g, `_`)
+          .replace(/\./g, `_`)}`;
+
+        return name;
+      },
       outputFile: `${packageName}.xml`,
       outputDir: `reports/junit/karma`,
       suite: packageName,
-      useBrowserName: true,
-      recordScreenshots: true,
-      recordVideo: true
+      useBrowserName: true
     };
 
     cfg.reporters.push(`junit`);
