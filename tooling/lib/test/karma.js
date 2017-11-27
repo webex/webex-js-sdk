@@ -25,7 +25,7 @@ exports.test = async function test(options, packageName, files) {
   }
 
   if (options.xunit) {
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 3; i += 1) {
       try {
         debug(`Attempt #${i} for ${packageName}`);
 
@@ -82,7 +82,6 @@ async function run(cfg) {
  * Makes sure sauce stays running for the duration of the test suite
  * @param {Server} server
  * @param {Object} cfg
- * @returns {Promise}
  */
 async function watchSauce(server, cfg) {
   try {

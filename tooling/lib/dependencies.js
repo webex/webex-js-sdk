@@ -47,7 +47,6 @@ exports.list = async function list(packageName, {includeTransitive = true, local
 const tree = new Map();
 /**
  * Walks all packages to generate a tree of direct dependencies
- * @returns {Promise}
  */
 async function buildLocalDepTree() {
   for (const packageName of await _list()) {

@@ -24,6 +24,11 @@ function versionFromState(state) {
 module.exports = function injectPackageVersion() {
   return {
     visitor: {
+      /**
+       * Adds a version property to all SparkPlugins
+       * @param {Object} path
+       * @param {Object} state
+       */
       CallExpression(path, state) {
         if (t.isMemberExpression(path.get('callee'))) {
           if (path.node.callee.object.name === 'SparkPlugin' && path.node.callee.property.name === 'extend') {
@@ -38,6 +43,11 @@ module.exports = function injectPackageVersion() {
           }
         }
       },
+      /**
+       * Replaces the PACKAGE_VERSION constant with the current version
+       * @param {Object} path
+       * @param {Object} state
+       */
       Identifier(path, state) {
         if (path.node.name === 'PACKAGE_VERSION') {
           path.replaceWithSourceString(`\`${versionFromState(state)}\``);

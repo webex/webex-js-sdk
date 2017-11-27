@@ -10,6 +10,12 @@ const {stopper} = require('karma');
 const ps = require('ps-node');
 
 module.exports = {
+  /**
+   * Periodically checks that the sauce process is still running and kills the
+   * test suite if it is not
+   * @param {Object} server
+   * @param {Object} cfg
+   */
   watchSauce: async function watchSauce(server, cfg) {
     try {
       debug('reading sauce pid');

@@ -37,7 +37,6 @@ exports.read = read;
  * Writes an object to a package.json
  * @param {string} packageName
  * @param {Object} pkg
- * @returns {Promise}
  */
 async function write(packageName, pkg) {
   const packagePath = path.join(cwd, packageName, 'package.json');

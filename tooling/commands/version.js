@@ -5,6 +5,11 @@
 module.exports = {
   command: 'version',
   desc: 'Work with version',
+  /**
+   * Yargs builder
+   * @param {Object} yargs
+   * @returns {Object}
+   */
   builder(yargs) {
     return yargs
       .demandCommand(1)

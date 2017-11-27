@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
 /* eslint-disable complexity */
-/* eslint global-require: [0] */
-/* eslint no-sync: [0] */
-/* eslint require-jsdoc: [0] */
+/* eslint-disable global-require */
+/* eslint-disable no-sync */
+/* eslint-disable require-jsdoc */
+/* eslint-disable import/no-dynamic-require */
 
 // Idealy, this file belongs in ./tooling, but the second iteration is a *lot*
 // simpler if we don't have to deal with adding `../` to every file operation.

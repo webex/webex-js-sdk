@@ -92,11 +92,15 @@ module.exports = {
   },
   handler: wrapHandler(async (argv) => {
     if (!argv.browser && !argv.node) {
-      argv.browser = argv.node = true;
+      argv.browser = true;
+      argv.node = true;
     }
 
     if (!argv.unit && !argv.integration && !argv.automation && !argv.documentation) {
-      argv.unit = argv.integration = argv.automation = argv.documentation = true;
+      argv.unit = true;
+      argv.integration = true;
+      argv.automation = true;
+      argv.documentation = true;
     }
 
     if (argv.automation && !argv.unit && !argv.integration && !argv.documentation) {

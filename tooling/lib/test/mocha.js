@@ -12,7 +12,7 @@ exports.test = async function test(options, packageName, suite, files) {
   options.output = `reports/junit/mocha/${packageName}-${suite}.xml`;
 
   if (options.xunit) {
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 3; i += 1) {
       try {
         debug(`Attempt #${i} for ${packageName}`);
 

@@ -1,6 +1,7 @@
 /* eslint-disable func-names */
 /* eslint-disable global-require */
 /* eslint-disable require-jsdoc */
+/* eslint-disable import/no-dynamic-require */
 
 // eslint-disable-next-line strict
 

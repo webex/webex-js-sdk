@@ -35,7 +35,6 @@ function encode(fp) {
  * rsyncs a directory
  * @param {string} src
  * @param {string} dest
- * @returns {Promise}
  */
 async function rsync(src, dest) {
   await spawn('rsync', [
@@ -105,7 +104,6 @@ export function platformToShortName(platform) {
 /**
  * Injects a the path of a firefox profile directory into a local browser definition
  * @param {Object} def
- * @returns {Promise}
  */
 async function injectLocal(def) {
   debug(`checking ${def.base} for firefox`);
@@ -143,7 +141,6 @@ export async function prepareLocalProfile(platform) {
  * Injects a gzipped, base64-encoded firefox profile directory into a Sauce Labs
  * browser definition
  * @param {Object} def
- * @returns {Promise}
  */
 async function injectSauce(def) {
   debug(`checking ${def.base} for firefox`);
