@@ -2,11 +2,11 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-const debug = require(`debug`)(`tooling:updated`);
-const _ = require(`lodash`);
-const {listDependents} = require(`./dependencies`);
-const {last} = require(`./version`);
-const {diff} = require(`./git`);
+const debug = require('debug')('tooling:updated');
+const _ = require('lodash');
+const {listDependents} = require('./dependencies');
+const {last} = require('./version');
+const {diff} = require('./git');
 
 /**
  * Lists all of the updated packages in the repo
@@ -18,7 +18,7 @@ const {diff} = require(`./git`);
  * @returns {Promise<Array<string>>}
  */
 exports.updated = async function updated({dependents, npm}) {
-  const tag = npm ? await last() : `upstream/master`;
+  const tag = npm ? await last() : 'upstream/master';
   const changedPackages = _(await diff(tag))
     .map((d) => d.path)
     .filter()
@@ -46,18 +46,18 @@ exports.updated = async function updated({dependents, npm}) {
  */
 function fileToPackage(d) {
   debug(d);
-  if (d.startsWith(`packages/node_modules/`)) {
-    d = d.replace(`packages/node_modules/`, ``);
-    d = d.split(`/`);
-    if (d[0].startsWith(`@`)) {
-      return d.slice(0, 2).join(`/`);
+  if (d.startsWith('packages/node_modules/')) {
+    d = d.replace('packages/node_modules/', '');
+    d = d.split('/');
+    if (d[0].startsWith('@')) {
+      return d.slice(0, 2).join('/');
     }
     return d[0];
   }
 
-  if (d.startsWith(`docs`) || d.startsWith(`documentation`)) {
-    return `docs`;
+  if (d.startsWith('docs') || d.startsWith('documentation')) {
+    return 'docs';
   }
 
-  return `tooling`;
+  return 'tooling';
 }

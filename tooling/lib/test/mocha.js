@@ -2,9 +2,9 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-const debug = require(`debug`)(`tooling:test:mocha`);
-const Mocha = require(`mocha`);
-const {expectReports, expectNonEmptyReports, expectNoKmsErrors} = require(`./common`);
+const debug = require('debug')('tooling:test:mocha');
+const Mocha = require('mocha');
+const {expectReports, expectNonEmptyReports, expectNoKmsErrors} = require('./common');
 
 exports.test = async function test(options, packageName, suite, files) {
   debug(`testing ${files}`);
@@ -35,13 +35,12 @@ exports.test = async function test(options, packageName, suite, files) {
     const failures = await run(options, files);
     if (failures) {
       debug(`${files} failed`);
-      throw new Error(`Mocha suite failed`);
+      throw new Error('Mocha suite failed');
     }
     else {
       debug(`${files} succeeded`);
     }
   }
-  return;
 };
 
 /**
@@ -54,11 +53,11 @@ async function run(options, files) {
   const cfg = {
     retries: process.env.JENKINS || process.env.CI ? 1 : 0,
     timeout: 30000,
-    grep: new RegExp(options.grep.join(`|`))
+    grep: new RegExp(options.grep.join('|'))
   };
 
   if (options.xunit) {
-    cfg.reporter = `packages/node_modules/@ciscospark/xunit-with-logs`;
+    cfg.reporter = 'packages/node_modules/@ciscospark/xunit-with-logs';
     cfg.reporterOptions = {
       output: options.output
     };

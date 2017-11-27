@@ -1,20 +1,20 @@
 /* eslint-disable no-console */
 /* global browser: false */
 
-require(`babel-register`);
-const {inject} = require(`./tooling/lib/openh264`);
-const dotenv = require(`dotenv`);
-const glob = require(`glob`);
-const path = require(`path`);
-const os = require(`os`);
-const webpackConfig = require(`./webpack.config`);
+require('babel-register');
+const {inject} = require('./tooling/lib/openh264');
+const dotenv = require('dotenv');
+const glob = require('glob');
+const path = require('path');
+const os = require('os');
+const webpackConfig = require('./webpack.config');
 
-dotenv.config({path: `.env.default`});
+dotenv.config({path: '.env.default'});
 dotenv.config();
 
-require(`babel-register`)({
+require('babel-register')({
   only: [
-    `./packages/node_modules/**/*.js`
+    './packages/node_modules/**/*.js'
   ],
   sourceMaps: true
 });
@@ -33,10 +33,10 @@ exports.config = {
   // directory is where your package.json resides, so `wdio` will be called from there.
   //
   specs: [
-    `./packages/node_modules/{*,*/*}/test/wdio/spec/**/*.js`
+    './packages/node_modules/{*,*/*}/test/wdio/spec/**/*.js'
   ],
   suites: glob
-    .sync(`**/package.json`, {cwd: `./packages/node_modules`})
+    .sync('**/package.json', {cwd: './packages/node_modules'})
     .map((p) => path.dirname(p))
     .reduce((suites, p) => {
       suites[p] = [
@@ -69,17 +69,17 @@ exports.config = {
   capabilities: {
     browserSpock: {
       desiredCapabilities: {
-        browserName: `firefox`,
+        browserName: 'firefox',
         tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
       }
     },
     browserMccoy: {
       desiredCapabilities: {
-        browserName: `chrome`,
+        browserName: 'chrome',
         chromeOptions: {
           args: [
-            `--use-fake-device-for-media-stream`,
-            `--use-fake-ui-for-media-stream`
+            '--use-fake-device-for-media-stream',
+            '--use-fake-ui-for-media-stream'
           ]
         },
         tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
@@ -98,7 +98,7 @@ exports.config = {
   sync: true,
   //
   // Level of logging verbosity: silent | verbose | command | data | result | error
-  logLevel: `error`,
+  logLevel: 'error',
   //
   // Enables colors for log output.
   coloredLogs: true,
@@ -108,7 +108,7 @@ exports.config = {
   bail: 0,
   //
   // Saves a screenshot to a given path if a command fails.
-  screenshotPath: `./reports/screenshots/`,
+  screenshotPath: './reports/screenshots/',
   //
   // Set a base URL in order to shorten url command calls. If your url parameter starts
   // with "/", then the base url gets prepended.
@@ -147,17 +147,17 @@ exports.config = {
   // your test setup with almost no effort. Unlike plugins, they don't add new
   // commands. Instead, they hook themselves up into the test process.
   services: CI ? [
-    `sauce`,
-    `static-server`,
-    `webpack`
+    'sauce',
+    'static-server',
+    'webpack'
   ] : [
-    `selenium-standalone`,
-    `static-server`,
-    `webpack`
+    'selenium-standalone',
+    'static-server',
+    'webpack'
   ],
   staticServerFolders: [
-    {mount: `/`, path: `./packages/node_modules/samples`},
-    {mount: `/`, path: `.`}
+    {mount: '/', path: './packages/node_modules/samples'},
+    {mount: '/', path: '.'}
   ],
   staticServerPort: PORT,
   webpackConfig,
@@ -169,15 +169,15 @@ exports.config = {
   //
   // Make sure you have the wdio adapter package for the specific framework installed
   // before running any tests.
-  framework: `mocha`,
+  framework: 'mocha',
   //
   // Test reporter for stdout.
   // The only one supported by default is 'dot'
   // see also: http://webdriver.io/guide/testrunner/reporters.html
-  reporters: CI ? [`spec`, `junit`] : [`spec`],
+  reporters: CI ? ['spec', 'junit'] : ['spec'],
   reporterOptions: {
     junit: {
-      outputDir: `./reports/junit/wdio`
+      outputDir: './reports/junit/wdio'
     }
   },
   //
@@ -186,7 +186,7 @@ exports.config = {
   mochaOpts: {
     // reminder: mocha-steps seems to make tests flaky on Sauce Labs
     timeout: 40000,
-    ui: `bdd`
+    ui: 'bdd'
   },
   //
   // =====
@@ -213,10 +213,10 @@ exports.config = {
       if (CI) {
         d.build = build;
         // Set the base to SauceLabs so that inject() does its thing.
-        d.base = `SauceLabs`;
+        d.base = 'SauceLabs';
 
-        d.version = d.version || `latest`;
-        d.platform = d.platform || `OS X 10.12`;
+        d.version = d.version || 'latest';
+        d.platform = d.platform || 'OS X 10.12';
       }
       else {
         // Copy the base over so that inject() does its thing.
@@ -230,7 +230,7 @@ exports.config = {
     return CI ? inject(defs) : Promise.resolve()
       .then(() => {
         // Remove the base because it's not actually a selenium property
-        defs.forEach((d) => Reflect.deleteProperty(d, `base`));
+        defs.forEach((d) => Reflect.deleteProperty(d, 'base'));
       });
   },
   /**
@@ -302,14 +302,14 @@ exports.config = {
 
       Object.keys(logTypes).forEach((browserId) => {
         console.log(logTypes[browserId].value);
-        if (logTypes[browserId].value.includes(`browser`)) {
-          const logs = browser.select(browserId).log(`browser`);
+        if (logTypes[browserId].value.includes('browser')) {
+          const logs = browser.select(browserId).log('browser');
           if (logs.value.length) {
             console.error(`Test ${test.fullTitle} failed with the following log output from browser ${browserId}`);
             console.error(logs
               .value
               .map((v) => `> ${v.message}`)
-              .join(`\n`));
+              .join('\n'));
           }
           else {
             console.error(`Test ${test.fullTitle} failed but no logs were produced by browser ${browserId}`);
