@@ -5,3 +5,6 @@ rules:
   strict:
   - 2
   - global
+  no-await-in-loop: warn
+  no-console: warn
+  import/no-dynamic-require: warn
