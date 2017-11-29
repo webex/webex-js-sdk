@@ -96,7 +96,17 @@ async function report() {
     file: `reports/cobertura.xml`
   }).writeReport(collector, true);
 
-  Report.create(`html`).writeReport(collector, true);
+  // The html report struggles with (I think) source maps, so let's make sure we
+  // don't fail the build as a result
+  try {
+    Report.create(`html`).writeReport(collector, true);
+  }
+  catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`Failed to generate HTML report`);
+    // eslint-disable-next-line no-console
+    console.warn(err);
+  }
 }
 
 module.exports = {
