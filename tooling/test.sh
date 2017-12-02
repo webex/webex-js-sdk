@@ -15,18 +15,8 @@ echo "# RUNNING TESTS"
 echo "################################################################################"
 
 PIDS=""
-PACKAGES=""
-# copied from http://www.tldp.org/LDP/abs/html/comparison-ops.html because I can
-# never remember which is which
-# > -z string is null, that is, has zero length
-# > -n string is not null.
-if [ -n "${PIPELINE}" ]; then
-  # list all packages
-  PACKAGES=$(docker run ${DOCKER_RUN_OPTS} bash -c 'npm run tooling --silent -- list --forpipeline')
-else
-  # list changed packages
-  PACKAGES=$(docker run ${DOCKER_RUN_OPTS} bash -c 'npm run tooling --silent -- list --fortests')
-fi
+PACKAGES="@ciscospark/common @ciscospark/plugin-logger"
+
 for PACKAGE in ${PACKAGES}; do
   CONTAINER_NAME="$(echo ${PACKAGE} | awk -F '/' '{ print $NF }')-${BUILD_NUMBER}"
 
