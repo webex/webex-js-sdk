@@ -21,8 +21,8 @@ exports.updated = async function updated({dependents, npm}) {
   const tag = npm ? await last() : `upstream/master`;
   const changedPackages = _(await diff(tag))
     .map((d) => d.path)
-    .map(fileToPackage)
     .filter()
+    .map(fileToPackage)
     .uniq()
     .value();
 
