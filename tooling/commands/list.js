@@ -53,6 +53,11 @@ module.exports = {
           .filter((p) => !p.includes(`media-adapter-webrtc`));
       }
 
+      // Make sure we always test the samples when the public sdk changes.
+      if (packages.includes(`ciscospark`)) {
+        packages.push(`samples`);
+      }
+
       // this array is ranked in the order of approximate slowness. At this
       // time, that order is based on eyeballing some xml files rather than
       // empirical measurements of overall suite duration.
@@ -61,7 +66,8 @@ module.exports = {
         `@ciscospark/plugin-phone`,
         `@ciscospark/internal-plugin-conversation`,
         `ciscospark`,
-        `@ciscospark/plugin-authorization-browser`
+        `@ciscospark/plugin-authorization-browser`,
+        `samples`
       ];
 
       packages.sort((a, b) => {
