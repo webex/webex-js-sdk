@@ -184,7 +184,7 @@ exports.config = {
   // Options to be passed to Mocha.
   // See the full list at http://mochajs.org/
   mochaOpts: {
-    require: [`mocha-steps`],
+    // reminder: mocha-steps seems to make tests flaky on Sauce Labs
     timeout: 40000,
     ui: `bdd`
   },
