@@ -159,18 +159,28 @@ function makeConfig(packageName, argv) {
 
   if (argv && argv.xunit) {
     cfg.junitReporter = {
+      // className defaults to the first describe block
       classNameFormatter(browser) {
         let name = argv.package;
-
-        name = `${name}.${browser.name
-          .replace(/ /g, `_`)
-          .replace(/\./g, `_`)}`;
+        name = name;
+        // name = `${name}.${browser.name
+        //   .replace(/ /g, `_`)
+        //   .replace(/\./g, `_`)}`;
 
         return name;
       },
+
       outputFile: `${packageName}.xml`,
       outputDir: `reports/junit/karma`,
+
+      // Specifying 'suite' fills in the testuite.package attribute. Jenkins
+      // combines testsuite.name with testsuite.package
       suite: packageName,
+
+      // useBrowserName=true doesn't seem to effect the output format, but does
+      // put reports in folders by browser. In other words, this needs to be set
+      // in order for karma to produce reports for more than just the last
+      // browser to complete.
       useBrowserName: true
     };
 

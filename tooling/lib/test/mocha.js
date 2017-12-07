@@ -65,7 +65,7 @@ async function run(options, files) {
       suppressLogs: false,
       output: options.output,
       suite: options.suite,
-      className: options.packageName
+      className: `${options.packageName}`
     };
   }
 
