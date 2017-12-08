@@ -153,7 +153,7 @@ exports.set = async function set(version, {all, lastLog}) {
 async function checkLastCommit() {
   debug(`checking if the last commit message has explicit release instructions`);
   const summary = await git.lastLog();
-  const re = /^#release v(.+?)(\s.+)?$/;
+  const re = /^#release v(\d+\.\d+\.\d+)/;
   const match = summary.match(re);
   if (match) {
     const version = match[1];
