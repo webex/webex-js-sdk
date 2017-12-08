@@ -43,11 +43,11 @@ function compare([l, ...left], [r, ...right]) {
 exports.last = async function last() {
   const packages = Array.from(await list());
   const version = _(
-      await Promise.all(packages
-        // TODO stop omitting eslint config once it's fully removed from the repo
-        .filter((p) => p !== `@ciscospark/eslint-config`)
-        .map(getDistTag))
-    )
+    await Promise.all(packages
+      // TODO stop omitting eslint config once it's fully removed from the repo
+      .filter((p) => p !== `@ciscospark/eslint-config`)
+      .map(getDistTag))
+  )
     .filter()
     .map((v) => v.split(`.`).map((n) => parseInt(n, 10)))
     .sort(compare)
@@ -153,7 +153,7 @@ exports.set = async function set(version, {all, lastLog}) {
 async function checkLastCommit() {
   debug(`checking if the last commit message has explicit release instructions`);
   const summary = await git.lastLog();
-  const re = /^#release v(.+?)(\s.+)?$/;
+  const re = /^#release v(\d+\.\d+\.\d+)/;
   const match = summary.match(re);
   if (match) {
     const version = match[1];

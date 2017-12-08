@@ -31,11 +31,11 @@ exports.buildPackage = async function buildPackage(packageName) {
   const files = await glob(`src/**/*.js`, {packageName});
   debug(`building files `, files);
   const mapped = files
-  .map((filename) => path.join(`packages`, `node_modules`, packageName, filename))
-  .map((filename) => ({
-    src: filename,
-    dest: filename.replace(`src`, `dist`)
-  }));
+    .map((filename) => path.join(`packages`, `node_modules`, packageName, filename))
+    .map((filename) => ({
+      src: filename,
+      dest: filename.replace(`src`, `dist`)
+    }));
 
   for (const file of mapped) {
     await exports.buildFile(file);

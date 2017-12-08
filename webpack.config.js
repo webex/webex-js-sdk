@@ -49,7 +49,14 @@ module.exports = {
     new EnvironmentPlugin({
       CISCOSPARK_LOG_LEVEL: `log`,
       DEBUG: ``,
-      NODE_ENV: process.env.NODE_ENV || `development`
+      NODE_ENV: process.env.NODE_ENV || `development`,
+      // The follow environment variables are specific to our continuous
+      // integration process and should not be used in general
+      // Also, yes, CONVERSATION_SERVICE does not end in URL
+      CONVERSATION_SERVICE: process.env.CONVERSATION_SERVICE,
+      WDM_SERVICE_URL: process.env.WDM_SERVICE_URL,
+      HYDRA_SERVICE_URL: process.env.HYDRA_SERVICE_URL,
+      ATLAS_SERVICE_UR: process.env.ATLAS_SERVICE_URLL
     })
   ]
 };

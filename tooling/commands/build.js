@@ -21,7 +21,7 @@ module.exports = {
       type: `boolean`
     }
   },
-  handler: wrapHandler(async ({packageName, onlySamples, skipSamples}) => {
+  handler: wrapHandler(async({packageName, onlySamples, skipSamples}) => {
     if (!onlySamples) {
       if (packageName) {
         await buildPackage(packageName);

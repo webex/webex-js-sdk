@@ -10,7 +10,7 @@ module.exports = {
   command: `inject`,
   desc: `Creates the "safe" profile directory`,
   builder: {},
-  handler: wrapHandler(async () => {
+  handler: wrapHandler(async() => {
     await prepareLocalProfile(platformToShortName(os.platform()));
   })
 };
