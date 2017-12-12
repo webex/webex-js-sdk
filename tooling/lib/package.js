@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-const _list = require(`../util/package`).list;
+const _list = require('../util/package').list;
 
 let packages;
 exports.list = async function list() {

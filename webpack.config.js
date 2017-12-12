@@ -1,21 +1,21 @@
-const dotenv = require(`dotenv`);
-const glob = require(`glob`);
-const path = require(`path`);
-const {EnvironmentPlugin} = require(`webpack`);
+const dotenv = require('dotenv');
+const glob = require('glob');
+const path = require('path');
+const {EnvironmentPlugin} = require('webpack');
 
-dotenv.config({path: `.env.default`});
+dotenv.config({path: '.env.default'});
 dotenv.config();
 
 module.exports = {
-  entry: `./packages/node_modules/ciscospark`,
+  entry: './packages/node_modules/ciscospark',
   output: {
-    filename: `bundle.js`,
-    library: `ciscospark`,
-    libraryTarget: `var`,
+    filename: 'bundle.js',
+    library: 'ciscospark',
+    libraryTarget: 'var',
     path: __dirname,
-    sourceMapFilename: `[file].map`
+    sourceMapFilename: '[file].map'
   },
-  devtool: `source-map`,
+  devtool: 'source-map',
   devServer: {
     https: true,
     disableHostCheck: true,
@@ -23,7 +23,7 @@ module.exports = {
   },
   resolve: {
     alias: glob
-      .sync(`**/package.json`, {cwd: `./packages/node_modules`})
+      .sync('**/package.json', {cwd: './packages/node_modules'})
       .map((p) => path.dirname(p))
       .reduce((alias, packageName) => {
         // Always use src as the entry point for local files so that we have the
@@ -40,16 +40,23 @@ module.exports = {
         test: /\.js$/,
         include: /packages\/node_modules/,
         use: {
-          loader: `babel-loader`
+          loader: 'babel-loader'
         }
       }
     ]
   },
   plugins: [
     new EnvironmentPlugin({
-      CISCOSPARK_LOG_LEVEL: `log`,
-      DEBUG: ``,
-      NODE_ENV: process.env.NODE_ENV || `development`
+      CISCOSPARK_LOG_LEVEL: 'log',
+      DEBUG: '',
+      NODE_ENV: process.env.NODE_ENV || 'development',
+      // The follow environment variables are specific to our continuous
+      // integration process and should not be used in general
+      // Also, yes, CONVERSATION_SERVICE does not end in URL
+      CONVERSATION_SERVICE: process.env.CONVERSATION_SERVICE,
+      WDM_SERVICE_URL: process.env.WDM_SERVICE_URL,
+      HYDRA_SERVICE_URL: process.env.HYDRA_SERVICE_URL,
+      ATLAS_SERVICE_UR: process.env.ATLAS_SERVICE_URLL
     })
   ]
 };
