@@ -257,9 +257,11 @@ ansiColor('xterm') {
 
           stage('install') {
             image.inside(DOCKER_RUN_OPTS) {
+              // Remove the old symlink that tends to screw up installing the
+              // new package
+              sh 'rm -f ./node_modules/@ciscospark/eslint-config'
               sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
               sh 'npm install'
-              sh 'npm run link-lint-rules'
             }
           }
 
