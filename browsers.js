@@ -10,10 +10,10 @@ module.exports = {
   sauce: {
     // Reminder: the first item in this object is used by pipeline builds
     sl_chrome_45_osx9: {
-      base: `SauceLabs`,
-      platform: `OS X 10.9`,
-      browserName: `chrome`,
-      version: `45`
+      base: 'SauceLabs',
+      platform: 'OS X 10.9',
+      browserName: 'chrome',
+      version: '45'
     },
     // sl_firefox_40_osx9: {
     //   base: 'SauceLabs',
@@ -42,10 +42,10 @@ module.exports = {
     // //   version: '11'
     // // },
     sl_chrome_46_win7: {
-      base: `SauceLabs`,
-      platform: `Windows 7`,
-      browserName: `chrome`,
-      version: `46`
+      base: 'SauceLabs',
+      platform: 'Windows 7',
+      browserName: 'chrome',
+      version: '46'
     }
     // sl_firefox_41_win7: {
     //   base: 'SauceLabs',

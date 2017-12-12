@@ -3,11 +3,16 @@
  */
 
 module.exports = {
-  command: `openh264`,
-  desc: `Tasks for getting and using the open h264 codec in Firefox`,
+  command: 'openh264',
+  desc: 'Tasks for getting and using the open h264 codec in Firefox',
+  /**
+   * Yargs builder
+   * @param {Object} yargs
+   * @returns {Object}
+   */
   builder(yargs) {
     return yargs
       .demandCommand(1)
-      .commandDir(`./openh264`);
+      .commandDir('./openh264');
   }
 };
