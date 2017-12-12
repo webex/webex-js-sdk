@@ -2,14 +2,14 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-const debug = require(`debug`)(`tooling:dependencies`);
-const builtins = require(`builtins`);
-const {read} = require(`../util/package`);
-const path = require(`path`);
-const {values} = require(`lodash`);
-const detective = require(`detective`);
-const fs = require(`fs`);
-const _list = require(`../lib/package`).list;
+const debug = require('debug')('tooling:dependencies');
+const builtins = require('builtins');
+const {read} = require('../util/package');
+const path = require('path');
+const {values} = require('lodash');
+const detective = require('detective');
+const fs = require('fs');
+const _list = require('../lib/package').list;
 
 /**
  * Lists the dependencies of a given package
@@ -47,7 +47,6 @@ exports.list = async function list(packageName, {includeTransitive = true, local
 const tree = new Map();
 /**
  * Walks all packages to generate a tree of direct dependencies
- * @returns {Promise}
  */
 async function buildLocalDepTree() {
   for (const packageName of await _list()) {
@@ -112,7 +111,7 @@ async function buildDirectDependentTree() {
 exports.listVersions = async function listVersions(packageName, options) {
   const deps = await exports.list(packageName, options);
   // eslint-disable-next-line global-require
-  const pkg = require(path.resolve(process.cwd(), `package.json`));
+  const pkg = require(path.resolve(process.cwd(), 'package.json'));
 
   return deps.reduce((acc, dep) => {
     acc[dep] = pkg.dependencies[dep] || pkg.devDependencies[dep] || pkg.optionalDependencies[dep];
@@ -151,9 +150,9 @@ function findDeps(entrypoints) {
  * @returns {string}
  */
 function requireToPackage(d) {
-  d = d.split(`/`);
-  if (d[0].startsWith(`@`)) {
-    return d.slice(0, 2).join(`/`);
+  d = d.split('/');
+  if (d[0].startsWith('@')) {
+    return d.slice(0, 2).join('/');
   }
   return d[0];
 }
@@ -166,7 +165,7 @@ function requireToPackage(d) {
 function listEntryPoints(pkg) {
   debug(`listing entrypoints for ${pkg.name}`);
   if (!pkg.name) {
-    throw new Error(`cannot read dependencies for unnamed package`);
+    throw new Error('cannot read dependencies for unnamed package');
   }
   let paths = [];
 
@@ -182,13 +181,13 @@ function listEntryPoints(pkg) {
 
   if (pkg.browser) {
     debug(`found browser entry(s) for ${pkg.name}`);
-    paths = paths.concat(values(pkg.browser).filter((p) => p && !p.startsWith(`@`)));
+    paths = paths.concat(values(pkg.browser).filter((p) => p && !p.startsWith('@')));
   }
 
   debug(paths);
 
   return paths
-    .map((p) => path.resolve(`packages`, `node_modules`, pkg.name, p));
+    .map((p) => path.resolve('packages', 'node_modules', pkg.name, p));
 }
 
 const visited = new Map();
@@ -207,7 +206,7 @@ function walk(entrypoint) {
       const requires = detective(fs.readFileSync(entrypoint));
       visited.set(entrypoint, requires.reduce((acc, dep) => {
         debug(`found ${dep}`);
-        if (dep.startsWith(`.`)) {
+        if (dep.startsWith('.')) {
           debug(`${dep} is relative, descending`);
           const next = walk(path.resolve(path.dirname(entrypoint), dep));
           acc = new Set([...acc, ...next]);
@@ -223,10 +222,10 @@ function walk(entrypoint) {
     return visited.get(entrypoint);
   }
   catch (err) {
-    if (err.code === `EISDIR`) {
-      return walk(path.resolve(entrypoint, `index.js`));
+    if (err.code === 'EISDIR') {
+      return walk(path.resolve(entrypoint, 'index.js'));
     }
-    if (err.code === `ENOENT` && !entrypoint.endsWith(`.js`)) {
+    if (err.code === 'ENOENT' && !entrypoint.endsWith('.js')) {
       return walk(`${entrypoint}.js`);
     }
     throw err;

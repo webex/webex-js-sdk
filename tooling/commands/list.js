@@ -2,24 +2,24 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-const {updated} = require(`../lib/updated`);
-const wrapHandler = require(`../lib/wrap-handler`);
-const {list} = require(`../util/package`);
-const {lastLog} = require(`../lib/git`);
+const {updated} = require('../lib/updated');
+const wrapHandler = require('../lib/wrap-handler');
+const {list} = require('../util/package');
+const {lastLog} = require('../lib/git');
 
 module.exports = {
-  command: `list`,
-  desc: `List packages`,
+  command: 'list',
+  desc: 'List packages',
   builder: {
     fortests: {
       default: false,
-      description: `list packages that should be tested in CI`,
-      type: `boolean`
+      description: 'list packages that should be tested in CI',
+      type: 'boolean'
     },
     forpipeline: {
       default: false,
-      description: `list packages that should be tested in a pipeline gating job`,
-      type: `boolean`
+      description: 'list packages that should be tested in a pipeline gating job',
+      type: 'boolean'
     }
   },
   // eslint-disable-next-line complexity
@@ -27,8 +27,8 @@ module.exports = {
     let packages;
     if (fortests) {
       const changed = await updated({});
-      const ignoreTooling = (await lastLog()).includes(`#ignore-tooling`);
-      if (!ignoreTooling && changed.includes(`tooling`)) {
+      const ignoreTooling = (await lastLog()).includes('#ignore-tooling');
+      if (!ignoreTooling && changed.includes('tooling')) {
         packages = await list();
       }
       else {
@@ -41,27 +41,33 @@ module.exports = {
 
     if (forpipeline || fortests) {
       packages = packages
-        .filter((p) => !p.includes(`bin-`))
-        .filter((p) => !p.includes(`test-helper-`))
-        .filter((p) => !p.includes(`eslint-config`))
-        .filter((p) => !p.includes(`xunit-with-logs`))
-        .filter((p) => !p.includes(`tooling`));
+        .filter((p) => !p.includes('bin-'))
+        .filter((p) => !p.includes('test-helper-'))
+        .filter((p) => !p.includes('eslint-config'))
+        .filter((p) => !p.includes('xunit-with-logs'))
+        .filter((p) => !p.includes('tooling'));
 
       if (forpipeline) {
         packages = packages
-          .filter((p) => !p.includes(`media-engine-webrtc`))
-          .filter((p) => !p.includes(`media-adapter-webrtc`));
+          .filter((p) => !p.includes('media-engine-webrtc'))
+          .filter((p) => !p.includes('media-adapter-webrtc'));
+      }
+
+      // Make sure we always test the samples when the public sdk changes.
+      if (packages.includes('ciscospark') && !packages.includes('samples')) {
+        packages.push('samples');
       }
 
       // this array is ranked in the order of approximate slowness. At this
       // time, that order is based on eyeballing some xml files rather than
       // empirical measurements of overall suite duration.
       const slow = [
-        `@ciscospark/media-engine-webrtc`,
-        `@ciscospark/plugin-phone`,
-        `@ciscospark/internal-plugin-conversation`,
-        `ciscospark`,
-        `@ciscospark/plugin-authorization-browser`
+        '@ciscospark/media-engine-webrtc',
+        '@ciscospark/plugin-phone',
+        '@ciscospark/internal-plugin-conversation',
+        'ciscospark',
+        '@ciscospark/plugin-authorization-browser',
+        'samples'
       ];
 
       packages.sort((a, b) => {
