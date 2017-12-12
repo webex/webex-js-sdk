@@ -4645,7 +4645,7 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">memberships</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
     assert.equal(memberships.length, <span class="hljs-number">2</span>);
-    <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> i = <span class="hljs-number">0</span>; i &lt; memberships.length; i++) {
+    <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> i = <span class="hljs-number">0</span>; i &lt; memberships.length; i+= <span class="hljs-number">1</span>) {
       assert.equal(memberships.items[i].roomId, room.id);
     }
     <span class="hljs-keyword">return</span> <span class="hljs-string">'success'</span>;
@@ -5982,7 +5982,7 @@ response.
       .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">rooms</span>) </span>{
         <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
         assert(rooms.length === <span class="hljs-number">3</span>);
-        <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> i = <span class="hljs-number">0</span>; i &lt; rooms.items.length; i++) {
+        <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> i = <span class="hljs-number">0</span>; i &lt; rooms.items.length; i+= <span class="hljs-number">1</span>) {
           assert(createdRooms.filter(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
             <span class="hljs-keyword">return</span> room.id === rooms.items[i].id;
           }).length === <span class="hljs-number">1</span>);
@@ -6504,7 +6504,7 @@ response.
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">teams</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
     assert(teams.length === <span class="hljs-number">3</span>);
-    <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> i = <span class="hljs-number">0</span>; i &lt; teams.items.length; i++) {
+    <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> i = <span class="hljs-number">0</span>; i &lt; teams.items.length; i+= <span class="hljs-number">1</span>) {
       assert(createdRooms.filter(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
         <span class="hljs-keyword">return</span> room.id === teams.items[i].id;
       }).length === <span class="hljs-number">1</span>);
@@ -6949,7 +6949,7 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">teamMemberships</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
     assert.equal(teamMemberships.length, <span class="hljs-number">2</span>);
-    <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> i = <span class="hljs-number">0</span>; i &lt; teamMemberships.length; i++) {
+    <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> i = <span class="hljs-number">0</span>; i &lt; teamMemberships.length; i+= <span class="hljs-number">1</span>) {
       assert.equal(teamMemberships.items[i].teamId, team.id);
     }
     <span class="hljs-keyword">return</span> <span class="hljs-string">'success'</span>;
