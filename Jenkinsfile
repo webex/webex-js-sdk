@@ -74,6 +74,9 @@ def generateDockerEnv = { ->
   if (env.ENABLE_VERBOSE_NETWORK_LOGGING != null) {
     dockerEnv+="ENABLE_VERBOSE_NETWORK_LOGGING=${env.ENABLE_VERBOSE_NETWORK_LOGGING}\n"
   }
+  if (env.GIT_COMMIT != null) {
+    dockerEnv+="GIT_COMMIT=${env.GIT_COMMIT}\n"
+  }
   if (env.HYDRA_SERVICE_URL != null) {
     dockerEnv+="HYDRA_SERVICE_URL=${env.HYDRA_SERVICE_URL}\n"
   }
@@ -324,7 +327,7 @@ ansiColor('xterm') {
               image.inside(DOCKER_RUN_OPTS) {
                 echo "checking if tests should be skipped"
                 def action = sh script: 'npm run --silent tooling -- check-testable', returnStdout: true
-                echo "npm run --silent tooling -- check-testable production '${action}'"
+
                 if (action.contains('skip')) {
                   echo "tests should be skipped"
                   skipTests = true
