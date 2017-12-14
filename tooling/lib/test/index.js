@@ -22,6 +22,7 @@ const {glob} = require('../../util/package');
 /* eslint-disable complexity */
 
 exports.testPackage = async function testPackage(options, packageName) {
+  debug(`Preparing babel-register for package ${packageName}`);
   // eslint-disable-next-line global-require
   require('babel-register')({
     only: [

@@ -77,6 +77,7 @@ module.exports = {
       argv.node = true;
     }
 
+
     if (!argv.unit && !argv.integration && !argv.automation && !argv.documentation) {
       argv.unit = true;
       argv.integration = true;
@@ -88,34 +89,32 @@ module.exports = {
       argv.browser = false;
     }
 
-    if (argv.tests) {
-      if (argv.package) {
-        if (argv.serve) {
-          debug('starting test server');
-          await start();
-          debug('started test server');
-        }
-
-        await testPackage(argv, argv.package);
-
-        if (argv.serve) {
-          debug('stopping test server');
-          await stop();
-          debug('stopped test server');
-        }
+    if (argv.package) {
+      if (argv.serve) {
+        debug('starting test server');
+        await start();
+        debug('started test server');
       }
-      else {
-        for (const packageName of await list()) {
-          const argString = Object.keys(argv).reduce((acc, key) => {
-            const value = argv[key];
-            if (typeof value === 'boolean') {
-              acc += value ? ` --${key}` : ` --no-${key}`;
-            }
-            return acc;
-          }, '');
-          const [cmd, ...args] = `npm run test --silent -- --package ${packageName}${argString}`.split(' ');
-          await spawn(cmd, args);
-        }
+
+      await testPackage(argv, argv.package);
+
+      if (argv.serve) {
+        debug('stopping test server');
+        await stop();
+        debug('stopped test server');
+      }
+    }
+    else {
+      for (const packageName of await list()) {
+        const argString = Object.keys(argv).reduce((acc, key) => {
+          const value = argv[key];
+          if (typeof value === 'boolean') {
+            acc += value ? ` --${key}` : ` --no-${key}`;
+          }
+          return acc;
+        }, '');
+        const [cmd, ...args] = `npm run test --silent -- --package ${packageName}${argString}`.split(' ');
+        await spawn(cmd, args);
       }
     }
 

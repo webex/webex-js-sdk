@@ -3,15 +3,18 @@
  */
 
 const debug = require('debug')('tooling:test:karma');
-const {Server, stopper} = require('karma');
-const {makeConfig} = require('../../../karma-ng.conf');
 const {readFile} = require('fs-promise');
+const {Server, stopper} = require('karma');
 const ps = require('ps-node');
-const {expectNonEmptyReports, expectNoKmsErrors} = require('./common');
+
+const {makeConfig} = require('../../../karma-ng.conf');
 const {glob} = require('../async');
 const {inject} = require('../openh264');
 
+const {expectNonEmptyReports, expectNoKmsErrors} = require('./common');
+
 /* eslint-disable no-console */
+/* eslint-disable no-await-in-loop */
 
 // Splitting this function to reduce complexity would not aid in readability
 // eslint-disable-next-line complexity
@@ -29,7 +32,7 @@ exports.test = async function test(options, packageName, files) {
       try {
         debug(`Attempt #${i} for ${packageName}`);
 
-        await run(cfg, files);
+        await run(cfg);
         const reports = await glob(`./reports/junit/karma/*/${packageName}.xml`);
         if (reports.length !== cfg.browsers.length) {
           throw new Error(`Ran tests in ${cfg.browsers.length} browsers but only found ${reports.length} reports`);
@@ -48,7 +51,7 @@ exports.test = async function test(options, packageName, files) {
     }
   }
   else {
-    const success = await run(cfg, files);
+    const success = await run(cfg);
     if (success) {
       debug(`${files} succeeded`);
     }
@@ -62,9 +65,10 @@ exports.test = async function test(options, packageName, files) {
 /**
  * Runs karma with the specified config
  * @param {Object} cfg
+ * @param {Object} argv
  * @returns {boolean}
  */
-async function run(cfg) {
+async function run(cfg, argv) {
   const result = await new Promise((resolve) => {
     const server = new Server(cfg, (code) => resolve(code));
 

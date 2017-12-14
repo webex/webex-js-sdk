@@ -367,7 +367,11 @@ ansiColor('xterm') {
           if (env.COVERAGE && currentBuild.result == 'SUCCESS') {
             stage('process coverage') {
               if (!skipTests) {
-                archive 'reports/cobertura.xml'
+                image.inside(DOCKER_RUN_OPTS) {
+                  sh 'nyc report --temp-directory=./reports/intermediate/json --reporter=cobertura --report-dir=reports/coverage'
+                }
+
+                archive 'reports/cobertura-coverage.xml'
 
                 // At the time this script was written, the cobertura plugin didn't
                 // support pipelines, so we need to use a freeform job to process

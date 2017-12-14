@@ -1,24 +1,3 @@
 {
-  "plugins": [
-    "./tooling/babel-plugin-inject-package-version",
-    ["babel-plugin-transform-builtin-extend", {
-        "globals": ["Error"]
-    }],
-    "transform-decorators-legacy",
-    "transform-class-properties",
-    "transform-export-extensions",
-    "lodash",
-    "transform-runtime"
-  ],
-  "presets": [
-    ["env", {
-      "targets": {
-        "browsers": [
-          "last 2 versions",
-          "safari >= 7"
-        ]
-      }
-    }]
-  ],
-  "sourceMaps": true
+  "presets": ["./.babelrc.js"]
 }

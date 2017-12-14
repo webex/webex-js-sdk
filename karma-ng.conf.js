@@ -11,11 +11,13 @@ const makeBrowsers = require('./browsers-ng');
 /* eslint-disable global-require */
 
 module.exports = function configureKarma(config) {
-  config.set(makeConfig(process.env.PACKAGE));
+  const cfg = makeConfig(process.env.PACKAGE);
+  console.info(require('util').inspect(cfg, {depth: null}));
+  config.set(cfg);
 };
 
 module.exports.makeConfig = makeConfig;
-function makeConfig(packageName, argv) {
+function makeConfig(packageName, argv = {}) {
   const pkg = require(`./packages/node_modules/${packageName}/package`);
   /* eslint complexity: [0] */
   const launchers = makeBrowsers(packageName, argv);
@@ -23,7 +25,7 @@ function makeConfig(packageName, argv) {
   const unitTestPath = path.join('packages', 'node_modules', packageName, 'test', 'unit', 'spec', '**', '*.js');
 
   const preprocessors = {
-    'packages/**': ['browserify']
+    './packages/**/*.js': ['browserify']
   };
 
   const files = [
@@ -80,8 +82,8 @@ function makeConfig(packageName, argv) {
     files,
 
     frameworks: [
-      'browserify',
-      'mocha'
+      'mocha',
+      'browserify'
     ],
 
     hostname: 'localhost',
@@ -92,7 +94,7 @@ function makeConfig(packageName, argv) {
         // TODO figure out how to report retries
         retries: process.env.JENKINS || process.env.CI ? 1 : 0,
         timeout: 30000,
-        grep: argv && argv.grep[0]
+        grep: argv && argv.grep && argv.grep[0]
       }
     },
 
@@ -111,8 +113,28 @@ function makeConfig(packageName, argv) {
     },
 
     reporters: [
-      'mocha'
+      'progress',
+      'coverage'
     ],
+
+    coverageReporter: {
+      instrumenters: {isparta: require('isparta')},
+      instrumenter: {
+        '**/*.js': 'isparta'
+      },
+      reporters: [
+        {type: 'text-summary'},
+        {
+          dir: 'reports/coverage/intermediate',
+          file: `${packageName}.json`,
+          // file: `${packageName.replace(/\//, '_')}.json`,
+          // We'll drop each package's coverage report in the "intermediate"
+          // directory, then assemble them later.
+          subdir: 'json',
+          type: 'json'
+        }
+      ]
+    },
 
     singleRun: !(argv && argv.karmaDebug),
 
