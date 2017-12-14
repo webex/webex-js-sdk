@@ -56,12 +56,6 @@ Test a single package, but only in a browser
 npm test -- --package @ciscospark/spark-core --browser
 ```
 
-Test a single package and generate coverage and xunit reports
-
-```bash
-npm test -- --package @ciscospark/spark-core --coverage --xunit
-```
-
 ## sauce:start, sauce:run, sauce:stop
 
 Start the sauce tunnel, run tests using Sauce Labs browsers, and stop the Sauce tunnel

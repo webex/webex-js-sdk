@@ -16,7 +16,6 @@ reports
 .env
 dist
 js-bin
-.coverage
 html-report
 .idea
 /docs/api

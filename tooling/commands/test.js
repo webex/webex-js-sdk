@@ -9,25 +9,12 @@ const wrapHandler = require('../lib/wrap-handler');
 const {testPackage} = require('../lib/test');
 const {list} = require('../lib/package');
 const spawn = require('../util/spawn');
-const {report} = require('../util/coverage');
 const {start, stop} = require('../util/server');
 
 module.exports = {
   command: 'test',
   desc: 'Run the test suite',
   builder: {
-    coverage: {
-      description: 'Generate code coverage',
-      default: false,
-      type: 'boolean'
-    },
-
-    coverageReport: {
-      description: 'Internal; when false, no report is generated',
-      default: true,
-      type: 'boolean'
-    },
-
     xunit: {
       description: 'Generate xunit xml reports. Note: exit code will always be zero of reports are generated successfully, even if tests fail',
       default: false,
@@ -82,12 +69,6 @@ module.exports = {
       description: 'Start the fixture server. Since this defaults to true, you find --no-serve useful',
       default: true,
       type: 'boolean'
-    },
-
-    tests: {
-      description: 'Set to false to skip tests but do the other work that happens during a test run (e.g. generate the coverage report)',
-      default: true,
-      type: 'boolean'
     }
   },
   handler: wrapHandler(async (argv) => {
@@ -132,16 +113,10 @@ module.exports = {
             }
             return acc;
           }, '');
-          const [cmd, ...args] = `npm run test --silent -- --no-coverage-report --package ${packageName}${argString}`.split(' ');
+          const [cmd, ...args] = `npm run test --silent -- --package ${packageName}${argString}`.split(' ');
           await spawn(cmd, args);
         }
       }
-    }
-
-    if (argv.coverage && argv.coverageReport) {
-      debug('generating overall coverage report');
-      await report();
-      debug('generated overall coverage report');
     }
 
     for (const handle of process._getActiveHandles()) {

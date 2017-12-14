@@ -17,12 +17,6 @@ const {
 const mochaTest = require('./mocha').test;
 const karmaTest = require('./karma').test;
 const path = require('path');
-const {
-  collect,
-  combine,
-  deinstrument,
-  instrument
-} = require('../../util/coverage');
 const {glob} = require('../../util/package');
 
 /* eslint-disable complexity */
@@ -46,17 +40,7 @@ exports.testPackage = async function testPackage(options, packageName) {
   }
 
   if (options.node) {
-    if (options.coverage) {
-      await instrument(packageName);
-    }
-    try {
-      await runNodeSuite(options, packageName);
-    }
-    finally {
-      if (options.coverage) {
-        await deinstrument(packageName);
-      }
-    }
+    await runNodeSuite(options, packageName);
   }
 
   if (options.browser) {
@@ -72,11 +56,6 @@ exports.testPackage = async function testPackage(options, packageName) {
   // jsdoctrine transform once the doc tests complete.
   if (options.documentation) {
     await runDocsSuite(options, packageName);
-  }
-
-  if (options.coverage) {
-    await collect(packageName);
-    await combine(packageName);
   }
 };
 
@@ -97,24 +76,7 @@ async function runNodeSuite(options, packageName) {
     return;
   }
 
-  // Intercept require statements for the module under test and instead load the
-  // instrumented files. This *should* continue to isolate code coverage since
-  // we're running each package's test in a separate process, even when simply
-  // running `npm test`.
-  const load = require.extensions['.js'];
-  if (options.coverage) {
-    require.extensions['.js'] = function loadCoveredFile(m, filename) {
-      if (filename.includes(packageName)) {
-        filename = filename.replace(`${packageName}/dist`, `${packageName}/.coverage/src`);
-      }
-      return load(m, filename);
-    };
-  }
-
   await mochaTest(options, packageName, 'node', files);
-  if (options.coverage) {
-    require.extensions['.js'] = load;
-  }
 
   debug(`Finished node suite for ${packageName}`);
 }

@@ -122,30 +122,6 @@ function makeConfig(packageName, argv) {
     recordScreenshots: true
   };
 
-  if (process.env.COVERAGE && process.env.COVERAGE !== 'undefined') {
-    cfg.coverageReporter = {
-      instrumenters: {isparta: require('isparta')},
-      instrumenter: {
-        '**/*.js': 'isparta'
-      },
-      // includeAllSources: true,
-      // instrumenterOptions: {
-      //   coverageVariable: makeCoverageVariable(packageName)
-      // },
-      reporters: [{
-        type: 'json',
-        dir: `reports/coverage/intermediate/${packageName}`
-      }]
-    };
-
-    // cfg.browserify.transform.unshift([`browserify-istanbul`, {
-    //   instrumenter: require(`isparta`),
-    //   defaultIgnore: false
-    // }]);
-
-    cfg.reporters.push('coverage');
-  }
-
   if (process.env.SC_TUNNEL_IDENTIFIER) {
     cfg.sauceLabs = {
       build: process.env.BUILD_NUMBER || `local-${process.env.USER}-${packageName}-${Date.now()}`,
