@@ -60,6 +60,7 @@ overrides:
   # Set webdriver.io globals
   -
     files:
+      - 'wdio.helpers.d/**/*.js'
       - 'packages/node_modules/**/test/wdio/**/*.js'
     globals:
       browser: false
