@@ -7,7 +7,7 @@ const addCommand = require('./lib/add-command');
  * @param {number} [timeout=500]
  * @param {booean} [reverse=false]
  */
-addCommand('waitForSpecificText', function waitForSpecificText(selector, value, timeout = 500, reverse = false) {
+addCommand('waitForSpecificText', function waitForSpecificText(selector, value, timeout = 5000, reverse = false) {
   let condition;
 
   if (typeof value === 'string') {
