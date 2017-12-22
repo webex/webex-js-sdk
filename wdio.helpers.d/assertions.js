@@ -15,13 +15,17 @@ const addCommand = require('./lib/add-command');
   const asserterInverseName = getterName.replace('get', 'assertNot');
 
   addCommand(asserterName, function assert(selector, ...args) {
-    const expected = args.pop();
-    this.waitUntil(() => this[getterName](selector, ...args) === expected, 2000, `Timed-out waiting for "$(${selector})" to equal ${expected}`);
+    const expected = String(args.pop());
+    const getter = () => this[getterName](selector, ...args);
+
+    this.waitUntil(() => getter() === expected, 5000, `Timed-out waiting for "$(${selector})" to equal ${expected}, current value is ${getter()}`);
   });
 
   addCommand(asserterInverseName, function assert(selector, ...args) {
-    const expected = args.pop();
-    this.waitUntil(() => this[getterName](selector, ...args) !== expected, 2000, `Timed-out waiting for "$(${selector})" to not equal ${expected}`);
+    const expected = String(args.pop());
+    const getter = () => this[getterName](selector, ...args);
+
+    this.waitUntil(() => getter() !== expected, 5000, `Timed-out waiting for "$(${selector})" to not equal ${expected}`);
   });
 });
 
