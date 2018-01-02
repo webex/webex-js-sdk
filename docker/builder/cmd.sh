@@ -149,7 +149,12 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
     # Generate the coverage report
     npm run tooling -- test --no-tests --node
   else
-    npm run test >> "${GRUNT_LOG_FILE}" 2>&1
+    # Skip unit tests in gating pipelines
+    if [ -n "${PIPELINE}" ]; then
+      npm run test -- --no-unit >> "${GRUNT_LOG_FILE}" 2>&1
+    else
+      npm run test >> "${GRUNT_LOG_FILE}" 2>&1
+    fi
     EXIT_CODE=$?
   fi
   set -e
