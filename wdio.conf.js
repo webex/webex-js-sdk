@@ -186,7 +186,7 @@ exports.config = {
   // See the full list at http://mochajs.org/
   mochaOpts: {
     // reminder: mocha-steps seems to make tests flaky on Sauce Labs
-    timeout: 40000,
+    timeout: 80000,
     ui: 'bdd'
   },
   //
