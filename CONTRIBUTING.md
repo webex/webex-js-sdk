@@ -69,6 +69,17 @@ npm run build
 
 > There used to be a means of building individual packages, but they now build quickly enough that there's no need.
 
+### Writing Tests
+
+This project has five categories of tests. (Paths below are relative to each package directory unless otherwise specified).
+
+- Unit Tests: These files are found in the `src` directory and end in `-spec.js`. Unit tests should never make network requests.
+- Legacy Unit Tests: These files are found in `test/unit/spec`. Please don't add new test files here.
+- Integration Tests: Found in `test/integration/spec`, these tests prove roundtrip behavior between the package and the spark backend.
+- Automation Tests: These are tests based on [wd](https://github.com/admc/wd) found in `test/automation/spec`. Automation tests should be written very sparingly (At this time, they only exist to test the OAuth Login flows). Ideally, they'll be converted to [webdriver.io](http://webdriver.io) tests.
+- Sample Tests: These are selenium tests located in `/packages/node_modules/samples/*/test/wdio/spec/*` based on [webdriver](http://webdriver.io) and testing the code `/packages/node_modules/samples/*`.
+- Documentation Tests: These tests are generated from properly formatted `@example` comment blocks and confirm the examples work. They are explicitly not for confirming the behavior of a package; they are only for confirming that package's documentation.
+
 ### Running Tests
 
 #### Run All Tests
