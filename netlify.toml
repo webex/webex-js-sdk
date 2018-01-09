@@ -1,6 +1,8 @@
 [build]
   publish = "packages/node_modules/samples"
   command = "npm run samples:build"
+[context.production.environment]
+  NODE_ENV = "development"
 [context.deploy-preview.environment]
   NODE_ENV = "development"
 [context.branch-deploy]
