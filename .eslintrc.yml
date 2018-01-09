@@ -47,38 +47,6 @@ rules:
       variables: true
 
 overrides:
-  # Configure Mocha
-  -
-    files:
-      - 'packages/node_modules/**/test/**/*.js'
-      - 'packages/node_modules/**/*-spec/**/*.js'
-    env:
-      mocha: true
-    rules:
-      no-invalid-this: off
-      require-jsdoc: off
-  # Set webdriver.io globals
-  -
-    files:
-      - 'wdio.helpers.d/**/*.js'
-      - 'packages/node_modules/**/test/wdio/**/*.js'
-    globals:
-      browser: false
-      $: false
-      $$: false
-      step: false
-  -
-    files:
-      - packages/node_modules/@ciscospark/xunit-with-logs
-    rules:
-      func-names: off
-      no-console: off
-  # Allow cli tools to use sync methods
-  -
-    files:
-      - packages/node_modules/**/bin-*/**
-    rules:
-      no-sync: off
   # Reduce the severity of jsdoc violations
   # TODO move to the transitional section once the core section moves to core
   -
@@ -106,3 +74,36 @@ overrides:
             ClassDeclaration: true
             ArrowFunctionExpression: false
             FunctionExpression: true
+  # Relax rules in tests
+  -
+    files:
+      - 'packages/node_modules/**/test/**/*.js'
+      - 'packages/node_modules/**/*-spec/**/*.js'
+    env:
+      mocha: true
+    rules:
+      func-names: off
+      no-invalid-this: off
+      require-jsdoc: off
+  # Set webdriver.io globals
+  -
+    files:
+      - 'wdio.helpers.d/**/*.js'
+      - 'packages/node_modules/**/test/wdio/**/*.js'
+    globals:
+      browser: false
+      $: false
+      $$: false
+      step: false
+  -
+    files:
+      - packages/node_modules/@ciscospark/xunit-with-logs
+    rules:
+      func-names: off
+      no-console: off
+  # Allow cli tools to use sync methods
+  -
+    files:
+      - packages/node_modules/**/bin-*/**
+    rules:
+      no-sync: off
