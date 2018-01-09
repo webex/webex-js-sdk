@@ -47,7 +47,34 @@ rules:
       variables: true
 
 overrides:
-  # Configure Mocha
+  # Reduce the severity of jsdoc violations
+  # TODO move to the transitional section once the core section moves to core
+  -
+    files:
+      - packages/node_modules/**/*.js
+    rules:
+      valid-jsdoc:
+      - error
+      -
+        prefer:
+          arg: param
+          argument: param
+          return: returns
+          virtual: abstract
+          fires: emits
+        requireParamDescription: false
+        requireReturn: true
+        requireReturnType: true
+        requireReturnDescription: false
+      require-jsdoc:
+        - warn
+        - require:
+            FunctionDeclaration: true
+            MethodDefinition: true
+            ClassDeclaration: true
+            ArrowFunctionExpression: false
+            FunctionExpression: true
+  # Relax rules in tests
   -
     files:
       - 'packages/node_modules/**/test/**/*.js'
@@ -80,30 +107,3 @@ overrides:
       - packages/node_modules/**/bin-*/**
     rules:
       no-sync: off
-  # Reduce the severity of jsdoc violations
-  # TODO move to the transitional section once the core section moves to core
-  -
-    files:
-      - packages/node_modules/**/*.js
-    rules:
-      valid-jsdoc:
-      - error
-      -
-        prefer:
-          arg: param
-          argument: param
-          return: returns
-          virtual: abstract
-          fires: emits
-        requireParamDescription: false
-        requireReturn: true
-        requireReturnType: true
-        requireReturnDescription: false
-      require-jsdoc:
-        - warn
-        - require:
-            FunctionDeclaration: true
-            MethodDefinition: true
-            ClassDeclaration: true
-            ArrowFunctionExpression: false
-            FunctionExpression: true
