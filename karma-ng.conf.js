@@ -20,7 +20,8 @@ function makeConfig(packageName, argv) {
   /* eslint complexity: [0] */
   const launchers = makeBrowsers(packageName, argv);
   const integrationTestPath = path.join('packages', 'node_modules', packageName, 'test', 'integration', 'spec', '**', '*.js');
-  const unitTestPath = path.join('packages', 'node_modules', packageName, 'test', 'unit', 'spec', '**', '*.js');
+  const unitTestPath = path.join('packages', 'node_modules', packageName, 'src', '**', '*-spec.js');
+  const legacyUnitTestPath = path.join('packages', 'node_modules', packageName, 'test', 'unit', 'spec', '**', '*.js');
 
   const preprocessors = {
     'packages/**': ['browserify']
@@ -32,6 +33,7 @@ function makeConfig(packageName, argv) {
 
   if (!argv || argv.unit) {
     files.push(unitTestPath);
+    files.push(legacyUnitTestPath);
   }
   if (!argv || argv.integration) {
     files.push(integrationTestPath);

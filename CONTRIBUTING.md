@@ -74,6 +74,19 @@ Build the SDK:
 npm run build
 ```
 
+> There used to be a means of building individual packages, but they now build quickly enough that there's no need.
+
+### Writing Tests
+
+This project has five categories of tests. (Paths below are relative to each package directory unless otherwise specified).
+
+- Unit Tests: These files are found in the `src` directory and end in `-spec.js`. Unit tests should never make network requests.
+- Legacy Unit Tests: These files are found in `test/unit/spec`. Please don't add new test files here.
+- Integration Tests: Found in `test/integration/spec`, these tests prove roundtrip behavior between the package and the spark backend.
+- Automation Tests: These are tests based on [wd](https://github.com/admc/wd) found in `test/automation/spec`. Automation tests should be written very sparingly (At this time, they only exist to test the OAuth Login flows). Ideally, they'll be converted to [webdriver.io](http://webdriver.io) tests.
+- Sample Tests: These are selenium tests located in `/packages/node_modules/samples/*/test/wdio/spec/*` based on [webdriver](http://webdriver.io) and testing the code `/packages/node_modules/samples/*`.
+- Documentation Tests: These tests are generated from properly formatted `@example` comment blocks and confirm the examples work. They are explicitly not for confirming the behavior of a package; they are only for confirming that package's documentation.
+
 ### Running Tests
 
 `npm test` is the entrypoint to our test runner, but its not practical to use without parameters; the full suite would take over two hours to run and cross talk would probably cause tests to break each other.
@@ -92,8 +105,8 @@ A local development flow might look like
 1. At the start of development, run `npm run distsrc` once.
 2. Edit source code in `MYPACKAGE`.
 3. Use `npm test -- --package MYPACKAGE --node` to run the tests for just that package only in nodejs.
-4. Repeat steps 2-3 until the tests pass. 
-5. Run `npm run srcdist` to restore the package.jsons to avoid committing those changes. 
+4. Repeat steps 2-3 until the tests pass.
+5. Run `npm run srcdist` to restore the package.jsons to avoid committing those changes.
 
 You can use the `--unit`, `--integration`, `--automation`, and `--documentation` switches to control what types of tests you run and `--node` and `--browser` to control which environments your tests run in.
 

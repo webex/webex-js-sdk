@@ -11,6 +11,7 @@ exports.gatherFiles = async function gatherFiles(options, packageName) {
   if (options.unit) {
     debug(`looking for unit tests for ${packageName}`);
     files = files.concat(await glob('test/unit/spec/**/*.js', {packageName}));
+    files = files.concat(await glob('src/**/*-spec.js', {packageName}));
   }
   if (options.integration) {
     debug(`looking for integration tests for ${packageName}`);
