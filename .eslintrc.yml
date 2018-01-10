@@ -55,6 +55,7 @@ overrides:
     env:
       mocha: true
     rules:
+      func-names: off
       no-invalid-this: off
       require-jsdoc: off
   # Set webdriver.io globals
