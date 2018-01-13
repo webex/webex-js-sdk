@@ -2,7 +2,7 @@
 
 ## Current Behavior
 
-## Possible Solution (suggestions welcomed if known)
+## Possible Solution (we welcome any logical suggestions)
 
 ## Steps to Reproduce
 1.
