@@ -16,7 +16,7 @@
 
 The title of a Bug or Enhancement should clearly indicate what is broken or desired. Use the description to
 explain possible solutions or add details and (especially for Enhancemnts) explain *how* or *why* the issue is
-broken or desired.
+broken or desired. If providing snippets of code, use [Markdown code blocks](https://help.github.com/articles/markdown-basics/#multiple-lines).
 
 #### Grammar
 
@@ -26,6 +26,10 @@ blinking text"** a bug or a feature request?
 
 - Enhancements: The title should be an imperative statement of how things should be. **"Add support for blinking text"**
 - Bugs: The title should be a declarative statement of how things are. **"Text does not blink"**
+
+#### Logs
+
+Please provide as sufficient logging around the issue which you are reporting as this will help with our investigation.
 
 ## Contributing Code
 
