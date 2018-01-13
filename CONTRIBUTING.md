@@ -16,7 +16,9 @@
 
 The title of a Bug or Enhancement should clearly indicate what is broken or desired. Use the description to
 explain possible solutions or add details and (especially for Enhancemnts) explain *how* or *why* the issue is
-broken or desired. If providing snippets of code, use [Markdown code blocks](https://help.github.com/articles/markdown-basics/#multiple-lines).
+broken or desired. Please see [ISSUE_TEMPLATE.md](https://github.com/ciscospark/spark-js-sdk/ISSUE_TEMPLATE.md)
+
+**If providing snippets of code**, use [Markdown code blocks](https://help.github.com/articles/markdown-basics/#multiple-lines).
 
 #### Grammar
 
