@@ -31,7 +31,7 @@ blinking text"** a bug or a feature request?
 
 #### Logs
 
-Please provide as sufficient logging around the issue which you are reporting as this will help with our investigation.
+Please provide sufficient logging around the issue which you are reporting as this will help with our investigation.
 
 ## Contributing Code
 
