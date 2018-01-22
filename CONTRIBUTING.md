@@ -217,7 +217,7 @@ git checkout feature
 git rebase master
 ```
 
-Finally, open a Pull Request with your changes. Be sure to mention the issues this request addresses in the body of the request. Once your request is opened, a developer will review, comment, and, when approved, merge your changes!
+Finally, open a [PULL_REQUEST](https://github.com/ciscospark/spark-js-sdk/blob/master/.github/PULL_REQUEST_TEMPLATE.MD) with your changes. Be sure to mention the issues this request addresses in the body of the request. Once your request is opened, a developer will review, comment, and, when approved, merge your changes!
 
 ## Updating the Documentation
 
