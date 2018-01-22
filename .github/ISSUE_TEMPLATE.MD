@@ -5,14 +5,14 @@
 <!--- Tell us what currently happens instead of the expected behavior -->
 
 ## Possible Solution (we welcome any logical suggestion)
+<!--- You have a solution which may work?  Please share it, we would like to see what you have in mind -->
 Example:  
-````
-function foobar() {
-  console.log("Worth to **log** the variable _howdy_ as it helped me in my own debugging");
+```
+let redirect_uri = `${window.location.protocol}//${window.location.host}`;
+if (window.location.pathname) {
+  redirect_uri += window.location.pathname;
 }
-````
-<!--- You have a possible solutoin?  We would like to see what you have in mind -->
-
+```
 ## Steps to Reproduce
 <!--- Detail to us what you did so we can follow the same path -->
 1.
