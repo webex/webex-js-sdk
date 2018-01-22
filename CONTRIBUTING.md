@@ -32,6 +32,7 @@ blinking text"** a bug or a feature request?
 #### Logs
 
 Please provide sufficient logging around the issue which you are reporting as this will help with our investigation.
+**DO NOT** include access tokens or other sensitive information. If you need to supply logs with sensitive information, supply them to developer support rather than posting them here; even when sending logs to developer support, **DO NOT** include access tokens.
 
 ## Contributing Code
 
