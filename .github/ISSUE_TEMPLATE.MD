@@ -5,7 +5,7 @@
 <!--- Tell us what currently happens instead of the expected behavior -->
 
 ## Possible Solution (we welcome any logical suggestion)
-<!--- You have a solution which may work?  Please share it, we would like to see what you have in mind -->
+<!--- Do you have a potential solution to the issue? Please share it; we'd like to see what you have in mind -->
 Example:  
 ```
 let redirect_uri = `${window.location.protocol}//${window.location.host}`;
@@ -14,14 +14,14 @@ if (window.location.pathname) {
 }
 ```
 ## Steps to Reproduce
-<!--- Detail to us what you did so we can follow the same path -->
+<!--- Please provide detailed steps for reproducing the issue -->
 1.
 2.
 3.
 4.
 
 ## Environment Details
-<!--- Provide as much detail as possible about you environment -->
+<!--- Provide as much detail as possible about your environment -->
 * SDK Version
 * Node/Browser Version
 * NPM Version
