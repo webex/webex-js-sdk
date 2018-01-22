@@ -23,5 +23,5 @@ if (window.location.pathname) {
 ## Environment Details
 <!--- Provide as much detail as possible about you environment -->
 * SDK Version
-* Node/Broswer Version
+* Node/Browser Version
 * NPM Version
