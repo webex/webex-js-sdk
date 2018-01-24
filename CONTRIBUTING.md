@@ -16,7 +16,9 @@
 
 The title of a Bug or Enhancement should clearly indicate what is broken or desired. Use the description to
 explain possible solutions or add details and (especially for Enhancemnts) explain *how* or *why* the issue is
-broken or desired.
+broken or desired. Please see [ISSUE_TEMPLATE.md](https://github.com/ciscospark/spark-js-sdk/blob/master/.github/ISSUE_TEMPLATE.MD) that outlines what we are looking for.
+
+**If providing snippets of code**, use [Markdown code blocks](https://help.github.com/articles/markdown-basics/#multiple-lines).
 
 #### Grammar
 
@@ -26,6 +28,11 @@ blinking text"** a bug or a feature request?
 
 - Enhancements: The title should be an imperative statement of how things should be. **"Add support for blinking text"**
 - Bugs: The title should be a declarative statement of how things are. **"Text does not blink"**
+
+#### Logs
+
+Please provide sufficient logging around the issue which you are reporting as this will help with our investigation.
+**DO NOT** include access tokens or other sensitive information. If you need to supply logs with sensitive information, supply them to developer support rather than posting them here; even when sending logs to developer support, **DO NOT** include access tokens.
 
 ## Contributing Code
 
@@ -210,7 +217,7 @@ git checkout feature
 git rebase master
 ```
 
-Finally, open a Pull Request with your changes. Be sure to mention the issues this request addresses in the body of the request. Once your request is opened, a developer will review, comment, and, when approved, merge your changes!
+Finally, open a [new Pull Request](https://github.com/ciscospark/spark-js-sdk/compare) with your changes. Be sure to mention the issues this request addresses in the body of the request. Once your request is opened, a developer will review, comment, and, when approved, merge your changes!
 
 ## Updating the Documentation
 
