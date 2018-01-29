@@ -1,4 +1,4 @@
-/**!
+/** !
  *
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
@@ -8,50 +8,50 @@
 /* eslint-disable no-shadow */
 
 module.exports = function gruntConfig(grunt) {
-  require(`load-grunt-tasks`)(grunt);
-  require(`time-grunt`)(grunt);
-  grunt.loadTasks(`tasks`);
+  require('load-grunt-tasks')(grunt);
+  require('time-grunt')(grunt);
+  grunt.loadTasks('tasks');
 
   const config = {
     env: {
       default: {
-        src: `.env.default`
+        src: '.env.default'
       },
       secrets: {
-        src: `.env`
+        src: '.env'
       }
     },
 
     'gh-pages': {
       options: {
-        base: `docs`
+        base: 'docs'
       },
       docs: {
-        src: [`**`]
+        src: ['**']
       },
       ghc: {
-        src: [`**`],
+        src: ['**'],
         options: {
           push: false,
-          repo: `https://github.com/ciscospark/spark-js-sdk.git`,
+          repo: 'https://github.com/ciscospark/spark-js-sdk.git',
           user: {
-            name: `Jenkins`,
-            email: `spark-js-sdk.gen@cisco.com`
+            name: 'Jenkins',
+            email: 'spark-js-sdk.gen@cisco.com'
           }
         }
       }
     }
   };
 
-  grunt.registerTask(`publish:docs`, [
-    `gh-pages:ghc`
+  grunt.registerTask('publish:docs', [
+    'gh-pages:ghc'
   ]);
 
   grunt.initConfig(config);
   grunt.task.run([
-    `env:default`,
-    `env:secrets`
+    'env:default',
+    'env:secrets'
   ]);
 
-  grunt.registerTask(`default`, []);
+  grunt.registerTask('default', []);
 };

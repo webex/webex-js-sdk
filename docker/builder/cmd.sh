@@ -138,8 +138,25 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
   echo "" >> "${GRUNT_LOG_FILE}"
   echo "### Attempt ${SUITE_ITERATION} ###" >> "${GRUNT_LOG_FILE}"
   echo "" >> "${GRUNT_LOG_FILE}"
-  npm run test >> "${GRUNT_LOG_FILE}" 2>&1
-  EXIT_CODE=$?
+  if [ "${PACKAGE}" == "samples" ]; then
+    CI=true npm run test:samples >> "${GRUNT_LOG_FILE}" 2>&1
+    EXIT_CODE=$?
+    # Generate the coverage report
+    npm run tooling -- test --no-tests
+  elif [ "${PACKAGE}" == "@ciscospark/sparkd" ]; then
+    npm test -- --package @ciscospark/sparkd --node >> "${GRUNT_LOG_FILE}" 2>&1
+    EXIT_CODE=$?
+    # Generate the coverage report
+    npm run tooling -- test --no-tests --node
+  else
+    # Skip unit tests in gating pipelines
+    if [ -n "${PIPELINE}" ]; then
+      npm run test -- --no-unit >> "${GRUNT_LOG_FILE}" 2>&1
+    else
+      npm run test >> "${GRUNT_LOG_FILE}" 2>&1
+    fi
+    EXIT_CODE=$?
+  fi
   set -e
 
   # No need to repeat if there was a success

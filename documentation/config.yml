@@ -2,11 +2,17 @@ toc:
   - name: spark-js-sdk
     file: ciscospark.md
   - CiscoSpark
+  - name: Authorization
+  - AuthorizationBrowser
+  - AuthorizationNode
   - name: Calling
   - Phone
+  - PhoneConfig
   - Call
   - CallMemberships
   - CallMembership
+  - StatsStream
+  - StatsFilter
   - name: Resources
     description: |
       These are the resources provided by CiscoSpark instances for interacting with our [developer API](https://developer.ciscospark.com/getting-started.html)
@@ -20,6 +26,9 @@ toc:
   # - Organizations
   # - Licenses
   # - Roles
+  - name: Logging
+  - Logger
+  - LoggerConfig
   - name: Types
     description: |
       The following typedefs describes the responses of the various API calls.
@@ -31,3 +40,5 @@ toc:
   - TeamObject
   - TeamMembershipObject
   - WebhookObject
+  - email
+  - isoDate

@@ -2,16 +2,16 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-const denodeify = require(`denodeify`);
-const g = denodeify(require(`glob`));
-const path = require(`path`);
-const fs = require(`fs-promise`);
-const _spawn = require(`./spawn`);
+const denodeify = require('denodeify');
+const g = denodeify(require('glob'));
+const path = require('path');
+const fs = require('fs-promise');
+const _spawn = require('./spawn');
 
-const cwd = `packages/node_modules`;
+const cwd = 'packages/node_modules';
 
 exports.list = async function list() {
-  const packages = await g(`**/package.json`, {cwd});
+  const packages = await g('**/package.json', {cwd});
   return packages.map((p) => path.dirname(p));
 };
 
@@ -27,7 +27,7 @@ exports.glob = function glob(pattern, options = {}) {
  * @returns {Promise<Object>}
  */
 async function read(packageName) {
-  const packagePath = path.join(cwd, packageName, `package.json`);
+  const packagePath = path.join(cwd, packageName, 'package.json');
   return JSON.parse(await fs.readFile(packagePath));
 }
 
@@ -37,10 +37,9 @@ exports.read = read;
  * Writes an object to a package.json
  * @param {string} packageName
  * @param {Object} pkg
- * @returns {Promise}
  */
 async function write(packageName, pkg) {
-  const packagePath = path.join(cwd, packageName, `package.json`);
+  const packagePath = path.join(cwd, packageName, 'package.json');
   await fs.writeFile(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
 }
 

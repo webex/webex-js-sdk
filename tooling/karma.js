@@ -4,22 +4,28 @@
 
 /* eslint-disable no-console */
 
-const debug = require(`debug`)(`monorepo:test:karma`);
-const {readFile} = require(`fs-promise`);
-const {stopper} = require(`karma`);
-const ps = require(`ps-node`);
+const debug = require('debug')('monorepo:test:karma');
+const {readFile} = require('fs-promise');
+const {stopper} = require('karma');
+const ps = require('ps-node');
 
 module.exports = {
+  /**
+   * Periodically checks that the sauce process is still running and kills the
+   * test suite if it is not
+   * @param {Object} server
+   * @param {Object} cfg
+   */
   watchSauce: async function watchSauce(server, cfg) {
     try {
-      debug(`reading sauce pid`);
+      debug('reading sauce pid');
       const pid = parseInt(await readFile(process.env.SC_PID_FILE), 10);
       debug(`sauce pid is ${pid}`);
 
       let done = false;
 
-      server.once(`run_complete`, () => {
-        debug(`run complete`);
+      server.once('run_complete', () => {
+        debug('run complete');
         done = true;
       });
 
@@ -33,11 +39,11 @@ module.exports = {
         await new Promise((resolve, reject) => {
           debug(`checking if ${pid} is running`);
           ps.lookup({
-            psargs: `-A`,
+            psargs: '-A',
             pid
           }, (err, resultList) => {
             if (err) {
-              debug(`ps-node produced an error`, err);
+              debug('ps-node produced an error', err);
               reject(err);
               return;
             }
@@ -56,7 +62,7 @@ module.exports = {
     }
     catch (err) {
       console.error(err);
-      console.error(`Sauce Tunnel is not running, stopping server and exiting`);
+      console.error('Sauce Tunnel is not running, stopping server and exiting');
       stopper.stop(cfg);
       // so, this is a bit harsh, but due to karma's api,there's no great way to
       // communicate back to test.js that karma failed because the tunnel

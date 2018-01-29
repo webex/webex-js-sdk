@@ -2,16 +2,16 @@
  * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
  */
 
-const debug = require(`debug`)(`tooling:openh264`);
-const denodeify = require(`denodeify`);
-const {rimraf} = require(`./async`);
-const spawn = require(`../util/spawn`);
-const FirefoxProfile = require(`firefox-profile`);
-const os = require(`os`);
-const path = require(`path`);
-const {stat} = require(`fs-promise`);
+const debug = require('debug')('tooling:openh264');
+const denodeify = require('denodeify');
+const {rimraf} = require('./async');
+const spawn = require('../util/spawn');
+const FirefoxProfile = require('firefox-profile');
+const os = require('os');
+const path = require('path');
+const {stat} = require('fs-promise');
 
-const PROFILE_DIR = `./.tmp/selenium`;
+const PROFILE_DIR = './.tmp/selenium';
 
 const copy = denodeify(FirefoxProfile.copy);
 /**
@@ -35,13 +35,12 @@ function encode(fp) {
  * rsyncs a directory
  * @param {string} src
  * @param {string} dest
- * @returns {Promise}
  */
 async function rsync(src, dest) {
-  await spawn(`rsync`, [
-    `--recursive`,
-    `--delete`,
-    `--perms`,
+  await spawn('rsync', [
+    '--recursive',
+    '--delete',
+    '--perms',
     src,
     dest
   ]);
@@ -71,15 +70,15 @@ exports.download = async function download() {
 };
 
 exports.inject = async function inject(browsers) {
-  debug(`checking if openh264 has been downloaded`);
+  debug('checking if openh264 has been downloaded');
   if (!await exists(`${PROFILE_DIR}/mac`)) {
-    debug(`openh264 for mac not found, downloading`);
+    debug('openh264 for mac not found, downloading');
     await exports.download();
   }
 
   for (const key of Object.keys(browsers)) {
     const def = browsers[key];
-    if (def.base === `SauceLabs`) {
+    if (def.base === 'SauceLabs') {
       await injectSauce(def);
     }
     else {
@@ -94,9 +93,9 @@ exports.inject = async function inject(browsers) {
  * @param {string} platform
  * @returns {string}
  */
-function platformToShortName(platform) {
-  if (platform.toLowerCase().includes(`os x`) || platform === `darwin`) {
-    return `mac`;
+export function platformToShortName(platform) {
+  if (platform.toLowerCase().includes('os x') || platform === 'darwin') {
+    return 'mac';
   }
 
   return undefined;
@@ -105,40 +104,50 @@ function platformToShortName(platform) {
 /**
  * Injects a the path of a firefox profile directory into a local browser definition
  * @param {Object} def
- * @returns {Promise}
  */
 async function injectLocal(def) {
   debug(`checking ${def.base} for firefox`);
-  if (def.base.toLowerCase().includes(`firefox`)) {
-    debug(`def is a firefox def`);
+  if (def.base.toLowerCase().includes('firefox')) {
+    debug('def is a firefox def');
     const platform = platformToShortName(os.platform());
-    if (platform !== `mac`) {
-      throw new Error(`No tooling implemented for injecting h264 into ${platform} (${def.platform})`);
-    }
-    // Note: the `/` has to come outside path.resolve for rsync to behave as
-    // intended
-    const src = `${path.resolve(`${PROFILE_DIR}/${platform}`)}/`;
-    const dest = path.resolve(`${PROFILE_DIR}/${platform}.safe`);
-
     debug(`injecting ${platform} profile into ${def.base}`);
-    await rsync(src, dest);
+    const dest = await prepareLocalProfile(platform);
     def.profile = dest;
     debug(`injected ${dest} profile into ${def.base}`);
   }
 }
 
 /**
+ * Prepares the local firefox profile directory for other tasks to reference it.
+ * @param {string} platform
+ * @returns {Promise}
+ */
+export async function prepareLocalProfile(platform) {
+  if (platform !== 'mac') {
+    throw new Error(`No tooling implemented for injecting h264 into ${platform}`);
+  }
+  // Note: the `/` has to come outside path.resolve for rsync to behave as
+  // intended
+  const src = `${path.resolve(`${PROFILE_DIR}/${platform}`)}/`;
+  const dest = path.resolve(`${PROFILE_DIR}/${platform}.safe`);
+
+  debug(`rsyncing firefox profile at ${src} to ${dest}`);
+  await rsync(src, dest);
+  debug('done');
+  return dest;
+}
+
+/**
  * Injects a gzipped, base64-encoded firefox profile directory into a Sauce Labs
  * browser definition
  * @param {Object} def
- * @returns {Promise}
  */
 async function injectSauce(def) {
   debug(`checking ${def.base} for firefox`);
-  if (def.browserName.toLowerCase().includes(`firefox`)) {
-    debug(`def is a firefox def`);
+  if (def.browserName.toLowerCase().includes('firefox')) {
+    debug('def is a firefox def');
     const platform = platformToShortName(def.platform);
-    if (platform !== `mac`) {
+    if (platform !== 'mac') {
       throw new Error(`No tooling implemented for injecting h264 into ${platform} (${def.platform})`);
     }
 
