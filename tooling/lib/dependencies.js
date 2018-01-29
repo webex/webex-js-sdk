@@ -3,7 +3,7 @@
  */
 
 const debug = require('debug')('tooling:dependencies');
-const builtins = require('builtins');
+const builtins = require('builtins')();
 const {read} = require('../util/package');
 const path = require('path');
 const {values} = require('lodash');
