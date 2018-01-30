@@ -3,16 +3,11 @@
  */
 
 module.exports = {
-  command: 'version',
-  desc: 'Work with version',
-  /**
-   * Yargs builder
-   * @param {Object} yargs
-   * @returns {Object}
-   */
+  command: `version`,
+  desc: `Work with version`,
   builder(yargs) {
     return yargs
       .demandCommand(1)
-      .commandDir('./version');
+      .commandDir(`./version`);
   }
 };

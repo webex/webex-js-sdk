@@ -30,4 +30,3 @@ browsers.processed.js
 tasks/selenium
 bundle.js
 bundle.js.map
-packages/node_modules/samples/index.html
