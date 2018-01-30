@@ -22,7 +22,7 @@ npm install --save ciscospark
 
 This is the quickest way to get up and running with our JavaScript SDK. Simply set the environment variable `CISCOSPARK_ACCESS_TOKEN` to your access token and add the following line at the top of your JavaScript file to get a ready-to-use instance.
 
-> You can get your `CISCOSPARK_ACCESS_TOKEN` from the [Cisco Spark for Developers portal](https://developer.ciscospark.com).
+> You can get your `CISCOSPARK_ACCESS_TOKEN` from the [developer portal](https://developer.ciscospark.com).
 
 ```js
 const ciscospark = require(`ciscospark/env`);
@@ -36,12 +36,12 @@ Our JavaScript SDK provides out-of-the-box support for the [OAuth 2.0 Implicit G
 
 > You'll need to [register an OAuth Client](https://developer.ciscospark.com/add-integration.html) to get your "authorization string"
 
-Use the steps under [Bundling](#bundling) (or something similar) to get the SDK into your browser, then use the following JavaScript to get started:
+Use the steps under [Bundling](#bundling) (or something similar) to get the sdk into your browser, Then the following use the following JavaScript to get started.
 
 ```js
 const ciscospark = CiscoSpark.init({
   config: {
-    authorizationString: <your auth URL>,
+    authorizationString: <your auth url>,
   }
 });
 
@@ -55,7 +55,7 @@ ciscospark.once(`ready`, () => {
     /*
       The following is a naive example of how to log in a user. Note that login should probably require a user action, otherwise errors can lead you into an infinite redirect loop.
 
-      This will direct the user agent to the Cisco login page. Once the user logs in, they'll be redirected back to your app and the SDK will handle parsing the URL.
+      This will direct the user agent to the Cisco login page. Once the user logs in, they'll be redirected back to your app and the sdk will handle parsing the url.
     */
     ciscospark.authorization.initiateLogin();
   }
@@ -65,9 +65,9 @@ ciscospark.once(`ready`, () => {
 
 #### Bundling
 
-You'll need to bundle the SDK to use it in a web browser. Right now, we do all our SDK testing with [Browserify](http://browserify.org/), but our [Cisco Spark Widgets](https://github.com/ciscospark/react-ciscospark) use [webpack](https://webpack.github.io/).
+You'll need to bundle the SDK to use it in a web browser. Right now, we do all our SDK testing with browserify, but our [Widgets Project](https://github.com/ciscospark/react-ciscospark) uses [webpack](https://webpack.github.io/).
 
-The following snippet is the bare minimum to get our code into a form suitable for a web browser. You'll probably want to additionally pipe it through a minifier like [UglifyJS](https://github.com/mishoo/UglifyJS2) before going to production.
+The following snippet is the bare minimum to get our code into a form suitable for a web browser. You'll probably want to additionally pipe it through a minifier like [uglify](https://github.com/mishoo/UglifyJS2) before going to production.
 
 ```bash
 npm install ciscospark
@@ -76,7 +76,7 @@ echo "window.CiscoSpark = require('ciscospark')" > ./index.js
 browserify index.js > bundle.js
 ```
 
-Then, just load your bundle using:
+Then, just load your bundle using
 
 ```html
 <script src="/bundle.js"></script>
@@ -94,7 +94,7 @@ app.use(function(req, res, next) {
   req.spark = CiscoSpark.init({
     config: {
       credentials: {
-        authorizationString: <your auth URL>,
+        authorizationString: <your auth url>,
         client_secret: <your client secret>
       },
     }
@@ -105,7 +105,7 @@ app.use(function(req, res, next) {
 
 app.get(`/login`, (req, res) => {
   // buildLoginUrl() defaults to the implicit grant flow so explicitly pass
-  // `confidential` to generate a URL suitable to the Authorization Code grant
+  // `confidential` to generate a url suitable to the Authorization Code grant
   // flow.
   res
     .redirect(req.spark.credentials.buildLoginUrl({clientType: 'confidential'}))

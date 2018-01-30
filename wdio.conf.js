@@ -1,20 +1,15 @@
-/* eslint-disable no-console */
-/* global browser: false */
+const dotenv = require(`dotenv`);
+const glob = require(`glob`);
+const path = require(`path`);
+const webpackConfig = require(`./webpack.config`);
+const uuid = require(`uuid`);
 
-require('babel-register');
-const {inject} = require('./tooling/lib/openh264');
-const dotenv = require('dotenv');
-const glob = require('glob');
-const path = require('path');
-const os = require('os');
-const webpackConfig = require('./webpack.config');
-
-dotenv.config({path: '.env.default'});
+dotenv.config({path: `.env.default`});
 dotenv.config();
 
-require('babel-register')({
+require(`babel-register`)({
   only: [
-    './packages/node_modules/**/*.js'
+    `./packages/node_modules/**/*.js`
   ],
   sourceMaps: true
 });
@@ -33,15 +28,14 @@ exports.config = {
   // directory is where your package.json resides, so `wdio` will be called from there.
   //
   specs: [
-    './wdio.helpers.d/**/*.js',
-    './packages/node_modules/{*,*/*}/test/wdio/spec/**/*.js'
+    `./packages/node_modules/{*,*/*}/test/wdio/specs/**/*.js`
   ],
   suites: glob
-    .sync('**/package.json', {cwd: './packages/node_modules'})
+    .sync(`**/package.json`, {cwd: `./packages/node_modules`})
     .map((p) => path.dirname(p))
     .reduce((suites, p) => {
       suites[p] = [
-        `./packages/node_modules/${p}/test/wdio/spec/**/*.js`
+        `./packages/node_modules/${p}/test/wdio/specs/**/*.js`
       ];
       return suites;
     }, {}),
@@ -70,20 +64,18 @@ exports.config = {
   capabilities: {
     browserSpock: {
       desiredCapabilities: {
-        browserName: 'firefox',
-        tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
+        browserName: `firefox`
       }
     },
     browserMccoy: {
       desiredCapabilities: {
-        browserName: 'chrome',
+        browserName: `chrome`,
         chromeOptions: {
           args: [
-            '--use-fake-device-for-media-stream',
-            '--use-fake-ui-for-media-stream'
+            `--use-fake-device-for-media-stream`,
+            `--use-fake-ui-for-media-stream`
           ]
-        },
-        tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
+        }
       }
     }
   },
@@ -99,7 +91,7 @@ exports.config = {
   sync: true,
   //
   // Level of logging verbosity: silent | verbose | command | data | result | error
-  logLevel: 'error',
+  logLevel: `silent`,
   //
   // Enables colors for log output.
   coloredLogs: true,
@@ -109,11 +101,11 @@ exports.config = {
   bail: 0,
   //
   // Saves a screenshot to a given path if a command fails.
-  screenshotPath: './reports/screenshots/',
+  screenshotPath: `./reports/screenshots/`,
   //
   // Set a base URL in order to shorten url command calls. If your url parameter starts
   // with "/", then the base url gets prepended.
-  baseUrl: `http://localhost:${PORT}/`,
+  baseUrl: `http://localhost:${PORT}/packages/node_modules`,
   //
   // Default timeout for all waitFor* commands.
   waitforTimeout: 10000,
@@ -148,17 +140,16 @@ exports.config = {
   // your test setup with almost no effort. Unlike plugins, they don't add new
   // commands. Instead, they hook themselves up into the test process.
   services: CI ? [
-    'sauce',
-    'static-server',
-    'webpack'
+    `sauce`,
+    `static-server`,
+    `webpack`
   ] : [
-    'selenium-standalone',
-    'static-server',
-    'webpack'
+    `selenium-standalone`,
+    `static-server`,
+    `webpack`
   ],
   staticServerFolders: [
-    {mount: '/', path: './packages/node_modules/samples'},
-    {mount: '/', path: '.'}
+    {mount: `/`, path: `.`}
   ],
   staticServerPort: PORT,
   webpackConfig,
@@ -170,25 +161,24 @@ exports.config = {
   //
   // Make sure you have the wdio adapter package for the specific framework installed
   // before running any tests.
-  framework: 'mocha',
+  framework: `mocha`,
   //
   // Test reporter for stdout.
   // The only one supported by default is 'dot'
   // see also: http://webdriver.io/guide/testrunner/reporters.html
-  reporters: CI ? ['spec', 'junit'] : ['spec'],
+  reporters: CI ? [`spec`, `junit`] : [`spec`],
   reporterOptions: {
     junit: {
-      outputDir: './reports/junit/wdio'
+      outputDir: `./reports/junit/wdio`
     }
   },
   //
   // Options to be passed to Mocha.
   // See the full list at http://mochajs.org/
   mochaOpts: {
-    // reminder: mocha-steps seems to make tests flaky on Sauce Labs
-    timeout: 80000,
-    ui: 'bdd'
-  },
+    require: [`mocha-steps`],
+    ui: `bdd`
+  }
   //
   // =====
   // Hooks
@@ -201,39 +191,9 @@ exports.config = {
    * Gets executed once before all workers get launched.
    * @param {Object} config wdio configuration object
    * @param {Array.<Object>} capabilities list of capabilities details
-   * @returns {Promise}
    */
-  onPrepare(config, capabilities) {
-    const defs = [
-      capabilities.browserSpock.desiredCapabilities,
-      capabilities.browserMccoy.desiredCapabilities
-    ];
-
-    const build = process.env.BUILD_NUMBER || `local-${process.env.USER}-wdio-${Date.now()}`;
-    defs.forEach((d) => {
-      if (CI) {
-        d.build = build;
-        // Set the base to SauceLabs so that inject() does its thing.
-        d.base = 'SauceLabs';
-
-        d.version = d.version || 'latest';
-        d.platform = d.platform || 'OS X 10.12';
-      }
-      else {
-        // Copy the base over so that inject() does its thing.
-        d.base = d.browserName;
-        d.platform = os.platform();
-      }
-    });
-
-    // The openh264 profile seems to break tests locally; run the tests twice
-    // and the plugin should download automatically.
-    return CI ? inject(defs) : Promise.resolve()
-      .then(() => {
-        // Remove the base because it's not actually a selenium property
-        defs.forEach((d) => Reflect.deleteProperty(d, 'base'));
-      });
-  },
+  // onPrepare: function (config, capabilities) {
+  // },
   /**
    * Gets executed just before initialising the webdriver session and test framework. It allows you
    * to manipulate configurations depending on the capability or spec.
@@ -295,33 +255,23 @@ exports.config = {
   /**
    * Function to be executed after a test (in Mocha/Jasmine) or a step (in Cucumber) starts.
    * @param {Object} test test details
-   * @returns {undefined}
    */
-  afterTest(test) {
-    if (!test.passed) {
-      const logTypes = browser.logTypes();
-
-      Object.keys(logTypes).forEach((browserId) => {
-        console.log(logTypes[browserId].value);
-        if (logTypes[browserId].value.includes('browser')) {
-          const logs = browser.select(browserId).log('browser');
-          if (logs.value.length) {
-            console.error(`Test ${test.fullTitle} failed with the following log output from browser ${browserId}`);
-            console.error(logs
-              .value
-              .map((v) => `> ${v.message}`)
-              .join('\n'));
-          }
-          else {
-            console.error(`Test ${test.fullTitle} failed but no logs were produced by browser ${browserId}`);
-          }
-        }
-        else {
-          console.error(`${test.fullTitle} failed but browser ${browserId} doesn't support log collection`);
-        }
-      });
-    }
-  }
+  // afterTest(test) {
+  //   if (!test.passed) {
+  //     if (browser.logTypes().value.includes(`browser`)) {
+  //       console.error(`Test ${test.fullTitle} failed with the following log output`);
+  //       console.error(
+  //         browser
+  //           .log(`browser`)
+  //           .value
+  //           .map((v) => `> ${v.message}`)
+  //           .join(`\n`));
+  //     }
+  //     else {
+  //       console.error(`${test.fullTitle}failed but this browser doesn't support log collection`);
+  //     }
+  //   }
+  // }
   /**
    * Hook that gets executed after the suite has ended
    * @param {Object} suite suite details
@@ -356,12 +306,29 @@ exports.config = {
 
 
 if (CI) {
-  // I couldn't get multiremote + sauce to work while letting wdio handle the
-  // tunnel setup. use `npm run sauce:start` and `npm run sauce:run` to start
-  // the tunnel and run tests
-  exports.config = Object.assign(exports.config, {
+  Object.assign(exports.config, {
     user: process.env.SAUCE_USERNAME,
     key: process.env.SAUCE_ACCESS_KEY,
-    sauceConnect: false
+    sauceConnect: !process.env.SC_TUNNEL_IDENTIFIER,
+    sauceConnectOpts: {
+      build: process.env.BUILD_NUMBER || `local-${process.env.USER}-wdio-${Date.now()}`,
+      recordScreenshots: true,
+      recordVideo: true,
+      tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuid.v4(),
+      tunnelDomains: [
+        `127.0.0.1`,
+        `calendar-whistler.onint.ciscospark.com`,
+        `internal-testing-services.wbx2.com`,
+        `localhost`,
+        `whistler.onint.ciscospark.com`
+      ],
+      noSslBumpDomains: [
+        `*.ciscospark.com`,
+        `*.wbx2.com`,
+        `127.0.0.1`,
+        `idbroker.webex.com`,
+        `localhost`
+      ]
+    }
   });
 }

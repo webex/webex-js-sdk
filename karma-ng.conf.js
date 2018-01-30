@@ -1,13 +1,12 @@
 /* eslint-disable func-names */
 /* eslint-disable global-require */
 /* eslint-disable require-jsdoc */
-/* eslint-disable import/no-dynamic-require */
 
 // eslint-disable-next-line strict
+'use strict';
 
-
-const path = require('path');
-const makeBrowsers = require('./browsers-ng');
+const path = require(`path`);
+const makeBrowsers = require(`./browsers-ng`);
 /* eslint-disable global-require */
 
 module.exports = function configureKarma(config) {
@@ -19,15 +18,15 @@ function makeConfig(packageName, argv) {
   const pkg = require(`./packages/node_modules/${packageName}/package`);
   /* eslint complexity: [0] */
   const launchers = makeBrowsers(packageName, argv);
-  const integrationTestPath = path.join('packages', 'node_modules', packageName, 'test', 'integration', 'spec', '**', '*.js');
-  const unitTestPath = path.join('packages', 'node_modules', packageName, 'test', 'unit', 'spec', '**', '*.js');
+  const integrationTestPath = path.join(`packages`, `node_modules`, packageName, `test`, `integration`, `spec`, `**`, `*.js`);
+  const unitTestPath = path.join(`packages`, `node_modules`, packageName, `test`, `unit`, `spec`, `**`, `*.js`);
 
   const preprocessors = {
-    'packages/**': ['browserify']
+    'packages/**': [`browserify`]
   };
 
   const files = [
-    'node_modules/babel-polyfill/dist/polyfill.js'
+    `node_modules/babel-polyfill/dist/polyfill.js`
   ];
 
   if (!argv || argv.unit) {
@@ -38,7 +37,7 @@ function makeConfig(packageName, argv) {
   }
 
   let cfg = {
-    basePath: '.',
+    basePath: `.`,
 
     browserDisconnectTimeout: 20000,
 
@@ -54,8 +53,8 @@ function makeConfig(packageName, argv) {
       debug: true,
       watch: argv && argv.karmaDebug,
       transform: [
-        'babelify',
-        'envify'
+        `babelify`,
+        `envify`
       ]
     },
 
@@ -80,11 +79,11 @@ function makeConfig(packageName, argv) {
     files,
 
     frameworks: [
-      'browserify',
-      'mocha'
+      `browserify`,
+      `mocha`
     ],
 
-    hostname: 'localhost',
+    hostname: `localhost`,
 
     client: {
       mocha: {
@@ -111,7 +110,7 @@ function makeConfig(packageName, argv) {
     },
 
     reporters: [
-      'mocha'
+      `mocha`
     ],
 
     singleRun: !(argv && argv.karmaDebug),
@@ -122,18 +121,18 @@ function makeConfig(packageName, argv) {
     recordScreenshots: true
   };
 
-  if (process.env.COVERAGE && process.env.COVERAGE !== 'undefined') {
+  if (process.env.COVERAGE && process.env.COVERAGE !== `undefined`) {
     cfg.coverageReporter = {
-      instrumenters: {isparta: require('isparta')},
+      instrumenters: {isparta: require(`isparta`)},
       instrumenter: {
-        '**/*.js': 'isparta'
+        '**/*.js': `isparta`
       },
       // includeAllSources: true,
       // instrumenterOptions: {
       //   coverageVariable: makeCoverageVariable(packageName)
       // },
       reporters: [{
-        type: 'json',
+        type: `json`,
         dir: `reports/coverage/intermediate/${packageName}`
       }]
     };
@@ -143,7 +142,7 @@ function makeConfig(packageName, argv) {
     //   defaultIgnore: false
     // }]);
 
-    cfg.reporters.push('coverage');
+    cfg.reporters.push(`coverage`);
   }
 
   if (process.env.SC_TUNNEL_IDENTIFIER) {
@@ -155,20 +154,20 @@ function makeConfig(packageName, argv) {
       recordScreenshots: true,
       recordVideo: true
     };
-    cfg.reporters.push('saucelabs');
+    cfg.reporters.push(`saucelabs`);
   }
 
   if (argv && argv.xunit) {
     cfg.junitReporter = {
       outputFile: `${packageName}.xml`,
-      outputDir: 'reports/junit/karma',
+      outputDir: `reports/junit/karma`,
       suite: packageName,
       useBrowserName: true,
       recordScreenshots: true,
       recordVideo: true
     };
 
-    cfg.reporters.push('junit');
+    cfg.reporters.push(`junit`);
   }
 
   try {

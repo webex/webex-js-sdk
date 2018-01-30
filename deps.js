@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 
 /* eslint-disable complexity */
-/* eslint-disable global-require */
-/* eslint-disable no-sync */
-/* eslint-disable require-jsdoc */
-/* eslint-disable import/no-dynamic-require */
+/* eslint global-require: [0] */
+/* eslint no-sync: [0] */
+/* eslint require-jsdoc: [0] */
 
 // Idealy, this file belongs in ./tooling, but the second iteration is a *lot*
 // simpler if we don't have to deal with adding `../` to every file operation.
@@ -17,16 +16,16 @@
 // Instead, make it a package in its own right and let the react-ciscospark
 // project depend on it.
 
-const debug = require('debug')('deps');
-const builtins = require('builtins');
-const detective = require('detective');
-const fs = require('fs');
-const _ = require('lodash');
-const path = require('path');
-const util = require('util');
+const debug = require(`debug`)(`deps`);
+const builtins = require(`builtins`);
+const detective = require(`detective`);
+const fs = require(`fs`);
+const _ = require(`lodash`);
+const path = require(`path`);
+const util = require(`util`);
 
-const FILTERED_TRANSFORMS = ['babelify'];
-const DEFAULT_TRANSFORMS = ['envify'];
+const FILTERED_TRANSFORMS = [`babelify`];
+const DEFAULT_TRANSFORMS = [`envify`];
 
 const depsToVersions = _.curry((rootPkg, deps) => deps.reduce((acc, dep) => {
   if (builtins.includes(dep)) {
@@ -69,11 +68,11 @@ const findEntryPoints = _.curry((pkg, pkgPath) => {
 
     if (paths.length === 0) {
       try {
-        const p = path.resolve(path.dirname(pkgPath), 'index.js');
+        const p = path.resolve(path.dirname(pkgPath), `index.js`);
         fs.statSync(p);
       }
       catch (err) {
-        if (err.code !== 'ENOENT') {
+        if (err.code !== `ENOENT`) {
           throw err;
         }
       }
@@ -84,14 +83,14 @@ const findEntryPoints = _.curry((pkg, pkgPath) => {
     }
 
     if (pkg.browser) {
-      paths = paths.concat(_.values(pkg.browser).filter((p) => p && !p.startsWith('@')));
+      paths = paths.concat(_.values(pkg.browser).filter((p) => p && !p.startsWith(`@`)));
     }
 
     return paths;
   }
   catch (err) {
-    if (err.code === 'EISDIR') {
-      return findEntryPoints(pkg, path.join(pkgPath, 'package.json'));
+    if (err.code === `EISDIR`) {
+      return findEntryPoints(pkg, path.join(pkgPath, `package.json`));
     }
 
     throw err;
@@ -115,7 +114,7 @@ const findRequires = _.curry(function findRequires(filePath) {
     debug(util.inspect(requires, {depth: null}));
     return requires.reduce((acc, dep) => {
       debug(`checking ${dep}`);
-      if (dep.startsWith('.')) {
+      if (dep.startsWith(`.`)) {
         debug(`descending into ${dep}`);
         acc = acc.concat(findRequires(path.resolve(path.dirname(filePath), dep)));
       }
@@ -127,10 +126,10 @@ const findRequires = _.curry(function findRequires(filePath) {
     }, []);
   }
   catch (err) {
-    if (err.code === 'EISDIR') {
-      return findRequires(path.resolve(filePath, 'index.js'));
+    if (err.code === `EISDIR`) {
+      return findRequires(path.resolve(filePath, `index.js`));
     }
-    if (err.code === 'ENOENT' && !filePath.endsWith('.js')) {
+    if (err.code === `ENOENT` && !filePath.endsWith(`.js`)) {
       return findRequires(`${filePath}.js`);
     }
     throw err;
@@ -149,15 +148,15 @@ const requiresToDeps = _.curry((requires) => _.uniq(requires.map((d) => {
   // reference. Given a require of `@scope/foo/bar/baz`, the following will
   // return `@scope/foo`. Given a require of `foo/bar/baz`, the folling will
   // return `foo`.
-  d = d.split('/');
-  if (d[0].startsWith('@')) {
-    return d.slice(0, 2).join('/');
+  d = d.split(`/`);
+  if (d[0].startsWith(`@`)) {
+    return d.slice(0, 2).join(`/`);
   }
   return d[0];
 })));
 
 const filterBrowserifyTransforms = _.curry((defaults, filtered, pkg) => {
-  const transforms = _.get(pkg, 'browserify.transform', [])
+  const transforms = _.get(pkg, `browserify.transform`, [])
     .reduce((acc, tx) => {
       if (_.isArray(tx)) {
         tx = tx[0];
@@ -170,7 +169,7 @@ const filterBrowserifyTransforms = _.curry((defaults, filtered, pkg) => {
       return acc;
     }, []);
 
-  _.set(pkg, 'browserify.transform', _.uniq(transforms.concat(defaults)));
+  _.set(pkg, `browserify.transform`, _.uniq(transforms.concat(defaults)));
   return pkg;
 });
 
@@ -201,7 +200,7 @@ const writeFile = _.curry((pkgPath, pkg) => {
 });
 
 function findPkgPath(pkgPath) {
-  if (pkgPath.endsWith('package.json')) {
+  if (pkgPath.endsWith(`package.json`)) {
     return pkgPath;
   }
 
@@ -211,7 +210,7 @@ function findPkgPath(pkgPath) {
     return filePath;
   }
   catch (err) {
-    const dirPath = path.resolve(pkgPath, 'package.json');
+    const dirPath = path.resolve(pkgPath, `package.json`);
     fs.statSync(dirPath);
     return dirPath;
   }
@@ -255,11 +254,11 @@ function findPackages(packagesPath) {
     const fullpath = path.resolve(packagesPath, d);
     if (fs.statSync(fullpath).isDirectory()) {
       try {
-        fs.statSync(path.resolve(fullpath, 'package.json'));
+        fs.statSync(path.resolve(fullpath, `package.json`));
         acc.push(fullpath);
       }
       catch (err) {
-        if (err.code === 'ENOENT') {
+        if (err.code === `ENOENT`) {
           return acc.concat(findPackages(fullpath));
         }
         throw err;
@@ -281,36 +280,36 @@ function updateAllPackages(rootPkgPath, packagesPath) {
 }
 
 if (require.main === module) {
-  if (process.argv[2] === '--help') {
+  if (process.argv[2] === `--help`) {
     // eslint-disable-next-line no-console
     console.log();
     // eslint-disable-next-line no-console
-    console.log('usage: node deps.js [packagepath]');
+    console.log(`usage: node deps.js [packagepath]`);
     // eslint-disable-next-line no-console
     console.log();
     // eslint-disable-next-line no-console
     console.log(`update dependency lists for all packages in ${__dirname}/packages/node_modules`);
     // eslint-disable-next-line no-console
-    console.log('\tnode deps.js');
+    console.log(`\tnode deps.js`);
     // eslint-disable-next-line no-console
     console.log();
     // eslint-disable-next-line no-console
-    console.log('update dependency list for single package "ciscospark"');
+    console.log(`update dependency list for single package "ciscospark"`);
     // eslint-disable-next-line no-console
-    console.log('\tnode deps.js ./packages/node_modules/ciscospark');
+    console.log(`\tnode deps.js ./packages/node_modules/ciscospark`);
     // eslint-disable-next-line no-console
     console.log();
     // eslint-disable-next-line no-process-exit
     process.exit(0);
   }
 
-  const rootPkgPath = path.resolve(process.cwd(), 'package.json');
+  const rootPkgPath = path.resolve(process.cwd(), `package.json`);
   let p;
   if (process.argv[2]) {
     p = updateSinglePackage(rootPkgPath, process.argv[2]);
   }
   else {
-    p = updateAllPackages(rootPkgPath, path.resolve(process.cwd(), './packages/node_modules'));
+    p = updateAllPackages(rootPkgPath, path.resolve(process.cwd(), `./packages/node_modules`));
   }
   p.catch((err) => {
     // eslint-disable-next-line no-console

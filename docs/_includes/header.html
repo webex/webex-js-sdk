@@ -28,15 +28,9 @@
 
       {% for p in site.pages %}
         {% if p.title %}
-          {% if p.title == "Example App" %}
-            <li>
-              <a class="page-link" href="https://developer.ciscospark.com/sdk-for-browsers.html#samples">{{ p.title }}</a>
-            </li>
-          {% else %}
-            <li>
-              <a class="page-link" href="{{ p.url | prepend: site.baseurl }}">{{ p.title }}</a>
-            </li>
-          {% endif %}
+        <li>
+          <a class="page-link" href="{{ p.url | prepend: site.baseurl }}">{{ p.title }}</a>
+        </li>
         {% endif %}
       {% endfor %}
     </ul>
