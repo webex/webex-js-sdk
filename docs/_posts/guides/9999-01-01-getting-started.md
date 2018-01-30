@@ -13,7 +13,7 @@ In this example, we'll make sure to get dependencies installed and then use envi
 
 ## Dependencies
 
-First, make sure your system has [NodeJS](https://nodejs.org) and [npm](npmjs.com). We use nvm to install them, but the official downloads from nodejs.org will also work.
+First, make sure your system has [NodeJS](https://nodejs.org) and [npm](https://www.npmjs.com). We use nvm to install them, but the official downloads from nodejs.org will also work.
 
 > Note: npm is typically bundled with node, but some Linux package managers may require you to install npm explicitly.
 
@@ -38,7 +38,7 @@ npm install --save ciscospark
 
 ## Basic usage
 
-So, you want to send a message. First, you need an access token. For demonstration purposes, we'll use environment variables to authorize the sdk. You can get an access token from the [Cisco Spark Developer Portal](https://developer.ciscospark.com/).
+So, you want to send a message. First, you need an access token. For demonstration purposes, we'll use environment variables to authorize the SDK. You can get an access token from the [Cisco Spark Developer Portal](https://developer.ciscospark.com/).
 
 Create a new file in your project directory named `index.js` and add the following to it:
 
