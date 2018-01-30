@@ -25,7 +25,7 @@ syntax_highlighter: rouge
 kramdown:
   input: GFM
 
-gems:
+plugins:
   - jekyll-redirect-from
 
 whitelist:
