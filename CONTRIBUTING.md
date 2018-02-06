@@ -112,7 +112,7 @@ npm test -- --package PACKAGENAME --node
 
 #### Run Browser Tests
 
-Keeps the browser open so that you can reload set break points and reload the page
+Keeps the browser open in debug mode so that you can set break points and reload the page with code updates
 
 ```bash
 npm test -- --package PACKAGENAME --browser --karma-debug
