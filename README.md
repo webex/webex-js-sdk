@@ -10,8 +10,6 @@ This is a monorepo containing all officially maintained Cisco Spark JavaScript S
 
 [ciscospark](/packages/node_modules/ciscospark) is a collection of node modules targeting our [external APIs](https://developers.ciscospark.com).
 
-## Table of Contents
-
 - [Install](#install)
 - [Usage](#usage)
 - [Contribute](#contribute)
@@ -95,11 +93,14 @@ npm install
 npm run serve:samples
 ```
 
-You'll be able to load the samples by visiting `https://localhost:8000/packages/node_modules/<PACKAGE NAME>`.
+You'll be able to load the samples by visiting `https://localhost:8000/packages/node_modules/samples/<PACKAGE NAME>`.
 
 ### Available Samples
 
-- Single Party Calling: [local app](`https://localhost:8000/packages/node_modules/sample-browser-single-party-call`) | [code](./packages/node_modules/sample-browser-single-party-call)
+- Implicit Grant Flow: [local app](`https://localhost:8000/packages/node_modules/samples/browser-auth-implicit`) | [code](./packages/node_modules/sample-browser-single-party-call)
+- Single Party Calling: [local app](`https://localhost:8000/packages/node_modules/samples/browser-single-party-call`) | [code](./packages/node_modules/samples/browser-single-party-call)
+- Single Party Calling with Mute: [local app](`https://localhost:8000/packages/node_modules/samples/browser-single-party-call-with-mute`) | [code](./packages/node_modules/samples/browser-single-party-call-with-mute)
+- Multi Party Calling: [local app](`https://localhost:8000/packages/node_modules/samples/browser-multi-party-call`) | [code](./packages/node_modules/sample-browser-multi-party-call)
 
 ## Contribute
 
@@ -108,6 +109,6 @@ and submitting pull requests for suggested changes.
 
 ## License
 
-&copy; 2016-2017 Cisco Systems, Inc. and/or its affiliates. All Rights Reserved.
+© 2016-2018 Cisco and/or its affiliates. All Rights Reserved.
 
 See [LICENSE](LICENSE) for details.
