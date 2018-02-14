@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <title>Authentication - Guest Users</title>
+  <body>
+    <h1>Guest User Authentication</h1>
+    <p>This sample demonstrates authenticating guest users in the browser with a JSON Web Token (jwt)</p>
+
+    <form id="credentials">
+      <fieldset>
+        <legend>Credentials</legend>
+        <input
+          id="jwt"
+          name="jwt"
+          placeholder="JSON Web Token"
+          type="text">
+      </fieldset>
+    </form>
+
+    <form id="authorization">
+      <input id="authenticate-button" title="authenticate" type="submit" value="authenticate">
+      <label for="authenticate"> &lt-- click here to authenticate</label>
+    </form>
+
+    <div style="width: 30vw; display: flex; flex-direction: row; justify-content: space-between">
+      <h3>Authentication Status: </h3>
+      <h3 style="color:red" id="authentication-status">Not Authenticated</h3>
+    </div>
+
+    <!-- /bundle.js is the bundled CiscoSpark JavaScript SDK -->
+    <script src="/bundle.js"></script>
+    <!-- app.js is your application code -->
+    <script src="app.js"></script>
+  </body>
+</html>
