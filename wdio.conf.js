@@ -9,8 +9,8 @@ const path = require('path');
 const os = require('os');
 const webpackConfig = require('./webpack.config');
 
-dotenv.config({path: '.env.default'});
 dotenv.config();
+dotenv.config({path: '.env.default'});
 
 require('babel-register')({
   only: [
