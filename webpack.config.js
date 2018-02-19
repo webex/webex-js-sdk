@@ -3,8 +3,8 @@ const glob = require('glob');
 const path = require('path');
 const {EnvironmentPlugin} = require('webpack');
 
-dotenv.config({path: '.env.default'});
 dotenv.config();
+dotenv.config({path: '.env.default'});
 
 module.exports = {
   entry: './packages/node_modules/ciscospark',
