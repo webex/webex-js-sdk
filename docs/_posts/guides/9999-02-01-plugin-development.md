@@ -14,7 +14,7 @@ redirect_from:
 
 # Get the code and build the SDK
 
-1. Fork the sdk on github.com.
+1. Fork the SDK on github.com.
 2. Clone your fork
 
     ```bash
@@ -56,7 +56,7 @@ redirect_from:
 - ./test/integration/spec - integration tests
 - ./test/automation/spec - automation tests
 
-> See [SCRIPTS.md](SCRIPTS.md) for commands for building and testing the sdk.
+> See [CONTRIBUTING.md](https://github.com/ciscospark/spark-js-sdk/blob/master/CONTRIBUTING.md) for commands for building and testing the SDK.
 
 ## Tips
 - During development, you can avoid rebuilding before each test run by replacing `"main": "dist/index.js"` with `"main": "src/index.js"` in `packages/node_modules/*/package.json`. This won't quite work in Karma, but if you apply the same replacement to *only* the package under test, that package will recompile on change; other packages will need to be rebuilt.

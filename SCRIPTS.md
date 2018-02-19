@@ -62,6 +62,12 @@ Test a single package and generate coverage and xunit reports
 npm test -- --package @ciscospark/spark-core --coverage --xunit
 ```
 
+Keeps the browser open in debug mode so that you can set break points and reload the page with code updates
+
+```bash
+npm test -- --package @ciscospark/spark-core --browser --karma-debug
+```
+
 ## sauce:start, sauce:run, sauce:stop
 
 Start the sauce tunnel, run tests using Sauce Labs browsers, and stop the Sauce tunnel
@@ -70,4 +76,22 @@ Start the sauce tunnel, run tests using Sauce Labs browsers, and stop the Sauce 
 npm run sauce:start
 npm run sauce:run -- npm test
 npm run sauce:stop
+```
+
+## distsrc
+
+Points all of the `package.json`s' main entry to their "src" folder.
+This is useful when testing because it doesn't require you to
+build a "dist" folder before every run of the test.
+
+```bash
+npm run distsrc
+```
+
+## srcdist
+
+Used to undo the changes made with `distsrc`.
+
+```bash
+npm run srcdist
 ```
