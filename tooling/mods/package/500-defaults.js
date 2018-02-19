@@ -1,12 +1,12 @@
-'use strict';
+
 
 module.exports = function addDefaults(pkg) {
   Object.assign(pkg, {
     engines: {
-      node: `>=6`
+      node: '>=6'
     },
-    license: `MIT`,
-    repository: `https://github.com/ciscospark/spark-js-sdk`
+    license: 'MIT',
+    repository: 'https://github.com/ciscospark/spark-js-sdk'
   });
 
   return Promise.resolve(pkg);
