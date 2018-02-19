@@ -80,12 +80,38 @@ exports.testPackage = async function testPackage(options, packageName) {
   }
 };
 
+
+/**
+ * Removes the specified files from the require cache. If we run mocha then docs
+ * tests, the docs tests don't have a chance to load and transform the comments;
+ * similarly, if we run docs then mocha, the mocha tests see the docs-
+ * transformed code.
+ * @param {Array<string>} files
+ * @param {string} packageName
+ * @private
+ */
+function uncache(files, packageName) {
+  debug('removing files under test from require cache');
+  const paths = files.map((f) => path.resolve('packages', 'node_modules', packageName, f));
+
+  paths.forEach((fullPath) => {
+    Reflect.deleteProperty(require.cache, fullPath);
+  });
+  debug('removed files under test from require cache');
+}
+
 async function runDocsSuite(options, packageName) {
   debug(`Running documentation tests for ${packageName}`);
   const files = await glob('dist/**/*.js', {packageName});
+
+  uncache(files, packageName);
+
   // eslint-disable-next-line global-require
   require(`${process.cwd()}/packages/node_modules/@ciscospark/jsdoctrinetest`);
   await mochaTest(options, packageName, 'documentation', files.map((f) => `packages/node_modules/${packageName}/${f}`));
+
+  uncache(files, packageName);
+
   debug(`Finished documentation suite for ${packageName}`);
 }
 
@@ -96,6 +122,8 @@ async function runNodeSuite(options, packageName) {
     debug(`no files found for ${packageName}`);
     return;
   }
+
+  uncache(files, packageName);
 
   // Intercept require statements for the module under test and instead load the
   // instrumented files. This *should* continue to isolate code coverage since
@@ -115,6 +143,8 @@ async function runNodeSuite(options, packageName) {
   if (options.coverage) {
     require.extensions['.js'] = load;
   }
+
+  uncache(files, packageName);
 
   debug(`Finished node suite for ${packageName}`);
 }
