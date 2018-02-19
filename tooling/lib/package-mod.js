@@ -1,15 +1,14 @@
-'use strict';
+const path = require('path');
 
-const debug = require(`debug`)(`tooling:lib:mod:package`);
-const {read, write} = require(`../util/package`);
-const path = require(`path`);
-const requireDir = require(`require-dir`);
+const debug = require('debug')('tooling:lib:mod:package');
+const requireDir = require('require-dir');
+
+const {read, write} = require('../util/package');
 
 /**
  * Applies $mod to the specifed package's package.json
  * @param {Function} mod
  * @param {string} packageName
- * @returns {Promise}
  */
 async function apply(mod, packageName) {
   let pkg = await read(packageName);
@@ -25,7 +24,7 @@ async function apply(mod, packageName) {
  */
 function combineMods(dir) {
   const mods = requireDir(dir);
-  return async(pkg) => {
+  return async (pkg) => {
     for (const key of Object.keys(mods)) {
       debug(`applying transform ${key} to ${pkg.name}`);
       const mod = mods[key];
@@ -41,11 +40,10 @@ function combineMods(dir) {
  * @param {string} options.dir
  * @param {string} options.mod
  * @param {string} options.packageName
- * @returns {Promise}
  */
 exports.modPackage = async function modPackage({dir, mod, packageName}) {
-  if (typeof mod === `string`) {
-    if (!mod.startsWith(`/`)) {
+  if (typeof mod === 'string') {
+    if (!mod.startsWith('/')) {
       mod = path.resolve(process.cwd(), mod);
     }
 
@@ -58,7 +56,7 @@ exports.modPackage = async function modPackage({dir, mod, packageName}) {
   }
 
   if (!mod) {
-    throw new Error(`one of 'mod' or 'dir' is required`);
+    throw new Error('one of \'mod\' or \'dir\' is required');
   }
 
   apply(mod, packageName);
