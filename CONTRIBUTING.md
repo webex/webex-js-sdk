@@ -74,49 +74,32 @@ Build the SDK:
 npm run build
 ```
 
-> There used to be a means of building individual packages, but they now build quickly enough that there's no need.
-
 ### Running Tests
 
-#### Run All Tests
+`npm test` is the entrypoint to our test runner, but its not practical to use without parameters; the full suite would take over two hours to run and cross talk would probably cause tests to break each other.
 
-```bash
-npm test
-```
+> Get the full test-runner docs via `npm test -- --help`.
 
-#### Run Unit Tests
+A local development flow might look like
 
-Handy during early plugin development when you can write a bunch of unit tests.
+1. Edit source code in `MYPACKAGE`.
+2. Use `npm run build` to build all packages .
+3. Use `npm test -- --package MYPACKAGE --node` to run the tests for just that package only in nodejs (Usually, we don't need to test both in node and the browser during development).
+4. Repeats steps 1-3 until the tests pass.
 
-```bash
-npm test -- --package PACKAGENAME --unit
-```
+`npm run build` is a bit tedious when making lots of changes, so instead, we can use `npm run distsrc` to point each package's `main` entry at the raw src and let `babel-node` compile on the fly.
 
-### Run unit tests in watch mode
+1. At the start of development, run `npm run distsrc` once.
+2. Edit source code in `MYPACKAGE`.
+3. Use `npm test -- --package MYPACKAGE --node` to run the tests for just that package only in nodejs.
+4. Repeat steps 2-3 until the tests pass. 
+5. Run `npm run srcdist` to restore the package.jsons to avoid committing those changes. 
 
-OK, this one's a handful and requires a global package, but there were too many possible variants to
-hardcode it any where.
+You can use the `--unit`, `--integration`, `--automation`, and `--documentation` switches to control what types of tests you run and `--node` and `--browser` to control which environments your tests run in.
 
-```bash
-npm install -g nodemon
-nodemon -w packages/PACKAGENAME/src -w packages/PACKAGENAME/test -x "npm test -- --package PACKAGENAME --node"
-```
+`--browser --karma-debug` will run the browser tests with `{singleRun: false}`, thus allowing automatic rerunning everytime you save a file (though, karma does eventually get confused and you need to interrupt and restart the command).
 
-#### Run Node.js Tests
-
-Usually faster, and can build on the fly, thus no need to rebuild everything between test runs
-
-```bash
-npm test -- --package PACKAGENAME --node
-```
-
-#### Run Browser Tests
-
-Keeps the browser open in debug mode so that you can set break points and reload the page with code updates
-
-```bash
-npm test -- --package PACKAGENAME --browser --karma-debug
-```
+> See [SCRIPTS.md](SCRIPTS.md) for more details on scripts in the repository.
 
 ### Git Commit Guidelines
 
