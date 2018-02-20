@@ -1,7 +1,5 @@
 # Scripts
 
-> This is a placeholder to avoid merge conflicts. The contents of this file probably belong in CONTRIBUTING.md.
-
 The following npm scripts are the main entrypoints for building and testing the Cisco Spark JavaScript SDK.
 
 ## build
@@ -80,9 +78,7 @@ npm run sauce:stop
 
 ## distsrc
 
-Points all of the `package.json`s' main entry to their "src" folder.
-This is useful when testing because it doesn't require you to
-build a "dist" folder before every run of the test.
+Points all of the `package.json`s' main entry to their "src" folder. This is useful when testing because it doesn't require you to build a "dist" folder before every run of the test.
 
 ```bash
 npm run distsrc
