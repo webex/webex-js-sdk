@@ -40,11 +40,6 @@ exports.testPackage = async function testPackage(options, packageName) {
   });
 
   debug(`testing ${packageName}`);
-  if (packageName === 'generator-ciscospark') {
-    await runNodeSuite(packageName);
-    return;
-  }
-
   if (options.node) {
     if (options.coverage) {
       await instrument(packageName);

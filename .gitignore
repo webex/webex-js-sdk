@@ -20,6 +20,7 @@ js-bin
 html-report
 .idea
 /docs/api
+/docs/app
 _site
 string
 .sauce.tid
