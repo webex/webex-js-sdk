@@ -7,11 +7,11 @@
   <link href='assets/bass.css' type='text/css' rel='stylesheet' />
   <link href='assets/style.css' type='text/css' rel='stylesheet' />
   <link href='assets/github.css' type='text/css' rel='stylesheet' />
+  <link href='assets/split.css' type='text/css' rel='stylesheet' />
 </head>
-<body class='documentation'>
-  <div class='max-width-4 mx-auto'>
-    <div class='clearfix md-mxn2'>
-      <div class='fixed xs-hide fix-3 overflow-auto max-height-100'>
+<body class='documentation m0'>
+    <div class='flex'>
+      <div id='split-left' class='overflow-auto fs0 height-viewport-100'>
         <div class='py1 px2'>
           <h3 class='mb0 no-anchor'>ciscospark</h3>
           <div class='mb1'><code>1.x</code></div>
@@ -514,12 +514,6 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#calleventremotemediastreamchange'
-                          class='regular pre-open'>
-                          ⓔ remoteMediaStream:change
-                        </a></li>
-                      
-                        <li><a
                           href='#calleventmembershipnotified'
                           class='regular pre-open'>
                           ⓔ membership:notified
@@ -535,6 +529,12 @@
                           href='#calleventmembershipdeclined'
                           class='regular pre-open'>
                           ⓔ membership:declined
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventringing'
+                          class='regular pre-open'>
+                          ⓔ ringing
                         </a></li>
                       
                         <li><a
@@ -568,6 +568,12 @@
                         </a></li>
                       
                         <li><a
+                          href='#calleventconnected'
+                          class='regular pre-open'>
+                          ⓔ connected
+                        </a></li>
+                      
+                        <li><a
                           href='#calleventdisconnected'
                           class='regular pre-open'>
                           ⓔ disconnected
@@ -580,27 +586,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventerror'
+                          href='#calleventinitializing'
                           class='regular pre-open'>
-                          ⓔ error
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventringing'
-                          class='regular pre-open'>
-                          ⓔ ringing
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventlocalmediastreamchange'
-                          class='regular pre-open'>
-                          ⓔ localMediaStream:change
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventterminating'
-                          class='regular pre-open'>
-                          ⓔ terminating
+                          ⓔ initializing
                         </a></li>
                       
                         <li><a
@@ -610,15 +598,27 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventconnected'
+                          href='#calleventterminating'
                           class='regular pre-open'>
-                          ⓔ connected
+                          ⓔ terminating
                         </a></li>
                       
                         <li><a
-                          href='#calleventinitializing'
+                          href='#calleventlocalmediastreamchange'
                           class='regular pre-open'>
-                          ⓔ initializing
+                          ⓔ localMediaStream:change
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventremotemediastreamchange'
+                          class='regular pre-open'>
+                          ⓔ remoteMediaStream:change
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventerror'
+                          class='regular pre-open'>
+                          ⓔ error
                         </a></li>
                       
                     </ul>
@@ -1220,7 +1220,7 @@
           </div>
         </div>
       </div>
-      <div class='fix-margin-3'>
+      <div id='split-right' class='relative overflow-auto height-viewport-100'>
         
           
             <div class='keyline-top-not py2'><section class='py2 clearfix'>
@@ -1426,11 +1426,13 @@ app.get(`/oauth/redirect`, (req, res, next) =&gt; {
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>attrs.config</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
-                  </td>
-                  <td class='break-word'><span>(optional)
+  <td class='break-word'><span class='code bold'>attrs.config</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
+  </td>
+  <td class='break-word'><span>(optional)
 </span></td>
-                </tr>
+</tr>
+
+
               
             </tbody>
           </table>
@@ -1504,6 +1506,9 @@ app.get(`/oauth/redirect`, (req, res, next) =&gt; {
   <h2 id='authorization' class='mt0'>
     Authorization
   </h2>
+
+  
+    
 
   
 </section>
@@ -1905,12 +1910,14 @@ work.</p>
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.jwt</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
-                  </td>
-                  <td class='break-word'><span>This is a jwt generated by your backend that
+  <td class='break-word'><span class='code bold'>options.jwt</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
+  </td>
+  <td class='break-word'><span>This is a jwt generated by your backend that
 identifies a user in your system
 </span></td>
-                </tr>
+</tr>
+
+
               
             </tbody>
           </table>
@@ -1997,11 +2004,13 @@ identifies a user in your system
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.noRedirect</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></code>
-                  </td>
-                  <td class='break-word'><span>if true, does not redirect
+  <td class='break-word'><span class='code bold'>options.noRedirect</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></code>
+  </td>
+  <td class='break-word'><span>if true, does not redirect
 </span></td>
-                </tr>
+</tr>
+
+
               
             </tbody>
           </table>
@@ -2233,10 +2242,12 @@ identifies a user in your system
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.code</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
-                  </td>
-                  <td class='break-word'><span></span></td>
-                </tr>
+  <td class='break-word'><span class='code bold'>options.code</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
+  </td>
+  <td class='break-word'><span></span></td>
+</tr>
+
+
               
             </tbody>
           </table>
@@ -2326,12 +2337,14 @@ work.</p>
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.jwt</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
-                  </td>
-                  <td class='break-word'><span>This is a jwt generated by your backend that
+  <td class='break-word'><span class='code bold'>options.jwt</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
+  </td>
+  <td class='break-word'><span>This is a jwt generated by your backend that
 identifies a user in your system
 </span></td>
-                </tr>
+</tr>
+
+
               
             </tbody>
           </table>
@@ -2382,6 +2395,9 @@ identifies a user in your system
   <h2 id='calling' class='mt0'>
     Calling
   </h2>
+
+  
+    
 
   
 </section>
@@ -2808,10 +2824,12 @@ or <a href="Phone#dial()">Phone#dial()</a></p>
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.constraints</span> <code class='quiet'>MediaStreamConstraints</code>
-                  </td>
-                  <td class='break-word'><span></span></td>
-                </tr>
+  <td class='break-word'><span class='code bold'>options.constraints</span> <code class='quiet'>MediaStreamConstraints</code>
+  </td>
+  <td class='break-word'><span></span></td>
+</tr>
+
+
               
             </tbody>
           </table>
@@ -2908,18 +2926,22 @@ If you set <a href="config.phone.enableExperimentalGroupCallingSupport">config.p
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.constraints</span> <code class='quiet'>MediaStreamConstraints</code>
-                  </td>
-                  <td class='break-word'><span></span></td>
-                </tr>
+  <td class='break-word'><span class='code bold'>options.constraints</span> <code class='quiet'>MediaStreamConstraints</code>
+  </td>
+  <td class='break-word'><span></span></td>
+</tr>
+
+
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.localMediaStream</span> <code class='quiet'>MediaStream</code>
-                  </td>
-                  <td class='break-word'><span>if no stream is specified, a
+  <td class='break-word'><span class='code bold'>options.localMediaStream</span> <code class='quiet'>MediaStream</code>
+  </td>
+  <td class='break-word'><span>if no stream is specified, a
 new one will be created based on options.constraints
 </span></td>
-                </tr>
+</tr>
+
+
               
             </tbody>
           </table>
@@ -3766,7 +3788,7 @@ initiator's Call instance to emit the ringing event.</p>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>answer(options)</span>
+            <span class='code strong strong truncate'>answer</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -3777,7 +3799,7 @@ initiator's Call instance to emit the ringing event.</p>
   <p>Answers an incoming call.</p>
 
 
-  <div class='pre p1 fill-light mt0'>answer(options: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
+  <div class='pre p1 fill-light mt0'>answer</div>
   
   
 
@@ -3812,10 +3834,12 @@ initiator's Call instance to emit the ringing event.</p>
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.constraints</span> <code class='quiet'>MediaStreamConstraints</code>
-                  </td>
-                  <td class='break-word'><span></span></td>
-                </tr>
+  <td class='break-word'><span class='code bold'>options.constraints</span> <code class='quiet'>MediaStreamConstraints</code>
+  </td>
+  <td class='break-word'><span></span></td>
+</tr>
+
+
               
             </tbody>
           </table>
@@ -5050,51 +5074,6 @@ only, this function will throw.</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='calleventremotemediastreamchange'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>remoteMediaStream:change</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>remoteMediaStream:change</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
     <div class='border-bottom' id='calleventmembershipnotified'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -5209,6 +5188,56 @@ shortly after (but as a direct result of) locally calling
   
 
   
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventringing'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>ringing</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>ringing</div>
+  
+  
+
+  <div>Deprecated: with 
+<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
+
+enabled; instead, listen for 
+<a href="Call.membership:notified">Call.membership:notified</a>
+</div>
   
   
   
@@ -5466,6 +5495,56 @@ participating the call.</p>
       </div>
     </div>
   
+    <div class='border-bottom' id='calleventconnected'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>connected</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>connected</div>
+  
+  
+
+  <div>Deprecated: with 
+<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
+
+enabled; instead, listen for 
+<a href="Call.active">Call.active</a>
+</div>
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='calleventdisconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -5562,151 +5641,11 @@ enabled; instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventerror'>
+    <div class='border-bottom' id='calleventinitializing'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>error</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>error</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventringing'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>ringing</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>ringing</div>
-  
-  
-
-  <div>Deprecated: with 
-<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
-
-enabled; instead, listen for 
-<a href="Call.membership:notified">Call.membership:notified</a>
-</div>
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventlocalmediastreamchange'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>localMediaStream:change</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>localMediaStream:change</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventterminating'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>terminating</span>
+            <span class='code strong strong truncate'>initializing</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -5717,7 +5656,7 @@ enabled; instead, listen for
   <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
 
 
-  <div class='pre p1 fill-light mt0'>terminating</div>
+  <div class='pre p1 fill-light mt0'>initializing</div>
   
   
 
@@ -5794,11 +5733,11 @@ enabled; instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventconnected'>
+    <div class='border-bottom' id='calleventterminating'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>connected</span>
+            <span class='code strong strong truncate'>terminating</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -5806,18 +5745,14 @@ enabled; instead, listen for
 
   
 
+  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+
+
+  <div class='pre p1 fill-light mt0'>terminating</div>
+  
   
 
-  <div class='pre p1 fill-light mt0'>connected</div>
   
-  
-
-  <div>Deprecated: with 
-<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
-
-enabled; instead, listen for 
-<a href="Call.active">Call.active</a>
-</div>
   
   
   
@@ -5844,11 +5779,11 @@ enabled; instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventinitializing'>
+    <div class='border-bottom' id='calleventlocalmediastreamchange'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>initializing</span>
+            <span class='code strong strong truncate'>localMediaStream:change</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -5856,10 +5791,99 @@ enabled; instead, listen for
 
   
 
-  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+  
 
+  <div class='pre p1 fill-light mt0'>localMediaStream:change</div>
+  
+  
 
-  <div class='pre p1 fill-light mt0'>initializing</div>
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventremotemediastreamchange'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>remoteMediaStream:change</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>remoteMediaStream:change</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventerror'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>error</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>error</div>
   
   
 
@@ -6249,7 +6273,7 @@ enabled; instead, listen for
 <a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a></p>
 
 
-  <div class='pre p1 fill-light mt0'>new StatsStream(pc: any)</div>
+  <div class='pre p1 fill-light mt0'>new StatsStream(pc: <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</div>
   
   
     <p>
@@ -6273,7 +6297,7 @@ enabled; instead, listen for
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>pc</span> <code class='quiet'>(any)</code>
+            <span class='code bold'>pc</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</code>
 	    
           </div>
           
@@ -6651,28 +6675,36 @@ specific person is a member of.</p>
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.personId</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
-                  </td>
-                  <td class='break-word'><span></span></td>
-                </tr>
+  <td class='break-word'><span class='code bold'>options.personId</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
+  </td>
+  <td class='break-word'><span></span></td>
+</tr>
+
+
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.personEmail</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
-                  </td>
-                  <td class='break-word'><span></span></td>
-                </tr>
+  <td class='break-word'><span class='code bold'>options.personEmail</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
+  </td>
+  <td class='break-word'><span></span></td>
+</tr>
+
+
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.roomId</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
-                  </td>
-                  <td class='break-word'><span></span></td>
-                </tr>
+  <td class='break-word'><span class='code bold'>options.roomId</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
+  </td>
+  <td class='break-word'><span></span></td>
+</tr>
+
+
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.max</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></code>
-                  </td>
-                  <td class='break-word'><span></span></td>
-                </tr>
+  <td class='break-word'><span class='code bold'>options.max</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></code>
+  </td>
+  <td class='break-word'><span></span></td>
+</tr>
+
+
               
             </tbody>
           </table>
@@ -7214,16 +7246,20 @@ messages posted in rooms that the authentiated user is a member of.</p>
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.roomId</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
-                  </td>
-                  <td class='break-word'><span></span></td>
-                </tr>
+  <td class='break-word'><span class='code bold'>options.roomId</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
+  </td>
+  <td class='break-word'><span></span></td>
+</tr>
+
+
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.max</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></code>
-                  </td>
-                  <td class='break-word'><span></span></td>
-                </tr>
+  <td class='break-word'><span class='code bold'>options.max</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></code>
+  </td>
+  <td class='break-word'><span></span></td>
+</tr>
+
+
               
             </tbody>
           </table>
@@ -7593,18 +7629,22 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.email</span> <code class='quiet'><a href="#email">email</a></code>
-                  </td>
-                  <td class='break-word'><span>Returns people with an email that contains this string
+  <td class='break-word'><span class='code bold'>options.email</span> <code class='quiet'><a href="#email">email</a></code>
+  </td>
+  <td class='break-word'><span>Returns people with an email that contains this string
 </span></td>
-                </tr>
+</tr>
+
+
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.displayName</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
-                  </td>
-                  <td class='break-word'><span>Returns people with a name that contains this string
+  <td class='break-word'><span class='code bold'>options.displayName</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
+  </td>
+  <td class='break-word'><span>Returns people with a name that contains this string
 </span></td>
-                </tr>
+</tr>
+
+
               
             </tbody>
           </table>
@@ -8007,12 +8047,14 @@ that the authentiated user is a member of.</p>
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.max</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
-                  </td>
-                  <td class='break-word'><span>Limit the maximum number of rooms in the
+  <td class='break-word'><span class='code bold'>options.max</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
+  </td>
+  <td class='break-word'><span>Limit the maximum number of rooms in the
 response.
 </span></td>
-                </tr>
+</tr>
+
+
               
             </tbody>
           </table>
@@ -8528,12 +8570,14 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.max</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></code>
-                  </td>
-                  <td class='break-word'><span>Limit the maximum number of teams in the
+  <td class='break-word'><span class='code bold'>options.max</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></code>
+  </td>
+  <td class='break-word'><span>Limit the maximum number of teams in the
 response.
 </span></td>
-                </tr>
+</tr>
+
+
               
             </tbody>
           </table>
@@ -8973,10 +9017,12 @@ which the authenticated user belongs.</p>
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.max</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
-                  </td>
-                  <td class='break-word'><span></span></td>
-                </tr>
+  <td class='break-word'><span class='code bold'>options.max</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
+  </td>
+  <td class='break-word'><span></span></td>
+</tr>
+
+
               
             </tbody>
           </table>
@@ -9495,11 +9541,13 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
             <tbody class='mt1'>
               
                 <tr>
-                  <td class='break-word'><span class='code bold'>options.max</span> <code class='quiet'>integer</code>
-                  </td>
-                  <td class='break-word'><span>Limit the maximum number of webhooks in the response.
+  <td class='break-word'><span class='code bold'>options.max</span> <code class='quiet'>integer</code>
+  </td>
+  <td class='break-word'><span>Limit the maximum number of webhooks in the response.
 </span></td>
-                </tr>
+</tr>
+
+
               
             </tbody>
           </table>
@@ -9775,6 +9823,9 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   <h2 id='logging' class='mt0'>
     Logging
   </h2>
+
+  
+    
 
   
 </section>
@@ -10934,8 +10985,8 @@ format (e.g. <code>2015-10-18T14:26:16+00:00</code>).</p>
         
       </div>
     </div>
-  </div>
   <script src='assets/anchor.js'></script>
+  <script src='assets/split.js'></script>
   <script src='assets/site.js'></script>
 </body>
 </html>
