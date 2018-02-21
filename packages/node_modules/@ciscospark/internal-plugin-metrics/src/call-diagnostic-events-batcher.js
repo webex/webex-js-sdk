@@ -1,0 +1,41 @@
+/*!
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import Batcher from './batcher';
+
+const CallDiagnosticEventsBatcher = Batcher.extend({
+  namespace: 'Metrics',
+
+  prepareItem(item) {
+    // networkType should be a enum value: `wifi`, `ethernet`, `cellular`, or `unknown`.
+    // Browsers cannot provide such information right now. However, it is a required field.
+    const origin = {
+      buildType: process.env.NODE_ENV === 'production' ? 'prod' : 'test',
+      networkType: 'unknown'
+    };
+    item.eventPayload.origin = Object.assign(origin, item.eventPayload.origin);
+    return Promise.resolve(item);
+  },
+
+  prepareRequest(queue) {
+    // Add sent timestamp
+    queue.forEach((item) => {
+      item.eventPayload.originTime.sent = new Date().toISOString();
+    });
+    return Promise.resolve(queue);
+  },
+
+  submitHttpRequest(payload) {
+    return this.spark.request({
+      method: 'POST',
+      service: 'metrics',
+      resource: 'clientmetrics',
+      body: {
+        metrics: payload
+      }
+    });
+  }
+});
+
+export default CallDiagnosticEventsBatcher;

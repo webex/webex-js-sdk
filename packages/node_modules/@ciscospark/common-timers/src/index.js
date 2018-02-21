@@ -1,0 +1,33 @@
+/*!
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ */
+
+/**
+ * Wrapper around setTimout which (in node) unrefs the returned timer to avoid
+ * wedging the process open unexpectedly.
+ * @param {Mixed} args
+ * @protected
+ * @returns {Timer|Number}
+ */
+export function safeSetTimeout(...args) {
+  const timer = setTimeout(...args);
+  if (timer.unref) {
+    timer.unref();
+  }
+  return timer;
+}
+
+/**
+ * Wrapper around setTimout which (in node) unrefs the returned timer to avoid
+ * wedging the process open unexpectedly.
+ * @param {Mixed} args
+ * @protected
+ * @returns {Timer|Number}
+ */
+export function safeSetInterval(...args) {
+  const interval = setInterval(...args);
+  if (interval.unref) {
+    interval.unref();
+  }
+  return interval;
+}

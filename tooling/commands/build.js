@@ -1,22 +1,41 @@
-'use strict';
+/*!
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ */
 
-const wrapHandler = require(`../lib/wrap-handler`);
-const {list} = require(`../util/package`);
-const {buildPackage} = require(`../lib/build`);
+const wrapHandler = require('../lib/wrap-handler');
+const {list} = require('../util/package');
+const {buildPackage, buildSamples} = require('../lib/build');
 
 module.exports = {
-  command: `build [packageName]`,
-  desc: `Build one or all packages`,
+  command: 'build [packageName]',
+  desc: 'Build one or all packages',
   builder: {
-
-  },
-  handler: wrapHandler(async ({packageName}) => {
-    if (packageName) {
-      await buildPackage(packageName);
+    onlySamples: {
+      default: false,
+      description: 'Only build samples',
+      type: 'boolean'
+    },
+    skipSamples: {
+      default: false,
+      description: 'Do not build samples',
+      type: 'boolean'
     }
-    else {
-      for (const pName of await list()) {
-        await buildPackage(pName);
+  },
+  handler: wrapHandler(async ({packageName, onlySamples, skipSamples}) => {
+    if (!onlySamples) {
+      if (packageName) {
+        await buildPackage(packageName);
+      }
+      else {
+        for (const pName of await list()) {
+          await buildPackage(pName);
+        }
+      }
+    }
+
+    if (!skipSamples) {
+      if (!packageName) {
+        await buildSamples();
       }
     }
   })

@@ -1,0 +1,694 @@
+{
+  "version": "1.0",
+  "sequences": { 
+      "seq0": {
+        "entries": [],
+        "rangeEnd":0,
+        "rangeStart":0
+        },
+      "seq1": {
+        "entries": [
+            259005341176400
+        ],
+        "rangeEnd":0,
+        "rangeStart":0
+        },
+      "seq1b": {
+        "entries": [
+        ],
+        "rangeEnd":259005341176383,
+        "rangeStart":259005341176380
+        },
+      "seq1c": {
+        "entries": [
+            259005341176400
+        ],
+        "rangeEnd":259005341176383,
+        "rangeStart":259005341176380
+        },
+      "seq2": {
+        "entries": [
+            259005341176400, 
+            259005341176402, 
+            259005341176404, 
+            259005341176406, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414, 
+            259005341176416, 
+            259005341176418
+        ],
+        "rangeEnd":0,
+        "rangeStart":0
+        },
+      "seq2b": {
+        "entries": [
+            259005341176402, 
+            259005341176404, 
+            259005341176406, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414, 
+            259005341176416, 
+            259005341176418
+        ],
+        "rangeEnd":259005341176383,
+        "rangeStart":259005341176381
+        },
+      "seq3": {
+        "entries": [
+            259005341176400, 
+            259005341176402, 
+            259005341176404, 
+            259005341176406, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414, 
+            259005341176416, 
+            259005341176418
+        ],
+        "rangeEnd":259005341176383,
+        "rangeStart":259005341176380
+        },
+      "seq3b": {
+        "entries": [
+            259005341176402, 
+            259005341176404, 
+            259005341176406, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414, 
+            259005341176416, 
+            259005341176418
+        ],
+        "rangeEnd":0,
+        "rangeStart":0
+        },
+      "seq3c": {
+        "entries": [
+            259005341176400, 
+            259005341176402, 
+            259005341176404, 
+            259005341176406, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414, 
+            259005341176416, 
+            259005341176418
+        ],
+        "rangeEnd":259005341176383,
+        "rangeStart":259005341176381
+        },
+      "seq3d": {
+        "entries": [
+            259005341176402, 
+            259005341176404, 
+            259005341176406, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414, 
+            259005341176416, 
+            259005341176418,
+            259005341176420,
+            259005341176422
+        ],
+        "rangeEnd":0,
+        "rangeStart":0
+        },
+      "seq3e": {
+        "entries": [
+            259005341176400, 
+            259005341176402, 
+            259005341176404, 
+            259005341176406, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414, 
+            259005341176416, 
+            259005341176418,
+            259005341176420,
+            259005341176422
+        ],
+        "rangeEnd":259005341176383,
+        "rangeStart":259005341176381
+        },
+      "seq3f": {
+        "entries": [
+            259005341176404, 
+            259005341176406, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414, 
+            259005341176416, 
+            259005341176418,
+            259005341176420,
+            259005341176422,
+            259005341176424,
+            259005341176426
+        ],
+        "rangeEnd":0,
+        "rangeStart":0
+        },
+      "seq3g": {
+        "entries": [
+            259005341176400, 
+            259005341176402, 
+            259005341176404, 
+            259005341176406, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414
+        ],
+        "rangeEnd":259005341176383,
+        "rangeStart":259005341176370
+        },
+      "seq4": {
+        "entries": [
+            259005341176400, 
+            259005341176402, 
+            259005341176404, 
+            259005341176405, 
+            259005341176406, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414, 
+            259005341176416, 
+            259005341176418
+        ],
+        "rangeEnd":259005341176383,
+        "rangeStart":259005341176380
+        },
+      "seq4b": {
+        "entries": [
+            259005341176400, 
+            259005341176402, 
+            259005341176404, 
+            259005341176405, 
+            259005341176406, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414, 
+            259005341176416, 
+            259005341176418
+        ],
+        "rangeEnd":0,
+        "rangeStart":0
+        },
+      "seq4c": {
+        "entries": [
+            259005341176400, 
+            259005341176402, 
+            259005341176406, 
+            259005341176407, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414, 
+            259005341176416
+        ],
+        "rangeEnd":259005341176383,
+        "rangeStart":259005341176380
+        },
+      "seq4d": {
+        "entries": [
+            259005341176400, 
+            259005341176402, 
+            259005341176404, 
+            259005341176405, 
+            259005341176406, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414, 
+            259005341176416, 
+            259005341176417
+        ],
+        "rangeEnd":0,
+        "rangeStart":0
+        },
+      "seq4e": {
+        "entries": [
+            259005341176400, 
+            259005341176402, 
+            259005341176404, 
+            259005341176405, 
+            259005341176406, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414, 
+            259005341176416, 
+            259005341176417
+        ],
+        "rangeEnd":259005341176383,
+        "rangeStart":259005341176380
+        },
+      "seq4f": {
+        "entries": [
+            259005341176400, 
+            259005341176402, 
+            259005341176404, 
+            259005341176405, 
+            259005341176406, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414, 
+            259005341176416, 
+            259005341176418
+        ],
+        "rangeEnd":259005341176380,
+        "rangeStart":259005341176380,
+        "note":"rangeStart equals rangeEnd"
+        },
+      "seq4g": {
+        "entries": [
+            259005341176400, 
+            259005341176402, 
+            259005341176404, 
+            259005341176405, 
+            259005341176406, 
+            259005341176408, 
+            259005341176410, 
+            259005341176412, 
+            259005341176414, 
+            259005341176416, 
+            259005341176418,
+            259005341176420,
+            259005341176422
+        ],
+        "rangeEnd":259005341176383,
+        "rangeStart":259005341176380
+        },
+      "seq5": {
+        "entries": [
+            259005341176700, 
+            259005341176702, 
+            259005341176704, 
+            259005341176706, 
+            259005341176708, 
+            259005341176710, 
+            259005341176712, 
+            259005341176714, 
+            259005341176716, 
+            259005341176718
+        ],
+        "rangeEnd":0,
+        "rangeStart":0
+        },
+      "seq5b": {
+        "entries": [
+            259005341176700, 
+            259005341176702, 
+            259005341176704, 
+            259005341176706, 
+            259005341176708, 
+            259005341176710, 
+            259005341176712, 
+            259005341176714, 
+            259005341176716, 
+            259005341176718
+        ],
+        "rangeEnd":259005341176600,
+        "rangeStart":259005341176500
+        },
+      "seq5c": {
+        "entries": [
+            259005341176700, 
+            259005341176702, 
+            259005341176704, 
+            259005341176706, 
+            259005341176708, 
+            259005341176710, 
+            259005341176712, 
+            259005341176714, 
+            259005341176716, 
+            259005341176718
+        ],
+        "rangeEnd":259005341176418,
+        "rangeStart":259005341176380
+        },
+      "seq5d": {
+        "entries": [],
+        "rangeEnd":259005341176418,
+        "rangeStart":259005341176380,
+        "note":"This sequence is not real as it has no entry but has range."
+        },
+      "seq5e": {
+        "entries": [],
+        "rangeEnd":259005341176418,
+        "rangeStart":259005341176383,
+        "note":"This sequence is not real as it has no entry but has range."
+        },
+      "seq5f": {
+        "entries": [
+            259005341176700, 
+            259005341176702, 
+            259005341176704, 
+            259005341176706, 
+            259005341176708
+        ],
+        "rangeEnd":259005341176386,
+        "rangeStart":259005341176381
+        },
+      "seq5g": {
+        "entries": [
+            259005341176702, 
+            259005341176704, 
+            259005341176706, 
+            259005341176708
+        ],
+        "rangeEnd":259005341176386,
+        "rangeStart":259005341176381
+        },
+      "seq6": {
+        "entries": [
+            259005341176400, 
+            259005341176403, 
+            259005341176406, 
+            259005341176408, 
+            259005341176412, 
+            259005341176414, 
+            259005341176418
+        ],
+        "rangeEnd":0,
+        "rangeStart":0
+        },
+      "seq7": {
+        "entries": [
+            259005341176818
+        ],
+        "rangeEnd":259005341176418,
+        "rangeStart":259005341176380
+        }
+    },
+  "comparisons": {
+      "cmp1": {
+        "current":"seq1",
+        "new":"seq2",
+        "result":"LESS_THAN",
+        "description":"New seq has newer entries than current"
+        },
+      "cmp2": {
+        "current":"seq2",
+        "new":"seq2",
+        "result":"EQUAL",
+        "description":"Current and new seq are the same"
+        },
+      "cmp3": {
+        "current":"seq2",
+        "new":"seq3",
+        "result":"LESS_THAN",
+        "description":"Current has no range while new seq has a range. Both have same entries."
+        },
+      "cmp4": {
+        "current":"seq3",
+        "new":"seq4",
+        "result":"LESS_THAN",
+        "description":"New seq has a new entry, in middle of entries of current. Both have same range."
+        },
+      "cmp5": {
+        "current":"seq3",
+        "new":"seq2",
+        "result":"GREATER_THAN",
+        "description":"Current has a range while new seq has no range. Both have same entries."
+        },
+      "cmp6": {
+        "current":"seq4",
+        "new":"seq5",
+        "result":"LESS_THAN",
+        "description":"New seq is newer and has no overlap with current"
+        },
+      "cmp7": {
+        "current":"seq2",
+        "new":"seq6",
+        "result":"DESYNC",
+        "description":"Current has unique entry in between the entries of new seq. New seq also has unique entry in between the entries of current."
+        },
+      "cmp8": {
+        "current":"seq4",
+        "new":"seq7",
+        "result":"LESS_THAN",
+        "description":"New seq has an entry while its range cover min and max of current"
+        },
+      "cmp9": {
+        "current":"seq1b",
+        "new":"seq0",
+        "result":"GREATER_THAN",
+        "description":"New seq is empty while current has a range"
+        },
+      "cmp10": {
+        "current":"seq4b",
+        "new":"seq5",
+        "result":"LESS_THAN",
+        "description":"New seq is newer and has no overlap with current. Both have no range"
+        },
+      "cmp11": {
+        "current":"seq4",
+        "new":"seq5b",
+        "result":"LESS_THAN",
+        "description":"Both have range. New seq is newer and has no overlap with current."
+        },
+      "cmp12": {
+        "current":"seq2",
+        "new":"seq3b",
+        "result":"GREATER_THAN",
+        "description":"Current has an older entry than new seq. The rest are the same. Both have no range."
+        },
+      "cmp13": {
+        "current":"seq3",
+        "new":"seq3c",
+        "result":"GREATER_THAN",
+        "description":"Both current and new seq have same entries, while current has range start at an earlier time than new seq"
+        },
+      "cmp14": {
+        "current":"seq3b",
+        "new":"seq3d",
+        "result":"LESS_THAN",
+        "description":"New seq has additional new entries. Both have no range."
+        },
+      "cmp15": {
+        "current":"seq3c",
+        "new":"seq3e",
+        "result":"LESS_THAN",
+        "description":"New seq has additional new entries. Both have same range."
+        },
+      "cmp16": {
+        "current":"seq3d",
+        "new":"seq3f",
+        "result":"DESYNC",
+        "description":"Current has an older entry while new seq has additional new entries. Both have no range."
+        },
+      "cmp17": {
+        "current":"seq3g",
+        "new":"seq3",
+        "result":"LESS_THAN",
+        "description":"New seq has additional new entries, while current has range start at an earlier time than new seq"
+        },
+      "cmp18": {
+        "current":"seq4c",
+        "new":"seq4",
+        "result":"DESYNC",
+        "description":"Both current and new seq have some unique entries. Both have same range."
+        },
+      "cmp19": {
+        "current":"seq4d",
+        "new":"seq4b",
+        "result":"DESYNC",
+        "description":"Both current and new seq have one unique entry at the end. Both have no range."
+        },
+      "cmp20": {
+        "current":"seq4e",
+        "new":"seq4",
+        "result":"DESYNC",
+        "description":"Both current and new seq have one unique entry at the end. Both have same range."
+        },
+      "cmp21": {
+        "current":"seq0",
+        "new":"seq0",
+        "result":"EQUAL",
+        "description":"Both current and new seq are empty"
+        },
+      "cmp22": {
+        "current":"seq2",
+        "new":"seq0",
+        "result":"GREATER_THAN",
+        "description":"Current has entries but no range. New seq is empty"
+        },
+      "cmp23": {
+        "current":"seq3",
+        "new":"seq0",
+        "result":"GREATER_THAN",
+        "description":"Current has entries and range. New seq is empty"
+        },
+      "cmp24": {
+        "current":"seq3",
+        "new":"seq3",
+        "result":"EQUAL",
+        "description":"Both current and new seq have same entries and range"
+        },
+      "cmp27": {
+        "current":"seq4",
+        "new":"seq4f",
+        "result":"GREATER_THAN",
+        "description":"New seq has same entries as current. New seq has same rangeStart as current, even though rangeEnd is different."
+        }
+    },
+  "update_action_results": {
+      "descriptions": {
+        "ACCEPT_NEW": "If there is a newbase in the incoming data, merge the incoming data with the current working copy, otherwise, replace the working copy with the incoming data. Note that the client does not need to copy the newbase value itself when merging.",
+        "KEEP_CURRENT": "ignore the incoming data",
+        "DESYNC": "performa a GET on the client's current working syncUrl or, if the client has no syncUrl, perform a GET on the Locus URL. Reapply the sequencing algorithm using the returned data."
+        }
+    },
+  "update_actions": {
+      "updt1": {
+        "current":"seq2",
+        "newbase":"seq2",
+        "new":"seq5",
+        "result":"ACCEPT_NEW",
+        "description":"New base is same as current, and new seq is newer and has no overlap with current."
+        },
+      "updt2": {
+        "current":"seq2",
+        "newbase":"seq2",
+        "new":"seq4",
+        "result":"ACCEPT_NEW",
+        "description":"New base is same as current, and new seq has a new entry, in middle of entries of current."
+        },
+      "updt3": {
+        "current":"seq3",
+        "newbase":"seq2",
+        "new":"seq4",
+        "result":"ACCEPT_NEW",
+        "description":"Current is less than new seq, and current is greater than new base."
+        },
+      "updt4": {
+        "current":"seq4",
+        "newbase":"seq4",
+        "new":"seq7",
+        "result":"ACCEPT_NEW",
+        "description":"New base is same as current, and new seq has an entry while its range cover min and max of current"
+        },
+      "updt5": {
+        "current":"seq0",
+        "new":"seq0",
+        "result":"ACCEPT_NEW",
+        "description":"Special case: current is empty"
+        },
+      "updt6": {
+        "current":"seq1",
+        "new":"seq0",
+        "result":"ACCEPT_NEW",
+        "description":"Special case: new seq is empty while current has entries and no range. Update anyway."
+        },
+      "updt6b": {
+        "current":"seq2b",
+        "new":"seq0",
+        "result":"ACCEPT_NEW",
+        "description":"Special case: new seq is empty while current has entries and range. Update anyway."
+        },
+      "updt7": {
+        "current":"seq0",
+        "new":"seq1",
+        "result":"ACCEPT_NEW",
+        "description":"Special case: current is empty"
+        },
+      "updt8": {
+        "current":"seq4",
+        "newbase":"seq4",
+        "new":"seq4",
+        "result":"KEEP_CURRENT",
+        "description":"New seq and new base are same as current. See updt9 also."
+        },
+      "updt9": {
+        "current":"seq4",
+        "newbase":"seq5",
+        "new":"seq5",
+        "result":"DESYNC",
+        "description":"Both new seq and new base are newer than current. This happens when Locus wants to force a desync, eg. when it has a change too large to send"
+        },
+      "updt10": {
+        "current":"seq2",
+        "new":"seq2",
+        "result":"KEEP_CURRENT",
+        "description":"New seq is same as current, and there is no new base"
+        },
+      "updt11": {
+        "current":"seq4",
+        "new":"seq5b",
+        "result":"ACCEPT_NEW",
+        "description":"New seq is newer and has no overlap with current, including range."
+        },
+      "updt12": {
+        "current":"seq2",
+        "new":"seq3b",
+        "result":"KEEP_CURRENT",
+        "description":"Current an older entry than new seq. The rest are the same. Both have no range."
+        },
+      "updt13": {
+        "current":"seq3",
+        "new":"seq2b",
+        "result":"KEEP_CURRENT",
+        "description":"Current an older entry than new seq. Current also has range start earlier than new."
+        },
+      "updt14": {
+        "current":"seq3d",
+        "new":"seq3f",
+        "result":"DESYNC",
+        "description":"Current has an older entry while new seq has additional new entries. Both have no range."
+        },
+      "updt15": {
+        "current":"seq4",
+        "new":"seq5c",
+        "result":"ACCEPT_NEW",
+        "description":"New seq has new entries and its range covers all range and entries of current."
+        },
+      "updt18": {
+        "current":"seq5f",
+        "newbase":"seq1c",
+        "new":"seq3",
+        "result":"DESYNC",
+        "description":"New seq has entries less than current, but it has range overlap with current. New base has same range as new seq, and subset of entries."
+        },
+      "updt19": {
+        "current":"seq5f",
+        "newbase":"seq3",
+        "new":"seq3",
+        "result":"DESYNC",
+        "description":"New seq has entries less than current, but it has range overlap with current. New base and new seq are the same."
+        },
+      "updt21": {
+        "current":"seq3",
+        "newbase":"seq0",
+        "new":"seq5f",
+        "result":"DESYNC",
+        "description":"New seq has entries greater than current, but it has range overlap with current. New base is empty, which normally doesn't happen. Base will be omitted when there is no base Locus."
+        },
+      "updt23": {
+        "current":"seq5f",
+        "newbase":"seq5g",
+        "new":"seq5g",
+        "result":"KEEP_CURRENT",
+        "description":"New seq one less entry than current. Both have same range. New base and new seq are the same."
+        },
+      "updt24": {
+        "current":"seq4",
+        "newbase":"seq4c",
+        "new":"seq4g",
+        "result":"DESYNC",
+        "description":"New seq is greater than current, but both current and new base have some unique entries."
+        }
+    }
+}

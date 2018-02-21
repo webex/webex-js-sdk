@@ -1,4 +1,6 @@
-'use strict';
+/*!
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ */
 
 module.exports = function wrapHandler(fn) {
   return async function wrapper(...args) {

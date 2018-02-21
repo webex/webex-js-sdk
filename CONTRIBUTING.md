@@ -7,6 +7,7 @@
   - [Building the SDK](#building-the-sdk)
   - [Running Tests](#running-tests)
   - [Git Commit Guidelines](#git-commit-guidelines)
+  - [Submitting a Pull Request](#submitting-a-pull-request)
 - [Updating the Documentation](#updating-the-documentation)
 
 ## Reporting Issues
@@ -15,21 +16,30 @@
 
 The title of a Bug or Enhancement should clearly indicate what is broken or desired. Use the description to
 explain possible solutions or add details and (especially for Enhancemnts) explain *how* or *why* the issue is
-broken or desired.
+broken or desired. Please see [ISSUE_TEMPLATE.md](https://github.com/ciscospark/spark-js-sdk/blob/master/.github/ISSUE_TEMPLATE.MD) that outlines what we are looking for.
+
+**If providing snippets of code**, use [Markdown code blocks](https://help.github.com/articles/markdown-basics/#multiple-lines).
 
 #### Grammar
 
 While quibbling about grammar in issue titles may seem a bit pedantic, adhering to some simple rules can make it much
 easier to understand a Bug or an Enhancement from the title alone. For example, is the title **"Browsers should support
 blinking text"** a bug or a feature request?
+
 - Enhancements: The title should be an imperative statement of how things should be. **"Add support for blinking text"**
 - Bugs: The title should be a declarative statement of how things are. **"Text does not blink"**
+
+#### Logs
+
+Please provide sufficient logging around the issue which you are reporting as this will help with our investigation.
+**DO NOT** include access tokens or other sensitive information. If you need to supply logs with sensitive information, supply them to developer support rather than posting them here; even when sending logs to developer support, **DO NOT** include access tokens.
 
 ## Contributing Code
 
 ### Build Dependencies
 
 Before you can build the Cisco Spark JS SDK, you will need the following dependencies:
+
 - [Node.js](https://nodejs.org/) 6.x (LTS)
   - We recommend using [nvm](https://github.com/creationix/nvm) (or [nvm-windows](https://github.com/coreybutler/nvm-windows))
     to easily switch between Node.js versions
@@ -64,45 +74,32 @@ Build the SDK:
 npm run build
 ```
 
-> There used to be a means of building individual packages, but they now build quickly enough that there's no need.
-
 ### Running Tests
 
-#### Run All Tests
+`npm test` is the entrypoint to our test runner, but its not practical to use without parameters; the full suite would take over two hours to run and cross talk would probably cause tests to break each other.
 
-```bash
-npm test
-```
+> Get the full test-runner docs via `npm test -- --help`.
 
-#### Run Unit Tests
-Handy during early plugin development when you can write a bunch of unit tests.
+A local development flow might look like
 
-```bash
-npm test -- --package PACKAGENAME --unit
-```
+1. Edit source code in `MYPACKAGE`.
+2. Use `npm run build` to build all packages .
+3. Use `npm test -- --package MYPACKAGE --node` to run the tests for just that package only in nodejs (Usually, we don't need to test both in node and the browser during development).
+4. Repeats steps 1-3 until the tests pass.
 
-### Run unit tests in watch mode
-OK, this one's a handful and requires a global package, but there were too many possible variants to
-hardcode it any where.
+`npm run build` is a bit tedious when making lots of changes, so instead, we can use `npm run distsrc` to point each package's `main` entry at the raw src and let `babel-node` compile on the fly.
 
-```bash
-npm install -g nodemon
-nodemon -w packages/PACKAGENAME/src -w packages/PACKAGENAME/test -x "npm test -- --package PACKAGENAME --node"
-```
+1. At the start of development, run `npm run distsrc` once.
+2. Edit source code in `MYPACKAGE`.
+3. Use `npm test -- --package MYPACKAGE --node` to run the tests for just that package only in nodejs.
+4. Repeat steps 2-3 until the tests pass. 
+5. Run `npm run srcdist` to restore the package.jsons to avoid committing those changes. 
 
-#### Run Node.js Tests
-Usually faster, and can build on the fly, thus no need to rebuild everything between test runs
+You can use the `--unit`, `--integration`, `--automation`, and `--documentation` switches to control what types of tests you run and `--node` and `--browser` to control which environments your tests run in.
 
-```bash
-npm test -- --package PACKAGENAME --node
-```
+`--browser --karma-debug` will run the browser tests with `{singleRun: false}`, thus allowing automatic rerunning everytime you save a file (though, karma does eventually get confused and you need to interrupt and restart the command).
 
-#### Run Browser Tests
-Keeps the browser open so that you can reload set break points and reload the page
-
-```bash
-npm test -- --package PACKAGENAME --browser --karma-debug
-```
+> See [SCRIPTS.md](SCRIPTS.md) for more details on scripts in the repository.
 
 ### Git Commit Guidelines
 
@@ -163,6 +160,47 @@ Just as in the **subject** the imperative, present tense: "change" not "changed"
 The footer should contain any information about **Breaking changes** and is also the place to reference GitHub issues that this commit **closes**.
 
 **Breaking Changes** should start with the word `BREAKING CHANGE:` with a space or two newlines. The rest of the commit message is then used for this.
+
+#### Special Commit Messages
+
+These are commit messages that will have an impact on how the build pipeline behaves. With the exception of `#no-push`, they are not to be used without prior approval.
+
+All of these commit messages should include an explanation for why you're using them. You'll need to commit with `-n` or `--no-verify` to bypass the commit message linter.
+
+##### `#force-publish`
+
+Force all packages to be published under the new version, not just the changed packages.
+
+##### `#ignore-tooling`
+
+Normally, we run all test suites when tooling changes, however, not all categories of tooling changes need to be tested quite so strictly. This message will omit the `tooling` meta package when determining what packages to test.
+
+##### `#no-push`
+
+Have Jenkins run all the tests, but abort the build before merging into master.
+
+##### `[ci skip]`
+
+Do not run tests for this build.
+
+### Submitting a Pull Request
+
+Prior to developing a new feature, be sure to search the [Pull Requests](https://github.com/ciscospark/spark-js-sdk/pulls) for your idea to ensure you're not creating a duplicate change. Then, create a development branch in your forked repository for your idea and start coding!
+
+When you're ready to submit your change, first check that new commits haven't been made in the upstream's `master` branch. If there are new commits, rebase your development branch to ensure a fast-forward merge when your Pull Request is approved:
+
+```bash
+# Fetch upstream master and update your local master branch
+git fetch upstream
+git checkout master
+git merge upstream/master
+
+# Rebase your development branch
+git checkout feature
+git rebase master
+```
+
+Finally, open a [new Pull Request](https://github.com/ciscospark/spark-js-sdk/compare) with your changes. Be sure to mention the issues this request addresses in the body of the request. Once your request is opened, a developer will review, comment, and, when approved, merge your changes!
 
 ## Updating the Documentation
 

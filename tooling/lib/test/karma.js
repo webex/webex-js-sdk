@@ -1,22 +1,31 @@
-'use strict';
+/*!
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ */
 
-const debug = require(`debug`)(`tooling:test:karma`);
-const {Server, stopper} = require(`karma`);
-const {makeConfig} = require(`../../../karma-ng.conf`);
-const {readFile} = require(`fs-promise`);
-const ps = require(`ps-node`);
-const {expectNonEmptyReports, expectNoKmsErrors} = require(`./common`);
-const {glob} = require(`../async`);
+const debug = require('debug')('tooling:test:karma');
+const {Server, stopper} = require('karma');
+const {makeConfig} = require('../../../karma-ng.conf');
+const {readFile} = require('fs-promise');
+const ps = require('ps-node');
+const {expectNonEmptyReports, expectNoKmsErrors} = require('./common');
+const {glob} = require('../async');
+const {inject} = require('../openh264');
 
 /* eslint-disable no-console */
 
+// Splitting this function to reduce complexity would not aid in readability
+// eslint-disable-next-line complexity
 exports.test = async function test(options, packageName, files) {
   debug(`testing ${files}`);
 
   const cfg = makeConfig(packageName, options);
 
+  if (packageName === '@ciscospark/plugin-phone' || packageName === '@ciscospark/media-engine-webrtc') {
+    await inject(cfg.customLaunchers);
+  }
+
   if (options.xunit) {
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 3; i += 1) {
       try {
         debug(`Attempt #${i} for ${packageName}`);
 
@@ -45,11 +54,9 @@ exports.test = async function test(options, packageName, files) {
     }
     else {
       debug(`${files} failed`);
-      throw new Error(`Karms suite failed`);
+      throw new Error('Karma suite failed');
     }
   }
-
-  return;
 };
 
 /**
@@ -75,18 +82,17 @@ async function run(cfg) {
  * Makes sure sauce stays running for the duration of the test suite
  * @param {Server} server
  * @param {Object} cfg
- * @returns {Promise}
  */
 async function watchSauce(server, cfg) {
   try {
-    debug(`reading sauce pid`);
+    debug('reading sauce pid');
     const pid = parseInt(await readFile(process.env.SC_PID_FILE), 10);
     debug(`sauce pid is ${pid}`);
 
     let done = false;
 
-    server.once(`run_complete`, () => {
-      debug(`run complete`);
+    server.once('run_complete', () => {
+      debug('run complete');
       done = true;
     });
 
@@ -100,11 +106,11 @@ async function watchSauce(server, cfg) {
       await new Promise((resolve, reject) => {
         debug(`checking if ${pid} is running`);
         ps.lookup({
-          psargs: `-A`,
+          psargs: '-A',
           pid
         }, (err, resultList) => {
           if (err) {
-            debug(`ps-node produced an error`, err);
+            debug('ps-node produced an error', err);
             reject(err);
             return;
           }
@@ -123,7 +129,7 @@ async function watchSauce(server, cfg) {
   }
   catch (err) {
     console.error(err);
-    console.error(`Sauce Tunnel is not running, stopping server and exiting`);
+    console.error('Sauce Tunnel is not running, stopping server and exiting');
     stopper.stop(cfg);
     // so, this is a bit harsh, but due to karma's api,there's no great way to
     // communicate back to test.js that karma failed because the tunnel

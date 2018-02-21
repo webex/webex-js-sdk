@@ -1,8 +1,10 @@
-'use strict';
+/*!
+ * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ */
 
-const debug = require(`debug`)(`tooling:npm`);
-const {read} = require(`../util/package`);
-const {exec} = require(`./async`);
+const debug = require('debug')('tooling:npm');
+const {read} = require('../util/package');
+const {exec} = require('./async');
 
 /**
  * Returns the dist-tag for the specified package
@@ -17,7 +19,7 @@ exports.getDistTag = async function getDistTag(packageName) {
   }
   catch (err) {
     // Assume this is a not-yet-cleaned-up, removed package.
-    if (err.code === `ENOENT`) {
+    if (err.code === 'ENOENT') {
       return undefined;
     }
 
@@ -33,8 +35,8 @@ exports.getDistTag = async function getDistTag(packageName) {
         return undefined;
       }
       const tags = dt
-        .split(`\n`)
-        .map((d) => d.split(`:`))
+        .split('\n')
+        .map((d) => d.split(':'))
         .reduce((acc, [tag, version]) => {
           acc[tag] = version;
           return acc;
@@ -43,7 +45,7 @@ exports.getDistTag = async function getDistTag(packageName) {
       return tags.latest;
     }
     catch (err) {
-      debug(`Something went wrong, but we had to use --silent, so it's hard to tell what`, err);
+      debug('Something went wrong, but we had to use --silent, so it\'s hard to tell what', err);
     }
   }
   return undefined;

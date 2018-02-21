@@ -1,5 +1,3 @@
-extends: "@ciscospark/eslint-config/es5"
-root: true
 rules:
   consistent-return:
     - 0

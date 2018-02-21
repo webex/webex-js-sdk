@@ -1,7 +1,10 @@
 parserOptions:
   ecmaVersion: 2015
-  sourceType: "script"
+  sourceType: "module"
 rules:
   strict:
   - 2
   - global
+  no-await-in-loop: warn
+  no-console: warn
+  import/no-dynamic-require: warn

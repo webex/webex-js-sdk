@@ -1,15 +1,16 @@
 # spark-js-sdk
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/ciscospark/spark-js-sdk.svg)](https://greenkeeper.io/)
+
 [![npm](https://img.shields.io/npm/v/ciscospark.svg?maxAge=86400)](https://www.npmjs.com/package/ciscospark)
 [![license](https://img.shields.io/github/license/ciscospark/spark-js-sdk.svg)](https://github.com/ciscospark/spark-js-sdk/blob/master/LICENSE)
+[![Build status](https://ci.appveyor.com/api/projects/status/tb1i5vdhy5e3xsgv/branch/master?svg=true)](https://ci.appveyor.com/project/ianwremmel/spark-js-sdk/branch/master)
 
 > The Cisco Spark JavaScript SDK
 
 This is a monorepo containing all officially maintained Cisco Spark JavaScript SDK modules in the same repo.
 
 [ciscospark](/packages/node_modules/ciscospark) is a collection of node modules targeting our [external APIs](https://developers.ciscospark.com).
-
-## Table of Contents
 
 - [Install](#install)
 - [Usage](#usage)
@@ -73,13 +74,35 @@ If you need to load `ciscospark` via a script tag, you will need to build it fir
 ```bash
 npm install ciscospark
 npm install -g browserify
-echo "window.ciscospark = require(`ciscospark`)" > ./index.js
+echo "window.ciscospark = require('ciscospark')" > ./index.js
 browserify index.js > bundle.js
 ```
 
 In-browser usage is pretty much the same as Node.js usage, with the addition of handling
 the user authentication flow for you. See the guide on the
 [docs site](https://ciscospark.github.io/spark-js-sdk/guides/browsers/) for more information.
+
+## Samples
+
+Sample code can be found in [packages/node_modules/*](./packages/node_modules). You can run them yourself with the following commands:
+
+> Note: this installs all of the sdk's tooling dependencies, so you'll need libgcrypt and (possibly) graphicsmagick. On a mac, you can install these with `brew install graphicsmagick libgrcrypt`.
+
+```bash
+git clone git@github.com:ciscospark/spark-js-sdk.git
+cd spark-js-sdk
+npm install
+npm run serve:samples
+```
+
+You'll be able to load the samples by visiting `https://localhost:8000/packages/node_modules/samples/<PACKAGE NAME>`.
+
+### Available Samples
+
+- Implicit Grant Flow: [local app](`https://localhost:8000/packages/node_modules/samples/browser-auth-implicit`) | [code](./packages/node_modules/sample-browser-single-party-call)
+- Single Party Calling: [local app](`https://localhost:8000/packages/node_modules/samples/browser-single-party-call`) | [code](./packages/node_modules/samples/browser-single-party-call)
+- Single Party Calling with Mute: [local app](`https://localhost:8000/packages/node_modules/samples/browser-single-party-call-with-mute`) | [code](./packages/node_modules/samples/browser-single-party-call-with-mute)
+- Multi Party Calling: [local app](`https://localhost:8000/packages/node_modules/samples/browser-multi-party-call`) | [code](./packages/node_modules/sample-browser-multi-party-call)
 
 ## Contribute
 
@@ -88,6 +111,6 @@ and submitting pull requests for suggested changes.
 
 ## License
 
-&copy; 2016-2017 Cisco Systems, Inc. and/or its affiliates. All Rights Reserved.
+© 2016-2018 Cisco and/or its affiliates. All Rights Reserved.
 
 See [LICENSE](LICENSE) for details.

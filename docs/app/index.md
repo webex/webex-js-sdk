@@ -1,3 +1,3 @@
 # Example App
 
-Our new example app is coming soon! Stay tuned to S4D for details!
+Our Samples have moved! Check them out on the [Cisco Spark Developer Portal](https://developer.ciscospark.com/sdk-for-browsers.html#samples).

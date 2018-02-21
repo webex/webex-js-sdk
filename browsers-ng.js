@@ -38,15 +38,24 @@ module.exports = function(packageName, argv) {
         browserName: 'firefox',
         version: 'latest'
       },
-      // Safari has serious issues with sauce labs
-      // IE 10 fails because too many libraries use const
       sl_ie_11_win7: {
         base: 'SauceLabs',
         platform: 'Windows 7',
         browserName: 'internet explorer',
         version: '11'
+      },
+      sl_safari_latest_mac12: {
+        base: 'SauceLabs',
+        platform: 'macOS 10.12',
+        browserName: 'safari',
+        version: 'latest'
+      },
+      sl_edge_latest_win10: {
+        base: 'SauceLabs',
+        platform: 'Windows 10',
+        browserName: 'MicrosoftEdge',
+        version: 'latest'
       }
-      // TODO add edge
     }
 
     try {

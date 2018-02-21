@@ -1,5 +1,4 @@
 def IS_VALIDATED_MERGE_BUILD = false
-def HAS_LEGACY_CHANGES
 skipTests = false
 
 def warn = { msg ->
@@ -7,9 +6,9 @@ def warn = { msg ->
     currentBuild.description += ''
   }
   else if (currentBuild.description.substring(currentBuild.description.length() - 1) != '\n') {
-    currentBuild.description += '<br/>\n'
+    currentBuild.description += '<br />\n'
   }
-  currentBuild.description += "warning: ${msg}<br/>\n"
+  currentBuild.description += "warning: ${msg}<br />\n"
 }
 
 def cleanup = { ->
@@ -23,6 +22,15 @@ def cleanup = { ->
     // ignore; not sure if this'll throw if no reports have been generated
   }
   sh 'rm -f .env'
+
+  try {
+    if (fileExists('./reports/timings')) {
+      currentBuild.description += readFile('./reports/timings')
+    }
+  }
+  catch(err) {
+    warn('could not read timings file');
+  }
 
   if (IS_VALIDATED_MERGE_BUILD) {
     if (currentBuild.result != 'SUCCESS') {
@@ -65,6 +73,9 @@ def generateDockerEnv = { ->
   }
   if (env.ENABLE_VERBOSE_NETWORK_LOGGING != null) {
     dockerEnv+="ENABLE_VERBOSE_NETWORK_LOGGING=${env.ENABLE_VERBOSE_NETWORK_LOGGING}\n"
+  }
+  if (env.GIT_COMMIT != null) {
+    dockerEnv+="GIT_COMMIT=${env.GIT_COMMIT}\n"
   }
   if (env.HYDRA_SERVICE_URL != null) {
     dockerEnv+="HYDRA_SERVICE_URL=${env.HYDRA_SERVICE_URL}\n"
@@ -190,10 +201,10 @@ ansiColor('xterm') {
             if (IS_VALIDATED_MERGE_BUILD) {
               try {
                 pusher = sh script: 'git show  --quiet --format=%ae HEAD', returnStdout: true
-                currentBuild.description += "Validating push from ${pusher}"
+                currentBuild.description += "Validating push from ${pusher} <br />"
               }
               catch (err) {
-                currentBuild.description += 'Could not determine pusher';
+                currentBuild.description += 'Could not determine pusher <br />';
               }
 
               sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
@@ -208,16 +219,8 @@ ansiColor('xterm') {
 
               changedFiles = sh script: 'git diff --name-only upstream/master..$(git merge-base HEAD upstream/master)', returnStdout: true
               if (changedFiles.contains('Jenkinsfile')) {
-                currentBuild.description += "Jenkinsfile has been updated in master. Please rebase and push again."
+                currentBuild.description += "Jenkinsfile has been updated in master. Please rebase and push again. <br />"
                 error(currentBuild.description)
-              }
-
-              try {
-                sh 'git diff --name-only upstream/master | grep -v src/version.js | grep -e ^src'
-                HAS_LEGACY_CHANGES = true
-              }
-              catch (error) {
-                HAS_LEGACY_CHANGES = false
               }
 
               sh 'git checkout upstream/master'
@@ -225,7 +228,7 @@ ansiColor('xterm') {
                 sh "git merge --ff ${GIT_COMMIT}"
               }
               catch (err) {
-                currentBuild.description += 'not possible to fast forward'
+                currentBuild.description += 'not possible to fast forward <br />'
                 throw err;
               }
             }
@@ -257,9 +260,11 @@ ansiColor('xterm') {
 
           stage('install') {
             image.inside(DOCKER_RUN_OPTS) {
+              // Remove the old symlink that tends to screw up installing the
+              // new package
+              sh 'rm -f ./node_modules/@ciscospark/eslint-config'
               sh 'echo \'//registry.npmjs.org/:_authToken=${NPM_TOKEN}\' > $HOME/.npmrc'
               sh 'npm install'
-              sh 'npm run link-lint-rules'
             }
           }
 
@@ -287,7 +292,7 @@ ansiColor('xterm') {
               // giving up a little bit of per-package static analysis config by
               // running eslint once across all package.
               image.inside(DOCKER_RUN_OPTS) {
-                sh script: "npm run lint", returnStatus: true
+                sh script: "npm run lint:ci", returnStatus: true
                 if (!fileExists("./reports/style/eslint.xml")) {
                   error('Static Analysis did not produce eslint.xml')
                 }
@@ -308,13 +313,9 @@ ansiColor('xterm') {
             stage('build') {
               image.inside(DOCKER_RUN_OPTS) {
                 sh 'npm run build'
-                // Generate deps so that we can run dep:check. This is more of a
-                // sanity checkout confirming that generate works correctly than
-                // an actually necessary step
+                // Generate dependencies to confirm package.json contains all
+                // needed dependencies
                 sh 'npm run deps:generate'
-                // Reminder: deps:check has to come after build so that it can
-                // walk the tree in */dist
-                sh 'npm run deps:check'
                 // Now that we've confirmed deps:generate works, undo the
                 // generated deps. They'll be regenerated after we set new
                 // package versions.
@@ -323,10 +324,28 @@ ansiColor('xterm') {
             }
 
             stage('test') {
-              def lastLog = sh script: 'git log -n 1', returnStdout: true
-              if (lastLog.contains('[ci skip]')) {
-                skipTests = true
+              image.inside(DOCKER_RUN_OPTS) {
+                echo "checking if tests should be skipped"
+                def action = sh script: 'npm run --silent tooling -- check-testable', returnStdout: true
+
+                if (action.contains('skip')) {
+                  echo "tests should be skipped"
+                  skipTests = true
+                  warn('Bypassing tests according to commit message instruction (or no changes requiring testing)');
+                }
+                else {
+                  echo "tests should not be skipped"
+                }
               }
+
+              step([
+                $class: 'CopyArtifact',
+                excludes: '**/lcov.info',
+                filter: 'reports/coverage/**',
+                fingerprintArtifacts: true,
+                projectName: 'spark-js-sdk--validated-merge--pipeline2'
+              ])
+
               if (!skipTests) {
                 timeout(60) {
                   def exitCode = sh script: "./tooling/test.sh", returnStatus: true
@@ -357,10 +376,10 @@ ansiColor('xterm') {
                 if (coverageBuild.result != 'SUCCESS') {
                   currentBuild.result = coverageBuild.result
                   if (coverageBuild.result == 'UNSTABLE') {
-                    currentBuild.description += coverageBuild.description
+                    currentBuild.description += coverageBuild.description + '<br />'
                   }
                   else if (coverageBuild.result == 'FAILURE') {
-                    currentBuild.description += "Coverage job failed. See the logged build url for more details."
+                    currentBuild.description += "Coverage job failed. See the logged build url for more details. <br />"
                   }
                 }
               }
@@ -378,38 +397,6 @@ ansiColor('xterm') {
                   sh 'npm run build'
 
                   sh "npm run tooling -- version set ${version} --last-log"
-
-                  if (HAS_LEGACY_CHANGES) {
-                    try {
-                      sh 'mv .git/hooks/pre-commit .git/hooks/pre-commit.bak'
-                    }
-                    catch (error) {
-                      // this is fine
-                    }
-
-                    try {
-                      sh 'mv .git/hooks/commit-msg .git/hooks/commit-msg.bak'
-                    }
-                    catch (error) {
-                      // this is fine
-                    }
-
-                    sh 'npm run grunt -- release'
-
-                    try {
-                      sh 'mv .git/hooks/pre-commit.bak .git/hooks/pre-commit'
-                    }
-                    catch (error) {
-                      // this is fine
-                    }
-
-                    try {
-                      sh 'mv .git/hooks/commit-msg.bak .git/hooks/commit-msg'
-                    }
-                    catch (error) {
-                      // this is fine
-                    }
-                  }
 
                   sh 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
 
@@ -438,7 +425,7 @@ ansiColor('xterm') {
                   noPushCount = sh script: 'git log upstream/master.. | grep -c "#no-push"', returnStdout: true
                   if (noPushCount != '0') {
                     currentBuild.result = 'ABORTED'
-                    currentBuild.description += 'Aborted: git history includes #no-push'
+                    currentBuild.description += 'Aborted: git history includes #no-push <br />'
                   }
                 }
                 catch (err) {
@@ -540,18 +527,6 @@ ansiColor('xterm') {
                 // if (!exitStatus) {
                 //   warn('failed to push to github enterprise')
                 // }
-              }
-
-              stage('publish to artifactory') {
-                if (HAS_LEGACY_CHANGES) {
-                  // using a downstream job because (a) we're going to stop
-                  // publishing to artifactory once the legacy sdk goes away and
-                  // (b) the npm secret is only recorded in that job.
-                  def artifactoryBuild = build job: 'spark-js-sdk--publish-to-artifactory', propagate: false
-                  if (artifactoryBuild.result != 'SUCCESS') {
-                    currentBuild.description += 'waring: failed to publish to Artifactory'
-                  }
-                }
               }
             }
           }

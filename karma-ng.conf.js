@@ -1,12 +1,13 @@
 /* eslint-disable func-names */
 /* eslint-disable global-require */
 /* eslint-disable require-jsdoc */
+/* eslint-disable import/no-dynamic-require */
 
 // eslint-disable-next-line strict
-'use strict';
 
-const path = require(`path`);
-const makeBrowsers = require(`./browsers-ng`);
+
+const path = require('path');
+const makeBrowsers = require('./browsers-ng');
 /* eslint-disable global-require */
 
 module.exports = function configureKarma(config) {
@@ -18,15 +19,15 @@ function makeConfig(packageName, argv) {
   const pkg = require(`./packages/node_modules/${packageName}/package`);
   /* eslint complexity: [0] */
   const launchers = makeBrowsers(packageName, argv);
-  const integrationTestPath = path.join(`packages`, `node_modules`, packageName, `test`, `integration`, `spec`, `**`, `*.js`);
-  const unitTestPath = path.join(`packages`, `node_modules`, packageName, `test`, `unit`, `spec`, `**`, `*.js`);
+  const integrationTestPath = path.join('packages', 'node_modules', packageName, 'test', 'integration', 'spec', '**', '*.js');
+  const unitTestPath = path.join('packages', 'node_modules', packageName, 'test', 'unit', 'spec', '**', '*.js');
 
   const preprocessors = {
-    'packages/**': [`browserify`]
+    'packages/**': ['browserify']
   };
 
   const files = [
-    `node_modules/babel-polyfill/dist/polyfill.js`
+    'node_modules/babel-polyfill/dist/polyfill.js'
   ];
 
   if (!argv || argv.unit) {
@@ -37,11 +38,15 @@ function makeConfig(packageName, argv) {
   }
 
   let cfg = {
-    basePath: `.`,
+    basePath: '.',
 
-    browserDisconnectTimeout: 10000,
+    browserDisconnectTimeout: 20000,
 
-    browserDisconnectTolerance: 3,
+    // Allow the browser to disconnect up to 5 times. Something about
+    // plugin-phone and Firefox causes the suite to hang regularly. Restarting
+    // the browser seems to fix it, so we need to allow a largish number of
+    // restarts.
+    browserDisconnectTolerance: 5,
 
     browsers: Object.keys(launchers),
 
@@ -49,12 +54,19 @@ function makeConfig(packageName, argv) {
       debug: true,
       watch: argv && argv.karmaDebug,
       transform: [
-        `babelify`,
-        `envify`
+        'babelify',
+        'envify'
       ]
     },
 
-    browserNoActivityTimeout: 240000,
+    browserConsoleLogOptions: {
+      terminal: !(process.env.JENKINS || process.env.CI)
+    },
+
+    // Restart the browser if it stops sending output for a minutes. This goes
+    // hand-in-hand with the high disconnect tolerance to deal with Firefox
+    // hanging on the plugin-phone suite.
+    browserNoActivityTimeout: 1 * 60 * 1000,
 
     // Inspired by Angular's karma config as recommended by Sauce Labs
     captureTimeout: 0,
@@ -68,14 +80,15 @@ function makeConfig(packageName, argv) {
     files,
 
     frameworks: [
-      `browserify`,
-      `mocha`
+      'browserify',
+      'mocha'
     ],
 
-    hostname: `127.0.0.1`,
+    hostname: 'localhost',
 
     client: {
       mocha: {
+        bail: argv.bail,
         // TODO figure out how to report retries
         retries: process.env.JENKINS || process.env.CI ? 1 : 0,
         timeout: 30000,
@@ -93,12 +106,12 @@ function makeConfig(packageName, argv) {
     preprocessors,
 
     proxies: {
-      '/fixtures/': `http://127.0.0.1:${process.env.FIXTURE_PORT}/`,
-      '/upload': `http://127.0.0.1:${process.env.FIXTURE_PORT}/upload`
+      '/fixtures/': `http://localhost:${process.env.FIXTURE_PORT}/`,
+      '/upload': `http://localhost:${process.env.FIXTURE_PORT}/upload`
     },
 
     reporters: [
-      `mocha`
+      'mocha'
     ],
 
     singleRun: !(argv && argv.karmaDebug),
@@ -109,18 +122,18 @@ function makeConfig(packageName, argv) {
     recordScreenshots: true
   };
 
-  if (process.env.COVERAGE && process.env.COVERAGE !== `undefined`) {
+  if (process.env.COVERAGE && process.env.COVERAGE !== 'undefined') {
     cfg.coverageReporter = {
-      instrumenters: {isparta: require(`isparta`)},
+      instrumenters: {isparta: require('isparta')},
       instrumenter: {
-        '**/*.js': `isparta`
+        '**/*.js': 'isparta'
       },
       // includeAllSources: true,
       // instrumenterOptions: {
       //   coverageVariable: makeCoverageVariable(packageName)
       // },
       reporters: [{
-        type: `json`,
+        type: 'json',
         dir: `reports/coverage/intermediate/${packageName}`
       }]
     };
@@ -130,7 +143,7 @@ function makeConfig(packageName, argv) {
     //   defaultIgnore: false
     // }]);
 
-    cfg.reporters.push(`coverage`);
+    cfg.reporters.push('coverage');
   }
 
   if (process.env.SC_TUNNEL_IDENTIFIER) {
@@ -142,20 +155,20 @@ function makeConfig(packageName, argv) {
       recordScreenshots: true,
       recordVideo: true
     };
-    cfg.reporters.push(`saucelabs`);
+    cfg.reporters.push('saucelabs');
   }
 
   if (argv && argv.xunit) {
     cfg.junitReporter = {
       outputFile: `${packageName}.xml`,
-      outputDir: `reports/junit/karma`,
+      outputDir: 'reports/junit/karma',
       suite: packageName,
       useBrowserName: true,
       recordScreenshots: true,
       recordVideo: true
     };
 
-    cfg.reporters.push(`junit`);
+    cfg.reporters.push('junit');
   }
 
   try {

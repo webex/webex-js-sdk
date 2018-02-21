@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <title>Authentication - Implicit Grant Flow</title>
+  <body>
+    <h1>Implicit Grant Flow Authentication</h1>
+    <p>This sample demonstrates authenticating users in the browser with the Implicit Grant Flow</p>
+
+    <form id="authorization">
+      <input id="authenticate-button" title="authenticate" type="submit" value="authenticate">
+      <label for="authenticate"> &lt-- click here to authenticate</label>
+    </form>
+
+    <form id="logout">
+      <input id="logout-button" title="logout" type="submit" value="logout">
+      <label for="logout"> &lt-- click here to logout</label>
+    </form>
+
+    <div style="width: 30vw; display: flex; flex-direction: row; justify-content: space-between">
+      <h3>Authentication Status: </h3>
+      <h3 style="color:red" id="authentication-status">Not Authenticated</h3>
+    </div>
+
+    <!-- /bundle.js is the bundled CiscoSpark JavaScript SDK -->
+    <script src="/bundle.js"></script>
+    <!-- app.js is your application code -->
+    <script src="app.js"></script>
+  </body>
+</html>
