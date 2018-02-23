@@ -233,28 +233,6 @@
   "optionalDependencies": {
     "@ciscospark/test-users-legacy": "^1.0.2"
   },
-  "browser": {
-    "mmmagic": false,
-    "crypto": false,
-    "gm": false,
-    "underscore": "lodash",
-    "./src/client/client/client.js": "./src/client/client/client.shim.js",
-    "./src/client/client/processors/request/request.js": "./src/client/client/processors/request/request.shim.js",
-    "./src/client/credentials/credentials.js": "./src/client/credentials/credentials.shim.js",
-    "./src/client/mercury/socket/socket.js": "./src/client/mercury/socket/socket.shim.js",
-    "./src/client/services/conversation/share-activity/share-activity.js": "./src/client/services/conversation/share-activity/share-activity.shim.js",
-    "./src/client/services/conversation/file-cache/collection/collection.js": "./src/client/services/conversation/file-cache/collection/collection.shim.js",
-    "./src/client/services/conversation/file-cache/model/model.js": "./src/client/services/conversation/file-cache/model/model.shim.js",
-    "./src/client/services/encryption/encryption/encryption.js": "./src/client/services/encryption/encryption/encryption.shim.js",
-    "./src/util/html/html.js": "./src/util/html/html.shim.js",
-    "./src/lib/image/image.js": "./src/lib/image/image.shim.js",
-    "./src/test/test.js": "./src/test/test.shim.js"
-  },
-  "browserify": {
-    "transform": [
-      "envify"
-    ]
-  },
   "publishConfig": {
     "registry": "http://engci-maven-master.cisco.com/artifactory/api/npm/webex-release-npm"
   },
