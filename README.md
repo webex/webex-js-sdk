@@ -27,6 +27,26 @@ To install the latest stable version from NPM:
 npm install --save ciscospark
 ```
 
+### Linking
+
+To link your project against the various sdk modules (mostly for local development), run the following commands (using the same version of nodejs and npm in all cases).
+
+Run this in the SDK
+
+```bash
+npm install
+npm run build
+npm run tooling -- exec -- npm link
+```
+
+Run this in the web client
+
+```bash
+npm install
+rm -rf ./node_modules/@ciscospark ./node_modules/ciscospark
+npm ls -g --depth 0 --parseable | awk -F"node_modules/" '{ print $2 }' | sort | uniq | grep ciscospark | xargs -n 1 npm link
+```
+
 ## Usage
 
 To use the SDK, you will need Cisco Spark credentials. If you do not already have a Cisco Spark account, visit
