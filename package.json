@@ -1,10 +1,10 @@
 {
   "name": "spark-js-sdk",
-  "version": "0.5.349",
+  "version": "0.0.0-monorepo",
   "description": "JavaScript sdk for interacting with the Spark API",
-  "homepage": "http://sqbu-github.cisco.com/WebExSquared/squared-js-sdk",
+  "homepage": "https://ciscospark.github.io/spark-js-sdk",
   "bugs": {
-    "url": "http://sqbu-github.cisco.com/WebExSquared/squared-js-sdk/issues"
+    "url": "https://github.com/ciscospark/spark-js-sdk/issues"
   },
   "author": {
     "name": "Ian W. Remmel",
@@ -44,7 +44,7 @@
   "main": "src/index.js",
   "repository": {
     "type": "git",
-    "url": "http://sqbu-github.cisco.com:WebExSquared/squared-js-sdk.git"
+    "url": "https://github.com/ciscospark/spark-js-sdk.git"
   },
   "scripts": {
     "precommit": "npm run --silent lint:staged",
@@ -54,7 +54,7 @@
     "prebuild": "npm run clean",
     "build": "babel-node ./tooling/index.js build",
     "prebuild:docs": "rimraf ./docs/api",
-    "build:docs": "documentation build --config documentation/config.yml --np --project-name ciscospark --project-version 1.x --format html --output ./docs/api --github ./packages/node_modules/ciscospark/src/index.js ./packages/node_modules/@ciscospark/plugin-*/src/index.js",
+    "build:docs": "documentation build --config documentation/config.yml --np --project-name ciscospark --project-version 1.x --format html --output ./docs/api --github ./packages/node_modules/ciscospark/src/index.js ./packages/node_modules/@ciscospark/plugin-*/src/index.js && node ./tooling/docs.js",
     "check-karma-output": "./scripts/analyze-output.sh",
     "build:package": "echo 'deprecated; just use \"npm run --silent build\"'./tooling/build.js",
     "lint": "npm run --silent lint:js && npm run --silent lint:jenkinsfile && npm run --silent lint:package-names",
@@ -166,6 +166,7 @@
     "is-function": "^1.0.1",
     "isparta": "^4.0.0",
     "istanbul": "^0.4.4",
+    "js-yaml": "^3.10.0",
     "jsonwebtoken": "^8.0.1",
     "karma": "^2.0.0",
     "karma-browserify": "^5.1.3",
