@@ -38,15 +38,16 @@ function compare([l, ...left], [r, ...right]) {
 
 /**
  * Determines the latest published package version for the repo
+ * @param {bool} [includeSamples = false]
  * @returns {Promise<string>}
  */
-exports.last = async function last() {
+exports.last = async function last(includeSamples = false) {
   const packages = Array.from(await list());
   const version = _(
     await Promise.all(packages
       // TODO stop omitting eslint config once it's fully removed from the repo
       .filter((p) => p !== '@ciscospark/eslint-config')
-      .map(getDistTag))
+      .map((v) => getDistTag({packageName: v, includeSamples})))
   )
     .filter()
     .map((v) => v.split('.').map((n) => parseInt(n, 10)))
@@ -66,14 +67,14 @@ exports.last = async function last() {
  * Determines the next appropriate version to publish
  * @returns {Promise<string>}
  */
-exports.next = async function next({always}) {
+exports.next = async function next({always, includeSamples}) {
   const version = await checkLastCommit();
   if (version) {
     debug(`found ${version} in last commit message`);
     return version.replace('v', '');
   }
 
-  const currentVersion = (await exports.last()).replace('v', '');
+  const currentVersion = (await exports.last(includeSamples)).replace('v', '');
   debug(`current versoin is ${currentVersion}`);
 
   if (await hasBreakingChange()) {
