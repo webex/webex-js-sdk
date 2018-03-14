@@ -13,10 +13,15 @@ module.exports = {
       default: false,
       description: 'always increment patch version even of no changes detected',
       type: 'boolean'
+    },
+    includeSamples: {
+      default: false,
+      description: 'include the samples project for version calcuation',
+      type: 'boolean'
     }
   },
-  handler: wrapHandler(async ({always}) => {
+  handler: wrapHandler(async ({always, includeSamples}) => {
     // eslint-disable-next-line callback-return
-    console.log(await next({always}));
+    console.log(await next({always, includeSamples}));
   })
 };

@@ -8,11 +8,13 @@ const {exec} = require('./async');
 
 /**
  * Returns the dist-tag for the specified package
- * @param {string} packageName
+ * @param {object} options
+ * @param {string} options.packageName
+ * @param {bool} [options.includeSamples = false]
  * @private
  * @returns {Promise<string>}
  */
-exports.getDistTag = async function getDistTag(packageName) {
+exports.getDistTag = async function getDistTag({packageName, includeSamples = false}) {
   let pkg;
   try {
     pkg = await read(packageName);
@@ -47,6 +49,9 @@ exports.getDistTag = async function getDistTag(packageName) {
     catch (err) {
       debug('Something went wrong, but we had to use --silent, so it\'s hard to tell what', err);
     }
+  }
+  else if (includeSamples && packageName === 'samples') {
+    return pkg.version;
   }
   return undefined;
 };
