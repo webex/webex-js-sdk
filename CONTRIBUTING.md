@@ -74,6 +74,8 @@ Build the SDK:
 npm run build
 ```
 
+*Build issues?* See [BUILD-ISSUES.md](./BUILD-ISSUES.md) for help.
+
 ### Running Tests
 
 `npm test` is the entrypoint to our test runner, but its not practical to use without parameters; the full suite would take over two hours to run and cross talk would probably cause tests to break each other.
