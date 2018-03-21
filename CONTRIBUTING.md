@@ -40,9 +40,10 @@ Please provide sufficient logging around the issue which you are reporting as th
 
 Before you can build the Cisco Webex JS SDK, you will need the following dependencies:
 
-- [Node.js](https://nodejs.org/) 6.x (LTS)
+- [Node.js](https://nodejs.org/) (LTS)
   - We recommend using [nvm](https://github.com/creationix/nvm) (or [nvm-windows](https://github.com/coreybutler/nvm-windows))
     to easily switch between Node.js versions
+  - Install the latest Node.js Long Term Support using `nvm install --lts`
 - [Git](https://git-scm.com/)
 
 You will need to create a file called `.env` that defines, at a minimum:
@@ -78,6 +79,19 @@ npm run build
 
 ### Running Tests
 
+#### SauceLabs
+
+The SDK uses [SauceLabs](https://saucelabs.com/) to run its tests. Sign in to retrieve your *USERNAME* and *ACCESS KEY* from [User Settings](https://saucelabs.com/beta/user-settings) and add them to your `.env` file: 
+
+- `SAUCE_USERNAME`
+- `SAUCE_ACCESS_KEY`
+
+Start the SauceLabs tunnel: 
+
+```bash
+npm run sauce:start
+```
+
 `npm test` is the entrypoint to our test runner, but its not practical to use without parameters; the full suite would take over two hours to run and cross talk would probably cause tests to break each other.
 
 > Get the full test-runner docs via `npm test -- --help`.
@@ -100,6 +114,12 @@ A local development flow might look like
 You can use the `--unit`, `--integration`, `--automation`, and `--documentation` switches to control what types of tests you run and `--node` and `--browser` to control which environments your tests run in.
 
 `--browser --karma-debug` will run the browser tests with `{singleRun: false}`, thus allowing automatic rerunning everytime you save a file (though, karma does eventually get confused and you need to interrupt and restart the command).
+
+Stop the SauceLabs tunnel: 
+
+```bash
+npm run sauce:stop
+```
 
 > See [SCRIPTS.md](SCRIPTS.md) for more details on scripts in the repository.
 
