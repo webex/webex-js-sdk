@@ -177,7 +177,7 @@
     "karma-mocha-reporter": "^2.0.4",
     "karma-safari-launcher": "^1.0.0",
     "karma-sauce-launcher": "^1.0.0",
-    "lint-staged": "^6.1.0",
+    "lint-staged": "^7.0.1",
     "load-grunt-tasks": "^3.5.0",
     "localforage": "^1.4.3",
     "lodash": "^4.17.4",
