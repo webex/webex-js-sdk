@@ -207,7 +207,7 @@ ansiColor('xterm') {
                 currentBuild.description += 'Could not determine pusher <br />';
               }
 
-              sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+              sshagent(['707208aa-a797-4ee4-990d-7f61479b35b5']) {
                 // return the exit code because we don't care about failures
                 sh script: 'git remote add upstream git@github.com:ciscospark/spark-js-sdk.git', returnStatus: true
                 // Make sure local tags don't include failed releases
@@ -439,7 +439,7 @@ ansiColor('xterm') {
             if (IS_VALIDATED_MERGE_BUILD && currentBuild.result == 'SUCCESS') {
               stage('publish to github') {
                 // Note: if this stage fails, we should consider the build a failure
-                sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+                sshagent(['707208aa-a797-4ee4-990d-7f61479b35b5']) {
                   sh "git push upstream HEAD:master"
                 }
               }
@@ -475,7 +475,7 @@ ansiColor('xterm') {
                     warn('could not determine tag name to push to github.com')
                   }
                   else {
-                    sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+                    sshagent(['707208aa-a797-4ee4-990d-7f61479b35b5']) {
                       try {
                         sh "git push upstream v${version}:v${version}"
                       }
@@ -501,7 +501,7 @@ ansiColor('xterm') {
                     sh 'npm run publish:docs'
                   }
                   dir('.grunt/grunt-gh-pages/gh-pages/ghc') {
-                    sshagent(['30363169-a608-4f9b-8ecc-58b7fb87181b']) {
+                    sshagent(['707208aa-a797-4ee4-990d-7f61479b35b5']) {
                       try {
                         sh 'git remote add upstream git@github.com:ciscospark/spark-js-sdk.git'
                       }
