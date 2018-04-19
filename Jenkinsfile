@@ -209,7 +209,7 @@ ansiColor('xterm') {
 
               sshagent(['707208aa-a797-4ee4-990d-7f61479b35b5']) {
                 // return the exit code because we don't care about failures
-                sh script: 'git remote add upstream git@github.com:ciscospark/spark-js-sdk.git', returnStatus: true
+                sh script: 'git remote add upstream git@github.com:webex/spark-js-sdk.git', returnStatus: true
                 // Make sure local tags don't include failed releases
                 sh 'git tag | xargs git tag -d'
                 sh 'git gc'
@@ -503,7 +503,7 @@ ansiColor('xterm') {
                   dir('.grunt/grunt-gh-pages/gh-pages/ghc') {
                     sshagent(['707208aa-a797-4ee4-990d-7f61479b35b5']) {
                       try {
-                        sh 'git remote add upstream git@github.com:ciscospark/spark-js-sdk.git'
+                        sh 'git remote add upstream git@github.com:webex/spark-js-sdk.git'
                       }
                       catch(err) {
                         // ignore; this happens when the node exist
