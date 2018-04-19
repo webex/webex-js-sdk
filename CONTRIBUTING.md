@@ -16,7 +16,7 @@
 
 The title of a Bug or Enhancement should clearly indicate what is broken or desired. Use the description to
 explain possible solutions or add details and (especially for Enhancemnts) explain *how* or *why* the issue is
-broken or desired. Please see [ISSUE_TEMPLATE.md](https://github.com/ciscospark/spark-js-sdk/blob/master/.github/ISSUE_TEMPLATE.MD) that outlines what we are looking for.
+broken or desired. Please see [ISSUE_TEMPLATE.md](https://github.com/webex/spark-js-sdk/blob/master/.github/ISSUE_TEMPLATE.MD) that outlines what we are looking for.
 
 **If providing snippets of code**, use [Markdown code blocks](https://help.github.com/articles/markdown-basics/#multiple-lines).
 
@@ -56,7 +56,7 @@ You can get these values by registering a new integration on the [Spark for Deve
 
 ### Building the SDK
 
-Fork the [spark-js-sdk](https://github.com/ciscospark/spark-js-sdk/) repository and `git clone` your fork:
+Fork the [spark-js-sdk](https://github.com/webex/spark-js-sdk/) repository and `git clone` your fork:
 
 ```bash
 git clone https://github.com/your-username/spark-js-sdk.git
@@ -92,8 +92,8 @@ A local development flow might look like
 1. At the start of development, run `npm run distsrc` once.
 2. Edit source code in `MYPACKAGE`.
 3. Use `npm test -- --package MYPACKAGE --node` to run the tests for just that package only in nodejs.
-4. Repeat steps 2-3 until the tests pass. 
-5. Run `npm run srcdist` to restore the package.jsons to avoid committing those changes. 
+4. Repeat steps 2-3 until the tests pass.
+5. Run `npm run srcdist` to restore the package.jsons to avoid committing those changes.
 
 You can use the `--unit`, `--integration`, `--automation`, and `--documentation` switches to control what types of tests you run and `--node` and `--browser` to control which environments your tests run in.
 
@@ -185,7 +185,7 @@ Do not run tests for this build.
 
 ### Submitting a Pull Request
 
-Prior to developing a new feature, be sure to search the [Pull Requests](https://github.com/ciscospark/spark-js-sdk/pulls) for your idea to ensure you're not creating a duplicate change. Then, create a development branch in your forked repository for your idea and start coding!
+Prior to developing a new feature, be sure to search the [Pull Requests](https://github.com/webex/spark-js-sdk/pulls) for your idea to ensure you're not creating a duplicate change. Then, create a development branch in your forked repository for your idea and start coding!
 
 When you're ready to submit your change, first check that new commits haven't been made in the upstream's `master` branch. If there are new commits, rebase your development branch to ensure a fast-forward merge when your Pull Request is approved:
 
@@ -200,7 +200,7 @@ git checkout feature
 git rebase master
 ```
 
-Finally, open a [new Pull Request](https://github.com/ciscospark/spark-js-sdk/compare) with your changes. Be sure to mention the issues this request addresses in the body of the request. Once your request is opened, a developer will review, comment, and, when approved, merge your changes!
+Finally, open a [new Pull Request](https://github.com/webex/spark-js-sdk/compare) with your changes. Be sure to mention the issues this request addresses in the body of the request. Once your request is opened, a developer will review, comment, and, when approved, merge your changes!
 
 ## Updating the Documentation
 

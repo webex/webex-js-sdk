@@ -65,7 +65,7 @@ ciscospark.once(`ready`, () => {
 
 #### Bundling
 
-You'll need to bundle the SDK to use it in a web browser. Right now, we do all our SDK testing with [Browserify](http://browserify.org/), but our [Cisco Spark Widgets](https://github.com/ciscospark/react-ciscospark) use [webpack](https://webpack.github.io/).
+You'll need to bundle the SDK to use it in a web browser. Right now, we do all our SDK testing with [Browserify](http://browserify.org/), but our [Cisco Spark Widgets](https://github.com/webex/react-ciscospark) use [webpack](https://webpack.github.io/).
 
 The following snippet is the bare minimum to get our code into a form suitable for a web browser. You'll probably want to additionally pipe it through a minifier like [UglifyJS](https://github.com/mishoo/UglifyJS2) before going to production.
 
