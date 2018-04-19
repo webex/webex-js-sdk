@@ -2,13 +2,9 @@
   "name": "spark-js-sdk",
   "version": "0.5.349",
   "description": "JavaScript sdk for interacting with the Spark API",
-  "homepage": "http://sqbu-github.cisco.com/WebExSquared/squared-js-sdk",
+  "homepage": "https://github.com/webex/spark-js-sdk",
   "bugs": {
-    "url": "http://sqbu-github.cisco.com/WebExSquared/squared-js-sdk/issues"
-  },
-  "author": {
-    "name": "Ian W. Remmel",
-    "email": "iremmel@cisco.com"
+    "url": "https://github.com/webex/spark-js-sdk/issues"
   },
   "license": "MIT",
   "contributors": [
@@ -44,7 +40,7 @@
   "main": "src/index.js",
   "repository": {
     "type": "git",
-    "url": "http://sqbu-github.cisco.com:WebExSquared/squared-js-sdk.git"
+    "url": "https://github.com/webex/spark-js-sdk"
   },
   "scripts": {
     "precommit": "npm run --silent lint:staged",
