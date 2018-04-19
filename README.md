@@ -3,7 +3,7 @@
 [![Greenkeeper badge](https://badges.greenkeeper.io/ciscospark/spark-js-sdk.svg)](https://greenkeeper.io/)
 
 [![npm](https://img.shields.io/npm/v/ciscospark.svg?maxAge=86400)](https://www.npmjs.com/package/ciscospark)
-[![license](https://img.shields.io/github/license/ciscospark/spark-js-sdk.svg)](https://github.com/ciscospark/spark-js-sdk/blob/master/LICENSE)
+[![license](https://img.shields.io/github/license/ciscospark/spark-js-sdk.svg)](https://github.com/webex/spark-js-sdk/blob/master/LICENSE)
 [![Build status](https://ci.appveyor.com/api/projects/status/tb1i5vdhy5e3xsgv/branch/master?svg=true)](https://ci.appveyor.com/project/ianwremmel/spark-js-sdk/branch/master)
 
 > The Cisco Spark JavaScript SDK
@@ -90,7 +90,7 @@ Sample code can be found in [packages/node_modules/samples](./packages/node_modu
 > Note: this installs all of the SDK's tooling dependencies, so you'll need `libgcrypt` and (possibly) `graphicsmagick`. On a mac, you can install these with `brew install graphicsmagick libgrcrypt`.
 
 ```bash
-git clone git@github.com:ciscospark/spark-js-sdk.git
+git clone git@github.com:webex/spark-js-sdk.git
 cd spark-js-sdk
 npm install
 npm run samples:serve
