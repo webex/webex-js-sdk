@@ -33,7 +33,7 @@ npm install --save ciscospark
 To use the SDK, you will need Cisco Spark credentials. If you do not already have a Cisco Spark account, visit
 [Spark for Developers](https://developer.ciscospark.com/) to create your account and retrieve your access token.
 
-See [the detailed docs](https://ciscospark.github.io/spark-js-sdk/) for more usage examples.
+See [the detailed docs](https://webex.github.io/spark-js-sdk/) for more usage examples.
 
 ### Node.js
 
@@ -81,7 +81,7 @@ browserify index.js > bundle.js
 
 In-browser usage is pretty much the same as Node.js usage, with the addition of handling
 the user authentication flow for you. See the guide on the
-[docs site](https://ciscospark.github.io/spark-js-sdk/guides/browsers/) for more information.
+[docs site](https://webex.github.io/spark-js-sdk/guides/browsers/) for more information.
 
 ## Samples
 
