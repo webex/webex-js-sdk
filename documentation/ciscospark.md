@@ -1,6 +1,6 @@
 # ciscospark
 
-> The Cisco Webex JavaScript SDK
+> The Cisco Webex JS SDK
 
 ## Install
 

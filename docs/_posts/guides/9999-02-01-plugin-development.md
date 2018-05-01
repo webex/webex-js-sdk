@@ -2,7 +2,7 @@
 layout:      guide
 title:       "Plugin Development"
 categories:  guides
-description: "Adding new plugins to the Cisco Webex JavaScript SDK"
+description: "Adding new plugins to the Cisco Webex JS SDK"
 redirect_from:
   - /example/plugin-development/
 ---

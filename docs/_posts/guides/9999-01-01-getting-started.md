@@ -2,7 +2,7 @@
 layout:      guide
 title:       "Getting Started"
 categories:  guides
-description: "Getting Started with the Cisco Webex JavaScript SDK"
+description: "Getting Started with the Cisco Webex JS SDK"
 redirect_from:
   - /example/getting-started/
 ---
