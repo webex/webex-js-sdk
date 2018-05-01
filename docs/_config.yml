@@ -9,7 +9,7 @@
 title: Cisco Webex JS SDK
 baseurl: "/spark-js-sdk"
 permalink: /:categories/:title/
-url: "https://ciscospark.github.io"
+url: "https://webex.github.io/"
 
 # Set future: true to print posts with future dates. Basically, this is a hack
 # to use fake post dates to control order of examples
