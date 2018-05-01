@@ -6,7 +6,9 @@
 [![license](https://img.shields.io/github/license/ciscospark/spark-js-sdk.svg)](https://github.com/webex/spark-js-sdk/blob/master/LICENSE)
 [![Build status](https://ci.appveyor.com/api/projects/status/tb1i5vdhy5e3xsgv/branch/master?svg=true)](https://ci.appveyor.com/project/ianwremmel/spark-js-sdk/branch/master)
 
-> The Cisco Webex JavaScript SDK
+# The Cisco Webex JavaScript SDK
+
+> Cisco Spark is now Webex Teams! You will notice changes to our documentation and packages as we update over the next several weeks. [Read why this is more than just a rebrand.](https://developer.webex.com/blog/blog-details-9738.html)
 
 This is a monorepo containing all officially maintained Cisco Webex JavaScript SDK modules in the same repo.
 
