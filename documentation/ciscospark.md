@@ -22,7 +22,7 @@ npm install --save ciscospark
 
 This is the quickest way to get up and running with our JavaScript SDK. Simply set the environment variable `CISCOSPARK_ACCESS_TOKEN` to your access token and add the following line at the top of your JavaScript file to get a ready-to-use instance.
 
-> You can get your `CISCOSPARK_ACCESS_TOKEN` from the [Cisco Spark for Developers portal](https://developer.ciscospark.com).
+> You can get your `CISCOSPARK_ACCESS_TOKEN` from the [Cisco Webex for Developers portal](https://developer.ciscospark.com).
 
 ```js
 const ciscospark = require(`ciscospark/env`);

@@ -52,7 +52,7 @@ You will need to create a file called `.env` that defines, at a minimum:
 - `CISCOSPARK_REDIRECT_URI`
 - `CISCOSPARK_SCOPE`
 
-You can get these values by registering a new integration on the [Spark for Developers](https://developer.webex.com/add-integration.html) portal.
+You can get these values by registering a new integration on the [Cisco Webex for Developers](https://developer.webex.com/add-integration.html) portal.
 
 ### Building the SDK
 

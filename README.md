@@ -31,7 +31,7 @@ npm install --save ciscospark
 ## Usage
 
 To use the SDK, you will need Cisco Spark credentials. If you do not already have a Cisco Spark account, visit
-[Spark for Developers](https://developer.webex.com/) to create your account and retrieve your access token.
+[Cisco Webex for Developers](https://developer.webex.com/) to create your account and retrieve your access token.
 
 See [the detailed docs](https://webex.github.io/spark-js-sdk/) for more usage examples.
 
