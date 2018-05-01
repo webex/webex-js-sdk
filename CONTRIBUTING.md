@@ -38,7 +38,7 @@ Please provide sufficient logging around the issue which you are reporting as th
 
 ### Build Dependencies
 
-Before you can build the Cisco Spark JS SDK, you will need the following dependencies:
+Before you can build the Cisco Webex JS SDK, you will need the following dependencies:
 
 - [Node.js](https://nodejs.org/) 6.x (LTS)
   - We recommend using [nvm](https://github.com/creationix/nvm) (or [nvm-windows](https://github.com/coreybutler/nvm-windows))
