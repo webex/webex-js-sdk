@@ -15,7 +15,7 @@ toc:
   - StatsFilter
   - name: Resources
     description: |
-      These are the resources provided by CiscoSpark instances for interacting with our [developer API](https://developer.ciscospark.com/getting-started.html)
+      These are the resources provided by CiscoSpark instances for interacting with our [developer API](https://developer.webex.com/getting-started.html)
   - Memberships
   - Messages
   - People

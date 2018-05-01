@@ -38,7 +38,7 @@ npm install --save ciscospark
 
 ## Basic usage
 
-So, you want to send a message. First, you need an access token. For demonstration purposes, we'll use environment variables to authorize the SDK. You can get an access token from the [Cisco Spark Developer Portal](https://developer.ciscospark.com/).
+So, you want to send a message. First, you need an access token. For demonstration purposes, we'll use environment variables to authorize the SDK. You can get an access token from the [Cisco Spark Developer Portal](https://developer.webex.com/).
 
 Create a new file in your project directory named `index.js` and add the following to it:
 
