@@ -1,6 +1,6 @@
 # Scripts
 
-The following npm scripts are the main entrypoints for building and testing the Cisco Spark JavaScript SDK.
+The following npm scripts are the main entrypoints for building and testing the Cisco Webex JavaScript SDK.
 
 ## build
 

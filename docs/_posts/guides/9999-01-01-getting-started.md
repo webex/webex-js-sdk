@@ -2,7 +2,7 @@
 layout:      guide
 title:       "Getting Started"
 categories:  guides
-description: "Getting Started with the Cisco Spark JavaScript SDK"
+description: "Getting Started with the Cisco Webex JavaScript SDK"
 redirect_from:
   - /example/getting-started/
 ---
@@ -54,7 +54,7 @@ spark.rooms.create({
   });
 ```
 
-Now, open the [Cisco Spark Web Client](https://web.ciscospark.com) so you see your code in action. Then, back in your terminal, run the following command.
+Now, open the [Cisco Webex Teams Client](https://web.ciscospark.com) so you see your code in action. Then, back in your terminal, run the following command.
 
 ```bash
 CISCOSPARK_ACCESS_TOKEN=<YOUR TOKEN FROM THE PORTAL> node index.js

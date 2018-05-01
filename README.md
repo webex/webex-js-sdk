@@ -6,9 +6,9 @@
 [![license](https://img.shields.io/github/license/ciscospark/spark-js-sdk.svg)](https://github.com/webex/spark-js-sdk/blob/master/LICENSE)
 [![Build status](https://ci.appveyor.com/api/projects/status/tb1i5vdhy5e3xsgv/branch/master?svg=true)](https://ci.appveyor.com/project/ianwremmel/spark-js-sdk/branch/master)
 
-> The Cisco Spark JavaScript SDK
+> The Cisco Webex JavaScript SDK
 
-This is a monorepo containing all officially maintained Cisco Spark JavaScript SDK modules in the same repo.
+This is a monorepo containing all officially maintained Cisco Webex JavaScript SDK modules in the same repo.
 
 [ciscospark](/packages/node_modules/ciscospark) is a collection of node modules targeting our [external APIs](https://developers.ciscospark.com).
 
