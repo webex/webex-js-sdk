@@ -175,7 +175,7 @@
     "karma-safari-launcher": "^1.0.0",
     "karma-sauce-launcher": "^1.0.0",
     "lint-staged": "^6.1.0",
-    "load-grunt-tasks": "^3.5.0",
+    "load-grunt-tasks": "^4.0.0",
     "localforage": "^1.4.3",
     "lodash": "^4.17.4",
     "lodash-decorators": "^4.3.4",
