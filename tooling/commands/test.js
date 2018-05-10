@@ -12,6 +12,21 @@ const spawn = require('../util/spawn');
 const {report} = require('../util/coverage');
 const {start, stop} = require('../util/server');
 
+/**
+ * Returns true if the given package should be tested
+ * in the browser. (Some packages are intended for use
+ * only in Node.)
+ * @param {String} packageName
+ * @returns {Boolean}
+ */
+function shouldTestInBrowser(packageName) {
+  const noBrowserPackages = [
+    '@ciscospark/sparkd',
+    '@webex/sparkd'
+  ];
+  return !noBrowserPackages.includes(packageName);
+}
+
 module.exports = {
   command: 'test',
   desc: 'Run the test suite',
@@ -92,7 +107,7 @@ module.exports = {
   },
   handler: wrapHandler(async (argv) => {
     if (!argv.browser && !argv.node) {
-      argv.browser = true;
+      argv.browser = shouldTestInBrowser(argv.package);
       argv.node = true;
     }
 

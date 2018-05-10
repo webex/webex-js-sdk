@@ -148,6 +148,11 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
     EXIT_CODE=$?
     # Generate the coverage report
     npm run tooling -- test --no-tests --node
+  elif [ "${PACKAGE}" == "@webex/sparkd" ]; then
+    npm test -- --package @webex/sparkd --node >> "${GRUNT_LOG_FILE}" 2>&1
+    EXIT_CODE=$?
+    # Generate the coverage report
+    npm run tooling -- test --no-tests --node
   else
     # Skip unit tests in gating pipelines
     if [ -n "${PIPELINE}" ]; then
