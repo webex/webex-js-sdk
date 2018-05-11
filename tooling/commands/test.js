@@ -22,7 +22,7 @@ const {start, stop} = require('../util/server');
 function shouldTestInBrowser(packageName) {
   const noBrowserPackages = [
     '@ciscospark/sparkd',
-    '@webex/sparkd'
+    '@webex/webex-server'
   ];
   return !noBrowserPackages.includes(packageName);
 }
