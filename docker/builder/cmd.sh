@@ -148,8 +148,8 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
     EXIT_CODE=$?
     # Generate the coverage report
     npm run tooling -- test --no-tests --node
-  elif [ "${PACKAGE}" == "@webex/sparkd" ]; then
-    npm test -- --package @webex/sparkd --node >> "${GRUNT_LOG_FILE}" 2>&1
+  elif [ "${PACKAGE}" == "@webex/webex-server" ]; then
+    npm test -- --package @webex/webex-server --node >> "${GRUNT_LOG_FILE}" 2>&1
     EXIT_CODE=$?
     # Generate the coverage report
     npm run tooling -- test --no-tests --node
