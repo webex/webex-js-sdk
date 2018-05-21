@@ -54,6 +54,12 @@ Test a single package, but only in a browser
 npm test -- --package @ciscospark/spark-core --browser
 ```
 
+Test a single package, but only in a specific browser
+
+```bash
+BROWSER=chrome npm test -- --package @ciscospark/spark-core --browser
+```
+
 Test a single package and generate coverage and xunit reports
 
 ```bash

@@ -101,5 +101,21 @@ module.exports = function(packageName, argv) {
     }
   }
 
+  // Limit browsers via env variable
+  if (process.env.BROWSER) {
+    const browserName = process.env.BROWSER.toUpperCase();
+    const filteredBrowsers = {};
+    Object.keys(browsers).forEach((browserId) => {
+      const browser = browsers[browserId]
+      if ((browser.base && browser.base.toUpperCase() === browserName) || (browser.browserName && browser.browserName.toUpperCase() === browserName)) {
+        filteredBrowsers[browserId] = browser;
+      }
+    });
+    if (Object.keys(filteredBrowsers).length === 0) {
+      throw new Error('No matching browsers found.');
+    }
+    return filteredBrowsers;
+  }
+
   return browsers;
 }
