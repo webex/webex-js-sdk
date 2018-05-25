@@ -22,7 +22,7 @@ This is a monorepo containing all officially maintained Cisco Webex JS SDK modul
 
 ## Install
 
-We test against the [Active LTS](https://github.com/nodejs/Release#release-schedule) (Long Term Support) version of Node.js and use **npm@6** to run [security audits](https://docs.npmjs.com/getting-started/running-a-security-audit).
+We test against the current LTS version of Node.js (8.11) but the SDK should work with any supported version of Node.js.
 
 To install the latest stable version of the SDK from NPM:
 
@@ -33,97 +33,44 @@ npm install --save ciscospark
 ## Usage
 
 To use the SDK, you will need Cisco Webex credentials. If you do not already have a Cisco Webex account, visit
-[Cisco Webex for Developers](https://developer.webex.com/) to create your account and retrieve your **_access token_**.
+[Cisco Webex for Developers](https://developer.webex.com/) to create your account and retrieve your **Access Token** from the [Getting Started](https://developer.webex.com/getting-started.html#authentication) page.
 
 See [the detailed docs](https://webex.github.io/spark-js-sdk/) for more usage examples.
 
 ```javascript
 const ciscospark = require(`ciscospark`);
-const teams = ciscospark.init({
-  credentials: {
-    access_token: <your webex teams access token>
-  }
-});
 
-// Create a room with the title "My First Room"
-// Add Alice and Bob to the room
-// Send a **Hi Everyone** message to the room
-teams.rooms.create({ title: `My First Room` }).then(room => {
-  return Promise.all([
-    teams.memberships.create({
-      roomId: room.id,
-      personEmail: `alice@example.com`
-    }),
-    teams.memberships.create({
-      roomId: room.id,
-      personEmail: `bob@example.com`
-    })
-  ]).then(() =>
-    teams.messages.create({
-      markdown: `**Hi Everyone**`,
-      roomId: room.id
-    })
-  );
-});
+ciscospark.rooms.create({title: `My First Room`})
+  .then((room) => {
+    return Promise.all([
+      ciscospark.memberships.create({
+        roomId: room.id,
+        personEmail: `alice@example.com`
+      }),
+      ciscospark.memberships.create({
+        roomId: room.id,
+        personEmail: `bob@example.com`
+      }),
+    ])
+      .then(() => ciscospark.messages.create({
+        markdown: `**Hi Everyone**`,
+        roomId: room.id
+      }));
+  });
 ```
 
 #### _A note on browser usage_
 
-We do not provide a built version of the SDK that includes `window.ciscospark`.
-In-browser usage is almost the same as Node.js, but it handles the user authentication flow for you. See the [browser guide](https://webex.github.io/spark-js-sdk/guides/browsers/) for more information.
-
-If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `team` variable to `window.webexteams`.
-For a quick example, we'll use [Parcel](https://parceljs.org/) to bundle the SDK for a website. For any more information and questions on how to use Parcel, please head to their [website](https://parceljs.org/).
-
-1. Create `index.js`.
+If you've already got a commonjs or es6 build process (like [Webpack](https://webpack.js.org/)) in place, you can simply import/require the package
 
 ```javascript
-import { init as initTeams } from 'ciscospark';
+const ciscospark = require('ciscospark');
+```
 
-// Initialize the SDK and make it available to the window
-const teams = (window.webexteams = initTeams({
-  credentials: {
-    access_token: <your webex teams access token>
-  }
-}));
+If you need to load `ciscospark` via a script tag, copy and paste the following `<script>` right before your closing `</body>` tag:
 
-// Create a room with the title "My First Room"
-teams.rooms
-  .create({
-    title: 'My First Room!'
-  })
-  .catch((error) => {
-    console.error(error);
-  });
-
-// Filter for "My First Room" from the last 10 rooms
-teams.rooms
-  .list({
-    max: 10
-  })
-  .then((rooms) => {
-    // Destructure room properties for its id (aliased to roomId) and title
-    const { id: roomId, title } = rooms.items.filter(
-      room => room.title === 'My First Room!'
-    )[0];
-
-    // Post message "Hello World!" to "My First Room!"
-    teams.messages.create({
-      roomId,
-      text: 'Hello World!'
-    });
-
-    // Log the the room name and the message we created
-    return teams.messages
-      .list({ roomId, max: 1 })
-      // Destructure promised value to get the text property from the first item in items array
-      .then(({ items: [{ text }] }) =>
-        console.log(`Last message sent to room "${title}": ${text}`)
-      );
-  })
-  .catch((error) => {
-    console.error(error);
-  });
+```html
+<script src="https://www.s4d.io/js-sdk/production/ciscospark.js"></script>
 ```
 
 2. Create `index.html` .
@@ -157,6 +104,8 @@ cd spark-js-sdk
 npm install
 npm run samples:serve
 ```
+
+You'll be able to load the samples by visiting `https://localhost:8000/packages/node_modules/samples/<PACKAGE NAME>`.
 
 You'll be able to load the samples by visiting `https://localhost:8000/packages/node_modules/samples/<PACKAGE NAME>`.
 
