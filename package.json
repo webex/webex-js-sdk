@@ -118,6 +118,7 @@
     "browserify-middleware": "^8.0.0",
     "btoa": "^1.1.2",
     "builtins": "^2.0.0",
+    "camel-case": "^3.0.0",
     "chai": "^4.1.2",
     "chai-as-promised": "^7.0.0",
     "chalk": "^2.3.0",
