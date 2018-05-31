@@ -10,10 +10,11 @@ const {
   transformFile
 } = require('../lib/async');
 const g = require('../lib/async').glob;
+const capitalize = require('lodash');
+const humanize = require('humanize-string');
 const path = require('path');
 const {rename, writeFile} = require('fs-promise');
 const {glob} = require('../util/package');
-const S = require('string');
 
 exports.buildFile = async function buildFile({src, dest}) {
   debug(`transforming ${src}`);
@@ -59,7 +60,7 @@ exports.buildSamples = async function buildSamples() {
 </head><body>
 <h1>Hosted Samples</h1>
 <ul>
-${samples.map((s) => `<li><a href="${s}">${S(s).humanize().capitalize().s}</a></li>`).join('\n')}
+${samples.map((s) => `<li><a href="${s}">${capitalize(humanize(s))}</a></li>`).join('\n')}
 </ul>
 </body>
 </html>`;
