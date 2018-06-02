@@ -217,7 +217,7 @@
     "wdio-static-server-service": "^1.0.1",
     "wdio-webpack-service": "^1.0.1",
     "webdriverio": "^4.10.1",
-    "webpack": "^3.8.1",
+    "webpack": "^4.0.0",
     "webpack-dev-server": "^2.11.1",
     "webrtc-adapter": "^6.1.0",
     "whatwg-fetch": "^2.0.3",
