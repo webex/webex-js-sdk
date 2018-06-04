@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "experimentalDecorators": true
+  },
+  "include": [
+    "packages/node_modules/**/*"
+  ],
+  "exclude": [
+    "packages/node_modules/**/dist/*",
+    "node_modules/**/*",
+    "dist"
+  ]
+}
