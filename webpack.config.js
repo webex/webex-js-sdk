@@ -56,7 +56,7 @@ module.exports = {
       CONVERSATION_SERVICE: process.env.CONVERSATION_SERVICE,
       WDM_SERVICE_URL: process.env.WDM_SERVICE_URL,
       HYDRA_SERVICE_URL: process.env.HYDRA_SERVICE_URL,
-      ATLAS_SERVICE_UR: process.env.ATLAS_SERVICE_URLL
+      ATLAS_SERVICE_URL: process.env.ATLAS_SERVICE_URL
     })
   ]
 };
