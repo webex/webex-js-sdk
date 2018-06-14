@@ -148,7 +148,7 @@
     "exif": "^0.6.0",
     "express": "^4.15.3",
     "express-session": "^1.15.3",
-    "express-validator": "^4.3.0",
+    "express-validator": "^5.0.0",
     "file-type": "^3.9.0",
     "firefox-profile": "^1.0.0",
     "fs-promise": "^2.0.2",
@@ -211,7 +211,7 @@
     "urlsafe-base64": "^1.0.0",
     "uuid": "^3.2.1",
     "wd": "^1.4.0",
-    "wdio-junit-reporter": "^0.3.1",
+    "wdio-junit-reporter": "^0.4.0",
     "wdio-mocha-framework": "^0.5.11",
     "wdio-sauce-service": "^0.4.7",
     "wdio-selenium-standalone-service": "0.0.9",
@@ -220,14 +220,14 @@
     "wdio-webpack-service": "^1.0.1",
     "webdriverio": "^4.10.1",
     "webpack": "^3.8.1",
-    "webpack-dev-server": "^2.11.1",
+    "webpack-dev-server": "^3.1.2",
     "webrtc-adapter": "^6.1.0",
     "whatwg-fetch": "^2.0.3",
     "ws": "^4.0.0",
     "xhr": "^2.4.0",
     "xtend": "^4.0.1",
     "yargs": "^9.0.1",
-    "snyk": "^1.82.0"
+    "snyk": "^1.82.2"
   },
   "optionalDependencies": {
     "@ciscospark/test-users-legacy": "^1.0.2"

@@ -6,3 +6,5 @@ patch:
   'npm:qs:20140806-1':
     - grunt-gh-pages > q-io > qs:
         patched: '2018-05-31T16:16:19.455Z'
+    - grunt-gh-pages > q-io > qs:
+        patched: '2018-06-12T18:30:35.519Z'
