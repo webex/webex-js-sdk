@@ -22,3 +22,4 @@ echo 'user_pref("media.gmp-widevinecdm.version", "1.4.8.903");' >> "./.tmp/selen
 echo 'user_pref("media.gmp.storage.version.observed", 1);' >> "./.tmp/selenium/mac/user.js"
 echo 'user_pref("media.peerconnection.video.h264_enabled", true);' >> "./.tmp/selenium/mac/user.js"
 echo 'user_pref("media.navigator.permission.disabled", true);' >> "./.tmp/selenium/mac/user.js"
+echo 'user_pref("media.navigator.streams.fake", true);' >> "./.tmp/selenium/mac/user.js"
