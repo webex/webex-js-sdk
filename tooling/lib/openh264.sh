@@ -23,3 +23,6 @@ echo 'user_pref("media.gmp.storage.version.observed", 1);' >> "./.tmp/selenium/m
 echo 'user_pref("media.peerconnection.video.h264_enabled", true);' >> "./.tmp/selenium/mac/user.js"
 echo 'user_pref("media.navigator.permission.disabled", true);' >> "./.tmp/selenium/mac/user.js"
 echo 'user_pref("media.navigator.streams.fake", true);' >> "./.tmp/selenium/mac/user.js"
+echo 'user_pref("dom.webnotifications.enabled", true);' >> "./.tmp/selenium/mac/user.js"
+echo 'user_pref("media.getusermedia.screensharing.allowed_domains", "127.0.0.1, localhost, *.webex.com, *.wbx2.com");' >> "./.tmp/selenium/mac/user.js"
+echo 'user_pref("media.getusermedia.screensharing.enabled", true);' >> "./.tmp/selenium/mac/user.js"
