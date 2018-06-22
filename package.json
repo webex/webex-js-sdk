@@ -213,7 +213,7 @@
     "uuid": "^3.2.1",
     "wd": "^1.4.0",
     "wdio-junit-reporter": "^0.4.0",
-    "wdio-mocha-framework": "^0.5.11",
+    "wdio-mocha-framework": "^0.6.1",
     "wdio-sauce-service": "^0.4.7",
     "wdio-selenium-standalone-service": "0.0.9",
     "wdio-spec-reporter": "^0.1.2",
