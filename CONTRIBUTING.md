@@ -40,9 +40,10 @@ Please provide sufficient logging around the issue which you are reporting as th
 
 Before you can build the Cisco Webex JS SDK, you will need the following dependencies:
 
-- [Node.js](https://nodejs.org/) 6.x (LTS)
+- [Node.js](https://nodejs.org/) (LTS)
   - We recommend using [nvm](https://github.com/creationix/nvm) (or [nvm-windows](https://github.com/coreybutler/nvm-windows))
     to easily switch between Node.js versions
+  - Install the latest Node.js Long Term Support using `nvm install --lts`
 - [Git](https://git-scm.com/)
 
 You will need to create a file called `.env` that defines, at a minimum:
@@ -74,6 +75,8 @@ Build the SDK:
 npm run build
 ```
 
+*Build issues?* See [BUILD-ISSUES.md](./BUILD-ISSUES.md) for help.
+
 ### Running Tests
 
 `npm test` is the entrypoint to our test runner, but its not practical to use without parameters; the full suite would take over two hours to run and cross talk would probably cause tests to break each other.
@@ -99,7 +102,7 @@ You can use the `--unit`, `--integration`, `--automation`, and `--documentation`
 
 `--browser --karma-debug` will run the browser tests with `{singleRun: false}`, thus allowing automatic rerunning everytime you save a file (though, karma does eventually get confused and you need to interrupt and restart the command).
 
-> See [SCRIPTS.md](SCRIPTS.md) for more details on scripts in the repository.
+> See [SCRIPTS.md](SCRIPTS.md) to learn how to run tests on [SauceLabs](https://saucelabs.com/) and more.
 
 ### Git Commit Guidelines
 

@@ -72,9 +72,16 @@ Keeps the browser open in debug mode so that you can set break points and reload
 npm test -- --package @ciscospark/spark-core --browser --karma-debug
 ```
 
-## sauce:start, sauce:run, sauce:stop
+## SauceLabs
 
-Start the sauce tunnel, run tests using Sauce Labs browsers, and stop the Sauce tunnel
+### sauce:start, sauce:run, sauce:stop
+
+The SDK uses [SauceLabs](https://saucelabs.com/) to run its tests. Sign in to retrieve your *USERNAME* and *ACCESS KEY* from [User Settings](https://saucelabs.com/beta/user-settings) and add them to your `.env` file:
+
+- `SAUCE_USERNAME`
+- `SAUCE_ACCESS_KEY`
+
+Start the SauceLabs tunnel, run tests using SauceLabs browsers, and stop the SauceLabs tunnel
 
 ```bash
 npm run sauce:start
