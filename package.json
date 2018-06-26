@@ -216,7 +216,7 @@
     "wdio-mocha-framework": "^0.5.11",
     "wdio-sauce-service": "^0.4.7",
     "wdio-selenium-standalone-service": "0.0.9",
-    "wdio-spec-reporter": "^0.1.2",
+    "wdio-spec-reporter": "^5.0.0-alpha.7",
     "wdio-static-server-service": "^1.0.1",
     "wdio-webpack-service": "^1.0.1",
     "webdriverio": "^4.10.1",
