@@ -212,7 +212,7 @@
     "urlsafe-base64": "^1.0.0",
     "uuid": "^3.2.1",
     "wd": "^1.4.0",
-    "wdio-junit-reporter": "^0.4.0",
+    "wdio-junit-reporter": "^5.0.0-alpha.7",
     "wdio-mocha-framework": "^0.5.11",
     "wdio-sauce-service": "^0.4.7",
     "wdio-selenium-standalone-service": "0.0.9",
