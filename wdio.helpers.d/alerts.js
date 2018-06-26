@@ -19,7 +19,7 @@ addCommand('acceptAlert', function acceptAlert(timeout = 5000) {
   }, timeout, `Could not accept an alert within ${timeout}ms due to no alert being open`);
 });
 
-addCommand('dismissAlert', function acceptAlert(timeout = 5000) {
+addCommand('dismissAlert', function dismissAlert(timeout = 5000) {
   this.waitUntil(() => {
     try {
       this.alertDismiss();
