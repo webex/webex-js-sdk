@@ -35,6 +35,7 @@ module.exports = {
       .filter((p) => !p.includes('test-helper-'))
       .filter((p) => !p.includes('eslint-config'))
       .filter((p) => !p.includes('xunit-with-logs'))
+      .filter((p) => !p.includes('docs'))
       .filter((p) => !p.includes('tooling'));
 
     if (packages.length === 0) {
