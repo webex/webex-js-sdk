@@ -122,7 +122,7 @@ def generateSecretsFile = { ->
 
 ansiColor('xterm') {
   timestamps {
-    timeout(90) {
+    timeout(120) {
 
       node("SPARK_JS_SDK_VALIDATING") {
         try {
@@ -347,7 +347,7 @@ ansiColor('xterm') {
               ])
 
               if (!skipTests) {
-                timeout(60) {
+                timeout(90) {
                   def exitCode = sh script: "./tooling/test.sh", returnStatus: true
 
                   junit 'reports/junit/**/*.xml'
