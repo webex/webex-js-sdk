@@ -46,7 +46,7 @@ function makeConfig(packageName, argv) {
     // plugin-phone and Firefox causes the suite to hang regularly. Restarting
     // the browser seems to fix it, so we need to allow a largish number of
     // restarts.
-    browserDisconnectTolerance: 5,
+    browserDisconnectTolerance: 3,
 
     browsers: Object.keys(launchers),
 
@@ -73,7 +73,7 @@ function makeConfig(packageName, argv) {
 
     colors: !(argv && argv.xunit),
 
-    concurrency: 3,
+    concurrency: 2,
 
     customLaunchers: launchers,
 
