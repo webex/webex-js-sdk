@@ -123,13 +123,22 @@ module.exports = {
 
     if (argv.tests) {
       if (argv.package) {
+        let packages = [];
         if (argv.serve) {
           debug('starting test server');
           await start();
           debug('started test server');
         }
 
-        await testPackage(argv, argv.package);
+        // if testing multiple packages
+        if (Array.isArray(argv.package)) {
+          packages = argv.package;
+        }
+        else {
+          packages = [argv.package];
+        }
+
+        await packages.forEach((p) => testPackage(argv, p));
 
         if (argv.serve) {
           debug('stopping test server');
