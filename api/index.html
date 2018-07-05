@@ -526,9 +526,21 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#calleventinitializing'
+                          href='#calleventinactive'
                           class='regular pre-open'>
-                          ⓔ initializing
+                          ⓔ inactive
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventmembershipsadd'
+                          class='regular pre-open'>
+                          ⓔ memberships:add
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventmembershipchange'
+                          class='regular pre-open'>
+                          ⓔ membership:change
                         </a></li>
                       
                         <li><a
@@ -586,15 +598,15 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventinactive'
+                          href='#calleventmembershipsremove'
                           class='regular pre-open'>
-                          ⓔ inactive
+                          ⓔ memberships:remove
                         </a></li>
                       
                         <li><a
-                          href='#calleventmembershipsadd'
+                          href='#calleventinitializing'
                           class='regular pre-open'>
-                          ⓔ memberships:add
+                          ⓔ initializing
                         </a></li>
                       
                         <li><a
@@ -604,9 +616,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventdisconnected'
+                          href='#calleventconnected'
                           class='regular pre-open'>
-                          ⓔ disconnected
+                          ⓔ connected
                         </a></li>
                       
                         <li><a
@@ -616,21 +628,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventconnected'
+                          href='#calleventdisconnected'
                           class='regular pre-open'>
-                          ⓔ connected
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventmembershipchange'
-                          class='regular pre-open'>
-                          ⓔ membership:change
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventmembershipsremove'
-                          class='regular pre-open'>
-                          ⓔ memberships:remove
+                          ⓔ disconnected
                         </a></li>
                       
                     </ul>
@@ -1294,7 +1294,7 @@
   
     <h1>ciscospark</h1>
 <blockquote>
-<p>The Cisco Spark JavaScript SDK</p>
+<p>The Cisco Webex JS SDK</p>
 </blockquote>
 <h2>Install</h2>
 <pre class='hljs'>npm install --save ciscospark</pre>
@@ -1311,16 +1311,16 @@
 <h3>Shell Script (Quick Start)</h3>
 <p>This is the quickest way to get up and running with our JavaScript SDK. Simply set the environment variable <code>CISCOSPARK_ACCESS_TOKEN</code> to your access token and add the following line at the top of your JavaScript file to get a ready-to-use instance.</p>
 <blockquote>
-<p>You can get your <code>CISCOSPARK_ACCESS_TOKEN</code> from the <a href="https://developer.ciscospark.com">Cisco Spark for Developers portal</a>.</p>
+<p>You can get your <code>CISCOSPARK_ACCESS_TOKEN</code> from the <a href="https://developer.ciscospark.com">Cisco Webex for Developers portal</a>.</p>
 </blockquote>
 <pre class='hljs'><span class="hljs-keyword">const</span> ciscospark = <span class="hljs-built_in">require</span>(<span class="hljs-string">`ciscospark/env`</span>);</pre>
 <blockquote>
-<p><code>ciscospark/env</code> is also a great way to get started with <a href="https://developer.ciscospark.com/bots.html">bots</a>.</p>
+<p><code>ciscospark/env</code> is also a great way to get started with <a href="https://developer.webex.com/bots.html">bots</a>.</p>
 </blockquote>
 <h3>Browser</h3>
 <p>Our JavaScript SDK provides out-of-the-box support for the <a href="https://tools.ietf.org/html/rfc6749#section-4.2">OAuth 2.0 Implicit Grant Flow</a>.</p>
 <blockquote>
-<p>You'll need to <a href="https://developer.ciscospark.com/add-integration.html">register an OAuth Client</a> to get your "authorization string"</p>
+<p>You'll need to <a href="https://developer.webex.com/add-integration.html">register an OAuth Client</a> to get your "authorization string"</p>
 </blockquote>
 <p>Use the steps under <a href="#bundling">Bundling</a> (or something similar) to get the SDK into your browser, then use the following JavaScript to get started:</p>
 <pre class='hljs'><span class="hljs-keyword">const</span> ciscospark = CiscoSpark.init({
@@ -1345,7 +1345,7 @@ ciscospark.once(`ready`, () =&gt; {
   }
 });</span></pre>
 <h4>Bundling</h4>
-<p>You'll need to bundle the SDK to use it in a web browser. Right now, we do all our SDK testing with <a href="http://browserify.org/">Browserify</a>, but our <a href="https://github.com/ciscospark/react-ciscospark">Cisco Spark Widgets</a> use <a href="https://webpack.github.io/">webpack</a>.</p>
+<p>You'll need to bundle the SDK to use it in a web browser. Right now, we do all our SDK testing with <a href="http://browserify.org/">Browserify</a>, but our <a href="https://github.com/webex/react-ciscospark">Cisco Webex Widgets</a> use <a href="https://webpack.github.io/">webpack</a>.</p>
 <p>The following snippet is the bare minimum to get our code into a form suitable for a web browser. You'll probably want to additionally pipe it through a minifier like <a href="https://github.com/mishoo/UglifyJS2">UglifyJS</a> before going to production.</p>
 <pre class='hljs'>npm install ciscospark
 npm install -g browserify
@@ -1408,8 +1408,8 @@ app.get(`/oauth/redirect`, (req, res, next) =&gt; {
   </div>
   
 
-  <p>See <a href="https://ciscospark.github.io/spark-js-sdk/example/browsers">Browser Guide</a> and
-<a href="https://ciscospark.github.io/spark-js-sdk/example/servers">Server Guide</a></p>
+  <p>See <a href="https://webex.github.io/spark-js-sdk/example/browsers">Browser Guide</a> and
+<a href="https://webex.github.io/spark-js-sdk/example/servers">Server Guide</a></p>
 
 
   <div class='pre p1 fill-light mt0'>new CiscoSpark()</div>
@@ -5246,11 +5246,11 @@ only, this function will throw.</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='calleventinitializing'>
+    <div class='border-bottom' id='calleventinactive'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>initializing</span>
+            <span class='code strong strong truncate'>inactive</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -5261,7 +5261,101 @@ only, this function will throw.</p>
   <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
 
 
-  <div class='pre p1 fill-light mt0'>initializing</div>
+  <div class='pre p1 fill-light mt0'>inactive</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventmembershipsadd'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>memberships:add</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Emitted when a new <a href="#callmembership">CallMembership</a> is added to
+<a href="#callmemberships">Call#memberships</a>. Note that <a href="#callmembershipstate">CallMembership#state</a> still needs
+to be read to determine if the instance represents someone actively
+participating the call.</p>
+
+
+  <div class='pre p1 fill-light mt0'>memberships:add</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventmembershipchange'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>membership:change</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>membership:change</div>
   
   
 
@@ -5703,11 +5797,11 @@ shortly after (but as a direct result of) locally calling
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventinactive'>
+    <div class='border-bottom' id='calleventmembershipsremove'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>inactive</span>
+            <span class='code strong strong truncate'>memberships:remove</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -5715,10 +5809,11 @@ shortly after (but as a direct result of) locally calling
 
   
 
-  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+  <p>Emitted when a <a href="#callmembership">CallMembership</a> is removed from
+<a href="#callmemberships">Call#memberships</a>.</p>
 
 
-  <div class='pre p1 fill-light mt0'>inactive</div>
+  <div class='pre p1 fill-light mt0'>memberships:remove</div>
   
   
 
@@ -5749,11 +5844,11 @@ shortly after (but as a direct result of) locally calling
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventmembershipsadd'>
+    <div class='border-bottom' id='calleventinitializing'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>memberships:add</span>
+            <span class='code strong strong truncate'>initializing</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -5761,13 +5856,10 @@ shortly after (but as a direct result of) locally calling
 
   
 
-  <p>Emitted when a new <a href="#callmembership">CallMembership</a> is added to
-<a href="#callmemberships">Call#memberships</a>. Note that <a href="#callmembershipstate">CallMembership#state</a> still needs
-to be read to determine if the instance represents someone actively
-participating the call.</p>
+  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
 
 
-  <div class='pre p1 fill-light mt0'>memberships:add</div>
+  <div class='pre p1 fill-light mt0'>initializing</div>
   
   
 
@@ -5844,11 +5936,11 @@ participating the call.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventdisconnected'>
+    <div class='border-bottom' id='calleventconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>disconnected</span>
+            <span class='code strong strong truncate'>connected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -5858,7 +5950,7 @@ participating the call.</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>disconnected</div>
+  <div class='pre p1 fill-light mt0'>connected</div>
   
   
 
@@ -5866,7 +5958,7 @@ participating the call.</p>
 <a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
 
 enabled; instead, listen for 
-<a href="Call.inactive">Call.inactive</a>
+<a href="Call.active">Call.active</a>
 </div>
   
   
@@ -5944,11 +6036,11 @@ enabled; instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventconnected'>
+    <div class='border-bottom' id='calleventdisconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>connected</span>
+            <span class='code strong strong truncate'>disconnected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -5958,7 +6050,7 @@ enabled; instead, listen for
 
   
 
-  <div class='pre p1 fill-light mt0'>connected</div>
+  <div class='pre p1 fill-light mt0'>disconnected</div>
   
   
 
@@ -5966,100 +6058,8 @@ enabled; instead, listen for
 <a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
 
 enabled; instead, listen for 
-<a href="Call.active">Call.active</a>
+<a href="Call.inactive">Call.inactive</a>
 </div>
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventmembershipchange'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:change</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>membership:change</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventmembershipsremove'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>memberships:remove</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Emitted when a <a href="#callmembership">CallMembership</a> is removed from
-<a href="#callmemberships">Call#memberships</a>.</p>
-
-
-  <div class='pre p1 fill-light mt0'>memberships:remove</div>
-  
-  
-
-  
   
   
   
@@ -6557,7 +6557,7 @@ enabled; instead, listen for
   </h2>
 
   
-    <p>These are the resources provided by CiscoSpark instances for interacting with our <a href="https://developer.ciscospark.com/getting-started.html">developer API</a></p>
+    <p>These are the resources provided by CiscoSpark instances for interacting with our <a href="https://developer.webex.com/getting-started.html">developer API</a></p>
 
   
 </section>
@@ -7157,7 +7157,7 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   <p>Messages are how people communicate in rooms. Each message timestamped and
 represented in Spark as a distinct block of content. Messages can contain
 plain text and a single file attachment. See the
-<a href="https://developer.ciscospark.com/attachments.html">Message Attachments</a> Guide
+<a href="https://developer.webex.com/attachments.html">Message Attachments</a> Guide
 for a list of supported media types.</p>
 
 
@@ -10419,7 +10419,7 @@ SDK's logger, you should make sure to avoid logging PII as well.
           <span class='code bold'>files</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>>)</code>
           : The source URL(s) for the message attachment(s).
 See the 
-<a href="https://developer.ciscospark.com/attachments.html">Message Attachments</a>
+<a href="https://developer.webex.com/attachments.html">Message Attachments</a>
 
 Guide for a list of supported media types.
 

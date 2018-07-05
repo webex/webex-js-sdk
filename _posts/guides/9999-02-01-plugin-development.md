@@ -2,7 +2,7 @@
 layout:      guide
 title:       "Plugin Development"
 categories:  guides
-description: "Adding new plugins to the Cisco Spark JavaScript SDK"
+description: "Adding new plugins to the Cisco Webex JS SDK"
 redirect_from:
   - /example/plugin-development/
 ---
@@ -24,7 +24,7 @@ redirect_from:
 3. Set up the upstream remote
 
     ```bash
-    git remote add upstream git@github.com:ciscospark/spark-js-sdk.git
+    git remote add upstream git@github.com:webex/spark-js-sdk.git
     git fetch upstream
     ```
 
@@ -56,7 +56,7 @@ redirect_from:
 - ./test/integration/spec - integration tests
 - ./test/automation/spec - automation tests
 
-> See [CONTRIBUTING.md](https://github.com/ciscospark/spark-js-sdk/blob/master/CONTRIBUTING.md) for commands for building and testing the SDK.
+> See [CONTRIBUTING.md](https://github.com/webex/spark-js-sdk/blob/master/CONTRIBUTING.md) for commands for building and testing the SDK.
 
 ## Tips
 - During development, you can avoid rebuilding before each test run by replacing `"main": "dist/index.js"` with `"main": "src/index.js"` in `packages/node_modules/*/package.json`. This won't quite work in Karma, but if you apply the same replacement to *only* the package under test, that package will recompile on change; other packages will need to be rebuilt.
