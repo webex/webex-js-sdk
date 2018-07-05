@@ -1,0 +1,93 @@
+# Required Env Vars
+# NPM_TOKEN
+
+# Default job template
+default: &DEFAULT
+  docker:
+    - image: circleci/node:8.11.3-browsers
+  steps:  &initial_steps
+    - checkout
+    - restore_cache: &node_cache
+        keys:
+        - js-dependencies-{{ checksum "package.json" }}-{{ .Branch }}
+        - js-dependencies-{{ checksum "package.json" }}
+        - js-dependencies-
+
+# Main Config
+version: 2
+jobs:
+  install:
+    <<: *DEFAULT
+    steps:
+      - checkout
+      - restore_cache: *node_cache
+      - run: echo //registry.npmjs.org/:_authToken=${NPM_TOKEN} >> .npmrc
+      - run: npm install
+      - save_cache:
+          paths:
+            - node_modules
+          key: js-dependencies-{{ checksum "package.json" }}-{{ .Branch }}
+
+  static_analysis:
+    <<: *DEFAULT
+    steps:
+      - checkout
+      - restore_cache: *node_cache
+      - run:
+          name: Run linting
+          command: npm run lint:ci
+      - store_test_results:
+          path: reports/style
+      - store_artifacts:
+          path: reports/style
+          destination: style
+
+  build_for_tests:
+    <<: *DEFAULT
+    environment:
+      - NODE_ENV: "test"
+    steps:
+      - checkout
+      - restore_cache: *node_cache
+      - run:
+          name: Build all packages
+          command: npm run build
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - packages/node_modules
+
+  unit_tests:
+    <<: *DEFAULT
+    parallelism: 2
+    steps:
+      - checkout
+      - restore_cache: *node_cache
+      - attach_workspace:
+          at: ./
+      - run:
+          name: Run Tests on
+          command: |
+            TESTS=$(npm run tooling --silent -- list --forpipeline | circleci tests split)
+            echo ${TESTS}
+            echo ${TESTS} | xargs -n 1 npm run test --unit --xunit --packages
+      - store_test_results:
+          path: reports/junit
+      - store_artifacts:
+          path: reports/junit
+          destination: junit
+
+workflows:
+  version: 2
+  js_sdk_unit_tests:
+    jobs:
+      - install
+      - build_for_tests:
+          requires:
+            - install
+      - static_analysis:
+          requires:
+            - install
+      - unit_tests:
+          requires:
+            - build_for_tests
