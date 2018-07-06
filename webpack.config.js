@@ -53,10 +53,10 @@ module.exports = {
       // The follow environment variables are specific to our continuous
       // integration process and should not be used in general
       // Also, yes, CONVERSATION_SERVICE does not end in URL
-      CONVERSATION_SERVICE: process.env.CONVERSATION_SERVICE,
-      WDM_SERVICE_URL: process.env.WDM_SERVICE_URL,
-      HYDRA_SERVICE_URL: process.env.HYDRA_SERVICE_URL,
-      ATLAS_SERVICE_URL: process.env.ATLAS_SERVICE_URL
+      CONVERSATION_SERVICE: process.env.CONVERSATION_SERVICE || process.env.CONVERSATION_SERVICE_URL || 'https://conv-a.wbx2.com/conversation/api/v1',
+      WDM_SERVICE_URL: process.env.WDM_SERVICE_URL || 'https://wdm-a.wbx2.com/wdm/api/v1',
+      HYDRA_SERVICE_URL: process.env.HYDRA_SERVICE_URL || 'https://api.ciscospark.com/v1',
+      ATLAS_SERVICE_URL: process.env.ATLAS_SERVICE_URL || 'https://atlas-a.wbx2.com/admin/api/v1'
     })
   ]
 };
