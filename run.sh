@@ -98,7 +98,7 @@ DOCKER_ENV_KEYS+="SDK_BUILD_DEBUG "
 DOCKER_ENV_KEYS+="SKIP_FLAKY_TESTS "
 DOCKER_ENV_KEYS+="WDM_SERVICE_URL "
 DOCKER_ENV_KEYS+="WORKSPACE "
-DOCKER_ENV_KEYS+="NPM_TOKEN "
+DOCKER_ENV_KEYS+="JS_SDK_NPM_TOKEN "
 # We don't want to fail if grep doesn't find the specified var
 set +e
 for KEY in $DOCKER_ENV_KEYS; do
@@ -113,9 +113,9 @@ if ! docker images | grep -qc ${DOCKER_CONTAINER_NAME}; then
   cat <<EOT >>./docker/builder/Dockerfile
 RUN groupadd -g $(id -g) jenkins
 RUN useradd -u $(id -u) -g $(id -g) -m jenkins
-RUN echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > $HOME/.npmrc
+RUN echo '//registry.npmjs.org/:_authToken=${JS_SDK_NPM_TOKEN}' > $HOME/.npmrc
 RUN mkdir -p /home/jenkins && chown $(id -u):$(id -g) /home/jenkins
-RUN echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > /home/jenkins/.npmrc
+RUN echo '//registry.npmjs.org/:_authToken=${JS_SDK_NPM_TOKEN}' > /home/jenkins/.npmrc
 WORKDIR ${WORKDIR}
 USER $(id -u)
 EOT
