@@ -107,7 +107,8 @@ def generateSecretsFile = { ->
     string(credentialsId: 'CISCOSPARK_APPID_SECRET', variable: 'CISCOSPARK_APPID_SECRET'),
     usernamePassword(credentialsId: 'SAUCE_LABS_VALIDATED_MERGE_CREDENTIALS', passwordVariable: 'SAUCE_ACCESS_KEY', usernameVariable: 'SAUCE_USERNAME'),
     string(credentialsId: 'ddfd04fb-e00a-4df0-9250-9a7cb37bce0e', variable: 'COMMON_IDENTITY_CLIENT_SECRET'),
-    string(credentialsId: 'JS_SDK_NPM_TOKEN', variable: 'JS_SDK_NPM_TOKEN')
+    string(credentialsId: 'JS_SDK_NPM_TOKEN', variable: 'JS_SDK_NPM_TOKEN'),
+    string(credentialsId: 'JS_SDK_NPM_PUBLISH_TOKEN', variable: 'JS_SDK_NPM_PUBLISH_TOKEN')
   ]) {
     def secrets = ""
     secrets += "COMMON_IDENTITY_CLIENT_SECRET=${COMMON_IDENTITY_CLIENT_SECRET}\n"
@@ -116,6 +117,7 @@ def generateSecretsFile = { ->
     secrets += "SAUCE_USERNAME=${SAUCE_USERNAME}\n"
     secrets += "SAUCE_ACCESS_KEY=${SAUCE_ACCESS_KEY}\n"
     secrets += "JS_SDK_NPM_TOKEN=${JS_SDK_NPM_TOKEN}"
+    secrets += "JS_SDK_NPM_PUBLISH_TOKEN=${JS_SDK_NPM_PUBLISH_TOKEN}"
     writeFile file: ENV_FILE, text: secrets
   }
 }
@@ -454,7 +456,7 @@ ansiColor('xterm') {
               stage('publish to npm') {
                 try {
                   image.inside(DOCKER_RUN_OPTS) {
-                    sh 'echo \'//registry.npmjs.org/:_authToken=${JS_SDK_NPM_TOKEN}\' > $HOME/.npmrc'
+                    sh 'echo \'//registry.npmjs.org/:_authToken=${JS_SDK_NPM_PUBLISH_TOKEN}\' > $HOME/.npmrc'
                     echo ''
                     echo ''
                     echo ''
