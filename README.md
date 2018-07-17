@@ -22,9 +22,13 @@ This is a monorepo containing all officially maintained Cisco Webex JS SDK modul
 
 ## Install
 
-We test against the current LTS version of Node.js (6.10) but the SDK should work with any supported version of Node.js.
+Use the current LTS version of Node.js with support for [npm audit](https://docs.npmjs.com/getting-started/running-a-security-audit).
 
-To install the latest stable version from NPM:
+```bash
+npm install -g npm@latest
+```
+
+To install the latest stable version of the SDK:
 
 ```bash
 npm install --save ciscospark
