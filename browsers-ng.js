@@ -46,7 +46,7 @@ module.exports = function(packageName, argv) {
       },
       sl_safari_latest_mac12: {
         base: 'SauceLabs',
-        platform: 'macOS 10.12',
+        platform: 'macOS 10.13',
         browserName: 'safari',
         version: 'latest'
       },
