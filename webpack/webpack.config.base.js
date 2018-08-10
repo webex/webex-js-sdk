@@ -10,8 +10,6 @@ module.exports = merge({
   entry: './index.js',
   output: {
     filename: 'bundle.js',
-    library: 'ciscospark',
-    libraryTarget: 'var',
     path: __dirname,
     sourceMapFilename: '[file].map'
   },
