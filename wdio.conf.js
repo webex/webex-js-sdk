@@ -299,27 +299,32 @@ exports.config = {
    */
   afterTest(test) {
     if (!test.passed) {
-      const logTypes = browser.logTypes();
+      try {
+        const logTypes = browser.logTypes();
 
-      Object.keys(logTypes).forEach((browserId) => {
-        console.log(logTypes[browserId].value);
-        if (logTypes[browserId].value.includes('browser')) {
-          const logs = browser.select(browserId).log('browser');
-          if (logs.value.length) {
-            console.error(`Test ${test.fullTitle} failed with the following log output from browser ${browserId}`);
-            console.error(logs
-              .value
-              .map((v) => `> ${v.message}`)
-              .join('\n'));
+        Object.keys(logTypes).forEach((browserId) => {
+          console.log(logTypes[browserId].value);
+          if (logTypes[browserId].value.includes('browser')) {
+            const logs = browser.select(browserId).log('browser');
+            if (logs.value.length) {
+              console.error(`Test ${test.fullTitle} failed with the following log output from browser ${browserId}`);
+              console.error(logs
+                .value
+                .map((v) => `> ${v.message}`)
+                .join('\n'));
+            }
+            else {
+              console.error(`Test ${test.fullTitle} failed but no logs were produced by browser ${browserId}`);
+            }
           }
           else {
-            console.error(`Test ${test.fullTitle} failed but no logs were produced by browser ${browserId}`);
+            console.error(`${test.fullTitle} failed but browser ${browserId} doesn't support log collection`);
           }
-        }
-        else {
-          console.error(`${test.fullTitle} failed but browser ${browserId} doesn't support log collection`);
-        }
-      });
+        });
+      }
+      catch (error) {
+        console.error(`${test.fullTitle} failed but browser doesn't support log collection`);
+      }
     }
   }
   /**
@@ -359,6 +364,10 @@ if (CI) {
   // I couldn't get multiremote + sauce to work while letting wdio handle the
   // tunnel setup. use `npm run sauce:start` and `npm run sauce:run` to start
   // the tunnel and run tests
+
+  exports.config.capabilities.browserSpock.seleniumVersion = '3.4.0';
+  exports.config.capabilities.browserMccoy.seleniumVersion = '3.4.0';
+
   exports.config = Object.assign(exports.config, {
     user: process.env.SAUCE_USERNAME,
     key: process.env.SAUCE_ACCESS_KEY,
