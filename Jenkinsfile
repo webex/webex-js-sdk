@@ -116,7 +116,7 @@ def generateSecretsFile = { ->
     secrets += "CISCOSPARK_CLIENT_SECRET=${CISCOSPARK_CLIENT_SECRET}\n"
     secrets += "SAUCE_USERNAME=${SAUCE_USERNAME}\n"
     secrets += "SAUCE_ACCESS_KEY=${SAUCE_ACCESS_KEY}\n"
-    secrets += "JS_SDK_NPM_TOKEN=${JS_SDK_NPM_TOKEN}"
+    secrets += "JS_SDK_NPM_TOKEN=${JS_SDK_NPM_TOKEN}\n"
     secrets += "JS_SDK_NPM_PUBLISH_TOKEN=${JS_SDK_NPM_PUBLISH_TOKEN}"
     writeFile file: ENV_FILE, text: secrets
   }
