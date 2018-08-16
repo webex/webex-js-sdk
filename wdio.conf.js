@@ -366,7 +366,9 @@ if (CI) {
   // the tunnel and run tests
 
   exports.config.capabilities.browserSpock.seleniumVersion = '3.4.0';
+  exports.config.capabilities.browserSpock.extendedDebugging = true;
   exports.config.capabilities.browserMccoy.seleniumVersion = '3.4.0';
+  exports.config.capabilities.browserMccoy.extendedDebugging = true;
 
   exports.config = Object.assign(exports.config, {
     user: process.env.SAUCE_USERNAME,
