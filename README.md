@@ -89,7 +89,7 @@ the user authentication flow for you. See the guide on the
 
 Sample code can be found in [packages/node_modules/samples](./packages/node_modules/samples). You can run them yourself with the following commands:
 
-> Note: this installs all of the SDK's tooling dependencies, so you'll need `libgcrypt` and (possibly) `graphicsmagick`. On a mac, you can install these with `brew install graphicsmagick libgrcrypt`.
+> Note: this installs all of the SDK's tooling dependencies, so you'll need `libgcrypt` and (possibly) `graphicsmagick`. On a mac, you can install these with `brew install graphicsmagick libgcrypt`.
 
 ```bash
 git clone git@github.com:webex/spark-js-sdk.git
