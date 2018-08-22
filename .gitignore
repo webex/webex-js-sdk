@@ -6,6 +6,7 @@ node_debug.log*
 temp
 tmp
 tmp*.*
+~*
 *.log
 doc
 .grunt
