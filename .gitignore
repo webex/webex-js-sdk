@@ -4,6 +4,7 @@
 temp
 tmp
 tmp*.*
+*.bak
 
 *.log
 
