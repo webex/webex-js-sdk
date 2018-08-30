@@ -57,7 +57,7 @@ jobs:
       - <<: *restore_node_modules
       - run:
           name: Run linting
-          command: npm run lint:ci
+          command: npm run lint:ci -- --quiet
       - store_test_results:
           path: reports/style
       - store_artifacts:
