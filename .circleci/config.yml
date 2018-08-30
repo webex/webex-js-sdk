@@ -1,0 +1,94 @@
+# Required Env Vars
+# NPM_TOKEN
+
+# Main Config
+version: 2
+
+base_image: &base_image
+  image: circleci/node:8.11.3
+
+job_common: &job_common
+  docker:
+    - <<: *base_image
+
+restore_workspace: &restore_workspace
+  attach_workspace:
+    at: /tmp/workspace
+
+restore_node_modules: &restore_node_modules
+  run:
+    name: Link cached node_modules to project
+    command: mv /tmp/workspace/node_modules ./ || true
+
+
+# Main Config
+version: 2
+jobs:
+  install:
+    <<: *job_common
+    steps:
+      - checkout
+      - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
+      - run:
+          name: Install dependencies
+          command: |
+            if [ ! -d node_modules ]; then
+              npm install
+            fi
+      - run:
+          name: Copy node_modules to workspace
+          command: mv node_modules /tmp/
+      - persist_to_workspace:
+          root: /tmp
+          paths:
+            - node_modules
+      - run:
+          name: Save NPM install log
+          command: npm ls --json > /tmp/npm_install.log || true
+      - store_artifacts:
+          path: /tmp/npm_install.log
+          destination: npm-install
+
+  static_analysis:
+    <<: *job_common
+    steps:
+      - checkout
+      - <<: *restore_workspace
+      - <<: *restore_node_modules
+      - run:
+          name: Run linting
+          command: npm run lint:ci
+      - store_test_results:
+          path: reports/style
+      - store_artifacts:
+          path: reports/style
+          destination: style
+
+  build:
+    <<: *job_common
+    environment:
+      - NODE_ENV: "test"
+    steps:
+      - checkout
+      - <<: *restore_workspace
+      - <<: *restore_node_modules
+      - run:
+          name: Build all packages
+          command: npm run build
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - packages/node_modules
+
+workflows:
+  version: 2
+  js_sdk_unit_tests:
+    jobs:
+      - install
+      - build:
+          requires:
+            - install
+      - static_analysis:
+          requires:
+            - install
+
