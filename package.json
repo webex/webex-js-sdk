@@ -80,9 +80,7 @@
     "samples:serve": "webpack-dev-server",
     "presamples:test": "rimraf bundle.js bundle.js.map",
     "samples:test": "NODE_ENV=test wdio",
-    "tooling": "babel-node ./tooling/index.js",
-    "snyk-protect": "snyk protect",
-    "prepare": "npm run snyk-protect"
+    "tooling": "babel-node ./tooling/index.js"
   },
   "dependencies": {
     "@ciscospark/eslint-config-base": "^0.5.0",
@@ -261,6 +259,5 @@
     "*.js": "lint:eslint",
     "Jenkinsfile": "lint:jenkinsfile",
     "*package.json": "lint:package-names"
-  },
-  "snyk": true
+  }
 }
