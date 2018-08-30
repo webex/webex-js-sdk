@@ -598,9 +598,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventmembershipsremove'
+                          href='#calleventconnected'
                           class='regular pre-open'>
-                          ⓔ memberships:remove
+                          ⓔ connected
                         </a></li>
                       
                         <li><a
@@ -616,12 +616,6 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventconnected'
-                          class='regular pre-open'>
-                          ⓔ connected
-                        </a></li>
-                      
-                        <li><a
                           href='#calleventringing'
                           class='regular pre-open'>
                           ⓔ ringing
@@ -631,6 +625,12 @@
                           href='#calleventdisconnected'
                           class='regular pre-open'>
                           ⓔ disconnected
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventmembershipsremove'
+                          class='regular pre-open'>
+                          ⓔ memberships:remove
                         </a></li>
                       
                     </ul>
@@ -5797,11 +5797,11 @@ shortly after (but as a direct result of) locally calling
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventmembershipsremove'>
+    <div class='border-bottom' id='calleventconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>memberships:remove</span>
+            <span class='code strong strong truncate'>connected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -5809,15 +5809,18 @@ shortly after (but as a direct result of) locally calling
 
   
 
-  <p>Emitted when a <a href="#callmembership">CallMembership</a> is removed from
-<a href="#callmemberships">Call#memberships</a>.</p>
+  
 
-
-  <div class='pre p1 fill-light mt0'>memberships:remove</div>
+  <div class='pre p1 fill-light mt0'>connected</div>
   
   
 
-  
+  <div>Deprecated: with 
+<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
+
+enabled; instead, listen for 
+<a href="Call.active">Call.active</a>
+</div>
   
   
   
@@ -5936,56 +5939,6 @@ shortly after (but as a direct result of) locally calling
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventconnected'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>connected</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>connected</div>
-  
-  
-
-  <div>Deprecated: with 
-<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
-
-enabled; instead, listen for 
-<a href="Call.active">Call.active</a>
-</div>
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
     <div class='border-bottom' id='calleventringing'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -6060,6 +6013,53 @@ enabled; instead, listen for
 enabled; instead, listen for 
 <a href="Call.inactive">Call.inactive</a>
 </div>
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventmembershipsremove'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>memberships:remove</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Emitted when a <a href="#callmembership">CallMembership</a> is removed from
+<a href="#callmemberships">Call#memberships</a>.</p>
+
+
+  <div class='pre p1 fill-light mt0'>memberships:remove</div>
+  
+  
+
+  
   
   
   
