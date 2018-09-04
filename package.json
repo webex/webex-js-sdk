@@ -37,6 +37,10 @@
     "Tran Tu <tratu@cisco.com>",
     "Vagou Zhou <vagouz@cisco.com>"
   ],
+  "engines": {
+    "node": "~8.11.4",
+    "npm": "~6.4.1"
+  },
   "main": "src/index.js",
   "repository": {
     "type": "git",
