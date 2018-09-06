@@ -47,13 +47,8 @@ fi
 # Always use install. If that version is installed, it's the same as use and if
 # it's not installed, you won't spend half an hour trying to figure out what
 # exit code 3 is.
-nvm install 6.10.1
-
-# Make sure we're using npm 2.x
-NPM_MAJOR_VERSION=$(npm --version | awk -F'.' '{print $1}')
-if [ "${NPM_MAJOR_VERSION}" = "1" ]; then
-  npm install -g --registry=http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group npm@2.x
-fi
+nvm install 8.11.4
+npm install -g npm@6.4.1
 
 echo "################################################################################"
 if [ -n "$BUILD_NUMBER" ]; then

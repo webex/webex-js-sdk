@@ -42,8 +42,9 @@ Before you can build the Cisco Webex JS SDK, you will need the following depende
 
 - [Node.js](https://nodejs.org/) (LTS)
   - We recommend using [nvm](https://github.com/creationix/nvm) (or [nvm-windows](https://github.com/coreybutler/nvm-windows))
-    to easily switch between Node.js versions
+    to easily switch between Node.js versions.
   - Install the latest Node.js Long Term Support using `nvm install --lts`
+  - Install the latest npm to enable security audits using `npm install npm@latest -g`
 - [Git](https://git-scm.com/)
 
 You will need to create a file called `.env` that defines, at a minimum:
