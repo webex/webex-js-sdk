@@ -111,7 +111,7 @@
     "babel-template": "^6.23.0",
     "babel-traverse": "^6.23.1",
     "babel-types": "^6.23.0",
-    "babelify": "^8.0.0",
+    "babelify": "^10.0.0",
     "babylon": "^6.16.1",
     "backoff": "^2.5.0",
     "body-parser": "^1.17.2",
