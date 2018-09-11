@@ -132,7 +132,7 @@
     "cookie-parser": "^1.4.3",
     "core-decorators": "^0.20.0",
     "cors": "^2.8.1",
-    "debug": "^3.1.0",
+    "debug": "^4.0.0",
     "denodeify": "^1.2.1",
     "dependency-check": "^3.0.0",
     "detective": "^5.0.2",
