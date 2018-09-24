@@ -12,6 +12,12 @@ const spawn = require('../util/spawn');
 const {report} = require('../util/coverage');
 const {start, stop} = require('../util/server');
 
+// import {start as startPoxy, stop as stopProxy} from '../util/yakbak-server';
+
+const http = require('http');
+const path = require('path');
+const yakbak = require('yakbak');
+
 /**
  * Returns true if the given package should be tested
  * in the browser. (Some packages are intended for use
@@ -25,6 +31,139 @@ function shouldTestInBrowser(packageName) {
   ];
   return !noBrowserPackages.includes(packageName);
 }
+
+// yakbak stuff
+
+const services = [
+  {
+    defaultUrl: 'https://api.ciscospark.com/v1',
+    env: 'HYDRA_SERVICE_URL',
+    name: 'hydra',
+    port: 3010,
+    serviceUrl: process.env.HYDRA_SERVICE_URL
+  },
+  {
+    defaultUrl: 'https://wdm-a.wbx2.com/wdm/api/v1',
+    env: 'WDM_SERVICE_URL',
+    name: 'wdm',
+    port: 3020,
+    serviceUrl: process.env.WDM_SERVICE_URL
+  }
+];
+
+// custom hash stuff for yakbak
+
+const url = require('url');
+const crypto = require('crypto');
+
+/**
+ * Creates a custom hash used as the snapshot's filename.
+ * @param {http.ClientRequest} req
+ * @param {Object} body
+ * @returns {String} hashed filename
+ */
+function customHash(req, body) {
+  const hash = crypto.createHash('md5');
+  updateHash(hash, req);
+  hash.write(body);
+  return hash.digest('hex');
+}
+
+/**
+ * Updates the given hash with the appropriate
+ * methods, headers, etc.
+ * @param {Hash} hash
+ * @param {http.ClientRequest} req
+ */
+function updateHash(hash, req) {
+  const parts = url.parse(req.url, true);
+  const headers = pruneHeaders(req.headers);
+
+  hash.update(req.httpVersion);
+  hash.update(req.method);
+  hash.update(parts.pathname);
+  hash.update(JSON.stringify(sort(parts.query)));
+  hash.update(JSON.stringify(sort(headers)));
+  hash.update(JSON.stringify(sort(req.trailers)));
+}
+
+/**
+ * Remove headers that are unique for each request
+ * from the given headers object. This ensures
+ * that certain headers do not "bust" the hash.
+ * @param {Object} requestHeaders
+ * @returns {Object} a new, pruned headers object
+ */
+function pruneHeaders(requestHeaders) {
+  const headers = Object.assign({}, requestHeaders);
+  delete headers.trackingid;
+  delete headers.authorization;
+  return headers;
+}
+
+/**
+ * Sorts the given object.
+ * @param {Object} obj
+ * @returns {Object} a new, sorted object
+ */
+function sort(obj) {
+  const ret = {};
+  Object.keys(obj).sort().forEach((key) => {
+    ret[key] = obj[key];
+  });
+  return ret;
+}
+
+// end custom hash stuff
+
+/**
+ * Sets the process's environment variable given the service,
+ * e.g., HYDRA_SERVICE_URL="http://localhost:3010"
+ * @param {Object} service
+ * @returns {Promise}
+ */
+async function setEnv(service) {
+  return new Promise((resolve) => {
+    process.env[service.env] = `http://localhost:${service.port}`;
+    resolve();
+  });
+}
+
+/**
+ * Starts a proxy server for the given service.
+ * @param {Object} service
+ * @returns {Promise|http.server} proxy server
+ */
+async function startProxy(service) {
+  return new Promise((resolve) => {
+    const snapshotsDir = path.join(__dirname, '../../test/services/', service.name, 'snapshots');
+    const app = yakbak(service.defaultUrl, {
+      dirname: snapshotsDir,
+      hash: customHash
+    });
+    const proxy = http.createServer(app).listen(service.port, () => {
+      console.log(`Yakbak server listening on port ${service.port}. Proxy for ${service.defaultUrl}`);
+    });
+    resolve();
+    return proxy;
+  });
+}
+
+/**
+ * Stops the given proxy server.
+ * @param {http.server} proxy
+ * @returns {http.server} proxy server
+ */
+async function stopProxy(proxy) {
+  return new Promise((resolve) => {
+    proxy.close();
+    resolve();
+    return proxy;
+  });
+}
+
+// end yakbak stuff
+
 
 module.exports = {
   command: 'test',
@@ -129,7 +268,22 @@ module.exports = {
           debug('started test server');
         }
 
+        // Use HTTP "snapshots" instead of live network calls to test.
+        let proxies;
+        if (argv.snapshots || argv.snapshot) {
+          argv.node = true;
+          await Promise.all(services.map((service) => setEnv(service)));
+          proxies = await Promise.all(services.map((service) => startProxy(service)));
+        }
+
         await testPackage(argv, argv.package);
+
+        // TODO: Not working
+        if (argv.snapshots || argv.snapshot) {
+          if (proxies && proxies.length) {
+            await Promise.all(proxies.map((proxy) => stopProxy(proxy)));
+          }
+        }
 
         if (argv.serve) {
           debug('stopping test server');
