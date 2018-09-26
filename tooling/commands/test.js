@@ -12,8 +12,6 @@ const spawn = require('../util/spawn');
 const {report} = require('../util/coverage');
 const {start, stop} = require('../util/server');
 
-// import {start as startPoxy, stop as stopProxy} from '../util/yakbak-server';
-
 const http = require('http');
 const path = require('path');
 const yakbak = require('yakbak');
