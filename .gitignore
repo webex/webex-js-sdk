@@ -33,6 +33,7 @@ tasks/selenium
 .python-version
 .sauce
 .sauce.tid
+.vscode/
 browsers.processed.js
 bundle.js
 bundle.js.map
