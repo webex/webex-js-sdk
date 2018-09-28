@@ -205,7 +205,7 @@
     "read-package-json": "^2.0.5",
     "request": "^2.81.0",
     "request-id": "^0.11.1",
-    "require-dir": "^0.3.1",
+    "require-dir": "^1.1.0",
     "response-time": "^2.3.2",
     "rimraf": "^2.6.1",
     "sdp-transform": "^2.4.0",
