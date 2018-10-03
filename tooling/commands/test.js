@@ -12,7 +12,7 @@ const spawn = require('../util/spawn');
 const {report} = require('../util/coverage');
 const {start, stop} = require('../util/server');
 
-const {startProxies, stopProxies} = require('../util/yakbak-server');
+const {startProxies, stopProxies} = require('../util/proxies');
 
 /**
  * Returns true if the given package should be tested
