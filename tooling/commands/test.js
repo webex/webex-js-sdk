@@ -132,14 +132,11 @@ module.exports = {
         }
 
         // Use HTTP "snapshots" instead of live network calls to test.
-        let proxies;
         if (argv.snapshots || argv.snapshot) {
-          // argv.node = true; // DOESN'T WORK
-          proxies = await startProxies();
+          await startProxies();
         }
-
         await testPackage(argv, argv.package);
-        await stopProxies(proxies);
+        await stopProxies();
 
         if (argv.serve) {
           debug('stopping test server');
