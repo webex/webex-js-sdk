@@ -87,6 +87,8 @@ function sort(obj) {
 
 // end custom hash stuff
 
+let proxies;
+
 /**
  * Start yakbak proxy servers for each service
  * and return an array of those servers.
@@ -103,7 +105,7 @@ async function startProxies() {
  * @param {Array} proxies
  * @returns {Promise}
  */
-async function stopProxies(proxies) {
+async function stopProxies() {
   if (proxies && proxies.length) {
     return Promise.all(proxies.map((proxy) => stop(proxy)));
   }
