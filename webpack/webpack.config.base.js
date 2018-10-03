@@ -10,8 +10,6 @@ module.exports = merge({
   entry: './index.js',
   output: {
     filename: 'bundle.js',
-    library: 'ciscospark',
-    libraryTarget: 'var',
     path: __dirname,
     sourceMapFilename: '[file].map'
   },
@@ -38,7 +36,6 @@ module.exports = merge({
       DEBUG: '',
       NODE_ENV: process.env.NODE_ENV || 'development',
       CISCOSPARK_ACCESS_TOKEN: process.env.CISCOSPARK_ACCESS_TOKEN,
-      TO_PERSON: process.env.TO_PERSON,
       // The follow environment variables are specific to our continuous
       // integration process and should not be used in general
       // Also, yes, CONVERSATION_SERVICE does not end in URL
