@@ -11,7 +11,6 @@ const {list} = require('../lib/package');
 const spawn = require('../util/spawn');
 const {report} = require('../util/coverage');
 const {start, stop} = require('../util/server');
-
 const {startProxies, stopProxies} = require('../util/proxies');
 
 /**
