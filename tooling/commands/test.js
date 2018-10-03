@@ -142,8 +142,7 @@ async function startProxy(service) {
     const proxy = http.createServer(app).listen(service.port, () => {
       console.log(`Yakbak server listening on port ${service.port}. Proxy for ${service.defaultUrl}`);
     });
-    resolve();
-    return proxy;
+    resolve(proxy);
   });
 }
 
@@ -155,8 +154,7 @@ async function startProxy(service) {
 async function stopProxy(proxy) {
   return new Promise((resolve) => {
     proxy.close();
-    resolve();
-    return proxy;
+    resolve(proxy);
   });
 }
 
@@ -276,7 +274,6 @@ module.exports = {
 
         await testPackage(argv, argv.package);
 
-        // TODO: Not working
         if (argv.snapshots || argv.snapshot) {
           if (proxies && proxies.length) {
             await Promise.all(proxies.map((proxy) => stopProxy(proxy)));
