@@ -25,68 +25,6 @@ const services = [
   }
 ];
 
-// custom hash stuff for yakbak
-
-/**
- * Creates a custom hash used as the snapshot's filename.
- * @param {http.ClientRequest} req
- * @param {Object} body
- * @returns {String} hashed filename
- */
-function customHash(req, body) {
-  const hash = crypto.createHash('md5');
-  updateHash(hash, req);
-  hash.write(body);
-  return hash.digest('hex');
-}
-
-/**
- * Updates the given hash with the appropriate
- * methods, headers, etc.
- * @param {Hash} hash
- * @param {http.ClientRequest} req
- */
-function updateHash(hash, req) {
-  const parts = url.parse(req.url, true);
-  const headers = pruneHeaders(req.headers);
-
-  hash.update(req.httpVersion);
-  hash.update(req.method);
-  hash.update(parts.pathname);
-  hash.update(JSON.stringify(sort(parts.query)));
-  hash.update(JSON.stringify(sort(headers)));
-  hash.update(JSON.stringify(sort(req.trailers)));
-}
-
-/**
- * Remove headers that are unique for each request
- * from the given headers object. This ensures
- * that certain headers do not "bust" the hash.
- * @param {Object} requestHeaders
- * @returns {Object} a new, pruned headers object
- */
-function pruneHeaders(requestHeaders) {
-  const headers = Object.assign({}, requestHeaders);
-  delete headers.trackingid;
-  delete headers.authorization;
-  return headers;
-}
-
-/**
- * Sorts the given object.
- * @param {Object} obj
- * @returns {Object} a new, sorted object
- */
-function sort(obj) {
-  const ret = {};
-  Object.keys(obj).sort().forEach((key) => {
-    ret[key] = obj[key];
-  });
-  return ret;
-}
-
-// end custom hash stuff
-
 let proxies;
 
 /**
@@ -154,6 +92,64 @@ async function stop(proxy) {
     proxy.close();
     resolve(proxy);
   });
+}
+
+/**
+ * Creates a custom hash used as the snapshot's filename.
+ * @param {http.ClientRequest} req
+ * @param {Object} body
+ * @returns {String} hashed filename
+ */
+function customHash(req, body) {
+  const hash = crypto.createHash('md5');
+  updateHash(hash, req);
+  hash.write(body);
+  return hash.digest('hex');
+}
+
+/**
+ * Updates the given hash with the appropriate
+ * methods, headers, etc.
+ * @param {Hash} hash
+ * @param {http.ClientRequest} req
+ */
+function updateHash(hash, req) {
+  const parts = url.parse(req.url, true);
+  const headers = pruneHeaders(req.headers);
+
+  hash.update(req.httpVersion);
+  hash.update(req.method);
+  hash.update(parts.pathname);
+  hash.update(JSON.stringify(sort(parts.query)));
+  hash.update(JSON.stringify(sort(headers)));
+  hash.update(JSON.stringify(sort(req.trailers)));
+}
+
+/**
+ * Remove headers that are unique for each request
+ * from the given headers object. This ensures
+ * that certain headers do not "bust" the hash.
+ * @param {Object} requestHeaders
+ * @returns {Object} a new, pruned headers object
+ */
+function pruneHeaders(requestHeaders) {
+  const headers = Object.assign({}, requestHeaders);
+  delete headers.trackingid;
+  delete headers.authorization;
+  return headers;
+}
+
+/**
+ * Sorts the given object.
+ * @param {Object} obj
+ * @returns {Object} a new, sorted object
+ */
+function sort(obj) {
+  const ret = {};
+  Object.keys(obj).sort().forEach((key) => {
+    ret[key] = obj[key];
+  });
+  return ret;
 }
 
 module.exports = {
