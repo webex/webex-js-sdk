@@ -8,35 +8,40 @@ const path = require('path');
 const url = require('url');
 const yakbak = require('yakbak');
 
+/**
+ * A Cisco web service that we communicate with.
+ * @typedef {Object} service
+ * @property {String} defaultUrl - The service's normal operating URL.
+ * @property {String} env - The environment variable to set to override the service's URL.
+ * @property {String} name - The friendly name of the service.
+ * @property {number} port - The port on which to run the proxy server.
+ */
+
 // NOTE: CONVERSATION_SERVICE does not end in URL
 const services = [
   {
     defaultUrl: 'https://atlas-a.wbx2.com/admin/api/v1',
     env: 'ATLAS_SERVICE_URL',
     name: 'atlas',
-    port: 3010,
-    serviceUrl: process.env.ATLAS_SERVICE_URL
+    port: 3010
   },
   {
     defaultUrl: 'https://conv-a.wbx2.com/conversation/api/v1',
     env: 'CONVERSATION_SERVICE',
     name: 'conversation',
-    port: 3020,
-    serviceUrl: process.env.CONVERSATION_SERVICE
+    port: 3020
   },
   {
     defaultUrl: 'https://api.ciscospark.com/v1',
     env: 'HYDRA_SERVICE_URL',
     name: 'hydra',
-    port: 3030,
-    serviceUrl: process.env.HYDRA_SERVICE_URL
+    port: 3030
   },
   {
     defaultUrl: 'https://wdm-a.wbx2.com/wdm/api/v1',
     env: 'WDM_SERVICE_URL',
     name: 'wdm',
-    port: 3040,
-    serviceUrl: process.env.WDM_SERVICE_URL
+    port: 3040
   }
 ];
 
