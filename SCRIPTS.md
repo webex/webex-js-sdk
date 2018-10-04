@@ -66,6 +66,12 @@ Test a single package and generate coverage and xunit reports
 npm test -- --package @ciscospark/spark-core --coverage --xunit
 ```
 
+Test a single package using [snapshots](https://github.com/flickr/yakbak#yakbak) rather than live network requests. **The test must be run in Node.**
+
+```bash
+npm test -- --package @ciscospark/spark-core --node --snapshots
+```
+
 Keeps the browser open in debug mode so that you can set break points and reload the page with code updates
 
 ```bash
