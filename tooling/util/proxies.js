@@ -10,7 +10,7 @@ const yakbak = require('yakbak');
 
 /**
  * A Cisco web service that we communicate with.
- * @typedef {Object} service
+ * @typedef {Object} Service
  * @property {String} defaultUrl - The service's normal operating URL.
  * @property {String} env - The environment variable to set to override the service's URL.
  * @property {String} name - The friendly name of the service.
@@ -73,7 +73,7 @@ async function stopProxies() {
 /**
  * Sets the process's environment variable given the service,
  * e.g., HYDRA_SERVICE_URL="http://localhost:3010"
- * @param {Object} service
+ * @param {Service} service
  * @returns {Promise}
  */
 async function setEnv(service) {
@@ -85,7 +85,7 @@ async function setEnv(service) {
 
 /**
  * Starts a proxy server for the given service.
- * @param {Object} service
+ * @param {Service} service
  * @returns {Promise|http.server} proxy server
  */
 async function start(service) {
