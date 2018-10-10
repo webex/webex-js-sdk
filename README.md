@@ -37,59 +37,101 @@ To use the SDK, you will need Cisco Webex credentials. If you do not already hav
 
 See [the detailed docs](https://webex.github.io/spark-js-sdk/) for more usage examples.
 
-### Node.js
-
 You will need to set the following environment variable:
+
 - `CISCOSPARK_ACCESS_TOKEN`
 
 ```javascript
-const assert = require(`assert`);
-assert(process.env.CISCOSPARK_ACCESS_TOKEN, 'This example assumes you have set your access token as an environment variable');
 const ciscospark = require(`ciscospark`);
-ciscospark.rooms.create({title: `My First Room`})
-  .then((room) => {
-    return Promise.all([
-      ciscospark.memberships.create({
-        roomId: room.id,
-        personEmail: `alice@example.com`
-      }),
-      ciscospark.memberships.create({
-        roomId: room.id,
-        personEmail: `bob@example.com`
-      }),
-    ])
-      .then(() => ciscospark.messages.create({
-        markdown: `**Hi Everyone**`,
-        roomId: room.id
-      }));
+const spark = ciscospark.init({
+  credentials: {
+    access_token: process.env.CISCOSPARK_ACCESS_TOKEN
+  }
+});
+
+spark.rooms
+  .create({
+    title: 'My First Room!'
+  })
+  .catch(function(error) {
+    console.error(error);
   });
+
+spark.rooms
+  .list({
+    max: 10
+  })
+  .then(function(rooms) {
+    var room = rooms.items.filter(function(room) {
+      return room.title === 'My First Room!';
+    })[0];
+
+    spark.messages.create({
+      text: 'Hello World!',
+      roomId: room.id
+    });
+
+    return spark.messages
+      .list({ roomId: room.id, max: 1 })
+      .then(function(messages) {
+        console.log(
+          `Last message sent to Room "${room.title}": ${messages.items[0].text}`
+        );
+      });
+  })
+  .catch(function(error) {
+    console.error(error);
+  });
+
 ```
 
-### Browsers
+### _A note on Browser usage_
 
-We do not provide a pre-built version of `ciscospark`.
+We do not provide a pre-built version of the SDK that includes a `window.ciscospark`.
+If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `spark` variable to `window.ciscospark`.
+In-browser usage is pretty much the same as Node.js usage, with the addition of handling the user authentication flow for you. See the guide on the [docs site](https://webex.github.io/spark-js-sdk/guides/browsers/) for more information.
 
-If you've already got a commonjs or es6 build process in place, you can simply
-use `const ciscospark = require('ciscospark')`.
+For a quick example on how to use the SDK on a website, we'll be using the [Parcel Bundler](https://parceljs.org/). For any more information and questions on how to use Parcel, please head to their [website](https://parceljs.org/).
 
-If you need to load `ciscospark` via a script tag, you will need to build it first:
+1. Put the above javascript snippet into a `index.js`
+  a. If you'd like to have `window.ciscospark` available, change the init line to `const spark = window.ciscospark = ciscospark.init`
+2. Create a `index.html` with the snippet below
+3. Run `parcel index.html` in your terminal
+4. Go to [http://localhost:1234](http://localhost:1234) and open the developer console to see the output
 
-```bash
-npm install ciscospark
-npm install -g browserify
-echo "window.ciscospark = require('ciscospark')" > ./index.js
-browserify index.js > bundle.js
+```html
+<html>
+ <head>
+   <title>Webex SDK for Browsers</title>
+ </head>
+ <body>
+   <script src="./index.js"></script>
+ </body>
+</html>
 ```
 
-In-browser usage is pretty much the same as Node.js usage, with the addition of handling
-the user authentication flow for you. See the guide on the
-[docs site](https://webex.github.io/spark-js-sdk/guides/browsers/) for more information.
+#### `ciscospark/env`
+
+`ciscospark/env` is primarily used for the Node.js environment and will continue to be supported, however we suggest that you import/require `ciscospark`.
+The only difference is between `ciscospark` and `ciscospark/env` is that `ciscospark/env` will look for your `CISCOSPARK_ACCESS_TOKEN` to initialize the SDK for you.
+
+If you're still using `ciscospark/env`, the code snippet below shows how to use the SDK when importing/requiring `ciscospark/env`
+
+```javascript
+const assert = require(`assert`);
+const ciscospark = require(`ciscospark/env`);
+
+assert(process.env.CISCOSPARK_ACCESS_TOKEN, 'This example assumes you have set your access token as an environment variable');
+
+ciscospark.rooms.create({title: `My First Room`})...
+````
 
 ## Samples
 
 Sample code can be found in [packages/node_modules/samples](./packages/node_modules/samples). You can run them yourself with the following commands:
 
-> Note: this installs all of the SDK's tooling dependencies, so you'll need `libgcrypt` and (possibly) `graphicsmagick`. On a mac, you can install these with `brew install graphicsmagick libgcrypt`.
+> Note: this installs all of the SDK's tooling dependencies, so you'll need `libgcrypt` and (possibly) `graphicsmagick`.
+> On a mac, you can install these with `brew install graphicsmagick libgcrypt`.
 
 ```bash
 git clone git@github.com:webex/spark-js-sdk.git
