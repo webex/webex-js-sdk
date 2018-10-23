@@ -33,6 +33,7 @@
     "Patrick Linskey <plinskey@cisco.com>",
     "Riley Marsh <rimarsh@cisco.com>",
     "Saurabh Jain <saurjai3@cisco.com>",
+    "Taymoor Khan <taykhan@cisco.com>",
     "Tor Hagemann <tohagema@cisco.com>",
     "Tran Tu <tratu@cisco.com>",
     "Vagou Zhou <vagouz@cisco.com>"
@@ -238,7 +239,7 @@
     "yargs": "^9.0.1"
   },
   "optionalDependencies": {
-    "@ciscospark/test-users-legacy": "^1.0.2"
+    "@ciscospark/test-users-legacy": "^1.1.0"
   },
   "browser": {
     "mmmagic": false,
