@@ -47,6 +47,9 @@ def cleanup = { ->
 
 def generateDockerEnv = { ->
   def dockerEnv = ""
+  if (env.ACL_SERVICE_URL != null) {
+    dockerEnv+="ACL_SERVICE_URL=${env.ACL_SERVICE_URL}\n"
+  }
   if (env.ATLAS_SERVICE_URL != null) {
     dockerEnv+="ATLAS_SERVICE_URL=${env.ATLAS_SERVICE_URL}\n"
   }
