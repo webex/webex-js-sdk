@@ -80,6 +80,12 @@ def generateDockerEnv = { ->
   if (env.HYDRA_SERVICE_URL != null) {
     dockerEnv+="HYDRA_SERVICE_URL=${env.HYDRA_SERVICE_URL}\n"
   }
+  if (env.IDBROKER_BASE_URL != null) {
+    dockerEnv+="IDBROKER_BASE_URL=${env.IDBROKER_BASE_URL}\n"
+  }
+  if (env.IDENTITY_BASE_URL != null) {
+    dockerEnv+="IDENTITY_BASE_URL=${env.IDENTITY_BASE_URL}\n"
+  }
   if (env.PIPELINE != null) {
     dockerEnv+="PIPELINE=${env.PIPELINE}\n"
   }
@@ -234,6 +240,13 @@ ansiColor('xterm') {
                 throw err;
               }
             }
+
+            // Define test URLs for the BTS test environment.
+            env.ATLAS_SERVICE_URL='https://atlas-loada.ciscospark.com'
+            env.CONVERSATION_SERVICE='https://conversation-loada.ciscospark.com/conversation/api/v1'
+            env.IDBROKER_BASE_URL='https://idbrokerbts.webex.com'
+            env.IDENTITY_BASE_URL='https://identitybts.webex.com'
+            env.WDM_SERVICE_URL='https://wdm-loada.ciscospark.com/wdm/api/v1'
 
             generateDockerEnv()
             generateSecretsFile()
