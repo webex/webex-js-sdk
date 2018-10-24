@@ -245,6 +245,7 @@ ansiColor('xterm') {
             }
 
             // Define test URLs for the BTS test environment.
+            env.ACL_SERVICE_URL='https://acl-loada.ciscospark.com'
             env.ATLAS_SERVICE_URL='https://atlas-loada.ciscospark.com'
             env.CONVERSATION_SERVICE='https://conversation-loada.ciscospark.com/conversation/api/v1'
             env.IDBROKER_BASE_URL='https://idbrokerbts.webex.com'
