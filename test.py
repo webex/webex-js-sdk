@@ -36,7 +36,7 @@ INT_ENV_VARS = {
   'ENCRYPTION_SERVICE_URL': 'https://encryption-intb.ciscospark.com/encryption/api/v1',
   'IDBROKER_BASE_URL': 'https://idbrokerbts.webex.com',
   'IDENTITY_BASE_URL': 'https://identitybts.webex.com',
-  'WDM_SERVICE_URL': 'https://wdm-intb.ciscospark.com/wdm/api/v1'
+  'WDM_SERVICE_URL': 'https://wdm.intb1.ciscospark.com/wdm/api/v1'
 }
 
 TEST_COMMAND = 'npm test -- --package %s'
