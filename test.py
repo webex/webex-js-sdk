@@ -62,9 +62,6 @@ def run_subprocess(bash_command, env_vars):
 with open(OUTPUT_FILE_PATH, 'wb') as csvfile:
   writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
   writer.writerow(['Package', 'Production exit code', 'Integration exit code'])
-  # for package in packages:
-  #   writer.writerow([package])
-
   for package in packages[0:1]:
     bash_command = TEST_COMMAND % package
 
@@ -72,7 +69,7 @@ with open(OUTPUT_FILE_PATH, 'wb') as csvfile:
     prod_return_code = run_subprocess(bash_command, PROD_ENV_VARS)
 
     print('Testing `%s` on integration...' % package)
-    int_return_code = run_subprocess(bash_command, PROD_ENV_VARS)
+    int_return_code = run_subprocess(bash_command, INT_ENV_VARS)
 
     writer.writerow([package, prod_return_code, int_return_code])
 
