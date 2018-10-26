@@ -36,7 +36,7 @@ INT_ENV_VARS = {
   'ENCRYPTION_SERVICE_URL': 'https://encryption-intb.ciscospark.com/encryption/api/v1',
   'IDBROKER_BASE_URL': 'https://idbrokerbts.webex.com',
   'IDENTITY_BASE_URL': 'https://identitybts.webex.com',
-  'WDM_SERVICE_URL': 'https://wdm.intb1.ciscospark.com/wdm/api/v1'
+  'WDM_SERVICE_URL': 'https://wdm-intb.ciscospark.com/wdm/api/v1'
 }
 
 TEST_COMMAND = 'npm test -- --package %s'
@@ -62,7 +62,7 @@ def run_subprocess(bash_command, env_vars):
 with open(OUTPUT_FILE_PATH, 'wb') as csvfile:
   writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
   writer.writerow(['Package', 'Production exit code', 'Integration exit code'])
-  for package in packages[0:1]:
+  for package in packages:
     bash_command = TEST_COMMAND % package
 
     print('Testing `%s` on production...' % package)
@@ -72,6 +72,7 @@ with open(OUTPUT_FILE_PATH, 'wb') as csvfile:
     int_return_code = run_subprocess(bash_command, INT_ENV_VARS)
 
     writer.writerow([package, prod_return_code, int_return_code])
+    csvfile.flush()
 
 print('Wrote output to: %s' % OUTPUT_FILE_PATH)
 print('Done.')
