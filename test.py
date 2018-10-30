@@ -1,6 +1,7 @@
 import csv
 import os
 import subprocess
+import threading
 
 # Gather the packages to test.
 
@@ -66,6 +67,14 @@ def print_result(return_code, prefix='Tests are a...'):
   else:
     print(bcolors.FAIL + prefix + 'failure.' + bcolors.ENDC)
 
+def run_test(package, environment):
+  env_vars = INT_ENV_VARS if environment is 'integration' else PROD_ENV_VARS
+  print(bcolors.OKBLUE + 'Testing `%s` on %s...' % (package, environment) + bcolors.ENDC)
+  bash_command = TEST_COMMAND % package
+  return_code = run_subprocess(bash_command, env_vars)
+  print_result(return_code, prefix='Testing `%s` on %s...' % (package, environment))
+  return return_code
+
 def main():
   ciscospark_packages = get_package_names(CISCOSPARK)
   webex_packages = get_package_names(WEBEX)
@@ -77,23 +86,14 @@ def main():
   except OSError:
     pass
 
+  threads = []
 
   with open(OUTPUT_FILE_PATH, 'wb') as csvfile:
     writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
     writer.writerow(['Package', 'Production exit code', 'Integration exit code'])
     for package in packages:
-      bash_command = TEST_COMMAND % package
-
-      # Test production.
-      print(bcolors.OKBLUE + 'Testing `%s` on production...' % package + bcolors.ENDC)
-      prod_return_code = run_subprocess(bash_command, PROD_ENV_VARS)
-      print_result(prod_return_code, prefix='Testing `%s` on production...' % package)
-
-      # Test integration.
-      print(bcolors.OKBLUE + 'Testing `%s` on integration...' % package + bcolors.ENDC)
-      int_return_code = run_subprocess(bash_command, INT_ENV_VARS)
-      print_result(int_return_code, prefix='Testing `%s` on integration...' % package)
-
+      prod_return_code = run_test(package, 'production')
+      int_return_code = run_test(package, 'integration')
       writer.writerow([package, prod_return_code, int_return_code])
       csvfile.flush()
 
