@@ -75,6 +75,12 @@ def run_test(package, environment):
   print_result(return_code, prefix='Testing `%s` on %s...' % (package, environment))
   return return_code
 
+def run_env_tests(package, csv_writer, csv_file):
+  prod_return_code = run_test(package, 'production')
+  int_return_code = run_test(package, 'integration')
+  csv_writer.writerow([package, prod_return_code, int_return_code])
+  csv_file.flush()
+
 def main():
   ciscospark_packages = get_package_names(CISCOSPARK)
   webex_packages = get_package_names(WEBEX)
@@ -88,14 +94,11 @@ def main():
 
   threads = []
 
-  with open(OUTPUT_FILE_PATH, 'wb') as csvfile:
-    writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+  with open(OUTPUT_FILE_PATH, 'wb') as csv_file:
+    writer = csv.writer(csv_file, quoting=csv.QUOTE_MINIMAL)
     writer.writerow(['Package', 'Production exit code', 'Integration exit code'])
     for package in packages:
-      prod_return_code = run_test(package, 'production')
-      int_return_code = run_test(package, 'integration')
-      writer.writerow([package, prod_return_code, int_return_code])
-      csvfile.flush()
+      run_env_tests(package, writer, csv_file)
 
   print('Wrote output to: %s' % OUTPUT_FILE_PATH)
   print('Done.')
