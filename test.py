@@ -1,24 +1,12 @@
+import csv
 import os
+import subprocess
 
 # Gather the packages to test.
 
 PREFIX = './packages/node_modules/'
-
-def get_package_names(path_name):
-  namespace = path_name.replace(PREFIX, '')
-  return [os.path.join(namespace, name) for name in os.listdir(path_name) if os.path.isdir(os.path.join(path_name, name))]
-
-CISCOSPARK = PREFIX + '@ciscospark'
-WEBEX = PREFIX + '@webex'
-
-ciscospark_packages = get_package_names(CISCOSPARK)
-webex_packages = get_package_names(WEBEX)
-
-packages = ciscospark_packages + webex_packages
-
-print('Testing %d packages...' % len(packages))
-
-# Test the packages & write the results to a CSV file.
+CISCOSPARK = os.path.join(PREFIX, '@ciscospark')
+WEBEX = os.path.join(PREFIX, '@webex')
 
 PROD_ENV_VARS = {
   # 'ACL_SERVICE_URL': 'https://acl-a.wbx2.com/acl/api/v1', ?
@@ -44,17 +32,15 @@ INT_ENV_VARS = {
   'ENABLE_VERBOSE_NETWORK_LOGGING': 'true'
 }
 
-TEST_COMMAND = 'npm test -- --package %s'
+OUTPUT_DIR = 'output'
+OUTPUT_FILE_PATH = os.path.join(OUTPUT_DIR, 'test-comparison.csv')
 
-import csv
-import subprocess
+# TEST_COMMAND = 'npm test -- --package %s'
+TEST_COMMAND = 'npm test -- --package %s --node'
 
-try:
-  os.mkdir('output')
-except OSError:
-  pass
-
-OUTPUT_FILE_PATH = './output/test-comparison.csv'
+def get_package_names(path_name):
+  namespace = path_name.replace(PREFIX, '')
+  return [os.path.join(namespace, name) for name in os.listdir(path_name) if os.path.isdir(os.path.join(path_name, name))]
 
 def run_subprocess(bash_command, env_vars):
   env = os.environ.copy()
@@ -80,25 +66,39 @@ def print_result(return_code, prefix='Tests are a...'):
   else:
     print(bcolors.FAIL + prefix + 'failure.' + bcolors.ENDC)
 
+def main():
+  ciscospark_packages = get_package_names(CISCOSPARK)
+  webex_packages = get_package_names(WEBEX)
+  packages = ciscospark_packages + webex_packages
+  print('Testing %d packages...' % len(packages))
 
-with open(OUTPUT_FILE_PATH, 'wb') as csvfile:
-  writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
-  writer.writerow(['Package', 'Production exit code', 'Integration exit code'])
-  for package in packages:
-    bash_command = TEST_COMMAND % package
+  try:
+    os.mkdir(OUTPUT_DIR)
+  except OSError:
+    pass
 
-    # Test production.
-    print(bcolors.OKBLUE + 'Testing `%s` on production...' % package + bcolors.ENDC)
-    prod_return_code = run_subprocess(bash_command, PROD_ENV_VARS)
-    print_result(prod_return_code, prefix='Testing `%s` on production...' % package)
 
-    # Test integration.
-    print(bcolors.OKBLUE + 'Testing `%s` on integration...' % package + bcolors.ENDC)
-    int_return_code = run_subprocess(bash_command, INT_ENV_VARS)
-    print_result(int_return_code, prefix='Testing `%s` on integration...' % package)
+  with open(OUTPUT_FILE_PATH, 'wb') as csvfile:
+    writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(['Package', 'Production exit code', 'Integration exit code'])
+    for package in packages:
+      bash_command = TEST_COMMAND % package
 
-    writer.writerow([package, prod_return_code, int_return_code])
-    csvfile.flush()
+      # Test production.
+      print(bcolors.OKBLUE + 'Testing `%s` on production...' % package + bcolors.ENDC)
+      prod_return_code = run_subprocess(bash_command, PROD_ENV_VARS)
+      print_result(prod_return_code, prefix='Testing `%s` on production...' % package)
 
-print('Wrote output to: %s' % OUTPUT_FILE_PATH)
-print('Done.')
+      # Test integration.
+      print(bcolors.OKBLUE + 'Testing `%s` on integration...' % package + bcolors.ENDC)
+      int_return_code = run_subprocess(bash_command, INT_ENV_VARS)
+      print_result(int_return_code, prefix='Testing `%s` on integration...' % package)
+
+      writer.writerow([package, prod_return_code, int_return_code])
+      csvfile.flush()
+
+  print('Wrote output to: %s' % OUTPUT_FILE_PATH)
+  print('Done.')
+
+if __name__ == "__main__":
+  main()
