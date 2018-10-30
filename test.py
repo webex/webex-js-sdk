@@ -21,12 +21,14 @@ print('Testing %d packages...' % len(packages))
 # Test the packages & write the results to a CSV file.
 
 PROD_ENV_VARS = {
+  # 'ACL_SERVICE_URL': 'https://acl-a.wbx2.com/acl/api/v1', ?
   'ATLAS_SERVICE_URL': 'https://atlas-a.wbx2.com/admin/api/v1',
   'CONVERSATION_SERVICE': 'https://conv-a.wbx2.com/conversation/api/v1',
   'ENCRYPTION_SERVICE_URL': 'https://encryption-a.wbx2.com',
   'IDBROKER_BASE_URL': 'https://idbroker.webex.com',
   'IDENTITY_BASE_URL': 'https://identity.webex.com',
   'WDM_SERVICE_URL': 'https://wdm-a.wbx2.com/wdm/api/v1',
+  # Logging
   'ENABLE_VERBOSE_NETWORK_LOGGING': 'true'
 }
 
@@ -38,11 +40,11 @@ INT_ENV_VARS = {
   'IDBROKER_BASE_URL': 'https://idbrokerbts.webex.com',
   'IDENTITY_BASE_URL': 'https://identitybts.webex.com',
   'WDM_SERVICE_URL': 'https://wdm-intb.ciscospark.com/wdm/api/v1',
-  # 'WDM_SERVICE_URL': 'https://wdm.intb1.ciscospark.com/wdm/api/v1',
+  # Logging
   'ENABLE_VERBOSE_NETWORK_LOGGING': 'true'
 }
 
-TEST_COMMAND = 'npm test -- --package %s --node'
+TEST_COMMAND = 'npm test -- --package %s'
 
 import csv
 import subprocess
