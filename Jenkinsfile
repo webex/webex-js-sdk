@@ -244,13 +244,14 @@ ansiColor('xterm') {
               }
             }
 
-            // Define test URLs for the BTS test environment.
-            env.ACL_SERVICE_URL='https://acl-loada.ciscospark.com'
-            env.ATLAS_SERVICE_URL='https://atlas-loada.ciscospark.com'
-            env.CONVERSATION_SERVICE='https://conversation-loada.ciscospark.com/conversation/api/v1'
+            // Define test URLs for the integration (test) environment.
+            env.ACL_SERVICE_URL='https://acl-intb.ciscospark.com/acl/api/v1'
+            env.ATLAS_SERVICE_URL='https://atlas-intb.ciscospark.com/admin/api/v1'
+            env.CONVERSATION_SERVICE='https://conversation-intb.ciscospark.com/conversation/api/v1'
+            env.ENCRYPTION_SERVICE_URL='https://encryption-intb.ciscospark.com/encryption/api/v1'
             env.IDBROKER_BASE_URL='https://idbrokerbts.webex.com'
             env.IDENTITY_BASE_URL='https://identitybts.webex.com'
-            env.WDM_SERVICE_URL='https://wdm-loada.ciscospark.com/wdm/api/v1'
+            env.WDM_SERVICE_URL='https://wdm-intb.ciscospark.com/wdm/api/v1'
 
             generateDockerEnv()
             generateSecretsFile()
