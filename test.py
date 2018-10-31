@@ -39,9 +39,19 @@ OUTPUT_FILE_PATH = os.path.join(OUTPUT_DIR, 'test-comparison.csv')
 # TEST_COMMAND = 'npm test -- --package %s'
 TEST_COMMAND = 'npm test -- --package %s --node'
 
+SKIP_PACKAGES = [
+  '@webex/bin-sauce-connect', # needs Sauce started
+  '@webex/plugin-meetings', # no tests
+  '@webex/test-helper-server' # no tests
+]
+
+def should_include_package(path_name, name):
+  scoped_name = os.path.join(os.path.basename(path_name), name)
+  return os.path.isdir(os.path.join(path_name, name)) and scoped_name not in SKIP_PACKAGES
+
 def get_package_names(path_name):
   namespace = path_name.replace(PREFIX, '')
-  return [os.path.join(namespace, name) for name in os.listdir(path_name) if os.path.isdir(os.path.join(path_name, name))]
+  return [os.path.join(namespace, name) for name in os.listdir(path_name) if should_include_package(path_name, name)]
 
 def run_subprocess(bash_command, env_vars):
   env = os.environ.copy()
@@ -75,16 +85,17 @@ def run_test(package, environment):
   print_result(return_code, prefix='Testing `%s` on %s...' % (package, environment))
   return return_code
 
-def run_env_tests(package, csv_writer, csv_file):
+def run_env_tests(package, writer, csv_file):
   prod_return_code = run_test(package, 'production')
   int_return_code = run_test(package, 'integration')
-  csv_writer.writerow([package, prod_return_code, int_return_code])
+  writer.writerow([package, prod_return_code, int_return_code])
   csv_file.flush()
 
 def main():
   ciscospark_packages = get_package_names(CISCOSPARK)
   webex_packages = get_package_names(WEBEX)
   packages = ciscospark_packages + webex_packages
+  print ('Skipping %d packages: %s' % (len(SKIP_PACKAGES), ', '.join(SKIP_PACKAGES)))
   print('Testing %d packages...' % len(packages))
 
   try:
@@ -99,6 +110,12 @@ def main():
     writer.writerow(['Package', 'Production exit code', 'Integration exit code'])
     for package in packages:
       run_env_tests(package, writer, csv_file)
+
+    # threads = [threading.Thread(target=run_env_tests, args=(package, writer, csv_file)) for package in packages]
+    # for thread in threads:
+    #   thread.start()
+    # for thread in threads:
+    #   thread.join()
 
   print('Wrote output to: %s' % OUTPUT_FILE_PATH)
   print('Done.')
