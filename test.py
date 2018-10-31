@@ -36,13 +36,14 @@ INT_ENV_VARS = {
 OUTPUT_DIR = 'output'
 OUTPUT_FILE_PATH = os.path.join(OUTPUT_DIR, 'test-comparison.csv')
 
-# TEST_COMMAND = 'npm test -- --package %s'
-TEST_COMMAND = 'npm test -- --package %s --node'
+TEST_COMMAND = 'npm test -- --package %s'
 
 SKIP_PACKAGES = [
   '@webex/bin-sauce-connect', # needs Sauce started
   # '@webex/plugin-meetings', # no tests
   # '@webex/test-helper-server' # no tests
+  # '@ciscospark/internal-plugin-calendar', # no tests
+  # '@ciscospark/plugin-webhooks' # no tests
 ]
 
 def should_include_package(path_name, name):
@@ -108,14 +109,15 @@ def main():
   with open(OUTPUT_FILE_PATH, 'wb') as csv_file:
     writer = csv.writer(csv_file, quoting=csv.QUOTE_MINIMAL)
     writer.writerow(['Package', 'Production exit code', 'Integration exit code'])
-    for package in packages:
-      run_env_tests(package, writer, csv_file)
 
-    # threads = [threading.Thread(target=run_env_tests, args=(package, writer, csv_file)) for package in packages]
-    # for thread in threads:
-    #   thread.start()
-    # for thread in threads:
-    #   thread.join()
+    # for package in packages:
+    #   run_env_tests(package, writer, csv_file)
+
+    threads = [threading.Thread(target=run_env_tests, args=(package, writer, csv_file)) for package in packages]
+    for thread in threads:
+      thread.start()
+    for thread in threads:
+      thread.join()
 
   print('Wrote output to: %s' % OUTPUT_FILE_PATH)
   print('Done.')
