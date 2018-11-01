@@ -104,6 +104,9 @@ def generateDockerEnv = { ->
   if (env.WDM_SERVICE_URL != null) {
     dockerEnv+="WDM_SERVICE_URL=${env.WDM_SERVICE_URL}\n"
   }
+  if (env.WHISTLER_API_SERVICE_URL != null) {
+    dockerEnv+="WHISTLER_API_SERVICE_URL=${env.WHISTLER_API_SERVICE_URL}\n"
+  }
   if (env.WORKSPACE != null) {
     dockerEnv+="WORKSPACE=${env.WORKSPACE}\n"
   }
@@ -252,6 +255,7 @@ ansiColor('xterm') {
             env.IDBROKER_BASE_URL='https://idbrokerbts.webex.com'
             env.IDENTITY_BASE_URL='https://identitybts.webex.com'
             env.WDM_SERVICE_URL='https://wdm-intb.ciscospark.com/wdm/api/v1'
+            env.WHISTLER_API_SERVICE_URL='https://whistler.onint.ciscospark.com/api/v1'
 
             generateDockerEnv()
             generateSecretsFile()
