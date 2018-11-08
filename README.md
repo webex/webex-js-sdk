@@ -60,7 +60,7 @@ teams.rooms.create({ title: `My First Room` }).then(room => {
     })
   ]).then(() =>
     teams.messages.create({
-      teams: `**Hi Everyone**`,
+      markdown: `**Hi Everyone**`,
       roomId: room.id
     })
   );
