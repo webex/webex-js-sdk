@@ -50,17 +50,17 @@ const teams = ciscospark.init({
 // Send a **Hi Everyone** message to the room
 teams.rooms.create({ title: `My First Room` }).then(room => {
   return Promise.all([
-    ciscospark.memberships.create({
+    teams.memberships.create({
       roomId: room.id,
       personEmail: `alice@example.com`
     }),
-    ciscospark.memberships.create({
+    teams.memberships.create({
       roomId: room.id,
       personEmail: `bob@example.com`
     })
   ]).then(() =>
-    ciscospark.messages.create({
-      markdown: `**Hi Everyone**`,
+    teams.messages.create({
+      teams: `**Hi Everyone**`,
       roomId: room.id
     })
   );
