@@ -19,6 +19,7 @@ dist
 html-report
 js-bin
 local/
+output/
 reports
 string
 tasks/selenium
