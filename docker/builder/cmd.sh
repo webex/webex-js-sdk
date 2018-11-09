@@ -91,7 +91,7 @@ for SUITE_ITERATION in $(seq 1 "${MAX_TEST_SUITE_RETRIES}"); do
 
       set +e
       daemon -U --name sauce_connect -- "${SC_BINARY}" \
-        -B *.wbx2.com,*.ciscospark.com,idbroker.webex.com,127.0.0.1,localhost \
+        -B *.wbx2.com,*.ciscospark.com,idbroker.webex.com,idbrokerbts.webex.com,127.0.0.1,localhost \
         -t whistler.onint.ciscospark.com,internal-testing-services.wbx2.com,127.0.0.1,localhost,calendar-whistler.onint.ciscospark.com \
         -vv \
         -l "$(pwd)/reports/sauce/sauce_connect.$(echo "${PACKAGE}" | awk -F '/' '{ print $NF }').${SC_ITERATION}.log" \
