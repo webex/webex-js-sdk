@@ -1,6 +1,7 @@
+const path = require('path');
+
 const dotenv = require('dotenv');
 const glob = require('glob');
-const path = require('path');
 const {EnvironmentPlugin} = require('webpack');
 
 dotenv.config();
@@ -19,7 +20,8 @@ module.exports = {
   devServer: {
     https: true,
     disableHostCheck: true,
-    port: 8000
+    port: 8000,
+    contentBase: './packages/node_modules/samples'
   },
   resolve: {
     alias: glob
@@ -29,7 +31,10 @@ module.exports = {
         // Always use src as the entry point for local files so that we have the
         // best opportunity for treeshaking; also makes developing easier since
         // we don't need to manually rebuild after changing code.
-        alias[`./packages/node_modules/${packageName}`] = path.resolve(__dirname, `./packages/node_modules/${packageName}/src/index.js`);
+        alias[`./packages/node_modules/${packageName}`] = path.resolve(
+          __dirname,
+          `./packages/node_modules/${packageName}/src/index.js`
+        );
         alias[`${packageName}`] = path.resolve(__dirname, `./packages/node_modules/${packageName}/src/index.js`);
         return alias;
       }, {})
@@ -53,7 +58,10 @@ module.exports = {
       // The follow environment variables are specific to our continuous
       // integration process and should not be used in general
       // Also, yes, CONVERSATION_SERVICE does not end in URL
-      CONVERSATION_SERVICE: process.env.CONVERSATION_SERVICE || process.env.CONVERSATION_SERVICE_URL || 'https://conv-a.wbx2.com/conversation/api/v1',
+      CONVERSATION_SERVICE:
+        process.env.CONVERSATION_SERVICE
+        || process.env.CONVERSATION_SERVICE_URL
+        || 'https://conv-a.wbx2.com/conversation/api/v1',
       WDM_SERVICE_URL: process.env.WDM_SERVICE_URL || 'https://wdm-a.wbx2.com/wdm/api/v1',
       HYDRA_SERVICE_URL: process.env.HYDRA_SERVICE_URL || 'https://api.ciscospark.com/v1',
       ATLAS_SERVICE_URL: process.env.ATLAS_SERVICE_URL || 'https://atlas-a.wbx2.com/admin/api/v1'
