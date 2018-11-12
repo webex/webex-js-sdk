@@ -82,7 +82,7 @@
     "serve:samples": "echo 'Deprecated. Please use npm run samples:serve'; npm run --silent samples:serve",
     "test:samples": "echo 'Deprecated. Please use npm run samples:test'; npm run --silent samples:test",
     "samples:build": "babel-node ./tooling/index.js build --only-samples",
-    "samples:serve": "webpack-dev-server --config webpack/webpack.config.samples.js",
+    "samples:serve": "webpack-dev-server",
     "serve:package": "webpack-dev-server --config webpack/webpack.config.js --hot --inline --history-api-fallback",
     "presamples:test": "rimraf bundle.js bundle.js.map",
     "samples:test": "NODE_ENV=test wdio",
