@@ -271,5 +271,8 @@
     "*.js": "lint:eslint",
     "Jenkinsfile": "lint:jenkinsfile",
     "*package.json": "lint:package-names"
+  },
+  "devDependencies": {
+    "javascript-state-machine": "^3.1.0"
   }
 }
