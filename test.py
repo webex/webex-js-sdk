@@ -29,6 +29,7 @@ INT_ENV_VARS = {
   'IDBROKER_BASE_URL': 'https://idbrokerbts.webex.com',
   'IDENTITY_BASE_URL': 'https://identitybts.webex.com',
   'WDM_SERVICE_URL': 'https://wdm-intb.ciscospark.com/wdm/api/v1',
+  'WHISTLER_API_SERVICE_URL': 'https://whistler.onint.ciscospark.com/api/v1',
   # Logging
   'ENABLE_VERBOSE_NETWORK_LOGGING': 'true'
 }
@@ -110,14 +111,14 @@ def main():
     writer = csv.writer(csv_file, quoting=csv.QUOTE_MINIMAL)
     writer.writerow(['Package', 'Production exit code', 'Integration exit code'])
 
-    # for package in packages:
-    #   run_env_tests(package, writer, csv_file)
+    for package in packages:
+      run_env_tests(package, writer, csv_file)
 
-    threads = [threading.Thread(target=run_env_tests, args=(package, writer, csv_file)) for package in packages]
-    for thread in threads:
-      thread.start()
-    for thread in threads:
-      thread.join()
+    # threads = [threading.Thread(target=run_env_tests, args=(package, writer, csv_file)) for package in packages]
+    # for thread in threads:
+    #   thread.start()
+    # for thread in threads:
+    #   thread.join()
 
   print('Wrote output to: %s' % OUTPUT_FILE_PATH)
   print('Done.')
