@@ -27,7 +27,8 @@ INT_ENV_VARS = {
   'ATLAS_SERVICE_URL': 'https://atlas-intb.ciscospark.com/admin/api/v1',
   'CONVERSATION_SERVICE': 'https://conversation-intb.ciscospark.com/conversation/api/v1',
   'ENCRYPTION_SERVICE_URL': 'https://encryption-intb.ciscospark.com/encryption/api/v1',
-  'HYDRA_SERVICE_URL': 'https://hydra-intb.ciscospark.com/v1',
+  # Do not use 'https://hydra-intb.ciscospark.com/v1' for Hydra. CI expects 'apialpha'.
+  'HYDRA_SERVICE_URL': 'https://apialpha.ciscospark.com/v1/',
   'IDBROKER_BASE_URL': 'https://idbrokerbts.webex.com',
   'IDENTITY_BASE_URL': 'https://identitybts.webex.com',
   'WDM_SERVICE_URL': 'https://wdm-intb.ciscospark.com/wdm/api/v1',
