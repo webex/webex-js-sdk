@@ -96,6 +96,17 @@ def run_env_tests(package, writer, csv_file):
   writer.writerow([package, prod_return_code, int_return_code])
   csv_file.flush()
 
+def run_tests_in_sequence(packages, writer, csv_file):
+  for package in packages:
+      run_env_tests(package, writer, csv_file)
+
+def run_tests_in_parallel(packages, writer, csv_file):
+  threads = [threading.Thread(target=run_env_tests, args=(package, writer, csv_file)) for package in packages]
+  for thread in threads:
+    thread.start()
+  for thread in threads:
+    thread.join()
+
 def main():
   ciscospark_packages = get_package_names(CISCOSPARK)
   webex_packages = get_package_names(WEBEX)
@@ -114,14 +125,7 @@ def main():
     writer = csv.writer(csv_file, quoting=csv.QUOTE_MINIMAL)
     writer.writerow(['Package', 'Production exit code', 'Integration exit code'])
 
-    for package in packages:
-      run_env_tests(package, writer, csv_file)
-
-    # threads = [threading.Thread(target=run_env_tests, args=(package, writer, csv_file)) for package in packages]
-    # for thread in threads:
-    #   thread.start()
-    # for thread in threads:
-    #   thread.join()
+    run_tests_in_sequence(packages, writer, csv_file)
 
   print('Wrote output to: %s' % OUTPUT_FILE_PATH)
   print('Done.')
