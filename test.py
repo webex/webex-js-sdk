@@ -44,10 +44,10 @@ TEST_COMMAND = 'npm test -- --package %s'
 
 SKIP_PACKAGES = [
   '@webex/bin-sauce-connect', # needs Sauce started
-  # '@webex/plugin-meetings', # no tests
-  # '@webex/test-helper-server' # no tests
-  # '@ciscospark/internal-plugin-calendar', # no tests
-  # '@ciscospark/plugin-webhooks' # no tests
+  '@webex/plugin-meetings', # no tests
+  '@webex/test-helper-server' # no tests
+  '@ciscospark/internal-plugin-calendar', # no tests
+  '@ciscospark/plugin-webhooks' # no tests
 ]
 
 def should_include_package(path_name, name):
