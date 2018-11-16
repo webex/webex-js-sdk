@@ -252,6 +252,7 @@ ansiColor('xterm') {
             env.ATLAS_SERVICE_URL='https://atlas-intb.ciscospark.com/admin/api/v1'
             env.CONVERSATION_SERVICE='https://conversation-intb.ciscospark.com/conversation/api/v1'
             env.ENCRYPTION_SERVICE_URL='https://encryption-intb.ciscospark.com/encryption/api/v1'
+            env.HYDRA_SERVICE_URL='https://apialpha.ciscospark.com/v1/'
             env.IDBROKER_BASE_URL='https://idbrokerbts.webex.com'
             env.IDENTITY_BASE_URL='https://identitybts.webex.com'
             env.WDM_SERVICE_URL='https://wdm-intb.ciscospark.com/wdm/api/v1'
