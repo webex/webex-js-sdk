@@ -56,8 +56,9 @@ def generateDockerEnv = { ->
   if (env.BUILD_NUMBER != null) {
     dockerEnv+="BUILD_NUMBER=${env.BUILD_NUMBER}\n"
   }
-  if (env.CISCOSPARK_APPID_ORGID != null) {
-    dockerEnv+="CISCOSPARK_APPID_ORGID=${env.CISCOSPARK_APPID_ORGID}\n"
+  // This ID is kept in the Credentials folder and is specific to integration.
+  if (env.CISCOSPARK_APPID_ORGID_INT != null) {
+    dockerEnv+="CISCOSPARK_APPID_ORGID=${CISCOSPARK_APPID_ORGID_INT}\n"
   }
   if (env.CONVERSATION_SERVICE != null) {
     dockerEnv+="CONVERSATION_SERVICE=${env.CONVERSATION_SERVICE}\n"
@@ -116,7 +117,7 @@ def generateDockerEnv = { ->
 def generateSecretsFile = { ->
   withCredentials([
     string(credentialsId: '9f44ab21-7e83-480d-8fb3-e6495bf7e9f3', variable: 'CISCOSPARK_CLIENT_SECRET'),
-    string(credentialsId: 'CISCOSPARK_APPID_SECRET', variable: 'CISCOSPARK_APPID_SECRET'),
+    string(credentialsId: 'CISCOSPARK_APPID_SECRET_INT', variable: 'CISCOSPARK_APPID_SECRET'),
     usernamePassword(credentialsId: 'SAUCE_LABS_VALIDATED_MERGE_CREDENTIALS', passwordVariable: 'SAUCE_ACCESS_KEY', usernameVariable: 'SAUCE_USERNAME'),
     string(credentialsId: 'ddfd04fb-e00a-4df0-9250-9a7cb37bce0e', variable: 'COMMON_IDENTITY_CLIENT_SECRET'),
     string(credentialsId: 'JS_SDK_NPM_TOKEN', variable: 'JS_SDK_NPM_TOKEN'),
