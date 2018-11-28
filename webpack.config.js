@@ -23,6 +23,9 @@ module.exports = {
     port: 8000,
     contentBase: './packages/node_modules/samples'
   },
+  node: {
+    fs: 'empty'
+  },
   resolve: {
     alias: glob
       .sync('**/package.json', {cwd: './packages/node_modules'})
