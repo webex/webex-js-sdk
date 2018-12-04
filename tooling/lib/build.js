@@ -3,6 +3,7 @@
  */
 
 const debug = require('debug')('tooling:build');
+
 const {
   exec,
   mkdirp,
@@ -10,10 +11,14 @@ const {
   transformFile
 } = require('../lib/async');
 const g = require('../lib/async').glob;
+
 const capitalize = require('lodash');
 const humanize = require('humanize-string');
+
 const path = require('path');
+
 const {rename, writeFile} = require('fs-promise');
+
 const {glob} = require('../util/package');
 
 exports.buildFile = async function buildFile({src, dest}) {
@@ -41,6 +46,14 @@ exports.buildPackage = async function buildPackage(packageName) {
   for (const file of mapped) {
     await exports.buildFile(file);
   }
+};
+
+exports.buildScript = async function buildScript() {
+  debug('building script');
+  await rimraf('packages/node_modules/ciscospark/umd/ciscospark*');
+  // reminder: build calls this script, not rollup, hence we must call
+  // rollup w/ config here
+  await exec('rollup -c');
 };
 
 exports.buildSamples = async function buildSamples() {

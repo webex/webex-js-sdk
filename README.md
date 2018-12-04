@@ -50,16 +50,16 @@ const teams = ciscospark.init({
 // Send a **Hi Everyone** message to the room
 teams.rooms.create({ title: `My First Room` }).then(room => {
   return Promise.all([
-    ciscospark.memberships.create({
+    teams.memberships.create({
       roomId: room.id,
       personEmail: `alice@example.com`
     }),
-    ciscospark.memberships.create({
+    teams.memberships.create({
       roomId: room.id,
       personEmail: `bob@example.com`
     })
   ]).then(() =>
-    ciscospark.messages.create({
+    teams.messages.create({
       markdown: `**Hi Everyone**`,
       roomId: room.id
     })
@@ -69,10 +69,14 @@ teams.rooms.create({ title: `My First Room` }).then(room => {
 
 #### _A note on browser usage_
 
-We do provide a built version of the SDK that includes `window.ciscospark`.
+We do provide a built, minified version of the SDK, that includes `window.ciscospark`, which is hosted on our repo and can be used with either [unpkg](https://unpkg.com/) or [gitcdn.xyz](https://gitcdn.xyz/).
+
 ```html
-<script src="https://www.s4d.io/js-sdk/production/ciscospark.js"></script>
+<script src="https://unpkg.com/ciscospark/umd/ciscospark.min.js"></script>
+<!-- or -->
+<script src="https://gitcdn.xyz/repo/webex/spark-js-sdk/master/packages/node_modules/ciscospark/umd/ciscospark.min.js"></script>
 ```
+
 In-browser usage is almost the same as Node.js, but it handles the user authentication flow for you. See the [browser guide](https://webex.github.io/spark-js-sdk/guides/browsers/) for more information.
 
 If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `team` variable to `window.webexteams`.
@@ -105,7 +109,7 @@ teams.rooms
     max: 10
   })
   .then((rooms) => {
-    // Destructure room properties for it's id (aliased to roomId) and title
+    // Destructure room properties for its id (aliased to roomId) and title
     const { id: roomId, title } = rooms.items.filter(
       room => room.title === 'My First Room!'
     )[0];
@@ -119,7 +123,7 @@ teams.rooms
     // Log the the room name and the message we created
     return teams.messages
       .list({ roomId, max: 1 })
-      // Destructure promised value to get text property from first item in items array
+      // Destructure promised value to get the text property from the first item in items array
       .then(({ items: [{ text }] }) =>
         console.log(`Last message sent to room "${title}": ${text}`)
       );

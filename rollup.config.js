@@ -13,7 +13,7 @@ export default {
   input: `${__dirname}/packages/node_modules/ciscospark/browser.js`,
   output: {
     name: 'CiscoSpark',
-    file: 'umd/ciscospark.min.js',
+    file: `${__dirname}/packages/node_modules/ciscospark/umd/ciscospark.min.js`,
     format: 'iife', // since this is for the browser only use IIFE instead of UMD
     sourceMap: true
   },
