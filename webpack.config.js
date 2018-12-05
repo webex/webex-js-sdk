@@ -9,6 +9,7 @@ dotenv.config({path: '.env.default'});
 
 module.exports = {
   entry: './packages/node_modules/ciscospark',
+  mode: 'development',
   output: {
     filename: 'bundle.js',
     library: 'ciscospark',

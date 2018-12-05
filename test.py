@@ -22,13 +22,17 @@ PROD_ENV_VARS = {
 }
 
 INT_ENV_VARS = {
+  # Environments
   'ACL_SERVICE_URL': 'https://acl-intb.ciscospark.com/acl/api/v1',
   'ATLAS_SERVICE_URL': 'https://atlas-intb.ciscospark.com/admin/api/v1',
   'CONVERSATION_SERVICE': 'https://conversation-intb.ciscospark.com/conversation/api/v1',
   'ENCRYPTION_SERVICE_URL': 'https://encryption-intb.ciscospark.com/encryption/api/v1',
+  # Do not use 'https://hydra-intb.ciscospark.com/v1' for Hydra. CI expects 'apialpha'.
+  'HYDRA_SERVICE_URL': 'https://apialpha.ciscospark.com/v1/',
   'IDBROKER_BASE_URL': 'https://idbrokerbts.webex.com',
   'IDENTITY_BASE_URL': 'https://identitybts.webex.com',
   'WDM_SERVICE_URL': 'https://wdm-intb.ciscospark.com/wdm/api/v1',
+  'WHISTLER_API_SERVICE_URL': 'https://whistler.onint.ciscospark.com/api/v1',
   # Logging
   'ENABLE_VERBOSE_NETWORK_LOGGING': 'true'
 }
@@ -40,10 +44,10 @@ TEST_COMMAND = 'npm test -- --package %s'
 
 SKIP_PACKAGES = [
   '@webex/bin-sauce-connect', # needs Sauce started
-  # '@webex/plugin-meetings', # no tests
-  # '@webex/test-helper-server' # no tests
-  # '@ciscospark/internal-plugin-calendar', # no tests
-  # '@ciscospark/plugin-webhooks' # no tests
+  '@webex/plugin-meetings', # no tests
+  '@webex/test-helper-server' # no tests
+  '@ciscospark/internal-plugin-calendar', # no tests
+  '@ciscospark/plugin-webhooks' # no tests
 ]
 
 def should_include_package(path_name, name):
@@ -92,6 +96,17 @@ def run_env_tests(package, writer, csv_file):
   writer.writerow([package, prod_return_code, int_return_code])
   csv_file.flush()
 
+def run_tests_in_sequence(packages, writer, csv_file):
+  for package in packages:
+      run_env_tests(package, writer, csv_file)
+
+def run_tests_in_parallel(packages, writer, csv_file):
+  threads = [threading.Thread(target=run_env_tests, args=(package, writer, csv_file)) for package in packages]
+  for thread in threads:
+    thread.start()
+  for thread in threads:
+    thread.join()
+
 def main():
   ciscospark_packages = get_package_names(CISCOSPARK)
   webex_packages = get_package_names(WEBEX)
@@ -110,14 +125,7 @@ def main():
     writer = csv.writer(csv_file, quoting=csv.QUOTE_MINIMAL)
     writer.writerow(['Package', 'Production exit code', 'Integration exit code'])
 
-    # for package in packages:
-    #   run_env_tests(package, writer, csv_file)
-
-    threads = [threading.Thread(target=run_env_tests, args=(package, writer, csv_file)) for package in packages]
-    for thread in threads:
-      thread.start()
-    for thread in threads:
-      thread.join()
+    run_tests_in_sequence(packages, writer, csv_file)
 
   print('Wrote output to: %s' % OUTPUT_FILE_PATH)
   print('Done.')

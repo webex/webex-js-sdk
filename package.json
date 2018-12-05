@@ -204,7 +204,6 @@
     "parse-headers": "^2.0.1",
     "pkg-up": "^2.0.0",
     "ps-node": "^0.1.6",
-    "pubsub-js": "^1.7.0",
     "qs": "^6.5.1",
     "read-package-json": "^2.0.5",
     "request": "^2.81.0",
