@@ -4,7 +4,7 @@
 
 const wrapHandler = require('../lib/wrap-handler');
 const {list} = require('../util/package');
-const {buildPackage, buildSamples} = require('../lib/build');
+const {buildPackage, buildSamples, buildScript} = require('../lib/build');
 
 module.exports = {
   command: 'build [packageName]',
@@ -30,6 +30,9 @@ module.exports = {
         for (const pName of await list()) {
           await buildPackage(pName);
         }
+
+        // only build script after ALL packages are built
+        await buildScript();
       }
     }
 
