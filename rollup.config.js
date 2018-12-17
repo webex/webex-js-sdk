@@ -1,8 +1,8 @@
-// import babel from 'rollup-plugin-babel';
+import cleaner from 'rollup-plugin-cleaner';
 import json from 'rollup-plugin-json';
 import resolve from 'rollup-plugin-node-resolve';
 import commonjs from 'rollup-plugin-commonjs';
-import {uglify} from 'rollup-plugin-uglify';
+import {terser} from 'rollup-plugin-terser';
 import globals from 'rollup-plugin-node-globals';
 import builtins from 'rollup-plugin-node-builtins';
 import license from 'rollup-plugin-license';
@@ -18,6 +18,11 @@ export default {
     sourceMap: true
   },
   plugins: [
+    cleaner({
+      targets: [
+        `${__dirname}/packages/node_modules/ciscospark/umd/`
+      ]
+    }),
     json({
       include: ['packages/node_modules/**', 'node_modules/**']
     }),
@@ -29,7 +34,7 @@ export default {
     commonjs(),
     globals(),
     builtins(),
-    uglify(),
+    terser(),
     license({
       banner: `/*! Cisco Spark SDK v${version} */`
     })

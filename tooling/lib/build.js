@@ -48,14 +48,6 @@ exports.buildPackage = async function buildPackage(packageName) {
   }
 };
 
-exports.buildScript = async function buildScript() {
-  debug('building script');
-  await rimraf('packages/node_modules/ciscospark/umd/ciscospark*');
-  // reminder: build calls this script, not rollup, hence we must call
-  // rollup w/ config here
-  await exec('rollup -c');
-};
-
 exports.buildSamples = async function buildSamples() {
   await rimraf('packages/node_modules/samples/bundle*');
   // reminder: samples:build calls this script, not webpack, hence we must call
