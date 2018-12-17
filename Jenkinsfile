@@ -257,6 +257,8 @@ ansiColor('xterm') {
             env.WDM_SERVICE_URL='https://wdm-intb.ciscospark.com/wdm/api/v1'
             env.WHISTLER_API_SERVICE_URL='https://whistler.onint.ciscospark.com/api/v1'
 
+            env.SKIP_FLAKY_TESTS=true
+
             generateDockerEnv()
             generateSecretsFile()
           }
