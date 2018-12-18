@@ -47,35 +47,22 @@ def cleanup = { ->
 
 def generateDockerEnv = { ->
   def dockerEnv = ""
+
+  // Common (to gating jobs) environment-specific variables
   if (env.ACL_SERVICE_URL != null) {
     dockerEnv+="ACL_SERVICE_URL=${env.ACL_SERVICE_URL}\n"
   }
   if (env.ATLAS_SERVICE_URL != null) {
     dockerEnv+="ATLAS_SERVICE_URL=${env.ATLAS_SERVICE_URL}\n"
   }
-  if (env.BUILD_NUMBER != null) {
-    dockerEnv+="BUILD_NUMBER=${env.BUILD_NUMBER}\n"
+  if (env.COMMON_IDENTITY_OAUTH_SERVICE_URL != null) {
+    dockerEnv+="COMMON_IDENTITY_OAUTH_SERVICE_URL=${env.COMMON_IDENTITY_OAUTH_SERVICE_URL}\n"
   }
   if (env.CONVERSATION_SERVICE != null) {
     dockerEnv+="CONVERSATION_SERVICE=${env.CONVERSATION_SERVICE}\n"
   }
-  if (env.COMMON_IDENTITY_OAUTH_SERVICE_URL != null) {
-    dockerEnv+="COMMON_IDENTITY_OAUTH_SERVICE_URL=${env.COMMON_IDENTITY_OAUTH_SERVICE_URL}\n"
-  }
-  if (env.COVERAGE != null) {
-    dockerEnv+="COVERAGE=${env.COVERAGE}\n"
-  }
-  if (env.DEVICE_REGISTRATION_URL != null) {
-    dockerEnv+="DEVICE_REGISTRATION_URL=${env.DEVICE_REGISTRATION_URL}\n"
-  }
-  if (env.ENABLE_NETWORK_LOGGING != null) {
-    dockerEnv+="ENABLE_NETWORK_LOGGING=${env.ENABLE_NETWORK_LOGGING}\n"
-  }
-  if (env.ENABLE_VERBOSE_NETWORK_LOGGING != null) {
-    dockerEnv+="ENABLE_VERBOSE_NETWORK_LOGGING=${env.ENABLE_VERBOSE_NETWORK_LOGGING}\n"
-  }
-  if (env.GIT_COMMIT != null) {
-    dockerEnv+="GIT_COMMIT=${env.GIT_COMMIT}\n"
+  if (env.ENCRYPTION_SERVICE_URL != null) {
+    dockerEnv+="ENCRYPTION_SERVICE_URL=${env.ENCRYPTION_SERVICE_URL}\n"
   }
   if (env.HYDRA_SERVICE_URL != null) {
     dockerEnv+="HYDRA_SERVICE_URL=${env.HYDRA_SERVICE_URL}\n"
@@ -85,6 +72,34 @@ def generateDockerEnv = { ->
   }
   if (env.IDENTITY_BASE_URL != null) {
     dockerEnv+="IDENTITY_BASE_URL=${env.IDENTITY_BASE_URL}\n"
+  }
+  if (env.WDM_SERVICE_URL != null) {
+    dockerEnv+="WDM_SERVICE_URL=${env.WDM_SERVICE_URL}\n"
+  }
+  if (env.WHISTLER_API_SERVICE_URL != null) {
+    dockerEnv+="WHISTLER_API_SERVICE_URL=${env.WHISTLER_API_SERVICE_URL}\n"
+  }
+
+  // Other environment-specific variables
+  if (env.DEVICE_REGISTRATION_URL != null) {
+    dockerEnv+="DEVICE_REGISTRATION_URL=${env.DEVICE_REGISTRATION_URL}\n"
+  }
+
+  // Build-specific variables
+  if (env.BUILD_NUMBER != null) {
+    dockerEnv+="BUILD_NUMBER=${env.BUILD_NUMBER}\n"
+  }
+  if (env.COVERAGE != null) {
+    dockerEnv+="COVERAGE=${env.COVERAGE}\n"
+  }
+  if (env.ENABLE_NETWORK_LOGGING != null) {
+    dockerEnv+="ENABLE_NETWORK_LOGGING=${env.ENABLE_NETWORK_LOGGING}\n"
+  }
+  if (env.ENABLE_VERBOSE_NETWORK_LOGGING != null) {
+    dockerEnv+="ENABLE_VERBOSE_NETWORK_LOGGING=${env.ENABLE_VERBOSE_NETWORK_LOGGING}\n"
+  }
+  if (env.GIT_COMMIT != null) {
+    dockerEnv+="GIT_COMMIT=${env.GIT_COMMIT}\n"
   }
   if (env.PIPELINE != null) {
     dockerEnv+="PIPELINE=${env.PIPELINE}\n"
@@ -98,15 +113,10 @@ def generateDockerEnv = { ->
   if (env.SKIP_FLAKY_TESTS != null) {
     dockerEnv+="SKIP_FLAKY_TESTS=${env.SKIP_FLAKY_TESTS}\n"
   }
-  if (env.WDM_SERVICE_URL != null) {
-    dockerEnv+="WDM_SERVICE_URL=${env.WDM_SERVICE_URL}\n"
-  }
-  if (env.WHISTLER_API_SERVICE_URL != null) {
-    dockerEnv+="WHISTLER_API_SERVICE_URL=${env.WHISTLER_API_SERVICE_URL}\n"
-  }
   if (env.WORKSPACE != null) {
     dockerEnv+="WORKSPACE=${env.WORKSPACE}\n"
   }
+
   writeFile file: DOCKER_ENV_FILE, text: dockerEnv
 }
 
@@ -257,6 +267,7 @@ ansiColor('xterm') {
             env.WDM_SERVICE_URL='https://wdm-intb.ciscospark.com/wdm/api/v1'
             env.WHISTLER_API_SERVICE_URL='https://whistler.onint.ciscospark.com/api/v1'
 
+            // Skip flaky tests by default.
             env.SKIP_FLAKY_TESTS=true
 
             generateDockerEnv()
