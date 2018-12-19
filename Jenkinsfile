@@ -432,7 +432,8 @@ ansiColor('xterm') {
                   version = version.trim()
                   echo "next version is ${version}"
                   sh 'npm run build'
-                  sh 'npm run build:script'
+                  // add version number here too as a just in case
+                  sh "npm run build:script -- --versionNumber=${version}"
 
                   sh "npm run tooling -- version set ${version} --last-log"
 
@@ -448,7 +449,7 @@ ansiColor('xterm') {
 
                   // Rebuild with correct version number
                   sh 'npm run build'
-                  sh 'npm run build:script'
+                  sh "npm run build:script -- --versionNumber=${version}"
                   sh 'npm run build:docs'
                 }
 
