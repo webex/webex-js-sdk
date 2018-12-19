@@ -1,5 +1,5 @@
 ~*
-.tmp
+*.tmp
 .tmp_uploads
 temp
 tmp

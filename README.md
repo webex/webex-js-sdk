@@ -69,7 +69,12 @@ teams.rooms.create({ title: `My First Room` }).then(room => {
 
 #### _A note on browser usage_
 
-We do not provide a built version of the SDK that includes `window.ciscospark`.
+We do provide a built, minified version of the SDK, that includes `window.ciscospark`, which is hosted on our repo and can be used with [gitcdn.xyz](https://gitcdn.xyz/).
+
+```html
+<script src="https://gitcdn.xyz/repo/webex/spark-js-sdk/master/packages/node_modules/ciscospark/umd/ciscospark.min.js"></script>
+```
+
 In-browser usage is almost the same as Node.js, but it handles the user authentication flow for you. See the [browser guide](https://webex.github.io/spark-js-sdk/guides/browsers/) for more information.
 
 If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `team` variable to `window.webexteams`.

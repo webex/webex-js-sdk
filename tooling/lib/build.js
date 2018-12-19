@@ -3,6 +3,7 @@
  */
 
 const debug = require('debug')('tooling:build');
+
 const {
   exec,
   mkdirp,
@@ -10,10 +11,14 @@ const {
   transformFile
 } = require('../lib/async');
 const g = require('../lib/async').glob;
+
 const capitalize = require('lodash');
 const humanize = require('humanize-string');
+
 const path = require('path');
+
 const {rename, writeFile} = require('fs-promise');
+
 const {glob} = require('../util/package');
 
 exports.buildFile = async function buildFile({src, dest}) {

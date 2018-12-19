@@ -47,26 +47,50 @@ def cleanup = { ->
 
 def generateDockerEnv = { ->
   def dockerEnv = ""
+
+  // Common (to gating jobs) environment-specific variables
+  if (env.ACL_SERVICE_URL != null) {
+    dockerEnv+="ACL_SERVICE_URL=${env.ACL_SERVICE_URL}\n"
+  }
   if (env.ATLAS_SERVICE_URL != null) {
     dockerEnv+="ATLAS_SERVICE_URL=${env.ATLAS_SERVICE_URL}\n"
-  }
-  if (env.BUILD_NUMBER != null) {
-    dockerEnv+="BUILD_NUMBER=${env.BUILD_NUMBER}\n"
-  }
-  if (env.CISCOSPARK_APPID_ORGID != null) {
-    dockerEnv+="CISCOSPARK_APPID_ORGID=${env.CISCOSPARK_APPID_ORGID}\n"
-  }
-  if (env.CONVERSATION_SERVICE != null) {
-    dockerEnv+="CONVERSATION_SERVICE=${env.CONVERSATION_SERVICE}\n"
   }
   if (env.COMMON_IDENTITY_OAUTH_SERVICE_URL != null) {
     dockerEnv+="COMMON_IDENTITY_OAUTH_SERVICE_URL=${env.COMMON_IDENTITY_OAUTH_SERVICE_URL}\n"
   }
-  if (env.COVERAGE != null) {
-    dockerEnv+="COVERAGE=${env.COVERAGE}\n"
+  if (env.CONVERSATION_SERVICE != null) {
+    dockerEnv+="CONVERSATION_SERVICE=${env.CONVERSATION_SERVICE}\n"
   }
+  if (env.ENCRYPTION_SERVICE_URL != null) {
+    dockerEnv+="ENCRYPTION_SERVICE_URL=${env.ENCRYPTION_SERVICE_URL}\n"
+  }
+  if (env.HYDRA_SERVICE_URL != null) {
+    dockerEnv+="HYDRA_SERVICE_URL=${env.HYDRA_SERVICE_URL}\n"
+  }
+  if (env.IDBROKER_BASE_URL != null) {
+    dockerEnv+="IDBROKER_BASE_URL=${env.IDBROKER_BASE_URL}\n"
+  }
+  if (env.IDENTITY_BASE_URL != null) {
+    dockerEnv+="IDENTITY_BASE_URL=${env.IDENTITY_BASE_URL}\n"
+  }
+  if (env.WDM_SERVICE_URL != null) {
+    dockerEnv+="WDM_SERVICE_URL=${env.WDM_SERVICE_URL}\n"
+  }
+  if (env.WHISTLER_API_SERVICE_URL != null) {
+    dockerEnv+="WHISTLER_API_SERVICE_URL=${env.WHISTLER_API_SERVICE_URL}\n"
+  }
+
+  // Other environment-specific variables
   if (env.DEVICE_REGISTRATION_URL != null) {
     dockerEnv+="DEVICE_REGISTRATION_URL=${env.DEVICE_REGISTRATION_URL}\n"
+  }
+
+  // Build-specific variables
+  if (env.BUILD_NUMBER != null) {
+    dockerEnv+="BUILD_NUMBER=${env.BUILD_NUMBER}\n"
+  }
+  if (env.COVERAGE != null) {
+    dockerEnv+="COVERAGE=${env.COVERAGE}\n"
   }
   if (env.ENABLE_NETWORK_LOGGING != null) {
     dockerEnv+="ENABLE_NETWORK_LOGGING=${env.ENABLE_NETWORK_LOGGING}\n"
@@ -76,9 +100,6 @@ def generateDockerEnv = { ->
   }
   if (env.GIT_COMMIT != null) {
     dockerEnv+="GIT_COMMIT=${env.GIT_COMMIT}\n"
-  }
-  if (env.HYDRA_SERVICE_URL != null) {
-    dockerEnv+="HYDRA_SERVICE_URL=${env.HYDRA_SERVICE_URL}\n"
   }
   if (env.PIPELINE != null) {
     dockerEnv+="PIPELINE=${env.PIPELINE}\n"
@@ -92,19 +113,18 @@ def generateDockerEnv = { ->
   if (env.SKIP_FLAKY_TESTS != null) {
     dockerEnv+="SKIP_FLAKY_TESTS=${env.SKIP_FLAKY_TESTS}\n"
   }
-  if (env.WDM_SERVICE_URL != null) {
-    dockerEnv+="WDM_SERVICE_URL=${env.WDM_SERVICE_URL}\n"
-  }
   if (env.WORKSPACE != null) {
     dockerEnv+="WORKSPACE=${env.WORKSPACE}\n"
   }
+
   writeFile file: DOCKER_ENV_FILE, text: dockerEnv
 }
 
 def generateSecretsFile = { ->
   withCredentials([
     string(credentialsId: '9f44ab21-7e83-480d-8fb3-e6495bf7e9f3', variable: 'CISCOSPARK_CLIENT_SECRET'),
-    string(credentialsId: 'CISCOSPARK_APPID_SECRET', variable: 'CISCOSPARK_APPID_SECRET'),
+    string(credentialsId: 'CISCOSPARK_APPID_ORGID_INT', variable: 'CISCOSPARK_APPID_ORGID'),
+    string(credentialsId: 'CISCOSPARK_APPID_SECRET_INT', variable: 'CISCOSPARK_APPID_SECRET'),
     usernamePassword(credentialsId: 'SAUCE_LABS_VALIDATED_MERGE_CREDENTIALS', passwordVariable: 'SAUCE_ACCESS_KEY', usernameVariable: 'SAUCE_USERNAME'),
     string(credentialsId: 'ddfd04fb-e00a-4df0-9250-9a7cb37bce0e', variable: 'COMMON_IDENTITY_CLIENT_SECRET'),
     string(credentialsId: 'JS_SDK_NPM_TOKEN', variable: 'JS_SDK_NPM_TOKEN'),
@@ -112,6 +132,7 @@ def generateSecretsFile = { ->
   ]) {
     def secrets = ""
     secrets += "COMMON_IDENTITY_CLIENT_SECRET=${COMMON_IDENTITY_CLIENT_SECRET}\n"
+    secrets += "CISCOSPARK_APPID_ORGID=${CISCOSPARK_APPID_ORGID}\n"
     secrets += "CISCOSPARK_APPID_SECRET=${CISCOSPARK_APPID_SECRET}\n"
     secrets += "CISCOSPARK_CLIENT_SECRET=${CISCOSPARK_CLIENT_SECRET}\n"
     secrets += "SAUCE_USERNAME=${SAUCE_USERNAME}\n"
@@ -234,6 +255,20 @@ ansiColor('xterm') {
                 throw err;
               }
             }
+
+            // Define test URLs for the integration (test) environment.
+            env.ACL_SERVICE_URL='https://acl-intb.ciscospark.com/acl/api/v1'
+            env.ATLAS_SERVICE_URL='https://atlas-intb.ciscospark.com/admin/api/v1'
+            env.CONVERSATION_SERVICE='https://conversation-intb.ciscospark.com/conversation/api/v1'
+            env.ENCRYPTION_SERVICE_URL='https://encryption-intb.ciscospark.com/encryption/api/v1'
+            env.HYDRA_SERVICE_URL='https://apialpha.ciscospark.com/v1/'
+            env.IDBROKER_BASE_URL='https://idbrokerbts.webex.com'
+            env.IDENTITY_BASE_URL='https://identitybts.webex.com'
+            env.WDM_SERVICE_URL='https://wdm-intb.ciscospark.com/wdm/api/v1'
+            env.WHISTLER_API_SERVICE_URL='https://whistler.onint.ciscospark.com/api/v1'
+
+            // Skip flaky tests by default.
+            env.SKIP_FLAKY_TESTS=true
 
             generateDockerEnv()
             generateSecretsFile()
@@ -397,10 +432,12 @@ ansiColor('xterm') {
                   version = version.trim()
                   echo "next version is ${version}"
                   sh 'npm run build'
+                  // add version number here too as a just in case
+                  sh "npm run build:script -- --versionNumber=${version}"
 
                   sh "npm run tooling -- version set ${version} --last-log"
 
-                  sh 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json'
+                  sh 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json packages/node_modules/ciscospark/umd/*.js'
 
                   def commitResult = sh script: "git commit --no-verify -m v${version}", returnStatus: true
                   // commit will fail if we had no files to commit
@@ -412,6 +449,7 @@ ansiColor('xterm') {
 
                   // Rebuild with correct version number
                   sh 'npm run build'
+                  sh "npm run build:script -- --versionNumber=${version}"
                   sh 'npm run build:docs'
                 }
 
