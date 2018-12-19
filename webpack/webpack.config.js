@@ -17,7 +17,7 @@ module.exports = (env) => {
       return merge(baseConfig, devConfig, {
         mode: process.env.NODE_ENV || 'development',
         context,
-        entry: './src/index.js',
+        entry: env.entry || './src/index.js',
         devServer: {
           contentBase: path.resolve(context, 'sample')
         },
