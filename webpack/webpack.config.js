@@ -9,7 +9,7 @@ const devConfig = require('./webpack.config.dev.js');
 dotenv.config();
 
 module.exports = (env) => {
-  if (process.env.PACKAGE || env && env.package) {
+  if (process.env.PACKAGE || (env && env.package)) {
     if (process.env.NODE_ENV !== 'production') {
       // TODO: Passing --env.package is not working for some reason.
       const packageName = process.env.PACKAGE || env.package;
@@ -20,6 +20,9 @@ module.exports = (env) => {
         entry: './src/index.js',
         devServer: {
           contentBase: path.resolve(context, 'sample')
+        },
+        node: {
+          fs: 'empty'
         }
       });
     }
