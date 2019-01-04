@@ -461,8 +461,8 @@ ansiColor('xterm') {
                   sh "export ENCRYPTION_SERVICE_URL='https://encryption-a.wbx2.com'"
                   sh "export HYDRA_SERVICE_URL='https://api.ciscospark.com/v1'"
                   sh "export IDBROKER_BASE_URL='https://idbroker.webex.com'"
-                  sh "export IDENTITY_BASE_URL='https://identity.webex.com''"
-                  sh "export WDM_SERVICE_URL='https://wdm-a.wbx2.com/wdm/api/v1''"
+                  sh "export IDENTITY_BASE_URL='https://identity.webex.com'"
+                  sh "export WDM_SERVICE_URL='https://wdm-a.wbx2.com/wdm/api/v1'"
                   sh "export WHISTLER_API_SERVICE_URL='https://whistler-prod.onint.ciscospark.com/api/v1'"
 
                   // Rebuild with correct version number
