@@ -50,9 +50,10 @@ exports.buildPackage = async function buildPackage(packageName) {
 
 exports.buildSamples = async function buildSamples() {
   await rimraf('packages/node_modules/samples/bundle*');
+
   // reminder: samples:build calls this script, not webpack, hence we must call
   // webpack here
-  await exec('webpack');
+  await exec('webpack --env=samples');
   await rename('bundle.js', 'packages/node_modules/samples/bundle.js');
   await rename('bundle.js.map', 'packages/node_modules/samples/bundle.js.map');
 

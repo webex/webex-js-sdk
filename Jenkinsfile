@@ -454,17 +454,6 @@ ansiColor('xterm') {
 
                   sh "npm run deps:generate"
 
-                  // Define production URLs so samples work with production tokens.
-                  sh "export ACL_SERVICE_URL='https://acl-a.wbx2.com/acl/api/v1'"
-                  sh "export ATLAS_SERVICE_URL='https://atlas-a.wbx2.com/admin/api/v1'"
-                  sh "export CONVERSATION_SERVICE='https://conv-a.wbx2.com/conversation/api/v1'"
-                  sh "export ENCRYPTION_SERVICE_URL='https://encryption-a.wbx2.com'"
-                  sh "export HYDRA_SERVICE_URL='https://api.ciscospark.com/v1'"
-                  sh "export IDBROKER_BASE_URL='https://idbroker.webex.com'"
-                  sh "export IDENTITY_BASE_URL='https://identity.webex.com'"
-                  sh "export WDM_SERVICE_URL='https://wdm-a.wbx2.com/wdm/api/v1'"
-                  sh "export WHISTLER_API_SERVICE_URL='https://whistler-prod.onint.ciscospark.com/api/v1'"
-
                   // Rebuild with correct version number
                   sh 'npm run build'
                   sh "npm run build:script -- --versionNumber=${version}"
