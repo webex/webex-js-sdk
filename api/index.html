@@ -261,15 +261,15 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#phoneeventcallcreated'
-                          class='regular pre-open'>
-                          ⓔ call:created
-                        </a></li>
-                      
-                        <li><a
                           href='#phoneeventcallincoming'
                           class='regular pre-open'>
                           ⓔ call:incoming
+                        </a></li>
+                      
+                        <li><a
+                          href='#phoneeventcallcreated'
+                          class='regular pre-open'>
+                          ⓔ call:created
                         </a></li>
                       
                     </ul>
@@ -550,21 +550,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventinactive'
+                          href='#calleventmembershipsadd'
                           class='regular pre-open'>
-                          ⓔ inactive
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventmembershipsremove'
-                          class='regular pre-open'>
-                          ⓔ memberships:remove
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventringing'
-                          class='regular pre-open'>
-                          ⓔ ringing
+                          ⓔ memberships:add
                         </a></li>
                       
                         <li><a
@@ -610,9 +598,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventinitializing'
+                          href='#calleventmembershipsremove'
                           class='regular pre-open'>
-                          ⓔ initializing
+                          ⓔ memberships:remove
                         </a></li>
                       
                         <li><a
@@ -628,15 +616,21 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventactive'
+                          href='#calleventinactive'
                           class='regular pre-open'>
-                          ⓔ active
+                          ⓔ inactive
                         </a></li>
                       
                         <li><a
-                          href='#calleventconnected'
+                          href='#calleventinitializing'
                           class='regular pre-open'>
-                          ⓔ connected
+                          ⓔ initializing
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventactive'
+                          class='regular pre-open'>
+                          ⓔ active
                         </a></li>
                       
                         <li><a
@@ -646,9 +640,15 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventmembershipsadd'
+                          href='#calleventconnected'
                           class='regular pre-open'>
-                          ⓔ memberships:add
+                          ⓔ connected
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventringing'
+                          class='regular pre-open'>
+                          ⓔ ringing
                         </a></li>
                       
                     </ul>
@@ -3065,65 +3065,6 @@ new one will be created based on options.constraints
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='phoneeventcallcreated'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>call:created</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Call Created Event</p>
-<p>Emitted when a call begins outside of the sdk</p>
-
-
-  <div class='pre p1 fill-light mt0'>call:created</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
-          : The created call
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
     <div class='border-bottom' id='phoneeventcallincoming'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -3161,6 +3102,65 @@ there are active calls.</p>
         <div class='space-bottom0'>
           <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
           : The incoming call
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='phoneeventcallcreated'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>call:created</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Call Created Event</p>
+<p>Emitted when a call begins outside of the sdk</p>
+
+
+  <div class='pre p1 fill-light mt0'>call:created</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
+          : The created call
 
           
         </div>
@@ -5459,11 +5459,11 @@ only, this function will throw.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventinactive'>
+    <div class='border-bottom' id='calleventmembershipsadd'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>inactive</span>
+            <span class='code strong strong truncate'>memberships:add</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -5471,111 +5471,17 @@ only, this function will throw.</p>
 
   
 
-  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+  <p>Emitted when a new <a href="#callmembership">CallMembership</a> is added to
+<a href="#callmemberships">Call#memberships</a>. Note that <a href="#callmembershipstate">CallMembership#state</a> still needs
+to be read to determine if the instance represents someone actively
+participating the call.</p>
 
 
-  <div class='pre p1 fill-light mt0'>inactive</div>
-  
-  
-
-  
-  
-  
-  
+  <div class='pre p1 fill-light mt0'>memberships:add</div>
   
   
 
   
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventmembershipsremove'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>memberships:remove</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Emitted when a <a href="#callmembership">CallMembership</a> is removed from
-<a href="#callmemberships">Call#memberships</a>.</p>
-
-
-  <div class='pre p1 fill-light mt0'>memberships:remove</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventringing'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>ringing</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>ringing</div>
-  
-  
-
-  <div>Deprecated: with 
-<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
-
-enabled; instead, listen for 
-<a href="Call.membership:notified">Call.membership:notified</a>
-</div>
   
   
   
@@ -5922,11 +5828,11 @@ shortly after (but as a direct result of) locally calling
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventinitializing'>
+    <div class='border-bottom' id='calleventmembershipsremove'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>initializing</span>
+            <span class='code strong strong truncate'>memberships:remove</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -5934,10 +5840,11 @@ shortly after (but as a direct result of) locally calling
 
   
 
-  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+  <p>Emitted when a <a href="#callmembership">CallMembership</a> is removed from
+<a href="#callmemberships">Call#memberships</a>.</p>
 
 
-  <div class='pre p1 fill-light mt0'>initializing</div>
+  <div class='pre p1 fill-light mt0'>memberships:remove</div>
   
   
 
@@ -6059,11 +5966,11 @@ shortly after (but as a direct result of) locally calling
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventactive'>
+    <div class='border-bottom' id='calleventinactive'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>active</span>
+            <span class='code strong strong truncate'>inactive</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -6074,7 +5981,7 @@ shortly after (but as a direct result of) locally calling
   <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
 
 
-  <div class='pre p1 fill-light mt0'>active</div>
+  <div class='pre p1 fill-light mt0'>inactive</div>
   
   
 
@@ -6105,11 +6012,11 @@ shortly after (but as a direct result of) locally calling
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventconnected'>
+    <div class='border-bottom' id='calleventinitializing'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>connected</span>
+            <span class='code strong strong truncate'>initializing</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -6117,18 +6024,60 @@ shortly after (but as a direct result of) locally calling
 
   
 
+  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+
+
+  <div class='pre p1 fill-light mt0'>initializing</div>
+  
   
 
-  <div class='pre p1 fill-light mt0'>connected</div>
+  
+  
+  
+  
   
   
 
-  <div>Deprecated: with 
-<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
+  
 
-enabled; instead, listen for 
-<a href="Call.active">Call.active</a>
-</div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventactive'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>active</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+
+
+  <div class='pre p1 fill-light mt0'>active</div>
+  
+  
+
+  
   
   
   
@@ -6205,11 +6154,11 @@ enabled; instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventmembershipsadd'>
+    <div class='border-bottom' id='calleventconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>memberships:add</span>
+            <span class='code strong strong truncate'>connected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -6217,17 +6166,68 @@ enabled; instead, listen for
 
   
 
-  <p>Emitted when a new <a href="#callmembership">CallMembership</a> is added to
-<a href="#callmemberships">Call#memberships</a>. Note that <a href="#callmembershipstate">CallMembership#state</a> still needs
-to be read to determine if the instance represents someone actively
-participating the call.</p>
+  
 
-
-  <div class='pre p1 fill-light mt0'>memberships:add</div>
+  <div class='pre p1 fill-light mt0'>connected</div>
   
   
 
+  <div>Deprecated: with 
+<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
+
+enabled; instead, listen for 
+<a href="Call.active">Call.active</a>
+</div>
   
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventringing'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>ringing</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>ringing</div>
+  
+  
+
+  <div>Deprecated: with 
+<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
+
+enabled; instead, listen for 
+<a href="Call.membership:notified">Call.membership:notified</a>
+</div>
   
   
   
