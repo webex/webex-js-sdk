@@ -22,9 +22,9 @@ This is a monorepo containing all officially maintained Cisco Webex JS SDK modul
 
 ## Install
 
-We test against the current LTS version of Node.js (6.10) but the SDK should work with any supported version of Node.js.
+We test against the [Active LTS](https://github.com/nodejs/Release#release-schedule) (Long Term Support) version of Node.js and use **npm@6** to run [security audits](https://docs.npmjs.com/getting-started/running-a-security-audit).
 
-To install the latest stable version from NPM:
+To install the latest stable version of the SDK from NPM:
 
 ```bash
 npm install --save ciscospark
@@ -33,63 +33,128 @@ npm install --save ciscospark
 ## Usage
 
 To use the SDK, you will need Cisco Webex credentials. If you do not already have a Cisco Webex account, visit
-[Cisco Webex for Developers](https://developer.webex.com/) to create your account and retrieve your access token.
+[Cisco Webex for Developers](https://developer.webex.com/) to create your account and retrieve your **_access token_**.
 
 See [the detailed docs](https://webex.github.io/spark-js-sdk/) for more usage examples.
 
-### Node.js
+```javascript
+const ciscospark = require(`ciscospark`);
+const teams = ciscospark.init({
+  credentials: {
+    access_token: <your webex teams access token>
+  }
+});
 
-You will need to set the following environment variable:
-- `CISCOSPARK_ACCESS_TOKEN`
+// Create a room with the title "My First Room"
+// Add Alice and Bob to the room
+// Send a **Hi Everyone** message to the room
+teams.rooms.create({ title: `My First Room` }).then(room => {
+  return Promise.all([
+    teams.memberships.create({
+      roomId: room.id,
+      personEmail: `alice@example.com`
+    }),
+    teams.memberships.create({
+      roomId: room.id,
+      personEmail: `bob@example.com`
+    })
+  ]).then(() =>
+    teams.messages.create({
+      markdown: `**Hi Everyone**`,
+      roomId: room.id
+    })
+  );
+});
+```
+
+#### _A note on browser usage_
+
+We do provide a built, minified version of the SDK, that includes `window.ciscospark`, which is hosted on our repo and can be used with [gitcdn.xyz](https://gitcdn.xyz/).
+
+```html
+<script src="https://gitcdn.xyz/repo/webex/spark-js-sdk/master/packages/node_modules/ciscospark/umd/ciscospark.min.js"></script>
+```
+
+In-browser usage is almost the same as Node.js, but it handles the user authentication flow for you. See the [browser guide](https://webex.github.io/spark-js-sdk/guides/browsers/) for more information.
+
+If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `team` variable to `window.webexteams`.
+For a quick example, we'll use [Parcel](https://parceljs.org/) to bundle the SDK for a website. For any more information and questions on how to use Parcel, please head to their [website](https://parceljs.org/).
+
+1. Create `index.js`.
 
 ```javascript
-const assert = require(`assert`);
-assert(process.env.CISCOSPARK_ACCESS_TOKEN, 'This example assumes you have set your access token as an environment variable');
-const ciscospark = require(`ciscospark`);
-ciscospark.rooms.create({title: `My First Room`})
-  .then((room) => {
-    return Promise.all([
-      ciscospark.memberships.create({
-        roomId: room.id,
-        personEmail: `alice@example.com`
-      }),
-      ciscospark.memberships.create({
-        roomId: room.id,
-        personEmail: `bob@example.com`
-      }),
-    ])
-      .then(() => ciscospark.messages.create({
-        markdown: `**Hi Everyone**`,
-        roomId: room.id
-      }));
+import { init as initTeams } from 'ciscospark';
+
+// Initialize the SDK and make it available to the window
+const teams = (window.webexteams = initTeams({
+  credentials: {
+    access_token: <your webex teams access token>
+  }
+}));
+
+// Create a room with the title "My First Room"
+teams.rooms
+  .create({
+    title: 'My First Room!'
+  })
+  .catch((error) => {
+    console.error(error);
+  });
+
+// Filter for "My First Room" from the last 10 rooms
+teams.rooms
+  .list({
+    max: 10
+  })
+  .then((rooms) => {
+    // Destructure room properties for its id (aliased to roomId) and title
+    const { id: roomId, title } = rooms.items.filter(
+      room => room.title === 'My First Room!'
+    )[0];
+
+    // Post message "Hello World!" to "My First Room!"
+    teams.messages.create({
+      roomId,
+      text: 'Hello World!'
+    });
+
+    // Log the the room name and the message we created
+    return teams.messages
+      .list({ roomId, max: 1 })
+      // Destructure promised value to get the text property from the first item in items array
+      .then(({ items: [{ text }] }) =>
+        console.log(`Last message sent to room "${title}": ${text}`)
+      );
+  })
+  .catch((error) => {
+    console.error(error);
   });
 ```
 
-### Browsers
+2. Create `index.html` .
 
-We do not provide a pre-built version of `ciscospark`.
-
-If you've already got a commonjs or es6 build process in place, you can simply
-use `const ciscospark = require('ciscospark')`.
-
-If you need to load `ciscospark` via a script tag, you will need to build it first:
-
-```bash
-npm install ciscospark
-npm install -g browserify
-echo "window.ciscospark = require('ciscospark')" > ./index.js
-browserify index.js > bundle.js
+```html
+<html>
+  <head>
+    <title>Webex SDK for Browsers</title>
+  </head>
+  <body>
+    <script src="./index.js"></script>
+  </body>
+</html>
 ```
 
-In-browser usage is pretty much the same as Node.js usage, with the addition of handling
-the user authentication flow for you. See the guide on the
-[docs site](https://webex.github.io/spark-js-sdk/guides/browsers/) for more information.
+3. Run `parcel index.html` in your terminal.
+4. Go to [http://localhost:1234](http://localhost:1234) and open the developer console to see the output.
+
+#### _[Still using `ciscospark/env`?](documentation/ciscospark.md#nodejs)_
 
 ## Samples
 
 Sample code can be found in [packages/node_modules/samples](./packages/node_modules/samples). You can run them yourself with the following commands:
 
-> Note: this installs all of the SDK's tooling dependencies, so you'll need `libgcrypt` and (possibly) `graphicsmagick`. On a mac, you can install these with `brew install graphicsmagick libgcrypt`.
+> Note: This installs all of the SDK's tooling dependencies, so you'll need `libgcrypt` and (possibly) `graphicsmagick`.
+> On a mac, you can install these with `brew install graphicsmagick libgcrypt`.
 
 ```bash
 git clone git@github.com:webex/spark-js-sdk.git

@@ -47,13 +47,8 @@ fi
 # Always use install. If that version is installed, it's the same as use and if
 # it's not installed, you won't spend half an hour trying to figure out what
 # exit code 3 is.
-nvm install 6.10.1
-
-# Make sure we're using npm 2.x
-NPM_MAJOR_VERSION=$(npm --version | awk -F'.' '{print $1}')
-if [ "${NPM_MAJOR_VERSION}" = "1" ]; then
-  npm install -g --registry=http://engci-maven-master.cisco.com/artifactory/api/npm/webex-npm-group npm@2.x
-fi
+nvm install 8.11.4
+npm install -g npm@6.4.1
 
 echo "################################################################################"
 if [ -n "$BUILD_NUMBER" ]; then
@@ -81,6 +76,7 @@ export DOCKER_ENV_FILE
 rm -f ${DOCKER_ENV_FILE}
 
 DOCKER_ENV_KEYS=""
+DOCKER_ENV_KEYS+="ACL_SERVICE_URL "
 DOCKER_ENV_KEYS+="ATLAS_SERVICE_URL "
 DOCKER_ENV_KEYS+="BUILD_NUMBER "
 DOCKER_ENV_KEYS+="CISCOSPARK_APPID_ORGID "
@@ -90,6 +86,8 @@ DOCKER_ENV_KEYS+="DEVICE_REGISTRATION_URL "
 DOCKER_ENV_KEYS+="ENABLE_NETWORK_LOGGING "
 DOCKER_ENV_KEYS+="ENABLE_VERBOSE_NETWORK_LOGGING "
 DOCKER_ENV_KEYS+="HYDRA_SERVICE_URL "
+DOCKER_ENV_KEYS+="IDBROKER_BASE_URL "
+DOCKER_ENV_KEYS+="IDENTITY_BASE_URL "
 DOCKER_ENV_KEYS+="MESSAGE_DEMO_CLIENT_ID "
 DOCKER_ENV_KEYS+="MESSAGE_DEMO_CLIENT_SECRET "
 DOCKER_ENV_KEYS+="PIPELINE "
@@ -97,6 +95,7 @@ DOCKER_ENV_KEYS+="SAUCE_IS_DOWN "
 DOCKER_ENV_KEYS+="SDK_BUILD_DEBUG "
 DOCKER_ENV_KEYS+="SKIP_FLAKY_TESTS "
 DOCKER_ENV_KEYS+="WDM_SERVICE_URL "
+DOCKER_ENV_KEYS+="WHISTLER_API_SERVICE_URL "
 DOCKER_ENV_KEYS+="WORKSPACE "
 DOCKER_ENV_KEYS+="JS_SDK_NPM_TOKEN "
 # We don't want to fail if grep doesn't find the specified var

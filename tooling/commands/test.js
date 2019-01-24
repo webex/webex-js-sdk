@@ -11,6 +11,7 @@ const {list} = require('../lib/package');
 const spawn = require('../util/spawn');
 const {report} = require('../util/coverage');
 const {start, stop} = require('../util/server');
+const {startProxies, stopProxies} = require('../util/proxies');
 
 /**
  * Returns true if the given package should be tested
@@ -129,7 +130,12 @@ module.exports = {
           debug('started test server');
         }
 
+        // Use HTTP "snapshots" instead of live network calls to test.
+        if (argv.snapshots || argv.snapshot) {
+          await startProxies();
+        }
         await testPackage(argv, argv.package);
+        await stopProxies();
 
         if (argv.serve) {
           debug('stopping test server');

@@ -3,6 +3,7 @@
  */
 
 const debug = require('debug')('tooling:build');
+
 const {
   exec,
   mkdirp,
@@ -10,10 +11,14 @@ const {
   transformFile
 } = require('../lib/async');
 const g = require('../lib/async').glob;
+
 const capitalize = require('lodash');
 const humanize = require('humanize-string');
+
 const path = require('path');
+
 const {rename, writeFile} = require('fs-promise');
+
 const {glob} = require('../util/package');
 
 exports.buildFile = async function buildFile({src, dest}) {
@@ -45,9 +50,10 @@ exports.buildPackage = async function buildPackage(packageName) {
 
 exports.buildSamples = async function buildSamples() {
   await rimraf('packages/node_modules/samples/bundle*');
+
   // reminder: samples:build calls this script, not webpack, hence we must call
   // webpack here
-  await exec('webpack');
+  await exec('webpack --env=samples');
   await rename('bundle.js', 'packages/node_modules/samples/bundle.js');
   await rename('bundle.js.map', 'packages/node_modules/samples/bundle.js.map');
 

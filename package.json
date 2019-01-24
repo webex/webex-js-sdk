@@ -33,10 +33,15 @@
     "Patrick Linskey <plinskey@cisco.com>",
     "Riley Marsh <rimarsh@cisco.com>",
     "Saurabh Jain <saurjai3@cisco.com>",
+    "Taymoor Khan <taykhan@cisco.com>",
     "Tor Hagemann <tohagema@cisco.com>",
     "Tran Tu <tratu@cisco.com>",
     "Vagou Zhou <vagouz@cisco.com>"
   ],
+  "engines": {
+    "node": "~8.11.4",
+    "npm": "~6.4.1"
+  },
   "main": "src/index.js",
   "repository": {
     "type": "git",
@@ -49,6 +54,7 @@
     "bootstrap": "echo 'npm run bootstrap is no longer required. Hooray!'",
     "prebuild": "npm run clean",
     "build": "babel-node ./tooling/index.js build",
+    "build:script": "rollup -c",
     "prebuild:docs": "rimraf ./docs/api",
     "build:docs": "documentation build --config documentation/config.yml --np --project-name ciscospark --project-version 1.x --format html --output ./docs/api --github ./packages/node_modules/ciscospark/src/index.js ./packages/node_modules/@ciscospark/plugin-*/src/index.js",
     "check-karma-output": "./scripts/analyze-output.sh",
@@ -56,7 +62,7 @@
     "lint": "npm run --silent lint:js && npm run --silent lint:jenkinsfile && npm run --silent lint:package-names",
     "lint:ci": "npm run --silent lint:js:ci && npm run --silent lint:jenkinsfile && npm run --silent lint:package-names",
     "lint:commitmsg": "commitlint -e $GIT_PARAMS",
-    "lint:eslint": "eslint --ignore-pattern 'packages/node_modules/generator-ciscospark/generators/*/templates/**' --ignore-path .gitignore",
+    "lint:eslint": "eslint --ignore-pattern 'packages/node_modules/generator-ciscospark/generators/*/templates/**' --ignore-pattern 'packages/node_modules/ciscospark/umd/**' --ignore-path .gitignore",
     "lint:eslint:ci-reporter": "bash -c '[[ -n \"${JENKINS}\" ]]' && echo \"-f checkstyle -o reports/style/eslint.xml\" || echo ''",
     "lint:jenkinsfile": "node --eval \"fs.readFileSync('Jenkinsfile').includes('.status') ? console.log('Found \".status\" in Jenkinsfile. You meant \".result\"') && process.exit(1) : process.exit(0)\"",
     "lint:js": "npm run --silent lint:eslint -- .",
@@ -77,12 +83,12 @@
     "serve:samples": "echo 'Deprecated. Please use npm run samples:serve'; npm run --silent samples:serve",
     "test:samples": "echo 'Deprecated. Please use npm run samples:test'; npm run --silent samples:test",
     "samples:build": "babel-node ./tooling/index.js build --only-samples",
-    "samples:serve": "webpack-dev-server",
+    "samples:serve": "webpack-dev-server --env=samples",
+    "samples:meetings": "npm run serve:package -- --env.package @webex/plugin-meetings --env.entry ./ciscospark.js",
+    "serve:package": "webpack-dev-server --config webpack/webpack.config.js --hot --inline --history-api-fallback",
     "presamples:test": "rimraf bundle.js bundle.js.map",
     "samples:test": "NODE_ENV=test wdio",
-    "tooling": "babel-node ./tooling/index.js",
-    "snyk-protect": "snyk protect",
-    "prepare": "npm run snyk-protect"
+    "tooling": "babel-node ./tooling/index.js"
   },
   "dependencies": {
     "@ciscospark/eslint-config-base": "^0.5.0",
@@ -129,6 +135,7 @@
     "cookie-parser": "^1.4.3",
     "core-decorators": "^0.20.0",
     "cors": "^2.8.1",
+    "crypto": "^1.0.1",
     "debug": "^3.1.0",
     "denodeify": "^1.2.1",
     "dependency-check": "^3.0.0",
@@ -158,14 +165,16 @@
     "grunt": "~1.0.1",
     "grunt-cli": "~1.2.0",
     "grunt-env": "~0.4.2",
-    "grunt-gh-pages": "~2.0.0",
+    "grunt-gh-pages": "^3.1.0",
     "highlight.js": "^9.5.0",
+    "html-webpack-plugin": "^3.2.0",
     "humanize-string": "^1.0.2",
     "husky": "^0.14.3",
     "in-publish": "^2.0.0",
     "is-function": "^1.0.1",
     "isparta": "^4.0.0",
     "istanbul": "^0.4.4",
+    "javascript-state-machine": "^3.1.0",
     "jsonwebtoken": "^8.0.1",
     "karma": "^2.0.0",
     "karma-browserify": "^5.1.3",
@@ -186,7 +195,7 @@
     "mime-types": "^2.1.15",
     "mkdirp": "^0.5.1",
     "mmmagic": "^0.4.5",
-    "mocha": "^5.0.0",
+    "mocha": "^5.2.0",
     "mocha-steps": "^1.1.0",
     "morgan": "^1.8.2",
     "multer": "^1.3.0",
@@ -204,11 +213,20 @@
     "require-dir": "^0.3.1",
     "response-time": "^2.3.2",
     "rimraf": "^2.6.1",
+    "rollup": "^0.68.0",
+    "rollup-plugin-cleaner": "^0.2.0",
+    "rollup-plugin-commonjs": "^9.2.0",
+    "rollup-plugin-json": "^3.1.0",
+    "rollup-plugin-license": "^0.7.0",
+    "rollup-plugin-node-builtins": "^2.1.2",
+    "rollup-plugin-node-globals": "^1.4.0",
+    "rollup-plugin-node-resolve": "^4.0.0",
+    "rollup-plugin-terser": "^3.0.0",
     "sdp-transform": "^2.4.0",
     "sinon": "^4.2.2",
-    "snyk": "^1.82.2",
     "supertest": "^3.0.0",
     "time-grunt": "^1.3.0",
+    "url": "^0.11.0",
     "urlsafe-base64": "^1.0.0",
     "uuid": "^3.2.1",
     "wd": "^1.4.0",
@@ -223,18 +241,20 @@
     "webpack": "^4.12.0",
     "webpack-cli": "^3.0.8",
     "webpack-dev-server": "^3.1.2",
+    "webpack-merge": "^4.1.4",
     "webrtc-adapter": "^6.1.0",
     "whatwg-fetch": "^2.0.3",
     "ws": "^4.0.0",
     "xhr": "^2.4.0",
     "xtend": "^4.0.1",
+    "yakbak": "^3.0.0",
     "yargs": "^9.0.1",
     "jszip": "^3.1.5",
     "file-saver": "^2.0.0",
     "emailjs-mime-builder": "2.0.5"
   },
   "optionalDependencies": {
-    "@ciscospark/test-users-legacy": "^1.0.2"
+    "@ciscospark/test-users-legacy": "^1.1.0"
   },
   "browser": {
     "mmmagic": false,
@@ -262,9 +282,13 @@
     "registry": "http://engci-maven-master.cisco.com/artifactory/api/npm/webex-release-npm"
   },
   "lint-staged": {
-    "*.js": "lint:eslint",
-    "Jenkinsfile": "lint:jenkinsfile",
-    "*package.json": "lint:package-names"
-  },
-  "snyk": true
+    "linters": {
+      "*.js": "lint:eslint",
+      "Jenkinsfile": "lint:jenkinsfile",
+      "*package.json": "lint:package-names"
+    },
+    "ignore": [
+      "**/umd/**.js"
+    ]
+  }
 }
