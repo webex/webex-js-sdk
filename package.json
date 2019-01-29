@@ -85,6 +85,7 @@
     "samples:build": "babel-node ./tooling/index.js build --only-samples",
     "samples:serve": "webpack-dev-server --env=samples",
     "samples:meetings": "npm run serve:package -- --env.package @webex/plugin-meetings --env.entry ./ciscospark.js",
+    "samples:devicemanager": "npm run serve:package -- --env.package @webex/plugin-devicemanager --env.entry ./ciscospark.js",
     "serve:package": "webpack-dev-server --config webpack/webpack.config.js --hot --inline --history-api-fallback",
     "presamples:test": "rimraf bundle.js bundle.js.map",
     "samples:test": "NODE_ENV=test wdio",
