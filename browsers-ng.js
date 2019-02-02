@@ -8,34 +8,45 @@ module.exports = function(packageName, argv) {
   if (process.env.SC_TUNNEL_IDENTIFIER) {
     browsers = {
       // Reminder: the first item in this object is used by pipeline builds
-      sl_chrome_latest_osx12: {
+      sl_chrome_latest_osx13: {
         base: 'SauceLabs',
-        platform: 'OS X 10.12',
+        platform: 'OS X 10.13',
         browserName: 'chrome',
-        version: 'latest'
+        version: 'latest',
+        extendedDebugging: true
       },
       sl_chrome_latest_win7: {
         base: 'SauceLabs',
         platform: 'Windows 7',
         browserName: 'chrome',
-        version: 'latest'
+        version: 'latest',
+        extendedDebugging: true
+      },
+      sl_firefox_latest_osx13: {
+        base: 'SauceLabs',
+        platform: 'OS X 10.13',
+        browserName: 'firefox',
+        version: 'latest',
+        extendedDebugging: true
+      },
+      sl_firefox_latest_win7: {
+        base: 'SauceLabs',
+        platform: 'Windows 7',
+        browserName: 'firefox',
+        version: 'latest',
+        extendedDebugging: true
       },
       sl_firefox_latest_linux: {
         base: 'SauceLabs',
         platform: 'Linux',
         browserName: 'firefox',
         version: 'latest'
+        // extendedDebugging: true // linux latest only runs firefox 45 for some reason
       },
-      sl_firefox_latest_osx12: {
+      sl_edge_latest_win10: {
         base: 'SauceLabs',
-        platform: 'OS X 10.12',
-        browserName: 'firefox',
-        version: 'latest'
-      },
-      sl_firefox_latest_win7: {
-        base: 'SauceLabs',
-        platform: 'Windows 7',
-        browserName: 'firefox',
+        platform: 'Windows 10',
+        browserName: 'MicrosoftEdge',
         version: 'latest'
       },
       sl_ie_11_win7: {
@@ -44,16 +55,10 @@ module.exports = function(packageName, argv) {
         browserName: 'internet explorer',
         version: '11'
       },
-      sl_safari_latest_mac12: {
+      sl_safari_latest_osx13: {
         base: 'SauceLabs',
         platform: 'macOS 10.13',
         browserName: 'safari',
-        version: 'latest'
-      },
-      sl_edge_latest_win10: {
-        base: 'SauceLabs',
-        platform: 'Windows 10',
-        browserName: 'MicrosoftEdge',
         version: 'latest'
       }
     }
