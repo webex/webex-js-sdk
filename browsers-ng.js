@@ -13,47 +13,56 @@ module.exports = function(packageName, argv) {
         platform: 'OS X 10.13',
         browserName: 'chrome',
         version: 'latest',
-        extendedDebugging: true
+        extendedDebugging: true,
       },
       sl_chrome_latest_win7: {
         base: 'SauceLabs',
         platform: 'Windows 7',
         browserName: 'chrome',
         version: 'latest',
-        extendedDebugging: true
+        extendedDebugging: true,
+      },
+      sl_firefox_latest_linux: {
+        base: 'SauceLabs',
+        platform: 'Linux',
+        browserName: 'firefox',
+        version: 'latest',
+        extendedDebugging: true,
       },
       sl_firefox_latest_osx13: {
         base: 'SauceLabs',
         platform: 'OS X 10.13',
         browserName: 'firefox',
         version: 'latest',
-        extendedDebugging: true
+        extendedDebugging: true,
       },
       sl_firefox_latest_win7: {
         base: 'SauceLabs',
         platform: 'Windows 7',
         browserName: 'firefox',
         version: 'latest',
-        extendedDebugging: true
+        extendedDebugging: true,
       },
-      sl_firefox_latest_linux: {
+      sl_ie_11_win7: {
         base: 'SauceLabs',
-        platform: 'Linux',
-        browserName: 'firefox',
-        version: 'latest'
-        // extendedDebugging: true // linux latest only runs firefox 45 for some reason
+        platform: 'Windows 7',
+        browserName: 'internet explorer',
+        version: '11',
+        extendedDebugging: true,
+      },
+      sl_safari_latest_mac12: {
+        base: 'SauceLabs',
+        platform: 'macOS 10.13',
+        browserName: 'safari',
+        version: 'latest',
+        extendedDebugging: true,
       },
       sl_edge_latest_win10: {
         base: 'SauceLabs',
         platform: 'Windows 10',
         browserName: 'MicrosoftEdge',
-        version: 'latest'
-      },
-      sl_safari_latest_osx13: {
-        base: 'SauceLabs',
-        platform: 'macOS 10.13',
-        browserName: 'safari',
-        version: 'latest'
+        version: 'latest',
+        extendedDebugging: true,
       }
     }
 

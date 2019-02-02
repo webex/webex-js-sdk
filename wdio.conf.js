@@ -4,7 +4,7 @@
 require('babel-register');
 
 const path = require('path');
-const os = require('os');
+// const os = require('os');
 
 const dotenv = require('dotenv');
 const glob = require('glob');
@@ -31,6 +31,10 @@ const PORT = process.env.PORT || 8000;
 const CI = !!(process.env.JENKINS || process.env.CI);
 
 exports.config = {
+  //
+  // WebdriverIO allows it to run your tests in arbitrary locations (e.g. locally or on a remote machine).
+  runner: 'local',
+  //
   //
   // ==================
   // Specify Test Files
@@ -78,21 +82,25 @@ exports.config = {
   //
   capabilities: {
     browserSpock: {
-      desiredCapabilities: {
+      capabilities: {
         browserName: 'firefox',
-        tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
+        'moz:firefoxOptions': {
+          args: [
+            '-start-debugger-server',
+            '9222'
+          ]
+        }
       }
     },
     browserMccoy: {
-      desiredCapabilities: {
+      capabilities: {
         browserName: 'chrome',
-        chromeOptions: {
+        'goog:chromeOptions': {
           args: [
             '--use-fake-device-for-media-stream',
             '--use-fake-ui-for-media-stream'
           ]
-        },
-        tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
+        }
       }
     }
   },
@@ -109,6 +117,8 @@ exports.config = {
   //
   // Level of logging verbosity: silent | verbose | command | data | result | error
   logLevel: 'error',
+  // Warns when a deprecated command is used
+  deprecationWarnings: true,
   //
   // Enables colors for log output.
   coloredLogs: true,
@@ -122,7 +132,7 @@ exports.config = {
   //
   // Set a base URL in order to shorten url command calls. If your url parameter starts
   // with "/", then the base url gets prepended.
-  baseUrl: `http://localhost:${PORT}/`,
+  baseUrl: `http://localhost:${PORT}`,
   //
   // Default timeout for all waitFor* commands.
   waitforTimeout: 15000,
@@ -226,8 +236,8 @@ exports.config = {
    */
   onPrepare(config, capabilities) {
     const defs = [
-      capabilities.browserSpock.desiredCapabilities,
-      capabilities.browserMccoy.desiredCapabilities
+      capabilities.browserSpock.capabilities,
+      capabilities.browserMccoy.capabilities
     ];
 
     const build = process.env.BUILD_NUMBER || `local-${process.env.USER}-wdio-${Date.now()}`;
@@ -244,7 +254,7 @@ exports.config = {
       else {
         // Copy the base over so that inject() does its thing.
         d.base = d.browserName;
-        d.platform = os.platform();
+        // d.platform = os.platform();
       }
     });
 
@@ -327,8 +337,9 @@ exports.config = {
         Object.keys(logTypes).forEach((browserId) => {
           console.log(logTypes[browserId].value);
           if (logTypes[browserId].value.includes('browser')) {
-            const logs = browser.select(browserId).log('browser');
+            const logs = browser[browserId].log('browser');
 
+            // const logs = browser.(browserId).log('browser');
             if (logs.value.length) {
               console.error(`Test ${test.fullTitle} failed with the following log output from browser ${browserId}`);
               console.error(logs
@@ -388,10 +399,13 @@ if (CI) {
   // tunnel setup. use `npm run sauce:start` and `npm run sauce:run` to start
   // the tunnel and run tests
 
-  exports.config.capabilities.browserSpock.seleniumVersion = '3.4.0';
-  exports.config.capabilities.browserSpock.extendedDebugging = true;
-  exports.config.capabilities.browserMccoy.seleniumVersion = '3.4.0';
-  exports.config.capabilities.browserMccoy.extendedDebugging = true;
+  // exports.config.capabilities.browserSpock.seleniumVersion = '3.4.0';
+  exports.config.capabilities.browserSpock.capabilities.extendedDebugging = true;
+  exports.config.capabilities.browserSpock.capabilities.tunnelIdentifier = process.env.SC_TUNNEL_IDENTIFIER;
+
+  // exports.config.capabilities.browserMccoy.seleniumVersion = '3.4.0';
+  exports.config.capabilities.browserMccoy.capabilities.extendedDebugging = true;
+  exports.config.capabilities.browserMccoy.capabilities.tunnelIdentifier = process.env.SC_TUNNEL_IDENTIFIER;
 
   exports.config = Object.assign(exports.config, {
     user: process.env.SAUCE_USERNAME,

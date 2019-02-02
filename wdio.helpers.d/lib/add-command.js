@@ -1,5 +1,5 @@
-const browserSpock = browser.select('browserSpock');
-const browserMccoy = browser.select('browserMccoy');
+// const browserSpock = browser.browserSpock;
+// const browserMccoy = browser.browserMccoy;
 
 /**
  * Wrapper around browser.addCommand that adds a command to all multiremote
@@ -10,7 +10,7 @@ const browserMccoy = browser.select('browserMccoy');
 module.exports = function addCommand(name, fn) {
   [
     browser,
-    browserMccoy,
-    browserSpock
+    browser.browserMccoy,
+    browser.browserSpock
   ].forEach((b) => b.addCommand(name, fn));
 };

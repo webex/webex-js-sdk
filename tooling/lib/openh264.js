@@ -4,11 +4,15 @@
 
 const debug = require('debug')('tooling:openh264');
 const denodeify = require('denodeify');
+
 const {rimraf} = require('./async');
+
 const spawn = require('../util/spawn');
 const FirefoxProfile = require('firefox-profile');
+
 const os = require('os');
 const path = require('path');
+
 const {stat} = require('fs-promise');
 
 const PROFILE_DIR = './.tmp/selenium';
