@@ -2,12 +2,14 @@
 /* global browser: false */
 
 require('babel-register');
-const {inject} = require('./tooling/lib/openh264');
-const dotenv = require('dotenv');
-const glob = require('glob');
 const path = require('path');
 const os = require('os');
-const webpackConfig = require('./webpack.config');
+
+const dotenv = require('dotenv');
+const glob = require('glob');
+
+const {inject} = require('./tooling/lib/openh264');
+const webpackConfig = require('./webpack.config')('samples');
 
 dotenv.config();
 dotenv.config({path: '.env.default'});
