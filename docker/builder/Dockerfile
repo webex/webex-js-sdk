@@ -8,7 +8,7 @@ ENV XUNIT                     true
 ENV PORT                      8000
 ENV FIXTURE_PORT              9000
 ENV KARMA_PORT                8001
-ENV SAUCE_CONNECT_VERSION     4.4.2
+ENV SAUCE_CONNECT_VERSION     4.5.3
 ENV MAX_SAUCE_CONNECT_RETRIES 3
 ENV MAX_TEST_SUITE_RETRIES    3
 ENV SC_PID_FILE               /sauce/sc.pid
