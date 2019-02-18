@@ -1,4 +1,4 @@
-[# spark-js-sdk
+# spark-js-sdk
 
 [![Greenkeeper badge](https://badges.greenkeeper.io/ciscospark/spark-js-sdk.svg)](https://greenkeeper.io/)
 
@@ -77,23 +77,23 @@ We do provide a built, minified version of the SDK, that includes `window.ciscos
 
 In-browser usage is almost the same as Node.js, but it handles the user authentication flow for you. See the [browser guide](https://webex.github.io/spark-js-sdk/guides/browsers/) for more information.
 
-If you're already using a bundler (like [Webpack](https://webpack.js.org/)) you can simply import/require the package and use the above snippet and assign the initialized `team` variable to `window.webexteams`.
+If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `team` variable to `window.webex`.
 For a quick example, we'll use [Parcel](https://parceljs.org/) to bundle the SDK for a website. For any more information and questions on how to use Parcel, please head to their [website](https://parceljs.org/).
 
 1. Create `index.js`.
 
 ```javascript
-import { init as initTeams } from 'ciscospark';
+import { init as initWebex } from 'ciscospark';
 
 // Initialize the SDK and make it available to the window
-const teams = (window.webexteams = initTeams({
+const webex = (window.webex = initWebex({
   credentials: {
     access_token: <your webex teams access token>
   }
 }));
 
 // Create a room with the title "My First Room"
-teams.rooms
+webex.rooms
   .create({
     title: 'My First Room!'
   })
@@ -102,7 +102,7 @@ teams.rooms
   });
 
 // Filter for "My First Room" from the last 10 rooms
-teams.rooms
+webex.rooms
   .list({
     max: 10
   })
@@ -113,13 +113,13 @@ teams.rooms
     )[0];
 
     // Post message "Hello World!" to "My First Room!"
-    teams.messages.create({
+    webex.messages.create({
       roomId,
       text: 'Hello World!'
     });
 
     // Log the the room name and the message we created
-    return teams.messages
+    return webex.messages
       .list({ roomId, max: 1 })
       // Destructure promised value to get the text property from the first item in items array
       .then(({ items: [{ text }] }) =>
@@ -184,150 +184,4 @@ and submitting pull requests for suggested changes.
 
 © 2016-2018 Cisco and/or its affiliates. All Rights Reserved.
 
-See [LICENSE](LICENSE) for details.](# ciscospark
-
-[![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
-
-> The Cisco Webex JS SDK
-
-- [Install](#install)
-- [Usage](#usage)
-- [API](#api)
-- [Contribute](#contribute)
-- [License](#license)
-
-## Install
-
-```bash
-npm install --save ciscospark
-```
-
-## Usage
-
-To use the SDK, you will need Cisco Webex credentials. If you do not already have a Cisco Webex account, visit
-[Cisco Webex for Developers](https://developer.webex.com/) to create your account and retrieve your **_access token_**.
-
-See [the detailed docs](https://webex.github.io/spark-js-sdk/) for more usage examples.
-
-```javascript
-const ciscospark = require(`ciscospark`);
-const teams = ciscospark.init({
-  credentials: {
-    access_token: <your webex teams access token>
-  }
-});
-
-// Create a room with the title "My First Room"
-// Add Alice and Bob to the room
-// Send a **Hi Everyone** message to the room
-teams.rooms.create({ title: `My First Room` }).then(room => {
-  return Promise.all([
-    teams.memberships.create({
-      roomId: room.id,
-      personEmail: `alice@example.com`
-    }),
-    teams.memberships.create({
-      roomId: room.id,
-      personEmail: `bob@example.com`
-    })
-  ]).then(() =>
-    teams.messages.create({
-      markdown: `**Hi Everyone**`,
-      roomId: room.id
-    })
-  );
-});
-```
-
-#### _A note on browser usage_
-
-We do not provide a built version of the SDK that includes `window.ciscospark`.
-In-browser usage is almost the same as Node.js, but it handles the user authentication flow for you. See the [browser guide](https://webex.github.io/spark-js-sdk/guides/browsers/) for more information.
-
-If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `team` variable to `window.webexteams`.
-For a quick example, we'll use [Parcel](https://parceljs.org/) to bundle the SDK for a website. For any more information and questions on how to use Parcel, please head to their [website](https://parceljs.org/).
-
-1. Create `index.js`.
-
-```javascript
-import { init as initTeams } from 'ciscospark';
-
-// Initialize the SDK and make it available to the window
-const teams = (window.webexteams = initTeams({
-  credentials: {
-    access_token: <your webex teams access token>
-  }
-}));
-
-// Create a room with the title "My First Room"
-teams.rooms
-  .create({
-    title: 'My First Room!'
-  })
-  .catch((error) => {
-    console.error(error);
-  });
-
-// Filter for "My First Room" from the last 10 rooms
-teams.rooms
-  .list({
-    max: 10
-  })
-  .then((rooms) => {
-    // Destructure room properties for its id (aliased to roomId) and title
-    const { id: roomId, title } = rooms.items.filter(
-      room => room.title === 'My First Room!'
-    )[0];
-
-    // Post message "Hello World!" to "My First Room!"
-    teams.messages.create({
-      roomId,
-      text: 'Hello World!'
-    });
-
-    // Log the the room name and the message we created
-    return teams.messages
-      .list({ roomId, max: 1 })
-      // Destructure promised value to get the text property from the first item in items array
-      .then(({ items: [{ text }] }) =>
-        console.log(`Last message sent to room "title": text`)
-      );
-  })
-  .catch((error) => {
-    console.error(error);
-  });
-```
-
-2. Create `index.html` .
-
-```html
-<html>
-  <head>
-    <title>Webex SDK for Browsers</title>
-  </head>
-  <body>
-    <script src="./index.js"></script>
-  </body>
-</html>
-```
-
-3. Run `parcel index.html` in your terminal.
-4. Go to [http://localhost:1234](http://localhost:1234) and open the developer console to see the output.
-
-#### _[Still using `ciscospark/env`?](../../../documentation/ciscospark.md#nodejs)_
-
-## API
-
-Full API docs are published at the [docs site](https://webex.github.io/spark-js-sdk/api/).
-
-## Maintainers
-
-This package is maintained by [Cisco Webex for Developers](https://developer.webex.com/).
-
-## Contribute
-
-Pull requests welcome. Please see [CONTRIBUTING.md](https://github.com/webex/spark-js-sdk/blob/master/CONTRIBUTING.md) for more details.
-
-## License
-
-© 2016-2018 Cisco and/or its affiliates. All Rights Reserved.)
+See [LICENSE](LICENSE) for details.
