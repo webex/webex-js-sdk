@@ -39,7 +39,7 @@
     "Vagou Zhou <vagouz@cisco.com>"
   ],
   "engines": {
-    "node": "~8.11.4",
+    "node": "~8.15.0",
     "npm": "~6.4.1"
   },
   "main": "src/index.js",
