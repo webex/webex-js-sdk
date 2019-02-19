@@ -249,7 +249,10 @@
     "xhr": "^2.4.0",
     "xtend": "^4.0.1",
     "yakbak": "^3.0.0",
-    "yargs": "^9.0.1"
+    "yargs": "^9.0.1",
+    "jszip": "^3.1.5",
+    "file-saver": "^2.0.0",
+    "emailjs-mime-builder": "2.0.5"
   },
   "optionalDependencies": {
     "@ciscospark/test-users-legacy": "^1.1.0"
