@@ -252,7 +252,8 @@
     "yargs": "^9.0.1",
     "jszip": "^3.1.5",
     "file-saver": "^2.0.0",
-    "emailjs-mime-builder": "2.0.5"
+    "emailjs-mime-builder": "2.0.5",
+    "blob": "0.0.5"
   },
   "optionalDependencies": {
     "@ciscospark/test-users-legacy": "^1.1.0"
