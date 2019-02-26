@@ -2,17 +2,18 @@
 /* global browser: false */
 
 require('babel-register');
+
 const path = require('path');
 const os = require('os');
 
 const dotenv = require('dotenv');
 const glob = require('glob');
 
-const {inject} = require('./tooling/lib/openh264');
-const webpackConfig = require('./webpack.config')('samples');
-
 dotenv.config();
 dotenv.config({path: '.env.default'});
+
+const {inject} = require('./tooling/lib/openh264');
+const webpackConfig = require('./webpack.config')(process.env.NODE_ENV === 'production' ? 'production' : '');
 
 require('babel-register')({
   only: [
@@ -118,7 +119,7 @@ exports.config = {
   baseUrl: `http://localhost:${PORT}/`,
   //
   // Default timeout for all waitFor* commands.
-  waitforTimeout: 10000,
+  waitforTimeout: 15000,
   //
   // Default timeout in milliseconds for request
   // if Selenium Grid doesn't send response
@@ -126,6 +127,9 @@ exports.config = {
   //
   // Default request retries count
   connectionRetryCount: 3,
+  //
+  // Debugging
+  debug: !CI,
   //
   // Initialize the browser instance with a WebdriverIO plugin. The object should have the
   // plugin name as key and the desired plugin options as properties. Make sure you have
