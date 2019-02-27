@@ -8,7 +8,7 @@ const debug = require('debug')('tooling:test');
 const dotenv = require('dotenv');
 
 dotenv.config();
-dotenv.config({path: '.env.default'});
+dotenv.config({path: '.env.defaults'});
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
 const {

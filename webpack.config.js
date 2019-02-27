@@ -6,7 +6,7 @@ const glob = require('glob');
 const {DefinePlugin, EnvironmentPlugin} = require('webpack');
 
 dotenv.config();
-dotenv.config({path: '.env.default'});
+dotenv.config({path: '.env.defaultss'});
 
 module.exports = (env = '') => ({
   entry: './packages/node_modules/ciscospark',
@@ -82,7 +82,7 @@ module.exports = (env = '') => ({
       : [
         new DotenvPlugin({
           path: './.env',
-          defaults: !(process.env.CI || process.env.JENKINS) // load '.env.defaults' as the default values if empty and not in CI.
+          defaults: !(process.env.CI || process.env.JENKINS) // load '.env.defaultss' as the default values if empty and not in CI.
         }),
         // Environment Plugin doesn't override already defined Environment Variables (i.e. DotENV)
         new EnvironmentPlugin({
@@ -96,7 +96,6 @@ module.exports = (env = '') => ({
           WDM_SERVICE_URL: 'https://wdm-a.wbx2.com/wdm/api/v1',
           HYDRA_SERVICE_URL: 'https://api.ciscospark.com/v1',
           ATLAS_SERVICE_URL: 'https://atlas-a.wbx2.com/admin/api/v1',
-          AUTHORIZE_URL: 'https://idbrokerbts.webex.com',
           IDBROKER_BASE_URL: 'https://idbrokerbts.webex.com',
           IDENTITY_BASE_URL: 'https://identitybts.webex.com'
         })

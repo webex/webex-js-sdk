@@ -10,7 +10,7 @@ const dotenv = require('dotenv');
 const glob = require('glob');
 
 dotenv.config();
-dotenv.config({path: '.env.default'});
+dotenv.config({path: '.env.defaults'});
 
 const {inject} = require('./tooling/lib/openh264');
 const webpackConfig = require('./webpack.config')(process.env.NODE_ENV === 'production' ? 'production' : '');
@@ -159,6 +159,7 @@ exports.config = {
     'webpack'
   ] : [
     'selenium-standalone',
+    'firefox-profile',
     'static-server',
     'webpack'
   ],
@@ -168,7 +169,17 @@ exports.config = {
   ],
   staticServerPort: PORT,
   webpackConfig,
-
+  firefoxProfile: {
+    'media.navigator.permission.disabled': true,
+    'media.peerconnection.video.h264_enabled': true,
+    'media.navigator.streams.fake': true,
+    'media.getusermedia.screensharing.enabled': true,
+    'media.getusermedia.screensharing.allowed_domains': 'localhost, 127.0.0.1',
+    ...(!CI && {
+      'dom.webnotifications.enabled': false,
+      'media.gmp-manager.updateEnabled': true
+    })
+  },
   //
   // Framework you want to run your specs with.
   // The following are supported: Mocha, Jasmine, and Cucumber
