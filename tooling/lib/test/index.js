@@ -4,11 +4,10 @@
 
 /* eslint-disable require-jsdoc */
 const debug = require('debug')('tooling:test');
-
 const dotenv = require('dotenv');
 
 dotenv.config();
-dotenv.config({path: '.env.defaults'});
+dotenv.config({path: '.env.default'});
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
 const {
@@ -16,6 +15,7 @@ const {
 } = require('./common');
 const mochaTest = require('./mocha').test;
 const karmaTest = require('./karma').test;
+
 const path = require('path');
 const {
   collect,

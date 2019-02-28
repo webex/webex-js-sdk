@@ -1,14 +1,13 @@
 const path = require('path');
 
 const dotenv = require('dotenv');
-const DotenvPlugin = require('dotenv-webpack');
 const glob = require('glob');
 const {DefinePlugin, EnvironmentPlugin} = require('webpack');
 
 dotenv.config();
-dotenv.config({path: '.env.defaultss'});
+dotenv.config({path: '.env.default'});
 
-module.exports = (env = '') => ({
+module.exports = (env = process.env.NODE_ENV || '') => ({
   entry: './packages/node_modules/ciscospark',
   mode: env === 'production' ? 'production' : 'development',
   output: {
@@ -80,10 +79,6 @@ module.exports = (env = '') => ({
         })
       ]
       : [
-        new DotenvPlugin({
-          path: './.env',
-          defaults: !(process.env.CI || process.env.JENKINS) // load '.env.defaultss' as the default values if empty and not in CI.
-        }),
         // Environment Plugin doesn't override already defined Environment Variables (i.e. DotENV)
         new EnvironmentPlugin({
           CISCOSPARK_LOG_LEVEL: 'log',
