@@ -10,7 +10,7 @@ module.exports = function(packageName, argv) {
       // Reminder: the first item in this object is used by pipeline builds
       sl_chrome_latest_osx13: {
         base: 'SauceLabs',
-        platform: 'OS X 10.13',
+        platform: 'macOS 10.13',
         browserName: 'chrome',
         version: 'latest',
         extendedDebugging: true
@@ -24,7 +24,7 @@ module.exports = function(packageName, argv) {
       },
       sl_firefox_latest_osx13: {
         base: 'SauceLabs',
-        platform: 'OS X 10.13',
+        platform: 'macOS 10.13',
         browserName: 'firefox',
         version: 'latest',
         extendedDebugging: true

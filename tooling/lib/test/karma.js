@@ -4,12 +4,13 @@
 
 const debug = require('debug')('tooling:test:karma');
 const {Server, stopper} = require('karma');
-const {makeConfig} = require('../../../karma-ng.conf');
-const {readFile} = require('fs-promise');
+
+const {readFile} = require('fs-extra');
 const ps = require('ps-node');
-const {expectNonEmptyReports, expectNoKmsErrors} = require('./common');
+const {makeConfig} = require('../../../karma-ng.conf');
 const {glob} = require('../async');
 const {inject} = require('../openh264');
+const {expectNonEmptyReports, expectNoKmsErrors} = require('./common');
 
 /* eslint-disable no-console */
 

@@ -4,8 +4,11 @@
 
 const denodeify = require('denodeify');
 const g = denodeify(require('glob'));
+
 const path = require('path');
-const fs = require('fs-promise');
+
+const fs = require('fs-extra');
+
 const _spawn = require('./spawn');
 
 const cwd = 'packages/node_modules';

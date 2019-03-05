@@ -17,7 +17,7 @@ const humanize = require('humanize-string');
 
 const path = require('path');
 
-const {rename, writeFile} = require('fs-promise');
+const {rename, writeFile} = require('fs-extra');
 
 const {glob} = require('../util/package');
 

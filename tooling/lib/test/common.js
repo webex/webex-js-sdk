@@ -3,8 +3,10 @@
  */
 
 const debug = require('debug')('tooling:test:common');
+
 const {glob} = require('../../util/package');
-const {readFile, stat} = require('fs-promise');
+
+const {readFile, stat} = require('fs-extra');
 
 exports.gatherFiles = async function gatherFiles(options, packageName) {
   let files = [];

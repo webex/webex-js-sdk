@@ -80,19 +80,40 @@ exports.config = {
     browserSpock: {
       desiredCapabilities: {
         browserName: 'firefox',
-        tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
+        'moz:firefoxOptions': {
+          ...(CI ? {
+            args: [
+              '-start-debugger-server',
+              '9222'
+            ],
+            prefs: {
+              'devtools.chrome.enabled': true,
+              'devtools.debugger.prompt-connection': false,
+              'devtools.debugger.remote-enabled': true
+            }
+          } : {
+            prefs: {
+              'media.navigator.permission.disabled': true,
+              'media.peerconnection.video.h264_enabled': true,
+              'media.navigator.streams.fake': true,
+              'media.getusermedia.screensharing.enabled': true,
+              'media.getusermedia.screensharing.allowed_domains': 'localhost, 127.0.0.1',
+              'dom.webnotifications.enabled': false,
+              'media.gmp-manager.updateEnabled': true
+            }
+          })
+        }
       }
     },
     browserMccoy: {
       desiredCapabilities: {
         browserName: 'chrome',
-        chromeOptions: {
+        'goog:chromeOptions': {
           args: [
             '--use-fake-device-for-media-stream',
             '--use-fake-ui-for-media-stream'
           ]
-        },
-        tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
+        }
       }
     }
   },
@@ -109,6 +130,9 @@ exports.config = {
   //
   // Level of logging verbosity: silent | verbose | command | data | result | error
   logLevel: 'error',
+  //
+  // Warns when a deprecated command is used
+  deprecationWarnings: !CI,
   //
   // Enables colors for log output.
   coloredLogs: true,
@@ -165,7 +189,6 @@ exports.config = {
     'webpack'
   ] : [
     'selenium-standalone',
-    'firefox-profile',
     'static-server',
     'webpack'
   ],
@@ -175,15 +198,6 @@ exports.config = {
   ],
   staticServerPort: PORT,
   webpackConfig,
-  firefoxProfile: {
-    'media.navigator.permission.disabled': true,
-    'media.peerconnection.video.h264_enabled': true,
-    'media.navigator.streams.fake': true,
-    'media.getusermedia.screensharing.enabled': true,
-    'media.getusermedia.screensharing.allowed_domains': 'localhost, 127.0.0.1',
-    'dom.webnotifications.enabled': false,
-    'media.gmp-manager.updateEnabled': true
-  },
   //
   // Framework you want to run your specs with.
   // The following are supported: Mocha, Jasmine, and Cucumber
@@ -239,12 +253,23 @@ exports.config = {
         d.base = 'SauceLabs';
 
         d.version = d.version || 'latest';
-        d.platform = d.platform || 'OS X 10.12';
+        d.platform = d.platform || 'macOS 10.13';
       }
       else {
         // Copy the base over so that inject() does its thing.
         d.base = d.browserName;
-        d.platform = os.platform();
+        d.platformName = () => {
+          switch (os.type()) {
+            case 'Darwin':
+              return 'mac';
+            case 'Window_NT':
+              return 'windows';
+            case 'Linux':
+              return 'Linux';
+            default:
+              return os.type();
+          }
+        };
       }
     });
 
@@ -390,8 +415,11 @@ if (CI) {
 
   exports.config.capabilities.browserSpock.seleniumVersion = '3.4.0';
   exports.config.capabilities.browserSpock.extendedDebugging = true;
+  exports.config.capabilities.browserSpock.tunnelIdentifier = process.env.SC_TUNNEL_IDENTIFIER;
+
   exports.config.capabilities.browserMccoy.seleniumVersion = '3.4.0';
   exports.config.capabilities.browserMccoy.extendedDebugging = true;
+  exports.config.capabilities.browserMccoy.tunnelIdentifier = process.env.SC_TUNNEL_IDENTIFIER;
 
   exports.config = Object.assign(exports.config, {
     user: process.env.SAUCE_USERNAME,

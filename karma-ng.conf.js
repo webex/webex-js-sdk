@@ -78,13 +78,14 @@ function makeConfig(packageName, argv) {
 
     customLaunchers: launchers,
 
-    failOnEmptyTestSuite: false,
+    failOnEmptyTestSuite: false, // allow empty or skipped specs (like calendar) to not make karma fail
 
     files,
 
     frameworks: [
       'browserify',
-      'mocha'
+      'mocha',
+      'chai'
     ],
 
     hostname: 'localhost',

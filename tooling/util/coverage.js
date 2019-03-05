@@ -5,15 +5,16 @@
 /* eslint-disable require-jsdoc */
 
 const debug = require('debug')('monorepo:test');
-
 const denodeify = require('denodeify');
 const {Instrumenter} = require('isparta');
 const mkdirp = denodeify(require('mkdirp'));
 const rimraf = denodeify(require('rimraf'));
+
 const {glob} = require('./package');
+
 const g = denodeify(require('glob'));
 const path = require('path');
-const fs = require('fs-promise');
+const fs = require('fs-extra');
 const {Collector, Report} = require('istanbul');
 
 function makeCoverageVariable(packageName) {
