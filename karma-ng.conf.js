@@ -7,6 +7,7 @@
 
 
 const path = require('path');
+
 const makeBrowsers = require('./browsers-ng');
 /* eslint-disable global-require */
 
@@ -87,6 +88,7 @@ function makeConfig(packageName, argv) {
     hostname: 'localhost',
 
     client: {
+      captureConsole: true,
       mocha: {
         bail: argv.bail,
         // TODO figure out how to report retries

@@ -4,13 +4,12 @@ const dotenv = require('dotenv');
 const glob = require('glob');
 const {DefinePlugin, EnvironmentPlugin} = require('webpack');
 
-dotenv.config({path: '.env.default'});
 dotenv.config();
+dotenv.config({path: '.env.default'});
 
-
-module.exports = (env) => ({
+module.exports = (env = process.env.NODE_ENV || '') => ({
   entry: './packages/node_modules/ciscospark',
-  mode: 'development',
+  mode: env === 'production' ? 'production' : 'development',
   output: {
     filename: 'bundle.js',
     library: 'ciscospark',
@@ -18,7 +17,7 @@ module.exports = (env) => ({
     path: __dirname,
     sourceMapFilename: '[file].map'
   },
-  devtool: env === 'samples' ? 'source-map' : 'cheap-module-source-map',
+  devtool: env === 'production' ? 'source-map' : 'cheap-module-source-map',
   devServer: {
     https: true,
     disableHostCheck: true,
@@ -56,12 +55,12 @@ module.exports = (env) => ({
     ]
   },
   plugins: [
-    ...(env === 'samples'
+    ...(env === 'production'
       ? [
         new EnvironmentPlugin({
           CISCOSPARK_LOG_LEVEL: 'log',
           DEBUG: '',
-          NODE_ENV: 'development'
+          NODE_ENV: 'production'
         }),
         // This allows overwriting of process.env
         new DefinePlugin({
@@ -91,7 +90,9 @@ module.exports = (env) => ({
           CONVERSATION_SERVICE: process.env.CONVERSATION_SERVICE_URL || 'https://conv-a.wbx2.com/conversation/api/v1',
           WDM_SERVICE_URL: 'https://wdm-a.wbx2.com/wdm/api/v1',
           HYDRA_SERVICE_URL: 'https://api.ciscospark.com/v1',
-          ATLAS_SERVICE_URL: 'https://atlas-a.wbx2.com/admin/api/v1'
+          ATLAS_SERVICE_URL: 'https://atlas-a.wbx2.com/admin/api/v1',
+          IDBROKER_BASE_URL: 'https://idbrokerbts.webex.com',
+          IDENTITY_BASE_URL: 'https://identitybts.webex.com'
         })
       ]
     )

@@ -4,7 +4,6 @@
 
 /* eslint-disable require-jsdoc */
 const debug = require('debug')('tooling:test');
-
 const dotenv = require('dotenv');
 
 dotenv.config();
@@ -16,6 +15,7 @@ const {
 } = require('./common');
 const mochaTest = require('./mocha').test;
 const karmaTest = require('./karma').test;
+
 const path = require('path');
 const {
   collect,
