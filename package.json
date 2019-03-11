@@ -120,6 +120,7 @@
     "babelify": "^8.0.0",
     "babylon": "^6.16.1",
     "backoff": "^2.5.0",
+    "blob": "0.0.5",
     "body-parser": "^1.17.2",
     "bowser": "^1.6.0",
     "browser-saveas": "^1.0.1",
