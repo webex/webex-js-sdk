@@ -13,10 +13,7 @@
   "presets": [
     ["env", {
       "targets": {
-        "browsers": [
-          "last 2 versions",
-          "safari >= 7"
-        ]
+        "browsers": ["safari >= 7", "ie >= 11", "> 1%"]
       }
     }]
   ],
