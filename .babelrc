@@ -1,5 +1,6 @@
 {
   "plugins": [
+    "transform-runtime",
     "./tooling/babel-plugin-inject-package-version",
     ["babel-plugin-transform-builtin-extend", {
         "globals": ["Error"]
@@ -8,12 +9,16 @@
     "transform-class-properties",
     "transform-export-extensions",
     "lodash",
-    "transform-runtime"
   ],
   "presets": [
     ["env", {
       "targets": {
-        "browsers": ["safari >= 7", "ie >= 11", "> 1%"]
+        "browsers": [
+          ">0.25%",
+          "not dead",
+          "ie >= 11" // Office 365 support
+        ],
+        "node": "6"
       }
     }]
   ],
