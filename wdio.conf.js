@@ -2,17 +2,23 @@
 /* global browser: false */
 
 require('babel-register');
+
 const path = require('path');
 const os = require('os');
 
 const dotenv = require('dotenv');
 const glob = require('glob');
 
-const {inject} = require('./tooling/lib/openh264');
-const webpackConfig = require('./webpack.config')('samples');
-
 dotenv.config();
 dotenv.config({path: '.env.default'});
+
+const {inject} = require('./tooling/lib/openh264');
+const webpackConfig = require('./webpack.config')(
+  process.env.JENKINS || process.env.CI
+    ? 'production'
+    : process.env.NODE_ENV || ''
+);
+
 
 require('babel-register')({
   only: [
@@ -118,7 +124,7 @@ exports.config = {
   baseUrl: `http://localhost:${PORT}/`,
   //
   // Default timeout for all waitFor* commands.
-  waitforTimeout: 10000,
+  waitforTimeout: 15000,
   //
   // Default timeout in milliseconds for request
   // if Selenium Grid doesn't send response
@@ -126,6 +132,9 @@ exports.config = {
   //
   // Default request retries count
   connectionRetryCount: 3,
+  //
+  // Debugging
+  debug: !CI,
   //
   // Initialize the browser instance with a WebdriverIO plugin. The object should have the
   // plugin name as key and the desired plugin options as properties. Make sure you have
@@ -155,6 +164,7 @@ exports.config = {
     'webpack'
   ] : [
     'selenium-standalone',
+    'firefox-profile',
     'static-server',
     'webpack'
   ],
@@ -164,7 +174,15 @@ exports.config = {
   ],
   staticServerPort: PORT,
   webpackConfig,
-
+  firefoxProfile: {
+    'media.navigator.permission.disabled': true,
+    'media.peerconnection.video.h264_enabled': true,
+    'media.navigator.streams.fake': true,
+    'media.getusermedia.screensharing.enabled': true,
+    'media.getusermedia.screensharing.allowed_domains': 'localhost, 127.0.0.1',
+    'dom.webnotifications.enabled': false,
+    'media.gmp-manager.updateEnabled': true
+  },
   //
   // Framework you want to run your specs with.
   // The following are supported: Mocha, Jasmine, and Cucumber

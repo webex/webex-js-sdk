@@ -47,8 +47,8 @@ fi
 # Always use install. If that version is installed, it's the same as use and if
 # it's not installed, you won't spend half an hour trying to figure out what
 # exit code 3 is.
-nvm install 8.11.4
-npm install -g npm@6.4.1
+nvm install lts/carbon
+npm install -g npm@6
 
 echo "################################################################################"
 if [ -n "$BUILD_NUMBER" ]; then
