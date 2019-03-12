@@ -72,10 +72,26 @@ async function run(cfg) {
       watchSauce(server, cfg);
     }
 
+    server.on('browser_error', debugBrowserError);
     server.start(cfg);
   });
 
   return result === 0;
+}
+
+/**
+ * Debug browser errors to quickly discern IE11 errors.
+ * @see http://karma-runner.github.io/3.0/dev/public-api.html
+ * @param {Object} browser The browser instance
+ * @param {Object} error The error that occurred
+ */
+function debugBrowserError(browser, error) {
+  let errorType = 'error';
+  if (error.message) {
+    errorType = error.message.split('\n')[0].toLowerCase();
+  }
+  const browserName = browser.name.toLowerCase();
+  debug(`${errorType} on ${browserName}`);
 }
 
 /**
