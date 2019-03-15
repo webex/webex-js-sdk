@@ -78,6 +78,8 @@ function makeConfig(packageName, argv) {
 
     customLaunchers: launchers,
 
+    failOnEmptyTestSuite: false,
+
     files,
 
     frameworks: [
