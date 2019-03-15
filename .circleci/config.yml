@@ -5,7 +5,7 @@
 version: 2
 
 base_image: &base_image
-  image: circleci/node:8.11.3
+  image: circleci/node:carbon
 
 job_common: &job_common
   docker:
@@ -30,10 +30,11 @@ jobs:
       - checkout
       - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
       - run:
-          name: Install dependencies
+          name: Update NPM and Install dependencies
           command: |
             if [ ! -d node_modules ]; then
-              npm install
+              sudo npm install -g npm@6
+              npm ci
             fi
       - run:
           name: Copy node_modules to workspace
