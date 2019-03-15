@@ -69,30 +69,27 @@ module.exports = function(packageName, argv) {
         version: 'latest',
         idleTimeout: 600
       }
-    }
+    };
 
     try {
       // Check if the package generated a browsers package dynamically. This is
       // necessary when the package needs to e.g. use FirefoxProfile to manipulate
       // the browser environment
       browsers = require('./packages/node_modules/' + packageName + '/browsers.processed.js')(browsers);
-    }
-    catch (error) {
+    } catch (error) {
       if (error.code !== `MODULE_NOT_FOUND`) {
         throw error;
       }
       try {
         browsers = require('./packages/node_modules/' + packageName + '/browsers.js')(browsers);
-      }
-      catch (error2) {
+      } catch (error2) {
         if (error2.code !== `MODULE_NOT_FOUND`) {
           throw error2;
         }
         // ignore
       }
     }
-  }
-  else {
+  } else {
     browsers = {
       ChromeHeadless: {},
       FirefoxHeadless: {}
@@ -101,8 +98,7 @@ module.exports = function(packageName, argv) {
 
   try {
     browsers = require(`./packages/node_modules/${packageName}/browsers.js`)(browsers);
-  }
-  catch (err) {
+  } catch (err) {
     if (err.code !== `MODULE_NOT_FOUND`) {
       throw err;
     }
@@ -112,7 +108,7 @@ module.exports = function(packageName, argv) {
     var keys = Object.keys(browsers);
     return {
       [keys[0]]: browsers[keys[0]]
-    }
+    };
   }
 
   // Limit browsers via env variable
@@ -120,8 +116,11 @@ module.exports = function(packageName, argv) {
     const browserName = process.env.BROWSER.toUpperCase();
     const filteredBrowsers = {};
     Object.keys(browsers).forEach((browserId) => {
-      const browser = browsers[browserId]
-      if ((browser.base && browser.base.toUpperCase() === browserName) || (browser.browserName && browser.browserName.toUpperCase() === browserName)) {
+      const browser = browsers[browserId];
+      if (
+        (browser.base && browser.base.toUpperCase() === browserName) ||
+        (browser.browserName && browser.browserName.toUpperCase() === browserName)
+      ) {
         filteredBrowsers[browserId] = browser;
       }
     });
@@ -132,4 +131,4 @@ module.exports = function(packageName, argv) {
   }
 
   return browsers;
-}
+};

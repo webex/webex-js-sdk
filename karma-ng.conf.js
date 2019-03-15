@@ -41,7 +41,7 @@ function makeConfig(packageName, argv) {
   let cfg = {
     basePath: '.',
 
-    browserDisconnectTimeout: 4 * 60 * 1000,
+    browserDisconnectTimeout: 5 * 60 * 1000,
 
     // Allow the browser to disconnect up to 5 times. Something about
     // plugin-phone and Firefox causes the suite to hang regularly. Restarting
@@ -67,7 +67,7 @@ function makeConfig(packageName, argv) {
     // Restart the browser if it stops sending output for a minutes. This goes
     // hand-in-hand with the high disconnect tolerance to deal with Firefox
     // hanging on the plugin-phone suite.
-    browserNoActivityTimeout: 7 * 60 * 1000,
+    browserNoActivityTimeout: 8 * 60 * 1000,
 
     // Inspired by Angular's karma config as recommended by Sauce Labs
     captureTimeout: 0,

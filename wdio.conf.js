@@ -445,7 +445,7 @@ if (CI) {
     //   ],
     //   verbose: true,
     //   verboseDebugging: true,
-    //   tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER,
+    //   // tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER,
     //   port: process.env.SAUCE_CONNECT_PORT || 4445,
     //   // retry to establish a tunnel multiple times. (optional)
     //   connectRetries: 3,

@@ -155,7 +155,7 @@ ansiColor('xterm') {
           // Set the description to blank so we can use +=
           currentBuild.description = ''
 
-          env.CONCURRENCY = 4
+          env.CONCURRENCY = 5
           env.ENABLE_VERBOSE_NETWORK_LOGGING = true
           env.SDK_ROOT_DIR=pwd
 
