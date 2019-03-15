@@ -41,7 +41,7 @@ function makeConfig(packageName, argv) {
   let cfg = {
     basePath: '.',
 
-    browserDisconnectTimeout: 20000,
+    browserDisconnectTimeout: 4 * 60 * 1000,
 
     // Allow the browser to disconnect up to 5 times. Something about
     // plugin-phone and Firefox causes the suite to hang regularly. Restarting
@@ -67,14 +67,14 @@ function makeConfig(packageName, argv) {
     // Restart the browser if it stops sending output for a minutes. This goes
     // hand-in-hand with the high disconnect tolerance to deal with Firefox
     // hanging on the plugin-phone suite.
-    browserNoActivityTimeout: 1 * 60 * 1000,
+    browserNoActivityTimeout: 7 * 60 * 1000,
 
     // Inspired by Angular's karma config as recommended by Sauce Labs
     captureTimeout: 0,
 
     colors: !(argv && argv.xunit),
 
-    concurrency: 2,
+    concurrency: 4,
 
     customLaunchers: launchers,
 
@@ -154,11 +154,41 @@ function makeConfig(packageName, argv) {
   if (process.env.SC_TUNNEL_IDENTIFIER) {
     cfg.sauceLabs = {
       build: process.env.BUILD_NUMBER || `local-${process.env.USER}-${packageName}-${Date.now()}`,
-      startConnect: false,
       testName: `${pkg.name} (karma)`,
       tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER,
       recordScreenshots: true,
-      recordVideo: true
+      recordVideo: true,
+      startConnect: false
+      // startConnect: true,
+      // connectOptions: {
+      //   noSslBumpDomains: [
+      //     'idbroker.webex.com',
+      //     'idbrokerbts.webex.com',
+      //     '127.0.0.1',
+      //     'localhost',
+      //     '*.wbx2.com',
+      //     '*.ciscospark.com'
+      //   ],
+      //   tunnelDomains: [
+      //     'whistler-prod.onint.ciscospark.com',
+      //     'whistler.onint.ciscospark.com',
+      //     'internal-testing-services.wbx2.com',
+      //     'calendar-whistler.onint.ciscospark.com',
+      //     '127.0.0.1',
+      //     'localhost'
+      //   ],
+      //   verbose: true,
+      //   verboseDebugging: true,
+      //   port: process.env.SAUCE_CONNECT_PORT || 4445,
+      //   // retry to establish a tunnel multiple times. (optional)
+      //   connectRetries: 3,
+      //   // time to wait between connection retries in ms. (optional)
+      //   connectRetryTimeout: 2000,
+      //   // retry to download the sauce connect archive multiple times. (optional)
+      //   downloadRetries: 4,
+      //   // time to wait between download retries in ms. (optional)
+      //   downloadRetryTimeout: 1000
+      // }
     };
     cfg.reporters.push('saucelabs');
   }

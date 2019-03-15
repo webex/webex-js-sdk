@@ -425,5 +425,36 @@ if (CI) {
     user: process.env.SAUCE_USERNAME,
     key: process.env.SAUCE_ACCESS_KEY,
     sauceConnect: false
+    // sauceConnect: true,
+    // sauceConnectOpts: {
+    //   noSslBumpDomains: [
+    //     'idbroker.webex.com',
+    //     'idbrokerbts.webex.com',
+    //     '127.0.0.1',
+    //     'localhost',
+    //     '*.wbx2.com',
+    //     '*.ciscospark.com'
+    //   ],
+    //   tunnelDomains: [
+    //     'whistler-prod.onint.ciscospark.com',
+    //     'whistler.onint.ciscospark.com',
+    //     'internal-testing-services.wbx2.com',
+    //     'calendar-whistler.onint.ciscospark.com',
+    //     '127.0.0.1',
+    //     'localhost'
+    //   ],
+    //   verbose: true,
+    //   verboseDebugging: true,
+    //   tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER,
+    //   port: process.env.SAUCE_CONNECT_PORT || 4445,
+    //   // retry to establish a tunnel multiple times. (optional)
+    //   connectRetries: 3,
+    //   // time to wait between connection retries in ms. (optional)
+    //   connectRetryTimeout: 2000,
+    //   // retry to download the sauce connect archive multiple times. (optional)
+    //   downloadRetries: 4,
+    //   // time to wait between download retries in ms. (optional)
+    //   downloadRetryTimeout: 1000
+    // }
   });
 }

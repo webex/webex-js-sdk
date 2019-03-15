@@ -9,8 +9,7 @@
     "transform-class-properties",
     "transform-export-extensions",
     "lodash",
-    "transform-runtime",
-    "istanbul"
+    "transform-runtime"
   ],
   "presets": [
     ["env", {

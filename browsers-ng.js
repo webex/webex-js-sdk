@@ -13,47 +13,61 @@ module.exports = function(packageName, argv) {
         platform: 'macOS 10.13',
         browserName: 'chrome',
         version: 'latest',
-        extendedDebugging: true
+        extendedDebugging: true,
+        idleTimeout: 600
       },
       sl_chrome_latest_win7: {
         base: 'SauceLabs',
         platform: 'Windows 7',
         browserName: 'chrome',
         version: 'latest',
-        extendedDebugging: true
+        extendedDebugging: true,
+        idleTimeout: 600
       },
       sl_firefox_latest_osx13: {
         base: 'SauceLabs',
         platform: 'macOS 10.13',
         browserName: 'firefox',
         version: 'latest',
-        extendedDebugging: true
+        extendedDebugging: true,
+        idleTimeout: 600
       },
       sl_firefox_latest_win7: {
         base: 'SauceLabs',
         platform: 'Windows 7',
         browserName: 'firefox',
         version: 'latest',
-        extendedDebugging: true
+        extendedDebugging: true,
+        idleTimeout: 600
       },
       sl_firefox_latest_linux: {
         base: 'SauceLabs',
         platform: 'Linux',
         browserName: 'firefox',
-        version: 'latest'
+        version: 'latest',
+        idleTimeout: 600
         // extendedDebugging: true // linux latest only runs firefox 45 for some reason
       },
       sl_edge_latest_win10: {
         base: 'SauceLabs',
         platform: 'Windows 10',
         browserName: 'MicrosoftEdge',
-        version: 'latest'
+        version: 'latest',
+        idleTimeout: 600
+      },
+      sl_ie_11_win7: {
+        base: 'SauceLabs',
+        platform: 'Windows 7',
+        browserName: 'internet explorer',
+        version: '11',
+        idleTimeout: 600
       },
       sl_safari_latest_osx13: {
         base: 'SauceLabs',
         platform: 'macOS 10.13',
         browserName: 'safari',
-        version: 'latest'
+        version: 'latest',
+        idleTimeout: 600
       }
     }
 
