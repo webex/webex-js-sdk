@@ -28,19 +28,6 @@ module.exports = {
     // //   browserName: 'safari',
     // //   version: '8'
     // // },
-    // // FIXME spec/client/device.js makes IE run really slowly
-    // // sl_ie_10_win7: {
-    // //   base: 'SauceLabs',
-    // //   platform: 'Windows 7',
-    // //   browserName: 'internet explorer',
-    // //   version: '10'
-    // // },
-    // // sl_ie_11_win7: {
-    // //   base: 'SauceLabs',
-    // //   platform: 'Windows 7',
-    // //   browserName: 'internet explorer',
-    // //   version: '11'
-    // // },
     sl_chrome_46_win7: {
       base: 'SauceLabs',
       platform: 'Windows 7',
