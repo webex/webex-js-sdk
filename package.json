@@ -210,7 +210,7 @@
     "node-scr": "^0.2.2",
     "on-finished": "^2.3.0",
     "parse-headers": "^2.0.1",
-    "pkg-up": "^2.0.0",
+    "pkg-up": "^3.0.0",
     "ps-node": "^0.1.6",
     "qs": "^6.5.1",
     "read-package-json": "^2.0.5",
