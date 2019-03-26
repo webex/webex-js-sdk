@@ -20,6 +20,7 @@ module.exports = {
     try {
       debug('reading sauce pid');
       const pid = parseInt(await readFile(process.env.SC_PID_FILE), 10);
+
       debug(`sauce pid is ${pid}`);
 
       let done = false;
@@ -45,12 +46,14 @@ module.exports = {
             if (err) {
               debug('ps-node produced an error', err);
               reject(err);
+
               return;
             }
 
             if (resultList.length === 0) {
               debug(`pid ${pid} is not running`);
               reject(new Error(`pid ${pid} is not running`));
+
               return;
             }
 

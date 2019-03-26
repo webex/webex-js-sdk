@@ -33,6 +33,7 @@ exports.test = async function test(options, packageName, suite, files) {
   }
   else {
     const failures = await run(options, files);
+
     if (failures) {
       debug(`${files} failed`);
       throw new Error('Mocha suite failed');
@@ -65,7 +66,9 @@ async function run(options, files) {
   }
 
   const mocha = new Mocha(cfg);
+
   files.forEach((f) => mocha.addFile(f));
+
   return new Promise((resolve) => {
     mocha.run(resolve);
   });

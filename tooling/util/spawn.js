@@ -17,6 +17,7 @@ module.exports = function spawn(cmd, args, options) {
     const child = cp.spawn(cmd, args, Object.assign({stdio: 'inherit'}, options));
 
     let data = '';
+
     if (child.stderr) {
       child.stderr.on('data', (d) => {
         data += d;
@@ -27,9 +28,12 @@ module.exports = function spawn(cmd, args, options) {
       debug('child has completed');
       if (code) {
         const e = new Error(code);
+
         e.data = data;
+
         return reject(e);
       }
+
       return resolve();
     });
 

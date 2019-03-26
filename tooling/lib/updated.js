@@ -28,9 +28,11 @@ exports.updated = async function updated({dependents, npm}) {
 
   if (dependents) {
     let transitive = new Set([...changedPackages]);
+
     for (const packageName of changedPackages) {
       transitive = new Set([...transitive, ...await listDependents(packageName, {includeTransitive: true})]);
     }
+
     return Array.from(transitive);
   }
 
@@ -52,6 +54,7 @@ function fileToPackage(d) {
     if (d[0].startsWith('@')) {
       return d.slice(0, 2).join('/');
     }
+
     return d[0];
   }
 
