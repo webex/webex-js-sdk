@@ -80,7 +80,8 @@ module.exports = function(packageName, argv) {
   }
   else {
     browsers = {
-      Chrome: {}
+      ChromeHeadless: {},
+      FirefoxHeadless: {}
     };
   }
 

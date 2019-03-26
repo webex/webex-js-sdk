@@ -4,7 +4,8 @@
 
 module.exports = {
   local: {
-    Chrome: {}
+    ChromeHeadless: {},
+    FirefoxHeadless: {}
   },
 
   sauce: {
