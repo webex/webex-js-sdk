@@ -57,7 +57,7 @@
     "build": "babel-node ./tooling/index.js build",
     "build:script": "rollup -c",
     "prebuild:docs": "rimraf ./docs/api",
-    "build:docs": "documentation build --config documentation/config.yml --np --project-name ciscospark --project-version 1.x --format html --output ./docs/api --github ./packages/node_modules/ciscospark/src/index.js ./packages/node_modules/@ciscospark/plugin-*/src/index.js",
+    "build:docs": "documentation build --config documentation/config.yml --np --project-name ciscospark --project-version 1.x --format html --output ./docs/api --github ./packages/node_modules/ciscospark/src/index.js ./packages/node_modules/{@ciscospark,@webex}/plugin-*/src/index.js",
     "check-karma-output": "./scripts/analyze-output.sh",
     "build:package": "echo 'deprecated; just use \"npm run --silent build\"'./tooling/build.js",
     "lint": "npm run --silent lint:js && npm run --silent lint:jenkinsfile && npm run --silent lint:package-names",
