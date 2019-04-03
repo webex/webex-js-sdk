@@ -63,7 +63,7 @@
     "lint": "npm run --silent lint:js && npm run --silent lint:jenkinsfile && npm run --silent lint:package-names",
     "lint:ci": "npm run --silent lint:js:ci && npm run --silent lint:jenkinsfile && npm run --silent lint:package-names",
     "lint:commitmsg": "commitlint -e $GIT_PARAMS",
-    "lint:eslint": "eslint --ignore-pattern 'packages/node_modules/generator-ciscospark/generators/*/templates/**' --ignore-pattern 'packages/node_modules/ciscospark/umd/**' --ignore-path .gitignore",
+    "lint:eslint": "eslint --ignore-pattern 'packages/node_modules/generator-ciscospark/generators/*/templates/**' --ignore-pattern 'packages/node_modules/ciscospark/umd/**' --ignore-pattern 'docs/**' --ignore-path .gitignore",
     "lint:eslint:ci-reporter": "bash -c '[[ -n \"${JENKINS}\" ]]' && echo \"-f checkstyle -o reports/style/eslint.xml\" || echo ''",
     "lint:jenkinsfile": "node --eval \"fs.readFileSync('Jenkinsfile').includes('.status') ? console.log('Found \".status\" in Jenkinsfile. You meant \".result\"') && process.exit(1) : process.exit(0)\"",
     "lint:js": "npm run --silent lint:eslint -- .",
