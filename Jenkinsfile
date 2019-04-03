@@ -564,17 +564,6 @@ ansiColor('xterm') {
                 }
 
               }
-
-              stage('publish to ghe') {
-                // def exitStatus = sh script: 'git remote | grep -qc ghe', returnStatus: true
-                // if (exitStatus == 1) {
-                //   sh 'git remote add ghe git@sqbu-github.cisco.com:WebExSquared/spark-js-sdk.git'
-                // }
-                // exitStatus = sh script: 'git push ghe HEAD:master', returnStatus: true
-                // if (!exitStatus) {
-                //   warn('failed to push to github enterprise')
-                // }
-              }
             }
           }
 
