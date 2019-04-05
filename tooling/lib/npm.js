@@ -16,6 +16,7 @@ const {exec} = require('./async');
  */
 exports.getDistTag = async function getDistTag({packageName, includeSamples = false}) {
   let pkg;
+
   try {
     pkg = await read(packageName);
   }
@@ -32,8 +33,10 @@ exports.getDistTag = async function getDistTag({packageName, includeSamples = fa
     debug(`fetching dist-tag for ${packageName}`);
     try {
       const dt = await exec(`npm dist-tag ls ${packageName}`);
+
       if (!dt) {
         debug(`no dist-tags found for ${packageName}`);
+
         return undefined;
       }
       const tags = dt
@@ -41,9 +44,12 @@ exports.getDistTag = async function getDistTag({packageName, includeSamples = fa
         .map((d) => d.split(':'))
         .reduce((acc, [tag, version]) => {
           acc[tag] = version;
+
           return acc;
         }, {});
+
       debug(`${packageName} is published as version ${tags.latest}`);
+
       return tags.latest;
     }
     catch (err) {
@@ -53,5 +59,6 @@ exports.getDistTag = async function getDistTag({packageName, includeSamples = fa
   else if (includeSamples && packageName === 'samples') {
     return pkg.version;
   }
+
   return undefined;
 };

@@ -49,12 +49,6 @@ module.exports = function(packageName, argv) {
         browserName: 'MicrosoftEdge',
         version: 'latest'
       },
-      sl_ie_11_win7: {
-        base: 'SauceLabs',
-        platform: 'Windows 7',
-        browserName: 'internet explorer',
-        version: '11'
-      },
       sl_safari_latest_osx13: {
         base: 'SauceLabs',
         platform: 'macOS 10.13',
@@ -86,7 +80,8 @@ module.exports = function(packageName, argv) {
   }
   else {
     browsers = {
-      Chrome: {}
+      ChromeHeadless: {},
+      FirefoxHeadless: {}
     };
   }
 

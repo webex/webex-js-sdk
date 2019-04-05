@@ -25,6 +25,7 @@ async function instrument(packageName) {
     coverageVariable: makeCoverageVariable(packageName)
   });
   const filenames = await glob('src/**/*.js', {packageName});
+
   for (const f of filenames) {
     debug(`instrumenting ${f}`);
     const fullPath = path.join('./packages/node_modules', packageName, f);
@@ -32,6 +33,7 @@ async function instrument(packageName) {
     const input = await fs.readFile(fullPath);
     // eslint-disable-next-line no-sync
     const output = instrumenter.instrumentSync(input, fullPath);
+
     await mkdirp(path.dirname(coveragePath));
     await fs.writeFile(coveragePath, output);
     debug(`instrumented ${f}`);
@@ -45,12 +47,15 @@ async function deinstrument(packageName) {
 async function collect(packageName) {
   debug(`collecting coverage for ${packageName}`);
   const coverage = global[makeCoverageVariable(packageName)];
+
   if (!coverage) {
     debug(`no coverage found for ${packageName}`);
+
     return;
   }
 
   const intermediatePath = `${process.cwd()}/reports/coverage/intermediate/${packageName}.json`;
+
   await mkdirp(path.dirname(intermediatePath));
   await fs.writeFile(intermediatePath, JSON.stringify(coverage, null, 2));
   debug(`stored intermediate coverage for ${packageName}`);
@@ -60,6 +65,7 @@ async function combine(packageName) {
   const collector = new Collector();
   const pattern = `reports/coverage/intermediate/${packageName}{.json,/**/*.json}`;
   const files = await g(pattern);
+
   for (const f of files) {
     collector.add(JSON.parse(await fs.readFile(f)));
   }
@@ -82,6 +88,7 @@ async function report() {
   const pattern = 'reports/coverage/**/*.json';
 
   const files = await g(pattern);
+
   for (const f of files) {
     collector.add(JSON.parse(await fs.readFile(f)));
   }

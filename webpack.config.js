@@ -40,6 +40,7 @@ module.exports = (env = process.env.NODE_ENV || '') => ({
           `./packages/node_modules/${packageName}/src/index.js`
         );
         alias[`${packageName}`] = path.resolve(__dirname, `./packages/node_modules/${packageName}/src/index.js`);
+
         return alias;
       }, {})
   },
@@ -55,8 +56,8 @@ module.exports = (env = process.env.NODE_ENV || '') => ({
     ]
   },
   plugins: [
-    ...(env === 'production'
-      ? [
+    ...(env === 'production' ?
+      [
         new EnvironmentPlugin({
           CISCOSPARK_LOG_LEVEL: 'log',
           DEBUG: '',
@@ -77,8 +78,8 @@ module.exports = (env = process.env.NODE_ENV || '') => ({
             WHISTLER_API_SERVICE_URL: JSON.stringify('https://whistler-prod.onint.ciscospark.com/api/v1')
           }
         })
-      ]
-      : [
+      ] :
+      [
         // Environment Plugin doesn't override already defined Environment Variables (i.e. DotENV)
         new EnvironmentPlugin({
           CISCOSPARK_LOG_LEVEL: 'log',

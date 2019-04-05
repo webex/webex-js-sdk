@@ -45,6 +45,7 @@ const depsToVersions = _.curry((rootPkg, deps) => deps.reduce((acc, dep) => {
       throw new Error(`Failed to determine version for ${dep}, Is it missing from package.json?`);
     }
   }
+
   return acc;
 }, {}));
 
@@ -70,6 +71,7 @@ const findEntryPoints = _.curry((pkg, pkgPath) => {
     if (paths.length === 0) {
       try {
         const p = path.resolve(path.dirname(pkgPath), 'index.js');
+
         fs.statSync(p);
       }
       catch (err) {
@@ -112,7 +114,9 @@ const findRequires = _.curry(function findRequires(filePath) {
     visited.add(filePath);
     debug(`finding requires for ${filePath}`);
     const requires = detective(fs.readFileSync(filePath));
+
     debug(util.inspect(requires, {depth: null}));
+
     return requires.reduce((acc, dep) => {
       debug(`checking ${dep}`);
       if (dep.startsWith('.')) {
@@ -123,6 +127,7 @@ const findRequires = _.curry(function findRequires(filePath) {
         debug(`${dep} is a dependency for ${filePath}`);
         acc.push(dep);
       }
+
       return acc;
     }, []);
   }
@@ -153,6 +158,7 @@ const requiresToDeps = _.curry((requires) => _.uniq(requires.map((d) => {
   if (d[0].startsWith('@')) {
     return d.slice(0, 2).join('/');
   }
+
   return d[0];
 })));
 
@@ -171,6 +177,7 @@ const filterBrowserifyTransforms = _.curry((defaults, filtered, pkg) => {
     }, []);
 
   _.set(pkg, 'browserify.transform', _.uniq(transforms.concat(defaults)));
+
   return pkg;
 });
 
@@ -207,12 +214,16 @@ function findPkgPath(pkgPath) {
 
   try {
     const filePath = `${pkgPath}.json`;
+
     fs.statSync(filePath);
+
     return filePath;
   }
   catch (err) {
     const dirPath = path.resolve(pkgPath, 'package.json');
+
     fs.statSync(dirPath);
+
     return dirPath;
   }
 }
@@ -253,6 +264,7 @@ const updateSinglePackage = _.curry((rootPkgPath, pkgPath) => {
 function findPackages(packagesPath) {
   return fs.readdirSync(packagesPath).reduce((acc, d) => {
     const fullpath = path.resolve(packagesPath, d);
+
     if (fs.statSync(fullpath).isDirectory()) {
       try {
         fs.statSync(path.resolve(fullpath, 'package.json'));
@@ -265,6 +277,7 @@ function findPackages(packagesPath) {
         throw err;
       }
     }
+
     return acc;
   }, []);
 }
@@ -277,6 +290,7 @@ function findPackages(packagesPath) {
  */
 function updateAllPackages(rootPkgPath, packagesPath) {
   const paths = findPackages(packagesPath);
+
   return paths.reduce((promise, pkgPath) => promise.then(() => updateSinglePackage(rootPkgPath, pkgPath)), Promise.resolve());
 }
 
@@ -306,6 +320,7 @@ if (require.main === module) {
 
   const rootPkgPath = path.resolve(process.cwd(), 'package.json');
   let p;
+
   if (process.argv[2]) {
     p = updateSinglePackage(rootPkgPath, process.argv[2]);
   }

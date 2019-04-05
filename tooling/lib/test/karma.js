@@ -31,6 +31,7 @@ exports.test = async function test(options, packageName, files) {
 
         await run(cfg, files);
         const reports = await glob(`./reports/junit/karma/*/${packageName}.xml`);
+
         if (reports.length !== cfg.browsers.length) {
           throw new Error(`Ran tests in ${cfg.browsers.length} browsers but only found ${reports.length} reports`);
         }
@@ -49,6 +50,7 @@ exports.test = async function test(options, packageName, files) {
   }
   else {
     const success = await run(cfg, files);
+
     if (success) {
       debug(`${files} succeeded`);
     }
@@ -87,10 +89,12 @@ async function run(cfg) {
  */
 function debugBrowserError(browser, error) {
   let errorType = 'error';
+
   if (error.message) {
     errorType = error.message.split('\n')[0].toLowerCase();
   }
   const browserName = browser.name.toLowerCase();
+
   debug(`${errorType} on ${browserName}`);
 }
 
@@ -103,6 +107,7 @@ async function watchSauce(server, cfg) {
   try {
     debug('reading sauce pid');
     const pid = parseInt(await readFile(process.env.SC_PID_FILE), 10);
+
     debug(`sauce pid is ${pid}`);
 
     let done = false;
@@ -128,12 +133,14 @@ async function watchSauce(server, cfg) {
           if (err) {
             debug('ps-node produced an error', err);
             reject(err);
+
             return;
           }
 
           if (resultList.length === 0) {
             debug(`pid ${pid} is not running`);
             reject(new Error(`pid ${pid} is not running`));
+
             return;
           }
 

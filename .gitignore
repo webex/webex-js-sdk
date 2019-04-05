@@ -11,7 +11,6 @@ tmp*.*
 
 _site
 .coverage
-/docs/api
 /node_modules
 doc
 docker-env

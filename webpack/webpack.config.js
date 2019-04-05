@@ -14,6 +14,7 @@ module.exports = (env) => {
       // TODO: Passing --env.package is not working for some reason.
       const packageName = process.env.PACKAGE || env.package;
       const context = path.resolve(__dirname, '..', 'packages', 'node_modules', packageName);
+
       return merge(baseConfig, devConfig, {
         mode: process.env.NODE_ENV || 'development',
         context,
@@ -26,6 +27,7 @@ module.exports = (env) => {
         }
       });
     }
+
     return baseConfig;
   }
   throw new Error('Please specify a package');

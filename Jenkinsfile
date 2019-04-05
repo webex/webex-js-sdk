@@ -308,7 +308,7 @@ ansiColor('xterm') {
               // new package
               sh 'rm -f ./node_modules/@ciscospark/eslint-config'
               sh 'echo \'//registry.npmjs.org/:_authToken=${JS_SDK_NPM_TOKEN}\' > $HOME/.npmrc'
-              sh 'npm install'
+              sh 'npm ci'
             }
           }
 
@@ -563,17 +563,6 @@ ansiColor('xterm') {
                   warn("failed to publish docs ${error.toString()}")
                 }
 
-              }
-
-              stage('publish to ghe') {
-                // def exitStatus = sh script: 'git remote | grep -qc ghe', returnStatus: true
-                // if (exitStatus == 1) {
-                //   sh 'git remote add ghe git@sqbu-github.cisco.com:WebExSquared/spark-js-sdk.git'
-                // }
-                // exitStatus = sh script: 'git push ghe HEAD:master', returnStatus: true
-                // if (!exitStatus) {
-                //   warn('failed to push to github enterprise')
-                // }
               }
             }
           }

@@ -4,6 +4,7 @@
 
 const pkgUp = require('pkg-up');
 const t = require('babel-types');
+
 /**
  * Uses pkgUp to find the appropriate package.json for the specified babel state
  * object
@@ -34,6 +35,7 @@ module.exports = function injectPackageVersion() {
           if (path.node.callee.object.name === 'SparkPlugin' && path.node.callee.property.name === 'extend') {
             const def = path.node.arguments[0];
             const visited = def.properties.reduce((acc, p) => acc || t.isObjectProperty(p, {key: 'version'}), false);
+
             if (!visited) {
               def.properties.push(t.objectProperty(
                 t.identifier('version'),

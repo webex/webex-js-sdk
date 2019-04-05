@@ -59,7 +59,9 @@ exports.last = async function last(includeSamples = false) {
     .trim();
 
   const tag = `v${version}`;
+
   debug(`last version tag is ${version}`);
+
   return tag;
 };
 
@@ -69,41 +71,53 @@ exports.last = async function last(includeSamples = false) {
  */
 exports.next = async function next({always, includeSamples}) {
   const version = await checkLastCommit();
+
   if (version) {
     debug(`found ${version} in last commit message`);
+
     return version.replace('v', '');
   }
 
   const currentVersion = (await exports.last(includeSamples)).replace('v', '');
+
   debug(`current versoin is ${currentVersion}`);
 
   if (await hasBreakingChange()) {
     debug('detected breaking changes');
+
     return increment('major', currentVersion);
   }
 
   debug('no breaking changes detected');
 
   const type = await getChangeType();
+
   if (!type) {
     debug('no changes to make');
     if (always) {
       const nextVersion = increment('patch', currentVersion);
+
       debug(`next version is ${nextVersion}`);
+
       return nextVersion;
     }
+
     return currentVersion;
   }
 
   const nextVersion = increment(type, currentVersion);
+
   debug(`next version is ${nextVersion}`);
+
   return nextVersion;
 };
 
 exports.set = async function set(version, {all, lastLog}) {
   let ignoreTooling = false;
+
   if (lastLog) {
     const log = await git.lastLog();
+
     if (log.includes('#force-publish')) {
       all = true;
     }
@@ -115,6 +129,7 @@ exports.set = async function set(version, {all, lastLog}) {
 
   // First, get all the packages we should update
   let packages = Array.from(all ? await list() : await updated.updated({dependents: true}));
+
   // if we used updated() and it told us there's a tooling update, then there's
   // a chance we changed a dependency or build rule, so we need to republish
   // everything;
@@ -128,6 +143,7 @@ exports.set = async function set(version, {all, lastLog}) {
   if (packages.length === 0) {
     // eslint-disable-next-line no-console
     console.info('no packages to update');
+
     return;
   }
 
@@ -135,6 +151,7 @@ exports.set = async function set(version, {all, lastLog}) {
     debug(`updating ${packageName} to ${version}`);
     try {
       const pkg = await read(packageName);
+
       debug(`${packageName} was at ${pkg.version}`);
       pkg.version = version;
       await write(packageName, pkg);
@@ -156,12 +173,15 @@ async function checkLastCommit() {
   const summary = await git.lastLog();
   const re = /^#release v(\d+\.\d+\.\d+)/;
   const match = summary.match(re);
+
   if (match) {
     const version = match[1];
+
     if (version) {
       return version;
     }
   }
+
   return undefined;
 }
 
@@ -172,11 +192,14 @@ async function checkLastCommit() {
 async function hasBreakingChange() {
   debug('checking for breaking changes between HEAD and upstream/master');
   const bodies = await exec('git log upstream/master.. --format=%b');
+
   if (/^BREAKING CHANGE:/.test(bodies)) {
     debug('found breaking change');
+
     return true;
   }
   debug('no breaking changes detected');
+
   return false;
 }
 
@@ -186,6 +209,7 @@ async function hasBreakingChange() {
  */
 async function getChangeType() {
   const subjects = await exec('git log upstream/master.. --format=%s');
+
   for (const subject of subjects.split('\n')) {
     if (subject.startsWith('feat')) {
       return 'minor';

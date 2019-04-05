@@ -38,6 +38,7 @@ module.exports = {
     packageName, includeTransitive, localOnly, versions, dependents
   }) => {
     let deps;
+
     if (dependents) {
       deps = await listDependents(packageName, {includeTransitive});
     }
