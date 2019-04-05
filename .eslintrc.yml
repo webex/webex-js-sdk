@@ -1,4 +1,4 @@
-extends: "@ciscospark/eslint-config-base"
+extends: "@webex/eslint-config-base"
 globals:
   PACKAGE_VERSION: false
 root: true
@@ -31,14 +31,25 @@ rules:
   # These warnings are transitional during the change from the in-repo config to
   # our new style guide
   class-methods-use-this: warn
-  max-len: warn
+  max-len:
+    - warn
+    -
+      ignoreComments: true
   no-multi-assign: warn
   no-param-reassign: warn
   no-shadow: warn
   no-underscore-dangle: warn
-  prefer-destructuring: warn
   import/first: warn
   import/order: warn
+  prefer-destructuring:
+    - error
+    - VariableDeclarator:
+        array: false
+        object: true
+      AssignmentExpression:
+        array: false
+        object: false
+    - enforceForRenamedProperties: false
   no-use-before-define:
     - error
     -
@@ -82,9 +93,9 @@ overrides:
     env:
       mocha: true
     rules:
-      func-names: off
-      no-invalid-this: off
-      require-jsdoc: off
+      func-names: 0
+      no-invalid-this: 0
+      require-jsdoc: 0
   # Set webdriver.io globals
   -
     files:
@@ -99,11 +110,11 @@ overrides:
     files:
       - packages/node_modules/@ciscospark/xunit-with-logs
     rules:
-      func-names: off
-      no-console: off
+      func-names: 0
+      no-console: 0
   # Allow cli tools to use sync methods
   -
     files:
       - packages/node_modules/**/bin-*/**
     rules:
-      no-sync: off
+      no-sync: 0

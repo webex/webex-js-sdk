@@ -21,8 +21,11 @@ exports.lastLog = function lastLog() {
   // When we're running on Jenkins, we know there's an env var called GIT_COMMIT
   const treeLike = process.env.GIT_COMMIT || 'HEAD';
   const cmd = `git log -n 1 --format=%B ${treeLike}`;
+
   debug(`Shelling out to ${cmd}`);
   const log = String(execSync(cmd));
+
   debug('Done');
+
   return log;
 };

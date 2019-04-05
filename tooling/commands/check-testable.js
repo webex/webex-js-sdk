@@ -13,16 +13,19 @@ module.exports = {
   builder: {},
   handler: wrapHandler(async () => {
     const log = await lastLog();
+
     // Merge commits tend to have previous commit messages in them, so we want
     // to ignore them for when checking for commands
     if (!log.startsWith('Merge branch') && (log.includes('[ci skip]') || log.includes('[ci-skip]'))) {
       console.log('skip');
+
       return;
     }
 
     const changed = await updated({});
     const ignoreTooling = log.includes('#ignore-tooling') && !log.startsWith('Merge branch');
     let packages;
+
     if (!ignoreTooling && changed.includes('tooling')) {
       packages = await list();
     }
@@ -40,6 +43,7 @@ module.exports = {
 
     if (packages.length === 0) {
       console.log('skip');
+
       return;
     }
 

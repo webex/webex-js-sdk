@@ -40,11 +40,13 @@ const addCommand = require('./lib/add-command');
 
   addCommand(asserterName, function assert(...args) {
     const expected = args.pop();
+
     this.waitUntil(() => this[getterName](...args) === expected, 2000, `Timed-out waiting for "page ${selector}" to equal ${expected}; current value is "${this[getterName](...args)}"`);
   });
 
   addCommand(asserterInverseName, function assert(...args) {
     const expected = args.pop();
+
     this.waitUntil(() => this[getterName](...args) !== expected, 2000, `Timed-out waiting for "page ${selector}" to equal ${expected}; current value is "${this[getterName](...args)}"`);
   });
 });

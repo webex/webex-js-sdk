@@ -1,4 +1,4 @@
-FROM node:6.10.1
+FROM node:carbon
 
 RUN apt-get update && apt-get install -y graphicsmagick curl wget jq daemon
 
@@ -14,6 +14,8 @@ ENV MAX_TEST_SUITE_RETRIES    3
 ENV SC_PID_FILE               /sauce/sc.pid
 ENV SC_READY_FILE             /sauce/sc.ready
 ENV SC_BINARY                 /sauce/sc-${SAUCE_CONNECT_VERSION}-linux/bin/sc
+
+RUN npm install -g npm@6
 
 RUN mkdir -p /sauce
 WORKDIR /sauce

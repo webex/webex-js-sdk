@@ -24,6 +24,7 @@ const {glob} = require('../util/package');
 exports.buildFile = async function buildFile({src, dest}) {
   debug(`transforming ${src}`);
   const {code, map} = await transformFile(src);
+
   debug(`transformFileed ${src}`);
   await mkdirp(path.dirname(dest));
   debug(`writing ${dest}`);
@@ -35,6 +36,7 @@ exports.buildFile = async function buildFile({src, dest}) {
 exports.buildPackage = async function buildPackage(packageName) {
   debug(`building package ${packageName}`);
   const files = await glob('src/**/*.js', {packageName});
+
   debug('building files ', files);
   const mapped = files
     .map((filename) => path.join('packages', 'node_modules', packageName, filename))

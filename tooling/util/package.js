@@ -12,6 +12,7 @@ const cwd = 'packages/node_modules';
 
 exports.list = async function list() {
   const packages = await g('**/package.json', {cwd});
+
   return packages.map((p) => path.dirname(p));
 };
 
@@ -28,6 +29,7 @@ exports.glob = function glob(pattern, options = {}) {
  */
 async function read(packageName) {
   const packagePath = path.join(cwd, packageName, 'package.json');
+
   return JSON.parse(await fs.readFile(packagePath));
 }
 
@@ -40,6 +42,7 @@ exports.read = read;
  */
 async function write(packageName, pkg) {
   const packagePath = path.join(cwd, packageName, 'package.json');
+
   await fs.writeFile(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
 }
 
@@ -47,11 +50,13 @@ exports.write = write;
 
 exports.getMain = async function getMain(packageName) {
   const pkg = await read(packageName);
+
   return pkg.main;
 };
 
 exports.setMain = async function setMain(packageName, main) {
   const pkg = await read(packageName);
+
   pkg.main = main;
   await write(packageName, pkg);
 };
