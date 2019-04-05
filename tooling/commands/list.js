@@ -25,9 +25,11 @@ module.exports = {
   // eslint-disable-next-line complexity
   handler: wrapHandler(async ({fortests, forpipeline}) => {
     let packages;
+
     if (fortests) {
       const changed = await updated({});
       const ignoreTooling = (await lastLog()).includes('#ignore-tooling');
+
       if (!ignoreTooling && changed.includes('tooling')) {
         packages = await list();
       }

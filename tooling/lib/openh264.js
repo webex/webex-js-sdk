@@ -14,6 +14,7 @@ const {stat} = require('fs-promise');
 const PROFILE_DIR = './.tmp/selenium';
 
 const copy = denodeify(FirefoxProfile.copy);
+
 /**
  * denodeifies FirefoxProfile.encode
  * @param {FirefoxProfile} fp
@@ -24,6 +25,7 @@ function encode(fp) {
     fp.encode((err, encoded) => {
       if (err) {
         reject(err);
+
         return;
       }
       resolve(encoded);
@@ -55,11 +57,14 @@ async function exists(dir) {
   try {
     debug(`checking if ${dir} exists`);
     const s = await stat(dir);
+
     debug(`${dir} exists`);
+
     return s.isDirectory();
   }
   catch (err) {
     debug(`${dir} does not exist`);
+
     return false;
   }
 }
@@ -78,6 +83,7 @@ exports.inject = async function inject(browsers) {
 
   for (const key of Object.keys(browsers)) {
     const def = browsers[key];
+
     if (def.base === 'SauceLabs') {
       await injectSauce(def);
     }
@@ -110,8 +116,10 @@ async function injectLocal(def) {
   if (def.base.toLowerCase().includes('firefox')) {
     debug('def is a firefox def');
     const platform = platformToShortName(os.platform());
+
     debug(`injecting ${platform} profile into ${def.base}`);
     const dest = await prepareLocalProfile(platform);
+
     def.profile = dest;
     debug(`injected ${dest} profile into ${def.base}`);
   }
@@ -134,6 +142,7 @@ export async function prepareLocalProfile(platform) {
   debug(`rsyncing firefox profile at ${src} to ${dest}`);
   await rsync(src, dest);
   debug('done');
+
   return dest;
 }
 
@@ -147,15 +156,18 @@ async function injectSauce(def) {
   if (def.browserName.toLowerCase().includes('firefox')) {
     debug('def is a firefox def');
     const platform = platformToShortName(def.platform);
+
     if (platform !== 'mac') {
       throw new Error(`No tooling implemented for injecting h264 into ${platform} (${def.platform})`);
     }
 
     debug(`injecting ${platform} profile into ${def.base}`);
     const dir = path.resolve(process.cwd(), `${PROFILE_DIR}/${platform}`);
+
     debug(`profile is at ${dir}`);
     const profile = await copy(dir);
     const encoded = await encode(profile);
+
     // eslint-disable-next-line camelcase
     def.firefox_profile = encoded;
     debug(`injected ${platform} profile into def`);

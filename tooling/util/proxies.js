@@ -54,6 +54,7 @@ let proxies;
  */
 async function startProxies() {
   await Promise.all(services.map((service) => setEnv(service)));
+
   return Promise.all(services.map((service) => start(service)));
 }
 
@@ -67,6 +68,7 @@ async function stopProxies() {
   if (proxies && proxies.length) {
     return Promise.all(proxies.map((proxy) => stop(proxy)));
   }
+
   return Promise.resolve();
 }
 
@@ -98,6 +100,7 @@ async function start(service) {
     const proxy = http.createServer(app).listen(service.port, () => {
       console.log(`Yakbak server listening on port ${service.port}. Proxy for ${service.defaultUrl}`);
     });
+
     resolve(proxy);
   });
 }
@@ -122,8 +125,10 @@ async function stop(proxy) {
  */
 function customHash(req, body) {
   const hash = crypto.createHash('md5');
+
   updateHash(hash, req);
   hash.write(body);
+
   return hash.digest('hex');
 }
 
@@ -154,8 +159,10 @@ function updateHash(hash, req) {
  */
 function pruneHeaders(requestHeaders) {
   const headers = Object.assign({}, requestHeaders);
+
   delete headers.trackingid;
   delete headers.authorization;
+
   return headers;
 }
 
@@ -166,9 +173,11 @@ function pruneHeaders(requestHeaders) {
  */
 function sort(obj) {
   const ret = {};
+
   Object.keys(obj).sort().forEach((key) => {
     ret[key] = obj[key];
   });
+
   return ret;
 }
 

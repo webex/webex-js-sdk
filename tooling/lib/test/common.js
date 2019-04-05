@@ -8,6 +8,7 @@ const {readFile, stat} = require('fs-promise');
 
 exports.gatherFiles = async function gatherFiles(options, packageName) {
   let files = [];
+
   if (options.unit) {
     debug(`looking for unit tests for ${packageName}`);
     files = files.concat(await glob('test/unit/spec/**/*.js', {packageName}));
@@ -37,6 +38,7 @@ exports.expectNonEmptyReports = async function expectNonEmptyReports(reports) {
   for (const reportFile of reports) {
     debug(`verifying ${reportFile} is not empty`);
     const report = await readFile(reportFile);
+
     if (report.length === 0) {
       debug(`${reportFile} is empty`);
       throw new Error(`Expected ${reportFile} to not be empty`);
@@ -49,6 +51,7 @@ exports.expectNoKmsErrors = async function expectNoKmsErrors(reports) {
   for (const reportFile of reports) {
     debug(`checking ${reportFile} for kms errors`);
     const report = await readFile(reportFile);
+
     if (report.includes('Failed to resolve authorization token in KmsMessage request for user')) {
       debug(`${reportFile} contains kms errors`);
       throw new Error(`Expected ${reportFile} to not contain kms errors`);

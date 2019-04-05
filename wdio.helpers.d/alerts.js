@@ -6,6 +6,7 @@ addCommand('acceptAlert', function acceptAlert(timeout = 5000) {
   this.waitUntil(() => {
     try {
       this.alertAccept();
+
       return true;
     }
     catch (err) {
@@ -23,6 +24,7 @@ addCommand('dismissAlert', function dismissAlert(timeout = 5000) {
   this.waitUntil(() => {
     try {
       this.alertDismiss();
+
       return true;
     }
     catch (err) {
@@ -39,6 +41,7 @@ addCommand('dismissAlert', function dismissAlert(timeout = 5000) {
 addCommand('assertNoAlert', function assertNoAlert() {
   try {
     const text = this.alertText();
+
     assert.fail(`An alert with text "${text}" was unexpectedly open`);
   }
   catch (err) {

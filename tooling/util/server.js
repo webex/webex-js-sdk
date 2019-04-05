@@ -19,6 +19,7 @@ async function start() {
 
   return new Promise((resolve) => {
     const serverPath = path.resolve(process.cwd(), 'packages/node_modules/@webex/test-helper-server');
+
     child = spawn(process.argv[0], [serverPath], {
       env: process.env,
       stdio: ['ignore', 'pipe', process.stderr]
@@ -27,6 +28,7 @@ async function start() {
     child.stdout.on('data', (data) => {
       const message = `${data}`;
       const pattern = /.+/gi;
+
       if (message.match(pattern)) {
         resolve();
       }

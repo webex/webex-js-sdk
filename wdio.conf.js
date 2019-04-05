@@ -14,9 +14,9 @@ dotenv.config({path: '.env.default'});
 
 const {inject} = require('./tooling/lib/openh264');
 const webpackConfig = require('./webpack.config')(
-  process.env.JENKINS || process.env.CI
-    ? 'production'
-    : process.env.NODE_ENV || ''
+  process.env.JENKINS || process.env.CI ?
+    'production' :
+    process.env.NODE_ENV || ''
 );
 
 
@@ -51,6 +51,7 @@ exports.config = {
       suites[p] = [
         `./packages/node_modules/${p}/test/wdio/spec/**/*.js`
       ];
+
       return suites;
     }, {}),
   //
@@ -230,6 +231,7 @@ exports.config = {
     ];
 
     const build = process.env.BUILD_NUMBER || `local-${process.env.USER}-wdio-${Date.now()}`;
+
     defs.forEach((d) => {
       if (CI) {
         d.build = build;
@@ -326,6 +328,7 @@ exports.config = {
           console.log(logTypes[browserId].value);
           if (logTypes[browserId].value.includes('browser')) {
             const logs = browser.select(browserId).log('browser');
+
             if (logs.value.length) {
               console.error(`Test ${test.fullTitle} failed with the following log output from browser ${browserId}`);
               console.error(logs

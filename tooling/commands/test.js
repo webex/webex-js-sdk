@@ -24,6 +24,7 @@ function shouldTestInBrowser(packageName) {
   const noBrowserPackages = [
     '@webex/webex-server'
   ];
+
   return !noBrowserPackages.includes(packageName);
 }
 
@@ -147,12 +148,15 @@ module.exports = {
         for (const packageName of await list()) {
           const argString = Object.keys(argv).reduce((acc, key) => {
             const value = argv[key];
+
             if (typeof value === 'boolean') {
               acc += value ? ` --${key}` : ` --no-${key}`;
             }
+
             return acc;
           }, '');
           const [cmd, ...args] = `npm run test --silent -- --no-coverage-report --package ${packageName}${argString}`.split(' ');
+
           await spawn(cmd, args);
         }
       }

@@ -45,6 +45,7 @@ exports.list = async function list(packageName, {includeTransitive = true, local
 };
 
 const tree = new Map();
+
 /**
  * Walks all packages to generate a tree of direct dependencies
  */
@@ -64,20 +65,24 @@ exports.listDependents = async function listDependents(packageName, options = {}
 
   if (options.includeTransitive) {
     const deps = dependents.get(packageName);
+
     if (!deps) {
       return new Set();
     }
     let changed = true;
+
     while (changed) {
       changed = false;
       for (const dep of deps) {
         const next = dependents.get(dep);
+
         for (const nDep of next) {
           changed = changed || !deps.has(nDep);
           deps.add(nDep);
         }
       }
     }
+
     return deps;
   }
 
@@ -90,6 +95,7 @@ exports.listDependents = async function listDependents(packageName, options = {}
  */
 async function buildDirectDependentTree() {
   const dependents = new Map();
+
   for (const packageName of await _list()) {
     dependents.set(packageName, new Set());
   }
@@ -99,6 +105,7 @@ async function buildDirectDependentTree() {
       dependents.get(dep).add(packageName);
     }
   }
+
   return dependents;
 }
 
@@ -126,6 +133,7 @@ exports.listVersions = async function listVersions(packageName, options) {
         throw new Error(`Failed to determine version for ${dep}, Is it missing from package.json?`);
       }
     }
+
     return acc;
   }, {});
 };
@@ -137,6 +145,7 @@ exports.listVersions = async function listVersions(packageName, options) {
  */
 function findDeps(entrypoints) {
   let deps = new Set();
+
   for (const entrypoint of entrypoints) {
     deps = new Set([...deps, ...walk(entrypoint)]);
   }
@@ -154,6 +163,7 @@ function requireToPackage(d) {
   if (d[0].startsWith('@')) {
     return d.slice(0, 2).join('/');
   }
+
   return d[0];
 }
 
@@ -204,17 +214,20 @@ function walk(entrypoint) {
       // This whole thing is *way* easier if we do it synchronously
       // eslint-disable-next-line no-sync
       const requires = detective(fs.readFileSync(entrypoint));
+
       visited.set(entrypoint, requires.reduce((acc, dep) => {
         debug(`found ${dep}`);
         if (dep.startsWith('.')) {
           debug(`${dep} is relative, descending`);
           const next = walk(path.resolve(path.dirname(entrypoint), dep));
+
           acc = new Set([...acc, ...next]);
         }
         else if (!builtins.includes(dep)) {
           debug(`found dependency ${dep}`);
           acc.add(requireToPackage(dep));
         }
+
         return acc;
       }, new Set()));
     }

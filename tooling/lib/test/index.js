@@ -42,6 +42,7 @@ exports.testPackage = async function testPackage(options, packageName) {
   debug(`testing ${packageName}`);
   if (packageName === 'generator-ciscospark') {
     await runNodeSuite(packageName);
+
     return;
   }
 
@@ -83,6 +84,7 @@ exports.testPackage = async function testPackage(options, packageName) {
 async function runDocsSuite(options, packageName) {
   debug(`Running documentation tests for ${packageName}`);
   const files = await glob('dist/**/*.js', {packageName});
+
   // eslint-disable-next-line global-require
   require(`${process.cwd()}/packages/node_modules/@webex/jsdoctrinetest`);
   await mochaTest(options, packageName, 'documentation', files.map((f) => `packages/node_modules/${packageName}/${f}`));
@@ -92,8 +94,10 @@ async function runDocsSuite(options, packageName) {
 async function runNodeSuite(options, packageName) {
   debug(`Running node suite for ${packageName}`);
   const files = await gatherFiles(options, packageName);
+
   if (files.length === 0) {
     debug(`no files found for ${packageName}`);
+
     return;
   }
 
@@ -102,11 +106,13 @@ async function runNodeSuite(options, packageName) {
   // we're running each package's test in a separate process, even when simply
   // running `npm test`.
   const load = require.extensions['.js'];
+
   if (options.coverage) {
     require.extensions['.js'] = function loadCoveredFile(m, filename) {
       if (filename.includes(packageName)) {
         filename = filename.replace(`${packageName}/dist`, `${packageName}/.coverage/src`);
       }
+
       return load(m, filename);
     };
   }
@@ -122,8 +128,10 @@ async function runNodeSuite(options, packageName) {
 async function runBrowserSuite(options, packageName) {
   debug(`Running browser suite for ${packageName}`);
   const files = await gatherFiles(options, packageName);
+
   if (files.length === 0) {
     debug(`no files found for ${packageName}`);
+
     return;
   }
 
@@ -139,6 +147,7 @@ async function runAutomationSuite(options, packageName) {
 
   if (files.length === 0) {
     debug(`no files found for ${packageName}`);
+
     return;
   }
 
