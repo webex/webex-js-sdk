@@ -4,12 +4,14 @@
 
 const debug = require('debug')('tooling:test:karma');
 const {Server, stopper} = require('karma');
-const {makeConfig} = require('../../../karma-ng.conf');
 const {readFile} = require('fs-promise');
 const ps = require('ps-node');
-const {expectNonEmptyReports, expectNoKmsErrors} = require('./common');
+
+const {makeConfig} = require('../../../karma-ng.conf');
 const {glob} = require('../async');
 const {inject} = require('../openh264');
+
+const {expectNonEmptyReports, expectNoKmsErrors} = require('./common');
 
 /* eslint-disable no-console */
 
@@ -20,7 +22,9 @@ exports.test = async function test(options, packageName, files) {
 
   const cfg = makeConfig(packageName, options);
 
-  if (packageName === '@ciscospark/plugin-phone' || packageName === '@ciscospark/media-engine-webrtc') {
+  if (packageName === '@ciscospark/plugin-phone' ||
+  packageName === '@ciscospark/media-engine-webrtc' ||
+  packageName === '@webex/plugin-meeting') {
     await inject(cfg.customLaunchers);
   }
 
