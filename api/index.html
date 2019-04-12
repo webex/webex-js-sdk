@@ -544,39 +544,9 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#calleventterminating'
+                          href='#calleventmembershipdeclined'
                           class='regular pre-open'>
-                          ⓔ terminating
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventinactive'
-                          class='regular pre-open'>
-                          ⓔ inactive
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventinitializing'
-                          class='regular pre-open'>
-                          ⓔ initializing
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventactive'
-                          class='regular pre-open'>
-                          ⓔ active
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventdisconnected'
-                          class='regular pre-open'>
-                          ⓔ disconnected
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventconnected'
-                          class='regular pre-open'>
-                          ⓔ connected
+                          ⓔ membership:declined
                         </a></li>
                       
                         <li><a
@@ -586,9 +556,33 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventmembershipdisconnected'
+                          href='#calleventconnected'
                           class='regular pre-open'>
-                          ⓔ membership:disconnected
+                          ⓔ connected
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventdisconnected'
+                          class='regular pre-open'>
+                          ⓔ disconnected
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventactive'
+                          class='regular pre-open'>
+                          ⓔ active
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventinitializing'
+                          class='regular pre-open'>
+                          ⓔ initializing
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventinactive'
+                          class='regular pre-open'>
+                          ⓔ inactive
                         </a></li>
                       
                         <li><a
@@ -616,9 +610,15 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventmembershipdeclined'
+                          href='#calleventmembershipdisconnected'
                           class='regular pre-open'>
-                          ⓔ membership:declined
+                          ⓔ membership:disconnected
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventterminating'
+                          class='regular pre-open'>
+                          ⓔ terminating
                         </a></li>
                       
                         <li><a
@@ -838,6 +838,18 @@
                         #personalMeetingRoom
                       </a></li>
                       
+                      <li><a
+                        href='#meetingspropertyname'
+                        class='regular pre-open'>
+                        #propertyName
+                      </a></li>
+                      
+                      <li><a
+                        href='#meetingspropertyname'
+                        class='regular pre-open'>
+                        #propertyName
+                      </a></li>
+                      
                     </ul>
                   
                   
@@ -858,12 +870,6 @@
                         </a></li>
                       
                         <li><a
-                          href='#meetingseventmeetingreconnectionsuccess'
-                          class='regular pre-open'>
-                          ⓔ meeting:reconnectionSuccess
-                        </a></li>
-                      
-                        <li><a
                           href='#meetingseventmeetingreconnectionfailure'
                           class='regular pre-open'>
                           ⓔ meeting:reconnectionFailure
@@ -879,6 +885,12 @@
                           href='#meetingseventmediaready'
                           class='regular pre-open'>
                           ⓔ media:ready
+                        </a></li>
+                      
+                        <li><a
+                          href='#meetingseventmeetingreconnectionsuccess'
+                          class='regular pre-open'>
+                          ⓔ meeting:reconnectionSuccess
                         </a></li>
                       
                         <li><a
@@ -1770,31 +1782,29 @@
               
                 
                 <li><a
-                  href='#get'
-                  class="">
-                  get
-                  
+                  href='#meetinginfocollection'
+                  class=" toggle-sibling">
+                  MeetingInfoCollection
+                  <span class='icon'>▸</span>
                 </a>
                 
-                </li>
-              
-                
-                <li><a
-                  href='#set'
-                  class="">
-                  set
+                <div class='toggle-target display-none'>
                   
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#getall'
-                  class="">
-                  getAll
+                  <ul class='list-reset py1-ul pl1'>
+                    <li class='h5'><span>Static members</span></li>
+                    
+                      <li><a
+                        href='#meetinginfocollectionget'
+                        class='regular pre-open'>
+                        .get
+                      </a></li>
+                    
+                    </ul>
                   
-                </a>
+                  
+                  
+                  
+                </div>
                 
                 </li>
               
@@ -2140,9 +2150,9 @@
                       </a></li>
                       
                       <li><a
-                        href='#meetingstate'
+                        href='#meetingmeetingfsm'
                         class='regular pre-open'>
-                        #state
+                        #meetingFSM
                       </a></li>
                       
                       <li><a
@@ -2235,16 +2245,6 @@
                   href='#join'
                   class="">
                   join
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#eventmeetingringing'
-                  class="">
-                  meeting:ringing
                   
                 </a>
                 
@@ -2517,6 +2517,56 @@
                   href='#create'
                   class="">
                   create
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#meeting'
+                  class="">
+                  meeting
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#onremote'
+                  class="">
+                  onRemote
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#onring'
+                  class="">
+                  onRing
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#onerror'
+                  class="">
+                  onError
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#onaftertransition'
+                  class="">
+                  onAfterTransition
                   
                 </a>
                 
@@ -3695,6 +3745,26 @@
               
                 
                 <li><a
+                  href='#intenttojoinerror'
+                  class="">
+                  IntentToJoinError
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#joinmeetingerror'
+                  class="">
+                  JoinMeetingError
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
                   href='#webrtcstats'
                   class=" toggle-sibling">
                   WebRTCStats
@@ -4209,26 +4279,6 @@
               
                 
                 <li><a
-                  href='#intenttojoinerror'
-                  class="">
-                  IntentToJoinError
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#joinmeetingerror'
-                  class="">
-                  JoinMeetingError
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
                   href='#reconnectionerror'
                   class="">
                   ReconnectionError
@@ -4399,24 +4449,6 @@
                     <li class='h5'><span>Static members</span></li>
                     
                       <li><a
-                        href='#meetingcollectionget'
-                        class='regular pre-open'>
-                        .get
-                      </a></li>
-                    
-                      <li><a
-                        href='#meetingcollectionset'
-                        class='regular pre-open'>
-                        .set
-                      </a></li>
-                    
-                      <li><a
-                        href='#meetingcollectiongetall'
-                        class='regular pre-open'>
-                        .getAll
-                      </a></li>
-                    
-                      <li><a
                         href='#meetingcollectiongetbykey'
                         class='regular pre-open'>
                         .getByKey
@@ -4425,16 +4457,57 @@
                     </ul>
                   
                   
-                    <ul class='list-reset py1-ul pl1'>
-                      <li class='h5'><span>Instance members</span></li>
-                      
+                  
+                  
+                </div>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#collection'
+                  class=" toggle-sibling">
+                  Collection
+                  <span class='icon'>▸</span>
+                </a>
+                
+                <div class='toggle-target display-none'>
+                  
+                  <ul class='list-reset py1-ul pl1'>
+                    <li class='h5'><span>Static members</span></li>
+                    
                       <li><a
-                        href='#meetingcollectionremove'
+                        href='#collectionget'
                         class='regular pre-open'>
-                        #remove
+                        .get
                       </a></li>
-                      
+                    
+                      <li><a
+                        href='#collectionset'
+                        class='regular pre-open'>
+                        .set
+                      </a></li>
+                    
+                      <li><a
+                        href='#collectiondelete'
+                        class='regular pre-open'>
+                        .delete
+                      </a></li>
+                    
+                      <li><a
+                        href='#collectiongetall'
+                        class='regular pre-open'>
+                        .getAll
+                      </a></li>
+                    
+                      <li><a
+                        href='#collectionsetall'
+                        class='regular pre-open'>
+                        .setAll
+                      </a></li>
+                    
                     </ul>
+                  
                   
                   
                   
@@ -8563,11 +8636,11 @@ only, this function will throw.</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='calleventterminating'>
+    <div class='border-bottom' id='calleventmembershipdeclined'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>terminating</span>
+            <span class='code strong strong truncate'>membership:declined</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -8575,10 +8648,9 @@ only, this function will throw.</p>
 
   
 
-  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+  
 
-
-  <div class='pre p1 fill-light mt0'>terminating</div>
+  <div class='pre p1 fill-light mt0'>membership:declined</div>
   
   
 
@@ -8609,149 +8681,11 @@ only, this function will throw.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventinactive'>
+    <div class='border-bottom' id='calleventringing'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>inactive</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
-
-
-  <div class='pre p1 fill-light mt0'>inactive</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventinitializing'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>initializing</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
-
-
-  <div class='pre p1 fill-light mt0'>initializing</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventactive'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>active</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
-
-
-  <div class='pre p1 fill-light mt0'>active</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventdisconnected'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>disconnected</span>
+            <span class='code strong strong truncate'>ringing</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -8761,7 +8695,7 @@ only, this function will throw.</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>disconnected</div>
+  <div class='pre p1 fill-light mt0'>ringing</div>
   
   
 
@@ -8769,7 +8703,7 @@ only, this function will throw.</p>
 <a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
 
 enabled; instead, listen for 
-<a href="Call.inactive">Call.inactive</a>
+<a href="Call.membership:notified">Call.membership:notified</a>
 </div>
   
   
@@ -8847,11 +8781,11 @@ enabled; instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventringing'>
+    <div class='border-bottom' id='calleventdisconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>ringing</span>
+            <span class='code strong strong truncate'>disconnected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -8861,7 +8795,7 @@ enabled; instead, listen for
 
   
 
-  <div class='pre p1 fill-light mt0'>ringing</div>
+  <div class='pre p1 fill-light mt0'>disconnected</div>
   
   
 
@@ -8869,7 +8803,7 @@ enabled; instead, listen for
 <a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
 
 enabled; instead, listen for 
-<a href="Call.membership:notified">Call.membership:notified</a>
+<a href="Call.inactive">Call.inactive</a>
 </div>
   
   
@@ -8897,11 +8831,11 @@ enabled; instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventmembershipdisconnected'>
+    <div class='border-bottom' id='calleventactive'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:disconnected</span>
+            <span class='code strong strong truncate'>active</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -8909,9 +8843,102 @@ enabled; instead, listen for
 
   
 
+  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+
+
+  <div class='pre p1 fill-light mt0'>active</div>
+  
   
 
-  <div class='pre p1 fill-light mt0'>membership:disconnected</div>
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventinitializing'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>initializing</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+
+
+  <div class='pre p1 fill-light mt0'>initializing</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventinactive'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>inactive</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+
+
+  <div class='pre p1 fill-light mt0'>inactive</div>
   
   
 
@@ -9128,11 +9155,11 @@ participating the call.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventmembershipdeclined'>
+    <div class='border-bottom' id='calleventmembershipdisconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:declined</span>
+            <span class='code strong strong truncate'>membership:disconnected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -9142,7 +9169,53 @@ participating the call.</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>membership:declined</div>
+  <div class='pre p1 fill-light mt0'>membership:disconnected</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventterminating'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>terminating</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+
+
+  <div class='pre p1 fill-light mt0'>terminating</div>
   
   
 
@@ -10730,6 +10803,98 @@ shortly after (but as a direct result of) locally calling
       </div>
     </div>
   
+    <div class='border-bottom' id='meetingspropertyname'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>propertyName</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>The property name for what collection will be stored, i.e., this.meetingInfos, this.meetings, etc.</p>
+
+
+  <div class='pre p1 fill-light mt0'>propertyName</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='meetingspropertyname'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>propertyName</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>The actual object for the collection</p>
+
+
+  <div class='pre p1 fill-light mt0'>propertyName</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
 </div>
 
   
@@ -10858,11 +11023,11 @@ Emitted when a meeting was removed from the cache of meetings</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingseventmeetingreconnectionsuccess'>
+    <div class='border-bottom' id='meetingseventmeetingreconnectionfailure'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meeting:reconnectionSuccess</span>
+            <span class='code strong strong truncate'>meeting:reconnectionFailure</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -10870,11 +11035,11 @@ Emitted when a meeting was removed from the cache of meetings</p>
 
   
 
-  <p>Reconnection Success Event
-Emitted when reconnection of media to the active meeting was successful</p>
+  <p>Ringing Event
+Emitted when a ring should occur or stop, outgoing or incoming</p>
 
 
-  <div class='pre p1 fill-light mt0'>meeting:reconnectionSuccess</div>
+  <div class='pre p1 fill-light mt0'>meeting:reconnectionFailure</div>
   
   
 
@@ -10892,8 +11057,16 @@ Emitted when reconnection of media to the active meeting was successful</p>
     <div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>reconnect</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+          : indicating if it's out or in
+
           
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>ringing</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
+          : if it should ring or not
+
           
         </div>
       
@@ -10974,72 +11147,6 @@ Emitted when reconnection of media to the active meeting was successful</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingseventmeetingreconnectionfailure'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meeting:reconnectionFailure</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Ringing Event
-Emitted when a ring should occur or stop, outgoing or incoming</p>
-
-
-  <div class='pre p1 fill-light mt0'>meeting:reconnectionFailure</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          : indicating if it's out or in
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>ringing</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
-          : if it should ring or not
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
     <div class='border-bottom' id='meetingseventmediaready'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -11084,6 +11191,64 @@ Emitted when a stream is ready to be rendered</p>
           <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
           : what type of stream, remote, local
 
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='meetingseventmeetingreconnectionsuccess'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>meeting:reconnectionSuccess</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Reconnection Success Event
+Emitted when reconnection of media to the active meeting was successful</p>
+
+
+  <div class='pre p1 fill-light mt0'>meeting:reconnectionSuccess</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>reconnect</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+          
           
         </div>
       
@@ -18314,12 +18479,51 @@ Used to emit events internally between modules</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='get'>
-      get
+    <h3 class='fl m0' id='meetinginfocollection'>
+      MeetingInfoCollection
     </h3>
     
     
   </div>
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>new MeetingInfoCollection()</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Static Members</div>
+    <div class="clearfix">
+  
+    <div class='border-bottom' id='meetinginfocollectionget'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>get(id)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
   
 
   
@@ -18374,129 +18578,10 @@ Used to emit events internally between modules</p>
   
 </section>
 
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='set'>
-      set
-    </h3>
-    
-    
-  </div>
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>set(id: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>, info: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="#meetinginfo">MeetingInfo</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-	    the id of the meeting info instance to add to the collection
-
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>info</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    the full meeting info object
-
-          </div>
-          
-        </div>
-      
+      </div>
     </div>
   
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="#meetinginfo">MeetingInfo</a></code>:
-        returns the meeting info instance that was added to the collection
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='getall'>
-      getAll
-    </h3>
-    
-    
-  </div>
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>getAll(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>:
-        returns an object map of MeetingInfo instances
-
-      
-    
-  
-
-  
-
-  
+</div>
 
   
 
@@ -20838,7 +20923,7 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>acknowledge(type, ringing)</span>
+            <span class='code strong strong truncate'>acknowledge(type)</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -20849,7 +20934,7 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
   <p>acknowledge the meeting, outgoing or incoming</p>
 
 
-  <div class='pre p1 fill-light mt0'>acknowledge(type: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>, ringing: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
+  <div class='pre p1 fill-light mt0'>acknowledge(type: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
   
   
 
@@ -20868,16 +20953,6 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
           <div>
             <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
 	    
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>ringing</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>
-            = <code>true</code>)</code>
-	    optional
-
           </div>
           
         </div>
@@ -20944,7 +21019,7 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
         <div class='space-bottom0'>
           <div>
             <span class='code bold'>reason</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>
-            = <code>BUSY</code>)</code>
+            = <code>_BUSY_</code>)</code>
 	    
           </div>
           
@@ -21550,11 +21625,11 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingstate'>
+    <div class='border-bottom' id='meetingmeetingfsm'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>state</span>
+            <span class='code strong strong truncate'>meetingFSM</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -21564,7 +21639,7 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>state</div>
+  <div class='pre p1 fill-light mt0'>meetingFSM</div>
   
   
 
@@ -21607,8 +21682,7 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
 
   
 
-  <p>created later on user demand</p>
-
+  
 
   <div class='pre p1 fill-light mt0'>stats</div>
   
@@ -22265,83 +22339,6 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
       <div class='py1 quiet mt1 prose-big'>Returns</div>
       <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
         the join response
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='eventmeetingringing'>
-      meeting:ringing
-    </h3>
-    
-    
-  </div>
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>meeting:ringing</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-	    should be null if ringing is false
-
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>ringing</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
-	    coerced to null if false
-
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
-        
 
       
     
@@ -24603,7 +24600,7 @@ sendVideo: true/false
   <p>Initializes the StateMachine for the meeting</p>
 
 
-  <div class='pre p1 fill-light mt0'>create(meeting: <a href="#meeting">Meeting</a>): StateMachine</div>
+  <div class='pre p1 fill-light mt0'>create(meetingRef: <a href="#meeting">Meeting</a>): StateMachine</div>
   
   
 
@@ -24620,8 +24617,8 @@ sendVideo: true/false
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>meeting</span> <code class='quiet'>(<a href="#meeting">Meeting</a>)</code>
-	    A meeting instance
+            <span class='code bold'>meetingRef</span> <code class='quiet'>(<a href="#meeting">Meeting</a>)</code>
+	    A reference to a meeting instance
 
           </div>
           
@@ -24636,6 +24633,353 @@ sendVideo: true/false
     
       <div class='py1 quiet mt1 prose-big'>Returns</div>
       <code>StateMachine</code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='meeting'>
+      meeting
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>The meeting instance to execute all state changes on</p>
+
+
+  <div class='pre p1 fill-light mt0'>meeting</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='onremote'>
+      onRemote
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Ring stop transition, to end the ring event for the meeting, and transition the state to ANSWERED OR DECLINED, only for outgoing meetings</p>
+
+
+  <div class='pre p1 fill-light mt0'>onRemote(transition: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, stop: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>transition</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    -- FiniteStateMachine automatically passed, not used
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>stop</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    -- {remoteAnswered: {Boolean}, remoteDeclined: {Boolean}}
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='onring'>
+      onRing
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Ring transition, to cause the ring event for the meeting, and transition the state to RINGING, for both incoming, and outgoing meetings</p>
+
+
+  <div class='pre p1 fill-light mt0'>onRing(transition: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, type: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>transition</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    -- FiniteStateMachine automatically passed, not used
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+	    -- incoming call === INCOMING / or other meetings have a ring type of JOIN
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='onerror'>
+      onError
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>handle the error transition stage</p>
+
+
+  <div class='pre p1 fill-light mt0'>onError(transition: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, error: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>transition</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='onaftertransition'>
+      onAfterTransition
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>After ANY transition occurs, we want to know what state the meeting moved to for debugging</p>
+
+
+  <div class='pre p1 fill-light mt0'>onAfterTransition(transition: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>transition</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></code>:
         
 
       
@@ -26546,7 +26890,7 @@ If this fails, return false will cancel the transition and the state will remain
   <p>extract the sipUrl from the partner</p>
 
 
-  <div class='pre p1 fill-light mt0'>getSipUrl(partner: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, info: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
+  <div class='pre p1 fill-light mt0'>getSipUrl(partner: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, type: any, sipUri: any, info: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
   
   
 
@@ -26564,6 +26908,22 @@ If this fails, return false will cancel the transition and the state will remain
         <div class='space-bottom0'>
           <div>
             <span class='code bold'>partner</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>type</span> <code class='quiet'>(any)</code>
+	    
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>sipUri</span> <code class='quiet'>(any)</code>
 	    
           </div>
           
@@ -34347,6 +34707,169 @@ there are multiple ids that can be used</p>
   
   <div class='clearfix'>
     
+    <h3 class='fl m0' id='intenttojoinerror'>
+      IntentToJoinError
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Extended Error object to signify the intent to join for unclaimed PMR scenarios</p>
+
+
+  <div class='pre p1 fill-light mt0'>new IntentToJoinError(error: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</div>
+  
+  
+    <p>
+      Extends
+      
+        <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>
+      
+    </p>
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>message</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>
+            = <code>ERROR_DICTIONARY.INTENT_TO_JOIN.MESSAGE</code>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='joinmeetingerror'>
+      JoinMeetingError
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Extended Error object to signify a join meeting error</p>
+
+
+  <div class='pre p1 fill-light mt0'>new JoinMeetingError(error: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, options: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</div>
+  
+  
+    <p>
+      Extends
+      
+        <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>
+      
+    </p>
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+            = <code>{}</code>)</code>
+	    optional
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>message</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>
+            = <code>ERROR_DICTIONARY.JOIN_MEETING.MESSAGE</code>)</code>
+	    optional
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
     <h3 class='fl m0' id='webrtcstats'>
       WebRTCStats
     </h3>
@@ -38365,169 +38888,6 @@ then calculating the actual interval value</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='intenttojoinerror'>
-      IntentToJoinError
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Extended Error object to signify the intent to join for unclaimed PMR scenarios</p>
-
-
-  <div class='pre p1 fill-light mt0'>new IntentToJoinError(error: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</div>
-  
-  
-    <p>
-      Extends
-      
-        <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>
-      
-    </p>
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>message</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>
-            = <code>ERROR_DICTIONARY.INTENT_TO_JOIN.MESSAGE</code>)</code>
-	    
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='joinmeetingerror'>
-      JoinMeetingError
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Extended Error object to signify a join meeting error</p>
-
-
-  <div class='pre p1 fill-light mt0'>new JoinMeetingError(error: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, options: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</div>
-  
-  
-    <p>
-      Extends
-      
-        <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>
-      
-    </p>
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
-            = <code>{}</code>)</code>
-	    optional
-
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>message</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>
-            = <code>ERROR_DICTIONARY.JOIN_MEETING.MESSAGE</code>)</code>
-	    optional
-
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
     <h3 class='fl m0' id='reconnectionerror'>
       ReconnectionError
     </h3>
@@ -39665,236 +40025,6 @@ then calculating the actual interval value</p>
     <div class='py1 quiet mt1 prose-big'>Static Members</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='meetingcollectionget'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>get(meetingId)</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>get the meeting at the id</p>
-
-
-  <div class='pre p1 fill-light mt0'>get(meetingId: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>): <a href="#meeting">Meeting</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>meetingId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-	    ID of the meeting you wish to retreive
-
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="#meeting">Meeting</a></code>:
-        returns a meeting object
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='meetingcollectionset'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>set(meeting)</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>set the meeting at the id</p>
-
-
-  <div class='pre p1 fill-light mt0'>set(meeting: <a href="#meeting">Meeting</a>): <a href="#meeting">Meeting</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>meeting</span> <code class='quiet'>(<a href="#meeting">Meeting</a>)</code>
-	    An instance of a Meeting to add to the collection
-
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="#meeting">Meeting</a></code>:
-        returns the meeting that was added
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='meetingcollectiongetall'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>getAll(options)</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>get all the meetings with optional filters</p>
-
-
-  <div class='pre p1 fill-light mt0'>getAll(options: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="#meeting">Meeting</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
-            = <code>{active:false}</code>)</code>
-	    An object containg properties to filter by
-
-          </div>
-          
-          <table class='mt1 mb2 fixed-table h5 col-12'>
-            <colgroup>
-              <col width='30%' />
-              <col width='70%' />
-            </colgroup>
-            <thead>
-              <tr class='bold fill-light'>
-                <th>Name</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody class='mt1'>
-              
-                <tr>
-  <td class='break-word'><span class='code bold'>options.active</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a></code>
-  </td>
-  <td class='break-word'><span>Only return active meetings
-</span></td>
-</tr>
-
-
-              
-            </tbody>
-          </table>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="#meeting">Meeting</a></code>:
-        returns an object map of Meeting instances
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
     <div class='border-bottom' id='meetingcollectiongetbykey'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -39975,14 +40105,58 @@ then calculating the actual interval value</p>
   
 
   
-    <div class='py1 quiet mt1 prose-big'>Instance Members</div>
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='collection'>
+      Collection
+    </h3>
+    
+    
+  </div>
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>new Collection()</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Static Members</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='meetingcollectionremove'>
+    <div class='border-bottom' id='collectionget'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>remove(meetingId)</span>
+            <span class='code strong strong truncate'>get(id)</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -39990,10 +40164,9 @@ then calculating the actual interval value</p>
 
   
 
-  <p>remove the meeting at the id</p>
+  
 
-
-  <div class='pre p1 fill-light mt0'>remove(meetingId: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>): <a href="#meeting">Meeting</a></div>
+  <div class='pre p1 fill-light mt0'>get(id: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>): Any</div>
   
   
 
@@ -40010,8 +40183,8 @@ then calculating the actual interval value</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>meetingId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-	    ID of the meeting you wish to remove from the collection
+            <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+	    ID of the thing stuffed into the collection at id location
 
           </div>
           
@@ -40025,8 +40198,272 @@ then calculating the actual interval value</p>
   
     
       <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="#meeting">Meeting</a></code>:
-        returns the meeting that was removed
+      <code>Any</code>:
+        returns whatever is being stuffed into the collection
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='collectionset'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>set(id, value)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>set(id: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>, value: Any): Any</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+	    the id of the meeting info instance to add to the collection
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>value</span> <code class='quiet'>(Any)</code>
+	    the thing to set in the collection
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code>Any</code>:
+        returns the thing just put in the collection
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='collectiondelete'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>delete(id)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>remove the thing at the id</p>
+
+
+  <div class='pre p1 fill-light mt0'>delete(id: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+	    ID of the thing you wish to delete from the collection
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='collectiongetall'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>getAll()</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>getAll(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>:
+        returns an object map of things stuffed into the collection
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='collectionsetall'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>setAll(set)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>setAll(set: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>set</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    the replacement object
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>:
+        returns an object map of things stuffed into the collection
 
       
     
@@ -40047,6 +40484,8 @@ then calculating the actual interval value</p>
     </div>
   
 </div>
+
+  
 
   
 
