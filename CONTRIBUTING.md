@@ -46,6 +46,12 @@ Before you can build the Cisco Webex JS SDK, you will need the following depende
   - Install the latest Node.js Long Term Support using `nvm install --lts`
   - Install the latest npm to enable security audits using `npm install npm@latest -g`
 - [Git](https://git-scm.com/)
+- [node-gyp](https://www.npmjs.com/package/node-gyp) 
+  - This is used during the dependency install process and is used to compline some native addon modules.
+  - Install with `npm install -g node-gyp`
+- [python 2.7](https://www.python.org/download/releases/2.7/)
+  - This is also used during the dependency install process.
+  - Attempting to update dependencies with a python 3.x environment will fail
 
 You will need to create a file called `.env` that defines, at a minimum:
 
