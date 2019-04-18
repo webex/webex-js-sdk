@@ -66,7 +66,7 @@ module.exports = {
       const slow = [
         '@ciscospark/media-engine-webrtc',
         '@ciscospark/plugin-phone',
-        '@ciscospark/internal-plugin-conversation',
+        '@webex/internal-plugin-conversation',
         'ciscospark',
         '@ciscospark/plugin-authorization-browser',
         'samples'
