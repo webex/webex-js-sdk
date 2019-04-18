@@ -14,7 +14,8 @@ DEPRECATED_PACKAGES="@ciscospark/storage-adapter-session-storage \
   @ciscospark/common-evented \
   @ciscospark/common-timers \
   @ciscospark/helper-html \
-  @ciscospark/helper-image"
+  @ciscospark/helper-image \
+  @ciscospark/http-core"
 
 PACKAGES=$(echo packages/node_modules/{*,@ciscospark/*,@webex/*} | xargs -n 1 | sed 's/packages\/node_modules\///' | xargs -n 1 | grep -v '^@ciscospark$' | grep -v '^samples$' | grep -v '^@webex$')
 for PACKAGE in $PACKAGES; do
