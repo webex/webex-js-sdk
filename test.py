@@ -45,7 +45,7 @@ TEST_COMMAND = 'npm test -- --package %s'
 SKIP_PACKAGES = [
   '@webex/bin-sauce-connect', # needs Sauce started
   '@webex/test-helper-server' # no tests
-  '@ciscospark/internal-plugin-calendar', # no tests
+  '@webex/internal-plugin-calendar', # no tests
   '@ciscospark/plugin-webhooks' # no tests
 ]
 
