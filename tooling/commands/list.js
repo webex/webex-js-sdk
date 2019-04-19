@@ -68,7 +68,7 @@ module.exports = {
         '@ciscospark/plugin-phone',
         '@webex/internal-plugin-conversation',
         'ciscospark',
-        '@ciscospark/plugin-authorization-browser',
+        '@webex/plugin-authorization-browser',
         'samples'
       ];
 
