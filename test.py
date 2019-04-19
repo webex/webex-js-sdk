@@ -46,7 +46,7 @@ SKIP_PACKAGES = [
   '@webex/bin-sauce-connect', # needs Sauce started
   '@webex/test-helper-server' # no tests
   '@webex/internal-plugin-calendar', # no tests
-  '@ciscospark/plugin-webhooks' # no tests
+  '@webex/plugin-webhooks' # no tests
 ]
 
 def should_include_package(path_name, name):
