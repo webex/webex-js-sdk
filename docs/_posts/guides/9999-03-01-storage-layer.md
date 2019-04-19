@@ -31,4 +31,4 @@ binding.put("proof", true)
 
 # Writing your own adapter
 
-Because of the near-limitless set of options for NodeJS storage backends, we don't provide any such adapters. We do, however, provide a blackbox test suite, `@ciscospark/storage-adapter-spec`, for proving out new adapters.
+Because of the near-limitless set of options for NodeJS storage backends, we don't provide any such adapters. We do, however, provide a blackbox test suite, `@webex/storage-adapter-spec`, for proving out new adapters.
