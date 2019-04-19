@@ -45,37 +45,37 @@ npm test -- --help
 Test a single package
 
 ```bash
-npm test -- --package @ciscospark/spark-core
+npm test -- --package @webex/webex-core
 ```
 
 Test a single package, but only in a browser
 
 ```bash
-npm test -- --package @ciscospark/spark-core --browser
+npm test -- --package @webex/webex-core --browser
 ```
 
 Test a single package, but only in a specific browser
 
 ```bash
-BROWSER=chrome npm test -- --package @ciscospark/spark-core --browser
+BROWSER=chrome npm test -- --package @webex/webex-core --browser
 ```
 
 Test a single package and generate coverage and xunit reports
 
 ```bash
-npm test -- --package @ciscospark/spark-core --coverage --xunit
+npm test -- --package @webex/webex-core --coverage --xunit
 ```
 
 Test a single package using [snapshots](https://github.com/flickr/yakbak#yakbak) rather than live network requests. **The test must be run in Node.**
 
 ```bash
-npm test -- --package @ciscospark/spark-core --node --snapshots
+npm test -- --package @webex/webex-core --node --snapshots
 ```
 
 Keeps the browser open in debug mode so that you can set break points and reload the page with code updates
 
 ```bash
-npm test -- --package @ciscospark/spark-core --browser --karma-debug
+npm test -- --package @webex/webex-core --browser --karma-debug
 ```
 
 ## SauceLabs
