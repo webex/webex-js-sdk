@@ -65,7 +65,7 @@ module.exports = {
       // empirical measurements of overall suite duration.
       const slow = [
         '@webex/media-engine-webrtc',
-        '@ciscospark/plugin-phone',
+        '@webex/plugin-phone',
         '@webex/internal-plugin-conversation',
         'ciscospark',
         '@webex/plugin-authorization-browser',
