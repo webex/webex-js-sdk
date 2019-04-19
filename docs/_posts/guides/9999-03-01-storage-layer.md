@@ -27,7 +27,7 @@ binding.put("proof", true)
 
 # Existing Adapters
 
-`spark-core` defines `MemoryStoreAdapter` as an all-purpose, in-memory adapter. `@ciscospark/storage-adapter-local-storage` and `@ciscospark/storage-adapter-local-forage` are available for browser clients. (`ciscospark` uses `@ciscospark/storage-adapter-localstorage` for `boundedStorage` by default).
+`spark-core` defines `MemoryStoreAdapter` as an all-purpose, in-memory adapter. `@webex/storage-adapter-local-storage` and `@ciscospark/storage-adapter-local-forage` are available for browser clients. (`ciscospark` uses `@ciscospark/storage-adapter-localstorage` for `boundedStorage` by default).
 
 # Writing your own adapter
 
