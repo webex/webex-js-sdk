@@ -22,7 +22,7 @@ exports.test = async function test(options, packageName, files) {
 
   const cfg = makeConfig(packageName, options);
 
-  if (packageName === '@ciscospark/plugin-phone' || packageName === '@webex/media-engine-webrtc') {
+  if (packageName === '@webex/plugin-phone' || packageName === '@webex/media-engine-webrtc') {
     await inject(cfg.customLaunchers);
   }
 
