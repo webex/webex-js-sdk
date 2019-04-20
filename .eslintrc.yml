@@ -108,7 +108,7 @@ overrides:
       step: false
   -
     files:
-      - packages/node_modules/@ciscospark/xunit-with-logs
+      - packages/node_modules/@webex/xunit-with-logs
     rules:
       func-names: 0
       no-console: 0
