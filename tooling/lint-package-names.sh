@@ -57,7 +57,8 @@ DEPRECATED_PACKAGES="@ciscospark/storage-adapter-session-storage \
   @ciscospark/test-helper-mocha \
   @ciscospark/test-helper-mock-spark \
   @ciscospark/test-helper-mock-web-socket \
-  @ciscospark/test-helper-refresh-callback"
+  @ciscospark/test-helper-refresh-callback \
+  @ciscospark/test-helper-retry"
 
 PACKAGES=$(echo packages/node_modules/{*,@ciscospark/*,@webex/*} | xargs -n 1 | sed 's/packages\/node_modules\///' | xargs -n 1 | grep -v '^@ciscospark$' | grep -v '^samples$' | grep -v '^@webex$')
 for PACKAGE in $PACKAGES; do
