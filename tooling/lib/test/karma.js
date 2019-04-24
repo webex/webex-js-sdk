@@ -24,7 +24,7 @@ exports.test = async function test(options, packageName, files) {
 
   if (packageName === '@ciscospark/plugin-phone' ||
   packageName === '@ciscospark/media-engine-webrtc' ||
-  packageName === '@webex/plugin-meeting') {
+  packageName === '@webex/plugin-meetings') {
     await inject(cfg.customLaunchers);
   }
 
