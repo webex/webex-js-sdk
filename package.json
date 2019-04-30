@@ -251,7 +251,7 @@
     "webpack-merge": "^4.1.4",
     "webrtc-adapter": "^6.1.0",
     "whatwg-fetch": "^2.0.3",
-    "ws": "^4.0.0",
+    "ws": "^7.0.0",
     "xhr": "^2.4.0",
     "xtend": "^4.0.1",
     "yakbak": "^3.0.0",
