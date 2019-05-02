@@ -146,7 +146,7 @@
     "doctrine": "^2.0.0",
     "documentation": "^5.3.2",
     "documentation-theme-utils": "^3.0.0",
-    "dotenv": "^4.0.0",
+    "dotenv": "^8.0.0",
     "envify": "^4.1.0",
     "errorhandler": "^1.5.0",
     "es6-promise": "^4.2.4",
