@@ -3,7 +3,6 @@ globals:
   PACKAGE_VERSION: false
 root: true
 rules:
-  # These rules should be moved to @ciscospark/eslint-config-base
   no-warning-comments: warn
   require-jsdoc:
     - error
