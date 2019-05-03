@@ -306,7 +306,7 @@ ansiColor('xterm') {
             image.inside(DOCKER_RUN_OPTS) {
               // Remove the old symlink that tends to screw up installing the
               // new package
-              sh 'rm -f ./node_modules/@ciscospark/eslint-config'
+              sh 'rm -f ./node_modules/@webex/eslint-config'
               sh 'echo \'//registry.npmjs.org/:_authToken=${JS_SDK_NPM_TOKEN}\' > $HOME/.npmrc'
               sh 'npm ci'
             }
@@ -316,6 +316,7 @@ ansiColor('xterm') {
             sh 'git clean -df'
             sh 'rm -rf "packages/node_modules/*/browsers.processed.js"'
             sh 'rm -rf "packages/node_modules/@ciscospark/*/browsers.processed.js"'
+            sh 'rm -rf "packages/node_modules/@webex/*/browsers.processed.js"'
             sh 'rm -rf ".sauce/*/sc.*"'
             sh 'rm -rf ".sauce/*/sauce_connect*log"'
             sh 'rm -rf reports'
@@ -444,7 +445,7 @@ ansiColor('xterm') {
 
                   sh "npm run tooling -- version set ${version} --last-log"
 
-                  sh 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json packages/node_modules/ciscospark/umd/*.js'
+                  sh 'git add packages/node_modules/*/package.json packages/node_modules/@webex/*/package.json packages/node_modules/ciscospark/umd/*.js'
 
                   def commitResult = sh script: "git commit --no-verify -m v${version}", returnStatus: true
                   // commit will fail if we had no files to commit
