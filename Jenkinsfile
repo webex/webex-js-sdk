@@ -445,7 +445,7 @@ ansiColor('xterm') {
 
                   sh "npm run tooling -- version set ${version} --last-log"
 
-                  sh 'git add packages/node_modules/*/package.json packages/node_modules/@webex/*/package.json packages/node_modules/ciscospark/umd/*.js'
+                  sh 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json packages/node_modules/@webex/*/package.json packages/node_modules/ciscospark/umd/*.js'
 
                   def commitResult = sh script: "git commit --no-verify -m v${version}", returnStatus: true
                   // commit will fail if we had no files to commit
