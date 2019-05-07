@@ -93,7 +93,7 @@
     "tooling": "babel-node ./tooling/index.js"
   },
   "dependencies": {
-    "@commitlint/cli": "^6.1.3",
+    "@commitlint/cli": "^7.6.0",
     "@commitlint/config-conventional": "^6.1.3",
     "@webex/eslint-config-base": "^0.8.0",
     "ampersand-collection": "^2.0.2",
