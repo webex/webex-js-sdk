@@ -20,8 +20,10 @@
 const debug = require('debug')('deps');
 const builtins = require('builtins')();
 const detective = require('detective');
+
 const fs = require('fs');
 const _ = require('lodash');
+
 const path = require('path');
 const util = require('util');
 
@@ -309,9 +311,9 @@ if (require.main === module) {
     // eslint-disable-next-line no-console
     console.log();
     // eslint-disable-next-line no-console
-    console.log('update dependency list for single package "ciscospark"');
+    console.log('update dependency list for single package "webex"');
     // eslint-disable-next-line no-console
-    console.log('\tnode deps.js ./packages/node_modules/ciscospark');
+    console.log('\tnode deps.js ./packages/node_modules/webex');
     // eslint-disable-next-line no-console
     console.log();
     // eslint-disable-next-line no-process-exit

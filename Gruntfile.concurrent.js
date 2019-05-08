@@ -1,6 +1,6 @@
 /** !
  *
- * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2019 Cisco Systems, Inc. See LICENSE file.
  */
 
 /* eslint-disable global-require */
@@ -43,15 +43,10 @@ module.exports = function gruntConfig(grunt) {
     }
   };
 
-  grunt.registerTask('publish:docs', [
-    'gh-pages:ghc'
-  ]);
+  grunt.registerTask('publish:docs', ['gh-pages:ghc']);
 
   grunt.initConfig(config);
-  grunt.task.run([
-    'env:default',
-    'env:secrets'
-  ]);
+  grunt.task.run(['env:default', 'env:secrets']);
 
   grunt.registerTask('default', []);
 };

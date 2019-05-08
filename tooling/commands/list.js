@@ -1,5 +1,5 @@
 /*!
- * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2019 Cisco Systems, Inc. See LICENSE file.
  */
 
 const {updated} = require('../lib/updated');
@@ -56,7 +56,7 @@ module.exports = {
       }
 
       // Make sure we always test the samples when the public sdk changes.
-      if (packages.includes('ciscospark') && !packages.includes('samples')) {
+      if (packages.includes('ciscospark') && packages.includes('webex') && !packages.includes('samples')) {
         packages.push('samples');
       }
 

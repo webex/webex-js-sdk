@@ -11,7 +11,7 @@ The storage layer takes care of storing and loading bounded data like user crede
 
 # Usage
 
-Within a spark plugin, the storage layer is available via two properties: `this.boundedStorage` and `this.unboundedStorage`. `boundedStorage` should be used for things with a known size (e.g. user credentials, device registration payloads, etc). `unboundedStorage` should be used for arrays of unknown length (e.g. encryption keys). These properties are bound to the namespace defined by the plugin.
+Within a webex plugin, the storage layer is available via two properties: `this.boundedStorage` and `this.unboundedStorage`. `boundedStorage` should be used for things with a known size (e.g. user credentials, device registration payloads, etc). `unboundedStorage` should be used for arrays of unknown length (e.g. encryption keys). These properties are bound to the namespace defined by the plugin.
 
 # Adapters
 

@@ -1,10 +1,10 @@
 {
-  "name": "spark-js-sdk",
+  "name": "webex-js-sdk",
   "version": "0.5.349",
-  "description": "JavaScript sdk for interacting with the Spark API",
-  "homepage": "https://github.com/webex/spark-js-sdk",
+  "description": "JavaScript SDK for interacting with the Webex API",
+  "homepage": "https://github.com/webex/webex-js-sdk",
   "bugs": {
-    "url": "https://github.com/webex/spark-js-sdk/issues"
+    "url": "https://github.com/webex/webex-js-sdk/issues"
   },
   "license": "MIT",
   "contributors": [
@@ -46,7 +46,7 @@
   "main": "src/index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/webex/spark-js-sdk"
+    "url": "https://github.com/webex/webex-js-sdk"
   },
   "scripts": {
     "precommit": "npm run --silent lint:staged",
@@ -57,13 +57,13 @@
     "build": "babel-node ./tooling/index.js build",
     "build:script": "rollup -c",
     "prebuild:docs": "rimraf ./docs/api",
-    "build:docs": "documentation build --config documentation/config.yml --np --project-name ciscospark --project-version 1.x --format html --output ./docs/api --github ./packages/node_modules/ciscospark/src/index.js ./packages/node_modules/{@ciscospark,@webex}/plugin-*/src/index.js",
+    "build:docs": "documentation build --config documentation/config.yml --np --project-name webex --project-version 1.x --format html --output ./docs/api --github ./packages/node_modules/webex/src/index.js ./packages/node_modules/{@ciscospark,@webex}/plugin-*/src/index.js",
     "check-karma-output": "./scripts/analyze-output.sh",
     "build:package": "echo 'deprecated; just use \"npm run --silent build\"'./tooling/build.js",
     "lint": "npm run --silent lint:js && npm run --silent lint:jenkinsfile && npm run --silent lint:package-names",
     "lint:ci": "npm run --silent lint:js:ci && npm run --silent lint:jenkinsfile && npm run --silent lint:package-names",
     "lint:commitmsg": "commitlint -e $GIT_PARAMS",
-    "lint:eslint": "eslint --ignore-pattern 'packages/node_modules/generator-ciscospark/generators/*/templates/**' --ignore-pattern 'packages/node_modules/ciscospark/umd/**' --ignore-pattern 'docs/**' --ignore-path .gitignore",
+    "lint:eslint": "eslint --ignore-pattern 'packages/node_modules/generator-ciscospark/generators/*/templates/**' --ignore-pattern 'packages/node_modules/**/umd/**' --ignore-pattern 'docs/**' --ignore-path .gitignore",
     "lint:eslint:ci-reporter": "bash -c '[[ -n \"${JENKINS}\" ]]' && echo \"-f checkstyle -o reports/style/eslint.xml\" || echo ''",
     "lint:jenkinsfile": "node --eval \"fs.readFileSync('Jenkinsfile').includes('.status') ? console.log('Found \".status\" in Jenkinsfile. You meant \".result\"') && process.exit(1) : process.exit(0)\"",
     "lint:js": "npm run --silent lint:eslint -- .",
@@ -85,8 +85,8 @@
     "test:samples": "echo 'Deprecated. Please use npm run samples:test'; npm run --silent samples:test",
     "samples:build": "babel-node ./tooling/index.js build --only-samples",
     "samples:serve": "webpack-dev-server",
-    "samples:meetings": "npm run serve:package -- --env.package @webex/plugin-meetings --env.entry ./ciscospark.js",
-    "samples:devicemanager": "npm run serve:package -- --env.package @webex/plugin-device-manager --env.entry ./ciscospark.js",
+    "samples:meetings": "npm run serve:package -- --env.package @webex/plugin-meetings --env.entry ./webex.js",
+    "samples:devicemanager": "npm run serve:package -- --env.package @webex/plugin-device-manager --env.entry ./webex.js",
     "serve:package": "webpack-dev-server --config webpack/webpack.config.js --hot --inline --history-api-fallback",
     "presamples:test": "rimraf bundle.js bundle.js.map",
     "samples:test": "NODE_ENV=test wdio",

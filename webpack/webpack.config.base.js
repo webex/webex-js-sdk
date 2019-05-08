@@ -32,10 +32,10 @@ module.exports = merge({
   },
   plugins: [
     new webpack.EnvironmentPlugin({
-      CISCOSPARK_LOG_LEVEL: 'log',
+      WEBEX_LOG_LEVEL: 'log',
       DEBUG: '',
       NODE_ENV: process.env.NODE_ENV || 'development',
-      CISCOSPARK_ACCESS_TOKEN: process.env.CISCOSPARK_ACCESS_TOKEN,
+      WEBEX_ACCESS_TOKEN: process.env.WEBEX_ACCESS_TOKEN,
       // The follow environment variables are specific to our continuous
       // integration process and should not be used in general
       // Also, yes, CONVERSATION_SERVICE does not end in URL

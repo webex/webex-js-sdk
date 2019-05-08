@@ -6,7 +6,7 @@ import threading
 # Gather the packages to test.
 
 PREFIX = './packages/node_modules/'
-CISCOSPARK = os.path.join(PREFIX, '@ciscospark')
+# CISCOSPARK = os.path.join(PREFIX, '@ciscospark')
 WEBEX = os.path.join(PREFIX, '@webex')
 
 PROD_ENV_VARS = {
@@ -107,9 +107,10 @@ def run_tests_in_parallel(packages, writer, csv_file):
     thread.join()
 
 def main():
-  ciscospark_packages = get_package_names(CISCOSPARK)
+  # ciscospark_packages = get_package_names(CISCOSPARK)
   webex_packages = get_package_names(WEBEX)
-  packages = ciscospark_packages + webex_packages
+  # packages = ciscospark_packages + webex_packages
+  packages = webex_packages
   print ('Skipping %d packages: %s' % (len(SKIP_PACKAGES), ', '.join(SKIP_PACKAGES)))
   print('Testing %d packages...' % len(packages))
 

@@ -8,11 +8,11 @@ dotenv.config();
 dotenv.config({path: '.env.default'});
 
 module.exports = (env = process.env.NODE_ENV || '') => ({
-  entry: './packages/node_modules/ciscospark',
+  entry: './packages/node_modules/webex',
   mode: env === 'production' ? 'production' : 'development',
   output: {
     filename: 'bundle.js',
-    library: 'ciscospark',
+    library: 'Webex',
     libraryTarget: 'var',
     path: __dirname,
     sourceMapFilename: '[file].map'
@@ -59,7 +59,7 @@ module.exports = (env = process.env.NODE_ENV || '') => ({
     ...(env === 'production' ?
       [
         new EnvironmentPlugin({
-          CISCOSPARK_LOG_LEVEL: 'log',
+          WEBEX_LOG_LEVEL: 'log',
           DEBUG: '',
           NODE_ENV: 'production'
         }),
@@ -82,7 +82,7 @@ module.exports = (env = process.env.NODE_ENV || '') => ({
       [
         // Environment Plugin doesn't override already defined Environment Variables (i.e. DotENV)
         new EnvironmentPlugin({
-          CISCOSPARK_LOG_LEVEL: 'log',
+          WEBEX_LOG_LEVEL: 'log',
           DEBUG: '',
           NODE_ENV: 'development',
           // The follow environment variables are specific to our continuous

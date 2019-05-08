@@ -1,5 +1,5 @@
 /*!
- * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2019 Cisco Systems, Inc. See LICENSE file.
  */
 
 const pkgUp = require('pkg-up');
@@ -18,7 +18,7 @@ function versionFromState(state) {
 }
 
 /**
- * Simple babel transform for ensuring that every SparkPlugin (and SparkCore)
+ * Simple babel transform for ensuring that every WebexPlugin (and WebexCore)
  * have the correct version property
  * @returns {Object}
  */
@@ -32,7 +32,7 @@ module.exports = function injectPackageVersion() {
        */
       CallExpression(path, state) {
         if (t.isMemberExpression(path.get('callee'))) {
-          if (path.node.callee.object.name === 'SparkPlugin' && path.node.callee.property.name === 'extend') {
+          if (path.node.callee.object.name === 'WebexPlugin' && path.node.callee.property.name === 'extend') {
             const def = path.node.arguments[0];
             const visited = def.properties.reduce((acc, p) => acc || t.isObjectProperty(p, {key: 'version'}), false);
 
