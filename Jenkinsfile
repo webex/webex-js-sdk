@@ -122,9 +122,9 @@ def generateDockerEnv = { ->
 
 def generateSecretsFile = { ->
   withCredentials([
-    string(credentialsId: '9f44ab21-7e83-480d-8fb3-e6495bf7e9f3', variable: 'CISCOSPARK_CLIENT_SECRET'),
-    string(credentialsId: 'CISCOSPARK_APPID_ORGID_INT', variable: 'CISCOSPARK_APPID_ORGID'),
-    string(credentialsId: 'CISCOSPARK_APPID_SECRET_INT', variable: 'CISCOSPARK_APPID_SECRET'),
+    string(credentialsId: '9f44ab21-7e83-480d-8fb3-e6495bf7e9f3', variable: 'WEBEX_CLIENT_SECRET'),
+    string(credentialsId: 'CISCOSPARK_APPID_ORGID_INT', variable: 'WEBEX_APPID_ORGID'),
+    string(credentialsId: 'CISCOSPARK_APPID_SECRET_INT', variable: 'WEBEX_APPID_SECRET'),
     usernamePassword(credentialsId: 'SAUCE_LABS_VALIDATED_MERGE_CREDENTIALS', passwordVariable: 'SAUCE_ACCESS_KEY', usernameVariable: 'SAUCE_USERNAME'),
     string(credentialsId: 'ddfd04fb-e00a-4df0-9250-9a7cb37bce0e', variable: 'COMMON_IDENTITY_CLIENT_SECRET'),
     string(credentialsId: 'JS_SDK_NPM_TOKEN', variable: 'JS_SDK_NPM_TOKEN'),
@@ -132,9 +132,9 @@ def generateSecretsFile = { ->
   ]) {
     def secrets = ""
     secrets += "COMMON_IDENTITY_CLIENT_SECRET=${COMMON_IDENTITY_CLIENT_SECRET}\n"
-    secrets += "CISCOSPARK_APPID_ORGID=${CISCOSPARK_APPID_ORGID}\n"
-    secrets += "CISCOSPARK_APPID_SECRET=${CISCOSPARK_APPID_SECRET}\n"
-    secrets += "CISCOSPARK_CLIENT_SECRET=${CISCOSPARK_CLIENT_SECRET}\n"
+    secrets += "CISCOSPARK_APPID_ORGID=${WEBEX_APPID_ORGID}\n"
+    secrets += "CISCOSPARK_APPID_SECRET=${WEBEX_APPID_SECRET}\n"
+    secrets += "CISCOSPARK_CLIENT_SECRET=${WEBEX_CLIENT_SECRET}\n"
     secrets += "SAUCE_USERNAME=${SAUCE_USERNAME}\n"
     secrets += "SAUCE_ACCESS_KEY=${SAUCE_ACCESS_KEY}\n"
     secrets += "JS_SDK_NPM_TOKEN=${JS_SDK_NPM_TOKEN}\n"
@@ -445,7 +445,7 @@ ansiColor('xterm') {
 
                   sh "npm run tooling -- version set ${version} --last-log"
 
-                  sh 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/package.json packages/node_modules/@webex/*/package.json packages/node_modules/ciscospark/umd/*.js'
+                  sh 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.MD packages/node_modules/@webex/*/package.json packages/node_modules/webex/umd/*.js'
 
                   def commitResult = sh script: "git commit --no-verify -m v${version}", returnStatus: true
                   // commit will fail if we had no files to commit

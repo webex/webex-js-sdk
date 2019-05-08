@@ -1,7 +1,7 @@
 toc:
-  - name: spark-js-sdk
-    file: ciscospark.md
-  - CiscoSpark
+  - name: webex-js-sdk
+    file: webex.md
+  - Webex
   - name: Authorization
   - AuthorizationBrowser
   - AuthorizationNode
@@ -16,7 +16,7 @@ toc:
   - Meetings
   - name: Resources
     description: |
-      These are the resources provided by CiscoSpark instances for interacting with our [developer API](https://developer.webex.com/getting-started.html)
+      These are the resources provided by Webex instances for interacting with our [developer API](https://developer.webex.com/getting-started.html)
   - Memberships
   - Messages
   - People

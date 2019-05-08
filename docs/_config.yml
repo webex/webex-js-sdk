@@ -7,7 +7,7 @@
 
 # Site settings
 title: Cisco Webex JS SDK
-baseurl: "/spark-js-sdk"
+baseurl: "/webex-js-sdk"
 permalink: /:categories/:title/
 url: "https://webex.github.io/"
 
