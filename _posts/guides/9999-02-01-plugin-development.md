@@ -38,7 +38,7 @@ redirect_from:
 
 5. Install dependencies and build packages
 
-    In order to interact with test users, we need a module that is not publicly available. You'll need access to the @ciscospark npm org which means that, for now, only Cisco employees will be able to run tests.
+    In order to interact with test users, we need a module that is not publicly available. You'll need access to the @webex npm org which means that, for now, only Cisco employees will be able to run tests.
 
     ```bash
     npm install

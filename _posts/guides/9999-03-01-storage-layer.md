@@ -15,20 +15,20 @@ Within a spark plugin, the storage layer is available via two properties: `this.
 
 # Adapters
 
-A storage adapter is a prescribed interface to an arbitrary storage backend. Its entry point is `bind()`. Bind accepts one argument, `namespace`, and returns an object containing the methods `del()`, `get()`, and `put()`. These methods are scoped to the `namespace`. For example, the following block would write the value `true` to the key `"proof"` in the `namespace` `"spark-core"`.
+A storage adapter is a prescribed interface to an arbitrary storage backend. Its entry point is `bind()`. Bind accepts one argument, `namespace`, and returns an object containing the methods `del()`, `get()`, and `put()`. These methods are scoped to the `namespace`. For example, the following block would write the value `true` to the key `"proof"` in the `namespace` `"webex-core"`.
 
 ```javascript
-const binding = adapter.bind(`spark-core`);
+const binding = adapter.bind(`webex-core`);
 binding.put("proof", true)
   .then(() => {
-    // true has been written to the key "proof" in the namespace "spark-core"
+    // true has been written to the key "proof" in the namespace "webex-core"
   });
 ```
 
 # Existing Adapters
 
-`spark-core` defines `MemoryStoreAdapter` as an all-purpose, in-memory adapter. `@ciscospark/storage-adapter-local-storage` and `@ciscospark/storage-adapter-local-forage` are available for browser clients. (`ciscospark` uses `@ciscospark/storage-adapter-localstorage` for `boundedStorage` by default).
+`webex-core` defines `MemoryStoreAdapter` as an all-purpose, in-memory adapter. `@webex/storage-adapter-local-storage` and `@webex/storage-adapter-local-forage` are available for browser clients. (`webex` uses `@webex/storage-adapter-localstorage` for `boundedStorage` by default).
 
 # Writing your own adapter
 
-Because of the near-limitless set of options for NodeJS storage backends, we don't provide any such adapters. We do, however, provide a blackbox test suite, `@ciscospark/storage-adapter-spec`, for proving out new adapters.
+Because of the near-limitless set of options for NodeJS storage backends, we don't provide any such adapters. We do, however, provide a blackbox test suite, `@webex/storage-adapter-spec`, for proving out new adapters.
