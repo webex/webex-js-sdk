@@ -59,7 +59,7 @@ async function run(options, files) {
   };
 
   if (options.xunit) {
-    cfg.reporter = 'packages/node_modules/@ciscospark/xunit-with-logs';
+    cfg.reporter = 'packages/node_modules/@webex/xunit-with-logs';
     cfg.reporterOptions = {
       output: options.output
     };

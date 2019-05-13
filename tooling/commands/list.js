@@ -64,11 +64,11 @@ module.exports = {
       // time, that order is based on eyeballing some xml files rather than
       // empirical measurements of overall suite duration.
       const slow = [
-        '@ciscospark/media-engine-webrtc',
-        '@ciscospark/plugin-phone',
-        '@ciscospark/internal-plugin-conversation',
+        '@webex/media-engine-webrtc',
+        '@webex/plugin-phone',
+        '@webex/internal-plugin-conversation',
         'ciscospark',
-        '@ciscospark/plugin-authorization-browser',
+        '@webex/plugin-authorization-browser',
         'samples'
       ];
 

@@ -46,7 +46,7 @@ exports.last = async function last(includeSamples = false) {
   const version = _(
     await Promise.all(packages
       // TODO stop omitting eslint config once it's fully removed from the repo
-      .filter((p) => p !== '@ciscospark/eslint-config')
+      .filter((p) => p !== '@webex/eslint-config')
       .map((v) => getDistTag({packageName: v, includeSamples})))
   )
     .filter()

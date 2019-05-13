@@ -3,7 +3,6 @@ globals:
   PACKAGE_VERSION: false
 root: true
 rules:
-  # These rules should be moved to @ciscospark/eslint-config-base
   no-warning-comments: warn
   require-jsdoc:
     - error
@@ -108,7 +107,7 @@ overrides:
       step: false
   -
     files:
-      - packages/node_modules/@ciscospark/xunit-with-logs
+      - packages/node_modules/@webex/xunit-with-logs
     rules:
       func-names: 0
       no-console: 0
