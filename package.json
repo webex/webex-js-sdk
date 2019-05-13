@@ -251,7 +251,7 @@
     "xhr": "^2.4.0",
     "xtend": "^4.0.1",
     "yakbak": "^3.0.0",
-    "yargs": "^9.0.1"
+    "yargs": "^13.2.4"
   },
   "optionalDependencies": {
     "@ciscospark/test-users-legacy": "^1.1.0"
