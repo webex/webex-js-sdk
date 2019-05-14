@@ -882,18 +882,6 @@
                         </a></li>
                       
                         <li><a
-                          href='#meetingseventmeetingreconnectionfailure'
-                          class='regular pre-open'>
-                          ⓔ meeting:reconnectionFailure
-                        </a></li>
-                      
-                        <li><a
-                          href='#meetingseventmeetingreconnectionfailure'
-                          class='regular pre-open'>
-                          ⓔ meeting:reconnectionFailure
-                        </a></li>
-                      
-                        <li><a
                           href='#meetingseventmediaready'
                           class='regular pre-open'>
                           ⓔ media:ready
@@ -909,6 +897,18 @@
                           href='#meetingseventmeetingreconnectionsuccess'
                           class='regular pre-open'>
                           ⓔ meeting:reconnectionSuccess
+                        </a></li>
+                      
+                        <li><a
+                          href='#meetingseventmeetingreconnectionfailure'
+                          class='regular pre-open'>
+                          ⓔ meeting:reconnectionFailure
+                        </a></li>
+                      
+                        <li><a
+                          href='#meetingseventmeetingreconnectionfailure'
+                          class='regular pre-open'>
+                          ⓔ meeting:reconnectionFailure
                         </a></li>
                       
                     </ul>
@@ -4395,6 +4395,36 @@
               
                 
                 <li><a
+                  href='#listen'
+                  class="">
+                  listen
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#onwebexapievent'
+                  class="">
+                  onWebexApiEvent
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#onwebexapievent'
+                  class="">
+                  onWebexApiEvent
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
                   href='#onwebexapievent'
                   class="">
                   onWebexApiEvent
@@ -4425,19 +4455,9 @@
               
                 
                 <li><a
-                  href='#onconversationactivityevent'
+                  href='#getmessageevent'
                   class="">
-                  onConversationActivityEvent
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#createmessageseventdata'
-                  class="">
-                  createMessagesEventData
+                  getMessageEvent
                   
                 </a>
                 
@@ -4508,6 +4528,16 @@
                   href='#getthisdevice'
                   class="">
                   getThisDevice
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#getroomevent'
+                  class="">
+                  getRoomEvent
                   
                 </a>
                 
@@ -11130,130 +11160,6 @@ Emitted when a meeting was removed from the cache of meetings</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingseventmeetingreconnectionfailure'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meeting:reconnectionFailure</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Ringing Event
-Emitted when a ring should occur or stop, outgoing or incoming</p>
-
-
-  <div class='pre p1 fill-light mt0'>meeting:reconnectionFailure</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          : indicating if it's out or in
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>ringing</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
-          : if it should ring or not
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='meetingseventmeetingreconnectionfailure'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meeting:reconnectionFailure</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Reconnection Failure Event
-Emitted when reconnection of media to the active meeting was successful</p>
-
-
-  <div class='pre p1 fill-light mt0'>meeting:reconnectionFailure</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>)</code>
-          
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
     <div class='border-bottom' id='meetingseventmediaready'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -11415,6 +11321,130 @@ Emitted when reconnection of media to the active meeting was successful</p>
         <div class='space-bottom0'>
           <span class='code bold'>reconnect</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
           
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='meetingseventmeetingreconnectionfailure'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>meeting:reconnectionFailure</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Reconnection Failure Event
+Emitted when reconnection of media to the active meeting was successful</p>
+
+
+  <div class='pre p1 fill-light mt0'>meeting:reconnectionFailure</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>)</code>
+          
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='meetingseventmeetingreconnectionfailure'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>meeting:reconnectionFailure</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Ringing Event
+Emitted when a ring should occur or stop, outgoing or incoming</p>
+
+
+  <div class='pre p1 fill-light mt0'>meeting:reconnectionFailure</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+          : indicating if it's out or in
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>ringing</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
+          : if it should ring or not
+
           
         </div>
       
@@ -13401,7 +13431,7 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> room;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Update Room Example'</span>})
+ciscospark.rooms.update({<span class="hljs-attr">title</span>: <span class="hljs-string">'Update Room Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     room = r;
     room.title = <span class="hljs-string">'Update Room Example (Updated Title)'</span>;
@@ -39656,6 +39686,197 @@ then calculating the actual interval value</p>
   
   <div class='clearfix'>
     
+    <h3 class='fl m0' id='listen'>
+      listen
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Connect to the web socket to listen to incoming messages.</p>
+
+
+  <div class='pre p1 fill-light mt0'>listen(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='onwebexapievent'>
+      onWebexApiEvent
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Trigger a membership related events.</p>
+
+
+  <div class='pre p1 fill-light mt0'>onWebexApiEvent(event: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>event</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
+        -- nothing //linter requires return in JSDoc
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='onwebexapievent'>
+      onWebexApiEvent
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Trigger a "messages" event.</p>
+
+
+  <div class='pre p1 fill-light mt0'>onWebexApiEvent(event: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>event</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
     <h3 class='fl m0' id='onwebexapievent'>
       onWebexApiEvent
     </h3>
@@ -39871,87 +40092,19 @@ adhering to Hydra's Webehook data structure memberships.</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='onconversationactivityevent'>
-      onConversationActivityEvent
+    <h3 class='fl m0' id='getmessageevent'>
+      getMessageEvent
     </h3>
     
     
   </div>
   
 
-  <p>Trigger a "created" event.</p>
+  <p>Constructs the data object for an event on the messages resource,
+adhering to Hydra's Webehook data structure messages.</p>
 
 
-  <div class='pre p1 fill-light mt0'>onConversationActivityEvent(event: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>event</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
-        
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='createmessageseventdata'>
-      createMessagesEventData
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Constructs an event data object for the "created" event,
-adhering to Hydra's Message details.</p>
-
-
-  <div class='pre p1 fill-light mt0'>createMessagesEventData(activity: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
+  <div class='pre p1 fill-light mt0'>getMessageEvent(activity: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, event: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
   
   
 
@@ -39970,6 +40123,15 @@ adhering to Hydra's Message details.</p>
           <div>
             <span class='code bold'>activity</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
 	    from mercury
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>event</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    type of "webhook" event
 
           </div>
           
@@ -40426,6 +40588,85 @@ shares</p>
       <div class='py1 quiet mt1 prose-big'>Returns</div>
       <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>:
         
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='getroomevent'>
+      getRoomEvent
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Constructs the data object for an event on the rooms resource,
+adhering to Hydra's Webehook data structure.</p>
+
+
+  <div class='pre p1 fill-light mt0'>getRoomEvent(activity: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, event: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>activity</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    from mercury
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>event</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    type of "webhook" event
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>:
+        constructed event
 
       
     
