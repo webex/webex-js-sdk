@@ -10,6 +10,21 @@
       "name": "Launch Chrome against localhost",
       "url": "https://localhost:8000",
       "webRoot": "${workspaceFolder}"
+    },
+    {
+      "type": "node",
+      "runtimeVersion": "8.15.1",
+      "request": "launch",
+      "name": "node test messages",
+      "runtimeExecutable": "/Users/jshipher/.nvm/versions/node/v10.10.0/bin/babel-node",
+      //"program": "${workspaceFolder}/tooling/index.js",
+      "runtimeArgs": [
+        "./tooling/index.js",
+        "test",
+        "--package",
+        "@webex/plugin-memberships",
+        "--node"
+      ]
     }
   ]
 }
