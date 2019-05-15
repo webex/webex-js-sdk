@@ -291,5 +291,8 @@
     "ignore": [
       "**/umd/**.js"
     ]
+  },
+  "devDependencies": {
+    "babel-preset-stage-0": "^6.24.1"
   }
 }

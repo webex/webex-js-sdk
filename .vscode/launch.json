@@ -22,7 +22,7 @@
         "./tooling/index.js",
         "test",
         "--package",
-        "@webex/plugin-rooms",
+        "@webex/plugin-memberships",
         "--node"
       ]
     }
