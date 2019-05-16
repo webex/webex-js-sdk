@@ -9,6 +9,7 @@
     "transform-class-properties",
     "transform-export-extensions",
     "lodash",
+    "transform-object-rest-spread"
   ],
   "presets": [
     ["env", {
@@ -20,8 +21,7 @@
         ],
         "node": "6.0"
       }
-    }],
-    "stage-0"
+    }]
   ],
   "sourceMaps": true
 }
