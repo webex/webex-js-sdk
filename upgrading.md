@@ -3,7 +3,7 @@
 ## Environment variables
 Rename these environment variables.
 
-from | to |
+old | new |
 ---- | --
 `CISCOSPARK_ACCESS_TOKEN` | `WEBEX_ACCESS_TOKEN`
 `CISCOSPARK_APPID_ORGID` | `WEBEX_APPID_ORGID`
