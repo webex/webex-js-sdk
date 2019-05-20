@@ -8,7 +8,9 @@
 
 # The Cisco Webex JS SDK
 
-> Cisco Spark is now Webex Teams! You will notice changes to our documentation and packages as we update over the next several weeks. [Read why this is more than just a rebrand.](https://developer.webex.com/blog/blog-details-9738.html)
+> Upgrading from Cisco Spark to Webex?
+> - [Follow this short guide.](upgrading.md)
+> - [Read why this is more than just a rebrand.](https://developer.webex.com/blog/blog-details-9738.html)
 
 This is a monorepo containing all officially maintained Cisco Webex JS SDK modules in the same repo.
 
