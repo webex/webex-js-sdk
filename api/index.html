@@ -882,6 +882,18 @@
                         </a></li>
                       
                         <li><a
+                          href='#meetingseventmediaready'
+                          class='regular pre-open'>
+                          ⓔ media:ready
+                        </a></li>
+                      
+                        <li><a
+                          href='#meetingseventmediastopped'
+                          class='regular pre-open'>
+                          ⓔ media:stopped
+                        </a></li>
+                      
+                        <li><a
                           href='#meetingseventmeetingreconnectionsuccess'
                           class='regular pre-open'>
                           ⓔ meeting:reconnectionSuccess
@@ -897,18 +909,6 @@
                           href='#meetingseventmeetingreconnectionfailure'
                           class='regular pre-open'>
                           ⓔ meeting:reconnectionFailure
-                        </a></li>
-                      
-                        <li><a
-                          href='#meetingseventmediastopped'
-                          class='regular pre-open'>
-                          ⓔ media:stopped
-                        </a></li>
-                      
-                        <li><a
-                          href='#meetingseventmediaready'
-                          class='regular pre-open'>
-                          ⓔ media:ready
                         </a></li>
                       
                     </ul>
@@ -9859,11 +9859,11 @@ participating the call.</p>
   </div>
   
 
-  <p>Polls an <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a> once per second and emits its <a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a>
+  <p>Polls an <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a> once per second and emits its
 <a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a></p>
 
 
-  <div class='pre p1 fill-light mt0'>new StatsStream(config: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</div>
+  <div class='pre p1 fill-light mt0'>new StatsStream(pc: <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</div>
   
   
     <p>
@@ -9887,8 +9887,7 @@ participating the call.</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>config</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
-            = <code>{}</code>)</code>
+            <span class='code bold'>pc</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</code>
 	    
           </div>
           
@@ -9928,11 +9927,11 @@ participating the call.</p>
   </div>
   
 
-  <p>Polls an <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a> once per second and emits its
+  <p>Polls an <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a> once per second and emits its <a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a>
 <a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a></p>
 
 
-  <div class='pre p1 fill-light mt0'>new StatsStream(pc: <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</div>
+  <div class='pre p1 fill-light mt0'>new StatsStream(config: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</div>
   
   
     <p>
@@ -9956,7 +9955,8 @@ participating the call.</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>pc</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</code>
+            <span class='code bold'>config</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+            = <code>{}</code>)</code>
 	    
           </div>
           
@@ -11160,6 +11160,131 @@ Emitted when the meetings instance on spark is ready</p>
       </div>
     </div>
   
+    <div class='border-bottom' id='meetingseventmediaready'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>media:ready</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Media Ready Event
+Emitted when a stream is ready to be rendered</p>
+
+
+  <div class='pre p1 fill-light mt0'>media:ready</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>stream</span> <code class='quiet'>(MediaStream)</code>
+          : the media stream
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+          : what type of stream, remote, local
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='meetingseventmediastopped'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>media:stopped</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Media Stopped Event
+Emitted when a stream has stopped sending</p>
+
+
+  <div class='pre p1 fill-light mt0'>media:stopped</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+          : what type of stream, remote, local
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='meetingseventmeetingreconnectionsuccess'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -11319,131 +11444,6 @@ Emitted when a ring should occur or stop, outgoing or incoming</p>
         <div class='space-bottom0'>
           <span class='code bold'>ringing</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
           : if it should ring or not
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='meetingseventmediastopped'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>media:stopped</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Media Stopped Event
-Emitted when a stream has stopped sending</p>
-
-
-  <div class='pre p1 fill-light mt0'>media:stopped</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          : what type of stream, remote, local
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='meetingseventmediaready'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>media:ready</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Media Ready Event
-Emitted when a stream is ready to be rendered</p>
-
-
-  <div class='pre p1 fill-light mt0'>media:ready</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>stream</span> <code class='quiet'>(MediaStream)</code>
-          : the media stream
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          : what type of stream, remote, local
 
           
         </div>
