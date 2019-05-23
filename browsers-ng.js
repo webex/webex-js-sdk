@@ -78,6 +78,12 @@ module.exports = function(packageName, argv) {
       }
     }
   }
+  else if (argv.karmaDebug) {
+    browsers = {
+      Chrome: {},
+      Firefox: {}
+    };
+  }
   else {
     browsers = {
       ChromeHeadless: {},
