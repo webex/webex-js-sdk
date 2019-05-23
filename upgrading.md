@@ -1,4 +1,6 @@
-# Rename
+# Upgrading to Webex
+
+Follow this guide to upgrade from Cisco Spark to Webex.
 
 ## Environment variables
 Rename these environment variables.
