@@ -261,15 +261,15 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#phoneeventcallincoming'
-                          class='regular pre-open'>
-                          ⓔ call:incoming
-                        </a></li>
-                      
-                        <li><a
                           href='#phoneeventcallcreated'
                           class='regular pre-open'>
                           ⓔ call:created
+                        </a></li>
+                      
+                        <li><a
+                          href='#phoneeventcallincoming'
+                          class='regular pre-open'>
+                          ⓔ call:incoming
                         </a></li>
                       
                     </ul>
@@ -882,15 +882,15 @@
                         </a></li>
                       
                         <li><a
-                          href='#meetingseventmediaready'
-                          class='regular pre-open'>
-                          ⓔ media:ready
-                        </a></li>
-                      
-                        <li><a
                           href='#meetingseventmediastopped'
                           class='regular pre-open'>
                           ⓔ media:stopped
+                        </a></li>
+                      
+                        <li><a
+                          href='#meetingseventmediaready'
+                          class='regular pre-open'>
+                          ⓔ media:ready
                         </a></li>
                       
                         <li><a
@@ -960,6 +960,12 @@
                       </a></li>
                       
                       <li><a
+                        href='#membershipslistwithreadstatus'
+                        class='regular pre-open'>
+                        #listWithReadStatus
+                      </a></li>
+                      
+                      <li><a
                         href='#membershipsremove'
                         class='regular pre-open'>
                         #remove
@@ -1003,12 +1009,6 @@
                         href='#messagesget'
                         class='regular pre-open'>
                         #get
-                      </a></li>
-                      
-                      <li><a
-                        href='#messagesmarkasread'
-                        class='regular pre-open'>
-                        #markAsRead
                       </a></li>
                       
                       <li><a
@@ -1095,6 +1095,12 @@
                         href='#roomslist'
                         class='regular pre-open'>
                         #list
+                      </a></li>
+                      
+                      <li><a
+                        href='#roomslistwithreadstatus'
+                        class='regular pre-open'>
+                        #listWithReadStatus
                       </a></li>
                       
                       <li><a
@@ -4445,6 +4451,16 @@
               
                 
                 <li><a
+                  href='#updatelastseen'
+                  class="">
+                  updateLastSeen
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
                   href='#initialize'
                   class="">
                   initialize
@@ -6315,6 +6331,65 @@ new one will be created based on options.constraints
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
+    <div class='border-bottom' id='phoneeventcallcreated'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>call:created</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Call Created Event</p>
+<p>Emitted when a call begins outside of the sdk</p>
+
+
+  <div class='pre p1 fill-light mt0'>call:created</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
+          : The created call
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='phoneeventcallincoming'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -6352,65 +6427,6 @@ there are active calls.</p>
         <div class='space-bottom0'>
           <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
           : The incoming call
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='phoneeventcallcreated'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>call:created</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Call Created Event</p>
-<p>Emitted when a call begins outside of the sdk</p>
-
-
-  <div class='pre p1 fill-light mt0'>call:created</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
-          : The created call
 
           
         </div>
@@ -11160,6 +11176,65 @@ Emitted when a meeting was removed from the cache of meetings</p>
       </div>
     </div>
   
+    <div class='border-bottom' id='meetingseventmediastopped'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>media:stopped</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Media Stopped Event
+Emitted when a stream has stopped sending</p>
+
+
+  <div class='pre p1 fill-light mt0'>media:stopped</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+          : what type of stream, remote, local
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='meetingseventmediaready'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -11199,65 +11274,6 @@ Emitted when a stream is ready to be rendered</p>
 
           
         </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          : what type of stream, remote, local
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='meetingseventmediastopped'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>media:stopped</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Media Stopped Event
-Emitted when a stream has stopped sending</p>
-
-
-  <div class='pre p1 fill-light mt0'>media:stopped</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
       
         <div class='space-bottom0'>
           <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
@@ -11355,8 +11371,8 @@ Emitted when reconnection of media to the active meeting was successful</p>
 
   
 
-  <p>Reconnection Failure Event
-Emitted when reconnection of media to the active meeting was successful</p>
+  <p>Ringing Event
+Emitted when a ring should occur or stop, outgoing or incoming</p>
 
 
   <div class='pre p1 fill-light mt0'>meeting:reconnectionFailure</div>
@@ -11377,8 +11393,16 @@ Emitted when reconnection of media to the active meeting was successful</p>
     <div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>)</code>
+          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+          : indicating if it's out or in
+
           
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>ringing</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
+          : if it should ring or not
+
           
         </div>
       
@@ -11413,8 +11437,8 @@ Emitted when reconnection of media to the active meeting was successful</p>
 
   
 
-  <p>Ringing Event
-Emitted when a ring should occur or stop, outgoing or incoming</p>
+  <p>Reconnection Failure Event
+Emitted when reconnection of media to the active meeting was successful</p>
 
 
   <div class='pre p1 fill-light mt0'>meeting:reconnectionFailure</div>
@@ -11435,16 +11459,8 @@ Emitted when a ring should occur or stop, outgoing or incoming</p>
     <div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          : indicating if it's out or in
-
+          <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>)</code>
           
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>ringing</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
-          : if it should ring or not
-
           
         </div>
       
@@ -11851,6 +11867,111 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   });
   <span class="hljs-comment">// =&gt; success</span></pre>
     
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='membershipslistwithreadstatus'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>listWithReadStatus(options)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Returns a list of memberships with details about the lastSeenId for each
+user, allowing a client to indicate "read status" in a space GUI</p>
+<p>This differs from the memberships.list() function in the following ways:
+-- it accepts only a room or object with a valid roomId
+-- no other options, eg: max, are considered
+-- results are not paginated
+-- memberships in the return do not include the
+"created", "isRoomHidden", fields
+-- memberships in the return do include the new
+"lastSeenId", and "lastSeenDate" fields
+these will not exist if the member has never "seen" the space</p>
+<p>In general this function should be used only when the
+client needs to access read status info.</p>
+<p>This function may be deprecated when this info is provided in the membership
+objects returned in the list function.</p>
+
+
+  <div class='pre p1 fill-light mt0'>listWithReadStatus(options: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;MembershipObjectList></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    
+          </div>
+          
+          <table class='mt1 mb2 fixed-table h5 col-12'>
+            <colgroup>
+              <col width='30%' />
+              <col width='70%' />
+            </colgroup>
+            <thead>
+              <tr class='bold fill-light'>
+                <th>Name</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody class='mt1'>
+              
+                <tr>
+  <td class='break-word'><span class='code bold'>options.roomId</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
+  </td>
+  <td class='break-word'><span></span></td>
+</tr>
+
+
+              
+            </tbody>
+          </table>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;MembershipObjectList></code>:
+        
+
+      
+    
+  
+
+  
+
   
 
   
@@ -12280,73 +12401,6 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   });
   <span class="hljs-comment">// =&gt; success</span></pre>
     
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='messagesmarkasread'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>markAsRead(message)</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Marks a message as read.</p>
-
-
-  <div class='pre p1 fill-light mt0'>markAsRead(message: <a href="#messageobject">MessageObject</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#messageobject">MessageObject</a>></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>message</span> <code class='quiet'>(<a href="#messageobject">MessageObject</a>)</code>
-	    
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#messageobject">MessageObject</a>></code>:
-        
-
-      
-    
-  
-
-  
-
   
 
   
@@ -13268,6 +13322,81 @@ response.
   });
   <span class="hljs-comment">// =&gt; success</span></pre>
     
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='roomslistwithreadstatus'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>listWithReadStatus()</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Returns a list of rooms with details about the data of the last
+actvity in the space, and the date of the users last presences in
+the room.</p>
+<p>For spaces where lastActivityDate > lastSeenDate the space
+can be considerd to be "unread"</p>
+<p>This differs from the rooms.list() function in the following ways:
+-- when called with no parameters it returns an array of all
+spaces that the user is a member of
+-- no other options, eg: max, are considered
+-- pagination is not supported. ALL rooms are returned which
+can result in a large payload
+-- only "id", "type", "lastActivityDate", and "lastSeenDate" are
+guaranteed to be available for each room in the list
+-- "title" is returned for group spaces only to improve
+efficiency.  Clients that detect unread status for spaces
+with no displayName can query the space details by id</p>
+<p>In general this function should be used only when the
+client needs to access read status info, for example on
+startup.   After startup track message and membership:seen
+events to maintain read status client side.</p>
+<p>This function may be deprecated when this info is provided in the membership
+objects returned in the list function.</p>
+
+
+  <div class='pre p1 fill-light mt0'>listWithReadStatus(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;RoomObjectList></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;RoomObjectList></code>:
+        
+
+      
+    
+  
+
+  
+
   
 
   
@@ -40000,6 +40129,74 @@ adhering to Hydra's Webehook data structure memberships.</p>
       <div class='py1 quiet mt1 prose-big'>Returns</div>
       <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>:
         constructed event
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='updatelastseen'>
+      updateLastSeen
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Updates the lastSeenId attribute of a membership</p>
+
+
+  <div class='pre p1 fill-light mt0'>updateLastSeen(message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#membershipobject">MembershipObject</a>></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>message</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#membershipobject">MembershipObject</a>></code>:
+        
 
       
     
