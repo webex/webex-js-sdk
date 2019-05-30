@@ -55,7 +55,7 @@ exports.buildSamples = async function buildSamples() {
 
   // reminder: samples:build calls this script, not webpack, hence we must call
   // webpack here
-  await exec(`webpack ${process.env.NODE_ENV === 'production' ? '-p' : ''} --env=${process.env.NODE_ENV || 'development'}`);
+  await exec(`webpack ${process.env.NODE_ENV === 'production' ? '-p' : ''} --env=${(process.env.JENKINS || process.env.CI) ? 'integration' : process.env.NODE_ENV || 'development'}`);
   await rename('bundle.js', 'packages/node_modules/samples/bundle.js');
   await rename('bundle.js.map', 'packages/node_modules/samples/bundle.js.map');
 
