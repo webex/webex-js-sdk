@@ -52,10 +52,11 @@ exports.buildPackage = async function buildPackage(packageName) {
 
 exports.buildSamples = async function buildSamples() {
   await rimraf('packages/node_modules/samples/bundle*');
+  await rimraf('packages/node_modules/samples/meetings.bundle*');
 
   // reminder: samples:build calls this script, not webpack, hence we must call
   // webpack here
-  await exec(`webpack ${process.env.NODE_ENV === 'production' ? '-p' : ''} --env=${(process.env.JENKINS || process.env.CI) ? 'integration' : process.env.NODE_ENV || 'development'}`);
+  await exec(`webpack ${process.env.NODE_ENV === 'production' ? '-p' : '-d'}`);
   await rename('bundle.js', 'packages/node_modules/samples/bundle.js');
   await rename('bundle.js.map', 'packages/node_modules/samples/bundle.js.map');
 

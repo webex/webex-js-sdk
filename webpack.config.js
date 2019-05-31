@@ -7,12 +7,12 @@ const {DefinePlugin, EnvironmentPlugin} = require('webpack');
 dotenv.config();
 dotenv.config({path: '.env.default'});
 
-module.exports = (env = process.env.NODE_ENV || 'development', argv = {mode: ''}) => ({
+module.exports = (env = process.env.NODE_ENV || 'development') => ({
   entry: {
     bundle: './packages/node_modules/ciscospark',
     'meetings.bundle': `${path.resolve(__dirname)}/packages/node_modules/ciscospark/meetings.js`
   },
-  mode: argv.mode || 'development',
+  mode: env === 'production' ? 'production' : 'development',
   output: {
     filename: '[name].js',
     library: 'ciscospark',
@@ -60,29 +60,30 @@ module.exports = (env = process.env.NODE_ENV || 'development', argv = {mode: ''}
   },
   plugins: [
     // If in integration and building for production (not testing) use production URLS
-    ...(env === 'integration' && typeof argv.mode !== 'undefined' ?
+    ...(env === 'test' ?
       [
         // Environment Plugin doesn't override already defined Environment Variables (i.e. DotENV)
         new EnvironmentPlugin({
           CISCOSPARK_LOG_LEVEL: 'log',
           DEBUG: '',
           NODE_ENV: 'production',
-          // The follow environment variables are specific to our continuous
+          // The following environment variables are specific to our continuous
           // integration process and should not be used in general
-          // Also, yes, CONVERSATION_SERVICE does not end in URL
-          CONVERSATION_SERVICE: process.env.CONVERSATION_SERVICE_URL || 'https://conv-a.wbx2.com/conversation/api/v1',
-          WDM_SERVICE_URL: 'https://wdm-a.wbx2.com/wdm/api/v1',
-          HYDRA_SERVICE_URL: 'https://api.ciscospark.com/v1',
-          ATLAS_SERVICE_URL: 'https://atlas-a.wbx2.com/admin/api/v1',
+          ACL_SERVICE_URL: 'https://acl-intb.ciscospark.com/acl/api/v1',
+          ATLAS_SERVICE_URL: 'https://atlas-intb.ciscospark.com/admin/api/v1',
+          CONVERSATION_SERVICE: 'https://conversation-intb.ciscospark.com/conversation/api/v1',
+          ENCRYPTION_SERVICE_URL: 'https://encryption-intb.ciscospark.com/encryption/api/v1',
+          HYDRA_SERVICE_URL: 'https://apialpha.ciscospark.com/v1/',
           IDBROKER_BASE_URL: 'https://idbrokerbts.webex.com',
-          IDENTITY_BASE_URL: 'https://identitybts.webex.com'
+          IDENTITY_BASE_URL: 'https://identitybts.webex.com',
+          WDM_SERVICE_URL: 'https://wdm-intb.ciscospark.com/wdm/api/v1',
+          WHISTLER_API_SERVICE_URL: 'https://whistler.onint.ciscospark.com/api/v1'
         })
-      ] :
-      [
+      ] : [
         new EnvironmentPlugin({
           CISCOSPARK_LOG_LEVEL: 'log',
           DEBUG: '',
-          NODE_ENV: argv && argv.mode ? argv.mode : env
+          NODE_ENV: env === 'production' ? 'production' : 'development'
         }),
         // This allows overwriting of process.env
         new DefinePlugin({
