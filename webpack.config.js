@@ -18,7 +18,7 @@ module.exports = (env = process.env.NODE_ENV || 'development') => ({
     library: 'ciscospark',
     libraryTarget: 'var',
     sourceMapFilename: '[file].map',
-    path: __dirname
+    path: `${path.resolve(__dirname)}/packages/node_modules/samples`
   },
   devtool: env === 'production' ? 'source-map' : 'cheap-module-source-map',
   devServer: {

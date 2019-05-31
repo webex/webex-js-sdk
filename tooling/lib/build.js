@@ -17,7 +17,7 @@ const humanize = require('humanize-string');
 
 const path = require('path');
 
-const {rename, writeFile} = require('fs-promise');
+const {writeFile} = require('fs-promise');
 
 const {glob} = require('../util/package');
 
@@ -57,9 +57,6 @@ exports.buildSamples = async function buildSamples() {
   // reminder: samples:build calls this script, not webpack, hence we must call
   // webpack here
   await exec(`webpack ${process.env.NODE_ENV === 'production' ? '-p' : '-d'}`);
-  await rename('bundle.js', 'packages/node_modules/samples/bundle.js');
-  await rename('bundle.js.map', 'packages/node_modules/samples/bundle.js.map');
-
   const samples = await g('browser-*', {cwd: path.resolve(process.cwd(), 'packages/node_modules/samples')});
 
   const out = `<!DOCTYPE html>
