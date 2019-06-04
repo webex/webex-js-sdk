@@ -255,7 +255,7 @@
     "yargs": "^9.0.1"
   },
   "optionalDependencies": {
-    "@ciscospark/test-users-legacy": "^1.1.0"
+    "@ciscospark/test-users-legacy": "^1.2.0"
   },
   "browser": {
     "mmmagic": false,

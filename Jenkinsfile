@@ -132,9 +132,9 @@ def generateSecretsFile = { ->
   ]) {
     def secrets = ""
     secrets += "COMMON_IDENTITY_CLIENT_SECRET=${COMMON_IDENTITY_CLIENT_SECRET}\n"
-    secrets += "CISCOSPARK_APPID_ORGID=${WEBEX_APPID_ORGID}\n"
-    secrets += "CISCOSPARK_APPID_SECRET=${WEBEX_APPID_SECRET}\n"
-    secrets += "CISCOSPARK_CLIENT_SECRET=${WEBEX_CLIENT_SECRET}\n"
+    secrets += "WEBEX_APPID_ORGID=${WEBEX_APPID_ORGID}\n"
+    secrets += "WEBEX_APPID_SECRET=${WEBEX_APPID_SECRET}\n"
+    secrets += "WEBEX_CLIENT_SECRET=${WEBEX_CLIENT_SECRET}\n"
     secrets += "SAUCE_USERNAME=${SAUCE_USERNAME}\n"
     secrets += "SAUCE_ACCESS_KEY=${SAUCE_ACCESS_KEY}\n"
     secrets += "JS_SDK_NPM_TOKEN=${JS_SDK_NPM_TOKEN}\n"
