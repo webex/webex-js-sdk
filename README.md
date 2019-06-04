@@ -163,17 +163,9 @@ npm install
 npm run samples:serve
 ```
 
-You'll be able to load the samples by visiting `https://localhost:8000/packages/node_modules/samples/<PACKAGE NAME>`.
-
-### Available Samples
-
-| Sample | App Link | Source |
-| ------ | -------- | ------ |
-| Implicit Grant Flow | [local app](https://localhost:8000/packages/node_modules/samples/browser-auth-implicit) | [code](./packages/node_modules/samples/browser-auth-implicit) |
-| Single Party Calling | [local app](https://localhost:8000/packages/node_modules/samples/browser-single-party-call) | [code](./packages/node_modules/samples/browser-single-party-call) |
-| Single Party Calling with Mute | [local app](https://localhost:8000/packages/node_modules/samples/browser-single-party-call-with-mute) | [code](./packages/node_modules/samples/browser-single-party-call-with-mute) |
-| Multi Party Calling | [local app](https://localhost:8000/packages/node_modules/samples/browser-multi-party-call) | [code](./packages/node_modules/samples/browser-multi-party-call) |
-| Call with Content Sharing | [local app](https://localhost:8000/packages/node_modules/samples/browser-call-with-screenshare) | [code](./packages/node_modules/samples/browser-call-with-screenshare) |
+Samples | localhost | Hosted
+--- | --- | ---
+[Samples code](./packages/node_modules/samples/) | https://localhost:8000/ | https://js.samples.s4d.io/
 
 ## Contribute
 
