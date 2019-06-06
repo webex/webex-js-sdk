@@ -442,10 +442,12 @@ ansiColor('xterm') {
                   sh 'npm run build'
                   // add version number here too as a just in case
                   sh "npm run build:script -- --versionNumber=${version}"
+                  // build docs here since they need to be added with `git add`
+                  sh 'npm run build:docs'
 
                   sh "npm run tooling -- version set ${version} --last-log"
 
-                  sh 'git add packages/node_modules/*/package.json packages/node_modules/@webex/*/package.json packages/node_modules/ciscospark/umd/*.js'
+                  sh 'git add packages/node_modules/*/package.json packages/node_modules/@webex/*/package.json docs/ packages/node_modules/ciscospark/umd/*.js'
 
                   def commitResult = sh script: "git commit --no-verify -m v${version}", returnStatus: true
                   // commit will fail if we had no files to commit
