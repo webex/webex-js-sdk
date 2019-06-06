@@ -84,11 +84,10 @@
     "serve:samples": "echo 'Deprecated. Please use npm run samples:serve'; npm run --silent samples:serve",
     "test:samples": "echo 'Deprecated. Please use npm run samples:test'; npm run --silent samples:test",
     "samples:build": "babel-node ./tooling/index.js build --only-samples",
-    "samples:serve": "webpack-dev-server",
-    "samples:meetings": "npm run serve:package -- --env.package @webex/plugin-meetings --env.entry ./ciscospark.js",
+    "samples:serve": "webpack-dev-server -d",
     "samples:devicemanager": "npm run serve:package -- --env.package @webex/plugin-device-manager --env.entry ./ciscospark.js",
     "serve:package": "webpack-dev-server --config webpack/webpack.config.js --hot --inline --history-api-fallback",
-    "presamples:test": "rimraf bundle.js bundle.js.map",
+    "presamples:test": "rimraf bundle.js bundle.js.map meetings.bundle.js meetings.bundle.js.map",
     "samples:test": "NODE_ENV=test wdio",
     "tooling": "babel-node ./tooling/index.js"
   },

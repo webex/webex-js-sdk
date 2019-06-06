@@ -13,12 +13,8 @@ dotenv.config();
 dotenv.config({path: '.env.default'});
 
 const {inject} = require('./tooling/lib/openh264');
-const webpackConfig = require('./webpack.config')(
-  process.env.JENKINS || process.env.CI ?
-    'production' :
-    process.env.NODE_ENV || ''
-);
-
+// Webdriver is only called for testing samples so force integration URLs w/ Webpack
+const webpackConfig = require('./webpack.config')('test');
 
 require('babel-register')({
   only: [
