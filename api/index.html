@@ -261,15 +261,15 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#phoneeventcallincoming'
-                          class='regular pre-open'>
-                          ⓔ call:incoming
-                        </a></li>
-                      
-                        <li><a
                           href='#phoneeventcallcreated'
                           class='regular pre-open'>
                           ⓔ call:created
+                        </a></li>
+                      
+                        <li><a
+                          href='#phoneeventcallincoming'
+                          class='regular pre-open'>
+                          ⓔ call:incoming
                         </a></li>
                       
                     </ul>
@@ -550,9 +550,27 @@
                         </a></li>
                       
                         <li><a
+                          href='#calleventterminating'
+                          class='regular pre-open'>
+                          ⓔ terminating
+                        </a></li>
+                      
+                        <li><a
                           href='#calleventconnected'
                           class='regular pre-open'>
                           ⓔ connected
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventdisconnected'
+                          class='regular pre-open'>
+                          ⓔ disconnected
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventactive'
+                          class='regular pre-open'>
+                          ⓔ active
                         </a></li>
                       
                         <li><a
@@ -565,12 +583,6 @@
                           href='#calleventinactive'
                           class='regular pre-open'>
                           ⓔ inactive
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventterminating'
-                          class='regular pre-open'>
-                          ⓔ terminating
                         </a></li>
                       
                         <li><a
@@ -592,9 +604,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventactive'
+                          href='#calleventmembershipnotified'
                           class='regular pre-open'>
-                          ⓔ active
+                          ⓔ membership:notified
                         </a></li>
                       
                         <li><a
@@ -607,18 +619,6 @@
                           href='#calleventmembershipdeclined'
                           class='regular pre-open'>
                           ⓔ membership:declined
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventmembershipdisconnected'
-                          class='regular pre-open'>
-                          ⓔ membership:disconnected
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventdisconnected'
-                          class='regular pre-open'>
-                          ⓔ disconnected
                         </a></li>
                       
                         <li><a
@@ -646,9 +646,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventmembershipnotified'
+                          href='#calleventmembershipdisconnected'
                           class='regular pre-open'>
-                          ⓔ membership:notified
+                          ⓔ membership:disconnected
                         </a></li>
                       
                     </ul>
@@ -882,18 +882,6 @@
                         </a></li>
                       
                         <li><a
-                          href='#meetingseventmediaready'
-                          class='regular pre-open'>
-                          ⓔ media:ready
-                        </a></li>
-                      
-                        <li><a
-                          href='#meetingseventmediastopped'
-                          class='regular pre-open'>
-                          ⓔ media:stopped
-                        </a></li>
-                      
-                        <li><a
                           href='#meetingseventmeetingreconnectionsuccess'
                           class='regular pre-open'>
                           ⓔ meeting:reconnectionSuccess
@@ -909,6 +897,18 @@
                           href='#meetingseventmeetingreconnectionfailure'
                           class='regular pre-open'>
                           ⓔ meeting:reconnectionFailure
+                        </a></li>
+                      
+                        <li><a
+                          href='#meetingseventmediastopped'
+                          class='regular pre-open'>
+                          ⓔ media:stopped
+                        </a></li>
+                      
+                        <li><a
+                          href='#meetingseventmediaready'
+                          class='regular pre-open'>
+                          ⓔ media:ready
                         </a></li>
                       
                     </ul>
@@ -6245,6 +6245,65 @@ new one will be created based on options.constraints
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
+    <div class='border-bottom' id='phoneeventcallcreated'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>call:created</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Call Created Event</p>
+<p>Emitted when a call begins outside of the sdk</p>
+
+
+  <div class='pre p1 fill-light mt0'>call:created</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
+          : The created call
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='phoneeventcallincoming'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -6282,65 +6341,6 @@ there are active calls.</p>
         <div class='space-bottom0'>
           <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
           : The incoming call
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='phoneeventcallcreated'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>call:created</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Call Created Event</p>
-<p>Emitted when a call begins outside of the sdk</p>
-
-
-  <div class='pre p1 fill-light mt0'>call:created</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
-          : The created call
 
           
         </div>
@@ -8644,6 +8644,52 @@ enabled; instead, listen for
       </div>
     </div>
   
+    <div class='border-bottom' id='calleventterminating'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>terminating</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+
+
+  <div class='pre p1 fill-light mt0'>terminating</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='calleventconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -8668,6 +8714,102 @@ enabled; instead, listen for
 enabled; instead, listen for 
 <a href="Call.active">Call.active</a>
 </div>
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventdisconnected'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>disconnected</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>disconnected</div>
+  
+  
+
+  <div>Deprecated: with 
+<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
+
+enabled; instead, listen for 
+<a href="Call.inactive">Call.inactive</a>
+</div>
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventactive'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>active</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+
+
+  <div class='pre p1 fill-light mt0'>active</div>
+  
+  
+
+  
   
   
   
@@ -8756,52 +8898,6 @@ enabled; instead, listen for
 
 
   <div class='pre p1 fill-light mt0'>inactive</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventterminating'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>terminating</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
-
-
-  <div class='pre p1 fill-light mt0'>terminating</div>
   
   
 
@@ -8967,11 +9063,11 @@ enabled; instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventactive'>
+    <div class='border-bottom' id='calleventmembershipnotified'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>active</span>
+            <span class='code strong strong truncate'>membership:notified</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -8979,10 +9075,14 @@ enabled; instead, listen for
 
   
 
-  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+  <p>This replaces the <a href="Call.ringing">Call.ringing</a> event, but note that it's
+subtly different. <a href="Call.ringing">Call.ringing</a> is emitted when the remote party calls
+<a href="Call#acknowledge()">Call#acknowledge()</a> whereas <a href="Call.membership:notified">Call.membership:notified</a> emits
+shortly after (but as a direct result of) locally calling
+<a href="Phone#dial()">Phone#dial()</a></p>
 
 
-  <div class='pre p1 fill-light mt0'>active</div>
+  <div class='pre p1 fill-light mt0'>membership:notified</div>
   
   
 
@@ -9077,101 +9177,6 @@ enabled; instead, listen for
   
 
   
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventmembershipdisconnected'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:disconnected</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>membership:disconnected</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventdisconnected'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>disconnected</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>disconnected</div>
-  
-  
-
-  <div>Deprecated: with 
-<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
-
-enabled; instead, listen for 
-<a href="Call.inactive">Call.inactive</a>
-</div>
   
   
   
@@ -9384,11 +9389,11 @@ participating the call.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventmembershipnotified'>
+    <div class='border-bottom' id='calleventmembershipdisconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:notified</span>
+            <span class='code strong strong truncate'>membership:disconnected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -9396,14 +9401,9 @@ participating the call.</p>
 
   
 
-  <p>This replaces the <a href="Call.ringing">Call.ringing</a> event, but note that it's
-subtly different. <a href="Call.ringing">Call.ringing</a> is emitted when the remote party calls
-<a href="Call#acknowledge()">Call#acknowledge()</a> whereas <a href="Call.membership:notified">Call.membership:notified</a> emits
-shortly after (but as a direct result of) locally calling
-<a href="Phone#dial()">Phone#dial()</a></p>
+  
 
-
-  <div class='pre p1 fill-light mt0'>membership:notified</div>
+  <div class='pre p1 fill-light mt0'>membership:disconnected</div>
   
   
 
@@ -9926,7 +9926,7 @@ shortly after (but as a direct result of) locally calling
   </div>
   
 
-  <p>Reforms the interesting data from an RTCStatsReport to a new format</p>
+  <p>Reforms the interesting data from an RTCStatsReport into something grokkable</p>
 
 
   <div class='pre p1 fill-light mt0'>new StatsFilter()</div>
@@ -9980,7 +9980,7 @@ shortly after (but as a direct result of) locally calling
   </div>
   
 
-  <p>Reforms the interesting data from an RTCStatsReport into something grokkable</p>
+  <p>Reforms the interesting data from an RTCStatsReport to a new format</p>
 
 
   <div class='pre p1 fill-light mt0'>new StatsFilter()</div>
@@ -11090,131 +11090,6 @@ Emitted when the meetings instance on spark is ready</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingseventmediaready'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>media:ready</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Media Ready Event
-Emitted when a stream is ready to be rendered</p>
-
-
-  <div class='pre p1 fill-light mt0'>media:ready</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>stream</span> <code class='quiet'>(MediaStream)</code>
-          : the media stream
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          : what type of stream, remote, local
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='meetingseventmediastopped'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>media:stopped</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Media Stopped Event
-Emitted when a stream has stopped sending</p>
-
-
-  <div class='pre p1 fill-light mt0'>media:stopped</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          : what type of stream, remote, local
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
     <div class='border-bottom' id='meetingseventmeetingreconnectionsuccess'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -11374,6 +11249,131 @@ Emitted when a ring should occur or stop, outgoing or incoming</p>
         <div class='space-bottom0'>
           <span class='code bold'>ringing</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
           : if it should ring or not
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='meetingseventmediastopped'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>media:stopped</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Media Stopped Event
+Emitted when a stream has stopped sending</p>
+
+
+  <div class='pre p1 fill-light mt0'>media:stopped</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+          : what type of stream, remote, local
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='meetingseventmediaready'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>media:ready</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Media Ready Event
+Emitted when a stream is ready to be rendered</p>
+
+
+  <div class='pre p1 fill-light mt0'>media:ready</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>stream</span> <code class='quiet'>(MediaStream)</code>
+          : the media stream
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+          : what type of stream, remote, local
 
           
         </div>
