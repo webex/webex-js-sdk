@@ -56,7 +56,7 @@ module.exports = {
       }
 
       // Make sure we always test the samples when the public sdk changes.
-      if (packages.includes('ciscospark') && packages.includes('webex') && !packages.includes('samples')) {
+      if (packages.includes('webex') && !packages.includes('samples')) {
         packages.push('samples');
       }
 

@@ -36,4 +36,6 @@ tasks/selenium
 browsers.processed.js
 bundle.js
 bundle.js.map
+meetings.bundle.js
+meetings.bundle.js.map
 packages/node_modules/samples/index.html
