@@ -4,9 +4,11 @@
 
 const debug = require('debug')('tooling:version');
 const _ = require('lodash');
+
 const {getDistTag} = require('./npm');
 const {list} = require('./package');
 const {exec} = require('./async');
+
 const {read, write} = require('../util/package');
 const updated = require('./updated');
 const git = require('./git');
@@ -191,7 +193,7 @@ async function checkLastCommit() {
  */
 async function hasBreakingChange() {
   debug('checking for breaking changes between HEAD and upstream/master');
-  const bodies = await exec('git log upstream/master.. --format=%b');
+  const {stdout: bodies} = await exec('git log upstream/master.. --format=%b');
 
   if (/^BREAKING CHANGE:/.test(bodies)) {
     debug('found breaking change');
@@ -208,7 +210,7 @@ async function hasBreakingChange() {
  * @returns {Promise<boolean>}
  */
 async function getChangeType() {
-  const subjects = await exec('git log upstream/master.. --format=%s');
+  const {stdout: subjects} = await exec('git log upstream/master.. --format=%s');
 
   for (const subject of subjects.split('\n')) {
     if (subject.startsWith('feat')) {

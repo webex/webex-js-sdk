@@ -3,7 +3,9 @@
  */
 
 const debug = require('debug')('tooling:npm');
+
 const {read} = require('../util/package');
+
 const {exec} = require('./async');
 
 /**
@@ -32,7 +34,7 @@ exports.getDistTag = async function getDistTag({packageName, includeSamples = fa
   if (!pkg.private) {
     debug(`fetching dist-tag for ${packageName}`);
     try {
-      const dt = await exec(`npm dist-tag ls ${packageName}`);
+      const {stdout: dt} = await exec(`npm dist-tag ls ${packageName}`);
 
       if (!dt) {
         debug(`no dist-tags found for ${packageName}`);

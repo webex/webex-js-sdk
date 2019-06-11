@@ -1,10 +1,10 @@
-# spark-js-sdk
+# webex-js-sdk
 
-[![Greenkeeper badge](https://badges.greenkeeper.io/ciscospark/spark-js-sdk.svg)](https://greenkeeper.io/)
+[![Greenkeeper badge](https://badges.greenkeeper.io/webex/webex-js-sdk.svg)](https://greenkeeper.io/)
 
 [![npm](https://img.shields.io/npm/v/ciscospark.svg?maxAge=86400)](https://www.npmjs.com/package/ciscospark)
-[![license](https://img.shields.io/github/license/ciscospark/spark-js-sdk.svg)](https://github.com/webex/spark-js-sdk/blob/master/LICENSE)
-[![Build status](https://ci.appveyor.com/api/projects/status/tb1i5vdhy5e3xsgv/branch/master?svg=true)](https://ci.appveyor.com/project/ianwremmel/spark-js-sdk/branch/master)
+[![license](https://img.shields.io/github/license/webex/webex-js-sdk.svg)](https://github.com/webex/webex-js-sdk/blob/master/LICENSE)
+[![Build status](https://ci.appveyor.com/api/projects/status/tb1i5vdhy5e3xsgv/branch/master?svg=true)](https://ci.appveyor.com/project/ianwremmel/webex-js-sdk/branch/master)
 
 # The Cisco Webex JS SDK
 
@@ -37,7 +37,7 @@ npm install --save ciscospark
 To use the SDK, you will need Cisco Webex credentials. If you do not already have a Cisco Webex account, visit
 [Cisco Webex for Developers](https://developer.webex.com/) to create your account and retrieve your **_access token_**.
 
-See [the detailed docs](https://webex.github.io/spark-js-sdk/) for more usage examples.
+See [the detailed docs](https://webex.github.io/webex-js-sdk/) for more usage examples.
 
 ```javascript
 const ciscospark = require(`ciscospark`);
@@ -74,10 +74,10 @@ teams.rooms.create({ title: `My First Room` }).then(room => {
 We do provide a built, minified version of the SDK, that includes `window.ciscospark`, which is hosted on our repo and can be used with [gitcdn.xyz](https://gitcdn.xyz/).
 
 ```html
-<script src="https://gitcdn.xyz/repo/webex/spark-js-sdk/master/packages/node_modules/ciscospark/umd/ciscospark.min.js"></script>
+<script src="https://gitcdn.xyz/repo/webex/webex-js-sdk/master/packages/node_modules/ciscospark/umd/ciscospark.min.js"></script>
 ```
 
-In-browser usage is almost the same as Node.js, but it handles the user authentication flow for you. See the [browser guide](https://webex.github.io/spark-js-sdk/guides/browsers/) for more information.
+In-browser usage is almost the same as Node.js, but it handles the user authentication flow for you. See the [browser guide](https://webex.github.io/webex-js-sdk/guides/browsers/) for more information.
 
 If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `team` variable to `window.webex`.
 For a quick example, we'll use [Parcel](https://parceljs.org/) to bundle the SDK for a website. For any more information and questions on how to use Parcel, please head to their [website](https://parceljs.org/).
@@ -159,8 +159,8 @@ Sample code can be found in [packages/node_modules/samples](./packages/node_modu
 > On a mac, you can install these with `brew install graphicsmagick libgcrypt`.
 
 ```bash
-git clone git@github.com:webex/spark-js-sdk.git
-cd spark-js-sdk
+git clone git@github.com:webex/webex-js-sdk.git
+cd webex-js-sdk
 npm install
 npm run samples:serve
 ```
