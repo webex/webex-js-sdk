@@ -2,25 +2,28 @@
 
 [![Greenkeeper badge](https://badges.greenkeeper.io/webex/webex-js-sdk.svg)](https://greenkeeper.io/)
 
-[![npm](https://img.shields.io/npm/v/ciscospark.svg?maxAge=86400)](https://www.npmjs.com/package/ciscospark)
+[![npm](https://img.shields.io/npm/v/webex.svg?maxAge=86400)](https://www.npmjs.com/package/webex)
 [![license](https://img.shields.io/github/license/webex/webex-js-sdk.svg)](https://github.com/webex/webex-js-sdk/blob/master/LICENSE)
 [![Build status](https://ci.appveyor.com/api/projects/status/tb1i5vdhy5e3xsgv/branch/master?svg=true)](https://ci.appveyor.com/project/ianwremmel/webex-js-sdk/branch/master)
 
 # The Cisco Webex JS SDK
 
 > Upgrading from Cisco Spark to Webex?
-> - [Follow this short guide.](upgrading.md)
+> - [Follow this short guide.](UPGRADING.md)
 > - [Read why this is more than just a rebrand.](https://developer.webex.com/blog/blog-details-9738.html)
 
 This is a monorepo containing all officially maintained Cisco Webex JS SDK modules in the same repo.
+[webex](/packages/node_modules/webex) is a collection of node modules targeting our [external APIs](https://developers.webex.com).
 
-[ciscospark](/packages/node_modules/ciscospark) is a collection of node modules targeting our [external APIs](https://developers.ciscospark.com).
-
-- [Install](#install)
-- [Usage](#usage)
-- [Samples](#samples)
-- [Contribute](#contribute)
-- [License](#license)
+- [webex-js-sdk](#webex-js-sdk)
+- [The Cisco Webex JS SDK](#the-cisco-webex-js-sdk)
+  - [Install](#install)
+  - [Usage](#usage)
+      - [_A note on browser usage_](#_a-note-on-browser-usage_)
+      - [_Still using `webex/env` or `ciscospark/env`?_](#_still-using-webexenv-or-ciscosparkenv_)
+  - [Samples](#samples)
+  - [Contribute](#contribute)
+  - [License](#license)
 
 ## Install
 
@@ -29,7 +32,7 @@ We test against the [Active LTS](https://github.com/nodejs/Release#release-sched
 To install the latest stable version of the SDK from NPM:
 
 ```bash
-npm install --save ciscospark
+npm install --save webex
 ```
 
 ## Usage
@@ -40,8 +43,8 @@ To use the SDK, you will need Cisco Webex credentials. If you do not already hav
 See [the detailed docs](https://webex.github.io/webex-js-sdk/) for more usage examples.
 
 ```javascript
-const ciscospark = require(`ciscospark`);
-const teams = ciscospark.init({
+const Webex = require(`webex`);
+const webex = Webex.init({
   credentials: {
     access_token: <your webex teams access token>
   }
@@ -50,18 +53,18 @@ const teams = ciscospark.init({
 // Create a room with the title "My First Room"
 // Add Alice and Bob to the room
 // Send a **Hi Everyone** message to the room
-teams.rooms.create({ title: `My First Room` }).then(room => {
+webex.rooms.create({ title: `My First Room` }).then(room => {
   return Promise.all([
-    teams.memberships.create({
+    webex.memberships.create({
       roomId: room.id,
       personEmail: `alice@example.com`
     }),
-    teams.memberships.create({
+    webex.memberships.create({
       roomId: room.id,
       personEmail: `bob@example.com`
     })
   ]).then(() =>
-    teams.messages.create({
+    webex.messages.create({
       markdown: `**Hi Everyone**`,
       roomId: room.id
     })
@@ -71,10 +74,10 @@ teams.rooms.create({ title: `My First Room` }).then(room => {
 
 #### _A note on browser usage_
 
-We do provide a built, minified version of the SDK, that includes `window.ciscospark`, which is hosted on our repo and can be used with [gitcdn.xyz](https://gitcdn.xyz/).
+We do provide a built, minified version of the SDK, that includes `window.webex`, which is hosted on our repo and can be used with [gitcdn.xyz](https://gitcdn.xyz/).
 
 ```html
-<script src="https://gitcdn.xyz/repo/webex/webex-js-sdk/master/packages/node_modules/ciscospark/umd/ciscospark.min.js"></script>
+<script src="https://gitcdn.xyz/repo/webex/webex-js-sdk/master/packages/node_modules/webex/umd/webex.min.js"></script>
 ```
 
 In-browser usage is almost the same as Node.js, but it handles the user authentication flow for you. See the [browser guide](https://webex.github.io/webex-js-sdk/guides/browsers/) for more information.
@@ -85,7 +88,7 @@ For a quick example, we'll use [Parcel](https://parceljs.org/) to bundle the SDK
 1. Create `index.js`.
 
 ```javascript
-import { init as initWebex } from 'ciscospark';
+import { init as initWebex } from 'webex';
 
 // Initialize the SDK and make it available to the window
 const webex = (window.webex = initWebex({
@@ -149,7 +152,7 @@ webex.rooms
 3. Run `parcel index.html` in your terminal.
 4. Go to [http://localhost:1234](http://localhost:1234) and open the developer console to see the output.
 
-#### _[Still using `ciscospark/env`?](documentation/ciscospark.md#nodejs)_
+#### _[Still using `webex/env` or `ciscospark/env`?](documentation/webex.md#shell-script-quick-start)_
 
 ## Samples
 
