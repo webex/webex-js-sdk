@@ -78,17 +78,19 @@ const webex = WebexCore.init({
 **Replace any references to `SparkPlugin` with `WebexPlugin`**
 
 ```js
-// old
-const spark = CiscoSpark.init({
-  config: { ... }
-});
+import {SparkPlugin} from '@ciscospark/spark-core';
+
+const Avatar = SparkPlugin.extend({
+  namespace: 'Avatar',
+  ...
 ```
 
 _**becomes**_
 
 ```js
-// new
-const webex = WebexCore.init({
-  config: { ... }
-});
+import {WebexPlugin} from '@webex/webex-core';
+
+const Avatar = WebexPlugin.extend({
+  namespace: 'Avatar',
+  ...
 ```
