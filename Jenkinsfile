@@ -357,9 +357,7 @@ ansiColor('xterm') {
           if (!IS_VALIDATED_MERGE_BUILD || currentBuild.result == 'SUCCESS') {
             stage('build') {
               image.inside(DOCKER_RUN_OPTS) {
-                env.NODE_ENV = 'production' // Make sure Webpack is in production mode
                 sh 'npm run build'
-                env.NODE_ENV = ''
                 // Generate dependencies to confirm package.json contains all
                 // needed dependencies
                 sh 'npm run deps:generate'
@@ -441,9 +439,7 @@ ansiColor('xterm') {
                   version = sh script: 'npm run --silent get-next-version', returnStdout: true
                   version = version.trim()
                   echo "next version is ${version}"
-                  env.NODE_ENV = 'production' // Make sure Webpack is in production mode
                   sh 'npm run build'
-                  env.NODE_ENV = ''
                   // add version number here too as a just in case
                   sh "npm run build:script -- --versionNumber=${version}"
                   // build docs here since they need to be added with `git add`
@@ -462,9 +458,7 @@ ansiColor('xterm') {
                   sh "npm run deps:generate"
 
                   // Rebuild with correct version number
-                  env.NODE_ENV = 'production' // Make sure Webpack is in production mode
                   sh 'npm run build'
-                  env.NODE_ENV = ''
                   sh "npm run build:script -- --versionNumber=${version}"
                   sh 'npm run build:docs'
                 }
