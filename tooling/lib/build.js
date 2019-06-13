@@ -1,5 +1,5 @@
 /*!
- * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2019 Cisco Systems, Inc. See LICENSE file.
  */
 
 const debug = require('debug')('tooling:build');
@@ -56,7 +56,10 @@ exports.buildSamples = async function buildSamples() {
 
   // reminder: samples:build calls this script, not webpack, hence we must call
   // webpack here
-  await exec(`webpack ${process.env.NODE_ENV === 'production' ? '-p' : '-d'}`);
+  const {stdout, stderr} = await exec(`webpack ${(process.env.NODE_ENV === 'development') ? '-d' : '-p'}`);
+
+  console.log('webpack log\n', stderr || stdout);
+
   const samples = await g('browser-*', {cwd: path.resolve(process.cwd(), 'packages/node_modules/samples')});
 
   const out = `<!DOCTYPE html>

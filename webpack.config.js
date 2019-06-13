@@ -7,20 +7,20 @@ const {DefinePlugin, EnvironmentPlugin} = require('webpack');
 dotenv.config();
 dotenv.config({path: '.env.default'});
 
-module.exports = (env = process.env.NODE_ENV || 'development') => ({
+module.exports = (env = process.env.NODE_ENV || 'production') => ({
   entry: {
-    bundle: './packages/node_modules/ciscospark',
-    'meetings.bundle': `${path.resolve(__dirname)}/packages/node_modules/ciscospark/meetings.js`
+    bundle: env === 'development' ? `${path.resolve(__dirname)}/packages/node_modules/webex/src/index.js` : './packages/node_modules/webex',
+    'meetings.bundle': `${path.resolve(__dirname)}/packages/node_modules/webex/meetings.js`
   },
-  mode: env === 'production' ? 'production' : 'development',
+  mode: env === 'development' ? 'development' : 'production',
   output: {
     filename: '[name].js',
-    library: 'ciscospark',
+    library: 'Webex',
     libraryTarget: 'var',
     sourceMapFilename: '[file].map',
     path: `${path.resolve(__dirname)}/packages/node_modules/samples`
   },
-  devtool: env === 'production' ? 'source-map' : 'cheap-module-source-map',
+  devtool: env === 'development' ? 'cheap-module-source-map' : 'source-map',
   devServer: {
     https: true,
     disableHostCheck: true,
@@ -83,7 +83,7 @@ module.exports = (env = process.env.NODE_ENV || 'development') => ({
         new EnvironmentPlugin({
           CISCOSPARK_LOG_LEVEL: 'log',
           DEBUG: '',
-          NODE_ENV: env === 'production' ? 'production' : 'development'
+          NODE_ENV: env === 'development' ? 'development' : 'production'
         }),
         // This allows overwriting of process.env
         new DefinePlugin({

@@ -6,5 +6,6 @@ exclude_paths:
   # duplicates
   - packages/node_modules/*/test
   - packages/node_modules/@ciscospark/*/test
+  - packages/node_modules/@webex/*/test
   - src
   - test

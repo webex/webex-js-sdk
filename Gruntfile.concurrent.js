@@ -1,6 +1,6 @@
 /** !
  *
- * Copyright (c) 2015-2017 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2019 Cisco Systems, Inc. See LICENSE file.
  */
 
 /* eslint-disable global-require */
@@ -33,7 +33,7 @@ module.exports = function gruntConfig(grunt) {
         src: ['**'],
         options: {
           push: false,
-          repo: 'https://github.com/webex/spark-js-sdk.git',
+          repo: 'https://github.com/webex/webex-js-sdk.git',
           user: {
             name: 'Jenkins',
             email: 'spark-js-sdk.gen@cisco.com'
@@ -43,15 +43,10 @@ module.exports = function gruntConfig(grunt) {
     }
   };
 
-  grunt.registerTask('publish:docs', [
-    'gh-pages:ghc'
-  ]);
+  grunt.registerTask('publish:docs', ['gh-pages:ghc']);
 
   grunt.initConfig(config);
-  grunt.task.run([
-    'env:default',
-    'env:secrets'
-  ]);
+  grunt.task.run(['env:default', 'env:secrets']);
 
   grunt.registerTask('default', []);
 };

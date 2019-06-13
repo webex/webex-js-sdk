@@ -30,10 +30,10 @@ You'll be prompted to answer a few simple questions, but typically the defaults 
 
 ## Installation
 
-Now, install `ciscospark`.
+Now, install `webex`.
 
 ```bash
-npm install --save ciscospark
+npm install --save webex
 ```
 
 ## Basic usage
@@ -43,8 +43,8 @@ So, you want to send a message. First, you need an access token. For demonstrati
 Create a new file in your project directory named `index.js` and add the following to it:
 
 ```javascript
-var spark = require('ciscospark/env');
-spark.rooms.create({
+var webex = require('webex/env');
+webex.rooms.create({
   title: `My First Room!`
 })
   // Make sure to log errors in case something goes wrong.
@@ -57,7 +57,7 @@ spark.rooms.create({
 Now, open the [Cisco Webex Teams Client](https://web.ciscospark.com) so you see your code in action. Then, back in your terminal, run the following command.
 
 ```bash
-CISCOSPARK_ACCESS_TOKEN=<YOUR TOKEN FROM THE PORTAL> node index.js
+WEBEX_ACCESS_TOKEN=<YOUR TOKEN FROM THE PORTAL> node index.js
 ```
 
 Check out the web client. You should see your new room. Now, let's send a message to it.
@@ -65,8 +65,8 @@ Check out the web client. You should see your new room. Now, let's send a messag
 Open up index.js again and replace its contents with the following code:
 
 ```javascript
-var spark = require('ciscospark');
-spark.rooms.list({
+var webex = Webex;
+webex.rooms.list({
   max: 10
 })
   .then(function(rooms) {
@@ -74,7 +74,7 @@ spark.rooms.list({
       return room.title === 'My First Room!';
     })[0];
 
-    return spark.messages.create({
+    return webex.messages.create({
       text: 'Hello World!',
       roomId: room.id
     });
@@ -89,7 +89,7 @@ spark.rooms.list({
 Run it again with the following:
 
 ```bash
-CISCOSPARK_ACCESS_TOKEN=<YOUR TOKEN FROM THE PORTAL> node index.js
+WEBEX_ACCESS_TOKEN=<YOUR TOKEN FROM THE PORTAL> node index.js
 ```
 
 And checkout the web client. Congrats! You've sent your first message!

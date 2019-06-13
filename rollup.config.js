@@ -8,20 +8,20 @@ import globals from 'rollup-plugin-node-globals';
 import builtins from 'rollup-plugin-node-builtins';
 import license from 'rollup-plugin-license';
 
-import {version} from './packages/node_modules/ciscospark/package.json';
+import {version} from './packages/node_modules/webex/package.json';
 
 export default function ({versionNumber}) {
   return {
-    input: `${__dirname}/packages/node_modules/ciscospark/browser.js`,
+    input: `${__dirname}/packages/node_modules/webex/browser.js`,
     output: {
-      name: 'CiscoSpark',
-      file: `${__dirname}/packages/node_modules/ciscospark/umd/ciscospark.min.js`,
+      name: 'Webex',
+      file: `${__dirname}/packages/node_modules/webex/umd/webex.min.js`,
       format: 'iife', // since this is for the browser only use IIFE instead of UMD
       sourceMap: true
     },
     plugins: [
       cleaner({
-        targets: [`${__dirname}/packages/node_modules/ciscospark/umd/`]
+        targets: [`${__dirname}/packages/node_modules/webex/umd/`]
       }),
       json({
         include: ['packages/node_modules/**', 'node_modules/**']
