@@ -14,7 +14,8 @@ dotenv.config({path: '.env.default'});
 
 const {inject} = require('./tooling/lib/openh264');
 // Webdriver is only called for testing samples so force integration URLs w/ Webpack
-const webpackConfig = require('./webpack.config')('test');
+const webpackConfig = require('./webpack.config')();
+
 
 require('babel-register')({
   only: [
@@ -178,7 +179,9 @@ exports.config = {
     'media.getusermedia.screensharing.enabled': true,
     'media.getusermedia.screensharing.allowed_domains': 'localhost, 127.0.0.1',
     'dom.webnotifications.enabled': false,
-    'media.gmp-manager.updateEnabled': true
+    'media.gmp-manager.updateEnabled': true,
+    'media.gmp-gmpopenh264.enabled': true,
+    'media.gmp-gmpopenh264.visible': true
   },
   //
   // Framework you want to run your specs with.
@@ -246,7 +249,7 @@ exports.config = {
 
     // The openh264 profile seems to break tests locally; run the tests twice
     // and the plugin should download automatically.
-    return CI ? inject(defs) : Promise.resolve()
+    return inject(defs)
       .then(() => {
         // Remove the base because it's not actually a selenium property
         defs.forEach((d) => Reflect.deleteProperty(d, 'base'));
