@@ -86,7 +86,6 @@
     "test:samples": "echo 'Deprecated. Please use npm run samples:test'; npm run --silent samples:test",
     "samples:build": "babel-node ./tooling/index.js build --only-samples",
     "samples:serve": "NODE_ENV=development webpack-dev-server -d",
-    "samples:meetings": "npm run serve:package -- --env.package @webex/plugin-meetings --env.entry ./webex.js",
     "samples:devicemanager": "npm run serve:package -- --env.package @webex/plugin-device-manager --env.entry ./webex.js",
     "serve:package": "webpack-dev-server --config webpack/webpack.config.js --hot --inline --history-api-fallback",
     "presamples:test": "rimraf bundle.js bundle.js.map meetings.bundle.js meetings.bundle.js.map",
