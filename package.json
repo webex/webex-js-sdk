@@ -102,7 +102,7 @@
     "ampersand-events": "^2.0.2",
     "ampersand-state": "^5.0.2",
     "babel-cli": "^6.24.1",
-    "babel-eslint": "^8.2.6",
+    "babel-eslint": "^10.0.2",
     "babel-generator": "^6.24.0",
     "babel-loader": "^7.1.2",
     "babel-plugin-lodash": "^3.2.11",
