@@ -159,7 +159,7 @@
     "exif": "^0.6.0",
     "express": "^4.15.3",
     "express-session": "^1.15.3",
-    "express-validator": "^5.0.0",
+    "express-validator": "^6.0.0",
     "file-type": "^3.9.0",
     "firefox-profile": "^1.2.0",
     "fs-promise": "^2.0.2",
