@@ -370,29 +370,26 @@ ansiColor('xterm') {
 
             stage('test') {
               image.inside(DOCKER_RUN_OPTS) {
-                echo "checking if tests should be skipped"
                 def action = sh script: 'npm run --silent tooling -- check-testable', returnStdout: true
 
                 if (action.contains('skip')) {
-                  echo "tests should be skipped"
                   skipTests = true
-                  warn('Bypassing tests according to commit message instruction (or no changes requiring testing)');
-                }
-                else {
-                  echo "tests should not be skipped"
+                  warn('bypassing tests (tests explicitly skipped or changes do not require testing)');
                 }
               }
 
+              echo 'copying coverage files'
               step([
                 $class: 'CopyArtifact',
-                excludes: '**/lcov.info',
+                projectName: 'spark-js-sdk--validated-merge--pipeline2',
                 filter: 'reports/coverage/**',
-                fingerprintArtifacts: true,
-                projectName: 'spark-js-sdk--validated-merge--pipeline2'
+                excludes: '**/lcov.info',
+                fingerprintArtifacts: true
               ])
 
               if (!skipTests) {
                 timeout(90) {
+                  echo 'running tests'
                   def exitCode = sh script: "./tooling/test.sh", returnStatus: true
 
                   junit 'reports/junit/**/*.xml'
