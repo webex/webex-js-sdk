@@ -18,13 +18,13 @@ redirect_from:
 2. Clone your fork
 
     ```bash
-    git clone git@github.com:<YOUR GITHUB USERNAME>/spark-js-sdk.git
+    git clone git@github.com:<YOUR GITHUB USERNAME>/webex-js-sdk.git
     ```
 
 3. Set up the upstream remote
 
     ```bash
-    git remote add upstream git@github.com:webex/spark-js-sdk.git
+    git remote add upstream git@github.com:webex/webex-js-sdk.git
     git fetch upstream
     ```
 
@@ -56,7 +56,7 @@ redirect_from:
 - ./test/integration/spec - integration tests
 - ./test/automation/spec - automation tests
 
-> See [CONTRIBUTING.md](https://github.com/webex/spark-js-sdk/blob/master/CONTRIBUTING.md) for commands for building and testing the SDK.
+> See [CONTRIBUTING.md](https://github.com/webex/webex-js-sdk/blob/master/CONTRIBUTING.md) for commands for building and testing the SDK.
 
 ## Tips
 - During development, you can avoid rebuilding before each test run by replacing `"main": "dist/index.js"` with `"main": "src/index.js"` in `packages/node_modules/*/package.json`. This won't quite work in Karma, but if you apply the same replacement to *only* the package under test, that package will recompile on change; other packages will need to be rebuilt.

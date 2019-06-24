@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset='utf-8' />
-  <title>ciscospark 1.x | Documentation</title>
+  <title>webex 1.x | Documentation</title>
   <meta name='viewport' content='width=device-width,initial-scale=1'>
   <link href='assets/bass.css' type='text/css' rel='stylesheet' />
   <link href='assets/style.css' type='text/css' rel='stylesheet' />
@@ -13,7 +13,7 @@
     <div class='flex'>
       <div id='split-left' class='overflow-auto fs0 height-viewport-100'>
         <div class='py1 px2'>
-          <h3 class='mb0 no-anchor'>ciscospark</h3>
+          <h3 class='mb0 no-anchor'>webex</h3>
           <div class='mb1'><code>1.x</code></div>
           <input
             placeholder='Filter'
@@ -25,9 +25,9 @@
               
                 
                 <li><a
-                  href='#spark-js-sdk'
+                  href='#webex-js-sdk'
                   class="h5 bold black caps">
-                  spark-js-sdk
+                  webex-js-sdk
                   
                 </a>
                 
@@ -35,9 +35,9 @@
               
                 
                 <li><a
-                  href='#ciscospark'
+                  href='#webex'
                   class=" toggle-sibling">
-                  CiscoSpark
+                  Webex
                   <span class='icon'>▸</span>
                 </a>
                 
@@ -47,7 +47,7 @@
                     <li class='h5'><span>Static members</span></li>
                     
                       <li><a
-                        href='#ciscosparkinit'
+                        href='#webexinit'
                         class='regular pre-open'>
                         .init
                       </a></li>
@@ -550,27 +550,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventterminating'
-                          class='regular pre-open'>
-                          ⓔ terminating
-                        </a></li>
-                      
-                        <li><a
                           href='#calleventconnected'
                           class='regular pre-open'>
                           ⓔ connected
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventdisconnected'
-                          class='regular pre-open'>
-                          ⓔ disconnected
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventactive'
-                          class='regular pre-open'>
-                          ⓔ active
                         </a></li>
                       
                         <li><a
@@ -583,6 +565,12 @@
                           href='#calleventinactive'
                           class='regular pre-open'>
                           ⓔ inactive
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventterminating'
+                          class='regular pre-open'>
+                          ⓔ terminating
                         </a></li>
                       
                         <li><a
@@ -604,9 +592,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventmembershipnotified'
+                          href='#calleventactive'
                           class='regular pre-open'>
-                          ⓔ membership:notified
+                          ⓔ active
                         </a></li>
                       
                         <li><a
@@ -619,6 +607,18 @@
                           href='#calleventmembershipdeclined'
                           class='regular pre-open'>
                           ⓔ membership:declined
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventmembershipdisconnected'
+                          class='regular pre-open'>
+                          ⓔ membership:disconnected
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventdisconnected'
+                          class='regular pre-open'>
+                          ⓔ disconnected
                         </a></li>
                       
                         <li><a
@@ -646,9 +646,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventmembershipdisconnected'
+                          href='#calleventmembershipnotified'
                           class='regular pre-open'>
-                          ⓔ membership:disconnected
+                          ⓔ membership:notified
                         </a></li>
                       
                     </ul>
@@ -882,12 +882,6 @@
                         </a></li>
                       
                         <li><a
-                          href='#meetingseventmeetingreconnectionsuccess'
-                          class='regular pre-open'>
-                          ⓔ meeting:reconnectionSuccess
-                        </a></li>
-                      
-                        <li><a
                           href='#meetingseventmeetingreconnectionfailure'
                           class='regular pre-open'>
                           ⓔ meeting:reconnectionFailure
@@ -897,6 +891,12 @@
                           href='#meetingseventmeetingreconnectionfailure'
                           class='regular pre-open'>
                           ⓔ meeting:reconnectionFailure
+                        </a></li>
+                      
+                        <li><a
+                          href='#meetingseventmediaready'
+                          class='regular pre-open'>
+                          ⓔ media:ready
                         </a></li>
                       
                         <li><a
@@ -906,9 +906,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#meetingseventmediaready'
+                          href='#meetingseventmeetingreconnectionsuccess'
                           class='regular pre-open'>
-                          ⓔ media:ready
+                          ⓔ meeting:reconnectionSuccess
                         </a></li>
                       
                     </ul>
@@ -4485,35 +4485,51 @@
           
             <div class='keyline-top-not py2'><section class='py2 clearfix'>
 
-  <h2 id='spark-js-sdk' class='mt0'>
-    spark-js-sdk
+  <h2 id='webex-js-sdk' class='mt0'>
+    webex-js-sdk
   </h2>
 
   
-    <h1>ciscospark</h1>
+    <h1>webex</h1>
 <blockquote>
 <p>The Cisco Webex JS SDK</p>
 </blockquote>
 <h2>Install</h2>
-<pre class='hljs'>npm install --save ciscospark</pre>
+<pre class='hljs'>npm install --save webex</pre>
 <h2>Usage</h2>
 <blockquote>
-<p>All of the examples in these API docs assume you've gotten an authenticated CiscoSpark instance (unless otherwise specified) using one of the methods below.</p>
+<p>All of the examples in these API docs assume you've gotten an authenticated Webex instance (unless otherwise specified) using one of the methods below.</p>
 </blockquote>
-<p><code>ciscospark</code> has three basic modes of operation:</p>
+<p><code>webex</code> has three basic modes of operation:</p>
 <ul>
-<li><a href="#shell-script-quick-start">As a shell script</a></li>
-<li><a href="#nodejs">On a nodejs server</a></li>
-<li><a href="#browser">In a web browser</a></li>
+<li>
+<p><a href="#webex">webex</a></p>
+<ul>
+<li><a href="#install">Install</a></li>
+<li>
+<p><a href="#usage">Usage</a></p>
+<ul>
+<li><a href="#shell-script-quick-start">Shell Script (Quick Start)</a></li>
+<li>
+<p><a href="#browser">Browser</a></p>
+<ul>
+<li><a href="#bundling">Bundling</a></li>
+</ul>
+</li>
+<li><a href="#nodejs">NodeJS</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 <h3>Shell Script (Quick Start)</h3>
-<p>This is the quickest way to get up and running with our JavaScript SDK. Simply set the environment variable <code>CISCOSPARK_ACCESS_TOKEN</code> to your access token and add the following line at the top of your JavaScript file to get a ready-to-use instance.</p>
+<p>This is the quickest way to get up and running with our JavaScript SDK. Simply set the environment variable <code>WEBEX_ACCESS_TOKEN</code> to your access token and add the following line at the top of your JavaScript file to get a ready-to-use instance.</p>
 <blockquote>
-<p>You can get your <code>CISCOSPARK_ACCESS_TOKEN</code> from the <a href="https://developer.ciscospark.com">Cisco Webex for Developers portal</a>.</p>
+<p>You can get your <code>WEBEX_ACCESS_TOKEN</code> from the <a href="https://developer.webex.com">Cisco Webex for Developers portal</a>.</p>
 </blockquote>
-<pre class='hljs'><span class="hljs-keyword">const</span> ciscospark = <span class="hljs-built_in">require</span>(<span class="hljs-string">`ciscospark/env`</span>);</pre>
+<pre class='hljs'><span class="hljs-keyword">const</span> webex = <span class="hljs-built_in">require</span>(<span class="hljs-string">`webex/env`</span>);</pre>
 <blockquote>
-<p><code>ciscospark/env</code> is also a great way to get started with <a href="https://developer.webex.com/bots.html">bots</a>.</p>
+<p><code>webex/env</code> is also a great way to get started with <a href="https://developer.webex.com/bots.html">bots</a>.</p>
 </blockquote>
 <h3>Browser</h3>
 <p>Our JavaScript SDK provides out-of-the-box support for the <a href="https://tools.ietf.org/html/rfc6749#section-4.2">OAuth 2.0 Implicit Grant Flow</a>.</p>
@@ -4521,14 +4537,14 @@
 <p>You'll need to <a href="https://developer.webex.com/add-integration.html">register an OAuth Client</a> to get your "authorization string"</p>
 </blockquote>
 <p>Use the steps under <a href="#bundling">Bundling</a> (or something similar) to get the SDK into your browser, then use the following JavaScript to get started:</p>
-<pre class='hljs'><span class="hljs-keyword">const</span> ciscospark = CiscoSpark.init({
+<pre class='hljs'><span class="hljs-keyword">const</span> webex = Webex.init({
   <span class="hljs-attr">config</span>: {
     <span class="hljs-attr">authorizationString</span>: <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-name">your</span> <span class="hljs-attr">auth</span> <span class="hljs-attr">URL</span>&gt;</span>,
   }
 });
 
-ciscospark.once(`ready`, () =&gt; {
-  if (ciscospark.canAuthorize) {
+webex.once(`ready`, () =&gt; {
+  if (webex.canAuthorize) {
     /* Your application code goes here */
   }
   else {
@@ -4539,25 +4555,25 @@ ciscospark.once(`ready`, () =&gt; {
 
       This will direct the user agent to the Cisco login page. Once the user logs in, they'll be redirected back to your app and the SDK will handle parsing the URL.
     */
-    ciscospark.authorization.initiateLogin();
+    webex.authorization.initiateLogin();
   }
 });</span></pre>
 <h4>Bundling</h4>
 <p>You'll need to bundle the SDK to use it in a web browser. Right now, we do all our SDK testing with <a href="http://browserify.org/">Browserify</a>, but our <a href="https://github.com/webex/react-ciscospark">Cisco Webex Widgets</a> use <a href="https://webpack.github.io/">webpack</a>.</p>
 <p>The following snippet is the bare minimum to get our code into a form suitable for a web browser. You'll probably want to additionally pipe it through a minifier like <a href="https://github.com/mishoo/UglifyJS2">UglifyJS</a> before going to production.</p>
-<pre class='hljs'>npm install ciscospark
+<pre class='hljs'>npm install webex
 npm install -g browserify
-<span class="hljs-built_in">echo</span> <span class="hljs-string">"window.CiscoSpark = require('ciscospark')"</span> &gt; ./index.js
+<span class="hljs-built_in">echo</span> <span class="hljs-string">"window.webex = require('webex')"</span> &gt; ./index.js
 browserify index.js &gt; bundle.js</pre>
 <p>Then, just load your bundle using:</p>
 <pre class='hljs'><span class="hljs-tag">&lt;<span class="hljs-name">script</span> <span class="hljs-attr">src</span>=<span class="hljs-string">"/bundle.js"</span>&gt;</span><span class="undefined"></span><span class="hljs-tag">&lt;/<span class="hljs-name">script</span>&gt;</span></pre>
 <h3>NodeJS</h3>
 <p>Though the implicit flow is great for single page apps, it's not ideal for integrations that might need to do things on your users' behalf months in the future. We additionally support the <a href="https://tools.ietf.org/html/rfc6749#section-4.1">OAuth 2.0 Authorization Code Grant</a> flow, but due to its complexity, there's a bit you'll need to wire up in your app to take advantage of it. The following is an example of how an Express app might do authentication.</p>
-<pre class='hljs'><span class="hljs-keyword">const</span> CiscoSpark = <span class="hljs-built_in">require</span>(<span class="hljs-string">`ciscospark`</span>);
+<pre class='hljs'><span class="hljs-keyword">var</span> Webex = <span class="hljs-built_in">require</span>(<span class="hljs-string">'webex'</span>);
 <span class="hljs-keyword">const</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">`assert`</span>);
 
 app.use(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">req, res, next</span>) </span>{
-  req.spark = CiscoSpark.init({
+  req.webex = Webex.init({
     <span class="hljs-attr">config</span>: {
       <span class="hljs-attr">credentials</span>: {
         <span class="hljs-attr">authorizationString</span>: &lt;your auth URL&gt;,
@@ -4566,7 +4582,7 @@ app.use(<span class="hljs-function"><span class="hljs-keyword">function</span>(<
     }
   });
 
-  req.spark.once(`ready`, next);
+  req.webex.once(`ready`, next);
 });
 
 app.get(`/login`, (req, res) =&gt; {
@@ -4574,13 +4590,13 @@ app.get(`/login`, (req, res) =&gt; {
   // `confidential` to generate a URL suitable to the Authorization Code grant
   // flow.
   res
-    .redirect(req.spark.credentials.buildLoginUrl({clientType: 'confidential'}))
+    .redirect(req.webex.credentials.buildLoginUrl({clientType: 'confidential'}))
     .end();
 });
 
 app.get(`/oauth/redirect`, (req, res, next) =&gt; {
   assert(req.params.code);
-  req.spark.requestAuthorizationCodeGrant(req.params)
+  req.webex.requestAuthorizationCodeGrant(req.params)
     .then(() =&gt; {
       res.redirect(`/`).end();
     })
@@ -4598,19 +4614,19 @@ app.get(`/oauth/redirect`, (req, res, next) =&gt; {
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='ciscospark'>
-      CiscoSpark
+    <h3 class='fl m0' id='webex'>
+      Webex
     </h3>
     
     
   </div>
   
 
-  <p>See <a href="https://webex.github.io/spark-js-sdk/example/browsers">Browser Guide</a> and
-<a href="https://webex.github.io/spark-js-sdk/example/servers">Server Guide</a></p>
+  <p>See <a href="https://webex.github.io/webex-js-sdk/example/browsers">Browser Guide</a> and
+<a href="https://webex.github.io/webex-js-sdk/example/servers">Server Guide</a></p>
 
 
-  <div class='pre p1 fill-light mt0'>new CiscoSpark()</div>
+  <div class='pre p1 fill-light mt0'>new Webex()</div>
   
   
 
@@ -4635,7 +4651,7 @@ app.get(`/oauth/redirect`, (req, res, next) =&gt; {
     <div class='py1 quiet mt1 prose-big'>Static Members</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='ciscosparkinit'>
+    <div class='border-bottom' id='webexinit'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
@@ -4647,10 +4663,10 @@ app.get(`/oauth/redirect`, (req, res, next) =&gt; {
 
   
 
-  <p>Create a new <a href="#ciscospark">CiscoSpark</a> instance</p>
+  <p>Create a new <a href="#webex">Webex</a> instance</p>
 
 
-  <div class='pre p1 fill-light mt0'>init(attrs: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="#ciscospark">CiscoSpark</a></div>
+  <div class='pre p1 fill-light mt0'>init(attrs: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="#webex">Webex</a></div>
   
   
 
@@ -4707,7 +4723,7 @@ app.get(`/oauth/redirect`, (req, res, next) =&gt; {
   
     
       <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="#ciscospark">CiscoSpark</a></code>:
+      <code><a href="#webex">Webex</a></code>:
         
 
       
@@ -4719,9 +4735,9 @@ app.get(`/oauth/redirect`, (req, res, next) =&gt; {
   
     <div class='py1 quiet mt1 prose-big'>Example</div>
     
-      <p><p>Create a new CiscoSpark instance configured for your OAuth client</p>
+      <p><p>Create a new Webex instance configured for your OAuth client</p>
 </p>
-      <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">const</span> ciscospark = CiscoSpark.init({
+      <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">const</span> webex = Webex.init({
   <span class="hljs-attr">config</span>: {
     <span class="hljs-attr">credentials</span>: {
       <span class="hljs-attr">authorizationString</span>: <span class="hljs-string">`&lt;AUTHORIZATION URL FROM DEVELOPER PORTAL&gt;`</span>
@@ -4729,9 +4745,9 @@ app.get(`/oauth/redirect`, (req, res, next) =&gt; {
   }
 });</pre>
     
-      <p><p>Create a new CiscoSpark instance configured for a Bot</p>
+      <p><p>Create a new Webex instance configured for a Bot</p>
 </p>
-      <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">const</span> ciscospark = CiscoSpark.init({
+      <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">const</span> webex = Webex.init({
   <span class="hljs-attr">config</span>: {
     <span class="hljs-attr">credentials</span>: <span class="hljs-string">`&lt;BOT TOKEN FROM DEVELOPER PORTAL&gt;`</span>
   }
@@ -5128,10 +5144,10 @@ token</p>
 
   
 
-  <p>Requests a Cisco Spark access token for a user already authenticated into
+  <p>Requests a Webex Teams access token for a user already authenticated into
 your product.</p>
 <p>Note: You'll need to supply a jwtRefreshCallback of the form
-<code>Promise&#x3C;jwt> = jwtRefreshCallback(spark)</code> for automatic token refresh to
+<code>Promise&#x3C;jwt> = jwtRefreshCallback(webex)</code> for automatic token refresh to
 work.</p>
 
 
@@ -5225,7 +5241,7 @@ identifies a user in your system
 
   
 
-  <p>Called by <a href="SparkCore#logout()">SparkCore#logout()</a>. Redirects to the logout page</p>
+  <p>Called by <a href="WebexCore#logout()">WebexCore#logout()</a>. Redirects to the logout page</p>
 
 
   <div class='pre p1 fill-light mt0'>logout(options: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
@@ -5555,10 +5571,10 @@ identifies a user in your system
 
   
 
-  <p>Requests a Cisco Spark access token for a user already authenticated into
+  <p>Requests a Webex Teams access token for a user already authenticated into
 your product.</p>
 <p>Note: You'll need to supply a jwtRefreshCallback of the form
-<code>Promise&#x3C;jwt> = jwtRefreshCallback(spark)</code> for automatic token refresh to
+<code>Promise&#x3C;jwt> = jwtRefreshCallback(webex)</code> for automatic token refresh to
 work.</p>
 
 
@@ -5824,7 +5840,7 @@ you must provide your own constrains or <a href="MediaStream">MediaStream</a></l
 
   
 
-  <p>indicates whether or not the client is registered with the Cisco Spark
+  <p>indicates whether or not the client is registered with the Webex Teams
 cloud</p>
 
 
@@ -5932,7 +5948,7 @@ h264 without asking for camera permissions</p>
 
   
 
-  <p>Registers the client with the Cisco Spark cloud and starts listening for
+  <p>Registers the client with the Webex Teams cloud and starts listening for
 WebSocket events.</p>
 <p>Subsequent calls refresh the device registration.</p>
 
@@ -5988,7 +6004,7 @@ WebSocket events.</p>
 
   
 
-  <p>Disconnects from WebSocket and unregisters from the Cisco Spark cloud.</p>
+  <p>Disconnects from WebSocket and unregisters from the Webex Teams cloud.</p>
 <p>Subsequent calls will be a noop.</p>
 
 
@@ -7824,7 +7840,7 @@ method on an outgoing call is a no-op.</p>
 
   
 
-  <p>Sends feedback about the call to the Cisco Spark cloud</p>
+  <p>Sends feedback about the call to the Webex Teams cloud</p>
 
 
   <div class='pre p1 fill-light mt0'>sendFeedback(feedback: <a href="#feedbackobject">FeedbackObject</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
@@ -7999,7 +8015,7 @@ method on an outgoing call is a no-op.</p>
 
   
 
-  <p>Starts sending audio to the Cisco Spark Cloud</p>
+  <p>Starts sending audio to the Webex Teams Cloud</p>
 
 
   <div class='pre p1 fill-light mt0'>startSendingAudio(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
@@ -8053,7 +8069,7 @@ method on an outgoing call is a no-op.</p>
 
   
 
-  <p>Starts sending video to the Cisco Spark Cloud</p>
+  <p>Starts sending video to the Webex Teams Cloud</p>
 
 
   <div class='pre p1 fill-light mt0'>startSendingVideo(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
@@ -8215,7 +8231,7 @@ method on an outgoing call is a no-op.</p>
 
   
 
-  <p>Stops sending audio to the Cisco Spark Cloud. (stops broadcast immediately,
+  <p>Stops sending audio to the Webex Teams Cloud. (stops broadcast immediately,
 even if renegotiation has not completed)</p>
 
 
@@ -8270,7 +8286,7 @@ even if renegotiation has not completed)</p>
 
   
 
-  <p>Stops sending video to the Cisco Spark Cloud. (stops broadcast immediately,
+  <p>Stops sending video to the Webex Teams Cloud. (stops broadcast immediately,
 even if renegotiation has not completed)</p>
 
 
@@ -8382,7 +8398,7 @@ only, this function will throw.</p>
 
   
 
-  <p>Toggles receiving audio from the Cisco Spark Cloud</p>
+  <p>Toggles receiving audio from the Webex Teams Cloud</p>
 
 
   <div class='pre p1 fill-light mt0'>toggleReceivingAudio(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
@@ -8436,7 +8452,7 @@ only, this function will throw.</p>
 
   
 
-  <p>Toggles receiving video from the Cisco Spark Cloud</p>
+  <p>Toggles receiving video from the Webex Teams Cloud</p>
 
 
   <div class='pre p1 fill-light mt0'>toggleReceivingVideo(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
@@ -8490,7 +8506,7 @@ only, this function will throw.</p>
 
   
 
-  <p>Toggles sending audio to the Cisco Spark Cloud</p>
+  <p>Toggles sending audio to the Webex Teams Cloud</p>
 
 
   <div class='pre p1 fill-light mt0'>toggleSendingAudio(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
@@ -8544,7 +8560,7 @@ only, this function will throw.</p>
 
   
 
-  <p>Toggles sending video to the Cisco Spark Cloud</p>
+  <p>Toggles sending video to the Webex Teams Cloud</p>
 
 
   <div class='pre p1 fill-light mt0'>toggleSendingVideo(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
@@ -8644,52 +8660,6 @@ enabled; instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventterminating'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>terminating</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
-
-
-  <div class='pre p1 fill-light mt0'>terminating</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
     <div class='border-bottom' id='calleventconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -8714,102 +8684,6 @@ enabled; instead, listen for
 enabled; instead, listen for 
 <a href="Call.active">Call.active</a>
 </div>
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventdisconnected'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>disconnected</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>disconnected</div>
-  
-  
-
-  <div>Deprecated: with 
-<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
-
-enabled; instead, listen for 
-<a href="Call.inactive">Call.inactive</a>
-</div>
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventactive'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>active</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
-
-
-  <div class='pre p1 fill-light mt0'>active</div>
-  
-  
-
-  
   
   
   
@@ -8898,6 +8772,52 @@ enabled; instead, listen for
 
 
   <div class='pre p1 fill-light mt0'>inactive</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventterminating'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>terminating</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+
+
+  <div class='pre p1 fill-light mt0'>terminating</div>
   
   
 
@@ -9063,11 +8983,11 @@ enabled; instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventmembershipnotified'>
+    <div class='border-bottom' id='calleventactive'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:notified</span>
+            <span class='code strong strong truncate'>active</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -9075,14 +8995,10 @@ enabled; instead, listen for
 
   
 
-  <p>This replaces the <a href="Call.ringing">Call.ringing</a> event, but note that it's
-subtly different. <a href="Call.ringing">Call.ringing</a> is emitted when the remote party calls
-<a href="Call#acknowledge()">Call#acknowledge()</a> whereas <a href="Call.membership:notified">Call.membership:notified</a> emits
-shortly after (but as a direct result of) locally calling
-<a href="Phone#dial()">Phone#dial()</a></p>
+  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
 
 
-  <div class='pre p1 fill-light mt0'>membership:notified</div>
+  <div class='pre p1 fill-light mt0'>active</div>
   
   
 
@@ -9177,6 +9093,101 @@ shortly after (but as a direct result of) locally calling
   
 
   
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventmembershipdisconnected'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>membership:disconnected</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>membership:disconnected</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventdisconnected'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>disconnected</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>disconnected</div>
+  
+  
+
+  <div>Deprecated: with 
+<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
+
+enabled; instead, listen for 
+<a href="Call.inactive">Call.inactive</a>
+</div>
   
   
   
@@ -9389,11 +9400,11 @@ participating the call.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventmembershipdisconnected'>
+    <div class='border-bottom' id='calleventmembershipnotified'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:disconnected</span>
+            <span class='code strong strong truncate'>membership:notified</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -9401,9 +9412,14 @@ participating the call.</p>
 
   
 
-  
+  <p>This replaces the <a href="Call.ringing">Call.ringing</a> event, but note that it's
+subtly different. <a href="Call.ringing">Call.ringing</a> is emitted when the remote party calls
+<a href="Call#acknowledge()">Call#acknowledge()</a> whereas <a href="Call.membership:notified">Call.membership:notified</a> emits
+shortly after (but as a direct result of) locally calling
+<a href="Phone#dial()">Phone#dial()</a></p>
 
-  <div class='pre p1 fill-light mt0'>membership:disconnected</div>
+
+  <div class='pre p1 fill-light mt0'>membership:notified</div>
   
   
 
@@ -9926,7 +9942,7 @@ participating the call.</p>
   </div>
   
 
-  <p>Reforms the interesting data from an RTCStatsReport into something grokkable</p>
+  <p>Reforms the interesting data from an RTCStatsReport to a new format</p>
 
 
   <div class='pre p1 fill-light mt0'>new StatsFilter()</div>
@@ -9980,7 +9996,7 @@ participating the call.</p>
   </div>
   
 
-  <p>Reforms the interesting data from an RTCStatsReport to a new format</p>
+  <p>Reforms the interesting data from an RTCStatsReport into something grokkable</p>
 
 
   <div class='pre p1 fill-light mt0'>new StatsFilter()</div>
@@ -10043,7 +10059,7 @@ participating the call.</p>
     <p>
       Extends
       
-        SparkPlugin
+        WebexPlugin
       
     </p>
   
@@ -11056,7 +11072,7 @@ Emitted when a meeting was removed from the cache of meetings</p>
   
 
   <p>Meetings Ready Event
-Emitted when the meetings instance on spark is ready</p>
+Emitted when the meetings instance on webex is ready</p>
 
 
   <div class='pre p1 fill-light mt0'>meetings:ready</div>
@@ -11072,122 +11088,6 @@ Emitted when the meetings instance on spark is ready</p>
 
   
 
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='meetingseventmeetingreconnectionsuccess'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meeting:reconnectionSuccess</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Reconnection Success Event
-Emitted when reconnection of media to the active meeting was successful</p>
-
-
-  <div class='pre p1 fill-light mt0'>meeting:reconnectionSuccess</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>reconnect</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-          
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='meetingseventmeetingreconnectionfailure'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meeting:reconnectionFailure</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Reconnection Failure Event
-Emitted when reconnection of media to the active meeting was successful</p>
-
-
-  <div class='pre p1 fill-light mt0'>meeting:reconnectionFailure</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>)</code>
-          
-          
-        </div>
-      
-    </div>
   
 
   
@@ -11272,11 +11172,11 @@ Emitted when a ring should occur or stop, outgoing or incoming</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingseventmediastopped'>
+    <div class='border-bottom' id='meetingseventmeetingreconnectionfailure'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>media:stopped</span>
+            <span class='code strong strong truncate'>meeting:reconnectionFailure</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -11284,11 +11184,11 @@ Emitted when a ring should occur or stop, outgoing or incoming</p>
 
   
 
-  <p>Media Stopped Event
-Emitted when a stream has stopped sending</p>
+  <p>Reconnection Failure Event
+Emitted when reconnection of media to the active meeting was successful</p>
 
 
-  <div class='pre p1 fill-light mt0'>media:stopped</div>
+  <div class='pre p1 fill-light mt0'>meeting:reconnectionFailure</div>
   
   
 
@@ -11306,9 +11206,8 @@ Emitted when a stream has stopped sending</p>
     <div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          : what type of stream, remote, local
-
+          <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>)</code>
+          
           
         </div>
       
@@ -11397,6 +11296,123 @@ Emitted when a stream is ready to be rendered</p>
       </div>
     </div>
   
+    <div class='border-bottom' id='meetingseventmediastopped'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>media:stopped</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Media Stopped Event
+Emitted when a stream has stopped sending</p>
+
+
+  <div class='pre p1 fill-light mt0'>media:stopped</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+          : what type of stream, remote, local
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='meetingseventmeetingreconnectionsuccess'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>meeting:reconnectionSuccess</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Reconnection Success Event
+Emitted when reconnection of media to the active meeting was successful</p>
+
+
+  <div class='pre p1 fill-light mt0'>meeting:reconnectionSuccess</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>reconnect</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+          
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
 </div>
 
   
@@ -11412,7 +11428,7 @@ Emitted when a stream is ready to be rendered</p>
   </h2>
 
   
-    <p>These are the resources provided by CiscoSpark instances for interacting with our <a href="https://developer.webex.com/getting-started.html">developer API</a></p>
+    <p>These are the resources provided by Webex instances for interacting with our <a href="https://developer.webex.com/getting-started.html">developer API</a></p>
 
   
 </section>
@@ -11527,9 +11543,9 @@ as a moderator.</p>
     <div class='py1 quiet mt1 prose-big'>Example</div>
     
       
-      <pre class='p1 overflow-auto round fill-light'>ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Create Membership Example'</span>})
+      <pre class='p1 overflow-auto round fill-light'>webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Create Membership Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.memberships.create({
+    <span class="hljs-keyword">return</span> webex.memberships.create({
      <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'alice@example.com'</span>,
      <span class="hljs-attr">roomId</span>: room.id
    });
@@ -11619,16 +11635,16 @@ as a moderator.</p>
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> membership;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Get Membership Example'</span>})
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Get Membership Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.memberships.create({
+    <span class="hljs-keyword">return</span> webex.memberships.create({
       <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'alice@example.com'</span>,
       <span class="hljs-attr">roomId</span>: room.id
     });
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">m</span>) </span>{
     membership = m;
-    <span class="hljs-keyword">return</span> ciscospark.memberships.get(m.id);
+    <span class="hljs-keyword">return</span> webex.memberships.get(m.id);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">m</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -11760,16 +11776,16 @@ specific person is a member of.</p>
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> room;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List Membership Example'</span>})
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List Membership Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     room = r;
-    <span class="hljs-keyword">return</span> ciscospark.memberships.create({
+    <span class="hljs-keyword">return</span> webex.memberships.create({
      <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'alice@example.com'</span>,
      <span class="hljs-attr">roomId</span>: room.id
     });
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.memberships.list({<span class="hljs-attr">roomId</span>: room.id});
+    <span class="hljs-keyword">return</span> webex.memberships.list({<span class="hljs-attr">roomId</span>: room.id});
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">memberships</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -11958,25 +11974,25 @@ objects returned in the list function.</p>
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> membership, room;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Remove Membership Example'</span>})
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Remove Membership Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     room = r;
-    <span class="hljs-keyword">return</span> ciscospark.memberships.create({
+    <span class="hljs-keyword">return</span> webex.memberships.create({
      <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'alice@example.com'</span>,
      <span class="hljs-attr">roomId</span>: room.id
     });
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">m</span>) </span>{
     membership = m;
-    <span class="hljs-keyword">return</span> ciscospark.memberships.list({<span class="hljs-attr">roomId</span>: room.id});
+    <span class="hljs-keyword">return</span> webex.memberships.list({<span class="hljs-attr">roomId</span>: room.id});
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">memberships</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
     assert.equal(memberships.length, <span class="hljs-number">2</span>);
-    <span class="hljs-keyword">return</span> ciscospark.memberships.remove(membership);
+    <span class="hljs-keyword">return</span> webex.memberships.remove(membership);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.memberships.list({<span class="hljs-attr">roomId</span>: room.id});
+    <span class="hljs-keyword">return</span> webex.memberships.list({<span class="hljs-attr">roomId</span>: room.id});
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">memberships</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -12057,20 +12073,20 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> membership, room;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Memberships Example'</span>})
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Memberships Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     room = r;
-    <span class="hljs-keyword">return</span> ciscospark.memberships.list({<span class="hljs-attr">roomId</span>: room.id});
+    <span class="hljs-keyword">return</span> webex.memberships.list({<span class="hljs-attr">roomId</span>: room.id});
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">memberships</span>) </span>{
     membership = memberships.items[<span class="hljs-number">0</span>];
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
     assert.equal(membership.isModerator, <span class="hljs-literal">false</span>);
     membership.isModerator = <span class="hljs-literal">true</span>;
-    <span class="hljs-keyword">return</span> ciscospark.memberships.update(membership);
+    <span class="hljs-keyword">return</span> webex.memberships.update(membership);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.memberships.get(membership.id);
+    <span class="hljs-keyword">return</span> webex.memberships.get(membership.id);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">membership</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -12115,7 +12131,7 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   
 
   <p>Messages are how people communicate in rooms. Each message timestamped and
-represented in Spark as a distinct block of content. Messages can contain
+represented in Webex as a distinct block of content. Messages can contain
 plain text and a single file attachment. See the
 <a href="https://developer.webex.com/attachments.html">Message Attachments</a> Guide
 for a list of supported media types.</p>
@@ -12207,9 +12223,9 @@ for a list of supported media types.</p>
     <div class='py1 quiet mt1 prose-big'>Example</div>
     
       
-      <pre class='p1 overflow-auto round fill-light'>ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Create Message Example'</span>})
+      <pre class='p1 overflow-auto round fill-light'>webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Create Message Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.messages.create({
+    <span class="hljs-keyword">return</span> webex.messages.create({
       <span class="hljs-attr">text</span>: <span class="hljs-string">'Howdy!'</span>,
       <span class="hljs-attr">roomId</span>: room.id
     });
@@ -12297,16 +12313,16 @@ for a list of supported media types.</p>
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> message;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Get Message Example'</span>})
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Get Message Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.messages.create({
+    <span class="hljs-keyword">return</span> webex.messages.create({
       <span class="hljs-attr">text</span>: <span class="hljs-string">'Howdy!'</span>,
       <span class="hljs-attr">roomId</span>: room.id
     });
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">m</span>) </span>{
     message = m;
-    <span class="hljs-keyword">return</span> ciscospark.messages.get(message.id);
+    <span class="hljs-keyword">return</span> webex.messages.get(message.id);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">message2</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -12420,24 +12436,24 @@ messages posted in rooms that the authentiated user is a member of.</p>
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> message1, message2, room;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List Messages Example'</span>})
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List Messages Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     room = r;
-    <span class="hljs-keyword">return</span> ciscospark.messages.create({
+    <span class="hljs-keyword">return</span> webex.messages.create({
       <span class="hljs-attr">text</span>: <span class="hljs-string">'Howdy!'</span>,
       <span class="hljs-attr">roomId</span>: room.id
     });
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">m</span>) </span>{
     message1 = m;
-    <span class="hljs-keyword">return</span> ciscospark.messages.create({
+    <span class="hljs-keyword">return</span> webex.messages.create({
       <span class="hljs-attr">text</span>: <span class="hljs-string">'How are you?'</span>,
       <span class="hljs-attr">roomId</span>: room.id
     });
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">m</span>) </span>{
     message2 = m;
-    <span class="hljs-keyword">return</span> ciscospark.messages.list({<span class="hljs-attr">roomId</span>: room.id});
+    <span class="hljs-keyword">return</span> webex.messages.list({<span class="hljs-attr">roomId</span>: room.id});
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">messages</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -12523,26 +12539,26 @@ Org Administrators.</p>
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> message1, room;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Messages Example'</span>})
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Messages Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     room = r;
-    <span class="hljs-keyword">return</span> ciscospark.messages.create({
+    <span class="hljs-keyword">return</span> webex.messages.create({
       <span class="hljs-attr">text</span>: <span class="hljs-string">'Howdy!'</span>,
       <span class="hljs-attr">roomId</span>: room.id
     });
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">m</span>) </span>{
     message1 = m;
-    <span class="hljs-keyword">return</span> ciscospark.messages.create({
+    <span class="hljs-keyword">return</span> webex.messages.create({
       <span class="hljs-attr">text</span>: <span class="hljs-string">'How are you?'</span>,
       <span class="hljs-attr">roomId</span>: room.id
     });
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.messages.remove(message1);
+    <span class="hljs-keyword">return</span> webex.messages.remove(message1);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.messages.list({<span class="hljs-attr">roomId</span>: room.id});
+    <span class="hljs-keyword">return</span> webex.messages.list({<span class="hljs-attr">roomId</span>: room.id});
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">messages</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -12675,15 +12691,15 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     <div class='py1 quiet mt1 prose-big'>Example</div>
     
       
-      <pre class='p1 overflow-auto round fill-light'>ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Get Person Example'</span>})
+      <pre class='p1 overflow-auto round fill-light'>webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Get Person Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.memberships.create({
+    <span class="hljs-keyword">return</span> webex.memberships.create({
       <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'alice@example.com'</span>,
       <span class="hljs-attr">roomId</span>: room.id
     });
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">membership</span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.people.get(membership.personId);
+    <span class="hljs-keyword">return</span> webex.people.get(membership.personId);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">alice</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -12815,22 +12831,22 @@ even if the type is not "person" (e.g.: SX10, webhook_intergation, etc.)
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> room;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List People Example'</span>})
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List People Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     room = r;
-    <span class="hljs-keyword">return</span> ciscospark.memberships.create({
+    <span class="hljs-keyword">return</span> webex.memberships.create({
       <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'alice@example.com'</span>,
       <span class="hljs-attr">roomId</span>: room.id
     });
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.memberships.create({
+    <span class="hljs-keyword">return</span> webex.memberships.create({
       <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'bob@example.com'</span>,
       <span class="hljs-attr">roomId</span>: room.id
     });
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.people.list({<span class="hljs-attr">email</span>: <span class="hljs-string">'alice@example.com'</span>});
+    <span class="hljs-keyword">return</span> webex.people.list({<span class="hljs-attr">email</span>: <span class="hljs-string">'alice@example.com'</span>});
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">people</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -12849,10 +12865,10 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> room;
 <span class="hljs-keyword">var</span> aliceId;
 <span class="hljs-keyword">var</span> bobId;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List People Array Example'</span>})
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List People Array Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     room = r;
-    <span class="hljs-keyword">return</span> ciscospark.memberships.create({
+    <span class="hljs-keyword">return</span> webex.memberships.create({
       <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'alice@example.com'</span>,
       <span class="hljs-attr">roomId</span>: room.id
     });
@@ -12861,7 +12877,7 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     aliceId = membership.personId;
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.memberships.create({
+    <span class="hljs-keyword">return</span> webex.memberships.create({
       <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'bob@example.com'</span>,
       <span class="hljs-attr">roomId</span>: room.id
     });
@@ -12870,7 +12886,7 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     bobId = membership.personId;
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.people.list([aliceId, bobId]);
+    <span class="hljs-keyword">return</span> webex.people.list([aliceId, bobId]);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">people</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -13013,7 +13029,7 @@ more people to the room.</p>
     <div class='py1 quiet mt1 prose-big'>Example</div>
     
       
-      <pre class='p1 overflow-auto round fill-light'>ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Create Room Example'</span>})
+      <pre class='p1 overflow-auto round fill-light'>webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Create Room Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>)
     assert(<span class="hljs-keyword">typeof</span> room.created === <span class="hljs-string">'string'</span>);
@@ -13104,10 +13120,10 @@ more people to the room.</p>
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> room;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Get Room Example'</span>})
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Get Room Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     room = r
-    <span class="hljs-keyword">return</span> ciscospark.rooms.get(room.id)
+    <span class="hljs-keyword">return</span> webex.rooms.get(room.id)
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -13216,13 +13232,13 @@ response.
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> createdRooms;
 <span class="hljs-built_in">Promise</span>.all([
-  ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List Rooms Example 1'</span>}),
-  ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List Rooms Example 2'</span>}),
-  ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List Rooms Example 3'</span>})
+  webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List Rooms Example 1'</span>}),
+  webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List Rooms Example 2'</span>}),
+  webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List Rooms Example 3'</span>})
 ])
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     createdRooms = r;
-    <span class="hljs-keyword">return</span> ciscospark.rooms.list({<span class="hljs-attr">max</span>: <span class="hljs-number">3</span>})
+    <span class="hljs-keyword">return</span> webex.rooms.list({<span class="hljs-attr">max</span>: <span class="hljs-number">3</span>})
       .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">rooms</span>) </span>{
         <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
         assert(rooms.length === <span class="hljs-number">3</span>);
@@ -13494,13 +13510,13 @@ object returned in the get function.</p>
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> room;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Remove Room Example'</span>})
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Remove Room Example'</span>})
  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
    room = r;
-   <span class="hljs-keyword">return</span> ciscospark.rooms.remove(room.id);
+   <span class="hljs-keyword">return</span> webex.rooms.remove(room.id);
  })
  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-   <span class="hljs-keyword">return</span> ciscospark.rooms.get(room.id);
+   <span class="hljs-keyword">return</span> webex.rooms.get(room.id);
  })
  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
    <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -13585,14 +13601,14 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> room;
-ciscospark.rooms.update({<span class="hljs-attr">title</span>: <span class="hljs-string">'Update Room Example'</span>})
+webex.rooms.update({<span class="hljs-attr">title</span>: <span class="hljs-string">'Update Room Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     room = r;
     room.title = <span class="hljs-string">'Update Room Example (Updated Title)'</span>;
-    <span class="hljs-keyword">return</span> ciscospark.rooms.update(room);
+    <span class="hljs-keyword">return</span> webex.rooms.update(room);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.rooms.get(room.id);
+    <span class="hljs-keyword">return</span> webex.rooms.get(room.id);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
    <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -13724,7 +13740,7 @@ ciscospark.rooms.update({<span class="hljs-attr">title</span>: <span class="hljs
     <div class='py1 quiet mt1 prose-big'>Example</div>
     
       
-      <pre class='p1 overflow-auto round fill-light'>ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'Create Team Example'</span>})
+      <pre class='p1 overflow-auto round fill-light'>webex.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'Create Team Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">team</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
     assert(team.id);
@@ -13814,10 +13830,10 @@ ciscospark.rooms.update({<span class="hljs-attr">title</span>: <span class="hljs
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> team;
-ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'Get Team Example'</span>})
+webex.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'Get Team Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     team = r;
-    <span class="hljs-keyword">return</span> ciscospark.teams.get(team.id);
+    <span class="hljs-keyword">return</span> webex.teams.get(team.id);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">team2</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -13925,13 +13941,13 @@ response.
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> createdRooms;
 <span class="hljs-built_in">Promise</span>.all([
-  ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'List Teams Example 1'</span>}),
-  ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'List Teams Example 2'</span>}),
-  ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'List Teams Example 3'</span>})
+  webex.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'List Teams Example 1'</span>}),
+  webex.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'List Teams Example 2'</span>}),
+  webex.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'List Teams Example 3'</span>})
 ])
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     createdRooms = r;
-    <span class="hljs-keyword">return</span> ciscospark.teams.list({<span class="hljs-attr">max</span>: <span class="hljs-number">3</span>});
+    <span class="hljs-keyword">return</span> webex.teams.list({<span class="hljs-attr">max</span>: <span class="hljs-number">3</span>});
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">teams</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -14017,14 +14033,14 @@ response.
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> teams;
-ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'Update Team Example'</span>})
+webex.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'Update Team Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     teams = r;
     teams.name = <span class="hljs-string">'Teams Example (Updated Title)'</span>;
-    <span class="hljs-keyword">return</span> ciscospark.teams.update(teams);
+    <span class="hljs-keyword">return</span> webex.teams.update(teams);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.teams.get(teams.id);
+    <span class="hljs-keyword">return</span> webex.teams.get(teams.id);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">teams</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -14072,7 +14088,7 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
 list members of any team that you're in or create memberships to invite
 someone to a team. Team memberships can also be updated to make someome a
 moderator or deleted to remove them from the team.</p>
-<p>Just like in the Spark app, you must be a member of the team in order to list
+<p>Just like in the Webex app, you must be a member of the team in order to list
 its memberships or invite people.</p>
 
 
@@ -14163,9 +14179,9 @@ a moderator.</p>
     <div class='py1 quiet mt1 prose-big'>Example</div>
     
       
-      <pre class='p1 overflow-auto round fill-light'>ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'Create Team Membership Example'</span>})
+      <pre class='p1 overflow-auto round fill-light'>webex.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'Create Team Membership Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">team</span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.teamMemberships.create({
+    <span class="hljs-keyword">return</span> webex.teamMemberships.create({
      <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'alice@example.com'</span>,
      <span class="hljs-attr">teamId</span>: team.id
    });
@@ -14254,16 +14270,16 @@ a moderator.</p>
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> membership;
-ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'Get Team Memberships Example'</span>})
+webex.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'Get Team Memberships Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">team</span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.teamMemberships.create({
+    <span class="hljs-keyword">return</span> webex.teamMemberships.create({
       <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'alice@example.com'</span>,
       <span class="hljs-attr">teamId</span>: team.id
     });
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">m</span>) </span>{
     membership = m;
-    <span class="hljs-keyword">return</span> ciscospark.teamMemberships.get(m.id);
+    <span class="hljs-keyword">return</span> webex.teamMemberships.get(m.id);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">m</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -14369,16 +14385,16 @@ which the authenticated user belongs.</p>
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> team;
-ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'List Team Memberships Example'</span>})
+webex.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'List Team Memberships Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">t</span>) </span>{
     team = t;
-    <span class="hljs-keyword">return</span> ciscospark.teamMemberships.create({
+    <span class="hljs-keyword">return</span> webex.teamMemberships.create({
      <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'alice@example.com'</span>,
      <span class="hljs-attr">teamId</span>: team.id
     });
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.teamMemberships.list({<span class="hljs-attr">teamId</span>: team.id});
+    <span class="hljs-keyword">return</span> webex.teamMemberships.list({<span class="hljs-attr">teamId</span>: team.id});
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">teamMemberships</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -14462,25 +14478,25 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> membership, team;
-ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'Remove Team Memberships Example'</span>})
+webex.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-string">'Remove Team Memberships Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">t</span>) </span>{
     team = t;
-    <span class="hljs-keyword">return</span> ciscospark.teamMemberships.create({
+    <span class="hljs-keyword">return</span> webex.teamMemberships.create({
      <span class="hljs-attr">personEmail</span>: <span class="hljs-string">'alice@example.com'</span>,
      <span class="hljs-attr">teamId</span>: team.id
     });
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">m</span>) </span>{
     membership = m;
-    <span class="hljs-keyword">return</span> ciscospark.teamMemberships.list({<span class="hljs-attr">teamId</span>: team.id});
+    <span class="hljs-keyword">return</span> webex.teamMemberships.list({<span class="hljs-attr">teamId</span>: team.id});
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">teamMemberships</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
     assert.equal(teamMemberships.length, <span class="hljs-number">2</span>);
-    <span class="hljs-keyword">return</span> ciscospark.teamMemberships.remove(membership);
+    <span class="hljs-keyword">return</span> webex.teamMemberships.remove(membership);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.teamMemberships.list({<span class="hljs-attr">teamId</span>: team.id});
+    <span class="hljs-keyword">return</span> webex.teamMemberships.list({<span class="hljs-attr">teamId</span>: team.id});
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">teamMemberships</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -14592,7 +14608,7 @@ ciscospark.teams.create({<span class="hljs-attr">name</span>: <span class="hljs-
   
 
   <p>Webhooks allow your app to be notified via HTTP when a specific event
-occurs on Spark. For example, your app can register a webhook to be
+occurs on Webex. For example, your app can register a webhook to be
 notified when a new message is posted into a specific room.</p>
 
 
@@ -14682,9 +14698,9 @@ notified when a new message is posted into a specific room.</p>
     <div class='py1 quiet mt1 prose-big'>Example</div>
     
       
-      <pre class='p1 overflow-auto round fill-light'>ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Create Webhook Example'</span>})
+      <pre class='p1 overflow-auto round fill-light'>webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Create Webhook Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.webhooks.create({
+    <span class="hljs-keyword">return</span> webex.webhooks.create({
       <span class="hljs-attr">resource</span>: <span class="hljs-string">'messages'</span>,
       <span class="hljs-attr">event</span>: <span class="hljs-string">'created'</span>,
       <span class="hljs-attr">filter</span>: <span class="hljs-string">'roomId='</span> + room.id,
@@ -14776,9 +14792,9 @@ notified when a new message is posted into a specific room.</p>
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> webhook;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Get Webhook Example'</span>})
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Get Webhook Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.webhooks.create({
+    <span class="hljs-keyword">return</span> webex.webhooks.create({
       <span class="hljs-attr">resource</span>: <span class="hljs-string">'messages'</span>,
       <span class="hljs-attr">event</span>: <span class="hljs-string">'created'</span>,
       <span class="hljs-attr">filter</span>: <span class="hljs-string">'roomId='</span> + room.id,
@@ -14788,7 +14804,7 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">w</span>) </span>{
     webhook = w;
-    <span class="hljs-keyword">return</span> ciscospark.webhooks.get(webhook.id);
+    <span class="hljs-keyword">return</span> webex.webhooks.get(webhook.id);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">webhook2</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -14894,10 +14910,10 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> room, webhook;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List Webhooks Example'</span>})
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'List Webhooks Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     room = r;
-    <span class="hljs-keyword">return</span> ciscospark.webhooks.create({
+    <span class="hljs-keyword">return</span> webex.webhooks.create({
       <span class="hljs-attr">resource</span>: <span class="hljs-string">'messages'</span>,
       <span class="hljs-attr">event</span>: <span class="hljs-string">'created'</span>,
       <span class="hljs-attr">filter</span>: <span class="hljs-string">'roomId='</span> + room.id,
@@ -14907,7 +14923,7 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">w</span>) </span>{
     webhook = w;
-    <span class="hljs-keyword">return</span> ciscospark.webhooks.list();
+    <span class="hljs-keyword">return</span> webex.webhooks.list();
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">webhooks</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -14990,10 +15006,10 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> room, webhook;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Remove Webhook Example'</span>})
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Remove Webhook Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">r</span>) </span>{
     room = r;
-    <span class="hljs-keyword">return</span> ciscospark.webhooks.create({
+    <span class="hljs-keyword">return</span> webex.webhooks.create({
       <span class="hljs-attr">resource</span>: <span class="hljs-string">'messages'</span>,
       <span class="hljs-attr">event</span>: <span class="hljs-string">'created'</span>,
       <span class="hljs-attr">filter</span>: <span class="hljs-string">'roomId='</span> + room.id,
@@ -15003,10 +15019,10 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">w</span>) </span>{
     webhook = w;
-    <span class="hljs-keyword">return</span> ciscospark.webhooks.remove(webhook);
+    <span class="hljs-keyword">return</span> webex.webhooks.remove(webhook);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.webhooks.list();
+    <span class="hljs-keyword">return</span> webex.webhooks.list();
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">webhooks</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -15089,9 +15105,9 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
     
       
       <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> webhook;
-ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Webhook Example'</span>})
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Webhook Example'</span>})
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.webhooks.create({
+    <span class="hljs-keyword">return</span> webex.webhooks.create({
       <span class="hljs-attr">resource</span>: <span class="hljs-string">'messages'</span>,
       <span class="hljs-attr">event</span>: <span class="hljs-string">'created'</span>,
       <span class="hljs-attr">filter</span>: <span class="hljs-string">'roomId='</span> + room.id,
@@ -15102,10 +15118,10 @@ ciscospark.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">w</span>) </span>{
     webhook = w;
     webhook.targetUrl = <span class="hljs-string">'https://example.com/webhook/newtarget'</span>;
-    <span class="hljs-keyword">return</span> ciscospark.webhooks.update(webhook);
+    <span class="hljs-keyword">return</span> webex.webhooks.update(webhook);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">return</span> ciscospark.webhooks.get(webhook);
+    <span class="hljs-keyword">return</span> webex.webhooks.get(webhook);
   })
   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">webhook</span>) </span>{
     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
@@ -15350,8 +15366,8 @@ call
         <div class='space-bottom0'>
           <span class='code bold'>includeLogs</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
           : set to true to submit client logs to the
-Cisco Spark cloud. Note: at this time, all logs, not just call logs,
-generated by the sdk will be uploaded to the Spark Cloud. Care has been taken
+Webex Teams cloud. Note: at this time, all logs, not just call logs,
+generated by the sdk will be uploaded to the Webex Cloud. Care has been taken
 to avoid including PII in these logs, but if you've taken advantage of the
 SDK's logger, you should make sure to avoid logging PII as well.
 
@@ -39972,7 +39988,7 @@ shares</p>
   <p>Finds the <code>self</code> entry for the specified locus</p>
 
 
-  <div class='pre p1 fill-light mt0'>getThisDevice(spark: ProxySpark, locus: Types~Locus): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
+  <div class='pre p1 fill-light mt0'>getThisDevice(webex: ProxyWebex, locus: Types~Locus): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
   
   
 
@@ -39989,7 +40005,7 @@ shares</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>spark</span> <code class='quiet'>(ProxySpark)</code>
+            <span class='code bold'>webex</span> <code class='quiet'>(ProxyWebex)</code>
 	    
           </div>
           
