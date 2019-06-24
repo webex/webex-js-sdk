@@ -384,7 +384,8 @@ ansiColor('xterm') {
                 projectName: 'spark-js-sdk--validated-merge--pipeline2',
                 filter: 'reports/coverage/**',
                 excludes: '**/lcov.info',
-                fingerprintArtifacts: true
+                fingerprintArtifacts: true,
+                optional: true
               ])
 
               if (!skipTests) {
