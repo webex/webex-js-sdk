@@ -175,6 +175,7 @@
     "husky": "^0.14.3",
     "in-publish": "^2.0.0",
     "is-function": "^1.0.1",
+    "is-uuid": "^1.0.2",
     "isparta": "^4.1.1",
     "istanbul": "^0.4.4",
     "javascript-state-machine": "^3.1.0",
