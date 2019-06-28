@@ -251,7 +251,7 @@
     "ws": "^4.0.0",
     "xhr": "^2.4.0",
     "xtend": "^4.0.1",
-    "yakbak": "^3.0.0",
+    "yakbak": "^4.0.0",
     "yargs": "^9.0.1"
   },
   "optionalDependencies": {
