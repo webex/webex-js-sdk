@@ -1,14 +1,31 @@
 # Contributing
 
-- [Reporting Issues](#reporting-issues)
-  - [Opening an Issue](#opening-an-issue)
-- [Contributing Code](#contributing-code)
-  - [Build Dependencies](#build-dependencies)
-  - [Building the SDK](#building-the-sdk)
-  - [Running Tests](#running-tests)
-  - [Git Commit Guidelines](#git-commit-guidelines)
-  - [Submitting a Pull Request](#submitting-a-pull-request)
-- [Updating the Documentation](#updating-the-documentation)
+- [Contributing](#Contributing)
+  - [Reporting Issues](#Reporting-Issues)
+    - [Opening an Issue](#Opening-an-Issue)
+      - [Grammar](#Grammar)
+      - [Logs](#Logs)
+  - [Contributing Code](#Contributing-Code)
+    - [Build Dependencies](#Build-Dependencies)
+    - [Building the SDK](#Building-the-SDK)
+    - [Running Tests](#Running-Tests)
+    - [Git Commit Guidelines](#Git-Commit-Guidelines)
+      - [Commit Message Format](#Commit-Message-Format)
+      - [Revert](#Revert)
+      - [Type](#Type)
+      - [Scope](#Scope)
+      - [Subject](#Subject)
+      - [Body](#Body)
+      - [Footer](#Footer)
+      - [Special Commit Messages](#Special-Commit-Messages)
+        - [`#force-publish`](#force-publish)
+        - [`#ignore-tooling`](#ignore-tooling)
+        - [`#no-push`](#no-push)
+        - [`[ci skip]`](#ci-skip)
+    - [Submitting a Pull Request](#Submitting-a-Pull-Request)
+  - [Updating the Documentation](#Updating-the-Documentation)
+    - [Set Up Environment (with Bundler)](#Set-Up-Environment-with-Bundler)
+    - [Compile and Serve Docs](#Compile-and-Serve-Docs)
 
 ## Reporting Issues
 
@@ -228,5 +245,6 @@ bundle install
 
 ```bash
 cd docs
+npm run build:docs
 bundle exec jekyll serve --config=_config.yml,_config.local.yml
 ```
