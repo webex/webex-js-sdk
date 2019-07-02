@@ -217,7 +217,7 @@
     "response-time": "^2.3.2",
     "rimraf": "^2.6.1",
     "rollup": "^0.68.0",
-    "rollup-plugin-cleaner": "^0.2.0",
+    "rollup-plugin-cleaner": "^1.0.0",
     "rollup-plugin-commonjs": "^9.2.0",
     "rollup-plugin-json": "^3.1.0",
     "rollup-plugin-license": "^0.8.1",
