@@ -544,6 +544,18 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
+                          href='#calleventmembershipsremove'
+                          class='regular pre-open'>
+                          ⓔ memberships:remove
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventdisconnected'
+                          class='regular pre-open'>
+                          ⓔ disconnected
+                        </a></li>
+                      
+                        <li><a
                           href='#calleventringing'
                           class='regular pre-open'>
                           ⓔ ringing
@@ -592,9 +604,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventactive'
+                          href='#calleventmembershipnotified'
                           class='regular pre-open'>
-                          ⓔ active
+                          ⓔ membership:notified
                         </a></li>
                       
                         <li><a
@@ -616,12 +628,6 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventdisconnected'
-                          class='regular pre-open'>
-                          ⓔ disconnected
-                        </a></li>
-                      
-                        <li><a
                           href='#calleventmembershipwaiting'
                           class='regular pre-open'>
                           ⓔ membership:waiting
@@ -640,15 +646,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventmembershipsremove'
+                          href='#calleventactive'
                           class='regular pre-open'>
-                          ⓔ memberships:remove
-                        </a></li>
-                      
-                        <li><a
-                          href='#calleventmembershipnotified'
-                          class='regular pre-open'>
-                          ⓔ membership:notified
+                          ⓔ active
                         </a></li>
                       
                     </ul>
@@ -1631,6 +1631,46 @@
               
                 
                 <li><a
+                  href='#metrics'
+                  class=" toggle-sibling">
+                  Metrics
+                  <span class='icon'>▸</span>
+                </a>
+                
+                <div class='toggle-target display-none'>
+                  
+                  
+                    <ul class='list-reset py1-ul pl1'>
+                      <li class='h5'><span>Instance members</span></li>
+                      
+                      <li><a
+                        href='#metricsinitialsetup'
+                        class='regular pre-open'>
+                        #initialSetup
+                      </a></li>
+                      
+                      <li><a
+                        href='#metricspostevent'
+                        class='regular pre-open'>
+                        #postEvent
+                      </a></li>
+                      
+                      <li><a
+                        href='#metricsinitpayload'
+                        class='regular pre-open'>
+                        #initPayload
+                      </a></li>
+                      
+                    </ul>
+                  
+                  
+                  
+                </div>
+                
+                </li>
+              
+                
+                <li><a
                   href='#audio'
                   class="">
                   AUDIO
@@ -2078,15 +2118,21 @@
                       </a></li>
                       
                       <li><a
-                        href='#meetingmeetingfsm'
+                        href='#meetingmeetingfinitestatemachine'
                         class='regular pre-open'>
-                        #meetingFSM
+                        #meetingFiniteStateMachine
                       </a></li>
                       
                       <li><a
                         href='#meetingstats'
                         class='regular pre-open'>
                         #stats
+                      </a></li>
+                      
+                      <li><a
+                        href='#meetinginternalstats'
+                        class='regular pre-open'>
+                        #internalStats
                       </a></li>
                       
                       <li><a
@@ -2355,6 +2401,12 @@
                         href='#roapsendroapmediarequest'
                         class='regular pre-open'>
                         #sendRoapMediaRequest
+                      </a></li>
+                      
+                      <li><a
+                        href='#roapsendroapcallrequest'
+                        class='regular pre-open'>
+                        #sendRoapCallRequest
                       </a></li>
                       
                     </ul>
@@ -3737,6 +3789,16 @@
               
                 
                 <li><a
+                  href='#permissionerror'
+                  class="">
+                  PermissionError
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
                   href='#webrtcstats'
                   class="">
                   WebRTCStats
@@ -3775,6 +3837,12 @@
                         href='#meetingstatsondata'
                         class='regular pre-open'>
                         #onData
+                      </a></li>
+                      
+                      <li><a
+                        href='#meetingstatswitheventshistory'
+                        class='regular pre-open'>
+                        #withEventsHistory
                       </a></li>
                       
                       <li><a
@@ -3977,46 +4045,6 @@
               
                 
                 <li><a
-                  href='#receiveeventaudio'
-                  class="">
-                  receiveEventAudio
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#receiveeventvideo'
-                  class="">
-                  receiveEventVideo
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#sendeventvideo'
-                  class="">
-                  sendEventVideo
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#sendeventaudio'
-                  class="">
-                  sendEventAudio
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
                   href='#event'
                   class="">
                   event
@@ -4027,9 +4055,29 @@
               
                 
                 <li><a
+                  href='#statserror'
+                  class="">
+                  StatsError
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
                   href='#reconnectionerror'
                   class="">
                   ReconnectionError
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#mediaerror'
+                  class="">
+                  MediaError
                   
                 </a>
                 
@@ -4190,6 +4238,16 @@
                   
                   
                 </div>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#parametererror'
+                  class="">
+                  ParameterError
+                  
+                </a>
                 
                 </li>
               
@@ -8610,6 +8668,103 @@ only, this function will throw.</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
+    <div class='border-bottom' id='calleventmembershipsremove'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>memberships:remove</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Emitted when a <a href="#callmembership">CallMembership</a> is removed from
+<a href="#callmemberships">Call#memberships</a>.</p>
+
+
+  <div class='pre p1 fill-light mt0'>memberships:remove</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='calleventdisconnected'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>disconnected</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>disconnected</div>
+  
+  
+
+  <div>Deprecated: with 
+<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
+
+enabled; instead, listen for 
+<a href="Call.inactive">Call.inactive</a>
+</div>
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='calleventringing'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -8983,11 +9138,11 @@ enabled; instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventactive'>
+    <div class='border-bottom' id='calleventmembershipnotified'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>active</span>
+            <span class='code strong strong truncate'>membership:notified</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -8995,10 +9150,14 @@ enabled; instead, listen for
 
   
 
-  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+  <p>This replaces the <a href="Call.ringing">Call.ringing</a> event, but note that it's
+subtly different. <a href="Call.ringing">Call.ringing</a> is emitted when the remote party calls
+<a href="Call#acknowledge()">Call#acknowledge()</a> whereas <a href="Call.membership:notified">Call.membership:notified</a> emits
+shortly after (but as a direct result of) locally calling
+<a href="Phone#dial()">Phone#dial()</a></p>
 
 
-  <div class='pre p1 fill-light mt0'>active</div>
+  <div class='pre p1 fill-light mt0'>membership:notified</div>
   
   
 
@@ -9164,56 +9323,6 @@ enabled; instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventdisconnected'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>disconnected</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>disconnected</div>
-  
-  
-
-  <div>Deprecated: with 
-<a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
-
-enabled; instead, listen for 
-<a href="Call.inactive">Call.inactive</a>
-</div>
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
     <div class='border-bottom' id='calleventmembershipwaiting'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -9353,11 +9462,11 @@ participating the call.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventmembershipsremove'>
+    <div class='border-bottom' id='calleventactive'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>memberships:remove</span>
+            <span class='code strong strong truncate'>active</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -9365,61 +9474,10 @@ participating the call.</p>
 
   
 
-  <p>Emitted when a <a href="#callmembership">CallMembership</a> is removed from
-<a href="#callmemberships">Call#memberships</a>.</p>
+  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
 
 
-  <div class='pre p1 fill-light mt0'>memberships:remove</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='calleventmembershipnotified'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>membership:notified</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>This replaces the <a href="Call.ringing">Call.ringing</a> event, but note that it's
-subtly different. <a href="Call.ringing">Call.ringing</a> is emitted when the remote party calls
-<a href="Call#acknowledge()">Call#acknowledge()</a> whereas <a href="Call.membership:notified">Call.membership:notified</a> emits
-shortly after (but as a direct result of) locally calling
-<a href="Phone#dial()">Phone#dial()</a></p>
-
-
-  <div class='pre p1 fill-light mt0'>membership:notified</div>
+  <div class='pre p1 fill-light mt0'>active</div>
   
   
 
@@ -17699,6 +17757,281 @@ similar to device.setVolume()</p>
   
   <div class='clearfix'>
     
+    <h3 class='fl m0' id='metrics'>
+      Metrics
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Metrics handles all the call metrics events</p>
+
+
+  <div class='pre p1 fill-light mt0'>new Metrics()</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Instance Members</div>
+    <div class="clearfix">
+  
+    <div class='border-bottom' id='metricsinitialsetup'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>initialSetup(meetingCollection, webexVersion)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>setup Metrics with meeting Collection</p>
+
+
+  <div class='pre p1 fill-light mt0'>initialSetup(meetingCollection: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>, webexVersion: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>meetingCollection</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</code>
+	    meetings object
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>webexVersion</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</code>
+	    webex version
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></code>:
+        null
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='metricspostevent'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>postEvent(options)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>poste Meeting event metrics</p>
+
+
+  <div class='pre p1 fill-light mt0'>postEvent(options: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</code>
+	    {meetingId/meeting} as a json object
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></code>:
+        null
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='metricsinitpayload'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>initPayload(eventType, identifiers, options)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Docs for Call analyzer metrics
+<a href="https://sqbu-github.cisco.com/WebExSquared/call-analyzer/wiki">https://sqbu-github.cisco.com/WebExSquared/call-analyzer/wiki</a>
+<a href="https://sqbu-github.cisco.com/WebExSquared/event-dictionary/blob/master/diagnostic-events.raml">https://sqbu-github.cisco.com/WebExSquared/event-dictionary/blob/master/diagnostic-events.raml</a></p>
+
+
+  <div class='pre p1 fill-light mt0'>initPayload(eventType: any, identifiers: any, options: any)</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>eventType</span> <code class='quiet'>(any)</code>
+	    
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>identifiers</span> <code class='quiet'>(any)</code>
+	    
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>options</span> <code class='quiet'>(any)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+</div>
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
     <h3 class='fl m0' id='audio'>
       AUDIO
     </h3>
@@ -20071,7 +20404,7 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>joinWithMedia(joinOptions, mediaOptions, streamsOptions, audioVideoOptions)</span>
+            <span class='code strong strong truncate'>joinWithMedia(options)</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -20081,7 +20414,7 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>joinWithMedia(joinOptions: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, mediaOptions: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, streamsOptions: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, audioVideoOptions: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
+  <div class='pre p1 fill-light mt0'>joinWithMedia(options: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
   
   
 
@@ -20098,37 +20431,53 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>joinOptions</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    see #join()
+            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    options to join with media
 
           </div>
           
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>mediaOptions</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    see #addMedia()
+          <table class='mt1 mb2 fixed-table h5 col-12'>
+            <colgroup>
+              <col width='30%' />
+              <col width='70%' />
+            </colgroup>
+            <thead>
+              <tr class='bold fill-light'>
+                <th>Name</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody class='mt1'>
+              
+                <tr>
+  <td class='break-word'><span class='code bold'>options.joinOptions</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
+  </td>
+  <td class='break-word'><span>see #join() optional
+</span></td>
+</tr>
 
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>streamsOptions</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    see #getMediaStreams()
 
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>audioVideoOptions</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    see #getMediaStreams()
+              
+                <tr>
+  <td class='break-word'><span class='code bold'>options.mediaSettings</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
+  </td>
+  <td class='break-word'><span>see #addMedia()
+</span></td>
+</tr>
 
-          </div>
+
+              
+                <tr>
+  <td class='break-word'><span class='code bold'>options.audioVideoOptions</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
+  </td>
+  <td class='break-word'><span>see #getMediaStreams() optional
+</span></td>
+</tr>
+
+
+              
+            </tbody>
+          </table>
           
         </div>
       
@@ -20149,6 +20498,25 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
 
   
 
+  
+    <div class='py1 quiet mt1 prose-big'>Example</div>
+    
+      
+      <pre class='p1 overflow-auto round fill-light'>joinWithMedia({
+ <span class="hljs-attr">joinOptions</span>: {<span class="hljs-attr">resourceId</span>: <span class="hljs-string">'resourceId'</span> },
+ <span class="hljs-attr">mediaSettings</span>: {
+  <span class="hljs-attr">sendAudio</span>: <span class="hljs-literal">true</span>,
+  <span class="hljs-attr">sendVideo</span>: <span class="hljs-literal">true</span>,
+  <span class="hljs-attr">sendShare</span>: <span class="hljs-literal">false</span>,
+  <span class="hljs-attr">receiveVideo</span>:<span class="hljs-literal">true</span>,
+  <span class="hljs-attr">receiveAudio</span>: <span class="hljs-literal">true</span>,
+  <span class="hljs-attr">receiveShare</span>: <span class="hljs-literal">true</span>
+}
+audioVideoOptions: {
+  <span class="hljs-attr">audio</span>: <span class="hljs-string">'audioDeviceId'</span>,
+  <span class="hljs-attr">video</span>: <span class="hljs-string">'videoDeviceId'</span>
+}})</pre>
+    
   
 
   
@@ -20347,6 +20715,15 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
   <td class='break-word'><span class='code bold'>options.resourceId</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
   </td>
   <td class='break-word'><span>pass the deviceId
+</span></td>
+</tr>
+
+
+              
+                <tr>
+  <td class='break-word'><span class='code bold'>options.mediaSettings</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>
+  </td>
+  <td class='break-word'><span>pass media options
 </span></td>
 </tr>
 
@@ -21325,11 +21702,11 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingmeetingfsm'>
+    <div class='border-bottom' id='meetingmeetingfinitestatemachine'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meetingFSM</span>
+            <span class='code strong strong truncate'>meetingFiniteStateMachine</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -21339,7 +21716,7 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>meetingFSM</div>
+  <div class='pre p1 fill-light mt0'>meetingFiniteStateMachine</div>
   
   
 
@@ -21385,6 +21762,51 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
   
 
   <div class='pre p1 fill-light mt0'>stats</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='meetinginternalstats'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>internalStats</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>internalStats</div>
   
   
 
@@ -23726,6 +24148,73 @@ delta object in the event will have {updated, added} and full will be the full m
       </div>
     </div>
   
+    <div class='border-bottom' id='roapsendroapcallrequest'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>sendRoapCallRequest</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>sends a roap media request</p>
+
+
+  <div class='pre p1 fill-light mt0'>sendRoapCallRequest</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
 </div>
 
   
@@ -25003,7 +25492,7 @@ delta object in the event will have {updated, added} and full will be the full m
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>attachMedia(mediaProperties, audioVideo, localShare, mappedPCs)</span>
+            <span class='code strong strong truncate'>attachMedia(mediaProperties, meetingId)</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -25014,7 +25503,7 @@ delta object in the event will have {updated, added} and full will be the full m
   <p>creates peerconnection and attaches streams</p>
 
 
-  <div class='pre p1 fill-light mt0'>attachMedia(mediaProperties: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>, audioVideo: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, localShare: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, mappedPCs: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a></div>
+  <div class='pre p1 fill-light mt0'>attachMedia(mediaProperties: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>, meetingId: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a></div>
   
   
 
@@ -25040,26 +25529,8 @@ delta object in the event will have {updated, added} and full will be the full m
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>audioVideo</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    audioVideo streams
-
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>localShare</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    sendScreen: {Boolean} sendShare constraints
-
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>mappedPCs</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    {peerConnection}
+            <span class='code bold'>meetingId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    call flow id
 
           </div>
           
@@ -29008,7 +29479,7 @@ Used to emit events internally between modules specific to an object</p>
   <p>handles ice trickling and establishes ICE connection onto peer connection object</p>
 
 
-  <div class='pre p1 fill-light mt0'>iceCandidate(pc: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a></div>
+  <div class='pre p1 fill-light mt0'>iceCandidate(peerConnection: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a></div>
   
   
 
@@ -29025,7 +29496,7 @@ Used to emit events internally between modules specific to an object</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>pc</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+            <span class='code bold'>peerConnection</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
 	    
           </div>
           
@@ -29076,7 +29547,7 @@ Used to emit events internally between modules specific to an object</p>
   <p>swapping tracks</p>
 
 
-  <div class='pre p1 fill-light mt0'>replaceTrack(pc: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, track: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
+  <div class='pre p1 fill-light mt0'>replaceTrack(peerConnection: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, track: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
   
   
 
@@ -29093,7 +29564,7 @@ Used to emit events internally between modules specific to an object</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>pc</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+            <span class='code bold'>peerConnection</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
 	    
           </div>
           
@@ -29152,7 +29623,7 @@ Used to emit events internally between modules specific to an object</p>
   <p>adding streams to peerConnection</p>
 
 
-  <div class='pre p1 fill-light mt0'>addStream(pc: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, stream: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
+  <div class='pre p1 fill-light mt0'>addStream(peerConnection: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, stream: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
   
   
 
@@ -29169,7 +29640,7 @@ Used to emit events internally between modules specific to an object</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>pc</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+            <span class='code bold'>peerConnection</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
 	    
           </div>
           
@@ -29228,7 +29699,7 @@ Used to emit events internally between modules specific to an object</p>
   <p>setting the remote description</p>
 
 
-  <div class='pre p1 fill-light mt0'>setRemoteSessionDetails(pc: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, typeStr: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>, remoteSdp: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
+  <div class='pre p1 fill-light mt0'>setRemoteSessionDetails(peerConnection: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, typeStr: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>, remoteSdp: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>, meetingId: any): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
   
   
 
@@ -29245,7 +29716,7 @@ Used to emit events internally between modules specific to an object</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>pc</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+            <span class='code bold'>peerConnection</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
 	    
           </div>
           
@@ -29262,6 +29733,14 @@ Used to emit events internally between modules specific to an object</p>
         <div class='space-bottom0'>
           <div>
             <span class='code bold'>remoteSdp</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>meetingId</span> <code class='quiet'>(any)</code>
 	    
           </div>
           
@@ -29312,7 +29791,7 @@ Used to emit events internally between modules specific to an object</p>
   <p>create offer with a valid paramater</p>
 
 
-  <div class='pre p1 fill-light mt0'>createOffer(pc: any, params: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a></div>
+  <div class='pre p1 fill-light mt0'>createOffer(peerConnection: any, meetingId: any, params: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a></div>
   
   
 
@@ -29329,7 +29808,15 @@ Used to emit events internally between modules specific to an object</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>pc</span> <code class='quiet'>(any)</code>
+            <span class='code bold'>peerConnection</span> <code class='quiet'>(any)</code>
+	    
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>meetingId</span> <code class='quiet'>(any)</code>
 	    
           </div>
           
@@ -29388,7 +29875,7 @@ Used to emit events internally between modules specific to an object</p>
   <p>rollBack local description in peerconnection</p>
 
 
-  <div class='pre p1 fill-light mt0'>rollBackLocalDescription(pc: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a></div>
+  <div class='pre p1 fill-light mt0'>rollBackLocalDescription(peerConnection: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a></div>
   
   
 
@@ -29405,7 +29892,7 @@ Used to emit events internally between modules specific to an object</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>pc</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+            <span class='code bold'>peerConnection</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
 	    
           </div>
           
@@ -29477,7 +29964,7 @@ Used to emit events internally between modules specific to an object</p>
 offerToReceiveAudio: {Boolean} sdp constraints
 offerToReceiveVideo: {Boolean} sdp constraints
 offerSdp: {sdp}
-stream: {PCStream}
+stream: {pcStream}
 }
 
           </div>
@@ -29547,7 +30034,7 @@ stream: {PCStream}
           <div>
             <span class='code bold'>params</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
 	    {
-pc: {Object} peerConnection
+peerConnection: {Object} peerConnection
 sdpConstraints: {Object} sdp constraints
 }
 
@@ -29564,7 +30051,7 @@ sdpConstraints: {Object} sdp constraints
     
       <div class='py1 quiet mt1 prose-big'>Returns</div>
       <code><a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a></code>:
-        pc
+        peerConnection
 
       
     
@@ -29600,7 +30087,7 @@ sdpConstraints: {Object} sdp constraints
   <p>shut down the peer connection</p>
 
 
-  <div class='pre p1 fill-light mt0'>close(pc: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
+  <div class='pre p1 fill-light mt0'>close(peerConnection: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
   
   
 
@@ -29617,7 +30104,7 @@ sdpConstraints: {Object} sdp constraints
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>pc</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+            <span class='code bold'>peerConnection</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
 	    
           </div>
           
@@ -34985,7 +35472,7 @@ there are multiple ids that can be used</p>
   <p>Extended Error object to signify the intent to join for unclaimed PMR scenarios</p>
 
 
-  <div class='pre p1 fill-light mt0'>new IntentToJoinError(error: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</div>
+  <div class='pre p1 fill-light mt0'>new IntentToJoinError(message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>, error: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</div>
   
   
     <p>
@@ -35009,17 +35496,20 @@ there are multiple ids that can be used</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    
+            <span class='code bold'>message</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>
+            = <code>ERROR_DICTIONARY.INTENT_TO_JOIN.MESSAGE</code>)</code>
+	    optional
+
           </div>
           
         </div>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>message</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>
-            = <code>ERROR_DICTIONARY.INTENT_TO_JOIN.MESSAGE</code>)</code>
-	    
+            <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+            = <code>null</code>)</code>
+	    optional
+
           </div>
           
         </div>
@@ -35061,7 +35551,7 @@ there are multiple ids that can be used</p>
   <p>Extended Error object to signify a join meeting error</p>
 
 
-  <div class='pre p1 fill-light mt0'>new JoinMeetingError(error: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, options: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</div>
+  <div class='pre p1 fill-light mt0'>new JoinMeetingError(options: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>, error: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</div>
   
   
     <p>
@@ -35085,14 +35575,6 @@ there are multiple ids that can be used</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
             <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
             = <code>{}</code>)</code>
 	    optional
@@ -35105,6 +35587,95 @@ there are multiple ids that can be used</p>
           <div>
             <span class='code bold'>message</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>
             = <code>ERROR_DICTIONARY.JOIN_MEETING.MESSAGE</code>)</code>
+	    optional
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+            = <code>null</code>)</code>
+	    optional
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='permissionerror'>
+      PermissionError
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Extended Error object for general parameter errors</p>
+
+
+  <div class='pre p1 fill-light mt0'>new PermissionError(message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>, error: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</div>
+  
+  
+    <p>
+      Extends
+      
+        <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>
+      
+    </p>
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>message</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>
+            = <code>ERROR_DICTIONARY.PERMISSION.MESSAGE</code>)</code>
+	    optional
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+            = <code>null</code>)</code>
 	    optional
 
           </div>
@@ -35428,11 +35999,11 @@ calls back a function with data from piped stream filter</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingstatswithevents'>
+    <div class='border-bottom' id='meetingstatswitheventshistory'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>withEvents()</span>
+            <span class='code strong strong truncate'>withEventsHistory(history, cb)</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -35443,7 +36014,7 @@ calls back a function with data from piped stream filter</p>
   <p>constructs an event object on this instance</p>
 
 
-  <div class='pre p1 fill-light mt0'>withEvents(): <a href="#meetingstats">MeetingStats</a></div>
+  <div class='pre p1 fill-light mt0'>withEventsHistory(history: <a href="#statshistory">StatsHistory</a>, cb: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function">Function</a>): <a href="#meetingstats">MeetingStats</a></div>
   
   
 
@@ -35454,6 +36025,94 @@ calls back a function with data from piped stream filter</p>
   
   
 
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>history</span> <code class='quiet'>(<a href="#statshistory">StatsHistory</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>cb</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function">Function</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="#meetingstats">MeetingStats</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='meetingstatswithevents'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>withEvents(cb)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>constructs an event object on this instance</p>
+
+
+  <div class='pre p1 fill-light mt0'>withEvents(cb: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function">Function</a>): <a href="#meetingstats">MeetingStats</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>cb</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function">Function</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
   
 
   
@@ -36908,57 +37567,9 @@ to make space for the new stats data report to be added to the front
   </div>
   
 
-  <p>constructs an instance</p>
-
-
-  <div class='pre p1 fill-light mt0'>constructor()</div>
-  
   
 
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='receiveeventaudio'>
-      receiveEventAudio
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>handles the first audio bytes received</p>
-
-
-  <div class='pre p1 fill-light mt0'>receiveEventAudio(data: <a href="#webrtcdata">WebRTCData</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
+  <div class='pre p1 fill-light mt0'>constructor(series: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>, callback: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function">Function</a>)</div>
   
   
 
@@ -36975,77 +37586,18 @@ to make space for the new stats data report to be added to the front
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>data</span> <code class='quiet'>(<a href="#webrtcdata">WebRTCData</a>)</code>
-	    the filtered, parsed, converted, transformed, simplified data point to check against
-
+            <span class='code bold'>series</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>
+            = <code>null</code>)</code>
+	    
           </div>
           
         </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>:
-        always whatever the first receiveFirstVideoBytes were, in the past or if it happened now, or undefined if never
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='receiveeventvideo'>
-      receiveEventVideo
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>handles the first video bytes received</p>
-
-
-  <div class='pre p1 fill-light mt0'>receiveEventVideo(data: <a href="#webrtcdata">WebRTCData</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>data</span> <code class='quiet'>(<a href="#webrtcdata">WebRTCData</a>)</code>
-	    the filtered, parsed, converted, transformed, simplified data point to check against
+            <span class='code bold'>callback</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function">Function</a>
+            = <code>()=&gt;{}</code>)</code>
+	    constructs an instance
 
           </div>
           
@@ -37056,152 +37608,6 @@ to make space for the new stats data report to be added to the front
 
   
 
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>:
-        always whatever the first receiveFirstVideoBytes were, in the past or if it happened now, or undefined if never
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='sendeventvideo'>
-      sendEventVideo
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>handles the first video bytes sent</p>
-
-
-  <div class='pre p1 fill-light mt0'>sendEventVideo(data: <a href="#webrtcdata">WebRTCData</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>data</span> <code class='quiet'>(<a href="#webrtcdata">WebRTCData</a>)</code>
-	    the filtered, parsed, converted, transformed, simplified data point to check against
-
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>:
-        always whatever the first sentFirstVideoBytes were, in the past or if it happened now, or undefined if never
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='sendeventaudio'>
-      sendEventAudio
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>handles the first audio bytes sent</p>
-
-
-  <div class='pre p1 fill-light mt0'>sendEventAudio(data: <a href="#webrtcdata">WebRTCData</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>data</span> <code class='quiet'>(<a href="#webrtcdata">WebRTCData</a>)</code>
-	    the filtered, parsed, converted, transformed, simplified data point to check against
-
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>:
-        always whatever the first sentFirstAudioBytes were, in the past or if it happened now, or undefined if never
-
-      
-    
   
 
   
@@ -37291,18 +37697,18 @@ to make space for the new stats data report to be added to the front
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='reconnectionerror'>
-      ReconnectionError
+    <h3 class='fl m0' id='statserror'>
+      StatsError
     </h3>
     
     
   </div>
   
 
-  <p>Extended Error object to signify the intent to join for unclaimed PMR scenarios</p>
+  <p>Extended Error object for Stats Errors</p>
 
 
-  <div class='pre p1 fill-light mt0'>new ReconnectionError(error: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</div>
+  <div class='pre p1 fill-light mt0'>new StatsError(message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>, error: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</div>
   
   
     <p>
@@ -37326,17 +37732,178 @@ to make space for the new stats data report to be added to the front
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    
+            <span class='code bold'>message</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>
+            = <code>ERROR_DICTIONARY.STATS.MESSAGE</code>)</code>
+	    optional
+
           </div>
           
         </div>
       
         <div class='space-bottom0'>
           <div>
+            <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+            = <code>null</code>)</code>
+	    optional
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='reconnectionerror'>
+      ReconnectionError
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Extended Error object to signify the intent to join for unclaimed PMR scenarios</p>
+
+
+  <div class='pre p1 fill-light mt0'>new ReconnectionError(message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>, error: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</div>
+  
+  
+    <p>
+      Extends
+      
+        <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>
+      
+    </p>
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
             <span class='code bold'>message</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>
             = <code>ERROR_DICTIONARY.RECONNECTION.MESSAGE</code>)</code>
-	    
+	    optional
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+            = <code>null</code>)</code>
+	    optional
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='mediaerror'>
+      MediaError
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Extended Error object for media errors</p>
+
+
+  <div class='pre p1 fill-light mt0'>new MediaError(message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>, error: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</div>
+  
+  
+    <p>
+      Extends
+      
+        <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>
+      
+    </p>
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>message</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>
+            = <code>ERROR_DICTIONARY.MEDIA.MESSAGE</code>)</code>
+	    optional
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+            = <code>null</code>)</code>
+	    optional
+
           </div>
           
         </div>
@@ -38425,6 +38992,85 @@ to make space for the new stats data report to be added to the front
     </div>
   
 </div>
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='parametererror'>
+      ParameterError
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Extended Error object for general parameter errors</p>
+
+
+  <div class='pre p1 fill-light mt0'>new ParameterError(message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>, error: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</div>
+  
+  
+    <p>
+      Extends
+      
+        <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>
+      
+    </p>
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>message</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>
+            = <code>ERROR_DICTIONARY.PARAMETER.MESSAGE</code>)</code>
+	    optional
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+            = <code>null</code>)</code>
+	    optional
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
 
   
 
