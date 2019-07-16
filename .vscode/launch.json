@@ -13,18 +13,43 @@
     },
     {
       "type": "node",
-      "runtimeVersion": "8.15.1",
       "request": "launch",
-      "name": "node test messages",
-      "runtimeExecutable": "/Users/jshipher/.nvm/versions/node/v10.10.0/bin/babel-node",
-      //"program": "${workspaceFolder}/tooling/index.js",
+      "name": "Test package",
+      "runtimeVersion": "8.16.0",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/babel-node",
       "runtimeArgs": [
         "./tooling/index.js",
         "test",
         "--package",
-        "@webex/plugin-rooms",
-        "--node"
+        "@webex/${input:packages}",
+        "${input:flags}"
       ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Test all packages",
+      "runtimeVersion": "8.16.0",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/babel-node",
+      "runtimeArgs": [
+        "./tooling/index.js",
+        "test",
+        "--package",
+        "@webex/${input:packages}",
+        "${input:flags}"
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "packages",
+      "type": "promptString",
+      "description": "Which package do you want to debug (i.e. `plugin-meetings`)"
+    },
+    {
+      "id": "flags",
+      "type": "promptString",
+      "description": "Which flags would you like to add (i.e. `--node` or `--unit`)"
     }
   ]
 }
