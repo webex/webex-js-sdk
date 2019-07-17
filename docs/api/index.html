@@ -11480,6 +11480,10 @@ or deleted to remove them from the room.</p>
 This is an alternate approach to registering for membership webhooks.
 The events passed to any registered handlers will be similar to the webhook JSON,
 but will omit webhook specific fields such as name, secret, url, etc.
+To utilize the <code>listen()</code> method, the authorization token used
+will need to have <code>spark:all</code> and <code>spark:kms</code> scopes enabled.
+Note that by configuring your application to enable or disable <code>spark:all</code>
+via its configuration page will also enable or disable <code>spark:kms</code>.
 See the <a href="https://js.samples.s4d.io/browser-socket/">Sample App</a>
 for more details.</p>
 
@@ -12323,6 +12327,15 @@ for a list of supported media types.</p>
 This is an alternate approach to registering for messages webhooks.
 The events passed to any registered handlers will be similar to the webhook JSON,
 but will omit webhook specific fields such as name, secret, url, etc.
+The messages.listen() event objects can also include additional fields not
+available in the webhook's JSON payload: <code>text</code>, <code>markdown</code>, and <code>files</code>.
+These fields are available when their details are included in the web socket's
+<code>activity</code> object. Retrieving other fields, such as the <code>html</code> field,
+will require a manual request to get the corresponding message object.
+To utilize the <code>listen()</code> method, the authorization token used
+will need to have <code>spark:all</code> and <code>spark:kms</code> scopes enabled.
+Note that by configuring your application to enable or disable <code>spark:all</code>
+via its configuration page will also enable or disable <code>spark:kms</code>.
 See the <a href="https://js.samples.s4d.io/browser-socket/">Sample App</a>
 for more details.</p>
 
@@ -13203,6 +13216,10 @@ posting and managing content.</p>
 This is an alternate approach to registering for rooms webhooks.
 The events passed to any registered handlers will be similar to the webhook JSON,
 but will omit webhook specific fields such as name, secret, url, etc.
+To utilize the <code>listen()</code> method, the authorization token used
+will need to have <code>spark:all</code> and <code>spark:kms</code> scopes enabled.
+Note that by configuring your application to enable or disable <code>spark:all</code>
+via its configuration page will also enable or disable <code>spark:kms</code>.
 See the <a href="https://js.samples.s4d.io/browser-socket/">Sample App</a>
 for more details.</p>
 
@@ -20668,7 +20685,8 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+            = <code>{}</code>)</code>
 	    options to join with media
 
           </div>
