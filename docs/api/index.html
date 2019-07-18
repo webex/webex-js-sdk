@@ -544,15 +544,15 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#calleventmembershipsremove'
+                          href='#calleventmembershipsadd'
                           class='regular pre-open'>
-                          ⓔ memberships:remove
+                          ⓔ memberships:add
                         </a></li>
                       
                         <li><a
-                          href='#calleventdisconnected'
+                          href='#calleventconnected'
                           class='regular pre-open'>
-                          ⓔ disconnected
+                          ⓔ connected
                         </a></li>
                       
                         <li><a
@@ -562,9 +562,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventconnected'
+                          href='#calleventdisconnected'
                           class='regular pre-open'>
-                          ⓔ connected
+                          ⓔ disconnected
                         </a></li>
                       
                         <li><a
@@ -640,15 +640,15 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventmembershipsadd'
-                          class='regular pre-open'>
-                          ⓔ memberships:add
-                        </a></li>
-                      
-                        <li><a
                           href='#calleventactive'
                           class='regular pre-open'>
                           ⓔ active
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventmembershipsremove'
+                          class='regular pre-open'>
+                          ⓔ memberships:remove
                         </a></li>
                       
                     </ul>
@@ -942,6 +942,12 @@
                       <li class='h5'><span>Instance members</span></li>
                       
                       <li><a
+                        href='#membershipslisten'
+                        class='regular pre-open'>
+                        #listen
+                      </a></li>
+                      
+                      <li><a
                         href='#membershipscreate'
                         class='regular pre-open'>
                         #create
@@ -977,6 +983,12 @@
                         #update
                       </a></li>
                       
+                      <li><a
+                        href='#membershipsupdatelastseen'
+                        class='regular pre-open'>
+                        #updateLastSeen
+                      </a></li>
+                      
                     </ul>
                   
                   
@@ -998,6 +1010,12 @@
                   
                     <ul class='list-reset py1-ul pl1'>
                       <li class='h5'><span>Instance members</span></li>
+                      
+                      <li><a
+                        href='#messageslisten'
+                        class='regular pre-open'>
+                        #listen
+                      </a></li>
                       
                       <li><a
                         href='#messagescreate'
@@ -1078,6 +1096,12 @@
                   
                     <ul class='list-reset py1-ul pl1'>
                       <li class='h5'><span>Instance members</span></li>
+                      
+                      <li><a
+                        href='#roomslisten'
+                        class='regular pre-open'>
+                        #listen
+                      </a></li>
                       
                       <li><a
                         href='#roomscreate'
@@ -1414,6 +1438,56 @@
                   href='#isodate'
                   class="">
                   isoDate
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#attachmentactionobject'
+                  class="">
+                  AttachmentActionObject
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#initialize'
+                  class="">
+                  initialize
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#initialize'
+                  class="">
+                  initialize
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#create'
+                  class="">
+                  create
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#get'
+                  class="">
+                  get
                   
                 </a>
                 
@@ -4333,106 +4407,6 @@
               
                 
                 <li><a
-                  href='#listen'
-                  class="">
-                  listen
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#listen'
-                  class="">
-                  listen
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#listen'
-                  class="">
-                  listen
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#onwebexapievent'
-                  class="">
-                  onWebexApiEvent
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#onwebexapievent'
-                  class="">
-                  onWebexApiEvent
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#onwebexapievent'
-                  class="">
-                  onWebexApiEvent
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#getmembershipevent'
-                  class="">
-                  getMembershipEvent
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#updatelastseen'
-                  class="">
-                  updateLastSeen
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#initialize'
-                  class="">
-                  initialize
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#getmessageevent'
-                  class="">
-                  getMessageEvent
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
                   href='#_triggercallevents'
                   class="">
                   _triggerCallEvents
@@ -4496,16 +4470,6 @@
                   href='#getthisdevice'
                   class="">
                   getThisDevice
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#getroomevent'
-                  class="">
-                  getRoomEvent
                   
                 </a>
                 
@@ -8668,11 +8632,11 @@ only, this function will throw.</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='calleventmembershipsremove'>
+    <div class='border-bottom' id='calleventmembershipsadd'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>memberships:remove</span>
+            <span class='code strong strong truncate'>memberships:add</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -8680,11 +8644,13 @@ only, this function will throw.</p>
 
   
 
-  <p>Emitted when a <a href="#callmembership">CallMembership</a> is removed from
-<a href="#callmemberships">Call#memberships</a>.</p>
+  <p>Emitted when a new <a href="#callmembership">CallMembership</a> is added to
+<a href="#callmemberships">Call#memberships</a>. Note that <a href="#callmembershipstate">CallMembership#state</a> still needs
+to be read to determine if the instance represents someone actively
+participating the call.</p>
 
 
-  <div class='pre p1 fill-light mt0'>memberships:remove</div>
+  <div class='pre p1 fill-light mt0'>memberships:add</div>
   
   
 
@@ -8715,11 +8681,11 @@ only, this function will throw.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventdisconnected'>
+    <div class='border-bottom' id='calleventconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>disconnected</span>
+            <span class='code strong strong truncate'>connected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -8729,7 +8695,7 @@ only, this function will throw.</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>disconnected</div>
+  <div class='pre p1 fill-light mt0'>connected</div>
   
   
 
@@ -8737,7 +8703,7 @@ only, this function will throw.</p>
 <a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
 
 enabled; instead, listen for 
-<a href="Call.inactive">Call.inactive</a>
+<a href="Call.active">Call.active</a>
 </div>
   
   
@@ -8815,11 +8781,11 @@ enabled; instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventconnected'>
+    <div class='border-bottom' id='calleventdisconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>connected</span>
+            <span class='code strong strong truncate'>disconnected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -8829,7 +8795,7 @@ enabled; instead, listen for
 
   
 
-  <div class='pre p1 fill-light mt0'>connected</div>
+  <div class='pre p1 fill-light mt0'>disconnected</div>
   
   
 
@@ -8837,7 +8803,7 @@ enabled; instead, listen for
 <a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
 
 enabled; instead, listen for 
-<a href="Call.active">Call.active</a>
+<a href="Call.inactive">Call.inactive</a>
 </div>
   
   
@@ -9413,11 +9379,11 @@ shortly after (but as a direct result of) locally calling
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventmembershipsadd'>
+    <div class='border-bottom' id='calleventactive'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>memberships:add</span>
+            <span class='code strong strong truncate'>active</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -9425,13 +9391,10 @@ shortly after (but as a direct result of) locally calling
 
   
 
-  <p>Emitted when a new <a href="#callmembership">CallMembership</a> is added to
-<a href="#callmemberships">Call#memberships</a>. Note that <a href="#callmembershipstate">CallMembership#state</a> still needs
-to be read to determine if the instance represents someone actively
-participating the call.</p>
+  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
 
 
-  <div class='pre p1 fill-light mt0'>memberships:add</div>
+  <div class='pre p1 fill-light mt0'>active</div>
   
   
 
@@ -9462,11 +9425,11 @@ participating the call.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventactive'>
+    <div class='border-bottom' id='calleventmembershipsremove'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>active</span>
+            <span class='code strong strong truncate'>memberships:remove</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -9474,10 +9437,11 @@ participating the call.</p>
 
   
 
-  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+  <p>Emitted when a <a href="#callmembership">CallMembership</a> is removed from
+<a href="#callmemberships">Call#memberships</a>.</p>
 
 
-  <div class='pre p1 fill-light mt0'>active</div>
+  <div class='pre p1 fill-light mt0'>memberships:remove</div>
   
   
 
@@ -11540,6 +11504,101 @@ or deleted to remove them from the room.</p>
     <div class='py1 quiet mt1 prose-big'>Instance Members</div>
     <div class="clearfix">
   
+    <div class='border-bottom' id='membershipslisten'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>listen()</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Register to listen for incoming membership events
+This is an alternate approach to registering for membership webhooks.
+The events passed to any registered handlers will be similar to the webhook JSON,
+but will omit webhook specific fields such as name, secret, url, etc.
+To utilize the <code>listen()</code> method, the authorization token used
+will need to have <code>spark:all</code> and <code>spark:kms</code> scopes enabled.
+Note that by configuring your application to enable or disable <code>spark:all</code>
+via its configuration page will also enable or disable <code>spark:kms</code>.
+See the <a href="https://js.samples.s4d.io/browser-socket/">Sample App</a>
+for more details.</p>
+
+
+  <div class='pre p1 fill-light mt0'>listen(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Example</div>
+    
+      
+      <pre class='p1 overflow-auto round fill-light'>webex.memberships.listen()
+  .then(<span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'listening to membership events'</span>);
+    webex.memberships.on(<span class="hljs-string">'created'</span>, (event) =&gt; {
+      <span class="hljs-built_in">console</span>.log(<span class="hljs-string">`Got a membership:created event:\n<span class="hljs-subst">${event}</span>`</span>);
+    }
+    webex.memberships.on(<span class="hljs-string">'updated'</span>, (event) =&gt; {
+       <span class="hljs-built_in">console</span>.log(<span class="hljs-string">`Got a membership:updated event:\n<span class="hljs-subst">${event}</span>`</span>);
+    }
+    webex.memberships.on(<span class="hljs-string">'seen'</span>, (event) =&gt; {
+      <span class="hljs-comment">// This represents a "read receipt" and will include a</span>
+      <span class="hljs-comment">// lastSeenId for the message this member has just "read",</span>
+      <span class="hljs-comment">// There is currently no equivelent webhook for this event.</span>
+      <span class="hljs-built_in">console</span>.log(<span class="hljs-string">`Got a membership:seen event:\n<span class="hljs-subst">${event}</span>`</span>);
+    }
+    webex.memberships.on(<span class="hljs-string">'deleted'</span>, (event) =&gt;  =&gt; {
+      <span class="hljs-built_in">console</span>.log(<span class="hljs-string">`Got a membership:created event:\n<span class="hljs-subst">${event}</span>`</span>);
+    }
+  })
+  .catch(<span class="hljs-function">(<span class="hljs-params">e</span>) =&gt;</span> <span class="hljs-built_in">console</span>.error(<span class="hljs-string">`Unable to register for membership events: <span class="hljs-subst">${e}</span>`</span>));
+<span class="hljs-comment">// App logic goes here...</span>
+<span class="hljs-comment">// Later when it is time to clean up</span>
+webex.memberships.stopListening();
+webex.memberships.off(<span class="hljs-string">'created'</span>);
+webex.memberships.off(<span class="hljs-string">'updated'</span>);
+webex.memberships.off(<span class="hljs-string">'seen'</span>);
+webex.memberships.off(<span class="hljs-string">'deleted'</span>);</pre>
+    
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='membershipscreate'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -12165,6 +12224,76 @@ webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-stri
       </div>
     </div>
   
+    <div class='border-bottom' id='membershipsupdatelastseen'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>updateLastSeen(message)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Updates the lastSeenId attribute of a membership.
+Call this method to send a "read receipt" for a given message.
+This will update the lastSeenId for the user's membership in
+space where the message is.</p>
+
+
+  <div class='pre p1 fill-light mt0'>updateLastSeen(message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#membershipobject">MembershipObject</a>></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>message</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#membershipobject">MembershipObject</a>></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
 </div>
 
   
@@ -12221,6 +12350,91 @@ for a list of supported media types.</p>
   
     <div class='py1 quiet mt1 prose-big'>Instance Members</div>
     <div class="clearfix">
+  
+    <div class='border-bottom' id='messageslisten'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>listen()</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Register to listen for incoming messages events
+This is an alternate approach to registering for messages webhooks.
+The events passed to any registered handlers will be similar to the webhook JSON,
+but will omit webhook specific fields such as name, secret, url, etc.
+The messages.listen() event objects can also include additional fields not
+available in the webhook's JSON payload: <code>text</code>, <code>markdown</code>, and <code>files</code>.
+These fields are available when their details are included in the web socket's
+<code>activity</code> object. Retrieving other fields, such as the <code>html</code> field,
+will require a manual request to get the corresponding message object.
+To utilize the <code>listen()</code> method, the authorization token used
+will need to have <code>spark:all</code> and <code>spark:kms</code> scopes enabled.
+Note that by configuring your application to enable or disable <code>spark:all</code>
+via its configuration page will also enable or disable <code>spark:kms</code>.
+See the <a href="https://js.samples.s4d.io/browser-socket/">Sample App</a>
+for more details.</p>
+
+
+  <div class='pre p1 fill-light mt0'>listen(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Example</div>
+    
+      
+      <pre class='p1 overflow-auto round fill-light'>webex.messages.listen()
+  .then(<span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'listening to message events'</span>);
+    webex.messages.on(<span class="hljs-string">'created'</span>, (event) =&gt; <span class="hljs-built_in">console</span>.log(<span class="hljs-string">`Got a message:created event:\n<span class="hljs-subst">${event}</span>`</span>);
+    webex.messages.on(<span class="hljs-string">'deleted'</span>, (event) =&gt; <span class="hljs-built_in">console</span>.log(<span class="hljs-string">`Got a message:deleted event:\n<span class="hljs-subst">${event}</span>`</span>);
+  })
+  .catch(<span class="hljs-function">(<span class="hljs-params">e</span>) =&gt;</span> <span class="hljs-built_in">console</span>.error(<span class="hljs-string">`Unable to register for message events: <span class="hljs-subst">${e}</span>`</span>));
+<span class="hljs-comment">// Some app logic...</span>
+<span class="hljs-comment">// WHen it is time to cleanup</span>
+webex.messages.stopListening();
+webex.messages.off(<span class="hljs-string">'created'</span>);
+webex.messages.off(<span class="hljs-string">'deleted'</span>);</pre>
+    
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
   
     <div class='border-bottom' id='messagescreate'>
       <div class="clearfix small pointer toggle-sibling">
@@ -13025,6 +13239,86 @@ posting and managing content.</p>
   
     <div class='py1 quiet mt1 prose-big'>Instance Members</div>
     <div class="clearfix">
+  
+    <div class='border-bottom' id='roomslisten'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>listen()</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Register to listen for incoming rooms events
+This is an alternate approach to registering for rooms webhooks.
+The events passed to any registered handlers will be similar to the webhook JSON,
+but will omit webhook specific fields such as name, secret, url, etc.
+To utilize the <code>listen()</code> method, the authorization token used
+will need to have <code>spark:all</code> and <code>spark:kms</code> scopes enabled.
+Note that by configuring your application to enable or disable <code>spark:all</code>
+via its configuration page will also enable or disable <code>spark:kms</code>.
+See the <a href="https://js.samples.s4d.io/browser-socket/">Sample App</a>
+for more details.</p>
+
+
+  <div class='pre p1 fill-light mt0'>listen(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Example</div>
+    
+      
+      <pre class='p1 overflow-auto round fill-light'>webex.rooms.listen()
+  .then(<span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'listening to room events'</span>);
+    webex.rooms.on(<span class="hljs-string">'created'</span>, (event) =&gt; <span class="hljs-built_in">console</span>.log(<span class="hljs-string">`Got a room:created event:\n<span class="hljs-subst">${event}</span>`</span>);
+    webex.rooms.on(<span class="hljs-string">'updated'</span>, (event) =&gt; <span class="hljs-built_in">console</span>.log(<span class="hljs-string">`Got a room:updated event:\n<span class="hljs-subst">${event}</span>`</span>);
+  })
+  .catch(<span class="hljs-function">(<span class="hljs-params">e</span>) =&gt;</span> <span class="hljs-built_in">console</span>.error(<span class="hljs-string">`Unable to register for room events: <span class="hljs-subst">${e}</span>`</span>));
+<span class="hljs-comment">// Some app logic...</span>
+<span class="hljs-comment">// WHen it is time to cleanup</span>
+webex.rooms.stopListening();
+webex.rooms.off(<span class="hljs-string">'created'</span>);
+webex.rooms.off(<span class="hljs-string">'updated'</span>);</pre>
+    
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
   
     <div class='border-bottom' id='roomscreate'>
       <div class="clearfix small pointer toggle-sibling">
@@ -16220,6 +16514,504 @@ format (e.g. <code>2015-10-18T14:26:16+00:00</code>).</p>
 
   
 
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='attachmentactionobject'>
+      AttachmentActionObject
+    </h3>
+    
+    
+  </div>
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>AttachmentActionObject</div>
+  
+    <p>
+      Type:
+      <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : (server generated) Unique identifier for the attachment action
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>messageId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The ID of the message in which attachment action is to be performed
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The type of attachment action eg., submit
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>inputs</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+          : The inputs for form fields in attachment message
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>personId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : (server generated) The ID for the author of the attachment action
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>roomId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : (server generated) The ID for the room of the message
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>created</span> <code class='quiet'>(<a href="#isodate">isoDate</a>)</code>
+          : (server generated) The date and time that the message was created
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='initialize'>
+      initialize
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Initializer</p>
+
+
+  <div class='pre p1 fill-light mt0'>initialize(args: ...any): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>args</span> <code class='quiet'>(...any)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='initialize'>
+      initialize
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Initializer</p>
+
+
+  <div class='pre p1 fill-light mt0'>initialize(args: ...any): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>args</span> <code class='quiet'>(...any)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='create'>
+      create
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Post a new attachment action for a message with attachment.</p>
+
+
+  <div class='pre p1 fill-light mt0'>create(attachmentAction: <a href="#attachmentactionobject">AttachmentActionObject</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#attachmentactionobject">AttachmentActionObject</a>></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>attachmentAction</span> <code class='quiet'>(<a href="#attachmentactionobject">AttachmentActionObject</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#attachmentactionobject">AttachmentActionObject</a>></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Example</div>
+    
+      
+      <pre class='p1 overflow-auto round fill-light'>webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Create Message Example'</span>})
+  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
+    <span class="hljs-keyword">return</span> webex.messages.create({
+      <span class="hljs-attr">text</span>: <span class="hljs-string">'Howdy!'</span>,
+      <span class="hljs-attr">roomId</span>: room.id,
+      <span class="hljs-attr">attachments</span>:[ {
+         <span class="hljs-attr">contentType</span>: <span class="hljs-string">'application/vnd.microsoft.card.adaptive'</span>,
+        <span class="hljs-attr">content</span>: {
+          <span class="hljs-attr">type</span>: <span class="hljs-string">'AdaptiveCard'</span>,
+          <span class="hljs-attr">version</span>: <span class="hljs-string">'1.0'</span>,
+          <span class="hljs-attr">body</span>: [
+           {
+            <span class="hljs-attr">type</span>: <span class="hljs-string">'TextBlock'</span>,
+            <span class="hljs-attr">text</span>: <span class="hljs-string">''</span>,
+            <span class="hljs-attr">size</span>: <span class="hljs-string">'large'</span>
+            },
+          {
+            <span class="hljs-attr">type</span>: <span class="hljs-string">'TextBlock'</span>,
+            <span class="hljs-attr">text</span>: <span class="hljs-string">'Adaptive Cards'</span>,
+            <span class="hljs-attr">separation</span>: <span class="hljs-string">'none'</span>
+          }
+          {
+          <span class="hljs-attr">type</span>: <span class="hljs-string">'Input.Date'</span>,
+          <span class="hljs-attr">id</span>: <span class="hljs-string">'dueDate'</span>
+          }
+      ],
+    <span class="hljs-attr">actions</span>: [
+        {
+            <span class="hljs-attr">type</span>: <span class="hljs-string">'Action.Submit'</span>,
+            <span class="hljs-attr">title</span>: <span class="hljs-string">'Due Date'</span>
+        }
+    ]
+  }
+ }]
+    });
+  })
+  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">message</span>) </span>{
+   <span class="hljs-keyword">return</span> webex.attachmentActions.create({
+     <span class="hljs-attr">type</span>: <span class="hljs-string">'submit'</span>,
+     <span class="hljs-attr">messageId</span>: message.id,
+     <span class="hljs-attr">inputs</span>:{
+       <span class="hljs-attr">dueDate</span>: <span class="hljs-string">'26/06/1995'</span>
+     }
+   })
+   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">attachmentAction</span>))</span>{
+     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
+     assert(attachmentAction.id);
+     assert(attachmentAction.type);
+     assert(attachmentAction.personId);
+     assert(attachmentAction.inputs);
+     assert(attachmentAction.messageId);
+     assert(attachmentAction.roomId);
+     assert(attachmentAction.created);
+     <span class="hljs-keyword">return</span> <span class="hljs-string">'success'</span>;
+    }
+  });
+  <span class="hljs-comment">// =&gt; success</span></pre>
+    
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='get'>
+      get
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Returns a single attachment action.</p>
+
+
+  <div class='pre p1 fill-light mt0'>get(attachmentAction: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#attachmentactionobject">AttachmentActionObject</a>></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>attachmentAction</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#attachmentactionobject">AttachmentActionObject</a>></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Example</div>
+    
+      
+      <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> attachmentAction;
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Get Message Example'</span>})
+  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
+    <span class="hljs-keyword">return</span> webex.messages.create({
+      <span class="hljs-attr">text</span>: <span class="hljs-string">'Howdy!'</span>,
+      <span class="hljs-attr">roomId</span>: room.id,
+      <span class="hljs-attr">attachments</span>:[ {
+         <span class="hljs-attr">contentType</span>: <span class="hljs-string">'application/vnd.microsoft.card.adaptive'</span>,
+        <span class="hljs-attr">content</span>: {
+          <span class="hljs-attr">type</span>: <span class="hljs-string">'AdaptiveCard'</span>,
+          <span class="hljs-attr">version</span>: <span class="hljs-string">'1.0'</span>,
+          <span class="hljs-attr">body</span>: [
+           {
+            <span class="hljs-attr">type</span>: <span class="hljs-string">'TextBlock'</span>,
+            <span class="hljs-attr">text</span>: <span class="hljs-string">''</span>,
+            <span class="hljs-attr">size</span>: <span class="hljs-string">'large'</span>
+            },
+          {
+            <span class="hljs-attr">type</span>: <span class="hljs-string">'TextBlock'</span>,
+            <span class="hljs-attr">text</span>: <span class="hljs-string">'Adaptive Cards'</span>,
+            <span class="hljs-attr">separation</span>: <span class="hljs-string">'none'</span>
+          },
+          {
+          <span class="hljs-attr">type</span>: <span class="hljs-string">'Input.Date'</span>,
+          <span class="hljs-attr">id</span>: <span class="hljs-string">'dueDate'</span>
+          }
+      ],
+    <span class="hljs-attr">actions</span>: [
+        {
+            <span class="hljs-attr">type</span>: <span class="hljs-string">'Action.Submit'</span>,
+            <span class="hljs-attr">title</span>: <span class="hljs-string">'Due Date'</span>
+        }
+    ]
+  }
+ }]
+    });
+  })
+  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">message</span>) </span>{
+    <span class="hljs-keyword">return</span> webex.attachmentActions.create({
+     <span class="hljs-attr">type</span>: <span class="hljs-string">'submit'</span>,
+     <span class="hljs-attr">messageId</span>: message.id,
+     <span class="hljs-attr">inputs</span>:{
+       <span class="hljs-attr">dueDate</span>: <span class="hljs-string">'26/06/1995'</span>
+     });
+  })
+  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">attachmentAction</span>) </span>{
+    <span class="hljs-keyword">return</span> webex.attachmentActions.get(attachmentAction.id)
+  })
+   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">attachmentAction</span>)</span>{
+       <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
+       assert.deepEqual(attachmentAction, attachmentAction);
+       <span class="hljs-keyword">return</span> <span class="hljs-string">'success'</span>;
+     })
+  <span class="hljs-comment">// =&gt; success</span></pre>
+    
   
 
   
@@ -20431,7 +21223,8 @@ warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+            = <code>{}</code>)</code>
 	    options to join with media
 
           </div>
@@ -39595,669 +40388,6 @@ to make space for the new stats data report to be added to the front
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='listen'>
-      listen
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Connect to the web socket to listen to incoming messages.</p>
-
-
-  <div class='pre p1 fill-light mt0'>listen(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
-        
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='listen'>
-      listen
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Connect to the web socket to listen to incoming messages.</p>
-
-
-  <div class='pre p1 fill-light mt0'>listen(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
-        
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='listen'>
-      listen
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Connect to the web socket to listen to incoming messages.</p>
-
-
-  <div class='pre p1 fill-light mt0'>listen(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
-        
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='onwebexapievent'>
-      onWebexApiEvent
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Trigger a membership related events.</p>
-
-
-  <div class='pre p1 fill-light mt0'>onWebexApiEvent(event: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>event</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
-        -- nothing //linter requires return in JSDoc
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='onwebexapievent'>
-      onWebexApiEvent
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Trigger a "messages" event.</p>
-
-
-  <div class='pre p1 fill-light mt0'>onWebexApiEvent(event: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>event</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
-        
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='onwebexapievent'>
-      onWebexApiEvent
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Trigger a membership related events.</p>
-
-
-  <div class='pre p1 fill-light mt0'>onWebexApiEvent(event: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>event</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
-        -- nothing //linter requires return in JSDoc
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='getmembershipevent'>
-      getMembershipEvent
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Constructs the data object for an event on the memberships resource,
-adhering to Hydra's Webehook data structure memberships.</p>
-
-
-  <div class='pre p1 fill-light mt0'>getMembershipEvent(activity: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, event: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>activity</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    from mercury
-
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>event</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    type of "webhook" event
-
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>:
-        constructed event
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='updatelastseen'>
-      updateLastSeen
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Updates the lastSeenId attribute of a membership</p>
-
-
-  <div class='pre p1 fill-light mt0'>updateLastSeen(message: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#membershipobject">MembershipObject</a>></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>message</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-	    
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#membershipobject">MembershipObject</a>></code>:
-        
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='initialize'>
-      initialize
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Initializer</p>
-
-
-  <div class='pre p1 fill-light mt0'>initialize(args: ...any): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>args</span> <code class='quiet'>(...any)</code>
-	    
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
-        
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='getmessageevent'>
-      getMessageEvent
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Constructs the data object for an event on the messages resource,
-adhering to Hydra's Webehook data structure messages.</p>
-
-
-  <div class='pre p1 fill-light mt0'>getMessageEvent(activity: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, event: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>activity</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    from mercury
-
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>event</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    type of "webhook" event
-
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>:
-        constructed event
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
     <h3 class='fl m0' id='_triggercallevents'>
       _triggerCallEvents
     </h3>
@@ -40675,85 +40805,6 @@ shares</p>
       <div class='py1 quiet mt1 prose-big'>Returns</div>
       <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>:
         
-
-      
-    
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='getroomevent'>
-      getRoomEvent
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Constructs the data object for an event on the rooms resource,
-adhering to Hydra's Webehook data structure.</p>
-
-
-  <div class='pre p1 fill-light mt0'>getRoomEvent(activity: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>, event: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>activity</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    from mercury
-
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>event</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    type of "webhook" event
-
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a></code>:
-        constructed event
 
       
     
