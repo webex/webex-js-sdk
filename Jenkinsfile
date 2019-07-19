@@ -538,33 +538,6 @@ ansiColor('xterm') {
                   warn("failed to publish to npm ${error.toString()}")
                 }
               }
-
-              stage('publish docs') {
-                try {
-                  image.inside(DOCKER_RUN_OPTS) {
-                    // It's kinda ridiculous, but this seems like the most
-                    // effective way to make sure we set the git username at the
-                    // right time without horrible bash scripts that check what
-                    // folders do or do not exist
-                    sh 'npm run publish:docs'
-                  }
-                  dir('.grunt/grunt-gh-pages/gh-pages/ghc') {
-                    sshagent(['707208aa-a797-4ee4-990d-7f61479b35b5']) {
-                      try {
-                        sh 'git remote add upstream git@github.com:webex/webex-js-sdk.git'
-                      }
-                      catch(err) {
-                        // ignore; this happens when the node exist
-                      }
-                      sh 'git push upstream gh-pages:gh-pages'
-                    }
-                  }
-                }
-                catch (error) {
-                  warn("failed to publish docs ${error.toString()}")
-                }
-
-              }
             }
           }
 
