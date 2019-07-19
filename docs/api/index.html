@@ -261,15 +261,15 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#phoneeventcallincoming'
-                          class='regular pre-open'>
-                          ⓔ call:incoming
-                        </a></li>
-                      
-                        <li><a
                           href='#phoneeventcallcreated'
                           class='regular pre-open'>
                           ⓔ call:created
+                        </a></li>
+                      
+                        <li><a
+                          href='#phoneeventcallincoming'
+                          class='regular pre-open'>
+                          ⓔ call:incoming
                         </a></li>
                       
                     </ul>
@@ -544,15 +544,15 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#calleventmembershipsremove'
+                          href='#calleventmembershipsadd'
                           class='regular pre-open'>
-                          ⓔ memberships:remove
+                          ⓔ memberships:add
                         </a></li>
                       
                         <li><a
-                          href='#calleventdisconnected'
+                          href='#calleventconnected'
                           class='regular pre-open'>
-                          ⓔ disconnected
+                          ⓔ connected
                         </a></li>
                       
                         <li><a
@@ -562,9 +562,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventconnected'
+                          href='#calleventdisconnected'
                           class='regular pre-open'>
-                          ⓔ connected
+                          ⓔ disconnected
                         </a></li>
                       
                         <li><a
@@ -640,15 +640,15 @@
                         </a></li>
                       
                         <li><a
-                          href='#calleventmembershipsadd'
-                          class='regular pre-open'>
-                          ⓔ memberships:add
-                        </a></li>
-                      
-                        <li><a
                           href='#calleventactive'
                           class='regular pre-open'>
                           ⓔ active
+                        </a></li>
+                      
+                        <li><a
+                          href='#calleventmembershipsremove'
+                          class='regular pre-open'>
+                          ⓔ memberships:remove
                         </a></li>
                       
                     </ul>
@@ -870,21 +870,21 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#meetingseventmeetingremoved'
-                          class='regular pre-open'>
-                          ⓔ meeting:removed
-                        </a></li>
-                      
-                        <li><a
                           href='#meetingseventmeetingsready'
                           class='regular pre-open'>
                           ⓔ meetings:ready
                         </a></li>
                       
                         <li><a
-                          href='#meetingseventmeetingreconnectionsuccess'
+                          href='#meetingseventmeetingremoved'
                           class='regular pre-open'>
-                          ⓔ meeting:reconnectionSuccess
+                          ⓔ meeting:removed
+                        </a></li>
+                      
+                        <li><a
+                          href='#meetingseventmediaready'
+                          class='regular pre-open'>
+                          ⓔ media:ready
                         </a></li>
                       
                         <li><a
@@ -894,9 +894,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#meetingseventmediaready'
+                          href='#meetingseventmeetingreconnectionsuccess'
                           class='regular pre-open'>
-                          ⓔ media:ready
+                          ⓔ meeting:reconnectionSuccess
                         </a></li>
                       
                         <li><a
@@ -1438,6 +1438,56 @@
                   href='#isodate'
                   class="">
                   isoDate
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#attachmentactionobject'
+                  class="">
+                  AttachmentActionObject
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#initialize'
+                  class="">
+                  initialize
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#initialize'
+                  class="">
+                  initialize
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#create'
+                  class="">
+                  create
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#get'
+                  class="">
+                  get
                   
                 </a>
                 
@@ -4357,16 +4407,6 @@
               
                 
                 <li><a
-                  href='#initialize'
-                  class="">
-                  initialize
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
                   href='#_triggercallevents'
                   class="">
                   _triggerCallEvents
@@ -6243,6 +6283,65 @@ new one will be created based on options.constraints
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
+    <div class='border-bottom' id='phoneeventcallcreated'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>call:created</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Call Created Event</p>
+<p>Emitted when a call begins outside of the sdk</p>
+
+
+  <div class='pre p1 fill-light mt0'>call:created</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
+          : The created call
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='phoneeventcallincoming'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -6280,65 +6379,6 @@ there are active calls.</p>
         <div class='space-bottom0'>
           <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
           : The incoming call
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='phoneeventcallcreated'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>call:created</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Call Created Event</p>
-<p>Emitted when a call begins outside of the sdk</p>
-
-
-  <div class='pre p1 fill-light mt0'>call:created</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
-          : The created call
 
           
         </div>
@@ -8592,11 +8632,11 @@ only, this function will throw.</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='calleventmembershipsremove'>
+    <div class='border-bottom' id='calleventmembershipsadd'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>memberships:remove</span>
+            <span class='code strong strong truncate'>memberships:add</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -8604,11 +8644,13 @@ only, this function will throw.</p>
 
   
 
-  <p>Emitted when a <a href="#callmembership">CallMembership</a> is removed from
-<a href="#callmemberships">Call#memberships</a>.</p>
+  <p>Emitted when a new <a href="#callmembership">CallMembership</a> is added to
+<a href="#callmemberships">Call#memberships</a>. Note that <a href="#callmembershipstate">CallMembership#state</a> still needs
+to be read to determine if the instance represents someone actively
+participating the call.</p>
 
 
-  <div class='pre p1 fill-light mt0'>memberships:remove</div>
+  <div class='pre p1 fill-light mt0'>memberships:add</div>
   
   
 
@@ -8639,11 +8681,11 @@ only, this function will throw.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventdisconnected'>
+    <div class='border-bottom' id='calleventconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>disconnected</span>
+            <span class='code strong strong truncate'>connected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -8653,7 +8695,7 @@ only, this function will throw.</p>
 
   
 
-  <div class='pre p1 fill-light mt0'>disconnected</div>
+  <div class='pre p1 fill-light mt0'>connected</div>
   
   
 
@@ -8661,7 +8703,7 @@ only, this function will throw.</p>
 <a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
 
 enabled; instead, listen for 
-<a href="Call.inactive">Call.inactive</a>
+<a href="Call.active">Call.active</a>
 </div>
   
   
@@ -8739,11 +8781,11 @@ enabled; instead, listen for
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventconnected'>
+    <div class='border-bottom' id='calleventdisconnected'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>connected</span>
+            <span class='code strong strong truncate'>disconnected</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -8753,7 +8795,7 @@ enabled; instead, listen for
 
   
 
-  <div class='pre p1 fill-light mt0'>connected</div>
+  <div class='pre p1 fill-light mt0'>disconnected</div>
   
   
 
@@ -8761,7 +8803,7 @@ enabled; instead, listen for
 <a href="PhoneConfig.enableExperimentalGroupCallingSupport">PhoneConfig.enableExperimentalGroupCallingSupport</a>
 
 enabled; instead, listen for 
-<a href="Call.active">Call.active</a>
+<a href="Call.inactive">Call.inactive</a>
 </div>
   
   
@@ -9337,11 +9379,11 @@ shortly after (but as a direct result of) locally calling
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventmembershipsadd'>
+    <div class='border-bottom' id='calleventactive'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>memberships:add</span>
+            <span class='code strong strong truncate'>active</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -9349,13 +9391,10 @@ shortly after (but as a direct result of) locally calling
 
   
 
-  <p>Emitted when a new <a href="#callmembership">CallMembership</a> is added to
-<a href="#callmemberships">Call#memberships</a>. Note that <a href="#callmembershipstate">CallMembership#state</a> still needs
-to be read to determine if the instance represents someone actively
-participating the call.</p>
+  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
 
 
-  <div class='pre p1 fill-light mt0'>memberships:add</div>
+  <div class='pre p1 fill-light mt0'>active</div>
   
   
 
@@ -9386,11 +9425,11 @@ participating the call.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calleventactive'>
+    <div class='border-bottom' id='calleventmembershipsremove'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>active</span>
+            <span class='code strong strong truncate'>memberships:remove</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -9398,10 +9437,11 @@ participating the call.</p>
 
   
 
-  <p>only emitted if enableExperimentalGroupCallingSupport is enabled</p>
+  <p>Emitted when a <a href="#callmembership">CallMembership</a> is removed from
+<a href="#callmemberships">Call#memberships</a>.</p>
 
 
-  <div class='pre p1 fill-light mt0'>active</div>
+  <div class='pre p1 fill-light mt0'>memberships:remove</div>
   
   
 
@@ -10968,6 +11008,53 @@ participating the call.</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
+    <div class='border-bottom' id='meetingseventmeetingsready'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>meetings:ready</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Meetings Ready Event
+Emitted when the meetings instance on webex is ready</p>
+
+
+  <div class='pre p1 fill-light mt0'>meetings:ready</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='meetingseventmeetingremoved'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -11041,11 +11128,11 @@ Emitted when a meeting was removed from the cache of meetings</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingseventmeetingsready'>
+    <div class='border-bottom' id='meetingseventmediaready'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meetings:ready</span>
+            <span class='code strong strong truncate'>media:ready</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -11053,58 +11140,11 @@ Emitted when a meeting was removed from the cache of meetings</p>
 
   
 
-  <p>Meetings Ready Event
-Emitted when the meetings instance on webex is ready</p>
+  <p>Media Ready Event
+Emitted when a stream is ready to be rendered</p>
 
 
-  <div class='pre p1 fill-light mt0'>meetings:ready</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='meetingseventmeetingreconnectionsuccess'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meeting:reconnectionSuccess</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Reconnection Success Event
-Emitted when reconnection of media to the active meeting was successful</p>
-
-
-  <div class='pre p1 fill-light mt0'>meeting:reconnectionSuccess</div>
+  <div class='pre p1 fill-light mt0'>media:ready</div>
   
   
 
@@ -11122,8 +11162,16 @@ Emitted when reconnection of media to the active meeting was successful</p>
     <div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>reconnect</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+          <span class='code bold'>stream</span> <code class='quiet'>(MediaStream)</code>
+          : the media stream
+
           
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+          : what type of stream, remote, local
+
           
         </div>
       
@@ -11205,11 +11253,11 @@ Emitted when a stream has stopped sending</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingseventmediaready'>
+    <div class='border-bottom' id='meetingseventmeetingreconnectionsuccess'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>media:ready</span>
+            <span class='code strong strong truncate'>meeting:reconnectionSuccess</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -11217,11 +11265,11 @@ Emitted when a stream has stopped sending</p>
 
   
 
-  <p>Media Ready Event
-Emitted when a stream is ready to be rendered</p>
+  <p>Reconnection Success Event
+Emitted when reconnection of media to the active meeting was successful</p>
 
 
-  <div class='pre p1 fill-light mt0'>media:ready</div>
+  <div class='pre p1 fill-light mt0'>meeting:reconnectionSuccess</div>
   
   
 
@@ -11239,16 +11287,8 @@ Emitted when a stream is ready to be rendered</p>
     <div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>stream</span> <code class='quiet'>(MediaStream)</code>
-          : the media stream
-
+          <span class='code bold'>reconnect</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
           
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          : what type of stream, remote, local
-
           
         </div>
       
@@ -16474,6 +16514,504 @@ format (e.g. <code>2015-10-18T14:26:16+00:00</code>).</p>
 
   
 
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='attachmentactionobject'>
+      AttachmentActionObject
+    </h3>
+    
+    
+  </div>
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>AttachmentActionObject</div>
+  
+    <p>
+      Type:
+      <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : (server generated) Unique identifier for the attachment action
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>messageId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The ID of the message in which attachment action is to be performed
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : The type of attachment action eg., submit
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>inputs</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+          : The inputs for form fields in attachment message
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>personId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : (server generated) The ID for the author of the attachment action
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>roomId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+          : (server generated) The ID for the room of the message
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>created</span> <code class='quiet'>(<a href="#isodate">isoDate</a>)</code>
+          : (server generated) The date and time that the message was created
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='initialize'>
+      initialize
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Initializer</p>
+
+
+  <div class='pre p1 fill-light mt0'>initialize(args: ...any): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>args</span> <code class='quiet'>(...any)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='initialize'>
+      initialize
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Initializer</p>
+
+
+  <div class='pre p1 fill-light mt0'>initialize(args: ...any): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>args</span> <code class='quiet'>(...any)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='create'>
+      create
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Post a new attachment action for a message with attachment.</p>
+
+
+  <div class='pre p1 fill-light mt0'>create(attachmentAction: <a href="#attachmentactionobject">AttachmentActionObject</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#attachmentactionobject">AttachmentActionObject</a>></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>attachmentAction</span> <code class='quiet'>(<a href="#attachmentactionobject">AttachmentActionObject</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#attachmentactionobject">AttachmentActionObject</a>></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Example</div>
+    
+      
+      <pre class='p1 overflow-auto round fill-light'>webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Create Message Example'</span>})
+  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
+    <span class="hljs-keyword">return</span> webex.messages.create({
+      <span class="hljs-attr">text</span>: <span class="hljs-string">'Howdy!'</span>,
+      <span class="hljs-attr">roomId</span>: room.id,
+      <span class="hljs-attr">attachments</span>:[ {
+         <span class="hljs-attr">contentType</span>: <span class="hljs-string">'application/vnd.microsoft.card.adaptive'</span>,
+        <span class="hljs-attr">content</span>: {
+          <span class="hljs-attr">type</span>: <span class="hljs-string">'AdaptiveCard'</span>,
+          <span class="hljs-attr">version</span>: <span class="hljs-string">'1.0'</span>,
+          <span class="hljs-attr">body</span>: [
+           {
+            <span class="hljs-attr">type</span>: <span class="hljs-string">'TextBlock'</span>,
+            <span class="hljs-attr">text</span>: <span class="hljs-string">''</span>,
+            <span class="hljs-attr">size</span>: <span class="hljs-string">'large'</span>
+            },
+          {
+            <span class="hljs-attr">type</span>: <span class="hljs-string">'TextBlock'</span>,
+            <span class="hljs-attr">text</span>: <span class="hljs-string">'Adaptive Cards'</span>,
+            <span class="hljs-attr">separation</span>: <span class="hljs-string">'none'</span>
+          }
+          {
+          <span class="hljs-attr">type</span>: <span class="hljs-string">'Input.Date'</span>,
+          <span class="hljs-attr">id</span>: <span class="hljs-string">'dueDate'</span>
+          }
+      ],
+    <span class="hljs-attr">actions</span>: [
+        {
+            <span class="hljs-attr">type</span>: <span class="hljs-string">'Action.Submit'</span>,
+            <span class="hljs-attr">title</span>: <span class="hljs-string">'Due Date'</span>
+        }
+    ]
+  }
+ }]
+    });
+  })
+  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">message</span>) </span>{
+   <span class="hljs-keyword">return</span> webex.attachmentActions.create({
+     <span class="hljs-attr">type</span>: <span class="hljs-string">'submit'</span>,
+     <span class="hljs-attr">messageId</span>: message.id,
+     <span class="hljs-attr">inputs</span>:{
+       <span class="hljs-attr">dueDate</span>: <span class="hljs-string">'26/06/1995'</span>
+     }
+   })
+   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">attachmentAction</span>))</span>{
+     <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
+     assert(attachmentAction.id);
+     assert(attachmentAction.type);
+     assert(attachmentAction.personId);
+     assert(attachmentAction.inputs);
+     assert(attachmentAction.messageId);
+     assert(attachmentAction.roomId);
+     assert(attachmentAction.created);
+     <span class="hljs-keyword">return</span> <span class="hljs-string">'success'</span>;
+    }
+  });
+  <span class="hljs-comment">// =&gt; success</span></pre>
+    
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='get'>
+      get
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Returns a single attachment action.</p>
+
+
+  <div class='pre p1 fill-light mt0'>get(attachmentAction: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#attachmentactionobject">AttachmentActionObject</a>></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>attachmentAction</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;<a href="#attachmentactionobject">AttachmentActionObject</a>></code>:
+        
+
+      
+    
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Example</div>
+    
+      
+      <pre class='p1 overflow-auto round fill-light'><span class="hljs-keyword">var</span> attachmentAction;
+webex.rooms.create({<span class="hljs-attr">title</span>: <span class="hljs-string">'Get Message Example'</span>})
+  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">room</span>) </span>{
+    <span class="hljs-keyword">return</span> webex.messages.create({
+      <span class="hljs-attr">text</span>: <span class="hljs-string">'Howdy!'</span>,
+      <span class="hljs-attr">roomId</span>: room.id,
+      <span class="hljs-attr">attachments</span>:[ {
+         <span class="hljs-attr">contentType</span>: <span class="hljs-string">'application/vnd.microsoft.card.adaptive'</span>,
+        <span class="hljs-attr">content</span>: {
+          <span class="hljs-attr">type</span>: <span class="hljs-string">'AdaptiveCard'</span>,
+          <span class="hljs-attr">version</span>: <span class="hljs-string">'1.0'</span>,
+          <span class="hljs-attr">body</span>: [
+           {
+            <span class="hljs-attr">type</span>: <span class="hljs-string">'TextBlock'</span>,
+            <span class="hljs-attr">text</span>: <span class="hljs-string">''</span>,
+            <span class="hljs-attr">size</span>: <span class="hljs-string">'large'</span>
+            },
+          {
+            <span class="hljs-attr">type</span>: <span class="hljs-string">'TextBlock'</span>,
+            <span class="hljs-attr">text</span>: <span class="hljs-string">'Adaptive Cards'</span>,
+            <span class="hljs-attr">separation</span>: <span class="hljs-string">'none'</span>
+          },
+          {
+          <span class="hljs-attr">type</span>: <span class="hljs-string">'Input.Date'</span>,
+          <span class="hljs-attr">id</span>: <span class="hljs-string">'dueDate'</span>
+          }
+      ],
+    <span class="hljs-attr">actions</span>: [
+        {
+            <span class="hljs-attr">type</span>: <span class="hljs-string">'Action.Submit'</span>,
+            <span class="hljs-attr">title</span>: <span class="hljs-string">'Due Date'</span>
+        }
+    ]
+  }
+ }]
+    });
+  })
+  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">message</span>) </span>{
+    <span class="hljs-keyword">return</span> webex.attachmentActions.create({
+     <span class="hljs-attr">type</span>: <span class="hljs-string">'submit'</span>,
+     <span class="hljs-attr">messageId</span>: message.id,
+     <span class="hljs-attr">inputs</span>:{
+       <span class="hljs-attr">dueDate</span>: <span class="hljs-string">'26/06/1995'</span>
+     });
+  })
+  .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">attachmentAction</span>) </span>{
+    <span class="hljs-keyword">return</span> webex.attachmentActions.get(attachmentAction.id)
+  })
+   .then(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">attachmentAction</span>)</span>{
+       <span class="hljs-keyword">var</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
+       assert.deepEqual(attachmentAction, attachmentAction);
+       <span class="hljs-keyword">return</span> <span class="hljs-string">'success'</span>;
+     })
+  <span class="hljs-comment">// =&gt; success</span></pre>
+    
   
 
   
@@ -39834,74 +40372,6 @@ to make space for the new stats data report to be added to the front
     </div>
   
 </div>
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='initialize'>
-      initialize
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Initializer</p>
-
-
-  <div class='pre p1 fill-light mt0'>initialize(args: ...any): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>args</span> <code class='quiet'>(...any)</code>
-	    
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined">undefined</a></code>:
-        
-
-      
-    
-  
-
-  
-
-  
 
   
 
