@@ -10,16 +10,16 @@ module.exports = {
 
   sauce: {
     // Reminder: the first item in this object is used by pipeline builds
-    sl_chrome_45_osx9: {
+    sl_chrome_45_macOS_High_Sierra: {
       base: 'SauceLabs',
-      platform: 'OS X 10.9',
-      browserName: 'chrome',
+      platform: 'macOS 10.13',
+      browserName: 'Chrome',
       version: '45'
     },
     sl_chrome_46_win7: {
       base: 'SauceLabs',
       platform: 'Windows 7',
-      browserName: 'chrome',
+      browserName: 'Chrome',
       version: '46'
     }
   }

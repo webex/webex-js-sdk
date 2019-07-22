@@ -22,7 +22,10 @@ module.exports = (env = process.env.NODE_ENV || 'production') => ({
     https: true,
     disableHostCheck: true,
     port: 8000,
-    contentBase: './packages/node_modules/samples'
+    contentBase: './packages/node_modules/samples',
+    stats: {
+      colors: true
+    }
   },
   node: {
     fs: 'empty'

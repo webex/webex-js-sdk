@@ -14,13 +14,13 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Test package",
+      "name": "Test specific packages",
       "runtimeVersion": "8.16.0",
       "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/babel-node",
       "runtimeArgs": [
         "./tooling/index.js",
         "test",
-        "--package",
+        "--packages",
         "@webex/${input:packages}",
         "${input:flags}"
       ]
@@ -34,8 +34,6 @@
       "runtimeArgs": [
         "./tooling/index.js",
         "test",
-        "--package",
-        "@webex/${input:packages}",
         "${input:flags}"
       ]
     }
@@ -49,7 +47,7 @@
     {
       "id": "flags",
       "type": "promptString",
-      "description": "Which flags would you like to add (i.e. `--node` or `--unit`)"
+      "description": "Which flags would you like to add (i.e. `--node` or `--unit`) -- IF NONE ADD A SPACE"
     }
   ]
 }

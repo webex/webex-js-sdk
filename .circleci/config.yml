@@ -4,12 +4,9 @@
 # Main Config
 version: 2
 
-base_image: &base_image
-  image: circleci/node:carbon
-
 job_common: &job_common
   docker:
-    - <<: *base_image
+    - image: circleci/node:carbon-browsers
 
 restore_workspace: &restore_workspace
   attach_workspace:
@@ -17,38 +14,73 @@ restore_workspace: &restore_workspace
 
 restore_node_modules: &restore_node_modules
   run:
-    name: Link cached node_modules to project
+    name: 'Link cached node_modules to project'
     command: mv /tmp/workspace/node_modules ./ || true
 
+restore_packages: &restore_packages
+  run:
+    name: 'Link cached packages/node_modules to project'
+    command: cp -r -u /tmp/workspace/packages/node_modules ./packages || true
 
 # Main Config
-version: 2
 jobs:
-  install:
+  npm_install:
     <<: *job_common
+    environment:
+      SAUCE_CONNECT_DOWNLOAD_ON_INSTALL: true
     steps:
       - checkout
+      - run: git remote add upstream git@github.com:webex/webex-js-sdk.git
+      - run: git fetch upstream --tags
       - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
       - run:
-          name: Update NPM and Install dependencies
-          command: |
-            if [ ! -d node_modules ]; then
-              sudo npm install -g npm@6
-              npm ci
-            fi
+          name: 'Update NPM and Install dependencies'
+          command: sudo npm install -g npm@6
+      - restore_cache:
+          keys:
+            - node-v1-{{ .Branch }}-{{ checksum "package-lock.json" }}
+            - node-v1-{{ .Branch }}-
+            - node-v1-
       - run:
-          name: Copy node_modules to workspace
+          name: 'Install dependencies'
+          command: npm ci
+      - save_cache:
+          key: node-cache-{{ .Branch }}-{{ checksum "package-lock.json" }}
+          paths:
+            - ~/usr/local/lib/node_modules
+            - ./node_modules
+      - run:
+          name: 'Copy node_modules to workspace'
           command: mv node_modules /tmp/
       - persist_to_workspace:
           root: /tmp
           paths:
             - node_modules
       - run:
-          name: Save NPM install log
+          name: 'Save NPM install log'
           command: npm ls --json > /tmp/npm_install.log || true
       - store_artifacts:
           path: /tmp/npm_install.log
           destination: npm-install
+
+  build:
+    <<: *job_common
+    environment:
+      NODE_ENV: 'test'
+    steps:
+      - checkout
+      - <<: *restore_workspace
+      - <<: *restore_node_modules
+      - run:
+          name: 'Build all packages'
+          command: npm run build
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - packages/node_modules
+      - run:
+          name: 'Copy packages/node_modules to workspace'
+          command: mv packages/node_modules /tmp/
 
   static_analysis:
     <<: *job_common
@@ -57,39 +89,92 @@ jobs:
       - <<: *restore_workspace
       - <<: *restore_node_modules
       - run:
-          name: Run linting
-          command: npm run lint:ci -- --quiet
+          name: 'Run ESLint'
+          command: npm run lint:ci
       - store_test_results:
           path: reports/style
       - store_artifacts:
           path: reports/style
           destination: style
 
-  build:
+  unit_tests:
     <<: *job_common
     environment:
-      - NODE_ENV: "test"
+      COVERAGE: true
     steps:
       - checkout
       - <<: *restore_workspace
       - <<: *restore_node_modules
+      - <<: *restore_packages
       - run:
-          name: Build all packages
-          command: npm run build
-      - persist_to_workspace:
-          root: ./
-          paths:
-            - packages/node_modules
+          name: 'Generate Build Number'
+          command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
+      - run:
+          name: 'Test modified packages'
+          command: npm run test:github
+      - run:
+          name: 'Check if any unit tests failed'
+          command: |
+            failures=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
+            errors=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*errors=\"\([^\"]*\).*/\1/p' | xargs)
+
+            echo Failures $failures
+            echo Errors $errors
+
+            if [[ "$failures" -ne *0* ]] || [[ "$errors" -ne *0* ]]; then
+              echo 'Unit tests failed'
+              exit 1
+            fi
+      - store_test_results:
+          path: reports/
+      - store_artifacts:
+          path: reports/junit
+          destination: junit
+
+  samples:
+    <<: *job_common
+    environment:
+      NODE_ENV: 'test'
+      COVERAGE: true
+    steps:
+      - checkout
+      - <<: *restore_workspace
+      - <<: *restore_node_modules
+      - <<: *restore_packages
+      - run:
+          name: 'Generate Build Number'
+          command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
+      - run:
+          name: 'Test samples'
+          command: npm run samples:test
+      - store_test_results:
+          path: reports/
+      - store_artifacts:
+          path: reports/junit/wdio
+          destination: wdio
+      - store_artifacts:
+          path: reports/cobertura.xml
+          destination: cobertura.xml
+      - store_artifacts:
+          path: /home/circleci/.npm/_logs/
+          destination: npm-logs
 
 workflows:
   version: 2
-  js_sdk_unit_tests:
+  js_sdk_github_checks:
     jobs:
-      - install
+      - npm_install
       - build:
           requires:
-            - install
+            - npm_install
       - static_analysis:
           requires:
-            - install
-
+            - npm_install
+      - unit_tests:
+          requires:
+            - build
+            - static_analysis
+      - samples:
+          requires:
+            - build
+            - static_analysis
