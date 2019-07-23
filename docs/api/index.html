@@ -261,15 +261,15 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#phoneeventcallcreated'
-                          class='regular pre-open'>
-                          ⓔ call:created
-                        </a></li>
-                      
-                        <li><a
                           href='#phoneeventcallincoming'
                           class='regular pre-open'>
                           ⓔ call:incoming
+                        </a></li>
+                      
+                        <li><a
+                          href='#phoneeventcallcreated'
+                          class='regular pre-open'>
+                          ⓔ call:created
                         </a></li>
                       
                     </ul>
@@ -870,21 +870,21 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#meetingseventmeetingsready'
-                          class='regular pre-open'>
-                          ⓔ meetings:ready
-                        </a></li>
-                      
-                        <li><a
                           href='#meetingseventmeetingremoved'
                           class='regular pre-open'>
                           ⓔ meeting:removed
                         </a></li>
                       
                         <li><a
-                          href='#meetingseventmediaready'
+                          href='#meetingseventmeetingsready'
                           class='regular pre-open'>
-                          ⓔ media:ready
+                          ⓔ meetings:ready
+                        </a></li>
+                      
+                        <li><a
+                          href='#meetingseventmeetingreconnectionsuccess'
+                          class='regular pre-open'>
+                          ⓔ meeting:reconnectionSuccess
                         </a></li>
                       
                         <li><a
@@ -894,9 +894,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#meetingseventmeetingreconnectionsuccess'
+                          href='#meetingseventmediaready'
                           class='regular pre-open'>
-                          ⓔ meeting:reconnectionSuccess
+                          ⓔ media:ready
                         </a></li>
                       
                         <li><a
@@ -6283,65 +6283,6 @@ new one will be created based on options.constraints
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='phoneeventcallcreated'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>call:created</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Call Created Event</p>
-<p>Emitted when a call begins outside of the sdk</p>
-
-
-  <div class='pre p1 fill-light mt0'>call:created</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
-          : The created call
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
     <div class='border-bottom' id='phoneeventcallincoming'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -6379,6 +6320,65 @@ there are active calls.</p>
         <div class='space-bottom0'>
           <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
           : The incoming call
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='phoneeventcallcreated'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>call:created</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Call Created Event</p>
+<p>Emitted when a call begins outside of the sdk</p>
+
+
+  <div class='pre p1 fill-light mt0'>call:created</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
+          : The created call
 
           
         </div>
@@ -9827,74 +9827,6 @@ shortly after (but as a direct result of) locally calling
   </div>
   
 
-  <p>Polls an <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a> once per second and emits its
-<a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a></p>
-
-
-  <div class='pre p1 fill-light mt0'>new StatsStream(pc: <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</div>
-  
-  
-    <p>
-      Extends
-      
-        Readable
-      
-    </p>
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>pc</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</code>
-	    
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='statsstream'>
-      StatsStream
-    </h3>
-    
-    
-  </div>
-  
-
   <p>Polls an <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a> once per second and emits its <a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a>
 <a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a></p>
 
@@ -9956,6 +9888,74 @@ shortly after (but as a direct result of) locally calling
   
   <div class='clearfix'>
     
+    <h3 class='fl m0' id='statsstream'>
+      StatsStream
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Polls an <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a> once per second and emits its
+<a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a></p>
+
+
+  <div class='pre p1 fill-light mt0'>new StatsStream(pc: <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</div>
+  
+  
+    <p>
+      Extends
+      
+        Readable
+      
+    </p>
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>pc</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
     <h3 class='fl m0' id='statsfilter'>
       StatsFilter
     </h3>
@@ -9964,7 +9964,7 @@ shortly after (but as a direct result of) locally calling
   </div>
   
 
-  <p>Reforms the interesting data from an RTCStatsReport to a new format</p>
+  <p>Reforms the interesting data from an RTCStatsReport into something grokkable</p>
 
 
   <div class='pre p1 fill-light mt0'>new StatsFilter()</div>
@@ -10018,7 +10018,7 @@ shortly after (but as a direct result of) locally calling
   </div>
   
 
-  <p>Reforms the interesting data from an RTCStatsReport into something grokkable</p>
+  <p>Reforms the interesting data from an RTCStatsReport to a new format</p>
 
 
   <div class='pre p1 fill-light mt0'>new StatsFilter()</div>
@@ -11008,53 +11008,6 @@ shortly after (but as a direct result of) locally calling
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='meetingseventmeetingsready'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meetings:ready</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Meetings Ready Event
-Emitted when the meetings instance on webex is ready</p>
-
-
-  <div class='pre p1 fill-light mt0'>meetings:ready</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
     <div class='border-bottom' id='meetingseventmeetingremoved'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -11128,11 +11081,11 @@ Emitted when a meeting was removed from the cache of meetings</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingseventmediaready'>
+    <div class='border-bottom' id='meetingseventmeetingsready'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>media:ready</span>
+            <span class='code strong strong truncate'>meetings:ready</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -11140,11 +11093,58 @@ Emitted when a meeting was removed from the cache of meetings</p>
 
   
 
-  <p>Media Ready Event
-Emitted when a stream is ready to be rendered</p>
+  <p>Meetings Ready Event
+Emitted when the meetings instance on webex is ready</p>
 
 
-  <div class='pre p1 fill-light mt0'>media:ready</div>
+  <div class='pre p1 fill-light mt0'>meetings:ready</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='meetingseventmeetingreconnectionsuccess'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>meeting:reconnectionSuccess</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Reconnection Success Event
+Emitted when reconnection of media to the active meeting was successful</p>
+
+
+  <div class='pre p1 fill-light mt0'>meeting:reconnectionSuccess</div>
   
   
 
@@ -11162,16 +11162,8 @@ Emitted when a stream is ready to be rendered</p>
     <div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>stream</span> <code class='quiet'>(MediaStream)</code>
-          : the media stream
-
+          <span class='code bold'>reconnect</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
           
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          : what type of stream, remote, local
-
           
         </div>
       
@@ -11253,11 +11245,11 @@ Emitted when a stream has stopped sending</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingseventmeetingreconnectionsuccess'>
+    <div class='border-bottom' id='meetingseventmediaready'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meeting:reconnectionSuccess</span>
+            <span class='code strong strong truncate'>media:ready</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -11265,11 +11257,11 @@ Emitted when a stream has stopped sending</p>
 
   
 
-  <p>Reconnection Success Event
-Emitted when reconnection of media to the active meeting was successful</p>
+  <p>Media Ready Event
+Emitted when a stream is ready to be rendered</p>
 
 
-  <div class='pre p1 fill-light mt0'>meeting:reconnectionSuccess</div>
+  <div class='pre p1 fill-light mt0'>media:ready</div>
   
   
 
@@ -11287,8 +11279,16 @@ Emitted when reconnection of media to the active meeting was successful</p>
     <div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>reconnect</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+          <span class='code bold'>stream</span> <code class='quiet'>(MediaStream)</code>
+          : the media stream
+
           
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>type</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+          : what type of stream, remote, local
+
           
         </div>
       
