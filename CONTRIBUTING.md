@@ -114,12 +114,18 @@ A local development flow might look like
 3. Use `npm test -- --package MYPACKAGE --node` to run the tests for just that package only in nodejs (Usually, we don't need to test both in node and the browser during development).
 4. Repeats steps 1-3 until the tests pass.
 
-`npm run build` is a bit tedious when making lots of changes, so instead, we can use `npm run distsrc` to point each package's `main` entry at the raw src and let `babel-node` compile on the fly.
+`npm run build` is a bit tedious when making lots of changes, so instead, we can use `npm run distsrc` to point each package's `main` entry at the raw src and let `babel` compile on the fly.
 
 1. At the start of development, run `npm run distsrc` once.
 2. Edit source code in `MYPACKAGE`.
 3. Use `npm test -- --package MYPACKAGE --node` to run the tests for just that package only in nodejs.
 4. Repeat steps 2-3 until the tests pass.
+   > If you use VS Code, we've created a configuration to utilize the built-in debugger
+   >    - Set breakpoints within the package you're working on
+   >    - Select the `Test package` configuration
+   >    - Enter the package you'd like to test (i.e. `MYPACKAGE`)
+   >      - _The configuration already prepends `@webex/` for you unlike the cli command, so just `plugin-teams` is fine_
+   >    - Add any _optional_ flags (i.e. `--node`)
 5. Run `npm run srcdist` to restore the package.jsons to avoid committing those changes.
 
 You can use the `--unit`, `--integration`, `--automation`, and `--documentation` switches to control what types of tests you run and `--node` and `--browser` to control which environments your tests run in.

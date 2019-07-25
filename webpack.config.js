@@ -8,13 +8,10 @@ dotenv.config();
 dotenv.config({path: '.env.default'});
 
 module.exports = (env = process.env.NODE_ENV || 'production') => ({
-  entry: {
-    bundle: env === 'development' ? `${path.resolve(__dirname)}/packages/node_modules/webex/src/index.js` : './packages/node_modules/webex',
-    'meetings.bundle': `${path.resolve(__dirname)}/packages/node_modules/webex/meetings.js`
-  },
+  entry: env === 'development' ? `${path.resolve(__dirname)}/packages/node_modules/webex/src/index.js` : './packages/node_modules/webex',
   mode: env === 'development' ? 'development' : 'production',
   output: {
-    filename: '[name].js',
+    filename: 'bundle.js',
     library: 'Webex',
     libraryTarget: 'var',
     sourceMapFilename: '[file].map',
