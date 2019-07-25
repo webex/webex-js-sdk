@@ -2,23 +2,20 @@
  * Copyright (c) 2015-2019 Cisco Systems, Inc. See LICENSE file.
  */
 
+const path = require('path');
+const {spawn} = require('child_process');
+
 const debug = require('debug')('tooling:build');
+const capitalize = require('lodash');
+const humanize = require('humanize-string');
+const {writeFile} = require('fs-extra');
 
 const {
-  exec,
   mkdirp,
   rimraf,
   transformFile
 } = require('../lib/async');
 const g = require('../lib/async').glob;
-
-const capitalize = require('lodash');
-const humanize = require('humanize-string');
-
-const path = require('path');
-
-const {writeFile} = require('fs-promise');
-
 const {glob} = require('../util/package');
 
 exports.buildFile = async function buildFile({src, dest}) {
@@ -51,16 +48,39 @@ exports.buildPackage = async function buildPackage(packageName) {
 };
 
 exports.buildSamples = async function buildSamples() {
+  let data = '';
+
   await rimraf('packages/node_modules/samples/bundle*');
   await rimraf('packages/node_modules/samples/meetings.bundle*');
 
-  // reminder: samples:build calls this script, not webpack, hence we must call
-  // webpack here
-  const {stdout, stderr} = await exec(`webpack ${(process.env.NODE_ENV === 'development') ? '-d' : '-p'}`);
+  // reminder: samples:build calls this script, not webpack
+  // hence we must call webpack here
+  const [cmd, ...args] = `webpack --colors ${(process.env.NODE_ENV === 'development') ? '-d' : '-p'}`.split(' ');
+  const webpack = spawn(cmd, args, {stdio: 'pipe'});
 
-  console.log('webpack log\n', stderr || stdout);
+  webpack.stdout.on('data', (d) => {
+    console.log(`webpack log:\n${d}`);
+  });
 
-  const samples = await g('browser-*', {cwd: path.resolve(process.cwd(), 'packages/node_modules/samples')});
+  webpack.stderr.on('data', (d) => {
+    data += d;
+    console.log(`webpack log:\n${d}`);
+  });
+
+  webpack.on('close', (code) => {
+    debug('child has completed');
+    if (code) {
+      const e = new Error(code);
+
+      e.data = data;
+
+      debug(e);
+    }
+  });
+
+  const samples = await g('browser-*', {
+    cwd: path.resolve(process.cwd(), 'packages/node_modules/samples')
+  });
 
   const out = `<!DOCTYPE html>
 <html>

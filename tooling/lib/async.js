@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2019 Cisco Systems, Inc. See LICENSE file.
  */
 
-// const denodeify = require('denodeify');
 const {promisify} = require('util');
 
 exports.rimraf = promisify(require('rimraf'));

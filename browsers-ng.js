@@ -1,60 +1,222 @@
 /* eslint-disable */
-'use strict';
-
 /* eslint camelcase: [0] */
 
-module.exports = function(packageName, argv) {
-  let browsers;
-  if (process.env.SC_TUNNEL_IDENTIFIER) {
+module.exports = function (packageName, argv) {
+  let browsers = argv.karmaDebug ? {
+    Chrome: {},
+    Firefox: {}
+  } : {
+      // Default Local Browsers
+      ChromeHeadless: {},
+      FirefoxHeadless: {}
+    };
+
+  if (process.env.SC_TUNNEL_IDENTIFIER || process.env.CI || process.env.CIRCLECI || process.env.SAUCE) {
     browsers = {
-      // Reminder: the first item in this object is used by pipeline builds
-      sl_chrome_latest_osx13: {
-        base: 'SauceLabs',
-        platform: 'OS X 10.13',
-        browserName: 'chrome',
-        version: 'latest',
-        extendedDebugging: true
-      },
-      sl_chrome_latest_win7: {
-        base: 'SauceLabs',
-        platform: 'Windows 7',
-        browserName: 'chrome',
-        version: 'latest',
-        extendedDebugging: true
-      },
-      sl_firefox_latest_osx13: {
-        base: 'SauceLabs',
-        platform: 'OS X 10.13',
-        browserName: 'firefox',
-        version: 'latest',
-        extendedDebugging: true
-      },
-      sl_firefox_latest_win7: {
-        base: 'SauceLabs',
-        platform: 'Windows 7',
-        browserName: 'firefox',
-        version: 'latest',
-        extendedDebugging: true
-      },
-      sl_firefox_latest_linux: {
-        base: 'SauceLabs',
-        platform: 'Linux',
-        browserName: 'firefox',
-        version: 'latest'
-        // extendedDebugging: true // linux latest only runs firefox 45 for some reason
-      },
-      sl_edge_latest_win10: {
-        base: 'SauceLabs',
-        platform: 'Windows 10',
-        browserName: 'MicrosoftEdge',
-        version: 'latest'
-      },
-      sl_safari_latest_osx13: {
-        base: 'SauceLabs',
-        platform: 'macOS 10.13',
-        browserName: 'safari',
-        version: 'latest'
-      }
+      ...(!argv.browsers && !argv.os ? {
+        // Reminder: the first item in this object is used by pipeline builds
+        sl_chrome_latest_macOS_High_Sierra: {
+          base: 'SauceLabs',
+          platform: 'macOS 10.13',
+          browserName: 'Chrome',
+          version: 'latest',
+          extendedDebugging: true
+        },
+        sl_chrome_latest_win10: {
+          base: 'SauceLabs',
+          platform: 'Windows 10',
+          browserName: 'Chrome',
+          version: 'latest',
+          extendedDebugging: true
+        },
+        sl_firefox_latest_macOS_High_Sierra: {
+          base: 'SauceLabs',
+          platform: 'macOS 10.13',
+          browserName: 'Firefox',
+          version: 'latest',
+          extendedDebugging: true,
+          'moz:firefoxOptions': {
+            args: [
+              '-start-debugger-server',
+              '9222'
+            ],
+            prefs: {
+              'devtools.chrome.enabled': true,
+              'devtools.debugger.prompt-connection': false,
+              'devtools.debugger.remote-enabled': true
+            }
+          }
+        },
+        sl_firefox_latest_win10: {
+          base: 'SauceLabs',
+          platform: 'Windows 10',
+          browserName: 'Firefox',
+          version: 'latest',
+          extendedDebugging: true,
+          'moz:firefoxOptions': {
+            args: [
+              '-start-debugger-server',
+              '9222'
+            ],
+            prefs: {
+              'devtools.chrome.enabled': true,
+              'devtools.debugger.prompt-connection': false,
+              'devtools.debugger.remote-enabled': true
+            }
+          }
+        },
+        sl_edge_latest_win10: {
+          base: 'SauceLabs',
+          platform: 'Windows 10',
+          browserName: 'MicrosoftEdge',
+          version: 'latest'
+        },
+        sl_safari_latest_macOS_High_Sierra: {
+          base: 'SauceLabs',
+          platform: 'macOS 10.13',
+          browserName: 'Safari',
+          version: 'latest'
+        },
+        // sl_firefox_latest_linux: {
+        //   base: 'SauceLabs',
+        //   platform: 'Linux',
+        //   browserName: 'Firefox',
+        //   version: 'latest'
+        // }
+      } : {
+          ...((!argv.browsers ||
+            argv.browsers.includes('chrome') ||
+            argv.browsers.includes('defaults') ||
+            argv.browsers.includes('default')) && {
+              // If "mac" is specified or nothing is specified
+              ...((!argv.os || argv.os.includes('mac')) && {
+                sl_chrome_latest_macOS_High_Sierra: {
+                  base: 'SauceLabs',
+                  platform: 'macOS 10.13',
+                  browserName: 'Chrome',
+                  version: 'latest',
+                  extendedDebugging: true,
+                },
+              }),
+              // If "windows" is specified or nothing is specified
+              ...((!argv.os ||
+                (argv.os.includes('win') || argv.os.includes('windows'))) && {
+                  sl_chrome_latest_win10: {
+                    base: 'SauceLabs',
+                    platform: 'Windows 10',
+                    browserName: 'Chrome',
+                    version: 'latest',
+                    extendedDebugging: true,
+                  },
+                }),
+            }),
+
+          // Firefox or defaults is specified
+          ...((!argv.browsers ||
+            argv.browsers.includes('firefox') ||
+            argv.browsers.includes('defaults') ||
+            argv.browsers.includes('default')) && {
+              ...((!argv.os || argv.os.includes('mac')) && {
+                sl_firefox_latest_macOS_High_Sierra: {
+                  base: 'SauceLabs',
+                  platform: 'macOS 10.13',
+                  browserName: 'Firefox',
+                  version: 'latest',
+                  extendedDebugging: true,
+                  'moz:firefoxOptions': {
+                    args: [
+                      '-start-debugger-server',
+                      '9222'
+                    ],
+                    prefs: {
+                      'devtools.chrome.enabled': true,
+                      'devtools.debugger.prompt-connection': false,
+                      'devtools.debugger.remote-enabled': true
+                    }
+                  }
+                },
+              }),
+              ...((!argv.os ||
+                (argv.os.includes('win') || argv.os.includes('windows'))) && {
+                  sl_firefox_latest_win10: {
+                    base: 'SauceLabs',
+                    platform: 'Windows 10',
+                    browserName: 'Firefox',
+                    version: 'latest',
+                    extendedDebugging: true,
+                    'moz:firefoxOptions': {
+                      args: [
+                        '-start-debugger-server',
+                        '9222'
+                      ],
+                      prefs: {
+                        'devtools.chrome.enabled': true,
+                        'devtools.debugger.prompt-connection': false,
+                        'devtools.debugger.remote-enabled': true
+                      }
+                    }
+                  },
+                }),
+            }),
+
+          // If Safari is specified or "mac" is specified or no argv.os is specified
+          ...(((argv.os && argv.os.includes('mac')) ||
+            (argv.browsers && argv.browsers.includes('safari'))) && {
+              sl_safari_latest_macOS_High_Sierra: {
+                base: 'SauceLabs',
+                platform: 'macOS 10.13',
+                browserName: 'Safari',
+                version: 'latest',
+              },
+            }),
+
+          ...(((argv.os &&
+            (argv.os.includes('win') || argv.os.includes('windows'))) ||
+            (argv.browsers && argv.browsers.includes('edge'))) && {
+              sl_edge_latest_win10: {
+                base: 'SauceLabs',
+                platform: 'Windows 10',
+                browserName: 'MicrosoftEdge',
+                version: 'latest',
+              },
+            }),
+
+          ...(((argv.os &&
+            (argv.os.includes('win') || argv.os.includes('windows'))) ||
+            (argv.browsers &&
+              (argv.browsers.includes('ie') ||
+                argv.browsers.includes('internet explorer')))) && {
+              sl_ie_latest_win7: {
+                base: 'SauceLabs',
+                platform: 'Windows 7',
+                browserName: 'Internet Explorer',
+                version: 'latest',
+              },
+            }),
+
+          ...(argv.os &&
+            argv.browsers &&
+            argv.os.includes('linux') &&
+            argv.browsers.includes('firefox') && {
+              sl_firefox_latest_linux: {
+                base: 'SauceLabs',
+                platform: 'Linux',
+                browserName: 'Firefox',
+                version: 'latest',
+              },
+            }),
+        })
+    }
+
+    // Filters out extra browsers that aren't specified by the user
+    // `--mac` includes [chrome, firefox, safari]
+    // If use wants chrome and firefox only on mac it filters out safari
+    if (argv.os && argv.browsers) {
+      Object.keys(browsers).forEach(browser =>
+        argv.browsers.some(item => browser.includes(item)) ?
+          browser :
+          delete browsers[browser]
+      );
     }
 
     try {
@@ -77,18 +239,6 @@ module.exports = function(packageName, argv) {
         // ignore
       }
     }
-  }
-  else if (argv.karmaDebug) {
-    browsers = {
-      Chrome: {},
-      Firefox: {}
-    };
-  }
-  else {
-    browsers = {
-      ChromeHeadless: {},
-      FirefoxHeadless: {}
-    };
   }
 
   try {
