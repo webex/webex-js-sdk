@@ -8,6 +8,7 @@ const os = require('os');
 
 const dotenv = require('dotenv');
 const glob = require('glob');
+const uuidv4 = require('uuid/v4');
 
 dotenv.config();
 dotenv.config({path: '.env.default'});
@@ -25,7 +26,7 @@ require('babel-register')({
 });
 
 const PORT = process.env.PORT || 8000;
-const CI = !!(process.env.JENKINS || process.env.CI);
+const CI = !!(process.env.JENKINS || process.env.CIRCLECI || process.env.CI || process.env.SAUCE);
 
 exports.config = {
   //
@@ -77,19 +78,48 @@ exports.config = {
     browserSpock: {
       desiredCapabilities: {
         browserName: 'firefox',
-        tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
+        'moz:firefoxOptions': {
+          ...(CI ? {
+            args: [
+              '-start-debugger-server',
+              '9222'
+            ],
+            prefs: {
+              'devtools.chrome.enabled': true,
+              'devtools.debugger.prompt-connection': false,
+              'devtools.debugger.remote-enabled': true
+            }
+          } : {
+            prefs: {
+              'media.navigator.permission.disabled': true,
+              'media.peerconnection.video.h264_enabled': true,
+              'media.navigator.streams.fake': true,
+              'media.getusermedia.screensharing.enabled': true,
+              'media.getusermedia.screensharing.allowed_domains': 'localhost, 127.0.0.1',
+              'dom.webnotifications.enabled': false,
+              'media.gmp-manager.updateEnabled': true
+            }
+          })
+        },
+        ...(CI && {
+          extendedDebugging: true,
+          seleniumVersion: '3.4.0'
+        })
       }
     },
     browserMccoy: {
       desiredCapabilities: {
         browserName: 'chrome',
-        chromeOptions: {
+        'goog:chromeOptions': {
           args: [
             '--use-fake-device-for-media-stream',
             '--use-fake-ui-for-media-stream'
           ]
         },
-        tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER
+        ...(CI && {
+          extendedDebugging: true,
+          seleniumVersion: '3.4.0'
+        })
       }
     }
   },
@@ -106,6 +136,9 @@ exports.config = {
   //
   // Level of logging verbosity: silent | verbose | command | data | result | error
   logLevel: 'error',
+  //
+  // Warns when a deprecated command is used
+  deprecationWarnings: !CI,
   //
   // Enables colors for log output.
   coloredLogs: true,
@@ -162,7 +195,6 @@ exports.config = {
     'webpack'
   ] : [
     'selenium-standalone',
-    'firefox-profile',
     'static-server',
     'webpack'
   ],
@@ -172,17 +204,6 @@ exports.config = {
   ],
   staticServerPort: PORT,
   webpackConfig,
-  firefoxProfile: {
-    'media.navigator.permission.disabled': true,
-    'media.peerconnection.video.h264_enabled': true,
-    'media.navigator.streams.fake': true,
-    'media.getusermedia.screensharing.enabled': true,
-    'media.getusermedia.screensharing.allowed_domains': 'localhost, 127.0.0.1',
-    'dom.webnotifications.enabled': false,
-    'media.gmp-manager.updateEnabled': true,
-    'media.gmp-gmpopenh264.enabled': true,
-    'media.gmp-gmpopenh264.visible': true
-  },
   //
   // Framework you want to run your specs with.
   // The following are supported: Mocha, Jasmine, and Cucumber
@@ -238,18 +259,29 @@ exports.config = {
         d.base = 'SauceLabs';
 
         d.version = d.version || 'latest';
-        d.platform = d.platform || 'OS X 10.12';
+        d.platform = d.platform || 'macOS 10.13';
       }
       else {
         // Copy the base over so that inject() does its thing.
         d.base = d.browserName;
-        d.platform = os.platform();
+        d.platformName = () => {
+          switch (os.type()) {
+            case 'Darwin':
+              return 'mac';
+            case 'Window_NT':
+              return 'windows';
+            case 'Linux':
+              return 'Linux';
+            default:
+              return os.type();
+          }
+        };
       }
     });
 
     // The openh264 profile seems to break tests locally; run the tests twice
     // and the plugin should download automatically.
-    return inject(defs)
+    return CI ? inject(defs) : Promise.resolve()
       .then(() => {
         // Remove the base because it's not actually a selenium property
         defs.forEach((d) => Reflect.deleteProperty(d, 'base'));
@@ -348,7 +380,7 @@ exports.config = {
         console.error(`${test.fullTitle} failed but browser doesn't support log collection`);
       }
     }
-  }
+  },
   /**
    * Hook that gets executed after the suite has ended
    * @param {Object} suite suite details
@@ -379,22 +411,39 @@ exports.config = {
    */
   // onComplete: function(exitCode) {
   // }
-};
-
-
-if (CI) {
-  // I couldn't get multiremote + sauce to work while letting wdio handle the
-  // tunnel setup. use `npm run sauce:start` and `npm run sauce:run` to start
-  // the tunnel and run tests
-
-  exports.config.capabilities.browserSpock.seleniumVersion = '3.4.0';
-  exports.config.capabilities.browserSpock.extendedDebugging = true;
-  exports.config.capabilities.browserMccoy.seleniumVersion = '3.4.0';
-  exports.config.capabilities.browserMccoy.extendedDebugging = true;
-
-  exports.config = Object.assign(exports.config, {
+  ...(CI && {
     user: process.env.SAUCE_USERNAME,
     key: process.env.SAUCE_ACCESS_KEY,
-    sauceConnect: false
-  });
-}
+    sauceConnect: true,
+    sauceConnectOpts: {
+      detached: true,
+      noSslBumpDomains: [
+        'idbroker.webex.com',
+        'idbrokerbts.webex.com',
+        '127.0.0.1',
+        'localhost',
+        '*.wbx2.com',
+        '*.ciscospark.com'
+      ],
+      tunnelDomains: [
+        'whistler-prod.onint.ciscospark.com',
+        'whistler.onint.ciscospark.com',
+        'internal-testing-services.wbx2.com',
+        'calendar-whistler.onint.ciscospark.com',
+        '127.0.0.1',
+        'localhost'
+      ],
+      verbose: true,
+      tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuidv4(),
+      port: process.env.SAUCE_CONNECT_PORT || 4445,
+      // retry to establish a tunnel multiple times. (optional)
+      connectRetries: 3,
+      // time to wait between connection retries in ms. (optional)
+      connectRetryTimeout: 2000,
+      // retry to download the sauce connect archive multiple times. (optional)
+      downloadRetries: 4,
+      // time to wait between download retries in ms. (optional)
+      downloadRetryTimeout: 1000
+    }
+  })
+};

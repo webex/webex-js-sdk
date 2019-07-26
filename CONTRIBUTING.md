@@ -1,31 +1,31 @@
 # Contributing
 
-- [Contributing](#Contributing)
-  - [Reporting Issues](#Reporting-Issues)
-    - [Opening an Issue](#Opening-an-Issue)
-      - [Grammar](#Grammar)
-      - [Logs](#Logs)
-  - [Contributing Code](#Contributing-Code)
-    - [Build Dependencies](#Build-Dependencies)
-    - [Building the SDK](#Building-the-SDK)
-    - [Running Tests](#Running-Tests)
-    - [Git Commit Guidelines](#Git-Commit-Guidelines)
-      - [Commit Message Format](#Commit-Message-Format)
-      - [Revert](#Revert)
-      - [Type](#Type)
-      - [Scope](#Scope)
-      - [Subject](#Subject)
-      - [Body](#Body)
-      - [Footer](#Footer)
-      - [Special Commit Messages](#Special-Commit-Messages)
+- [Contributing](#contributing)
+  - [Reporting Issues](#reporting-issues)
+    - [Opening an Issue](#opening-an-issue)
+      - [Grammar](#grammar)
+      - [Logs](#logs)
+  - [Contributing Code](#contributing-code)
+    - [Build Dependencies](#build-dependencies)
+    - [Building the SDK](#building-the-sdk)
+    - [Running Tests](#running-tests)
+    - [Git Commit Guidelines](#git-commit-guidelines)
+      - [Commit Message Format](#commit-message-format)
+      - [Revert](#revert)
+      - [Type](#type)
+      - [Scope](#scope)
+      - [Subject](#subject)
+      - [Body](#body)
+      - [Footer](#footer)
+      - [Special Commit Messages](#special-commit-messages)
         - [`#force-publish`](#force-publish)
         - [`#ignore-tooling`](#ignore-tooling)
         - [`#no-push`](#no-push)
         - [`[ci skip]`](#ci-skip)
-    - [Submitting a Pull Request](#Submitting-a-Pull-Request)
-  - [Updating the Documentation](#Updating-the-Documentation)
-    - [Set Up Environment (with Bundler)](#Set-Up-Environment-with-Bundler)
-    - [Compile and Serve Docs](#Compile-and-Serve-Docs)
+    - [Submitting a Pull Request](#submitting-a-pull-request)
+  - [Updating the Documentation](#updating-the-documentation)
+    - [Set Up Environment (with Bundler)](#set-up-environment-with-bundler)
+    - [Compile and Serve Docs](#compile-and-serve-docs)
 
 ## Reporting Issues
 
@@ -111,22 +111,43 @@ A local development flow might look like
 
 1. Edit source code in `MYPACKAGE`.
 2. Use `npm run build` to build all packages .
-3. Use `npm test -- --package MYPACKAGE --node` to run the tests for just that package only in nodejs (Usually, we don't need to test both in node and the browser during development).
+3. Use `npm test -- --packages MYPACKAGE --node` to run the tests for just that package only in nodejs (Usually, we don't need to test both in node and the browser during development).
 4. Repeats steps 1-3 until the tests pass.
 
-`npm run build` is a bit tedious when making lots of changes, so instead, we can use `npm run distsrc` to point each package's `main` entry at the raw src and let `babel-node` compile on the fly.
+`npm run build` is a bit tedious when making lots of changes, so instead, we can use `npm run distsrc` to point each package's `main` entry at the raw src and let `babel` compile on the fly.
 
 1. At the start of development, run `npm run distsrc` once.
 2. Edit source code in `MYPACKAGE`.
-3. Use `npm test -- --package MYPACKAGE --node` to run the tests for just that package only in nodejs.
+3. Use `npm test -- --packages MYPACKAGE --node` to run the tests for just that package only in nodejs.
 4. Repeat steps 2-3 until the tests pass.
+   > If you use VS Code, we've created a configuration to utilize the built-in debugger
+   >    - Set breakpoints within the package you're working on
+   >    - Select the `Test package` configuration
+   >    - Enter the package you'd like to test (i.e. `MYPACKAGE`)
+   >      - _The configuration already prepends `@webex/` for you unlike the cli command, so just `plugin-teams` is fine_
+   >    - Add any _optional_ flags (i.e. `--node`)
+   >      - _If you don't want to add any flags, just add a space (current workaround)_
 5. Run `npm run srcdist` to restore the package.jsons to avoid committing those changes.
 
 You can use the `--unit`, `--integration`, `--automation`, and `--documentation` switches to control what types of tests you run and `--node` and `--browser` to control which environments your tests run in.
 
+The `--packages` flags will allow you to test multiple packages in one command instead of separate commands for each package `--packages @webex/plugin-meetings @webex/plugin-rooms @webex/plugin-teams`. Packages are still tested synchronously  to allow for proper output to the terminal.
+
 `--browser --karma-debug` will run the browser tests with `{singleRun: false}`, thus allowing automatic rerunning everytime you save a file (though, karma does eventually get confused and you need to interrupt and restart the command).
 
-> See [SCRIPTS.md](SCRIPTS.md) to learn how to run tests on [SauceLabs](https://saucelabs.com/) and more.
+You can use the `--browsers` _(not to be confused with the `--browser` tag)_ allows you to specify which browsers you want to run locally. This is restricted to what browsers are installed and available to you on your OS.
+The default browsers that launch are _Headless_ version of Firefox and Chrome, so `--browsers Chrome Edge` will only launch a normal version of Chrome along with Edge. If you add `defaults` to the browsers flag, it will also launch `ChromeHeadless` and `FirefoxHeadless` along with other browsers you've specified.
+
+To run tests on [SauceLabs](https://saucelabs.com/) locally, you'll need to add a inline environment variable, `SAUCE=true`. Like mentioned above you can specify which browsers you'd like to test on with the `--browers` flag, but with SauceLabs service available to you, you can also specify which OS you'd like to test on. With the `--os` flag you have the option on testing on `Mac` and `Windows`. You can filter down the browsers that get launched by using the `--browsers` flag, so if you use `--os Windows --browsers Edge IE` it will launch only `Edge` and `IE`. Specifying just `--browsers` with `SAUCE=true` will launch that browsers in all available OSs, so `--browsers Firefox` will launch `Firefox` in `Mac` and `Windows`.
+> **The default SauceLabs configuration _"`SAUCE=true npm run test`"_ is the latest versions of `Chrome` and `Firefox` on both `Mac` and `Windows`, along with `Edge` and `IE 11` on Windows, and `Safari` on Mac**
+>
+> `--os Mac` will launch `Chrome`, `Firefox`, and `Safari`
+>
+> `--os Windows` will launch `Chrome`, `Firefox`, `Edge`, and `IE 11`
+>
+> `--os Linux` WILL NEED `--browsers Firefox` as SauceLabs only supports `Firefox 45` for Linux. This is why it's also not included by default and requires two flags
+
+> See more scripts at [SCRIPTS.md](SCRIPTS.md) to learn how to run tests and more.
 
 ### Git Commit Guidelines
 

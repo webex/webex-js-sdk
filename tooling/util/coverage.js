@@ -4,21 +4,22 @@
 
 /* eslint-disable require-jsdoc */
 
-const debug = require('debug')('monorepo:test');
-
-const denodeify = require('denodeify');
-const {Instrumenter} = require('isparta');
-const mkdirp = denodeify(require('mkdirp'));
-const rimraf = denodeify(require('rimraf'));
-const {glob} = require('./package');
-const g = denodeify(require('glob'));
+const {promisify} = require('util');
 const path = require('path');
-const fs = require('fs-promise');
-const {Collector, Report} = require('istanbul');
 
-function makeCoverageVariable(packageName) {
-  return `__coverage${packageName.replace(/@/g, '_').replace(/./g, '_').replace(/\//g, '_')}__`;
-}
+const g = promisify(require('glob'));
+const debug = require('debug')('monorepo:test');
+const fs = require('fs-extra');
+const {Collector, Report} = require('istanbul');
+const {Instrumenter} = require('isparta');
+const mkdirp = promisify(require('mkdirp'));
+const rimraf = promisify(require('rimraf'));
+
+const {glob} = require('./package');
+
+const makeCoverageVariable = (packageName) =>
+  `__coverage${packageName.replace(/@/g, '_').replace(/./g, '_').replace(/\//g, '_')}__`;
+
 
 async function instrument(packageName) {
   const instrumenter = new Instrumenter({

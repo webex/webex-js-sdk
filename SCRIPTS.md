@@ -45,37 +45,37 @@ npm test -- --help
 Test a single package
 
 ```bash
-npm test -- --package @webex/webex-core
+npm test -- --packages @webex/webex-core
 ```
 
 Test a single package, but only in a browser
 
 ```bash
-npm test -- --package @webex/webex-core --browser
+npm test -- --packages @webex/webex-core --browser
 ```
 
 Test a single package, but only in a specific browser
 
 ```bash
-BROWSER=chrome npm test -- --package @webex/webex-core --browser
+BROWSER=chrome npm test -- --packages @webex/webex-core --browser
 ```
 
 Test a single package and generate coverage and xunit reports
 
 ```bash
-npm test -- --package @webex/webex-core --coverage --xunit
+npm test -- --packages @webex/webex-core --coverage --xunit
 ```
 
 Test a single package using [snapshots](https://github.com/flickr/yakbak#yakbak) rather than live network requests. **The test must be run in Node.**
 
 ```bash
-npm test -- --package @webex/webex-core --node --snapshots
+npm test -- --packages @webex/webex-core --node --snapshots
 ```
 
 Keeps the browser open in debug mode so that you can set break points and reload the page with code updates
 
 ```bash
-npm test -- --package @webex/webex-core --browser --karma-debug
+npm test -- --packages @webex/webex-core --browser --karma-debug
 ```
 
 ## SauceLabs
@@ -90,9 +90,14 @@ The SDK uses [SauceLabs](https://saucelabs.com/) to run its tests. Sign in to re
 Start the SauceLabs tunnel, run tests using SauceLabs browsers, and stop the SauceLabs tunnel
 
 ```bash
-npm run sauce:start
-npm run sauce:run -- npm test
-npm run sauce:stop
+# Run all tests on SauceLabs with default configuration
+SAUCE=true npm run test
+# Run the samples automation tests on SauceLabs
+SAUCE=true npm run samples:test
+# Run `plugin-teams` test suite on SauceLabs only only Edge and IE 11
+SAUCE=true npm run test -- --packages @webex/plugin-teams --os Windows --browsers Edge IE
+# Run all tests on SauceLabs only with Chrome on Mac and Windows
+SAUCE=true npm run test -- --browsers Chrome
 ```
 
 ## distsrc

@@ -1,5 +1,3 @@
-#!/usr/bin/env babel-node
-
 // eslint-disable-next-line no-unused-expressions
 require('yargs')
   .env('')
