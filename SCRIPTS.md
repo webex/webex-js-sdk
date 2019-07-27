@@ -80,8 +80,6 @@ npm test -- --packages @webex/webex-core --browser --karma-debug
 
 ## SauceLabs
 
-### sauce:start, sauce:run, sauce:stop
-
 The SDK uses [SauceLabs](https://saucelabs.com/) to run its tests. Sign in to retrieve your *USERNAME* and *ACCESS KEY* from [User Settings](https://saucelabs.com/beta/user-settings) and add them to your `.env` file:
 
 - `SAUCE_USERNAME`
