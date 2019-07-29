@@ -261,15 +261,15 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#phoneeventcallincoming'
-                          class='regular pre-open'>
-                          ⓔ call:incoming
-                        </a></li>
-                      
-                        <li><a
                           href='#phoneeventcallcreated'
                           class='regular pre-open'>
                           ⓔ call:created
+                        </a></li>
+                      
+                        <li><a
+                          href='#phoneeventcallincoming'
+                          class='regular pre-open'>
+                          ⓔ call:incoming
                         </a></li>
                       
                     </ul>
@@ -3511,6 +3511,12 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
+                          href='#memberseventmembersupdate'
+                          class='regular pre-open'>
+                          ⓔ members:update
+                        </a></li>
+                      
+                        <li><a
                           href='#memberseventmemberscontentupdate'
                           class='regular pre-open'>
                           ⓔ members:content:update
@@ -3526,12 +3532,6 @@
                           href='#memberseventmembersselfupdate'
                           class='regular pre-open'>
                           ⓔ members:self:update
-                        </a></li>
-                      
-                        <li><a
-                          href='#memberseventmembersupdate'
-                          class='regular pre-open'>
-                          ⓔ members:update
                         </a></li>
                       
                     </ul>
@@ -6846,6 +6846,65 @@ new one will be created based on options.constraints
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
+    <div class='border-bottom' id='phoneeventcallcreated'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>call:created</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Call Created Event</p>
+<p>Emitted when a call begins outside of the sdk</p>
+
+
+  <div class='pre p1 fill-light mt0'>call:created</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
+          : The created call
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='phoneeventcallincoming'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -6883,65 +6942,6 @@ there are active calls.</p>
         <div class='space-bottom0'>
           <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
           : The incoming call
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='phoneeventcallcreated'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>call:created</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Call Created Event</p>
-<p>Emitted when a call begins outside of the sdk</p>
-
-
-  <div class='pre p1 fill-light mt0'>call:created</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
-          : The created call
 
           
         </div>
@@ -10390,11 +10390,11 @@ participating the call.</p>
   </div>
   
 
-  <p>Polls an <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a> once per second and emits its
+  <p>Polls an <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a> once per second and emits its <a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a>
 <a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a></p>
 
 
-  <div class='pre p1 fill-light mt0'>new StatsStream(pc: <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</div>
+  <div class='pre p1 fill-light mt0'>new StatsStream(config: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</div>
   
   
     <p>
@@ -10418,7 +10418,8 @@ participating the call.</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>pc</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</code>
+            <span class='code bold'>config</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+            = <code>{}</code>)</code>
 	    
           </div>
           
@@ -10458,11 +10459,11 @@ participating the call.</p>
   </div>
   
 
-  <p>Polls an <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a> once per second and emits its <a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a>
+  <p>Polls an <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a> once per second and emits its
 <a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a></p>
 
 
-  <div class='pre p1 fill-light mt0'>new StatsStream(config: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</div>
+  <div class='pre p1 fill-light mt0'>new StatsStream(pc: <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</div>
   
   
     <p>
@@ -10486,8 +10487,7 @@ participating the call.</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>config</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
-            = <code>{}</code>)</code>
+            <span class='code bold'>pc</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</code>
 	    
           </div>
           
@@ -35207,6 +35207,86 @@ Used to emit events internally between modules specific to an object</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
+    <div class='border-bottom' id='memberseventmembersupdate'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>members:update</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Members Update Event
+Emitted when something in the roster list needs to be updated</p>
+
+
+  <div class='pre p1 fill-light mt0'>members:update</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>delta</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+          : the changes to the members list
+
+          
+            <ul>
+              
+                <li><code>delta.updated</code> <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>
+                  
+                  <p>array only the updates, includes removals, as they will have updated status and member properties</p>
+</li>
+              
+                <li><code>delta.added</code> <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>
+                  
+                  <p>array added members to the meeting</p>
+</li>
+              
+            </ul>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>full</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>)</code>
+          : array the full members collection
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='memberseventmemberscontentupdate'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -35377,86 +35457,6 @@ Emitted when who is the self changes</p>
         <div class='space-bottom0'>
           <span class='code bold'>endedSelfId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
           
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='memberseventmembersupdate'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>members:update</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Members Update Event
-Emitted when something in the roster list needs to be updated</p>
-
-
-  <div class='pre p1 fill-light mt0'>members:update</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>delta</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-          : the changes to the members list
-
-          
-            <ul>
-              
-                <li><code>delta.updated</code> <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>
-                  
-                  <p>array only the updates, includes removals, as they will have updated status and member properties</p>
-</li>
-              
-                <li><code>delta.added</code> <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>
-                  
-                  <p>array added members to the meeting</p>
-</li>
-              
-            </ul>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>full</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>)</code>
-          : array the full members collection
-
           
         </div>
       
@@ -41240,19 +41240,33 @@ takes params as precedence</p>
   </div>
   
 
-  
+  <p>stores the last x filtered stream datas</p>
 
-  <div class='pre p1 fill-light mt0'>new StatsHistory()</div>
-  
-  
 
-  
-  
-  
-  
+  <div class='pre p1 fill-light mt0'>new StatsHistory(max: any)</div>
   
   
 
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>max</span> <code class='quiet'>(any)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
   
 
   
@@ -41812,33 +41826,19 @@ to make space for the new stats data report to be added to the front
   </div>
   
 
-  <p>stores the last x filtered stream datas</p>
-
-
-  <div class='pre p1 fill-light mt0'>new StatsHistory(max: any)</div>
-  
   
 
-  
-  
-  
-  
+  <div class='pre p1 fill-light mt0'>new StatsHistory()</div>
   
   
 
   
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>max</span> <code class='quiet'>(any)</code>
-	    
-          </div>
-          
-        </div>
-      
-    </div>
+  
+  
+  
+  
+  
+
   
 
   
