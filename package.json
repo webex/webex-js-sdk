@@ -224,7 +224,7 @@
     "rollup-plugin-terser": "^3.0.0",
     "rxjs-compat": "^6.5.2",
     "sdp-transform": "^2.4.0",
-    "sinon": "^4.2.2",
+    "sinon": "^7.3.2",
     "supertest": "^3.0.0",
     "time-grunt": "^1.3.0",
     "url": "^0.11.0",
