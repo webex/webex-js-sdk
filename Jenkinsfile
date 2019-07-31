@@ -443,7 +443,7 @@ ansiColor('xterm') {
                   // build docs here since they need to be added with `git add`
                   sh 'npm run build:docs'
 
-                  sh "npm run tooling -- version set ${version} --last-log"
+                  sh "npm run tooling -- version set ${version} --all"
 
                   sh 'git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json docs/ packages/node_modules/webex/umd/*.js'
 
