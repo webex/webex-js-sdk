@@ -2,10 +2,14 @@
  * Copyright (c) 2015-2019 Cisco Systems, Inc. See LICENSE file.
  */
 
-const denodeify = require('denodeify');
-const g = denodeify(require('glob'));
+const {promisify} = require('util');
+
+const g = promisify(require('glob'));
+
 const path = require('path');
-const fs = require('fs-promise');
+
+const fs = require('fs-extra');
+
 const _spawn = require('./spawn');
 
 const cwd = 'packages/node_modules';

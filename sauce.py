@@ -44,7 +44,7 @@ INT_ENV_VARS = {
 OUTPUT_DIR = 'output'
 OUTPUT_FILE_PATH = os.path.join(OUTPUT_DIR, 'test-comparison.csv')
 
-TEST_COMMAND = 'npm run sauce:run -- npm test -- --package %s'
+TEST_COMMAND = 'npm run sauce:run -- npm test -- --packages %s'
 
 SKIP_PACKAGES = [
   '@webex/bin-sauce-connect', # needs Sauce started

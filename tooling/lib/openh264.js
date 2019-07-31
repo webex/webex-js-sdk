@@ -2,18 +2,20 @@
  * Copyright (c) 2015-2019 Cisco Systems, Inc. See LICENSE file.
  */
 
-const debug = require('debug')('tooling:openh264');
-const denodeify = require('denodeify');
-const {rimraf} = require('./async');
-const spawn = require('../util/spawn');
-const FirefoxProfile = require('firefox-profile');
 const os = require('os');
 const path = require('path');
-const {stat} = require('fs-promise');
+const {promisify} = require('util');
+
+const debug = require('debug')('tooling:openh264');
+const FirefoxProfile = require('firefox-profile');
+const {stat} = require('fs-extra');
+
+const spawn = require('../util/spawn');
+
+const {rimraf} = require('./async');
 
 const PROFILE_DIR = './.tmp/selenium';
-
-const copy = denodeify(FirefoxProfile.copy);
+const copy = promisify(FirefoxProfile.copy);
 
 /**
  * denodeifies FirefoxProfile.encode
@@ -100,7 +102,7 @@ exports.inject = async function inject(browsers) {
  * @returns {string}
  */
 export function platformToShortName(platform) {
-  if (platform.toLowerCase().includes('os x') || platform === 'darwin') {
+  if (platform.toLowerCase().includes('mac') || platform === 'darwin') {
     return 'mac';
   }
 

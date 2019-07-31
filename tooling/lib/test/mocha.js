@@ -4,6 +4,7 @@
 
 const debug = require('debug')('tooling:test:mocha');
 const Mocha = require('mocha');
+
 const {expectReports, expectNonEmptyReports, expectNoKmsErrors} = require('./common');
 
 exports.test = async function test(options, packageName, suite, files) {
@@ -11,7 +12,7 @@ exports.test = async function test(options, packageName, suite, files) {
 
   options.output = `reports/junit/mocha/${packageName}-${suite}.xml`;
 
-  if (options.xunit) {
+  if (options.xunit || process.env.COVERAGE || process.env.CIRCLECI || process.env.CI) {
     for (let i = 0; i < 3; i += 1) {
       try {
         debug(`Attempt #${i} for ${packageName}`);
@@ -53,12 +54,12 @@ exports.test = async function test(options, packageName, suite, files) {
 async function run(options, files) {
   const cfg = {
     bail: options.bail,
-    retries: process.env.JENKINS || process.env.CI ? 1 : 0,
+    retries: (process.env.JENKINS || process.env.CIRCLECI || process.env.CI) ? 1 : 0,
     timeout: 30000,
     grep: new RegExp(options.grep.join('|'))
   };
 
-  if (options.xunit) {
+  if (options.xunit || process.env.COVERAGE || process.env.CIRCLECI || process.env.CI) {
     cfg.reporter = 'packages/node_modules/@webex/xunit-with-logs';
     cfg.reporterOptions = {
       output: options.output
