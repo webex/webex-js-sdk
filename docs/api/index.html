@@ -882,6 +882,12 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
+                          href='#meetingseventmeetingsready'
+                          class='regular pre-open'>
+                          ⓔ meetings:ready
+                        </a></li>
+                      
+                        <li><a
                           href='#meetingseventmeetingremoved'
                           class='regular pre-open'>
                           ⓔ meeting:removed
@@ -891,12 +897,6 @@
                           href='#meetingseventmeetingadded'
                           class='regular pre-open'>
                           ⓔ meeting:added
-                        </a></li>
-                      
-                        <li><a
-                          href='#meetingseventmeetingsready'
-                          class='regular pre-open'>
-                          ⓔ meetings:ready
                         </a></li>
                       
                         <li><a
@@ -11679,6 +11679,53 @@ participating the call.</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
+    <div class='border-bottom' id='meetingseventmeetingsready'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>meetings:ready</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Meetings Ready Event
+Emitted when the meetings instance on webex is ready</p>
+
+
+  <div class='pre p1 fill-light mt0'>meetings:ready</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='meetingseventmeetingremoved'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -11800,53 +11847,6 @@ Emitted when a meeting was added to the cache of meetings</p>
         </div>
       
     </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='meetingseventmeetingsready'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meetings:ready</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Meetings Ready Event
-Emitted when the meetings instance on webex is ready</p>
-
-
-  <div class='pre p1 fill-light mt0'>meetings:ready</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
   
 
   
@@ -41240,19 +41240,33 @@ takes params as precedence</p>
   </div>
   
 
-  
+  <p>stores the last x filtered stream datas</p>
 
-  <div class='pre p1 fill-light mt0'>new StatsHistory()</div>
-  
-  
 
-  
-  
-  
-  
+  <div class='pre p1 fill-light mt0'>new StatsHistory(max: any)</div>
   
   
 
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>max</span> <code class='quiet'>(any)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
   
 
   
@@ -41812,33 +41826,19 @@ to make space for the new stats data report to be added to the front
   </div>
   
 
-  <p>stores the last x filtered stream datas</p>
-
-
-  <div class='pre p1 fill-light mt0'>new StatsHistory(max: any)</div>
-  
   
 
-  
-  
-  
-  
+  <div class='pre p1 fill-light mt0'>new StatsHistory()</div>
   
   
 
   
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>max</span> <code class='quiet'>(any)</code>
-	    
-          </div>
-          
-        </div>
-      
-    </div>
+  
+  
+  
+  
+  
+
   
 
   
