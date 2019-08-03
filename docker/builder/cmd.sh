@@ -19,9 +19,10 @@ function log {
 function reportTime {
     SUITE_END_TIME=$(date +%s)
     DURATION=$((SUITE_END_TIME - SUITE_START_TIME))
-    log "start/end/duration/retries: ${SUITE_START_TIME}/${SUITE_END_TIME}/${DURATION}/${MAX_RETIRES}"
+    log "Took $(printf '%dm:%02ds' $((DURATION%3600/60)) $((DURATION%60))) to complete"
+    log "Retried ${MAX_RETIRES} times"
     echo "${PACKAGE},${SUITE_START_TIME},${SUITE_END_TIME},${DURATION},${MAX_RETIRES}" >> ./reports/timings
-    log "EXIT detected with exit status $1"
+    log "EXIT detected with status $1"
 }
 
 function onExit {
@@ -82,12 +83,12 @@ test
 
 # No need to repeat if there was a success
 if [ "${EXIT_CODE}" -eq "0" ]; then
-    log "succeeded"
+    log "Succeeded"
     exit 0
 # Command timed out
 # retry 2 times
 elif [ "${EXIT_CODE}" -eq "124" ]; then
-    if [ -f "./reports/junit/*/${PACKAGE}-karma.xml" -a "$MAX_RETIRES" -eq "2" ]; then
+    if [ -f "./reports/junit/*/${PACKAGE}-karma.xml" ] && [ "$MAX_RETIRES" ] -eq "2" ]; then
         exit 0
     else
       MAX_RETIRES=$((MAX_RETIRES + 1))

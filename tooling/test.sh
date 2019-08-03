@@ -2,7 +2,7 @@
 
 set -e
 
-cd "$(dirname $0)/.."
+cd "$(dirname "$0")/.."
 
 # Kill background tasks if the script exits early
 # single quotes are intentional
@@ -14,7 +14,7 @@ echo "##########################################################################
 echo "# RUNNING TESTS"
 echo "################################################################################"
 
-PIDS=""
+PIDS=()
 PACKAGES=""
 # copied from http://www.tldp.org/LDP/abs/html/comparison-ops.html because I can
 # never remember which is which
@@ -28,11 +28,11 @@ else
   PACKAGES=$(docker run ${DOCKER_RUN_OPTS} bash -c 'npm run tooling --silent -- list --fortests')
 fi
 for PACKAGE in ${PACKAGES}; do
-  CONTAINER_NAME="$(echo ${PACKAGE} | awk -F '/' '{ print $NF }')-${BUILD_NUMBER}"
+  CONTAINER_NAME="$(echo "${PACKAGE}" | awk -F '/' '{ print $NF }')-${BUILD_NUMBER}"
 
   if [ -n "${CONCURRENCY}" ]; then
     echo "Keeping concurrent job count below ${CONCURRENCY}"
-    while [ $(jobs -p | wc -l) -gt ${CONCURRENCY} ]; do
+    while [ "$(jobs -p | wc -l)" -gt "${CONCURRENCY}" ]; do
       echo "."
       sleep 5
     done
@@ -50,7 +50,7 @@ for PACKAGE in ${PACKAGES}; do
   # Note: the Dockerfile's default CMD will run package tests automatically
   eval "docker run --name=${CONTAINER_NAME} -e PACKAGE=${PACKAGE} ${DOCKER_RUN_OPTS} &"
   PID="$!"
-  PIDS+=" ${PID}"
+  PIDS+=("${PID}")
   # In the event we're merging coverage from a previous build, we want to delete
   # the old coverage info for the package(s) under test in this build.
   rm -rf "./reports/{coverage,coverage-final}/${PACKAGE}"
@@ -61,13 +61,13 @@ for PACKAGE in ${PACKAGES}; do
 done
 
 FINAL_EXIT_CODE=0
-for PID in $PIDS; do
+for PID in ${PIDS(@)}; do
   echo "################################################################################"
   echo "# Waiting for $(jobs -p | wc -l) jobs to complete"
   echo "################################################################################"
 
   set +e
-  wait $PID
+  wait "$PID"
   EXIT_CODE=$?
   set -e
 
