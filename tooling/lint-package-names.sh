@@ -3,7 +3,9 @@
 set -e
 shopt -s extglob
 
-DEPRECATED_PACKAGES="@ciscospark/storage-adapter-session-storage \
+DEPRECATED_PACKAGES="@webex/bin-sauce-connect \
+  @webex/test-helper-sinon \
+  @ciscospark/storage-adapter-session-storage \
   @ciscospark/test-helper-automation \
   @ciscospark/sparkd \
   @ciscospark/recipe-private-web-client \
