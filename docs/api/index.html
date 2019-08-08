@@ -261,15 +261,15 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#phoneeventcallincoming'
-                          class='regular pre-open'>
-                          ⓔ call:incoming
-                        </a></li>
-                      
-                        <li><a
                           href='#phoneeventcallcreated'
                           class='regular pre-open'>
                           ⓔ call:created
+                        </a></li>
+                      
+                        <li><a
+                          href='#phoneeventcallincoming'
+                          class='regular pre-open'>
+                          ⓔ call:incoming
                         </a></li>
                       
                     </ul>
@@ -888,15 +888,15 @@
                         </a></li>
                       
                         <li><a
-                          href='#meetingseventmeetingsready'
-                          class='regular pre-open'>
-                          ⓔ meetings:ready
-                        </a></li>
-                      
-                        <li><a
                           href='#meetingseventmeetingadded'
                           class='regular pre-open'>
                           ⓔ meeting:added
+                        </a></li>
+                      
+                        <li><a
+                          href='#meetingseventmeetingsready'
+                          class='regular pre-open'>
+                          ⓔ meetings:ready
                         </a></li>
                       
                         <li><a
@@ -1804,62 +1804,6 @@
                         href='#meetinginfocollectionget'
                         class='regular pre-open'>
                         .get
-                      </a></li>
-                    
-                    </ul>
-                  
-                  
-                  
-                  
-                </div>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#meetinginforequest'
-                  class=" toggle-sibling">
-                  MeetingInfoRequest
-                  <span class='icon'>▸</span>
-                </a>
-                
-                <div class='toggle-target display-none'>
-                  
-                  <ul class='list-reset py1-ul pl1'>
-                    <li class='h5'><span>Static members</span></li>
-                    
-                      <li><a
-                        href='#meetinginforequestfetchmeetinginfo'
-                        class='regular pre-open'>
-                        .fetchMeetingInfo
-                      </a></li>
-                    
-                    </ul>
-                  
-                  
-                  
-                  
-                </div>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#meetinginforequest'
-                  class=" toggle-sibling">
-                  MeetingInfoRequest
-                  <span class='icon'>▸</span>
-                </a>
-                
-                <div class='toggle-target display-none'>
-                  
-                  <ul class='list-reset py1-ul pl1'>
-                    <li class='h5'><span>Static members</span></li>
-                    
-                      <li><a
-                        href='#meetinginforequestfetchmeetinginfo'
-                        class='regular pre-open'>
-                        .fetchMeetingInfo
                       </a></li>
                     
                     </ul>
@@ -3511,9 +3455,9 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#memberseventmemberscontentupdate'
+                          href='#memberseventmembersupdate'
                           class='regular pre-open'>
-                          ⓔ members:content:update
+                          ⓔ members:update
                         </a></li>
                       
                         <li><a
@@ -3529,9 +3473,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#memberseventmembersupdate'
+                          href='#memberseventmemberscontentupdate'
                           class='regular pre-open'>
-                          ⓔ members:update
+                          ⓔ members:content:update
                         </a></li>
                       
                     </ul>
@@ -4625,6 +4569,62 @@
                       </a></li>
                       
                     </ul>
+                  
+                  
+                  
+                </div>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#meetinginforequest'
+                  class=" toggle-sibling">
+                  MeetingInfoRequest
+                  <span class='icon'>▸</span>
+                </a>
+                
+                <div class='toggle-target display-none'>
+                  
+                  <ul class='list-reset py1-ul pl1'>
+                    <li class='h5'><span>Static members</span></li>
+                    
+                      <li><a
+                        href='#meetinginforequestfetchmeetinginfo'
+                        class='regular pre-open'>
+                        .fetchMeetingInfo
+                      </a></li>
+                    
+                    </ul>
+                  
+                  
+                  
+                  
+                </div>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#meetinginforequest'
+                  class=" toggle-sibling">
+                  MeetingInfoRequest
+                  <span class='icon'>▸</span>
+                </a>
+                
+                <div class='toggle-target display-none'>
+                  
+                  <ul class='list-reset py1-ul pl1'>
+                    <li class='h5'><span>Static members</span></li>
+                    
+                      <li><a
+                        href='#meetinginforequestfetchmeetinginfo'
+                        class='regular pre-open'>
+                        .fetchMeetingInfo
+                      </a></li>
+                    
+                    </ul>
+                  
                   
                   
                   
@@ -6846,6 +6846,65 @@ new one will be created based on options.constraints
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
+    <div class='border-bottom' id='phoneeventcallcreated'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>call:created</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Call Created Event</p>
+<p>Emitted when a call begins outside of the sdk</p>
+
+
+  <div class='pre p1 fill-light mt0'>call:created</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
+          : The created call
+
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='phoneeventcallincoming'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -6883,65 +6942,6 @@ there are active calls.</p>
         <div class='space-bottom0'>
           <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
           : The incoming call
-
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='phoneeventcallcreated'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>call:created</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Call Created Event</p>
-<p>Emitted when a call begins outside of the sdk</p>
-
-
-  <div class='pre p1 fill-light mt0'>call:created</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>call</span> <code class='quiet'>(<a href="#call">Call</a>)</code>
-          : The created call
 
           
         </div>
@@ -11752,53 +11752,6 @@ Emitted when a meeting was removed from the cache of meetings</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingseventmeetingsready'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meetings:ready</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Meetings Ready Event
-Emitted when the meetings instance on webex is ready</p>
-
-
-  <div class='pre p1 fill-light mt0'>meetings:ready</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
     <div class='border-bottom' id='meetingseventmeetingadded'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -11847,6 +11800,53 @@ Emitted when a meeting was added to the cache of meetings</p>
         </div>
       
     </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='meetingseventmeetingsready'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>meetings:ready</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Meetings Ready Event
+Emitted when the meetings instance on webex is ready</p>
+
+
+  <div class='pre p1 fill-light mt0'>meetings:ready</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
   
 
   
@@ -19772,266 +19772,6 @@ similar to device.setVolume()</p>
     
   
 
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-</div>
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='meetinginforequest'>
-      MeetingInfoRequest
-    </h3>
-    
-    
-  </div>
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>new MeetingInfoRequest()</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Static Members</div>
-    <div class="clearfix">
-  
-    <div class='border-bottom' id='meetinginforequestfetchmeetinginfo'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>fetchMeetingInfo(options)</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>fetchMeetingInfo(options: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    with format of {type: String, desintation: String}
-where type is PERSONAL_ROOM, SIP_URI, CONVERSATION_URL, and destination is userId, sipUri, convoUrl respectively
-type can also be specified as an option and be of the list SIP_URI,MEETING_ID,LOCUS_ID,PERSONAL_ROOM,MEETING_LINK,ONE_ON_ONE,MEDIA_SIP_URI,CONVERSATION_URL,TEMP_SIP_URI
-with the desination matching
-
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
-        returns a promise that resolves/rejects the result of the request
-
-      
-    
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Throws</div>
-    <ul>
-      
-        <li><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>: if the options are not valid and complete
-</li>
-      
-    </ul>
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-</div>
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='meetinginforequest'>
-      MeetingInfoRequest
-    </h3>
-    
-    
-  </div>
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>new MeetingInfoRequest()</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Static Members</div>
-    <div class="clearfix">
-  
-    <div class='border-bottom' id='meetinginforequestfetchmeetinginfo'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>fetchMeetingInfo(options)</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  
-
-  <div class='pre p1 fill-light mt0'>fetchMeetingInfo(options: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    with format of {type: String, desintation: String}
-where type is PERSONAL_ROOM, SIP_URI, CONVERSATION_URL, and destination is userId, sipUri, convoUrl respectively
-type can also be specified as an option and be of the list SIP_URI,MEETING_ID,LOCUS_ID,PERSONAL_ROOM,MEETING_LINK,ONE_ON_ONE,MEDIA_SIP_URI,CONVERSATION_URL,TEMP_SIP_URI
-with the desination matching
-
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
-        returns a promise that resolves/rejects the result of the request
-
-      
-    
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Throws</div>
-    <ul>
-      
-        <li><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>: if the options are not valid and complete
-</li>
-      
-    </ul>
   
 
   
@@ -35207,11 +34947,11 @@ Used to emit events internally between modules specific to an object</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='memberseventmemberscontentupdate'>
+    <div class='border-bottom' id='memberseventmembersupdate'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>members:content:update</span>
+            <span class='code strong strong truncate'>members:update</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -35219,11 +34959,11 @@ Used to emit events internally between modules specific to an object</p>
 
   
 
-  <p>Members Content Update Event
-Emitted when who is sharing changes</p>
+  <p>Members Update Event
+Emitted when something in the roster list needs to be updated</p>
 
 
-  <div class='pre p1 fill-light mt0'>members:content:update</div>
+  <div class='pre p1 fill-light mt0'>members:update</div>
   
   
 
@@ -35241,14 +34981,30 @@ Emitted when who is sharing changes</p>
     <div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>activeContentSharingId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+          <span class='code bold'>delta</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+          : the changes to the members list
+
           
+            <ul>
+              
+                <li><code>delta.updated</code> <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>
+                  
+                  <p>array only the updates, includes removals, as they will have updated status and member properties</p>
+</li>
+              
+                <li><code>delta.added</code> <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>
+                  
+                  <p>array added members to the meeting</p>
+</li>
+              
+            </ul>
           
         </div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>endedContentSharingId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          
+          <span class='code bold'>full</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>)</code>
+          : array the full members collection
+
           
         </div>
       
@@ -35399,11 +35155,11 @@ Emitted when who is the self changes</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='memberseventmembersupdate'>
+    <div class='border-bottom' id='memberseventmemberscontentupdate'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>members:update</span>
+            <span class='code strong strong truncate'>members:content:update</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -35411,11 +35167,11 @@ Emitted when who is the self changes</p>
 
   
 
-  <p>Members Update Event
-Emitted when something in the roster list needs to be updated</p>
+  <p>Members Content Update Event
+Emitted when who is sharing changes</p>
 
 
-  <div class='pre p1 fill-light mt0'>members:update</div>
+  <div class='pre p1 fill-light mt0'>members:content:update</div>
   
   
 
@@ -35433,30 +35189,14 @@ Emitted when something in the roster list needs to be updated</p>
     <div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>delta</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-          : the changes to the members list
-
+          <span class='code bold'>activeContentSharingId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
           
-            <ul>
-              
-                <li><code>delta.updated</code> <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>
-                  
-                  <p>array only the updates, includes removals, as they will have updated status and member properties</p>
-</li>
-              
-                <li><code>delta.added</code> <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>
-                  
-                  <p>array added members to the meeting</p>
-</li>
-              
-            </ul>
           
         </div>
       
         <div class='space-bottom0'>
-          <span class='code bold'>full</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>)</code>
-          : array the full members collection
-
+          <span class='code bold'>endedContentSharingId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+          
           
         </div>
       
@@ -41240,19 +40980,33 @@ takes params as precedence</p>
   </div>
   
 
-  
+  <p>stores the last x filtered stream datas</p>
 
-  <div class='pre p1 fill-light mt0'>new StatsHistory()</div>
-  
-  
 
-  
-  
-  
-  
+  <div class='pre p1 fill-light mt0'>new StatsHistory(max: any)</div>
   
   
 
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>max</span> <code class='quiet'>(any)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
   
 
   
@@ -41812,33 +41566,19 @@ to make space for the new stats data report to be added to the front
   </div>
   
 
-  <p>stores the last x filtered stream datas</p>
-
-
-  <div class='pre p1 fill-light mt0'>new StatsHistory(max: any)</div>
-  
   
 
-  
-  
-  
-  
+  <div class='pre p1 fill-light mt0'>new StatsHistory()</div>
   
   
 
   
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>max</span> <code class='quiet'>(any)</code>
-	    
-          </div>
-          
-        </div>
-      
-    </div>
+  
+  
+  
+  
+  
+
   
 
   
@@ -43493,6 +43233,266 @@ to make space for the new stats data report to be added to the front
     </div>
   
 </div>
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='meetinginforequest'>
+      MeetingInfoRequest
+    </h3>
+    
+    
+  </div>
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>new MeetingInfoRequest()</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Static Members</div>
+    <div class="clearfix">
+  
+    <div class='border-bottom' id='meetinginforequestfetchmeetinginfo'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>fetchMeetingInfo(options)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>fetchMeetingInfo(options: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    with format of {type: String, desintation: String}
+where type is PERSONAL_ROOM, SIP_URI, CONVERSATION_URL, and destination is userId, sipUri, convoUrl respectively
+type can also be specified as an option and be of the list SIP_URI,MEETING_ID,LOCUS_ID,PERSONAL_ROOM,MEETING_LINK,ONE_ON_ONE,MEDIA_SIP_URI,CONVERSATION_URL,TEMP_SIP_URI
+with the desination matching
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
+        returns a promise that resolves/rejects the result of the request
+
+      
+    
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Throws</div>
+    <ul>
+      
+        <li><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>: if the options are not valid and complete
+</li>
+      
+    </ul>
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+</div>
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='meetinginforequest'>
+      MeetingInfoRequest
+    </h3>
+    
+    
+  </div>
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>new MeetingInfoRequest()</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Static Members</div>
+    <div class="clearfix">
+  
+    <div class='border-bottom' id='meetinginforequestfetchmeetinginfo'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>fetchMeetingInfo(options)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>fetchMeetingInfo(options: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    with format of {type: String, desintation: String}
+where type is PERSONAL_ROOM, SIP_URI, CONVERSATION_URL, and destination is userId, sipUri, convoUrl respectively
+type can also be specified as an option and be of the list SIP_URI,MEETING_ID,LOCUS_ID,PERSONAL_ROOM,MEETING_LINK,ONE_ON_ONE,MEDIA_SIP_URI,CONVERSATION_URL,TEMP_SIP_URI
+with the desination matching
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a></code>:
+        returns a promise that resolves/rejects the result of the request
+
+      
+    
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Throws</div>
+    <ul>
+      
+        <li><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>: if the options are not valid and complete
+</li>
+      
+    </ul>
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+</div>
+
+  
 
   
 
