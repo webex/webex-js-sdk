@@ -12,6 +12,16 @@ module.exports = {
   command: 'ci',
   desc: 'commands to run during ci',
   builder: {
+    coverage: {
+      description: 'Generate code coverage',
+      default: true,
+      type: 'boolean'
+    },
+    coverageReport: {
+      description: 'Internal; when false, no report is generated',
+      default: true,
+      type: 'boolean'
+    },
     github: {
       description: 'Run tests on modified packages for github check',
       default: false,
@@ -57,7 +67,7 @@ module.exports = {
 
     await spawn(cmd, args);
 
-    if (argv.coverage && argv.coverageReport) {
+    if (process.env.COVERAGE || (argv.coverage && argv.coverageReport)) {
       debug('generating overall coverage report');
       await report();
       debug('generated overall coverage report');

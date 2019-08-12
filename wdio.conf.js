@@ -102,8 +102,7 @@ exports.config = {
           })
         },
         ...(CI && {
-          extendedDebugging: true,
-          seleniumVersion: '3.4.0'
+          extendedDebugging: true
         })
       }
     },
@@ -117,8 +116,7 @@ exports.config = {
           ]
         },
         ...(CI && {
-          extendedDebugging: true,
-          seleniumVersion: '3.4.0'
+          extendedDebugging: true
         })
       }
     }
