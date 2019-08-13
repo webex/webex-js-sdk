@@ -49,7 +49,7 @@
     "url": "https://github.com/webex/webex-js-sdk"
   },
   "scripts": {
-    "clean": "rimraf packages/node_modules/**/{.coverage,dist}",
+    "clean": "rimraf packages/node_modules/**/.coverage packages/node_modules/**/dist",
     "bootstrap": "echo 'npm run bootstrap is no longer required. Hooray!'",
     "prebuild": "npm run clean",
     "build": "babel-node ./tooling/index.js build",
