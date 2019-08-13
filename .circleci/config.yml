@@ -22,6 +22,11 @@ restore_packages: &restore_packages
     name: 'Link cached packages/node_modules to project'
     command: cp -r -u /tmp/workspace/packages/node_modules ./packages || true
 
+skip_check: &skip_check
+  run:
+    name: 'Check to see if testing needs to be skipped'
+    command: if [[ -z $(node tooling/modified-packages.js) ]]; then circleci step halt; fi
+
 # Main Config
 jobs:
   npm_install:
@@ -106,6 +111,7 @@ jobs:
       - <<: *restore_workspace
       - <<: *restore_node_modules
       - <<: *restore_packages
+      - <<: *skip_check
       - run:
           name: 'Generate Build Number'
           command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
@@ -141,6 +147,7 @@ jobs:
       - <<: *restore_workspace
       - <<: *restore_node_modules
       - <<: *restore_packages
+      - <<: *skip_check
       - run:
           name: 'Generate Build Number'
           command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
