@@ -73,6 +73,11 @@ jobs:
     environment:
       NODE_ENV: 'test'
     steps:
+      - run:
+          name: 'Install graphicsmagick and libgcrypt'
+          command: |
+            sudo apt-get update
+            sudo apt-get install graphicsmagick libgcrypt-dev
       - checkout
       - <<: *restore_workspace
       - <<: *restore_node_modules
@@ -117,7 +122,7 @@ jobs:
           command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
       - run:
           name: 'Test modified packages'
-          command: npm run test:github
+          command: npm run test:ci:github
       - run:
           name: 'Check if any unit tests failed'
           command: |
@@ -166,6 +171,46 @@ jobs:
           path: /home/circleci/.npm/_logs/
           destination: npm-logs
 
+  integration_tests:
+    <<: *job_common
+    environment:
+      COVERAGE: true
+    steps:
+      - run:
+          name: 'Install graphicsmagick and libgcrypt'
+          command: |
+            sudo apt-get update
+            sudo apt-get install graphicsmagick libgcrypt-dev
+      - checkout
+      - <<: *restore_workspace
+      - <<: *restore_node_modules
+      - <<: *restore_packages
+      - <<: *skip_check
+      - run:
+          name: 'Generate Build Number'
+          command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
+      - run:
+          name: 'Run all integration tests on Mac and Windows version of Chrome and Firefox'
+          command: npm run test:ci:integration
+      - run:
+          name: 'Check if any unit tests failed'
+          command: |
+            failures=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
+            errors=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*errors=\"\([^\"]*\).*/\1/p' | xargs)
+
+            echo Failures $failures
+            echo Errors $errors
+
+            if [[ "$failures" -ne *0* ]] || [[ "$errors" -ne *0* ]]; then
+              echo 'Unit tests failed'
+              exit 1
+            fi
+      - store_test_results:
+          path: reports/
+      - store_artifacts:
+          path: reports/junit
+          destination: junit
+
 workflows:
   version: 2
   js_sdk_github_checks:
@@ -185,3 +230,13 @@ workflows:
           requires:
             - build
             - static_analysis
+  merge_pipeline:
+    jobs:
+      - npm_install
+      - build:
+          requires:
+            - npm_install
+      - integration_tests:
+          requires:
+            - build
+
