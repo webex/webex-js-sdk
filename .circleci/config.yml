@@ -236,6 +236,19 @@ jobs:
           name: 'Bump all package version'
           command: npm run tooling -- version set ${version} --all
 
+  publish:
+    <<: *job_common
+    steps:
+      - checkout
+      - <<: *restore_workspace
+      - <<: *restore_node_modules
+      - <<: *restore_packages
+      - run:
+          name: 'Link cached docs to project'
+          command: cp -r -u /tmp/workspace/packages/node_modules ./packages || true
+      - run:
+          name: 'Publish to NPM'
+          command: npm run tooling -- exec -- bash -c 'npm publish --access public || true'
 
 workflows:
   version: 2
@@ -263,12 +276,18 @@ workflows:
           requires:
             - npm_install
       - integration_tests:
+          filters:
+              branches:
+                only: master
           requires:
             - build
       - build_for_release:
+          filters:
+            branches:
+              only: master
           requires:
               - build
-              - integration_test
+              - integration_tests
           type: approval
 
 
