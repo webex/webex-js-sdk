@@ -211,6 +211,32 @@ jobs:
           path: reports/junit
           destination: junit
 
+  build_for_release:
+    <<: *job_common
+    steps:
+      - checkout
+      - <<: *restore_workspace
+      - <<: *restore_node_modules
+      - <<: *restore_packages
+      - <<: *skip_check
+      - run:
+          name: 'Generate Version Number'
+          command: echo "export VERSION=$(npm run --silent get-next-version | xargs)" >> $BASH_ENV
+      - run: echo ${VERSION}
+      - run:
+          name: 'Build Packages'
+          command: npm run build
+      - run:
+          name: 'Build UMD script'
+          command: npm run build:script -- --versionNumber=${VERSION}
+      - run:
+          name: 'Build Docs'
+          command: npm run build:docs
+      - run:
+          name: 'Bump all package version'
+          command: npm run tooling -- version set ${version} --all
+
+
 workflows:
   version: 2
   js_sdk_github_checks:
@@ -239,4 +265,10 @@ workflows:
       - integration_tests:
           requires:
             - build
+      - build_for_release:
+          requires:
+              - build
+              - integration_test
+          type: approval
+
 
