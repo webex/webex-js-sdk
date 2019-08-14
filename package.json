@@ -211,7 +211,7 @@
     "request-id": "^0.11.1",
     "require-dir": "^0.3.2",
     "response-time": "^2.3.2",
-    "rimraf": "^2.6.3",
+    "rimraf": "^3.0.0",
     "rollup": "^0.68.0",
     "rollup-plugin-cleaner": "^0.2.0",
     "rollup-plugin-commonjs": "^9.2.0",
