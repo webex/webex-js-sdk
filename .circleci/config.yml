@@ -193,7 +193,7 @@ jobs:
           name: 'Run all integration tests on Mac and Windows version of Chrome and Firefox'
           command: npm run test:ci:integration
       - run:
-          name: 'Check if any unit tests failed'
+          name: 'Check if any integration tests failed'
           command: |
             failures=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
             errors=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*errors=\"\([^\"]*\).*/\1/p' | xargs)
@@ -236,16 +236,12 @@ jobs:
           name: 'Bump all package version'
           command: npm run tooling -- version set ${version} --all
 
-  publish:
+  npm_publish:
     <<: *job_common
     steps:
       - checkout
       - <<: *restore_workspace
       - <<: *restore_node_modules
-      - <<: *restore_packages
-      - run:
-          name: 'Link cached docs to project'
-          command: cp -r -u /tmp/workspace/packages/node_modules ./packages || true
       - run:
           name: 'Publish to NPM'
           command: npm run tooling -- exec -- bash -c 'npm publish --access public || true'
@@ -271,8 +267,14 @@ workflows:
             - static_analysis
   merge_pipeline:
     jobs:
-      - npm_install
+      - npm_install:
+          filters:
+              branches:
+                only: master
       - build:
+          filters:
+                branches:
+                  only: master
           requires:
             - npm_install
       - integration_tests:
@@ -288,6 +290,14 @@ workflows:
           requires:
               - build
               - integration_tests
+          type: approval
+  publish:
+    jobs:
+      - npm_install:
+          filters:
+              branches:
+                only: master
+      - npm_publish:
           type: approval
 
 
