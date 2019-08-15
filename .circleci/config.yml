@@ -2,38 +2,43 @@
 # NPM_TOKEN
 
 # Main Config
-version: 2
+version: 2.1
+# reusable environment for all jobs
+executors:
+  main-executor:
+    working_directory: ~/webex-js-sdk
+    docker:
+      - image: circleci/node:carbon-browsers
 
-job_common: &job_common
-  docker:
-    - image: circleci/node:carbon-browsers
-
-restore_workspace: &restore_workspace
-  attach_workspace:
-    at: /tmp/workspace
-
-restore_node_modules: &restore_node_modules
-  run:
-    name: 'Link cached node_modules to project'
-    command: mv /tmp/workspace/node_modules ./ || true
-
-restore_packages: &restore_packages
-  run:
-    name: 'Link cached packages/node_modules to project'
-    command: cp -r -u /tmp/workspace/packages/node_modules ./packages || true
-
-skip_check: &skip_check
-  run:
-    name: 'Check to see if testing needs to be skipped'
-    command: if [[ -z $(node tooling/modified-packages.js) ]]; then circleci step halt; fi
+commands:
+  install_graphicsmagick_and_libgcrypt:
+    description: 'Install graphicsmagick and libgcrypt'
+    steps:
+      - run: |
+          sudo apt-get update
+          sudo apt-get install graphicsmagick libgcrypt-dev -y
+  checkout_and_node_modules_cache:
+    description: 'To checkout and restore the dependencies cache'
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - node-v1-{{ .Branch }}-{{ checksum "package-lock.json" }}
+            - node-v1-{{ .Branch }}-
+            - node-v1-
+  skip_check:
+    description: 'Check to see if testing needs to be skipped'
+    steps:
+      - run: if [[ -z $(node tooling/modified-packages.js) ]]; then circleci step halt; fi
 
 # Main Config
 jobs:
   npm_install:
-    <<: *job_common
+    executor: main-executor
     environment:
       SAUCE_CONNECT_DOWNLOAD_ON_INSTALL: true
     steps:
+      - install_graphicsmagick_and_libgcrypt
       - checkout
       - run: git remote add upstream git@github.com:webex/webex-js-sdk.git
       - run: git fetch upstream --tags
@@ -53,14 +58,6 @@ jobs:
           key: node-cache-{{ .Branch }}-{{ checksum "package-lock.json" }}
           paths:
             - ~/usr/local/lib/node_modules
-            - ./node_modules
-      - run:
-          name: 'Copy node_modules to workspace'
-          command: mv node_modules /tmp/
-      - persist_to_workspace:
-          root: /tmp
-          paths:
-            - node_modules
       - run:
           name: 'Save NPM install log'
           command: npm ls --json > /tmp/npm_install.log || true
@@ -69,18 +66,12 @@ jobs:
           destination: npm-install
 
   build:
-    <<: *job_common
+    executor: main-executor
     environment:
       NODE_ENV: 'test'
     steps:
-      - run:
-          name: 'Install graphicsmagick and libgcrypt'
-          command: |
-            sudo apt-get update
-            sudo apt-get install graphicsmagick libgcrypt-dev
-      - checkout
-      - <<: *restore_workspace
-      - <<: *restore_node_modules
+      - install_graphicsmagick_and_libgcrypt
+      - checkout_and_node_modules_cache
       - run:
           name: 'Build all packages'
           command: npm run build
@@ -88,16 +79,11 @@ jobs:
           root: ./
           paths:
             - packages/node_modules
-      - run:
-          name: 'Copy packages/node_modules to workspace'
-          command: mv packages/node_modules /tmp/
 
   static_analysis:
-    <<: *job_common
+    executor: main-executor
     steps:
-      - checkout
-      - <<: *restore_workspace
-      - <<: *restore_node_modules
+      - checkout_and_node_modules_cache
       - run:
           name: 'Run ESLint'
           command: npm run lint:ci
@@ -108,15 +94,12 @@ jobs:
           destination: style
 
   unit_tests:
-    <<: *job_common
+    executor: main-executor
     environment:
       COVERAGE: true
     steps:
-      - checkout
-      - <<: *restore_workspace
-      - <<: *restore_node_modules
-      - <<: *restore_packages
-      - <<: *skip_check
+      - checkout_and_node_modules_cache
+      - skip_check
       - run:
           name: 'Generate Build Number'
           command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
@@ -143,16 +126,13 @@ jobs:
           destination: junit
 
   samples:
-    <<: *job_common
+    executor: main-executor
     environment:
       NODE_ENV: 'test'
       COVERAGE: true
     steps:
-      - checkout
-      - <<: *restore_workspace
-      - <<: *restore_node_modules
-      - <<: *restore_packages
-      - <<: *skip_check
+      - checkout_and_node_modules_cache
+      - skip_check
       - run:
           name: 'Generate Build Number'
           command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
@@ -172,20 +152,13 @@ jobs:
           destination: npm-logs
 
   integration_tests:
-    <<: *job_common
+    executor: main-executor
     environment:
       COVERAGE: true
     steps:
-      - run:
-          name: 'Install graphicsmagick and libgcrypt'
-          command: |
-            sudo apt-get update
-            sudo apt-get install graphicsmagick libgcrypt-dev
-      - checkout
-      - <<: *restore_workspace
-      - <<: *restore_node_modules
-      - <<: *restore_packages
-      - <<: *skip_check
+      - install_graphicsmagick_and_libgcrypt
+      - checkout_and_node_modules_cache
+      - skip_check
       - run:
           name: 'Generate Build Number'
           command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
@@ -212,13 +185,10 @@ jobs:
           destination: junit
 
   build_for_release:
-    <<: *job_common
+    executor: main-executor
     steps:
-      - checkout
-      - <<: *restore_workspace
-      - <<: *restore_node_modules
-      - <<: *restore_packages
-      - <<: *skip_check
+      - checkout_and_node_modules_cache
+      - skip_check
       - run:
           name: 'Generate Version Number'
           command: echo "export VERSION=$(npm run --silent get-next-version | xargs)" >> $BASH_ENV
@@ -237,11 +207,9 @@ jobs:
           command: npm run tooling -- version set ${version} --all
 
   npm_publish:
-    <<: *job_common
+    executor: main-executor
     steps:
-      - checkout
-      - <<: *restore_workspace
-      - <<: *restore_node_modules
+      - checkout_and_node_modules_cache
       - run:
           name: 'Publish to NPM'
           command: npm run tooling -- exec -- bash -c 'npm publish --access public || true'
