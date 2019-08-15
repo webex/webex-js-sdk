@@ -16,6 +16,7 @@ PROD_ENV_VARS = {
   'ENCRYPTION_SERVICE_URL': 'https://encryption-a.wbx2.com',
   'IDBROKER_BASE_URL': 'https://idbroker.webex.com',
   'IDENTITY_BASE_URL': 'https://identity.webex.com',
+  'U2C_SERVICE_URL': 'https://u2c.wbx2.com/u2c/api/v1',
   'WDM_SERVICE_URL': 'https://wdm-a.wbx2.com/wdm/api/v1',
   # Logging
   'ENABLE_VERBOSE_NETWORK_LOGGING': 'true'

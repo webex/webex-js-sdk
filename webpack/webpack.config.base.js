@@ -40,6 +40,7 @@ module.exports = merge({
       // integration process and should not be used in general
       // Also, yes, CONVERSATION_SERVICE does not end in URL
       CONVERSATION_SERVICE: process.env.CONVERSATION_SERVICE || process.env.CONVERSATION_SERVICE_URL || 'https://conv-a.wbx2.com/conversation/api/v1',
+      U2C_SERVICE_URL: process.env.U2C_SERVICE_URL || 'https://u2c.wbx2.com/u2c/api/v1',
       WDM_SERVICE_URL: process.env.WDM_SERVICE_URL || 'https://wdm-a.wbx2.com/wdm/api/v1',
       HYDRA_SERVICE_URL: process.env.HYDRA_SERVICE_URL || 'https://api.ciscospark.com/v1',
       ATLAS_SERVICE_URL: process.env.ATLAS_SERVICE_URL || 'https://atlas-a.wbx2.com/admin/api/v1'
