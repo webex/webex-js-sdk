@@ -73,6 +73,9 @@ def generateDockerEnv = { ->
   if (env.IDENTITY_BASE_URL != null) {
     dockerEnv+="IDENTITY_BASE_URL=${env.IDENTITY_BASE_URL}\n"
   }
+  if (env.U2C_SERVICE_URL != null) {
+    dockerEnv+="U2C_SERVICE_URL=${env.U2C_SERVICE_URL}\n"
+  }
   if (env.WDM_SERVICE_URL != null) {
     dockerEnv+="WDM_SERVICE_URL=${env.WDM_SERVICE_URL}\n"
   }
@@ -271,6 +274,7 @@ ansiColor('xterm') {
             env.HYDRA_SERVICE_URL='https://apialpha.ciscospark.com/v1/'
             env.IDBROKER_BASE_URL='https://idbrokerbts.webex.com'
             env.IDENTITY_BASE_URL='https://identitybts.webex.com'
+            env.U2C_SERVICE_URL='https://u2c-intb.ciscospark.com/u2c/api/v1'
             env.WDM_SERVICE_URL='https://wdm-intb.ciscospark.com/wdm/api/v1'
             env.WHISTLER_API_SERVICE_URL='https://whistler.onint.ciscospark.com/api/v1'
 
