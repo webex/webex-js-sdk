@@ -184,7 +184,7 @@ jobs:
           path: reports/junit
           destination: junit
 
-  build_for_release:
+  bump_version:
     executor: main-executor
     steps:
       - checkout_and_node_modules_cache
@@ -216,7 +216,7 @@ jobs:
 
 workflows:
   version: 2
-  js_sdk_github_checks:
+  github_checks:
     jobs:
       - npm_install
       - build:
@@ -233,31 +233,23 @@ workflows:
           requires:
             - build
             - static_analysis
-  merge_pipeline:
+      - integration_tests:
+          requires:
+            - unit_tests
+            - samples
+          type: approval
+  build_for_release:
     jobs:
       - npm_install:
           filters:
               branches:
                 only: master
-      - build:
-          filters:
-                branches:
-                  only: master
-          requires:
-            - npm_install
-      - integration_tests:
-          filters:
-              branches:
-                only: master
-          requires:
-            - build
-      - build_for_release:
+      - bump_version:
           filters:
             branches:
               only: master
           requires:
-              - build
-              - integration_tests
+              - npm_install
           type: approval
   publish:
     jobs:
@@ -265,7 +257,12 @@ workflows:
           filters:
               branches:
                 only: master
+              tags:
+                only: /^v.*/
       - npm_publish:
           type: approval
-
-
+          filters:
+              branches:
+                only: master
+              tags:
+                only: /^v.*/
