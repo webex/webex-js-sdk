@@ -882,9 +882,9 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#meetingseventmeetingadded'
+                          href='#meetingseventmeetingremoved'
                           class='regular pre-open'>
-                          ⓔ meeting:added
+                          ⓔ meeting:removed
                         </a></li>
                       
                         <li><a
@@ -894,9 +894,9 @@
                         </a></li>
                       
                         <li><a
-                          href='#meetingseventmeetingremoved'
+                          href='#meetingseventmeetingadded'
                           class='regular pre-open'>
-                          ⓔ meeting:removed
+                          ⓔ meeting:added
                         </a></li>
                       
                         <li><a
@@ -2420,6 +2420,12 @@
                         </a></li>
                       
                         <li><a
+                          href='#meetingeventmeetingactionsupdate'
+                          class='regular pre-open'>
+                          ⓔ meeting:actionsUpdate
+                        </a></li>
+                      
+                        <li><a
                           href='#meetingeventmeetingselfmutedbyothers'
                           class='regular pre-open'>
                           ⓔ meeting:self:mutedByOthers
@@ -2453,12 +2459,6 @@
                           href='#meetingeventmeetingreconnectionfailure'
                           class='regular pre-open'>
                           ⓔ meeting:reconnectionFailure
-                        </a></li>
-                      
-                        <li><a
-                          href='#meetingeventmeetingactionsupdate'
-                          class='regular pre-open'>
-                          ⓔ meeting:actionsUpdate
                         </a></li>
                       
                         <li><a
@@ -10390,11 +10390,11 @@ participating the call.</p>
   </div>
   
 
-  <p>Polls an <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a> once per second and emits its
+  <p>Polls an <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a> once per second and emits its <a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a>
 <a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a></p>
 
 
-  <div class='pre p1 fill-light mt0'>new StatsStream(pc: <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</div>
+  <div class='pre p1 fill-light mt0'>new StatsStream(config: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</div>
   
   
     <p>
@@ -10418,7 +10418,8 @@ participating the call.</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>pc</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</code>
+            <span class='code bold'>config</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+            = <code>{}</code>)</code>
 	    
           </div>
           
@@ -10458,11 +10459,11 @@ participating the call.</p>
   </div>
   
 
-  <p>Polls an <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a> once per second and emits its <a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a>
+  <p>Polls an <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a> once per second and emits its
 <a href="https://developer.mozilla.org/docs/Web/API/RTCStatsReport">RTCStatsReport</a></p>
 
 
-  <div class='pre p1 fill-light mt0'>new StatsStream(config: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</div>
+  <div class='pre p1 fill-light mt0'>new StatsStream(pc: <a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</div>
   
   
     <p>
@@ -10486,8 +10487,7 @@ participating the call.</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>config</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
-            = <code>{}</code>)</code>
+            <span class='code bold'>pc</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>)</code>
 	    
           </div>
           
@@ -11679,11 +11679,11 @@ participating the call.</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='meetingseventmeetingadded'>
+    <div class='border-bottom' id='meetingseventmeetingremoved'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meeting:added</span>
+            <span class='code strong strong truncate'>meeting:removed</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -11691,11 +11691,11 @@ participating the call.</p>
 
   
 
-  <p>Meeting Added Event
-Emitted when a meeting was added to the cache of meetings</p>
+  <p>Meeting Removed Event
+Emitted when a meeting was removed from the cache of meetings</p>
 
 
-  <div class='pre p1 fill-light mt0'>meeting:added</div>
+  <div class='pre p1 fill-light mt0'>meeting:removed</div>
   
   
 
@@ -11714,7 +11714,14 @@ Emitted when a meeting was added to the cache of meetings</p>
       
         <div class='space-bottom0'>
           <span class='code bold'>meetingId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          : the added meeting
+          : the removed meeting
+
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>response</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+          : the server response
 
           
         </div>
@@ -11792,11 +11799,11 @@ Emitted when the meetings instance on webex is ready</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingseventmeetingremoved'>
+    <div class='border-bottom' id='meetingseventmeetingadded'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meeting:removed</span>
+            <span class='code strong strong truncate'>meeting:added</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -11804,11 +11811,11 @@ Emitted when the meetings instance on webex is ready</p>
 
   
 
-  <p>Meeting Removed Event
-Emitted when a meeting was removed from the cache of meetings</p>
+  <p>Meeting Added Event
+Emitted when a meeting was added to the cache of meetings</p>
 
 
-  <div class='pre p1 fill-light mt0'>meeting:removed</div>
+  <div class='pre p1 fill-light mt0'>meeting:added</div>
   
   
 
@@ -11827,14 +11834,7 @@ Emitted when a meeting was removed from the cache of meetings</p>
       
         <div class='space-bottom0'>
           <span class='code bold'>meetingId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          : the removed meeting
-
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>response</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-          : the server response
+          : the added meeting
 
           
         </div>
@@ -25254,6 +25254,76 @@ Emitted when a meeting is unlocked</p>
       </div>
     </div>
   
+    <div class='border-bottom' id='meetingeventmeetingactionsupdate'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>meeting:actionsUpdate</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Meeting Actions Update Event
+Emitted when a user can take actions on a meeting such as lock, unlock, assign host</p>
+
+
+  <div class='pre p1 fill-light mt0'>meeting:actionsUpdate</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>canLock</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
+          
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>canUnlock</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
+          
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>canAssignHost</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
+          
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
     <div class='border-bottom' id='meetingeventmeetingselfmutedbyothers'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
@@ -25568,76 +25638,6 @@ Emitted when reconnection of media to the active meeting was successful</p>
       
         <div class='space-bottom0'>
           <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>)</code>
-          
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='meetingeventmeetingactionsupdate'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meeting:actionsUpdate</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-
-  <p>Meeting Actions Update Event
-Emitted when a user can take actions on a meeting such as lock, unlock, assign host</p>
-
-
-  <div class='pre p1 fill-light mt0'>meeting:actionsUpdate</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>canLock</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
-          
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>canUnlock</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
-          
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>canAssignHost</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">Boolean</a>)</code>
           
           
         </div>
