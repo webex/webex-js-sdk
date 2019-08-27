@@ -10,6 +10,9 @@ executors:
     docker:
       - image: circleci/node:carbon-browsers
 
+orbs:
+  jq: circleci/jq@1.9.0
+
 commands:
   install_graphicsmagick_and_libgcrypt:
     description: 'Install graphicsmagick and libgcrypt'
@@ -119,13 +122,13 @@ jobs:
       - run:
           name: 'Check if any unit tests failed'
           command: |
-            failures=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
-            errors=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*errors=\"\([^\"]*\).*/\1/p' | xargs)
+            FAILURES=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
+            ERRORS=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*errors=\"\([^\"]*\).*/\1/p' | xargs)
 
-            echo Failures $failures
-            echo Errors $errors
+            echo Failures $FAILURES
+            echo Errors $ERRORS
 
-            if [[ "$failures" -ne *0* ]] || [[ "$errors" -ne *0* ]]; then
+            if [[ "$FAILURES" -ne *0* ]] || [[ "$ERRORS" -ne *0* ]]; then
               echo 'Unit tests failed'
               exit 1
             fi
@@ -172,6 +175,20 @@ jobs:
       - restore_node_modules
       - restore_built_packages
       - skip_check
+      - jq/install
+      - run:
+          name: 'Check if PR is approved'
+          command: |
+            PR_APPROVAL_STATUS=()
+            PR_NUMBER=${CIRCLE_PULL_REQUEST##*/}
+
+            # Grab all PR states and filter for only `CHANGES_REQUESTED` and `APPROVED` states
+            while IFS='' read -r line; do PR_APPROVAL_STATUS+=("$line"); done < <(curl -s "https://api.github.com/repos/webex/webex-js-sdk/pulls/${PR_NUMBER}/reviews" | jq -r 'reverse | .[] | select(.state | IN("CHANGES_REQUESTED", "APPROVED")) | .state')
+
+            # If the the latest state != `APPROVED`, the PR is not approved and bail
+            if [ "${PR_APPROVAL_STATUS[0]}" != "APPROVED" ]; then
+              exit 1;
+            fi;
       - run:
           name: 'Generate Build Number'
           command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
@@ -181,13 +198,13 @@ jobs:
       - run:
           name: 'Check if any integration tests failed'
           command: |
-            failures=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
-            errors=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*errors=\"\([^\"]*\).*/\1/p' | xargs)
+            FAILURES=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
+            ERRORS=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*errors=\"\([^\"]*\).*/\1/p' | xargs)
 
-            echo Failures $failures
-            echo Errors $errors
+            echo Failures $FAILURES
+            echo Errors $ERRORS
 
-            if [[ "$failures" -ne *0* ]] || [[ "$errors" -ne *0* ]]; then
+            if [[ "$FAILURES" -ne *0* ]] || [[ "$ERRORS" -ne *0* ]]; then
               echo 'Unit tests failed'
               exit 1
             fi
@@ -197,13 +214,12 @@ jobs:
           path: reports/junit
           destination: junit
 
-  bump_version:
+  version_bump:
     executor: main-executor
     steps:
       - checkout_and_fetch
       - restore_node_modules
       - restore_built_packages
-      - skip_check
       - run:
           name: 'Generate Version Number'
           command: echo "export VERSION=$(npm run --silent get-next-version | xargs)" >> $BASH_ENV
@@ -250,7 +266,6 @@ jobs:
           command: npm run tooling -- exec -- bash -c 'npm publish --access public || true'
 
 workflows:
-  version: 2
   github_checks:
     jobs:
       - npm_install
@@ -272,14 +287,13 @@ workflows:
           requires:
             - unit_tests
             - samples
-          type: approval
   build_for_release:
     jobs:
       - npm_install:
           filters:
               branches:
                 only: master
-      - bump_version:
+      - version_bump:
           filters:
             branches:
               only: master
