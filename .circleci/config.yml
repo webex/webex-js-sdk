@@ -219,7 +219,21 @@ jobs:
           command: npm run build:docs
       - run:
           name: 'Bump all package version'
-          command: npm run tooling -- version set ${version} --all
+          command: npm run tooling -- version set ${VERSION} --all
+      - run:
+          name: 'Commit bumped version'
+          command: |
+            git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json docs/ packages/node_modules/webex/umd/*.js
+            git commit -m "chore(release): v${VERSION} [skip ci]"
+      - run:
+          name: 'Push to upstream/master'
+          command: git push upstream HEAD:master"
+      - run:
+          name: 'Tag for release'
+          command: git tag "v${VERSION}"
+      - run:
+          name: 'Push tagged release to upstream/master'
+          command: git push upstream v${VERSION}:v${VERSION}"
 
   npm_publish:
     executor: main-executor
@@ -227,6 +241,10 @@ jobs:
       - checkout_and_fetch
       - restore_node_modules
       - restore_built_packages
+      - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
+      - run:
+          name: 'Generate Package Dependencies'
+          command: npm run deps:generate
       - run:
           name: 'Publish to NPM'
           command: npm run tooling -- exec -- bash -c 'npm publish --access public || true'
