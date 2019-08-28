@@ -2,70 +2,59 @@
 # NPM_TOKEN
 
 # Main Config
-version: 2.1
-# reusable environment for all jobs
-executors:
-  main-executor:
-    working_directory: ~/webex-js-sdk
-    docker:
-      - image: circleci/node:carbon-browsers
+version: 2
 
-orbs:
-  jq: circleci/jq@1.9.0
+job_common: &job_common
+  docker:
+    - image: circleci/node:carbon-browsers
 
-commands:
-  checkout_and_fetch:
-    description: 'Checkout and fetch tags'
+restore_workspace: &restore_workspace
+  attach_workspace:
+    at: /tmp/workspace
+
+restore_node_modules: &restore_node_modules
+  run:
+    name: 'Link cached node_modules to project'
+    command: mv /tmp/workspace/node_modules ./ || true
+
+restore_packages: &restore_packages
+  run:
+    name: 'Link cached packages/node_modules to project'
+    command: cp -r -u /tmp/workspace/packages/node_modules ./packages || true
+
+# Main Config
+jobs:
+  npm_install:
+    <<: *job_common
+    environment:
+      SAUCE_CONNECT_DOWNLOAD_ON_INSTALL: true
     steps:
       - checkout
       - run: git remote add upstream git@github.com:webex/webex-js-sdk.git
       - run: git fetch upstream --tags
-  restore_node_modules:
-    description: 'Restore the node_modules dependencies cache'
-    steps:
-      - restore_cache:
-          keys:
-            - node-module-cache-v1-{{ .Branch }}-{{ checksum "package-lock.json" }}
-            - node-module-cache-v1-{{ .Branch }}-
-            - node-module-cache-v1-
-  restore_built_packages:
-    description: 'Restore built packages'
-    steps:
-      - attach_workspace:
-          at: ~/webex-js-sdk
-  skip_check:
-    description: 'Check to see if testing needs to be skipped'
-    steps:
-      - run:
-          name: Check if we need to skip
-          command: if [[ -z $(node tooling/modified-packages.js) ]]; then circleci step halt; fi
-
-# Main Config
-jobs:
-  validate_config:
-    executor: main-executor
-    steps:
-      - checkout
-      - run:
-          name: 'Validate CircleCI config'
-          command: circleci config validate
-
-  npm_install:
-    executor: main-executor
-    environment:
-      SAUCE_CONNECT_DOWNLOAD_ON_INSTALL: true
-    steps:
-      - checkout_and_fetch
+      - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
       - run:
           name: 'Update NPM and Install dependencies'
           command: sudo npm install -g npm@6
+      - restore_cache:
+          keys:
+            - node-v1-{{ .Branch }}-{{ checksum "package-lock.json" }}
+            - node-v1-{{ .Branch }}-
+            - node-v1-
       - run:
           name: 'Install dependencies'
           command: npm ci
       - save_cache:
-          key: node-module-cache-v1-{{ .Branch }}-{{ checksum "package-lock.json" }}
+          key: node-cache-{{ .Branch }}-{{ checksum "package-lock.json" }}
           paths:
             - ~/usr/local/lib/node_modules
+            - ./node_modules
+      - run:
+          name: 'Copy node_modules to workspace'
+          command: mv node_modules /tmp/
+      - persist_to_workspace:
+          root: /tmp
+          paths:
             - node_modules
       - run:
           name: 'Save NPM install log'
@@ -75,26 +64,30 @@ jobs:
           destination: npm-install
 
   build:
-    executor: main-executor
+    <<: *job_common
     environment:
       NODE_ENV: 'test'
     steps:
-      - checkout_and_fetch
-      - restore_node_modules
+      - checkout
+      - <<: *restore_workspace
+      - <<: *restore_node_modules
       - run:
           name: 'Build all packages'
           command: npm run build
       - persist_to_workspace:
-          root: ~/webex-js-sdk
+          root: ./
           paths:
             - packages/node_modules
+      - run:
+          name: 'Copy packages/node_modules to workspace'
+          command: mv packages/node_modules /tmp/
 
   static_analysis:
-    executor: main-executor
+    <<: *job_common
     steps:
-      - checkout_and_fetch
-      - restore_node_modules
-      - restore_built_packages
+      - checkout
+      - <<: *restore_workspace
+      - <<: *restore_node_modules
       - run:
           name: 'Run ESLint'
           command: npm run lint:ci
@@ -105,14 +98,14 @@ jobs:
           destination: style
 
   unit_tests:
-    executor: main-executor
+    <<: *job_common
     environment:
       COVERAGE: true
     steps:
-      - checkout_and_fetch
-      - restore_node_modules
-      - restore_built_packages
-      - skip_check
+      - checkout
+      - <<: *restore_workspace
+      - <<: *restore_node_modules
+      - <<: *restore_packages
       - run:
           name: 'Generate Build Number'
           command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
@@ -122,13 +115,13 @@ jobs:
       - run:
           name: 'Check if any unit tests failed'
           command: |
-            FAILURES=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
-            ERRORS=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*errors=\"\([^\"]*\).*/\1/p' | xargs)
+            failures=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
+            errors=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*errors=\"\([^\"]*\).*/\1/p' | xargs)
 
-            echo Failures $FAILURES
-            echo Errors $ERRORS
+            echo Failures $failures
+            echo Errors $errors
 
-            if [[ "$FAILURES" -ne *0* ]] || [[ "$ERRORS" -ne *0* ]]; then
+            if [[ "$failures" -ne *0* ]] || [[ "$errors" -ne *0* ]]; then
               echo 'Unit tests failed'
               exit 1
             fi
@@ -139,14 +132,15 @@ jobs:
           destination: junit
 
   samples:
-    executor: main-executor
+    <<: *job_common
     environment:
       NODE_ENV: 'test'
       COVERAGE: true
     steps:
-      - checkout_and_fetch
-      - restore_node_modules
-      - restore_built_packages
+      - checkout
+      - <<: *restore_workspace
+      - <<: *restore_node_modules
+      - <<: *restore_packages
       - run:
           name: 'Generate Build Number'
           command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
@@ -165,58 +159,11 @@ jobs:
           path: /home/circleci/.npm/_logs/
           destination: npm-logs
 
-  integration_tests:
-    executor: main-executor
-    environment:
-      COVERAGE: true
-    steps:
-      - checkout_and_fetch
-      - restore_node_modules
-      - restore_built_packages
-      - skip_check
-      - jq/install
-      - run:
-          name: 'Check if PR is approved'
-          command: |
-            PR_NUMBER=${CIRCLE_PULL_REQUEST##*/}
-            PR_APPROVAL_STATUS=$(curl -s https://api.github.com/repos/webex/webex-js-sdk/pulls/${PR_NUMBER}/reviews | jq ".[0].state")
-
-            if [ "$PR_APPROVAL_STATUS" -ne "APPROVED" ]; then
-              exit 1;
-            fi;
-      - run:
-          name: 'Generate Build Number'
-          command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
-      - run:
-          name: 'Run all integration tests on Mac and Windows version of Chrome and Firefox'
-          command: npm run test -- --os Mac Windows --browsers Chrome Firefox
-      - run:
-          name: 'Check if any integration tests failed'
-          command: |
-            FAILURES=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
-            ERRORS=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*errors=\"\([^\"]*\).*/\1/p' | xargs)
-
-            echo Failures $FAILURES
-            echo Errors $ERRORS
-
-            if [[ "$FAILURES" -ne *0* ]] || [[ "$ERRORS" -ne *0* ]]; then
-              echo 'Unit tests failed'
-              exit 1
-            fi
-      - store_test_results:
-          path: reports/
-      - store_artifacts:
-          path: reports/junit
-          destination: junit
-
 workflows:
   version: 2
-  github_checks:
+  js_sdk_github_checks:
     jobs:
-      - validate_config
-      - npm_install:
-          requires:
-            - validate_config
+      - npm_install
       - build:
           requires:
             - npm_install
@@ -231,7 +178,3 @@ workflows:
           requires:
             - build
             - static_analysis
-      - integration_tests:
-          requires:
-            - unit_tests
-            - samples
