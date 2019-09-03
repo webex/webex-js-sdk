@@ -14,8 +14,8 @@ PROD_ENV_VARS = {
   'ATLAS_SERVICE_URL': 'https://atlas-a.wbx2.com/admin/api/v1',
   'CONVERSATION_SERVICE': 'https://conv-a.wbx2.com/conversation/api/v1',
   'ENCRYPTION_SERVICE_URL': 'https://encryption-a.wbx2.com',
-  'IDBROKER_BASE_URL': 'https://idbroker.webex.com',
-  'IDENTITY_BASE_URL': 'https://identity.webex.com',
+  'IDBROKER_BASE_URL': 'https://idbroker.webex.com/',
+  'IDENTITY_BASE_URL': 'https://identity.webex.com/',
   'U2C_SERVICE_URL': 'https://u2c.wbx2.com/u2c/api/v1',
   'WDM_SERVICE_URL': 'https://wdm-a.wbx2.com/wdm/api/v1',
   # Logging
@@ -30,8 +30,8 @@ INT_ENV_VARS = {
   'ENCRYPTION_SERVICE_URL': 'https://encryption-intb.ciscospark.com/encryption/api/v1',
   # Do not use 'https://hydra-intb.ciscospark.com/v1' for Hydra. CI expects 'apialpha'.
   'HYDRA_SERVICE_URL': 'https://apialpha.ciscospark.com/v1/',
-  'IDBROKER_BASE_URL': 'https://idbrokerbts.webex.com',
-  'IDENTITY_BASE_URL': 'https://identitybts.webex.com',
+  'IDBROKER_BASE_URL': 'https://idbrokerbts.webex.com/',
+  'IDENTITY_BASE_URL': 'https://identitybts.webex.com/',
   'U2C_SERVICE_URL': 'https://u2c-intb.ciscospark.com/u2c/api/v1',
   'WDM_SERVICE_URL': 'https://wdm-intb.ciscospark.com/wdm/api/v1',
   'WHISTLER_API_SERVICE_URL': 'https://whistler.onint.ciscospark.com/api/v1',
