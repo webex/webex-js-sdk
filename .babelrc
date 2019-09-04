@@ -13,14 +13,15 @@
   ],
   "presets": [
     ["env", {
-      "targets": {
-        "browsers": [
-          ">0.25%",
-          "not dead",
-          "ie >= 11" // Office 365 support
-        ],
-        "node": "6.0"
-      }
+      "targets": [
+        ">0.25% in US",
+        "last 2 Chrome major versions",
+        "last 2 Firefox major versions",
+        "not dead",
+        "not UCAndroid > 0",
+        "ie >= 11", // Office 365 support
+        "maintained node versions"
+      ]
     }]
   ],
   "sourceMaps": true
