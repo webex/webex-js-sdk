@@ -74,8 +74,8 @@ module.exports = (env = process.env.NODE_ENV || 'production') => ({
           CONVERSATION_SERVICE: 'https://conversation-intb.ciscospark.com/conversation/api/v1',
           ENCRYPTION_SERVICE_URL: 'https://encryption-intb.ciscospark.com/encryption/api/v1',
           HYDRA_SERVICE_URL: 'https://apialpha.ciscospark.com/v1/',
-          IDBROKER_BASE_URL: 'https://idbrokerbts.webex.com/',
-          IDENTITY_BASE_URL: 'https://identitybts.webex.com/',
+          IDBROKER_BASE_URL: 'https://idbrokerbts.webex.com',
+          IDENTITY_BASE_URL: 'https://identitybts.webex.com',
           U2C_SERVICE_URL: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
           WDM_SERVICE_URL: 'https://wdm-intb.ciscospark.com/wdm/api/v1',
           WHISTLER_API_SERVICE_URL: 'https://whistler.onint.ciscospark.com/api/v1'
@@ -95,8 +95,8 @@ module.exports = (env = process.env.NODE_ENV || 'production') => ({
             CONVERSATION_SERVICE: JSON.stringify('https://conv-a.wbx2.com/conversation/api/v1'),
             ENCRYPTION_SERVICE_URL: JSON.stringify('https://encryption-a.wbx2.com'),
             HYDRA_SERVICE_URL: JSON.stringify('https://api.ciscospark.com/v1'),
-            IDBROKER_BASE_URL: JSON.stringify('https://idbroker.webex.com/'),
-            IDENTITY_BASE_URL: JSON.stringify('https://identity.webex.com/'),
+            IDBROKER_BASE_URL: JSON.stringify('https://idbroker.webex.com'),
+            IDENTITY_BASE_URL: JSON.stringify('https://identity.webex.com'),
             U2C_SERVICE_URL: JSON.stringify('https://u2c.wbx2.com/u2c/api/v1'),
             WDM_SERVICE_URL: JSON.stringify('https://wdm-a.wbx2.com/wdm/api/v1'),
             WHISTLER_API_SERVICE_URL: JSON.stringify('https://whistler-prod.onint.ciscospark.com/api/v1')
