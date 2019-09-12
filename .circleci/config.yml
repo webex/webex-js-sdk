@@ -20,8 +20,8 @@ commands:
     steps:
       - run: |
           sudo apt-get update
-          sudo apt-get install graphicsmagick libgcrypt-dev -y
-  checkout_and_fetch:
+          sudo apt-get install -y graphicsmagick libgcrypt-dev
+  checkout_and_fetch_tags:
     description: 'Checkout and fetch tags'
     steps:
       - checkout
@@ -32,8 +32,7 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - node-module-cache-v1-{{ .Branch }}-{{ checksum "package-lock.json" }}
-            - node-module-cache-v1-{{ .Branch }}-
+            - node-module-cache-v1-{{ checksum "package-lock.json" }}
             - node-module-cache-v1-
   restore_built_packages:
     description: 'Restore built packages'
@@ -54,18 +53,18 @@ jobs:
       SAUCE_CONNECT_DOWNLOAD_ON_INSTALL: true
     steps:
       - install_graphicsmagick_and_libgcrypt
-      - checkout_and_fetch
+      - checkout_and_fetch_tags
       - run:
-          name: 'Update NPM and Install dependencies'
+          name: 'Update NPM'
           command: sudo npm install -g npm@6
+      - restore_node_modules
       - run:
           name: 'Install dependencies'
-          command: npm ci
+          command: npm i
       # Cache node_modules across different internal jobs in the workflow and across different circleci runs
       - save_cache:
-          key: node-module-cache-v1-{{ .Branch }}-{{ checksum "package-lock.json" }}
+          key: node-module-cache-v1-{{ checksum "package-lock.json" }}
           paths:
-            - ~/usr/local/lib/node_modules
             - node_modules
       - run:
           name: 'Save NPM install log'
@@ -80,7 +79,7 @@ jobs:
       NODE_ENV: 'test'
     steps:
       - install_graphicsmagick_and_libgcrypt
-      - checkout_and_fetch
+      - checkout_and_fetch_tags
       - restore_node_modules
       - run:
           name: 'Build all packages'
@@ -94,7 +93,7 @@ jobs:
   static_analysis:
     executor: main-executor
     steps:
-      - checkout_and_fetch
+      - checkout_and_fetch_tags
       - restore_node_modules
       - restore_built_packages
       - run:
@@ -113,7 +112,7 @@ jobs:
     environment:
       COVERAGE: true
     steps:
-      - checkout_and_fetch
+      - checkout_and_fetch_tags
       - restore_node_modules
       - restore_built_packages
       - skip_check
@@ -153,7 +152,7 @@ jobs:
       NODE_ENV: 'test'
       COVERAGE: true
     steps:
-      - checkout_and_fetch
+      - checkout_and_fetch_tags
       - restore_node_modules
       - restore_built_packages
       # Generate build number for a single identifier for SauceLabs
@@ -184,7 +183,7 @@ jobs:
       COVERAGE: true
     steps:
       - install_graphicsmagick_and_libgcrypt
-      - checkout_and_fetch
+      - checkout_and_fetch_tags
       - restore_node_modules
       - restore_built_packages
       - skip_check
@@ -239,9 +238,8 @@ jobs:
   version_bump:
     executor: main-executor
     steps:
-      - checkout_and_fetch
+      - checkout_and_fetch_tags
       - restore_node_modules
-      - restore_built_packages
       - run:
           name: 'Generate Version Number'
           command: echo "export VERSION=$(npm run --silent get-next-version | xargs)" >> $BASH_ENV
@@ -258,10 +256,14 @@ jobs:
       - run:
           name: 'Bump all package version'
           command: npm run tooling -- version set ${VERSION} --all
+      - persist_to_workspace:
+          root: ~/webex-js-sdk
+          paths:
+            - packages/node_modules
       - run:
           name: 'Commit bumped version'
           command: |
-            git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json docs/ packages/node_modules/webex/umd/*.js
+            git add docs/ packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json packages/node_modules/webex/umd/*.js
             git commit -m "chore(release): v${VERSION} [skip ci]"
       - run:
           name: 'Push to upstream/master'
@@ -276,7 +278,7 @@ jobs:
   npm_publish:
     executor: main-executor
     steps:
-      - checkout_and_fetch
+      - checkout_and_fetch_tags
       - restore_node_modules
       - restore_built_packages
       - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
@@ -321,19 +323,9 @@ workflows:
               only: master
           requires:
               - npm_install
-          type: approval
-  publish:
-    jobs:
-      - npm_install:
-          filters:
-              branches:
-                only: master
-              tags:
-                only: /^v.*/
       - npm_publish:
-          type: approval
           filters:
-              branches:
-                only: master
-              tags:
-                only: /^v.*/
+            branches:
+              only: master
+          requires:
+              - version_bump
