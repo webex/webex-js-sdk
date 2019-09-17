@@ -235,11 +235,21 @@ jobs:
           path: reports/junit
           destination: junit
 
-  version_bump:
+  versioning_and_publish:
     executor: main-executor
     steps:
       - checkout_and_fetch_tags
       - restore_node_modules
+      - run:
+          name: 'Check if we need to skip version bumping and publishing to npm [skip npm]'
+          command: |
+            # Grab the last commit message from the log
+            MESSAGE=$(git log -n 1 --pretty=format:%s)
+
+            if [[ "$MESSAGE" == *\[skip npm\]* ]]; then
+              circleci step halt
+            fi
+      - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
       - run:
           name: 'Generate Version Number'
           command: echo "export VERSION=$(npm run --silent get-next-version | xargs)" >> $BASH_ENV
@@ -256,10 +266,6 @@ jobs:
       - run:
           name: 'Bump all package version'
           command: npm run tooling -- version set ${VERSION} --all
-      - persist_to_workspace:
-          root: ~/webex-js-sdk
-          paths:
-            - packages/node_modules
       - run:
           name: 'Commit bumped version'
           command: |
@@ -274,24 +280,6 @@ jobs:
       - run:
           name: 'Push tagged release to upstream/master'
           command: git push upstream v${VERSION}:v${VERSION}"
-
-  npm_publish:
-    executor: main-executor
-    steps:
-      - checkout_and_fetch_tags
-      - restore_node_modules
-      - restore_built_packages
-      - run:
-          name: 'Check if we need to skip npm publishing [skip npm]'
-          command: |
-            # Grab 2nd to last commit message from the log
-            # (the 1st commit would be the skip ci made in the version_bump job)
-            MESSAGE=$(git log -n 1 --skip 1 --pretty=format:%s)
-
-            if [[ "$MESSAGE" == *\[skip npm\]* ]]; then
-              circleci step halt
-            fi
-      - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
       - run:
           name: 'Generate Package Dependencies'
           command: npm run deps:generate
@@ -327,15 +315,9 @@ workflows:
           filters:
               branches:
                 only: master
-      - version_bump:
+      - versioning_and_publish:
           filters:
             branches:
               only: master
           requires:
               - npm_install
-      - npm_publish:
-          filters:
-            branches:
-              only: master
-          requires:
-              - version_bump
