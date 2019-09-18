@@ -37,7 +37,7 @@ rules:
   no-multi-assign: warn
   no-param-reassign: warn
   no-shadow: warn
-  no-underscore-dangle: warn
+  no-underscore-dangle: off
   import/first: warn
   import/order: warn
   prefer-destructuring:
