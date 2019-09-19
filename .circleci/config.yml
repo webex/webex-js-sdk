@@ -276,7 +276,7 @@ jobs:
             git commit -m "chore(release): v${VERSION} [skip ci]"
       - run:
           name: 'Push to upstream/master'
-          command: git push upstream HEAD:master"
+          command: git push upstream HEAD:master
       - run:
           name: 'Tag for release'
           command: git tag "v${VERSION}"
