@@ -62,7 +62,7 @@ module.exports = {
     const [cmd, ...args] = `npm run test --silent -- --packages ${packages.join(' ')} ${
       argv.github ?
         '--unit --os mac --browsers chrome firefox' :
-        '--integration --browsers defaults'
+        '--browsers defaults'
     }`.split(' ');
 
     await spawn(cmd, args);
