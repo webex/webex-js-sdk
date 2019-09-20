@@ -5,11 +5,11 @@
 const debug = require('debug')('tooling:version');
 const _ = require('lodash');
 
+const {read, write} = require('../util/package');
+
 const {getDistTag} = require('./npm');
 const {list} = require('./package');
 const {exec} = require('./async');
-
-const {read, write} = require('../util/package');
 const updated = require('./updated');
 const git = require('./git');
 
@@ -40,7 +40,7 @@ function compare([l, ...left], [r, ...right]) {
 
 /**
  * Determines the latest published package version for the repo
- * @param {bool} [includeSamples = false]
+ * @param {boolean} [includeSamples = false]
  * @returns {Promise<string>}
  */
 exports.last = async function last(includeSamples = false) {
@@ -68,6 +68,14 @@ exports.last = async function last(includeSamples = false) {
 };
 
 /**
+ * Determines the current published package version for the repo
+ * @returns {Promise<string>}
+ */
+exports.current = async function current() {
+  return (await exports.last(true)).replace('v', '');
+};
+
+/**
  * Determines the next appropriate version to publish
  * @returns {Promise<string>}
  */
@@ -82,7 +90,7 @@ exports.next = async function next({always, includeSamples}) {
 
   const currentVersion = (await exports.last(includeSamples)).replace('v', '');
 
-  debug(`current versoin is ${currentVersion}`);
+  debug(`current version is ${currentVersion}`);
 
   if (await hasBreakingChange()) {
     debug('detected breaking changes');
