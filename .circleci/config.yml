@@ -240,18 +240,33 @@ jobs:
     steps:
       - checkout_and_fetch_tags
       - restore_node_modules
-      - run:
-          name: 'Check if we need to skip version bumping and publishing to npm [skip npm]'
-          command: |
-            # Grab the last commit message from the log
-            MESSAGE=$(git log -n 1 --pretty=format:%s)
-
-            if [[ "$MESSAGE" == *\["skip npm"\]* ]]; then
-              circleci step halt
-            fi
       - add_ssh_keys:
           fingerprints:
             - "89:ed:56:33:f5:1b:7b:b6:a1:04:02:a0:f9:47:13:0a"
+      - run:
+          name: 'Grab Current Version Number'
+          command: echo "export CURRENT_VERSION=$(npm run --silent get-current-version | xargs)" >> $BASH_ENV
+      - run:
+          name: 'Build Docs'
+          command: npm run build:docs
+      - run:
+          name: 'Publish Docs'
+          command: |
+            # Check if there's anything to commit before committing
+            if [ -n "$(git status --porcelain)" ]; then
+              git add docs/
+              git commit -m "docs(API): update docs"
+              git push upstream HEAD:master
+            fi
+      - run:
+          name: 'Check if we need to skip version bumping and publishing to npm [skip npm]'
+          command: |
+            # Look through Pull Requests commit history against current tag for [skip npm]
+            SKIP_NPM=$(git log --pretty=format:%s ${CURRENT_VERSION}.. | grep -c "\[skip npm\]")
+
+            if [[ "$SKIP_NPM" -ne 0 ]]; then
+              circleci step halt
+            fi
       - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
       - run:
           name: 'Generate Version Number'
@@ -264,15 +279,12 @@ jobs:
           name: 'Build UMD script'
           command: npm run build:script -- --versionNumber=${VERSION}
       - run:
-          name: 'Build Docs'
-          command: npm run build:docs
-      - run:
           name: 'Bump all package version'
           command: npm run tooling -- version set ${VERSION} --all
       - run:
           name: 'Commit bumped version'
           command: |
-            git add docs/ packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json packages/node_modules/webex/umd/*.js
+            git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json packages/node_modules/webex/umd/*.js
             git commit -m "chore(release): v${VERSION} [skip ci]"
       - run:
           name: 'Push to upstream/master'
@@ -283,6 +295,9 @@ jobs:
       - run:
           name: 'Push tagged release to upstream/master'
           command: git push upstream v${VERSION}:v${VERSION}
+      - run:
+          name: 'Build Packages (post-push)'
+          command: npm run build
       - run:
           name: 'Generate Package Dependencies'
           command: npm run deps:generate
