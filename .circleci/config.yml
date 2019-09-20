@@ -249,9 +249,6 @@ jobs:
             if [[ "$MESSAGE" == *\["skip npm"\]* ]]; then
               circleci step halt
             fi
-      - add_ssh_keys:
-          fingerprints:
-            - "46:14:97:30:b4:11:6a:b7:36:fc:a9:56:79:25:b5:bf"
       - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
       - run:
           name: 'Generate Version Number'
