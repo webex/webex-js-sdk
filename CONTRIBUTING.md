@@ -18,10 +18,8 @@
       - [Body](#body)
       - [Footer](#footer)
       - [Special Commit Messages](#special-commit-messages)
-        - [`#force-publish`](#force-publish)
-        - [`#ignore-tooling`](#ignore-tooling)
-        - [`#no-push`](#no-push)
-        - [`[ci skip]`](#ci-skip)
+        - [`[skip npm]`](#skip-npm)
+        - [`[skip ci]`](#skip-ci)
     - [Submitting a Pull Request](#submitting-a-pull-request)
   - [Updating the Documentation](#updating-the-documentation)
     - [Set Up Environment (with Bundler)](#set-up-environment-with-bundler)
@@ -211,25 +209,19 @@ The footer should contain any information about **Breaking changes** and is also
 
 #### Special Commit Messages
 
-These are commit messages that will have an impact on how the build pipeline behaves. With the exception of `#no-push`, they are not to be used without prior approval.
+These are commit messages that will have an impact on how the build pipeline behaves. They are not to be used without prior approval.
 
 All of these commit messages should include an explanation for why you're using them. You'll need to commit with `-n` or `--no-verify` to bypass the commit message linter.
+> For example
+> `git commit -m "docs(webex-core): [skip npm] - docs change" --no-verify`
 
-##### `#force-publish`
+##### `[skip npm]`
 
-Force all packages to be published under the new version, not just the changed packages.
+This will run through the all the Github Checks, but will skip any version bumping, tagging, and subsequent publishing to npm after a pull request is merged.
 
-##### `#ignore-tooling`
+##### `[skip ci]`
 
-Normally, we run all test suites when tooling changes, however, not all categories of tooling changes need to be tested quite so strictly. This message will omit the `tooling` meta package when determining what packages to test.
-
-##### `#no-push`
-
-Have Jenkins run all the tests, but abort the build before merging into master.
-
-##### `[ci skip]`
-
-Do not run tests for this build.
+This will skip the CircleCI pipeline entirely.
 
 ### Submitting a Pull Request
 
