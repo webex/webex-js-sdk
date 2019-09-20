@@ -282,7 +282,7 @@ jobs:
           command: git tag "v${VERSION}"
       - run:
           name: 'Push tagged release to upstream/master'
-          command: git push upstream v${VERSION}:v${VERSION}"
+          command: git push upstream v${VERSION}:v${VERSION}
       - run:
           name: 'Generate Package Dependencies'
           command: npm run deps:generate
