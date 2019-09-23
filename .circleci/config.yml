@@ -255,7 +255,7 @@ jobs:
             # Check if there's anything to commit before committing
             if [ -n "$(git status --porcelain)" ]; then
               git add docs/
-              git commit -m "docs(API): update docs"
+              git commit -m "docs(api): update docs"
               git push upstream HEAD:master
             fi
       - run:
