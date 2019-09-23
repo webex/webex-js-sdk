@@ -268,7 +268,7 @@ jobs:
             if [[ "$MESSAGE" == *\["skip npm"\]* ]]; then
               circleci step halt
             fi
-      - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
+      - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
       - run:
           name: 'Generate Version Number'
           command: echo "export VERSION=$(npm run --silent get-next-version | xargs)" >> $BASH_ENV
