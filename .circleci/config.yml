@@ -297,9 +297,6 @@ jobs:
           name: 'Push tagged release to upstream/master'
           command: git push upstream v${VERSION}:v${VERSION}
       - run:
-          name: 'Build Packages (post-push)'
-          command: npm run build
-      - run:
           name: 'Generate Package Dependencies'
           command: npm run deps:generate
       - run:
