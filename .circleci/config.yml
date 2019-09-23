@@ -255,16 +255,17 @@ jobs:
             # Check if there's anything to commit before committing
             if [ -n "$(git status --porcelain)" ]; then
               git add docs/
-              git commit -m "docs(API): update docs"
+              git commit -m "docs(api): update docs [skip ci]"
               git push upstream HEAD:master
             fi
       - run:
           name: 'Check if we need to skip version bumping and publishing to npm [skip npm]'
           command: |
-            # Look through Pull Requests commit history against current tag for [skip npm]
-            SKIP_NPM=$(git log --pretty=format:%s ${CURRENT_VERSION}.. | grep -c "\[skip npm\]")
+            # Grab the 2nd to last commit message from the log for [skip npm]
+            # Last commit is the update docs
+            MESSAGE=$(git log -n 1 --skip 1 --pretty=format:%s)
 
-            if [[ "$SKIP_NPM" -ne 0 ]]; then
+            if [[ "$MESSAGE" == *\["skip npm"\]* ]]; then
               circleci step halt
             fi
       - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
