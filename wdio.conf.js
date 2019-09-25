@@ -78,6 +78,7 @@ exports.config = {
     browserSpock: {
       desiredCapabilities: {
         browserName: 'firefox',
+        version: 'latest',
         'moz:firefoxOptions': {
           ...(CI ? {
             args: [
@@ -109,10 +110,12 @@ exports.config = {
     browserMccoy: {
       desiredCapabilities: {
         browserName: 'chrome',
+        version: '77',
         'goog:chromeOptions': {
           args: [
             '--use-fake-device-for-media-stream',
-            '--use-fake-ui-for-media-stream'
+            '--use-fake-ui-for-media-stream',
+            '--disable-webrtc-hide-local-ips-with-mdns'
           ]
         },
         ...(CI && {
@@ -256,7 +259,7 @@ exports.config = {
         // Set the base to SauceLabs so that inject() does its thing.
         d.base = 'SauceLabs';
 
-        d.version = d.version || 'latest';
+        // d.version = d.version || 'latest';
         d.platform = d.platform || 'macOS 10.13';
       }
       else {
