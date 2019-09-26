@@ -74,6 +74,15 @@ exports.config = {
   // Sauce Labs platform configurator - a great tool to configure your capabilities:
   // https://docs.saucelabs.com/reference/platforms-configurator
   //
+  firefoxProfile: {
+    'media.navigator.permission.disabled': true,
+    'media.peerconnection.video.h264_enabled': true,
+    'media.navigator.streams.fake': true,
+    'dom.webnotifications.enabled': false,
+    'media.getusermedia.screensharing.enabled': true,
+    'media.gmp-manager.updateEnabled': true,
+    'media.getusermedia.screensharing.allowed_domains': '127.0.0.1, teams-unstable.webex.com'
+  },
   capabilities: {
     browserSpock: {
       desiredCapabilities: {
@@ -193,11 +202,13 @@ exports.config = {
   services: CI ? [
     'sauce',
     'static-server',
-    'webpack'
+    'webpack',
+    'firefox-profile'
   ] : [
     'selenium-standalone',
     'static-server',
-    'webpack'
+    'webpack',
+    'firefox-profile'
   ],
   staticServerFolders: [
     {mount: '/', path: './packages/node_modules/samples'},
