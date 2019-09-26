@@ -110,12 +110,12 @@ exports.config = {
     browserMccoy: {
       desiredCapabilities: {
         browserName: 'chrome',
-        version: '77',
+        version: 'latest',
         'goog:chromeOptions': {
           args: [
             '--use-fake-device-for-media-stream',
             '--use-fake-ui-for-media-stream',
-            '--disable-webrtc-hide-local-ips-with-mdns'
+            '--disable-features=WebRtcHideLocalIpsWithMdns'
           ]
         },
         ...(CI && {
