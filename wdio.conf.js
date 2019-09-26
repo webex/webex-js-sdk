@@ -112,7 +112,8 @@ exports.config = {
         'goog:chromeOptions': {
           args: [
             '--use-fake-device-for-media-stream',
-            '--use-fake-ui-for-media-stream'
+            '--use-fake-ui-for-media-stream',
+            '--disable-features=WebRtcHideLocalIpsWithMdns'
           ]
         },
         ...(CI && {
