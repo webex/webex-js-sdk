@@ -203,6 +203,7 @@
     "multer": "^1.4.2",
     "node-jose": "^0.11.1",
     "node-kms": "^0.3.2",
+    "node-random-name": "^1.0.1",
     "node-scr": "^0.2.2",
     "on-finished": "^2.3.0",
     "parse-headers": "^2.0.2",
