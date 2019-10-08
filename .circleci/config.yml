@@ -21,12 +21,6 @@ commands:
       - run: |
           sudo apt-get update
           sudo apt-get install -y graphicsmagick libgcrypt-dev
-  checkout_and_fetch_tags:
-    description: 'Checkout and fetch tags'
-    steps:
-      - checkout
-      - run: git remote add upstream git@github.com:webex/webex-js-sdk.git
-      - run: git fetch upstream --tags
   restore_node_modules:
     description: 'Restore the node_modules dependencies cache'
     steps:
@@ -53,7 +47,7 @@ jobs:
       SAUCE_CONNECT_DOWNLOAD_ON_INSTALL: true
     steps:
       - install_graphicsmagick_and_libgcrypt
-      - checkout_and_fetch_tags
+      - checkout
       - run:
           name: 'Update NPM'
           command: sudo npm install -g npm@6
@@ -79,7 +73,7 @@ jobs:
       NODE_ENV: 'test'
     steps:
       - install_graphicsmagick_and_libgcrypt
-      - checkout_and_fetch_tags
+      - checkout
       - restore_node_modules
       - run:
           name: 'Build all packages'
@@ -93,7 +87,7 @@ jobs:
   static_analysis:
     executor: main-executor
     steps:
-      - checkout_and_fetch_tags
+      - checkout
       - restore_node_modules
       - restore_built_packages
       - run:
@@ -112,7 +106,7 @@ jobs:
     environment:
       COVERAGE: true
     steps:
-      - checkout_and_fetch_tags
+      - checkout
       - restore_node_modules
       - restore_built_packages
       - skip_check
@@ -152,7 +146,7 @@ jobs:
       NODE_ENV: 'test'
       COVERAGE: true
     steps:
-      - checkout_and_fetch_tags
+      - checkout
       - restore_node_modules
       - restore_built_packages
       # Generate build number for a single identifier for SauceLabs
@@ -183,7 +177,7 @@ jobs:
       COVERAGE: true
     steps:
       - install_graphicsmagick_and_libgcrypt
-      - checkout_and_fetch_tags
+      - checkout
       - restore_node_modules
       - restore_built_packages
       - skip_check
@@ -238,7 +232,7 @@ jobs:
   versioning_and_publish:
     executor: main-executor
     steps:
-      - checkout_and_fetch_tags
+      - checkout
       - restore_node_modules
       - add_ssh_keys:
           fingerprints:
@@ -262,7 +256,7 @@ jobs:
             if [ -n "$(git status --porcelain)" ]; then
               git add docs/
               git commit -m "docs(api): update docs [skip ci]"
-              git push upstream HEAD:master
+              git push HEAD:master
             fi
       - run:
           name: 'Check if we need to skip version bumping and publishing to npm [skip npm]'
@@ -294,14 +288,14 @@ jobs:
             git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json packages/node_modules/webex/umd/*.js
             git commit -m "chore(release): v${VERSION} [skip ci]"
       - run:
-          name: 'Push to upstream/master'
-          command: git push upstream HEAD:master
+          name: 'Push to master'
+          command: git push HEAD:master
       - run:
           name: 'Tag for release'
           command: git tag "v${VERSION}"
       - run:
-          name: 'Push tagged release to upstream/master'
-          command: git push upstream v${VERSION}:v${VERSION}
+          name: 'Push tagged release'
+          command: git push v${VERSION}:v${VERSION}
       - run:
           name: 'Generate Package Dependencies'
           command: npm run deps:generate
