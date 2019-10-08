@@ -247,8 +247,14 @@ jobs:
           name: 'Grab Current Version Number'
           command: echo "export CURRENT_VERSION=$(npm run --silent get-current-version | xargs)" >> $BASH_ENV
       - run:
+          name: 'Temporary change origin url to HTTPS for documentation generation'
+          command: git remote set-url origin https://github.com/webex/webex-js-sdk.git
+      - run:
           name: 'Build Docs'
           command: npm run build:docs
+      - run:
+          name: 'Change origin url back to ssh'
+          command: git remote set-url origin git@github.com:webex/webex-js-sdk.git
       - run:
           name: 'Publish Docs'
           command: |
