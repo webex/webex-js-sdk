@@ -415,7 +415,6 @@ exports.config = {
     key: process.env.SAUCE_ACCESS_KEY,
     sauceConnect: true,
     sauceConnectOpts: {
-      detached: true,
       noSslBumpDomains: [
         'idbroker.webex.com',
         'idbrokerbts.webex.com',
@@ -433,6 +432,7 @@ exports.config = {
         'localhost'
       ],
       verbose: true,
+      logfile: 'sauce-connect_browser-samples.log',
       tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuidv4(),
       port: process.env.SAUCE_CONNECT_PORT || 4445,
       // retry to establish a tunnel multiple times. (optional)
