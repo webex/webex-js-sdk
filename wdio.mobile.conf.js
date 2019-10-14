@@ -8,11 +8,11 @@ const path = require('path');
 const dotenv = require('dotenv');
 const glob = require('glob');
 const uuidv4 = require('uuid/v4');
+const sauceConnectLauncher = require('sauce-connect-launcher');
 
 dotenv.config();
 dotenv.config({path: '.env.default'});
 
-const {inject} = require('./tooling/lib/openh264');
 // Webdriver is only called for testing samples so force integration URLs w/ Webpack
 const webpackConfig = require('./webpack.config')();
 
@@ -26,6 +26,10 @@ require('babel-register')({
 const PORT = process.env.PORT || 8000;
 
 exports.config = {
+  protocol: 'https',
+  host: 'us1-manual.app.testobject.com',
+  port: 443,
+  path: '/wd/hub',
   //
   // ==================
   // Specify Test Files
@@ -74,22 +78,16 @@ exports.config = {
   capabilities: {
     browserSpock: {
       desiredCapabilities: {
-        browserName: 'Safari',
-        appiumVersion: '1.13.0',
-        deviceName: 'iPhone Simulator',
-        deviceOrientation: 'portrait',
-        platformVersion: '12.2',
-        platformName: 'iOS'
+        platformVersion: '13',
+        platformName: 'iOS',
+        testobject_api_key: process.env.TESTOBJECT_API_KEY
       }
     },
     browserMccoy: {
       desiredCapabilities: {
-        browserName: 'Chrome',
-        appiumVersion: '1.13.0',
-        deviceName: 'Android GoogleAPI Emulator',
-        deviceOrientation: 'portrait',
-        platformVersion: '8.1',
+        platformVersion: '9',
         platformName: 'Android',
+        testobject_api_key: process.env.TESTOBJECT_API_KEY,
         extendedDebugging: true,
         'goog:chromeOptions': {
           w3c: false
@@ -125,7 +123,7 @@ exports.config = {
   //
   // Set a base URL in order to shorten url command calls. If your url parameter starts
   // with "/", then the base url gets prepended.
-  baseUrl: `http://localhost:${PORT}/`,
+  baseUrl: `http://sdksamples.localhost:${PORT}/`,
   //
   // Default timeout for all waitFor* commands.
   waitforTimeout: 15000,
@@ -138,7 +136,7 @@ exports.config = {
   connectionRetryCount: 3,
   //
   // Debugging
-  debug: false,
+  debug: true,
   //
   // Initialize the browser instance with a WebdriverIO plugin. The object should have the
   // plugin name as key and the desired plugin options as properties. Make sure you have
@@ -163,7 +161,7 @@ exports.config = {
   // your test setup with almost no effort. Unlike plugins, they don't add new
   // commands. Instead, they hook themselves up into the test process.
   services: [
-    'sauce',
+    // 'sauce',
     'static-server',
     'webpack'
   ],
@@ -214,24 +212,61 @@ exports.config = {
    * @returns {Promise}
    */
   onPrepare(config, capabilities) {
-    const defs = [
-      capabilities.browserSpock.desiredCapabilities,
-      capabilities.browserMccoy.desiredCapabilities
-    ];
+    const buildNumber = process.env.BUILD_NUMBER || `local-${process.env.USER}-wdio-${Date.now()}`;
+    const tunnelIdentifier = process.env.SC_TUNNEL_IDENTIFIER || uuidv4();
+    // const tunnelIdentifier = 'my_tunnel';
 
-    const build = process.env.BUILD_NUMBER || `local-${process.env.USER}-wdio-${Date.now()}`;
-
-    defs.forEach((d) => {
-      d.build = build;
-      // Set the base to SauceLabs so that inject() does its thing.
-      d.base = 'SauceLabs';
-
-      d.version = d.version || 'latest';
+    Object.keys(capabilities).forEach((browser) => {
+      capabilities[browser].desiredCapabilities.tunnelIdentifier = tunnelIdentifier;
+      capabilities[browser].desiredCapabilities.build = buildNumber;
     });
 
-    // The openh264 profile seems to break tests locally; run the tests twice
-    // and the plugin should download automatically.
-    return inject(defs);
+    return new Promise((resolve, reject) => sauceConnectLauncher({
+      username: process.env.SAUCE_USERNAME,
+      accessKey: process.env.SAUCE_RDC_ACCESS_KEY,
+      x: 'https://us1.api.testobject.com/sc/rest/v1',
+      noSslBumpDomains: [
+        'idbroker.webex.com',
+        'idbrokerbts.webex.com',
+        '127.0.0.1',
+        'localhost',
+        '*.wbx2.com',
+        '*.ciscospark.com'
+      ],
+      tunnelDomains: [
+        'whistler-prod.onint.ciscospark.com',
+        'whistler.onint.ciscospark.com',
+        'internal-testing-services.wbx2.com',
+        'calendar-whistler.onint.ciscospark.com',
+        'sdksamples.localhost',
+        '127.0.0.1',
+        'localhost'
+      ],
+      verbose: true,
+      tunnelIdentifier,
+      // retry to establish a tunnel multiple times. (optional)
+      connectRetries: 3,
+      // time to wait between connection retries in ms. (optional)
+      connectRetryTimeout: 2000,
+      // retry to download the sauce connect archive multiple times. (optional)
+      downloadRetries: 4,
+      // time to wait between download retries in ms. (optional)
+      downloadRetryTimeout: 1000,
+      ...(!process.env.CI && {
+        pac: 'http://localhost:2000/proxy.pac',
+        logfile: 'sauce-connect_mobile-samples.log',
+        vv: true
+      })
+    }, (err, sauceConnectProcess) => {
+      if (err) {
+        return reject(err);
+      }
+
+      this.sauceConnectProcess = sauceConnectProcess;
+      console.log('Started Sauce Connect process');
+
+      return resolve();
+    }));
   },
   /**
    * Gets executed just before initialising the webdriver session and test framework. It allows you
@@ -354,40 +389,17 @@ exports.config = {
    * Gets executed after all workers got shut down and the process is about to exit. It is not
    * possible to defer the end of the process using a promise.
    * @param {Object} exitCode 0 - success, 1 - fail
+   * @returns {Promise}
    */
-  // onComplete: function(exitCode) {
-  // }
-  user: process.env.SAUCE_USERNAME,
-  key: process.env.SAUCE_ACCESS_KEY,
-  sauceConnect: true,
-  sauceConnectOpts: {
-    detached: true,
-    noSslBumpDomains: [
-      'idbroker.webex.com',
-      'idbrokerbts.webex.com',
-      '127.0.0.1',
-      'localhost',
-      '*.wbx2.com',
-      '*.ciscospark.com'
-    ],
-    tunnelDomains: [
-      'whistler-prod.onint.ciscospark.com',
-      'whistler.onint.ciscospark.com',
-      'internal-testing-services.wbx2.com',
-      'calendar-whistler.onint.ciscospark.com',
-      '127.0.0.1',
-      'localhost'
-    ],
-    verbose: true,
-    tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuidv4(),
-    port: process.env.SAUCE_CONNECT_PORT || 4445,
-    // retry to establish a tunnel multiple times. (optional)
-    connectRetries: 3,
-    // time to wait between connection retries in ms. (optional)
-    connectRetryTimeout: 2000,
-    // retry to download the sauce connect archive multiple times. (optional)
-    downloadRetries: 4,
-    // time to wait between download retries in ms. (optional)
-    downloadRetryTimeout: 1000
+  onComplete() {
+    if (!this.sauceConnectProcess) {
+      return;
+    }
+
+    console.log('Closed Sauce Connect process');
+
+    // eslint-disable-next-line consistent-return
+    return new Promise((resolve) => this.sauceConnectProcess.close(resolve));
   }
+  // sauceConnect: false
 };
