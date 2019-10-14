@@ -76,7 +76,7 @@ jobs:
   build:
     executor: main-executor
     environment:
-      NODE_ENV: 'test'
+      NODE_ENV: test
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
@@ -149,7 +149,7 @@ jobs:
   samples:
     executor: main-executor
     environment:
-      NODE_ENV: 'test'
+      NODE_ENV: test
       COVERAGE: true
     steps:
       - checkout_and_fetch_tags
@@ -176,6 +176,45 @@ jobs:
           destination: npm-logs
       - store_artifacts:
           path: sauce-connect_browser-samples.log
+          destination: sauce-connect
+
+  mobile_samples:
+    executor: main-executor
+    environment:
+      NODE_ENV: test
+      COVERAGE: true
+      LOCALHOST_ALIAS: localhostalias
+    steps:
+      - checkout_and_fetch_tags
+      - restore_node_modules
+      - restore_built_packages
+      # Generate build number for a single identifier for SauceLabs
+      - run:
+          name: 'Generate Build Number'
+          command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
+      # Generate Tunnel Identifier for Sauce Connect
+      - run:
+          name: 'Generate Tunnel Identifier for Sauce Connect'
+          command: echo "export SC_TUNNEL_IDENTIFIER=CircleCI-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
+      - run:
+          name: 'Alias localhost'
+          command: echo 127.0.0.1 localhostalias | sudo tee -a /etc/hosts
+      - run:
+          name: 'Test Samples'
+          command: npm run samples:test:mobile
+      - store_test_results:
+          path: reports/
+      - store_artifacts:
+          path: reports/junit/wdio
+          destination: wdio
+      - store_artifacts:
+          path: reports/cobertura.xml
+          destination: cobertura.xml
+      - store_artifacts:
+          path: /home/circleci/.npm/_logs/
+          destination: npm-logs
+      - store_artifacts:
+          path: sauce-connect_mobile-samples.log
           destination: sauce-connect
 
   # Run integration tests on modified packages with `--integration` flag
@@ -331,6 +370,10 @@ workflows:
             - build
             - static_analysis
       - samples:
+          requires:
+            - build
+            - static_analysis
+      - mobile_samples:
           requires:
             - build
             - static_analysis

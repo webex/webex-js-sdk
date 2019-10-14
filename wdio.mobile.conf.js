@@ -250,6 +250,7 @@ exports.config = {
         'localhost'
       ],
       verbose: true,
+      logfile: 'sauce-connect_mobile-samples.log',
       tunnelIdentifier,
       // retry to establish a tunnel multiple times. (optional)
       connectRetries: 3,
