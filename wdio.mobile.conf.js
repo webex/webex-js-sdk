@@ -7,8 +7,10 @@ const path = require('path');
 
 const dotenv = require('dotenv');
 const glob = require('glob');
-const uuidv4 = require('uuid/v4');
 const sauceConnectLauncher = require('sauce-connect-launcher');
+const uuidv4 = require('uuid/v4');
+
+const SauceService = require('./tooling/wdio-sauce-service');
 
 dotenv.config();
 dotenv.config({path: '.env.default'});
@@ -24,6 +26,7 @@ require('babel-register')({
 });
 
 const PORT = process.env.PORT || 8000;
+const LOCALHOST_ALIAS = process.env.LOCALHOST_ALIAS || 'localhostalias';
 
 exports.config = {
   protocol: 'https',
@@ -78,17 +81,18 @@ exports.config = {
   capabilities: {
     browserSpock: {
       desiredCapabilities: {
+        deviceName: 'iPhone.*',
         platformVersion: '13',
         platformName: 'iOS',
-        testobject_api_key: process.env.TESTOBJECT_API_KEY
+        newCommandTimeout: '90'
       }
     },
     browserMccoy: {
       desiredCapabilities: {
+        deviceName: 'Samsung Galaxy.*',
         platformVersion: '9',
         platformName: 'Android',
-        testobject_api_key: process.env.TESTOBJECT_API_KEY,
-        extendedDebugging: true,
+        newCommandTimeout: '90',
         'goog:chromeOptions': {
           w3c: false
         }
@@ -123,7 +127,7 @@ exports.config = {
   //
   // Set a base URL in order to shorten url command calls. If your url parameter starts
   // with "/", then the base url gets prepended.
-  baseUrl: `http://sdksamples.localhost:${PORT}/`,
+  baseUrl: `http://${LOCALHOST_ALIAS}:${PORT}/`,
   //
   // Default timeout for all waitFor* commands.
   waitforTimeout: 15000,
@@ -136,7 +140,7 @@ exports.config = {
   connectionRetryCount: 3,
   //
   // Debugging
-  debug: true,
+  debug: !process.env.CI,
   //
   // Initialize the browser instance with a WebdriverIO plugin. The object should have the
   // plugin name as key and the desired plugin options as properties. Make sure you have
@@ -161,7 +165,7 @@ exports.config = {
   // your test setup with almost no effort. Unlike plugins, they don't add new
   // commands. Instead, they hook themselves up into the test process.
   services: [
-    // 'sauce',
+    SauceService,
     'static-server',
     'webpack'
   ],
@@ -217,8 +221,10 @@ exports.config = {
     // const tunnelIdentifier = 'my_tunnel';
 
     Object.keys(capabilities).forEach((browser) => {
+      capabilities[browser].desiredCapabilities.testobject_api_key = process.env.TESTOBJECT_API_KEY;
       capabilities[browser].desiredCapabilities.tunnelIdentifier = tunnelIdentifier;
       capabilities[browser].desiredCapabilities.build = buildNumber;
+      capabilities[browser].desiredCapabilities.appiumVersion = '1.15.0';
     });
 
     return new Promise((resolve, reject) => sauceConnectLauncher({
@@ -228,6 +234,7 @@ exports.config = {
       noSslBumpDomains: [
         'idbroker.webex.com',
         'idbrokerbts.webex.com',
+        'localhostalias',
         '127.0.0.1',
         'localhost',
         '*.wbx2.com',
@@ -238,7 +245,7 @@ exports.config = {
         'whistler.onint.ciscospark.com',
         'internal-testing-services.wbx2.com',
         'calendar-whistler.onint.ciscospark.com',
-        'sdksamples.localhost',
+        'localhostalias',
         '127.0.0.1',
         'localhost'
       ],
@@ -251,12 +258,7 @@ exports.config = {
       // retry to download the sauce connect archive multiple times. (optional)
       downloadRetries: 4,
       // time to wait between download retries in ms. (optional)
-      downloadRetryTimeout: 1000,
-      ...(!process.env.CI && {
-        pac: 'http://localhost:2000/proxy.pac',
-        logfile: 'sauce-connect_mobile-samples.log',
-        vv: true
-      })
+      downloadRetryTimeout: 1000
     }, (err, sauceConnectProcess) => {
       if (err) {
         return reject(err);
@@ -401,5 +403,4 @@ exports.config = {
     // eslint-disable-next-line consistent-return
     return new Promise((resolve) => this.sauceConnectProcess.close(resolve));
   }
-  // sauceConnect: false
 };
