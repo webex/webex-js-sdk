@@ -338,7 +338,6 @@ workflows:
       - integration_tests:
           requires:
             - unit_tests
-            - samples
   build_for_release:
     jobs:
       - npm_install:
