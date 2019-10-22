@@ -136,7 +136,7 @@ jobs:
             echo Failures $FAILURES
             echo Errors $ERRORS
 
-            if [[ $FAILURES =~ "^[0 ]*$" ]] && [[ $ERRORS =~ "^[0 ]*$" ]]; then
+            if [[ $FAILURES =~ ^([0 ])*$ ]] && [[ $ERRORS =~ ^([0 ])*$ ]]; then
               echo 'Unit tests succeeded'
             else
               echo 'Unit tests failed'
@@ -227,7 +227,7 @@ jobs:
             echo Failures $FAILURES
             echo Errors $ERRORS
 
-            if [[ $FAILURES =~ "^[0 ]*$" ]] && [[ $ERRORS =~ "^[0 ]*$" ]]; then
+            if [[ $FAILURES =~ ^([0 ])*$ ]] && [[ $ERRORS =~ ^([0 ])*$ ]]; then
               echo 'Integration tests succeeded'
             else
               echo 'Integration tests failed'
