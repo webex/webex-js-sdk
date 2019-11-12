@@ -74,7 +74,7 @@ const modified = async (argv) => {
 
   console.log(argv.glob ?
     `packages/node_modules/{${changedPackages}}` :
-    `${changedPackages.join(' ')}`);
+    `${changedPackages.join(argv.singleLine ? ' ' : '\n')}`);
 };
 
 modified(
@@ -88,6 +88,12 @@ modified(
     .options('g', {
       alias: 'glob',
       describe: 'Modify reponse for CircleCI split testing',
+      default: false,
+      type: 'boolean'
+    })
+    .options('single-line', {
+      alias: 'singleLine',
+      describe: 'Log results in a single line',
       default: false,
       type: 'boolean'
     })
