@@ -130,6 +130,10 @@ function makeConfig(packageName, argv) {
 
     hostname: 'localhost',
 
+    browserConsoleLogOptions: {
+      level: 'warn'
+    },
+
     client: {
       captureConsole: true,
       mocha: {

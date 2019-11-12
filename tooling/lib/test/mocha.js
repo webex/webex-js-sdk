@@ -53,6 +53,7 @@ exports.test = async function test(options, packageName, suite, files) {
  */
 async function run(options, files) {
   const cfg = {
+    diff: true,
     bail: options.bail,
     retries: (process.env.JENKINS || process.env.CIRCLECI || process.env.CI) ? 1 : 0,
     timeout: 30000,
