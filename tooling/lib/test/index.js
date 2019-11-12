@@ -17,6 +17,7 @@ const mochaTest = require('./mocha').test;
 const karmaTest = require('./karma').test;
 
 const path = require('path');
+
 const {
   collect,
   combine,
@@ -39,7 +40,12 @@ exports.testPackage = async function testPackage(options, packageName) {
     sourceMaps: true
   });
 
-  debug(`testing ${packageName}`);
+  const currentPackageString = `===== Testing ${packageName} =====`;
+
+  console.info(`\n${'='.repeat(currentPackageString.length)}`);
+  console.info(currentPackageString);
+  console.info(`${'='.repeat(currentPackageString.length)}\n`);
+
   if (packageName === 'generator-ciscospark') {
     await runNodeSuite(packageName);
 
