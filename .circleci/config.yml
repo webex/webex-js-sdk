@@ -151,7 +151,7 @@ jobs:
               exit 1
             fi
       - store_test_results:
-          path: reports/
+          path: reports/junit
       - store_artifacts:
           path: reports/junit
           destination: junit
@@ -174,7 +174,7 @@ jobs:
           name: 'Test Samples'
           command: npm run samples:test
       - store_test_results:
-          path: reports/
+          path: reports/junit
       - store_artifacts:
           path: reports/junit/wdio
           destination: wdio
@@ -250,7 +250,7 @@ jobs:
               exit 1
             fi
       - store_test_results:
-          path: reports/
+          path: reports/junit
       - store_artifacts:
           path: reports/junit
           destination: junit
