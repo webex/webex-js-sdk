@@ -94,7 +94,7 @@ jobs:
       - restore_built_packages
       - run:
           name: 'Run ESLint'
-          command: npm run lint:ci
+          command: npm run lint
       - store_test_results:
           path: reports/style
       - store_artifacts:
