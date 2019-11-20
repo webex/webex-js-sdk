@@ -181,10 +181,23 @@ function makeConfig(packageName, argv) {
       // instrumenterOptions: {
       //   coverageVariable: makeCoverageVariable(packageName)
       // },
-      reporters: [{
-        type: 'json',
-        dir: `reports/coverage/intermediate/${packageName}`
-      }]
+      reporters: [
+        {
+          type: 'json',
+          dir: `reports/coverage/intermediate/${packageName}`
+        }
+      ]
+    };
+
+    cfg.junitReporter = {
+      outputFile: `${packageName}.xml`,
+      outputDir: 'reports/junit/karma',
+      suite: packageName,
+      useBrowserName: true,
+      ...(CI && {
+        recordScreenshots: true,
+        recordVideo: true
+      })
     };
 
     // cfg.browserify.transform.unshift([`browserify-istanbul`, {
