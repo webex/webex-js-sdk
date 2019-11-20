@@ -25,31 +25,22 @@ exports.test = async function test(options, packageName, files) {
   }
 
   if (options.xunit || process.env.COVERAGE || process.env.CIRCLECI || process.env.CI) {
-    for (let i = 0; i < 3; i += 1) {
-      try {
-        debug(`Attempt #${i} for ${packageName}`);
+    try {
+      await run(cfg);
+      const reports = await glob(`./reports/junit/karma/*/${packageName}.xml`);
 
-        await run(cfg, files);
-        const reports = await glob(`./reports/junit/karma/*/${packageName}.xml`);
-
-        if (reports.length !== cfg.browsers.length) {
-          throw new Error(`Ran tests in ${cfg.browsers.length} browsers but only found ${reports.length} reports`);
-        }
-        await expectNonEmptyReports(reports);
-        await expectNoKmsErrors(reports);
-        debug(`Attempt #${i} for ${packageName} completed successfully`);
-        break;
+      if (reports.length !== cfg.browsers.length) {
+        throw new Error(`Ran tests in ${cfg.browsers.length} browsers but only found ${reports.length} reports`);
       }
-      catch (err) {
-        debug(err.message);
-        if (i === 2) {
-          throw err;
-        }
-      }
+      await expectNonEmptyReports(reports);
+      await expectNoKmsErrors(reports);
+    }
+    catch (err) {
+      debug(err.message);
     }
   }
   else {
-    const success = await run(cfg, files);
+    const success = await run(cfg);
 
     if (success) {
       debug(`${files} succeeded`);
