@@ -2,13 +2,14 @@
  * Copyright (c) 2015-2019 Cisco Systems, Inc. See LICENSE file.
  */
 
-const debug = require('debug')('tooling:git');
 const {execSync} = require('child_process');
+
+const debug = require('debug')('tooling:git');
 
 exports.diff = async function diff(tag) {
   debug(`diffing HEAD against ${tag}`);
   debug(`Shelling out to \`git diff --name-only HEAD..${tag}\``);
-  const raw = String(execSync(`git diff --name-only HEAD..${tag}`));
+  const raw = String(execSync(`git diff --name-only HEAD..${tag} -- . ':(exclude)packages/node_modules/**/package.json' ':(exclude)packages/node_modules/webex/**/*.min.js'`));
 
   debug('Done');
 
