@@ -25,13 +25,10 @@ module.exports = {
       type: 'boolean'
     }
   },
-  handler: wrapHandler(async ({dependents, npm, upstream}) => {
-    if (npm) {
-      upstream = false;
-    }
+  handler: wrapHandler(async ({dependents, npm = !!process.env.CI, upstream}) => {
     if (upstream) {
       npm = false;
     }
-    console.log(await updated({dependents, npm, upstream}));
+    console.log(await updated({dependents, npm}));
   })
 };
