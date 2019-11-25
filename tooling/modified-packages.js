@@ -60,8 +60,8 @@ const updated = async ({dependents, npm}) => {
 
 const modified = async (argv) => {
   let changedPackages = argv.integration ?
-    await updated({dependents: true, npm: true}) :
-    await updated({npm: true});
+    await updated({dependents: true, npm: !!process.env.CI}) :
+    await updated({npm: !!process.env.CI});
 
   changedPackages = changedPackages
     .filter((packageName) => !packageName.includes('samples'))

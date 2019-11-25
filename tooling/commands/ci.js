@@ -45,8 +45,8 @@ module.exports = {
   },
   handler: wrapHandler(async (argv) => {
     let packages = argv.integration ?
-      await updated({dependents: true, npm: true}) :
-      await updated({npm: true});
+      await updated({dependents: true, npm: !!process.env.CI}) :
+      await updated({npm: !!process.env.CI});
 
     packages = packages
       .filter((packageName) => !packageName.includes('samples'))

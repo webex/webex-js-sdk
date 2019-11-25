@@ -18,7 +18,7 @@ const {diff} = require('./git');
  * npm instead of upstream/master
  * @returns {Promise<Array<string>>}
  */
-exports.updated = async function updated({dependents, npm}) {
+exports.updated = async function updated({dependents, npm = !!process.env.CI}) {
   const tag = npm ? await last() : 'upstream/master';
   const changedPackages = _(await diff(tag))
     .map((d) => d.path)
