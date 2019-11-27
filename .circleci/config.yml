@@ -134,13 +134,11 @@ jobs:
       - run:
           name: 'Check if any unit tests failed'
           command: |
-            FAILURES=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
-            ERRORS=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*errors=\"\([^\"]*\).*/\1/p' | xargs)
+            FAILURES=$(find reports/junit/mocha/ -iname '*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
 
             echo Failures $FAILURES
-            echo Errors $ERRORS
 
-            if [[ $FAILURES =~ ^([0 ])*$ ]] && [[ $ERRORS =~ ^([0 ])*$ ]]; then
+            if [[ $FAILURES =~ ^([0 ])*$ ]]; then
               echo 'Unit tests succeeded'
             else
               echo 'Unit tests failed'
@@ -216,13 +214,11 @@ jobs:
       - run:
           name: 'Check if any integration tests failed'
           command: |
-            FAILURES=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
-            ERRORS=$(find reports -iname 'webex*.xml' -print0 | xargs -0 sed -n 's/.*errors=\"\([^\"]*\).*/\1/p' | xargs)
+            FAILURES=$(find reports/junit/karma/ -iname '*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
 
             echo Failures $FAILURES
-            echo Errors $ERRORS
 
-            if [[ $FAILURES =~ ^([0 ])*$ ]] && [[ $ERRORS =~ ^([0 ])*$ ]]; then
+            if [[ $FAILURES =~ ^([0 ])*$ ]]; then
               echo 'Integration tests succeeded'
             else
               echo 'Integration tests failed'
