@@ -3,7 +3,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/node:carbon-browsers
+      - image: circleci/node:dubnium-browsers
     working_directory: ~/webex-js-sdk
     environment:
       - NODE_ENV: test

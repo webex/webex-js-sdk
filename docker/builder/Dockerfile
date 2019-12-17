@@ -1,4 +1,4 @@
-FROM node:carbon
+FROM node:dubnium
 
 RUN apt-get update && apt-get install -y graphicsmagick curl wget jq daemon
 
