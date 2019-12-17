@@ -47,7 +47,7 @@ fi
 # Always use install. If that version is installed, it's the same as use and if
 # it's not installed, you won't spend half an hour trying to figure out what
 # exit code 3 is.
-nvm install lts/carbon
+nvm install lts/dubnium
 npm install -g npm@6
 
 echo "################################################################################"
