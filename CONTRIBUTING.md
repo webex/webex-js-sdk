@@ -18,8 +18,8 @@
       - [Body](#body)
       - [Footer](#footer)
       - [Special Commit Messages](#special-commit-messages)
-        - [`[skip npm]`](#skip-npm)
-        - [`[skip ci]`](#skip-ci)
+        - [[skip npm]](#skip-npm)
+        - [[skip ci]](#skip-ci)
     - [Submitting a Pull Request](#submitting-a-pull-request)
   - [Updating the Documentation](#updating-the-documentation)
     - [Set Up Environment (with Bundler)](#set-up-environment-with-bundler)
@@ -109,15 +109,20 @@ A local development flow might look like
 
 1. Edit source code in `MYPACKAGE`.
 2. Use `npm run build` to build all packages .
-3. Use `npm test -- --packages MYPACKAGE --node` to run the tests for just that package only in nodejs (Usually, we don't need to test both in node and the browser during development).
+3. Use `npm test -- --packages @webex/MYPACKAGE --node` to run the tests for just that package only in nodejs (Usually, we don't need to test both in node and the browser during development).
 4. Repeats steps 1-3 until the tests pass.
 
 `npm run build` is a bit tedious when making lots of changes, so instead, we can use `npm run distsrc` to point each package's `main` entry at the raw src and let `babel` compile on the fly.
 
 1. At the start of development, run `npm run distsrc` once.
 2. Edit source code in `MYPACKAGE`.
-3. Use `npm test -- --packages MYPACKAGE --node` to run the tests for just that package only in nodejs.
-4. Repeat steps 2-3 until the tests pass.
+3. Use `npm test -- --packages @webex/MYPACKAGE --node` to run the tests for just that package only in nodejs.
+4. Optionally, add environment variables to mimize logging and show any test specific logging, ie:
+   * LOGGER_LEVEL - set this to "log" to minimize the default verbose output
+   * DEBUG - if your test source includes the debug package set this to the appropriate string to enable debug output
+   For exampe if you want to run only the plugin-messages test, and see the package specific logging, your command line would be:
+   > `LOGGER_LEVEL=log DEBUG=messages npm test -- --packages @webex/plugin-messages --node`
+5. Repeat steps 2-3 until the tests pass.
    > If you use VS Code, we've created a configuration to utilize the built-in debugger
    >    - Set breakpoints within the package you're working on
    >    - Select the `Test package` configuration
@@ -125,7 +130,7 @@ A local development flow might look like
    >      - _The configuration already prepends `@webex/` for you unlike the cli command, so just `plugin-teams` is fine_
    >    - Add any _optional_ flags (i.e. `--node`)
    >      - _If you don't want to add any flags, just add a space (current workaround)_
-5. Run `npm run srcdist` to restore the package.jsons to avoid committing those changes.
+6. Run `npm run srcdist` to restore the package.jsons to avoid committing those changes.
 
 You can use the `--unit`, `--integration`, `--automation`, and `--documentation` switches to control what types of tests you run and `--node` and `--browser` to control which environments your tests run in.
 
