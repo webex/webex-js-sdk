@@ -9,7 +9,7 @@ module.exports = {
   command: 'next',
   desc: 'Determine the next version',
   builder: {
-    always: {
+    alwaysIncrement: {
       default: false,
       description: 'always increment patch version even of no changes detected',
       type: 'boolean'
@@ -20,8 +20,8 @@ module.exports = {
       type: 'boolean'
     }
   },
-  handler: wrapHandler(async ({always, includeSamples}) => {
+  handler: wrapHandler(async ({alwaysIncrement, includeSamples}) => {
     // eslint-disable-next-line callback-return
-    console.log(await next({always, includeSamples}));
+    console.log(await next({alwaysIncrement, includeSamples}));
   })
 };

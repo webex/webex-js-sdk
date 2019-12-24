@@ -79,7 +79,7 @@ exports.current = async function current() {
  * Determines the next appropriate version to publish
  * @returns {Promise<string>}
  */
-exports.next = async function next({always, includeSamples}) {
+exports.next = async function next({alwaysIncrement, includeSamples}) {
   const version = await checkLastCommit();
 
   if (version) {
@@ -104,7 +104,7 @@ exports.next = async function next({always, includeSamples}) {
 
   if (!type) {
     debug('no changes to make');
-    if (always) {
+    if (alwaysIncrement) {
       const nextVersion = increment('patch', currentVersion);
 
       debug(`next version is ${nextVersion}`);
