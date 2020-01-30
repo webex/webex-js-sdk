@@ -53,10 +53,9 @@ jobs:
       - run:
           name: 'Update NPM'
           command: sudo npm install -g npm@6
-      - restore_node_modules
       - run:
           name: 'Install dependencies'
-          command: npm i
+          command: npm ci
       # Cache node_modules across different internal jobs in the workflow and across different circleci runs
       - save_cache:
           key: node-modules-cache-node-dubnium-npm-6-v1-{{ checksum "package-lock.json" }}
