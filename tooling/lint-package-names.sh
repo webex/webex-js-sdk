@@ -5,6 +5,7 @@ shopt -s extglob
 
 DEPRECATED_PACKAGES="@webex/bin-sauce-connect \
   @webex/test-helper-sinon \
+  @webex/internal-plugin-devices \
   @ciscospark/storage-adapter-session-storage \
   @ciscospark/test-helper-automation \
   @ciscospark/sparkd \
