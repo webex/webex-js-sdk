@@ -149,6 +149,7 @@ jobs:
       - run:
           name: 'Check if any unit tests failed'
           command: |
+            mkdir -p reports/junit/mocha
             FAILURES=$(find reports/junit/mocha/ -iname '*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
 
             echo Failures $FAILURES
@@ -229,6 +230,7 @@ jobs:
       - run:
           name: 'Check if any integration tests failed'
           command: |
+            mkdir -p reports/junit/karma
             FAILURES=$(find reports/junit/karma/ -iname '*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
 
             echo Failures $FAILURES
