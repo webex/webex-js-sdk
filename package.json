@@ -55,7 +55,6 @@
     "prebuild": "npm run clean",
     "build": "babel-node ./tooling/index.js build",
     "build:dev": "NODE_ENV=development babel-node ./tooling/index.js build",
-    "build:script": "rollup -c",
     "prebuild:docs": "rimraf ./docs/api",
     "build:docs": "documentation build --config documentation/config.yml --np --project-name webex --project-version 1.x --format html --output ./docs/api --github ./packages/node_modules/webex/src/index.js ./packages/node_modules/{@ciscospark,@webex}/plugin-*/src/index.js",
     "check-karma-output": "./scripts/analyze-output.sh",
@@ -63,7 +62,7 @@
     "circleci:local": "circleci local execute -c .circleci/github.config.yml",
     "lint": "npm run --silent lint:js && npm run --silent lint:package-names",
     "lint:commitmsg": "commitlint -e $GIT_PARAMS",
-    "lint:eslint": "eslint --ignore-pattern 'packages/node_modules/generator-ciscospark/generators/*/templates/**' --ignore-pattern 'packages/node_modules/**/umd/**' --ignore-pattern 'docs/**' --ignore-path .gitignore",
+    "lint:eslint": "eslint --ignore-pattern 'packages/node_modules/generator-ciscospark/generators/*/templates/**' --ignore-pattern 'docs/**' --ignore-path .gitignore",
     "lint:js": "npm run --silent lint:eslint -- .",
     "lint:package-names": "./tooling/lint-package-names.sh",
     "lint:staged": "lint-staged",
@@ -216,15 +215,6 @@
     "require-dir": "^0.3.2",
     "response-time": "^2.3.2",
     "rimraf": "^2.6.3",
-    "rollup": "^0.68.0",
-    "rollup-plugin-cleaner": "^0.2.0",
-    "rollup-plugin-commonjs": "^9.2.0",
-    "rollup-plugin-json": "^3.1.0",
-    "rollup-plugin-license": "^0.9.0",
-    "rollup-plugin-node-builtins": "^2.1.2",
-    "rollup-plugin-node-globals": "^1.4.0",
-    "rollup-plugin-node-resolve": "^4.0.0",
-    "rollup-plugin-terser": "^3.0.0",
     "rxjs-compat": "^6.5.2",
     "sdp-transform": "^2.12.0",
     "sinon": "^7.4.1",
@@ -293,10 +283,7 @@
       "*package.json": [
         "npm run lint:package-names"
       ]
-    },
-    "ignore": [
-      "**/umd/**.js"
-    ]
+    }
   },
   "husky": {
     "hooks": {
