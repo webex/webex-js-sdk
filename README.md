@@ -19,8 +19,8 @@ This is a monorepo containing all officially maintained Cisco Webex JS SDK modul
 - [The Cisco Webex JS SDK](#the-cisco-webex-js-sdk)
   - [Install](#install)
   - [Usage](#usage)
-      - [_A note on browser usage_](#_a-note-on-browser-usage_)
-      - [_Still using `webex/env` or `ciscospark/env`?_](#_still-using-webexenv-or-ciscosparkenv_)
+      - [_A note on browser usage_](#a-note-on-browser-usage)
+      - [_Still using `webex/env` or `ciscospark/env`?_](#still-using-webexenv-or-ciscosparkenv)
   - [Samples](#samples)
   - [Contribute](#contribute)
   - [License](#license)
@@ -74,15 +74,7 @@ webex.rooms.create({ title: `My First Room` }).then(room => {
 
 #### _A note on browser usage_
 
-We do provide a built, minified version of the SDK, that includes `window.webex`, which is hosted on our repo and can be used with [gitcdn.xyz](https://gitcdn.xyz/).
-
-```html
-<script src="https://gitcdn.xyz/repo/webex/webex-js-sdk/master/packages/node_modules/webex/umd/webex.min.js"></script>
-```
-
-In-browser usage is almost the same as Node.js, but it handles the user authentication flow for you. See the [browser guide](https://webex.github.io/webex-js-sdk/guides/browsers/) for more information.
-
-If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `team` variable to `window.webex`.
+If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `webex` variable to `window.webex`.
 For a quick example, we'll use [Parcel](https://parceljs.org/) to bundle the SDK for a website. For any more information and questions on how to use Parcel, please head to their [website](https://parceljs.org/).
 
 1. Create `index.js`.

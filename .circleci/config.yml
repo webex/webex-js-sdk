@@ -295,15 +295,12 @@ jobs:
           name: 'Build Packages'
           command: npm run build
       - run:
-          name: 'Build UMD script'
-          command: npm run build:script -- --versionNumber=${VERSION}
-      - run:
           name: 'Bump all package version'
           command: npm run tooling -- version set ${VERSION} --all
       - run:
           name: 'Commit bumped version'
           command: |
-            git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json packages/node_modules/webex/umd/*.js
+            git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json
             git commit -m "chore(release): v${VERSION} [skip ci]"
       - run:
           name: 'Push to upstream/master'
