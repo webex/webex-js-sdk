@@ -17,7 +17,6 @@ const {inject} = require('./tooling/lib/openh264');
 // Webdriver is only called for testing samples so force integration URLs w/ Webpack
 const webpackConfig = require('./webpack.config')();
 
-
 require('babel-register')({
   only: [
     './packages/node_modules/**/*.js'
@@ -91,17 +90,17 @@ exports.config = {
             }
           } : {
             prefs: {
-              'media.navigator.permission.disabled': true,
-              'media.peerconnection.video.h264_enabled': true,
-              'media.navigator.streams.fake': true,
-              'media.getusermedia.screensharing.enabled': true,
-              'media.getusermedia.screensharing.allowed_domains': 'localhost, 127.0.0.1',
               'dom.webnotifications.enabled': false,
-              'media.gmp-manager.updateEnabled': true
+              'media.getusermedia.screensharing.enabled': true,
+              'media.navigator.permission.disabled': true,
+              'media.navigator.streams.fake': true
             }
           })
         },
         ...(CI && {
+          'sauce:options': {
+            screenResolution: '1920x1440'
+          },
           extendedDebugging: true
         })
       }
@@ -111,12 +110,15 @@ exports.config = {
         browserName: 'chrome',
         'goog:chromeOptions': {
           args: [
+            '--disable-features=WebRtcHideLocalIpsWithMdns',
             '--use-fake-device-for-media-stream',
-            '--use-fake-ui-for-media-stream',
-            '--disable-features=WebRtcHideLocalIpsWithMdns'
+            '--use-fake-ui-for-media-stream'
           ]
         },
         ...(CI && {
+          'sauce:options': {
+            screenResolution: '1920x1440'
+          },
           extendedDebugging: true
         })
       }
@@ -203,6 +205,20 @@ exports.config = {
   ],
   staticServerPort: PORT,
   webpackConfig,
+  // Set selenium and geckodriver versions only for local dev
+  // Saucelabs should handle this automatically
+  ...(!CI && {
+    seleniumInstallArgs: {
+      // Latest Version of Selenium
+      version: '3.141.59',
+      drivers: {
+        firefox: {
+          // Latest Version of geckodriver (default version is 0.23.0)
+          version: '0.26.0'
+        }
+      }
+    }
+  }),
   //
   // Framework you want to run your specs with.
   // The following are supported: Mocha, Jasmine, and Cucumber
