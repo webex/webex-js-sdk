@@ -97,7 +97,7 @@ Build the SDK:
 npm run build
 ```
 
-If at any point your builds or tests are failing with complaints of an invalid node version, you can always reset with the following:
+If at any point your builds or tests are failing with complaints of an invalid node version, the following commands will reset and rebuild everything:
 
 ```bash
 nvm use; npm ci
