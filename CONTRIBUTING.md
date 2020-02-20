@@ -18,8 +18,8 @@
       - [Body](#body)
       - [Footer](#footer)
       - [Special Commit Messages](#special-commit-messages)
-        - [[skip npm]](#skip-npm)
-        - [[skip ci]](#skip-ci)
+        - [`[skip npm]`](#skip-npm)
+        - [`[skip ci]`](#skip-ci)
     - [Submitting a Pull Request](#submitting-a-pull-request)
   - [Updating the Documentation](#updating-the-documentation)
     - [Set Up Environment (with Bundler)](#set-up-environment-with-bundler)
@@ -58,7 +58,7 @@ Before you can build the Cisco Webex JS SDK, you will need the following depende
 - [Node.js](https://nodejs.org/) (LTS)
   - We recommend using [nvm](https://github.com/creationix/nvm) (or [nvm-windows](https://github.com/coreybutler/nvm-windows))
     to easily switch between Node.js versions.
-  - Install the latest Node.js Long Term Support using `nvm install --lts`
+  - Run `nvm use` to set your node version to the one this package expects.  If it is not installed, this program will tell you the command needed to install the required version.
   - Install the latest npm to enable security audits using `npm install npm@latest -g`
 - [Git](https://git-scm.com/)
 - [node-gyp](https://www.npmjs.com/package/node-gyp)
@@ -95,6 +95,12 @@ Build the SDK:
 
 ```bash
 npm run build
+```
+
+If at any point your builds or tests are failing with complaints of an invalid node version, the following commands will reset and rebuild everything:
+
+```bash
+nvm use; npm ci
 ```
 
 *Build issues?* See [BUILD-ISSUES.md](./BUILD-ISSUES.md) for help.
