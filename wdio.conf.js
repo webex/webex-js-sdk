@@ -94,10 +94,8 @@ exports.config = {
               'media.getusermedia.screensharing.enabled': true,
               'media.navigator.permission.disabled': true,
               'media.navigator.streams.fake': true,
-              'media.gmp-manager.updateEnabled': true,
-              'media.gmp-gmpopenh264.autoupdate': true,
+              'media.gmp-gmpopenh264.enabled': true,
               'media.eme.enabled': true,
-              'media.gmp-eme-adobe.enabled': true
             }
           })
         },
