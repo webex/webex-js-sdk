@@ -28,6 +28,8 @@ If you would like to contribute to this repository by adding features, enhanceme
     - [Build Dependencies](#build-dependencies)
     - [Building the SDK](#building-the-sdk)
     - [Running Tests](#running-tests)
+      - [Samples Tests](#samples-tests)
+        - [Local Samples Tests](#local-samples-tests)
     - [Git Commit Guidelines](#git-commit-guidelines)
       - [Commit Message Format](#commit-message-format)
       - [Revert](#revert)
@@ -176,6 +178,28 @@ To run tests on [SauceLabs](https://saucelabs.com/) locally, you'll need to add 
 > `--os Linux` WILL NEED `--browsers Firefox` as SauceLabs only supports `Firefox 45` for Linux. This is why it's also not included by default and requires two flags
 
 > See more scripts at [SCRIPTS.md](SCRIPTS.md) to learn how to run tests and more.
+
+#### Samples Tests
+
+The samples tests are run by <https://webdriver.io> which spins up two browser instances and has them communicate between each other.
+
+These tests are run with `npm run samples:test`.
+We have found that due to the h.264 codec downloading in Firefox, the best way to run these test is on SauceLabs.
+You can run them on SauceLabs with `SAUCE=true npm run samples:test`.
+
+To run a specific sample test instead of the full suite, append the `--spec` flag to the `samples:test` command and the path to the specific test
+
+```sh
+npm run samples:test -- --spec packages/node_modules/samples/browser-call-with-screenshare
+```
+
+##### Local Samples Tests
+
+If you wish to run the samples tests locally, we suggest changing from the Chrome-to-Firefox multiremote setup to Chrome-to-Chrome.
+
+You can do so by modifying the [wdio.conf.js](./wdio.conf.js) file.
+Simply change the `browserSpock`'s `desiredCapabilities` object to the same as `browserMccoy` (the Chrome instance).
+When you run, you should see two instances of Chrome open.
 
 ### Git Commit Guidelines
 
