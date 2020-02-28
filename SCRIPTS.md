@@ -77,6 +77,13 @@ Keeps the browser open in debug mode so that you can set break points and reload
 ```bash
 npm test -- --packages @webex/webex-core --browser --karma-debug
 ```
+# Run the samples automation tests locally
+make sure Java JDK is installed on your machine to run test locally 
+
+```bash
+npm run samples:test
+```
+
 
 ## SauceLabs
 
