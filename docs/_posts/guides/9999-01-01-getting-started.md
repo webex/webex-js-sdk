@@ -65,7 +65,7 @@ Check out the web client. You should see your new room. Now, let's send a messag
 Open up index.js again and replace its contents with the following code:
 
 ```javascript
-var webex = Webex;
+var webex = require('webex/env');
 webex.rooms.list({
   max: 10
 })
