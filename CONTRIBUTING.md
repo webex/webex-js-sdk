@@ -193,6 +193,12 @@ To run a specific sample test instead of the full suite, append the `--spec` fla
 npm run samples:test -- --spec packages/node_modules/samples/browser-call-with-screenshare
 ```
 
+If an error occurs when running the above command that appears to be related to a missing [Selenium](https://www.selenium.dev/) driver, the following command should install the needed external dependencies:
+
+```sh
+./node_modules/.bin/selenium-standalone install
+```
+
 ##### Local Samples Tests
 
 If you wish to run the samples tests locally, we suggest changing from the Chrome-to-Firefox multiremote setup to Chrome-to-Chrome.
