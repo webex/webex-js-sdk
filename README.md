@@ -162,21 +162,11 @@ webex.rooms
 
 ## Samples
 
-Sample code can be found in [packages/node_modules/samples](./packages/node_modules/samples). You can run them yourself with the following commands:
+Sample code can be found in [packages/node_modules/samples](./packages/node_modules/samples). You can demo them by going to [js.samples.s4d.io/](https://js.samples.s4d.io/) or you can run them yourself by following this guide in the [Contribution Guide](CONTRIBUTING.md#running-samples-locally)
 
-> Note: This installs all of the SDK's tooling dependencies, so you'll need `libgcrypt` and (possibly) `graphicsmagick`.
-> On a mac, you can install these with `brew install graphicsmagick libgcrypt`.
-
-```bash
-git clone git@github.com:webex/webex-js-sdk.git
-cd webex-js-sdk
-npm install
-npm run samples:serve
-```
-
-Samples | localhost | Hosted
---- | --- | ---
-[Samples code](./packages/node_modules/samples/) | https://localhost:8000/ | https://js.samples.s4d.io/
+Samples | Hosted
+--- | ---
+[Samples code](./packages/node_modules/samples/) | [js.samples.s4d.io/](https://js.samples.s4d.io/)
 
 ## Contribute
 

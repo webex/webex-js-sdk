@@ -20,6 +20,7 @@ If you would like to contribute to this repository by adding features, enhanceme
 ## Table of Contents
 
 - [Contributing](#contributing)
+  - [Table of Contents](#table-of-contents)
   - [Reporting Issues](#reporting-issues)
     - [Opening an Issue](#opening-an-issue)
       - [Grammar](#grammar)
@@ -28,6 +29,7 @@ If you would like to contribute to this repository by adding features, enhanceme
     - [Build Dependencies](#build-dependencies)
     - [Building the SDK](#building-the-sdk)
     - [Running Tests](#running-tests)
+      - [Running Samples Locally](#running-samples-locally)
       - [Samples Tests](#samples-tests)
         - [Local Samples Tests](#local-samples-tests)
     - [Git Commit Guidelines](#git-commit-guidelines)
@@ -145,8 +147,8 @@ A local development flow might look like
 2. Edit source code in `MYPACKAGE`.
 3. Use `npm test -- --packages @webex/MYPACKAGE --node` to run the tests for just that package only in nodejs.
 4. Optionally, add environment variables to mimize logging and show any test specific logging, ie:
-   * LOGGER_LEVEL - set this to "log" to minimize the default verbose output
-   * DEBUG - if your test source includes the debug package set this to the appropriate string to enable debug output
+   - LOGGER_LEVEL - set this to "log" to minimize the default verbose output
+   - DEBUG - if your test source includes the debug package set this to the appropriate string to enable debug output
    For exampe if you want to run only the plugin-messages test, and see the package specific logging, your command line would be:
    > `LOGGER_LEVEL=log DEBUG=messages npm test -- --packages @webex/plugin-messages --node`
 5. Repeat steps 2-3 until the tests pass.
@@ -178,6 +180,32 @@ To run tests on [SauceLabs](https://saucelabs.com/) locally, you'll need to add 
 > `--os Linux` WILL NEED `--browsers Firefox` as SauceLabs only supports `Firefox 45` for Linux. This is why it's also not included by default and requires two flags
 
 > See more scripts at [SCRIPTS.md](SCRIPTS.md) to learn how to run tests and more.
+
+#### Running Samples Locally
+
+```bash
+git clone git@github.com:webex/webex-js-sdk.git
+cd webex-js-sdk
+npm install
+npm run build
+npm run samples:serve
+```
+
+> NOTE: This installs all of the SDK's tooling dependencies, so you'll need `libgcrypt` and (possibly) `graphicsmagick`.
+>
+> - Mac
+>   - You can install these with `brew install graphicsmagick libgcrypt`.
+>
+> - Ubuntu
+>   - You can install these with `sudo apt-get install graphicsmagick libgcrypt-dev`
+>
+> - Windows
+>   - You can install `graphicsmagick` using either [scoop](https://scoop.sh/) or [Chocolatey](https://chocolatey.org/)
+>     - scoop: `scoop install graphicsmagick`
+>     - chocolotey: `choco install graphicsmagick`
+>     - Also *globally* install `win-node-env` to resolve `NODE_ENV` windows related command issues
+
+Head to [https://localhost:8000/](https://localhost:8000/) to use the samples
 
 #### Samples Tests
 
