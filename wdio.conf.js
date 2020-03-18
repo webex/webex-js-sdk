@@ -74,7 +74,7 @@ exports.config = {
   // https://docs.saucelabs.com/reference/platforms-configurator
   //
   capabilities: {
-    browserSpock: {
+    browserFirefox: {
       desiredCapabilities: {
         browserName: 'firefox',
         'moz:firefoxOptions': {
@@ -105,7 +105,7 @@ exports.config = {
         })
       }
     },
-    browserMccoy: {
+    browserChrome: {
       desiredCapabilities: {
         browserName: 'chrome',
         'goog:chromeOptions': {
@@ -261,8 +261,8 @@ exports.config = {
    */
   onPrepare(config, capabilities) {
     const defs = [
-      capabilities.browserSpock.desiredCapabilities,
-      capabilities.browserMccoy.desiredCapabilities
+      capabilities.browserFirefox.desiredCapabilities,
+      capabilities.browserChrome.desiredCapabilities
     ];
 
     const build = process.env.BUILD_NUMBER || `local-${process.env.USER}-wdio-${Date.now()}`;
