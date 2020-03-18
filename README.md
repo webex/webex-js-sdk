@@ -75,6 +75,7 @@ webex.rooms.create({ title: `My First Room` }).then(room => {
 #### _A note on browser usage_
 
 If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `webex` variable to `window.webex`.
+
 For a quick example, we'll use [Parcel](https://parceljs.org/) to bundle the SDK for a website. For any more information and questions on how to use Parcel, please head to their [website](https://parceljs.org/).
 
 1. Create `index.js`.
@@ -141,8 +142,21 @@ webex.rooms
 </html>
 ```
 
-3. Run `parcel index.html` in your terminal.
-4. Go to [http://localhost:1234](http://localhost:1234) and open the developer console to see the output.
+3. Add a compatible browser version for parcel to compile for 
+
+- Add the `browserlist` property to your `package.json`. We're using the last two versions of both Chrome and Firefox in this example
+
+```json
+"browserslist": [
+  "last 2 Chrome versions"
+  "last 2 Firefox versions"
+]
+```
+
+> NOTE: This is needed for parcel to correctly compile dependencies the SDK uses for the browser environment. The SDK uses the `last 2 versions of Chrome and Firefox`, so we're including it here too. You can use [browserl.ist](https://browserl.ist/) to configure your own setup
+
+4. Run `parcel index.html` in your terminal.
+5. Go to [http://localhost:1234](http://localhost:1234) and open the developer console to see the output.
 
 #### _[Still using `webex/env` or `ciscospark/env`?](documentation/webex.md#shell-script-quick-start)_
 
