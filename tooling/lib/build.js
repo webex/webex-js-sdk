@@ -56,7 +56,11 @@ exports.buildSamples = async function buildSamples() {
   // reminder: samples:build calls this script, not webpack
   // hence we must call webpack here
   const [cmd, ...args] = `webpack --colors ${(process.env.NODE_ENV === 'development') ? '-d' : '-p'}`.split(' ');
-  const webpack = spawn(cmd, args, {stdio: 'pipe'});
+  const webpack = spawn(cmd, args, {
+    stdio: 'pipe',
+    // Spawn fix for Windows
+    shell: process.platform === 'win32'
+  });
 
   webpack.stdout.on('data', (d) => {
     console.log(`webpack log:\n${d}`);
