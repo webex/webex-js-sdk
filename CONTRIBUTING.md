@@ -204,7 +204,7 @@ If an error occurs when running the above command that appears to be related to 
 If you wish to run the samples tests locally, we suggest changing from the Chrome-to-Firefox multiremote setup to Chrome-to-Chrome.
 
 You can do so by modifying the [wdio.conf.js](./wdio.conf.js) file.
-Simply change the `browserSpock`'s `desiredCapabilities` object to the same as `browserMccoy` (the Chrome instance).
+Simply change the `browserFirefox`'s `desiredCapabilities` object to the same as `browserChrome` (the Chrome instance).
 When you run, you should see two instances of Chrome open.
 
 ### Git Commit Guidelines
