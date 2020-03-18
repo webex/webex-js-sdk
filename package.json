@@ -194,7 +194,7 @@
     "lolex": "^2.7.5",
     "mime-types": "^2.1.24",
     "mkdirp": "^0.5.1",
-    "mmmagic": "^0.4.6",
+    "mmmagic": "^0.5.3",
     "mocha": "^6.2.0",
     "mocha-steps": "^1.3.0",
     "morgan": "^1.9.1",
