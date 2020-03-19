@@ -75,6 +75,7 @@ webex.rooms.create({ title: `My First Room` }).then(room => {
 #### _A note on browser usage_
 
 If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `webex` variable to `window.webex`.
+
 For a quick example, we'll use [Parcel](https://parceljs.org/) to bundle the SDK for a website. For any more information and questions on how to use Parcel, please head to their [website](https://parceljs.org/).
 
 1. Create `index.js`.
@@ -141,28 +142,31 @@ webex.rooms
 </html>
 ```
 
-3. Run `parcel index.html` in your terminal.
-4. Go to [http://localhost:1234](http://localhost:1234) and open the developer console to see the output.
+3. Add a compatible browser version for parcel to compile for 
+
+- Add the `browserlist` property to your `package.json`. We're using the last two versions of both Chrome and Firefox in this example
+
+```json
+"browserslist": [
+  "last 2 Chrome versions"
+  "last 2 Firefox versions"
+]
+```
+
+> NOTE: This is needed for parcel to correctly compile dependencies the SDK uses for the browser environment. The SDK uses the `last 2 versions of Chrome and Firefox`, so we're including it here too. You can use [browserl.ist](https://browserl.ist/) to configure your own setup
+
+4. Run `parcel index.html` in your terminal.
+5. Go to [http://localhost:1234](http://localhost:1234) and open the developer console to see the output.
 
 #### _[Still using `webex/env` or `ciscospark/env`?](documentation/webex.md#shell-script-quick-start)_
 
 ## Samples
 
-Sample code can be found in [packages/node_modules/samples](./packages/node_modules/samples). You can run them yourself with the following commands:
+Sample code can be found in [packages/node_modules/samples](./packages/node_modules/samples). You can demo them by going to [js.samples.s4d.io/](https://js.samples.s4d.io/) or you can run them yourself by following this guide in the [Contribution Guide](CONTRIBUTING.md#running-samples-locally)
 
-> Note: This installs all of the SDK's tooling dependencies, so you'll need `libgcrypt` and (possibly) `graphicsmagick`.
-> On a mac, you can install these with `brew install graphicsmagick libgcrypt`.
-
-```bash
-git clone git@github.com:webex/webex-js-sdk.git
-cd webex-js-sdk
-npm install
-npm run samples:serve
-```
-
-Samples | localhost | Hosted
---- | --- | ---
-[Samples code](./packages/node_modules/samples/) | https://localhost:8000/ | https://js.samples.s4d.io/
+Samples | Hosted
+--- | ---
+[Samples code](./packages/node_modules/samples/) | [js.samples.s4d.io/](https://js.samples.s4d.io/)
 
 ## Contribute
 
