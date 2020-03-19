@@ -83,7 +83,6 @@
     "samples:serve": "NODE_ENV=development webpack-dev-server -d",
     "samples:devicemanager": "npm run serve:package -- --env.package @webex/plugin-device-manager --env.entry ./webex.js",
     "serve:package": "webpack-dev-server --config webpack/webpack.config.js --hot --inline --history-api-fallback",
-    "presamples:test": "rimraf bundle.js bundle.js.map",
     "samples:test": "NODE_ENV=test wdio",
     "tooling": "babel-node ./tooling/index.js"
   },

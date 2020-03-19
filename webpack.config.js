@@ -16,7 +16,7 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
     './packages/node_modules/webex',
   mode: env === 'development' ? 'development' : 'production',
   output: {
-    filename: args && args.umd ? 'webex.min.js' : 'bundle.js',
+    filename: 'webex.min.js',
     library: 'Webex',
     libraryTarget: 'umd',
     sourceMapFilename: '[file].map',
