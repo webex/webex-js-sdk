@@ -50,7 +50,7 @@ exports.buildPackage = async function buildPackage(packageName) {
 exports.buildSamples = async function buildSamples() {
   let data = '';
 
-  await rimraf('packages/node_modules/samples/bundle*');
+  await rimraf('packages/node_modules/samples/webex.min.*');
 
   // reminder: samples:build calls this script, not webpack
   // hence we must call webpack here
