@@ -8,7 +8,6 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 dotenv.config({path: '.env.default'});
-process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
 const {
   gatherFiles
@@ -29,6 +28,9 @@ const {glob} = require('../../util/package');
 /* eslint-disable complexity */
 
 exports.testPackage = async function testPackage(options, packageName) {
+  // Move NODE_ENV override into the exported function since babel-node is processing everything above
+  process.env.NODE_ENV = process.env.NODE_ENV || 'test';
+
   // eslint-disable-next-line global-require
   require('babel-register')({
     only: [
