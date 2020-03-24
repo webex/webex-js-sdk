@@ -320,6 +320,24 @@ jobs:
       - run:
           name: 'Publish to NPM'
           command: npm run tooling -- exec -- bash -c 'npm publish --access public || true'
+  tap:
+    executor: main-executor
+    parameters:
+      package:
+        type: string
+    environment:
+      COVERAGE: true
+    steps:
+      - install_graphicsmagick_and_libgcrypt
+      - checkout_and_fetch_tags
+      - restore_node_modules
+      - restore_built_packages
+      - run: npm run test --silent -- --packages << parameters.package >> --browsers defaults
+      - store_test_results:
+          path: reports/junit
+      - store_artifacts:
+          path: reports/junit
+          destination: junit
 
 workflows:
   github_checks:
@@ -361,3 +379,44 @@ workflows:
               only: master
           requires:
               - npm_install
+  tap_tests:
+    triggers:
+      - schedule:
+          # Everyday @ 6PM UTC | 4PM EST | 1PM PST
+          cron: '0 18 * * 1-5'
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - npm_install:
+          filters:
+              branches:
+                only: master
+      - build:
+          requires:
+            - npm_install
+      - tap:
+          package: '@webex/core'
+          requires:
+            - build
+      - tap:
+          package: '@webex/plugin-meetings'
+          requires:
+            - build
+      - tap:
+          package: '@webex/internal-plugin-conversation'
+          requires:
+            - build
+      - tap:
+          package: '@webex/internal-plugin-encryption'
+          requires:
+            - build
+      - tap:
+          package: '@webex/internal-plugin-locus'
+          requires:
+            - build
+      - tap:
+          package: '@webex/internal-plugin-mercury'
+          requires:
+            - build
