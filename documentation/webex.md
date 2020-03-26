@@ -83,7 +83,7 @@ browserify index.js > bundle.js
 Then, just load your bundle using:
 
 ```html
-<script src="/bundle.js"></script>
+<script src="/webex.min.js"></script>
 ```
 
 ### NodeJS

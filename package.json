@@ -54,6 +54,7 @@
     "bootstrap": "echo 'npm run bootstrap is no longer required. Hooray!'",
     "prebuild": "npm run clean",
     "build": "babel-node ./tooling/index.js build",
+    "build:script": "babel-node ./tooling/index.js build --umd",
     "build:dev": "NODE_ENV=development babel-node ./tooling/index.js build",
     "prebuild:docs": "rimraf ./docs/api",
     "build:docs": "documentation build --config documentation/config.yml --np --project-name webex --project-version 1.x --format html --output ./docs/api --github ./packages/node_modules/webex/src/index.js ./packages/node_modules/{@ciscospark,@webex}/plugin-*/src/index.js",
@@ -82,7 +83,6 @@
     "samples:serve": "NODE_ENV=development webpack-dev-server -d",
     "samples:devicemanager": "npm run serve:package -- --env.package @webex/plugin-device-manager --env.entry ./webex.js",
     "serve:package": "webpack-dev-server --config webpack/webpack.config.js --hot --inline --history-api-fallback",
-    "presamples:test": "rimraf bundle.js bundle.js.map",
     "samples:test": "NODE_ENV=test wdio",
     "tooling": "babel-node ./tooling/index.js"
   },
@@ -219,6 +219,7 @@
     "sdp-transform": "^2.12.0",
     "sinon": "^7.4.1",
     "supertest": "^3.4.2",
+    "terser-webpack-plugin": "^2.3.5",
     "time-grunt": "^1.4.0",
     "url": "^0.11.0",
     "urlsafe-base64": "^1.0.0",
@@ -282,6 +283,9 @@
       ],
       "*package.json": [
         "npm run lint:package-names"
+      ],
+      "ignore": [
+        "**/umd/**.js"
       ]
     }
   },
