@@ -63,7 +63,7 @@
     "circleci:local": "circleci local execute -c .circleci/github.config.yml",
     "lint": "npm run --silent lint:js && npm run --silent lint:package-names",
     "lint:commitmsg": "commitlint -e $GIT_PARAMS",
-    "lint:eslint": "eslint --ignore-pattern 'packages/node_modules/generator-ciscospark/generators/*/templates/**' --ignore-pattern 'docs/**' --ignore-path .gitignore",
+    "lint:eslint": "eslint --ignore-pattern 'packages/node_modules/generator-ciscospark/generators/*/templates/**' --ignore-pattern 'docs/**' --ignore-pattern 'packages/node_modules/webex/umd/**' --ignore-path .gitignore",
     "lint:js": "npm run --silent lint:eslint -- .",
     "lint:package-names": "./tooling/lint-package-names.sh",
     "lint:staged": "lint-staged",
