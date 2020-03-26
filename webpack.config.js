@@ -2,20 +2,27 @@ const path = require('path');
 
 const dotenv = require('dotenv');
 const glob = require('glob');
-const {DefinePlugin, EnvironmentPlugin} = require('webpack');
+const {BannerPlugin, DefinePlugin, EnvironmentPlugin} = require('webpack');
+const TerserPlugin = require('terser-webpack-plugin');
+
+const {version} = require('./packages/node_modules/webex/package.json');
 
 dotenv.config();
 dotenv.config({path: '.env.default'});
 
-module.exports = (env = process.env.NODE_ENV || 'production') => ({
-  entry: env === 'development' ? `${path.resolve(__dirname)}/packages/node_modules/webex/src/index.js` : './packages/node_modules/webex',
+module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
+  entry: env === 'development' ?
+    `${path.resolve(__dirname)}/packages/node_modules/webex/src/index.js` :
+    './packages/node_modules/webex',
   mode: env === 'development' ? 'development' : 'production',
   output: {
-    filename: 'bundle.js',
+    filename: 'webex.min.js',
     library: 'Webex',
-    libraryTarget: 'var',
+    libraryTarget: 'umd',
     sourceMapFilename: '[file].map',
-    path: `${path.resolve(__dirname)}/packages/node_modules/samples`
+    path: args && args.umd ? // samples:test fix since its called as a function
+      `${path.resolve(__dirname)}/packages/node_modules/webex/umd` :
+      `${path.resolve(__dirname)}/packages/node_modules/samples`
   },
   devtool: env === 'development' ? 'cheap-module-source-map' : 'source-map',
   devServer: {
@@ -58,6 +65,25 @@ module.exports = (env = process.env.NODE_ENV || 'production') => ({
       }
     ]
   },
+  ...(env !== 'development' && {
+    optimization: {
+      minimize: true,
+      minimizer: [
+        new TerserPlugin({
+          cache: true,
+          extractComments: false,
+          parallel: true,
+          sourceMap: true,
+          terserOptions: {
+            output: {
+              preamble: `/*! Webex JS SDK v${process.env.VERSION || version} */`,
+              comments: false
+            }
+          }
+        })
+      ]
+    }
+  }),
   plugins: [
     // If in integration and building for production (not testing) use production URLS
     ...(env === 'test' ?
@@ -81,6 +107,9 @@ module.exports = (env = process.env.NODE_ENV || 'production') => ({
           WHISTLER_API_SERVICE_URL: 'https://whistler.onint.ciscospark.com/api/v1'
         })
       ] : [
+        new BannerPlugin({
+          banner: `Webex JS SDK v${process.env.VERSION || version}`
+        }),
         new EnvironmentPlugin({
           CISCOSPARK_LOG_LEVEL: 'log',
           DEBUG: '',
