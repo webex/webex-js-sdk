@@ -50,8 +50,7 @@ exports.buildPackage = async function buildPackage(packageName) {
 exports.buildSamples = async function buildSamples() {
   let data = '';
 
-  await rimraf('packages/node_modules/samples/bundle*');
-  await rimraf('packages/node_modules/samples/meetings.bundle*');
+  await rimraf('packages/node_modules/samples/webex.min.*');
 
   // reminder: samples:build calls this script, not webpack
   // hence we must call webpack here
@@ -99,4 +98,39 @@ ${samples.map((s) => `<li><a href="${s}">${capitalize(humanize(s))}</a></li>`).j
 </html>`;
 
   await writeFile('packages/node_modules/samples/index.html', out);
+};
+
+exports.buildUMDScript = async function buildUMDScript() {
+  let data = '';
+
+  await rimraf('packages/node_modules/webex/umd/webex*');
+
+  // reminder: samples:build calls this script, not webpack
+  // hence we must call webpack here
+  const [cmd, ...args] = `webpack --colors ${(process.env.NODE_ENV === 'development') ? '-d' : '-p'} --umd`.split(' ');
+  const webpack = spawn(cmd, args, {
+    stdio: 'pipe',
+    // Spawn fix for Windows
+    shell: process.platform === 'win32'
+  });
+
+  webpack.stdout.on('data', (d) => {
+    console.log(`webpack log:\n${d}`);
+  });
+
+  webpack.stderr.on('data', (d) => {
+    data += d;
+    console.log(`webpack log:\n${d}`);
+  });
+
+  webpack.on('close', (code) => {
+    debug('child has completed');
+    if (code) {
+      const e = new Error(code);
+
+      e.data = data;
+
+      debug(e);
+    }
+  });
 };
