@@ -70,8 +70,12 @@ jobs:
 
   build:
     executor: main-executor
+    parameters:
+      env:
+        type: string
+        default: "test"
     environment:
-      NODE_ENV: 'test'
+      NODE_ENV: << parameters.env >>
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
@@ -394,6 +398,7 @@ workflows:
               branches:
                 only: master
       - build:
+          env: 'production'
           requires:
             - npm_install
       - tap:
