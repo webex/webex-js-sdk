@@ -423,7 +423,7 @@ workflows:
           requires:
             - npm_install
       - tap:
-          package: '@webex/core'
+          package: '@webex/webex-core'
           requires:
             - build
       - tap:
