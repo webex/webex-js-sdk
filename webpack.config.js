@@ -90,7 +90,7 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
       [
         // Environment Plugin doesn't override already defined Environment Variables (i.e. DotENV)
         new EnvironmentPlugin({
-          CISCOSPARK_LOG_LEVEL: 'log',
+          WEBEX_LOG_LEVEL: 'log',
           DEBUG: '',
           NODE_ENV: 'production',
           // The following environment variables are specific to our continuous
@@ -111,7 +111,7 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
           banner: `Webex JS SDK v${process.env.VERSION || version}`
         }),
         new EnvironmentPlugin({
-          CISCOSPARK_LOG_LEVEL: 'log',
+          WEBEX_LOG_LEVEL: 'log',
           DEBUG: '',
           NODE_ENV: env === 'development' ? 'development' : 'production'
         }),
