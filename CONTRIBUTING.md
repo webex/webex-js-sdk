@@ -147,10 +147,10 @@ A local development flow might look like
 2. Edit source code in `MYPACKAGE`.
 3. Use `npm test -- --packages @webex/MYPACKAGE --node` to run the tests for just that package only in nodejs.
 4. Optionally, add environment variables to mimize logging and show any test specific logging, ie:
-   - LOGGER_LEVEL - set this to "log" to minimize the default verbose output
+   - WEBEX_LOG_LEVEL - set this to "log" to minimize the default verbose output
    - DEBUG - if your test source includes the debug package set this to the appropriate string to enable debug output
    For exampe if you want to run only the plugin-messages test, and see the package specific logging, your command line would be:
-   > `LOGGER_LEVEL=log DEBUG=messages npm test -- --packages @webex/plugin-messages --node`
+   > `WEBEX_LOG_LEVEL=log DEBUG=messages npm test -- --packages @webex/plugin-messages --node`
 5. Repeat steps 2-3 until the tests pass.
    > If you use VS Code, we've created a configuration to utilize the built-in debugger
    >    - Set breakpoints within the package you're working on
