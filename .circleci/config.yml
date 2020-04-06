@@ -337,6 +337,20 @@ jobs:
       - restore_node_modules
       - restore_built_packages
       - run: npm run test --silent -- --packages << parameters.package >> --browsers defaults
+      - run:
+          name: 'Check if tap test for "<< parameters.package >>" failed'
+          command: |
+            mkdir -p reports/junit/karma
+            FAILURES=$(find reports/junit/karma/ -iname '*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
+
+            echo Failures $FAILURES
+
+            if [[ $FAILURES =~ ^([0 ])*$ ]]; then
+              echo 'Tap test for "<< parameters.package >>" succeeded'
+            else
+              echo 'Tap test for "<< parameters.package >>" failed'
+              exit 1
+            fi
       - store_test_results:
           path: reports/junit
       - store_artifacts:
