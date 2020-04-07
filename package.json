@@ -215,7 +215,6 @@
     "require-dir": "^0.3.2",
     "response-time": "^2.3.2",
     "rimraf": "^2.6.3",
-    "rxjs-compat": "^6.5.2",
     "sdp-transform": "^2.12.0",
     "sinon": "^7.4.1",
     "supertest": "^3.4.2",
