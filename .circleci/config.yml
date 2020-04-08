@@ -449,26 +449,32 @@ workflows:
           requires:
             - npm_install
       - tap:
+          name: '@webex/webex-core tap'
           package: '@webex/webex-core'
           requires:
             - build
       - tap:
+          name: '@webex/plugin-meetings tap'
           package: '@webex/plugin-meetings'
           requires:
             - build
       - tap:
+          name: '@webex/internal-plugin-conversation tap'
           package: '@webex/internal-plugin-conversation'
           requires:
             - build
       - tap:
+          name: '@webex/internal-plugin-encryption tap'
           package: '@webex/internal-plugin-encryption'
           requires:
             - build
       - tap:
+          name: '@webex/internal-plugin-locus tap'
           package: '@webex/internal-plugin-locus'
           requires:
             - build
       - tap:
+          name: '@webex/internal-plugin-mercury tap'
           package: '@webex/internal-plugin-mercury'
           requires:
             - build
