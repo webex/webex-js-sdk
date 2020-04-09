@@ -3,13 +3,39 @@
 
 module.exports = function (packageName, argv) {
   let browsers = argv.karmaDebug ? {
-    Chrome: {},
-    Firefox: {}
+    Chrome: {
+      flags: [
+        '--use-fake-device-for-media-stream',
+        '--use-fake-ui-for-media-stream'
+      ]
+    },
+    Firefox: {
+      prefs: {
+        'dom.webnotifications.enabled': false,
+        'media.getusermedia.screensharing.enabled': true,
+        'media.navigator.permission.disabled': true,
+        'media.navigator.streams.fake': true
+      }
+    }
   } : {
-      // Default Local Browsers
-      ChromeHeadless: {},
-      FirefoxHeadless: {}
-    };
+    // Default Local Browsers
+    ChromeHeadless: {
+      base: 'ChromeHeadless',
+      flags: [
+        '--use-fake-device-for-media-stream',
+        '--use-fake-ui-for-media-stream'
+      ]
+    },
+    FirefoxHeadless: {
+      base: 'FirefoxHeadless',
+      prefs: {
+        'dom.webnotifications.enabled': false,
+        'media.getusermedia.screensharing.enabled': true,
+        'media.navigator.permission.disabled': true,
+        'media.navigator.streams.fake': true
+      }
+    }
+  };
 
   if (process.env.SC_TUNNEL_IDENTIFIER || process.env.CI || process.env.CIRCLECI || process.env.SAUCE) {
     browsers = {
