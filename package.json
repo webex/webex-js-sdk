@@ -210,6 +210,7 @@
     "ps-node": "^0.1.6",
     "qs": "^6.7.0",
     "read-package-json": "^2.0.13",
+    "readable-stream": "^3.6.0",
     "request": "^2.88.0",
     "request-id": "^0.11.1",
     "require-dir": "^0.3.2",
