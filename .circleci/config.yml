@@ -89,6 +89,35 @@ jobs:
           paths:
             - packages/node_modules
 
+  build_production:
+    executor: main-executor
+    environment:
+      NODE_ENV: production
+      ACL_SERVICE_URL: "https://acl-a.wbx2.com/acl/api/v1"
+      ATLAS_SERVICE_URL: "https://atlas-a.wbx2.com/admin/api/v1"
+      CONVERSATION_SERVICE: "https://conv-a.wbx2.com/conversation/api/v1"
+      ENCRYPTION_SERVICE_URL: "https://encryption-a.wbx2.com"
+      HYDRA_SERVICE_URL: "https://api.ciscospark.com/v1/"
+      IDBROKER_BASE_URL: "https://idbroker.webex.com"
+      IDENTITY_BASE_URL: "https://identity.webex.com"
+      U2C_SERVICE_URL: "https://u2c.wbx2.com/u2c/api/v1"
+      WDM_SERVICE_URL: "https://wdm-a.wbx2.com/wdm/api/v1"
+      WHISTLER_API_SERVICE_URL: "https://whistler-prod.onint.ciscospark.com/api/v1"
+      WEBEX_TEST_USERS_CONVERSATION_SERVICE_URL: "https://conv-a.wbx2.com/conversation/api/v1"
+      WEBEX_CONVERSATION_DEFAULT_CLUSTER: "urn:TEAM:us-east-2_a:identityLookup"
+    steps:
+      - install_graphicsmagick_and_libgcrypt
+      - checkout_and_fetch_tags
+      - restore_node_modules
+      - run:
+          name: 'Build all packages'
+          command: npm run build
+      # Save the dist/ folder of the packages for other jobs in the workflow
+      - persist_to_workspace:
+          root: ~/webex-js-sdk
+          paths:
+            - packages/node_modules
+
   static_analysis:
     executor: main-executor
     steps:
@@ -331,6 +360,14 @@ jobs:
         type: string
     environment:
       COVERAGE: true
+      EU_PRIMARY_ORG_ID: "c1b781f7-b70b-43f7-bac6-6590d98d50fa"
+      IDBROKER_BASE_URL: "https://idbroker.webex.com"
+      IDENTITY_BASE_URL: "https://identity.webex.com"
+      U2C_SERVICE_URL: "https://u2c.wbx2.com/u2c/api/v1"
+      WDM_SERVICE_URL: "https://wdm-a.wbx2.com/wdm/api/v1"
+      WHISTLER_API_SERVICE_URL: "https://whistler-prod.onint.ciscospark.com/api/v1"
+      WEBEX_TEST_USERS_CONVERSATION_SERVICE_URL: "https://conv-a.wbx2.com/conversation/api/v1"
+      WEBEX_CONVERSATION_DEFAULT_CLUSTER: "urn:TEAM:us-east-2_a:identityLookup"
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
@@ -444,37 +481,36 @@ workflows:
           filters:
               branches:
                 only: master
-      - build:
-          env: 'production'
+      - build_production:
           requires:
             - npm_install
       - tap:
           name: '@webex/webex-core tap'
           package: '@webex/webex-core'
           requires:
-            - build
+            - build_production
       - tap:
           name: '@webex/plugin-meetings tap'
           package: '@webex/plugin-meetings'
           requires:
-            - build
+            - build_production
       - tap:
           name: '@webex/internal-plugin-conversation tap'
           package: '@webex/internal-plugin-conversation'
           requires:
-            - build
+            - build_production
       - tap:
           name: '@webex/internal-plugin-encryption tap'
           package: '@webex/internal-plugin-encryption'
           requires:
-            - build
+            - build_production
       - tap:
           name: '@webex/internal-plugin-locus tap'
           package: '@webex/internal-plugin-locus'
           requires:
-            - build
+            - build_production
       - tap:
           name: '@webex/internal-plugin-mercury tap'
           package: '@webex/internal-plugin-mercury'
           requires:
-            - build
+            - build_production
