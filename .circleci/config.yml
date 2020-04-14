@@ -470,8 +470,8 @@ workflows:
   tap_tests:
     triggers:
       - schedule:
-          # Everyday @ 6PM UTC | 4PM EST | 1PM PST
-          cron: '0 18 * * 1-5'
+          # Everyday @ 6:15PM UTC | 3:15PM EST | 2:15PM EDT | 12:15PM PST | 11:15AM PDT
+          cron: '15 18 * * 1-5'
           filters:
             branches:
               only:
