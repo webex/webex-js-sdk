@@ -360,7 +360,7 @@ jobs:
         type: string
     environment:
       COVERAGE: true
-      EU_PRIMARY_ORG_ID: "c1b781f7-b70b-43f7-bac6-6590d98d50fa"
+      EU_PRIMARY_ORG_ID: "d9b9d739-c7e4-4956-809e-5da447a3b8ca"
       IDBROKER_BASE_URL: "https://idbroker.webex.com"
       IDENTITY_BASE_URL: "https://identity.webex.com"
       U2C_SERVICE_URL: "https://u2c.wbx2.com/u2c/api/v1"
