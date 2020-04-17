@@ -123,7 +123,7 @@
     "eslint": "^5.16.0",
     "eslint-plugin-import": "^2.18.2",
     "eslint-plugin-mocha": "^6.0.0",
-    "exif": "^0.6.0",
+    "exifr": "^4.3.5",
     "express": "^4.17.1",
     "express-session": "^1.16.2",
     "express-validator": "^5.3.1",
