@@ -165,7 +165,7 @@
     "lodash": "^4.17.15",
     "lodash-decorators": "^4.5.0",
     "lolex": "^2.7.5",
-    "mime-types": "^2.1.24",
+    "mime": "^2.4.4",
     "mkdirp": "^0.5.1",
     "mmmagic": "^0.4.6",
     "mocha": "^6.2.0",
