@@ -62,7 +62,6 @@
   "dependencies": {
     "@commitlint/cli": "^8.1.0",
     "@commitlint/config-conventional": "^8.1.0",
-    "@peculiar/webcrypto": "^1.0.22",
     "@webex/eslint-config-base": "^0.8.0",
     "ampersand-collection": "^2.0.2",
     "ampersand-collection-lodash-mixin": "^4.0.0",
@@ -106,7 +105,6 @@
     "cookie-parser": "^1.4.4",
     "core-decorators": "^0.20.0",
     "cors": "^2.8.5",
-    "crypto": "^1.0.1",
     "crypto-js": "^3.1.9-1",
     "debug": "^3.2.6",
     "dependency-check": "^3.4.1",
@@ -141,6 +139,7 @@
     "husky": "^3.0.3",
     "in-publish": "^2.0.0",
     "is-function": "^1.0.1",
+    "isomorphic-webcrypto": "^2.3.6",
     "isparta": "^4.1.1",
     "istanbul": "^0.4.5",
     "javascript-state-machine": "^3.1.0",
