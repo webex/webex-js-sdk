@@ -37,36 +37,6 @@ function makeConfig(packageName, argv) {
   const integrationTestPath = path.join('packages', 'node_modules', packageName, 'test', 'integration', 'spec', '**', '*.js');
   const unitTestPath = path.join('packages', 'node_modules', packageName, 'test', 'unit', 'spec', '**', '*.js');
 
-  const browsers = () => {
-    // Also Karma's/Webdriver's `browserNames` are case-sensitive
-    // Reformat since we made `argv.browsers` lowercase earlier
-    // so it plays nice with Karma/Webdriver
-    const format = (browser) => {
-      if (browser.includes('headless')) {
-        // `firefoxheadless` -> `firefoxHeadless`
-        browser = browser.replace('headless', 'Headless');
-      }
-
-      // `chrome` -> `Chrome`
-      return browser.charAt(0).toUpperCase() + browser.slice(1);
-    };
-
-    // If argv.browsers includes `defaults` as one of it's "params"
-    // return a new array with the package's default browsers and the one's the user has specified
-    // i.e. ['ChromeHeadless', 'FirefoxHeadless', (<- defaults) 'Safari', 'IE' (<- user specified)]
-    if (argv.browsers.includes('defaults') || argv.browsers.includes('default')) {
-      return [
-        ...Object.keys(launchers),
-        ...argv.browsers
-          .filter((item) => item !== 'defaults' && item !== 'default')
-          .map(format)
-      ];
-    }
-
-    // If `defaults` isn't supplied then return the user specified browsers
-    return argv.browsers.map(format);
-  };
-
   const preprocessors = {
     'packages/**': ['browserify']
   };
@@ -93,7 +63,7 @@ function makeConfig(packageName, argv) {
     // restarts.
     browserDisconnectTolerance: 3,
 
-    browsers: argv.browsers && !CI ? browsers() : Object.keys(launchers),
+    browsers: Object.keys(launchers),
 
     browserify: {
       debug: true,
