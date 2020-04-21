@@ -1,4 +1,6 @@
 const path = require('path');
+const fs = require('fs');
+
 
 const dotenv = require('dotenv');
 const glob = require('glob');
@@ -27,6 +29,8 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
   devtool: env === 'development' ? 'cheap-module-source-map' : 'source-map',
   devServer: {
     https: true,
+    key: fs.readFileSync(path.resolve(__dirname, 'webpack/localhost.key')),
+    cert: fs.readFileSync(path.resolve(__dirname, 'webpack/localhost.crt')),
     disableHostCheck: true,
     port: 8000,
     contentBase: './packages/node_modules/samples',
