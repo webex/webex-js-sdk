@@ -1,14 +1,17 @@
 /*!
- * Copyright (c) 2015-2019 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
 const debug = require('debug')('tooling:dependencies');
 const builtins = require('builtins')();
-const {read} = require('../util/package');
-const path = require('path');
 const {values} = require('lodash');
 const detective = require('detective');
+
+const {read} = require('../util/package');
+
+const path = require('path');
 const fs = require('fs');
+
 const _list = require('../lib/package').list;
 
 /**
