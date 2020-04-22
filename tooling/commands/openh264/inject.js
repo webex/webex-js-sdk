@@ -1,8 +1,9 @@
 /*!
- * Copyright (c) 2015-2019 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
 const os = require('os');
+
 const wrapHandler = require('../../lib/wrap-handler');
 const {platformToShortName, prepareLocalProfile} = require('../../lib/openh264');
 
