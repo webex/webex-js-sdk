@@ -75,7 +75,7 @@ exports.config = {
   //
   // If CI && Safari run Safari + Edge
   // If just Safari run Safari + Chrome
-  // If not Safari run Firefox + Chrome
+  // IF not Safari run Firefox + Chrome
   capabilities: process.env.SAFARI ? {
     browserFirefox: {
       desiredCapabilities: {
