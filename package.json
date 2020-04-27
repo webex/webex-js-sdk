@@ -84,7 +84,8 @@
     "samples:devicemanager": "npm run serve:package -- --env.package @webex/plugin-device-manager --env.entry ./webex.js",
     "serve:package": "webpack-dev-server --config webpack/webpack.config.js --hot --inline --history-api-fallback",
     "samples:test": "NODE_ENV=test wdio",
-    "tooling": "babel-node ./tooling/index.js"
+    "tooling": "babel-node ./tooling/index.js",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@commitlint/cli": "^8.1.0",
@@ -205,6 +206,7 @@
     "node-scr": "^0.2.2",
     "on-finished": "^2.3.0",
     "parse-headers": "^2.0.2",
+    "patch-package": "^6.2.2",
     "pkg-up": "^2.0.0",
     "pkijs": "^2.1.84",
     "ps-node": "^0.1.6",
