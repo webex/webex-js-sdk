@@ -339,7 +339,8 @@ exports.config = {
         d.base = 'SauceLabs';
 
         d.version = d.version || 'latest';
-        d.platform = d.platform || 'macOS 10.13';
+        d.platform = d.platform || 'macOS 10.15';
+        d.seleniumVersion = d.seleniumVersion || '3.141.59';
       }
       else {
         // Copy the base over so that inject() does its thing.

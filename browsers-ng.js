@@ -10,7 +10,7 @@ const format = (browser) => {
     browser = browser.replace('headless', 'Headless');
   }
 
-  // 'chrome' => 'Chrome' or 'firefoxHeadless' => 'FirefoxHeadless'
+  // 'chrome' => 'Chrome' or 'firefox' => 'Firefox'
   return browser.charAt(0).toUpperCase() + browser.slice(1);
 };
 
@@ -86,7 +86,7 @@ module.exports = function (packageName, argv) {
         // Reminder: the first item in this object is used by pipeline builds
         sl_chrome_latest_macOS_High_Sierra: {
           base: 'SauceLabs',
-          platform: 'macOS 10.13',
+          platform: 'macOS 10.15',
           browserName: 'Chrome',
           version: 'latest',
           extendedDebugging: true
@@ -100,7 +100,7 @@ module.exports = function (packageName, argv) {
         },
         sl_firefox_latest_macOS_High_Sierra: {
           base: 'SauceLabs',
-          platform: 'macOS 10.13',
+          platform: 'macOS 10.15',
           browserName: 'Firefox',
           version: 'latest',
           extendedDebugging: true,
@@ -142,7 +142,7 @@ module.exports = function (packageName, argv) {
         },
         sl_safari_latest_macOS_High_Sierra: {
           base: 'SauceLabs',
-          platform: 'macOS 10.13',
+          platform: 'macOS 10.15',
           browserName: 'Safari',
           version: 'latest'
         },
@@ -161,7 +161,7 @@ module.exports = function (packageName, argv) {
               ...((!argv.os || argv.os.includes('mac')) && {
                 sl_chrome_latest_macOS_High_Sierra: {
                   base: 'SauceLabs',
-                  platform: 'macOS 10.13',
+                  platform: 'macOS 10.15',
                   browserName: 'Chrome',
                   version: 'latest',
                   extendedDebugging: true,
@@ -188,7 +188,7 @@ module.exports = function (packageName, argv) {
               ...((!argv.os || argv.os.includes('mac')) && {
                 sl_firefox_latest_macOS_High_Sierra: {
                   base: 'SauceLabs',
-                  platform: 'macOS 10.13',
+                  platform: 'macOS 10.15',
                   browserName: 'Firefox',
                   version: 'latest',
                   extendedDebugging: true,
@@ -233,7 +233,7 @@ module.exports = function (packageName, argv) {
             (argv.browsers && argv.browsers.includes('safari'))) && {
               sl_safari_latest_macOS_High_Sierra: {
                 base: 'SauceLabs',
-                platform: 'macOS 10.13',
+                platform: 'macOS 10.15',
                 browserName: 'Safari',
                 version: 'latest',
               },
