@@ -75,7 +75,7 @@ exports.config = {
   //
   // If CI && Safari run Safari + Edge
   // If just Safari run Safari + Chrome
-  // IF not Safari run Firefox + Chrome
+  // If not Safari run Firefox + Chrome
   capabilities: process.env.SAFARI ? {
     browserFirefox: {
       desiredCapabilities: {
@@ -98,25 +98,46 @@ exports.config = {
         })
       }
     },
-    browserChrome: {
-      desiredCapabilities: {
-        browserName: 'MicrosoftEdge',
-        'ms:edgeOptions': {
-          args: [
-            '--disable-features=WebRtcHideLocalIpsWithMdns',
-            '--use-fake-device-for-media-stream',
-            '--use-fake-ui-for-media-stream'
-          ]
-        },
-        ...(CI && {
-          platform: 'Windows 10',
-          'sauce:options': {
-            screenResolution: '1600x1200',
-            extendedDebugging: true
-          }
-        })
+    ...(CI ? {
+      browserChrome: {
+        desiredCapabilities: {
+          browserName: 'MicrosoftEdge',
+          'ms:edgeOptions': {
+            args: [
+              '--disable-features=WebRtcHideLocalIpsWithMdns',
+              '--use-fake-device-for-media-stream',
+              '--use-fake-ui-for-media-stream'
+            ]
+          },
+          ...(CI && {
+            platform: 'Windows 10',
+            'sauce:options': {
+              screenResolution: '1600x1200',
+              extendedDebugging: true
+            }
+          })
+        }
       }
-    }
+    } : {
+      browserChrome: {
+        desiredCapabilities: {
+          browserName: 'chrome',
+          'goog:chromeOptions': {
+            args: [
+              '--disable-features=WebRtcHideLocalIpsWithMdns',
+              '--use-fake-device-for-media-stream',
+              '--use-fake-ui-for-media-stream'
+            ]
+          },
+          ...(CI && {
+            'sauce:options': {
+              screenResolution: '1600x1200',
+              extendedDebugging: true
+            }
+          })
+        }
+      }
+    })
   } : {
     browserFirefox: {
       desiredCapabilities: {
