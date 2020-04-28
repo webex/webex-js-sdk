@@ -79,17 +79,22 @@ Please provide sufficient logging around the issue which you are reporting as th
 Before you can build the Cisco Webex JS SDK, you will need the following dependencies:
 
 - [Node.js](https://nodejs.org/) (LTS)
-  - We recommend using [nvm](https://github.com/creationix/nvm) (or [nvm-windows](https://github.com/coreybutler/nvm-windows))
-    to easily switch between Node.js versions.
-  - Run `nvm use` to set your node version to the one this package expects.  If it is not installed, this program will tell you the command needed to install the required version.
-  - Install the latest npm to enable security audits using `npm install npm@latest -g`
+  - We recommend using [nvm](https://github.com/creationix/nvm) (or [nvs](https://github.com/jasongin/nvs) on Windows _(not WSL)_) to easily switch between Node.js versions
+  - Run `nvm use` to set your node version to the one this package expects
+    - If the required node version is not installed, `nvm`/`nvs` will tell you the command needed to install it
+  - Install the latest npm to enable security audits using `npm install -g npm@latest`
 - [Git](https://git-scm.com/)
 - [node-gyp](https://www.npmjs.com/package/node-gyp)
-  - This is used during the dependency install process and is used to compile some native add-on modules.
+  - This is used during the dependency install process and is used to compile some native add-on modules
   - Install with `npm install -g node-gyp`
+    - On Windows _(not WSL)_, follow [Option 1](https://github.com/nodejs/node-gyp#option-1) on node-gyp's repo, as this will automatically install python 2 and neccessary build dependencies
 - [Python 2.7](https://www.python.org/download/releases/2.7/)
-  - This is also used during the dependency install process.
+  - This is also used during the dependency install process
   - Attempting to update dependencies with a Python 3.x environment will fail
+
+> #### NOTE FOR WINDOWS 10
+>
+> **We suggest using [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/about) (WSL) for the best experience on Windows.** We've seen multiple tooling/package related errors when trying to build on a regular Windows environment. The build errors are a result of third-party node_modules that we do not maintain. These issues are not seen when using WSL.
 
 You will need to create a file called `.env` that defines, at a minimum:
 
