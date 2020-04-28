@@ -1,8 +1,9 @@
 /*!
- * Copyright (c) 2015-2019 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
 const debug = require('debug')('monorepo:util');
+
 const cp = require('child_process');
 
 module.exports = function spawn(cmd, args, options) {
