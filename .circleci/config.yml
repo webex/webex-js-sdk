@@ -495,11 +495,6 @@ workflows:
           requires:
             - build_production
       - tap:
-          name: '@webex/internal-plugin-conversation tap'
-          package: '@webex/internal-plugin-conversation'
-          requires:
-            - build_production
-      - tap:
           name: '@webex/internal-plugin-encryption tap'
           package: '@webex/internal-plugin-encryption'
           requires:
