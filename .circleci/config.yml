@@ -56,9 +56,14 @@ jobs:
       - run:
           name: 'Install dependencies'
           command: npm ci
+      # Cache workaround to cache patch changes
+      # https://github.com/ds300/patch-package#docker-and-ci
+      - run:
+          name: 'Hash patch-package patches'
+          command: cat patches/* | md5sum > patches.hash
       # Cache node_modules across different internal jobs in the workflow and across different circleci runs
       - save_cache:
-          key: node-modules-cache-node-dubnium-npm-6-v1-{{ checksum "package-lock.json" }}
+          key: node-modules-cache-node-dubnium-npm-6-v1-{{ checksum "package-lock.json" }}-{{ checksum "patches.hash" }}
           paths:
             - node_modules
       - run:
