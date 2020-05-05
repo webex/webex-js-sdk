@@ -8,7 +8,6 @@ jobs:
     environment:
       - NODE_ENV: test
       - SAUCE_CONNECT_DOWNLOAD_ON_INSTALL: true
-      - ACL_SERVICE_URL: https://acl-intb.ciscospark.com/acl/api/v1
       - ATLAS_SERVICE_URL: https://atlas-intb.ciscospark.com/admin/api/v1
       - CONVERSATION_SERVICE: https://conversation-intb.ciscospark.com/conversation/api/v1
       - ENCRYPTION_SERVICE_URL: https://encryption-intb.ciscospark.com/encryption/api/v1

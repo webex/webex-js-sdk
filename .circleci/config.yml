@@ -98,7 +98,6 @@ jobs:
     executor: main-executor
     environment:
       NODE_ENV: production
-      ACL_SERVICE_URL: "https://acl-a.wbx2.com/acl/api/v1"
       ATLAS_SERVICE_URL: "https://atlas-a.wbx2.com/admin/api/v1"
       CONVERSATION_SERVICE: "https://conv-a.wbx2.com/conversation/api/v1"
       ENCRYPTION_SERVICE_URL: "https://encryption-a.wbx2.com"

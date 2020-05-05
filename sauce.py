@@ -10,8 +10,6 @@ CISCOSPARK = os.path.join(PREFIX, '@ciscospark')
 WEBEX = os.path.join(PREFIX, '@webex')
 
 PROD_ENV_VARS = {
-  # 'ACL_SERVICE_URL': 'https://acl-a.wbx2.com/acl/api/v1', ?
-  'ATLAS_SERVICE_URL': 'https://atlas-a.wbx2.com/admin/api/v1',
   'CONVERSATION_SERVICE': 'https://conv-a.wbx2.com/conversation/api/v1',
   'ENCRYPTION_SERVICE_URL': 'https://encryption-a.wbx2.com',
   'IDBROKER_BASE_URL': 'https://idbroker.webex.com',
@@ -26,7 +24,6 @@ PROD_ENV_VARS = {
 
 INT_ENV_VARS = {
   # Environments
-  'ACL_SERVICE_URL': 'https://acl-intb.ciscospark.com/acl/api/v1',
   'ATLAS_SERVICE_URL': 'https://atlas-intb.ciscospark.com/admin/api/v1',
   'CONVERSATION_SERVICE': 'https://conversation-intb.ciscospark.com/conversation/api/v1',
   'ENCRYPTION_SERVICE_URL': 'https://encryption-intb.ciscospark.com/encryption/api/v1',
