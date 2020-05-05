@@ -19,8 +19,9 @@ This is a monorepo containing all officially maintained Cisco Webex JS SDK modul
 - [The Cisco Webex JS SDK](#the-cisco-webex-js-sdk)
   - [Install](#install)
   - [Usage](#usage)
-      - [_A note on browser usage_](#a-note-on-browser-usage)
-      - [_Still using `webex/env` or `ciscospark/env`?_](#still-using-webexenv-or-ciscosparkenv)
+    - [Browser Usage](#browser-usage)
+      - [Browser Usage Example](#browser-usage-example)
+    - [Node Usage](#node-usage)
   - [Samples](#samples)
   - [Contribute](#contribute)
   - [License](#license)
@@ -72,7 +73,7 @@ webex.rooms.create({ title: `My First Room` }).then(room => {
 });
 ```
 
-#### _A note on browser usage_
+### Browser Usage
 
 We provide a built, minified version of the SDK, that includes `window.Webex`. You can access it via [unpkg](https://unpkg.com/), [jsdelivr](https://jsdelivr.com/), or [gitcdn.xyz](https://gitcdn.xyz/).
 
@@ -86,6 +87,17 @@ We provide a built, minified version of the SDK, that includes `window.Webex`. Y
 ```
 
 If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `webex` variable to `window.webex`.
+
+Note that since this SDK is built for node and browser environments, your web bundler configuration will need to stub out node packages like `fs`.
+Webpack provides this ability via the [node](https://webpack.js.org/configuration/node/) config:
+
+```js
+node: {
+  fs: 'empty'
+}
+```
+
+### Browser Usage Example
 
 For a quick example, we'll use [Parcel](https://parceljs.org/) to bundle the SDK for a website. For any more information and questions on how to use Parcel, please head to their [website](https://parceljs.org/).
 
@@ -169,7 +181,11 @@ webex.rooms
 4. Run `parcel index.html` in your terminal.
 5. Go to [http://localhost:1234](http://localhost:1234) and open the developer console to see the output.
 
-#### _[Still using `webex/env` or `ciscospark/env`?](documentation/webex.md#shell-script-quick-start)_
+## Node Usage
+
+### `webex/env`
+
+The quickest way to get up and running on node is to utilize the `webex/env` package. See [this documentation](documentation/webex.md#shell-script-quick-start) for guidelines.
 
 ## Samples
 
