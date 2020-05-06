@@ -98,25 +98,46 @@ exports.config = {
         })
       }
     },
-    browserChrome: {
-      desiredCapabilities: {
-        browserName: 'MicrosoftEdge',
-        'ms:edgeOptions': {
-          args: [
-            '--disable-features=WebRtcHideLocalIpsWithMdns',
-            '--use-fake-device-for-media-stream',
-            '--use-fake-ui-for-media-stream'
-          ]
-        },
-        ...(CI && {
-          platform: 'Windows 10',
-          'sauce:options': {
-            screenResolution: '1600x1200',
-            extendedDebugging: true
-          }
-        })
+    ...(CI ? {
+      browserChrome: {
+        desiredCapabilities: {
+          browserName: 'MicrosoftEdge',
+          'ms:edgeOptions': {
+            args: [
+              '--disable-features=WebRtcHideLocalIpsWithMdns',
+              '--use-fake-device-for-media-stream',
+              '--use-fake-ui-for-media-stream'
+            ]
+          },
+          ...(CI && {
+            platform: 'Windows 10',
+            'sauce:options': {
+              screenResolution: '1600x1200',
+              extendedDebugging: true
+            }
+          })
+        }
       }
-    }
+    } : {
+      browserChrome: {
+        desiredCapabilities: {
+          browserName: 'chrome',
+          'goog:chromeOptions': {
+            args: [
+              '--disable-features=WebRtcHideLocalIpsWithMdns',
+              '--use-fake-device-for-media-stream',
+              '--use-fake-ui-for-media-stream'
+            ]
+          },
+          ...(CI && {
+            'sauce:options': {
+              screenResolution: '1600x1200',
+              extendedDebugging: true
+            }
+          })
+        }
+      }
+    })
   } : {
     browserFirefox: {
       desiredCapabilities: {
