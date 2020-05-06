@@ -353,7 +353,7 @@ module.exports = function (packageName, argv) {
         return {[key]: {}};
       } else if (
         browser.base.toLowerCase().includes('chrome') &&
-        !browser.flags
+        !browser['goog:chromeOptions']
       ) {
         return {
           [key]:
@@ -370,7 +370,7 @@ module.exports = function (packageName, argv) {
         };
       } else if (
         browser.base.toLowerCase().includes('firefox') &&
-        !browser.prefs
+        !browser['moz:firefoxOptions']
       ) {
         return {
           [key]:
@@ -388,12 +388,19 @@ module.exports = function (packageName, argv) {
         };
       } else if (
         browser.base.toLowerCase().includes('edge') &&
-        !browser.flags
+        !browser.flags || !browsers['ms:edgeOptions']
       ) {
         return {
           [key]:
           {
             ...browser,
+            // Use both flag and ms:edgeOptions for compatiblity
+            // local selenium(flag) vs saucelabs (ms:edgeOptions)
+            flags: [
+              '--disable-features=WebRtcHideLocalIpsWithMdns',
+              '--use-fake-device-for-media-stream',
+              '--use-fake-ui-for-media-stream'
+            ],
             'ms:edgeOptions': {
               args: [
                 '--disable-features=WebRtcHideLocalIpsWithMdns',

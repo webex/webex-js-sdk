@@ -102,6 +102,13 @@ exports.config = {
       browserChrome: {
         desiredCapabilities: {
           browserName: 'MicrosoftEdge',
+          // Use both flag and ms:edgeOptions for compatiblity
+          // local selenium(flag) vs saucelabs (ms:edgeOptions)
+          flags: [
+            '--disable-features=WebRtcHideLocalIpsWithMdns',
+            '--use-fake-device-for-media-stream',
+            '--use-fake-ui-for-media-stream'
+          ],
           'ms:edgeOptions': {
             args: [
               '--disable-features=WebRtcHideLocalIpsWithMdns',
