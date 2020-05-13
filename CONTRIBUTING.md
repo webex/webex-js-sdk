@@ -131,6 +131,7 @@ The JS SDK allows you to customize your experience via configuration and environ
 | WEBEX_AUTHORIZATION_STRING | This is the authorization url displayed on the developer portal | undefined |
 | WEBEX_CLIENT_ID | The Webex client ID used to authorize | undefined |
 | WEBEX_CLIENT_SECRET | The Webex client secret used to authorize | undefined |
+| WEBEX_CONVERSATION_CLUSTER_SERVICE | Service identifier used to lookup conversation servers in hostmap | identityLookup |
 | WEBEX_CONVERSATION_DEFAULT_CLUSTER | Cluster used to convert from "us" cluster to actual cluster | urn:TEAM:us-east-2_a:identityLookup |
 | WEBEX_LOG_LEVEL | Maximum log level that should be printed to the console. | log |
 | WEBEX_REDIRECT_URI | The URI to redirect to after authorization | undefined |
