@@ -1,15 +1,84 @@
 /* eslint-disable */
 /* eslint camelcase: [0] */
 
+// Also Karma's/Webdriver's `browserNames` are case-sensitive
+// Reformat since we made `argv.browsers` lowercase earlier
+// so it plays nice with Karma/Webdriver
+const format = (browser) => {
+  if (browser.includes('headless')) {
+    // `firefoxheadless` -> `firefoxHeadless`
+    browser = browser.replace('headless', 'Headless');
+  }
+
+  // 'chrome' => 'Chrome' or 'firefox' => 'Firefox'
+  return browser.charAt(0).toUpperCase() + browser.slice(1);
+};
+
 module.exports = function (packageName, argv) {
-  let browsers = argv.karmaDebug ? {
-    Chrome: {},
-    Firefox: {}
-  } : {
-      // Default Local Browsers
-      ChromeHeadless: {},
-      FirefoxHeadless: {}
-    };
+  // Default browsers
+  let browsers = {
+    ChromeHeadless_H264: {
+      base: 'ChromeHeadless',
+      flags: [
+        '--disable-features=WebRtcHideLocalIpsWithMdns',
+        '--use-fake-device-for-media-stream',
+        '--use-fake-ui-for-media-stream'
+      ]
+    },
+    FirefoxHeadless_H264: {
+      base: 'FirefoxHeadless',
+      prefs: {
+        'dom.webnotifications.enabled': false,
+        'media.getusermedia.screensharing.enabled': true,
+        'media.navigator.permission.disabled': true,
+        'media.navigator.streams.fake': true
+      }
+    }
+  };
+
+  // Override if karmaDebug is specified
+  if (argv.karmaDebug) {
+    browsers = {
+      Chrome_H264: {
+        base: 'Chrome',
+        flags: [
+          '--disable-features=WebRtcHideLocalIpsWithMdns',
+          '--use-fake-device-for-media-stream',
+          '--use-fake-ui-for-media-stream'
+        ]
+      },
+      Firefox_H264: {
+        base: 'Firefox',
+        prefs: {
+          'dom.webnotifications.enabled': false,
+          'media.getusermedia.screensharing.enabled': true,
+          'media.navigator.permission.disabled': true,
+          'media.navigator.streams.fake': true
+        }
+      }
+    }
+  }
+
+  // If `--browsers` flag is passed, pass browsers into to a skeleton browsers object
+  // for later processing
+  if (argv.browsers) {
+    browsers = argv.browsers.reduce((obj, browser) =>
+      browser === 'defaults' || browser === 'default' ?
+      {
+        ...obj,
+        ChromeHeadless_H264: {
+          base: 'ChromeHeadless'
+        },
+        FirefoxHeadless_H264: {
+          base: 'FirefoxHeadless'
+        }
+      } : {
+        ...obj,
+        [`${browser}_H264`]: {
+          base: format(browser)
+        }
+    }, {})
+  }
 
   if (process.env.SC_TUNNEL_IDENTIFIER || process.env.CI || process.env.CIRCLECI || process.env.SAUCE) {
     browsers = {
@@ -17,7 +86,7 @@ module.exports = function (packageName, argv) {
         // Reminder: the first item in this object is used by pipeline builds
         sl_chrome_latest_macOS_High_Sierra: {
           base: 'SauceLabs',
-          platform: 'macOS 10.13',
+          platform: 'macOS 10.15',
           browserName: 'Chrome',
           version: 'latest',
           extendedDebugging: true
@@ -31,7 +100,7 @@ module.exports = function (packageName, argv) {
         },
         sl_firefox_latest_macOS_High_Sierra: {
           base: 'SauceLabs',
-          platform: 'macOS 10.13',
+          platform: 'macOS 10.15',
           browserName: 'Firefox',
           version: 'latest',
           extendedDebugging: true,
@@ -73,7 +142,7 @@ module.exports = function (packageName, argv) {
         },
         sl_safari_latest_macOS_High_Sierra: {
           base: 'SauceLabs',
-          platform: 'macOS 10.13',
+          platform: 'macOS 10.15',
           browserName: 'Safari',
           version: 'latest'
         },
@@ -92,7 +161,7 @@ module.exports = function (packageName, argv) {
               ...((!argv.os || argv.os.includes('mac')) && {
                 sl_chrome_latest_macOS_High_Sierra: {
                   base: 'SauceLabs',
-                  platform: 'macOS 10.13',
+                  platform: 'macOS 10.15',
                   browserName: 'Chrome',
                   version: 'latest',
                   extendedDebugging: true,
@@ -119,7 +188,7 @@ module.exports = function (packageName, argv) {
               ...((!argv.os || argv.os.includes('mac')) && {
                 sl_firefox_latest_macOS_High_Sierra: {
                   base: 'SauceLabs',
-                  platform: 'macOS 10.13',
+                  platform: 'macOS 10.15',
                   browserName: 'Firefox',
                   version: 'latest',
                   extendedDebugging: true,
@@ -164,7 +233,7 @@ module.exports = function (packageName, argv) {
             (argv.browsers && argv.browsers.includes('safari'))) && {
               sl_safari_latest_macOS_High_Sierra: {
                 base: 'SauceLabs',
-                platform: 'macOS 10.13',
+                platform: 'macOS 10.15',
                 browserName: 'Safari',
                 version: 'latest',
               },
@@ -241,12 +310,14 @@ module.exports = function (packageName, argv) {
     }
   }
 
-  try {
-    browsers = require(`./packages/node_modules/${packageName}/browsers.js`)(browsers);
-  }
-  catch (err) {
-    if (err.code !== `MODULE_NOT_FOUND`) {
-      throw err;
+  if (!argv.browsers) {
+    try {
+      browsers = require(`./packages/node_modules/${packageName}/browsers.js`)(browsers);
+    }
+    catch (err) {
+      if (err.code !== `MODULE_NOT_FOUND`) {
+        throw err;
+      }
     }
   }
 
@@ -272,6 +343,85 @@ module.exports = function (packageName, argv) {
     }
     return filteredBrowsers;
   }
+
+  // Process all given browsers to check if they have WebRTC flags and add them if they don't
+  browsers = Object.assign({},
+    // This returns objects wrapped in an array
+    // Use Object.assign to make it an object
+    ...Object.entries(browsers).map(([key, browser]) => {
+      if (!browser.base) {
+        return {[key]: {}};
+      } else if (
+        browser.base.toLowerCase().includes('chrome') &&
+        !browser.flags
+      ) {
+        return {
+          [key]:
+          {
+            ...browser,
+            'goog:chromeOptions': {
+              args: [
+                '--disable-features=WebRtcHideLocalIpsWithMdns',
+                '--use-fake-device-for-media-stream',
+                '--use-fake-ui-for-media-stream'
+              ]
+            }
+          },
+        };
+      } else if (
+        browser.base.toLowerCase().includes('firefox') &&
+        !browser.prefs
+      ) {
+        return {
+          [key]:
+          {
+            ...browser,
+            'moz:firefoxOptions': {
+              prefs: {
+                'dom.webnotifications.enabled': false,
+                'media.getusermedia.screensharing.enabled': true,
+                'media.navigator.permission.disabled': true,
+                'media.navigator.streams.fake': true,
+              },
+            }
+          },
+        };
+      } else if (
+        browser.base.toLowerCase().includes('edge') &&
+        !browser.flags
+      ) {
+        return {
+          [key]:
+          {
+            ...browser,
+            'ms:edgeOptions': {
+              args: [
+                '--disable-features=WebRtcHideLocalIpsWithMdns',
+                '--use-fake-device-for-media-stream',
+                '--use-fake-ui-for-media-stream'
+              ]
+            }
+          },
+        };
+      }
+      else if (
+        browser.base.toLowerCase().includes('safari') &&
+        !browser['webkit:WebRTC']
+      ) {
+        return {
+          [key]:
+          {
+            ...browser,
+            'webkit:WebRTC': {
+              DisableInsecureMediaCapture: true,
+            },
+          },
+        };
+      }
+
+      return {[key]: browser};
+    }
+  ));
 
   return browsers;
 }

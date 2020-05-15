@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+/* eslint-disable no-console, require-jsdoc */
 /* global browser: false */
 
 require('babel-register');
@@ -73,10 +73,75 @@ exports.config = {
   // Sauce Labs platform configurator - a great tool to configure your capabilities:
   // https://docs.saucelabs.com/reference/platforms-configurator
   //
-  capabilities: {
+  // If CI && Safari run Safari + Edge
+  // If just Safari run Safari + Chrome
+  // If not Safari run Firefox + Chrome
+  capabilities: process.env.SAFARI ? {
     browserFirefox: {
       desiredCapabilities: {
-        browserName: 'firefox',
+        browserName: 'Safari',
+        'webkit:WebRTC': {
+          DisableInsecureMediaCapture: true
+        },
+        ...(!CI && {
+          'safari.options': {
+            technologyPreview: !!CI
+          }
+        }),
+        ...(CI && {
+          platform: 'macOS 10.14',
+          version: '12',
+          'sauce:options': {
+            screenResolution: '1600x1200',
+            extendedDebugging: true
+          }
+        })
+      }
+    },
+    ...(CI ? {
+      browserChrome: {
+        desiredCapabilities: {
+          browserName: 'MicrosoftEdge',
+          'ms:edgeOptions': {
+            args: [
+              '--disable-features=WebRtcHideLocalIpsWithMdns',
+              '--use-fake-device-for-media-stream',
+              '--use-fake-ui-for-media-stream'
+            ]
+          },
+          ...(CI && {
+            platform: 'Windows 10',
+            'sauce:options': {
+              screenResolution: '1600x1200',
+              extendedDebugging: true
+            }
+          })
+        }
+      }
+    } : {
+      browserChrome: {
+        desiredCapabilities: {
+          browserName: 'chrome',
+          'goog:chromeOptions': {
+            args: [
+              '--disable-features=WebRtcHideLocalIpsWithMdns',
+              '--use-fake-device-for-media-stream',
+              '--use-fake-ui-for-media-stream'
+            ]
+          },
+          ...(CI && {
+            'sauce:options': {
+              screenResolution: '1600x1200',
+              extendedDebugging: true
+            }
+          })
+        }
+      }
+    })
+  } : {
+    browserFirefox: {
+      desiredCapabilities: {
+        browserName: 'Firefox',
         'moz:firefoxOptions': {
           ...(CI ? {
             args: [
@@ -99,15 +164,15 @@ exports.config = {
         },
         ...(CI && {
           'sauce:options': {
-            screenResolution: '1920x1440'
-          },
-          extendedDebugging: true
+            screenResolution: '1600x1200',
+            extendedDebugging: true
+          }
         })
       }
     },
     browserChrome: {
       desiredCapabilities: {
-        browserName: 'chrome',
+        browserName: 'Chrome',
         'goog:chromeOptions': {
           args: [
             '--disable-features=WebRtcHideLocalIpsWithMdns',
@@ -117,9 +182,9 @@ exports.config = {
         },
         ...(CI && {
           'sauce:options': {
-            screenResolution: '1920x1440'
-          },
-          extendedDebugging: true
+            screenResolution: '1600x1200',
+            extendedDebugging: true
+          }
         })
       }
     }
@@ -274,7 +339,8 @@ exports.config = {
         d.base = 'SauceLabs';
 
         d.version = d.version || 'latest';
-        d.platform = d.platform || 'macOS 10.13';
+        d.platform = d.platform || 'macOS 10.15';
+        d.seleniumVersion = d.seleniumVersion || '3.141.59';
       }
       else {
         // Copy the base over so that inject() does its thing.
@@ -317,8 +383,14 @@ exports.config = {
    * @param {Array.<Object>} capabilities list of capabilities details
    * @param {Array.<String>} specs List of spec file paths that are to be run
    */
-  // before(capabilities, specs) {
-  // }
+  // eslint-disable-next-line no-unused-vars
+  before(capabilities, specs) {
+    // Size is based on a common resolution that both Windows and Mac support on Saucelabs
+    browser.windowHandleSize({
+      width: 1600,
+      height: 1200
+    });
+  },
   //
   /**
    * Hook that gets executed before the suite starts

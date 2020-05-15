@@ -27,6 +27,7 @@ If you would like to contribute to this repository by adding features, enhanceme
       - [Logs](#logs)
   - [Contributing Code](#contributing-code)
     - [Build Dependencies](#build-dependencies)
+    - [Environment Variables](#environment-variables)
     - [Building the SDK](#building-the-sdk)
     - [Running Tests](#running-tests)
       - [Running Samples Locally](#running-samples-locally)
@@ -79,17 +80,22 @@ Please provide sufficient logging around the issue which you are reporting as th
 Before you can build the Cisco Webex JS SDK, you will need the following dependencies:
 
 - [Node.js](https://nodejs.org/) (LTS)
-  - We recommend using [nvm](https://github.com/creationix/nvm) (or [nvm-windows](https://github.com/coreybutler/nvm-windows))
-    to easily switch between Node.js versions.
-  - Run `nvm use` to set your node version to the one this package expects.  If it is not installed, this program will tell you the command needed to install the required version.
-  - Install the latest npm to enable security audits using `npm install npm@latest -g`
+  - We recommend using [nvm](https://github.com/creationix/nvm) (or [nvs](https://github.com/jasongin/nvs) on Windows _(not WSL)_) to easily switch between Node.js versions
+  - Run `nvm use` to set your node version to the one this package expects
+    - If the required node version is not installed, `nvm`/`nvs` will tell you the command needed to install it
+  - Install the latest npm to enable security audits using `npm install -g npm@latest`
 - [Git](https://git-scm.com/)
 - [node-gyp](https://www.npmjs.com/package/node-gyp)
-  - This is used during the dependency install process and is used to compile some native add-on modules.
+  - This is used during the dependency install process and is used to compile some native add-on modules
   - Install with `npm install -g node-gyp`
+    - On Windows _(not WSL)_, follow [Option 1](https://github.com/nodejs/node-gyp#option-1) on node-gyp's repo, as this will automatically install python 2 and neccessary build dependencies
 - [Python 2.7](https://www.python.org/download/releases/2.7/)
-  - This is also used during the dependency install process.
+  - This is also used during the dependency install process
   - Attempting to update dependencies with a Python 3.x environment will fail
+
+> #### NOTE FOR WINDOWS 10
+>
+> **We suggest using [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/about) (WSL) for the best experience on Windows.** We've seen multiple tooling/package related errors when trying to build on a regular Windows environment. The build errors are a result of third-party node_modules that we do not maintain. These issues are not seen when using WSL.
 
 You will need to create a file called `.env` that defines, at a minimum:
 
@@ -99,6 +105,41 @@ You will need to create a file called `.env` that defines, at a minimum:
 - `WEBEX_SCOPE`
 
 You can get these values by registering a new integration on the [Cisco Webex for Developers](https://developer.webex.com/add-integration.html) portal.
+
+### Environment Variables
+
+The JS SDK allows you to customize your experience via configuration and environment variables.
+
+| **Environment Variable** | **Details** | **Default** |
+|---|---|---|
+| ATLAS_SERVICE_URL | Used to populate the atlasServiceUrl pre discovery config | https://atlas-a.wbx2.com/admin/api/v1 |
+| CLIENT_LOGS_SERVICE_URL | Used to populate the clientLogsServiceUrl pre discovery config | https://client-logs-a.wbx2.com/api/v1 |
+| CONVERSATION_SERVICE | Used for validating an auth token | https://conv-a.wbx2.com/conversation/api/v1 |
+| ENABLE_MERCURY_LOGGING | When set, will log all mercury messages | undefined |
+| ENABLE_VERBOSE_NETWORK_LOGGING | Utilized to enable interceptor logging | undefined |
+| ENCRYPTION_SERVICE_URL | Used for plugin-board tests | https://encryption-a.wbx2.com |
+| HYDRA_SERVICE_URL | Stores the public hydra api url for managing Webex Teams resources. | https://api.ciscospark.com/v1/ |
+| IDBROKER_BASE_URL | Used throughout the SDK as the endpoint for authorization | https://idbroker.webex.com |
+| IDENTITY_BASE_URL | Used to communicate with the identity api | https://identity.webex.com |
+| MERCURY_FORCE_CLOSE_DELAY | Milliseconds to wait for a before declaring the socket dead | 2000 |
+| MERCURY_PING_INTERVAL | Milliseconds between pings sent up the socket | 15000 |
+| MERCURY_PONG_TIMEOUT | Milliseconds to wait for a pong before declaring the connection dead | 14000 |
+| METRICS_SERVICE_URL | Used to populate the metricsServiceUrl pre discovery config | https://metrics-a.wbx2.com/metrics/api/v1 |
+| U2C_SERVICE_URL | Stores the service catalog collecting url, typically the **U2C** service. | https://u2c.wbx2.com/u2c/api/v1 |
+| WEBEX_ACCESS_TOKEN | Used to provide access token when using "webex/env" | undefined |
+| WEBEX_AUTHORIZE_URL | Populdates the Authorization URL which prompts for user's password. | https://idbroker.webex.com/idb/oauth2/v1/authorize |
+| WEBEX_AUTHORIZATION_STRING | This is the authorization url displayed on the developer portal | undefined |
+| WEBEX_CLIENT_ID | The Webex client ID used to authorize | undefined |
+| WEBEX_CLIENT_SECRET | The Webex client secret used to authorize | undefined |
+| WEBEX_CONVERSATION_CLUSTER_SERVICE | Service identifier used to lookup conversation servers in hostmap | identityLookup |
+| WEBEX_CONVERSATION_DEFAULT_CLUSTER | Cluster used to convert from "us" cluster to actual cluster | urn:TEAM:us-east-2_a:identityLookup |
+| WEBEX_LOG_LEVEL | Maximum log level that should be printed to the console. | log |
+| WEBEX_REDIRECT_URI | The URI to redirect to after authorization | undefined |
+| WEBEX_SCOPE | The Webex scope the users will authorize with | undefined |
+| WDM_SERVICE_URL | The WDM service url before the catalog is downloaded | https://wdm-a.wbx2.com/wdm/api/v1 |
+| WHISTLER_API_SERVICE_URL | The url to the whistler test service | https://whistler-prod.onint.ciscospark.com/api/v1 |
+
+
 
 ### Building the SDK
 
@@ -168,7 +209,7 @@ The `--packages` flags will allow you to test multiple packages in one command i
 `--browser --karma-debug` will run the browser tests with `{singleRun: false}`, thus allowing automatic rerunning everytime you save a file (though, karma does eventually get confused and you need to interrupt and restart the command).
 
 You can use the `--browsers` _(not to be confused with the `--browser` tag)_ allows you to specify which browsers you want to run locally. This is restricted to what browsers are installed and available to you on your OS.
-The default browsers that launch are _Headless_ version of Firefox and Chrome, so `--browsers Chrome Edge` will only launch a normal version of Chrome along with Edge. If you add `defaults` to the browsers flag, it will also launch `ChromeHeadless` and `FirefoxHeadless` along with other browsers you've specified.
+The default browsers that launch are _Headless_ version of Firefox and Chrome, so `--browsers Chrome Edge` will only launch a normal version of Chrome along with Edge. If you add `defaults` to the browsers flag, it will also launch `ChromeHeadless` and `FirefoxHeadless` along with other browsers you've specified. All browsers include flags to enable WebRTC features and permissions.
 
 To run tests on [SauceLabs](https://saucelabs.com/) locally, you'll need to add a inline environment variable, `SAUCE=true`. Like mentioned above you can specify which browsers you'd like to test on with the `--browers` flag, but with SauceLabs service available to you, you can also specify which OS you'd like to test on. With the `--os` flag you have the option on testing on `Mac` and `Windows`. You can filter down the browsers that get launched by using the `--browsers` flag, so if you use `--os Windows --browsers Edge IE` it will launch only `Edge` and `IE`. Specifying just `--browsers` with `SAUCE=true` will launch that browsers in all available OSs, so `--browsers Firefox` will launch `Firefox` in `Mac` and `Windows`.
 > **The default SauceLabs configuration _"`SAUCE=true npm run test`"_ is the latest versions of `Chrome` and `Firefox` on both `Mac` and `Windows`, along with `Edge` and `IE 11` on Windows, and `Safari` on Mac**
@@ -206,6 +247,10 @@ npm run samples:serve
 >     - Also *globally* install `win-node-env` to resolve `NODE_ENV` windows related command issues
 
 Head to [https://localhost:8000/](https://localhost:8000/) to use the samples
+
+> NOTE: The samples use a self-signed certificate generated by [Webpack Dev Server](https://webpack.js.org/configuration/dev-server/#devserverhttps).
+> Some browsers such as Google Chrome (or any other Chromium-based browser) may not allow access by default for security reasons.
+> You may need to configure browser settings to allow these at your own risk by enabling the `chrome://flags/#allow-insecure-localhost` flag.
 
 #### Samples Tests
 

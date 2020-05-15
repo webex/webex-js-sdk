@@ -39,3 +39,6 @@ bundle.js.map
 packages/node_modules/samples/webex.min.js
 packages/node_modules/samples/webex.min.js.map
 packages/node_modules/samples/index.html
+
+# patch-package
+patches.hash

@@ -95,7 +95,6 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
           NODE_ENV: 'production',
           // The following environment variables are specific to our continuous
           // integration process and should not be used in general
-          ACL_SERVICE_URL: 'https://acl-intb.ciscospark.com/acl/api/v1',
           ATLAS_SERVICE_URL: 'https://atlas-intb.ciscospark.com/admin/api/v1',
           CONVERSATION_SERVICE: 'https://conversation-intb.ciscospark.com/conversation/api/v1',
           ENCRYPTION_SERVICE_URL: 'https://encryption-intb.ciscospark.com/encryption/api/v1',
@@ -119,7 +118,6 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
         new DefinePlugin({
           'process.env': {
             // Use production URLs with samples
-            ACL_SERVICE_URL: JSON.stringify('https://acl-a.wbx2.com/acl/api/v1'),
             ATLAS_SERVICE_URL: JSON.stringify('https://atlas-a.wbx2.com/admin/api/v1'),
             CONVERSATION_SERVICE: JSON.stringify('https://conv-a.wbx2.com/conversation/api/v1'),
             ENCRYPTION_SERVICE_URL: JSON.stringify('https://encryption-a.wbx2.com'),
