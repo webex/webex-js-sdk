@@ -19,7 +19,7 @@ npm install --save webex
   - [Usage](#usage)
     - [Shell Script (Quick Start)](#shell-script-quick-start)
     - [Browser](#browser)
-      - [Bundling](#bundling)
+    - [Bundling](#bundling)
     - [NodeJS](#nodejs)
 
 ### Shell Script (Quick Start)
@@ -67,7 +67,7 @@ webex.once(`ready`, () => {
 
 ```
 
-#### Bundling
+### Bundling
 
 You'll need to bundle the SDK to use it in a web browser. Right now, we do all our SDK testing with [Browserify](http://browserify.org/), but our [Cisco Webex Widgets](https://github.com/webex/react-ciscospark) use [webpack](https://webpack.github.io/).
 
