@@ -38,7 +38,7 @@ npm install --save webex
 
 ## Basic usage
 
-So, you want to send a message. First, you need an access token. For demonstration purposes, we'll use environment variables to authorize the SDK. You can get an access token from the [Cisco Webex Developer Portal](https://developer.webex.com/).
+So, you want to send a message. First, you need an access token. For demonstration purposes, we'll use environment variables to authorize the SDK. You can get an access token from the [Cisco Webex for Developers portal](https://developer.webex.com/).
 
 Create a new file in your project directory named `index.js` and add the following to it:
 
@@ -54,7 +54,7 @@ webex.rooms.create({
   });
 ```
 
-Now, open the [Cisco Webex Teams Client](https://web.ciscospark.com) so you see your code in action. Then, back in your terminal, run the following command.
+Now, open the [Cisco Webex Teams Client](https://teams.webex.com) so you see your code in action. Then, back in your terminal, run the following command.
 
 ```bash
 WEBEX_ACCESS_TOKEN=<YOUR TOKEN FROM THE PORTAL> node index.js

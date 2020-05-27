@@ -16,7 +16,7 @@ toc:
   - Meetings
   - name: Resources
     description: |
-      These are the resources provided by Webex instances for interacting with our [developer API](https://developer.webex.com/getting-started.html)
+      These are the resources provided by Webex instances for interacting with our [developer API](https://developer.webex.com/docs/api/getting-started)
   - Memberships
   - Messages
   - People
