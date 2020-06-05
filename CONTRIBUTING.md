@@ -104,7 +104,7 @@ You will need to create a file called `.env` that defines, at a minimum:
 - `WEBEX_REDIRECT_URI`
 - `WEBEX_SCOPE`
 
-You can get these values by registering a new integration on the [Cisco Webex for Developers](https://developer.webex.com/add-integration.html) portal.
+You can get these values by registering a new integration on [Cisco Webex for Developers](https://developer.webex.com/my-apps/new/integration).
 
 ### Environment Variables
 
@@ -128,7 +128,7 @@ The JS SDK allows you to customize your experience via configuration and environ
 | U2C_SERVICE_URL | Stores the service catalog collecting url, typically the **U2C** service. | https://u2c.wbx2.com/u2c/api/v1 |
 | WEBEX_ACCESS_TOKEN | Used to provide access token when using "webex/env" | undefined |
 | WEBEX_AUTHORIZE_URL | Populdates the Authorization URL which prompts for user's password. | https://idbroker.webex.com/idb/oauth2/v1/authorize |
-| WEBEX_AUTHORIZATION_STRING | This is the authorization url displayed on the developer portal | undefined |
+| WEBEX_AUTHORIZATION_STRING | This is the authorization url for the integration from [Cisco Webex for Developers](https://developer.webex.com/my-apps) | undefined |
 | WEBEX_CLIENT_ID | The Webex client ID used to authorize | undefined |
 | WEBEX_CLIENT_SECRET | The Webex client secret used to authorize | undefined |
 | WEBEX_CONVERSATION_CLUSTER_SERVICE | Service identifier used to lookup conversation servers in hostmap | identityLookup |
