@@ -359,13 +359,11 @@ module.exports = function (packageName, argv) {
           [key]:
           {
             ...browser,
-            'goog:chromeOptions': {
-              args: [
-                '--disable-features=WebRtcHideLocalIpsWithMdns',
-                '--use-fake-device-for-media-stream',
-                '--use-fake-ui-for-media-stream'
-              ]
-            }
+            flags: [
+              '--disable-features=WebRtcHideLocalIpsWithMdns',
+              '--use-fake-device-for-media-stream',
+              '--use-fake-ui-for-media-stream'
+            ]
           },
         };
       } else if (
@@ -394,13 +392,11 @@ module.exports = function (packageName, argv) {
           [key]:
           {
             ...browser,
-            'ms:edgeOptions': {
-              args: [
-                '--disable-features=WebRtcHideLocalIpsWithMdns',
-                '--use-fake-device-for-media-stream',
-                '--use-fake-ui-for-media-stream'
-              ]
-            }
+            flags: [
+              '--disable-features=WebRtcHideLocalIpsWithMdns',
+              '--use-fake-device-for-media-stream',
+              '--use-fake-ui-for-media-stream'
+            ]
           },
         };
       }
