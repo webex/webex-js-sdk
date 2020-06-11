@@ -19,7 +19,7 @@ npm install --save webex
   - [Usage](#usage)
     - [Shell Script (Quick Start)](#shell-script-quick-start)
     - [Browser](#browser)
-      - [Bundling](#bundling)
+    - [Bundling](#bundling)
     - [NodeJS](#nodejs)
 
 ### Shell Script (Quick Start)
@@ -32,13 +32,13 @@ This is the quickest way to get up and running with our JavaScript SDK. Simply s
 const webex = require(`webex/env`);
 ```
 
-> `webex/env` is also a great way to get started with [bots](https://developer.webex.com/bots.html).
+> `webex/env` is also a great way to get started with [bots](https://developer.webex.com/docs/bots).
 
 ### Browser
 
 Our JavaScript SDK provides out-of-the-box support for the [OAuth 2.0 Implicit Grant Flow](https://tools.ietf.org/html/rfc6749#section-4.2).
 
-> You'll need to [register an OAuth Client](https://developer.webex.com/add-integration.html) to get your "authorization string"
+> You'll need to [register an OAuth Client](https://developer.webex.com/my-apps/new/integration) to get your "authorization string"
 
 Use the steps under [Bundling](#bundling) (or something similar) to get the SDK into your browser, then use the following JavaScript to get started:
 
@@ -67,7 +67,7 @@ webex.once(`ready`, () => {
 
 ```
 
-#### Bundling
+### Bundling
 
 You'll need to bundle the SDK to use it in a web browser. Right now, we do all our SDK testing with [Browserify](http://browserify.org/), but our [Cisco Webex Widgets](https://github.com/webex/react-ciscospark) use [webpack](https://webpack.github.io/).
 

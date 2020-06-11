@@ -56,9 +56,14 @@ jobs:
       - run:
           name: 'Install dependencies'
           command: npm ci
+      # Cache workaround to cache patch changes
+      # https://github.com/ds300/patch-package#docker-and-ci
+      - run:
+          name: 'Hash patch-package patches'
+          command: cat patches/* | md5sum > patches.hash
       # Cache node_modules across different internal jobs in the workflow and across different circleci runs
       - save_cache:
-          key: node-modules-cache-node-dubnium-npm-6-v1-{{ checksum "package-lock.json" }}
+          key: node-modules-cache-node-dubnium-npm-6-v1-{{ checksum "package-lock.json" }}-{{ checksum "patches.hash" }}
           paths:
             - node_modules
       - run:
@@ -93,7 +98,6 @@ jobs:
     executor: main-executor
     environment:
       NODE_ENV: production
-      ACL_SERVICE_URL: "https://acl-a.wbx2.com/acl/api/v1"
       ATLAS_SERVICE_URL: "https://atlas-a.wbx2.com/admin/api/v1"
       CONVERSATION_SERVICE: "https://conv-a.wbx2.com/conversation/api/v1"
       ENCRYPTION_SERVICE_URL: "https://encryption-a.wbx2.com"
@@ -492,6 +496,11 @@ workflows:
       - tap:
           name: '@webex/plugin-meetings tap'
           package: '@webex/plugin-meetings'
+          requires:
+            - build_production
+      - tap:
+          name: '@webex/internal-plugin-conversation tap'
+          package: '@webex/internal-plugin-conversation'
           requires:
             - build_production
       - tap:

@@ -12,7 +12,7 @@ module.exports = {
     // Reminder: the first item in this object is used by pipeline builds
     sl_chrome_45_macOS_High_Sierra: {
       base: 'SauceLabs',
-      platform: 'macOS 10.13',
+      platform: 'macOS 10.15',
       browserName: 'Chrome',
       version: '45'
     },
