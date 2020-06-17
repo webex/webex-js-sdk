@@ -79,7 +79,7 @@ exports.config = {
   capabilities: process.env.SAFARI ? {
     browserFirefox: {
       desiredCapabilities: {
-        browserName: 'Safari',
+        browserName: 'safari',
         'webkit:WebRTC': {
           DisableInsecureMediaCapture: true
         },
@@ -141,7 +141,7 @@ exports.config = {
   } : {
     browserFirefox: {
       desiredCapabilities: {
-        browserName: 'Firefox',
+        browserName: 'firefox',
         'moz:firefoxOptions': {
           ...(CI ? {
             args: [
@@ -172,7 +172,7 @@ exports.config = {
     },
     browserChrome: {
       desiredCapabilities: {
-        browserName: 'Chrome',
+        browserName: 'chrome',
         'goog:chromeOptions': {
           args: [
             '--disable-features=WebRtcHideLocalIpsWithMdns',
