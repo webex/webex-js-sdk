@@ -513,10 +513,6 @@ exports.config = {
         '*.ciscospark.com'
       ],
       tunnelDomains: [
-        'whistler-prod.onint.ciscospark.com',
-        'whistler.onint.ciscospark.com',
-        'internal-testing-services.wbx2.com',
-        'calendar-whistler.onint.ciscospark.com',
         '127.0.0.1',
         'localhost'
       ],
