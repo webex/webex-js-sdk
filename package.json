@@ -85,6 +85,9 @@
     "serve:package": "webpack-dev-server --config webpack/webpack.config.js --hot --inline --history-api-fallback",
     "samples:test": "NODE_ENV=test wdio",
     "tooling": "babel-node ./tooling/index.js",
+    "release": "semantic-release",
+    "release:debug": "semantic-release --debug",
+    "release:dry-run": "semantic-release --dry-run",
     "postinstall": "patch-package"
   },
   "dependencies": {
@@ -298,5 +301,10 @@
       "commit-msg": "commitlint --verbose -e $HUSKY_GIT_PARAMS",
       "pre-commit": "npm run --silent srcdist && npm run --silent lint:staged"
     }
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "^5.0.1",
+    "@semantic-release/git": "^7.0.16",
+    "semantic-release": "^15.13.19"
   }
 }
