@@ -5,6 +5,7 @@
 [![npm](https://img.shields.io/npm/v/webex.svg?maxAge=86400)](https://www.npmjs.com/package/webex)
 [![license](https://img.shields.io/github/license/webex/webex-js-sdk.svg)](https://github.com/webex/webex-js-sdk/blob/master/LICENSE)
 [![Build status](https://ci.appveyor.com/api/projects/status/tb1i5vdhy5e3xsgv/branch/master?svg=true)](https://ci.appveyor.com/project/ianwremmel/webex-js-sdk/branch/master)
+[![Semantic Release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](#release-process)
 
 # The Cisco Webex JS SDK
 
@@ -23,6 +24,7 @@ This is a monorepo containing all officially maintained Cisco Webex JS SDK modul
       - [_Still using `webex/env` or `ciscospark/env`?_](#still-using-webexenv-or-ciscosparkenv)
   - [Samples](#samples)
   - [Contribute](#contribute)
+  - [Release Process](#release-process)
   - [License](#license)
 
 ## Install
@@ -183,6 +185,19 @@ Samples | Hosted
 
 Pull requests welcome. Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for more details about building the packages
 and submitting pull requests for suggested changes.
+
+## Release Process
+
+There is a list of commit types provided [here](https://github.com/webex/webex-js-sdk/blob/master/CONTRIBUTING.md#type). However, not all commits trigger our release process.
+We are using [semantic-release](https://github.com/semantic-release/semantic-release) to fully automate the version management and package publishing.
+By default `semantic-release` uses the [Angular Commit Message Conventions](https://github.com/angular/angular.js/blob/master/DEVELOPERS.md#-git-commit-guidelines) and triggers release and publishing based on the following rules:
+
+| Commit                             | Release type  |
+| ---------------------------------- | ------------- |
+| Commit with type `BREAKING CHANGE` | Major release |
+| Commit with type `feat`            | Minor release |
+| Commit with type `fix`             | Patch release |
+| Commit with type `perf`            | Patch release |
 
 ## License
 
