@@ -79,7 +79,7 @@ exports.config = {
   capabilities: process.env.SAFARI ? {
     browserFirefox: {
       desiredCapabilities: {
-        browserName: 'Safari',
+        browserName: 'safari',
         'webkit:WebRTC': {
           DisableInsecureMediaCapture: true
         },
@@ -141,7 +141,7 @@ exports.config = {
   } : {
     browserFirefox: {
       desiredCapabilities: {
-        browserName: 'Firefox',
+        browserName: 'firefox',
         'moz:firefoxOptions': {
           ...(CI ? {
             args: [
@@ -172,7 +172,7 @@ exports.config = {
     },
     browserChrome: {
       desiredCapabilities: {
-        browserName: 'Chrome',
+        browserName: 'chrome',
         'goog:chromeOptions': {
           args: [
             '--disable-features=WebRtcHideLocalIpsWithMdns',
@@ -513,10 +513,6 @@ exports.config = {
         '*.ciscospark.com'
       ],
       tunnelDomains: [
-        'whistler-prod.onint.ciscospark.com',
-        'whistler.onint.ciscospark.com',
-        'internal-testing-services.wbx2.com',
-        'calendar-whistler.onint.ciscospark.com',
         '127.0.0.1',
         'localhost'
       ],
