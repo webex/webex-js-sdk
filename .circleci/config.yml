@@ -329,19 +329,8 @@ jobs:
           command: echo "export VERSION=$(npm run --silent get-next-version | xargs)" >> $BASH_ENV
       - run: echo ${VERSION}
       - run:
-          name: 'Build Packages'
-          command: npm run build
-      - run:
-          name: 'Build UMD script'
-          command: npm run build:script
-      - run:
-          name: 'Bump all package version'
-          command: npm run tooling -- version set ${VERSION} --all
-      - run:
-          name: 'Commit bumped version'
-          command: |
-            git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json packages/node_modules/webex/umd/*.js
-            git commit -m "chore(release): v${VERSION} [skip ci]"
+          name: 'Build and Bump Version + Generate Changelog'
+          command: "npm version ${VERSION} -m 'chore(release): v%s [skip ci]'"
       - run:
           name: 'Push to upstream/master'
           command: git push upstream HEAD:master
