@@ -222,6 +222,7 @@
     "safe-buffer": "^5.2.0",
     "sdp-transform": "^2.12.0",
     "sinon": "^7.4.1",
+    "standard-changelog": "^2.0.24",
     "supertest": "^3.4.2",
     "terser-webpack-plugin": "^2.3.5",
     "time-grunt": "^1.4.0",
