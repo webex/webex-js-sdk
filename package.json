@@ -49,6 +49,7 @@
     "test:samples": "echo 'Deprecated. Please use npm run samples:test'; npm run --silent samples:test",
     "samples:build": "babel-node ./tooling/index.js build --only-samples",
     "samples:serve": "NODE_ENV=development webpack-dev-server -d",
+    "samples:serve:integration": "NODE_ENV=test webpack-dev-server -d",
     "samples:devicemanager": "npm run serve:package -- --env.package @webex/plugin-device-manager --env.entry ./webex.js",
     "serve:package": "webpack-dev-server --config webpack/webpack.config.js --hot --inline --history-api-fallback",
     "samples:test": "NODE_ENV=test wdio",
