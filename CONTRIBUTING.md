@@ -278,7 +278,21 @@ If you wish to run the samples tests locally, we suggest changing from the Chrom
 
 You can do so by modifying the [wdio.conf.js](./wdio.conf.js) file.
 Simply change the `browserFirefox`'s `desiredCapabilities` object to the same as `browserChrome` (the Chrome instance).
-When you run, you should see two instances of Chrome open.
+When you run, you should see two instances of Chrome open.  
+
+To Run end to end tests locally you will need the following env variables
+ WEBEX_APPID_ORGID  
+ WEBEX_APPID_SECRET  
+ WEBEX_CLIENT_SECRET  
+
+To Run Sauce Labs Tests set ```SAUCE=true```  
+You will also need these env variables  
+ SAUCE_USERNAME  
+ SAUCE_ACCESS_KEY  
+
+To skip flaky tests set ``` SKIP_FLAKY_TESTS=true```  
+
+To retrieve these values please email [devsupport@webex.com](mailto:devsupport@webex.com)  
 
 ### Git Commit Guidelines
 
