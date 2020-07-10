@@ -280,7 +280,8 @@ You can do so by modifying the [wdio.conf.js](./wdio.conf.js) file.
 Simply change the `browserFirefox`'s `desiredCapabilities` object to the same as `browserChrome` (the Chrome instance).
 When you run, you should see two instances of Chrome open.  
 
-To Run end to end tests locally you will need the following env variables  
+To Run end to end tests locally you will need the following env variables 
+These are to create test users   
  WEBEX_APPID_ORGID  
  WEBEX_APPID_SECRET  
  WEBEX_CLIENT_SECRET  
