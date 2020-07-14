@@ -179,7 +179,6 @@
     "on-finished": "^2.3.0",
     "parse-headers": "^2.0.2",
     "patch-package": "^6.2.2",
-    "pkg-up": "^2.0.0",
     "pkijs": "^2.1.84",
     "ps-node": "^0.1.6",
     "qs": "^6.7.0",
@@ -275,8 +274,7 @@
   },
   "standard-version": {
     "scripts": {
-      "prerelease": "npm run build",
-      "postbump": "npm run build:script && git add packages/node_modules/webex/umd/*.js",
+      "postbump": "npm run build && npm run build:script && git add packages/node_modules/webex/umd/*.js",
       "release": "git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json CHANGELOG.md && standard-version -a"
     }
   }
