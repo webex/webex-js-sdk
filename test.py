@@ -32,7 +32,7 @@ INT_ENV_VARS = {
   'IDENTITY_BASE_URL': 'https://identitybts.webex.com',
   'U2C_SERVICE_URL': 'https://u2c-intb.ciscospark.com/u2c/api/v1',
   'WDM_SERVICE_URL': 'https://wdm-intb.ciscospark.com/wdm/api/v1',
-  'WHISTLER_API_SERVICE_URL': 'https://whistler.onint.ciscospark.com/api/v1',
+  'WHISTLER_API_SERVICE_URL': 'https://whistler.allnint.ciscospark.com/api/v1',
   # Logging
   'ENABLE_VERBOSE_NETWORK_LOGGING': 'true'
 }

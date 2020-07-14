@@ -137,7 +137,7 @@ The JS SDK allows you to customize your experience via configuration and environ
 | WEBEX_REDIRECT_URI | The URI to redirect to after authorization | undefined |
 | WEBEX_SCOPE | The Webex scope the users will authorize with | undefined |
 | WDM_SERVICE_URL | The WDM service url before the catalog is downloaded | https://wdm-a.wbx2.com/wdm/api/v1 |
-| WHISTLER_API_SERVICE_URL | The url to the whistler test service | https://whistler-prod.onint.ciscospark.com/api/v1 |
+| WHISTLER_API_SERVICE_URL | The url to the whistler test service | https://whistler-prod.allnint.ciscospark.com/api/v1 |
 
 
 
