@@ -375,6 +375,19 @@ git rebase master
 
 Finally, open a [new Pull Request](https://github.com/webex/webex-js-sdk/compare) with your changes. Be sure to mention the issues this request addresses in the body of the request. Once your request is opened, a developer will review, comment, and, when approved, merge your changes!
 
+### Pull Request Checklist
+
+Before you open that new pull request, make sure to have completed the following checklist:
+
+- Code follows the style guidelines of this project
+- I have performed a self-review of my own code
+- I have commented my code, particularly in hard-to-understand areas
+- I have made corresponding changes to the documentation
+- My changes generate no new warnings
+- I have added tests that prove my fix is effective or that my feature works
+- New and existing unit tests pass locally with my changes
+- Any dependent changes have been merged and published in downstream modules
+
 ## Updating the Documentation
 
 To compile the documentation locally, make sure you have [Bundler](http://bundler.io/) or
