@@ -323,25 +323,30 @@ jobs:
       - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
       - run:
           name: 'Grab Current Version Number'
-          command: echo "export CURRENT_VERSION=$(npm run --silent tooling -- version current | xargs)" >> $BASH_ENV
+          command: echo "export CURRENT_VERSION=$(node -p "require('./package.json').version")" >> $BASH_ENV
       - run:
           name: 'Run standard-version'
           command: npm run release
       - run:
+          name: 'Grab Upcoming Version Number'
+          command: echo "export UPCOMING_VERSION=$(node -p "require('./package.json').version")" >> $BASH_ENV
+      - run:
+          name: 'Check if we need to publish a new version'
+          command: |
+            echo "Current Version: $CURRENT_VERSION"
+            echo "Upcoming Version: $UPCOMING_VERSION"
+
+            if [[ "$CURRENT_VERSION" == "$UPCOMING_VERSION" ]]; then
+              circleci step halt
+            fi
+      - run:
           name: 'Publish to NPM'
           command: |
-            UPCOMING_VERSION=$(npm run --silent tooling -- version current | xargs)
-
-            if [[ "$CURRENT_VERSION" == "$UPCOMING_VERSION" ]]
-            then
-              circleci step halt
-            else
               echo "Generate Package Dependencies"
               npm run deps:generate
 
               echo "Publish to NPM"
               npm run tooling -- exec -- bash -c 'npm publish --access public || true'
-            fi
       - run:
           name: 'Push to upstream/master'
           command: git push --follow-tags upstream master
