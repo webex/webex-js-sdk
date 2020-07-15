@@ -1,3 +1,20 @@
+# Changelog
+
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+## [1.81.0](https://github.com/webex/webex-js-sdk/compare/v1.80.273...v1.81.0) (2020-07-15)
+
+
+### Features
+
+* **services:** update whistler endpoint [skip ci] ([c3dde2f](https://github.com/webex/webex-js-sdk/commit/c3dde2f6b6c9c173adb805f9dbbe441483d3fde6))
+* use standard-version for semver version bumping ([91c071e](https://github.com/webex/webex-js-sdk/commit/91c071e136abd88ab737e3cd61cc144402c62a46))
+
+
+### Bug Fixes
+
+* **circleci:** tweak command to get current version numbers ([c169854](https://github.com/webex/webex-js-sdk/commit/c16985407579a65fb0d1790167fd89c5070f610b))
+
 ## [1.80.273](https://github.com/webex/webex-js-sdk/compare/v1.80.272...v1.80.273) (2020-07-14)
 
 
@@ -7812,6 +7829,3 @@ CiscoSpark instance, but instead, the CiscoSpark constructor
 ### Features
 
 * **ciscospark:** Initial commit for github.com ([7efa10f](https://github.com/webex/webex-js-sdk/commit/7efa10fd608e08a8d1e7a7b60a05d30d76f88861))
-
-
-
