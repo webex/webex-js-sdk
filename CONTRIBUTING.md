@@ -283,7 +283,7 @@ When you run, you should see two instances of Chrome open.
 
 ### Git Commit Guidelines
 
-As part of the build process, commits are run through [conventional changelog](https://github.com/conventional-changelog/conventional-changelog)
+We follow the (Conventional Commits)[https://www.conventionalcommits.org/] specification when writing commits and are run/linted through [conventional changelog](https://github.com/conventional-changelog/conventional-changelog)
 to generate the changelog. Please adhere to the following guidelines when formatting your commit messages.
 
 #### Commit Message Format
@@ -307,6 +307,8 @@ Any line of the commit message cannot be longer 100 characters! This allows the 
 If the commit reverts a previous commit, it should begin with `revert:`, followed by the header of the reverted commit. In the body it should say: `This reverts commit <hash>`., where the hash is the SHA of the commit being reverted.
 
 #### Type
+
+> Examples can be found on the (Conventional Commits website)[https://www.conventionalcommits.org/en/v1.0.0/#examples]
 
 The following types will cause a version bump:
 
