@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.81.4](https://github.com/webex/webex-js-sdk/compare/v1.81.3...v1.81.4) (2020-07-17)
+
+
+### Bug Fixes
+
+* **plugin-messages:** properly encode clusters in websocket events ([354f18a](https://github.com/webex/webex-js-sdk/commit/354f18aa61bcfa4945eafa408744840d18df76d3))
+
 ### [1.81.3](https://github.com/webex/webex-js-sdk/compare/v1.81.2...v1.81.3) (2020-07-17)
 
 ### [1.81.2](https://github.com/webex/webex-js-sdk/compare/v1.81.1...v1.81.2) (2020-07-17)
