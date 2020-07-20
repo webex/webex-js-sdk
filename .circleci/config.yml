@@ -325,6 +325,17 @@ jobs:
           name: 'Grab Current Version Number'
           command: echo "export CURRENT_VERSION=$(node -p "require('./package.json').version")" >> $BASH_ENV
       - run:
+          name: 'Check if we need to bump'
+          command: |
+            if ! \
+              { git log "$( git describe --tags --abbrev=0 )..HEAD" --format='%s' | cut -d: -f1 | sort -u | sed -e 's/([^)]*)//' | grep -q -i -E '^feat|fix|perf|revert$' ; } || \
+              { git log "$( git describe --tags --abbrev=0 )..HEAD" --format='%s' | cut -d: -f1 | sort -u | sed -e 's/([^)]*)//' | grep -q -E '\!$' ; } || \
+              { git log "$( git describe --tags --abbrev=0 )..HEAD" --format='%b' | grep -q -E '^BREAKING CHANGE:' ; }
+            then
+              echo "No applicable changes since the previous tag, skipping..."
+              circleci step halt
+            fi
+      - run:
           name: 'Run standard-version'
           command: npm run release
       - run:
