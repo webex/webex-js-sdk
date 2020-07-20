@@ -293,9 +293,6 @@ jobs:
           fingerprints:
             - "89:ed:56:33:f5:1b:7b:b6:a1:04:02:a0:f9:47:13:0a"
       - run:
-          name: 'Grab Current Version Number'
-          command: echo "export CURRENT_VERSION=$(npm run --silent get-current-version | xargs)" >> $BASH_ENV
-      - run:
           name: 'Temporary change origin url to HTTPS for documentation generation'
           command: git remote set-url origin https://github.com/webex/webex-js-sdk.git
       - run:
@@ -325,38 +322,34 @@ jobs:
             fi
       - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
       - run:
-          name: 'Generate Version Number'
-          command: echo "export VERSION=$(npm run --silent get-next-version | xargs)" >> $BASH_ENV
-      - run: echo ${VERSION}
+          name: 'Grab Current Version Number'
+          command: echo "export CURRENT_VERSION=$(node -p "require('./package.json').version")" >> $BASH_ENV
       - run:
-          name: 'Build Packages'
-          command: npm run build
+          name: 'Run standard-version'
+          command: npm run release
       - run:
-          name: 'Build UMD script'
-          command: npm run build:script
+          name: 'Grab Upcoming Version Number'
+          command: echo "export UPCOMING_VERSION=$(node -p "require('./package.json').version")" >> $BASH_ENV
       - run:
-          name: 'Bump all package version'
-          command: npm run tooling -- version set ${VERSION} --all
-      - run:
-          name: 'Commit bumped version'
+          name: 'Check if we need to publish a new version'
           command: |
-            git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json packages/node_modules/webex/umd/*.js
-            git commit -m "chore(release): v${VERSION} [skip ci]"
-      - run:
-          name: 'Push to upstream/master'
-          command: git push upstream HEAD:master
-      - run:
-          name: 'Tag for release'
-          command: git tag "v${VERSION}"
-      - run:
-          name: 'Push tagged release to upstream/master'
-          command: git push upstream v${VERSION}:v${VERSION}
-      - run:
-          name: 'Generate Package Dependencies'
-          command: npm run deps:generate
+            echo "Current Version: $CURRENT_VERSION"
+            echo "Upcoming Version: $UPCOMING_VERSION"
+
+            if [[ "$CURRENT_VERSION" == "$UPCOMING_VERSION" ]]; then
+              circleci step halt
+            fi
       - run:
           name: 'Publish to NPM'
-          command: npm run tooling -- exec -- bash -c 'npm publish --access public || true'
+          command: |
+              echo "Generate Package Dependencies"
+              npm run deps:generate
+
+              echo "Publish to NPM"
+              npm run tooling -- exec -- bash -c 'npm publish --access public || true'
+      - run:
+          name: 'Push to upstream/master'
+          command: git push --follow-tags upstream master
   tap:
     executor: main-executor
     parameters:

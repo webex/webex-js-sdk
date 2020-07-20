@@ -2,20 +2,9 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-const pkgUp = require('pkg-up');
 const t = require('babel-types');
 
-/**
- * Uses pkgUp to find the appropriate package.json for the specified babel state
- * object
- * @param {Object} state
- * @private
- * @returns {string}
- */
-function versionFromState(state) {
-  // eslint-disable-next-line global-require
-  return require(pkgUp.sync(state.file.opts.filename)).version;
-}
+const {version} = require('../package.json');
 
 /**
  * Simple babel transform for ensuring that every WebexPlugin (and WebexCore)
@@ -28,9 +17,8 @@ module.exports = function injectPackageVersion() {
       /**
        * Adds a version property to all SparkPlugins
        * @param {Object} path
-       * @param {Object} state
        */
-      CallExpression(path, state) {
+      CallExpression(path) {
         if (t.isMemberExpression(path.get('callee'))) {
           if (path.node.callee.object.name === 'WebexPlugin' && path.node.callee.property.name === 'extend') {
             const def = path.node.arguments[0];
@@ -39,7 +27,7 @@ module.exports = function injectPackageVersion() {
             if (!visited) {
               def.properties.push(t.objectProperty(
                 t.identifier('version'),
-                t.stringLiteral(versionFromState(state))
+                t.stringLiteral(version)
               ));
             }
           }
@@ -48,11 +36,10 @@ module.exports = function injectPackageVersion() {
       /**
        * Replaces the PACKAGE_VERSION constant with the current version
        * @param {Object} path
-       * @param {Object} state
        */
-      Identifier(path, state) {
+      Identifier(path) {
         if (path.node.name === 'PACKAGE_VERSION') {
-          path.replaceWithSourceString(`\`${versionFromState(state)}\``);
+          path.replaceWithSourceString(`\`${version}\``);
         }
       }
     }
