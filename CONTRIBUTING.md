@@ -313,6 +313,7 @@ If the commit reverts a previous commit, it should begin with `revert:`, followe
 The following types will cause a version bump:
 
 - **fix**: Patches a bug in the code and directly corresponds to the **PATCH**
+- **perf**: A code change that improves performance and corresponds to the **PATCH**
 - **feat**: Describes a new feature and corresponds to the **MINOR**
 - **BREAKING CHANGE**: a commit that has a footer `BREAKING CHANGE:`, or appends a `!` after the type/scope, introduces a breaking API change (correlating with **MAJOR** in semantic versioning).
 
@@ -323,14 +324,13 @@ The following types will _**not**_ cause a version bump:
 - **build**: Changes that affect the build system or external dependencies
 - **ci**: Changes to our CI configuration files and scripts
 - **docs**: Documentation only changes
-- **perf**: A code change that improves performance
-- **refactor**: A code change that neither fixes a bug, adds a feature, nor changes affecting the public API
+- **refactor**: A code change that neither fixes a bug, adds a feature, nor changes affecting the public API and corresponds to the **PATCH**
 - **style**: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
 - **test**: Adding missing tests or correcting existing tests
 
 #### Scope
 
-The scope should indicate what is being changed. Generally, these should match package names. For example, `http-core`, `common`, `ciscospark`, etc. Other than package names, `tooling` tends to be the most common.
+The scope should indicate what is being changed. Generally, these should match package names. For example, `http-core`, `common`, `webex`, etc. Other than package names, `tooling` tends to be the most common.
 
 #### Subject
 
