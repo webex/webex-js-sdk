@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.82.0](https://github.com/webex/webex-js-sdk/compare/v1.81.4...v1.82.0) (2020-07-20)
+
+
+### Features
+
+* **logging:** add config setting for buffer log level ([bc66b56](https://github.com/webex/webex-js-sdk/commit/bc66b564167ddb060acb3253dab5dfb792422884))
+
 ### [1.81.4](https://github.com/webex/webex-js-sdk/compare/v1.81.3...v1.81.4) (2020-07-17)
 
 
