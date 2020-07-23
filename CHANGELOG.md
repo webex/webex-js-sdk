@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.82.2](https://github.com/webex/webex-js-sdk/compare/v1.82.1...v1.82.2) (2020-07-23)
+
+
+### Bug Fixes
+
+* **webex-core:** services error cannot read message ([aa0d25e](https://github.com/webex/webex-js-sdk/commit/aa0d25e8ebf22d3cf5ee12300917f9f38e896e70))
+
 ### [1.82.1](https://github.com/webex/webex-js-sdk/compare/v1.82.0...v1.82.1) (2020-07-23)
 
 
