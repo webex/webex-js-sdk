@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.82.1](https://github.com/webex/webex-js-sdk/compare/v1.82.0...v1.82.1) (2020-07-23)
+
+
+### Bug Fixes
+
+* **plugin-messages:** should not have created in messages:deleted event ([ccfc11f](https://github.com/webex/webex-js-sdk/commit/ccfc11f9da5c5d5b11fce0431272a265ce4138d8))
+* **plugin-rooms:** generate updated events for locked/unlocked ([675cb38](https://github.com/webex/webex-js-sdk/commit/675cb381aa3c1cada025d350a138b6cfee663ccb))
+
 ## [1.82.0](https://github.com/webex/webex-js-sdk/compare/v1.81.4...v1.82.0) (2020-07-20)
 
 
