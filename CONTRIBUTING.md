@@ -45,6 +45,7 @@ If you would like to contribute to this repository by adding features, enhanceme
         - [`[skip npm]`](#skip-npm)
         - [`[skip ci]`](#skip-ci)
     - [Submitting a Pull Request](#submitting-a-pull-request)
+    - [Pull Request Checklist](#pull-request-checklist)
   - [Updating the Documentation](#updating-the-documentation)
     - [Set Up Environment (with Bundler)](#set-up-environment-with-bundler)
     - [Compile and Serve Docs](#compile-and-serve-docs)
@@ -137,7 +138,7 @@ The JS SDK allows you to customize your experience via configuration and environ
 | WEBEX_REDIRECT_URI | The URI to redirect to after authorization | undefined |
 | WEBEX_SCOPE | The Webex scope the users will authorize with | undefined |
 | WDM_SERVICE_URL | The WDM service url before the catalog is downloaded | https://wdm-a.wbx2.com/wdm/api/v1 |
-| WHISTLER_API_SERVICE_URL | The url to the whistler test service | https://whistler-prod.onint.ciscospark.com/api/v1 |
+| WHISTLER_API_SERVICE_URL | The url to the whistler test service | https://whistler-prod.allnint.ciscospark.com/api/v1 |
 
 
 
@@ -282,7 +283,7 @@ When you run, you should see two instances of Chrome open.
 
 ### Git Commit Guidelines
 
-As part of the build process, commits are run through [conventional changelog](https://github.com/conventional-changelog/conventional-changelog)
+We follow the (Conventional Commits)[https://www.conventionalcommits.org/] specification when writing commits and are run/linted through [conventional changelog](https://github.com/conventional-changelog/conventional-changelog)
 to generate the changelog. Please adhere to the following guidelines when formatting your commit messages.
 
 #### Commit Message Format
@@ -307,20 +308,29 @@ If the commit reverts a previous commit, it should begin with `revert:`, followe
 
 #### Type
 
-Must be one of the following:
+> Examples can be found on the (Conventional Commits website)[https://www.conventionalcommits.org/en/v1.0.0/#examples]
 
-- **feat**: A new feature
-- **fix**: A bug fix
+The following types will cause a version bump:
+
+- **fix**: Patches a bug in the code and directly corresponds to the **PATCH**
+- **perf**: A code change that improves performance and corresponds to the **PATCH**
+- **feat**: Describes a new feature and corresponds to the **MINOR**
+- **BREAKING CHANGE**: a commit that has a footer `BREAKING CHANGE:`, or appends a `!` after the type/scope, introduces a breaking API change (correlating with **MAJOR** in semantic versioning).
+
+> Appending a `!` and/or a `BREAKING CHANGE:` footer to **ANY TYPE** will denote a **BREAKING CHANGE** and will cause a **MAJOR** bump
+
+The following types will _**not**_ cause a version bump:
+
+- **build**: Changes that affect the build system or external dependencies
+- **ci**: Changes to our CI configuration files and scripts
 - **docs**: Documentation only changes
+- **refactor**: A code change that neither fixes a bug, adds a feature, nor changes affecting the public API and corresponds to the **PATCH**
 - **style**: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
-- **refactor**: A code change that neither fixes a bug nor adds a feature
-- **perf**: A code change that improves performance
-- **test**: Adding missing tests
-- **chore**: Changes to the build process or auxiliary tools and libraries such as documentation generation
+- **test**: Adding missing tests or correcting existing tests
 
 #### Scope
 
-The scope should indicate what is being changed. Generally, these should match package names. For example, `http-core`, `common`, `ciscospark`, etc. Other than package names, `tooling` tends to be the most common.
+The scope should indicate what is being changed. Generally, these should match package names. For example, `http-core`, `common`, `webex`, etc. Other than package names, `tooling` tends to be the most common.
 
 #### Subject
 
@@ -374,6 +384,19 @@ git rebase master
 ```
 
 Finally, open a [new Pull Request](https://github.com/webex/webex-js-sdk/compare) with your changes. Be sure to mention the issues this request addresses in the body of the request. Once your request is opened, a developer will review, comment, and, when approved, merge your changes!
+
+### Pull Request Checklist
+
+Before you open that new pull request, make sure to have completed the following checklist:
+
+- Code follows the style guidelines of this project
+- I have performed a self-review of my own code
+- I have commented my code, particularly in hard-to-understand areas
+- I have made corresponding changes to the documentation
+- My changes generate no new warnings
+- I have added tests that prove my fix is effective or that my feature works
+- New and existing unit tests pass locally with my changes
+- Any dependent changes have been merged and published in downstream modules
 
 ## Updating the Documentation
 

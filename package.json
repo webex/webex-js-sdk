@@ -1,45 +1,13 @@
 {
   "name": "webex-js-sdk",
-  "version": "0.5.349",
+  "version": "1.83.0",
   "description": "JavaScript SDK for interacting with the Webex API",
   "homepage": "https://github.com/webex/webex-js-sdk",
   "bugs": {
     "url": "https://github.com/webex/webex-js-sdk/issues"
   },
   "license": "MIT",
-  "contributors": [
-    "Adam Weeks <adweeks@cisco.com>",
-    "Aimmee Ma <aimma@cisco.com>",
-    "Alex Archer <alearche@cisco.com>",
-    "Andrew Holsted <holsted@cisco.com>",
-    "Arun Ganeshan <arungane@cisco.com>",
-    "Bernie Zang <nzang@cisco.com>",
-    "Brad Rydzewski <brydzews@cisco.com>",
-    "Brian Bender <brbender@cisco.com>",
-    "Carter Foxgrover <cfoxgrov@cisco.com>",
-    "Christopher DuBois <chdubois@cisco.com",
-    "David Greenstein <dagreens@cisco.com>",
-    "Fong Chin <fonchin@cisco.com>",
-    "Greg Hewett <ghewett@cisco.com>",
-    "Hans Steinbrecher <hsteinbr@cisco.com>",
-    "Ian W. Remmel <iremmel@cisco.com>",
-    "Joe Fuhrman <jofuhrma@cisco.com>",
-    "Joe Sankey <josankey@cisco.com>",
-    "Josh Dykstra <jodykstr@cisco.com>",
-    "Joshua Dykstra <jodykstr@cisco.com>",
-    "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
-    "Michael Wegman <mwegman@cisco.com>",
-    "Nate Cohen-Smith <ncohensm@cisco.com>",
-    "Nick Clarke <nickclar@cisco.com>",
-    "Patrick Linskey <plinskey@cisco.com>",
-    "Riley Marsh <rimarsh@cisco.com>",
-    "Saurabh Jain <saurjai3@cisco.com>",
-    "Taymoor Khan <taykhan@cisco.com>",
-    "Tim Scheuering <timsch@cisco.com>",
-    "Tor Hagemann <tohagema@cisco.com>",
-    "Tran Tu <tratu@cisco.com>",
-    "Vagou Zhou <vagouz@cisco.com>"
-  ],
+  "author": "devsupport@webex.com",
   "engines": {
     "node": "^10.x",
     "npm": "^6.x"
@@ -60,6 +28,7 @@
     "build:docs": "documentation build --config documentation/config.yml --np --project-name webex --project-version 1.x --format html --output ./docs/api --github ./packages/node_modules/webex/src/index.js ./packages/node_modules/{@ciscospark,@webex}/plugin-*/src/index.js",
     "check-karma-output": "./scripts/analyze-output.sh",
     "build:package": "echo 'deprecated; just use \"npm run --silent build\"'./tooling/build.js",
+    "changelog:generate": "standard-changelog",
     "circleci:local": "circleci local execute -c .circleci/github.config.yml",
     "lint": "npm run --silent lint:js && npm run --silent lint:package-names",
     "lint:commitmsg": "commitlint -e $GIT_PARAMS",
@@ -81,11 +50,14 @@
     "test:samples": "echo 'Deprecated. Please use npm run samples:test'; npm run --silent samples:test",
     "samples:build": "babel-node ./tooling/index.js build --only-samples",
     "samples:serve": "NODE_ENV=development webpack-dev-server -d",
+    "samples:serve:integration": "NODE_ENV=test webpack-dev-server -d",
     "samples:devicemanager": "npm run serve:package -- --env.package @webex/plugin-device-manager --env.entry ./webex.js",
     "serve:package": "webpack-dev-server --config webpack/webpack.config.js --hot --inline --history-api-fallback",
     "samples:test": "NODE_ENV=test wdio",
     "tooling": "babel-node ./tooling/index.js",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "release": "standard-version -a",
+    "release:dry-run": "standard-version --dry-run"
   },
   "dependencies": {
     "@babel/plugin-proposal-optional-chaining": "^7.10.4",
@@ -210,7 +182,6 @@
     "on-finished": "^2.3.0",
     "parse-headers": "^2.0.2",
     "patch-package": "^6.2.2",
-    "pkg-up": "^2.0.0",
     "pkijs": "^2.1.84",
     "ps-node": "^0.1.6",
     "qs": "^6.7.0",
@@ -225,6 +196,8 @@
     "safe-buffer": "^5.2.0",
     "sdp-transform": "^2.12.0",
     "sinon": "^7.4.1",
+    "standard-changelog": "^2.0.24",
+    "standard-version": "^8.0.2",
     "supertest": "^3.4.2",
     "terser-webpack-plugin": "^2.3.5",
     "time-grunt": "^1.4.0",
@@ -300,6 +273,12 @@
     "hooks": {
       "commit-msg": "commitlint --verbose -e $HUSKY_GIT_PARAMS",
       "pre-commit": "npm run --silent srcdist && npm run --silent lint:staged"
+    }
+  },
+  "standard-version": {
+    "scripts": {
+      "postbump": "npm run build && npm run build:script && git add packages/node_modules/webex/umd/*.js",
+      "release": "git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json CHANGELOG.md && standard-version -a"
     }
   }
 }

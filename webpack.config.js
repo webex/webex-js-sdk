@@ -103,7 +103,8 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
           IDENTITY_BASE_URL: 'https://identitybts.webex.com',
           U2C_SERVICE_URL: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
           WDM_SERVICE_URL: 'https://wdm-intb.ciscospark.com/wdm/api/v1',
-          WHISTLER_API_SERVICE_URL: 'https://whistler.onint.ciscospark.com/api/v1'
+          WHISTLER_API_SERVICE_URL: 'https://whistler.allnint.ciscospark.com/api/v1',
+          WEBEX_CONVERSATION_DEFAULT_CLUSTER: 'urn:TEAM:us-east-1_int13:identityLookup'
         })
       ] : [
         new BannerPlugin({
@@ -126,7 +127,7 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
             IDENTITY_BASE_URL: JSON.stringify('https://identity.webex.com'),
             U2C_SERVICE_URL: JSON.stringify('https://u2c.wbx2.com/u2c/api/v1'),
             WDM_SERVICE_URL: JSON.stringify('https://wdm-a.wbx2.com/wdm/api/v1'),
-            WHISTLER_API_SERVICE_URL: JSON.stringify('https://whistler-prod.onint.ciscospark.com/api/v1')
+            WHISTLER_API_SERVICE_URL: JSON.stringify('https://whistler-prod.allnint.ciscospark.com/api/v1')
           }
         })
       ]
