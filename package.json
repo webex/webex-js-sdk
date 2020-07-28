@@ -60,7 +60,6 @@
     "release:dry-run": "standard-version --dry-run"
   },
   "dependencies": {
-    "@babel/plugin-proposal-optional-chaining": "^7.10.4",
     "@commitlint/cli": "^8.1.0",
     "@commitlint/config-conventional": "^8.1.0",
     "@peculiar/webcrypto": "^1.0.22",
