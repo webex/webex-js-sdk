@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.84.0](https://github.com/webex/webex-js-sdk/compare/v1.83.0...v1.84.0) (2020-07-28)
+
+
+### Features
+
+* **plugin-meeting:** add event for server media inactivity ([fd3e01b](https://github.com/webex/webex-js-sdk/commit/fd3e01b9b1de6cdd16e02046c8eb2f82726e978f))
+
+## [1.83.0](https://github.com/webex/webex-js-sdk/compare/v1.82.2...v1.83.0) (2020-07-28)
+
+
+### Features
+
+* **samples:** enable reconnection to meeting sample ([5c11a72](https://github.com/webex/webex-js-sdk/commit/5c11a72933e5ddd3c023581379d329a0e6ef0d59))
+
 ### [1.82.2](https://github.com/webex/webex-js-sdk/compare/v1.82.1...v1.82.2) (2020-07-23)
 
 
