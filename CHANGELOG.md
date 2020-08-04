@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.86.0](https://github.com/webex/webex-js-sdk/compare/v1.85.1...v1.86.0) (2020-08-04)
+
+
+### Features
+
+* **conversation:** add helpers for fetching activity children ([815fbb3](https://github.com/webex/webex-js-sdk/commit/815fbb32771568e7a45e18f72b3e618ff5a4f212))
+
 ### [1.85.1](https://github.com/webex/webex-js-sdk/compare/v1.85.0...v1.85.1) (2020-08-04)
 
 
