@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.85.1](https://github.com/webex/webex-js-sdk/compare/v1.85.0...v1.85.1) (2020-08-04)
+
+
+### Bug Fixes
+
+* **package:** update lodash to 4.17.19 ([720b0f7](https://github.com/webex/webex-js-sdk/commit/720b0f78a9cc8dac0a35e175932a0d9fefe10090))
+
 ## [1.85.0](https://github.com/webex/webex-js-sdk/compare/v1.84.0...v1.85.0) (2020-08-04)
 
 
