@@ -1,6 +1,6 @@
 {
   "name": "webex-js-sdk",
-  "version": "1.84.0",
+  "version": "1.86.0",
   "description": "JavaScript SDK for interacting with the Webex API",
   "homepage": "https://github.com/webex/webex-js-sdk",
   "bugs": {
@@ -60,8 +60,8 @@
     "release:dry-run": "standard-version --dry-run"
   },
   "dependencies": {
-    "@commitlint/cli": "^8.1.0",
-    "@commitlint/config-conventional": "^8.1.0",
+    "@commitlint/cli": "^9.1.1",
+    "@commitlint/config-conventional": "^9.1.1",
     "@webex/eslint-config-base": "^0.8.0",
     "ampersand-collection": "^2.0.2",
     "ampersand-collection-lodash-mixin": "^4.0.0",
@@ -162,7 +162,7 @@
     "lint-staged": "^8.2.1",
     "load-grunt-tasks": "^3.5.2",
     "localforage": "^1.7.3",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "lodash-decorators": "^4.5.0",
     "lolex": "^2.7.5",
     "mime": "^2.4.4",
