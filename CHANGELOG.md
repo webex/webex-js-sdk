@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.89.0](https://github.com/webex/webex-js-sdk/compare/v1.88.3...v1.89.0) (2020-08-11)
+
+
+### Features
+
+* **conversation:** add activity threading fetch methods ([4ac8420](https://github.com/webex/webex-js-sdk/commit/4ac84205ff01c3291040c10c9c4f9a61220126d3))
+
 ### [1.88.3](https://github.com/webex/webex-js-sdk/compare/v1.88.2...v1.88.3) (2020-08-11)
 
 
