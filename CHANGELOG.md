@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.88.2](https://github.com/webex/webex-js-sdk/compare/v1.88.1...v1.88.2) (2020-08-11)
+
+
+### Bug Fixes
+
+* **plugin-memberships:** update cluster target for hide events ([02d9e57](https://github.com/webex/webex-js-sdk/commit/02d9e57f88543282715885703e7cd8f0c3fdb4c2))
+
 ### [1.88.1](https://github.com/webex/webex-js-sdk/compare/v1.88.0...v1.88.1) (2020-08-07)
 
 
