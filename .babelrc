@@ -10,6 +10,7 @@
     "transform-export-extensions",
     "lodash",
     "transform-object-rest-spread",
+    "transform-object-rest-spread",
     "syntax-async-generators",
     "transform-async-generator-functions"
   ],
