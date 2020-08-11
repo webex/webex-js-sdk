@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.88.1](https://github.com/webex/webex-js-sdk/compare/v1.88.0...v1.88.1) (2020-08-07)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** refactor getDisplayMedia ([894cc20](https://github.com/webex/webex-js-sdk/commit/894cc2048849f0aff365b15cea0c518a778d8137))
+
+## [1.88.0](https://github.com/webex/webex-js-sdk/compare/v1.87.0...v1.88.0) (2020-08-07)
+
+
+### Features
+
+* **meetings:** add locus leave metrics reporting ([295a152](https://github.com/webex/webex-js-sdk/commit/295a152803ff41ad6d51d765c70ada865335f6c2))
+
+## [1.87.0](https://github.com/webex/webex-js-sdk/compare/v1.86.1...v1.87.0) (2020-08-06)
+
+
+### Features
+
+* **conversation:** add helper for fetching all child activities ([64fed28](https://github.com/webex/webex-js-sdk/commit/64fed2807f0195708e4f9f160352b8adce3fb9e5))
+
+### [1.86.1](https://github.com/webex/webex-js-sdk/compare/v1.86.0...v1.86.1) (2020-08-05)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** shareScreen pulls in sdk configuration ([acdcc83](https://github.com/webex/webex-js-sdk/commit/acdcc83ccadb41f0d67acf3a0d82e6f619239cda))
+
 ## [1.86.0](https://github.com/webex/webex-js-sdk/compare/v1.85.1...v1.86.0) (2020-08-04)
 
 
