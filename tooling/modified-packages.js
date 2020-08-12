@@ -36,7 +36,7 @@ const fileToPackage = (d) => {
  * npm instead of upstream/master
  * @returns {Promise<Array<string>>}
  */
-const updated = async ({dependents, npm}) => {
+const updated = async ({dependents, npm} = {}) => {
   const tag = npm ? await last() : 'upstream/master';
   const changedPackages = _(await diff(tag))
     .map((d) => d.path)
@@ -60,8 +60,8 @@ const updated = async ({dependents, npm}) => {
 
 const modified = async (argv) => {
   let changedPackages = argv.integration ?
-    await updated({dependents: true, npm: !!process.env.CI}) :
-    await updated({npm: !!process.env.CI});
+    await updated({dependents: true}) :
+    await updated();
 
   changedPackages = changedPackages
     .filter((packageName) => !packageName.includes('samples'))

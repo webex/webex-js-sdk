@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.89.0](https://github.com/webex/webex-js-sdk/compare/v1.88.3...v1.89.0) (2020-08-11)
+
+
+### Features
+
+* **conversation:** add activity threading fetch methods ([4ac8420](https://github.com/webex/webex-js-sdk/commit/4ac84205ff01c3291040c10c9c4f9a61220126d3))
+
+### [1.88.3](https://github.com/webex/webex-js-sdk/compare/v1.88.2...v1.88.3) (2020-08-11)
+
+
+### Bug Fixes
+
+* **meeting-plugin:** fix media ready event not triggering multiple times ([5c7715e](https://github.com/webex/webex-js-sdk/commit/5c7715e8255bd596378eed11cd0d31e6f2fc2f6a))
+* **meeting-plugin:** trigger h264 codec download on meeting load ([e76ca29](https://github.com/webex/webex-js-sdk/commit/e76ca299c5effb1579c2bbf1f9d4a907d186ad73))
+
+### [1.88.2](https://github.com/webex/webex-js-sdk/compare/v1.88.1...v1.88.2) (2020-08-11)
+
+
+### Bug Fixes
+
+* **plugin-memberships:** update cluster target for hide events ([02d9e57](https://github.com/webex/webex-js-sdk/commit/02d9e57f88543282715885703e7cd8f0c3fdb4c2))
+
+### [1.88.1](https://github.com/webex/webex-js-sdk/compare/v1.88.0...v1.88.1) (2020-08-07)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** refactor getDisplayMedia ([894cc20](https://github.com/webex/webex-js-sdk/commit/894cc2048849f0aff365b15cea0c518a778d8137))
+
 ## [1.88.0](https://github.com/webex/webex-js-sdk/compare/v1.87.0...v1.88.0) (2020-08-07)
 
 
