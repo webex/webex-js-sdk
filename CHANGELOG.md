@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.89.1](https://github.com/webex/webex-js-sdk/compare/v1.89.0...v1.89.1) (2020-08-12)
+
+
+### Bug Fixes
+
+* **package:** update faye-websocket package version ([b6df941](https://github.com/webex/webex-js-sdk/commit/b6df941bf8f45222e976386f326791242053707c))
+
 ## [1.89.0](https://github.com/webex/webex-js-sdk/compare/v1.88.3...v1.89.0) (2020-08-11)
 
 
