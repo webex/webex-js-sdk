@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.89.2](https://github.com/webex/webex-js-sdk/compare/v1.89.1...v1.89.2) (2020-08-13)
+
+
+### Bug Fixes
+
+* **meeting-plugin:** allow share frame rate override ([7b5ebab](https://github.com/webex/webex-js-sdk/commit/7b5ebab80a1b27c9cc12bf1b38e9c6d8f07c456c))
+
 ### [1.89.1](https://github.com/webex/webex-js-sdk/compare/v1.89.0...v1.89.1) (2020-08-12)
 
 
