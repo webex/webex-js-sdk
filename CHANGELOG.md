@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.89.3](https://github.com/webex/webex-js-sdk/compare/v1.89.2...v1.89.3) (2020-08-18)
+
+
+### Bug Fixes
+
+* **conversation:** threads iterator 'done' is true when no more activities can be fetched ([aa0769f](https://github.com/webex/webex-js-sdk/commit/aa0769f968689970604476b7a67e721d0e20f518))
+
 ### [1.89.2](https://github.com/webex/webex-js-sdk/compare/v1.89.1...v1.89.2) (2020-08-13)
 
 
