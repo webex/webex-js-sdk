@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.89.4](https://github.com/webex/webex-js-sdk/compare/v1.89.3...v1.89.4) (2020-08-19)
+
+
+### Bug Fixes
+
+* **meetings:** send mute control with audio mute ([13bda8b](https://github.com/webex/webex-js-sdk/commit/13bda8bd3ee74a8599ab6c3b3c3294c651d79687))
+
 ### [1.89.3](https://github.com/webex/webex-js-sdk/compare/v1.89.2...v1.89.3) (2020-08-18)
 
 
