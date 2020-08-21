@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.89.5](https://github.com/webex/webex-js-sdk/compare/v1.89.4...v1.89.5) (2020-08-21)
+
+
+### Bug Fixes
+
+* **meeting-plugin:** media:stopped event fixed for local and remote streams ([34d77ca](https://github.com/webex/webex-js-sdk/commit/34d77ca88b228e6739da0850e06f9e03c25fc632))
+
 ### [1.89.4](https://github.com/webex/webex-js-sdk/compare/v1.89.3...v1.89.4) (2020-08-19)
 
 
