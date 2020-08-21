@@ -1,2 +1,2 @@
 *                                             @webex/js-sdk-widgets-core
-packages/node_modules/@webex/plugin-meetings  @webex/spark-web-client-team
+packages/node_modules/@webex/plugin-meetings/*  @webex/spark-web-client-team
