@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.90.0](https://github.com/webex/webex-js-sdk/compare/v1.89.5...v1.90.0) (2020-08-24)
+
+
+### Features
+
+* **conversation:** add _createParsedServerActivity to implement new interface for server activities ([42a674c](https://github.com/webex/webex-js-sdk/commit/42a674cf767a87f66b11e6b4e65155ba0b77eb38))
+
 ### [1.89.5](https://github.com/webex/webex-js-sdk/compare/v1.89.4...v1.89.5) (2020-08-21)
 
 
