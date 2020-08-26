@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.90.1](https://github.com/webex/webex-js-sdk/compare/v1.90.0...v1.90.1) (2020-08-26)
+
+
+### Bug Fixes
+
+* **meeting-plugin:** getMediaStreams uses last used video device ([f368840](https://github.com/webex/webex-js-sdk/commit/f36884064b231b073ff3990233572f8bfd4a2640))
+
 ## [1.90.0](https://github.com/webex/webex-js-sdk/compare/v1.89.5...v1.90.0) (2020-08-24)
 
 
