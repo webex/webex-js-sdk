@@ -23,6 +23,7 @@ This is a monorepo containing all officially maintained Cisco Webex JS SDK modul
       - [_Still using `webex/env` or `ciscospark/env`?_](#still-using-webexenv-or-ciscosparkenv)
   - [Samples](#samples)
   - [Contribute](#contribute)
+  - [Issues](#issues)
   - [License](#license)
 
 ## Install
@@ -183,6 +184,13 @@ Samples | Hosted
 
 Pull requests welcome. Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for more details about building the packages
 and submitting pull requests for suggested changes.
+
+## Issues
+
+Please reach out to our developer support team for any issues you may be experiencing with the SDK.
+
+- <https://developer.webex.com/support>
+- <devsupport@webex.com>
 
 ## License
 
