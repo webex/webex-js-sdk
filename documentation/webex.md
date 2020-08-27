@@ -118,7 +118,7 @@ app.get(`/login`, (req, res) => {
 
 app.get(`/oauth/redirect`, (req, res, next) => {
   assert(req.params.code);
-  req.webex.requestAuthorizationCodeGrant(req.params)
+  req.webex.authorization.requestAuthorizationCodeGrant(req.params)
     .then(() => {
       res.redirect(`/`).end();
     })
