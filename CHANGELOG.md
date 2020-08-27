@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.91.1](https://github.com/webex/webex-js-sdk/compare/v1.91.0...v1.91.1) (2020-08-27)
+
+
+### Bug Fixes
+
+* **activity threading:** pass target URL through to threading function when calling jumpToActivity ([eee92ce](https://github.com/webex/webex-js-sdk/commit/eee92cead9ec5a54cf619b556d29b5ec72c58be9))
+
+## [1.91.0](https://github.com/webex/webex-js-sdk/compare/v1.90.2...v1.91.0) (2020-08-27)
+
+
+### Features
+
+* **conversation:** allow passthrough of includesChildren query param ([872f27c](https://github.com/webex/webex-js-sdk/commit/872f27caf4c7dd45e42837e3eac56318a82b7d83))
+
+### [1.90.2](https://github.com/webex/webex-js-sdk/compare/v1.90.1...v1.90.2) (2020-08-27)
+
+
+### Bug Fixes
+
+* **device-manager:** throw error on search failure ([a293d24](https://github.com/webex/webex-js-sdk/commit/a293d240c9083f4c792b851ad5461a6670ee4628))
+
 ### [1.90.1](https://github.com/webex/webex-js-sdk/compare/v1.90.0...v1.90.1) (2020-08-26)
 
 

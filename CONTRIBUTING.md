@@ -3,28 +3,24 @@
 We'd love for you to contribute to our source code and to make **Webex Javascript SDK** even better than it is today!
 If you would like to contribute to this repository by adding features, enhancements or bug fixes, you must follow our process:
 
-  1. [Create an issue](https://github.com/webex/webex-js-sdk/issues) to propose your solution _before_ you get coding
-  2. Let core members know about your proposal by posting a message in the [contributor's Webex Teams space](https://eurl.io/#Bk9WGfRcB)
-  3. A core member will review your proposal and if necessary may suggest to have a meeting to better understand your approach
+  1. Let core members know about your proposal by posting a message in the [contributor's Webex Teams space](https://eurl.io/#Bk9WGfRcB)
+  2. A core member will review your proposal and if necessary may suggest to have a meeting to better understand your approach
       - You are welcomed you join our [weekly review meeting](https://cisco.webex.com/m/f4ebbec6-c306-49ca-83f4-fb2d098fc946) (Thursdays, 11:30a-12:30p PST) to propose your contribution as well
-  4. If your proposal is approved you should start coding at this point
-  5. We recommend opening a draft PR to receive feedback before finalizing your solution
+  3. If your proposal is approved you should start coding at this point
+  4. We recommend opening a draft PR to receive feedback before finalizing your solution
       - When opening a draft PR, specify with PR comments where in the code you would like to get feedback
-  6. Before opening a PR ensure **all** [PR guidelines](#submitting-a-pull-request) are followed
-  7. Let core members know about your PR by posting a message in the [contributor's Webex Teams space](https://eurl.io/#Bk9WGfRcB)
-  8. Core members will review the pull request and provide feedback when necessary
+  5. Before opening a PR ensure **all** [PR guidelines](#submitting-a-pull-request) are followed
+  6. Let core members know about your PR by posting a message in the [contributor's Webex Teams space](https://eurl.io/#Bk9WGfRcB)
+  7. Core members will review the pull request and provide feedback when necessary
       - If a PR is too large, you may be asked to break it down into multiple smaller-scoped PRs
-  9. Once the PR is approved by a core member, it will be merged
-  10. Celebrate! Your code is released 🎈🎉🍻
+  8. Once the PR is approved by a core member, it will be merged
+  9. Celebrate! Your code is released 🎈🎉🍻
 
 ## Table of Contents
 
 - [Contributing](#contributing)
   - [Table of Contents](#table-of-contents)
   - [Reporting Issues](#reporting-issues)
-    - [Opening an Issue](#opening-an-issue)
-      - [Grammar](#grammar)
-      - [Logs](#logs)
   - [Contributing Code](#contributing-code)
     - [Build Dependencies](#build-dependencies)
     - [Environment Variables](#environment-variables)
@@ -52,27 +48,10 @@ If you would like to contribute to this repository by adding features, enhanceme
 
 ## Reporting Issues
 
-### Opening an Issue
+Please reach out to our developer support team for any issues you may be experiencings with the SDK.
 
-The title of a Bug or Enhancement should clearly indicate what is broken or desired. Use the description to
-explain possible solutions or add details and (especially for Enhancemnts) explain *how* or *why* the issue is
-broken or desired. Please see [ISSUE_TEMPLATE.md](https://github.com/webex/webex-js-sdk/blob/master/.github/ISSUE_TEMPLATE.MD) that outlines what we are looking for.
-
-**If providing snippets of code**, use [Markdown code blocks](https://help.github.com/articles/markdown-basics/#multiple-lines).
-
-#### Grammar
-
-While quibbling about grammar in issue titles may seem a bit pedantic, adhering to some simple rules can make it much
-easier to understand a Bug or an Enhancement from the title alone. For example, is the title **"Browsers should support
-blinking text"** a bug or a feature request?
-
-- Enhancements: The title should be an imperative statement of how things should be. **"Add support for blinking text"**
-- Bugs: The title should be a declarative statement of how things are. **"Text does not blink"**
-
-#### Logs
-
-Please provide sufficient logging around the issue which you are reporting as this will help with our investigation.
-**DO NOT** include access tokens or other sensitive information. If you need to supply logs with sensitive information, supply them to developer support rather than posting them here; even when sending logs to developer support, **DO NOT** include access tokens.
+- <https://developer.webex.com/support>
+- <devsupport@webex.com>
 
 ## Contributing Code
 
