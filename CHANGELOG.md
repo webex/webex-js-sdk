@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.91.0](https://github.com/webex/webex-js-sdk/compare/v1.90.2...v1.91.0) (2020-08-27)
+
+
+### Features
+
+* **conversation:** allow passthrough of includesChildren query param ([872f27c](https://github.com/webex/webex-js-sdk/commit/872f27caf4c7dd45e42837e3eac56318a82b7d83))
+
 ### [1.90.2](https://github.com/webex/webex-js-sdk/compare/v1.90.1...v1.90.2) (2020-08-27)
 
 
