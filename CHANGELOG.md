@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.90.2](https://github.com/webex/webex-js-sdk/compare/v1.90.1...v1.90.2) (2020-08-27)
+
+
+### Bug Fixes
+
+* **device-manager:** throw error on search failure ([a293d24](https://github.com/webex/webex-js-sdk/commit/a293d240c9083f4c792b851ad5461a6670ee4628))
+
 ### [1.90.1](https://github.com/webex/webex-js-sdk/compare/v1.90.0...v1.90.1) (2020-08-26)
 
 
