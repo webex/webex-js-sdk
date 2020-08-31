@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.92.0](https://github.com/webex/webex-js-sdk/compare/v1.91.1...v1.92.0) (2020-08-31)
+
+
+### Features
+
+* **meetings:** add remote share start/stop event ([c6a44f7](https://github.com/webex/webex-js-sdk/commit/c6a44f72ce390f15f9ef02f7a7e2aa801a6ec24f))
+
 ### [1.91.1](https://github.com/webex/webex-js-sdk/compare/v1.91.0...v1.91.1) (2020-08-27)
 
 
