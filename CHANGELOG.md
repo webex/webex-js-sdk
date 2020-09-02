@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.92.2](https://github.com/webex/webex-js-sdk/compare/v1.91.1...v1.92.2) (2020-09-02)
+
+
+### Features
+
+* **meetings:** add remote share start/stop event ([c6a44f7](https://github.com/webex/webex-js-sdk/commit/c6a44f72ce390f15f9ef02f7a7e2aa801a6ec24f))
+* **plugin-meeting:** add recording events ([9755f62](https://github.com/webex/webex-js-sdk/commit/9755f62c4923c2ad970485204d06cc51cb00076c))
+* **version:** update version to force a build ([525c5ae](https://github.com/webex/webex-js-sdk/commit/525c5aefc7ff6c609cb40b5bf1c74d7fc8913e49))
+
+
+### Bug Fixes
+
+* **device:** set TTL when registering device as ephemeral ([80fd7dd](https://github.com/webex/webex-js-sdk/commit/80fd7ddb7f144afd97120bf7b5b7b1628c5e18cd))
+* **meeting-plugin:**  Handle locus migration event for SIP calls ([23ad57f](https://github.com/webex/webex-js-sdk/commit/23ad57fe12b833159ec730f01f2554c975dcd838))
+* **meeting-plugin:** fix safari media:ready event not triggring ([08a16af](https://github.com/webex/webex-js-sdk/commit/08a16aff0d0fbe251829dc40183caf94dcc9f333))
+* **plugin-meeting:** trigger member:contentupdate event on join ([5c6cb98](https://github.com/webex/webex-js-sdk/commit/5c6cb98ccced8048925f711158801fc219cc207b))
+* **plugin-meetings:** fix multiple obtp issues for conversationUrl ([c8ec948](https://github.com/webex/webex-js-sdk/commit/c8ec948b47bce1d443f2c9a361241143f48fa0cd))
+
 ### [1.91.1](https://github.com/webex/webex-js-sdk/compare/v1.91.0...v1.91.1) (2020-08-27)
 
 
