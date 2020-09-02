@@ -337,7 +337,7 @@ jobs:
             fi
       - run:
           name: 'Run standard-version'
-          command: npm run release
+          command: npm run release -- --release-as 1.92.2
       - run:
           name: 'Grab Upcoming Version Number'
           command: echo "export UPCOMING_VERSION=$(node -p "require('./package.json').version")" >> $BASH_ENV
