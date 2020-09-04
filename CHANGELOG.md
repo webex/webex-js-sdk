@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.92.4](https://github.com/webex/webex-js-sdk/compare/v1.92.3...v1.92.4) (2020-09-04)
+
+
+### Bug Fixes
+
+* **plugin-meeting:** media ready event not triggring on safari ([06f3f40](https://github.com/webex/webex-js-sdk/commit/06f3f40a3ced093d29da947cdfb6f35f708090f5))
+
 ### [1.92.3](https://github.com/webex/webex-js-sdk/compare/v1.92.2...v1.92.3) (2020-09-03)
 
 
