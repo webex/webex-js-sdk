@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.92.5](https://github.com/webex/webex-js-sdk/compare/v1.92.4...v1.92.5) (2020-09-04)
+
+
+### Bug Fixes
+
+* **plugin-meeting:** meeting object not deleted on end ([d2d8692](https://github.com/webex/webex-js-sdk/commit/d2d8692e67425a9aaa114cdbb5a358891effe96f))
+
 ### [1.92.4](https://github.com/webex/webex-js-sdk/compare/v1.92.3...v1.92.4) (2020-09-04)
 
 
