@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.92.3](https://github.com/webex/webex-js-sdk/compare/v1.92.2...v1.92.3) (2020-09-03)
+
+
+### Bug Fixes
+
+* **conversation:** add items.length check for empty child fetch responses ([9703bd6](https://github.com/webex/webex-js-sdk/commit/9703bd6a2add1f885dc1ba74f334957480288d9a))
+* **conversation:** stop fetching when hitting the ‘create’ activity ([cd2e376](https://github.com/webex/webex-js-sdk/commit/cd2e376b4446f09834a898deff5a0f698145bede))
+
 ### [1.92.2](https://github.com/webex/webex-js-sdk/compare/v1.91.1...v1.92.2) (2020-09-02)
 
 
