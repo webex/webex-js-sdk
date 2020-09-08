@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.92.7](https://github.com/webex/webex-js-sdk/compare/v1.92.6...v1.92.7) (2020-09-08)
+
+
+### Bug Fixes
+
+* **ediscovery:** removing depreciated summary apis ([e97e7be](https://github.com/webex/webex-js-sdk/commit/e97e7be9889e64bf395125c188cf5fcc262eb051))
+
 ### [1.92.6](https://github.com/webex/webex-js-sdk/compare/v1.92.5...v1.92.6) (2020-09-08)
 
 
