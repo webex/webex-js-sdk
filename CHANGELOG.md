@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.92.8](https://github.com/webex/webex-js-sdk/compare/v1.92.7...v1.92.8) (2020-09-09)
+
+
+### Bug Fixes
+
+* **conversation:** set returned edit activity IDs to original ID ([401af20](https://github.com/webex/webex-js-sdk/commit/401af2049a5df5d81a93e4db5eadd2c6b4d8c5b8))
+
 ### [1.92.7](https://github.com/webex/webex-js-sdk/compare/v1.92.6...v1.92.7) (2020-09-08)
 
 
