@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.93.0](https://github.com/webex/webex-js-sdk/compare/v1.92.8...v1.93.0) (2020-09-10)
+
+
+### Features
+
+* expose getUserMedia on meetings object ([1c39eea](https://github.com/webex/webex-js-sdk/commit/1c39eeaf44ffa8e95ad1952539c742d6f66605ce))
+
 ### [1.92.8](https://github.com/webex/webex-js-sdk/compare/v1.92.7...v1.92.8) (2020-09-09)
 
 
