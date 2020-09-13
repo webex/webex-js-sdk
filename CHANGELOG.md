@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.93.0](https://github.com/webex/webex-js-sdk/compare/v1.92.8...v1.93.0) (2020-09-10)
+
+
+### Features
+
+* expose getUserMedia on meetings object ([1c39eea](https://github.com/webex/webex-js-sdk/commit/1c39eeaf44ffa8e95ad1952539c742d6f66605ce))
+
+### [1.92.8](https://github.com/webex/webex-js-sdk/compare/v1.92.7...v1.92.8) (2020-09-09)
+
+
+### Bug Fixes
+
+* **conversation:** set returned edit activity IDs to original ID ([401af20](https://github.com/webex/webex-js-sdk/commit/401af2049a5df5d81a93e4db5eadd2c6b4d8c5b8))
+
+### [1.92.7](https://github.com/webex/webex-js-sdk/compare/v1.92.6...v1.92.7) (2020-09-08)
+
+
+### Bug Fixes
+
+* **ediscovery:** removing depreciated summary apis ([e97e7be](https://github.com/webex/webex-js-sdk/commit/e97e7be9889e64bf395125c188cf5fcc262eb051))
+
+### [1.92.6](https://github.com/webex/webex-js-sdk/compare/v1.92.5...v1.92.6) (2020-09-08)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** media:ready on safari  not trigged due to tranceiver.mid not present ([42bdd52](https://github.com/webex/webex-js-sdk/commit/42bdd52289e65a82e8efa6b5fc531831f336710d))
+
 ### [1.92.5](https://github.com/webex/webex-js-sdk/compare/v1.92.4...v1.92.5) (2020-09-04)
 
 
