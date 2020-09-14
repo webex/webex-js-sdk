@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.93.2](https://github.com/webex/webex-js-sdk/compare/v1.93.1...v1.93.2) (2020-09-14)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** stop share not working when using meeting.stopShare ([6d7d03f](https://github.com/webex/webex-js-sdk/commit/6d7d03f5dde9c04a834aec1cac569b682cfbb233))
+
 ### [1.93.1](https://github.com/webex/webex-js-sdk/compare/v1.93.0...v1.93.1) (2020-09-14)
 
 
