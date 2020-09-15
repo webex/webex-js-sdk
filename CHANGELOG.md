@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.93.4](https://github.com/webex/webex-js-sdk/compare/v1.93.3...v1.93.4) (2020-09-15)
+
+
+### Bug Fixes
+
+* **meetings:** export getUserMedia correctly ([2923689](https://github.com/webex/webex-js-sdk/commit/2923689f4c639527d8be37bab72633baab1c1684))
+
+### [1.93.3](https://github.com/webex/webex-js-sdk/compare/v1.93.2...v1.93.3) (2020-09-14)
+
+
+### Bug Fixes
+
+* **plugin-messages:** retrieve hydra message ([ec66a34](https://github.com/webex/webex-js-sdk/commit/ec66a34e648ef43af05384382d86e4b9947fd93b))
+
 ### [1.93.2](https://github.com/webex/webex-js-sdk/compare/v1.93.1...v1.93.2) (2020-09-14)
 
 
