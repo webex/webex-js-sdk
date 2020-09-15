@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.94.0](https://github.com/webex/webex-js-sdk/compare/v1.93.4...v1.94.0) (2020-09-15)
+
+
+### Features
+
+* **samples:** add remote share event support ([d2678b6](https://github.com/webex/webex-js-sdk/commit/d2678b6e1acfa778f20df5d32aa4e6df5f93399c))
+
 ### [1.93.4](https://github.com/webex/webex-js-sdk/compare/v1.93.3...v1.93.4) (2020-09-15)
 
 
