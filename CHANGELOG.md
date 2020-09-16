@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.94.1](https://github.com/webex/webex-js-sdk/compare/v1.94.0...v1.94.1) (2020-09-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:**  fix audio RTPpackets and -1 values ([4df6982](https://github.com/webex/webex-js-sdk/commit/4df6982ea1022539032d22d4ecd16a678571a7e6))
+
 ## [1.94.0](https://github.com/webex/webex-js-sdk/compare/v1.93.4...v1.94.0) (2020-09-15)
 
 
