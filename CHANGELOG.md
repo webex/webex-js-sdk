@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.94.2](https://github.com/webex/webex-js-sdk/compare/v1.94.1...v1.94.2) (2020-09-17)
+
+
+### Bug Fixes
+
+* **meeting-plugin:** send share error metrics ([110b030](https://github.com/webex/webex-js-sdk/commit/110b0308e2cfbe20232bfa0921fbedeb686db0f0))
+
 ### [1.94.1](https://github.com/webex/webex-js-sdk/compare/v1.94.0...v1.94.1) (2020-09-16)
 
 
