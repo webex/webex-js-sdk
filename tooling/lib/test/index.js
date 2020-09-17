@@ -32,7 +32,7 @@ exports.testPackage = async function testPackage(options, packageName) {
   process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
   // eslint-disable-next-line global-require
-  require('babel-register')({
+  require('@babel/register')({
     only: [
       './packages/node_modules/**/*.js'
     ],
