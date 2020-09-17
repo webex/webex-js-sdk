@@ -11,35 +11,12 @@ const g = promisify(require('glob'));
 const debug = require('debug')('monorepo:test');
 const fs = require('fs-extra');
 const {Collector, Report} = require('istanbul');
-const {Instrumenter} = require('isparta');
 const mkdirp = promisify(require('mkdirp'));
 const rimraf = promisify(require('rimraf'));
-
-const {glob} = require('./package');
 
 const makeCoverageVariable = (packageName) =>
   `__coverage${packageName.replace(/@/g, '_').replace(/./g, '_').replace(/\//g, '_')}__`;
 
-
-async function instrument(packageName) {
-  const instrumenter = new Instrumenter({
-    coverageVariable: makeCoverageVariable(packageName)
-  });
-  const filenames = await glob('src/**/*.js', {packageName});
-
-  for (const f of filenames) {
-    debug(`instrumenting ${f}`);
-    const fullPath = path.join('./packages/node_modules', packageName, f);
-    const coveragePath = fullPath.replace('src', '.coverage/src');
-    const input = await fs.readFile(fullPath);
-    // eslint-disable-next-line no-sync
-    const output = instrumenter.instrumentSync(input, fullPath);
-
-    await mkdirp(path.dirname(coveragePath));
-    await fs.writeFile(coveragePath, output);
-    debug(`instrumented ${f}`);
-  }
-}
 
 async function deinstrument(packageName) {
   await rimraf(path.join('packages/node_modules', packageName, '.coverage'));
@@ -122,6 +99,5 @@ module.exports = {
   combine,
   deinstrument,
   makeCoverageVariable,
-  instrument,
   report
 };
