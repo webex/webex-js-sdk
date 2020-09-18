@@ -1,7 +1,7 @@
 /* eslint-disable no-console, require-jsdoc */
 /* global browser: false */
 
-require('babel-register');
+require('@babel/register');
 
 const path = require('path');
 const os = require('os');
@@ -17,7 +17,7 @@ const {inject} = require('./tooling/lib/openh264');
 // Webdriver is only called for testing samples so force integration URLs w/ Webpack
 const webpackConfig = require('./webpack.config')();
 
-require('babel-register')({
+require('@babel/register')({
   only: [
     './packages/node_modules/**/*.js'
   ],
