@@ -19,9 +19,7 @@ const path = require('path');
 
 const {
   collect,
-  combine,
-  deinstrument,
-  instrument
+  combine
 } = require('../../util/coverage');
 const {glob} = require('../../util/package');
 
@@ -52,20 +50,6 @@ exports.testPackage = async function testPackage(options, packageName) {
     await runNodeSuite(packageName);
 
     return;
-  }
-
-  if (options.node) {
-    if (options.coverage) {
-      await instrument(packageName);
-    }
-    try {
-      await runNodeSuite(options, packageName);
-    }
-    finally {
-      if (options.coverage) {
-        await deinstrument(packageName);
-      }
-    }
   }
 
   if (options.browser) {
