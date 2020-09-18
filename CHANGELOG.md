@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.95.0](https://github.com/webex/webex-js-sdk/compare/v1.94.2...v1.95.0) (2020-09-18)
+
+
+### Features
+
+* **ediscovery:** support scr decryption on files that use their own key url ([306c4c0](https://github.com/webex/webex-js-sdk/commit/306c4c04001395d40547a8fdf34ac061a1eeb159))
+
 ### [1.94.2](https://github.com/webex/webex-js-sdk/compare/v1.94.1...v1.94.2) (2020-09-17)
 
 
