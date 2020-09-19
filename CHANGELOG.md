@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.95.1](https://github.com/webex/webex-js-sdk/compare/v1.95.0...v1.95.1) (2020-09-19)
+
+
+### Bug Fixes
+
+* **meeting:** trigger correct event at the initiation level ([0c766e0](https://github.com/webex/webex-js-sdk/commit/0c766e083feeee05a9659af5bb93652a1eada81d))
+
 ## [1.95.0](https://github.com/webex/webex-js-sdk/compare/v1.94.2...v1.95.0) (2020-09-18)
 
 
