@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.95.2](https://github.com/webex/webex-js-sdk/compare/v1.95.1...v1.95.2) (2020-09-22)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** defer joining and duplicate metrics ([b195246](https://github.com/webex/webex-js-sdk/commit/b195246ea4bcfe5ae5c7a7b6246ba6558780fb22))
+
 ### [1.95.1](https://github.com/webex/webex-js-sdk/compare/v1.95.0...v1.95.1) (2020-09-19)
 
 
