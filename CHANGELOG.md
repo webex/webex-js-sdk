@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.96.0](https://github.com/webex/webex-js-sdk/compare/v1.95.2...v1.96.0) (2020-09-23)
+
+
+### Features
+
+* **meeting:** initialize recording property from the locus info ([e42c116](https://github.com/webex/webex-js-sdk/commit/e42c11664bba2fc00f17455739400433dd990606))
+
 ### [1.95.2](https://github.com/webex/webex-js-sdk/compare/v1.95.1...v1.95.2) (2020-09-22)
 
 
