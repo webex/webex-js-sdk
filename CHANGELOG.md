@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.97.0](https://github.com/webex/webex-js-sdk/compare/v1.96.1...v1.97.0) (2020-09-28)
+
+
+### Features
+
+* **ediscovery:** support decryption of meeting activities ([b05a87a](https://github.com/webex/webex-js-sdk/commit/b05a87a87b6cad21e1ae8a2394304f3dbb774577))
+
 ### [1.96.1](https://github.com/webex/webex-js-sdk/compare/v1.96.0...v1.96.1) (2020-09-24)
 
 
