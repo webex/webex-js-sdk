@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.96.1](https://github.com/webex/webex-js-sdk/compare/v1.96.0...v1.96.1) (2020-09-24)
+
+
+### Bug Fixes
+
+* **meetings:** deferred join use proper promise methods ([078d5b0](https://github.com/webex/webex-js-sdk/commit/078d5b02263ac83502e662f715c488c0c8c3b595))
+
+## [1.96.0](https://github.com/webex/webex-js-sdk/compare/v1.95.2...v1.96.0) (2020-09-23)
+
+
+### Features
+
+* **meeting:** initialize recording property from the locus info ([e42c116](https://github.com/webex/webex-js-sdk/commit/e42c11664bba2fc00f17455739400433dd990606))
+
+### [1.95.2](https://github.com/webex/webex-js-sdk/compare/v1.95.1...v1.95.2) (2020-09-22)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** defer joining and duplicate metrics ([b195246](https://github.com/webex/webex-js-sdk/commit/b195246ea4bcfe5ae5c7a7b6246ba6558780fb22))
+
+### [1.95.1](https://github.com/webex/webex-js-sdk/compare/v1.95.0...v1.95.1) (2020-09-19)
+
+
+### Bug Fixes
+
+* **meeting:** trigger correct event at the initiation level ([0c766e0](https://github.com/webex/webex-js-sdk/commit/0c766e083feeee05a9659af5bb93652a1eada81d))
+
 ## [1.95.0](https://github.com/webex/webex-js-sdk/compare/v1.94.2...v1.95.0) (2020-09-18)
 
 
