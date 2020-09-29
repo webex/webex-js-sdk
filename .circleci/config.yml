@@ -296,14 +296,26 @@ jobs:
           name: 'Temporary change origin url to HTTPS for documentation generation'
           command: git remote set-url origin https://github.com/webex/webex-js-sdk.git
       - run:
+          name: 'Build Docs'
+          command: npm run build:docs
+      - run:
           name: 'Change origin url back to ssh'
           command: git remote set-url origin git@github.com:webex/webex-js-sdk.git
+      - run:
+          name: 'Publish Docs'
+          command: |
+            # Check if there's anything to commit before committing
+            if [ -n "$(git status --porcelain)" ]; then
+              git add docs/
+              git commit -m "docs(api): update docs [skip ci]"
+              git push upstream HEAD:master
+            fi
       - run:
           name: 'Check if we need to skip version bumping and publishing to npm [skip npm]'
           command: |
             # Grab the 2nd to last commit message from the log for [skip npm]
             # Last commit is the update docs
-            MESSAGE=$(git log -n 1 --pretty=format:%s)
+            MESSAGE=$(git log -n 1 --skip 1 --pretty=format:%s)
 
             if [[ "$MESSAGE" == *\["skip npm"\]* ]]; then
               circleci step halt
