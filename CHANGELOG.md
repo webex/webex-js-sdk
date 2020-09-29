@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.97.0](https://github.com/webex/webex-js-sdk/compare/v1.96.1...v1.97.0) (2020-09-28)
+
+
+### Features
+
+* **ediscovery:** support decryption of meeting activities ([b05a87a](https://github.com/webex/webex-js-sdk/commit/b05a87a87b6cad21e1ae8a2394304f3dbb774577))
+
+### [1.96.1](https://github.com/webex/webex-js-sdk/compare/v1.96.0...v1.96.1) (2020-09-24)
+
+
+### Bug Fixes
+
+* **meetings:** deferred join use proper promise methods ([078d5b0](https://github.com/webex/webex-js-sdk/commit/078d5b02263ac83502e662f715c488c0c8c3b595))
+
+## [1.96.0](https://github.com/webex/webex-js-sdk/compare/v1.95.2...v1.96.0) (2020-09-23)
+
+
+### Features
+
+* **meeting:** initialize recording property from the locus info ([e42c116](https://github.com/webex/webex-js-sdk/commit/e42c11664bba2fc00f17455739400433dd990606))
+
 ### [1.95.2](https://github.com/webex/webex-js-sdk/compare/v1.95.1...v1.95.2) (2020-09-22)
 
 
