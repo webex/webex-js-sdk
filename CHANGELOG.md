@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.97.3](https://github.com/webex/webex-js-sdk/compare/v1.97.2...v1.97.3) (2020-10-02)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** send operational metrics for roap failures ([100103f](https://github.com/webex/webex-js-sdk/commit/100103f048b900268f8fba671a572924a7359700))
+
 ### [1.97.2](https://github.com/webex/webex-js-sdk/compare/v1.97.0...v1.97.2) (2020-10-02)
 
 
