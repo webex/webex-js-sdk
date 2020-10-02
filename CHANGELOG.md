@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.97.2](https://github.com/webex/webex-js-sdk/compare/v1.97.0...v1.97.2) (2020-10-02)
+
+
+### Bug Fixes
+
+* **calendar:** decrypt organizer email and name ([6b269a5](https://github.com/webex/webex-js-sdk/commit/6b269a5d6ede0d0fb2e6209154540185c209e200))
+
 ### [1.97.1](https://github.com/webex/webex-js-sdk/compare/v1.97.0...v1.97.1) (2020-09-29)
 
 ## [1.97.0](https://github.com/webex/webex-js-sdk/compare/v1.96.1...v1.97.0) (2020-09-28)
