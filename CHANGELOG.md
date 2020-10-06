@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.97.4](https://github.com/webex/webex-js-sdk/compare/v1.97.3...v1.97.4) (2020-10-06)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** remove media inactive metrics ([eeffc6c](https://github.com/webex/webex-js-sdk/commit/eeffc6ced0e0fe6e2d7de80f40e97ccb1ab659d0))
+* **plugin-meetings:** remove media inactive metrics ([6c5d7da](https://github.com/webex/webex-js-sdk/commit/6c5d7da9cb44b184c15b64445830197a76b7fe32))
+
 ### [1.97.3](https://github.com/webex/webex-js-sdk/compare/v1.97.2...v1.97.3) (2020-10-02)
 
 
