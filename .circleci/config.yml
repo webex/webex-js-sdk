@@ -404,35 +404,35 @@ jobs:
       - store_artifacts:
           path: reports/junit
           destination: junit
-      - run:
-          name: 'Create Incident on PagerDuty'
-          when: on_fail
-          command: |
-            # Easier way of assigning variables in a json object without escaping double quotes in the curl command
-            generate_incident_data() {
-              # '\<<' must be escaped in v2.1+ due to yaml conflicts
-              # https://discuss.circleci.com/t/2-1-config-and-build-processing/24102/31
-              cat \<<EOF
-            {
-              "routing_key": "${PAGERDUTY_KEY}",
-              "event_action": "trigger",
-              "payload": {
-                "summary": "FAILURE: << parameters.package >> TAP Test",
-                "source": "CircleCI - Webex JS SDK",
-                "severity": "critical"
-              },
-              "links": [
-                {
-                  "href": "${CIRCLE_BUILD_URL}",
-                  "text": "CircleCI - << parameters.package >> TAP Test - Build #${CIRCLE_BUILD_NUM}"
-                }
-              ],
-              "client": "CircleCI - Webex-JS-SDK TAP Test - Build #${CIRCLE_BUILD_NUM}",
-              "client_url": "${CIRCLE_BUILD_URL}"
-            }
-            EOF
-            }
-            curl -X POST --header 'Content-Type: application/json' -d "$(generate_incident_data)" https://events.pagerduty.com/v2/enqueue
+      # - run:
+      #     name: 'Create Incident on PagerDuty'
+      #     when: on_fail
+      #     command: |
+      #       # Easier way of assigning variables in a json object without escaping double quotes in the curl command
+      #       generate_incident_data() {
+      #         # '\<<' must be escaped in v2.1+ due to yaml conflicts
+      #         # https://discuss.circleci.com/t/2-1-config-and-build-processing/24102/31
+      #         cat \<<EOF
+      #       {
+      #         "routing_key": "${PAGERDUTY_KEY}",
+      #         "event_action": "trigger",
+      #         "payload": {
+      #           "summary": "FAILURE: << parameters.package >> TAP Test",
+      #           "source": "CircleCI - Webex JS SDK",
+      #           "severity": "critical"
+      #         },
+      #         "links": [
+      #           {
+      #             "href": "${CIRCLE_BUILD_URL}",
+      #             "text": "CircleCI - << parameters.package >> TAP Test - Build #${CIRCLE_BUILD_NUM}"
+      #           }
+      #         ],
+      #         "client": "CircleCI - Webex-JS-SDK TAP Test - Build #${CIRCLE_BUILD_NUM}",
+      #         "client_url": "${CIRCLE_BUILD_URL}"
+      #       }
+      #       EOF
+      #       }
+      #       curl -X POST --header 'Content-Type: application/json' -d "$(generate_incident_data)" https://events.pagerduty.com/v2/enqueue
 
 
 workflows:
@@ -475,50 +475,50 @@ workflows:
               only: master
           requires:
               - npm_install
-  # tap_tests:
-  #   triggers:
-  #     - schedule:
-  #         # Everyday @ 6:15PM UTC | 3:15PM EST | 2:15PM EDT | 12:15PM PST | 11:15AM PDT
-  #         cron: '15 18 * * 1-5'
-  #         filters:
-  #           branches:
-  #             only:
-  #               - master
-  #   jobs:
-  #     - npm_install:
-  #         filters:
-  #             branches:
-  #               only: master
-  #     - build_production:
-  #         requires:
-  #           - npm_install
-  #     - tap:
-  #         name: '@webex/webex-core tap'
-  #         package: '@webex/webex-core'
-  #         requires:
-  #           - build_production
-  #     - tap:
-  #         name: '@webex/plugin-meetings tap'
-  #         package: '@webex/plugin-meetings'
-  #         requires:
-  #           - build_production
-  #     - tap:
-  #         name: '@webex/internal-plugin-conversation tap'
-  #         package: '@webex/internal-plugin-conversation'
-  #         requires:
-  #           - build_production
-  #     - tap:
-  #         name: '@webex/internal-plugin-encryption tap'
-  #         package: '@webex/internal-plugin-encryption'
-  #         requires:
-  #           - build_production
-  #     - tap:
-  #         name: '@webex/internal-plugin-locus tap'
-  #         package: '@webex/internal-plugin-locus'
-  #         requires:
-  #           - build_production
-  #     - tap:
-  #         name: '@webex/internal-plugin-mercury tap'
-  #         package: '@webex/internal-plugin-mercury'
-  #         requires:
-  #           - build_production
+  tap_tests:
+    triggers:
+      - schedule:
+          # Everyday @ 6:15PM UTC | 3:15PM EST | 2:15PM EDT | 12:15PM PST | 11:15AM PDT
+          cron: '15 18 * * 1-5'
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - npm_install:
+          filters:
+              branches:
+                only: master
+      - build_production:
+          requires:
+            - npm_install
+      - tap:
+          name: '@webex/webex-core tap'
+          package: '@webex/webex-core'
+          requires:
+            - build_production
+      - tap:
+          name: '@webex/plugin-meetings tap'
+          package: '@webex/plugin-meetings'
+          requires:
+            - build_production
+      - tap:
+          name: '@webex/internal-plugin-conversation tap'
+          package: '@webex/internal-plugin-conversation'
+          requires:
+            - build_production
+      - tap:
+          name: '@webex/internal-plugin-encryption tap'
+          package: '@webex/internal-plugin-encryption'
+          requires:
+            - build_production
+      - tap:
+          name: '@webex/internal-plugin-locus tap'
+          package: '@webex/internal-plugin-locus'
+          requires:
+            - build_production
+      - tap:
+          name: '@webex/internal-plugin-mercury tap'
+          package: '@webex/internal-plugin-mercury'
+          requires:
+            - build_production
