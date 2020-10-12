@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.98.0](https://github.com/webex/webex-js-sdk/compare/v1.97.4...v1.98.0) (2020-10-12)
+
+
+### Features
+
+* add preferTransocoding option ([70ff2cf](https://github.com/webex/webex-js-sdk/commit/70ff2cf9e037b49a24edf27f2801ac2e9cb98d20))
+
 ### [1.97.4](https://github.com/webex/webex-js-sdk/compare/v1.97.3...v1.97.4) (2020-10-06)
 
 
