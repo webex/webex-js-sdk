@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.98.1](https://github.com/webex/webex-js-sdk/compare/v1.98.0...v1.98.1) (2020-10-12)
+
+
+### Bug Fixes
+
+* **meeting-plugin:** send metrics for framesDropped and framesRendred ([ed4660f](https://github.com/webex/webex-js-sdk/commit/ed4660fac2aaea1687043f1a8c5035d5b08952d1))
+* **plugin-meeting:** add periodic key frame request to edonus ([a6b91a8](https://github.com/webex/webex-js-sdk/commit/a6b91a85d93638ce67a731a34998255abde10809))
+* **plugin-meetings:**  cannot share second time when stopping using stopShare overlay ([a703986](https://github.com/webex/webex-js-sdk/commit/a7039861c549e60f7d891c7450aa9413159f29a2))
+* **plugin-meetings:** neglects duplicate roap event with same seq ([9bf9b18](https://github.com/webex/webex-js-sdk/commit/9bf9b183ed2d70b1a6bc47baa499092cc810bcf9))
+
 ## [1.98.0](https://github.com/webex/webex-js-sdk/compare/v1.97.4...v1.98.0) (2020-10-12)
 
 
