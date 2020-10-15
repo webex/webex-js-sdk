@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.98.2](https://github.com/webex/webex-js-sdk/compare/v1.98.1...v1.98.2) (2020-10-15)
+
+
+### Bug Fixes
+
+* **webex-core:** fix unit tests ([5b0ff9b](https://github.com/webex/webex-js-sdk/commit/5b0ff9bb4e61345a6b98be16d9f75729de5e4cff))
+
 ### [1.98.1](https://github.com/webex/webex-js-sdk/compare/v1.98.0...v1.98.1) (2020-10-12)
 
 
