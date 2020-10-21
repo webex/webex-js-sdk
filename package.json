@@ -1,6 +1,6 @@
 {
   "name": "webex-js-sdk",
-  "version": "1.97.0",
+  "version": "1.98.2",
   "description": "JavaScript SDK for interacting with the Webex API",
   "homepage": "https://github.com/webex/webex-js-sdk",
   "bugs": {
@@ -55,7 +55,7 @@
     "serve:package": "webpack-dev-server --config webpack/webpack.config.js --hot --inline --history-api-fallback",
     "samples:test": "NODE_ENV=test wdio",
     "tooling": "babel-node ./tooling/index.js",
-    "preinstall": "npx npm-force-resolutions",
+    "preinstall": "[ -f ./package-lock.json ] && [ \"$npm_config_refer\" != \"ci\" ] && npx npm-force-resolutions || exit 0",
     "postinstall": "patch-package",
     "release": "standard-version -a",
     "release:dry-run": "standard-version --dry-run"
