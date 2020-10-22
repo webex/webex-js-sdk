@@ -1,0 +1,23 @@
+diff --git a/node_modules/node-jose/lib/index.js b/node_modules/node-jose/lib/index.js
+index b10bec3..baa1f5e 100644
+--- a/node_modules/node-jose/lib/index.js
++++ b/node_modules/node-jose/lib/index.js
+@@ -9,18 +9,6 @@ if (typeof Promise === "undefined") {
+   require("es6-promise").polyfill();
+ }
+ 
+-if (typeof Buffer === "undefined") {
+-  (global || window).Buffer = require("buffer").Buffer;
+-}
+-
+-if (typeof process === "undefined") {
+-  (global || window).process = require("process");
+-}
+-
+-if (!process.version) {
+-  process.version = "";
+-}
+-
+ var JWS = require("./jws");
+ 
+ module.exports = {
