@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.98.3](https://github.com/webex/webex-js-sdk/compare/v1.98.2...v1.98.3) (2020-10-22)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add support for rtx re transmission ([7bf416c](https://github.com/webex/webex-js-sdk/commit/7bf416ca2a8f9378305035852915818b2e93f320))
+* **plugin-meetings:** remove new line ([fba4a05](https://github.com/webex/webex-js-sdk/commit/fba4a055e7d2878a1a110232c621d3065a6b6b5e))
+
 ### [1.98.2](https://github.com/webex/webex-js-sdk/compare/v1.98.1...v1.98.2) (2020-10-15)
 
 
