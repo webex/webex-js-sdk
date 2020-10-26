@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.98.5](https://github.com/webex/webex-js-sdk/compare/v1.98.4...v1.98.5) (2020-10-26)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add MEETING_LEAVE_FAILURE constant ([15ccfe5](https://github.com/webex/webex-js-sdk/commit/15ccfe5453afa33f654d00aed425220220d2ad11))
+
 ### [1.98.4](https://github.com/webex/webex-js-sdk/compare/v1.98.3...v1.98.4) (2020-10-22)
 
 
