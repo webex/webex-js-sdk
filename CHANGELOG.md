@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.99.0](https://github.com/webex/webex-js-sdk/compare/v1.98.5...v1.99.0) (2020-10-29)
+
+
+### Features
+
+* **conversation:** allow user to create a classified space ([4fb75e2](https://github.com/webex/webex-js-sdk/commit/4fb75e26fff9b9b310943420d9719f68bb2057b4))
+
 ### [1.98.5](https://github.com/webex/webex-js-sdk/compare/v1.98.4...v1.98.5) (2020-10-26)
 
 
