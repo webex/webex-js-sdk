@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.99.1](https://github.com/webex/webex-js-sdk/compare/v1.99.0...v1.99.1) (2020-11-04)
+
+
+### Bug Fixes
+
+* **authorization:** add additional email query check ([77b9c57](https://github.com/webex/webex-js-sdk/commit/77b9c57fe71b2061ea7fbce47fb06305e80546a0))
+
 ## [1.99.0](https://github.com/webex/webex-js-sdk/compare/v1.98.5...v1.99.0) (2020-10-29)
 
 
