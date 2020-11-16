@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.102.1](https://github.com/webex/webex-js-sdk/compare/v1.102.0...v1.102.1) (2020-11-16)
+
+
+### Bug Fixes
+
+* **meetings:** fix scheduled meetings ([c53a955](https://github.com/webex/webex-js-sdk/commit/c53a955c56a6ca6342cdb5be26782eff11106242))
+
 ## [1.102.0](https://github.com/webex/webex-js-sdk/compare/v1.101.0...v1.102.0) (2020-11-16)
 
 
