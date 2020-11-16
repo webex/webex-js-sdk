@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.103.1](https://github.com/webex/webex-js-sdk/compare/v1.103.0...v1.103.1) (2020-11-16)
+
+
+### Bug Fixes
+
+* **webex-core:** remove logging entire client region info response ([d17c550](https://github.com/webex/webex-js-sdk/commit/d17c5509de3b03f1c9699ccae12816cd5e27beb8))
+
 ## [1.103.0](https://github.com/webex/webex-js-sdk/compare/v1.102.1...v1.103.0) (2020-11-16)
 
 
