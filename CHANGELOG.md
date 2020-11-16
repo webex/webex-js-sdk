@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.103.0](https://github.com/webex/webex-js-sdk/compare/v1.102.1...v1.103.0) (2020-11-16)
+
+
+### Features
+
+* **webex-core:** fetch client region info before activating user ([25f5072](https://github.com/webex/webex-js-sdk/commit/25f5072f305c177ca8527bb2f1f126d24500dadc))
+
 ### [1.102.1](https://github.com/webex/webex-js-sdk/compare/v1.102.0...v1.102.1) (2020-11-16)
 
 
