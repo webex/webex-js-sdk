@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.101.0](https://github.com/webex/webex-js-sdk/compare/v1.100.0...v1.101.0) (2020-11-16)
+
+
+### Features
+
+* **meetings:** send reconnect failure before rejoin ([4d87181](https://github.com/webex/webex-js-sdk/commit/4d871816465c056f14d1aee3f2c4ffc99039f43c))
+
 ## [1.100.0](https://github.com/webex/webex-js-sdk/compare/v1.99.1...v1.100.0) (2020-11-15)
 
 
