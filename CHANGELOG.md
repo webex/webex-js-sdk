@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.102.0](https://github.com/webex/webex-js-sdk/compare/v1.101.0...v1.102.0) (2020-11-16)
+
+
+### Features
+
+* **services:** add override catalog ([d84c852](https://github.com/webex/webex-js-sdk/commit/d84c85242d9f570eb20a1051f388fe405e968643))
+
+## [1.101.0](https://github.com/webex/webex-js-sdk/compare/v1.100.0...v1.101.0) (2020-11-16)
+
+
+### Features
+
+* **meetings:** send reconnect failure before rejoin ([4d87181](https://github.com/webex/webex-js-sdk/commit/4d871816465c056f14d1aee3f2c4ffc99039f43c))
+
+## [1.100.0](https://github.com/webex/webex-js-sdk/compare/v1.99.1...v1.100.0) (2020-11-15)
+
+
+### Features
+
+* **plugin-meetings:** gdm reachability uses orpheus discovery api ([8da4d2d](https://github.com/webex/webex-js-sdk/commit/8da4d2d573dc453f0ca333410f22bd3b0c09a641))
+
 ### [1.99.1](https://github.com/webex/webex-js-sdk/compare/v1.99.0...v1.99.1) (2020-11-04)
 
 
