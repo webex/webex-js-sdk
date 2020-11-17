@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.103.2](https://github.com/webex/webex-js-sdk/compare/v1.103.1...v1.103.2) (2020-11-17)
+
+
+### Bug Fixes
+
+* **plugin-meeting:**  locus replace always with the last active ([8822766](https://github.com/webex/webex-js-sdk/commit/882276656f42c6bc92524dfb6007731488ca6648))
+
 ### [1.103.1](https://github.com/webex/webex-js-sdk/compare/v1.103.0...v1.103.1) (2020-11-16)
 
 
