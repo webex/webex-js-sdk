@@ -10,35 +10,22 @@ dotenv.config();
 dotenv.config({path: '.env.default'});
 
 const {
-  gatherFiles
-} = require('./common');
-const mochaTest = require('./mocha').test;
-const karmaTest = require('./karma').test;
-
-const path = require('path');
-
-const {
   collect,
   combine
 } = require('../../util/coverage');
 const {glob} = require('../../util/package');
+
+const {
+  gatherFiles
+} = require('./common');
+const {test: mochaTest} = require('./mocha');
+const {test: karmaTest} = require('./karma');
 
 /* eslint-disable complexity */
 
 exports.testPackage = async function testPackage(options, packageName) {
   // Move NODE_ENV override into the exported function since babel-node is processing everything above
   process.env.NODE_ENV = process.env.NODE_ENV || 'test';
-
-  // eslint-disable-next-line global-require
-  require('@babel/register')({
-    only: [
-      './packages/node_modules/**/*.js'
-    ],
-    plugins: [
-      path.resolve(__dirname, '../../babel-plugin-inject-package-version')
-    ],
-    sourceMaps: true
-  });
 
   const currentPackageString = `===== Testing ${packageName} =====`;
 

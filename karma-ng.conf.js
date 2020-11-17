@@ -42,7 +42,7 @@ function makeConfig(packageName, argv) {
   };
 
   const files = [
-    'node_modules/babel-polyfill/dist/polyfill.js'
+    'node_modules/@babel/polyfill/dist/polyfill.js'
   ];
 
   if (!argv || argv.unit) {
