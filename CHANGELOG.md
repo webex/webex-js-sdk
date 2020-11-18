@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.103.3](https://github.com/webex/webex-js-sdk/compare/v1.103.2...v1.103.3) (2020-11-18)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** check peerConnection state before closing ([3983c78](https://github.com/webex/webex-js-sdk/commit/3983c785b3e9410603a167d111caf12bfccc5500))
+
 ### [1.103.2](https://github.com/webex/webex-js-sdk/compare/v1.103.1...v1.103.2) (2020-11-17)
 
 
