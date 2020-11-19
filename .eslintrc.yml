@@ -105,6 +105,8 @@ overrides:
       - 'packages/node_modules/**/test/wdio/**/*.js'
     globals:
       browser: false
+      browserFirefox: false
+      browserChrome: false
       $: false
       $$: false
       step: false
