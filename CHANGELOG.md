@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.103.4](https://github.com/webex/webex-js-sdk/compare/v1.103.3...v1.103.4) (2020-11-19)
+
+
+### Bug Fixes
+
+* remove mmmagic ([2bcd681](https://github.com/webex/webex-js-sdk/commit/2bcd681e13dfb4c7f7728eff5dfe1f288d503f8c))
+
 ### [1.103.3](https://github.com/webex/webex-js-sdk/compare/v1.103.2...v1.103.3) (2020-11-18)
 
 
