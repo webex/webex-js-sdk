@@ -153,6 +153,7 @@ function makeConfig(packageName, argv) {
       public: 'team',
       startConnect: true,
       connectOptions: {
+        logfile: './sauce.log',
         noSslBumpDomains: [
           'idbroker.webex.com',
           'idbrokerbts.webex.com',
