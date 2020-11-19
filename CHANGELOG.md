@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.103.6](https://github.com/webex/webex-js-sdk/compare/v1.103.5...v1.103.6) (2020-11-19)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** 429s from controls endpoint on mute ([5a83f6d](https://github.com/webex/webex-js-sdk/commit/5a83f6d78dac6a27adba60ab7ae91c0ea14f2f9b))
+
 ### [1.103.5](https://github.com/webex/webex-js-sdk/compare/v1.103.4...v1.103.5) (2020-11-19)
 
 
