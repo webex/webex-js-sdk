@@ -7,7 +7,6 @@ const {Server} = require('karma');
 
 const {makeConfig} = require('../../../karma-ng.conf');
 const {glob} = require('../async');
-const {inject} = require('../openh264');
 
 const {expectNonEmptyReports, expectNoKmsErrors} = require('./common');
 
@@ -19,10 +18,6 @@ exports.test = async function test(options, packageName, files) {
   debug(`testing ${files}`);
 
   const cfg = makeConfig(packageName, options);
-
-  if (packageName === '@webex/plugin-phone' || packageName === '@webex/media-engine-webrtc') {
-    await inject(cfg.customLaunchers);
-  }
 
   if (options.xunit || process.env.COVERAGE || process.env.CIRCLECI || process.env.CI) {
     try {
