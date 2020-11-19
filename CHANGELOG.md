@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.103.5](https://github.com/webex/webex-js-sdk/compare/v1.103.4...v1.103.5) (2020-11-19)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** upload logs on leave meeting ([750a08c](https://github.com/webex/webex-js-sdk/commit/750a08c98dfba214e334ef3e4e0e18d6b340de1b))
+
 ### [1.103.4](https://github.com/webex/webex-js-sdk/compare/v1.103.3...v1.103.4) (2020-11-19)
 
 
