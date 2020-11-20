@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.104.0](https://github.com/webex/webex-js-sdk/compare/v1.103.6...v1.104.0) (2020-11-20)
+
+
+### Features
+
+* **plugin-meetings:** fetch reachability on register ([cc996b6](https://github.com/webex/webex-js-sdk/commit/cc996b6841dbc15d13bfa31d0ee7e1b841d09b25))
+
 ### [1.103.6](https://github.com/webex/webex-js-sdk/compare/v1.103.5...v1.103.6) (2020-11-19)
 
 
