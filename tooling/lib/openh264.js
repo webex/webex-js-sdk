@@ -71,29 +71,37 @@ async function exists(dir) {
   }
 }
 
-exports.download = async function download() {
+/**
+ * download
+ */
+async function download() {
   await rimraf(`${PROFILE_DIR}/mac`);
   await spawn(`${__dirname}/openh264.sh`, []);
-};
+}
 
-exports.inject = async function inject(browsers) {
+/**
+ * inject
+ *
+ * @param {array} browsers
+ */
+async function inject(browsers) {
   debug('checking if openh264 has been downloaded');
   if (!await exists(`${PROFILE_DIR}/mac`)) {
     debug('openh264 for mac not found, downloading');
-    await exports.download();
+    await download();
   }
 
   for (const key of Object.keys(browsers)) {
     const def = browsers[key];
 
-    if (def.base === 'SauceLabs') {
+    if (def.base === 'SauceLabs' || def['sauce:options']) {
       await injectSauce(def);
     }
     else {
       await injectLocal(def);
     }
   }
-};
+}
 
 /**
  * Determines the switchabale platform name from a sauce definition or the
@@ -101,7 +109,7 @@ exports.inject = async function inject(browsers) {
  * @param {string} platform
  * @returns {string}
  */
-export function platformToShortName(platform) {
+function platformToShortName(platform) {
   if (platform.toLowerCase().includes('mac') || platform === 'darwin') {
     return 'mac';
   }
@@ -114,16 +122,16 @@ export function platformToShortName(platform) {
  * @param {Object} def
  */
 async function injectLocal(def) {
-  debug(`checking ${def.base} for firefox`);
-  if (def.base.toLowerCase().includes('firefox')) {
+  debug(`checking ${def.browserName} for firefox`);
+  if (!def['sauce:options']) {
     debug('def is a firefox def');
     const platform = platformToShortName(os.platform());
 
-    debug(`injecting ${platform} profile into ${def.base}`);
+    debug(`injecting ${platform} profile into ${def.browserName}`);
     const dest = await prepareLocalProfile(platform);
 
     def.profile = dest;
-    debug(`injected ${dest} profile into ${def.base}`);
+    debug(`injected ${dest} profile into ${def.browserName}`);
   }
 }
 
@@ -132,7 +140,7 @@ async function injectLocal(def) {
  * @param {string} platform
  * @returns {Promise}
  */
-export async function prepareLocalProfile(platform) {
+async function prepareLocalProfile(platform) {
   if (platform !== 'mac') {
     throw new Error(`No tooling implemented for injecting h264 into ${platform}`);
   }
@@ -157,13 +165,13 @@ async function injectSauce(def) {
   debug(`checking ${def.base} for firefox`);
   if (def.browserName.toLowerCase().includes('firefox')) {
     debug('def is a firefox def');
-    const platform = platformToShortName(def.platform);
+    const platform = platformToShortName(def.platformName);
 
     if (platform !== 'mac') {
-      throw new Error(`No tooling implemented for injecting h264 into ${platform} (${def.platform})`);
+      throw new Error(`No tooling implemented for injecting h264 into ${platform} (${def.platformName})`);
     }
 
-    debug(`injecting ${platform} profile into ${def.base}`);
+    debug(`injecting ${platform} profile into ${def.browserName}`);
     const dir = path.resolve(process.cwd(), `${PROFILE_DIR}/${platform}`);
 
     debug(`profile is at ${dir}`);
@@ -171,7 +179,14 @@ async function injectSauce(def) {
     const encoded = await encode(profile);
 
     // eslint-disable-next-line camelcase
-    def.firefox_profile = encoded;
+    def['moz:firefoxOptions'].profile = encoded;
     debug(`injected ${platform} profile into def`);
   }
 }
+
+module.exports = {
+  download,
+  inject,
+  platformToShortName,
+  prepareLocalProfile
+};

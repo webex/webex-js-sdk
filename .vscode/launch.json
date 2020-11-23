@@ -15,13 +15,12 @@
       "type": "node",
       "request": "launch",
       "name": "Test specific packages",
-      "runtimeVersion": "8.16.0",
-      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/babel-node",
+      "autoAttachChildProcesses": true,
       "runtimeArgs": [
         "./tooling/index.js",
         "test",
         "--packages",
-        "@webex/${input:packages}",
+        "${input:packages}",
         "${input:flags}"
       ]
     },
@@ -29,8 +28,7 @@
       "type": "node",
       "request": "launch",
       "name": "Test all packages",
-      "runtimeVersion": "8.16.0",
-      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/babel-node",
+      "autoAttachChildProcesses": true,
       "runtimeArgs": [
         "./tooling/index.js",
         "test",
@@ -42,7 +40,7 @@
     {
       "id": "packages",
       "type": "promptString",
-      "description": "Which package do you want to debug (i.e. `plugin-meetings`)"
+      "description": "Which package do you want to debug (i.e. `@webex/plugin-meetings`)"
     },
     {
       "id": "flags",
