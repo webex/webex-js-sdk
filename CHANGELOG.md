@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.104.1](https://github.com/webex/webex-js-sdk/compare/v1.104.0...v1.104.1) (2020-11-30)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** trigger event based on H264 presence ([b4a35ac](https://github.com/webex/webex-js-sdk/commit/b4a35ac5a3356f3148aeac8eb9418f9d43108366))
+
 ## [1.104.0](https://github.com/webex/webex-js-sdk/compare/v1.103.6...v1.104.0) (2020-11-20)
 
 
