@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.105.0](https://github.com/webex/webex-js-sdk/compare/v1.104.1...v1.105.0) (2020-11-30)
+
+
+### Features
+
+* **decryption-transform:** key rotation edit message error fix ([c34a777](https://github.com/webex/webex-js-sdk/commit/c34a777cd519717a6e2abc9965617202e995d64b))
+
 ### [1.104.1](https://github.com/webex/webex-js-sdk/compare/v1.104.0...v1.104.1) (2020-11-30)
 
 
