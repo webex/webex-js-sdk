@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.106.0](https://github.com/webex/webex-js-sdk/compare/v1.105.0...v1.106.0) (2020-12-01)
+
+
+### Features
+
+* **internal-plugin-ediscovery:** new attributes for tabs extension ([7b5d0a6](https://github.com/webex/webex-js-sdk/commit/7b5d0a69358d0a7d46e0727bc871d0d480358836))
+* **internal-plugin-ediscovery:** new attributes for tabs extension ([a60dd36](https://github.com/webex/webex-js-sdk/commit/a60dd36d511622e02bb2bffe3acdf0c660f30b9d))
+* **internal-plugin-ediscovery:** new attributes for tabs extension ([7646cff](https://github.com/webex/webex-js-sdk/commit/7646cffc97748a57c5e51448b2b5d180a32d50f1))
+* **internal-plugin-ediscovery:** new attributes for tabs extension ([c7a11bf](https://github.com/webex/webex-js-sdk/commit/c7a11bf4625522fce383c1986046ceb5c0a926c6))
+
 ## [1.105.0](https://github.com/webex/webex-js-sdk/compare/v1.104.1...v1.105.0) (2020-11-30)
 
 
