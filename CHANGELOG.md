@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.108.0](https://github.com/webex/webex-js-sdk/compare/v1.107.0...v1.108.0) (2020-12-02)
+
+
+### Features
+
+* **plugin-meetings:** use correlation for acknowledge ([6ba9eb0](https://github.com/webex/webex-js-sdk/commit/6ba9eb0119abef854b722d58343cd1c42bc7995b))
+
+
+### Bug Fixes
+
+* **plugin-meetings:** delete meeting by id not cid ([8e7f8df](https://github.com/webex/webex-js-sdk/commit/8e7f8df0a36159080e35a6bb5fd26d7d7adc8d34))
+* **plugin-meetings:** use correlation id at join ([b1d3e06](https://github.com/webex/webex-js-sdk/commit/b1d3e06acd898c3aa7ea1131236459bb72515272))
+
 ## [1.107.0](https://github.com/webex/webex-js-sdk/compare/v1.106.1...v1.107.0) (2020-12-02)
 
 
