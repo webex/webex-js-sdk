@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.107.0](https://github.com/webex/webex-js-sdk/compare/v1.106.1...v1.107.0) (2020-12-02)
+
+
+### Features
+
+* **plugin-meetings:** add geo hint for join request ([96c3a7c](https://github.com/webex/webex-js-sdk/commit/96c3a7ce3a83bd480471e65909313e7b220a8a3c))
+
 ### [1.106.1](https://github.com/webex/webex-js-sdk/compare/v1.106.0...v1.106.1) (2020-12-01)
 
 
