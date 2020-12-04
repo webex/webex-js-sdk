@@ -150,7 +150,7 @@
     "gm": "^1.23.1",
     "grunt": "~1.0.1",
     "grunt-cli": "~1.2.0",
-    "highlight.js": "^9.15.8",
+    "highlight.js": "^10.4.1",
     "humanize-string": "^1.0.2",
     "husky": "^3.0.3",
     "in-publish": "^2.0.0",
