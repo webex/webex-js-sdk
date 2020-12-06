@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-const t = require('babel-types');
+const t = require('@babel/types');
 
 const {version} = require('../package.json');
 

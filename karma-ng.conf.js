@@ -42,7 +42,7 @@ function makeConfig(packageName, argv) {
   };
 
   const files = [
-    'node_modules/babel-polyfill/dist/polyfill.js'
+    'node_modules/@babel/polyfill/dist/polyfill.js'
   ];
 
   if (!argv || argv.unit) {
@@ -141,43 +141,6 @@ function makeConfig(packageName, argv) {
     recordScreenshots: true
   };
 
-  if (process.env.COVERAGE && process.env.COVERAGE !== 'undefined') {
-    cfg.coverageReporter = {
-      instrumenters: {isparta: require('isparta')},
-      instrumenter: {
-        '**/*.js': 'isparta'
-      },
-      // includeAllSources: true,
-      // instrumenterOptions: {
-      //   coverageVariable: makeCoverageVariable(packageName)
-      // },
-      reporters: [
-        {
-          type: 'json',
-          dir: `reports/coverage/intermediate/${packageName}`
-        }
-      ]
-    };
-
-    cfg.junitReporter = {
-      outputFile: `${packageName}.xml`,
-      outputDir: 'reports/junit/karma',
-      suite: packageName,
-      useBrowserName: true,
-      ...(CI && {
-        recordScreenshots: true,
-        recordVideo: true
-      })
-    };
-
-    // cfg.browserify.transform.unshift([`browserify-istanbul`, {
-    //   instrumenter: require(`isparta`),
-    //   defaultIgnore: false
-    // }]);
-
-    cfg.reporters.push('coverage');
-  }
-
   if (CI) {
     cfg.transports = ['websocket', 'polling'];
 
@@ -190,6 +153,7 @@ function makeConfig(packageName, argv) {
       public: 'team',
       startConnect: true,
       connectOptions: {
+        logfile: './sauce.log',
         noSslBumpDomains: [
           'idbroker.webex.com',
           'idbrokerbts.webex.com',

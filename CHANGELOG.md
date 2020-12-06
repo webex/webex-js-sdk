@@ -2,6 +2,281 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.108.0](https://github.com/webex/webex-js-sdk/compare/v1.107.0...v1.108.0) (2020-12-02)
+
+
+### Features
+
+* **plugin-meetings:** use correlation for acknowledge ([6ba9eb0](https://github.com/webex/webex-js-sdk/commit/6ba9eb0119abef854b722d58343cd1c42bc7995b))
+
+
+### Bug Fixes
+
+* **plugin-meetings:** delete meeting by id not cid ([8e7f8df](https://github.com/webex/webex-js-sdk/commit/8e7f8df0a36159080e35a6bb5fd26d7d7adc8d34))
+* **plugin-meetings:** use correlation id at join ([b1d3e06](https://github.com/webex/webex-js-sdk/commit/b1d3e06acd898c3aa7ea1131236459bb72515272))
+
+## [1.107.0](https://github.com/webex/webex-js-sdk/compare/v1.106.1...v1.107.0) (2020-12-02)
+
+
+### Features
+
+* **plugin-meetings:** add geo hint for join request ([96c3a7c](https://github.com/webex/webex-js-sdk/commit/96c3a7ce3a83bd480471e65909313e7b220a8a3c))
+
+### [1.106.1](https://github.com/webex/webex-js-sdk/compare/v1.106.0...v1.106.1) (2020-12-01)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** use correct meeting instance when uploading meeting logs ([1e97483](https://github.com/webex/webex-js-sdk/commit/1e974833e6b586f7c070a0419e7044fcfb218f1e))
+
+## [1.106.0](https://github.com/webex/webex-js-sdk/compare/v1.105.0...v1.106.0) (2020-12-01)
+
+
+### Features
+
+* **internal-plugin-ediscovery:** new attributes for tabs extension ([7b5d0a6](https://github.com/webex/webex-js-sdk/commit/7b5d0a69358d0a7d46e0727bc871d0d480358836))
+* **internal-plugin-ediscovery:** new attributes for tabs extension ([a60dd36](https://github.com/webex/webex-js-sdk/commit/a60dd36d511622e02bb2bffe3acdf0c660f30b9d))
+* **internal-plugin-ediscovery:** new attributes for tabs extension ([7646cff](https://github.com/webex/webex-js-sdk/commit/7646cffc97748a57c5e51448b2b5d180a32d50f1))
+* **internal-plugin-ediscovery:** new attributes for tabs extension ([c7a11bf](https://github.com/webex/webex-js-sdk/commit/c7a11bf4625522fce383c1986046ceb5c0a926c6))
+
+## [1.105.0](https://github.com/webex/webex-js-sdk/compare/v1.104.1...v1.105.0) (2020-11-30)
+
+
+### Features
+
+* **decryption-transform:** key rotation edit message error fix ([c34a777](https://github.com/webex/webex-js-sdk/commit/c34a777cd519717a6e2abc9965617202e995d64b))
+
+### [1.104.1](https://github.com/webex/webex-js-sdk/compare/v1.104.0...v1.104.1) (2020-11-30)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** trigger event based on H264 presence ([b4a35ac](https://github.com/webex/webex-js-sdk/commit/b4a35ac5a3356f3148aeac8eb9418f9d43108366))
+
+## [1.104.0](https://github.com/webex/webex-js-sdk/compare/v1.103.6...v1.104.0) (2020-11-20)
+
+
+### Features
+
+* **plugin-meetings:** fetch reachability on register ([cc996b6](https://github.com/webex/webex-js-sdk/commit/cc996b6841dbc15d13bfa31d0ee7e1b841d09b25))
+
+### [1.103.6](https://github.com/webex/webex-js-sdk/compare/v1.103.5...v1.103.6) (2020-11-19)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** 429s from controls endpoint on mute ([5a83f6d](https://github.com/webex/webex-js-sdk/commit/5a83f6d78dac6a27adba60ab7ae91c0ea14f2f9b))
+
+### [1.103.5](https://github.com/webex/webex-js-sdk/compare/v1.103.4...v1.103.5) (2020-11-19)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** upload logs on leave meeting ([750a08c](https://github.com/webex/webex-js-sdk/commit/750a08c98dfba214e334ef3e4e0e18d6b340de1b))
+
+### [1.103.4](https://github.com/webex/webex-js-sdk/compare/v1.103.3...v1.103.4) (2020-11-19)
+
+
+### Bug Fixes
+
+* remove mmmagic ([2bcd681](https://github.com/webex/webex-js-sdk/commit/2bcd681e13dfb4c7f7728eff5dfe1f288d503f8c))
+
+### [1.103.3](https://github.com/webex/webex-js-sdk/compare/v1.103.2...v1.103.3) (2020-11-18)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** check peerConnection state before closing ([3983c78](https://github.com/webex/webex-js-sdk/commit/3983c785b3e9410603a167d111caf12bfccc5500))
+
+### [1.103.2](https://github.com/webex/webex-js-sdk/compare/v1.103.1...v1.103.2) (2020-11-17)
+
+
+### Bug Fixes
+
+* **plugin-meeting:**  locus replace always with the last active ([8822766](https://github.com/webex/webex-js-sdk/commit/882276656f42c6bc92524dfb6007731488ca6648))
+
+### [1.103.1](https://github.com/webex/webex-js-sdk/compare/v1.103.0...v1.103.1) (2020-11-16)
+
+
+### Bug Fixes
+
+* **webex-core:** remove logging entire client region info response ([d17c550](https://github.com/webex/webex-js-sdk/commit/d17c5509de3b03f1c9699ccae12816cd5e27beb8))
+
+## [1.103.0](https://github.com/webex/webex-js-sdk/compare/v1.102.1...v1.103.0) (2020-11-16)
+
+
+### Features
+
+* **webex-core:** fetch client region info before activating user ([25f5072](https://github.com/webex/webex-js-sdk/commit/25f5072f305c177ca8527bb2f1f126d24500dadc))
+
+### [1.102.1](https://github.com/webex/webex-js-sdk/compare/v1.102.0...v1.102.1) (2020-11-16)
+
+
+### Bug Fixes
+
+* **meetings:** fix scheduled meetings ([c53a955](https://github.com/webex/webex-js-sdk/commit/c53a955c56a6ca6342cdb5be26782eff11106242))
+
+## [1.102.0](https://github.com/webex/webex-js-sdk/compare/v1.101.0...v1.102.0) (2020-11-16)
+
+
+### Features
+
+* **services:** add override catalog ([d84c852](https://github.com/webex/webex-js-sdk/commit/d84c85242d9f570eb20a1051f388fe405e968643))
+
+## [1.101.0](https://github.com/webex/webex-js-sdk/compare/v1.100.0...v1.101.0) (2020-11-16)
+
+
+### Features
+
+* **meetings:** send reconnect failure before rejoin ([4d87181](https://github.com/webex/webex-js-sdk/commit/4d871816465c056f14d1aee3f2c4ffc99039f43c))
+
+## [1.100.0](https://github.com/webex/webex-js-sdk/compare/v1.99.1...v1.100.0) (2020-11-15)
+
+
+### Features
+
+* **plugin-meetings:** gdm reachability uses orpheus discovery api ([8da4d2d](https://github.com/webex/webex-js-sdk/commit/8da4d2d573dc453f0ca333410f22bd3b0c09a641))
+
+### [1.99.1](https://github.com/webex/webex-js-sdk/compare/v1.99.0...v1.99.1) (2020-11-04)
+
+
+### Bug Fixes
+
+* **authorization:** add additional email query check ([77b9c57](https://github.com/webex/webex-js-sdk/commit/77b9c57fe71b2061ea7fbce47fb06305e80546a0))
+
+## [1.99.0](https://github.com/webex/webex-js-sdk/compare/v1.98.5...v1.99.0) (2020-10-29)
+
+
+### Features
+
+* **conversation:** allow user to create a classified space ([4fb75e2](https://github.com/webex/webex-js-sdk/commit/4fb75e26fff9b9b310943420d9719f68bb2057b4))
+
+### [1.98.5](https://github.com/webex/webex-js-sdk/compare/v1.98.4...v1.98.5) (2020-10-26)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add MEETING_LEAVE_FAILURE constant ([15ccfe5](https://github.com/webex/webex-js-sdk/commit/15ccfe5453afa33f654d00aed425220220d2ad11))
+
+### [1.98.4](https://github.com/webex/webex-js-sdk/compare/v1.98.3...v1.98.4) (2020-10-22)
+
+
+### Bug Fixes
+
+* **plugin-meeting:** enable rtx on reconnect meeting ([0e67cb5](https://github.com/webex/webex-js-sdk/commit/0e67cb5cdd6099ad803b2372b895131cf4ccaf4c))
+
+### [1.98.3](https://github.com/webex/webex-js-sdk/compare/v1.98.2...v1.98.3) (2020-10-22)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add support for rtx re transmission ([7bf416c](https://github.com/webex/webex-js-sdk/commit/7bf416ca2a8f9378305035852915818b2e93f320))
+* **plugin-meetings:** remove new line ([fba4a05](https://github.com/webex/webex-js-sdk/commit/fba4a055e7d2878a1a110232c621d3065a6b6b5e))
+
+### [1.98.2](https://github.com/webex/webex-js-sdk/compare/v1.98.1...v1.98.2) (2020-10-15)
+
+
+### Bug Fixes
+
+* **webex-core:** fix unit tests ([5b0ff9b](https://github.com/webex/webex-js-sdk/commit/5b0ff9bb4e61345a6b98be16d9f75729de5e4cff))
+
+### [1.98.1](https://github.com/webex/webex-js-sdk/compare/v1.98.0...v1.98.1) (2020-10-12)
+
+
+### Bug Fixes
+
+* **meeting-plugin:** send metrics for framesDropped and framesRendred ([ed4660f](https://github.com/webex/webex-js-sdk/commit/ed4660fac2aaea1687043f1a8c5035d5b08952d1))
+* **plugin-meeting:** add periodic key frame request to edonus ([a6b91a8](https://github.com/webex/webex-js-sdk/commit/a6b91a85d93638ce67a731a34998255abde10809))
+* **plugin-meetings:**  cannot share second time when stopping using stopShare overlay ([a703986](https://github.com/webex/webex-js-sdk/commit/a7039861c549e60f7d891c7450aa9413159f29a2))
+* **plugin-meetings:** neglects duplicate roap event with same seq ([9bf9b18](https://github.com/webex/webex-js-sdk/commit/9bf9b183ed2d70b1a6bc47baa499092cc810bcf9))
+
+## [1.98.0](https://github.com/webex/webex-js-sdk/compare/v1.97.4...v1.98.0) (2020-10-12)
+
+
+### Features
+
+* add preferTransocoding option ([70ff2cf](https://github.com/webex/webex-js-sdk/commit/70ff2cf9e037b49a24edf27f2801ac2e9cb98d20))
+
+### [1.97.4](https://github.com/webex/webex-js-sdk/compare/v1.97.3...v1.97.4) (2020-10-06)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** remove media inactive metrics ([eeffc6c](https://github.com/webex/webex-js-sdk/commit/eeffc6ced0e0fe6e2d7de80f40e97ccb1ab659d0))
+* **plugin-meetings:** remove media inactive metrics ([6c5d7da](https://github.com/webex/webex-js-sdk/commit/6c5d7da9cb44b184c15b64445830197a76b7fe32))
+
+### [1.97.3](https://github.com/webex/webex-js-sdk/compare/v1.97.2...v1.97.3) (2020-10-02)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** send operational metrics for roap failures ([100103f](https://github.com/webex/webex-js-sdk/commit/100103f048b900268f8fba671a572924a7359700))
+
+### [1.97.2](https://github.com/webex/webex-js-sdk/compare/v1.97.0...v1.97.2) (2020-10-02)
+
+
+### Bug Fixes
+
+* **calendar:** decrypt organizer email and name ([6b269a5](https://github.com/webex/webex-js-sdk/commit/6b269a5d6ede0d0fb2e6209154540185c209e200))
+
+### [1.97.1](https://github.com/webex/webex-js-sdk/compare/v1.97.0...v1.97.1) (2020-09-29)
+
+## [1.97.0](https://github.com/webex/webex-js-sdk/compare/v1.96.1...v1.97.0) (2020-09-28)
+
+
+### Features
+
+* **ediscovery:** support decryption of meeting activities ([b05a87a](https://github.com/webex/webex-js-sdk/commit/b05a87a87b6cad21e1ae8a2394304f3dbb774577))
+
+### [1.96.1](https://github.com/webex/webex-js-sdk/compare/v1.96.0...v1.96.1) (2020-09-24)
+
+
+### Bug Fixes
+
+* **meetings:** deferred join use proper promise methods ([078d5b0](https://github.com/webex/webex-js-sdk/commit/078d5b02263ac83502e662f715c488c0c8c3b595))
+
+## [1.96.0](https://github.com/webex/webex-js-sdk/compare/v1.95.2...v1.96.0) (2020-09-23)
+
+
+### Features
+
+* **meeting:** initialize recording property from the locus info ([e42c116](https://github.com/webex/webex-js-sdk/commit/e42c11664bba2fc00f17455739400433dd990606))
+
+### [1.95.2](https://github.com/webex/webex-js-sdk/compare/v1.95.1...v1.95.2) (2020-09-22)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** defer joining and duplicate metrics ([b195246](https://github.com/webex/webex-js-sdk/commit/b195246ea4bcfe5ae5c7a7b6246ba6558780fb22))
+
+### [1.95.1](https://github.com/webex/webex-js-sdk/compare/v1.95.0...v1.95.1) (2020-09-19)
+
+
+### Bug Fixes
+
+* **meeting:** trigger correct event at the initiation level ([0c766e0](https://github.com/webex/webex-js-sdk/commit/0c766e083feeee05a9659af5bb93652a1eada81d))
+
+## [1.95.0](https://github.com/webex/webex-js-sdk/compare/v1.94.2...v1.95.0) (2020-09-18)
+
+
+### Features
+
+* **ediscovery:** support scr decryption on files that use their own key url ([306c4c0](https://github.com/webex/webex-js-sdk/commit/306c4c04001395d40547a8fdf34ac061a1eeb159))
+
+### [1.94.2](https://github.com/webex/webex-js-sdk/compare/v1.94.1...v1.94.2) (2020-09-17)
+
+
+### Bug Fixes
+
+* **meeting-plugin:** send share error metrics ([110b030](https://github.com/webex/webex-js-sdk/commit/110b0308e2cfbe20232bfa0921fbedeb686db0f0))
+
+### [1.94.1](https://github.com/webex/webex-js-sdk/compare/v1.94.0...v1.94.1) (2020-09-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:**  fix audio RTPpackets and -1 values ([4df6982](https://github.com/webex/webex-js-sdk/commit/4df6982ea1022539032d22d4ecd16a678571a7e6))
+
 ## [1.94.0](https://github.com/webex/webex-js-sdk/compare/v1.93.4...v1.94.0) (2020-09-15)
 
 

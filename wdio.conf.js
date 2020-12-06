@@ -1,23 +1,22 @@
 /* eslint-disable no-console, require-jsdoc */
 /* global browser: false */
 
-require('babel-register');
-
 const path = require('path');
 const os = require('os');
+const {createServer} = require('http');
 
 const dotenv = require('dotenv');
 const glob = require('glob');
 const uuidv4 = require('uuid/v4');
+const handler = require('serve-handler');
+const webpack = require('webpack');
 
 dotenv.config();
 dotenv.config({path: '.env.default'});
 
-const {inject} = require('./tooling/lib/openh264');
-// Webdriver is only called for testing samples so force integration URLs w/ Webpack
 const webpackConfig = require('./webpack.config')();
 
-require('babel-register')({
+require('@babel/register')({
   only: [
     './packages/node_modules/**/*.js'
   ],
@@ -29,6 +28,30 @@ const CI = !!(process.env.JENKINS || process.env.CIRCLECI || process.env.CI || p
 
 exports.config = {
   //
+  // ====================
+  // Runner Configuration
+  // ====================
+  //
+  // WebdriverIO allows it to run your tests in arbitrary locations (e.g. locally or
+  // on a remote machine).
+  runner: 'local',
+  //
+  // =================
+  // Service Providers
+  // =================
+  // WebdriverIO supports Sauce Labs, Browserstack, Testing Bot and LambdaTest (other cloud providers
+  // should work too though). These services define specific user and key (or access key)
+  // values you need to put in here in order to connect to these services.
+  //
+  user: process.env.SAUCE_USERNAME,
+  key: process.env.SAUCE_ACCESS_KEY,
+  //
+  // If you run your tests on Sauce Labs you can specify the region you want to run your tests
+  // in via the `region` property. Available short handles for regions are `us` (default) and `eu`.
+  // These regions are used for the Sauce Labs VM cloud and the Sauce Labs Real Device Cloud.
+  // If you don't provide the region it will default for the `us`
+  region: 'us',
+  //
   // ==================
   // Specify Test Files
   // ==================
@@ -37,8 +60,10 @@ exports.config = {
   // NPM script (see https://docs.npmjs.com/cli/run-script) then the current working
   // directory is where your package.json resides, so `wdio` will be called from there.
   //
+  featureFlags: {
+    specFiltering: true
+  },
   specs: [
-    './wdio.helpers.d/**/*.js',
     './packages/node_modules/{*,*/*}/test/wdio/spec/**/*.js'
   ],
   suites: glob
@@ -67,7 +92,7 @@ exports.config = {
   // and 30 processes will get spawned. The property handles how many capabilities
   // from the same test should run tests.
   //
-  maxInstances: 10,
+  maxInstances: 1,
   //
   // If you have trouble getting all important capabilities together, check out the
   // Sauce Labs platform configurator - a great tool to configure your capabilities:
@@ -78,7 +103,7 @@ exports.config = {
   // If not Safari run Firefox + Chrome
   capabilities: process.env.SAFARI ? {
     browserFirefox: {
-      desiredCapabilities: {
+      capabilities: {
         browserName: 'safari',
         'webkit:WebRTC': {
           DisableInsecureMediaCapture: true
@@ -89,8 +114,6 @@ exports.config = {
           }
         }),
         ...(CI && {
-          platform: 'macOS 10.14',
-          version: '12',
           'sauce:options': {
             screenResolution: '1600x1200',
             extendedDebugging: true
@@ -100,7 +123,7 @@ exports.config = {
     },
     ...(CI ? {
       browserChrome: {
-        desiredCapabilities: {
+        capabilities: {
           browserName: 'MicrosoftEdge',
           'ms:edgeOptions': {
             args: [
@@ -110,7 +133,7 @@ exports.config = {
             ]
           },
           ...(CI && {
-            platform: 'Windows 10',
+            platformName: 'Windows 10',
             'sauce:options': {
               screenResolution: '1600x1200',
               extendedDebugging: true
@@ -120,7 +143,7 @@ exports.config = {
       }
     } : {
       browserChrome: {
-        desiredCapabilities: {
+        capabilities: {
           browserName: 'chrome',
           'goog:chromeOptions': {
             args: [
@@ -132,7 +155,9 @@ exports.config = {
           ...(CI && {
             'sauce:options': {
               screenResolution: '1600x1200',
-              extendedDebugging: true
+              extendedDebugging: true,
+              capturePerformance: true,
+              crmuxdriverVersion: 'beta'
             }
           })
         }
@@ -140,7 +165,7 @@ exports.config = {
     })
   } : {
     browserFirefox: {
-      desiredCapabilities: {
+      capabilities: {
         browserName: 'firefox',
         'moz:firefoxOptions': {
           ...(CI ? {
@@ -151,14 +176,22 @@ exports.config = {
             prefs: {
               'devtools.chrome.enabled': true,
               'devtools.debugger.prompt-connection': false,
-              'devtools.debugger.remote-enabled': true
+              'devtools.debugger.remote-enabled': true,
+              'dom.webnotifications.enabled': false,
+              'media.webrtc.hw.h264.enabled': true,
+              'media.getusermedia.screensharing.enabled': true,
+              'media.navigator.permission.disabled': true,
+              'media.navigator.streams.fake': true,
+              'media.peerconnection.video.h264_enabled': true
             }
           } : {
             prefs: {
               'dom.webnotifications.enabled': false,
+              'media.webrtc.hw.h264.enabled': true,
               'media.getusermedia.screensharing.enabled': true,
               'media.navigator.permission.disabled': true,
-              'media.navigator.streams.fake': true
+              'media.navigator.streams.fake': true,
+              'media.peerconnection.video.h264_enabled': true
             }
           })
         },
@@ -171,7 +204,7 @@ exports.config = {
       }
     },
     browserChrome: {
-      desiredCapabilities: {
+      capabilities: {
         browserName: 'chrome',
         'goog:chromeOptions': {
           args: [
@@ -183,7 +216,9 @@ exports.config = {
         ...(CI && {
           'sauce:options': {
             screenResolution: '1600x1200',
-            extendedDebugging: true
+            extendedDebugging: true,
+            capturePerformance: true,
+            crmuxdriverVersion: 'beta'
           }
         })
       }
@@ -195,13 +230,16 @@ exports.config = {
   // ===================
   // Define all options that are relevant for the WebdriverIO instance here
   //
-  // By default WebdriverIO commands are executed in a synchronous way using
-  // the wdio-sync package. If you still want to run your tests in an async way
-  // e.g. using promises you can set the sync option to false.
-  sync: true,
   //
-  // Level of logging verbosity: silent | verbose | command | data | result | error
+  // Level of logging verbosity: trace | debug | info | warn | error | silent
   logLevel: 'error',
+  //
+  // Set specific log levels per logger
+  // use 'silent' level to disable logger
+  // logLevels: {
+  //   webdriver: 'info',
+  //   '@wdio/applitools-service': 'info'
+  // },
   //
   // Warns when a deprecated command is used
   deprecationWarnings: !CI,
@@ -256,34 +294,33 @@ exports.config = {
   // your test setup with almost no effort. Unlike plugins, they don't add new
   // commands. Instead, they hook themselves up into the test process.
   services: CI ? [
-    'sauce',
-    'static-server',
-    'webpack'
-  ] : [
-    'selenium-standalone',
-    'static-server',
-    'webpack'
-  ],
-  staticServerFolders: [
-    {mount: '/', path: './packages/node_modules/samples'},
-    {mount: '/', path: '.'}
-  ],
-  staticServerPort: PORT,
-  webpackConfig,
-  // Set selenium and geckodriver versions only for local dev
-  // Saucelabs should handle this automatically
-  ...(!CI && {
-    seleniumInstallArgs: {
-      // Latest Version of Selenium
-      version: '3.141.59',
-      drivers: {
-        firefox: {
-          // Latest Version of geckodriver (default version is 0.23.0)
-          version: '0.26.0'
-        }
+    ['sauce', {
+      sauceConnect: true,
+      sauceConnectOpts: {
+        noSslBumpDomains: [
+          'idbroker.webex.com',
+          'idbrokerbts.webex.com',
+          '127.0.0.1',
+          'localhost',
+          '*.wbx2.com',
+          '*.ciscospark.com'
+        ],
+        tunnelDomains: [
+          '127.0.0.1',
+          'localhost'
+        ],
+        logfile: './sauce.log',
+        tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuidv4()
       }
-    }
-  }),
+    }]
+  ] : [
+    ['selenium-standalone', {
+      installArgs: {
+        // Latest Version of Selenium
+        version: '3.141.59'
+      }
+    }]
+  ],
   //
   // Framework you want to run your specs with.
   // The following are supported: Mocha, Jasmine, and Cucumber
@@ -296,17 +333,18 @@ exports.config = {
   // Test reporter for stdout.
   // The only one supported by default is 'dot'
   // see also: http://webdriver.io/guide/testrunner/reporters.html
-  reporters: CI ? ['spec', 'junit'] : ['spec'],
-  reporterOptions: {
-    junit: {
+  reporters: [
+    'spec',
+    ['junit', {
       outputDir: './reports/junit/wdio'
-    }
-  },
+    }]
+  ],
   //
   // Options to be passed to Mocha.
   // See the full list at http://mochajs.org/
   mochaOpts: {
     // reminder: mocha-steps seems to make tests flaky on Sauce Labs
+    require: ['@babel/register'],
     timeout: 80000,
     ui: 'bdd'
   },
@@ -322,29 +360,48 @@ exports.config = {
    * Gets executed once before all workers get launched.
    * @param {Object} config wdio configuration object
    * @param {Array.<Object>} capabilities list of capabilities details
-   * @returns {Promise}
    */
-  onPrepare(config, capabilities) {
+  async onPrepare(config, capabilities) {
+    await webpack(webpackConfig, (err, stats) => {
+      if (err || stats.hasErrors()) {
+        throw new Error(err.details);
+      }
+
+      console.log(stats.toString({
+        colors: true,
+        modules: false,
+        warnings: false
+      }));
+
+      createServer((request, response) =>
+        // You pass two more arguments for config and middleware
+        // More details here: https://github.com/vercel/serve-handler#options
+        handler(request, response, {
+          public: './packages/node_modules/samples',
+          cleanUrls: true,
+          trailingSlash: true
+        }))
+        .listen(PORT, () => {
+          console.info(`Static Sever running at http://localhost:${PORT}\n`);
+        });
+    });
+
     const defs = [
-      capabilities.browserFirefox.desiredCapabilities,
-      capabilities.browserChrome.desiredCapabilities
+      capabilities.browserFirefox.capabilities,
+      capabilities.browserChrome.capabilities
     ];
 
     const build = process.env.BUILD_NUMBER || `local-${process.env.USER}-wdio-${Date.now()}`;
 
     defs.forEach((d) => {
       if (CI) {
-        d.build = build;
-        // Set the base to SauceLabs so that inject() does its thing.
-        d.base = 'SauceLabs';
+        d['sauce:options'].build = build;
 
-        d.version = d.version || 'latest';
-        d.platform = d.platform || 'macOS 10.15';
-        d.seleniumVersion = d.seleniumVersion || '3.141.59';
+        d.browserVersion = d.browserVersion || 'latest';
+        d.platformName = d.platformName || 'macOS 10.15';
+        d['sauce:options'].seleniumVersion = '3.141.59';
       }
       else {
-        // Copy the base over so that inject() does its thing.
-        d.base = d.browserName;
         d.platformName = () => {
           switch (os.type()) {
             case 'Darwin':
@@ -359,14 +416,6 @@ exports.config = {
         };
       }
     });
-
-    // The openh264 profile seems to break tests locally; run the tests twice
-    // and the plugin should download automatically.
-    return CI ? inject(defs) : Promise.resolve()
-      .then(() => {
-        // Remove the base because it's not actually a selenium property
-        defs.forEach((d) => Reflect.deleteProperty(d, 'base'));
-      });
   },
   /**
    * Gets executed just before initialising the webdriver session and test framework. It allows you
@@ -385,12 +434,19 @@ exports.config = {
    */
   // eslint-disable-next-line no-unused-vars
   before(capabilities, specs) {
+    /* eslint-disable global-require */
+    require('./wdio.helpers.d/alerts');
+    require('./wdio.helpers.d/assertions');
+    require('./wdio.helpers.d/set-value');
+    require('./wdio.helpers.d/wait-for-specific-text');
+    /* eslint-enable global-require */
+
     // Size is based on a common resolution that both Windows and Mac support on Saucelabs
-    browser.windowHandleSize({
-      width: 1600,
-      height: 1200
-    });
-  },
+    if (CI) {
+      browser.maximizeWindow();
+    }
+    browser.url(this.baseUrl);
+  }
   //
   /**
    * Hook that gets executed before the suite starts
@@ -434,40 +490,11 @@ exports.config = {
   // },
   /**
    * Function to be executed after a test (in Mocha/Jasmine) or a step (in Cucumber) starts.
-   * @param {Object} test test details
-   * @returns {undefined}
+   * @param {*} test
+   * @param {*} context
    */
-  afterTest(test) {
-    if (!test.passed) {
-      try {
-        const logTypes = browser.logTypes();
-
-        Object.keys(logTypes).forEach((browserId) => {
-          console.log(logTypes[browserId].value);
-          if (logTypes[browserId].value.includes('browser')) {
-            const logs = browser.select(browserId).log('browser');
-
-            if (logs.value.length) {
-              console.error(`Test ${test.fullTitle} failed with the following log output from browser ${browserId}`);
-              console.error(logs
-                .value
-                .map((v) => `> ${v.message}`)
-                .join('\n'));
-            }
-            else {
-              console.error(`Test ${test.fullTitle} failed but no logs were produced by browser ${browserId}`);
-            }
-          }
-          else {
-            console.error(`${test.fullTitle} failed but browser ${browserId} doesn't support log collection`);
-          }
-        });
-      }
-      catch (error) {
-        console.error(`${test.fullTitle} failed but browser doesn't support log collection`);
-      }
-    }
-  },
+  // afterTest(test, context, {passed}) {
+  // }
   /**
    * Hook that gets executed after the suite has ended
    * @param {Object} suite suite details
@@ -496,37 +523,6 @@ exports.config = {
    * possible to defer the end of the process using a promise.
    * @param {Object} exitCode 0 - success, 1 - fail
    */
-  // onComplete: function(exitCode) {
+  // onComplete(exitCode) {
   // }
-  ...(CI && {
-    user: process.env.SAUCE_USERNAME,
-    key: process.env.SAUCE_ACCESS_KEY,
-    sauceConnect: true,
-    sauceConnectOpts: {
-      detached: true,
-      noSslBumpDomains: [
-        'idbroker.webex.com',
-        'idbrokerbts.webex.com',
-        '127.0.0.1',
-        'localhost',
-        '*.wbx2.com',
-        '*.ciscospark.com'
-      ],
-      tunnelDomains: [
-        '127.0.0.1',
-        'localhost'
-      ],
-      verbose: true,
-      tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuidv4(),
-      port: process.env.SAUCE_CONNECT_PORT || 4445,
-      // retry to establish a tunnel multiple times. (optional)
-      connectRetries: 3,
-      // time to wait between connection retries in ms. (optional)
-      connectRetryTimeout: 2000,
-      // retry to download the sauce connect archive multiple times. (optional)
-      downloadRetries: 4,
-      // time to wait between download retries in ms. (optional)
-      downloadRetryTimeout: 1000
-    }
-  })
 };
