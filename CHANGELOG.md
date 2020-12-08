@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.108.1](https://github.com/webex/webex-js-sdk/compare/v1.108.0...v1.108.1) (2020-12-08)
+
+
+### Bug Fixes
+
+* update services for force refresh ([891c081](https://github.com/webex/webex-js-sdk/commit/891c08125e5be0be7842a7972c0d0d69ff88eaa2))
+
 ## [1.108.0](https://github.com/webex/webex-js-sdk/compare/v1.107.0...v1.108.0) (2020-12-02)
 
 
