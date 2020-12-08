@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.109.0](https://github.com/webex/webex-js-sdk/compare/v1.108.1...v1.109.0) (2020-12-08)
+
+
+### Features
+
+* **plugin-meetings:** remove participant email support ([c6a24e2](https://github.com/webex/webex-js-sdk/commit/c6a24e2c06ed0b37b51c9849c8745e51f04e0880))
+
 ### [1.108.1](https://github.com/webex/webex-js-sdk/compare/v1.108.0...v1.108.1) (2020-12-08)
 
 
