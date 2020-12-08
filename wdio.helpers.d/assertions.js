@@ -3,7 +3,7 @@ const addCommand = require('./lib/add-command');
 [
   'getAttribute',
   'getCssProperty',
-  'getElementSize',
+  'getSize',
   'getHTML',
   'getLocation',
   'getLocationInView',

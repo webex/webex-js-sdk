@@ -29,9 +29,11 @@ module.exports = function (packageName, argv) {
       base: 'FirefoxHeadless',
       prefs: {
         'dom.webnotifications.enabled': false,
+        'media.webrtc.hw.h264.enabled': true,
         'media.getusermedia.screensharing.enabled': true,
         'media.navigator.permission.disabled': true,
-        'media.navigator.streams.fake': true
+        'media.navigator.streams.fake': true,
+        'media.peerconnection.video.h264_enabled': true
       }
     }
   };
@@ -84,7 +86,7 @@ module.exports = function (packageName, argv) {
     browsers = {
       ...(!argv.browsers && !argv.os ? {
         // Reminder: the first item in this object is used by pipeline builds
-        sl_chrome_latest_macOS_High_Sierra: {
+        sl_chrome_latest_macOS_Catalina: {
           base: 'SauceLabs',
           platform: 'macOS 10.15',
           browserName: 'Chrome',
@@ -98,7 +100,7 @@ module.exports = function (packageName, argv) {
           version: 'latest',
           extendedDebugging: true
         },
-        sl_firefox_latest_macOS_High_Sierra: {
+        sl_firefox_latest_macOS_Catalina: {
           base: 'SauceLabs',
           platform: 'macOS 10.15',
           browserName: 'Firefox',
@@ -112,7 +114,13 @@ module.exports = function (packageName, argv) {
             prefs: {
               'devtools.chrome.enabled': true,
               'devtools.debugger.prompt-connection': false,
-              'devtools.debugger.remote-enabled': true
+              'devtools.debugger.remote-enabled': true,
+              'dom.webnotifications.enabled': false,
+              'media.webrtc.hw.h264.enabled': true,
+              'media.getusermedia.screensharing.enabled': true,
+              'media.navigator.permission.disabled': true,
+              'media.navigator.streams.fake': true,
+              'media.peerconnection.video.h264_enabled': true
             }
           }
         },
@@ -140,7 +148,7 @@ module.exports = function (packageName, argv) {
           browserName: 'MicrosoftEdge',
           version: 'latest'
         },
-        sl_safari_latest_macOS_High_Sierra: {
+        sl_safari_latest_macOS_Catalina: {
           base: 'SauceLabs',
           platform: 'macOS 10.15',
           browserName: 'Safari',
@@ -159,7 +167,7 @@ module.exports = function (packageName, argv) {
             argv.browsers.includes('default')) && {
               // If "mac" is specified or nothing is specified
               ...((!argv.os || argv.os.includes('mac')) && {
-                sl_chrome_latest_macOS_High_Sierra: {
+                sl_chrome_latest_macOS_Catalina: {
                   base: 'SauceLabs',
                   platform: 'macOS 10.15',
                   browserName: 'Chrome',
@@ -186,7 +194,7 @@ module.exports = function (packageName, argv) {
             argv.browsers.includes('defaults') ||
             argv.browsers.includes('default')) && {
               ...((!argv.os || argv.os.includes('mac')) && {
-                sl_firefox_latest_macOS_High_Sierra: {
+                sl_firefox_latest_macOS_Catalina: {
                   base: 'SauceLabs',
                   platform: 'macOS 10.15',
                   browserName: 'Firefox',
@@ -231,7 +239,7 @@ module.exports = function (packageName, argv) {
           // If Safari is specified or "mac" is specified or no argv.os is specified
           ...(((argv.os && argv.os.includes('mac')) ||
             (argv.browsers && argv.browsers.includes('safari'))) && {
-              sl_safari_latest_macOS_High_Sierra: {
+              sl_safari_latest_macOS_Catalina: {
                 base: 'SauceLabs',
                 platform: 'macOS 10.15',
                 browserName: 'Safari',
@@ -277,17 +285,6 @@ module.exports = function (packageName, argv) {
         })
     }
 
-    // Filters out extra browsers that aren't specified by the user
-    // `--mac` includes [chrome, firefox, safari]
-    // If use wants chrome and firefox only on mac it filters out safari
-    if (argv.os && argv.browsers) {
-      Object.keys(browsers).forEach(browser =>
-        argv.browsers.some(item => browser.includes(item)) ?
-          browser :
-          delete browsers[browser]
-      );
-    }
-
     try {
       // Check if the package generated a browsers package dynamically. This is
       // necessary when the package needs to e.g. use FirefoxProfile to manipulate
@@ -307,6 +304,24 @@ module.exports = function (packageName, argv) {
         }
         // ignore
       }
+    }
+
+    // Filters out extra browsers that aren't specified by the user
+    // `--mac` includes [chrome, firefox, safari]
+    // If use wants chrome and firefox only on mac it filters out safari
+    if (argv.os && argv.browsers) {
+      Object.keys(browsers).forEach(browser =>
+        argv.browsers.some(item => browser.includes(item)) ?
+          browser :
+          delete browsers[browser]
+      );
+  }
+
+    // Remove unspecified browsers
+    if (argv.browsers && !argv.browsers.includes('defaults')) {
+      Object.keys(browsers).forEach(browser =>
+        !argv.browsers.includes(browsers[browser].browserName.toLowerCase()) && delete browsers[browser]
+      );
     }
   }
 
@@ -381,12 +396,22 @@ module.exports = function (packageName, argv) {
           [key]:
           {
             ...browser,
+            prefs: {
+              'dom.webnotifications.enabled': false,
+              'media.webrtc.hw.h264.enabled': true,
+              'media.getusermedia.screensharing.enabled': true,
+              'media.navigator.permission.disabled': true,
+              'media.navigator.streams.fake': true,
+              'media.peerconnection.video.h264_enabled': true
+            },
             'moz:firefoxOptions': {
               prefs: {
                 'dom.webnotifications.enabled': false,
+                'media.webrtc.hw.h264.enabled': true,
                 'media.getusermedia.screensharing.enabled': true,
                 'media.navigator.permission.disabled': true,
                 'media.navigator.streams.fake': true,
+                'media.peerconnection.video.h264_enabled': true
               },
             }
           },

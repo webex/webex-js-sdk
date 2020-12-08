@@ -2,6 +2,92 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.108.0](https://github.com/webex/webex-js-sdk/compare/v1.107.0...v1.108.0) (2020-12-02)
+
+
+### Features
+
+* **plugin-meetings:** use correlation for acknowledge ([6ba9eb0](https://github.com/webex/webex-js-sdk/commit/6ba9eb0119abef854b722d58343cd1c42bc7995b))
+
+
+### Bug Fixes
+
+* **plugin-meetings:** delete meeting by id not cid ([8e7f8df](https://github.com/webex/webex-js-sdk/commit/8e7f8df0a36159080e35a6bb5fd26d7d7adc8d34))
+* **plugin-meetings:** use correlation id at join ([b1d3e06](https://github.com/webex/webex-js-sdk/commit/b1d3e06acd898c3aa7ea1131236459bb72515272))
+
+## [1.107.0](https://github.com/webex/webex-js-sdk/compare/v1.106.1...v1.107.0) (2020-12-02)
+
+
+### Features
+
+* **plugin-meetings:** add geo hint for join request ([96c3a7c](https://github.com/webex/webex-js-sdk/commit/96c3a7ce3a83bd480471e65909313e7b220a8a3c))
+
+### [1.106.1](https://github.com/webex/webex-js-sdk/compare/v1.106.0...v1.106.1) (2020-12-01)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** use correct meeting instance when uploading meeting logs ([1e97483](https://github.com/webex/webex-js-sdk/commit/1e974833e6b586f7c070a0419e7044fcfb218f1e))
+
+## [1.106.0](https://github.com/webex/webex-js-sdk/compare/v1.105.0...v1.106.0) (2020-12-01)
+
+
+### Features
+
+* **internal-plugin-ediscovery:** new attributes for tabs extension ([7b5d0a6](https://github.com/webex/webex-js-sdk/commit/7b5d0a69358d0a7d46e0727bc871d0d480358836))
+* **internal-plugin-ediscovery:** new attributes for tabs extension ([a60dd36](https://github.com/webex/webex-js-sdk/commit/a60dd36d511622e02bb2bffe3acdf0c660f30b9d))
+* **internal-plugin-ediscovery:** new attributes for tabs extension ([7646cff](https://github.com/webex/webex-js-sdk/commit/7646cffc97748a57c5e51448b2b5d180a32d50f1))
+* **internal-plugin-ediscovery:** new attributes for tabs extension ([c7a11bf](https://github.com/webex/webex-js-sdk/commit/c7a11bf4625522fce383c1986046ceb5c0a926c6))
+
+## [1.105.0](https://github.com/webex/webex-js-sdk/compare/v1.104.1...v1.105.0) (2020-11-30)
+
+
+### Features
+
+* **decryption-transform:** key rotation edit message error fix ([c34a777](https://github.com/webex/webex-js-sdk/commit/c34a777cd519717a6e2abc9965617202e995d64b))
+
+### [1.104.1](https://github.com/webex/webex-js-sdk/compare/v1.104.0...v1.104.1) (2020-11-30)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** trigger event based on H264 presence ([b4a35ac](https://github.com/webex/webex-js-sdk/commit/b4a35ac5a3356f3148aeac8eb9418f9d43108366))
+
+## [1.104.0](https://github.com/webex/webex-js-sdk/compare/v1.103.6...v1.104.0) (2020-11-20)
+
+
+### Features
+
+* **plugin-meetings:** fetch reachability on register ([cc996b6](https://github.com/webex/webex-js-sdk/commit/cc996b6841dbc15d13bfa31d0ee7e1b841d09b25))
+
+### [1.103.6](https://github.com/webex/webex-js-sdk/compare/v1.103.5...v1.103.6) (2020-11-19)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** 429s from controls endpoint on mute ([5a83f6d](https://github.com/webex/webex-js-sdk/commit/5a83f6d78dac6a27adba60ab7ae91c0ea14f2f9b))
+
+### [1.103.5](https://github.com/webex/webex-js-sdk/compare/v1.103.4...v1.103.5) (2020-11-19)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** upload logs on leave meeting ([750a08c](https://github.com/webex/webex-js-sdk/commit/750a08c98dfba214e334ef3e4e0e18d6b340de1b))
+
+### [1.103.4](https://github.com/webex/webex-js-sdk/compare/v1.103.3...v1.103.4) (2020-11-19)
+
+
+### Bug Fixes
+
+* remove mmmagic ([2bcd681](https://github.com/webex/webex-js-sdk/commit/2bcd681e13dfb4c7f7728eff5dfe1f288d503f8c))
+
+### [1.103.3](https://github.com/webex/webex-js-sdk/compare/v1.103.2...v1.103.3) (2020-11-18)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** check peerConnection state before closing ([3983c78](https://github.com/webex/webex-js-sdk/commit/3983c785b3e9410603a167d111caf12bfccc5500))
+
 ### [1.103.2](https://github.com/webex/webex-js-sdk/compare/v1.103.1...v1.103.2) (2020-11-17)
 
 
