@@ -47,7 +47,7 @@ See [the detailed docs](https://webex.github.io/webex-js-sdk/) for more usage ex
 const Webex = require(`webex`);
 const webex = Webex.init({
   credentials: {
-    access_token: <your webex teams access token>
+    access_token: <your webex access token>
   }
 });
 
@@ -98,7 +98,7 @@ import { init as initWebex } from 'webex';
 // Initialize the SDK and make it available to the window
 const webex = (window.webex = initWebex({
   credentials: {
-    access_token: <your webex teams access token>
+    access_token: <your webex access token>
   }
 }));
 
