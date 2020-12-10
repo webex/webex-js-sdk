@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.109.1](https://github.com/webex/webex-js-sdk/compare/v1.109.0...v1.109.1) (2020-12-10)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** use fetch info for destination ([e33b7a3](https://github.com/webex/webex-js-sdk/commit/e33b7a330cf2bfa984d4d0ccb9b86455cb85dd2b))
+
 ## [1.109.0](https://github.com/webex/webex-js-sdk/compare/v1.108.1...v1.109.0) (2020-12-08)
 
 
