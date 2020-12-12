@@ -42,7 +42,7 @@ function makeConfig(packageName, argv) {
   };
 
   const files = [
-    'node_modules/babel-polyfill/dist/polyfill.js'
+    'node_modules/@babel/polyfill/dist/polyfill.js'
   ];
 
   if (!argv || argv.unit) {
@@ -153,6 +153,7 @@ function makeConfig(packageName, argv) {
       public: 'team',
       startConnect: true,
       connectOptions: {
+        logfile: './sauce.log',
         noSslBumpDomains: [
           'idbroker.webex.com',
           'idbrokerbts.webex.com',

@@ -3,14 +3,14 @@
 We'd love for you to contribute to our source code and to make **Webex Javascript SDK** even better than it is today!
 If you would like to contribute to this repository by adding features, enhancements or bug fixes, you must follow our process:
 
-  1. Let core members know about your proposal by posting a message in the [contributor's Webex Teams space](https://eurl.io/#Bk9WGfRcB)
+  1. Let core members know about your proposal by posting a message in the [contributor's Webex space](https://eurl.io/#Bk9WGfRcB)
   2. A core member will review your proposal and if necessary may suggest to have a meeting to better understand your approach
       - You are welcomed you join our [weekly review meeting](https://cisco.webex.com/m/f4ebbec6-c306-49ca-83f4-fb2d098fc946) (Thursdays, 11:30a-12:30p PST) to propose your contribution as well
   3. If your proposal is approved you should start coding at this point
   4. We recommend opening a draft PR to receive feedback before finalizing your solution
       - When opening a draft PR, specify with PR comments where in the code you would like to get feedback
   5. Before opening a PR ensure **all** [PR guidelines](#submitting-a-pull-request) are followed
-  6. Let core members know about your PR by posting a message in the [contributor's Webex Teams space](https://eurl.io/#Bk9WGfRcB)
+  6. Let core members know about your PR by posting a message in the [contributor's Webex space](https://eurl.io/#Bk9WGfRcB)
   7. Core members will review the pull request and provide feedback when necessary
       - If a PR is too large, you may be asked to break it down into multiple smaller-scoped PRs
   8. Once the PR is approved by a core member, it will be merged
@@ -77,6 +77,37 @@ Before you can build the Cisco Webex JS SDK, you will need the following depende
 >
 > **We suggest using [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/about) (WSL) for the best experience on Windows.** We've seen multiple tooling/package related errors when trying to build on a regular Windows environment. The build errors are a result of third-party node_modules that we do not maintain. These issues are not seen when using WSL.
 
+### Building the SDK
+
+Ensure that you have followed all the steps outlined in [Build Dependencies](#build-dependencies).
+
+Fork the [webex-js-sdk](https://github.com/webex/webex-js-sdk/) repository and `git clone` your fork:
+
+```bash
+git clone https://github.com/your-username/webex-js-sdk.git
+```
+
+Install tooling dependencies with:
+
+```bash
+nvm use
+npm install
+```
+
+Build the SDK:
+
+```bash
+npm run build
+```
+
+If at any point your out-of-the-box builds or failing or if you are tests are failing with complaints of an invalid node version, the following commands will reset and rebuild everything:
+
+```bash
+nvm use; npm ci
+```
+
+### Environment Variables
+
 You will need to create a file called `.env` that defines, at a minimum:
 
 - `WEBEX_CLIENT_ID`
@@ -86,9 +117,9 @@ You will need to create a file called `.env` that defines, at a minimum:
 
 You can get these values by registering a new integration on [Cisco Webex for Developers](https://developer.webex.com/my-apps/new/integration).
 
-### Environment Variables
+### Advanced Environment Variables
 
-The JS SDK allows you to customize your experience via configuration and environment variables.
+The JS SDK allows you to customize your experience via configuration and environment variables. In general, external developers will not need to set any of the URL related environment variables.
 
 | **Environment Variable** | **Details** | **Default** |
 |---|---|---|
@@ -98,7 +129,7 @@ The JS SDK allows you to customize your experience via configuration and environ
 | ENABLE_MERCURY_LOGGING | When set, will log all mercury messages | undefined |
 | ENABLE_VERBOSE_NETWORK_LOGGING | Utilized to enable interceptor logging | undefined |
 | ENCRYPTION_SERVICE_URL | Used for plugin-board tests | https://encryption-a.wbx2.com |
-| HYDRA_SERVICE_URL | Stores the public hydra api url for managing Webex Teams resources. | https://api.ciscospark.com/v1/ |
+| HYDRA_SERVICE_URL | Stores the public hydra api url for managing Webex resources. | https://api.ciscospark.com/v1/ |
 | IDBROKER_BASE_URL | Used throughout the SDK as the endpoint for authorization | https://idbroker.webex.com |
 | IDENTITY_BASE_URL | Used to communicate with the identity api | https://identity.webex.com |
 | MERCURY_FORCE_CLOSE_DELAY | Milliseconds to wait for a before declaring the socket dead | 2000 |
@@ -118,36 +149,6 @@ The JS SDK allows you to customize your experience via configuration and environ
 | WEBEX_SCOPE | The Webex scope the users will authorize with | undefined |
 | WDM_SERVICE_URL | The WDM service url before the catalog is downloaded | https://wdm-a.wbx2.com/wdm/api/v1 |
 | WHISTLER_API_SERVICE_URL | The url to the whistler test service | https://whistler-prod.allnint.ciscospark.com/api/v1 |
-
-
-
-### Building the SDK
-
-Fork the [webex-js-sdk](https://github.com/webex/webex-js-sdk/) repository and `git clone` your fork:
-
-```bash
-git clone https://github.com/your-username/webex-js-sdk.git
-```
-
-Install tooling dependencies with:
-
-```bash
-npm install
-```
-
-Build the SDK:
-
-```bash
-npm run build
-```
-
-If at any point your builds or tests are failing with complaints of an invalid node version, the following commands will reset and rebuild everything:
-
-```bash
-nvm use; npm ci
-```
-
-*Build issues?* See [BUILD-ISSUES.md](./BUILD-ISSUES.md) for help.
 
 ### Running Tests
 
@@ -257,7 +258,7 @@ If an error occurs when running the above command that appears to be related to 
 If you wish to run the samples tests locally, we suggest changing from the Chrome-to-Firefox multiremote setup to Chrome-to-Chrome.
 
 You can do so by modifying the [wdio.conf.js](./wdio.conf.js) file.
-Simply change the `browserFirefox`'s `desiredCapabilities` object to the same as `browserChrome` (the Chrome instance).
+Simply change the `browserFirefox`'s `capabilities` object to the same as `browserChrome` (the Chrome instance).
 When you run, you should see two instances of Chrome open.
 
 ### Git Commit Guidelines
@@ -396,3 +397,4 @@ cd docs
 npm run build:docs
 bundle exec jekyll serve --config=_config.yml,_config.local.yml
 ```
+
