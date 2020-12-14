@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.109.4](https://github.com/webex/webex-js-sdk/compare/v1.109.3...v1.109.4) (2020-12-14)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** move handled reachability error to info ([d7c32ba](https://github.com/webex/webex-js-sdk/commit/d7c32ba5f6544a224046d1acb3cc7b94ac6a9618))
+
 ### [1.109.3](https://github.com/webex/webex-js-sdk/compare/v1.109.2...v1.109.3) (2020-12-12)
 
 
