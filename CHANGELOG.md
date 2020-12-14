@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.109.3](https://github.com/webex/webex-js-sdk/compare/v1.109.2...v1.109.3) (2020-12-12)
+
+
+### Bug Fixes
+
+* **server-interceptor:** add additional error codes for failover ([760630e](https://github.com/webex/webex-js-sdk/commit/760630e9ac23737e7d603a22abc154a33ec2dca5))
+
+### [1.109.2](https://github.com/webex/webex-js-sdk/compare/v1.109.1...v1.109.2) (2020-12-10)
+
+
+### Bug Fixes
+
+* **meetings:** hotfix to prevent GDM errors from stopping READY event ([c03e610](https://github.com/webex/webex-js-sdk/commit/c03e610c015201bb72fa997eff9eafcf7516e5db))
+
 ### [1.109.1](https://github.com/webex/webex-js-sdk/compare/v1.109.0...v1.109.1) (2020-12-10)
 
 
