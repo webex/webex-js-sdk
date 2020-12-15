@@ -3,14 +3,14 @@
 We'd love for you to contribute to our source code and to make **Webex Javascript SDK** even better than it is today!
 If you would like to contribute to this repository by adding features, enhancements or bug fixes, you must follow our process:
 
-  1. Let core members know about your proposal by posting a message in the [contributor's Webex Teams space](https://eurl.io/#Bk9WGfRcB)
+  1. Let core members know about your proposal by posting a message in the [contributor's Webex space](https://eurl.io/#Bk9WGfRcB)
   2. A core member will review your proposal and if necessary may suggest to have a meeting to better understand your approach
       - You are welcomed you join our [weekly review meeting](https://cisco.webex.com/m/f4ebbec6-c306-49ca-83f4-fb2d098fc946) (Thursdays, 11:30a-12:30p PST) to propose your contribution as well
   3. If your proposal is approved you should start coding at this point
   4. We recommend opening a draft PR to receive feedback before finalizing your solution
       - When opening a draft PR, specify with PR comments where in the code you would like to get feedback
   5. Before opening a PR ensure **all** [PR guidelines](#submitting-a-pull-request) are followed
-  6. Let core members know about your PR by posting a message in the [contributor's Webex Teams space](https://eurl.io/#Bk9WGfRcB)
+  6. Let core members know about your PR by posting a message in the [contributor's Webex space](https://eurl.io/#Bk9WGfRcB)
   7. Core members will review the pull request and provide feedback when necessary
       - If a PR is too large, you may be asked to break it down into multiple smaller-scoped PRs
   8. Once the PR is approved by a core member, it will be merged
@@ -129,7 +129,7 @@ The JS SDK allows you to customize your experience via configuration and environ
 | ENABLE_MERCURY_LOGGING | When set, will log all mercury messages | undefined |
 | ENABLE_VERBOSE_NETWORK_LOGGING | Utilized to enable interceptor logging | undefined |
 | ENCRYPTION_SERVICE_URL | Used for plugin-board tests | https://encryption-a.wbx2.com |
-| HYDRA_SERVICE_URL | Stores the public hydra api url for managing Webex Teams resources. | https://api.ciscospark.com/v1/ |
+| HYDRA_SERVICE_URL | Stores the public hydra api url for managing Webex resources. | https://api.ciscospark.com/v1/ |
 | IDBROKER_BASE_URL | Used throughout the SDK as the endpoint for authorization | https://idbroker.webex.com |
 | IDENTITY_BASE_URL | Used to communicate with the identity api | https://identity.webex.com |
 | MERCURY_FORCE_CLOSE_DELAY | Milliseconds to wait for a before declaring the socket dead | 2000 |
