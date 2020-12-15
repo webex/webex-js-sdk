@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.110.0](https://github.com/webex/webex-js-sdk/compare/v1.109.4...v1.110.0) (2020-12-15)
+
+
+### Features
+
+* **webex-core:** add forceRefresh option for collectPreAuth ([cb6019c](https://github.com/webex/webex-js-sdk/commit/cb6019c2d83c59558170ee5cc9734a8344fd6c33))
+
+### [1.109.4](https://github.com/webex/webex-js-sdk/compare/v1.109.3...v1.109.4) (2020-12-14)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** move handled reachability error to info ([d7c32ba](https://github.com/webex/webex-js-sdk/commit/d7c32ba5f6544a224046d1acb3cc7b94ac6a9618))
+
+### [1.109.3](https://github.com/webex/webex-js-sdk/compare/v1.109.2...v1.109.3) (2020-12-12)
+
+
+### Bug Fixes
+
+* **server-interceptor:** add additional error codes for failover ([760630e](https://github.com/webex/webex-js-sdk/commit/760630e9ac23737e7d603a22abc154a33ec2dca5))
+
+### [1.109.2](https://github.com/webex/webex-js-sdk/compare/v1.109.1...v1.109.2) (2020-12-10)
+
+
+### Bug Fixes
+
+* **meetings:** hotfix to prevent GDM errors from stopping READY event ([c03e610](https://github.com/webex/webex-js-sdk/commit/c03e610c015201bb72fa997eff9eafcf7516e5db))
+
+### [1.109.1](https://github.com/webex/webex-js-sdk/compare/v1.109.0...v1.109.1) (2020-12-10)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** use fetch info for destination ([e33b7a3](https://github.com/webex/webex-js-sdk/commit/e33b7a330cf2bfa984d4d0ccb9b86455cb85dd2b))
+
+## [1.109.0](https://github.com/webex/webex-js-sdk/compare/v1.108.1...v1.109.0) (2020-12-08)
+
+
+### Features
+
+* **plugin-meetings:** remove participant email support ([c6a24e2](https://github.com/webex/webex-js-sdk/commit/c6a24e2c06ed0b37b51c9849c8745e51f04e0880))
+
+### [1.108.1](https://github.com/webex/webex-js-sdk/compare/v1.108.0...v1.108.1) (2020-12-08)
+
+
+### Bug Fixes
+
+* update services for force refresh ([891c081](https://github.com/webex/webex-js-sdk/commit/891c08125e5be0be7842a7972c0d0d69ff88eaa2))
+
 ## [1.108.0](https://github.com/webex/webex-js-sdk/compare/v1.107.0...v1.108.0) (2020-12-02)
 
 
