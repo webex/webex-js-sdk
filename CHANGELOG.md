@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.110.0](https://github.com/webex/webex-js-sdk/compare/v1.109.4...v1.110.0) (2020-12-15)
+
+
+### Features
+
+* **webex-core:** add forceRefresh option for collectPreAuth ([cb6019c](https://github.com/webex/webex-js-sdk/commit/cb6019c2d83c59558170ee5cc9734a8344fd6c33))
+
 ### [1.109.4](https://github.com/webex/webex-js-sdk/compare/v1.109.3...v1.109.4) (2020-12-14)
 
 
