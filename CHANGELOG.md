@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.111.0](https://github.com/webex/webex-js-sdk/compare/v1.110.0...v1.111.0) (2020-12-16)
+
+
+### Features
+
+* **conversation:** support making favorite in convo create ([8fd1dcb](https://github.com/webex/webex-js-sdk/commit/8fd1dcb85eb7bd3a33b03fc6c6250a9f5c08cb99))
+* **conversation:** support tags field in convo payloads ([22cf96a](https://github.com/webex/webex-js-sdk/commit/22cf96acca2eadfb9fbd8cff5c41242c00ea2c46))
+* **conversation:** support tags field in convo payloads ([329c4be](https://github.com/webex/webex-js-sdk/commit/329c4be15fd35359583dbbcbf882b43b1143c319))
+
 ## [1.110.0](https://github.com/webex/webex-js-sdk/compare/v1.109.4...v1.110.0) (2020-12-15)
 
 
