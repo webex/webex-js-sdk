@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.112.0](https://github.com/webex/webex-js-sdk/compare/v1.111.0...v1.112.0) (2021-01-05)
+
+
+### Features
+
+* **internal-plugin-ediscovery:** new attributes for tabs extension along with previous tabs details ([4e3ac96](https://github.com/webex/webex-js-sdk/commit/4e3ac96aea66499201aea10cda277a4f32d0b908))
+
 ## [1.111.0](https://github.com/webex/webex-js-sdk/compare/v1.110.0...v1.111.0) (2020-12-16)
 
 
