@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.112.2](https://github.com/webex/webex-js-sdk/compare/v1.112.1...v1.112.2) (2021-01-06)
+
+
+### Bug Fixes
+
+* **test-users:** update test users creation url ([b1a44c4](https://github.com/webex/webex-js-sdk/commit/b1a44c411d38c34cadcb07f411960924ed575b66))
+
 ### [1.112.1](https://github.com/webex/webex-js-sdk/compare/v1.112.0...v1.112.1) (2021-01-06)
 
 
