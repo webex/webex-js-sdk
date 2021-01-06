@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.112.1](https://github.com/webex/webex-js-sdk/compare/v1.112.0...v1.112.1) (2021-01-06)
+
+
+### Bug Fixes
+
+* **meeting-plugin:**  send missing media quality metrics ([3662d91](https://github.com/webex/webex-js-sdk/commit/3662d919488e081d2321630b8034a88bc10f2120))
+
 ## [1.112.0](https://github.com/webex/webex-js-sdk/compare/v1.111.0...v1.112.0) (2021-01-05)
 
 
