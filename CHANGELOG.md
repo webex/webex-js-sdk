@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.113.0](https://github.com/webex/webex-js-sdk/compare/v1.112.2...v1.113.0) (2021-01-07)
+
+
+### Features
+
+* **plugin-meetings:** use new correlation on rejoin ([0519e5d](https://github.com/webex/webex-js-sdk/commit/0519e5dae6d3034cfa183e5d35b56b18f5a554ac))
+
 ### [1.112.2](https://github.com/webex/webex-js-sdk/compare/v1.112.1...v1.112.2) (2021-01-06)
 
 
