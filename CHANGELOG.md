@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.113.1](https://github.com/webex/webex-js-sdk/compare/v1.113.0...v1.113.1) (2021-01-08)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** throw error if no valid ice candidates are found ([915e9c7](https://github.com/webex/webex-js-sdk/commit/915e9c7c08b60ddc18ffeaef5e48d4fdc0522a28))
+
 ## [1.113.0](https://github.com/webex/webex-js-sdk/compare/v1.112.2...v1.113.0) (2021-01-07)
 
 
