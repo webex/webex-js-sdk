@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.114.0](https://github.com/webex/webex-js-sdk/compare/v1.113.2...v1.114.0) (2021-01-12)
+
+
+### Features
+
+* **webex-core:** remove s3 feature check ([0ee7f32](https://github.com/webex/webex-js-sdk/commit/0ee7f32a21ebef1dbbdd1ea45a439f31c9400a04))
+
 ### [1.113.2](https://github.com/webex/webex-js-sdk/compare/v1.113.1...v1.113.2) (2021-01-12)
 
 
