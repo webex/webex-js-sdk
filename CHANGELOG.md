@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.114.1](https://github.com/webex/webex-js-sdk/compare/v1.114.0...v1.114.1) (2021-01-14)
+
+
+### Bug Fixes
+
+* **plugin-meeting:** unable to mute/unmute with no camera ([4e7dcd5](https://github.com/webex/webex-js-sdk/commit/4e7dcd5cc6f772536d17ff78ed63d74e0bab4519))
+
 ## [1.114.0](https://github.com/webex/webex-js-sdk/compare/v1.113.2...v1.114.0) (2021-01-12)
 
 
