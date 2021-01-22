@@ -148,8 +148,6 @@
     "glob": "^7.1.4",
     "global": "^4.4.0",
     "gm": "^1.23.1",
-    "grunt": "~1.0.1",
-    "grunt-cli": "~1.2.0",
     "highlight.js": "^9.15.8",
     "humanize-string": "^1.0.2",
     "husky": "^3.0.3",
