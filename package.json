@@ -43,7 +43,7 @@
     "srcdist": "sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' packages/node_modules/{*,@webex/*}/package.json && rimraf packages/node_modules/{*,@webex/*}/*bak",
     "get-current-version": "node ./tooling/index.js version current",
     "get-next-version": "node ./tooling/index.js version next --alwaysIncrement --includeSamples",
-    "deps:check": "node ./tooling/index.js exec -- dependency-check ./package.json",
+    "deps:check": "node ./tooling/index.js exec --cmd dependency-check -- ./package.json",
     "deps:generate": "node ./deps.js",
     "build:samples": "echo 'Deprecated. Please use npm run samples:build'; npm run --silent samples:build",
     "serve:samples": "echo 'Deprecated. Please use npm run samples:serve'; npm run --silent samples:serve",
