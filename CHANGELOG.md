@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.114.2](https://github.com/webex/webex-js-sdk/compare/v1.114.1...v1.114.2) (2021-01-28)
+
+
+### Bug Fixes
+
+* **exec:** update exec command for newer version of yargs ([244655d](https://github.com/webex/webex-js-sdk/commit/244655df5caa99b8a1a14980118a95e500f036d9))
+* **package:** bump pathval to 1.1.1 ([cf48cb9](https://github.com/webex/webex-js-sdk/commit/cf48cb91ffd199d1815cda4eb32de9d261156737)), closes [#SPARK-201387](https://github.com/webex/webex-js-sdk/issues/SPARK-201387)
+
 ### [1.114.1](https://github.com/webex/webex-js-sdk/compare/v1.114.0...v1.114.1) (2021-01-14)
 
 
