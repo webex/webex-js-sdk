@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.115.1](https://github.com/webex/webex-js-sdk/compare/v1.115.0...v1.115.1) (2021-02-05)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add missing mqe and fix packet loss values ([fe59f65](https://github.com/webex/webex-js-sdk/commit/fe59f6506a922fdbdbccbc1ade5339e26b18b964))
+
 ## [1.115.0](https://github.com/webex/webex-js-sdk/compare/v1.114.2...v1.115.0) (2021-02-05)
 
 
