@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.115.0](https://github.com/webex/webex-js-sdk/compare/v1.114.2...v1.115.0) (2021-02-05)
+
+
+### Features
+
+* **meetings:** fail add media if peer connection isn't stable ([fca33cf](https://github.com/webex/webex-js-sdk/commit/fca33cfaf601daf3cd946e5e546138aca3521573))
+
 ### [1.114.2](https://github.com/webex/webex-js-sdk/compare/v1.114.1...v1.114.2) (2021-01-28)
 
 
