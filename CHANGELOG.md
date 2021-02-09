@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.115.2](https://github.com/webex/webex-js-sdk/compare/v1.115.1...v1.115.2) (2021-02-09)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add default IP address for MQE ([71d5604](https://github.com/webex/webex-js-sdk/commit/71d56043118e60ecd4dab5fe517328a05828a523))
+
 ### [1.115.1](https://github.com/webex/webex-js-sdk/compare/v1.115.0...v1.115.1) (2021-02-05)
 
 
