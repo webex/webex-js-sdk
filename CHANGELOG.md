@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.116.0](https://github.com/webex/webex-js-sdk/compare/v1.115.2...v1.116.0) (2021-02-09)
+
+
+### Features
+
+* **meetings:** add metric for rejoin failure ([200fb86](https://github.com/webex/webex-js-sdk/commit/200fb8659060f2b1b0977446c3ae033c51627b29))
+
 ### [1.115.2](https://github.com/webex/webex-js-sdk/compare/v1.115.1...v1.115.2) (2021-02-09)
 
 
