@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.116.1](https://github.com/webex/webex-js-sdk/compare/v1.116.0...v1.116.1) (2021-02-10)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** prevent success message when log upload fails ([4000181](https://github.com/webex/webex-js-sdk/commit/400018141b678b415891b2df55c0cc76c45c987d))
+
 ## [1.116.0](https://github.com/webex/webex-js-sdk/compare/v1.115.2...v1.116.0) (2021-02-09)
 
 
