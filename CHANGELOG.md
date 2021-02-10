@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.116.1](https://github.com/webex/webex-js-sdk/compare/v1.116.0...v1.116.1) (2021-02-10)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** prevent success message when log upload fails ([4000181](https://github.com/webex/webex-js-sdk/commit/400018141b678b415891b2df55c0cc76c45c987d))
+
+## [1.116.0](https://github.com/webex/webex-js-sdk/compare/v1.115.2...v1.116.0) (2021-02-09)
+
+
+### Features
+
+* **meetings:** add metric for rejoin failure ([200fb86](https://github.com/webex/webex-js-sdk/commit/200fb8659060f2b1b0977446c3ae033c51627b29))
+
+### [1.115.2](https://github.com/webex/webex-js-sdk/compare/v1.115.1...v1.115.2) (2021-02-09)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add default IP address for MQE ([71d5604](https://github.com/webex/webex-js-sdk/commit/71d56043118e60ecd4dab5fe517328a05828a523))
+
+### [1.115.1](https://github.com/webex/webex-js-sdk/compare/v1.115.0...v1.115.1) (2021-02-05)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add missing mqe and fix packet loss values ([fe59f65](https://github.com/webex/webex-js-sdk/commit/fe59f6506a922fdbdbccbc1ade5339e26b18b964))
+
+## [1.115.0](https://github.com/webex/webex-js-sdk/compare/v1.114.2...v1.115.0) (2021-02-05)
+
+
+### Features
+
+* **meetings:** fail add media if peer connection isn't stable ([fca33cf](https://github.com/webex/webex-js-sdk/commit/fca33cfaf601daf3cd946e5e546138aca3521573))
+
 ### [1.114.2](https://github.com/webex/webex-js-sdk/compare/v1.114.1...v1.114.2) (2021-01-28)
 
 
