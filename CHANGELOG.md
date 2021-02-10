@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.116.2](https://github.com/webex/webex-js-sdk/compare/v1.116.1...v1.116.2) (2021-02-10)
+
+
+### Bug Fixes
+
+* **samples:** use play and pause for muting ([ce1ba54](https://github.com/webex/webex-js-sdk/commit/ce1ba54d34c4fc4154e19e3edb75136bd30a0e54))
+
 ### [1.116.1](https://github.com/webex/webex-js-sdk/compare/v1.116.0...v1.116.1) (2021-02-10)
 
 
