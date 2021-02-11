@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.117.1](https://github.com/webex/webex-js-sdk/compare/v1.117.0...v1.117.1) (2021-02-11)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** added client version and peripherals information to MQE ([8eb26f3](https://github.com/webex/webex-js-sdk/commit/8eb26f318b4521b996b404f65156831636ed0936))
+
 ## [1.117.0](https://github.com/webex/webex-js-sdk/compare/v1.116.2...v1.117.0) (2021-02-11)
 
 
