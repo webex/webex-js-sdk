@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.117.0](https://github.com/webex/webex-js-sdk/compare/v1.116.2...v1.117.0) (2021-02-11)
+
+
+### Features
+
+* **plugin-meetings:** enable rtx media resiliency by default ([d4d2763](https://github.com/webex/webex-js-sdk/commit/d4d276357402efb6443ad35f4e7df27f7e516cf5))
+
 ### [1.116.2](https://github.com/webex/webex-js-sdk/compare/v1.116.1...v1.116.2) (2021-02-10)
 
 
