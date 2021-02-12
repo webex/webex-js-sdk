@@ -2,6 +2,98 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.117.1](https://github.com/webex/webex-js-sdk/compare/v1.117.0...v1.117.1) (2021-02-11)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** added client version and peripherals information to MQE ([8eb26f3](https://github.com/webex/webex-js-sdk/commit/8eb26f318b4521b996b404f65156831636ed0936))
+
+## [1.117.0](https://github.com/webex/webex-js-sdk/compare/v1.116.2...v1.117.0) (2021-02-11)
+
+
+### Features
+
+* **plugin-meetings:** enable rtx media resiliency by default ([d4d2763](https://github.com/webex/webex-js-sdk/commit/d4d276357402efb6443ad35f4e7df27f7e516cf5))
+
+### [1.116.2](https://github.com/webex/webex-js-sdk/compare/v1.116.1...v1.116.2) (2021-02-10)
+
+
+### Bug Fixes
+
+* **samples:** use play and pause for muting ([ce1ba54](https://github.com/webex/webex-js-sdk/commit/ce1ba54d34c4fc4154e19e3edb75136bd30a0e54))
+
+### [1.116.1](https://github.com/webex/webex-js-sdk/compare/v1.116.0...v1.116.1) (2021-02-10)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** prevent success message when log upload fails ([4000181](https://github.com/webex/webex-js-sdk/commit/400018141b678b415891b2df55c0cc76c45c987d))
+
+## [1.116.0](https://github.com/webex/webex-js-sdk/compare/v1.115.2...v1.116.0) (2021-02-09)
+
+
+### Features
+
+* **meetings:** add metric for rejoin failure ([200fb86](https://github.com/webex/webex-js-sdk/commit/200fb8659060f2b1b0977446c3ae033c51627b29))
+
+### [1.115.2](https://github.com/webex/webex-js-sdk/compare/v1.115.1...v1.115.2) (2021-02-09)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add default IP address for MQE ([71d5604](https://github.com/webex/webex-js-sdk/commit/71d56043118e60ecd4dab5fe517328a05828a523))
+
+### [1.115.1](https://github.com/webex/webex-js-sdk/compare/v1.115.0...v1.115.1) (2021-02-05)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add missing mqe and fix packet loss values ([fe59f65](https://github.com/webex/webex-js-sdk/commit/fe59f6506a922fdbdbccbc1ade5339e26b18b964))
+
+## [1.115.0](https://github.com/webex/webex-js-sdk/compare/v1.114.2...v1.115.0) (2021-02-05)
+
+
+### Features
+
+* **meetings:** fail add media if peer connection isn't stable ([fca33cf](https://github.com/webex/webex-js-sdk/commit/fca33cfaf601daf3cd946e5e546138aca3521573))
+
+### [1.114.2](https://github.com/webex/webex-js-sdk/compare/v1.114.1...v1.114.2) (2021-01-28)
+
+
+### Bug Fixes
+
+* **exec:** update exec command for newer version of yargs ([244655d](https://github.com/webex/webex-js-sdk/commit/244655df5caa99b8a1a14980118a95e500f036d9))
+* **package:** bump pathval to 1.1.1 ([cf48cb9](https://github.com/webex/webex-js-sdk/commit/cf48cb91ffd199d1815cda4eb32de9d261156737)), closes [#SPARK-201387](https://github.com/webex/webex-js-sdk/issues/SPARK-201387)
+
+### [1.114.1](https://github.com/webex/webex-js-sdk/compare/v1.114.0...v1.114.1) (2021-01-14)
+
+
+### Bug Fixes
+
+* **plugin-meeting:** unable to mute/unmute with no camera ([4e7dcd5](https://github.com/webex/webex-js-sdk/commit/4e7dcd5cc6f772536d17ff78ed63d74e0bab4519))
+
+## [1.114.0](https://github.com/webex/webex-js-sdk/compare/v1.113.2...v1.114.0) (2021-01-12)
+
+
+### Features
+
+* **webex-core:** remove s3 feature check ([0ee7f32](https://github.com/webex/webex-js-sdk/commit/0ee7f32a21ebef1dbbdd1ea45a439f31c9400a04))
+
+### [1.113.2](https://github.com/webex/webex-js-sdk/compare/v1.113.1...v1.113.2) (2021-01-12)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** encode destination on request ([aa94d03](https://github.com/webex/webex-js-sdk/commit/aa94d03668808ffa941a895be5991a991ff7a1b5))
+
+### [1.113.1](https://github.com/webex/webex-js-sdk/compare/v1.113.0...v1.113.1) (2021-01-08)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** throw error if no valid ice candidates are found ([915e9c7](https://github.com/webex/webex-js-sdk/commit/915e9c7c08b60ddc18ffeaef5e48d4fdc0522a28))
+
 ## [1.113.0](https://github.com/webex/webex-js-sdk/compare/v1.112.2...v1.113.0) (2021-01-07)
 
 
