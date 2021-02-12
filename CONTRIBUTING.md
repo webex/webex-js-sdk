@@ -23,8 +23,9 @@ If you would like to contribute to this repository by adding features, enhanceme
   - [Reporting Issues](#reporting-issues)
   - [Contributing Code](#contributing-code)
     - [Build Dependencies](#build-dependencies)
-    - [Environment Variables](#environment-variables)
     - [Building the SDK](#building-the-sdk)
+    - [Environment Variables](#environment-variables)
+      - [Advanced Environment Variables](#advanced-environment-variables)
     - [Running Tests](#running-tests)
       - [Running Samples Locally](#running-samples-locally)
       - [Samples Tests](#samples-tests)
@@ -120,7 +121,7 @@ You will need to create a file called `.env` that defines, at a minimum:
 
 You can get these values by registering a new integration on [Cisco Webex for Developers](https://developer.webex.com/my-apps/new/integration).
 
-### Advanced Environment Variables
+#### Advanced Environment Variables
 
 The JS SDK allows you to customize your experience via configuration and environment variables. In general, external developers will not need to set any of the URL related environment variables.
 
@@ -152,6 +153,8 @@ The JS SDK allows you to customize your experience via configuration and environ
 | WEBEX_SCOPE | The Webex scope the users will authorize with | undefined |
 | WDM_SERVICE_URL | The WDM service url before the catalog is downloaded | https://wdm-a.wbx2.com/wdm/api/v1 |
 | WHISTLER_API_SERVICE_URL | The url to the whistler test service | https://whistler-prod.allnint.ciscospark.com/api/v1 |
+| WHISTLER | Run (meetings) tests using Whistler users | FALSE |
+| JENKINS | Run specific tests that should be run on (internal) Jenkins | FALSE |
 
 ### Running Tests
 
