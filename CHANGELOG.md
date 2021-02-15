@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.117.2](https://github.com/webex/webex-js-sdk/compare/v1.117.1...v1.117.2) (2021-02-15)
+
+
+### Bug Fixes
+
+* **upload:** add abort function on file upload for webex ([6baef0d](https://github.com/webex/webex-js-sdk/commit/6baef0dd0de0258c85588259d266735f913a3c78))
+
 ### [1.117.1](https://github.com/webex/webex-js-sdk/compare/v1.117.0...v1.117.1) (2021-02-11)
 
 
