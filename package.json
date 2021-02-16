@@ -83,8 +83,6 @@
     "@babel/template": "^7.12.7",
     "@babel/traverse": "^7.12.12",
     "@babel/types": "^7.12.12",
-    "@commitlint/cli": "^11.0.0",
-    "@commitlint/config-conventional": "^11.0.0",
     "@sinonjs/fake-timers": "^6.0.1",
     "@wdio/cli": "^6.12.1",
     "@wdio/junit-reporter": "^6.11.0",
@@ -226,6 +224,10 @@
     "xtend": "^4.0.2",
     "yakbak": "^3.0.0",
     "yargs": "^16.2.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^12.0.0",
+    "@commitlint/config-conventional": "^12.0.0"
   },
   "resolutions": {
     "set-value": "3.0.2"
