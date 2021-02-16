@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.117.3](https://github.com/webex/webex-js-sdk/compare/v1.117.2...v1.117.3) (2021-02-16)
+
+
+### Bug Fixes
+
+* **internal-plugin-support:** add user Id , meeting Id and org ID as part of upload logs ([3cc6b10](https://github.com/webex/webex-js-sdk/commit/3cc6b10d4701602862bee808db414dd88a3a2963))
+* **plugin-meetings:** added userId, orgId and meetingId for upload logs ([9e9b71c](https://github.com/webex/webex-js-sdk/commit/9e9b71cd070d7717d277f13843bd5bd07177e92b))
+* **plugin-meetings:** upload logs on join, addMedia failures and inactive event ([661dd28](https://github.com/webex/webex-js-sdk/commit/661dd2805e7ff8122226f012dd4a048daf1006b9))
+
 ### [1.117.2](https://github.com/webex/webex-js-sdk/compare/v1.117.1...v1.117.2) (2021-02-15)
 
 
