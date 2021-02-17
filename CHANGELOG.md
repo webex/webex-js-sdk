@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.118.0](https://github.com/webex/webex-js-sdk/compare/v1.117.3...v1.118.0) (2021-02-17)
+
+
+### Features
+
+* **samples:** added innerHTML where HTML is being created ([3e358c9](https://github.com/webex/webex-js-sdk/commit/3e358c994283a9fe81a5f1b6d65c74817338e6c8))
+* **samples:** implemented innerText instead of using innerHTML ([a6a7c1d](https://github.com/webex/webex-js-sdk/commit/a6a7c1d51effe48145851f200f2a26c4cd76cec7))
+
 ### [1.117.3](https://github.com/webex/webex-js-sdk/compare/v1.117.2...v1.117.3) (2021-02-16)
 
 
