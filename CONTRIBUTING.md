@@ -72,6 +72,9 @@ Before you can build the Cisco Webex JS SDK, you will need the following depende
 - [Python 2.7](https://www.python.org/download/releases/2.7/)
   - This is also used during the dependency install process
   - Attempting to update dependencies with a Python 3.x environment will fail
+- [jq](https://github.com/stedolan/jq#jq)
+  - jq processes JSON objects in bash. We use this command throughout our tooling
+  - Follow [these instructions on how to install `jq` in your system](https://stedolan.github.io/jq/download/)
 
 > #### NOTE FOR WINDOWS 10
 >
