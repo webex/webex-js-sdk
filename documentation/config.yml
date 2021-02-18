@@ -5,14 +5,7 @@ toc:
   - name: Authorization
   - AuthorizationBrowser
   - AuthorizationNode
-  - name: Calling
-  - Phone
-  - PhoneConfig
-  - Call
-  - CallMemberships
-  - CallMembership
-  - StatsStream
-  - StatsFilter
+  - name: Webex Meetings
   - Meetings
   - name: Resources
     description: |
