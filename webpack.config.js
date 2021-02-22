@@ -27,12 +27,8 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
   devtool: env === 'development' ? 'cheap-module-source-map' : 'source-map',
   devServer: {
     https: true,
-    disableHostCheck: true,
     port: 8000,
-    contentBase: './packages/node_modules/samples',
-    stats: {
-      colors: true
-    }
+    static: './packages/node_modules/samples'
   },
   node: {
     fs: 'empty'
