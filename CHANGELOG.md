@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.1](https://github.com/webex/webex-js-sdk/compare/v1.118.0...v1.118.1) (2021-02-23)
+
+
+### Bug Fixes
+
+* **meetings:** leave meeting when 1:1 participant declines ([cbfe3e2](https://github.com/webex/webex-js-sdk/commit/cbfe3e2e62fc4418478a8a9030fecb0e938d0cd8))
+
 ## [1.118.0](https://github.com/webex/webex-js-sdk/compare/v1.117.3...v1.118.0) (2021-02-17)
 
 
