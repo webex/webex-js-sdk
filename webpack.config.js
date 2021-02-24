@@ -10,21 +10,21 @@ const {version} = require('./packages/node_modules/webex/package.json');
 dotenv.config();
 dotenv.config({path: '.env.default'});
 
-module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
-  entry: env === 'development' ?
+module.exports = (env) => ({
+  entry: env.mode === 'development' ?
     `${path.resolve(__dirname)}/packages/node_modules/webex/src/index.js` :
     './packages/node_modules/webex',
-  mode: env === 'development' ? 'development' : 'production',
+  mode: env.mode,
   output: {
     filename: 'webex.min.js',
     library: 'Webex',
     libraryTarget: 'umd',
     sourceMapFilename: '[file].map',
-    path: args && args.umd ? // samples:test fix since its called as a function
+    path: env && env.umd ? // samples:test fix since its called as a function
       `${path.resolve(__dirname)}/packages/node_modules/webex/umd` :
       `${path.resolve(__dirname)}/packages/node_modules/samples`
   },
-  devtool: env === 'development' ? 'cheap-module-source-map' : 'source-map',
+  devtool: env.mode === 'development' ? 'cheap-module-source-map' : 'source-map',
   devServer: {
     https: true,
     port: 8000,
@@ -61,7 +61,7 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
       }
     ]
   },
-  ...(env !== 'development' && {
+  ...(env.mode !== 'development' && {
     optimization: {
       minimize: true,
       minimizer: [
@@ -82,7 +82,7 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
   }),
   plugins: [
     // If in integration and building for production (not testing) use production URLS
-    ...(env === 'test' ?
+    ...(env.mode === 'test' ?
       [
         // Environment Plugin doesn't override already defined Environment Variables (i.e. DotENV)
         new EnvironmentPlugin({
@@ -109,7 +109,7 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
         new EnvironmentPlugin({
           WEBEX_LOG_LEVEL: 'log',
           DEBUG: '',
-          NODE_ENV: env === 'development' ? 'development' : 'production'
+          NODE_ENV: env.mode === 'development' ? 'development' : 'production'
         }),
         // This allows overwriting of process.env
         new DefinePlugin({
