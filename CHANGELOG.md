@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.2](https://github.com/webex/webex-js-sdk/compare/v1.118.1...v1.118.2) (2021-02-24)
+
+
+### Bug Fixes
+
+* **umd:** update script to accomodate Weback CLI v4 ([d38b847](https://github.com/webex/webex-js-sdk/commit/d38b8474d32a92c9c2939fd66520dfbd04282c2d))
+
 ### [1.118.1](https://github.com/webex/webex-js-sdk/compare/v1.118.0...v1.118.1) (2021-02-23)
 
 
