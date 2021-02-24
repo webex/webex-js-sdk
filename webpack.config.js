@@ -20,7 +20,7 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
     library: 'Webex',
     libraryTarget: 'umd',
     sourceMapFilename: '[file].map',
-    path: args && args.umd ? // samples:test fix since its called as a function
+    path: args && args.env && args.env.umd ? // samples:test fix since its called as a function
       `${path.resolve(__dirname)}/packages/node_modules/webex/umd` :
       `${path.resolve(__dirname)}/packages/node_modules/samples`
   },
