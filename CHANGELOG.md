@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.3](https://github.com/webex/webex-js-sdk/compare/v1.118.2...v1.118.3) (2021-02-26)
+
+
+### Bug Fixes
+
+* **support:** only upload keys that exist ([ff74a92](https://github.com/webex/webex-js-sdk/commit/ff74a921bd73f128e48034f53b323a2f8541e43f))
+
 ### [1.118.2](https://github.com/webex/webex-js-sdk/compare/v1.118.1...v1.118.2) (2021-02-24)
 
 
