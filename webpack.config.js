@@ -10,21 +10,30 @@ const {version} = require('./packages/node_modules/webex/package.json');
 dotenv.config();
 dotenv.config({path: '.env.default'});
 
-module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
-  entry: env === 'development' ?
+/**
+ * Webpack Config
+ *
+ * @param {object} [env]
+ * @param {string} env.NODE_ENV
+ * @returns {object}
+ */
+module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
+  entry: env && env.NODE_ENV === 'development' ?
     `${path.resolve(__dirname)}/packages/node_modules/webex/src/index.js` :
     './packages/node_modules/webex',
-  mode: env === 'development' ? 'development' : 'production',
+  mode: env && env.NODE_ENV === 'development' ? 'development' : 'production',
   output: {
     filename: 'webex.min.js',
     library: 'Webex',
     libraryTarget: 'umd',
     sourceMapFilename: '[file].map',
-    path: args && args.env && args.env.umd ? // samples:test fix since its called as a function
+    path: env && env.umd ?
       `${path.resolve(__dirname)}/packages/node_modules/webex/umd` :
       `${path.resolve(__dirname)}/packages/node_modules/samples`
   },
-  devtool: env === 'development' ? 'cheap-module-source-map' : 'source-map',
+  devtool: env && env.NODE_ENV === 'development' ?
+    'cheap-module-source-map' :
+    'source-map',
   devServer: {
     https: true,
     port: 8000,
@@ -45,7 +54,10 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
           __dirname,
           `./packages/node_modules/${packageName}/src/index.js`
         );
-        alias[`${packageName}`] = path.resolve(__dirname, `./packages/node_modules/${packageName}/src/index.js`);
+        alias[`${packageName}`] = path.resolve(
+          __dirname,
+          `./packages/node_modules/${packageName}/src/index.js`
+        );
 
         return alias;
       }, {})
@@ -82,7 +94,7 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
   }),
   plugins: [
     // If in integration and building for production (not testing) use production URLS
-    ...(env === 'test' ?
+    ...(env && env.NODE_ENV === 'test' ?
       [
         // Environment Plugin doesn't override already defined Environment Variables (i.e. DotENV)
         new EnvironmentPlugin({
@@ -109,7 +121,7 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
         new EnvironmentPlugin({
           WEBEX_LOG_LEVEL: 'log',
           DEBUG: '',
-          NODE_ENV: env === 'development' ? 'development' : 'production'
+          NODE_ENV: env && env.NODE_ENV === 'development' ? 'development' : 'production'
         }),
         // This allows overwriting of process.env
         new DefinePlugin({
@@ -123,7 +135,9 @@ module.exports = (env = process.env.NODE_ENV || 'production', args) => ({
             IDENTITY_BASE_URL: JSON.stringify('https://identity.webex.com'),
             U2C_SERVICE_URL: JSON.stringify('https://u2c.wbx2.com/u2c/api/v1'),
             WDM_SERVICE_URL: JSON.stringify('https://wdm-a.wbx2.com/wdm/api/v1'),
-            WHISTLER_API_SERVICE_URL: JSON.stringify('https://whistler-prod.allnint.ciscospark.com/api/v1')
+            WHISTLER_API_SERVICE_URL: JSON.stringify(
+              'https://whistler-prod.allnint.ciscospark.com/api/v1'
+            )
           }
         })
       ]
