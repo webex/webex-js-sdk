@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.4](https://github.com/webex/webex-js-sdk/compare/v1.118.3...v1.118.4) (2021-02-26)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** decrease the timer for meeting connect failure ([34b9daf](https://github.com/webex/webex-js-sdk/commit/34b9daf6f09e5de63acae0b6feaed2f0917eaaa3))
+
 ### [1.118.3](https://github.com/webex/webex-js-sdk/compare/v1.118.2...v1.118.3) (2021-02-26)
 
 
