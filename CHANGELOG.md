@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.6](https://github.com/webex/webex-js-sdk/compare/v1.118.5...v1.118.6) (2021-03-10)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** remove notification received event to call analyzer ([9165eaa](https://github.com/webex/webex-js-sdk/commit/9165eaaf762eff382f2ca211acfd31aa1c2f37b2))
+
 ### [1.118.5](https://github.com/webex/webex-js-sdk/compare/v1.118.4...v1.118.5) (2021-03-10)
 
 
