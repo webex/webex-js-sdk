@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.5](https://github.com/webex/webex-js-sdk/compare/v1.118.4...v1.118.5) (2021-03-10)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix "enable" argument in setLocalTrack() ([54311e9](https://github.com/webex/webex-js-sdk/commit/54311e995b502271783b5843039ba47e860367cd))
+* **plugin-meetings:** reset audio and video state machines when leaving a meeting ([f73554c](https://github.com/webex/webex-js-sdk/commit/f73554cb801dd46aeaad0f46e1500d9f736c5f2a)), closes [#SPARK-216287](https://github.com/webex/webex-js-sdk/issues/SPARK-216287)
+
 ### [1.118.4](https://github.com/webex/webex-js-sdk/compare/v1.118.3...v1.118.4) (2021-02-26)
 
 
