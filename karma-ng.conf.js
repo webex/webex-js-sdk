@@ -165,16 +165,7 @@ function makeConfig(packageName, argv) {
         tunnelDomains: [
           '127.0.0.1',
           'localhost'
-        ],
-        verbose: true,
-        // retry to establish a tunnel multiple times. (optional)
-        connectRetries: 3,
-        // time to wait between connection retries in ms. (optional)
-        connectRetryTimeout: 2000,
-        // retry to download the sauce connect archive multiple times. (optional)
-        downloadRetries: 4,
-        // time to wait between download retries in ms. (optional)
-        downloadRetryTimeout: 1000
+        ]
       }
     };
 
