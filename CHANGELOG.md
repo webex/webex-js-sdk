@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.7](https://github.com/webex/webex-js-sdk/compare/v1.118.6...v1.118.7) (2021-03-15)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix hostId error when host is not present ([0ddffd2](https://github.com/webex/webex-js-sdk/commit/0ddffd2ae0fe5ebd78043fb8a0452dce72ed1d16))
+
 ### [1.118.6](https://github.com/webex/webex-js-sdk/compare/v1.118.5...v1.118.6) (2021-03-10)
 
 
