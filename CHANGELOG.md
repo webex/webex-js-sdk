@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.8](https://github.com/webex/webex-js-sdk/compare/v1.118.7...v1.118.8) (2021-03-15)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** send mercury failure event to call analyzer ([867978a](https://github.com/webex/webex-js-sdk/commit/867978a2bbc99f4f09e370f32d415ca30367176b))
+
 ### [1.118.7](https://github.com/webex/webex-js-sdk/compare/v1.118.6...v1.118.7) (2021-03-15)
 
 
