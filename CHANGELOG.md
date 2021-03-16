@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.9](https://github.com/webex/webex-js-sdk/compare/v1.118.8...v1.118.9) (2021-03-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:**  throw error when meeting is inactive on a action ([97f3601](https://github.com/webex/webex-js-sdk/commit/97f3601fad8fd7ea659be72a5cc317a8a657c15a))
+
 ### [1.118.8](https://github.com/webex/webex-js-sdk/compare/v1.118.7...v1.118.8) (2021-03-15)
 
 
