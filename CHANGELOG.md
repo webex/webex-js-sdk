@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.10](https://github.com/webex/webex-js-sdk/compare/v1.118.9...v1.118.10) (2021-03-18)
+
+
+### Bug Fixes
+
+* **meetings:** make reason for decline optional ([463d7fc](https://github.com/webex/webex-js-sdk/commit/463d7fc1ba832e478764afa89759c3e1525cd34d))
+
 ### [1.118.9](https://github.com/webex/webex-js-sdk/compare/v1.118.8...v1.118.9) (2021-03-16)
 
 
