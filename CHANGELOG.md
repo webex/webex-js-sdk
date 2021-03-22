@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.11](https://github.com/webex/webex-js-sdk/compare/v1.118.10...v1.118.11) (2021-03-22)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** throw error when guest is in IDLE state ([578c27c](https://github.com/webex/webex-js-sdk/commit/578c27c5c241d9c2191f6e8df30ee88afe5a171e))
+
 ### [1.118.10](https://github.com/webex/webex-js-sdk/compare/v1.118.9...v1.118.10) (2021-03-18)
 
 
