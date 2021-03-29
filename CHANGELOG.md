@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.12](https://github.com/webex/webex-js-sdk/compare/v1.118.11...v1.118.12) (2021-03-26)
+
+
+### Bug Fixes
+
+* **meetings:** modified locus sequence comparison algorithm in use ([6caa8b5](https://github.com/webex/webex-js-sdk/commit/6caa8b5deb4b0ed5e3655820820c4be643c41039))
+
+### [1.118.11](https://github.com/webex/webex-js-sdk/compare/v1.118.10...v1.118.11) (2021-03-22)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** throw error when guest is in IDLE state ([578c27c](https://github.com/webex/webex-js-sdk/commit/578c27c5c241d9c2191f6e8df30ee88afe5a171e))
+
+### [1.118.10](https://github.com/webex/webex-js-sdk/compare/v1.118.9...v1.118.10) (2021-03-18)
+
+
+### Bug Fixes
+
+* **meetings:** make reason for decline optional ([463d7fc](https://github.com/webex/webex-js-sdk/commit/463d7fc1ba832e478764afa89759c3e1525cd34d))
+
+### [1.118.9](https://github.com/webex/webex-js-sdk/compare/v1.118.8...v1.118.9) (2021-03-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:**  throw error when meeting is inactive on a action ([97f3601](https://github.com/webex/webex-js-sdk/commit/97f3601fad8fd7ea659be72a5cc317a8a657c15a))
+
+### [1.118.8](https://github.com/webex/webex-js-sdk/compare/v1.118.7...v1.118.8) (2021-03-15)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** send mercury failure event to call analyzer ([867978a](https://github.com/webex/webex-js-sdk/commit/867978a2bbc99f4f09e370f32d415ca30367176b))
+
+### [1.118.7](https://github.com/webex/webex-js-sdk/compare/v1.118.6...v1.118.7) (2021-03-15)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix hostId error when host is not present ([0ddffd2](https://github.com/webex/webex-js-sdk/commit/0ddffd2ae0fe5ebd78043fb8a0452dce72ed1d16))
+
 ### [1.118.6](https://github.com/webex/webex-js-sdk/compare/v1.118.5...v1.118.6) (2021-03-10)
 
 
