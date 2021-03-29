@@ -164,7 +164,7 @@
     "lint-staged": "^8.2.1",
     "load-grunt-tasks": "^3.5.2",
     "localforage": "^1.7.3",
-    "lodash": "^4.17.19",
+    "lodash": "^4.17.21",
     "lodash-decorators": "^4.5.0",
     "mime": "^2.4.4",
     "mkdirp": "^0.5.1",
