@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.12](https://github.com/webex/webex-js-sdk/compare/v1.118.11...v1.118.12) (2021-03-26)
+
+
+### Bug Fixes
+
+* **meetings:** modified locus sequence comparison algorithm in use ([6caa8b5](https://github.com/webex/webex-js-sdk/commit/6caa8b5deb4b0ed5e3655820820c4be643c41039))
+
 ### [1.118.11](https://github.com/webex/webex-js-sdk/compare/v1.118.10...v1.118.11) (2021-03-22)
 
 
