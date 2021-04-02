@@ -1,6 +1,6 @@
 {
   "name": "webex-js-sdk",
-  "version": "1.118.12",
+  "version": "1.118.13",
   "description": "JavaScript SDK for interacting with the Webex API",
   "homepage": "https://github.com/webex/webex-js-sdk",
   "bugs": {
@@ -144,7 +144,7 @@
     "husky": "^3.0.3",
     "in-publish": "^2.0.0",
     "is-function": "^1.0.1",
-    "isomorphic-webcrypto": "^2.3.6",
+    "isomorphic-webcrypto": "^2.3.8",
     "istanbul": "^0.4.5",
     "javascript-state-machine": "^3.1.0",
     "jsonwebtoken": "^8.5.1",
