@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.13](https://github.com/webex/webex-js-sdk/compare/v1.118.12...v1.118.13) (2021-04-01)
+
+
+### Bug Fixes
+
+* **meetings:** add console.warn deprecation message about using meeting-link on create ([0e2cb16](https://github.com/webex/webex-js-sdk/commit/0e2cb16419e01ba99e92d8400e1f49479c64d21f))
+
+### [1.118.12](https://github.com/webex/webex-js-sdk/compare/v1.118.11...v1.118.12) (2021-03-26)
+
+
+### Bug Fixes
+
+* **meetings:** modified locus sequence comparison algorithm in use ([6caa8b5](https://github.com/webex/webex-js-sdk/commit/6caa8b5deb4b0ed5e3655820820c4be643c41039))
+
 ### [1.118.11](https://github.com/webex/webex-js-sdk/compare/v1.118.10...v1.118.11) (2021-03-22)
 
 
