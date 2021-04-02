@@ -1,0 +1,1317 @@
+{
+  "comparisons": {
+    "test_equals01_rev": {
+      "current": "test_equals01_b",
+      "new": "test_equals01_a",
+      "result": "EQUAL",
+      "description": "test_equals01_rev"
+    },
+    "test_ne2_04_rev": {
+      "current": "test_ne2_04_b",
+      "new": "test_ne2_04_a",
+      "result": "LESS_THAN",
+      "description": "test_ne2_04_rev"
+    },
+    "test_desync03_rev": {
+      "current": "test_desync03_b",
+      "new": "test_desync03_a",
+      "result": "DESYNC",
+      "description": "test_desync03_rev"
+    },
+    "test_ne2_02_rev": {
+      "current": "test_ne2_02_b",
+      "new": "test_ne2_02_a",
+      "result": "LESS_THAN",
+      "description": "test_ne2_02_rev"
+    },
+    "test_desync13_rev": {
+      "current": "test_desync13_b",
+      "new": "test_desync13_a",
+      "result": "DESYNC",
+      "description": "test_desync13_rev"
+    },
+    "test_ne2_10_rev": {
+      "current": "test_ne2_10_b",
+      "new": "test_ne2_10_a",
+      "result": "LESS_THAN",
+      "description": "test_ne2_10_rev"
+    },
+    "test_ne3_03_rev": {
+      "current": "test_ne3_03_b",
+      "new": "test_ne3_03_a",
+      "result": "LESS_THAN",
+      "description": "test_ne3_03_rev"
+    },
+    "test_ne1_03_rev": {
+      "current": "test_ne1_03_b",
+      "new": "test_ne1_03_a",
+      "result": "LESS_THAN",
+      "description": "test_ne1_03_rev"
+    },
+    "test_equals03_rev": {
+      "current": "test_equals03_b",
+      "new": "test_equals03_a",
+      "result": "EQUAL",
+      "description": "test_equals03_rev"
+    },
+    "test_desync04_rev": {
+      "current": "test_desync04_b",
+      "new": "test_desync04_a",
+      "result": "DESYNC",
+      "description": "test_desync04_rev"
+    },
+    "test_desync02_rev": {
+      "current": "test_desync02_b",
+      "new": "test_desync02_a",
+      "result": "DESYNC",
+      "description": "test_desync02_rev"
+    },
+    "test_desync11": {
+      "current": "test_desync11_a",
+      "new": "test_desync11_b",
+      "result": "DESYNC",
+      "description": "test_desync11"
+    },
+    "test_desync10": {
+      "current": "test_desync10_a",
+      "new": "test_desync10_b",
+      "result": "DESYNC",
+      "description": "test_desync10"
+    },
+    "test_desync13": {
+      "current": "test_desync13_a",
+      "new": "test_desync13_b",
+      "result": "DESYNC",
+      "description": "test_desync13"
+    },
+    "test_desync12": {
+      "current": "test_desync12_a",
+      "new": "test_desync12_b",
+      "result": "DESYNC",
+      "description": "test_desync12"
+    },
+    "test_ne1_05_rev": {
+      "current": "test_ne1_05_b",
+      "new": "test_ne1_05_a",
+      "result": "LESS_THAN",
+      "description": "test_ne1_05_rev"
+    },
+    "test_desync14": {
+      "current": "test_desync14_a",
+      "new": "test_desync14_b",
+      "result": "DESYNC",
+      "description": "test_desync14"
+    },
+    "test_ne2_06_rev": {
+      "current": "test_ne2_06_b",
+      "new": "test_ne2_06_a",
+      "result": "LESS_THAN",
+      "description": "test_ne2_06_rev"
+    },
+    "test_ne1_05": {
+      "current": "test_ne1_05_a",
+      "new": "test_ne1_05_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne1_05"
+    },
+    "test_ne1_04": {
+      "current": "test_ne1_04_a",
+      "new": "test_ne1_04_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne1_04"
+    },
+    "test_ne1_03": {
+      "current": "test_ne1_03_a",
+      "new": "test_ne1_03_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne1_03"
+    },
+    "test_ne1_02": {
+      "current": "test_ne1_02_a",
+      "new": "test_ne1_02_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne1_02"
+    },
+    "test_ne1_01": {
+      "current": "test_ne1_01_a",
+      "new": "test_ne1_01_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne1_01"
+    },
+    "test_desync12_rev": {
+      "current": "test_desync12_b",
+      "new": "test_desync12_a",
+      "result": "DESYNC",
+      "description": "test_desync12_rev"
+    },
+    "test_ne2_09_rev": {
+      "current": "test_ne2_09_b",
+      "new": "test_ne2_09_a",
+      "result": "LESS_THAN",
+      "description": "test_ne2_09_rev"
+    },
+    "test_ne2_11": {
+      "current": "test_ne2_11_a",
+      "new": "test_ne2_11_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne2_11"
+    },
+    "test_ne2_10": {
+      "current": "test_ne2_10_a",
+      "new": "test_ne2_10_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne2_10"
+    },
+    "test_desync09_rev": {
+      "current": "test_desync09_b",
+      "new": "test_desync09_a",
+      "result": "DESYNC",
+      "description": "test_desync09_rev"
+    },
+    "test_desync08": {
+      "current": "test_desync08_a",
+      "new": "test_desync08_b",
+      "result": "DESYNC",
+      "description": "test_desync08"
+    },
+    "test_desync09": {
+      "current": "test_desync09_a",
+      "new": "test_desync09_b",
+      "result": "DESYNC",
+      "description": "test_desync09"
+    },
+    "test_desync02": {
+      "current": "test_desync02_a",
+      "new": "test_desync02_b",
+      "result": "DESYNC",
+      "description": "test_desync02"
+    },
+    "test_desync03": {
+      "current": "test_desync03_a",
+      "new": "test_desync03_b",
+      "result": "DESYNC",
+      "description": "test_desync03"
+    },
+    "test_ne2_11_rev": {
+      "current": "test_ne2_11_b",
+      "new": "test_ne2_11_a",
+      "result": "LESS_THAN",
+      "description": "test_ne2_11_rev"
+    },
+    "test_desync01": {
+      "current": "test_desync01_a",
+      "new": "test_desync01_b",
+      "result": "DESYNC",
+      "description": "test_desync01"
+    },
+    "test_desync07": {
+      "current": "test_desync07_a",
+      "new": "test_desync07_b",
+      "result": "DESYNC",
+      "description": "test_desync07"
+    },
+    "test_desync04": {
+      "current": "test_desync04_a",
+      "new": "test_desync04_b",
+      "result": "DESYNC",
+      "description": "test_desync04"
+    },
+    "test_desync05": {
+      "current": "test_desync05_a",
+      "new": "test_desync05_b",
+      "result": "DESYNC",
+      "description": "test_desync05"
+    },
+    "test_ne3_01_rev": {
+      "current": "test_ne3_01_b",
+      "new": "test_ne3_01_a",
+      "result": "LESS_THAN",
+      "description": "test_ne3_01_rev"
+    },
+    "test_desync07_rev": {
+      "current": "test_desync07_b",
+      "new": "test_desync07_a",
+      "result": "DESYNC",
+      "description": "test_desync07_rev"
+    },
+    "test_equals04": {
+      "current": "test_equals04_a",
+      "new": "test_equals04_b",
+      "result": "EQUAL",
+      "description": "test_equals04"
+    },
+    "test_desync15_rev": {
+      "current": "test_desync15_b",
+      "new": "test_desync15_a",
+      "result": "DESYNC",
+      "description": "test_desync15_rev"
+    },
+    "test_equals01": {
+      "current": "test_equals01_a",
+      "new": "test_equals01_b",
+      "result": "EQUAL",
+      "description": "test_equals01"
+    },
+    "test_equals03": {
+      "current": "test_equals03_a",
+      "new": "test_equals03_b",
+      "result": "EQUAL",
+      "description": "test_equals03"
+    },
+    "test_ne3_08_rev": {
+      "current": "test_ne3_08_b",
+      "new": "test_ne3_08_a",
+      "result": "LESS_THAN",
+      "description": "test_ne3_08_rev"
+    },
+    "test_desync01_rev": {
+      "current": "test_desync01_b",
+      "new": "test_desync01_a",
+      "result": "DESYNC",
+      "description": "test_desync01_rev"
+    },
+    "test_desync10_rev": {
+      "current": "test_desync10_b",
+      "new": "test_desync10_a",
+      "result": "DESYNC",
+      "description": "test_desync10_rev"
+    },
+    "test_ne2_02": {
+      "current": "test_ne2_02_a",
+      "new": "test_ne2_02_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne2_02"
+    },
+    "test_ne2_03": {
+      "current": "test_ne2_03_a",
+      "new": "test_ne2_03_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne2_03"
+    },
+    "test_ne2_01": {
+      "current": "test_ne2_01_a",
+      "new": "test_ne2_01_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne2_01"
+    },
+    "test_ne2_06": {
+      "current": "test_ne2_06_a",
+      "new": "test_ne2_06_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne2_06"
+    },
+    "test_ne2_07": {
+      "current": "test_ne2_07_a",
+      "new": "test_ne2_07_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne2_07"
+    },
+    "test_ne2_04": {
+      "current": "test_ne2_04_a",
+      "new": "test_ne2_04_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne2_04"
+    },
+    "test_desync15": {
+      "current": "test_desync15_a",
+      "new": "test_desync15_b",
+      "result": "DESYNC",
+      "description": "test_desync15"
+    },
+    "test_ne2_08": {
+      "current": "test_ne2_08_a",
+      "new": "test_ne2_08_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne2_08"
+    },
+    "test_ne2_09": {
+      "current": "test_ne2_09_a",
+      "new": "test_ne2_09_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne2_09"
+    },
+    "test_equals04_rev": {
+      "current": "test_equals04_b",
+      "new": "test_equals04_a",
+      "result": "EQUAL",
+      "description": "test_equals04_rev"
+    },
+    "test_ne1_02_rev": {
+      "current": "test_ne1_02_b",
+      "new": "test_ne1_02_a",
+      "result": "LESS_THAN",
+      "description": "test_ne1_02_rev"
+    },
+    "test_ne3_04_rev": {
+      "current": "test_ne3_04_b",
+      "new": "test_ne3_04_a",
+      "result": "LESS_THAN",
+      "description": "test_ne3_04_rev"
+    },
+    "test_ne2_07_rev": {
+      "current": "test_ne2_07_b",
+      "new": "test_ne2_07_a",
+      "result": "LESS_THAN",
+      "description": "test_ne2_07_rev"
+    },
+    "test_ne1_04_rev": {
+      "current": "test_ne1_04_b",
+      "new": "test_ne1_04_a",
+      "result": "LESS_THAN",
+      "description": "test_ne1_04_rev"
+    },
+    "test_desync08_rev": {
+      "current": "test_desync08_b",
+      "new": "test_desync08_a",
+      "result": "DESYNC",
+      "description": "test_desync08_rev"
+    },
+    "test_equals02": {
+      "current": "test_equals02_a",
+      "new": "test_equals02_b",
+      "result": "EQUAL",
+      "description": "test_equals02"
+    },
+    "test_ne2_08_rev": {
+      "current": "test_ne2_08_b",
+      "new": "test_ne2_08_a",
+      "result": "LESS_THAN",
+      "description": "test_ne2_08_rev"
+    },
+    "test_ne3_05": {
+      "current": "test_ne3_05_a",
+      "new": "test_ne3_05_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne3_05"
+    },
+    "test_ne3_04": {
+      "current": "test_ne3_04_a",
+      "new": "test_ne3_04_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne3_04"
+    },
+    "test_ne3_07": {
+      "current": "test_ne3_07_a",
+      "new": "test_ne3_07_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne3_07"
+    },
+    "test_ne3_06": {
+      "current": "test_ne3_06_a",
+      "new": "test_ne3_06_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne3_06"
+    },
+    "test_ne3_01": {
+      "current": "test_ne3_01_a",
+      "new": "test_ne3_01_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne3_01"
+    },
+    "test_ne3_03": {
+      "current": "test_ne3_03_a",
+      "new": "test_ne3_03_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne3_03"
+    },
+    "test_ne3_02": {
+      "current": "test_ne3_02_a",
+      "new": "test_ne3_02_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne3_02"
+    },
+    "test_ne3_09": {
+      "current": "test_ne3_09_a",
+      "new": "test_ne3_09_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne3_09"
+    },
+    "test_ne3_08": {
+      "current": "test_ne3_08_a",
+      "new": "test_ne3_08_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne3_08"
+    },
+    "test_ne3_09_rev": {
+      "current": "test_ne3_09_b",
+      "new": "test_ne3_09_a",
+      "result": "LESS_THAN",
+      "description": "test_ne3_09_rev"
+    },
+    "test_desync05_rev": {
+      "current": "test_desync05_b",
+      "new": "test_desync05_a",
+      "result": "DESYNC",
+      "description": "test_desync05_rev"
+    },
+    "test_ne3_07_rev": {
+      "current": "test_ne3_07_b",
+      "new": "test_ne3_07_a",
+      "result": "LESS_THAN",
+      "description": "test_ne3_07_rev"
+    },
+    "test_ne2_01_rev": {
+      "current": "test_ne2_01_b",
+      "new": "test_ne2_01_a",
+      "result": "LESS_THAN",
+      "description": "test_ne2_01_rev"
+    },
+    "test_ne3_05_rev": {
+      "current": "test_ne3_05_b",
+      "new": "test_ne3_05_a",
+      "result": "LESS_THAN",
+      "description": "test_ne3_05_rev"
+    },
+    "test_ne4_01": {
+      "current": "test_ne4_01_a",
+      "new": "test_ne4_01_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne4_01"
+    },
+    "test_ne4_02": {
+      "current": "test_ne4_02_a",
+      "new": "test_ne4_02_b",
+      "result": "GREATER_THAN",
+      "description": "test_ne4_02"
+    },
+    "test_desync11_rev": {
+      "current": "test_desync11_b",
+      "new": "test_desync11_a",
+      "result": "DESYNC",
+      "description": "test_desync11_rev"
+    },
+    "test_desync14_rev": {
+      "current": "test_desync14_b",
+      "new": "test_desync14_a",
+      "result": "DESYNC",
+      "description": "test_desync14_rev"
+    },
+    "test_ne3_02_rev": {
+      "current": "test_ne3_02_b",
+      "new": "test_ne3_02_a",
+      "result": "LESS_THAN",
+      "description": "test_ne3_02_rev"
+    },
+    "test_ne3_06_rev": {
+      "current": "test_ne3_06_b",
+      "new": "test_ne3_06_a",
+      "result": "LESS_THAN",
+      "description": "test_ne3_06_rev"
+    },
+    "test_ne2_03_rev": {
+      "current": "test_ne2_03_b",
+      "new": "test_ne2_03_a",
+      "result": "LESS_THAN",
+      "description": "test_ne2_03_rev"
+    },
+    "test_ne4_02_rev": {
+      "current": "test_ne4_02_b",
+      "new": "test_ne4_02_a",
+      "result": "LESS_THAN",
+      "description": "test_ne4_02_rev"
+    },
+    "test_ne1_01_rev": {
+      "current": "test_ne1_01_b",
+      "new": "test_ne1_01_a",
+      "result": "LESS_THAN",
+      "description": "test_ne1_01_rev"
+    },
+    "test_equals02_rev": {
+      "current": "test_equals02_b",
+      "new": "test_equals02_a",
+      "result": "EQUAL",
+      "description": "test_equals02_rev"
+    },
+    "test_ne4_01_rev": {
+      "current": "test_ne4_01_b",
+      "new": "test_ne4_01_a",
+      "result": "LESS_THAN",
+      "description": "test_ne4_01_rev"
+    }
+  },
+  "version": "1.0",
+  "sequences": {
+    "test_ne2_09_b": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 5,
+      "rangeStart": 4
+    },
+    "test_desync15_b": {
+      "entries": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_desync15_a": {
+      "entries": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_ne2_03_b": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 10
+    },
+    "test_ne2_03_a": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 24,
+      "rangeStart": 10
+    },
+    "test_ne3_06_a": {
+      "entries": [
+        32,
+        33,
+        34
+      ],
+      "rangeEnd": 30,
+      "rangeStart": 5
+    },
+    "test_ne2_01_a": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 10
+    },
+    "test_ne2_01_b": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 14
+    },
+    "test_desync01_b": {
+      "entries": [
+        32,
+        33,
+        34
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 5
+    },
+    "test_desync11_b": {
+      "entries": [
+        22,
+        23,
+        24
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_desync11_a": {
+      "entries": [
+        52,
+        53,
+        54
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 1
+    },
+    "test_ne4_02_a": {
+      "entries": [
+        32,
+        33,
+        34
+      ],
+      "rangeEnd": 30,
+      "rangeStart": 20
+    },
+    "test_ne4_02_b": {
+      "entries": [
+        12,
+        13,
+        27
+      ],
+      "rangeEnd": 7,
+      "rangeStart": 2
+    },
+    "test_equals04_b": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 15
+    },
+    "test_equals04_a": {
+      "entries": [
+        16,
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 5
+    },
+    "test_ne2_11_b": {
+      "entries": [
+        12,
+        21,
+        50
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 1
+    },
+    "test_ne2_11_a": {
+      "entries": [
+        12,
+        21,
+        50
+      ],
+      "rangeEnd": 15,
+      "rangeStart": 1
+    },
+    "test_equals02_a": {
+      "entries": [
+        1,
+        2
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_equals02_b": {
+      "entries": [
+        1,
+        2
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_ne2_07_a": {
+      "entries": [
+        57
+      ],
+      "rangeEnd": 57,
+      "rangeStart": 38
+    },
+    "test_desync07_b": {
+      "entries": [
+        22,
+        23,
+        34
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 5
+    },
+    "test_desync13_a": {
+      "entries": [
+        55,
+        58,
+        64
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_desync09_a": {
+      "entries": [
+        55,
+        58,
+        64
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 10
+    },
+    "test_desync09_b": {
+      "entries": [
+        2,
+        3,
+        21
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_desync13_b": {
+      "entries": [
+        2,
+        3,
+        56
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_ne3_07_b": {
+      "entries": [
+        22,
+        23,
+        30
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 1
+    },
+    "test_ne2_06_b": {
+      "entries": [
+        50,
+        57,
+        60,
+        61
+      ],
+      "rangeEnd": 38,
+      "rangeStart": 38
+    },
+    "test_ne2_06_a": {
+      "entries": [
+        50,
+        57,
+        60,
+        61
+      ],
+      "rangeEnd": 47,
+      "rangeStart": 38
+    },
+    "test_desync10_b": {
+      "entries": [
+        11,
+        12,
+        21
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_desync10_a": {
+      "entries": [
+        55,
+        58,
+        64
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 10
+    },
+    "test_ne2_10_b": {
+      "entries": [
+        64
+      ],
+      "rangeEnd": 5,
+      "rangeStart": 1
+    },
+    "test_ne2_10_a": {
+      "entries": [
+        64
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 1
+    },
+    "test_ne3_07_a": {
+      "entries": [
+        32,
+        33,
+        34
+      ],
+      "rangeEnd": 30,
+      "rangeStart": 5
+    },
+    "test_desync07_a": {
+      "entries": [
+        52,
+        53,
+        54
+      ],
+      "rangeEnd": 30,
+      "rangeStart": 1
+    },
+    "test_equals03_a": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 5
+    },
+    "test_equals03_b": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 15
+    },
+    "test_equals01_b": {
+      "entries": [
+        12,
+        13,
+        14
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 1
+    },
+    "test_ne3_09_a": {
+      "entries": [
+        52,
+        53,
+        54
+      ],
+      "rangeEnd": 30,
+      "rangeStart": 1
+    },
+    "test_desync03_b": {
+      "entries": [
+        52
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 3
+    },
+    "test_desync03_a": {
+      "entries": [
+        64
+      ],
+      "rangeEnd": 5,
+      "rangeStart": 4
+    },
+    "test_equals01_a": {
+      "entries": [
+        12,
+        13,
+        14
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 1
+    },
+    "test_desync05_a": {
+      "entries": [
+        12,
+        21,
+        50
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 1
+    },
+    "test_desync05_b": {
+      "entries": [
+        21,
+        45,
+        48
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 1
+    },
+    "test_desync14_b": {
+      "entries": [
+        2,
+        3,
+        76
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_desync08_a": {
+      "entries": [
+        34,
+        35,
+        45
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 10
+    },
+    "test_desync08_b": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 40,
+      "rangeStart": 30
+    },
+    "test_ne2_07_b": {
+      "entries": [
+        48,
+        50,
+        52,
+        54,
+        57
+      ],
+      "rangeEnd": 42,
+      "rangeStart": 38
+    },
+    "test_desync14_a": {
+      "entries": [
+        55,
+        58,
+        64
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_desync12_a": {
+      "entries": [
+        55,
+        58,
+        64
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_desync12_b": {
+      "entries": [
+        2,
+        3,
+        55
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_ne3_08_b": {
+      "entries": [
+        22,
+        23,
+        24
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 5
+    },
+    "test_ne3_08_a": {
+      "entries": [
+        52,
+        53,
+        54
+      ],
+      "rangeEnd": 30,
+      "rangeStart": 1
+    },
+    "test_ne1_04_a": {
+      "entries": [
+        2
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_ne1_04_b": {
+      "entries": [
+        1
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_ne3_02_a": {
+      "entries": [
+        64
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 1
+    },
+    "test_ne3_02_b": {
+      "entries": [
+        14
+      ],
+      "rangeEnd": 5,
+      "rangeStart": 1
+    },
+    "test_ne1_02_b": {
+      "entries": [
+        22,
+        23,
+        24
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 1
+    },
+    "test_ne1_02_a": {
+      "entries": [
+        52,
+        53,
+        54
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_ne3_04_b": {
+      "entries": [
+        12,
+        21
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 1
+    },
+    "test_ne3_04_a": {
+      "entries": [
+        21,
+        45,
+        48
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 1
+    },
+    "test_ne2_08_a": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 3
+    },
+    "test_desync01_a": {
+      "entries": [
+        22,
+        23,
+        24
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 1
+    },
+    "test_ne3_06_b": {
+      "entries": [
+        22,
+        23,
+        24
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 1
+    },
+    "test_ne2_08_b": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 5,
+      "rangeStart": 1
+    },
+    "test_ne2_04_a": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 10
+    },
+    "test_ne2_04_b": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_desync02_b": {
+      "entries": [
+        22,
+        23,
+        24
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 5
+    },
+    "test_desync02_a": {
+      "entries": [
+        32,
+        33,
+        34
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 1
+    },
+    "test_ne2_02_b": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 14
+    },
+    "test_ne2_02_a": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 22,
+      "rangeStart": 10
+    },
+    "test_ne3_09_b": {
+      "entries": [
+        22,
+        23,
+        24
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_desync04_a": {
+      "entries": [
+        52
+      ],
+      "rangeEnd": 5,
+      "rangeStart": 1
+    },
+    "test_desync04_b": {
+      "entries": [
+        64
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 1
+    },
+    "test_ne3_03_a": {
+      "entries": [
+        50,
+        52,
+        53,
+        64,
+        68
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 15
+    },
+    "test_ne3_03_b": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 5
+    },
+    "test_ne4_01_b": {
+      "entries": [
+        2,
+        3,
+        17
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_ne3_05_b": {
+      "entries": [
+        12,
+        21,
+        50
+      ],
+      "rangeEnd": 15,
+      "rangeStart": 1
+    },
+    "test_ne3_05_a": {
+      "entries": [
+        12,
+        21,
+        50,
+        90,
+        91
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 1
+    },
+    "test_ne4_01_a": {
+      "entries": [
+        22,
+        23,
+        24
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 10
+    },
+    "test_ne1_05_a": {
+      "entries": [
+        55,
+        58,
+        64
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_ne1_05_b": {
+      "entries": [
+        2,
+        3,
+        7
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_ne3_01_b": {
+      "entries": [
+        22,
+        23,
+        24
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 1
+    },
+    "test_ne3_01_a": {
+      "entries": [
+        32,
+        33,
+        34
+      ],
+      "rangeEnd": 30,
+      "rangeStart": 20
+    },
+    "test_ne1_01_a": {
+      "entries": [
+        120,
+        130,
+        140
+      ],
+      "rangeEnd": 100,
+      "rangeStart": 20
+    },
+    "test_ne1_01_b": {
+      "entries": [
+        12,
+        13,
+        14
+      ],
+      "rangeEnd": 10,
+      "rangeStart": 1
+    },
+    "test_ne2_09_a": {
+      "entries": [
+        52,
+        53,
+        64
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 3
+    },
+    "test_ne1_03_b": {
+      "entries": [
+        2,
+        3,
+        7
+      ],
+      "rangeEnd": 0,
+      "rangeStart": 0
+    },
+    "test_ne1_03_a": {
+      "entries": [
+        22,
+        23,
+        24
+      ],
+      "rangeEnd": 20,
+      "rangeStart": 10
+    }
+  }
+}
