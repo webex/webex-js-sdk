@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.14](https://github.com/webex/webex-js-sdk/compare/v1.118.13...v1.118.14) (2021-04-02)
+
+
+### Bug Fixes
+
+* **plugin-logger:** added global flag to regex pattern for emails ([a4b7917](https://github.com/webex/webex-js-sdk/commit/a4b7917f396f8094173209014dc598fac0820729))
+
 ### [1.118.13](https://github.com/webex/webex-js-sdk/compare/v1.118.12...v1.118.13) (2021-04-01)
 
 
