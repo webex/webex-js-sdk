@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.15](https://github.com/webex/webex-js-sdk/compare/v1.118.14...v1.118.15) (2021-04-06)
+
+
+### Bug Fixes
+
+* make downscoped token self contained ([9a348d1](https://github.com/webex/webex-js-sdk/commit/9a348d149a974177951fc0e5893ffc3d9c834929))
+
 ### [1.118.14](https://github.com/webex/webex-js-sdk/compare/v1.118.13...v1.118.14) (2021-04-02)
 
 
