@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.17](https://github.com/webex/webex-js-sdk/compare/v1.118.16...v1.118.17) (2021-04-09)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** added memberId payload to meeting:startedSharingRemote ([a785169](https://github.com/webex/webex-js-sdk/commit/a7851697bf80af90b3213f887ee4485c86e4afb9))
+* **plugin-meetings:** fix various scenarios related to screen sharing ([ed8f4f6](https://github.com/webex/webex-js-sdk/commit/ed8f4f68d05ae0c67dd256a92dfbb4e473c2b89a)), closes [#SPARK-222423](https://github.com/webex/webex-js-sdk/issues/SPARK-222423) [#SPARK-222430](https://github.com/webex/webex-js-sdk/issues/SPARK-222430) [#SPARK-222426](https://github.com/webex/webex-js-sdk/issues/SPARK-222426) [#SPARK-220647](https://github.com/webex/webex-js-sdk/issues/SPARK-220647)
+
 ### [1.118.16](https://github.com/webex/webex-js-sdk/compare/v1.118.15...v1.118.16) (2021-04-08)
 
 
