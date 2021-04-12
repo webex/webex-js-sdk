@@ -1,0 +1,13 @@
+diff --git a/node_modules/karma-sauce-launcher/dist/launcher/launcher.js b/node_modules/karma-sauce-launcher/dist/launcher/launcher.js
+index 6ef5ae2..da1e849 100644
+--- a/node_modules/karma-sauce-launcher/dist/launcher/launcher.js
++++ b/node_modules/karma-sauce-launcher/dist/launcher/launcher.js
+@@ -62,7 +62,7 @@ function SaucelabsLauncher(args,
+             // Wait until the vm is destroyed and the assets are stored
+             yield utils_1.waitUntil({
+                 condition: () => __awaiter(this, void 0, void 0, function* () {
+-                    log.info(`Check if 'log.json' for browser '${browserName}' has already been stored.`);
++                    log.debug(`Check if 'log.json' for browser '${browserName}' has already been stored.`);
+                     oldLogs = yield api.downloadJobAsset(sessionId, 'log.json');
+                     return oldLogs;
+                 }),
