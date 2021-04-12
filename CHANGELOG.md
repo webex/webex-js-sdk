@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.118.17](https://github.com/webex/webex-js-sdk/compare/v1.118.16...v1.118.17) (2021-04-09)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** added memberId payload to meeting:startedSharingRemote ([a785169](https://github.com/webex/webex-js-sdk/commit/a7851697bf80af90b3213f887ee4485c86e4afb9))
+* **plugin-meetings:** fix various scenarios related to screen sharing ([ed8f4f6](https://github.com/webex/webex-js-sdk/commit/ed8f4f68d05ae0c67dd256a92dfbb4e473c2b89a)), closes [#SPARK-222423](https://github.com/webex/webex-js-sdk/issues/SPARK-222423) [#SPARK-222430](https://github.com/webex/webex-js-sdk/issues/SPARK-222430) [#SPARK-222426](https://github.com/webex/webex-js-sdk/issues/SPARK-222426) [#SPARK-220647](https://github.com/webex/webex-js-sdk/issues/SPARK-220647)
+
+### [1.118.16](https://github.com/webex/webex-js-sdk/compare/v1.118.15...v1.118.16) (2021-04-08)
+
+
+### Bug Fixes
+
+* **plugin-meetings:**  add browser info to call-analyzer events ([e3b1664](https://github.com/webex/webex-js-sdk/commit/e3b1664ac3c4d0de05c25ea2527dacb3eaa4dd9b))
+
+### [1.118.15](https://github.com/webex/webex-js-sdk/compare/v1.118.14...v1.118.15) (2021-04-06)
+
+
+### Bug Fixes
+
+* make downscoped token self contained ([9a348d1](https://github.com/webex/webex-js-sdk/commit/9a348d149a974177951fc0e5893ffc3d9c834929))
+
+### [1.118.14](https://github.com/webex/webex-js-sdk/compare/v1.118.13...v1.118.14) (2021-04-02)
+
+
+### Bug Fixes
+
+* **plugin-logger:** added global flag to regex pattern for emails ([a4b7917](https://github.com/webex/webex-js-sdk/commit/a4b7917f396f8094173209014dc598fac0820729))
+
 ### [1.118.13](https://github.com/webex/webex-js-sdk/compare/v1.118.12...v1.118.13) (2021-04-01)
 
 
