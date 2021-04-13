@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.119.0](https://github.com/webex/webex-js-sdk/compare/v1.118.17...v1.119.0) (2021-04-13)
+
+
+### Features
+
+* **internal-plugin-conversation:** add ignore and unignore functionality ([2ff07d1](https://github.com/webex/webex-js-sdk/commit/2ff07d11508642b5cdcc0e240cdd5565c97604ab))
+
 ### [1.118.17](https://github.com/webex/webex-js-sdk/compare/v1.118.16...v1.118.17) (2021-04-09)
 
 
