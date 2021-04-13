@@ -183,7 +183,7 @@
     "urlsafe-base64": "^1.0.0",
     "uuid": "^3.3.2",
     "valid-url": "^1.0.9",
-    "wd": "^1.13.0",
+    "wd": "^1.14.0",
     "webdriverio": "^6.12.1",
     "webrtc-adapter": "^7.7.0",
     "whatwg-fetch": "^2.0.4",
