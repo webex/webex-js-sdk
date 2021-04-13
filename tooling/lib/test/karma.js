@@ -3,7 +3,7 @@
  */
 
 const debug = require('debug')('tooling:test:karma');
-const {Server} = require('karma');
+const {Server, config: {parseConfig}} = require('karma');
 
 const {makeConfig} = require('../../../karma-ng.conf');
 const {glob} = require('../async');
@@ -12,20 +12,46 @@ const {expectNonEmptyReports, expectNoKmsErrors} = require('./common');
 
 /* eslint-disable no-console */
 
+/**
+ * Runs karma with the specified config
+ * @param {Object} karmaConfig
+ * @returns {boolean}
+ */
+const run = (karmaConfig) => parseConfig(
+  null,
+  karmaConfig,
+  {
+    promiseConfig: true,
+    throwErrors: true
+  }
+).then(async (config) => {
+  const result = await new Promise((resolve) => {
+    const server = new Server(config, (exitCode) => resolve(exitCode));
+
+    server.on('browser_error', debugBrowserError);
+    server.start();
+  });
+
+  return result === 0;
+},
+(err) => {
+  throw new Error(err);
+});
+
 // Splitting this function to reduce complexity would not aid in readability
 // eslint-disable-next-line complexity
 exports.test = async function test(options, packageName, files) {
   debug(`testing ${files}`);
 
-  const cfg = makeConfig(packageName, options);
+  const karmaConfig = makeConfig(packageName, options);
 
   if (options.xunit || process.env.COVERAGE || process.env.CIRCLECI || process.env.CI) {
     try {
-      await run(cfg);
+      await run(karmaConfig);
       const reports = await glob(`./reports/junit/karma/*/${packageName}.xml`);
 
-      if (reports.length !== cfg.browsers.length) {
-        throw new Error(`Ran tests in ${cfg.browsers.length} browsers but only found ${reports.length} reports`);
+      if (reports.length !== karmaConfig.browsers.length) {
+        throw new Error(`Ran tests in ${karmaConfig.browsers.length} browsers but only found ${reports.length} reports`);
       }
       await expectNonEmptyReports(reports);
       await expectNoKmsErrors(reports);
@@ -35,7 +61,7 @@ exports.test = async function test(options, packageName, files) {
     }
   }
   else {
-    const success = await run(cfg);
+    const success = await run(karmaConfig);
 
     if (success) {
       debug(`${files} succeeded`);
@@ -46,22 +72,6 @@ exports.test = async function test(options, packageName, files) {
     }
   }
 };
-
-/**
- * Runs karma with the specified config
- * @param {Object} cfg
- * @returns {boolean}
- */
-async function run(cfg) {
-  const result = await new Promise((resolve) => {
-    const server = new Server(cfg, (code) => resolve(code));
-
-    server.on('browser_error', debugBrowserError);
-    server.start(cfg);
-  });
-
-  return result === 0;
-}
 
 /**
  * Debug browser errors to quickly discern IE11 errors.
