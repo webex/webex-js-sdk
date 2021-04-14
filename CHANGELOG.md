@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.119.1](https://github.com/webex/webex-js-sdk/compare/v1.119.0...v1.119.1) (2021-04-14)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** send metrics on connection error and ice failures ([b2d6002](https://github.com/webex/webex-js-sdk/commit/b2d6002dfa1c0bd1ffe8e40f753dd821f7675d45))
+
 ## [1.119.0](https://github.com/webex/webex-js-sdk/compare/v1.118.17...v1.119.0) (2021-04-13)
 
 
