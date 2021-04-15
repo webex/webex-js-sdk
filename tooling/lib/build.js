@@ -54,7 +54,7 @@ exports.buildSamples = async function buildSamples() {
 
   // reminder: samples:build calls this script, not webpack
   // hence we must call webpack here
-  const [cmd, ...args] = `webpack --colors ${(process.env.NODE_ENV === 'development') ? '-d' : '-p'}`.split(' ');
+  const [cmd, ...args] = `webpack --color ${(process.env.NODE_ENV === 'development') ? '--mode development' : '--mode production'}`.split(' ');
   const webpack = spawn(cmd, args, {
     stdio: 'pipe',
     // Spawn fix for Windows
@@ -107,7 +107,7 @@ exports.buildUMDScript = async function buildUMDScript() {
 
   // reminder: samples:build calls this script, not webpack
   // hence we must call webpack here
-  const [cmd, ...args] = `webpack --colors ${(process.env.NODE_ENV === 'development') ? '-d' : '-p'} --umd`.split(' ');
+  const [cmd, ...args] = `webpack --color ${(process.env.NODE_ENV === 'development') ? '--mode development' : '--mode production'} --env umd`.split(' ');
   const webpack = spawn(cmd, args, {
     stdio: 'pipe',
     // Spawn fix for Windows
