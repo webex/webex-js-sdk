@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.119.2](https://github.com/webex/webex-js-sdk/compare/v1.119.1...v1.119.2) (2021-04-15)
+
+
+### Bug Fixes
+
+* **convo:** handle new thread replies ([b458d75](https://github.com/webex/webex-js-sdk/commit/b458d755bc65b0371464d9e419cab3b2f2e43278))
+
 ### [1.119.1](https://github.com/webex/webex-js-sdk/compare/v1.119.0...v1.119.1) (2021-04-14)
 
 
