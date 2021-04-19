@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.119.3](https://github.com/webex/webex-js-sdk/compare/v1.119.2...v1.119.3) (2021-04-19)
+
+
+### Bug Fixes
+
+* **meetings:** prevents screen share from getting out of sync ([41cccc1](https://github.com/webex/webex-js-sdk/commit/41cccc19b76200c13e986153fa9227648589d206))
+
+### [1.119.2](https://github.com/webex/webex-js-sdk/compare/v1.119.1...v1.119.2) (2021-04-15)
+
+
+### Bug Fixes
+
+* **convo:** handle new thread replies ([b458d75](https://github.com/webex/webex-js-sdk/commit/b458d755bc65b0371464d9e419cab3b2f2e43278))
+
+### [1.119.1](https://github.com/webex/webex-js-sdk/compare/v1.119.0...v1.119.1) (2021-04-14)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** send metrics on connection error and ice failures ([b2d6002](https://github.com/webex/webex-js-sdk/commit/b2d6002dfa1c0bd1ffe8e40f753dd821f7675d45))
+
+## [1.119.0](https://github.com/webex/webex-js-sdk/compare/v1.118.17...v1.119.0) (2021-04-13)
+
+
+### Features
+
+* **internal-plugin-conversation:** add ignore and unignore functionality ([2ff07d1](https://github.com/webex/webex-js-sdk/commit/2ff07d11508642b5cdcc0e240cdd5565c97604ab))
+
 ### [1.118.17](https://github.com/webex/webex-js-sdk/compare/v1.118.16...v1.118.17) (2021-04-09)
 
 

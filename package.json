@@ -1,6 +1,6 @@
 {
   "name": "webex-js-sdk",
-  "version": "1.118.17",
+  "version": "1.119.3",
   "description": "JavaScript SDK for interacting with the Webex API",
   "homepage": "https://github.com/webex/webex-js-sdk",
   "bugs": {
@@ -183,7 +183,7 @@
     "urlsafe-base64": "^1.0.0",
     "uuid": "^3.3.2",
     "valid-url": "^1.0.9",
-    "wd": "^1.13.0",
+    "wd": "^1.14.0",
     "webdriverio": "^6.12.1",
     "webrtc-adapter": "^7.7.0",
     "whatwg-fetch": "^2.0.4",
