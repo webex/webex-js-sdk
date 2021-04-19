@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.119.3](https://github.com/webex/webex-js-sdk/compare/v1.119.2...v1.119.3) (2021-04-19)
+
+
+### Bug Fixes
+
+* **meetings:** prevents screen share from getting out of sync ([41cccc1](https://github.com/webex/webex-js-sdk/commit/41cccc19b76200c13e986153fa9227648589d206))
+
 ### [1.119.2](https://github.com/webex/webex-js-sdk/compare/v1.119.1...v1.119.2) (2021-04-15)
 
 
