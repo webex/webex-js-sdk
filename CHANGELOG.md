@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.119.4](https://github.com/webex/webex-js-sdk/compare/v1.119.3...v1.119.4) (2021-04-21)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix locus parser error ([80d2ef8](https://github.com/webex/webex-js-sdk/commit/80d2ef8bfe032a099e3b75285d030727c5c03e16))
+
 ### [1.119.3](https://github.com/webex/webex-js-sdk/compare/v1.119.2...v1.119.3) (2021-04-19)
 
 
