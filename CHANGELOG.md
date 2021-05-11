@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.119.6](https://github.com/webex/webex-js-sdk/compare/v1.119.5...v1.119.6) (2021-05-05)
+
+
+### Bug Fixes
+
+* **meetings:** handle useragent lookup when running on node ([c3b558b](https://github.com/webex/webex-js-sdk/commit/c3b558b11ef8a6bb8653155e2364d2f049bf6d40))
+
+### [1.119.5](https://github.com/webex/webex-js-sdk/compare/v1.119.4...v1.119.5) (2021-05-04)
+
+
+### Bug Fixes
+
+* update bowser ([3c2a53b](https://github.com/webex/webex-js-sdk/commit/3c2a53b2585a137d7a362d29fa8e4f5b1b5876de))
+
 ### [1.119.4](https://github.com/webex/webex-js-sdk/compare/v1.119.3...v1.119.4) (2021-04-21)
 
 
