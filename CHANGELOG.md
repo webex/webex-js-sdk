@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.119.7](https://github.com/webex/webex-js-sdk/compare/v1.119.6...v1.119.7) (2021-05-14)
+
+
+### Bug Fixes
+
+* **meetings:** don’t set media ID on reconnect to avoid black screen ([2a8dcdb](https://github.com/webex/webex-js-sdk/commit/2a8dcdb756306fee8f24211af32fd6df1733f1f4))
+
 ### [1.119.6](https://github.com/webex/webex-js-sdk/compare/v1.119.5...v1.119.6) (2021-05-05)
 
 
