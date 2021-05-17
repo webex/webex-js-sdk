@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.120.0](https://github.com/webex/webex-js-sdk/compare/v1.119.7...v1.120.0) (2021-05-17)
+
+
+### Features
+
+* **conversation:** add ability to use new conversationsSummary resource ([57d39d7](https://github.com/webex/webex-js-sdk/commit/57d39d71b137bccae8a744f744ca78d48f5becaa))
+
 ### [1.119.7](https://github.com/webex/webex-js-sdk/compare/v1.119.6...v1.119.7) (2021-05-14)
 
 
