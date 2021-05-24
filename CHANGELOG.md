@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.120.1](https://github.com/webex/webex-js-sdk/compare/v1.120.0...v1.120.1) (2021-05-24)
+
+
+### Bug Fixes
+
+* lint errors ([2e83947](https://github.com/webex/webex-js-sdk/commit/2e83947649f5f9ee7fd8a2d07dd230007935742f))
+* prevent updateVideo from updating the audio track ([41c6724](https://github.com/webex/webex-js-sdk/commit/41c6724df32c26101929d29af107344c0902cdcd)), closes [#SPARK-209898](https://github.com/webex/webex-js-sdk/issues/SPARK-209898)
+* typo in the update video test ([988b3f3](https://github.com/webex/webex-js-sdk/commit/988b3f3611af07bd444eab31d992636e4d1586f3))
+
 ## [1.120.0](https://github.com/webex/webex-js-sdk/compare/v1.119.7...v1.120.0) (2021-05-17)
 
 
