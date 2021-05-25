@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.120.2](https://github.com/webex/webex-js-sdk/compare/v1.120.1...v1.120.2) (2021-05-25)
+
+
+### Bug Fixes
+
+* **meetings:** browser detection not working in integration tests ([f56fa1a](https://github.com/webex/webex-js-sdk/commit/f56fa1a5672b0a8568312984394750e62f1cc3db))
+
 ### [1.120.1](https://github.com/webex/webex-js-sdk/compare/v1.120.0...v1.120.1) (2021-05-24)
 
 
