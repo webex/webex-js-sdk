@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.121.0](https://github.com/webex/webex-js-sdk/compare/v1.120.2...v1.121.0) (2021-05-28)
+
+
+### Features
+
+* **webex-core:** allow for options to be passed through to sendUserActivation ([dee1fc7](https://github.com/webex/webex-js-sdk/commit/dee1fc7386e6f41c3843084b8588903e91786f7e))
+
 ### [1.120.2](https://github.com/webex/webex-js-sdk/compare/v1.120.1...v1.120.2) (2021-05-25)
 
 
