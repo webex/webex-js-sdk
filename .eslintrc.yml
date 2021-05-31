@@ -4,6 +4,7 @@ parserOptions:
     legacyDecorators: true
 globals:
   PACKAGE_VERSION: false
+  WebSocket: false
 root: true
 rules:
   no-warning-comments: warn
