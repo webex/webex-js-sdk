@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.122.0](https://github.com/webex/webex-js-sdk/compare/v1.121.0...v1.122.0) (2021-06-02)
+
+
+### Features
+
+* **internal-plugin-conversation:** add getThreads api ([b09ddc4](https://github.com/webex/webex-js-sdk/commit/b09ddc43964f542a79f04b746be948b39cc0a4b8))
+
 ## [1.121.0](https://github.com/webex/webex-js-sdk/compare/v1.120.2...v1.121.0) (2021-05-28)
 
 
