@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.122.2](https://github.com/webex/webex-js-sdk/compare/v1.122.1...v1.122.2) (2021-06-03)
+
+
+### Bug Fixes
+
+* bring back JWT tests ([7343a8f](https://github.com/webex/webex-js-sdk/commit/7343a8f99850558f6060e747ce6ccae29fc93b21))
+
 ### [1.122.1](https://github.com/webex/webex-js-sdk/compare/v1.122.0...v1.122.1) (2021-06-03)
 
 
