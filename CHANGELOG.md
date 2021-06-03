@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.122.1](https://github.com/webex/webex-js-sdk/compare/v1.122.0...v1.122.1) (2021-06-03)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** camera still on when sendVideo is false ([61763bd](https://github.com/webex/webex-js-sdk/commit/61763bd0111e3f465002a8e64d6990b502e3e308))
+
 ## [1.122.0](https://github.com/webex/webex-js-sdk/compare/v1.121.0...v1.122.0) (2021-06-02)
 
 
