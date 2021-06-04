@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.122.3](https://github.com/webex/webex-js-sdk/compare/v1.122.2...v1.122.3) (2021-06-04)
+
+
+### Bug Fixes
+
+* **meetings:** use proper metrics methods in move media calls ([27d3b6e](https://github.com/webex/webex-js-sdk/commit/27d3b6e44b88512bac730e019398f3d231b2c021))
+
 ### [1.122.2](https://github.com/webex/webex-js-sdk/compare/v1.122.1...v1.122.2) (2021-06-03)
 
 
