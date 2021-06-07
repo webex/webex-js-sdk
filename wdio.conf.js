@@ -3,13 +3,12 @@
 
 const path = require('path');
 const os = require('os');
-const {createServer} = require('http');
 
 const dotenv = require('dotenv');
 const glob = require('glob');
 const uuidv4 = require('uuid/v4');
-const handler = require('serve-handler');
 const webpack = require('webpack');
+const WebpackDevServer = require('webpack-dev-server');
 
 dotenv.config();
 dotenv.config({path: '.env.default'});
@@ -25,6 +24,7 @@ require('@babel/register')({
 
 const PORT = process.env.PORT || 8000;
 const CI = !!(process.env.JENKINS || process.env.CIRCLECI || process.env.CI || process.env.SAUCE);
+let server;
 
 exports.config = {
   //
@@ -105,6 +105,7 @@ exports.config = {
     browserFirefox: {
       capabilities: {
         browserName: 'safari',
+        acceptInsecureCerts: true,
         'webkit:WebRTC': {
           DisableInsecureMediaCapture: true
         },
@@ -125,6 +126,7 @@ exports.config = {
       browserChrome: {
         capabilities: {
           browserName: 'MicrosoftEdge',
+          acceptInsecureCerts: true,
           'ms:edgeOptions': {
             args: [
               '--disable-features=WebRtcHideLocalIpsWithMdns',
@@ -145,6 +147,7 @@ exports.config = {
       browserChrome: {
         capabilities: {
           browserName: 'chrome',
+          acceptInsecureCerts: true,
           'goog:chromeOptions': {
             args: [
               '--disable-features=WebRtcHideLocalIpsWithMdns',
@@ -167,6 +170,7 @@ exports.config = {
     browserFirefox: {
       capabilities: {
         browserName: 'firefox',
+        acceptInsecureCerts: true,
         'moz:firefoxOptions': {
           ...(CI ? {
             args: [
@@ -206,6 +210,7 @@ exports.config = {
     browserChrome: {
       capabilities: {
         browserName: 'chrome',
+        acceptInsecureCerts: true,
         'goog:chromeOptions': {
           args: [
             '--disable-features=WebRtcHideLocalIpsWithMdns',
@@ -256,7 +261,7 @@ exports.config = {
   //
   // Set a base URL in order to shorten url command calls. If your url parameter starts
   // with "/", then the base url gets prepended.
-  baseUrl: `http://localhost:${PORT}/`,
+  baseUrl: `https://localhost:${PORT}/`,
   //
   // Default timeout for all waitFor* commands.
   waitforTimeout: 15000,
@@ -362,28 +367,17 @@ exports.config = {
    * @param {Array.<Object>} capabilities list of capabilities details
    */
   async onPrepare(config, capabilities) {
-    await webpack(webpackConfig, (err, stats) => {
-      if (err || stats.hasErrors()) {
-        throw new Error(err.details);
-      }
+    const compiler = webpack(webpackConfig);
 
-      console.log(stats.toString({
-        colors: true,
-        modules: false,
-        warnings: false
-      }));
+    server = new WebpackDevServer(compiler, {
+      https: true,
+      port: PORT,
+      static: './packages/node_modules/samples'
+    });
 
-      createServer((request, response) =>
-        // You pass two more arguments for config and middleware
-        // More details here: https://github.com/vercel/serve-handler#options
-        handler(request, response, {
-          public: './packages/node_modules/samples',
-          cleanUrls: true,
-          trailingSlash: true
-        }))
-        .listen(PORT, () => {
-          console.info(`Static Sever running at http://localhost:${PORT}\n`);
-        });
+    server.listen(PORT, 'localhost');
+    await new Promise((res) => {
+      compiler.hooks.afterCompile.tap('CompileCompletePlugin', res);
     });
 
     const defs = [
@@ -446,7 +440,7 @@ exports.config = {
       browser.maximizeWindow();
     }
     browser.url(this.baseUrl);
-  }
+  },
   //
   /**
    * Hook that gets executed before the suite starts
@@ -519,10 +513,18 @@ exports.config = {
   // afterSession: function (config, capabilities, specs) {
   // },
   /**
-   * Gets executed after all workers got shut down and the process is about to exit. It is not
-   * possible to defer the end of the process using a promise.
+   * Gets executed after all workers got shut down and the process is about to exit. An error
+   * thrown in the onComplete hook will result in the test run failing.
    * @param {Object} exitCode 0 - success, 1 - fail
+   * @param {Object} config wdio configuration object
+   * @param {Array.<Object>} capabilities list of capabilities details
+   * @param {Object} results object containing test results
    */
-  // onComplete(exitCode) {
-  // }
+  async onComplete() {
+    if (server) {
+      await new Promise((res) => {
+        server.close(res);
+      });
+    }
+  }
 };
