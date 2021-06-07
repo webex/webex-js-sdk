@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.123.0](https://github.com/webex/webex-js-sdk/compare/v1.122.3...v1.123.0) (2021-06-07)
+
+
+### Features
+
+* **meetings:** refactor of audio/video muting code ([dd34a1f](https://github.com/webex/webex-js-sdk/commit/dd34a1fd77a88d8dbf74d3f50b47381289b593d9))
+
+
+### Bug Fixes
+
+* **meetings:** avoid sending unmutedByOthers event when not muted on entry ([9cc76f3](https://github.com/webex/webex-js-sdk/commit/9cc76f3a1f6cd42d0735e27294b0321caf58e839))
+* **meetings:** correctly initialise video MuteState instance ([9c94a42](https://github.com/webex/webex-js-sdk/commit/9c94a42383a6c9cf156491569570b5a2b1693cb5))
+* **meetings:** put payload back into mute related events ([00ba0d2](https://github.com/webex/webex-js-sdk/commit/00ba0d26d41613996b7f20962bf1b24440189cf2))
+
 ### [1.122.3](https://github.com/webex/webex-js-sdk/compare/v1.122.2...v1.122.3) (2021-06-04)
 
 
