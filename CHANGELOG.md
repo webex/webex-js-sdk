@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.124.0](https://github.com/webex/webex-js-sdk/compare/v1.123.1...v1.124.0) (2021-06-08)
+
+
+### Features
+
+* **meetings:** custom size remote video (coming soon) ([1768a1d](https://github.com/webex/webex-js-sdk/commit/1768a1d7636024af93163ad5cba987eca7307821))
+
 ### [1.123.1](https://github.com/webex/webex-js-sdk/compare/v1.123.0...v1.123.1) (2021-06-08)
 
 
