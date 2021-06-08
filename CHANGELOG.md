@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.123.1](https://github.com/webex/webex-js-sdk/compare/v1.123.0...v1.123.1) (2021-06-08)
+
+
+### Bug Fixes
+
+* **meetings:** sending meeting locked/unlocked events ([cd1e028](https://github.com/webex/webex-js-sdk/commit/cd1e0281d031cdcf456f418aee0a4377abf53574))
+
 ## [1.123.0](https://github.com/webex/webex-js-sdk/compare/v1.122.3...v1.123.0) (2021-06-07)
 
 
