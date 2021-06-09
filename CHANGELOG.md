@@ -2,6 +2,99 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.124.0](https://github.com/webex/webex-js-sdk/compare/v1.123.1...v1.124.0) (2021-06-08)
+
+
+### Features
+
+* **meetings:** custom size remote video (coming soon) ([1768a1d](https://github.com/webex/webex-js-sdk/commit/1768a1d7636024af93163ad5cba987eca7307821))
+
+### [1.123.1](https://github.com/webex/webex-js-sdk/compare/v1.123.0...v1.123.1) (2021-06-08)
+
+
+### Bug Fixes
+
+* **meetings:** sending meeting locked/unlocked events ([cd1e028](https://github.com/webex/webex-js-sdk/commit/cd1e0281d031cdcf456f418aee0a4377abf53574))
+
+## [1.123.0](https://github.com/webex/webex-js-sdk/compare/v1.122.3...v1.123.0) (2021-06-07)
+
+
+### Features
+
+* **meetings:** refactor of audio/video muting code ([dd34a1f](https://github.com/webex/webex-js-sdk/commit/dd34a1fd77a88d8dbf74d3f50b47381289b593d9))
+
+
+### Bug Fixes
+
+* **meetings:** avoid sending unmutedByOthers event when not muted on entry ([9cc76f3](https://github.com/webex/webex-js-sdk/commit/9cc76f3a1f6cd42d0735e27294b0321caf58e839))
+* **meetings:** correctly initialise video MuteState instance ([9c94a42](https://github.com/webex/webex-js-sdk/commit/9c94a42383a6c9cf156491569570b5a2b1693cb5))
+* **meetings:** put payload back into mute related events ([00ba0d2](https://github.com/webex/webex-js-sdk/commit/00ba0d26d41613996b7f20962bf1b24440189cf2))
+
+### [1.122.3](https://github.com/webex/webex-js-sdk/compare/v1.122.2...v1.122.3) (2021-06-04)
+
+
+### Bug Fixes
+
+* **meetings:** use proper metrics methods in move media calls ([27d3b6e](https://github.com/webex/webex-js-sdk/commit/27d3b6e44b88512bac730e019398f3d231b2c021))
+
+### [1.122.2](https://github.com/webex/webex-js-sdk/compare/v1.122.1...v1.122.2) (2021-06-03)
+
+
+### Bug Fixes
+
+* bring back JWT tests ([7343a8f](https://github.com/webex/webex-js-sdk/commit/7343a8f99850558f6060e747ce6ccae29fc93b21))
+
+### [1.122.1](https://github.com/webex/webex-js-sdk/compare/v1.122.0...v1.122.1) (2021-06-03)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** camera still on when sendVideo is false ([61763bd](https://github.com/webex/webex-js-sdk/commit/61763bd0111e3f465002a8e64d6990b502e3e308))
+
+## [1.122.0](https://github.com/webex/webex-js-sdk/compare/v1.121.0...v1.122.0) (2021-06-02)
+
+
+### Features
+
+* **internal-plugin-conversation:** add getThreads api ([b09ddc4](https://github.com/webex/webex-js-sdk/commit/b09ddc43964f542a79f04b746be948b39cc0a4b8))
+
+## [1.121.0](https://github.com/webex/webex-js-sdk/compare/v1.120.2...v1.121.0) (2021-05-28)
+
+
+### Features
+
+* **webex-core:** allow for options to be passed through to sendUserActivation ([dee1fc7](https://github.com/webex/webex-js-sdk/commit/dee1fc7386e6f41c3843084b8588903e91786f7e))
+
+### [1.120.2](https://github.com/webex/webex-js-sdk/compare/v1.120.1...v1.120.2) (2021-05-25)
+
+
+### Bug Fixes
+
+* **meetings:** browser detection not working in integration tests ([f56fa1a](https://github.com/webex/webex-js-sdk/commit/f56fa1a5672b0a8568312984394750e62f1cc3db))
+
+### [1.120.1](https://github.com/webex/webex-js-sdk/compare/v1.120.0...v1.120.1) (2021-05-24)
+
+
+### Bug Fixes
+
+* lint errors ([2e83947](https://github.com/webex/webex-js-sdk/commit/2e83947649f5f9ee7fd8a2d07dd230007935742f))
+* prevent updateVideo from updating the audio track ([41c6724](https://github.com/webex/webex-js-sdk/commit/41c6724df32c26101929d29af107344c0902cdcd)), closes [#SPARK-209898](https://github.com/webex/webex-js-sdk/issues/SPARK-209898)
+* typo in the update video test ([988b3f3](https://github.com/webex/webex-js-sdk/commit/988b3f3611af07bd444eab31d992636e4d1586f3))
+
+## [1.120.0](https://github.com/webex/webex-js-sdk/compare/v1.119.7...v1.120.0) (2021-05-17)
+
+
+### Features
+
+* **conversation:** add ability to use new conversationsSummary resource ([57d39d7](https://github.com/webex/webex-js-sdk/commit/57d39d71b137bccae8a744f744ca78d48f5becaa))
+
+### [1.119.7](https://github.com/webex/webex-js-sdk/compare/v1.119.6...v1.119.7) (2021-05-14)
+
+
+### Bug Fixes
+
+* **meetings:** don’t set media ID on reconnect to avoid black screen ([2a8dcdb](https://github.com/webex/webex-js-sdk/commit/2a8dcdb756306fee8f24211af32fd6df1733f1f4))
+
 ### [1.119.6](https://github.com/webex/webex-js-sdk/compare/v1.119.5...v1.119.6) (2021-05-05)
 
 
