@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.124.2](https://github.com/webex/webex-js-sdk/compare/v1.124.1...v1.124.2) (2021-06-11)
+
+
+### Bug Fixes
+
+* **meetings:** allow share to be cancellable when using native share stop ([bf1c8f2](https://github.com/webex/webex-js-sdk/commit/bf1c8f2401bd4e9dec2c1ea557908f29fbeaeeaf))
+
 ### [1.124.1](https://github.com/webex/webex-js-sdk/compare/v1.124.0...v1.124.1) (2021-06-10)
 
 
