@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.124.1](https://github.com/webex/webex-js-sdk/compare/v1.124.0...v1.124.1) (2021-06-10)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix auto rejoin after meeting ended or in left state ([6a70e81](https://github.com/webex/webex-js-sdk/commit/6a70e81d56c9ed5bb0c3597f69a8e5dfb79a934b))
+
 ## [1.124.0](https://github.com/webex/webex-js-sdk/compare/v1.123.1...v1.124.0) (2021-06-08)
 
 
