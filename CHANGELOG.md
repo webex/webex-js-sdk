@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.124.3](https://github.com/webex/webex-js-sdk/compare/v1.124.2...v1.124.3) (2021-06-16)
+
+
+### Bug Fixes
+
+* **p-meetings:** update metrics to use WEBEX_SDK as client type ([901c3e1](https://github.com/webex/webex-js-sdk/commit/901c3e19dace00e3f99906d7b18074cb4ce4fef0))
+
 ### [1.124.2](https://github.com/webex/webex-js-sdk/compare/v1.124.1...v1.124.2) (2021-06-11)
 
 
