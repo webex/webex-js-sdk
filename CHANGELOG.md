@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.125.0](https://github.com/webex/webex-js-sdk/compare/v1.124.3...v1.125.0) (2021-06-24)
+
+
+### Features
+
+* **metrics:** add senderCountryCode to metrics ([6d20c2f](https://github.com/webex/webex-js-sdk/commit/6d20c2f42c97467ebc61fef7221de294e6bdb1eb))
+
 ### [1.124.3](https://github.com/webex/webex-js-sdk/compare/v1.124.2...v1.124.3) (2021-06-16)
 
 
