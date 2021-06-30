@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.125.2](https://github.com/webex/webex-js-sdk/compare/v1.125.1...v1.125.2) (2021-06-29)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** emit meeting:self:lobbyWaiting and meeting:self:guestAdmitted for webex meeting ([19d92a8](https://github.com/webex/webex-js-sdk/commit/19d92a81ecfa748ccd64b49b23b8773297a0aa30))
+
 ### [1.125.1](https://github.com/webex/webex-js-sdk/compare/v1.125.0...v1.125.1) (2021-06-29)
 
 
