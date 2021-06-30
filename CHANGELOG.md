@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.125.3](https://github.com/webex/webex-js-sdk/compare/v1.125.2...v1.125.3) (2021-06-30)
+
+
+### Bug Fixes
+
+* make sure we only send integers in renderInfo ([dc427c6](https://github.com/webex/webex-js-sdk/commit/dc427c63c05c7c03eeba7f8ed6e1318df6ae94db))
+
 ### [1.125.2](https://github.com/webex/webex-js-sdk/compare/v1.125.1...v1.125.2) (2021-06-29)
 
 
