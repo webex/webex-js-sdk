@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.125.4](https://github.com/webex/webex-js-sdk/compare/v1.125.3...v1.125.4) (2021-07-06)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** locus migration for sip calls ([8b356a9](https://github.com/webex/webex-js-sdk/commit/8b356a9b5c7c6847a301df9108767331df61be94))
+
 ### [1.125.3](https://github.com/webex/webex-js-sdk/compare/v1.125.2...v1.125.3) (2021-06-30)
 
 
