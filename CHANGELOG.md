@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.125.5](https://github.com/webex/webex-js-sdk/compare/v1.125.4...v1.125.5) (2021-07-10)
+
+
+### Bug Fixes
+
+* **meetings:** remove non-Webex calls after user leaves ([5f12b43](https://github.com/webex/webex-js-sdk/commit/5f12b43a2b996311016b64caea38892aab56da3b))
+
 ### [1.125.4](https://github.com/webex/webex-js-sdk/compare/v1.125.3...v1.125.4) (2021-07-06)
 
 
