@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.125.6](https://github.com/webex/webex-js-sdk/compare/v1.125.5...v1.125.6) (2021-07-13)
+
+
+### Bug Fixes
+
+* **meetings:** set both, audio and video, when muting ([634e726](https://github.com/webex/webex-js-sdk/commit/634e7266cc2f74056620800ec2fac039ae6270b0))
+
+### [1.125.5](https://github.com/webex/webex-js-sdk/compare/v1.125.4...v1.125.5) (2021-07-10)
+
+
+### Bug Fixes
+
+* **meetings:** remove non-Webex calls after user leaves ([5f12b43](https://github.com/webex/webex-js-sdk/commit/5f12b43a2b996311016b64caea38892aab56da3b))
+
+### [1.125.4](https://github.com/webex/webex-js-sdk/compare/v1.125.3...v1.125.4) (2021-07-06)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** locus migration for sip calls ([8b356a9](https://github.com/webex/webex-js-sdk/commit/8b356a9b5c7c6847a301df9108767331df61be94))
+
 ### [1.125.3](https://github.com/webex/webex-js-sdk/compare/v1.125.2...v1.125.3) (2021-06-30)
 
 
