@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.126.0](https://github.com/webex/webex-js-sdk/compare/v1.125.6...v1.126.0) (2021-07-14)
+
+
+### Features
+
+* **core:** set x-prelogin-userid header when sending user activation ([00aac84](https://github.com/webex/webex-js-sdk/commit/00aac842a58a9acbab2c9927d9fe29e3e255ddda))
+
+### [1.125.6](https://github.com/webex/webex-js-sdk/compare/v1.125.5...v1.125.6) (2021-07-13)
+
+
+### Bug Fixes
+
+* **meetings:** set both, audio and video, when muting ([634e726](https://github.com/webex/webex-js-sdk/commit/634e7266cc2f74056620800ec2fac039ae6270b0))
+
+### [1.125.5](https://github.com/webex/webex-js-sdk/compare/v1.125.4...v1.125.5) (2021-07-10)
+
+
+### Bug Fixes
+
+* **meetings:** remove non-Webex calls after user leaves ([5f12b43](https://github.com/webex/webex-js-sdk/commit/5f12b43a2b996311016b64caea38892aab56da3b))
+
 ### [1.125.4](https://github.com/webex/webex-js-sdk/compare/v1.125.3...v1.125.4) (2021-07-06)
 
 
