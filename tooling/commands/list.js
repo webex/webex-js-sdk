@@ -49,12 +49,6 @@ module.exports = {
         .filter((p) => !p.includes('xunit-with-logs'))
         .filter((p) => !p.includes('tooling'));
 
-      if (forpipeline) {
-        packages = packages
-          .filter((p) => !p.includes('media-engine-webrtc'))
-          .filter((p) => !p.includes('media-adapter-webrtc'));
-      }
-
       // Make sure we always test the samples when the public sdk changes.
       if (packages.includes('webex') && !packages.includes('samples')) {
         packages.push('samples');
@@ -64,8 +58,6 @@ module.exports = {
       // time, that order is based on eyeballing some xml files rather than
       // empirical measurements of overall suite duration.
       const slow = [
-        '@webex/media-engine-webrtc',
-        '@webex/plugin-phone',
         '@webex/internal-plugin-conversation',
         'ciscospark',
         '@webex/plugin-authorization-browser',
