@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.127.1](https://github.com/webex/webex-js-sdk/compare/v1.127.0...v1.127.1) (2021-07-15)
+
+
+### Bug Fixes
+
+* docs/Gemfile to reduce vulnerabilities ([515ac12](https://github.com/webex/webex-js-sdk/commit/515ac12d1d1f902760c2a640f2d786728cc842ad))
+
 ## [1.127.0](https://github.com/webex/webex-js-sdk/compare/v1.126.0...v1.127.0) (2021-07-15)
 
 
