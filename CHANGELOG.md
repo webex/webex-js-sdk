@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.127.0](https://github.com/webex/webex-js-sdk/compare/v1.126.0...v1.127.0) (2021-07-15)
+
+
+### Features
+
+* **meetings:** network quality indicator/monitor ([e9f4dd3](https://github.com/webex/webex-js-sdk/commit/e9f4dd3cf22ad8bfc10f559dbeeff20a27533e4d))
+
 ## [1.126.0](https://github.com/webex/webex-js-sdk/compare/v1.125.6...v1.126.0) (2021-07-14)
 
 
