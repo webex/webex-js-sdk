@@ -58,7 +58,7 @@ function makeConfig(packageName, argv) {
     browserDisconnectTimeout: 5 * 60 * 1000,
 
     // Allow the browser to disconnect up to 5 times. Something about
-    // plugin-phone and Firefox causes the suite to hang regularly. Restarting
+    // plugin-meetings and Firefox causes the suite to hang regularly. Restarting
     // the browser seems to fix it, so we need to allow a largish number of
     // restarts.
     browserDisconnectTolerance: 3,
@@ -76,7 +76,7 @@ function makeConfig(packageName, argv) {
 
     // Restart the browser if it stops sending output for a minutes. This goes
     // hand-in-hand with the high disconnect tolerance to deal with Firefox
-    // hanging on the plugin-phone suite.
+    // hanging on the plugin-meetings suite.
     browserNoActivityTimeout: 8 * 60 * 1000,
 
     // Inspired by Angular's karma config as recommended by Sauce Labs
