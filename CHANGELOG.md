@@ -2,6 +2,90 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.127.2](https://github.com/webex/webex-js-sdk/compare/v1.127.1...v1.127.2) (2021-07-16)
+
+
+### Bug Fixes
+
+* **meetings:** check current user is still in-meeting before sending meeting:self:unmutedByOthers ([f6ec8b4](https://github.com/webex/webex-js-sdk/commit/f6ec8b4e2c8363bebfbd1ded563fc09ab80782ea))
+
+### [1.127.1](https://github.com/webex/webex-js-sdk/compare/v1.127.0...v1.127.1) (2021-07-15)
+
+
+### Bug Fixes
+
+* docs/Gemfile to reduce vulnerabilities ([515ac12](https://github.com/webex/webex-js-sdk/commit/515ac12d1d1f902760c2a640f2d786728cc842ad))
+
+## [1.127.0](https://github.com/webex/webex-js-sdk/compare/v1.126.0...v1.127.0) (2021-07-15)
+
+
+### Features
+
+* **meetings:** network quality indicator/monitor ([e9f4dd3](https://github.com/webex/webex-js-sdk/commit/e9f4dd3cf22ad8bfc10f559dbeeff20a27533e4d))
+
+## [1.126.0](https://github.com/webex/webex-js-sdk/compare/v1.125.6...v1.126.0) (2021-07-14)
+
+
+### Features
+
+* **core:** set x-prelogin-userid header when sending user activation ([00aac84](https://github.com/webex/webex-js-sdk/commit/00aac842a58a9acbab2c9927d9fe29e3e255ddda))
+
+### [1.125.6](https://github.com/webex/webex-js-sdk/compare/v1.125.5...v1.125.6) (2021-07-13)
+
+
+### Bug Fixes
+
+* **meetings:** set both, audio and video, when muting ([634e726](https://github.com/webex/webex-js-sdk/commit/634e7266cc2f74056620800ec2fac039ae6270b0))
+
+### [1.125.5](https://github.com/webex/webex-js-sdk/compare/v1.125.4...v1.125.5) (2021-07-10)
+
+
+### Bug Fixes
+
+* **meetings:** remove non-Webex calls after user leaves ([5f12b43](https://github.com/webex/webex-js-sdk/commit/5f12b43a2b996311016b64caea38892aab56da3b))
+
+### [1.125.4](https://github.com/webex/webex-js-sdk/compare/v1.125.3...v1.125.4) (2021-07-06)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** locus migration for sip calls ([8b356a9](https://github.com/webex/webex-js-sdk/commit/8b356a9b5c7c6847a301df9108767331df61be94))
+
+### [1.125.3](https://github.com/webex/webex-js-sdk/compare/v1.125.2...v1.125.3) (2021-06-30)
+
+
+### Bug Fixes
+
+* make sure we only send integers in renderInfo ([dc427c6](https://github.com/webex/webex-js-sdk/commit/dc427c63c05c7c03eeba7f8ed6e1318df6ae94db))
+
+### [1.125.2](https://github.com/webex/webex-js-sdk/compare/v1.125.1...v1.125.2) (2021-06-29)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** emit meeting:self:lobbyWaiting and meeting:self:guestAdmitted for webex meeting ([19d92a8](https://github.com/webex/webex-js-sdk/commit/19d92a81ecfa748ccd64b49b23b8773297a0aa30))
+
+### [1.125.1](https://github.com/webex/webex-js-sdk/compare/v1.125.0...v1.125.1) (2021-06-29)
+
+
+### Bug Fixes
+
+* **metrics:** send clientType and subClientType ([9c23c4a](https://github.com/webex/webex-js-sdk/commit/9c23c4a93f72f57f95991608c0dbaf732b65de0b))
+
+## [1.125.0](https://github.com/webex/webex-js-sdk/compare/v1.124.3...v1.125.0) (2021-06-24)
+
+
+### Features
+
+* **metrics:** add senderCountryCode to metrics ([6d20c2f](https://github.com/webex/webex-js-sdk/commit/6d20c2f42c97467ebc61fef7221de294e6bdb1eb))
+
+### [1.124.3](https://github.com/webex/webex-js-sdk/compare/v1.124.2...v1.124.3) (2021-06-16)
+
+
+### Bug Fixes
+
+* **p-meetings:** update metrics to use WEBEX_SDK as client type ([901c3e1](https://github.com/webex/webex-js-sdk/commit/901c3e19dace00e3f99906d7b18074cb4ce4fef0))
+
 ### [1.124.2](https://github.com/webex/webex-js-sdk/compare/v1.124.1...v1.124.2) (2021-06-11)
 
 

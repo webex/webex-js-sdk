@@ -6,6 +6,8 @@ shopt -s extglob
 DEPRECATED_PACKAGES="@webex/bin-sauce-connect \
   @webex/test-helper-sinon \
   @webex/internal-plugin-devices \
+  @webex/plugin-phone \
+  @webex/media-engine-webrtc \
   @ciscospark/storage-adapter-session-storage \
   @ciscospark/test-helper-automation \
   @ciscospark/sparkd \
@@ -71,8 +73,8 @@ PACKAGES=$(echo packages/node_modules/{*,@ciscospark/*,@webex/*} | xargs -n 1 | 
 for PACKAGE in $PACKAGES; do
   # Check only packages that are not deprecated.
   case $DEPRECATED_PACKAGES in
-    !(*"$PACKAGE"*))
-    NAME_IN_PACKAGE=$(cat "./packages/node_modules/${PACKAGE}/package.json" | jq -r .name);
+  !(*"$PACKAGE"*))
+    NAME_IN_PACKAGE=$(cat "./packages/node_modules/${PACKAGE}/package.json" | jq -r .name)
     if [ "${NAME_IN_PACKAGE}" != "${PACKAGE}" ]; then
       echo "package.json for '${PACKAGE}' contains unexpected package name '${NAME_IN_PACKAGE}'"
       exit 1
