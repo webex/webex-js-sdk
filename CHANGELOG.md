@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.127.2](https://github.com/webex/webex-js-sdk/compare/v1.127.1...v1.127.2) (2021-07-16)
+
+
+### Bug Fixes
+
+* **meetings:** check current user is still in-meeting before sending meeting:self:unmutedByOthers ([f6ec8b4](https://github.com/webex/webex-js-sdk/commit/f6ec8b4e2c8363bebfbd1ded563fc09ab80782ea))
+
 ### [1.127.1](https://github.com/webex/webex-js-sdk/compare/v1.127.0...v1.127.1) (2021-07-15)
 
 
