@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.128.0](https://github.com/webex/webex-js-sdk/compare/v1.127.3...v1.128.0) (2021-07-23)
+
+
+### Features
+
+* **internal-plugin-user:** update name using PATCH ([f3a90a0](https://github.com/webex/webex-js-sdk/commit/f3a90a0c2529a6492c9535be3091f5cfcad3d3c4))
+
 ### [1.127.3](https://github.com/webex/webex-js-sdk/compare/v1.127.2...v1.127.3) (2021-07-22)
 
 
