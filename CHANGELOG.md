@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.128.1](https://github.com/webex/webex-js-sdk/compare/v1.128.0...v1.128.1) (2021-07-26)
+
+
+### Bug Fixes
+
+* **meetings:** queueing media update requests ([a73daed](https://github.com/webex/webex-js-sdk/commit/a73daeddf27b0d439a6790f2815c1beb034157f9))
+* **meetings:** use up-to-date roap seq number ([6d25585](https://github.com/webex/webex-js-sdk/commit/6d25585b37b50c009d41e33a4f9c6a052879ad7d))
+
 ## [1.128.0](https://github.com/webex/webex-js-sdk/compare/v1.127.3...v1.128.0) (2021-07-23)
 
 
