@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.129.0](https://github.com/webex/webex-js-sdk/compare/v1.128.1...v1.129.0) (2021-07-26)
+
+
+### Features
+
+* **meetings:** log media device settings on mute events ([26c4c2b](https://github.com/webex/webex-js-sdk/commit/26c4c2b0a9bbcfb3c63ab6a213489ca87f6ae554))
+
 ### [1.128.1](https://github.com/webex/webex-js-sdk/compare/v1.128.0...v1.128.1) (2021-07-26)
 
 
