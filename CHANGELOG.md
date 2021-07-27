@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.130.1](https://github.com/webex/webex-js-sdk/compare/v1.130.0...v1.130.1) (2021-07-27)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix media: ready not triggering issue with latest change ([b4c3f22](https://github.com/webex/webex-js-sdk/commit/b4c3f2219b200fe4394f84c02330d757a46accbc))
+
 ## [1.130.0](https://github.com/webex/webex-js-sdk/compare/v1.129.0...v1.130.0) (2021-07-27)
 
 
