@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.130.0](https://github.com/webex/webex-js-sdk/compare/v1.129.0...v1.130.0) (2021-07-27)
+
+
+### Features
+
+* **meetings:** add locusUrl to getAnalyzerMetricsPrePayload ([51892b0](https://github.com/webex/webex-js-sdk/commit/51892b0579d465c02a77a0e958e6ce34b9a10ea0))
+
 ## [1.129.0](https://github.com/webex/webex-js-sdk/compare/v1.128.1...v1.129.0) (2021-07-26)
 
 
