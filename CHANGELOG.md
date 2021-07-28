@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.131.0](https://github.com/webex/webex-js-sdk/compare/v1.130.1...v1.131.0) (2021-07-28)
+
+
+### Features
+
+* **meetings:** added conditional to fix failed test ([35d5746](https://github.com/webex/webex-js-sdk/commit/35d574687414d92e81d4226baf2c1b1d0bcad522))
+* **meetings:** added delete Media Request function ([cbbc1f7](https://github.com/webex/webex-js-sdk/commit/cbbc1f7252156321f9fc811b9a45b32349725ba9))
+* **meetings:** added fix for addMedia issue pre media request ([3590aaa](https://github.com/webex/webex-js-sdk/commit/3590aaa728d6ec579a11cd5cdd306c8979c9b140))
+* **meetings:** changed to use preexisting func ([b575c4f](https://github.com/webex/webex-js-sdk/commit/b575c4f4b0d45b0d9667f2748aefd461df44875b))
+* **meetings:** cleaned up code and removed logs ([64e9b1b](https://github.com/webex/webex-js-sdk/commit/64e9b1bc1501b8d9ec9e2536075ddddf5073fe2a))
+* **meetings:** removed unused verb and function ([040b670](https://github.com/webex/webex-js-sdk/commit/040b670d2cff17d0abc0228f7c8238dddb90f104))
+
 ### [1.130.1](https://github.com/webex/webex-js-sdk/compare/v1.130.0...v1.130.1) (2021-07-27)
 
 
