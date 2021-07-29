@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.132.1](https://github.com/webex/webex-js-sdk/compare/v1.132.0...v1.132.1) (2021-07-29)
+
+
+### Bug Fixes
+
+* **internal-plugin-board:** use full channel URL in setSnapshotImage() ([f2e8d8e](https://github.com/webex/webex-js-sdk/commit/f2e8d8e4bf64a7ff9a00c061bd96ef27442f48ac))
+
 ## [1.132.0](https://github.com/webex/webex-js-sdk/compare/v1.131.0...v1.132.0) (2021-07-29)
 
 
