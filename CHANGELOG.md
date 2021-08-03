@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.133.1](https://github.com/webex/webex-js-sdk/compare/v1.133.0...v1.133.1) (2021-08-03)
+
+
+### Bug Fixes
+
+* **deps:** updated [@babel](https://github.com/babel) plugins for browserslist ([41bebd8](https://github.com/webex/webex-js-sdk/commit/41bebd8088b2c294e65c83fade5af8dbb4f204e9))
+
 ## [1.133.0](https://github.com/webex/webex-js-sdk/compare/v1.132.1...v1.133.0) (2021-07-30)
 
 
