@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.133.0](https://github.com/webex/webex-js-sdk/compare/v1.132.1...v1.133.0) (2021-07-30)
+
+
+### Features
+
+* **meetings:** add support for receiving transcripts ([e0966e5](https://github.com/webex/webex-js-sdk/commit/e0966e58f83e25e6d98ce32ed97a5d49264ed5d1))
+
 ### [1.132.1](https://github.com/webex/webex-js-sdk/compare/v1.132.0...v1.132.1) (2021-07-29)
 
 
