@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.134.0](https://github.com/webex/webex-js-sdk/compare/v1.133.1...v1.134.0) (2021-08-09)
+
+
+### Features
+
+* **samples:** add renderInfo call to multi-party ([1dcc5ab](https://github.com/webex/webex-js-sdk/commit/1dcc5ab6089a72ba53b99f4670f712fa6e0e445e))
+
 ### [1.133.1](https://github.com/webex/webex-js-sdk/compare/v1.133.0...v1.133.1) (2021-08-03)
 
 
