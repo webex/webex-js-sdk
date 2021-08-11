@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.134.1](https://github.com/webex/webex-js-sdk/compare/v1.134.0...v1.134.1) (2021-08-09)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** remove the listeners upon clean up of addMedia ([e7b0847](https://github.com/webex/webex-js-sdk/commit/e7b0847809bcc39f2b9e2b533e9456edcd1eaee1))
+
 ## [1.134.0](https://github.com/webex/webex-js-sdk/compare/v1.133.1...v1.134.0) (2021-08-09)
 
 
