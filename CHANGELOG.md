@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.135.0](https://github.com/webex/webex-js-sdk/compare/v1.134.1...v1.135.0) (2021-08-11)
+
+
+### Features
+
+* **meetings:** accept asResourceOccupant param ([54fbfe1](https://github.com/webex/webex-js-sdk/commit/54fbfe185e6fd66ff12daf4413817a4de8708e88))
+
+
+### Bug Fixes
+
+* **metrics:** add localNetworkPrefix to diagnostic ([4d3923c](https://github.com/webex/webex-js-sdk/commit/4d3923c7286eebb48b9e9ba31258e7281205dcb3))
+
 ### [1.134.1](https://github.com/webex/webex-js-sdk/compare/v1.134.0...v1.134.1) (2021-08-09)
 
 
