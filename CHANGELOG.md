@@ -2,6 +2,115 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.135.0](https://github.com/webex/webex-js-sdk/compare/v1.134.1...v1.135.0) (2021-08-11)
+
+
+### Features
+
+* **meetings:** accept asResourceOccupant param ([54fbfe1](https://github.com/webex/webex-js-sdk/commit/54fbfe185e6fd66ff12daf4413817a4de8708e88))
+
+
+### Bug Fixes
+
+* **metrics:** add localNetworkPrefix to diagnostic ([4d3923c](https://github.com/webex/webex-js-sdk/commit/4d3923c7286eebb48b9e9ba31258e7281205dcb3))
+
+### [1.134.1](https://github.com/webex/webex-js-sdk/compare/v1.134.0...v1.134.1) (2021-08-09)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** remove the listeners upon clean up of addMedia ([e7b0847](https://github.com/webex/webex-js-sdk/commit/e7b0847809bcc39f2b9e2b533e9456edcd1eaee1))
+
+## [1.134.0](https://github.com/webex/webex-js-sdk/compare/v1.133.1...v1.134.0) (2021-08-09)
+
+
+### Features
+
+* **samples:** add renderInfo call to multi-party ([1dcc5ab](https://github.com/webex/webex-js-sdk/commit/1dcc5ab6089a72ba53b99f4670f712fa6e0e445e))
+
+### [1.133.1](https://github.com/webex/webex-js-sdk/compare/v1.133.0...v1.133.1) (2021-08-03)
+
+
+### Bug Fixes
+
+* **deps:** updated [@babel](https://github.com/babel) plugins for browserslist ([41bebd8](https://github.com/webex/webex-js-sdk/commit/41bebd8088b2c294e65c83fade5af8dbb4f204e9))
+
+## [1.133.0](https://github.com/webex/webex-js-sdk/compare/v1.132.1...v1.133.0) (2021-07-30)
+
+
+### Features
+
+* **meetings:** add support for receiving transcripts ([e0966e5](https://github.com/webex/webex-js-sdk/commit/e0966e58f83e25e6d98ce32ed97a5d49264ed5d1))
+
+### [1.132.1](https://github.com/webex/webex-js-sdk/compare/v1.132.0...v1.132.1) (2021-07-29)
+
+
+### Bug Fixes
+
+* **internal-plugin-board:** use full channel URL in setSnapshotImage() ([f2e8d8e](https://github.com/webex/webex-js-sdk/commit/f2e8d8e4bf64a7ff9a00c061bd96ef27442f48ac))
+
+## [1.132.0](https://github.com/webex/webex-js-sdk/compare/v1.131.0...v1.132.0) (2021-07-29)
+
+
+### Features
+
+* **meetings:** add mediaConnections properties to call metrics ([bb5f60d](https://github.com/webex/webex-js-sdk/commit/bb5f60d453b4dacf8e1a00f12bf6b252e44de4ee))
+
+## [1.131.0](https://github.com/webex/webex-js-sdk/compare/v1.130.1...v1.131.0) (2021-07-28)
+
+
+### Features
+
+* **meetings:** added conditional to fix failed test ([35d5746](https://github.com/webex/webex-js-sdk/commit/35d574687414d92e81d4226baf2c1b1d0bcad522))
+* **meetings:** added delete Media Request function ([cbbc1f7](https://github.com/webex/webex-js-sdk/commit/cbbc1f7252156321f9fc811b9a45b32349725ba9))
+* **meetings:** added fix for addMedia issue pre media request ([3590aaa](https://github.com/webex/webex-js-sdk/commit/3590aaa728d6ec579a11cd5cdd306c8979c9b140))
+* **meetings:** changed to use preexisting func ([b575c4f](https://github.com/webex/webex-js-sdk/commit/b575c4f4b0d45b0d9667f2748aefd461df44875b))
+* **meetings:** cleaned up code and removed logs ([64e9b1b](https://github.com/webex/webex-js-sdk/commit/64e9b1bc1501b8d9ec9e2536075ddddf5073fe2a))
+* **meetings:** removed unused verb and function ([040b670](https://github.com/webex/webex-js-sdk/commit/040b670d2cff17d0abc0228f7c8238dddb90f104))
+
+### [1.130.1](https://github.com/webex/webex-js-sdk/compare/v1.130.0...v1.130.1) (2021-07-27)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix media: ready not triggering issue with latest change ([b4c3f22](https://github.com/webex/webex-js-sdk/commit/b4c3f2219b200fe4394f84c02330d757a46accbc))
+
+## [1.130.0](https://github.com/webex/webex-js-sdk/compare/v1.129.0...v1.130.0) (2021-07-27)
+
+
+### Features
+
+* **meetings:** add locusUrl to getAnalyzerMetricsPrePayload ([51892b0](https://github.com/webex/webex-js-sdk/commit/51892b0579d465c02a77a0e958e6ce34b9a10ea0))
+
+## [1.129.0](https://github.com/webex/webex-js-sdk/compare/v1.128.1...v1.129.0) (2021-07-26)
+
+
+### Features
+
+* **meetings:** log media device settings on mute events ([26c4c2b](https://github.com/webex/webex-js-sdk/commit/26c4c2b0a9bbcfb3c63ab6a213489ca87f6ae554))
+
+### [1.128.1](https://github.com/webex/webex-js-sdk/compare/v1.128.0...v1.128.1) (2021-07-26)
+
+
+### Bug Fixes
+
+* **meetings:** queueing media update requests ([a73daed](https://github.com/webex/webex-js-sdk/commit/a73daeddf27b0d439a6790f2815c1beb034157f9))
+* **meetings:** use up-to-date roap seq number ([6d25585](https://github.com/webex/webex-js-sdk/commit/6d25585b37b50c009d41e33a4f9c6a052879ad7d))
+
+## [1.128.0](https://github.com/webex/webex-js-sdk/compare/v1.127.3...v1.128.0) (2021-07-23)
+
+
+### Features
+
+* **internal-plugin-user:** update name using PATCH ([f3a90a0](https://github.com/webex/webex-js-sdk/commit/f3a90a0c2529a6492c9535be3091f5cfcad3d3c4))
+
+### [1.127.3](https://github.com/webex/webex-js-sdk/compare/v1.127.2...v1.127.3) (2021-07-22)
+
+
+### Bug Fixes
+
+* **meetings:** stop flooding logs with errors while screen sharing ([50d2363](https://github.com/webex/webex-js-sdk/commit/50d23632646e394d8dbb8bfcf93613598b7365f7))
+
 ### [1.127.2](https://github.com/webex/webex-js-sdk/compare/v1.127.1...v1.127.2) (2021-07-16)
 
 
