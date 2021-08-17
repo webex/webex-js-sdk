@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.135.1](https://github.com/webex/webex-js-sdk/compare/v1.135.0...v1.135.1) (2021-08-16)
+
+
+### Bug Fixes
+
+* **encryption:** setting onbehalfof to support an edge case ([0f49360](https://github.com/webex/webex-js-sdk/commit/0f49360cd677b00b99c8172f1d1c0b4a95c49557))
+* **internal-plugin-user:** for update name any one name is required ([0f70ebf](https://github.com/webex/webex-js-sdk/commit/0f70ebf34bef9d3c35926920ea46f945da59f2ee))
+* **meeting:** create new correlation ID every time ([5fa11ed](https://github.com/webex/webex-js-sdk/commit/5fa11ed2bbab634b53cb3173b220aec159255d94))
+
+## [1.135.0](https://github.com/webex/webex-js-sdk/compare/v1.134.1...v1.135.0) (2021-08-11)
+
+
+### Features
+
+* **meetings:** accept asResourceOccupant param ([54fbfe1](https://github.com/webex/webex-js-sdk/commit/54fbfe185e6fd66ff12daf4413817a4de8708e88))
+
+
+### Bug Fixes
+
+* **metrics:** add localNetworkPrefix to diagnostic ([4d3923c](https://github.com/webex/webex-js-sdk/commit/4d3923c7286eebb48b9e9ba31258e7281205dcb3))
+
 ### [1.134.1](https://github.com/webex/webex-js-sdk/compare/v1.134.0...v1.134.1) (2021-08-09)
 
 
