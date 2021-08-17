@@ -225,7 +225,8 @@
   },
   "resolutions": {
     "set-value": "3.0.2",
-    "terser-webpack-plugin": "4.2.3"
+    "terser-webpack-plugin": "4.2.3",
+    "glob-parent": "5.1.2"
   },
   "optionalDependencies": {
     "@ciscospark/test-users-legacy": "^1.2.0"
