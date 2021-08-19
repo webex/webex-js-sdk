@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.135.2](https://github.com/webex/webex-js-sdk/compare/v1.135.1...v1.135.2) (2021-08-18)
+
+
+### Bug Fixes
+
+* **deps:** added glob-parent to resolutions ([0193522](https://github.com/webex/webex-js-sdk/commit/0193522303bbc82d1334f9aeb890eca2660d11bb))
+
 ### [1.135.1](https://github.com/webex/webex-js-sdk/compare/v1.135.0...v1.135.1) (2021-08-16)
 
 
