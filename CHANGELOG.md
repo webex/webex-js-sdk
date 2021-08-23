@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.136.0](https://github.com/webex/webex-js-sdk/compare/v1.135.2...v1.136.0) (2021-08-23)
+
+
+### Features
+
+* **internal-plugin-ediscovery:** spark_242146_decrypt_webUrl_appId_for_customApp_type ([ed26364](https://github.com/webex/webex-js-sdk/commit/ed263641190a8e7bc0a897a9d1d9c1933e769af9))
+* **internal-plugin-ediscovery:** spark_242146_decrypt_webUrl_appId_for_customApp_type ([6262827](https://github.com/webex/webex-js-sdk/commit/6262827923b5c4b1177a656679c6147d9f84cfe1))
+* **internal-plugin-ediscovery:** spark_242146_decrypt_webUrl_appId_for_customApp_type ([b0b0f81](https://github.com/webex/webex-js-sdk/commit/b0b0f8124fc17783336be2f9fb979db58be6d641))
+* **internal-plugin-ediscovery:** spark_242146_do_nothing ([7a6d682](https://github.com/webex/webex-js-sdk/commit/7a6d682b79a046e3e60dde957b29542a5cd9aefd))
+
+### [1.135.2](https://github.com/webex/webex-js-sdk/compare/v1.135.1...v1.135.2) (2021-08-18)
+
+
+### Bug Fixes
+
+* **deps:** added glob-parent to resolutions ([0193522](https://github.com/webex/webex-js-sdk/commit/0193522303bbc82d1334f9aeb890eca2660d11bb))
+
+### [1.135.1](https://github.com/webex/webex-js-sdk/compare/v1.135.0...v1.135.1) (2021-08-16)
+
+
+### Bug Fixes
+
+* **encryption:** setting onbehalfof to support an edge case ([0f49360](https://github.com/webex/webex-js-sdk/commit/0f49360cd677b00b99c8172f1d1c0b4a95c49557))
+* **internal-plugin-user:** for update name any one name is required ([0f70ebf](https://github.com/webex/webex-js-sdk/commit/0f70ebf34bef9d3c35926920ea46f945da59f2ee))
+* **meeting:** create new correlation ID every time ([5fa11ed](https://github.com/webex/webex-js-sdk/commit/5fa11ed2bbab634b53cb3173b220aec159255d94))
+
 ## [1.135.0](https://github.com/webex/webex-js-sdk/compare/v1.134.1...v1.135.0) (2021-08-11)
 
 

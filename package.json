@@ -1,6 +1,6 @@
 {
   "name": "webex-js-sdk",
-  "version": "1.135.0",
+  "version": "1.136.0",
   "description": "JavaScript SDK for interacting with the Webex API",
   "homepage": "https://github.com/webex/webex-js-sdk",
   "bugs": {
@@ -225,7 +225,8 @@
   },
   "resolutions": {
     "set-value": "3.0.2",
-    "terser-webpack-plugin": "4.2.3"
+    "terser-webpack-plugin": "4.2.3",
+    "glob-parent": "5.1.2"
   },
   "optionalDependencies": {
     "@ciscospark/test-users-legacy": "^1.2.0"
