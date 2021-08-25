@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.137.1](https://github.com/webex/webex-js-sdk/compare/v1.137.0...v1.137.1) (2021-08-25)
+
+
+### Bug Fixes
+
+* **deps:** updated path-parse and moved to devDependencies ([fe54bc7](https://github.com/webex/webex-js-sdk/commit/fe54bc7891fbaa736752c9c72902f6feb23c63bb))
+
 ## [1.137.0](https://github.com/webex/webex-js-sdk/compare/v1.136.0...v1.137.0) (2021-08-25)
 
 
