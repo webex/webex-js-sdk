@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.137.0](https://github.com/webex/webex-js-sdk/compare/v1.136.0...v1.137.0) (2021-08-25)
+
+
+### Features
+
+* **internal-plugin-user:** generate and validate otp ([a582c34](https://github.com/webex/webex-js-sdk/commit/a582c34ae4bb1c81d1388d838df508aab9d8611e))
+
 ## [1.136.0](https://github.com/webex/webex-js-sdk/compare/v1.135.2...v1.136.0) (2021-08-23)
 
 
