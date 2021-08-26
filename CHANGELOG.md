@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.137.2](https://github.com/webex/webex-js-sdk/compare/v1.137.1...v1.137.2) (2021-08-26)
+
+
+### Bug Fixes
+
+* **board:** fix unit tests ([cb329d6](https://github.com/webex/webex-js-sdk/commit/cb329d6a85a7739c35a86d8c638e89f86b4e1e21))
+
+### [1.137.1](https://github.com/webex/webex-js-sdk/compare/v1.137.0...v1.137.1) (2021-08-25)
+
+
+### Bug Fixes
+
+* **deps:** updated path-parse and moved to devDependencies ([fe54bc7](https://github.com/webex/webex-js-sdk/commit/fe54bc7891fbaa736752c9c72902f6feb23c63bb))
+
+## [1.137.0](https://github.com/webex/webex-js-sdk/compare/v1.136.0...v1.137.0) (2021-08-25)
+
+
+### Features
+
+* **internal-plugin-user:** generate and validate otp ([a582c34](https://github.com/webex/webex-js-sdk/commit/a582c34ae4bb1c81d1388d838df508aab9d8611e))
+
 ## [1.136.0](https://github.com/webex/webex-js-sdk/compare/v1.135.2...v1.136.0) (2021-08-23)
 
 
