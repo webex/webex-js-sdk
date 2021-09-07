@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.138.0](https://github.com/webex/webex-js-sdk/compare/v1.137.2...v1.138.0) (2021-09-07)
+
+
+### Features
+
+* **metrics:** add metrics for join delay ([dbf8093](https://github.com/webex/webex-js-sdk/commit/dbf80933bc2d8232a8cf515077702ee5e1033ee8))
+
 ### [1.137.2](https://github.com/webex/webex-js-sdk/compare/v1.137.1...v1.137.2) (2021-08-26)
 
 
