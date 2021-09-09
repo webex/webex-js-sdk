@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.138.1](https://github.com/webex/webex-js-sdk/compare/v1.138.0...v1.138.1) (2021-09-09)
+
+
+### Bug Fixes
+
+* **webex-core:** add appName/appVersion to onRequest ([afeafba](https://github.com/webex/webex-js-sdk/commit/afeafba602ee2b9b12dda6c9f992281acf98b50a))
+
 ## [1.138.0](https://github.com/webex/webex-js-sdk/compare/v1.137.2...v1.138.0) (2021-09-07)
 
 
