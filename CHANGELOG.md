@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.139.0](https://github.com/webex/webex-js-sdk/compare/v1.138.1...v1.139.0) (2021-09-10)
+
+
+### Features
+
+* **internal-plugin-ediscovery:** add transforms for public spaces ([9e951ee](https://github.com/webex/webex-js-sdk/commit/9e951ee6ba069bf812e2717e4c272688aa4ccd73))
+
 ### [1.138.1](https://github.com/webex/webex-js-sdk/compare/v1.138.0...v1.138.1) (2021-09-09)
 
 
