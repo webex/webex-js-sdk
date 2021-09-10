@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.140.0](https://github.com/webex/webex-js-sdk/compare/v1.139.0...v1.140.0) (2021-09-10)
+
+
+### Features
+
+* **internal-conversation:** allow space avatars to be uploaded ([553fdcc](https://github.com/webex/webex-js-sdk/commit/553fdcc7efdcf2595107fa474bd3a4f111fdcf5c))
+
 ## [1.139.0](https://github.com/webex/webex-js-sdk/compare/v1.138.1...v1.139.0) (2021-09-10)
 
 
