@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.141.0](https://github.com/webex/webex-js-sdk/compare/v1.140.0...v1.141.0) (2021-09-14)
+
+
+### Features
+
+* **dial-in:** add ability to provision and remove dial in devices ([2a48cb8](https://github.com/webex/webex-js-sdk/commit/2a48cb8e60344c885c0189c851e6951ccebaf22c))
+
 ## [1.140.0](https://github.com/webex/webex-js-sdk/compare/v1.139.0...v1.140.0) (2021-09-10)
 
 
