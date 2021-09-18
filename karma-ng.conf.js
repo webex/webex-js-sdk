@@ -100,6 +100,8 @@ function makeConfig(packageName, argv) {
 
     hostname: 'localhost',
 
+    logLevel: process.env.KARMA_LOG_LEVEL || 'INFO', // INFO is default value
+
     browserConsoleLogOptions: {
       level: 'warn'
     },
