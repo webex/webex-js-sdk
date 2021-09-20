@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.142.0](https://github.com/webex/webex-js-sdk/compare/v1.141.0...v1.142.0) (2021-09-16)
+
+
+### Features
+
+* **plugin-meetings:** events for media:negotiated  with experimental.enableMediaNegotatedEvent config ([c7e9f34](https://github.com/webex/webex-js-sdk/commit/c7e9f348362fda8af1612fd8f99759f32e755bb8))
+
 ## [1.141.0](https://github.com/webex/webex-js-sdk/compare/v1.140.0...v1.141.0) (2021-09-14)
 
 
