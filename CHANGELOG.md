@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.142.1](https://github.com/webex/webex-js-sdk/compare/v1.142.0...v1.142.1) (2021-09-21)
+
+
+### Bug Fixes
+
+* **ws:** update ws to latest ([2dc6ec9](https://github.com/webex/webex-js-sdk/commit/2dc6ec9d6d4a933ad76d2aacc1a19ceb87eb3d52))
+
+## [1.142.0](https://github.com/webex/webex-js-sdk/compare/v1.141.0...v1.142.0) (2021-09-16)
+
+
+### Features
+
+* **plugin-meetings:** events for media:negotiated  with experimental.enableMediaNegotatedEvent config ([c7e9f34](https://github.com/webex/webex-js-sdk/commit/c7e9f348362fda8af1612fd8f99759f32e755bb8))
+
+## [1.141.0](https://github.com/webex/webex-js-sdk/compare/v1.140.0...v1.141.0) (2021-09-14)
+
+
+### Features
+
+* **dial-in:** add ability to provision and remove dial in devices ([2a48cb8](https://github.com/webex/webex-js-sdk/commit/2a48cb8e60344c885c0189c851e6951ccebaf22c))
+
+## [1.140.0](https://github.com/webex/webex-js-sdk/compare/v1.139.0...v1.140.0) (2021-09-10)
+
+
+### Features
+
+* **internal-conversation:** allow space avatars to be uploaded ([553fdcc](https://github.com/webex/webex-js-sdk/commit/553fdcc7efdcf2595107fa474bd3a4f111fdcf5c))
+
+## [1.139.0](https://github.com/webex/webex-js-sdk/compare/v1.138.1...v1.139.0) (2021-09-10)
+
+
+### Features
+
+* **internal-plugin-ediscovery:** add transforms for public spaces ([9e951ee](https://github.com/webex/webex-js-sdk/commit/9e951ee6ba069bf812e2717e4c272688aa4ccd73))
+
+### [1.138.1](https://github.com/webex/webex-js-sdk/compare/v1.138.0...v1.138.1) (2021-09-09)
+
+
+### Bug Fixes
+
+* **webex-core:** add appName/appVersion to onRequest ([afeafba](https://github.com/webex/webex-js-sdk/commit/afeafba602ee2b9b12dda6c9f992281acf98b50a))
+
+## [1.138.0](https://github.com/webex/webex-js-sdk/compare/v1.137.2...v1.138.0) (2021-09-07)
+
+
+### Features
+
+* **metrics:** add metrics for join delay ([dbf8093](https://github.com/webex/webex-js-sdk/commit/dbf80933bc2d8232a8cf515077702ee5e1033ee8))
+
 ### [1.137.2](https://github.com/webex/webex-js-sdk/compare/v1.137.1...v1.137.2) (2021-08-26)
 
 
