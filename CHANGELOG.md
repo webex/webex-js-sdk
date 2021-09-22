@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.142.2](https://github.com/webex/webex-js-sdk/compare/v1.142.1...v1.142.2) (2021-09-21)
+
+
+### Bug Fixes
+
+* **webex-core:** make waitForService check preauth catalog ([0c73da6](https://github.com/webex/webex-js-sdk/commit/0c73da66d2ffb3356fe8288e63b246c3314cf961))
+
 ### [1.142.1](https://github.com/webex/webex-js-sdk/compare/v1.142.0...v1.142.1) (2021-09-21)
 
 
