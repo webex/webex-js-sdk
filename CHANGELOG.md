@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.143.1](https://github.com/webex/webex-js-sdk/compare/v1.143.0...v1.143.1) (2021-09-28)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fixed false firing of stop recording event ([ae72681](https://github.com/webex/webex-js-sdk/commit/ae72681e648378183d74191b630d344af8c67e3a))
+
 ## [1.143.0](https://github.com/webex/webex-js-sdk/compare/v1.142.2...v1.143.0) (2021-09-28)
 
 
