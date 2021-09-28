@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.143.0](https://github.com/webex/webex-js-sdk/compare/v1.142.2...v1.143.0) (2021-09-28)
+
+
+### Features
+
+* **meetings:** invite participants via phone number ([8176577](https://github.com/webex/webex-js-sdk/commit/81765771108a3b11903792c22bafa3fc53c98169))
+
 ### [1.142.2](https://github.com/webex/webex-js-sdk/compare/v1.142.1...v1.142.2) (2021-09-21)
 
 
