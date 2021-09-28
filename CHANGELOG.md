@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.143.2](https://github.com/webex/webex-js-sdk/compare/v1.143.1...v1.143.2) (2021-09-28)
+
+
+### Bug Fixes
+
+* **meetings:** trigger ringing_stopped event for SIP bridge calls ([5aafe29](https://github.com/webex/webex-js-sdk/commit/5aafe29f4ff4d013fcba9056867758db849129c7))
+
 ### [1.143.1](https://github.com/webex/webex-js-sdk/compare/v1.143.0...v1.143.1) (2021-09-28)
 
 
