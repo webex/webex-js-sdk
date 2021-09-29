@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.143.2](https://github.com/webex/webex-js-sdk/compare/v1.143.1...v1.143.2) (2021-09-28)
+
+
+### Bug Fixes
+
+* **meetings:** trigger ringing_stopped event for SIP bridge calls ([5aafe29](https://github.com/webex/webex-js-sdk/commit/5aafe29f4ff4d013fcba9056867758db849129c7))
+
+### [1.143.1](https://github.com/webex/webex-js-sdk/compare/v1.143.0...v1.143.1) (2021-09-28)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fixed false firing of stop recording event ([ae72681](https://github.com/webex/webex-js-sdk/commit/ae72681e648378183d74191b630d344af8c67e3a))
+
+## [1.143.0](https://github.com/webex/webex-js-sdk/compare/v1.142.2...v1.143.0) (2021-09-28)
+
+
+### Features
+
+* **meetings:** invite participants via phone number ([8176577](https://github.com/webex/webex-js-sdk/commit/81765771108a3b11903792c22bafa3fc53c98169))
+
+### [1.142.2](https://github.com/webex/webex-js-sdk/compare/v1.142.1...v1.142.2) (2021-09-21)
+
+
+### Bug Fixes
+
+* **webex-core:** make waitForService check preauth catalog ([0c73da6](https://github.com/webex/webex-js-sdk/commit/0c73da66d2ffb3356fe8288e63b246c3314cf961))
+
 ### [1.142.1](https://github.com/webex/webex-js-sdk/compare/v1.142.0...v1.142.1) (2021-09-21)
 
 

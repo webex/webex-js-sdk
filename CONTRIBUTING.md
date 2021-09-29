@@ -110,6 +110,12 @@ If at any point your out-of-the-box builds or failing or if you are tests are fa
 nvm use; npm ci
 ```
 
+By default npm uses `sh` which does not support the glob syntax and as such `distsrc` and `srcdist` will fail with *No such file or directory*. To fix this you can set npm to use bash instead using:
+
+```bash
+npm config set script-shell "/bin/bash"
+```
+
 ### Environment Variables
 
 You will need to create a file called `.env` that defines, at a minimum:
