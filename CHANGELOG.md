@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.143.3](https://github.com/webex/webex-js-sdk/compare/v1.143.2...v1.143.3) (2021-09-30)
+
+
+### Bug Fixes
+
+* **meetings:** always add locus url to metrics payload ([9ec73ce](https://github.com/webex/webex-js-sdk/commit/9ec73ced85b5cfc0e5871943f1f03bb5afe34f97))
+
 ### [1.143.2](https://github.com/webex/webex-js-sdk/compare/v1.143.1...v1.143.2) (2021-09-28)
 
 
