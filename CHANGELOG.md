@@ -2,6 +2,83 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.143.3](https://github.com/webex/webex-js-sdk/compare/v1.143.2...v1.143.3) (2021-09-30)
+
+
+### Bug Fixes
+
+* **meetings:** always add locus url to metrics payload ([9ec73ce](https://github.com/webex/webex-js-sdk/commit/9ec73ced85b5cfc0e5871943f1f03bb5afe34f97))
+
+### [1.143.2](https://github.com/webex/webex-js-sdk/compare/v1.143.1...v1.143.2) (2021-09-28)
+
+
+### Bug Fixes
+
+* **meetings:** trigger ringing_stopped event for SIP bridge calls ([5aafe29](https://github.com/webex/webex-js-sdk/commit/5aafe29f4ff4d013fcba9056867758db849129c7))
+
+### [1.143.1](https://github.com/webex/webex-js-sdk/compare/v1.143.0...v1.143.1) (2021-09-28)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fixed false firing of stop recording event ([ae72681](https://github.com/webex/webex-js-sdk/commit/ae72681e648378183d74191b630d344af8c67e3a))
+
+## [1.143.0](https://github.com/webex/webex-js-sdk/compare/v1.142.2...v1.143.0) (2021-09-28)
+
+
+### Features
+
+* **meetings:** invite participants via phone number ([8176577](https://github.com/webex/webex-js-sdk/commit/81765771108a3b11903792c22bafa3fc53c98169))
+
+### [1.142.2](https://github.com/webex/webex-js-sdk/compare/v1.142.1...v1.142.2) (2021-09-21)
+
+
+### Bug Fixes
+
+* **webex-core:** make waitForService check preauth catalog ([0c73da6](https://github.com/webex/webex-js-sdk/commit/0c73da66d2ffb3356fe8288e63b246c3314cf961))
+
+### [1.142.1](https://github.com/webex/webex-js-sdk/compare/v1.142.0...v1.142.1) (2021-09-21)
+
+
+### Bug Fixes
+
+* **ws:** update ws to latest ([2dc6ec9](https://github.com/webex/webex-js-sdk/commit/2dc6ec9d6d4a933ad76d2aacc1a19ceb87eb3d52))
+
+## [1.142.0](https://github.com/webex/webex-js-sdk/compare/v1.141.0...v1.142.0) (2021-09-16)
+
+
+### Features
+
+* **plugin-meetings:** events for media:negotiated  with experimental.enableMediaNegotatedEvent config ([c7e9f34](https://github.com/webex/webex-js-sdk/commit/c7e9f348362fda8af1612fd8f99759f32e755bb8))
+
+## [1.141.0](https://github.com/webex/webex-js-sdk/compare/v1.140.0...v1.141.0) (2021-09-14)
+
+
+### Features
+
+* **dial-in:** add ability to provision and remove dial in devices ([2a48cb8](https://github.com/webex/webex-js-sdk/commit/2a48cb8e60344c885c0189c851e6951ccebaf22c))
+
+## [1.140.0](https://github.com/webex/webex-js-sdk/compare/v1.139.0...v1.140.0) (2021-09-10)
+
+
+### Features
+
+* **internal-conversation:** allow space avatars to be uploaded ([553fdcc](https://github.com/webex/webex-js-sdk/commit/553fdcc7efdcf2595107fa474bd3a4f111fdcf5c))
+
+## [1.139.0](https://github.com/webex/webex-js-sdk/compare/v1.138.1...v1.139.0) (2021-09-10)
+
+
+### Features
+
+* **internal-plugin-ediscovery:** add transforms for public spaces ([9e951ee](https://github.com/webex/webex-js-sdk/commit/9e951ee6ba069bf812e2717e4c272688aa4ccd73))
+
+### [1.138.1](https://github.com/webex/webex-js-sdk/compare/v1.138.0...v1.138.1) (2021-09-09)
+
+
+### Bug Fixes
+
+* **webex-core:** add appName/appVersion to onRequest ([afeafba](https://github.com/webex/webex-js-sdk/commit/afeafba602ee2b9b12dda6c9f992281acf98b50a))
+
 ## [1.138.0](https://github.com/webex/webex-js-sdk/compare/v1.137.2...v1.138.0) (2021-09-07)
 
 
