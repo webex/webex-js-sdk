@@ -227,7 +227,8 @@
   "resolutions": {
     "set-value": "3.0.2",
     "terser-webpack-plugin": "4.2.3",
-    "glob-parent": "5.1.2"
+    "glob-parent": "5.1.2",
+    "multicast-dns": "7.2.4"
   },
   "optionalDependencies": {
     "@ciscospark/test-users-legacy": "^1.2.0"
