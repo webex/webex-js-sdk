@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.144.0](https://github.com/webex/webex-js-sdk/compare/v1.143.3...v1.144.0) (2021-10-07)
+
+
+### Features
+
+* **plugin-meetings:** use the new wbxappapi for unified space meeting ([42706d8](https://github.com/webex/webex-js-sdk/commit/42706d8e39717575c5087974ab1f1b31611b29c9))
+
 ### [1.143.3](https://github.com/webex/webex-js-sdk/compare/v1.143.2...v1.143.3) (2021-09-30)
 
 
