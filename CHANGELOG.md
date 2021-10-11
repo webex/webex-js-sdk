@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.144.1](https://github.com/webex/webex-js-sdk/compare/v1.144.0...v1.144.1) (2021-10-11)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** isRecording shows which member started meeting recording ([9d4b5db](https://github.com/webex/webex-js-sdk/commit/9d4b5dbdcf53d09dbdedc5c8f33f60f331f7152e))
+
 ## [1.144.0](https://github.com/webex/webex-js-sdk/compare/v1.143.3...v1.144.0) (2021-10-07)
 
 
