@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.144.2](https://github.com/webex/webex-js-sdk/compare/v1.144.1...v1.144.2) (2021-10-12)
+
+
+### Bug Fixes
+
+* **meetings:** correct import path of constants file in meeting-info-v2 ([320f983](https://github.com/webex/webex-js-sdk/commit/320f983cc28e66d187e2ffe6af1488fde1d07346))
+
 ### [1.144.1](https://github.com/webex/webex-js-sdk/compare/v1.144.0...v1.144.1) (2021-10-11)
 
 
