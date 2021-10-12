@@ -1,6 +1,6 @@
 {
   "name": "webex-js-sdk",
-  "version": "1.137.2",
+  "version": "1.144.2",
   "description": "JavaScript SDK for interacting with the Webex API",
   "homepage": "https://github.com/webex/webex-js-sdk",
   "bugs": {
@@ -186,7 +186,7 @@
     "webdriverio": "^6.12.1",
     "webrtc-adapter": "^7.7.0",
     "whatwg-fetch": "^2.0.4",
-    "ws": "^4.1.0",
+    "ws": "^8.2.2",
     "xhr": "^2.5.0",
     "xtend": "^4.0.2",
     "yakbak": "^3.0.0",
@@ -221,13 +221,14 @@
     "standard-version": "^9.1.1",
     "terser-webpack-plugin": "^4.2.3",
     "webpack": "^4.46.0",
-    "webpack-cli": "^4.6.0",
-    "webpack-dev-server": "^4.0.0-beta.1"
+    "webpack-cli": "^4.8.0",
+    "webpack-dev-server": "^4.3.1"
   },
   "resolutions": {
     "set-value": "3.0.2",
     "terser-webpack-plugin": "4.2.3",
-    "glob-parent": "5.1.2"
+    "glob-parent": "5.1.2",
+    "multicast-dns": "7.2.4"
   },
   "optionalDependencies": {
     "@ciscospark/test-users-legacy": "^1.2.0"
