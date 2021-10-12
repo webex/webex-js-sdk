@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.144.1](https://github.com/webex/webex-js-sdk/compare/v1.144.0...v1.144.1) (2021-10-11)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** isRecording shows which member started meeting recording ([9d4b5db](https://github.com/webex/webex-js-sdk/commit/9d4b5dbdcf53d09dbdedc5c8f33f60f331f7152e))
+
+## [1.144.0](https://github.com/webex/webex-js-sdk/compare/v1.143.3...v1.144.0) (2021-10-07)
+
+
+### Features
+
+* **plugin-meetings:** use the new wbxappapi for unified space meeting ([42706d8](https://github.com/webex/webex-js-sdk/commit/42706d8e39717575c5087974ab1f1b31611b29c9))
+
+### [1.143.3](https://github.com/webex/webex-js-sdk/compare/v1.143.2...v1.143.3) (2021-09-30)
+
+
+### Bug Fixes
+
+* **meetings:** always add locus url to metrics payload ([9ec73ce](https://github.com/webex/webex-js-sdk/commit/9ec73ced85b5cfc0e5871943f1f03bb5afe34f97))
+
 ### [1.143.2](https://github.com/webex/webex-js-sdk/compare/v1.143.1...v1.143.2) (2021-09-28)
 
 

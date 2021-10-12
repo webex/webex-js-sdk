@@ -31,9 +31,9 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
       `${path.resolve(__dirname)}/packages/node_modules/webex/umd` :
       `${path.resolve(__dirname)}/packages/node_modules/samples`
   },
-  devtool: env && env.NODE_ENV === 'development' ?
-    'cheap-module-source-map' :
-    'source-map',
+  devtool:
+  env && env.NODE_ENV === 'development' ?
+    'eval-cheap-module-source-map' : 'source-map',
   devServer: {
     https: true,
     port: 8000,
