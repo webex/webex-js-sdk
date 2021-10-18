@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.145.0](https://github.com/webex/webex-js-sdk/compare/v1.144.2...v1.145.0) (2021-10-18)
+
+
+### Features
+
+* **pkce:** upgrade crypto-js ([df45b71](https://github.com/webex/webex-js-sdk/commit/df45b71d0a9b5d9920a0ed56e58a77f090f52ab1))
+
 ### [1.144.2](https://github.com/webex/webex-js-sdk/compare/v1.144.1...v1.144.2) (2021-10-12)
 
 
