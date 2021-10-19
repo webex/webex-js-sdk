@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.145.1](https://github.com/webex/webex-js-sdk/compare/v1.145.0...v1.145.1) (2021-10-19)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** Handle the roap state for sending answer ([4a35ee8](https://github.com/webex/webex-js-sdk/commit/4a35ee8309edd718c76fc8a9b5b6fb8fa4c954ea))
+
 ## [1.145.0](https://github.com/webex/webex-js-sdk/compare/v1.144.2...v1.145.0) (2021-10-18)
 
 
