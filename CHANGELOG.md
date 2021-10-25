@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.146.1](https://github.com/webex/webex-js-sdk/compare/v1.146.0...v1.146.1) (2021-10-25)
+
+
+### Bug Fixes
+
+* **metrics:** update buildType property to account for webClientDomain property in payload ([d730a03](https://github.com/webex/webex-js-sdk/commit/d730a032069e53d4c352788e63cbcf0c2aabf43a))
+
 ## [1.146.0](https://github.com/webex/webex-js-sdk/compare/v1.145.1...v1.146.0) (2021-10-20)
 
 
