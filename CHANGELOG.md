@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.147.0](https://github.com/webex/webex-js-sdk/compare/v1.146.1...v1.147.0) (2021-10-26)
+
+
+### Features
+
+* **plugin-meetings:** enable transport=cc support ([26f2a9d](https://github.com/webex/webex-js-sdk/commit/26f2a9ddbb410c96145a8d25c0dfe4e31d37a73a))
+
 ### [1.146.1](https://github.com/webex/webex-js-sdk/compare/v1.146.0...v1.146.1) (2021-10-25)
 
 
