@@ -228,7 +228,8 @@
     "set-value": "3.0.2",
     "terser-webpack-plugin": "4.2.3",
     "glob-parent": "5.1.2",
-    "multicast-dns": "7.2.4"
+    "multicast-dns": "7.2.4",
+    "saucelabs": "6.2.1"
   },
   "optionalDependencies": {
     "@ciscospark/test-users-legacy": "^1.2.0"
