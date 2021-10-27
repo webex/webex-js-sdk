@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.147.1](https://github.com/webex/webex-js-sdk/compare/v1.147.0...v1.147.1) (2021-10-27)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add new error codes for password flow ([a4e57e7](https://github.com/webex/webex-js-sdk/commit/a4e57e7e9a9897b1c1db8e3d7348032877c5c042))
+
 ## [1.147.0](https://github.com/webex/webex-js-sdk/compare/v1.146.1...v1.147.0) (2021-10-26)
 
 
