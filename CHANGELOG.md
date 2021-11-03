@@ -2,6 +2,69 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.148.0](https://github.com/webex/webex-js-sdk/compare/v1.147.1...v1.148.0) (2021-11-02)
+
+
+### Features
+
+* **dial-out:** call me functionality ([668a444](https://github.com/webex/webex-js-sdk/commit/668a44413f8e12e701f0fec9e1cddee2c56de1cd))
+
+### [1.147.1](https://github.com/webex/webex-js-sdk/compare/v1.147.0...v1.147.1) (2021-10-27)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add new error codes for password flow ([a4e57e7](https://github.com/webex/webex-js-sdk/commit/a4e57e7e9a9897b1c1db8e3d7348032877c5c042))
+
+## [1.147.0](https://github.com/webex/webex-js-sdk/compare/v1.146.1...v1.147.0) (2021-10-26)
+
+
+### Features
+
+* **plugin-meetings:** enable transport=cc support ([26f2a9d](https://github.com/webex/webex-js-sdk/commit/26f2a9ddbb410c96145a8d25c0dfe4e31d37a73a))
+
+### [1.146.1](https://github.com/webex/webex-js-sdk/compare/v1.146.0...v1.146.1) (2021-10-25)
+
+
+### Bug Fixes
+
+* **metrics:** update buildType property to account for webClientDomain property in payload ([d730a03](https://github.com/webex/webex-js-sdk/commit/d730a032069e53d4c352788e63cbcf0c2aabf43a))
+
+## [1.146.0](https://github.com/webex/webex-js-sdk/compare/v1.145.1...v1.146.0) (2021-10-20)
+
+
+### Features
+
+* **meetings:** add sendDialPadKey and cancelPhoneInvite methods for PSTN users ([caf4d0a](https://github.com/webex/webex-js-sdk/commit/caf4d0a0681bfa0069b28cf7f70bedf942d76e3e))
+
+### [1.145.1](https://github.com/webex/webex-js-sdk/compare/v1.145.0...v1.145.1) (2021-10-19)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** Handle the roap state for sending answer ([4a35ee8](https://github.com/webex/webex-js-sdk/commit/4a35ee8309edd718c76fc8a9b5b6fb8fa4c954ea))
+
+## [1.145.0](https://github.com/webex/webex-js-sdk/compare/v1.144.2...v1.145.0) (2021-10-18)
+
+
+### Features
+
+* **pkce:** upgrade crypto-js ([df45b71](https://github.com/webex/webex-js-sdk/commit/df45b71d0a9b5d9920a0ed56e58a77f090f52ab1))
+
+### [1.144.2](https://github.com/webex/webex-js-sdk/compare/v1.144.1...v1.144.2) (2021-10-12)
+
+
+### Bug Fixes
+
+* **meetings:** correct import path of constants file in meeting-info-v2 ([320f983](https://github.com/webex/webex-js-sdk/commit/320f983cc28e66d187e2ffe6af1488fde1d07346))
+
+### [1.144.1](https://github.com/webex/webex-js-sdk/compare/v1.144.0...v1.144.1) (2021-10-11)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** isRecording shows which member started meeting recording ([9d4b5db](https://github.com/webex/webex-js-sdk/commit/9d4b5dbdcf53d09dbdedc5c8f33f60f331f7152e))
+
 ## [1.144.0](https://github.com/webex/webex-js-sdk/compare/v1.143.3...v1.144.0) (2021-10-07)
 
 
