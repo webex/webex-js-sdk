@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.148.0](https://github.com/webex/webex-js-sdk/compare/v1.147.1...v1.148.0) (2021-11-02)
+
+
+### Features
+
+* **dial-out:** call me functionality ([668a444](https://github.com/webex/webex-js-sdk/commit/668a44413f8e12e701f0fec9e1cddee2c56de1cd))
+
 ### [1.147.1](https://github.com/webex/webex-js-sdk/compare/v1.147.0...v1.147.1) (2021-10-27)
 
 
