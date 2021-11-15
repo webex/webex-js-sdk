@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.149.0](https://github.com/webex/webex-js-sdk/compare/v1.148.0...v1.149.0) (2021-11-09)
+
+
+### Features
+
+* **metrics:** add metrics for sending media delay ([a54fe36](https://github.com/webex/webex-js-sdk/commit/a54fe36d8bbf316ef9334757a7170748234810bb))
+
 ## [1.148.0](https://github.com/webex/webex-js-sdk/compare/v1.147.1...v1.148.0) (2021-11-02)
 
 
