@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.149.1](https://github.com/webex/webex-js-sdk/compare/v1.149.0...v1.149.1) (2021-11-15)
+
+
+### Bug Fixes
+
+* **meetings:** move meetingInfo instantiation to onReady callback ([423644c](https://github.com/webex/webex-js-sdk/commit/423644c5af2ca1cec5bc0a0140459e212fa00e32))
+
 ## [1.149.0](https://github.com/webex/webex-js-sdk/compare/v1.148.0...v1.149.0) (2021-11-09)
 
 
