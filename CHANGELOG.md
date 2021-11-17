@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.149.2](https://github.com/webex/webex-js-sdk/compare/v1.149.1...v1.149.2) (2021-11-17)
+
+
+### Bug Fixes
+
+* **http:** params.xhr for all requests ([7c42173](https://github.com/webex/webex-js-sdk/commit/7c42173ac5db3b432267f3641435057d71b69dda))
+
 ### [1.149.1](https://github.com/webex/webex-js-sdk/compare/v1.149.0...v1.149.1) (2021-11-15)
 
 
