@@ -146,7 +146,6 @@
     "istanbul": "^0.4.5",
     "javascript-state-machine": "^3.1.0",
     "jsonwebtoken": "^8.5.1",
-    "lint-staged": "^8.2.1",
     "load-grunt-tasks": "^3.5.2",
     "localforage": "^1.7.3",
     "lodash": "^4.17.21",
@@ -214,6 +213,7 @@
     "karma-opera-launcher": "^1.0.0",
     "karma-safari-launcher": "^1.0.0",
     "karma-sauce-launcher": "^4.3.6",
+    "lint-staged": "^12.1.2",
     "mocha": "^8.3.2",
     "mocha-steps": "^1.3.0",
     "path-parse": "^1.0.7",
@@ -260,18 +260,12 @@
     "registry": "http://engci-maven-master.cisco.com/artifactory/api/npm/webex-release-npm"
   },
   "lint-staged": {
-    "linters": {
-      "*.js": [
-        "npm run lint:eslint -- --fix",
-        "git add"
-      ],
-      "*package.json": [
-        "npm run lint:package-names"
-      ],
-      "ignore": [
-        "**/umd/**.js"
-      ]
-    }
+    "*.js": [
+      "npm run lint:eslint -- --fix"
+    ],
+    "*package.json": [
+      "npm run lint:package-names"
+    ]
   },
   "standard-version": {
     "scripts": {
