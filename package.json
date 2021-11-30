@@ -53,7 +53,8 @@
     "preinstall": "[ -f ./package-lock.json ] && [ \"$npm_config_refer\" != \"ci\" ] && npx npm-force-resolutions || exit 0",
     "postinstall": "patch-package",
     "release": "standard-version -a",
-    "release:dry-run": "standard-version --dry-run"
+    "release:dry-run": "standard-version --dry-run",
+    "prepare": "husky install"
   },
   "dependencies": {
     "@babel/cli": "^7.14.8",
@@ -139,7 +140,6 @@
     "gm": "^1.23.1",
     "highlight.js": "^11.0.1",
     "humanize-string": "^1.0.2",
-    "husky": "^3.0.3",
     "in-publish": "^2.0.0",
     "is-function": "^1.0.1",
     "isomorphic-webcrypto": "^2.3.8",
@@ -199,6 +199,7 @@
     "chai-as-promised": "^7.1.1",
     "documentation": "^13.1.1",
     "documentation-theme-utils": "^3.0.0",
+    "husky": "^7.0.0",
     "karma": "^6.3.2",
     "karma-browserify": "^8.0.0",
     "karma-chai": "^0.1.0",
@@ -270,12 +271,6 @@
       "ignore": [
         "**/umd/**.js"
       ]
-    }
-  },
-  "husky": {
-    "hooks": {
-      "commit-msg": "commitlint --verbose -e $HUSKY_GIT_PARAMS",
-      "pre-commit": "npm run --silent srcdist && npm run --silent lint:staged"
     }
   },
   "standard-version": {
