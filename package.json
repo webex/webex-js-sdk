@@ -192,8 +192,8 @@
     "yargs": "^16.2.0"
   },
   "devDependencies": {
-    "@commitlint/cli": "^12.0.0",
-    "@commitlint/config-conventional": "^12.0.0",
+    "@commitlint/cli": "^15.0.0",
+    "@commitlint/config-conventional": "^15.0.0",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "documentation": "^13.1.1",
