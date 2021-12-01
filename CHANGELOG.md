@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.150.0](https://github.com/webex/webex-js-sdk/compare/v1.149.2...v1.150.0) (2021-11-18)
+
+
+### Features
+
+* **internal-plugin-board:** authorizeMediaInjector and unauthorizeMediaInjector functions ([b7e4e65](https://github.com/webex/webex-js-sdk/commit/b7e4e6503acfbdbf7747eecea36c283bad6ac750))
+* **plugin-meetings:** meeting changes to add startWhiteboardShare and stopWhiteboardShare ([9a46dc0](https://github.com/webex/webex-js-sdk/commit/9a46dc0aa6c585ce28a937aa884dc1277b19f1e4))
+
+
+### Bug Fixes
+
+* **plugin-meetings:** locus-info changes to store two different types of share ([85cda8d](https://github.com/webex/webex-js-sdk/commit/85cda8d72a35f35db25924bcb108ddf73f5fafee))
+* **plugin-meetings:** meeting changes to ensure share type and state updates properly ([9f02432](https://github.com/webex/webex-js-sdk/commit/9f0243205c198f96cb7082f8760ba358c6ecded3))
+
 ### [1.149.2](https://github.com/webex/webex-js-sdk/compare/v1.149.1...v1.149.2) (2021-11-17)
 
 
