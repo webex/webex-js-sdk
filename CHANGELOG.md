@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.150.1](https://github.com/webex/webex-js-sdk/compare/v1.150.0...v1.150.1) (2021-12-03)
+
+
+### Bug Fixes
+
+* **plugin-authorization-browser-first-party:** emailHash ([05756d1](https://github.com/webex/webex-js-sdk/commit/05756d132257c797663c068b070451919e2dcd56))
+* **plugin-authorization-browser-first-party:** review update ([a9920dd](https://github.com/webex/webex-js-sdk/commit/a9920ddd7a96ce11d83b2174aeb07ae592852d0d))
+* **plugin-authorization-browser-first-party:** review update ([a2bda07](https://github.com/webex/webex-js-sdk/commit/a2bda07788f74b5f9314dc63aa65c05c2f1a1fb4))
+
 ## [1.150.0](https://github.com/webex/webex-js-sdk/compare/v1.149.2...v1.150.0) (2021-11-18)
 
 
