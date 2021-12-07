@@ -141,6 +141,7 @@
     "highlight.js": "^11.0.1",
     "humanize-string": "^1.0.2",
     "in-publish": "^2.0.0",
+    "ip-anonymize": "^0.1.0",
     "is-function": "^1.0.1",
     "isomorphic-webcrypto": "^2.3.8",
     "istanbul": "^0.4.5",
