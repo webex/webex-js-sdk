@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.151.0](https://github.com/webex/webex-js-sdk/compare/v1.150.1...v1.151.0) (2021-12-08)
+
+
+### Features
+
+* **meetings:** add callInitiateJoinReq joinTime metric ([3f53726](https://github.com/webex/webex-js-sdk/commit/3f537268e88ba6370ba2e48b354d1a84746b2944))
+* **meetings:** add joinReqResp joinTime metric ([d33add4](https://github.com/webex/webex-js-sdk/commit/d33add4614a114db388130d68c5afe66f17b2faf))
+* **meetings:** add localSDPGenRemoteSDPRecv joinTime metric ([93ed459](https://github.com/webex/webex-js-sdk/commit/93ed4596da80eff58dee2da90e252b38863896ff))
+* **meetings:** add totalJmt joinTime metric ([2aa7111](https://github.com/webex/webex-js-sdk/commit/2aa71112a6c8c01c6b26ac942aea0d7de6a7dd00))
+
 ### [1.150.1](https://github.com/webex/webex-js-sdk/compare/v1.150.0...v1.150.1) (2021-12-03)
 
 
