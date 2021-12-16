@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.151.3](https://github.com/webex/webex-js-sdk/compare/v1.151.2...v1.151.3) (2021-12-16)
+
 ### [1.151.2](https://github.com/webex/webex-js-sdk/compare/v1.151.1...v1.151.2) (2021-12-13)
 
 
