@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.151.3](https://github.com/webex/webex-js-sdk/compare/v1.151.2...v1.151.3) (2021-12-16)
+
+### [1.151.2](https://github.com/webex/webex-js-sdk/compare/v1.151.1...v1.151.2) (2021-12-13)
+
+
+### Bug Fixes
+
+* **meetings:** set supportHostKey parameter when calling wbxappapi ([36649c2](https://github.com/webex/webex-js-sdk/commit/36649c2e124a936ba82f77d6cdbeaa7481a1a823))
+
+### [1.151.1](https://github.com/webex/webex-js-sdk/compare/v1.151.0...v1.151.1) (2021-12-10)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** anonymize IP addresses sent in metrics ([1749431](https://github.com/webex/webex-js-sdk/commit/17494310001cd7dd4338697ef0e6dcd2d05cb76d))
+
 ## [1.151.0](https://github.com/webex/webex-js-sdk/compare/v1.150.1...v1.151.0) (2021-12-08)
 
 
