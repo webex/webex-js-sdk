@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.151.5](https://github.com/webex/webex-js-sdk/compare/v1.151.4...v1.151.5) (2021-12-21)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** logger init before meetings onready call ([8822c7c](https://github.com/webex/webex-js-sdk/commit/8822c7cdb70b6f9e8abdd975709779efdf665951))
+
+### [1.151.4](https://github.com/webex/webex-js-sdk/compare/v1.151.3...v1.151.4) (2021-12-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add handling of locusUrl in getMediaStreams error ([0652e94](https://github.com/webex/webex-js-sdk/commit/0652e9475b81481bf8cd21812b698fbfe4fe5512))
+
+### [1.151.3](https://github.com/webex/webex-js-sdk/compare/v1.151.2...v1.151.3) (2021-12-16)
+
+### [1.151.2](https://github.com/webex/webex-js-sdk/compare/v1.151.1...v1.151.2) (2021-12-13)
+
+
+### Bug Fixes
+
+* **meetings:** set supportHostKey parameter when calling wbxappapi ([36649c2](https://github.com/webex/webex-js-sdk/commit/36649c2e124a936ba82f77d6cdbeaa7481a1a823))
+
+### [1.151.1](https://github.com/webex/webex-js-sdk/compare/v1.151.0...v1.151.1) (2021-12-10)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** anonymize IP addresses sent in metrics ([1749431](https://github.com/webex/webex-js-sdk/commit/17494310001cd7dd4338697ef0e6dcd2d05cb76d))
+
+## [1.151.0](https://github.com/webex/webex-js-sdk/compare/v1.150.1...v1.151.0) (2021-12-08)
+
+
+### Features
+
+* **meetings:** add callInitiateJoinReq joinTime metric ([3f53726](https://github.com/webex/webex-js-sdk/commit/3f537268e88ba6370ba2e48b354d1a84746b2944))
+* **meetings:** add joinReqResp joinTime metric ([d33add4](https://github.com/webex/webex-js-sdk/commit/d33add4614a114db388130d68c5afe66f17b2faf))
+* **meetings:** add localSDPGenRemoteSDPRecv joinTime metric ([93ed459](https://github.com/webex/webex-js-sdk/commit/93ed4596da80eff58dee2da90e252b38863896ff))
+* **meetings:** add totalJmt joinTime metric ([2aa7111](https://github.com/webex/webex-js-sdk/commit/2aa71112a6c8c01c6b26ac942aea0d7de6a7dd00))
+
+### [1.150.1](https://github.com/webex/webex-js-sdk/compare/v1.150.0...v1.150.1) (2021-12-03)
+
+
+### Bug Fixes
+
+* **plugin-authorization-browser-first-party:** emailHash ([05756d1](https://github.com/webex/webex-js-sdk/commit/05756d132257c797663c068b070451919e2dcd56))
+* **plugin-authorization-browser-first-party:** review update ([a9920dd](https://github.com/webex/webex-js-sdk/commit/a9920ddd7a96ce11d83b2174aeb07ae592852d0d))
+* **plugin-authorization-browser-first-party:** review update ([a2bda07](https://github.com/webex/webex-js-sdk/commit/a2bda07788f74b5f9314dc63aa65c05c2f1a1fb4))
+
 ## [1.150.0](https://github.com/webex/webex-js-sdk/compare/v1.149.2...v1.150.0) (2021-11-18)
 
 

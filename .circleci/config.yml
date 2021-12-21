@@ -12,31 +12,31 @@ executors:
 # Reusable commands for jobs
 commands:
   install_graphicsmagick_and_libgcrypt:
-    description: 'Install graphicsmagick and libgcrypt'
+    description: "Install graphicsmagick and libgcrypt"
     steps:
       - run: |
           sudo apt-get update
           sudo apt-get install -y graphicsmagick libgcrypt-dev
   checkout_and_fetch_tags:
-    description: 'Checkout and fetch tags'
+    description: "Checkout and fetch tags"
     steps:
       - checkout
       - run: git remote add upstream git@github.com:webex/webex-js-sdk.git
       - run: git fetch upstream --tags
   restore_node_modules:
-    description: 'Restore the node_modules dependencies cache'
+    description: "Restore the node_modules dependencies cache"
     steps:
       - restore_cache:
           keys:
             - node-modules-cache-node-fermium-npm-6-{{ .Environment.CACHE_VERSION }}-{{ checksum "package-lock.json" }}
             - node-modules-cache-node-fermium-npm-6-{{ .Environment.CACHE_VERSION }}-
   restore_built_packages:
-    description: 'Restore built packages'
+    description: "Restore built packages"
     steps:
       - attach_workspace:
           at: ~/webex-js-sdk
   skip_check:
-    description: 'Check to see if testing needs to be skipped'
+    description: "Check to see if testing needs to be skipped"
     steps:
       - run:
           name: Check if we need to skip
@@ -46,20 +46,21 @@ jobs:
   npm_install:
     executor: main-executor
     environment:
+      HUSKY: 0
       SAUCE_CONNECT_DOWNLOAD_ON_INSTALL: true
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
       - run:
-          name: 'Update NPM'
+          name: "Update NPM"
           command: sudo npm install -g npm@6
       - run:
-          name: 'Install dependencies'
+          name: "Install dependencies"
           command: npm ci
       # Cache workaround to cache patch changes
       # https://github.com/ds300/patch-package#docker-and-ci
       - run:
-          name: 'Hash patch-package patches'
+          name: "Hash patch-package patches"
           command: cat patches/* | md5sum > patches.hash
       # Cache node_modules across different internal jobs in the workflow and across different circleci runs
       - save_cache:
@@ -67,7 +68,7 @@ jobs:
           paths:
             - node_modules
       - run:
-          name: 'Save NPM install log'
+          name: "Save NPM install log"
           command: npm ls --json > /tmp/npm_install.log || true
       - store_artifacts:
           path: /tmp/npm_install.log
@@ -86,7 +87,7 @@ jobs:
       - checkout_and_fetch_tags
       - restore_node_modules
       - run:
-          name: 'Build all packages'
+          name: "Build all packages"
           command: npm run build
       # Save the dist/ folder of the packages for other jobs in the workflow
       - persist_to_workspace:
@@ -114,7 +115,7 @@ jobs:
       - checkout_and_fetch_tags
       - restore_node_modules
       - run:
-          name: 'Build all packages'
+          name: "Build all packages"
           command: npm run build
       # Save the dist/ folder of the packages for other jobs in the workflow
       - persist_to_workspace:
@@ -129,7 +130,7 @@ jobs:
       - restore_node_modules
       - restore_built_packages
       - run:
-          name: 'Run ESLint'
+          name: "Run ESLint"
           command: npm run lint
       - store_test_results:
           path: reports/style
@@ -146,7 +147,7 @@ jobs:
       - restore_node_modules
       - restore_built_packages
       - run:
-          name: 'List Modified Packages'
+          name: "List Modified Packages"
           command: |
             PACKAGES=$(node tooling/modified-packages.js)
 
@@ -166,11 +167,11 @@ jobs:
       - skip_check
       # Generate build number for a single identifier for SauceLabs
       - run:
-          name: 'Generate Build Number'
+          name: "Generate Build Number"
           command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
       # Run unit tests on modified packages
       - run:
-          name: 'Test Modified Packages'
+          name: "Test Modified Packages"
           command: |
             PACKAGES=$(node tooling/modified-packages.js)
 
@@ -184,7 +185,7 @@ jobs:
       # The reason this script exists is that all tests are "exec"'d and running in a single process instead of a parallel
       # So if a failure happens it will continue to the next test suite in the queue
       - run:
-          name: 'Check if any unit tests failed'
+          name: "Check if any unit tests failed"
           command: |
             mkdir -p reports/junit/karma
             FAILURES=$(find reports/junit/karma/ -iname '*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
@@ -209,7 +210,7 @@ jobs:
   samples:
     executor: main-executor
     environment:
-      NODE_ENV: 'test'
+      NODE_ENV: "test"
       COVERAGE: true
     steps:
       - checkout_and_fetch_tags
@@ -217,11 +218,11 @@ jobs:
       - restore_built_packages
       # Generate build number for a single identifier for SauceLabs
       - run:
-          name: 'Generate Build Number'
+          name: "Generate Build Number"
           command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
       # Test Samples on SauceLabs
       - run:
-          name: 'Test Samples'
+          name: "Test Samples"
           command: npm run samples:test
       - store_test_results:
           path: reports/junit
@@ -252,12 +253,12 @@ jobs:
       - skip_check
       # Generate build number for a single identifier for SauceLabs
       - run:
-          name: 'Generate Build Number'
+          name: "Generate Build Number"
           command: echo "export BUILD_NUMBER=CircleCI-${CIRCLE_PR_USERNAME}-${CIRCLE_PR_REPONAME}-${CIRCLE_PR_NUMBER}_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
       # Run integration tests on modified packages with `--integration` flag
       # Tested against Chrome and Firefox on Mac and Windows
       - run:
-          name: 'Test Integration - Run integration tests on modified packages on Mac and Windows version of Chrome and Firefox'
+          name: "Test Integration - Run integration tests on modified packages on Mac and Windows version of Chrome and Firefox"
           command: |
             PACKAGES=$(node tooling/modified-packages.js)
 
@@ -271,7 +272,7 @@ jobs:
       # The reason this script exists is that all tests are "exec"'d and running in a single process instead of a parallel
       # So if a failure happens it will continue to the next test suite in the queue
       - run:
-          name: 'Check if any integration tests failed'
+          name: "Check if any integration tests failed"
           command: |
             mkdir -p reports/junit/karma
             FAILURES=$(find reports/junit/karma/ -iname '*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
@@ -302,16 +303,16 @@ jobs:
           fingerprints:
             - "89:ed:56:33:f5:1b:7b:b6:a1:04:02:a0:f9:47:13:0a"
       - run:
-          name: 'Temporary change origin url to HTTPS for documentation generation'
+          name: "Temporary change origin url to HTTPS for documentation generation"
           command: git remote set-url origin https://github.com/webex/webex-js-sdk.git
       - run:
-          name: 'Build Docs'
+          name: "Build Docs"
           command: npm run build:docs
       - run:
-          name: 'Change origin url back to ssh'
+          name: "Change origin url back to ssh"
           command: git remote set-url origin git@github.com:webex/webex-js-sdk.git
       - run:
-          name: 'Publish Docs'
+          name: "Publish Docs"
           command: |
             # Check if there's anything to commit before committing
             if [ -n "$(git status --porcelain)" ]; then
@@ -320,7 +321,7 @@ jobs:
               git push upstream HEAD:master
             fi
       - run:
-          name: 'Check if we need to skip version bumping and publishing to npm [skip npm]'
+          name: "Check if we need to skip version bumping and publishing to npm [skip npm]"
           command: |
             # Grab the 2nd to last commit message from the log for [skip npm]
             # Last commit is the update docs
@@ -331,10 +332,10 @@ jobs:
             fi
       - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
       - run:
-          name: 'Grab Current Version Number'
+          name: "Grab Current Version Number"
           command: echo "export CURRENT_VERSION=$(node -p "require('./package.json').version")" >> $BASH_ENV
       - run:
-          name: 'Check if we need to bump'
+          name: "Check if we need to bump"
           command: |
             if ! \
               { git log "$( git describe --tags --abbrev=0 )..HEAD" --format='%s' | cut -d: -f1 | sort -u | sed -e 's/([^)]*)//' | grep -q -i -E '^feat|fix|perf|revert$' ; } || \
@@ -345,13 +346,13 @@ jobs:
               circleci step halt
             fi
       - run:
-          name: 'Run standard-version'
+          name: "Run standard-version"
           command: npm run release
       - run:
-          name: 'Grab Upcoming Version Number'
+          name: "Grab Upcoming Version Number"
           command: echo "export UPCOMING_VERSION=$(node -p "require('./package.json').version")" >> $BASH_ENV
       - run:
-          name: 'Check if we need to publish a new version'
+          name: "Check if we need to publish a new version"
           command: |
             echo "Current Version: $CURRENT_VERSION"
             echo "Upcoming Version: $UPCOMING_VERSION"
@@ -360,15 +361,15 @@ jobs:
               circleci step halt
             fi
       - run:
-          name: 'Publish to NPM'
+          name: "Publish to NPM"
           command: |
-              echo "Generate Package Dependencies"
-              npm run deps:generate
+            echo "Generate Package Dependencies"
+            npm run deps:generate
 
-              echo "Publish to NPM"
-              npm run tooling -- exec --cmd bash -- -c 'npm publish --access public || true'
+            echo "Publish to NPM"
+            npm run tooling -- exec --cmd bash -- -c 'npm publish --access public || true'
       - run:
-          name: 'Push to upstream/master'
+          name: "Push to upstream/master"
           command: git push --follow-tags upstream master
   tap:
     executor: main-executor
@@ -391,7 +392,7 @@ jobs:
       - restore_node_modules
       - restore_built_packages
       - run:
-          name: 'Generate Build Number'
+          name: "Generate Build Number"
           command: echo "export BUILD_NUMBER=CircleCI-SDK-TAP-<< parameters.package >>_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
       - run: npm run test --silent -- --packages << parameters.package >> --browsers defaults
       - run:
@@ -443,15 +444,14 @@ jobs:
       #       }
       #       curl -X POST --header 'Content-Type: application/json' -d "$(generate_incident_data)" https://events.pagerduty.com/v2/enqueue
 
-
 workflows:
   github_checks:
     jobs:
       - npm_install:
           filters:
-              branches:
-                ignore:
-                    - master
+            branches:
+              ignore:
+                - master
       - build:
           requires:
             - npm_install
@@ -476,19 +476,19 @@ workflows:
     jobs:
       - npm_install:
           filters:
-              branches:
-                only: master
+            branches:
+              only: master
       - versioning_and_publish:
           filters:
             branches:
               only: master
           requires:
-              - npm_install
+            - npm_install
   tap_tests:
     triggers:
       - schedule:
           # Everyday @ 6:15PM UTC | 3:15PM EST | 2:15PM EDT | 12:15PM PST | 11:15AM PDT
-          cron: '15 18 * * 1-5'
+          cron: "15 18 * * 1-5"
           filters:
             branches:
               only:
@@ -496,38 +496,38 @@ workflows:
     jobs:
       - npm_install:
           filters:
-              branches:
-                only: master
+            branches:
+              only: master
       - build_production:
           requires:
             - npm_install
       - tap:
-          name: '@webex/webex-core tap'
-          package: '@webex/webex-core'
+          name: "@webex/webex-core tap"
+          package: "@webex/webex-core"
           requires:
             - build_production
       - tap:
-          name: '@webex/plugin-meetings tap'
-          package: '@webex/plugin-meetings'
+          name: "@webex/plugin-meetings tap"
+          package: "@webex/plugin-meetings"
           requires:
             - build_production
       - tap:
-          name: '@webex/internal-plugin-conversation tap'
-          package: '@webex/internal-plugin-conversation'
+          name: "@webex/internal-plugin-conversation tap"
+          package: "@webex/internal-plugin-conversation"
           requires:
             - build_production
       - tap:
-          name: '@webex/internal-plugin-encryption tap'
-          package: '@webex/internal-plugin-encryption'
+          name: "@webex/internal-plugin-encryption tap"
+          package: "@webex/internal-plugin-encryption"
           requires:
             - build_production
       - tap:
-          name: '@webex/internal-plugin-locus tap'
-          package: '@webex/internal-plugin-locus'
+          name: "@webex/internal-plugin-locus tap"
+          package: "@webex/internal-plugin-locus"
           requires:
             - build_production
       - tap:
-          name: '@webex/internal-plugin-mercury tap'
-          package: '@webex/internal-plugin-mercury'
+          name: "@webex/internal-plugin-mercury tap"
+          package: "@webex/internal-plugin-mercury"
           requires:
             - build_production
