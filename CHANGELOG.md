@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.151.5](https://github.com/webex/webex-js-sdk/compare/v1.151.4...v1.151.5) (2021-12-21)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** logger init before meetings onready call ([8822c7c](https://github.com/webex/webex-js-sdk/commit/8822c7cdb70b6f9e8abdd975709779efdf665951))
+
 ### [1.151.4](https://github.com/webex/webex-js-sdk/compare/v1.151.3...v1.151.4) (2021-12-16)
 
 
