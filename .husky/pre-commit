@@ -1,0 +1,7 @@
+#!/bin/sh
+# Skip if in CI
+[ -n "$CI" ] && exit 0
+
+. "$(dirname "$0")/_/husky.sh"
+
+npm run --silent srcdist && npm run --silent lint:staged
