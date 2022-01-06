@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.152.0](https://github.com/webex/webex-js-sdk/compare/v1.151.7...v1.152.0) (2022-01-06)
+
+
+### Features
+
+* **plugin-meetings:** password and captcha support for unified space meetings ([ee0fc98](https://github.com/webex/webex-js-sdk/commit/ee0fc98a4395820c62c6d978fcae1938ac6269d6))
+
 ### [1.151.7](https://github.com/webex/webex-js-sdk/compare/v1.151.6...v1.151.7) (2021-12-22)
 
 
