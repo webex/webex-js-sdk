@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.153.0](https://github.com/webex/webex-js-sdk/compare/v1.152.1...v1.153.0) (2022-01-13)
+
+
+### Features
+
+* **plugin-meetings:** toggleUnifiedMeetings api change meeting info between v1 & v2 ([7844425](https://github.com/webex/webex-js-sdk/commit/7844425ba5ccbb6e044b9adea07acf5abb57cb27))
+* **samples:** toggle meeting info button on click changes meeting between v1 and v2 ([8195f86](https://github.com/webex/webex-js-sdk/commit/8195f861a70f36670fc9050baf7e01cbde1b2ede))
+
 ### [1.152.1](https://github.com/webex/webex-js-sdk/compare/v1.152.0...v1.152.1) (2022-01-11)
 
 ## [1.152.0](https://github.com/webex/webex-js-sdk/compare/v1.151.7...v1.152.0) (2022-01-06)
