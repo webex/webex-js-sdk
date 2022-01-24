@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.153.1](https://github.com/webex/webex-js-sdk/compare/v1.153.0...v1.153.1) (2022-01-20)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** media not connecting on ipv6 network ([0172c9c](https://github.com/webex/webex-js-sdk/commit/0172c9c276ad9ad90949ffde7c4a6e75bfea6b2e))
+
 ## [1.153.0](https://github.com/webex/webex-js-sdk/compare/v1.152.1...v1.153.0) (2022-01-13)
 
 
