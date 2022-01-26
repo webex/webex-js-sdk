@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.153.2](https://github.com/webex/webex-js-sdk/compare/v1.153.1...v1.153.2) (2022-01-25)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** use icegatheringstatechange for ice completed ([ade28cd](https://github.com/webex/webex-js-sdk/commit/ade28cd3e28d2810ebac0818bf773eae521bc56f))
+
 ### [1.153.1](https://github.com/webex/webex-js-sdk/compare/v1.153.0...v1.153.1) (2022-01-20)
 
 
