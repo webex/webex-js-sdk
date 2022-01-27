@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.153.3](https://github.com/webex/webex-js-sdk/compare/v1.153.2...v1.153.3) (2022-01-26)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** meeting stuck in error state ([9a03f1b](https://github.com/webex/webex-js-sdk/commit/9a03f1bf61fc69721693a3c763d1adf5f02c4c5f))
+
 ### [1.153.2](https://github.com/webex/webex-js-sdk/compare/v1.153.1...v1.153.2) (2022-01-25)
 
 
