@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.153.4](https://github.com/webex/webex-js-sdk/compare/v1.153.3...v1.153.4) (2022-02-03)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add  permissions token for unified space meeting ([a6b04b2](https://github.com/webex/webex-js-sdk/commit/a6b04b2c5d7f79b80ac07b69a69347faf177f1a0))
+
 ### [1.153.3](https://github.com/webex/webex-js-sdk/compare/v1.153.2...v1.153.3) (2022-01-26)
 
 
