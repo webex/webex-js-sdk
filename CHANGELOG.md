@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.154.0](https://github.com/webex/webex-js-sdk/compare/v1.153.4...v1.154.0) (2022-02-04)
+
+
+### Features
+
+* **plugin-meetings:** start sending behavioral metrics to amplitude ([f4e4181](https://github.com/webex/webex-js-sdk/commit/f4e41811ab2df17cac18ffcd83d30cef26131dca))
+
 ### [1.153.4](https://github.com/webex/webex-js-sdk/compare/v1.153.3...v1.153.4) (2022-02-03)
 
 
