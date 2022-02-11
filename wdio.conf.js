@@ -392,7 +392,8 @@ exports.config = {
   // Options to be passed to Mocha.
   // See the full list at http://mochajs.org/
   mochaOpts: {
-    require: [],
+    // reminder: mocha-steps seems to make tests flaky on Sauce Labs
+    require: ['@babel/register', '@babel/polyfill'],
     timeout: 80000,
     ui: 'bdd',
   },
