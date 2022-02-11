@@ -32,14 +32,16 @@ exports.buildFile = async function buildFile({src, dest}) {
 
 exports.buildPackage = async function buildPackage(packageName) {
   debug(`building package ${packageName}`);
-  const files = await glob('src/**/*.js', {packageName});
+  const filesJS = await glob('src/**/*.js', {packageName});
+  const filesTS = await glob('src/**/*.ts', {packageName});
+  const files = [...filesJS, ...filesTS];
 
   debug('building files ', files);
   const mapped = files
     .map((filename) => path.join('packages', 'node_modules', packageName, filename))
     .map((filename) => ({
       src: filename,
-      dest: filename.replace('src', 'dist')
+      dest: filename.replace('src', 'dist').replace('.ts', '.js')
     }));
 
   for (const file of mapped) {
