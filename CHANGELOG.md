@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.154.2](https://github.com/webex/webex-js-sdk/compare/v1.154.1...v1.154.2) (2022-02-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix extmap config boolean ([07b5e8b](https://github.com/webex/webex-js-sdk/commit/07b5e8b71db0a93a0bef0407a5a068459a83586c))
+
 ### [1.154.1](https://github.com/webex/webex-js-sdk/compare/v1.154.0...v1.154.1) (2022-02-10)
 
 
