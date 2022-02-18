@@ -180,6 +180,31 @@ Samples | Hosted
 --- | ---
 [Samples code](./packages/node_modules/samples/) | [js.samples.s4d.io/](https://js.samples.s4d.io/)
 
+## FedRAMP Environment
+The `webex` JavaScript SDK is officially supporting FedRAMP environments.
+
+To enable usage simply use the `fedramp` configuration setting when creating your `webex` instance:
+
+```javascript
+const Webex = require('webex');
+const webex = Webex.init({
+  config: {
+    fedramp: true
+  },
+  credentials: {
+    access_token: `<token>`
+  }
+});
+
+// Use sdk as normal
+webex.rooms.list().then(console.log);
+```
+
+> For more information on FedRAMP visit https://developer.webex.com/docs/fedramp-overview
+
+### Features that do not work in FedRAMP
+- Creating Guest tokens aka JWT tokens (not SDK limitation but environment limitation)
+
 ## Contribute
 
 Pull requests welcome. Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for more details about building the packages
