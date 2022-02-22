@@ -6,10 +6,10 @@
   "bugs": {
     "url": "https://github.com/webex/webex-js-sdk/issues"
   },
+  "type": "module",
   "private": true,
   "workspaces": [
-    "packages/@webex/*",
-    "packages/@ciscospark/*"
+    "packages/@webex/*"
   ],
   "license": "MIT",
   "author": "devsupport@webex.com",
@@ -23,11 +23,10 @@
     "url": "https://github.com/webex/webex-js-sdk"
   },
   "scripts": {
-    "g:build": "yarn workspaces foreach -p --topological-dev -v run build",
     "clean": "rimraf packages/node_modules/**/.coverage packages/node_modules/**/dist",
     "bootstrap": "echo 'npm run bootstrap is no longer required. Hooray!'",
     "prebuild": "npm run clean",
-    "build": "node ./tooling/index.js build",
+    "build": "node ./esbuild.config.js",
     "build:script": "node ./tooling/index.js build --umd",
     "build:dev": "NODE_ENV=development node ./tooling/index.js build",
     "prebuild:docs": "rimraf ./docs/api",
@@ -63,7 +62,8 @@
     "prepare": "husky install"
   },
   "dependencies": {
-    "@webex/internal-media-core": "^0.0.7-beta",
+    "@webex/internal-media-core": "^0.0.6-beta",
+    "@yarnpkg/core": "^4.0.0-rc.20",
     "ampersand-collection": "^2.0.2",
     "ampersand-collection-lodash-mixin": "^4.0.0",
     "ampersand-events": "^2.0.2",
@@ -97,6 +97,7 @@
     "errorhandler": "^1.5.1",
     "es6-promise": "^4.2.8",
     "es6-promise-series": "^0.2.2",
+    "esbuild": "^0.15.8",
     "exifr": "^5.0.3",
     "express": "^4.17.1",
     "express-session": "^1.16.2",
@@ -146,6 +147,7 @@
     "stream-browserify": "^3.0.0",
     "supertest": "^3.4.2",
     "time-grunt": "^1.4.0",
+    "tiny-glob": "^0.2.9",
     "url": "^0.11.0",
     "urlsafe-base64": "^1.0.0",
     "uuid": "^3.3.2",
@@ -202,6 +204,9 @@
     "chromedriver": "^101.0.0",
     "documentation": "^13.2.5",
     "documentation-theme-utils": "^3.0.0",
+    "esbuild-plugin-alias": "^0.2.1",
+    "esbuild-plugin-babel": "^0.2.3",
+    "esbuild-plugin-resolve": "^1.0.3",
     "eslint": "^8.13.0",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-mocha": "^10.0.4",
@@ -285,5 +290,6 @@
       "postbump": "npm run build -- --skip-samples && npm run build:script && git add packages/node_modules/webex/umd/*.js",
       "release": "git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json CHANGELOG.md && standard-version -a"
     }
-  }
+  },
+  "packageManager": "yarn@4.0.0-rc.20"
 }

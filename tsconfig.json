@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "outDir": "dist/transpiled/",
+    "declarationDir": "dist/types",
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "paths": {
+       "@webex/*" :["./packages/@webex/*"],
+       "@webex/common" :["./packages/@webex/common/src/index.js"],
+       "@webex/http-core" :["./packages/@webex/http-core/src/index.js"]
+    }
+  },
+  "include": ["./packages/@webex/**/src/*.ts"],
+  "exclude": ["test", "docs/examples", "*test.ts"]
+}

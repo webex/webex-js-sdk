@@ -23,7 +23,14 @@
       "envify"
     ]
   },
-  "scripts":{
-    "build": "tsc && rollup --config"
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@webex/common": "workspace:*",
+    "@webex/common-timers": "workspace:*",
+    "@webex/internal-plugin-conversation": "workspace:*",
+    "@webex/internal-plugin-mercury": "workspace:*",
+    "@webex/webex-core": "workspace:*"
   }
 }

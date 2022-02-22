@@ -24,5 +24,9 @@
       "babelify",
       "envify"
     ]
+  },
+  "dependencies": {
+    "@webex/common": "workspace:^",
+    "@webex/http-core": "workspace:^"
   }
 }

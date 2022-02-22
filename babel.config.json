@@ -13,15 +13,6 @@
       }
     ],
     "@babel/plugin-proposal-class-properties",
-    "./tooling/babel-plugin-inject-package-version",
-    [
-      "@babel/plugin-transform-classes",
-      {
-        "globals": [
-          "Error"
-        ]
-      }
-    ],
     "@babel/plugin-proposal-export-default-from",
     "@babel/plugin-proposal-export-namespace-from",
     "lodash",
@@ -48,5 +39,10 @@
     ],
     "@babel/preset-typescript"
   ],
+  "ignore": [
+    "node_modules",
+    "**/*.d.ts",
+    "**/*.json"
+],
   "sourceMaps": true
 }

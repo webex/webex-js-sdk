@@ -1,4 +1,3 @@
-/* eslint-env browser */
 import {registerPlugin} from '@webex/webex-core';
 
 import Meetings from './meetings';
