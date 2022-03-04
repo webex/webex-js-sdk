@@ -20,7 +20,9 @@ import {
   _SIP_URI_,
   _MEETING_ID_,
   LOCUSINFO,
+  PC_BAIL_TIMEOUT,
 } from '@webex/plugin-meetings/src/constants';
+import {MediaConnection as MC} from '@webex/internal-media-core';
 import * as StatsAnalyzerModule from '@webex/plugin-meetings/src/statsAnalyzer';
 import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
 import Meetings, {CONSTANTS} from '@webex/plugin-meetings';
@@ -32,7 +34,6 @@ import LocusInfo from '@webex/plugin-meetings/src/locus-info';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import Media from '@webex/plugin-meetings/src/media/index';
-import PeerConnectionManager from '@webex/plugin-meetings/src/peer-connection-manager';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
 import MediaUtil from '@webex/plugin-meetings/src/media/util';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
@@ -177,7 +178,6 @@ describe('plugin-meetings', () => {
     TriggerProxy.trigger = sinon.stub().returns(true);
     Metrics.postEvent = sinon.stub();
     Metrics.initialSetup(null, webex);
-    MediaUtil.createPeerConnection = sinon.stub().returns({});
     MediaUtil.createMediaStream = sinon.stub().returns(true);
 
     uuid1 = uuid.v4();
@@ -221,7 +221,6 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.userId, uuid1);
           assert.equal(meeting.resource, uuid2);
           assert.equal(meeting.deviceUrl, uuid3);
-          assert.equal(meeting.roapSeq, -1);
           assert.deepEqual(meeting.meetingInfo, {});
           assert.instanceOf(meeting.members, Members);
           assert.instanceOf(meeting.roap, Roap);
@@ -882,20 +881,23 @@ describe('plugin-meetings', () => {
           applyClientStateLocally: sinon.stub().returns(Promise.resolve(true))
         };
 
+        let fakeMediaConnection;
+
         beforeEach(() => {
+          fakeMediaConnection = {
+            close: sinon.stub(),
+            getConnectionState: sinon.stub().returns(MC.ConnectionState.CONNECTED),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+          };
           meeting.mediaProperties.setMediaDirection = sinon.stub().returns(true);
           meeting.audio = muteStateStub;
           meeting.video = muteStateStub;
-          Media.attachMedia = sinon.stub().returns(Promise.resolve([test1, test2]));
+          Media.createMediaConnection = sinon.stub().returns(fakeMediaConnection);
           meeting.setMercuryListener = sinon.stub().returns(true);
-          meeting.setRemoteStream = sinon.stub().returns(true);
+          meeting.setupMediaConnectionListeners = sinon.stub();
           meeting.setMercuryListener = sinon.stub();
-          meeting.roap.sendRoapMediaRequest = sinon.stub().returns(new Promise((resolve) => {
-            meeting.mediaProperties.peerConnection.connectionState = CONSTANTS.CONNECTION_STATE.CONNECTED;
-            resolve();
-          }));
           meeting.roap.doTurnDiscovery = sinon.stub().resolves();
-          PeerConnectionManager.setContentSlides = sinon.stub().returns(true);
         });
 
         it('should have #addMedia', () => {
@@ -903,16 +905,17 @@ describe('plugin-meetings', () => {
         });
 
         it('should reject promise if meeting is not active', async () => {
-          await meeting.addMedia().catch((err) => {
-            assert.instanceOf(err, MeetingNotActiveError);
-          });
+          const result = await assert.isRejected(meeting.addMedia());
+
+          assert.instanceOf(result, MeetingNotActiveError);
         });
 
         it('should reject promise if user already in left state', async () => {
           meeting.meetingState = 'ACTIVE';
-          await meeting.addMedia().catch((err) => {
-            assert.instanceOf(err, UserNotJoinedError);
-          });
+          meeting.locusInfo.parsedLocus = {self: {state: 'LEFT'}};
+          const result = await assert.isRejected(meeting.addMedia());
+
+          assert.instanceOf(result, UserNotJoinedError);
         });
 
         it('should reject promise if user is in lobby ', async () => {
@@ -931,32 +934,43 @@ describe('plugin-meetings', () => {
 
         it('should reset the statsAnalyzer to null if addMedia throws an error', async () => {
           meeting.meetingState = 'ACTIVE';
-          meeting.statsAnalyzer = true;
-          await meeting.addMedia().catch((err) => {
-            assert.exists(err);
-            assert.isNull(meeting.statsAnalyzer);
+          // setup the mock to return an incomplete object - this will cause addMedia to fail
+          // because some methods (like on() or initiateOffer()) are missing
+          Media.createMediaConnection = sinon.stub().returns({
+            close: sinon.stub(),
           });
+          // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
+          meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
+          await assert.isRejected(meeting.addMedia());
+          assert.isNull(meeting.statsAnalyzer);
         });
 
-        it('should reset the peerConnection to null if addMedia throws an error', async () => {
+        it('should reset the webrtcMediaConnection to null if addMedia throws an error', async () => {
           meeting.meetingState = 'ACTIVE';
-          meeting.mediaProperties.peerConnection = true;
-          await meeting.addMedia().catch((err) => {
-            assert.exists(err);
-            assert.isNull(meeting.mediaProperties.peerConnection);
+          // setup the mock so that a media connection is created, but its initiateOffer() method fails
+          Media.createMediaConnection = sinon.stub().returns({
+            initiateOffer: sinon.stub().throws(new Error('fake error')),
+            close: sinon.stub(),
           });
+          const result = await assert.isRejected(meeting.addMedia());
+
+          assert.instanceOf(result, Error);
+          assert.isNull(meeting.mediaProperties.webrtcMediaConnection);
         });
 
         it('should work the second time addMedia is called in case the first time fails', async () => {
           meeting.meetingState = 'ACTIVE';
 
-          try {
-            await meeting.addMedia();
-            assert.fail('addMedia should have thrown an exception.');
-          }
-          catch (err) {
-            assert.exists(err);
-          }
+          // setup the mock to cause addMedia() to fail
+          Media.createMediaConnection = sinon.stub().returns({
+            initiateOffer: sinon.stub().throws(new Error('fake error')),
+            close: sinon.stub(),
+          });
+
+          await assert.isRejected(meeting.addMedia());
+
+          // reset the mock to a good one, that doesn't fail
+          Media.createMediaConnection = sinon.stub().returns(fakeMediaConnection);
 
           try {
             await meeting.addMedia({
@@ -970,12 +984,11 @@ describe('plugin-meetings', () => {
 
         it('if an error occurs after media request has already been sent, and the user waits until the server kicks them out, a UserNotJoinedError should be thrown when attempting to addMedia again', async () => {
           meeting.meetingState = 'ACTIVE';
-          meeting.roap.sendRoapMediaRequest = sinon.stub().returns(new Promise((resolve) => {
-            meeting.mediaProperties.peerConnection.connectionState = CONSTANTS.CONNECTION_STATE.CONNECTED;
-            resolve();
-          }).then(() => {
-            throw new Error('sample error thrown');
-          }));
+          // setup the mock to cause addMedia() to fail
+          Media.createMediaConnection = sinon.stub().returns({
+            initiateOffer: sinon.stub().throws(new Error('fake error')),
+            close: sinon.stub(),
+          });
           await meeting.addMedia().catch((err) => {
             assert.exists(err);
           });
@@ -988,21 +1001,16 @@ describe('plugin-meetings', () => {
 
         it('if an error occurs after media request has already been sent, and the user does NOT wait until the server kicks them out, the user should be able to addMedia successfully', async () => {
           meeting.meetingState = 'ACTIVE';
-          meeting.roap.sendRoapMediaRequest = sinon.stub().returns(new Promise((resolve) => {
-            meeting.mediaProperties.peerConnection.connectionState = CONSTANTS.CONNECTION_STATE.CONNECTED;
-            resolve();
-          }).then(() => {
-            throw new Error('sample error thrown');
-          }));
+          // setup the mock to cause addMedia() to fail
+          Media.createMediaConnection = sinon.stub().returns({
+            initiateOffer: sinon.stub().throws(new Error('fake error')),
+            close: sinon.stub(),
+          });
           await meeting.addMedia().catch((err) => {
             assert.exists(err);
           });
 
-          meeting.mediaProperties.peerConnection = {};
-          meeting.roap.sendRoapMediaRequest = sinon.stub().returns(new Promise((resolve) => {
-            meeting.mediaProperties.peerConnection.connectionState = CONSTANTS.CONNECTION_STATE.CONNECTED;
-            resolve();
-          }));
+          Media.createMediaConnection = sinon.stub().returns(fakeMediaConnection);
           await meeting.addMedia().catch((err) => {
             assert.fail('No error should appear: ', err);
           });
@@ -1010,7 +1018,6 @@ describe('plugin-meetings', () => {
 
         it('should attach the media and return promise', async () => {
           meeting.meetingState = 'ACTIVE';
-          MediaUtil.createPeerConnection.resetHistory();
           const media = meeting.addMedia({
             mediaSettings: {}
           });
@@ -1020,12 +1027,10 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.roap.doTurnDiscovery);
           assert.calledWith(meeting.roap.doTurnDiscovery, meeting, false);
           assert.calledOnce(meeting.mediaProperties.setMediaDirection);
-          assert.calledOnce(Media.attachMedia);
+          assert.calledOnce(Media.createMediaConnection);
+          assert.calledWith(Media.createMediaConnection, sinon.match.any, sinon.match({turnServerInfo: undefined}));
           assert.calledOnce(meeting.setMercuryListener);
-          assert.calledOnce(meeting.setRemoteStream);
-          assert.calledOnce(meeting.roap.sendRoapMediaRequest);
-          assert.calledOnce(MediaUtil.createPeerConnection);
-          assert.calledWith(MediaUtil.createPeerConnection, undefined);
+          assert.calledOnce(fakeMediaConnection.initiateOffer);
           /* statsAnalyzer is initiated inside of addMedia so there isn't
           * a good way to mock it without mocking the constructor
           */
@@ -1037,7 +1042,7 @@ describe('plugin-meetings', () => {
           const FAKE_TURN_PASSWORD = 'some-password';
 
           meeting.meetingState = 'ACTIVE';
-          MediaUtil.createPeerConnection.resetHistory();
+          Media.createMediaConnection.resetHistory();
 
           meeting.roap.doTurnDiscovery = sinon.stub().resolves({
             url: FAKE_TURN_URL,
@@ -1052,25 +1057,34 @@ describe('plugin-meetings', () => {
           await media;
           assert.calledOnce(meeting.roap.doTurnDiscovery);
           assert.calledWith(meeting.roap.doTurnDiscovery, meeting, false);
-          assert.calledOnce(MediaUtil.createPeerConnection);
-          assert.calledWith(MediaUtil.createPeerConnection, {
-            url: FAKE_TURN_URL,
-            username: FAKE_TURN_USER,
-            password: FAKE_TURN_PASSWORD
-          });
+          assert.calledOnce(Media.createMediaConnection);
+          assert.calledWith(Media.createMediaConnection, sinon.match.any, sinon.match({
+            turnServerInfo: {
+              url: FAKE_TURN_URL,
+              username: FAKE_TURN_USER,
+              password: FAKE_TURN_PASSWORD
+            }
+          }));
+          assert.calledOnce(fakeMediaConnection.initiateOffer);
         });
 
-        it('should attach the media and return promise', async () => {
+        it('should attach the media and return WebExMeetingsErrors when connection does not reach CONNECTED state', async () => {
           meeting.meetingState = 'ACTIVE';
-          meeting.mediaProperties.peerConnection.connectionState = 'DISCONNECTED';
+          fakeMediaConnection.getConnectionState = sinon.stub().returns(MC.ConnectionState.CONNECTING);
+          const clock = sinon.useFakeTimers();
           const media = meeting.addMedia({
             mediaSettings: {}
           });
+
+          await clock.tickAsync(4000 /* meetingState timer, hardcoded inside addMedia */ + PC_BAIL_TIMEOUT /* connection state timer */);
+          await testUtils.flushPromises();
 
           assert.exists(media);
           await media.catch((err) => {
             assert.instanceOf(err, WebExMeetingsErrors);
           });
+
+          clock.restore();
         });
 
         describe('handles StatsAnalyzer events', () => {
@@ -1230,7 +1244,6 @@ describe('plugin-meetings', () => {
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           meeting.unsetRemoteStream = sinon.stub().returns(true);
           meeting.unsetPeerConnections = sinon.stub().returns(true);
-          meeting.roap.stop = sinon.stub().returns(Promise.resolve());
           meeting.logger.error = sinon.stub().returns(true);
 
           // A meeting needs to be joined to leave
@@ -1255,7 +1268,6 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.unsetLocalShareTrack);
           assert.calledOnce(meeting.unsetRemoteTracks);
           assert.calledOnce(meeting.unsetPeerConnections);
-          assert.calledOnce(meeting.roap.stop);
         });
         describe('after audio/video is defined', () => {
           let handleClientRequest;
@@ -1368,61 +1380,6 @@ describe('plugin-meetings', () => {
           });
         });
 
-        describe('getter: isLocalShareLive', () => {
-          const LIVE = 'live';
-          const ENDED = 'ended';
-          const SENDRECV = 'sendrecv';
-          const RECVONLY = 'reconly';
-          let sandbox;
-          let _direction;
-          let _trackReadyState = ENDED;
-
-          beforeEach(() => {
-            sandbox = sinon.createSandbox();
-            sandbox.stub(meeting.mediaProperties, 'shareTrack').value(true);
-            sandbox.stub(meeting.mediaProperties, 'peerConnection').value({
-              shareTransceiver: {
-                get direction() {
-                  return _direction;
-                },
-                sender: {
-                  track: {
-                    get readyState() {
-                      return _trackReadyState;
-                    }
-                  }
-                }
-              }
-            });
-          });
-
-          afterEach(() => {
-            sandbox.restore();
-            sandbox = null;
-          });
-
-          it('sets isLocalShareLive to true when sharing screen', () => {
-            _direction = SENDRECV;
-            _trackReadyState = LIVE;
-
-            assert.isTrue(meeting.isLocalShareLive);
-          });
-
-          it('sets isLocalShareLive to false when not sharing screen', () => {
-            _direction = RECVONLY;
-            _trackReadyState = ENDED;
-
-            assert.isFalse(meeting.isLocalShareLive);
-          });
-
-          it('sets isLocalShareLive to false when track is live but share direction is recv only', () => {
-            _direction = RECVONLY;
-            _trackReadyState = LIVE;
-
-            assert.isFalse(meeting.isLocalShareLive);
-          });
-        });
-
         describe('stops share immediately', () => {
           let sandbox;
 
@@ -1440,7 +1397,6 @@ describe('plugin-meetings', () => {
             const receiveShare = false;
             const stream = 'stream';
 
-            sandbox.stub(meeting.mediaProperties, 'peerConnection').value({shareTransceiver: true});
             sandbox.stub(MeetingUtil, 'getTrack').returns({videoTrack: true});
             MeetingUtil.validateOptions = sinon.stub().returns(Promise.resolve(true));
             sandbox.stub(meeting, 'canUpdateMedia').returns(true);
@@ -1502,42 +1458,6 @@ describe('plugin-meetings', () => {
           afterEach(() => {
             sandbox.restore();
             sandbox = null;
-          });
-
-          it('calls handleShareTrackEnded if sharing is out of sync', async () => {
-            const sendShare = true;
-            const receiveShare = false;
-            const stream = 'stream';
-            const SENDRECV = 'sendrecv';
-            const delay = 1e3;
-
-            MeetingUtil.validateOptions = sinon.stub().returns(Promise.resolve(true));
-            MeetingUtil.updateTransceiver = sinon.stub().returns(Promise.resolve(true));
-            sandbox.stub(meeting, 'canUpdateMedia').returns(true);
-            sandbox.stub(MeetingUtil, 'getTrack').returns({videoTrack: null});
-            sandbox.stub(meeting, 'setLocalShareTrack');
-            sandbox.stub(meeting, 'unsetLocalShareTrack');
-            sandbox.stub(meeting, 'checkForStopShare').returns(false);
-
-            sandbox.stub(meeting, 'isLocalShareLive').value(false);
-            sandbox.stub(meeting, 'handleShareTrackEnded');
-            sandbox.stub(meeting.mediaProperties, 'peerConnection').value({
-              shareTransceiver: {
-                direction: SENDRECV
-              }
-            });
-            sandbox.useFakeTimers();
-
-            await meeting.updateShare({
-              sendShare,
-              receiveShare,
-              stream,
-              skipSignalingCheck: true
-            });
-            // simulate the setTimeout in code
-            sandbox.clock.tick(delay);
-
-            assert.calledOnce(meeting.handleShareTrackEnded);
           });
 
           it('handleShareTrackEnded triggers an event', () => {
@@ -1801,6 +1721,11 @@ describe('plugin-meetings', () => {
       });
 
       describe('#updateAudio', () => {
+        const FAKE_AUDIO_TRACK = {
+          id: 'fake audio track',
+          getSettings: sinon.stub().returns({}),
+        };
+
         describe('when canUpdateMedia is true', () => {
           beforeEach(() => {
             meeting.canUpdateMedia = sinon.stub().returns(true);
@@ -1808,20 +1733,33 @@ describe('plugin-meetings', () => {
           describe('when options are valid', () => {
             beforeEach(() => {
               MeetingUtil.validateOptions = sinon.stub().returns(Promise.resolve());
+              meeting.mediaProperties.mediaDirection = {
+                sendAudio: false,
+                sendVideo: true,
+                sendShare: false,
+                receiveAudio: false,
+                receiveVideo: true,
+                receiveShare: true,
+              };
+              meeting.mediaProperties.webrtcMediaConnection = {updateSendReceiveOptions: sinon.stub()};
+              sinon.stub(MeetingUtil, 'getTrack').returns({audioTrack: FAKE_AUDIO_TRACK});
             });
-            describe('when mediaDirection is undefined', () => {
-              beforeEach(() => {
-                meeting.mediaProperties.mediaDirection = null;
-                MeetingUtil.updateTransceiver = sinon.stub();
+            it('calls this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions', () => meeting.updateAudio({
+              sendAudio: true,
+              receiveAudio: true,
+              stream: {id: 'fake stream'}
+            }).then(() => {
+              assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
+              assert.calledWith(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions, {
+                send: {audio: FAKE_AUDIO_TRACK},
+                receive: {
+                  audio: true, video: true, screenShareVideo: true, remoteQualityLevel: 'HIGH'
+                }
               });
-
-              it('sets previousMediaDirection to an empty object', () => meeting.updateAudio({
-                sendAudio: true,
-                receiveAudio: true
-              }).then(() => {
-                assert.calledOnce(MeetingUtil.updateTransceiver);
-              }));
-            });
+            }));
+          });
+          afterEach(() => {
+            sinon.restore();
           });
         });
       });
@@ -1872,10 +1810,36 @@ describe('plugin-meetings', () => {
         let sandbox;
         const mockLocalStream = {id: 'mock local stream'};
         const mockLocalShare = {id: 'mock local share stream'};
+        const FAKE_TRACKS = {
+          audio: {
+            id: 'fake audio track',
+            getSettings: sinon.stub().returns({}),
+          },
+          video: {
+            id: 'fake video track',
+            getSettings: sinon.stub().returns({}),
+          },
+          screenshareVideo: {
+            id: 'fake share track',
+            getSettings: sinon.stub().returns({}),
+          },
+
+        };
 
         beforeEach(() => {
           sandbox = sinon.createSandbox();
           meeting.mediaProperties.mediaDirection = {sendShare: true};
+          // setup the stub to return the right tracks
+          sandbox.stub(MeetingUtil, 'getTrack').callsFake((stream) => {
+            if (stream === mockLocalStream) {
+              return {audioTrack: FAKE_TRACKS.audio, videoTrack: FAKE_TRACKS.video};
+            }
+            if (stream === mockLocalShare) {
+              return {audioTrack: null, videoTrack: FAKE_TRACKS.screenshareVideo};
+            }
+
+            return {audioTrack: null, videoTrack: null};
+          });
         });
 
         afterEach(() => {
@@ -1895,7 +1859,9 @@ describe('plugin-meetings', () => {
           };
 
           sandbox.stub(meeting, 'canUpdateMedia').returns(false);
-          sandbox.stub(Media, 'updateMedia').resolves();
+          meeting.mediaProperties.webrtcMediaConnection = {
+            updateSendReceiveOptions: sinon.stub().resolves({})
+          };
 
           let myPromiseResolved = false;
 
@@ -1909,18 +1875,30 @@ describe('plugin-meetings', () => {
             });
 
           // verify that nothing was done
-          assert.notCalled(Media.updateMedia);
+          assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
 
           // now trigger processing of the queue
           meeting.canUpdateMedia.restore();
           sandbox.stub(meeting, 'canUpdateMedia').returns(true);
-          meeting.updateMedia = sinon.stub().returns(Promise.resolve());
 
           meeting.processNextQueuedMediaUpdate();
           await testUtils.flushPromises();
 
-          // and check that meeting.updateMedia is called with the original args
-          assert.calledWith(meeting.updateMedia, {localStream: mockLocalStream, localShare: mockLocalShare, mediaSettings});
+          // and check that updateSendReceiveOptions is called with the original args
+          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions);
+          assert.calledWith(meeting.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions, {
+            send: {
+              audio: FAKE_TRACKS.audio,
+              video: FAKE_TRACKS.video,
+              screenShareVideo: FAKE_TRACKS.screenshareVideo,
+            },
+            receive: {
+              audio: true,
+              video: true,
+              screenShareVideo: true,
+              remoteQualityLevel: 'HIGH'
+            }
+          });
           assert.isTrue(myPromiseResolved);
         });
       });
@@ -2746,7 +2724,6 @@ describe('plugin-meetings', () => {
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           meeting.unsetRemoteStream = sinon.stub().returns(true);
           meeting.unsetPeerConnections = sinon.stub().returns(true);
-          meeting.roap.stop = sinon.stub().returns(Promise.resolve());
           meeting.logger.error = sinon.stub().returns(true);
 
           // A meeting needs to be joined to end
@@ -2771,7 +2748,6 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting?.unsetLocalShareTrack);
           assert.calledOnce(meeting?.unsetRemoteTracks);
           assert.calledOnce(meeting?.unsetPeerConnections);
-          assert.calledOnce(meeting?.roap?.stop);
         });
       });
 
@@ -3199,31 +3175,42 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.stopShare);
         });
       });
-      describe('#setRemoteStream', () => {
-        beforeEach(() => {
-          meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
-        });
-        it('should trigger a media:ready event when remote stream track ontrack is fired', () => {
-          const pc = {};
+      describe('#setupMediaConnectionListeners', () => {
+        let eventListeners;
 
-          meeting.setRemoteStream(pc);
-          pc.ontrack({track: 'track', transceiver: {mid: '0'}});
+        beforeEach(() => {
+          eventListeners = {};
+          meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
+          meeting.mediaProperties.webrtcMediaConnection = {
+            // mock the on() method and store all the listeners
+            on: sinon.stub().callsFake((event, listener) => {
+              eventListeners[event] = listener;
+            })
+          };
+        });
+
+        it('should register for all the correct RoapMediaConnection events', () => {
+          meeting.setupMediaConnectionListeners();
+          assert.isFunction(eventListeners[MC.Event.ROAP_STARTED]);
+          assert.isFunction(eventListeners[MC.Event.ROAP_DONE]);
+          assert.isFunction(eventListeners[MC.Event.ROAP_MESSAGE_TO_SEND]);
+          assert.isFunction(eventListeners[MC.Event.REMOTE_TRACK_ADDED]);
+          assert.isFunction(eventListeners[MC.Event.CONNECTION_STATE_CHANGED]);
+        });
+
+        it('should trigger a media:ready event when REMOTE_TRACK_ADDED is fired', () => {
+          meeting.setupMediaConnectionListeners();
+          eventListeners[MC.Event.REMOTE_TRACK_ADDED]({track: 'track', type: MC.RemoteTrackType.AUDIO});
           assert.equal(TriggerProxy.trigger.getCall(1).args[2], 'media:ready');
           assert.deepEqual(TriggerProxy.trigger.getCall(1).args[3], {type: 'remoteAudio', stream: true});
 
-          pc.ontrack({track: 'track', transceiver: {mid: '1'}});
+          eventListeners[MC.Event.REMOTE_TRACK_ADDED]({track: 'track', type: MC.RemoteTrackType.VIDEO});
           assert.equal(TriggerProxy.trigger.getCall(2).args[2], 'media:ready');
           assert.deepEqual(TriggerProxy.trigger.getCall(2).args[3], {type: 'remoteVideo', stream: true});
 
-          pc.ontrack({transceiver: {mid: '2'}, track: 'track'});
+          eventListeners[MC.Event.REMOTE_TRACK_ADDED]({track: 'track', type: MC.RemoteTrackType.SCREENSHARE_VIDEO});
           assert.equal(TriggerProxy.trigger.getCall(3).args[2], 'media:ready');
           assert.deepEqual(TriggerProxy.trigger.getCall(3).args[3], {type: 'remoteShare', stream: true});
-
-
-          // special case for safari
-          pc.ontrack({target: {audioTransceiver: {receiver: {track: {id: 'trackId'}}}}, transceiver: {}, track: {id: 'trackId'}});
-          assert.equal(TriggerProxy.trigger.getCall(1).args[2], 'media:ready');
-          assert.deepEqual(TriggerProxy.trigger.getCall(1).args[3], {type: 'remoteAudio', stream: true});
         });
       });
       describe('#setUpLocusInfoSelfListener', () => {
@@ -3418,13 +3405,13 @@ describe('plugin-meetings', () => {
         });
       });
       describe('#closePeerConnections', () => {
-        it('should close the peer connections, and return a promise', async () => {
-          PeerConnectionManager.close = sinon.stub().returns(Promise.resolve());
+        it('should close the webrtc media connection, and return a promise', async () => {
+          meeting.mediaProperties.webrtcMediaConnection = {close: sinon.stub()};
           const pcs = meeting.closePeerConnections();
 
           assert.exists(pcs.then);
           await pcs;
-          assert.calledOnce(PeerConnectionManager.close);
+          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.close);
         });
       });
       describe('#unsetPeerConnections', () => {
@@ -3589,13 +3576,6 @@ describe('plugin-meetings', () => {
             assert.deepEqual(meeting.partner, {person: {sipUrl: uuid3}});
             assert.equal(meeting.sipUri, uuid3);
           });
-        });
-      });
-      describe('#setRoapSeq', () => {
-        it('should set the roap seq and return null', () => {
-          assert.equal(-1, meeting.roapSeq);
-          meeting.setRoapSeq(1);
-          assert.equal(meeting.roapSeq, 1);
         });
       });
       describe('#setCorrelationId', () => {

@@ -2,6 +2,7 @@ import 'jsdom-global/register';
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
+import {MediaConnection as MC} from '@webex/internal-media-core';
 
 import {StatsAnalyzer, EVENTS} from '../../../../src/statsAnalyzer';
 import NetworkQualityMonitor from '../../../../src/networkQualityMonitor';
@@ -130,30 +131,26 @@ describe('plugin-meetings', () => {
         };
 
         pc = {
-          audioTransceiver: {
-            sender: {
-              getStats: sinon.stub().resolves([fakeStats.audio.sender])
+          getConnectionState: sinon.stub().returns(MC.ConnectionState.CONNECTED),
+          getTransceiverStats: sinon.stub().resolves({
+            audio: {
+              sender: [fakeStats.audio.sender],
+              receiver: [fakeStats.audio.receiver],
+              currentDirection: 'sendrecv',
+              localTrackLabel: 'fake mic',
             },
-            receiver: {
-              getStats: sinon.stub().resolves([fakeStats.audio.receiver])
+            video: {
+              sender: [fakeStats.video.sender],
+              receiver: [fakeStats.video.receiver],
+              currentDirection: 'sendrecv',
+              localTrackLabel: 'fake camera',
             },
-          },
-          videoTransceiver: {
-            sender: {
-              getStats: sinon.stub().resolves([fakeStats.video.sender])
-            },
-            receiver: {
-              getStats: sinon.stub().resolves([fakeStats.video.receiver])
-            },
-          },
-          shareTransceiver: {
-            sender: {
-              getStats: sinon.stub().resolves([])
-            },
-            receiver: {
-              getStats: sinon.stub().resolves([])
-            },
-          }
+            screenShareVideo: {
+              sender: [],
+              receiver: [],
+              currentDirection: 'sendrecv'
+            }
+          })
         };
 
         networkQualityMonitor = new NetworkQualityMonitor(initialConfig);

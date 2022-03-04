@@ -1,10 +1,8 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import TurnDiscovery from '@webex/plugin-meetings/src/roap/turnDiscovery';
-import {ROAP} from '@webex/plugin-meetings/src/constants';
 
 import RoapRequest from '@webex/plugin-meetings/src/roap/request';
-import RoapHandler from '@webex/plugin-meetings/src/roap/handler';
 import Roap from '@webex/plugin-meetings/src/roap/';
 
 describe('Roap', () => {
@@ -37,7 +35,6 @@ describe('Roap', () => {
 
   describe('sendRoapMediaRequest', () => {
     let sendRoapStub;
-    let roapHandlerSubmitStub;
 
     const meeting = {
       id: 'some meeting id',
@@ -52,7 +49,6 @@ describe('Roap', () => {
 
     beforeEach(() => {
       sendRoapStub = sinon.stub(RoapRequest.prototype, 'sendRoap').resolves({});
-      roapHandlerSubmitStub = sinon.stub(RoapHandler.prototype, 'submit');
       meeting.setRoapSeq.resetHistory();
     });
 
@@ -72,7 +68,11 @@ describe('Roap', () => {
         const roap = new Roap({}, {parent: 'fake'});
 
         await roap.sendRoapMediaRequest({
-          meeting, sdp: 'sdp', reconnect, roapSeq: 1
+          meeting,
+          sdp: 'sdp',
+          reconnect,
+          seq: 2,
+          tieBreaker: 4294967294,
         });
 
         const expectedRoapMessage = {
@@ -91,23 +91,9 @@ describe('Roap', () => {
           mediaId: expectEmptyMediaId ? '' : meeting.mediaId,
           audioMuted: meeting.isAudioMuted(),
           videoMuted: meeting.isVideoMuted(),
-          meetingId: meeting.id
+          meetingId: meeting.id,
         });
-
-        assert.calledTwice(roapHandlerSubmitStub);
-        assert.calledWith(roapHandlerSubmitStub, {
-          type: ROAP.SEND_ROAP_MSG,
-          msg: expectedRoapMessage,
-          correlationId: meeting.correlationId
-        });
-        assert.calledWith(roapHandlerSubmitStub, {
-          type: ROAP.SEND_ROAP_MSG_SUCCESS,
-          seq: 2,
-          correlationId: meeting.correlationId
-        });
-
-        assert.calledOnce(meeting.setRoapSeq);
-        assert.calledWith(meeting.setRoapSeq, 2);
-      }));
+      })
+    );
   });
 });

@@ -3,16 +3,16 @@
  */
 /* globals navigator */
 
+import {MediaConnection as MC} from '@webex/internal-media-core';
+
 import LoggerProxy from '../common/logs/logger-proxy';
 import {
   AUDIO_INPUT,
   VIDEO_INPUT,
-  PEER_CONNECTION_STATE,
-  MEDIA_TRACK_CONSTRAINT
+  MEDIA_TRACK_CONSTRAINT,
 } from '../constants';
 import Config from '../config';
-import PeerConnectionManager from '../peer-connection-manager';
-import ReconnectionError from '../common/errors/reconnection';
+import StaticConfig from '../common/config';
 import MediaError from '../common/errors/media';
 import BrowserDetection from '../common/browser-detection';
 
@@ -62,32 +62,6 @@ Media.setLocalTrack = (enabled, track) => {
   }
 
   return false;
-};
-
-/**
- * @param {RTCPeerConnection} peerConnection
- * @param {Object} meetingProperties
- * @param {string} meetingProperties.meetingId
- * @param {string} meetingProperties.remoteQualityLevel LOW|MEDIUM|HIGH
- * @returns {Promise}
- */
-Media.reconnectMedia = (peerConnection, {
-  meetingId,
-  remoteQualityLevel,
-  enableRtx,
-  enableExtmap
-}) => {
-  if (peerConnection.connectionState === PEER_CONNECTION_STATE.CLOSED ||
-    peerConnection.connectionState === PEER_CONNECTION_STATE.FAILED) {
-    return Promise.reject(new ReconnectionError('Reinitiate peerconnection'));
-  }
-
-  return PeerConnectionManager.createOffer(peerConnection, {
-    meetingId,
-    remoteQualityLevel,
-    enableRtx,
-    enableExtmap
-  });
 };
 
 /**
@@ -141,187 +115,74 @@ Media.getLocalMedia = (options, config) => {
 
   return Promise.resolve(undefined);
 };
+
 /**
- * Returns the direction and tracks
- * @param {string} trackType type of track (audio/video)
- * @param {object}  track  tracks passed
- * @param {boolean} receiveTracks do you want to receive tracks from the remote side
- * @returns {Object} returns direction tracks to be added in transceiver
- */
-Media.checkTracks = (trackType, track, receiveTracks) => {
-  const getDirection = (sendTracks, receiveTracks) => {
-    if (sendTracks && receiveTracks) {
-      return 'sendrecv';
-    } if (sendTracks && !receiveTracks) {
-      return 'sendonly';
-    } if (!sendTracks && receiveTracks) {
-      return 'recvonly';
-    }
-
-    return 'inactive';
-  };
-
-  if (track) {
-    return {track, direction: getDirection(!!track, receiveTracks)};
-  }
-
-  return {track: trackType, direction: getDirection(!!track, receiveTracks)};
-};
-/**
- * creates peerconnection and attaches streams
+ * creates a webrtc media connection with provided tracks and mediaDirection configuration
  * @param {MediaDirection} mediaProperties
- * @param {Object} meetingProperties
- * @param {string} meetingProperties.meetingId
- * @param {string} meetingProperties.remoteQualityLevel LOW|MEDIUM|HIGH
- * @returns {Array} [peerConnection, ]
+ * @param {Object} meetingProperties contains mediaDirection and local tracks: audioTrack, videoTrack and shareTrack
+ * @param {string} meetingId
+ * @param {string} remoteQualityLevel LOW|MEDIUM|HIGH
+ * @param {boolean} enableRtx
+ * @param {boolean} enableExtmap
+ * @returns {MC.RoapMediaConnection}
  */
-Media.attachMedia = (mediaProperties, {
-  meetingId,
+Media.createMediaConnection = (mediaProperties, {
+  // meetingId, // todo: use this unused param - it used to be used for sending metrics (check if we're sending all the right metrics now)
   remoteQualityLevel,
   enableRtx,
-  enableExtmap
+  enableExtmap,
+  turnServerInfo
 }) => {
   const {
     mediaDirection,
     audioTrack,
     videoTrack,
-    shareTrack,
-    peerConnection
+    shareTrack
   } = mediaProperties;
 
-  let result = null;
+  const iceServers = [];
 
-  // Add Transceiver for audio
-  result = Media.checkTracks('audio', mediaDirection.sendAudio && audioTrack, mediaDirection.receiveAudio);
-  peerConnection.audioTransceiver = peerConnection.addTransceiver(result.track, {direction: result.direction});
+  if (turnServerInfo) {
+    iceServers.push({
+      urls: turnServerInfo.url,
+      username: turnServerInfo.username || '',
+      credential: turnServerInfo.password || ''
+    });
+  }
 
-  // Add Transceiver for video
-  result = Media.checkTracks('video', mediaDirection.sendVideo && videoTrack, mediaDirection.receiveVideo);
-  peerConnection.videoTransceiver = peerConnection.addTransceiver(result.track, {direction: result.direction});
-
-  // Add Transceiver for share
-  result = Media.checkTracks('video', mediaDirection.sendShare && shareTrack, mediaDirection.receiveShare);
-  peerConnection.shareTransceiver = peerConnection.addTransceiver(result.track, {direction: result.direction});
-
-  peerConnection.onnegotiationneeded = (event) => {
-    LoggerProxy.logger.info(`Media:index#attachMedia --> onnegotiationneeded#PeerConnection: ${event}`);
-  };
-
-  return PeerConnectionManager.createOffer(peerConnection, {
-    meetingId,
-    remoteQualityLevel,
-    enableRtx,
-    enableExtmap
-  });
-};
-
-/**
- * updates all the media streams and creates a new media offer
- * @param {MediaDirection} mediaProperties
- * @param {Object} meetingProperties
- * @param {string} meetingProperties.meetingId
- * @param {string} meetingProperties.remoteQualityLevel LOW|MEDIUM|HIGH
- * @returns {Promise}
- */
-Media.updateMedia = (mediaProperties, {
-  meetingId,
-  remoteQualityLevel,
-  enableRtx,
-  enableExtmap
-}) => {
-  const {
-    mediaDirection,
-    audioTrack,
-    videoTrack,
-    shareTrack,
-    peerConnection
-  } = mediaProperties;
-
-  // update audio transceiver
-  Media.setTrackOnTransceiver(peerConnection.audioTransceiver, {
-    type: 'audio',
-    track: audioTrack,
-    sendTrack: mediaDirection.sendAudio && audioTrack,
-    receiveTrack: mediaDirection.receiveAudio
-  });
-
-  // update video transceiver
-  Media.setTrackOnTransceiver(peerConnection.videoTransceiver, {
-    type: 'video',
-    track: videoTrack,
-    sendTrack: mediaDirection.sendVideo && videoTrack,
-    receiveTrack: mediaDirection.receiveVideo
-  });
-
-  // update content transceiver
-  Media.setTrackOnTransceiver(peerConnection.shareTransceiver, {
-    type: 'video',
-    track: shareTrack,
-    sendTrack: mediaDirection.sendShare && shareTrack,
-    receiveTrack: mediaDirection.receiveShare
-  });
-  peerConnection.onnegotiationneeded = (event) => {
-    LoggerProxy.logger.info(`Media:index#updateMedia --> onnegotiationneeded#PeerConnection: ${event}`);
-  };
-
-  return PeerConnectionManager.createOffer(peerConnection, {
-    meetingId,
-    remoteQualityLevel,
-    enableRtx,
-    enableExtmap
-  });
-};
-
-/**
- * @param {RTCRtpTransceiver} transceiver
- * @param {Object} options
- * @param {MediaStreamTrack} options.track
- * @returns {undefined}
- */
-Media.setTrackOnTransceiver = (transceiver, options) => {
-  const {
-    type, track, sendTrack, receiveTrack
-  } = options;
-
-  try {
-    const result = Media.checkTracks(type, sendTrack && track, receiveTrack);
-
-    transceiver.direction = result.direction;
-    if (options.track) {
-      transceiver.sender.replaceTrack(track);
+  const mc = new MC.RoapMediaConnection({
+    iceServers,
+    skipInactiveTransceivers: false,
+    requireH264: true,
+    sdpMunging: {
+      convertPort9to0: false,
+      addContentSlides: true,
+      bandwidthLimits: {
+        audio: StaticConfig.meetings.bandwidth.audio,
+        video: StaticConfig.meetings.bandwidth.video,
+      },
+      startBitrate: StaticConfig.meetings.bandwidth.startBitrate,
+      periodicKeyframes: 20, // it's always been hardcoded in SDK so for now keeping it that way
+      disableExtmap: !enableExtmap,
+      disableRtx: !enableRtx, // see https://bugs.chromium.org/p/chromium/issues/detail?id=1020642 why we might want to remove RTX from SDP
     }
-  }
-  catch (e) {
-    LoggerProxy.logger.error(`Media:index#setTrackOnTransceiver --> ${e}`);
-    throw e;
-  }
+  }, {
+    send: {
+      audio: audioTrack,
+      video: videoTrack,
+      screenShareVideo: shareTrack
+    },
+    receive: {
+      audio: mediaDirection.receiveAudio,
+      video: mediaDirection.receiveVideo,
+      screenShareVideo: mediaDirection.receiveShare,
+      remoteQualityLevel
+    }
+  }, 'mc');
+
+  return mc;
 };
 
-/**
- * creates a new offer
- * @param {Object} meetingProperties
- * @param {string} meetingProperties.meetingId
- * @param {string} meetingProperties.remoteQualityLevel LOW|MEDIUM|HIGH
- * @param {RTCPeerConnection} peerConnection
- * @param {RTCRtpTransceiver} transceiver
- * @param {Object} options see #Media.setTrackOnTransceiver
- * @returns {Promise}
- */
-Media.updateTransceiver = ({
-  meetingId,
-  remoteQualityLevel,
-  enableRtx,
-  enableExtmap
-}, peerConnection, transceiver, options) => {
-  Media.setTrackOnTransceiver(transceiver, options);
-
-  return PeerConnectionManager.createOffer(peerConnection, {
-    meetingId,
-    remoteQualityLevel,
-    enableRtx,
-    enableExtmap
-  });
-};
 
 /**
  * generates share streams

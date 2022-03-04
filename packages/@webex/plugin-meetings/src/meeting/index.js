@@ -1,7 +1,7 @@
 import uuid from 'uuid';
 import {cloneDeep, isEqual, pick} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
-import {Media as WebRTCMedia} from '@webex/internal-media-core';
+import {Media as WebRTCMedia, MediaConnection as MC} from '@webex/internal-media-core';
 
 import {
   MeetingNotActiveError, createMeetingsError, UserInLobbyError,
@@ -18,9 +18,8 @@ import MeetingStateMachine from '../meeting/state';
 import createMuteState from '../meeting/muteState';
 import createEffectsState from '../meeting/effectsState';
 import LocusInfo from '../locus-info';
-import PeerConnectionManager from '../peer-connection-manager';
 import Metrics from '../metrics';
-import {trigger, mediaType, eventType} from '../metrics/config';
+import {trigger, mediaType, error as MetricsError, eventType} from '../metrics/config';
 import ReconnectionManager from '../reconnection-manager';
 import MeetingRequest from '../meeting/request';
 import Members from '../members/index';
@@ -36,7 +35,6 @@ import {
   _INCOMING_,
   _JOIN_,
   AUDIO,
-  CONNECTION_STATE,
   CONTENT,
   ENDED,
   EVENT_TRIGGERS,
@@ -45,7 +43,6 @@ import {
   FLOOR_ACTION,
   FULL_STATE,
   LAYOUT_TYPES,
-  LIVE,
   LOCUSINFO,
   MEETING_INFO_FAILURE_REASON,
   MEETING_REMOVED_REASON,
@@ -62,9 +59,6 @@ import {
   PSTN_STATUS,
   QUALITY_LEVELS,
   RECORDING_STATE,
-  ROAP_SEQ_PRE,
-  SDP,
-  SENDRECV,
   SHARE_STATUS,
   SHARE_STOPPED_REASON,
   VIDEO_RESOLUTIONS,
@@ -77,7 +71,6 @@ import ParameterError from '../common/errors/parameter';
 import MediaError from '../common/errors/media';
 import {MeetingInfoV2PasswordError, MeetingInfoV2CaptchaError} from '../meeting-info/meeting-info-v2';
 import BrowserDetection from '../common/browser-detection';
-import RoapCollection from '../roap/collection';
 
 import InMeetingActions from './in-meeting-actions';
 
@@ -470,15 +463,6 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.deviceUrl = attrs.deviceUrl;
     /**
-     * @description set you -1 as default values is 0 (used to idenfify if 1st roap request was sent)
-     * @instance
-     * @type {Number}
-     * @readonly
-     * @private
-     * @memberof Meeting
-     */
-    this.roapSeq = ROAP_SEQ_PRE;
-    /**
      * @instance
      * @type {Object}
      * @readonly
@@ -502,6 +486,16 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.roap = new Roap({}, {parent: this.webex});
+    /**
+     * indicates if an SDP exchange is happening
+     *
+     * @instance
+     * @type {Boolean}
+     * @readonly
+     * @private
+     * @memberof Meeting
+     */
+    this.isRoapInProgress = false;
     /**
      * created later
      * @instance
@@ -696,29 +690,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.shareStatus = SHARE_STATUS.NO_SHARE;
-    /**
-     * @instance
-     * @type {Boolean}
-     * @readonly
-     * @private
-     * @memberof Meeting
-     */
-    Object.defineProperty(this, 'isLocalShareLive', {
-      get: () => {
-        const {shareTransceiver} = this.mediaProperties.peerConnection;
-        const shareDirection = shareTransceiver?.direction;
-        const trackReadyState = shareTransceiver?.sender?.track?.readyState;
-        const activeShare = trackReadyState === LIVE;
-        const offersToSendData = shareDirection === SENDRECV;
 
-        if (activeShare && offersToSendData) {
-          return true;
-        }
-
-        return false;
-      },
-      configurable: true
-    });
     /**
      * @instance
      * @type {Array}
@@ -2422,19 +2394,6 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Set the roap seq on the class instance
-   * @param {Number} seq
-   * @returns {undefined}
-   * @private
-   * @memberof Meeting
-   */
-  setRoapSeq(seq) {
-    if (seq >= 0) {
-      this.roapSeq = seq;
-    }
-  }
-
-  /**
    * Set the locus info the class instance
    * @param {Object} locus
    * @param {Array} locus.mediaConnections
@@ -2459,111 +2418,6 @@ export default class Meeting extends StatelessWebexPlugin {
     this.mediaId = locus.mediaId;
     this.hostId = mtgLocus.host ? mtgLocus.host.id : this.hostId;
     this.locusInfo.initialSetup(mtgLocus);
-  }
-
-  /**
-   * Sets the remote stream on the class instance and emits and
-   * event to developers
-   * @param {Object} pc The remote stream peer connection
-   * @returns {undefined}
-   * @public
-   * @memberof Meeting
-   */
-  setRemoteStream(pc) {
-    if (!pc) {
-      return;
-    }
-    // eslint-disable-next-line no-param-reassign
-    pc.ontrack = (event) => {
-      // eslint-disable-next-line no-warning-comments
-      // TODO: It's possible for media to not be present
-      // so we might need to either
-      // A) wait until we have media flowing
-      // B) trigger a second event when video is flowing
-      LoggerProxy.logger.log(`Meeting:index#setRemoteStream --> ontrack event received for peerConnection: ${event}`);
-
-      const MEDIA_ID = {
-        AUDIO_TRACK: '0',
-        VIDEO_TRACK: '1',
-        SHARE_TRACK: '2'
-      };
-      let eventType = null;
-      const mediaTrack = event.track;
-      let trackMediaID = null;
-
-
-      // In case of safari some time the transceiver is not present for specific os version
-      // sdk tries to determine the transceive using the track id present
-      if (event.transceiver && event.transceiver.mid) {
-        trackMediaID = event.transceiver.mid;
-      }
-      else {
-        const {audioTransceiver, videoTransceiver, shareTransceiver} = event.target;
-
-        // audio kind indicates its a audio stream
-        if (mediaTrack.id === audioTransceiver.receiver.track.id) {
-          trackMediaID = '0';
-        }
-        else
-        if (mediaTrack.id === videoTransceiver.receiver.track.id) {
-          trackMediaID = '1';
-        }
-        else
-        if (mediaTrack.id === shareTransceiver.receiver.track.id) {
-          trackMediaID = '2';
-        }
-        else {
-          trackMediaID = null;
-          Metrics.sendBehavioralMetric(
-            BEHAVIORAL_METRICS.MUTE_AUDIO_FAILURE,
-            {
-              correlation_id: this.correlationId,
-              locus_id: this.locusUrl.split('/').pop()
-            }
-          );
-        }
-      }
-
-
-      switch (trackMediaID) {
-        case MEDIA_ID.AUDIO_TRACK:
-          eventType = EVENT_TYPES.REMOTE_AUDIO;
-          this.mediaProperties.setRemoteAudioTrack(mediaTrack);
-          break;
-        case MEDIA_ID.VIDEO_TRACK:
-          eventType = EVENT_TYPES.REMOTE_VIDEO;
-          this.mediaProperties.setRemoteVideoTrack(mediaTrack);
-          break;
-        case MEDIA_ID.SHARE_TRACK:
-          if (event.track) {
-            eventType = EVENT_TYPES.REMOTE_SHARE;
-            this.mediaProperties.setRemoteShare(mediaTrack);
-          }
-          break;
-        default: {
-          LoggerProxy.logger.log('Meeting:index#setRemoteStream --> no matching media track id');
-        }
-      }
-
-      // start stats here the stats are coming null if you dont receive streams
-
-      this.statsAnalyzer.startAnalyzer(this.mediaProperties.peerConnection);
-
-      if (eventType && mediaTrack) {
-        Trigger.trigger(
-          this,
-          {
-            file: 'meeting/index',
-            function: 'setRemoteStream:pc.ontrack'
-          },
-          EVENT_TRIGGERS.MEDIA_READY,
-          {
-            type: eventType,
-            stream: MediaUtil.createMediaStream([mediaTrack])
-          }
-        );
-      }
-    };
   }
 
   /**
@@ -2951,20 +2805,22 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Close the peer connections and remove them from the class. Triggers an event
-   * when each is closed.
-   * @returns {Promise} returns a resolved promise with an array of closed peer connections
+   * Close the peer connections and remove them from the class.
+   * @returns {Promise}
    * @public
    * @memberof Meeting
    */
   closePeerConnections() {
-    return PeerConnectionManager.close(this.mediaProperties.peerConnection);
+    if (this.mediaProperties.webrtcMediaConnection) {
+      this.mediaProperties.webrtcMediaConnection.close();
+    }
+
+    return Promise.resolve();
   }
 
   /**
    * Unsets the peer connections on the class
    * warning DO NOT CALL WITHOUT CLOSING PEER CONNECTIONS FIRST
-   * @param {PeerConnection} peerConnection
    * @returns {undefined}
    * @public
    * @memberof Meeting
@@ -4088,6 +3944,194 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   getDevices = () => Media.getDevices();
 
+  setupMediaConnectionListeners = () => {
+    this.mediaProperties.webrtcMediaConnection.on(MC.Event.ROAP_STARTED, () => {
+      this.isRoapInProgress = true;
+    });
+    this.mediaProperties.webrtcMediaConnection.on(MC.Event.ROAP_DONE, () => {
+      this.mediaNegotiatedEvent();
+      this.isRoapInProgress = false;
+      this.processNextQueuedMediaUpdate();
+    });
+    this.mediaProperties.webrtcMediaConnection.on(MC.Event.ROAP_MESSAGE_TO_SEND, (event) => {
+      const LOG_HEADER = 'Meeting:index#setupMediaConnectionListeners.ROAP_MESSAGE_TO_SEND -->';
+
+      switch (event.roapMessage.messageType) {
+        case 'OK':
+          logRequest(this.roap.sendRoapOK({
+            seq: event.roapMessage.seq,
+            mediaId: this.mediaId,
+            correlationId: this.correlationId
+          }), {
+            header: `${LOG_HEADER} Send Roap OK`,
+            success: `${LOG_HEADER} Successfully send roap OK`,
+            failure: `${LOG_HEADER} Error joining the call on send roap OK, `
+          });
+          break;
+
+        case 'OFFER':
+          logRequest(this.roap
+            .sendRoapMediaRequest({
+              sdp: event.roapMessage.sdp,
+              seq: event.roapMessage.seq,
+              tieBreaker: event.roapMessage.tieBreaker,
+              meeting: this, // or can pass meeting ID
+              reconnect: this.reconnectionManager.isReconnectInProgress()
+            }), {
+            header: `${LOG_HEADER} Send Roap Offer`,
+            success: `${LOG_HEADER} Successfully send roap offer`,
+            failure: `${LOG_HEADER} Error joining the call on send roap offer, `
+          });
+          break;
+
+        case 'ANSWER':
+          logRequest(this.roap.sendRoapAnswer({
+            sdp: event.roapMessage.sdp,
+            seq: event.roapMessage.seq,
+            mediaId: this.mediaId,
+            correlationId: this.correlationId
+          }), {
+            header: `${LOG_HEADER} Send Roap Answer.`,
+            success: `${LOG_HEADER} Successfully send roap answer`,
+            failure: `${LOG_HEADER} Error joining the call on send roap answer, `
+          });
+          break;
+
+        case 'ERROR':
+          logRequest(this.roap.sendRoapError({
+            seq: event.roapMessage.seq,
+            errorType: event.roapMessage.errorType,
+            mediaId: this.mediaId,
+            correlationId: this.correlationId
+          }), {
+            header: `${LOG_HEADER} Send Roap Answer.`,
+            success: `${LOG_HEADER} Successfully send roap answer`,
+            failure: `${LOG_HEADER} Error joining the call on send roap answer, `
+          });
+          break;
+
+        default:
+          LoggerProxy.logger.error(`${LOG_HEADER} Unsupported message type: ${event.roapMessage.messageType}`);
+          break;
+      }
+    });
+
+    // eslint-disable-next-line no-param-reassign
+    this.mediaProperties.webrtcMediaConnection.on(MC.Event.REMOTE_TRACK_ADDED, (event) => {
+      LoggerProxy.logger.log(`Meeting:index#setupMediaConnectionListeners --> REMOTE_TRACK_ADDED event received for webrtcMediaConnection: ${JSON.stringify(event)}`);
+
+      const mediaTrack = event.track;
+
+      let eventType;
+
+      switch (event.type) {
+        case MC.RemoteTrackType.AUDIO:
+          eventType = EVENT_TYPES.REMOTE_AUDIO;
+          this.mediaProperties.setRemoteAudioTrack(event.track);
+          break;
+        case MC.RemoteTrackType.VIDEO:
+          eventType = EVENT_TYPES.REMOTE_VIDEO;
+          this.mediaProperties.setRemoteVideoTrack(event.track);
+          break;
+        case MC.RemoteTrackType.SCREENSHARE_VIDEO:
+          if (event.track) {
+            eventType = EVENT_TYPES.REMOTE_SHARE;
+            this.mediaProperties.setRemoteShare(event.track);
+          }
+          break;
+        default: {
+          LoggerProxy.logger.log('Meeting:index#setupMediaConnectionListeners --> unexpected track');
+        }
+      }
+
+      // start stats here the stats are coming null if you dont receive streams
+
+      this.statsAnalyzer.startAnalyzer(this.mediaProperties.webrtcMediaConnection);
+
+      if (eventType && mediaTrack) {
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setupRemoteTrackListener:Event.REMOTE_TRACK_ADDED'
+          },
+          EVENT_TRIGGERS.MEDIA_READY,
+          {
+            type: eventType,
+            stream: MediaUtil.createMediaStream([mediaTrack])
+          }
+        );
+      }
+    });
+
+    this.mediaProperties.webrtcMediaConnection.on(MC.Event.CONNECTION_STATE_CHANGED, (event) => {
+      const connectionFailed = () => {
+        // we know the media connection failed and browser will not attempt to recover it any more
+        // so reset the timer as it's not needed anymore, we want to reconnect immediately
+        this.reconnectionManager.resetReconnectionTimer();
+
+        this.reconnect({networkDisconnect: true});
+        Metrics.postEvent({
+          event: eventType.ICE_END,
+          meeting: this,
+          data: {
+            canProceed: false,
+            errors: [
+              Metrics.generateErrorPayload(
+                2004, false, MetricsError.name.MEDIA_ENGINE
+              )]
+          }
+        });
+
+        this.uploadLogs({
+          file: 'peer-connection-manager/index',
+          function: 'connectionFailed'
+        });
+
+        Metrics.sendBehavioralMetric(
+          BEHAVIORAL_METRICS.CONNECTION_FAILURE,
+          {
+            correlation_id: this.correlationId,
+            locus_id: this.locusId
+          }
+        );
+      };
+
+      LoggerProxy.logger.info(`Meeting:index#setupMediaConnectionListeners --> connection state changed to ${event.state}`);
+      switch (event.state) {
+        case MC.ConnectionState.CONNECTING:
+          Metrics.postEvent({event: eventType.ICE_START, meeting: this});
+          break;
+        case MC.ConnectionState.CONNECTED:
+          Metrics.postEvent({event: eventType.ICE_END, meeting: this});
+          Metrics.sendBehavioralMetric(
+            BEHAVIORAL_METRICS.CONNECTION_SUCCESS,
+            {
+              correlation_id: this.correlationId,
+              locus_id: this.locusId
+            }
+          );
+          this.setNetworkStatus(NETWORK_STATUS.CONNECTED);
+          this.reconnectionManager.iceReconnected();
+          break;
+        case MC.ConnectionState.DISCONNECTED:
+          this.setNetworkStatus(NETWORK_STATUS.DISCONNECTED);
+          this.reconnectionManager.waitForIceReconnect()
+            .catch(() => {
+              LoggerProxy.logger.info('Meeting:index#setupMediaConnectionListeners --> state DISCONNECTED, automatic reconnection timed out.');
+
+              connectionFailed();
+            });
+          break;
+        case MC.ConnectionState.FAILED:
+          connectionFailed();
+          break;
+        default:
+          break;
+      }
+    });
+  };
+
   /**
    * Registers for all required StatsAnalyzer events
    * @private
@@ -4157,6 +4201,21 @@ export default class Meeting extends StatelessWebexPlugin {
     });
   };
 
+  createMediaConnection(turnServerInfo) {
+    const mc = Media.createMediaConnection(this.mediaProperties, {
+      meetingId: this.id,
+      remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
+      enableRtx: this.config.enableRtx,
+      enableExtmap: this.config.enableExtmap,
+      turnServerInfo
+    });
+
+    this.mediaProperties.setMediaPeerConnection(mc);
+    this.setupMediaConnectionListeners();
+
+    return mc;
+  }
+
   /**
    * Specify joining via audio (option: pstn), video, screenshare
    * @param {Object} options A configurable options object for joining a meeting
@@ -4213,143 +4272,127 @@ export default class Meeting extends StatelessWebexPlugin {
     return MeetingUtil.validateOptions(options)
       .then(() => this.roap.doTurnDiscovery(this, false))
       .then((turnServerInfo) => {
-        this.mediaProperties.setMediaPeerConnection(MediaUtil.createPeerConnection(turnServerInfo));
+        this.preMedia(localStream, localShare, mediaSettings);
+
+        const mc = this.createMediaConnection(turnServerInfo);
+
+        return mc.initiateOffer();
+      })
+      .then(() => {
         this.setMercuryListener();
-        PeerConnectionManager.setPeerConnectionEvents(this);
-
-        return this.preMedia(localStream, localShare, mediaSettings);
       })
-      .then(() => Media.attachMedia(this.mediaProperties, {
-        meetingId: this.id,
-        remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
-        enableRtx: this.config.enableRtx,
-        enableExtmap: this.config.enableExtmap,
-        setStartLocalSDPGenRemoteSDPRecvDelay: this.setStartLocalSDPGenRemoteSDPRecvDelay.bind(this)
+      .then(() => this.getDevices().then((devices) => {
+        MeetingUtil.handleDeviceLogging(devices);
+      }))
+      .then(() => {
+        this.handleMediaLogging(this.mediaProperties);
+        LoggerProxy.logger.info(`${LOG_HEADER} media connection created`);
+
+        if (this.config.stats.enableStatsAnalyzer) {
+          // TODO: ** Dont re create StatsAnalyzer on reconnect or rejoin  // todo: check if this comment is still relevant
+          this.networkQualityMonitor = new NetworkQualityMonitor(this.config.stats);
+          this.statsAnalyzer = new StatsAnalyzer(this.config.stats, this.networkQualityMonitor);
+          this.setupStatsAnalyzerEventHandlers();
+          this.networkQualityMonitor.on(EVENT_TRIGGERS.NETWORK_QUALITY, this.sendNetworkQualityEvent.bind(this));
+        }
       })
-        .then((peerConnection) => this.getDevices().then((devices) => {
-          MeetingUtil.handleDeviceLogging(devices);
+      .catch((error) => {
+        LoggerProxy.logger.error(`${LOG_HEADER} Error adding media , setting up peerconnection, `, error);
 
-          return peerConnection;
-        }))
-        .then((peerConnection) => {
-          this.handleMediaLogging(this.mediaProperties);
-          LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection Received from attachMedia `);
-
-          this.setRemoteStream(peerConnection);
-          if (this.config.stats.enableStatsAnalyzer) {
-            // TODO: ** Dont re create StatsAnalyzer on reconnect or rejoin
-            this.networkQualityMonitor = new NetworkQualityMonitor(this.config.stats);
-            this.statsAnalyzer = new StatsAnalyzer(this.config.stats, this.networkQualityMonitor);
-            this.setupStatsAnalyzerEventHandlers();
-            this.networkQualityMonitor.on(EVENT_TRIGGERS.NETWORK_QUALITY, this.sendNetworkQualityEvent.bind(this));
+        Metrics.sendBehavioralMetric(
+          BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
+          {
+            correlation_id: this.correlationId,
+            locus_id: this.locusUrl.split('/').pop(),
+            reason: error.message,
+            stack: error.stack
           }
-        })
-        .catch((error) => {
-          LoggerProxy.logger.error(`${LOG_HEADER} Error adding media , setting up peerconnection, `, error);
+        );
 
-          Metrics.sendBehavioralMetric(
-            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
-            {
-              correlation_id: this.correlationId,
-              locus_id: this.locusUrl.split('/').pop(),
-              reason: error.message,
-              stack: error.stack
-            }
-          );
+        throw error;
+      })
+      .then(() => new Promise((resolve, reject) => {
+        let timerCount = 0;
 
-          throw error;
-        })
-        .then(() => new Promise((resolve, reject) => {
-          let timerCount = 0;
-
-          // eslint-disable-next-line func-names
-          // eslint-disable-next-line prefer-arrow-callback
-          if (this.type === _CALL_) {
+        // eslint-disable-next-line func-names
+        // eslint-disable-next-line prefer-arrow-callback
+        if (this.type === _CALL_) {
+          resolve();
+        }
+        const joiningTimer = setInterval(() => {
+          timerCount += 1;
+          if (this.meetingState === FULL_STATE.ACTIVE) {
+            clearInterval(joiningTimer);
             resolve();
           }
-          const joiningTimer = setInterval(() => {
-            timerCount += 1;
-            if (this.meetingState === FULL_STATE.ACTIVE) {
-              clearInterval(joiningTimer);
+
+          if (timerCount === 4) {
+            clearInterval(joiningTimer);
+            reject(new Error('Meeting is still not active '));
+          }
+        }, 1000);
+      }))
+      .then(() => {
+        const {webrtcMediaConnection} = this.mediaProperties;
+
+        return new Promise((resolve, reject) => {
+          const connState = webrtcMediaConnection.getConnectionState();
+
+          if (connState === MC.ConnectionState.CONNECTED) {
+            LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection CONNECTED`);
+
+            resolve();
+
+            return;
+          }
+          // Check if Peer Connection is STABLE (connected)
+          const stabilityTimeout = setTimeout(() => {
+            if (webrtcMediaConnection.getConnectionState() !== MC.ConnectionState.CONNECTED) {
+              // TODO: Fix this after the error code pr goes in
+              reject(createMeetingsError(30202, 'Meeting connection failed'));
+            }
+            else {
+              LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection CONNECTED`);
               resolve();
             }
+          }, PC_BAIL_TIMEOUT);
 
-            if (timerCount === 4) {
-              clearInterval(joiningTimer);
-              reject(new Error('Meeting is still not active '));
-            }
-          }, 1000);
-        }))
-        .then(() =>
-          logRequest(this.roap
-            .sendRoapMediaRequest({
-              sdp: this.mediaProperties.peerConnection.sdp,
-              roapSeq: this.roapSeq,
-              meeting: this // or can pass meeting ID
-            }), {
-            header: `${LOG_HEADER} Send Roap Media Request.`,
-            success: `${LOG_HEADER} Successfully send roap media request`,
-            failure: `${LOG_HEADER} Error joining the call on send roap media request, `
-          }))
-        .then(() => {
-          const {peerConnection} = this.mediaProperties;
-
-          return new Promise((resolve, reject) => {
-            if (peerConnection.connectionState === CONNECTION_STATE.CONNECTED) {
-              LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection CONNECTED`);
-
-              resolve(peerConnection);
-
-              return;
-            }
-            // Check if Peer Connection is STABLE (connected)
-            const stabilityTimeout = setTimeout(() => {
-              if (peerConnection.connectionState !== CONNECTION_STATE.CONNECTED) {
-                // TODO: Fix this after the error code pr goes in
-                reject(createMeetingsError(30202, 'Meeting connection failed'));
-              }
-              else {
-                LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection CONNECTED`);
-                resolve(peerConnection);
-              }
-            }, PC_BAIL_TIMEOUT);
-
-            this.once(EVENT_TRIGGERS.MEDIA_READY, () => {
-              LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection CONNECTED, clearing stability timer.`);
-              clearTimeout(stabilityTimeout);
-              resolve(peerConnection);
-            });
+          this.once(EVENT_TRIGGERS.MEDIA_READY, () => {
+            LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection CONNECTED, clearing stability timer.`);
+            clearTimeout(stabilityTimeout);
+            resolve();
           });
-        })
-        .then(() => {
-          if (mediaSettings && mediaSettings.sendShare && localShare) {
-            if (this.state === MEETING_STATE.STATES.JOINED) {
-              return this.share();
-            }
-
-            // When the self state changes to JOINED then request the floor
-            this.floorGrantPending = true;
+        });
+      })
+      .then(() => {
+        if (mediaSettings && mediaSettings.sendShare && localShare) {
+          if (this.state === MEETING_STATE.STATES.JOINED) {
+            return this.share();
           }
 
-          Metrics.sendBehavioralMetric(
-            BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS,
-            {
-              correlation_id: this.correlationId,
-              locus_id: this.locusUrl.split('/').pop()
-            }
-          );
+          // When the self state changes to JOINED then request the floor
+          this.floorGrantPending = true;
+        }
 
-          return Promise.resolve();
-        }))
+        Metrics.sendBehavioralMetric(
+          BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS,
+          {
+            correlation_id: this.correlationId,
+            locus_id: this.locusUrl.split('/').pop()
+          }
+        );
+
+        return Promise.resolve();
+      })
       .catch((error) => {
         // Clean up stats analyzer, peer connection, and turn off listeners
         const stopStatsAnalyzer = (this.statsAnalyzer) ? this.statsAnalyzer.stopAnalyzer() : Promise.resolve();
 
-        stopStatsAnalyzer
+        return stopStatsAnalyzer
           .then(() => {
             this.statsAnalyzer = null;
 
-            if (this.mediaProperties.peerConnection) {
+            if (this.mediaProperties.webrtcMediaConnection) {
               this.closePeerConnections();
               this.unsetPeerConnections();
             }
@@ -4395,7 +4438,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Boolean}
    */
   canUpdateMedia() {
-    return this.mediaProperties.peerConnection.signalingState === SDP.STABLE && !RoapCollection.isBusy(this.correlationId);
+    // in theory we shouldn't need this as RoapMediaConnection handles multiple updates, glare, etc,
+    // but there are some server issues, like https://jira-eng-gpk2.cisco.com/jira/browse/WEBEX-248394
+    // so for now it's better to keep queuing any media updates at SDK meeting level
+    return !this.isRoapInProgress;
   }
 
   /**
@@ -4479,7 +4525,6 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {MediaStream} options.localShare
    * @param {MediaDirection} options.mediaSettings
    * @returns {Promise}
-   * @todo fix setRemoteStream for updateMedia
    * @public
    * @memberof Meeting
    */
@@ -4497,18 +4542,21 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return MeetingUtil.validateOptions(options)
       .then(() => this.preMedia(localStream, localShare, mediaSettings))
-      .then(() => Media.updateMedia(this.mediaProperties, {
-        meetingId: this.id,
-        remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
-        enableRtx: this.config.enableRtx,
-        enableExtmap: this.config.enableExtmap,
+      .then(() => this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions({
+        send: {
+          audio: this.mediaProperties.mediaDirection.sendAudio ? this.mediaProperties.audioTrack : null,
+          video: this.mediaProperties.mediaDirection.sendVideo ? this.mediaProperties.videoTrack : null,
+          screenShareVideo: this.mediaProperties.mediaDirection.sendShare ? this.mediaProperties.shareTrack : null
+        },
+        receive: {
+          audio: this.mediaProperties.mediaDirection.receiveAudio,
+          video: this.mediaProperties.mediaDirection.receiveVideo,
+          screenShareVideo: this.mediaProperties.mediaDirection.receiveShare,
+          remoteQualityLevel: this.mediaProperties.remoteQualityLevel
+        }
       })
-        .then((peerConnection) => {
-          LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection received from updateMedia, ${peerConnection}`);
-          this.setRemoteStream(peerConnection);
-          if (mediaSettings.receiveShare || localShare) {
-            PeerConnectionManager.setContentSlides(peerConnection);
-          }
+        .then(() => {
+          LoggerProxy.logger.info(`${LOG_HEADER} webrtcMediaConnection.updateSendReceiveOptions done`);
         })
         .catch((error) => {
           LoggerProxy.logger.error(`${LOG_HEADER} Error updatedMedia, `, error);
@@ -4525,18 +4573,10 @@ export default class Meeting extends StatelessWebexPlugin {
 
           throw error;
         })
-        .then(() =>
-          logRequest(this.roap
-            .sendRoapMediaRequest({
-              sdp: this.mediaProperties.peerConnection.sdp,
-              roapSeq: this.roapSeq,
-              meeting: this, // or can pass meeting ID
-            }),
-          {
-            header: `${LOG_HEADER} sendRoapMediaRequest being sent`,
-            success: `${LOG_HEADER} sendRoadMediaRequest successful`,
-            failure: `${LOG_HEADER} Error updateMedia on send roap media request, `
-          }))
+        // todo: the following code used to be called always after sending the roap message with the new SDP
+        // now it's called independently from the roap message (so might be before it), check if that's OK
+        // if not, ensure it's called after (now it's called after roap message is sent out, but we're not
+        // waiting for sendRoapMediaRequest() to be resolved)
         .then(() => this.checkForStopShare(mediaSettings.sendShare, previousSendShareStatus))
         .then((startShare) => {
           // This is a special case if we do an /floor grant followed by /media
@@ -4564,11 +4604,7 @@ export default class Meeting extends StatelessWebexPlugin {
     if (!this.canUpdateMedia()) {
       return this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.AUDIO, options);
     }
-    const {
-      sendAudio, receiveAudio, stream
-    } = options;
-
-    const {audioTransceiver} = this.mediaProperties.peerConnection;
+    const {sendAudio, receiveAudio, stream} = options;
     let track = MeetingUtil.getTrack(stream).audioTrack;
 
     if (typeof sendAudio !== 'boolean' || typeof receiveAudio !== 'boolean') {
@@ -4586,38 +4622,18 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     return MeetingUtil.validateOptions({sendAudio, localStream: stream})
-      .then(() => {
-        let previousMediaDirection = {};
-
-        if (this.mediaProperties.mediaDirection) {
-          previousMediaDirection = {
-            sendTrack: this.mediaProperties.mediaDirection.sendAudio,
-            receiveTrack: this.mediaProperties.mediaDirection.receiveAudio
-          };
+      .then(() => this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions({
+        send: {audio: track},
+        receive: {
+          audio: options.receiveAudio,
+          video: this.mediaProperties.mediaDirection.receiveVideo,
+          screenShareVideo: this.mediaProperties.mediaDirection.receiveShare,
+          remoteQualityLevel: this.mediaProperties.remoteQualityLevel
         }
-        else {
-          this.mediaProperties.mediaDirection = {};
-        }
-
-        return MeetingUtil.updateTransceiver(
-          {
-            type: 'audio',
-            sendTrack: options.sendAudio,
-            receiveTrack: options.receiveAudio,
-            track,
-            transceiver: audioTransceiver,
-            peerConnection: this.mediaProperties.peerConnection,
-            previousMediaDirection
-          },
-          {
-            mediaProperties: this.mediaProperties,
-            meeting: this,
-            id: this.id
-          }
-        );
-      })
+      }))
       .then(() => {
         this.setLocalAudioTrack(track);
+        // todo: maybe this.mediaProperties.mediaDirection could be removed? it's duplicating stuff from webrtcMediaConnection
         this.mediaProperties.mediaDirection.sendAudio = sendAudio;
         this.mediaProperties.mediaDirection.receiveAudio = receiveAudio;
 
@@ -4641,7 +4657,6 @@ export default class Meeting extends StatelessWebexPlugin {
       return this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.VIDEO, options);
     }
     const {sendVideo, receiveVideo, stream} = options;
-    const {videoTransceiver} = this.mediaProperties.peerConnection;
     const track = MeetingUtil.getTrack(stream).videoTrack;
 
     if (typeof sendVideo !== 'boolean' || typeof receiveVideo !== 'boolean') {
@@ -4649,22 +4664,14 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     return MeetingUtil.validateOptions({sendVideo, localStream: stream})
-      .then(() => MeetingUtil.updateTransceiver({
-        type: 'video',
-        sendTrack: options.sendVideo,
-        receiveTrack: options.receiveVideo,
-        track,
-        transceiver: videoTransceiver,
-        peerConnection: this.mediaProperties.peerConnection,
-        previousMediaDirection: {
-          sendTrack: this.mediaProperties.mediaDirection.sendVideo,
-          receiveTrack: this.mediaProperties.mediaDirection.receiveVideo
+      .then(() => this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions({
+        send: {video: track},
+        receive: {
+          audio: this.mediaProperties.mediaDirection.receiveAudio,
+          video: options.receiveVideo,
+          screenShareVideo: this.mediaProperties.mediaDirection.receiveShare,
+          remoteQualityLevel: this.mediaProperties.remoteQualityLevel
         }
-      },
-      {
-        mediaProperties: this.mediaProperties,
-        meeting: this,
-        id: this.id
       }))
       .then(() => {
         this.setLocalVideoTrack(track);
@@ -4713,7 +4720,6 @@ export default class Meeting extends StatelessWebexPlugin {
       return this.enqueueMediaUpdate(MEDIA_UPDATE_TYPE.SHARE, options);
     }
     const {sendShare, receiveShare, stream} = options;
-    const {shareTransceiver} = this.mediaProperties.peerConnection;
     const track = MeetingUtil.getTrack(stream).videoTrack;
 
     if (typeof sendShare !== 'boolean' || typeof receiveShare !== 'boolean') {
@@ -4725,22 +4731,14 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return MeetingUtil.validateOptions({sendShare, localShare: stream})
       .then(() => this.checkForStopShare(sendShare, previousSendShareStatus))
-      .then((startShare) => MeetingUtil.updateTransceiver({
-        type: 'video',
-        sendTrack: sendShare,
-        receiveTrack: receiveShare,
-        track,
-        transceiver: shareTransceiver,
-        peerConnection: this.mediaProperties.peerConnection,
-        previousMediaDirection: {
-          sendTrack: this.mediaProperties.mediaDirection.sendShare,
-          receiveTrack: this.mediaProperties.mediaDirection.receiveShare
+      .then((startShare) => this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions({
+        send: {screenShareVideo: track},
+        receive: {
+          audio: this.mediaProperties.mediaDirection.receiveAudio,
+          video: this.mediaProperties.mediaDirection.receiveVideo,
+          screenShareVideo: options.receiveShare,
+          remoteQualityLevel: this.mediaProperties.remoteQualityLevel
         }
-      },
-      {
-        mediaProperties: this.mediaProperties,
-        meeting: this,
-        id: this.id
       })
         .then(() => {
           if (startShare) {
@@ -4756,22 +4754,6 @@ export default class Meeting extends StatelessWebexPlugin {
       .catch((error) => {
         this.unsetLocalShareTrack(stream);
         throw error;
-      })
-      .finally(() => {
-        const delay = 1e3;
-        // Check to see if share was stopped natively before onended was assigned.
-        const sharingModeIsActive = this.mediaProperties.peerConnection.shareTransceiver.direction === SENDRECV;
-        const isSharingOutOfSync = sharingModeIsActive && !this.isLocalShareLive;
-
-        if (isSharingOutOfSync) {
-          // Adding a delay to avoid a 409 from server
-          // which results in user still appearing as if sharing.
-          // Also delay give time for changes to peerConnection.
-          setTimeout(
-            () => this.handleShareTrackEnded(stream),
-            delay
-          );
-        }
       });
   }
 

@@ -4,8 +4,6 @@ import {
 } from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import MediaUtil from './util';
-
 /**
  * @class MediaProperties
  */
@@ -17,7 +15,7 @@ export default class MediaProperties {
    * @returns {MediaProperties}
    */
   constructor(options = {}) {
-    this.peerConnection = MediaUtil.createPeerConnection();
+    this.webrtcMediaConnection = null;
     this.mediaDirection = options.mediaDirection;
     this.videoTrack = options.videoTrack;
     this.audioTrack = options.audioTrack;
@@ -47,8 +45,8 @@ export default class MediaProperties {
     this.mediaSettings[type] = values;
   }
 
-  setMediaPeerConnection(peerConnection) {
-    this.peerConnection = peerConnection;
+  setMediaPeerConnection(mediaPeerConnection) {
+    this.webrtcMediaConnection = mediaPeerConnection;
   }
 
   setLocalVideoTrack(videoTrack) {
@@ -103,11 +101,7 @@ export default class MediaProperties {
   }
 
   unsetPeerConnection() {
-    this.peerConnection = null;
-  }
-
-  reInitiatePeerconnection(turnServerInfo) {
-    this.peerConnection = MediaUtil.createPeerConnection(turnServerInfo);
+    this.webrtcMediaConnection = null;
   }
 
   unsetLocalVideoTrack() {

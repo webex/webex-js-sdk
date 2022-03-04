@@ -26,8 +26,6 @@ export const DECLINE = 'decline';
 export const ERROR = 'error';
 export const ENDED = 'ended';
 
-export const OFFER = 'offer';
-
 export const HECATE = 'hecate';
 
 export const HOST = 'host';
@@ -104,7 +102,6 @@ export const _MEETING_ID_ = 'MEETING_ID';
 export const _NOT_IN_MEETING_ = 'NOT_IN_MEETING';
 export const _NONE_ = 'NONE';
 
-export const _OFFER_ = 'OFFER';
 export const _OBSERVE_ = 'OBSERVE';
 
 export const _PERSONAL_ROOM_ = 'PERSONAL_ROOM';
@@ -190,7 +187,6 @@ export const ICE_TIMEOUT = 2000;
 export const ICE_FAIL_TIMEOUT = 3000;
 
 export const RETRY_TIMEOUT = 3000;
-export const ROAP_SEQ_PRE = -1;
 
 export const PC_BAIL_TIMEOUT = 8000;
 
@@ -355,8 +351,6 @@ export const SHARE_STOPPED_REASON = {
 };
 
 export const EVENTS = {
-  ROAP_OK: 'ROAP_OK',
-  ROAP_ANSWER: 'ROAP_ANSWER',
   SELF_UNADMITTED_GUEST: 'SELF_UNADMITTED_GUEST',
   SELF_ADMITTED_GUEST: 'SELF_ADMITTED_GUEST',
   MEDIA_INACTIVITY: 'MEDIA_INACTIVITY',
@@ -794,71 +788,21 @@ export const REACHABILITY = {
 };
 
 export const ROAP = {
-  ROAP_TRANSITIONS: {
-    STEP: 'step'
-  },
   ROAP_TYPES: {
     OFFER: 'OFFER',
     ANSWER: 'ANSWER',
     OK: 'OK',
     ERROR: 'ERROR',
-    SHUTDOWN: 'SHUTDOWN',
-    OFFER_REQUEST: 'OFFER_REQUEST',
     TURN_DISCOVERY_REQUEST: 'TURN_DISCOVERY_REQUEST',
     TURN_DISCOVERY_RESPONSE: 'TURN_DISCOVERY_RESPONSE',
   },
-  ROAP_STATE: {
-    INIT: 'INIT',
-    WAIT_RX_OFFER: 'WAIT_RX_OFFER',
-    WAIT_RX_ANSWER: 'WAIT_RX_ANSWER',
-    WAIT_RX_OK: 'WAIT_RX_OK',
-    WAIT_TX_OFFER: 'WAIT_TX_OFFER',
-    WAIT_TX_ANSWER: 'WAIT_TX_ANSWER',
-    WAIT_TX_OK: 'WAIT_TX_OK',
-    IDLE_LOCAL_OFFER: 'IDLE_LOCAL_OFFER',
-    IDLE_REMOTE_OFFER: 'IDLE_REMOTE_OFFER',
-    GLARE: 'GLARE',
-    ERROR: 'ERROR'
-  },
-  ROAP_SIGNAL: {
-    RX_OFFER: 'RX_OFFER',
-    TX_OFFER: 'TX_OFFER',
-    RX_ANSWER: 'RX_ANSWER',
-    TX_ANSWER: 'TX_ANSWER',
-    RX_OK: 'RX_OK',
-    TX_OK: 'TX_OK',
-    GLARE_RESOLVED: 'GLARE_RESOLVED'
-  },
-  RECEIVE_ROAP_MSG: 'RECEIVE_ROAP_MSG',
-  SEND_ROAP_MSG: 'SEND_ROAP_MSG',
-  SEND_ROAP_MSG_SUCCESS: 'SEND_ROAP_MSG_SUCCESS',
-  RESET_ROAP_STATE: 'RESET_ROAP_STATE',
-  RECEIVE_CALL_LEAVE: 'RECEIVE_CALL_LEAVE',
   ROAP_MERCURY: 'event:locus.message.roap',
   ROAP_VERSION: '2',
-  RX_: 'RX_',
-  TX_: 'TX_'
 };
 
 export const MediaContent = {
   main: 'main',
   slides: 'slides'
-};
-
-export const SDP = {
-  A_CONTENT_SLIDES: 'a=content:slides',
-  ROLLBACK: 'rollback',
-  HAVE_LOCAL_OFFER: 'have-local-offer',
-  HAVE_REMOTE_OFFER: 'have-remote-offer',
-  STABLE: 'stable',
-  OFFER: 'offer',
-  M_LINE: 'm=',
-  MAX_FS: 'max-fs=',
-  B_LINE: 'b=TIAS',
-  // Edonus repeated key frames request
-  PERIODIC_KEYFRAME: 'a=periodic-keyframes:20',
-  CARRIAGE_RETURN: '\r\n',
-  BAD_MEDIA_PORTS: [0]
 };
 
 export const NETWORK_STATUS = {
@@ -961,6 +905,7 @@ export const MQA_STATS = {
 
 // ****** MEDIA QUALITY CONSTANTS ****** //
 
+// these values must match allowed values of RemoteQualityLevel from the @webex/internal-media-core lib
 export const QUALITY_LEVELS = {
   LOW: 'LOW',
   MEDIUM: 'MEDIUM',
@@ -1007,17 +952,6 @@ export const VIDEO_RESOLUTIONS = {
     }
   }
 };
-
-/**
- * Max frame sizes based on h264 configs
- * https://en.wikipedia.org/wiki/Advanced_Video_Coding
- */
-export const MAX_FRAMESIZES = {
-  [QUALITY_LEVELS.LOW]: 1620,
-  [QUALITY_LEVELS.MEDIUM]: 3600,
-  [QUALITY_LEVELS.HIGH]: 8192
-};
-
 
 /*
 *  mqa Interval for sending stats metrics

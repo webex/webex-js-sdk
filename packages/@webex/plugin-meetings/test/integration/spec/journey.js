@@ -364,7 +364,7 @@ skipInNode(describe)('plugin-meetings', () => {
               stream: response[0]
             })
               .then(() => {
-                console.log('AUDIO ', alice.meeting.mediaProperties.peerConnection.audioTransceiver.sender.track);
+                console.log('AUDIO ', alice.meeting.mediaProperties.audioTrack);
                 assert.equal(alice.meeting.mediaProperties.audioTrack.id, response[0].getAudioTracks()[0].id);
                 assert.equal(alice.meeting.mediaProperties.videoTrack.id, oldVideoTrackId);
               })),

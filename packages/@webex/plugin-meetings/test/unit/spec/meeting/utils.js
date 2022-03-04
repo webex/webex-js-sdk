@@ -41,7 +41,6 @@ describe('plugin-meetings', () => {
       meeting.unsetRemoteTracks = sinon.stub();
       meeting.unsetPeerConnections = sinon.stub();
       meeting.reconnectionManager = {cleanUp: sinon.stub()};
-      meeting.roap = {stop: sinon.stub()};
       meeting.stopKeepAlive = sinon.stub();
     });
 
@@ -63,7 +62,6 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.unsetRemoteTracks);
         assert.calledOnce(meeting.unsetPeerConnections);
         assert.calledOnce(meeting.reconnectionManager.cleanUp);
-        assert.calledOnce(meeting.roap.stop);
         assert.calledOnce(meeting.stopKeepAlive);
       });
     });
