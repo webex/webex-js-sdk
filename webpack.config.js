@@ -66,7 +66,12 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     rules: [
       {
         test: /\.js$/,
-        include: /packages\/node_modules/,
+        include: [
+          /packages\/node_modules/,
+          /@webex\/webrtc-media\/dist/
+          // path.resolve(__dirname, './node_modules/@webex/webrtc-media/')
+
+        ],
         use: {
           loader: 'babel-loader'
         }
