@@ -68,7 +68,9 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
         test: /\.js$/,
         include: [
           /packages\/node_modules/,
-          /node_modules\/@webex\/internal-media-core/
+          /@webex\/webrtc-media\/dist/
+          // path.resolve(__dirname, './node_modules/@webex/webrtc-media/')
+
         ],
         use: {
           loader: 'babel-loader'

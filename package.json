@@ -57,7 +57,7 @@
     "prepare": "husky install"
   },
   "dependencies": {
-    "@webex/internal-media-core": "^0.0.4-beta",
+    "@webex/webrtc-media": "1.19.8",
     "ampersand-collection": "^2.0.2",
     "ampersand-collection-lodash-mixin": "^4.0.0",
     "ampersand-events": "^2.0.2",
