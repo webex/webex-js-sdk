@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.156.0](https://github.com/webex/webex-js-sdk/compare/v1.155.0...v1.156.0) (2022-03-08)
+
+
+### Features
+
+* **webex-core:** add fedramp configuration for services ([ff90735](https://github.com/webex/webex-js-sdk/commit/ff907359a0620b01b7f2efcf790fde13688721e8))
+
 ## [1.155.0](https://github.com/webex/webex-js-sdk/compare/v1.154.2...v1.155.0) (2022-03-07)
 
 
