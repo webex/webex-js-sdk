@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.156.1](https://github.com/webex/webex-js-sdk/compare/v1.156.0...v1.156.1) (2022-03-15)
+
+
+### Bug Fixes
+
+* **webex-core:** send metrics when service not found in service catalog ([ac60cec](https://github.com/webex/webex-js-sdk/commit/ac60cec77a647618de8f01b5ec7d4bd2f3efe24f))
+
 ## [1.156.0](https://github.com/webex/webex-js-sdk/compare/v1.155.0...v1.156.0) (2022-03-08)
 
 
