@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.156.2](https://github.com/webex/webex-js-sdk/compare/v1.156.1...v1.156.2) (2022-03-15)
+
+
+### Bug Fixes
+
+* **plugins-meetings:** warn if H.264 codec is not detected ([f1e1223](https://github.com/webex/webex-js-sdk/commit/f1e1223cdf8f3fdf0adb7a1538a733dee87b7812))
+
 ### [1.156.1](https://github.com/webex/webex-js-sdk/compare/v1.156.0...v1.156.1) (2022-03-15)
 
 
