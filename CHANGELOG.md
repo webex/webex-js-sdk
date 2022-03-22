@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.156.3](https://github.com/webex/webex-js-sdk/compare/v1.156.2...v1.156.3) (2022-03-21)
+
+
+### Bug Fixes
+
+* **dependencies:** remove unused dependencies ([7997b86](https://github.com/webex/webex-js-sdk/commit/7997b869ecc98966a09810b588403f08dfbfc712))
+
 ### [1.156.2](https://github.com/webex/webex-js-sdk/compare/v1.156.1...v1.156.2) (2022-03-15)
 
 
