@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.156.4](https://github.com/webex/webex-js-sdk/compare/v1.156.3...v1.156.4) (2022-03-22)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix case when first locus message about a meeting is type locus.difference ([39a465f](https://github.com/webex/webex-js-sdk/commit/39a465f67bf90efc14d20419aba9e04fd2eec52a))
+* **plugin-meetings:** removed unused path in initialSetup ([0aca0e5](https://github.com/webex/webex-js-sdk/commit/0aca0e592b77412337ffaf21f99b4d7711b39da5))
+
 ### [1.156.3](https://github.com/webex/webex-js-sdk/compare/v1.156.2...v1.156.3) (2022-03-21)
 
 
