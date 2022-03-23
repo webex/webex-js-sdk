@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.157.0](https://github.com/webex/webex-js-sdk/compare/v1.156.4...v1.157.0) (2022-03-23)
+
+
+### Features
+
+* **plugin-meetings:** send diagnostic error on 502 response ([b5eaa46](https://github.com/webex/webex-js-sdk/commit/b5eaa46647736d2a52a3331fefb7a91d70651813))
+
 ### [1.156.4](https://github.com/webex/webex-js-sdk/compare/v1.156.3...v1.156.4) (2022-03-22)
 
 
