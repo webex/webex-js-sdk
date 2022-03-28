@@ -1,24 +1,23 @@
 <!DOCTYPE html>
-<html>
-  <title>Authentication - Guest Users</title>
+<html lang="en">
+  <title>Authentication - Implicit Grant Flow</title>
   <body>
-    <h1>Guest User Authentication</h1>
-    <p>This sample demonstrates authenticating guest users in the browser with a JSON Web Token (jwt)</p>
+    <h1>Implicit Grant Flow Authentication</h1>
+    <p>This sample demonstrates authenticating users in the browser with the Implicit Grant Flow</p>
 
-    <form id="credentials">
-      <fieldset>
-        <legend>Credentials</legend>
-        <input
-          id="jwt"
-          name="jwt"
-          placeholder="JSON Web Token"
-          type="text">
-      </fieldset>
+    <form id="fedramp">
+      <input type="checkbox" id="enable-fedramp">
+      <label for="enable-fedramp">Enable Fedramp</label>
     </form>
 
     <form id="authorization">
       <input id="authenticate-button" title="authenticate" type="submit" value="authenticate">
       <label for="authenticate"> &lt-- click here to authenticate</label>
+    </form>
+
+    <form id="logout">
+      <input id="logout-button" title="logout" type="submit" value="logout">
+      <label for="logout"> &lt-- click here to logout</label>
     </form>
 
     <div style="width: 30vw; display: flex; flex-direction: row; justify-content: space-between">
