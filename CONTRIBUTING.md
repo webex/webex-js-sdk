@@ -258,7 +258,7 @@ You can run them on SauceLabs with `SAUCE=true npm run samples:test`.
 To run a specific sample test instead of the full suite, append the `--spec` flag to the `samples:test` command and the path to the specific test
 
 ```sh
-npm run samples:test -- --spec packages/node_modules/samples/browser-call-with-screenshare
+npm run samples:test -- --spec docs/samples/browser-call-with-screenshare
 ```
 
 If an error occurs when running the above command that appears to be related to a missing [Selenium](https://www.selenium.dev/) driver, the following command should install the needed external dependencies:
