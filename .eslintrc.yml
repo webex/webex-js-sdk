@@ -18,8 +18,7 @@ rules:
         FunctionExpression: true
   valid-jsdoc:
     - error
-    -
-      matchDescription: ".+"
+    - matchDescription: ".+"
       prefer:
         arg: param
         argument: param
@@ -36,8 +35,7 @@ rules:
   class-methods-use-this: warn
   max-len:
     - warn
-    -
-      ignoreComments: true
+    - ignoreComments: true
   no-multi-assign: warn
   no-param-reassign: warn
   no-shadow: warn
@@ -55,31 +53,28 @@ rules:
     - enforceForRenamedProperties: false
   no-use-before-define:
     - error
-    -
-      classes: false
+    - classes: false
       functions: false
       variables: true
 
 overrides:
   # Reduce the severity of jsdoc violations
   # TODO move to the transitional section once the core section moves to core
-  -
-    files:
+  - files:
       - packages/node_modules/**/*.js
     rules:
       valid-jsdoc:
-      - error
-      -
-        prefer:
-          arg: param
-          argument: param
-          return: returns
-          virtual: abstract
-          fires: emits
-        requireParamDescription: false
-        requireReturn: true
-        requireReturnType: true
-        requireReturnDescription: false
+        - error
+        - prefer:
+            arg: param
+            argument: param
+            return: returns
+            virtual: abstract
+            fires: emits
+          requireParamDescription: false
+          requireReturn: true
+          requireReturnType: true
+          requireReturnDescription: false
       require-jsdoc:
         - warn
         - require:
@@ -89,10 +84,9 @@ overrides:
             ArrowFunctionExpression: false
             FunctionExpression: true
   # Relax rules in tests
-  -
-    files:
-      - 'packages/node_modules/**/test/**/*.js'
-      - 'packages/node_modules/**/*-spec/**/*.js'
+  - files:
+      - "packages/node_modules/**/test/**/*.js"
+      - "packages/node_modules/**/*-spec/**/*.js"
     env:
       mocha: true
     rules:
@@ -100,10 +94,9 @@ overrides:
       no-invalid-this: 0
       require-jsdoc: 0
   # Set webdriver.io globals
-  -
-    files:
-      - 'wdio.helpers.d/**/*.js'
-      - 'packages/node_modules/**/test/wdio/**/*.js'
+  - files:
+      - "wdio.helpers.d/**/*.js"
+      - "docs/samples/**/test/wdio/**/*.js"
     globals:
       browser: false
       browserFirefox: false
@@ -111,15 +104,22 @@ overrides:
       $: false
       $$: false
       step: false
-  -
-    files:
+      # Mocha
+      describe: false
+      before: false
+      beforeAll: false
+      beforeEach: false
+      after: false
+      afterAll: false
+      afterEach: false
+      it: false
+  - files:
       - packages/node_modules/@webex/xunit-with-logs
     rules:
       func-names: 0
       no-console: 0
   # Allow cli tools to use sync methods
-  -
-    files:
+  - files:
       - packages/node_modules/**/bin-*/**
     rules:
       no-sync: 0
