@@ -312,7 +312,10 @@ jobs:
           name: "Change origin url back to ssh"
           command: git remote set-url origin git@github.com:webex/webex-js-sdk.git
       - run:
-          name: "Publish Docs"
+          name: "Build Samples"
+          command: npm run samples:build
+      - run:
+          name: "Publish Docs Folder"
           command: |
             # Check if there's anything to commit before committing
             if [ -n "$(git status --porcelain)" ]; then
