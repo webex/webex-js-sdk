@@ -194,6 +194,7 @@
     "@wdio/static-server-service": "^6.10.10",
     "@wdio/sync": "^6.11.0",
     "appium-adb": "^8.17.0",
+    "babel-plugin-module-resolver": "^4.1.0",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "documentation": "^13.1.1",

@@ -1,27 +1,42 @@
 /* eslint-disable no-console, require-jsdoc */
 /* global browser: false */
-
-const path = require('path');
 const os = require('os');
+const path = require('path');
 const {createServer} = require('http');
 
-const dotenv = require('dotenv');
 const glob = require('glob');
 const uuidv4 = require('uuid/v4');
 const handler = require('serve-handler');
 const webpack = require('webpack');
 
-dotenv.config();
-dotenv.config({path: '.env.default'});
+require('dotenv').config();
+require('dotenv').config({path: '.env.default'});
 
-const webpackConfig = require('./webpack.config')();
-
+// Alias @webex packages
 require('@babel/register')({
   only: [
-    './packages/node_modules/**/*.js'
+    './packages/node_modules/**/*.js',
+    './docs/samples/**/*.js'
   ],
-  sourceMaps: true
+  sourceMaps: true,
+  plugins: [
+    ['module-resolver', {
+      alias: glob
+        .sync('**/package.json', {cwd: './packages/node_modules'})
+        .map((p) => path.dirname(p))
+        .reduce((alias, packageName) => {
+          alias[`${packageName}`] = path.resolve(
+            __dirname,
+            `./packages/node_modules/${packageName}/src/index.js`
+          );
+
+          return alias;
+        }, {})
+    }]
+  ]
 });
+
+const webpackConfig = require('./webpack.config')();
 
 const PORT = process.env.PORT || 8000;
 const CI = !!(process.env.JENKINS || process.env.CIRCLECI || process.env.CI || process.env.SAUCE);
@@ -64,18 +79,11 @@ exports.config = {
     specFiltering: true
   },
   specs: [
-    './packages/node_modules/{*,*/*}/test/wdio/spec/**/*.js'
+    './docs/samples/**/test/wdio/spec/**/*.js'
   ],
-  suites: glob
-    .sync('**/package.json', {cwd: './packages/node_modules'})
-    .map((p) => path.dirname(p))
-    .reduce((suites, p) => {
-      suites[p] = [
-        `./packages/node_modules/${p}/test/wdio/spec/**/*.js`
-      ];
-
-      return suites;
-    }, {}),
+  suites: [
+    './docs/samples/**/test/wdio/spec/**/*.js'
+  ],
   //
   // ============
   // Capabilities
@@ -377,7 +385,7 @@ exports.config = {
         // You pass two more arguments for config and middleware
         // More details here: https://github.com/vercel/serve-handler#options
         handler(request, response, {
-          public: './packages/node_modules/samples',
+          public: './docs/samples',
           cleanUrls: true,
           trailingSlash: true
         }))
