@@ -1,6 +1,9 @@
-import testUsers from '@webex/test-helper-test-users';
-import {flaky} from '@webex/test-helper-mocha';
-import {expect} from 'chai';
+// import testUsers from '@webex/test-helper-test-users';
+// import {flaky} from '@webex/test-helper-mocha';
+// import {expect} from 'chai';
+const testUsers = require('@webex/test-helper-test-users');
+const {flaky} = require('@webex/test-helper-mocha');
+const {expect} = require('chai');
 
 describe('Authentication - Implicit Grant Flow', () => {
   describe('authenticate using implicit grant flow', () => {
