@@ -174,11 +174,11 @@ webex.rooms
 
 ## Samples
 
-Sample code can be found in [packages/node_modules/samples](./packages/node_modules/samples). You can demo them by going to [js.samples.s4d.io/](https://js.samples.s4d.io/) or you can run them yourself by following this guide in the [Contribution Guide](CONTRIBUTING.md#running-samples-locally)
+Sample code can be found in [docs/samples](./docs/samples). You can demo them by going to [webex.github.io/webex-js-sdk/samples/](https://webex.github.io/webex-js-sdk/samples/) or you can run them yourself by following this guide in the [Contribution Guide](CONTRIBUTING.md#running-samples-locally)
 
 Samples | Hosted
 --- | ---
-[Samples code](./packages/node_modules/samples/) | [js.samples.s4d.io/](https://js.samples.s4d.io/)
+[Samples code](./docs/samples/) | [webex.github.io/webex-js-sdk/samples/](https://webex.github.io/webex-js-sdk/samples/)
 
 ## FedRAMP Environment
 The `webex` JavaScript SDK is officially supporting FedRAMP environments.
