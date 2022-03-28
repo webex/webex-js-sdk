@@ -273,7 +273,7 @@
   },
   "standard-version": {
     "scripts": {
-      "postbump": "npm run build && npm run build:script && git add packages/node_modules/webex/umd/*.js",
+      "postbump": "npm run build -- --skip-samples && npm run build:script && git add packages/node_modules/webex/umd/*.js",
       "release": "git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json CHANGELOG.md && standard-version -a"
     }
   }
