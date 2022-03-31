@@ -34,8 +34,6 @@ tasks/selenium
 .sauce
 .sauce.tid
 browsers.processed.js
-bundle.js
-bundle.js.map
 docs/samples/webex.min.js
 docs/samples/webex.min.js.map
 
