@@ -19,7 +19,7 @@ describe('Meetings Plugin', () => {
   });
 
   it('loads the app', () => {
-    browser.url('/browser-plugin-meetings');
+    browser.url('/samples/browser-plugin-meetings');
     browser.$('#access-token').waitForExist({timeout: 1500});
   });
 

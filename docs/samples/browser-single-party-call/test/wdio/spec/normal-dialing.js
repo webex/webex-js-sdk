@@ -17,7 +17,7 @@ describe('Single Party Calling - Normal Dialing', () => {
   });
 
   it('loads the app', () => {
-    browser.url('/browser-single-party-call');
+    browser.url('/samples/browser-single-party-call');
   });
 
   it('connects mccoy\'s browser', () => {

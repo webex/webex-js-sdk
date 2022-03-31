@@ -20,7 +20,7 @@ describe('Call With Screenshare', () => {
     });
 
     it('loads the app', () => {
-      browser.url('/browser-call-with-screenshare');
+      browser.url('/samples/browser-call-with-screenshare');
     });
 
     it('select the token option and token form appears for spock', () => {
@@ -226,7 +226,7 @@ describe('Call With Screenshare', () => {
     });
 
     it('browses to sample app and verifies the user is not authenticated', () => {
-      browser.url('/browser-call-with-screenshare');
+      browser.url('/samples/browser-call-with-screenshare');
       expect(browserFirefox.$('#login-status').getText()).to.equal('not logged in');
       expect(browserChrome.$('#login-status').getText()).to.equal('not logged in');
     });

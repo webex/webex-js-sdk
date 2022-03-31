@@ -16,7 +16,7 @@ describe('Authentication - Guest Users (JWT)', () => {
     });
 
     it('browses to sample app and verifies the user is not authenticated', () => {
-      browser.url('/browser-auth-jwt');
+      browser.url('/samples/browser-auth-jwt');
       browser.$('[placeholder="JSON Web Token"]').waitForExist();
 
       expect(browserFirefox.$('#authentication-status').getText()).to.equal('Not Authenticated');

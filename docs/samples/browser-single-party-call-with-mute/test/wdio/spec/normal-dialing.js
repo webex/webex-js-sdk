@@ -16,7 +16,7 @@ describe('Single Party Calling with Mute - Normal Dialing', () => {
   });
 
   it('loads the app', () => {
-    browser.url('/browser-single-party-call-with-mute');
+    browser.url('/samples/browser-single-party-call-with-mute');
   });
 
   it('connects mccoy\'s browser', () => {
