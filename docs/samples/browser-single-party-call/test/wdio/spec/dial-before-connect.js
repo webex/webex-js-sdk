@@ -18,7 +18,7 @@ describe('Single Party Calling - Dial before connecting', () => {
   });
 
   it('loads the app', () => {
-    browser.url('/browser-single-party-call');
+    browser.url('/samples/browser-single-party-call');
   });
 
   it('connects mccoy\'s browser', () => {

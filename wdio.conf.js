@@ -385,7 +385,7 @@ exports.config = {
         // You pass two more arguments for config and middleware
         // More details here: https://github.com/vercel/serve-handler#options
         handler(request, response, {
-          public: './docs/samples',
+          public: './docs',
           cleanUrls: true,
           trailingSlash: true
         }))

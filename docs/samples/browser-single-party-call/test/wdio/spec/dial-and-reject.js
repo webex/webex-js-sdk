@@ -17,7 +17,7 @@ describe('Single Party Calling - Dial and Reject', () => {
   });
 
   it('loads the app', () => {
-    browser.url('/browser-single-party-call');
+    browser.url('/samples/browser-single-party-call');
   });
 
   it('connects mccoy\'s browser', () => {

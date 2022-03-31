@@ -55,7 +55,7 @@ describe('Multi Party Calling - Normal Dialing', () => {
     .then(() => spock.webex.internal.device.unregister()));
 
   it('loads the app', () => {
-    browser.url('/browser-multi-party-call/');
+    browser.url('/samples/browser-multi-party-call/');
   });
 
   it('connects mccoy\'s browser', () => {

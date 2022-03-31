@@ -32,7 +32,7 @@
           </p>
         </section>
 
-        
+
         <!-- ############################## ############################## ############################## -->
         <!-- meeting / authentication -->
         <section id="meetingAuthentication">
@@ -40,7 +40,7 @@
           <div>
             <p class="note">TIP: Get access token from our developer portal: <a href="https://developer.webex.com/docs/api/getting-started" target="_blank">https://developer.webex.com/docs/api/getting-started</a>.</p>
             <p class="note">NOTE: Webex JS SDK must be initialized using a valid token.</p>
-            
+
             <!-- meeting / authentication-credentials -->
             <form id="credentials">
                 <fieldset>
@@ -54,7 +54,7 @@
                     <input type="checkbox" id="enable-fedramp">
                     <label for="enable-fedramp">Enable Fedramp</label>
                   </div>
-                  
+
                   <legend>Credentials</legend>
                   <div class="u-mv">
                       <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text" required>
@@ -92,8 +92,8 @@
               <p class="note">Toggles meeting between old and new versions. (Does not apply to currently running meetings)</p>
               <button disabled id="toggle-unified-meeting" type="button" onclick="toggleMeetingInfo()">webex.meetings._toggleUnifiedMeetings()</button>
               <label id="current-meeting-info">Currently using : <span id="current-meeting-info-status">_NOT_INIT_YET_</span></label>
-              
-            
+
+
             </fieldset>
           </form>
 
@@ -108,11 +108,11 @@
                 </div>
             </fieldset>
           </form>
-          
+
           <!-- meetings / join -->
           <form id="meetings-join">
             <fieldset>
-              <legend>Join a Meeting</legend>  
+              <legend>Join a Meeting</legend>
                   <!-- meetings / active list -->
                   <div class="u-mv">
                     <button id="meetings-list-collect" type="button" onclick="collectMeetings()" class="btn-code">webex.meetings.syncMeetings()</button>
@@ -120,7 +120,7 @@
                     <div id="meetings-list" class="u-mv">
                     </div>
                   </div>
-                
+
                   <div class="u-mv flex">
                     <input id="meetings-join-pin" name="createMeetingHostpin" placeholder="PIN" value="" type="number">
                     <input id="meetings-join-moderator" type="checkbox">
@@ -129,7 +129,7 @@
                   <button type="submit" class="btn-code" id="btn-join">meeting.join()</button>
             </fieldset>
         </form>
-         
+
           <!-- meetings / local-media -->
           <fieldset>
               <legend>Add Local Media</legend>
@@ -362,7 +362,7 @@
             </div>
           </fieldset>
         </section>
-    
+
         <!-- ############################## ############################## ############################## -->
         <section class="">
           <h2>Webex Device</h2>
@@ -458,7 +458,7 @@
           </form>
 
       </section>
-    
+
         <section>
           <form id="pmr-management">
             <fieldset>
@@ -482,18 +482,18 @@
                 <legend>Local Video</legend>
                 <video id="local-video" muted="true" autoplay playsinline></video>
               </fieldset>
-    
+
               <fieldset>
                 <legend>Local Screenshare</legend>
                 <video id="local-screenshare" autoplay playsinline></video>
               </fieldset>
-    
+
               <fieldset>
                 <legend>Remote Video</legend>
                 <video id="remote-video" autoplay playsinline></video>
                 <audio id="remote-audio" autoplay></audio>
               </fieldset>
-    
+
               <fieldset>
                 <legend>Remote Screenshare</legend>
                 <video id="remote-screenshare" autoplay playsinline></video>
@@ -502,7 +502,7 @@
         </section>
       </aside>
     </main>
-    <script src="/webex.min.js"></script>
+    <script src="../webex.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

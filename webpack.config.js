@@ -37,7 +37,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
   devServer: {
     https: true,
     port: 8000,
-    static: './docs/samples'
+    static: './docs'
   },
   node: {
     fs: 'empty'

@@ -19,7 +19,7 @@ describe('Authentication - Implicit Grant Flow', () => {
     });
 
     it('browses to sample app and verifies the user is not authenticated', () => {
-      browser.url('/browser-auth-implicit');
+      browser.url('/samples/browser-auth-implicit');
       expect(browserFirefox.$('#authentication-status').getText()).to.equal('Not Authenticated');
       expect(browserChrome.$('#authentication-status').getText()).to.equal('Not Authenticated');
     });

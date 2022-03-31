@@ -8,6 +8,6 @@ frontend:
       commands:
         - npm run samples:build
   artifacts:
-    baseDirectory: docs/samples
+    baseDirectory: docs/
     files:
       - "**/*"
