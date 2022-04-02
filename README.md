@@ -22,6 +22,8 @@ This is a monorepo containing all officially maintained Cisco Webex JS SDK modul
       - [_A note on browser usage_](#a-note-on-browser-usage)
       - [_Still using `webex/env` or `ciscospark/env`?_](#still-using-webexenv-or-ciscosparkenv)
   - [Samples](#samples)
+  - [FedRAMP Environment](#fedramp-environment)
+    - [Features that do not work in FedRAMP](#features-that-do-not-work-in-fedramp)
   - [Contribute](#contribute)
   - [Issues](#issues)
   - [License](#license)
@@ -83,7 +85,7 @@ We provide a built, minified version of the SDK, that includes `window.Webex`. Y
 <!-- jsdelivr -->
 <script crossorigin src="https://cdn.jsdelivr.net/npm/webex/umd/webex.min.js"></script>
 <!-- gitcdn -->
-<script crossorigin src="https://gitcdn.xyz/repo/webex/webex-js-sdk/master/packages/node_modules/webex/umd/webex.min.js"></script>
+<script crossorigin src="https://gitcdn.xyz/repo/webex/webex-js-sdk/master/docs/samples/webex.min.js"></script>
 ```
 
 If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `webex` variable to `window.webex`.
@@ -174,11 +176,11 @@ webex.rooms
 
 ## Samples
 
-Sample code can be found in [packages/node_modules/samples](./packages/node_modules/samples). You can demo them by going to [js.samples.s4d.io/](https://js.samples.s4d.io/) or you can run them yourself by following this guide in the [Contribution Guide](CONTRIBUTING.md#running-samples-locally)
+Sample code can be found in [docs/samples](./docs/samples). You can demo them by going to [webex.github.io/webex-js-sdk/samples/](https://webex.github.io/webex-js-sdk/samples/) or you can run them yourself by following this guide in the [Contribution Guide](CONTRIBUTING.md#running-samples-locally)
 
 Samples | Hosted
 --- | ---
-[Samples code](./packages/node_modules/samples/) | [js.samples.s4d.io/](https://js.samples.s4d.io/)
+[Samples code](./docs/samples/) | [webex.github.io/webex-js-sdk/samples/](https://webex.github.io/webex-js-sdk/samples/)
 
 ## FedRAMP Environment
 The `webex` JavaScript SDK is officially supporting FedRAMP environments.

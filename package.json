@@ -194,6 +194,7 @@
     "@wdio/static-server-service": "^6.10.10",
     "@wdio/sync": "^6.11.0",
     "appium-adb": "^8.17.0",
+    "babel-plugin-module-resolver": "^4.1.0",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "documentation": "^13.1.1",
@@ -272,7 +273,7 @@
   },
   "standard-version": {
     "scripts": {
-      "postbump": "npm run build && npm run build:script && git add packages/node_modules/webex/umd/*.js",
+      "postbump": "npm run build -- --skip-samples && npm run build:script && git add packages/node_modules/webex/umd/*.js",
       "release": "git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json CHANGELOG.md && standard-version -a"
     }
   }

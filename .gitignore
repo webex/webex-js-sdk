@@ -34,11 +34,8 @@ tasks/selenium
 .sauce
 .sauce.tid
 browsers.processed.js
-bundle.js
-bundle.js.map
-packages/node_modules/samples/webex.min.js
-packages/node_modules/samples/webex.min.js.map
-packages/node_modules/samples/index.html
+docs/samples/webex.min.js
+docs/samples/webex.min.js.map
 
 # patch-package
 patches.hash

@@ -1,0 +1,13 @@
+version: 0.1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci --also=dev
+    build:
+      commands:
+        - npm run samples:build
+  artifacts:
+    baseDirectory: docs/
+    files:
+      - "**/*"
