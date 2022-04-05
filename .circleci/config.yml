@@ -7,7 +7,7 @@ executors:
   main-executor:
     working_directory: ~/webex-js-sdk
     docker:
-      - image: circleci/node:fermium
+      - image: cimg/node:14.19-browsers
 
 # Reusable commands for jobs
 commands:
