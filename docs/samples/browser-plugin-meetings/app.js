@@ -14,14 +14,20 @@
 let webex;
 let receiveTranscriptionOption;
 
+const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
 const tokenElm = document.querySelector('#access-token');
 const saveElm = document.querySelector('#access-token-save');
 const authStatusElm = document.querySelector('#access-token-status');
+const oauthFormElm = document.querySelector('#oauth');
+const oauthLoginElm = document.querySelector('#oauth-login-btn');
+const oauthStatusElm = document.querySelector('#oauth-status');
 const registerElm = document.querySelector('#registration-register');
 const unregisterElm = document.querySelector('#registration-unregister');
 const registrationStatusElm = document.querySelector('#registration-status');
 const integrationEnv = document.getElementById('integration-env');
+const turnDiscoveryCheckbox = document.getElementById('enable-turn-discovery');
+const eventsList = document.getElementById('events-list');
 
 // Disable screenshare on join in Safari patch
 const isSafari = /Version\/[\d.]+.*Safari/.test(navigator.userAgent);
@@ -50,10 +56,86 @@ if (isSafari || isiOS) {
 
 const fedRampInput = document.querySelector('#enable-fedramp');
 
-fedRampInput.checked = localStorage.getItem('fedRampEnabled');
-fedRampInput.addEventListener('change', (event) => {
-  localStorage.setItem('fedRampEnabled', event.target.checked);
-});
+fedRampInput.checked = false;
+
+function changeAuthType() {
+  switch (authTypeElm.value) {
+    case 'accessToken':
+      toggleDisplay('credentials', true);
+      toggleDisplay('oauth', false);
+      break;
+    case 'oauth':
+      initOauth();
+      toggleDisplay('credentials', false);
+      toggleDisplay('oauth', true);
+      break;
+    default:
+      break;
+  }
+}
+
+function generateWebexConfig({credentials}) {
+  return {
+    appName: 'sdk-samples',
+    appPlatform: 'testClient',
+    fedramp: fedRampInput.checked,
+    logger: {
+      level: 'debug'
+    },
+    ...(integrationEnv.checked && {
+      services: {
+        discovery: {
+          u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+          hydra: 'https://apialpha.ciscospark.com/v1/'
+        }
+      }
+    }),
+    meetings: {
+      reconnection: {
+        enabled: true
+      },
+      enableRtx: true,
+      experimental: {
+        enableMediaNegotiatedEvent: false,
+        enableUnifiedMeetings: true,
+        enableAdhocMeetings: true,
+        enableTurnDiscovery: turnDiscoveryCheckbox.checked,
+      }
+    },
+    credentials,
+    // Any other sdk config we need
+  };
+}
+
+function initOauth() {
+  let redirectUri = `${window.location.protocol}//${window.location.host}`;
+
+  if (window.location.pathname) {
+    redirectUri += window.location.pathname;
+  }
+
+  webex = window.webex = Webex.init({
+    config: generateWebexConfig({
+      credentials: {
+        client_id: 'C7c3f1143a552d88d40b2afff87600c366c830850231597fb6c1c1e28a5110a4f',
+        redirect_uri: redirectUri,
+        scope: 'spark:all spark:kms'
+      }
+    })
+  });
+
+  webex.once('ready', () => {
+    oauthFormElm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      // initiate the login sequence if not authenticated.
+      webex.authorization.initiateLogin();
+    });
+
+    if (webex.canAuthorize) {
+      oauthStatusElm.innerText = 'Authenticated';
+    }
+  });
+}
 
 function initWebex(e) {
   e.preventDefault();
@@ -65,35 +147,7 @@ function initWebex(e) {
   authStatusElm.innerText = 'initializing...';
 
   webex = window.webex = Webex.init({
-    config: {
-      appName: 'sdk-samples',
-      appPlatform: 'testClient',
-      fedramp: fedRampInput.checked,
-      logger: {
-        level: 'debug'
-      },
-      ...(integrationEnv.checked && {
-        services: {
-          discovery: {
-            u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
-            hydra: 'https://apialpha.ciscospark.com/v1/'
-          }
-        }
-      }),
-      meetings: {
-        reconnection: {
-          enabled: true
-        },
-        enableRtx: true,
-        experimental: {
-          enableMediaNegotiatedEvent: false,
-          enableUnifiedMeetings: true,
-          enableAdhocMeetings: true
-        }
-
-      }
-      // Any other sdk config we need
-    },
+    config: generateWebexConfig({}),
     credentials: {
       access_token: tokenElm.value
     }
@@ -170,9 +224,9 @@ function unregister() {
 }
 
 // Meetings Management Section --------------------------------------------------
-const joinMeetingForm = document.querySelector('#meetings-join');
 const createMeetingForm = document.querySelector('#meetings-create');
 const createMeetingDestinationElm = document.querySelector('#create-meeting-destination');
+const createMeetingSelectElm = document.querySelector('#createMeetingDest');
 const createMeetingActionElm = document.querySelector('#create-meeting-action');
 const meetingsJoinDeviceElm = document.querySelector('#meetings-join-device');
 const meetingsJoinPinElm = document.querySelector('#meetings-join-pin');
@@ -182,7 +236,12 @@ const meetingsListMsgElm = document.querySelector('#meetings-list-msg');
 const meetingsListElm = document.querySelector('#meetings-list');
 const meetingsAddMediaElm = document.querySelector('#meetings-add-media');
 const meetingsLeaveElm = document.querySelector('#meetings-leave');
-const meetingsCurrentDetailsElm = document.querySelector('#meetings-current-details');
+// captcha elements
+const meetingsJoinCaptchaImgElm = document.querySelector('#meetings-join-captcha');
+const meetingsJoinCaptchaElm = document.querySelector('#meetings-join-captcha-input');
+const passwordCaptchaStatusElm = document.querySelector('#password-captcha-status');
+const refreshCaptchaElm = document.querySelector('#meetings-join-captcha-refresh');
+const verifyPasswordElm = document.querySelector('#btn-verify-password');
 
 let selectedMeetingId = null;
 
@@ -250,14 +309,27 @@ function collectMeetings() {
     });
 }
 
+createMeetingSelectElm.addEventListener('change', (event) => {
+  if (event.target.value === 'CONVERSATION_URL') {
+    createMeetingActionElm.innerText = 'Create Adhoc Meeting';
+  }
+  else {
+    createMeetingActionElm.innerText = 'Create Meeting';
+  }
+});
+
 function createMeeting(e) {
   e.preventDefault();
 
+  meetingsJoinCaptchaImgElm.hidden = true;
+  meetingsJoinCaptchaElm.type = 'hidden';
+  refreshCaptchaElm.hidden = true;
   const {value} = createMeetingDestinationElm;
+  const type = createMeetingSelectElm.value;
 
   console.log('MeetingsManagement#createMeeting', value);
 
-  webex.meetings.create(value)
+  webex.meetings.create(value, type)
     .then((meeting) => {
       createMeetingDestinationElm.value = '';
       generalStartReceivingTranscription.disabled = false; // eslint-disable-line no-use-before-define
@@ -267,33 +339,147 @@ function createMeeting(e) {
   return false;
 }
 
-function joinMeeting(meetingId) {
-  const meeting = webex.meetings.getAllMeetings()[meetingId];
+function refreshCaptcha() {
+  const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
+
+  meeting.refreshCaptcha()
+    .then(() => {
+      console.log('MeetingsManagement#refreshCaptcha() :: successfully refreshed captcha');
+      meetingsJoinCaptchaImgElm.src = meeting.requiredCaptcha.verificationImageURL;
+      meetingsJoinCaptchaImgElm.hidden = false;
+      meetingsJoinCaptchaElm.type = 'text';
+      meetingsJoinCaptchaElm.value = '';
+      refreshCaptchaElm.hidden = false;
+    })
+    .catch((error) => {
+      console.error('MeetingsManagement#refreshCaptcha() :: error refreshing captcha', error);
+      throw (error);
+    });
+}
+
+meetingsListElm.onclick = (e) => {
+  selectedMeetingId = e.target.value;
+  const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
+
+  if (meeting && meeting.passwordStatus === 'REQUIRED') {
+    meetingsJoinPinElm.disabled = false;
+    verifyPasswordElm.disabled = false;
+    document.getElementById('btn-join').disabled = true;
+    document.getElementById('btn-join-media').disabled = true;
+  }
+  else if (meeting.passwordStatus === 'UNKNOWN') {
+    meetingsJoinPinElm.disabled = true;
+    verifyPasswordElm.disabled = true;
+    document.getElementById('btn-join').disabled = true;
+    document.getElementById('btn-join-media').disabled = true;
+  }
+  else {
+    meetingsJoinPinElm.disabled = true;
+    verifyPasswordElm.disabled = true;
+    document.getElementById('btn-join').disabled = false;
+    document.getElementById('btn-join-media').disabled = false;
+  }
+};
+
+function verifyPassword() {
+  const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
 
   if (!meeting) {
-    throw new Error(`meeting ${meetingId} is invalid or no longer exists`);
+    throw new Error(`meeting ${selectedMeetingId} is invalid or no longer exists`);
+  }
+
+  const joinOptions = {
+    pin: meetingsJoinPinElm.value,
+    captcha: meetingsJoinCaptchaElm.value
+  };
+
+  if (meeting && meeting.passwordStatus === 'REQUIRED') {
+    meeting
+      .verifyPassword(joinOptions.pin, joinOptions.captcha)
+      .then((res) => {
+        /* we have a bug in the SDK code: for case if wbxappapi requires only captcha and no password */
+        if (res.isPasswordValid) {
+          passwordCaptchaStatusElm.innerText = 'Password is verified';
+          passwordCaptchaStatusElm.style.backgroundColor = '#49e849';
+          verifyPasswordElm.disabled = true;
+          document.getElementById('btn-join').disabled = false;
+          document.getElementById('btn-join-media').disabled = false;
+        }
+        else if (res.requiredCaptcha) {
+          passwordCaptchaStatusElm.innerText = 'Password & Captcha is required';
+          passwordCaptchaStatusElm.style.backgroundColor = '#fa6e6e';
+          meetingsJoinCaptchaImgElm.src = res.requiredCaptcha.verificationImageURL;
+          meetingsJoinCaptchaImgElm.hidden = false;
+          meetingsJoinCaptchaElm.type = 'text';
+          refreshCaptchaElm.hidden = false;
+        }
+        else {
+          passwordCaptchaStatusElm.innerText = 'Password is required';
+          passwordCaptchaStatusElm.style.backgroundColor = '#fa6e6e';
+        }
+      })
+      .catch((err) => {
+        console.log('error', err);
+        throw (err);
+      });
+  }
+}
+
+function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: false}) {
+  const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
+  let resourceId = null;
+
+  if (!meeting) {
+    throw new Error(`meeting ${selectedMeetingId} is invalid or no longer exists`);
+  }
+
+  if (withDevice) {
+    resourceId = webex.devicemanager._pairedDevice ?
+      webex.devicemanager._pairedDevice.identity.id :
+      undefined;
+
+    clearMediaDeviceList();
+    getMediaDevices();
   }
 
   const joinOptions = {
     pin: meetingsJoinPinElm.value,
     moderator: meetingsJoinModeratorElm.checked,
     moveToResource: false,
-    resourceId: webex.devicemanager._pairedDevice ?
-      webex.devicemanager._pairedDevice.identity.id :
-      undefined,
+    resourceId,
     receiveTranscription: receiveTranscriptionOption
   };
 
-  meeting.join(joinOptions)
-    .then(() => {
-      meetingsCurrentDetailsElm.innerText = meeting.destination ||
-        meeting.sipUri ||
-        meeting.id;
+  const joinMeetingNow = () => {
+    meeting.join(joinOptions)
+    .then(() => { // eslint-disable-line
       // For meeting controls button onclick handlers
-      window.meeting = meeting;
-      meetingsLeaveElm.onclick = () => leaveMeeting(getCurrentMeeting().id);
-      meetingsLeaveElm.classList.add('btn--red');
-    });
+        window.meeting = meeting;
+
+        updateMeetingInfoSection(meeting);
+
+        meeting.members.on('members:update', (res) => {
+          console.log('member update', res);
+          viewParticipants();
+        });
+
+        eventsList.innerText = '';
+        meeting.on('all', (payload) => {
+          updatePublishedEvents(payload);
+        });
+
+        if (withMedia) {
+          clearMediaDeviceList();
+
+          return getMediaStreams().then(() => addMedia());
+        }
+      });
+  };
+
+  if (!meeting.requiredCaptcha) {
+    joinOptions.captcha = '';
+  }
+  joinMeetingNow();
 }
 
 function leaveMeeting(meetingId) {
@@ -304,17 +490,49 @@ function leaveMeeting(meetingId) {
   const meeting = webex.meetings.getAllMeetings()[meetingId];
 
   if (!meeting) {
-    meetingsCurrentDetailsElm.innerText = 'Not currently in a meeting';
     throw new Error(`meeting ${meetingId} is invalid or no longer exists`);
   }
 
   meeting.leave()
     .then(() => {
-      meetingsCurrentDetailsElm.innerText = 'Not currently in a meeting';
       meetingsLeaveElm.classList.remove('btn--red');
+      toggleDisplay('meeting-info-section', false);
       // eslint-disable-next-line no-use-before-define
       cleanUpMedia(htmlMediaElements);
+      emptyParticipants();
+      meetingsJoinCaptchaImgElm.hidden = true;
+      meetingsJoinCaptchaElm.type = 'hidden';
+      refreshCaptchaElm.hidden = true;
+      passwordCaptchaStatusElm.innerText = 'Click verifyPassword for details';
+      passwordCaptchaStatusElm.style.backgroundColor = 'white';
+      meetingsJoinPinElm.value = '';
+      meetingsJoinCaptchaElm.value = '';
     });
+}
+
+function updatePublishedEvents(event) {
+  // skip network:quality
+  if (event === 'network:quality') return;
+
+  const par = document.createElement('p');
+  const currTime = new Date();
+
+  let hours = currTime.getHours();
+  let minutes = currTime.getMinutes();
+  let seconds = currTime.getSeconds();
+
+  if (hours < 10) {
+    hours = `0${hours}`;
+  }
+  if (minutes < 10) {
+    minutes = `0${minutes}`;
+  }
+  if (seconds < 10) {
+    seconds = `0${seconds}`;
+  }
+
+  par.innerText = `${hours}:${minutes}:${seconds} - ${event}`;
+  eventsList.appendChild(par);
 }
 
 function toggleMeetingInfo() {
@@ -326,14 +544,18 @@ function toggleMeetingInfo() {
 // Listen for submit on create meeting
 createMeetingForm.addEventListener('submit', createMeeting);
 
-// Listen for submit on join meeting
-joinMeetingForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  joinMeeting(selectedMeetingId);
+function updateMeetingInfoSection(meeting) {
+  const titleElm = document.getElementById('meeting-info-title');
+  const subtitleElm = document.getElementById('meeting-info-subtitle');
 
-  return false;
-});
+  titleElm.innerText = meeting.destination.info ? meeting.destination?.info?.webExMeetingName : meeting.destination;
+  subtitleElm.innerText = `${meeting.sipUri} (${meeting.id})`;
 
+  meetingsLeaveElm.onclick = () => leaveMeeting(getCurrentMeeting().id);
+  meetingsLeaveElm.classList.add('btn--red');
+
+  toggleDisplay('meeting-info-section', true);
+}
 
 // Meeting Controls Section --------------------------------------------------
 
@@ -360,18 +582,20 @@ const audioOutputDeviceStatus = document.querySelector('#sd-audio-output-device-
 const videoInputDeviceStatus = document.querySelector('#sd-video-input-device-status');
 
 const meetingStreamsLocalVideo = document.querySelector('#local-video');
+const meetingStreamsLocalAudio = document.querySelector('#local-audio');
 const meetingStreamsRemotelVideo = document.querySelector('#remote-video');
 const meetingStreamsRemoteAudio = document.querySelector('#remote-audio');
 const meetingStreamsLocalShare = document.querySelector('#local-screenshare');
 const meetingStreamsRemoteShare = document.querySelector('#remote-screenshare');
+const layoutWidthInp = document.querySelector('#layout-width');
+const layoutHeightInp = document.querySelector('#layout-height');
 
 const toggleSourcesMediaDirection = document.querySelectorAll('[name=ts-media-direction]');
-const toggleSourcesSendAudioStatus = document.querySelector('#ts-toggle-audio-status');
-const toggleSourcesSendVideoStatus = document.querySelector('#ts-toggle-video-status');
-const toggleSourcesSendShareStatus = document.querySelector('#ts-screenshare-status');
-
 const toggleSourcesQualityStatus = document.querySelector('#ts-sending-quality-status');
 const toggleSourcesMeetingLevel = document.querySelector('#ts-sending-qualities-list');
+const toggleBnrBtn = document.querySelector('#ts-toggle-BNR');
+
+let bnrEnabled = false;
 
 let currentMediaStreams = [];
 
@@ -396,6 +620,7 @@ function getMediaSettings() {
 
 const htmlMediaElements = [
   meetingStreamsLocalVideo,
+  meetingStreamsLocalAudio,
   meetingStreamsLocalShare,
   meetingStreamsRemotelVideo,
   meetingStreamsRemoteShare,
@@ -432,18 +657,11 @@ function addPlayIfPausedEvents(mediaElements) {
   });
 }
 
-
-function getNormalizedMeetingId(meeting) {
-  return meeting.sipUri || meeting.id;
-}
-
-
 function getCurrentMeeting() {
   const meetings = webex.meetings.getAllMeetings();
 
   return meetings[Object.keys(meetings)[0]];
 }
-
 
 function lockMeeting() {
   const meeting = getCurrentMeeting();
@@ -466,7 +684,6 @@ function lockMeeting() {
     console.log('MeetingControls#lockMeeting() :: no valid meeting object!');
   }
 }
-
 
 function unlockMeeting() {
   const meeting = getCurrentMeeting();
@@ -587,7 +804,6 @@ function resumeRecording() {
   }
 }
 
-
 function stopRecording() {
   const meeting = getCurrentMeeting();
 
@@ -609,7 +825,6 @@ function stopRecording() {
     console.log('MeetingControls#stopRecording() :: no valid meeting object!');
   }
 }
-
 
 function sendDtmfTones() {
   const meeting = getCurrentMeeting();
@@ -640,7 +855,6 @@ function sendDtmfTones() {
   }
 }
 
-
 function getMediaStreams(mediaSettings = getMediaSettings(), audioVideoInputDevices = {}) {
   const meeting = getCurrentMeeting();
 
@@ -669,7 +883,8 @@ function getMediaStreams(mediaSettings = getMediaSettings(), audioVideoInputDevi
     })
     .then(([localStream]) => {
       if (localStream && mediaSettings.sendVideo) {
-        meetingStreamsLocalVideo.srcObject = localStream;
+        meetingStreamsLocalVideo.srcObject = new MediaStream(localStream.getVideoTracks());
+        meetingStreamsLocalAudio.srcObject = new MediaStream(localStream.getAudioTracks());
       }
 
       return {localStream};
@@ -681,7 +896,6 @@ function getMediaStreams(mediaSettings = getMediaSettings(), audioVideoInputDevi
       return Promise.reject(error);
     });
 }
-
 
 function populateSourceDevices(mediaDevice) {
   let select = null;
@@ -704,7 +918,6 @@ function populateSourceDevices(mediaDevice) {
   select.appendChild(option);
 }
 
-
 function getMediaDevices() {
   const meeting = getCurrentMeeting();
 
@@ -722,6 +935,29 @@ function getMediaDevices() {
   }
 }
 
+async function updateMedia() {
+  const meeting = getCurrentMeeting();
+
+  await getMediaStreams();
+  const [localStream, localShare] = currentMediaStreams;
+
+  console.log('MeetingStreams#updateMedia()');
+
+  if (!meeting) {
+    console.log('MeetingStreams#updateMedia() :: no valid meeting object!');
+  }
+
+  meeting.updateMedia({
+    localShare,
+    localStream,
+    mediaSettings: getMediaSettings()
+  }).then(() => {
+    console.log('MeetingStreams#addMedia() :: successfully updating media!');
+  }).catch((error) => {
+    console.log('MeetingStreams#addMedia() :: Error updating media!');
+    console.error(error);
+  });
+}
 
 const getOptionValue = (select) => {
   const selected = select.options[select.options.selectedIndex];
@@ -741,7 +977,6 @@ const getRadioValue = (name) => {
   return selected ? selected.value : undefined;
 };
 
-
 function getAudioVideoInput() {
   const deviceId = (id) => ({deviceId: {exact: id}});
   const audioInput = getOptionValue(sourceDevicesAudioInput) || 'default';
@@ -749,7 +984,6 @@ function getAudioVideoInput() {
 
   return {audio: deviceId(audioInput), video: deviceId(videoInput)};
 }
-
 
 function setVideoInputDevice() {
   const meeting = getCurrentMeeting();
@@ -776,7 +1010,6 @@ function setVideoInputDevice() {
   }
 }
 
-
 function setAudioInputDevice() {
   const meeting = getCurrentMeeting();
   const {sendAudio, receiveAudio} = getMediaSettings();
@@ -802,7 +1035,6 @@ function setAudioInputDevice() {
   }
 }
 
-
 function setAudioOutputDevice() {
   const audioOutputDevice = getOptionValue(sourceDevicesAudioOutput) || 'default';
 
@@ -816,12 +1048,10 @@ function setAudioOutputDevice() {
     });
 }
 
-
 function toggleSendAudio() {
   const meeting = getCurrentMeeting();
 
   const handleError = (error) => {
-    toggleSourcesSendAudioStatus.innerText = 'Error! See console for details.';
     console.log('MeetingControls#toggleSendAudio() :: Error toggling audio!');
     console.error(error);
   };
@@ -836,7 +1066,6 @@ function toggleSendAudio() {
   if (meeting.isAudioMuted()) {
     meeting.unmuteAudio()
       .then(() => {
-        toggleSourcesSendAudioStatus.innerText = 'Toggled audio on!';
         console.log('MeetingControls#toggleSendAudio() :: Successfully unmuted audio!');
       })
       .catch(handleError);
@@ -844,19 +1073,16 @@ function toggleSendAudio() {
   else {
     meeting.muteAudio()
       .then(() => {
-        toggleSourcesSendAudioStatus.innerText = 'Toggled audio off!';
         console.log('MeetingControls#toggleSendAudio() :: Successfully muted audio!');
       })
       .catch(handleError);
   }
 }
 
-
 function toggleSendVideo() {
   const meeting = getCurrentMeeting();
 
   const handleError = (error) => {
-    toggleSourcesSendVideoStatus.innerText = 'Error! See console for details.';
     console.log('MeetingControls#toggleSendVideo() :: Error toggling video!');
     console.error(error);
   };
@@ -871,7 +1097,6 @@ function toggleSendVideo() {
   if (meeting.isVideoMuted()) {
     meeting.unmuteVideo()
       .then(() => {
-        toggleSourcesSendVideoStatus.innerText = 'Toggled video on!';
         console.log('MeetingControls#toggleSendVideo() :: Successfully unmuted video!');
       })
       .catch(handleError);
@@ -879,13 +1104,36 @@ function toggleSendVideo() {
   else {
     meeting.muteVideo()
       .then(() => {
-        toggleSourcesSendVideoStatus.innerText = 'Toggled video off!';
         console.log('MeetingControls#toggleSendVideo() :: Successfully muted video!');
       })
       .catch(handleError);
   }
 }
 
+function toggleBNR() {
+  const meeting = getCurrentMeeting();
+
+  if (!meeting) {
+    return;
+  }
+
+  if (bnrEnabled) {
+    meeting.disableBNR().then((success) => {
+      if (success) {
+        bnrEnabled = false;
+        toggleBnrBtn.innerText = 'Enable BNR';
+      }
+    });
+  }
+  else {
+    meeting.enableBNR().then((success) => {
+      if (success) {
+        bnrEnabled = true;
+        toggleBnrBtn.innerText = 'Disable BNR';
+      }
+    });
+  }
+}
 
 async function startScreenShare() {
   const meeting = getCurrentMeeting();
@@ -894,16 +1142,13 @@ async function startScreenShare() {
   console.log('MeetingControls#startScreenShare()');
   try {
     await meeting.shareScreen();
-    toggleSourcesSendShareStatus.innerText = 'Screen share on!';
     console.log('MeetingControls#startScreenShare() :: Successfully started sharing!');
   }
   catch (error) {
-    toggleSourcesSendShareStatus.innerText = 'Error! See console for details.';
     console.log('MeetingControls#startScreenShare() :: Error starting screen share!');
     console.error(error);
   }
 }
-
 
 async function stopScreenShare() {
   const meeting = getCurrentMeeting();
@@ -911,16 +1156,13 @@ async function stopScreenShare() {
   console.log('MeetingControls#stopScreenShare()');
   try {
     await meeting.stopShare();
-    toggleSourcesSendShareStatus.innerText = 'Screen share off!';
     console.log('MeetingControls#stopScreenShare() :: Successfully stopped sharing!');
   }
   catch (error) {
-    toggleSourcesSendShareStatus.innerText = 'Error! See console for details.';
     console.log('MeetingControls#stopScreenShare() :: Error stopping screen share!');
     console.error(error);
   }
 }
-
 
 function setLocalMeetingQuality() {
   const meeting = getCurrentMeeting();
@@ -938,7 +1180,6 @@ function setLocalMeetingQuality() {
     });
 }
 
-
 function setRemoteMeetingQuality() {
   const meeting = getCurrentMeeting();
   const level = getRadioValue('sendingQuality');
@@ -954,7 +1195,6 @@ function setRemoteMeetingQuality() {
       console.error(error);
     });
 }
-
 
 function setMeetingQuality() {
   const meeting = getCurrentMeeting();
@@ -972,27 +1212,26 @@ function setMeetingQuality() {
     });
 }
 
-
 function stopMediaTrack(type) {
   const meeting = getCurrentMeeting();
 
   if (!meeting) return;
   const {audioTrack, videoTrack, shareTrack} = meeting.mediaProperties;
 
+  // Note: sometimes we are adding new track so the old track might not be present
   // eslint-disable-next-line default-case
   switch (type) {
     case 'audio':
-      audioTrack.stop();
+      audioTrack?.stop();
       break;
     case 'video':
-      videoTrack.stop();
+      videoTrack?.stop();
       break;
     case 'share':
-      shareTrack.stop();
+      shareTrack?.stop();
       break;
   }
 }
-
 
 function clearMediaDeviceList() {
   sourceDevicesAudioInput.innerText = '';
@@ -1030,6 +1269,7 @@ function addMedia() {
     switch (media.type) {
       case 'remoteVideo':
         meetingStreamsRemotelVideo.srcObject = media.stream;
+        updateLayoutHeightWidth();
         break;
       case 'remoteAudio':
         meetingStreamsRemoteAudio.srcObject = media.stream;
@@ -1042,11 +1282,50 @@ function addMedia() {
         break;
     }
   });
+
+  // remove stream if media stopped
+  meeting.on('media:stopped', (media) => {
+    // eslint-disable-next-line default-case
+    switch (media.type) {
+      case 'remoteVideo':
+        meetingStreamsRemotelVideo.srcObject = null;
+        break;
+      case 'remoteAudio':
+        meetingStreamsRemoteAudio.srcObject = null;
+        break;
+      case 'remoteShare':
+        meetingStreamsRemoteShare.srcObject = null;
+        break;
+      case 'localShare':
+        meetingStreamsLocalShare.srcObject = null;
+        break;
+    }
+  });
 }
 
+function updateLayoutHeightWidth() {
+  layoutHeightInp.value = meetingStreamsRemotelVideo.scrollHeight;
+  layoutWidthInp.value = meetingStreamsRemotelVideo.scrollWidth;
+}
+
+function changeLayout() {
+  const layoutVal = document.getElementById('layout-type').value;
+  const height = layoutHeightInp.value;
+  const width = layoutWidthInp.value;
+  const currentMeeting = getCurrentMeeting();
+
+  currentMeeting.changeVideoLayout(layoutVal, {main: {height, width}})
+    .then(() => {
+      console.log('Remote Layout changed successfully');
+    })
+    .catch((err) => {
+      console.error(err);
+    });
+}
 
 let currentDevice;
 
+const sourceDevicesPairWebexDevice = document.querySelector('#sd-pair-webex-device');
 const devicesListItemsElm = document.querySelector('#devices-list-items');
 const currentDevicePairState = document.querySelector('#device-pair-state');
 const currentDeviceDetailsElm = document.querySelector('#current-device-details');
@@ -1058,6 +1337,19 @@ const findDevicesListElm = document.querySelector('#find-devices-list');
 const pmrIdElm = document.querySelector('#pmr-id');
 const pmrPinElm = document.querySelector('#pmr-pin');
 const pmrDetailsElm = document.querySelector('#pmr-details');
+
+function toggleWebexDeviceSection() {
+  const webexSec = document.getElementById('webex-device-pairing-sec');
+
+  if (webexSec.classList.contains('hidden')) {
+    sourceDevicesPairWebexDevice.innerText = 'Hide Pairing Section';
+    webexSec.classList.remove('hidden');
+  }
+  else {
+    sourceDevicesPairWebexDevice.innerText = 'Pair';
+    webexSec.classList.add('hidden');
+  }
+}
 
 function selectDevice(device) {
   console.log('MeetingsDevices#selectDevice()');
@@ -1076,6 +1368,12 @@ function deviceRequestUnpair() {
   webex.devicemanager.unpair()
     .then(() => {
       currentDevicePairState.innerText = 'Not Paired';
+
+      // disable join with device button
+      document.getElementById('btn-join-device').disabled = true;
+
+
+      document.querySelector('#p-paired-device-id').innerText = '';
     })
     .catch((error) => {
       currentDevicePairState.innerText = `Paired to ${currentDevice.deviceInfo.description} [${currentDevice.id}]`;
@@ -1094,6 +1392,12 @@ function deviceRequestPair() {
   })
     .then(() => {
       currentDevicePairState.innerText = `Paired to ${currentDevice.deviceInfo.description} [${currentDevice.id}]`;
+
+      // enable join with device button
+      document.getElementById('btn-join-device').disabled = false;
+
+      // display device ID
+      document.querySelector('#p-paired-device-id').innerText = `Paired Device: ${currentDevice.deviceInfo.description} [${currentDevice.id}]`;
     })
     .catch((error) => {
       currentDevicePairState.innerText = error.message;
@@ -1222,6 +1526,54 @@ function changeAudioState(command) {
     });
 }
 
+function moveToDevice() {
+  const deviceId = webex.devicemanager._pairedDevice ? webex.devicemanager._pairedDevice.identity.id : undefined;
+
+  if (!deviceId) {
+    console.error('Pair a device first');
+
+    return;
+  }
+
+  const currentMeeting = getCurrentMeeting();
+
+  if (!currentMeeting) {
+    console.error('Join a meeting');
+
+    return;
+  }
+
+  currentMeeting.moveTo(deviceId).then(() => {
+    console.log('Meeting moved to Device');
+  }).catch((err) => {
+    console.error(err);
+  });
+}
+
+function moveFromDevice() {
+  const deviceId = webex.devicemanager._pairedDevice ? webex.devicemanager._pairedDevice.identity.id : undefined;
+
+  if (!deviceId) {
+    console.error('Pair a device first');
+
+    return;
+  }
+
+  const currentMeeting = getCurrentMeeting();
+
+  if (!currentMeeting) {
+    console.error('Join a meeting');
+
+    return;
+  }
+
+  currentMeeting.moveFrom(deviceId).then(() => {
+    console.log('Meeting moved to computer');
+  }).catch((err) => {
+    console.error(err);
+  });
+}
+
 function claimPersonalMeetingRoom() {
   console.log('DevicesControls#claimPersonalMeetingRoom()');
 
@@ -1250,58 +1602,11 @@ function claimPersonalMeetingRoom() {
       pmrDetailsElm.innerText = error.message;
     });
 }
-// The terms Members and Particpants are used interchangeably
-// Particpants Section
-const particpantsList = document.querySelector('.particpantList');
-
-function generateAddedMembers(id, name, statuObj) {
-  function createButton(text, attr, func, value) {
-    const button = document.createElement('button');
-
-    button.onclick = (e) => func(e.target);
-    button.innerText = text;
-    button.setAttribute('data-id', attr);
-    button.setAttribute('type', 'button');
-    button.value = value;
-
-    return button;
-  }
-
-  function createLabel(attr, value, string) {
-    const label = document.createElement('label');
-
-    label.innerText = string + value;
-    label.setAttribute('data-id', attr);
-
-    return label;
-  }
-
-  const buttons = [
-    createButton('meeting.admit()', 'participant-a-admit', admitMember, id),
-    createButton('meeting.remove()', 'participant-a-remove', removeMember, id),
-    createButton('meeting.mute()', 'participant-a-mute', muteMember, id),
-    createButton('meeting.transfer()',
-      'participant-a-transfer-ownership',
-      transferHostToMember,
-      id)
-  ];
-
-  const labels = [
-    createLabel('participant-a-id', id, 'id: '),
-    createLabel('participant-a-status', statuObj, 'state: '),
-    createLabel('participant-a-name', name, 'name: ')
-  ];
-
-  const combined = buttons.concat(labels);
-  const docFrag = document.createDocumentFragment();
-  const container = document.createElement('div');
-
-  combined.forEach((ele) => {
-    docFrag.appendChild(ele);
-  });
-  container.appendChild(docFrag);
-  particpantsList.appendChild(container);
-}
+// The terms Members and Participants are used interchangeably
+// participants Section
+const participantsList = document.querySelector('#participant-list');
+const participantTable = document.querySelector('#participant-table');
+const participantButtons = document.querySelector('#participant-btn');
 
 function inviteMember(addButton) {
   const meeting = getCurrentMeeting();
@@ -1310,23 +1615,22 @@ function inviteMember(addButton) {
   if (meeting) {
     meeting.invite({emailAddress: emailVal}).then((res) => {
       console.log(res.body.locus);
-      const particpantsArr = res.body.locus.participants;
+      const participantsArr = res.body.locus.participants;
       let mostRecentParticipantId;
-      let mostRecentParticpantName;
-      let mostRecentParticpantStatusObj;
+      let mostRecentparticipantName;
+      let mostRecentparticipantStatusObj;
 
-      particpantsArr.forEach((obj) => {
+      participantsArr.forEach((obj) => {
         if (obj.person.email === emailVal ||
           obj.person.primaryDisplayString === emailVal) {
           mostRecentParticipantId = obj.id;
-          mostRecentParticpantName = obj.person.name ||
+          mostRecentparticipantName = obj.person.name ||
           obj.person.primaryDisplayString;
-          mostRecentParticpantStatusObj = obj.state;
+          mostRecentparticipantStatusObj = obj.state;
         }
       });
-      generateAddedMembers(mostRecentParticipantId,
-        mostRecentParticpantName,
-        mostRecentParticpantStatusObj);
+
+      viewParticipants();
     }).catch((err) => {
       console.log('unable to invite participant', err);
     });
@@ -1335,10 +1639,10 @@ function inviteMember(addButton) {
 
 function admitMember(admitButton) {
   const meeting = getCurrentMeeting();
-  const particpantID = admitButton.value;
+  const participantID = admitButton.value;
 
   if (meeting) {
-    meeting.admit([particpantID]).then((res) => {
+    meeting.admit([participantID]).then((res) => {
       console.log(res, 'participant has been admitted');
     }).catch((err) => {
       console.log('unable to admit participant', err);
@@ -1348,10 +1652,10 @@ function admitMember(admitButton) {
 
 function removeMember(removeButton) {
   const meeting = getCurrentMeeting();
-  const particpantID = removeButton.value;
+  const participantID = getRadioValue('participant-select');
 
   if (meeting) {
-    meeting.remove(particpantID).then((res) => {
+    meeting.remove(participantID).then((res) => {
       console.log(res, 'participant has been removed');
     }).catch((err) => {
       console.log('unable to remove participant', err);
@@ -1364,10 +1668,10 @@ function muteMember(muteButton) {
   const unmute = muteButton.getAttribute('data-unmute');
   const mute = unmute !== 'true';
 
-  const particpantID = muteButton.value;
+  const participantID = getRadioValue('participant-select');
 
   if (meeting) {
-    meeting.mute(particpantID, mute).then((res) => {
+    meeting.mute(participantID, mute).then((res) => {
       console.log(res, `participant is ${mute ? 'mute' : 'unmute'}`);
       if (mute) {
         muteButton.setAttribute('data-unmute', 'true');
@@ -1383,11 +1687,11 @@ function muteMember(muteButton) {
 
 function transferHostToMember(transferButton) {
   const meeting = getCurrentMeeting();
-  const particpantID = transferButton.value;
+  const participantID = getRadioValue('participant-select');
 
   if (meeting) {
-    meeting.transfer(particpantID).then((res) => {
-      console.log(res, `succesful tranfer to ${particpantID}`);
+    meeting.transfer(participantID).then((res) => {
+      console.log(res, `succesful tranfer to ${participantID}`);
     }).catch((err) => {
       console.log('error', err);
     });
@@ -1395,20 +1699,139 @@ function transferHostToMember(transferButton) {
 }
 
 function viewParticipants() {
-  const meeting = getCurrentMeeting();
+  function createLabel(id, value = '') {
+    const label = document.createElement('label');
 
-  particpantsList.innerText = '';
+    label.innerText = value;
+    label.setAttribute('for', id);
 
-  if (meeting) {
-    const {members} = meeting.members.membersCollection;
+    return label;
+  }
+
+  function createButton(text, func) {
+    const button = document.createElement('button');
+
+    button.onclick = (e) => func(e.target);
+    button.innerText = text;
+    button.setAttribute('type', 'button');
+
+    return button;
+  }
+
+  function createHeadRow() {
+    const tr = document.createElement('tr');
+    const th1 = document.createElement('th');
+    const th2 = document.createElement('th');
+    const th3 = document.createElement('th');
+    const th4 = document.createElement('th');
+
+    th1.innerText = 'NAME';
+    th2.innerText = 'VIDEO';
+    th3.innerText = 'AUDIO';
+    th4.innerText = 'STATUS';
+
+    tr.appendChild(th1);
+    tr.appendChild(th2);
+    tr.appendChild(th3);
+    tr.appendChild(th4);
+
+    return tr;
+  }
+
+  function createRow(member) {
+    const tr = document.createElement('tr');
+    const td1 = document.createElement('td');
+    const td2 = document.createElement('td');
+    const td3 = document.createElement('td');
+    const td4 = document.createElement('td');
+    const label1 = createLabel(member.id);
+    const label2 = createLabel(member.id, member.isVideoMuted ? 'NO' : 'YES');
+    const label3 = createLabel(member.id, member.isAudioMuted ? 'NO' : 'YES');
+    const label4 = createLabel(member.id, member.status);
+
+    const radio = document.createElement('input');
+
+    radio.type = 'radio';
+    radio.id = member.id;
+    radio.value = member.id;
+    radio.name = 'participant-select';
+
+    label1.appendChild(radio);
+    label1.innerHTML = label1.innerHTML.concat(member.participant.person.name);
+
+    td1.appendChild(label1);
+    td2.appendChild(label2);
+    td3.appendChild(label3);
+
+    if (member.isInLobby) td4.appendChild(createButton('Admit', admitMember));
+    else td4.appendChild(label4);
+
+    tr.appendChild(td1);
+    tr.appendChild(td2);
+    tr.appendChild(td3);
+    tr.appendChild(td4);
+
+    return tr;
+  }
+
+  function createTable(members) {
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const tbody = document.createElement('tbody');
+
+    thead.appendChild(createHeadRow());
 
     Object.entries(members).forEach(([key, value]) => {
-      generateAddedMembers(value.id,
-        value.participant.person.name ||
-        value.participant.person.primaryDisplayString,
-        value.participant.state);
+      if (value.status !== 'NOT_IN_MEETING') {
+        const row = createRow(value);
+
+        tbody.appendChild(row);
+      }
     });
+
+    table.appendChild(thead);
+    table.appendChild(tbody);
+
+    return table;
   }
+
+  const meeting = getCurrentMeeting();
+
+  if (meeting) {
+    emptyParticipants();
+    const {members} = meeting.members.membersCollection;
+
+    participantTable.appendChild(createTable(members));
+
+    const btnDiv = document.createElement('div');
+
+    btnDiv.classList.add('btn-group');
+
+    btnDiv.appendChild(createButton('Mute', muteMember));
+    btnDiv.appendChild(createButton('Remove', removeMember));
+    btnDiv.appendChild(createButton('Make Host', transferHostToMember));
+
+    participantButtons.appendChild(btnDiv);
+
+    const inviteDiv = document.createElement('div');
+    const inviteInput = document.createElement('input');
+    const inviteBtn = createButton('Invite', inviteMember);
+
+    inviteDiv.style.display = 'flex';
+
+    inviteInput.type = 'text';
+    inviteInput.placeholder = 'Invite Member';
+
+    inviteDiv.appendChild(inviteInput);
+    inviteDiv.appendChild(inviteBtn);
+
+    participantButtons.appendChild(inviteDiv);
+  }
+}
+
+function emptyParticipants() {
+  participantTable.innerText = '';
+  participantButtons.innerText = '';
 }
 
 /* ANSWER/REJECT INCOMING CALL */
@@ -1447,3 +1870,28 @@ function rejectMeeting() {
 // Separate logic for Safari enables video playback after previously
 // setting the srcObject to null regardless if autoplay is set.
 window.onload = () => addPlayIfPausedEvents(htmlMediaElements);
+
+document.querySelectorAll('.collapsible').forEach((el) => {
+  el.addEventListener('click', (event) => {
+    const {parentElement} = event.currentTarget;
+
+    const sectionContentElement = parentElement.querySelector('.section-content');
+
+    sectionContentElement.classList.toggle('collapsed');
+  });
+});
+
+// Get Access Token from URL and put in access token field
+if (window.location.hash) {
+  // hacky way to get access token from hash
+  const urlParams = new URLSearchParams(window.location.hash.replace('#', '?'));
+
+  const accessToken = urlParams.get('access_token');
+  const expiresIn = urlParams.get('expires_in');
+
+  if (accessToken) {
+    localStorage.setItem('access-token', accessToken);
+    localStorage.setItem('date', new Date().getTime() + parseInt(expiresIn, 10));
+    tokenElm.value = accessToken;
+  }
+}

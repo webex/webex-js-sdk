@@ -1,13 +1,15 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
-const debug = require('debug')('tooling:test:mocha');
+const debug = require('debug')('*');
 const Mocha = require('mocha');
 
 require('@babel/register')({
   only: [
-    './packages/node_modules/**/*.js'
+    './packages/node_modules/**/*.js',
+    './packages/node_modules/**/*.ts'
   ],
+  extensions: ['.js', '.ts'],
   sourceMaps: true
 });
 
@@ -16,10 +18,12 @@ exports.test = async function test(options, packageName, suite, files) {
 
   options.output = `reports/junit/mocha/${packageName}-${suite}.xml`;
 
+
   return run(options, files)
-    .catch(() => {
+    .catch((e) => {
       debug(`${files} failed`);
-      throw new Error('Mocha suite failed');
+      console.log(e);
+      throw new Error('Mocha suite failed', e);
     });
 };
 

@@ -57,12 +57,7 @@
       }
     ],
     "class-methods-use-this": "warn",
-    "max-len": [
-      "warn",
-      {
-        "ignoreComments": true
-      }
-    ],
+    "max-len":  "off",
     "no-multi-assign": "warn",
     "no-param-reassign": "warn",
     "no-shadow": "warn",
