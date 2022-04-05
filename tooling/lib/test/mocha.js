@@ -1,48 +1,26 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
-
 const debug = require('debug')('tooling:test:mocha');
 const Mocha = require('mocha');
 
-const {expectReports, expectNonEmptyReports, expectNoKmsErrors} = require('./common');
+require('@babel/register')({
+  only: [
+    './packages/node_modules/**/*.js'
+  ],
+  sourceMaps: true
+});
 
 exports.test = async function test(options, packageName, suite, files) {
   debug(`testing ${files}`);
 
   options.output = `reports/junit/mocha/${packageName}-${suite}.xml`;
 
-  if (options.xunit || process.env.COVERAGE || process.env.CIRCLECI || process.env.CI) {
-    for (let i = 0; i < 3; i += 1) {
-      try {
-        debug(`Attempt #${i} for ${packageName}`);
-
-        await run(options, files);
-        await expectReports([options.output]);
-        await expectNonEmptyReports([options.output]);
-        await expectNoKmsErrors([options.output]);
-        debug(`Attempt #${i} for ${packageName} completed successfully`);
-        break;
-      }
-      catch (err) {
-        debug(err.message);
-        if (i === 2) {
-          throw err;
-        }
-      }
-    }
-  }
-  else {
-    const failures = await run(options, files);
-
-    if (failures) {
+  return run(options, files)
+    .catch(() => {
       debug(`${files} failed`);
       throw new Error('Mocha suite failed');
-    }
-    else {
-      debug(`${files} succeeded`);
-    }
-  }
+    });
 };
 
 /**
