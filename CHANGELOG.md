@@ -2,6 +2,56 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.157.0](https://github.com/webex/webex-js-sdk/compare/v1.156.4...v1.157.0) (2022-03-23)
+
+
+### Features
+
+* **plugin-meetings:** send diagnostic error on 502 response ([b5eaa46](https://github.com/webex/webex-js-sdk/commit/b5eaa46647736d2a52a3331fefb7a91d70651813))
+
+### [1.156.4](https://github.com/webex/webex-js-sdk/compare/v1.156.3...v1.156.4) (2022-03-22)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix case when first locus message about a meeting is type locus.difference ([39a465f](https://github.com/webex/webex-js-sdk/commit/39a465f67bf90efc14d20419aba9e04fd2eec52a))
+* **plugin-meetings:** removed unused path in initialSetup ([0aca0e5](https://github.com/webex/webex-js-sdk/commit/0aca0e592b77412337ffaf21f99b4d7711b39da5))
+
+### [1.156.3](https://github.com/webex/webex-js-sdk/compare/v1.156.2...v1.156.3) (2022-03-21)
+
+
+### Bug Fixes
+
+* **dependencies:** remove unused dependencies ([7997b86](https://github.com/webex/webex-js-sdk/commit/7997b869ecc98966a09810b588403f08dfbfc712))
+
+### [1.156.2](https://github.com/webex/webex-js-sdk/compare/v1.156.1...v1.156.2) (2022-03-15)
+
+
+### Bug Fixes
+
+* **plugins-meetings:** warn if H.264 codec is not detected ([f1e1223](https://github.com/webex/webex-js-sdk/commit/f1e1223cdf8f3fdf0adb7a1538a733dee87b7812))
+
+### [1.156.1](https://github.com/webex/webex-js-sdk/compare/v1.156.0...v1.156.1) (2022-03-15)
+
+
+### Bug Fixes
+
+* **webex-core:** send metrics when service not found in service catalog ([ac60cec](https://github.com/webex/webex-js-sdk/commit/ac60cec77a647618de8f01b5ec7d4bd2f3efe24f))
+
+## [1.156.0](https://github.com/webex/webex-js-sdk/compare/v1.155.0...v1.156.0) (2022-03-08)
+
+
+### Features
+
+* **webex-core:** add fedramp configuration for services ([ff90735](https://github.com/webex/webex-js-sdk/commit/ff907359a0620b01b7f2efcf790fde13688721e8))
+
+## [1.155.0](https://github.com/webex/webex-js-sdk/compare/v1.154.2...v1.155.0) (2022-03-07)
+
+
+### Features
+
+* **core:** check for appPlatform for spark-user-agent ([95c71b4](https://github.com/webex/webex-js-sdk/commit/95c71b4840dfb1c206640d832242a6997bffe9f7))
+
 ### [1.154.2](https://github.com/webex/webex-js-sdk/compare/v1.154.1...v1.154.2) (2022-02-16)
 
 

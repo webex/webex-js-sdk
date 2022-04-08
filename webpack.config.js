@@ -29,7 +29,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     sourceMapFilename: '[file].map',
     path: env && env.umd ?
       `${path.resolve(__dirname)}/packages/node_modules/webex/umd` :
-      `${path.resolve(__dirname)}/packages/node_modules/samples`
+      `${path.resolve(__dirname)}/docs/samples`
   },
   devtool:
   env && env.NODE_ENV === 'development' ?
@@ -37,7 +37,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
   devServer: {
     https: true,
     port: 8000,
-    static: './packages/node_modules/samples'
+    static: './docs'
   },
   node: {
     fs: 'empty'

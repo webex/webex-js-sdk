@@ -21,7 +21,6 @@ const {startProxies, stopProxies} = require('../util/proxies');
  * @param {Array} packages
  * @returns {Boolean}
  */
-const shouldTestInBrowser = (packages) => !packages.includes('@webex/webex-server');
 
 module.exports = {
   command: 'test',
@@ -106,29 +105,13 @@ module.exports = {
     }
   },
   handler: wrapHandler(async (argv) => {
-    if (!argv.browser && !argv.node) {
-      argv.browser = argv.packages && shouldTestInBrowser(argv.packages) || true;
-      argv.node = true;
-    }
-
-    if (
-      !argv.unit &&
-      !argv.integration &&
-      !argv.automation &&
-      !argv.documentation
-    ) {
+    if (!argv.unit && !argv.integration) {
       argv.unit = true;
       argv.integration = true;
-      argv.automation = true;
-      argv.documentation = true;
     }
 
-    if (
-      argv.automation &&
-      !argv.unit &&
-      !argv.integration &&
-      !argv.documentation
-    ) argv.browser = false;
+    argv.browser = argv.browser || argv.integration;
+    argv.node = argv.node || argv.unit;
 
     if (argv.tests) {
       if (argv.package) {
@@ -151,7 +134,6 @@ module.exports = {
         }
 
         for (const packageName of argv.packages) {
-          if (packageName.includes('plugin-meetings')) argv.browser = true;
           await testPackage(argv, packageName);
         }
 

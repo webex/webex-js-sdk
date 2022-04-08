@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Sample: Local Screensharing</title>
+    <link rel="stylesheet" href="https://downloads.momentum-ui.com/@momentum-ui/core/css/momentum-ui.css">
+    <style>
+      main {
+        padding: 10px;
+      }
+      table {
+        border-collapse: collapse;
+        padding: 10px;
+        margin: 10px;
+      }
+      table, th, td {
+        border: 1px solid black;
+      }
+      thead th {
+        font-weight: bold;
+      }
+      tbody td {
+        min-width: 150px;
+      }
+    </style>
+  </head>
+  <body>
+      <header class="md-top-bar md-top-bar--dark" role="navigation">
+        <div class="md-top-bar__container row">
+          <div class="md-top-bar__brand">
+            <a class="md-brand" href="#">
+              <div class="md-brand__logo">
+                <i class="icon icon-cisco-logo"></i>
+              </div>
+              <div class="md-brand__title">Webex JS SDK Samples</div>
+            </a>
+          </div>
+          <nav class="md-top-bar__nav ">
+            <div class="md-list md-list--horizontal" role="list">
+
+            </div>
+          </nav>
+        </div>
+      </header>
+      <main>
+        <h1>Local Screensharing</h1>
+        <p>This sample demonstrates sharing your local screen</p>
+
+        <form >
+          <fieldset id="auth-type">
+            <legend>Pick Authentication Method</legend>
+              <div>
+                <input type="radio" id="oauth-input" name="typeCredentials" onchange="handleAuthTypeChange()" value="oauth" checked>
+                <label for="oauth-input">OAuth</label>
+              </div>
+              <div>
+                <input type="radio" id="token-input" name="typeCredentials" onchange="handleAuthTypeChange()" value="token">
+                <label for="token-input">Paste Access Token</label>
+              </div>
+          </fieldset>
+        </form>
+
+        <form id="credentials">
+          <fieldset id="oauth" style="display: block;">
+            <legend>Authentication with OAuth </legend>
+              <input id="login" title="login" type="button" value="Login">
+              <input id="logout" title="logout" type="button" value="Logout" disabled="disabled">
+              <p id="login-status">not logged in</p>
+          </fieldset>
+          <fieldset id="token-auth" style="display: none;">
+            <legend>Authentication with Access Token </legend>
+             <input
+               id="access-token"
+               name="accessToken"
+               placeholder="Your access token"
+               type="text">
+              <input id="webexInit" title="webex.init()" type="button" value="webex.init()">
+              <p id="webex-status">webex is not initialized</p>
+          </fieldset>
+        </form>
+
+        <form id="register-form">
+          <fieldset>
+            <legend>Register Device</legend>
+            <input id="register" title="register" type="button" value="Register" disabled>
+            <input id="unregister" title="unregister" type="button" value="Unregister" disabled>
+            <p id="register-status">device is not registered</p>
+          </fieldset>
+        </form>
+
+        <form id="invite-form">
+          <fieldset id="dialer" disabled>
+            <legend>Dialer</legend>
+            <input
+              id="invitee"
+              name="invitee"
+              placeholder="Person ID or Email Address or SIP URI or Room ID"
+              size="60"
+              type="text">
+              <input id="dial" title="dial" type="button" value="dial">
+          </fieldset>
+        </form>
+
+        <form id="meetings-controls">
+          <fieldset id="call-controls" disabled>
+            <legend>Call Controls</legend>
+            <button id="hangup" title="hangup" type="button">cancel/hangup</button>
+            <button id="share-screen" title="share screen" type="button">share screen</button>
+            <button id="stop-screen-share" title="stop screen share" type="button">stop screen share</button>
+          </fieldset>
+        </form>
+
+        <table id="call-status">
+          <thead>
+              <tr>
+                  <th></th>
+                  <th>Call Status</th>
+                  <th>Screenshare Tracks</th>
+              </tr>
+          </thead>
+          <tbody>
+              <tr>
+                  <td>Local Participant</td>
+                  <td id="call-status-local"></td>
+                  <td id="screenshare-tracks"></td>
+              </tr>
+              <tr>
+                <td>Remote Participant</td>
+                <td id="call-status-remote"></td>
+                <td id="screenshare-tracks-remote"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table id="video-streams">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Video</th>
+              <th>Share</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Local</td>
+              <td>
+                <video style="max-width: 250px; max-height: 250px;" id="self-view" muted autoplay playsinline></video>
+              </td>
+              <td>
+                <video style="max-width: 250px; max-height: 250px;" id="self-screen" muted autoplay playsinline></video>
+              </td>
+            </tr>
+            <tr>
+              <td>Remote</td>
+              <td>
+                <video style="max-width: 250px; max-height: 250px;" id="remote-view-video" autoplay playsinline></video>
+                <audio id="remote-view-audio" autoplay playsinline></audio>
+              </td>
+              <td>
+                <video style="max-width: 250px; max-height: 250px;" id="remote-screen" muted autoplay playsinline></video>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </main>
+
+    <script src="../webex.min.js"></script>
+    <!-- app.js is your application code -->
+    <script src="app.js"></script>
+  </body>
+</html>
+

@@ -7,17 +7,11 @@ const {readFile, stat} = require('fs-extra');
 
 const {glob} = require('../../util/package');
 
-exports.gatherFiles = async function gatherFiles(options, packageName) {
+exports.gatherFiles = async function gatherFiles(env, packageName) {
   let files = [];
 
-  if (options.unit) {
-    debug(`looking for unit tests for ${packageName}`);
-    files = files.concat(await glob('test/unit/spec/**/*.js', {packageName}));
-  }
-  if (options.integration) {
-    debug(`looking for integration tests for ${packageName}`);
-    files = files.concat(await glob('test/integration/spec/**/*.js', {packageName}));
-  }
+  debug(`looking for ${env} tests for ${packageName}`);
+  files = files.concat(await glob(`test/${env}/spec/**/*.js`, {packageName}));
 
   return files.map((f) => `packages/node_modules/${packageName}/${f}`);
 };

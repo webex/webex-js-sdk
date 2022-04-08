@@ -45,9 +45,6 @@ If you would like to contribute to this repository by adding features, enhanceme
         - [`[skip ci]`](#skip-ci)
     - [Submitting a Pull Request](#submitting-a-pull-request)
     - [Pull Request Checklist](#pull-request-checklist)
-  - [Updating the Documentation](#updating-the-documentation)
-    - [Set Up Environment (with Bundler)](#set-up-environment-with-bundler)
-    - [Compile and Serve Docs](#compile-and-serve-docs)
 
 ## Reporting Issues
 
@@ -258,7 +255,7 @@ You can run them on SauceLabs with `SAUCE=true npm run samples:test`.
 To run a specific sample test instead of the full suite, append the `--spec` flag to the `samples:test` command and the path to the specific test
 
 ```sh
-npm run samples:test -- --spec packages/node_modules/samples/browser-call-with-screenshare
+npm run samples:test -- --spec docs/samples/browser-call-with-screenshare
 ```
 
 If an error occurs when running the above command that appears to be related to a missing [Selenium](https://www.selenium.dev/) driver, the following command should install the needed external dependencies:
@@ -440,24 +437,3 @@ Before you open that new pull request, make sure to have completed the following
 - I have added tests that prove my fix is effective or that my feature works
 - New and existing unit tests pass locally with my changes
 - Any dependent changes have been merged and published in downstream modules
-
-## Updating the Documentation
-
-To compile the documentation locally, make sure you have [Bundler](http://bundler.io/) or
-[Jekyll](https://jekyllrb.com/) installed then run the following:
-
-### Set Up Environment (with Bundler)
-
-```bash
-cd docs
-bundle install
-```
-
-### Compile and Serve Docs
-
-```bash
-cd docs
-npm run build:docs
-bundle exec jekyll serve --config=_config.yml,_config.local.yml
-```
-
