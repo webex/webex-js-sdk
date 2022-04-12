@@ -1,5 +1,4 @@
 {
-  "extends": "@webex/eslint-config-base",
   "parserOptions": {
     "ecmaFeatures": {
       "legacyDecorators": true

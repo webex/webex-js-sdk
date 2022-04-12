@@ -9,8 +9,8 @@
   "license": "MIT",
   "author": "devsupport@webex.com",
   "engines": {
-    "node": "^14.x",
-    "npm": "6.x"
+    "node": "^16.x",
+    "npm": "8.x"
   },
   "main": "src/index.js",
   "repository": {
@@ -80,7 +80,6 @@
     "@babel/traverse": "^7.14.9",
     "@babel/types": "^7.14.9",
     "@sinonjs/fake-timers": "^6.0.1",
-    "@webex/eslint-config-base": "^0.8.0",
     "ampersand-collection": "^2.0.2",
     "ampersand-collection-lodash-mixin": "^4.0.0",
     "ampersand-events": "^2.0.2",
@@ -209,7 +208,6 @@
     "karma-chai": "^0.1.0",
     "karma-chrome-launcher": "^3.1.0",
     "karma-coverage": "^2.0.3",
-    "karma-edgium-launcher": "^4.0.0-0",
     "karma-firefox-launcher": "^2.1.0",
     "karma-ie-launcher": "^1.0.0",
     "karma-junit-reporter": "^2.0.1",
