@@ -22,6 +22,7 @@
     "packages/node_modules/**": false
   },
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": true
+    "source.fixAll.eslint": true,
+    "source.organizeImports": false
   }
 }

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.157.1](https://github.com/webex/webex-js-sdk/compare/v1.157.0...v1.157.1) (2022-04-12)
+
+
+### Bug Fixes
+
+* **credentials:** may not have orgId when sending metrics ([4238148](https://github.com/webex/webex-js-sdk/commit/42381488f7d422b55782a6a4f26249efd201a44d))
+
 ## [1.157.0](https://github.com/webex/webex-js-sdk/compare/v1.156.4...v1.157.0) (2022-03-23)
 
 

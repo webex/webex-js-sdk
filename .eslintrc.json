@@ -1,0 +1,164 @@
+{
+  "extends": "@webex/eslint-config-base",
+  "parserOptions": {
+    "ecmaFeatures": {
+      "legacyDecorators": true
+    }
+  },
+  "globals": {
+    "PACKAGE_VERSION": false,
+    "WebSocket": false
+  },
+  "root": true,
+  "rules": {
+    "comma-dangle": ["error", "only-multiline"],
+    "no-warning-comments": "warn",
+    "require-jsdoc": [
+      "error",
+      {
+        "require": {
+          "FunctionDeclaration": true,
+          "MethodDefinition": true,
+          "ClassDeclaration": true,
+          "ArrowFunctionExpression": false,
+          "FunctionExpression": true
+        }
+      }
+    ],
+    "valid-jsdoc": [
+      "error",
+      {
+        "matchDescription": ".+",
+        "prefer": {
+          "arg": "param",
+          "argument": "param",
+          "return": "returns",
+          "virtual": "abstract",
+          "fires": "emits"
+        },
+        "requireParamDescription": false,
+        "requireReturn": false,
+        "requireReturnType": true,
+        "requireReturnDescription": false
+      }
+    ],
+    "class-methods-use-this": "warn",
+    "max-len": [
+      "warn",
+      {
+        "ignoreComments": true
+      }
+    ],
+    "no-multi-assign": "warn",
+    "no-param-reassign": "warn",
+    "no-shadow": "warn",
+    "no-underscore-dangle": "warn",
+    "import/first": "warn",
+    "import/order": "warn",
+    "prefer-destructuring": [
+      "error",
+      {
+        "VariableDeclarator": {
+          "array": false,
+          "object": true
+        },
+        "AssignmentExpression": {
+          "array": false,
+          "object": false
+        }
+      },
+      {
+        "enforceForRenamedProperties": false
+      }
+    ],
+    "no-use-before-define": [
+      "error",
+      {
+        "classes": false,
+        "functions": false,
+        "variables": true
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["packages/node_modules/**/*.js"],
+      "rules": {
+        "valid-jsdoc": [
+          "error",
+          {
+            "prefer": {
+              "arg": "param",
+              "argument": "param",
+              "return": "returns",
+              "virtual": "abstract",
+              "fires": "emits"
+            },
+            "requireParamDescription": false,
+            "requireReturn": true,
+            "requireReturnType": true,
+            "requireReturnDescription": false
+          }
+        ],
+        "require-jsdoc": [
+          "warn",
+          {
+            "require": {
+              "FunctionDeclaration": true,
+              "MethodDefinition": true,
+              "ClassDeclaration": true,
+              "ArrowFunctionExpression": false,
+              "FunctionExpression": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "packages/node_modules/**/test/**/*.js",
+        "packages/node_modules/**/*-spec/**/*.js"
+      ],
+      "env": {
+        "mocha": true
+      },
+      "rules": {
+        "func-names": 0,
+        "no-invalid-this": 0,
+        "require-jsdoc": 0
+      }
+    },
+    {
+      "files": ["wdio.helpers.d/**/*.js", "docs/samples/**/test/wdio/**/*.js"],
+      "globals": {
+        "browser": false,
+        "browserFirefox": false,
+        "browserChrome": false,
+        "$": false,
+        "$$": false,
+        "step": false,
+        "describe": false,
+        "before": false,
+        "beforeAll": false,
+        "beforeEach": false,
+        "after": false,
+        "afterAll": false,
+        "afterEach": false,
+        "it": false
+      }
+    },
+    {
+      "files": ["packages/node_modules/@webex/xunit-with-logs"],
+      "rules": {
+        "func-names": 0,
+        "no-console": 0
+      }
+    },
+    {
+      "files": ["packages/node_modules/**/bin-*/**"],
+      "rules": {
+        "no-sync": 0
+      }
+    }
+  ]
+}
