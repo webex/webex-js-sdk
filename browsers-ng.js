@@ -82,7 +82,7 @@ module.exports = function (packageName, argv) {
     }, {})
   }
 
-  if (process.env.SC_TUNNEL_IDENTIFIER || process.env.CI || process.env.CIRCLECI || process.env.SAUCE) {
+  if (process.env.SC_TUNNEL_IDENTIFIER || process.env.SAUCE) {
     browsers = {
       ...(!argv.browsers && !argv.os ? {
         // Reminder: the first item in this object is used by pipeline builds

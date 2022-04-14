@@ -30,6 +30,8 @@ If you would like to contribute to this repository by adding features, enhanceme
       - [Running Samples Locally](#running-samples-locally)
       - [Samples Tests](#samples-tests)
         - [Local Samples Tests](#local-samples-tests)
+        - [Mobile Samples Tests (Sauce)](#mobile-samples-tests-sauce)
+        - [Local Mobile Samples Tests](#local-mobile-samples-tests)
     - [Git Commit Guidelines](#git-commit-guidelines)
       - [Commit Message Format](#commit-message-format)
       - [Revert](#revert)
@@ -43,9 +45,6 @@ If you would like to contribute to this repository by adding features, enhanceme
         - [`[skip ci]`](#skip-ci)
     - [Submitting a Pull Request](#submitting-a-pull-request)
     - [Pull Request Checklist](#pull-request-checklist)
-  - [Updating the Documentation](#updating-the-documentation)
-    - [Set Up Environment (with Bundler)](#set-up-environment-with-bundler)
-    - [Compile and Serve Docs](#compile-and-serve-docs)
 
 ## Reporting Issues
 
@@ -108,6 +107,12 @@ If at any point your out-of-the-box builds or failing or if you are tests are fa
 
 ```bash
 nvm use; npm ci
+```
+
+By default npm uses `sh` which does not support the glob syntax and as such `distsrc` and `srcdist` will fail with *No such file or directory*. To fix this you can set npm to use bash instead using:
+
+```bash
+npm config set script-shell "/bin/bash"
 ```
 
 ### Environment Variables
@@ -250,7 +255,7 @@ You can run them on SauceLabs with `SAUCE=true npm run samples:test`.
 To run a specific sample test instead of the full suite, append the `--spec` flag to the `samples:test` command and the path to the specific test
 
 ```sh
-npm run samples:test -- --spec packages/node_modules/samples/browser-call-with-screenshare
+npm run samples:test -- --spec docs/samples/browser-call-with-screenshare
 ```
 
 If an error occurs when running the above command that appears to be related to a missing [Selenium](https://www.selenium.dev/) driver, the following command should install the needed external dependencies:
@@ -259,6 +264,8 @@ If an error occurs when running the above command that appears to be related to 
 ./node_modules/.bin/selenium-standalone install
 ```
 
+> _Latest versions of chrome and firefox need to be installed for selenium to launch correctly._
+
 ##### Local Samples Tests
 
 If you wish to run the samples tests locally, we suggest changing from the Chrome-to-Firefox multiremote setup to Chrome-to-Chrome.
@@ -266,6 +273,53 @@ If you wish to run the samples tests locally, we suggest changing from the Chrom
 You can do so by modifying the [wdio.conf.js](./wdio.conf.js) file.
 Simply change the `browserFirefox`'s `capabilities` object to the same as `browserChrome` (the Chrome instance).
 When you run, you should see two instances of Chrome open.
+
+##### Mobile Samples Tests (Sauce)
+
+> NOTE: You will need to off VPN for localhost to tunnel correctly
+
+`SAUCE=true npm run samples:test:mobile`
+
+- You will need to alias `localhost` which will require you to modify your `hosts` file and add that alias to your `.env` file with the name `LOCALHOST_ALIAS`.
+- By default, the config will use `local.localhost` as the alias if `LOCALHOST_ALIAS` isn't provided.
+  - on macOS/Linux, you will add `127.0.0.1 local.localhost` to `/etc/hosts`
+  - on Windows, you will add `127.0.0.1 local.localhost` to `c:\Windows\System32\Drivers\etc\hosts`
+
+##### Local Mobile Samples Tests
+
+> NOTE: You will need to off VPN for localhost to tunnel correctly
+> Testing on a iDevice only works on macOS due to the lockdown of `safaridriver`, you should probably switch to [two Android devices and changes to the `wdio.conf.mobile.js`](https://chromedriver.chromium.org/getting-started/getting-started---android#h.p_ID_306) or swap the iDevice config for a different browser installed on the machine.
+
+`npm run samples:test:mobile`
+
+By default the config will look for both a Android and iOS device attached to the system. If you wish to test on a specific/singular device and use Chrome installed on your machine, you can pass either `IOS=true` or `ANDROID=true` environment variables to the command above.
+_Ex. `ANDROID=true npm run samples:test:mobile` will open Chrome on your local machine and Chrome on your attached Android device._
+
+This process is more involved and requires both devices to be wired to the laptop/machine.
+
+**_Machine/Laptop_**
+
+- You will need to alias `localhost` which will require you to modify your `hosts` file and add that alias to your `.env` file with the name `LOCALHOST_ALIAS`..
+- By default, the config will use `local.localhost` as the alias if `LOCALHOST_ALIAS` isn't provided.
+  - on macOS/Linux, you will add `127.0.0.1 local.localhost` to `/etc/hosts`
+  - on Windows, you will add `127.0.0.1 local.localhost` to `c:\Windows\System32\Drivers\etc\hosts`
+- For iDevices, you'll need to enable `safaridriver`
+  - `safaridriver --enable` (macOS only)
+- For Android, you'll need `adb` installed
+  - You can run `adb devices` which will autostart the server and show you the devices connected
+
+**_iOS_**
+
+- You will need to make sure that the device has already been trusted to be used by the machine/laptop or else it will not be discovered when webdriverio attempts to connect to the device
+- You will need to enable remote debugging on your device
+  - _Settings > Safari > Advanced > Remote automation_
+
+**_Android_**
+
+- On your device, you'll need to enable Developer Options & USB Debugging
+  - _Settings > About Phone > Tap `Build Number` till Developer Options is enabled_
+  - _Settings > Developer Options > USB Debugging > Enable USB Debugging_
+- You will need to make sure that USB Debugging has trusted the machine/laptop or else it will not be discovered when webdriverio attempts to connect to the device
 
 ### Git Commit Guidelines
 
@@ -383,24 +437,3 @@ Before you open that new pull request, make sure to have completed the following
 - I have added tests that prove my fix is effective or that my feature works
 - New and existing unit tests pass locally with my changes
 - Any dependent changes have been merged and published in downstream modules
-
-## Updating the Documentation
-
-To compile the documentation locally, make sure you have [Bundler](http://bundler.io/) or
-[Jekyll](https://jekyllrb.com/) installed then run the following:
-
-### Set Up Environment (with Bundler)
-
-```bash
-cd docs
-bundle install
-```
-
-### Compile and Serve Docs
-
-```bash
-cd docs
-npm run build:docs
-bundle exec jekyll serve --config=_config.yml,_config.local.yml
-```
-

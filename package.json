@@ -1,6 +1,6 @@
 {
   "name": "webex-js-sdk",
-  "version": "1.127.0",
+  "version": "1.159.0",
   "description": "JavaScript SDK for interacting with the Webex API",
   "homepage": "https://github.com/webex/webex-js-sdk",
   "bugs": {
@@ -28,7 +28,7 @@
     "build:docs": "documentation build --config documentation/config.yml --np --project-name webex --project-version 1.x --format html --output ./docs/api --github ./packages/node_modules/webex/src/index.js ./packages/node_modules/{@ciscospark,@webex}/plugin-*/src/index.js --babel=./babel.config.json",
     "check-karma-output": "./scripts/analyze-output.sh",
     "build:package": "echo 'deprecated; just use \"npm run --silent build\"'./tooling/build.js",
-    "changelog:generate": "standard-changelog",
+    "changelog:generate": "npx standard-changelog",
     "circleci:local": "circleci local execute -c .circleci/github.config.yml",
     "lint": "npm run --silent lint:js && npm run --silent lint:package-names",
     "lint:commitmsg": "commitlint -e $GIT_PARAMS",
@@ -39,55 +39,47 @@
     "test": "node ./tooling/index.js test",
     "test:ci:github": "node ./tooling/index.js ci --github",
     "test:ci:integration": "node ./tooling/index.js ci --integration",
-    "distsrc": "sed -ibak 's#\"main\": \"dist/index.js#\"main\": \"src/index.js#' packages/node_modules/{*,@webex/*}/package.json && rimraf packages/node_modules/{*,@webex/*}/*bak",
-    "srcdist": "sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' packages/node_modules/{*,@webex/*}/package.json && rimraf packages/node_modules/{*,@webex/*}/*bak",
+    "distsrc": "find ./packages/node_modules -name 'package.json' -print0 | xargs -0 sed -ibak 's#\"main\": \"dist/index.js#\"main\": \"src/index.js#' && find ./packages/node_modules -name '*bak' -print0 | xargs -0 rimraf",
+    "srcdist": "find ./packages/node_modules -name 'package.json' -print0 | xargs -0 sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' && find ./packages/node_modules -name '*bak' -print0 | xargs -0 rimraf",
     "get-current-version": "node ./tooling/index.js version current",
     "get-next-version": "node ./tooling/index.js version next --alwaysIncrement --includeSamples",
-    "deps:check": "node ./tooling/index.js exec --cmd dependency-check -- ./package.json",
     "deps:generate": "node ./deps.js",
     "samples:build": "node ./tooling/index.js build --only-samples",
     "samples:serve": "webpack serve --color --env NODE_ENV=development",
     "samples:serve:integration": "webpack serve --color --env NODE_ENV=test",
     "samples:test": "NODE_ENV=test wdio",
+    "samples:test:mobile": "NODE_ENV=test wdio run ./wdio.conf.mobile.js",
     "tooling": "node ./tooling/index.js",
     "preinstall": "[ -f ./package-lock.json ] && [ \"$npm_config_refer\" != \"ci\" ] && npx npm-force-resolutions || exit 0",
     "postinstall": "patch-package",
     "release": "standard-version -a",
-    "release:dry-run": "standard-version --dry-run"
+    "release:dry-run": "standard-version --dry-run",
+    "prepare": "husky install"
   },
   "dependencies": {
-    "@babel/cli": "^7.12.10",
-    "@babel/core": "^7.12.10",
-    "@babel/generator": "^7.12.11",
-    "@babel/node": "^7.12.10",
-    "@babel/plugin-proposal-async-generator-functions": "^7.12.12",
-    "@babel/plugin-proposal-class-properties": "^7.12.1",
-    "@babel/plugin-proposal-decorators": "^7.12.12",
-    "@babel/plugin-proposal-export-default-from": "^7.12.1",
-    "@babel/plugin-proposal-export-namespace-from": "^7.12.1",
-    "@babel/plugin-proposal-nullish-coalescing-operator": "^7.12.1",
-    "@babel/plugin-proposal-object-rest-spread": "^7.12.1",
-    "@babel/plugin-proposal-optional-chaining": "^7.12.7",
-    "@babel/plugin-syntax-async-generators": "^7.0.0",
-    "@babel/plugin-transform-classes": "^7.12.1",
-    "@babel/plugin-transform-runtime": "^7.12.10",
+    "@babel/cli": "^7.14.8",
+    "@babel/core": "^7.14.8",
+    "@babel/generator": "^7.14.9",
+    "@babel/node": "^7.14.9",
+    "@babel/plugin-proposal-async-generator-functions": "^7.14.9",
+    "@babel/plugin-proposal-class-properties": "^7.14.5",
+    "@babel/plugin-proposal-decorators": "^7.14.5",
+    "@babel/plugin-proposal-export-default-from": "^7.14.5",
+    "@babel/plugin-proposal-export-namespace-from": "^7.14.5",
+    "@babel/plugin-proposal-nullish-coalescing-operator": "^7.14.5",
+    "@babel/plugin-proposal-object-rest-spread": "^7.14.7",
+    "@babel/plugin-proposal-optional-chaining": "^7.14.5",
+    "@babel/plugin-syntax-async-generators": "^7.8.4",
+    "@babel/plugin-transform-classes": "^7.14.9",
+    "@babel/plugin-transform-runtime": "^7.14.5",
     "@babel/polyfill": "^7.12.1",
-    "@babel/preset-env": "^7.12.11",
-    "@babel/register": "^7.12.10",
-    "@babel/runtime-corejs2": "^7.12.5",
-    "@babel/template": "^7.12.7",
-    "@babel/traverse": "^7.12.12",
-    "@babel/types": "^7.12.12",
+    "@babel/preset-env": "^7.14.9",
+    "@babel/register": "^7.14.5",
+    "@babel/runtime-corejs2": "^7.14.8",
+    "@babel/template": "^7.14.5",
+    "@babel/traverse": "^7.14.9",
+    "@babel/types": "^7.14.9",
     "@sinonjs/fake-timers": "^6.0.1",
-    "@wdio/cli": "^6.12.1",
-    "@wdio/junit-reporter": "^6.11.0",
-    "@wdio/local-runner": "^6.12.1",
-    "@wdio/mocha-framework": "^6.11.0",
-    "@wdio/sauce-service": "^6.12.1",
-    "@wdio/selenium-standalone-service": "^6.12.1",
-    "@wdio/spec-reporter": "^6.11.0",
-    "@wdio/static-server-service": "^6.10.10",
-    "@wdio/sync": "^6.11.0",
     "@webex/eslint-config-base": "^0.8.0",
     "ampersand-collection": "^2.0.2",
     "ampersand-collection-lodash-mixin": "^4.0.0",
@@ -113,9 +105,8 @@
     "cookie-parser": "^1.4.4",
     "core-decorators": "^0.20.0",
     "cors": "^2.8.5",
-    "crypto-js": "^3.1.9-1",
+    "crypto-js": "^4.1.1",
     "debug": "^3.2.6",
-    "dependency-check": "^4.1.0",
     "detective": "^5.2.0",
     "detectrtc": "^1.3.4",
     "doctrine": "^2.1.0",
@@ -139,14 +130,13 @@
     "gm": "^1.23.1",
     "highlight.js": "^11.0.1",
     "humanize-string": "^1.0.2",
-    "husky": "^3.0.3",
     "in-publish": "^2.0.0",
+    "ip-anonymize": "^0.1.0",
     "is-function": "^1.0.1",
     "isomorphic-webcrypto": "^2.3.8",
     "istanbul": "^0.4.5",
     "javascript-state-machine": "^3.1.0",
     "jsonwebtoken": "^8.5.1",
-    "lint-staged": "^8.2.1",
     "load-grunt-tasks": "^3.5.2",
     "localforage": "^1.7.3",
     "lodash": "^4.17.21",
@@ -165,7 +155,6 @@
     "pkijs": "^2.1.84",
     "ps-node": "^0.1.6",
     "qs": "^6.7.0",
-    "read-package-json": "^2.0.13",
     "readable-stream": "^3.6.0",
     "request": "^2.88.0",
     "request-id": "^0.11.1",
@@ -183,24 +172,40 @@
     "uuid": "^3.3.2",
     "valid-url": "^1.0.9",
     "wd": "^1.14.0",
-    "webdriverio": "^6.12.1",
     "webrtc-adapter": "^7.7.0",
     "whatwg-fetch": "^2.0.4",
-    "ws": "^4.1.0",
+    "ws": "^8.2.2",
     "xhr": "^2.5.0",
     "xtend": "^4.0.2",
     "yakbak": "^3.0.0",
     "yargs": "^16.2.0"
   },
   "devDependencies": {
-    "@commitlint/cli": "^12.0.0",
-    "@commitlint/config-conventional": "^12.0.0",
+    "@commitlint/cli": "^15.0.0",
+    "@commitlint/config-conventional": "^15.0.0",
+    "@wdio/browserstack-service": "^6.12.1",
+    "@wdio/cli": "^6.12.1",
+    "@wdio/junit-reporter": "^6.11.0",
+    "@wdio/local-runner": "^6.12.1",
+    "@wdio/mocha-framework": "^6.11.0",
+    "@wdio/sauce-service": "^6.12.1",
+    "@wdio/selenium-standalone-service": "^6.12.1",
+    "@wdio/spec-reporter": "^6.11.0",
+    "@wdio/static-server-service": "^6.10.10",
+    "@wdio/sync": "^6.11.0",
+    "appium-adb": "^8.17.0",
+    "babel-plugin-module-resolver": "^4.1.0",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "documentation": "^13.1.1",
     "documentation-theme-utils": "^3.0.0",
+    "husky": "^7.0.0",
+    "intern": "^4.10.1",
+    "jsdom": "19.0.0",
+    "jsdom-global": "3.0.2",
     "karma": "^6.3.2",
     "karma-browserify": "^8.0.0",
+    "karma-browserstack-launcher": "^1.6.0",
     "karma-chai": "^0.1.0",
     "karma-chrome-launcher": "^3.1.0",
     "karma-coverage": "^2.0.3",
@@ -213,19 +218,24 @@
     "karma-opera-launcher": "^1.0.0",
     "karma-safari-launcher": "^1.0.0",
     "karma-sauce-launcher": "^4.3.6",
+    "lint-staged": "^12.1.2",
     "mocha": "^8.3.2",
     "mocha-steps": "^1.3.0",
+    "path-parse": "^1.0.7",
     "sinon": "^9.2.4",
-    "standard-changelog": "^2.0.27",
     "standard-version": "^9.1.1",
     "terser-webpack-plugin": "^4.2.3",
+    "webdriverio": "^6.12.1",
     "webpack": "^4.46.0",
-    "webpack-cli": "^4.6.0",
-    "webpack-dev-server": "^4.0.0-beta.1"
+    "webpack-cli": "^4.8.0",
+    "webpack-dev-server": "^4.3.1"
   },
   "resolutions": {
+    "hosted-git-info": "^4.0.0",
     "set-value": "3.0.2",
-    "terser-webpack-plugin": "4.2.3"
+    "terser-webpack-plugin": "4.2.3",
+    "glob-parent": "5.1.2",
+    "multicast-dns": "7.2.4"
   },
   "optionalDependencies": {
     "@ciscospark/test-users-legacy": "^1.2.0"
@@ -256,28 +266,16 @@
     "registry": "http://engci-maven-master.cisco.com/artifactory/api/npm/webex-release-npm"
   },
   "lint-staged": {
-    "linters": {
-      "*.js": [
-        "npm run lint:eslint -- --fix",
-        "git add"
-      ],
-      "*package.json": [
-        "npm run lint:package-names"
-      ],
-      "ignore": [
-        "**/umd/**.js"
-      ]
-    }
-  },
-  "husky": {
-    "hooks": {
-      "commit-msg": "commitlint --verbose -e $HUSKY_GIT_PARAMS",
-      "pre-commit": "npm run --silent srcdist && npm run --silent lint:staged"
-    }
+    "*.js": [
+      "npm run lint:eslint -- --fix"
+    ],
+    "*package.json": [
+      "npm run lint:package-names"
+    ]
   },
   "standard-version": {
     "scripts": {
-      "postbump": "npm run build && npm run build:script && git add packages/node_modules/webex/umd/*.js",
+      "postbump": "npm run build -- --skip-samples && npm run build:script && git add packages/node_modules/webex/umd/*.js",
       "release": "git add packages/node_modules/*/package.json packages/node_modules/@ciscospark/*/README.md packages/node_modules/@webex/*/package.json CHANGELOG.md && standard-version -a"
     }
   }

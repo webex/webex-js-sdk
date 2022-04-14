@@ -14,7 +14,7 @@ const {flatten} = require('lodash');
 const makeBrowsers = require('./browsers-ng');
 /* eslint-disable global-require */
 
-const CI = (process.env.SC_TUNNEL_IDENTIFIER || process.env.CI || process.env.CIRCLECI || process.env.SAUCE);
+const SAUCE = (process.env.SC_TUNNEL_IDENTIFIER || process.env.SAUCE);
 
 module.exports = function configureKarma(config) {
   config.set(makeConfig(process.env.PACKAGE));
@@ -100,6 +100,8 @@ function makeConfig(packageName, argv) {
 
     hostname: 'localhost',
 
+    logLevel: process.env.KARMA_LOG_LEVEL || 'INFO', // INFO is default value
+
     browserConsoleLogOptions: {
       level: 'warn'
     },
@@ -141,7 +143,20 @@ function makeConfig(packageName, argv) {
     recordScreenshots: true
   };
 
-  if (CI) {
+  if (process.env.COVERAGE || process.env.CIRCLECI || process.env.CI) {
+    cfg.junitReporter = {
+      outputFile: `${packageName}.xml`,
+      outputDir: 'reports/junit/karma',
+      suite: packageName,
+      useBrowserName: true,
+      recordScreenshots: true,
+      recordVideo: true
+    };
+
+    cfg.reporters.push('junit');
+  }
+
+  if (SAUCE) {
     cfg.transports = ['websocket', 'polling'];
 
     cfg.sauceLabs = {
@@ -169,17 +184,7 @@ function makeConfig(packageName, argv) {
       }
     };
 
-    cfg.junitReporter = {
-      outputFile: `${packageName}.xml`,
-      outputDir: 'reports/junit/karma',
-      suite: packageName,
-      useBrowserName: true,
-      recordScreenshots: true,
-      recordVideo: true
-    };
-
     cfg.reporters.push('saucelabs');
-    cfg.reporters.push('junit');
   }
 
   try {

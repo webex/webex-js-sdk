@@ -1,0 +1,273 @@
+body {
+  padding: 1rem;
+  background-color: #eee;
+  font-family: sans-serif;
+  font-size: 15px;
+  overflow: hidden;
+  margin: 0;
+}
+
+video {
+  min-height: 15vh;
+  width: 100%;
+}
+
+/* Nice defaults */
+h2 {
+  font-weight: 500;
+  font-size: 2.2rem;
+}
+
+section {
+  background-color: #fff;
+  padding: 1rem;
+  margin-bottom: 2rem;
+}
+
+select {
+  min-width: 300px;
+  margin-right: 1rem;
+  min-height: 32px;
+}
+
+label {
+  font-size: 1rem;
+  margin-left: 0.2rem;
+  white-space: nowrap;
+}
+label:first-child {
+  margin-left: 0;
+}
+
+pre {
+  padding: 0.5rem;
+  background-color: #eee;
+  white-space: pre-wrap;
+}
+
+code {
+  display: inline-block;
+  padding: 0.0625rem 0.25rem;
+  font-family: Consolas, Liberation Mono, Courier, monospace;
+  line-height: 1rem;
+  color: crimson;
+  font-size: 0.8rem;
+  background-color: #ededed;
+  border: 0.0625rem solid rgba(0, 0, 0, 0.12);
+  border-radius: 0.25rem;
+  box-sizing: border-box;
+}
+
+fieldset {
+  margin: 0 0.5rem;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+fieldset p {
+  padding: 1rem 0;
+  margin: 0;
+}
+fieldset legend {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+button {
+  position: relative;
+  display: inline-block;
+  min-width: 4.5rem;
+  font-family: CiscoSansTT Regular, Helvetica Neue, Helvetica, sans-serif;
+  font-weight: 400;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  font-size: 0.9rem;
+  line-height: 1.5rem;
+  border-radius: 1.125rem;
+  height: 2.25rem;
+  padding: 0.375rem 1.125rem;
+  color: var(--md-button-secondary-text-color, #000);
+  background-color: var(--md-button-secondary-bg-color, #dedede);
+  border-color: transparent;
+  transition: background-color 0.15s ease;
+}
+button:hover {
+  color: var(--md-button-secondary-text-color, #000);
+  background-color: var(--md-button-secondary-hover-bg-color, #ccc);
+}
+button:active {
+  background-color: var(--md-button-bg-color, rgba(0, 0, 0, 0.3));
+}
+button:disabled {
+  color: var(--md-button-disabled-text-color, rgba(0, 0, 0, 0.2));
+  fill: var(--md-button-disabled-text-color, rgba(0, 0, 0, 0.2));
+  background-color: var(--md-button-disabled-bg-color, rgba(0, 0, 0, 0.04));
+  pointer-events: none;
+  cursor: default;
+}
+button.btn--green {
+  color: #fff;
+  color: var(--md-button-join-text-color, #fff);
+  background-color: #00ab50;
+  background-color: var(--md-button-join-bg-color, #00ab50);
+  border-color: transparent;
+}
+button.btn--green:disabled{
+  opacity: .5;
+}
+button.btn--red {
+  color: #fff;
+  color: var(--md-button-cancel-text-color, #fff);
+  background-color: #f7644a;
+  background-color: var(--md-button-cancel-bg-color, #f7644a);
+  border-color: transparent;
+}
+.btn--red:disabled,
+.btn--green:disabled {
+  opacity: .5;
+}
+button.btn-code {
+  font-family: Consolas, Liberation Mono, Courier, monospace;
+  margin: 0.2rem 0;
+}
+
+input[type=text],
+input[type=password],
+input[type=email] {
+  width: 100%;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  box-sizing: border-box;
+  border: 0.0625rem solid;
+  border-color: var(--md-input-outline-color, #ccc);
+  background-color: var(--md-input-background-color, #fff);
+  border-radius: 4px;
+  font-family: CiscoSansTT Regular, Helvetica Neue, Helvetica, sans-serif;
+  font-size: 1rem;
+  height: 2.25rem;
+  width: 100%;
+  padding: 0 1rem;
+  transition: box-shadow 0.15s ease-out;
+}
+input[type=text]:focus,
+input[type=password]:focus,
+input[type=email]:focus {
+  border-color: transparent;
+  outline: none;
+  box-shadow: 0 0 4px 2px rgba(0, 160, 209, 0.75);
+  transition: box-shadow 0.15s ease-in;
+}
+
+.btn-group {
+  display: flex;
+  margin: 0.5rem 0;
+  margin-bottom: 0;
+}
+.btn-group button {
+  flex: 1;
+  margin-right: 1rem;
+}
+.btn-group button:last-of-type {
+  margin-right: 0;
+}
+
+/* Utilities */
+.flex {
+  display: flex;
+}
+.flex--wrap {
+  flex-wrap: wrap;
+}
+.flex--center {
+  justify-content: center;
+}
+
+/* Margin utils */
+.u-m {
+  margin: 1rem !important;
+}
+
+.u-mv {
+  margin-top: 1rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.u-mb {
+  margin-bottom: 1rem !important;
+}
+
+.u-mt {
+  margin-top: 1rem !important;
+}
+
+/* Padding Utils */
+.u-p {
+  padding: 1rem !important;
+}
+
+.u-pv {
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+}
+
+.u-pb {
+  padding-bottom: 1rem !important;
+}
+
+.u-pt {
+  padding-top: 1rem !important;
+}
+
+/* Misc Styles */
+.note {
+  padding: 1rem 0;
+  margin: 0.8rem 0;
+  background: rgba(232, 232, 232, 0.4);
+  padding: 1rem;
+  border-radius: 6px;
+  color: #555;
+}
+
+.transcription {
+  display: flex;
+  flex-direction: column;
+}
+.transcription textarea {
+  width: 100%;
+  min-height: 10rem;
+}
+
+.device-type-label {
+  width: 125px;
+  display: inline-block;
+}
+
+.context-info {
+  width: 200px;
+  display: inline-block;
+}
+
+.meeting-list {
+  list-style-type: none;
+}
+
+/* Container - Docs / Streams Fixed */
+.container {
+  display: grid;
+  position: relative;
+  max-width: 1400px;
+  margin: 1rem auto;
+  grid-gap: 2rem;
+  grid-template-columns: 1fr 400px;
+  padding-bottom: 1rem;
+}
+
+.docs {
+  overflow: auto;
+  height: 98vh;
+}
+
+.hidden {
+  display: none;
+}

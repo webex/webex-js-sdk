@@ -50,7 +50,7 @@ exports.buildPackage = async function buildPackage(packageName) {
 exports.buildSamples = async function buildSamples() {
   let data = '';
 
-  await rimraf('packages/node_modules/samples/webex.min.*');
+  await rimraf('docs/samples/webex.min.*');
 
   // reminder: samples:build calls this script, not webpack
   // hence we must call webpack here
@@ -82,7 +82,7 @@ exports.buildSamples = async function buildSamples() {
   });
 
   const samples = await g('browser-*', {
-    cwd: path.resolve(process.cwd(), 'packages/node_modules/samples')
+    cwd: path.resolve(process.cwd(), 'docs/samples')
   });
 
   const out = `<!DOCTYPE html>
@@ -97,7 +97,7 @@ ${samples.map((s) => `<li><a href="${s}">${capitalize(humanize(s))}</a></li>`).j
 </body>
 </html>`;
 
-  await writeFile('packages/node_modules/samples/index.html', out);
+  await writeFile('docs/samples/index.html', out);
 };
 
 exports.buildUMDScript = async function buildUMDScript() {

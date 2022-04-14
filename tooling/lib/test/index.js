@@ -33,25 +33,16 @@ exports.testPackage = async function testPackage(options, packageName) {
   console.info(currentPackageString);
   console.info(`${'='.repeat(currentPackageString.length)}\n`);
 
-  if (packageName === 'generator-ciscospark') {
-    await runNodeSuite(packageName);
-
-    return;
+  if (options.node || options.unit) {
+    await runNodeSuite(options, packageName);
   }
 
-  if (options.browser) {
+  if (options.browser || options.integration) {
     await runBrowserSuite(options, packageName);
   }
 
   if (options.automation) {
     await runAutomationSuite(options, packageName);
-  }
-
-  // Note: running docs test last because the babel transform interferes with
-  // other test suites' test code. We should probably look at how to unload the
-  // jsdoctrine transform once the doc tests complete.
-  if (options.documentation) {
-    await runDocsSuite(options, packageName);
   }
 
   if (options.coverage) {
@@ -60,19 +51,9 @@ exports.testPackage = async function testPackage(options, packageName) {
   }
 };
 
-async function runDocsSuite(options, packageName) {
-  debug(`Running documentation tests for ${packageName}`);
-  const files = await glob('dist/**/*.js', {packageName});
-
-  // eslint-disable-next-line global-require
-  require(`${process.cwd()}/packages/node_modules/@webex/jsdoctrinetest`);
-  await mochaTest(options, packageName, 'documentation', files.map((f) => `packages/node_modules/${packageName}/${f}`));
-  debug(`Finished documentation suite for ${packageName}`);
-}
-
 async function runNodeSuite(options, packageName) {
   debug(`Running node suite for ${packageName}`);
-  const files = await gatherFiles(options, packageName);
+  const files = await gatherFiles('unit', packageName);
 
   if (files.length === 0) {
     debug(`no files found for ${packageName}`);
@@ -80,33 +61,15 @@ async function runNodeSuite(options, packageName) {
     return;
   }
 
-  // Intercept require statements for the module under test and instead load the
-  // instrumented files. This *should* continue to isolate code coverage since
-  // we're running each package's test in a separate process, even when simply
-  // running `npm test`.
-  const load = require.extensions['.js'];
-
-  if (options.coverage) {
-    require.extensions['.js'] = function loadCoveredFile(m, filename) {
-      if (filename.includes(packageName)) {
-        filename = filename.replace(`${packageName}/dist`, `${packageName}/.coverage/src`);
-      }
-
-      return load(m, filename);
-    };
-  }
 
   await mochaTest(options, packageName, 'node', files);
-  if (options.coverage) {
-    require.extensions['.js'] = load;
-  }
 
   debug(`Finished node suite for ${packageName}`);
 }
 
 async function runBrowserSuite(options, packageName) {
   debug(`Running browser suite for ${packageName}`);
-  const files = await gatherFiles(options, packageName);
+  const files = await gatherFiles('integration', packageName);
 
   if (files.length === 0) {
     debug(`no files found for ${packageName}`);
