@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.159.0](https://github.com/webex/webex-js-sdk/compare/v1.158.0...v1.159.0) (2022-04-14)
+
+
+### Features
+
+* **plugin-meetings:** add adhoc meetings support ([bbeb54d](https://github.com/webex/webex-js-sdk/commit/bbeb54df8540c1b5bc7b295e9e8c6293196d049d))
+
 ## [1.158.0](https://github.com/webex/webex-js-sdk/compare/v1.157.1...v1.158.0) (2022-04-14)
 
 
