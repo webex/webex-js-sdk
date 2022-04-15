@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.159.1](https://github.com/webex/webex-js-sdk/compare/v1.159.0...v1.159.1) (2022-04-15)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fail silently if userPreferences information not found ([72d9694](https://github.com/webex/webex-js-sdk/commit/72d969474f719d6957448db704087646f2fa2934))
+
 ## [1.159.0](https://github.com/webex/webex-js-sdk/compare/v1.158.0...v1.159.0) (2022-04-14)
 
 
