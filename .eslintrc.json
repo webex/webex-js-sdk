@@ -1,9 +1,11 @@
 {
-  "extends": "@webex/eslint-config-base",
+  "extends": "./eslintrules/index.js",
+  "parser": "@babel/eslint-parser",
   "parserOptions": {
     "ecmaFeatures": {
       "legacyDecorators": true
-    }
+    },
+    "requireConfigFile": false
   },
   "globals": {
     "PACKAGE_VERSION": false,
@@ -12,6 +14,7 @@
   "root": true,
   "rules": {
     "comma-dangle": ["error", "only-multiline"],
+    "quotes": ["error", "single"],
     "no-warning-comments": "warn",
     "require-jsdoc": [
       "error",
