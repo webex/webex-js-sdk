@@ -10,7 +10,7 @@
   "author": "devsupport@webex.com",
   "engines": {
     "node": "^14.x",
-    "npm": "6.x"
+    "npm": "8.x"
   },
   "main": "src/index.js",
   "repository": {
@@ -79,14 +79,11 @@
     "@babel/template": "^7.14.5",
     "@babel/traverse": "^7.14.9",
     "@babel/types": "^7.14.9",
-    "@sinonjs/fake-timers": "^6.0.1",
-    "@webex/eslint-config-base": "^0.8.0",
     "ampersand-collection": "^2.0.2",
     "ampersand-collection-lodash-mixin": "^4.0.0",
     "ampersand-events": "^2.0.2",
     "ampersand-state": "^5.0.3",
     "asn1js": "^2.0.26",
-    "babel-eslint": "^10.1.0",
     "babel-loader": "^8.2.2",
     "babel-plugin-lodash": "^3.3.4",
     "babelify": "^10.0.0",
@@ -115,15 +112,11 @@
     "errorhandler": "^1.5.1",
     "es6-promise": "^4.2.8",
     "es6-promise-series": "^0.2.2",
-    "eslint": "^5.16.0",
-    "eslint-plugin-import": "^2.18.2",
-    "eslint-plugin-mocha": "^6.0.0",
     "exifr": "^5.0.3",
     "express": "^4.17.1",
     "express-session": "^1.16.2",
     "express-validator": "^5.3.1",
     "file-type": "^16.0.1",
-    "firefox-profile": "^4.0.0",
     "fs-extra": "^8.1.0",
     "glob": "^7.1.4",
     "global": "^4.4.0",
@@ -181,8 +174,10 @@
     "yargs": "^16.2.0"
   },
   "devDependencies": {
+    "@babel/eslint-parser": "^7.17.0",
     "@commitlint/cli": "^15.0.0",
     "@commitlint/config-conventional": "^15.0.0",
+    "@sinonjs/fake-timers": "^6.0.1",
     "@wdio/browserstack-service": "^6.12.1",
     "@wdio/cli": "^6.12.1",
     "@wdio/junit-reporter": "^6.11.0",
@@ -197,8 +192,12 @@
     "babel-plugin-module-resolver": "^4.1.0",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
-    "documentation": "^13.1.1",
+    "documentation": "^13.2.5",
     "documentation-theme-utils": "^3.0.0",
+    "eslint": "^8.13.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-mocha": "^10.0.4",
+    "firefox-profile": "^4.0.0",
     "husky": "^7.0.0",
     "intern": "^4.10.1",
     "jsdom": "19.0.0",
@@ -229,13 +228,6 @@
     "webpack": "^4.46.0",
     "webpack-cli": "^4.8.0",
     "webpack-dev-server": "^4.3.1"
-  },
-  "resolutions": {
-    "hosted-git-info": "^4.0.0",
-    "set-value": "3.0.2",
-    "terser-webpack-plugin": "4.2.3",
-    "glob-parent": "5.1.2",
-    "multicast-dns": "7.2.4"
   },
   "optionalDependencies": {
     "@ciscospark/test-users-legacy": "^1.2.0"
