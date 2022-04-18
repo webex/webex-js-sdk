@@ -84,7 +84,13 @@ function initWebex(e) {
         reconnection: {
           enabled: true
         },
-        enableRtx: true
+        enableRtx: true,
+        experimental: {
+          enableMediaNegotiatedEvent: false,
+          enableUnifiedMeetings: true,
+          enableAdhocMeetings: true
+        }
+
       }
       // Any other sdk config we need
     },

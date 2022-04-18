@@ -1,6 +1,6 @@
 {
   "name": "webex-js-sdk",
-  "version": "1.157.1",
+  "version": "1.159.1",
   "description": "JavaScript SDK for interacting with the Webex API",
   "homepage": "https://github.com/webex/webex-js-sdk",
   "bugs": {
@@ -39,8 +39,8 @@
     "test": "node ./tooling/index.js test",
     "test:ci:github": "node ./tooling/index.js ci --github",
     "test:ci:integration": "node ./tooling/index.js ci --integration",
-    "distsrc": "sed -ibak 's#\"main\": \"dist/index.js#\"main\": \"src/index.js#' packages/node_modules/{*,@webex/*}/package.json && rimraf packages/node_modules/{*,@webex/*}/*bak",
-    "srcdist": "sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' packages/node_modules/{*,@webex/*}/package.json && rimraf packages/node_modules/{*,@webex/*}/*bak",
+    "distsrc": "find ./packages/node_modules -name 'package.json' -print0 | xargs -0 sed -ibak 's#\"main\": \"dist/index.js#\"main\": \"src/index.js#' && find ./packages/node_modules -name '*bak' -print0 | xargs -0 rimraf",
+    "srcdist": "find ./packages/node_modules -name 'package.json' -print0 | xargs -0 sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' && find ./packages/node_modules -name '*bak' -print0 | xargs -0 rimraf",
     "get-current-version": "node ./tooling/index.js version current",
     "get-next-version": "node ./tooling/index.js version next --alwaysIncrement --includeSamples",
     "deps:generate": "node ./deps.js",
