@@ -128,7 +128,7 @@
     "glob": "^7.1.4",
     "global": "^4.4.0",
     "gm": "^1.23.1",
-    "highlight.js": "^11.0.1",
+    "highlight.js": "^11.5.1",
     "humanize-string": "^1.0.2",
     "in-publish": "^2.0.0",
     "ip-anonymize": "^0.1.0",
