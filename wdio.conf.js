@@ -325,7 +325,7 @@ exports.config = {
     ['selenium-standalone', {
       installArgs: {
         // Latest Version of Selenium
-        version: '3.141.59'
+        version: '4.0.0'
       }
     }]
   ],
