@@ -10,6 +10,12 @@ Build all packages.
 npm run build
 ```
 
+Build a single package.
+
+```bash
+npm run build:package @webex/webex-core
+```
+
 ## deps:generate
 
 Detect dependencies for each package and insert into the appropriate `package.json`.
@@ -77,17 +83,18 @@ Keeps the browser open in debug mode so that you can set break points and reload
 ```bash
 npm test -- --packages @webex/webex-core --browser --karma-debug
 ```
+
 # Run the samples automation tests locally
-make sure Java JDK is installed on your machine to run test locally 
+
+make sure Java JDK is installed on your machine to run test locally
 
 ```bash
 npm run samples:test
 ```
 
-
 ## SauceLabs
 
-The SDK uses [SauceLabs](https://saucelabs.com/) to run its tests. Sign in to retrieve your *USERNAME* and *ACCESS KEY* from [User Settings](https://saucelabs.com/beta/user-settings) and add them to your `.env` file:
+The SDK uses [SauceLabs](https://saucelabs.com/) to run its tests. Sign in to retrieve your _USERNAME_ and _ACCESS KEY_ from [User Settings](https://saucelabs.com/beta/user-settings) and add them to your `.env` file:
 
 - `SAUCE_USERNAME`
 - `SAUCE_ACCESS_KEY`
