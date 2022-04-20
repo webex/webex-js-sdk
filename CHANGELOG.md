@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.159.3](https://github.com/webex/webex-js-sdk/compare/v1.159.2...v1.159.3) (2022-04-20)
+
+
+### Bug Fixes
+
+* **meetings:** instant meetings for usm ([6ed77c6](https://github.com/webex/webex-js-sdk/commit/6ed77c6329ddb75675701b41fe0c827df56b4b1b))
+
 ### [1.159.2](https://github.com/webex/webex-js-sdk/compare/v1.159.1...v1.159.2) (2022-04-20)
 
 
