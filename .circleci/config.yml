@@ -7,7 +7,7 @@ executors:
   main-executor:
     working_directory: ~/webex-js-sdk
     docker:
-      - image: cimg/node:14.19-browsers
+      - image: cimg/node:16.11-browsers
 
 # orbs
 orbs:
@@ -32,8 +32,8 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - node-modules-cache-node-fermium-npm-8-{{ .Environment.CACHE_VERSION }}-{{ checksum "package-lock.json" }}
-            - node-modules-cache-node-fermium-npm-8-{{ .Environment.CACHE_VERSION }}-
+            - node-modules-cache-node-gallium-npm-8-{{ .Environment.CACHE_VERSION }}-{{ checksum "package-lock.json" }}
+            - node-modules-cache-node-gallium-npm-8-{{ .Environment.CACHE_VERSION }}-
   restore_built_packages:
     description: "Restore built packages"
     steps:
@@ -68,7 +68,7 @@ jobs:
           command: cat patches/* | md5sum > patches.hash
       # Cache node_modules across different internal jobs in the workflow and across different circleci runs
       - save_cache:
-          key: node-modules-cache-node-fermium-npm-8-{{ .Environment.CACHE_VERSION }}-{{ checksum "package-lock.json" }}-{{ checksum "patches.hash" }}
+          key: node-modules-cache-node-gallium-npm-8-{{ .Environment.CACHE_VERSION }}-{{ checksum "package-lock.json" }}-{{ checksum "patches.hash" }}
           paths:
             - node_modules
       - run:
@@ -214,7 +214,7 @@ jobs:
   samples:
     working_directory: ~/webex-js-sdk
     docker:
-      - image: circleci/node:fermium
+      - image: circleci/node:gallium
     environment:
       NODE_ENV: "test"
       COVERAGE: true
