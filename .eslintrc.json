@@ -1,20 +1,31 @@
 {
+  "root": true,
   "extends": "./eslintrules/index.js",
   "parser": "@babel/eslint-parser",
   "parserOptions": {
-    "ecmaFeatures": {
-      "legacyDecorators": true
-    },
-    "requireConfigFile": false
+    "sourceType": "module",
+    "requireConfigFile": true
   },
   "globals": {
     "PACKAGE_VERSION": false,
     "WebSocket": false
   },
-  "root": true,
+  "ignorePatterns": [
+    "!/**/node_modules/*",
+    "/node_modules/*"
+  ],
   "rules": {
-    "comma-dangle": ["error", "only-multiline"],
-    "quotes": ["error", "single"],
+    "comma-dangle": [
+      "error",
+      "only-multiline"
+    ],
+    "quotes": [
+      "error",
+      "single",
+      {
+        "avoidEscape": true
+      }
+    ],
     "no-warning-comments": "warn",
     "require-jsdoc": [
       "error",
@@ -85,7 +96,9 @@
   },
   "overrides": [
     {
-      "files": ["packages/node_modules/**/*.js"],
+      "files": [
+        "packages/node_modules/**/*.js"
+      ],
       "rules": {
         "valid-jsdoc": [
           "error",
@@ -132,7 +145,10 @@
       }
     },
     {
-      "files": ["wdio.helpers.d/**/*.js", "docs/samples/**/test/wdio/**/*.js"],
+      "files": [
+        "wdio.helpers.d/**/*.js",
+        "docs/samples/**/test/wdio/**/*.js"
+      ],
       "globals": {
         "browser": false,
         "browserFirefox": false,
@@ -151,14 +167,18 @@
       }
     },
     {
-      "files": ["packages/node_modules/@webex/xunit-with-logs"],
+      "files": [
+        "packages/node_modules/@webex/xunit-with-logs"
+      ],
       "rules": {
         "func-names": 0,
         "no-console": 0
       }
     },
     {
-      "files": ["packages/node_modules/**/bin-*/**"],
+      "files": [
+        "packages/node_modules/**/bin-*/**"
+      ],
       "rules": {
         "no-sync": 0
       }
