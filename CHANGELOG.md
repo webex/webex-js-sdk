@@ -2,6 +2,51 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.159.3](https://github.com/webex/webex-js-sdk/compare/v1.159.2...v1.159.3) (2022-04-20)
+
+
+### Bug Fixes
+
+* **meetings:** instant meetings for usm ([6ed77c6](https://github.com/webex/webex-js-sdk/commit/6ed77c6329ddb75675701b41fe0c827df56b4b1b))
+
+### [1.159.2](https://github.com/webex/webex-js-sdk/compare/v1.159.1...v1.159.2) (2022-04-20)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** use meeting type when verifying password ([d6e68a4](https://github.com/webex/webex-js-sdk/commit/d6e68a42173c4df00870b4f75a6bfbd2e7001845))
+
+### [1.159.1](https://github.com/webex/webex-js-sdk/compare/v1.159.0...v1.159.1) (2022-04-15)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fail silently if userPreferences information not found ([72d9694](https://github.com/webex/webex-js-sdk/commit/72d969474f719d6957448db704087646f2fa2934))
+
+## [1.159.0](https://github.com/webex/webex-js-sdk/compare/v1.158.0...v1.159.0) (2022-04-14)
+
+
+### Features
+
+* **plugin-meetings:** add adhoc meetings support ([bbeb54d](https://github.com/webex/webex-js-sdk/commit/bbeb54df8540c1b5bc7b295e9e8c6293196d049d))
+
+## [1.158.0](https://github.com/webex/webex-js-sdk/compare/v1.157.1...v1.158.0) (2022-04-14)
+
+
+### Features
+
+* **plugin-meetings:** added a function comment ([9a30579](https://github.com/webex/webex-js-sdk/commit/9a305797b2790a4bb350527701fa60621a5e1b4a))
+* **plugin-meetings:** fixed default case and updated test ([e5e99cc](https://github.com/webex/webex-js-sdk/commit/e5e99cc4a741c8e2fff69f7418ddc38c3c1deebe))
+* **plugin-meetings:** optimisation for calls to wbxappapi ([37ef57f](https://github.com/webex/webex-js-sdk/commit/37ef57f7e835bf6649dc22ac6f5a209dbb91bc15))
+* **plugin-meetings:** use webExSite property for LOCUS_ID case ([b5929b3](https://github.com/webex/webex-js-sdk/commit/b5929b3b94b36938bd936092265003d6a3498f26))
+
+### [1.157.1](https://github.com/webex/webex-js-sdk/compare/v1.157.0...v1.157.1) (2022-04-12)
+
+
+### Bug Fixes
+
+* **credentials:** may not have orgId when sending metrics ([4238148](https://github.com/webex/webex-js-sdk/commit/42381488f7d422b55782a6a4f26249efd201a44d))
+
 ## [1.157.0](https://github.com/webex/webex-js-sdk/compare/v1.156.4...v1.157.0) (2022-03-23)
 
 
