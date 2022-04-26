@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.159.5](https://github.com/webex/webex-js-sdk/compare/v1.159.4...v1.159.5) (2022-04-26)
+
+
+### Bug Fixes
+
+* spark-325176 non-USM users see meetings with wrong participants ([63fabda](https://github.com/webex/webex-js-sdk/commit/63fabdaf12567673bfaf67e426a5d0bf38d7058a))
+
 ### [1.159.4](https://github.com/webex/webex-js-sdk/compare/v1.159.3...v1.159.4) (2022-04-21)
 
 
