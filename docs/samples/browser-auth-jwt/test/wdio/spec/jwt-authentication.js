@@ -11,51 +11,51 @@ describe('Authentication - Guest Users (JWT)', () => {
         spockJwt = jwt;
       }));
 
-    before('reload browser', () => {
-      browser.refresh();
+    before('reload browser', async () => {
+      await browser.refresh();
     });
 
-    it('browses to sample app and verifies the user is not authenticated', () => {
-      browser.url('/samples/browser-auth-jwt');
-      browser.$('[placeholder="JSON Web Token"]').waitForExist();
+    it('browses to sample app and verifies the user is not authenticated', async () => {
+      await browser.url('/samples/browser-auth-jwt');
+      await (await browser.$('[placeholder="JSON Web Token"]')).waitForExist();
 
-      expect(browserFirefox.$('#authentication-status').getText()).to.equal('Not Authenticated');
-      expect(browserChrome.$('#authentication-status').getText()).to.equal('Not Authenticated');
+      await expect(await (await browserFirefox.$('#authentication-status')).getText()).to.equal('Not Authenticated');
+      await expect(await (await browserChrome.$('#authentication-status')).getText()).to.equal('Not Authenticated');
     });
 
     describe('initiates jwt authentication', () => {
-      before(() => browser.$('[placeholder="JSON Web Token"]').setValue(spockJwt));
+      before(async () => await (await browser.$('[placeholder="JSON Web Token"]')).setValue(spockJwt));
 
-      it('in Firefox', () => {
-        browserFirefox.$('[title="authenticate"]').click();
+      it('in Firefox', async () => {
+        await (await browserFirefox.$('[title="authenticate"]')).click();
 
-        browserFirefox.pause(10000);
+        await browserFirefox.pause(10000);
 
-        browserFirefox.waitUntil(
-          () => browserFirefox.$('#authentication-status').getText() === 'Authenticated',
+        await browserFirefox.waitUntil(
+          async () => (await (await browserFirefox.$('#authentication-status')).getText()) === 'Authenticated',
           {
             timeout: 10000,
             timeoutMsg: 'expected authentication status to be Authenticated in browserFirefox'
           }
         );
 
-        expect(browserFirefox.$('#authentication-status').getText()).to.equal('Authenticated');
+        await expect(await (await browserFirefox.$('#authentication-status')).getText()).to.equal('Authenticated');
       });
 
-      it('in Chrome', () => {
-        browserChrome.$('[title="authenticate"]').click();
+      it('in Chrome', async () => {
+        await (await browserChrome.$('[title="authenticate"]')).click();
 
-        browserChrome.pause(10000);
+        await browserChrome.pause(10000);
 
-        browserChrome.waitUntil(
-          () => browserChrome.$('#authentication-status').getText() === 'Authenticated',
+        await browserChrome.waitUntil(
+          async () => (await (await browserChrome.$('#authentication-status')).getText()) === 'Authenticated',
           {
             timeout: 10000,
             timeoutMsg: 'expected authentication status to be Authenticated in browserChrome'
           }
         );
 
-        expect(browserChrome.$('#authentication-status').getText()).to.equal('Authenticated');
+        await expect(await (await browserChrome.$('#authentication-status')).getText()).to.equal('Authenticated');
       });
     });
   });

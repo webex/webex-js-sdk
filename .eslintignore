@@ -4,7 +4,6 @@ packages/node_modules/generator-ciscospark/generators/plugin/templates/src/_inde
 
 # The follwowing is copied from .gitignore
 .DS_Store
-/node_modules
 node_debug.log*
 .tmp
 .tmp_uploads
