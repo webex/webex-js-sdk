@@ -9,28 +9,27 @@ describe('Single Party Calling - Normal Dialing', () => {
       [spock, mccoy] = users;
 
       // Adding pause to let test users propagate through integration
-      browser.pause(2500);
     }));
 
-  before('reload browser', () => {
-    browser.refresh();
+  before('reload browser', async () => {
+    await browser.refresh();
   });
 
-  it('loads the app', () => {
-    browser.url('/samples/browser-single-party-call');
+  it('loads the app', async () => {
+    await browser.url('/samples/browser-single-party-call');
   });
 
-  it('connects mccoy\'s browser', () => {
-    expect(browserChrome.getTitle()).to.equal('Sample: Single Party Calling');
-    browserChrome.$('#token-input').click();
-    browserChrome.$('#token-auth').waitForExist({timeout: 2000});
-    browserChrome.execute((token) => {
+  it('connects mccoy\'s browser', async () => {
+    await expect(await browserChrome.getTitle()).to.equal('Sample: Single Party Calling');
+    await (await browserChrome.$('#token-input')).click();
+    await (await browserChrome.$('#token-auth')).waitForExist({timeout: 2000});
+    await browserChrome.execute((token) => {
       // eslint-disable-next-line no-undef
       document.querySelector('[placeholder="Your access token"]').value += token;
     }, mccoy.token.access_token);
-    browserChrome.$('#webexInit').click();
-    browserChrome.waitUntil(
-      () => browserChrome.$('#webex-status').getText() === 'webex is initialized',
+    await (await browserChrome.$('#webexInit')).click();
+    await browserChrome.waitUntil(
+      async () => (await (await browserChrome.$('#webex-status')).getText()) === 'webex is initialized',
       {
         timeout: 10000,
         timeoutMsg: 'webex was not initialized for mccoy'
@@ -38,17 +37,17 @@ describe('Single Party Calling - Normal Dialing', () => {
     );
   });
 
-  it('connects spock\'s browser', () => {
-    expect(browserFirefox.getTitle()).to.equal('Sample: Single Party Calling');
-    browserFirefox.$('#token-input').click();
-    browserFirefox.$('#token-auth').waitForExist({timeout: 2000});
-    browserFirefox.execute((token) => {
+  it('connects spock\'s browser', async () => {
+    await expect(await browserFirefox.getTitle()).to.equal('Sample: Single Party Calling');
+    await (await browserFirefox.$('#token-input')).click();
+    await (await browserFirefox.$('#token-auth')).waitForExist({timeout: 2000});
+    await browserFirefox.execute((token) => {
       // eslint-disable-next-line no-undef
       document.querySelector('[placeholder="Your access token"]').value += token;
     }, spock.token.access_token);
-    browserFirefox.$('#webexInit').click();
-    browserFirefox.waitUntil(
-      () => browserFirefox.$('#webex-status').getText() === 'webex is initialized',
+    await (await browserFirefox.$('#webexInit')).click();
+    await browserFirefox.waitUntil(
+      async () => (await (await browserFirefox.$('#webex-status')).getText()) === 'webex is initialized',
       {
         timeout: 10000,
         timeoutMsg: 'webex was not initialized for spock'
@@ -56,54 +55,53 @@ describe('Single Party Calling - Normal Dialing', () => {
     );
   });
 
-  it('register device for spock', () => {
-    browserFirefox.waitUntil(() => browserFirefox.$('#register').isEnabled() === true, {
+  it('register device for spock', async () => {
+    await browserFirefox.waitUntil(async () => (await (await browserFirefox.$('#register')).isEnabled()) === true, {
       timeout: 5000,
       timeoutMsg: 'register button was not enabled for spock'
     });
-    browserFirefox.$('#register').click();
-    browserFirefox.waitUntil(
-      () => browserFirefox.$('#register-status').getText() === 'device is registered',
+    await (await browserFirefox.$('#register')).click();
+    await browserFirefox.waitUntil(
+      async () => (await (await browserFirefox.$('#register-status')).getText()) === 'device is registered',
       {
         timeout: 10000,
         timeoutMsg: 'device was not registered'
       }
     );
-    browserFirefox.$('.listening').waitForExist();
+    await (await browserFirefox.$('.listening')).waitForExist();
   });
 
-  it('register device for mccoy', () => {
-    browserChrome.waitUntil(() => browserChrome.$('#register').isEnabled() === true, {
+  it('register device for mccoy', async () => {
+    await browserChrome.waitUntil(async () => (await (await browserChrome.$('#register')).isEnabled()) === true, {
       timeout: 5000,
       timeoutMsg: 'register button was not enabled for mccoy'
     });
-    browserChrome.$('#register').click();
-    browserChrome.waitUntil(
-      () => browserChrome.$('#register-status').getText() === 'device is registered',
+    await (await browserChrome.$('#register')).click();
+    await browserChrome.waitUntil(
+      async () => (await (await browserChrome.$('#register-status')).getText()) === 'device is registered',
       {
         timeout: 10000,
         timeoutMsg: 'device was not registered'
       }
     );
-    browserChrome.$('.listening').waitForExist();
+    await (await browserChrome.$('.listening')).waitForExist();
   });
 
-  it('places call from spock to mccoy', () => {
-    browserFirefox.$('[placeholder="Person ID or Email Address or SIP URI or Room ID"]').setValue(mccoy.emailAddress);
-    browserFirefox.$('[title="dial"]').click();
+  it('places call from spock to mccoy', async () => {
+    await (await browserFirefox.$('[placeholder="Person ID or Email Address or SIP URI or Room ID"]')).setValue(mccoy.emailAddress);
+    await (await browserFirefox.$('[title="dial"]')).click();
 
-    browserFirefox.waitUntil(() =>
-      (browserFirefox.$('#call-status-local').getText() === 'IN_MEETING'),
-    {
-      timeout: 10000,
-      timeoutMsq: 'Timed-out waiting for local user to connect to meeting'
-    });
+    await browserFirefox.waitUntil(async () => (await (await browserFirefox.$('#call-status-local')).getText()) === 'IN_MEETING',
+      {
+        timeout: 10000,
+        timeoutMsq: 'Timed-out waiting for local user to connect to meeting'
+      });
   });
 
-  it('joins the call on mccoy', () => {
-    browserChrome.waitUntil(() => {
+  it('joins the call on mccoy', async () => {
+    await browserChrome.waitUntil(async () => {
       try {
-        const alerttext = browserChrome.getAlertText();
+        const alerttext = await browserChrome.getAlertText();
 
         return alerttext === 'Answer incoming call';
       }
@@ -115,22 +113,20 @@ describe('Single Party Calling - Normal Dialing', () => {
       timeout: 10000,
       timeoutMsg: 'Timed out waiting for incoming call alert'
     });
-    browserChrome.acceptAlert();
+    await browserChrome.acceptAlert();
   });
 
-  it('ends the call', () => {
-    browserFirefox.waitUntil(() =>
-      (browserFirefox.$('#call-status-remote').getText() === 'IN_MEETING'),
-    {
-      timeout: 10000,
-      timeoutMsg: 'Timed-out waiting for remote user to connect to meeting'
-    });
-    browserFirefox.$('[title="hangup"]').click();
-    browserFirefox.waitUntil(() =>
-      (browserFirefox.$('#call-status-local').getText() === 'NOT_IN_MEETING'),
-    {
-      timeout: 10000,
-      timeoutMsg: 'Timed-out waiting for local user to disconnect from meeting'
-    });
+  it('ends the call', async () => {
+    await browserFirefox.waitUntil(async () => (await (await browserFirefox.$('#call-status-remote')).getText()) === 'IN_MEETING',
+      {
+        timeout: 10000,
+        timeoutMsg: 'Timed-out waiting for remote user to connect to meeting'
+      });
+    await (await browserFirefox.$('[title="hangup"]')).click();
+    await browserFirefox.waitUntil(async () => (await (await browserFirefox.$('#call-status-local')).getText()) === 'NOT_IN_MEETING',
+      {
+        timeout: 10000,
+        timeoutMsg: 'Timed-out waiting for local user to disconnect from meeting'
+      });
   });
 });
