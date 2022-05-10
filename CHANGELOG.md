@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.160.0](https://github.com/webex/webex-js-sdk/compare/v1.159.6...v1.160.0) (2022-05-09)
+
+
+### Features
+
+* **decrypt:** meeting container activity ([eded1e2](https://github.com/webex/webex-js-sdk/commit/eded1e21cf5f5c83e8e8b51c8abcf50c4b96cd1d))
+
+### [1.159.6](https://github.com/webex/webex-js-sdk/compare/v1.159.5...v1.159.6) (2022-05-06)
+
+
+### Bug Fixes
+
+* add decorator path for docs ([3f933b2](https://github.com/webex/webex-js-sdk/commit/3f933b2d7c3245ee904a8ba4c1c64eebcbd731b7))
+
 ### [1.159.5](https://github.com/webex/webex-js-sdk/compare/v1.159.4...v1.159.5) (2022-04-26)
 
 
