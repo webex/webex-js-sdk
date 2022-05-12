@@ -1,6 +1,6 @@
 {
   "name": "webex-js-sdk",
-  "version": "1.159.6",
+  "version": "1.160.0",
   "description": "JavaScript SDK for interacting with the Webex API",
   "homepage": "https://github.com/webex/webex-js-sdk",
   "bugs": {
@@ -9,8 +9,8 @@
   "license": "MIT",
   "author": "devsupport@webex.com",
   "engines": {
-    "node": "^16.x",
-    "npm": "8.x"
+    "node": ">=14.x <=16.x",
+    "npm": ">=6.x"
   },
   "main": "src/index.js",
   "repository": {
