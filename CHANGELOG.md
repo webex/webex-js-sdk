@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.161.0](https://github.com/webex/webex-js-sdk/compare/v1.160.0...v1.161.0) (2022-05-12)
+
+
+### Features
+
+* **test-user:** add reservation group for whistler ([f3398ae](https://github.com/webex/webex-js-sdk/commit/f3398ae5299e440aaaae2ff81be12bb4debc2ddd))
+* **whistler:** add user scopes for whistler users ([1d3af48](https://github.com/webex/webex-js-sdk/commit/1d3af480aea294797cf15307106c8cdbdaa0803e))
+
 ## [1.160.0](https://github.com/webex/webex-js-sdk/compare/v1.159.6...v1.160.0) (2022-05-09)
 
 
