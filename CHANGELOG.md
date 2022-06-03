@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0](https://github.com/webex/webex-js-sdk/compare/v1.161.0...v2.0.0) (2022-06-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **plugin-meetings:** meeting start in 5 min, meeting info wont be available for a random period
+
+### Features
+
+* **end-meeting-all:** added end meeting for all ([056e9f3](https://github.com/webex/webex-js-sdk/commit/056e9f3e0792b13cfb7fb890a8be20034f80a985))
+* **plugin-meetings:** add meetingContainerUrl change event ([177791b](https://github.com/webex/webex-js-sdk/commit/177791ba7bcc64b3583d5e8fac6f1e76dbbee272))
+* **plugin-meetings:** add random delay to fetchmeetinginfo ([e8db702](https://github.com/webex/webex-js-sdk/commit/e8db702e1f0f8a9d945c5f6c9e327ee1fd10f03f))
+
+
+### Bug Fixes
+
+* **plugin-meeting:** move packages from dependency to dev dependency ([3b82a3a](https://github.com/webex/webex-js-sdk/commit/3b82a3aacc0d9010476819db38b76cbe6d383336))
+* unblock release on a breaking change ([9795744](https://github.com/webex/webex-js-sdk/commit/979574462d32c3476c10d6dbd9f976c5ead69754))
+
 ## [1.161.0](https://github.com/webex/webex-js-sdk/compare/v1.160.0...v1.161.0) (2022-05-12)
 
 
