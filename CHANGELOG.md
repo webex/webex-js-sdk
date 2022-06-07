@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.1.0](https://github.com/webex/webex-js-sdk/compare/v2.0.0...v2.1.0) (2022-06-07)
+
+
+### Features
+
+* **end-meeting-all:** added end meeting for all ([79b52f4](https://github.com/webex/webex-js-sdk/commit/79b52f48cea3a073d634343dc2f88717dabff90d))
+* **end-meeting-all:** added unit tested is added ([2fe8318](https://github.com/webex/webex-js-sdk/commit/2fe831811995b5d994eeabc55098a97faf36b745))
+* **end-meeting-all:** review comment change ([b8c3ba4](https://github.com/webex/webex-js-sdk/commit/b8c3ba495fbe2552c770308d2fea91dbda9cca19))
+
+
+### Bug Fixes
+
+* fixed unmute btn function call on samples ([536f520](https://github.com/webex/webex-js-sdk/commit/536f5206f656a198c6e77f01024f353b2dc017e7))
+
 ## [2.0.0](https://github.com/webex/webex-js-sdk/compare/v1.161.0...v2.0.0) (2022-06-03)
 
 
