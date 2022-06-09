@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.2.1](https://github.com/webex/webex-js-sdk/compare/v2.2.0...v2.2.1) (2022-06-09)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** for 423006 error code set password required true ([ae28d30](https://github.com/webex/webex-js-sdk/commit/ae28d30a982c05f19fcdc92c5ddb53596d63bb33))
+
 ## [2.2.0](https://github.com/webex/webex-js-sdk/compare/v2.1.0...v2.2.0) (2022-06-09)
 
 
