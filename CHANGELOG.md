@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.2.0](https://github.com/webex/webex-js-sdk/compare/v2.1.0...v2.2.0) (2022-06-09)
+
+
+### Features
+
+* **internal-plugin-encryption:** add sdk methods used by BYOK feature ([0f22d31](https://github.com/webex/webex-js-sdk/commit/0f22d31b0b8d78bc9269fd404a77496c1428b70b))
+* **internal-plugin-encryption:** remove the only from the test ([0d09e76](https://github.com/webex/webex-js-sdk/commit/0d09e763c09623642ae23d789259b6bed55c2f0f))
+
 ## [2.1.0](https://github.com/webex/webex-js-sdk/compare/v2.0.0...v2.1.0) (2022-06-07)
 
 
