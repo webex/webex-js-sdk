@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.2.2](https://github.com/webex/webex-js-sdk/compare/v2.2.1...v2.2.2) (2022-06-15)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** using meetings preferences api for webex site ([a330e6a](https://github.com/webex/webex-js-sdk/commit/a330e6a81eb444b390ae6553b35924e122fccce9))
+
 ### [2.2.1](https://github.com/webex/webex-js-sdk/compare/v2.2.0...v2.2.1) (2022-06-09)
 
 
