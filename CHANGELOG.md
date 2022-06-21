@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.2.3](https://github.com/webex/webex-js-sdk/compare/v2.2.2...v2.2.3) (2022-06-21)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** using the env for port in the web pack config ([2af08a2](https://github.com/webex/webex-js-sdk/commit/2af08a267687e91d784a3679a6332030ab4d004f))
+
 ### [2.2.2](https://github.com/webex/webex-js-sdk/compare/v2.2.1...v2.2.2) (2022-06-15)
 
 
