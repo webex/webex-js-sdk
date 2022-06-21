@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.2.4](https://github.com/webex/webex-js-sdk/compare/v2.2.3...v2.2.4) (2022-06-21)
+
+
+### Bug Fixes
+
+* mask localNetworkPrefix in ipv6 format to CIDR/96 ([f0a186f](https://github.com/webex/webex-js-sdk/commit/f0a186f2fb2bb581e61b41d3d0203b2b5a167769))
+
 ### [2.2.3](https://github.com/webex/webex-js-sdk/compare/v2.2.2...v2.2.3) (2022-06-21)
 
 
