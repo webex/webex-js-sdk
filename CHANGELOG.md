@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.3.0](https://github.com/webex/webex-js-sdk/compare/v2.2.4...v2.3.0) (2022-06-24)
+
+
+### Features
+
+* **meetings:** display hints based on roles ([5f6e739](https://github.com/webex/webex-js-sdk/commit/5f6e739ab90f9d0b3e061024881dc29540fcc12e))
+
 ### [2.2.4](https://github.com/webex/webex-js-sdk/compare/v2.2.3...v2.2.4) (2022-06-21)
 
 
