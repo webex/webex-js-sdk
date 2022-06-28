@@ -36,7 +36,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     'eval-cheap-module-source-map' : 'source-map',
   devServer: {
     https: true,
-    port: 8000,
+    port: process.env.PORT || 8000,
     static: './docs'
   },
   node: {

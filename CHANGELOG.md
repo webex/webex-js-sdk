@@ -2,6 +2,82 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.3.0](https://github.com/webex/webex-js-sdk/compare/v2.2.4...v2.3.0) (2022-06-24)
+
+
+### Features
+
+* **meetings:** display hints based on roles ([5f6e739](https://github.com/webex/webex-js-sdk/commit/5f6e739ab90f9d0b3e061024881dc29540fcc12e))
+
+### [2.2.4](https://github.com/webex/webex-js-sdk/compare/v2.2.3...v2.2.4) (2022-06-21)
+
+
+### Bug Fixes
+
+* mask localNetworkPrefix in ipv6 format to CIDR/96 ([f0a186f](https://github.com/webex/webex-js-sdk/commit/f0a186f2fb2bb581e61b41d3d0203b2b5a167769))
+
+### [2.2.3](https://github.com/webex/webex-js-sdk/compare/v2.2.2...v2.2.3) (2022-06-21)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** using the env for port in the web pack config ([2af08a2](https://github.com/webex/webex-js-sdk/commit/2af08a267687e91d784a3679a6332030ab4d004f))
+
+### [2.2.2](https://github.com/webex/webex-js-sdk/compare/v2.2.1...v2.2.2) (2022-06-15)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** using meetings preferences api for webex site ([a330e6a](https://github.com/webex/webex-js-sdk/commit/a330e6a81eb444b390ae6553b35924e122fccce9))
+
+### [2.2.1](https://github.com/webex/webex-js-sdk/compare/v2.2.0...v2.2.1) (2022-06-09)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** for 423006 error code set password required true ([ae28d30](https://github.com/webex/webex-js-sdk/commit/ae28d30a982c05f19fcdc92c5ddb53596d63bb33))
+
+## [2.2.0](https://github.com/webex/webex-js-sdk/compare/v2.1.0...v2.2.0) (2022-06-09)
+
+
+### Features
+
+* **internal-plugin-encryption:** add sdk methods used by BYOK feature ([0f22d31](https://github.com/webex/webex-js-sdk/commit/0f22d31b0b8d78bc9269fd404a77496c1428b70b))
+* **internal-plugin-encryption:** remove the only from the test ([0d09e76](https://github.com/webex/webex-js-sdk/commit/0d09e763c09623642ae23d789259b6bed55c2f0f))
+
+## [2.1.0](https://github.com/webex/webex-js-sdk/compare/v2.0.0...v2.1.0) (2022-06-07)
+
+
+### Features
+
+* **end-meeting-all:** added end meeting for all ([79b52f4](https://github.com/webex/webex-js-sdk/commit/79b52f48cea3a073d634343dc2f88717dabff90d))
+* **end-meeting-all:** added unit tested is added ([2fe8318](https://github.com/webex/webex-js-sdk/commit/2fe831811995b5d994eeabc55098a97faf36b745))
+* **end-meeting-all:** review comment change ([b8c3ba4](https://github.com/webex/webex-js-sdk/commit/b8c3ba495fbe2552c770308d2fea91dbda9cca19))
+
+
+### Bug Fixes
+
+* fixed unmute btn function call on samples ([536f520](https://github.com/webex/webex-js-sdk/commit/536f5206f656a198c6e77f01024f353b2dc017e7))
+
+## [2.0.0](https://github.com/webex/webex-js-sdk/compare/v1.161.0...v2.0.0) (2022-06-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **plugin-meetings:** meeting start in 5 min, meeting info wont be available for a random period
+
+### Features
+
+* **end-meeting-all:** added end meeting for all ([056e9f3](https://github.com/webex/webex-js-sdk/commit/056e9f3e0792b13cfb7fb890a8be20034f80a985))
+* **plugin-meetings:** add meetingContainerUrl change event ([177791b](https://github.com/webex/webex-js-sdk/commit/177791ba7bcc64b3583d5e8fac6f1e76dbbee272))
+* **plugin-meetings:** add random delay to fetchmeetinginfo ([e8db702](https://github.com/webex/webex-js-sdk/commit/e8db702e1f0f8a9d945c5f6c9e327ee1fd10f03f))
+
+
+### Bug Fixes
+
+* **plugin-meeting:** move packages from dependency to dev dependency ([3b82a3a](https://github.com/webex/webex-js-sdk/commit/3b82a3aacc0d9010476819db38b76cbe6d383336))
+* unblock release on a breaking change ([9795744](https://github.com/webex/webex-js-sdk/commit/979574462d32c3476c10d6dbd9f976c5ead69754))
+
 ## [1.161.0](https://github.com/webex/webex-js-sdk/compare/v1.160.0...v1.161.0) (2022-05-12)
 
 
