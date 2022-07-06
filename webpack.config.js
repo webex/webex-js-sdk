@@ -66,7 +66,10 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     rules: [
       {
         test: /\.js$/,
-        include: /packages\/node_modules/,
+        include: [
+          /packages\/node_modules/,
+          /node_modules\/@webex\/internal-media-core/
+        ],
         use: {
           loader: 'babel-loader'
         }
