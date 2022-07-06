@@ -6,8 +6,9 @@ const Mocha = require('mocha');
 
 require('@babel/register')({
   only: [
-    './packages/node_modules/**/*.js'
+    './packages/node_modules/**/*.js',
   ],
+  exclude: [/node_modules\/@webex\/internal-media-core/],
   sourceMaps: true
 });
 
