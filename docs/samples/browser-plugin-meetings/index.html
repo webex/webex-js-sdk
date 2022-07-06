@@ -253,6 +253,7 @@
           <p>The following manipulate the <code>meeting</code> object.</p>
           <ol>
             <li><a href="#meetingControlsMuteAudio">Mute / Unmute Audio</a></li>
+            <li><a href="#meetingControlsBnrToggle">Enable / Disable BNR</a></li>
             <li><a href="#meetingControlsMuteVideo">Mute / Unmute Video</a></li>
             <li><a href="#meetingControlsScreenshare">Screenshare</a></li>
             <li><a href="#meetingControlsRecording">Recording</a></li>
@@ -275,6 +276,22 @@
                   </div>
                 </div>
                 <pre id="ts-toggle-audio-status"></pre>
+            </div>
+          </fieldset>
+
+          <!-- meeting-controls / enable-disable BNR -->
+          <fieldset id="meetingControlsBnrToggle">
+            <legend>Enable/Disable Audio Background Noise Reduction</legend>
+            <div>
+                <p class="note">NOTE: Must have an active meeting object.</p>
+                <div class="u-mb">
+                  <button type="button" id="listenToAudio" class="btn-code" onclick="toggleAudioListen()">Start listening to Local audio</button>
+                  <div class="btn-group">
+                      <button type="button" class="btn-code" onclick="meeting.enableBNR()">meeting.enableBNR()</button>
+                      <button type="button" disabled class="btn-code" onclick="">Placeholder for meeting.disableBNR()</button>
+                  </div>
+                  <audio id="bnr-audio" autoplay></audio>
+                </div>
             </div>
           </fieldset>
 
