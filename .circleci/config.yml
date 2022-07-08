@@ -46,14 +46,6 @@ jobs:
       - checkout_and_fetch_tags
       - node/install-packages
       - run:
-          name: "Update NPM"
-          command: sudo npm install -g npm@8
-      # Cache workaround to cache patch changes
-      # https://github.com/ds300/patch-package#docker-and-ci
-      - run:
-          name: "Hash patch-package patches"
-          command: cat patches/* | md5sum > patches.hash
-      - run:
           name: "Save NPM install log"
           command: npm ls --json > /tmp/npm_install.log || true
       - store_artifacts:
