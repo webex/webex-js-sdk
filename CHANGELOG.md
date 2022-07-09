@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.4.0](https://github.com/webex/webex-js-sdk/compare/v2.3.0...v2.4.0) (2022-07-07)
+
+
+### Features
+
+* **imc:** add unit tests ([aed8378](https://github.com/webex/webex-js-sdk/commit/aed83789de299fc0bf16a8d7d826cec42267c530))
+* **imc:** handle imc mercury events and allow imc creation ([c811e1c](https://github.com/webex/webex-js-sdk/commit/c811e1c1eaf9a963e004d4acf13f43c98bf79eeb))
+
 ## [2.3.0](https://github.com/webex/webex-js-sdk/compare/v2.2.4...v2.3.0) (2022-06-24)
 
 
