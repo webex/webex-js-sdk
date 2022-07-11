@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.4.1](https://github.com/webex/webex-js-sdk/compare/v2.4.0...v2.4.1) (2022-07-11)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** loggerProxy error ([538d394](https://github.com/webex/webex-js-sdk/commit/538d3940ab087cd13daa569a59783774f84dcc55))
+
 ## [2.4.0](https://github.com/webex/webex-js-sdk/compare/v2.3.0...v2.4.0) (2022-07-07)
 
 
