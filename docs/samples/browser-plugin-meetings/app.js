@@ -1444,34 +1444,6 @@ function rejectMeeting() {
   }
 }
 
-let isListening = false;
-const listenToAudioBtn = document.getElementById('listenToAudio');
-const bnrAudioOutput = document.getElementById('bnr-audio');
-
-/**
- * Method to toggle audio listening for BNR effect
- * called on click of #listenToAudio button
-*/
-const toggleAudioListen = async () => {
-  if(!isListening){
-    listenToAudioBtn.setAttribute("disabled",  true);
-    let streamObject = new MediaStream();
-    streamObject.addTrack(meeting.mediaProperties.audioTrack);
-    bnrAudioOutput.srcObject = streamObject;
-
-    listenToAudioBtn.innerText = "Stop listening to Local audio";
-    listenToAudioBtn.removeAttribute("disabled");
-
-    isListening = true;
-  }
-  else{
-    listenToAudioBtn.innerText = "Start listening to Local audio";
-    bnrAudioOutput.srcObject = null;
-
-    isListening = false;
-  }
-}
-
 // Separate logic for Safari enables video playback after previously
 // setting the srcObject to null regardless if autoplay is set.
 window.onload = () => addPlayIfPausedEvents(htmlMediaElements);
