@@ -285,10 +285,9 @@
             <div>
                 <p class="note">NOTE: Must have an active meeting object.</p>
                 <div class="u-mb">
-                  <button type="button" id="listenToAudio" class="btn-code" onclick="toggleAudioListen()">Start listening to Local audio</button>
                   <div class="btn-group">
                       <button type="button" class="btn-code" onclick="meeting.enableBNR()">meeting.enableBNR()</button>
-                      <button type="button" disabled class="btn-code" onclick="">Placeholder for meeting.disableBNR()</button>
+                      <button type="button" class="btn-code" onclick="meeting.disableBNR()">meeting.disableBNR()</button>
                   </div>
                   <audio id="bnr-audio" autoplay></audio>
                 </div>
