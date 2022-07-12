@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.4.2](https://github.com/webex/webex-js-sdk/compare/v2.4.1...v2.4.2) (2022-07-12)
+
+
+### Bug Fixes
+
+* **internal-plugin-device:** fixing the boolean check for cisco-device-url ([21e4ed8](https://github.com/webex/webex-js-sdk/commit/21e4ed873aff7f5fdb08b9179906f21420872900))
+
 ### [2.4.1](https://github.com/webex/webex-js-sdk/compare/v2.4.0...v2.4.1) (2022-07-11)
 
 
