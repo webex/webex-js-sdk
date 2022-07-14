@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.5.0](https://github.com/webex/webex-js-sdk/compare/v2.4.2...v2.5.0) (2022-07-14)
+
+
+### Features
+
+* **plugin-meetings:** disable BNR api included ([8307b2c](https://github.com/webex/webex-js-sdk/commit/8307b2cb48f1831a200d9e6acd6febd2d82b1798))
+* **plugin-meetings:** enable BNR api included ([c316338](https://github.com/webex/webex-js-sdk/commit/c316338be85854e0da76f815830bb1393dae16ba))
+
 ### [2.4.2](https://github.com/webex/webex-js-sdk/compare/v2.4.1...v2.4.2) (2022-07-12)
 
 
