@@ -7,10 +7,10 @@ executors:
   main-executor:
     working_directory: ~/webex-js-sdk
     docker:
-      - image: cimg/node:16.11-browsers
+      - image: cimg/node:16.16-browsers
 # orbs
 orbs:
-  browser-tools: circleci/browser-tools@1.2.5
+  browser-tools: circleci/browser-tools@1.3.0
   node: circleci/node@5.0.2
 
 # Reusable commands for jobs
