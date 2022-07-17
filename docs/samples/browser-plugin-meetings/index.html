@@ -281,7 +281,7 @@
                     </div>
                   </div>
                 </div>
-                
+
                 <div style="text-align: center;">
                   <div style="display: flex; flex-direction: column;">
                     <div>Join With Device</div>
@@ -447,7 +447,7 @@
                 <!-- BNR -->
                 <div>
                   <div class="u-mb">
-                    <button id="ts-toggle-BNR" type="button" onclick="">Enable BNR</button>
+                    <button id="ts-toggle-BNR" type="button" onclick="toggleBNR()">Enable BNR</button>
                   </div>
                 </div>
               </div>
@@ -458,6 +458,24 @@
                 <legend>Remote Video</legend>
                 <video id="remote-video" autoplay playsinline></video>
                 <audio id="remote-audio" autoplay></audio>
+
+                <fieldset>
+                  <legend>Set Resolution (Experimental)</legend>
+                  <select name="layout" id="layout-type">
+                    <option value="Single">Single</option>
+                    <option value="Equal" selected="selected">Equal</option>
+                    <option value="ActivePresence">Active Presence</option>
+                    <option value="Prominent">Prominent</option>
+                    <option value="OnePlusN">One+N</option>
+                  </select>
+                  <div class="flex u-mt u-mb" style="align-items: center; gap:10px">
+                    <label for="width">Width</label>
+                    <input type="number" name="width" id="layout-width" />
+                    <label for="height">Height</label>
+                    <input type="number" name='height' id="layout-height" />
+                  </div>
+                  <button type="submit" name="submit" id="layout-submit" onclick="changeLayout()">Submit</button>
+                </fieldset>
               </fieldset>
             </div>
 
@@ -485,7 +503,17 @@
           <div>
             <fieldset>
               <legend>Participants</legend>
-              <div class="participantList">
+              <div id="participant-list">
+                <div id="participant-table"></div>
+                <div id="participant-btn"></div>
+              </div>
+            </fieldset>
+          </div>
+          <!-- meetings / events published -->
+          <div>
+            <fieldset>
+              <legend>Events Published</legend>
+              <div id="events-list">
               </div>
             </fieldset>
           </div>
