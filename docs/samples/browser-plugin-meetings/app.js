@@ -26,6 +26,7 @@ const registerElm = document.querySelector('#registration-register');
 const unregisterElm = document.querySelector('#registration-unregister');
 const registrationStatusElm = document.querySelector('#registration-status');
 const integrationEnv = document.getElementById('integration-env');
+const eventsList = document.getElementById('events-list');
 
 // Disable screenshare on join in Safari patch
 const isSafari = /Version\/[\d.]+.*Safari/.test(navigator.userAgent);
@@ -373,16 +374,22 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
         );
       }
 
+      if (withMedia) {
+        clearMediaDeviceList();
+        getMediaDevices();
+        getMediaStreams().then(() => {
+          addMedia();
+        });
+      }
+
       updateMeetingInfoSection(meeting);
       viewParticipants();
-    });
 
-  if (withMedia) {
-    clearMediaDeviceList();
-    getMediaDevices();
-    getMediaStreams();
-    addMedia();
-  }
+      eventsList.innerText = '';
+      meeting.on('all', (payload) => {
+        updatePublishedEvents(payload);
+      });
+    });
 }
 
 function leaveMeeting(meetingId) {
@@ -404,6 +411,31 @@ function leaveMeeting(meetingId) {
       cleanUpMedia(htmlMediaElements);
       emptyParticipants();
     });
+}
+
+function updatePublishedEvents(event) {
+  // skip network:quality
+  if (event === 'network:quality') return;
+
+  const par = document.createElement('p');
+  const currTime = new Date();
+
+  let hours = currTime.getHours();
+  let minutes = currTime.getMinutes();
+  let seconds = currTime.getSeconds();
+
+  if (hours < 10) {
+    hours = `0${hours}`;
+  }
+  if (minutes < 10) {
+    minutes = `0${minutes}`;
+  }
+  if (seconds < 10) {
+    seconds = `0${seconds}`;
+  }
+
+  par.innerText = `${hours}:${minutes}:${seconds} - ${event}`;
+  eventsList.appendChild(par);
 }
 
 function toggleMeetingInfo() {
@@ -460,10 +492,15 @@ const meetingStreamsRemotelVideo = document.querySelector('#remote-video');
 const meetingStreamsRemoteAudio = document.querySelector('#remote-audio');
 const meetingStreamsLocalShare = document.querySelector('#local-screenshare');
 const meetingStreamsRemoteShare = document.querySelector('#remote-screenshare');
+const layoutWidthInp = document.querySelector('#layout-width');
+const layoutHeightInp = document.querySelector('#layout-height');
 
 const toggleSourcesMediaDirection = document.querySelectorAll('[name=ts-media-direction]');
 const toggleSourcesQualityStatus = document.querySelector('#ts-sending-quality-status');
 const toggleSourcesMeetingLevel = document.querySelector('#ts-sending-qualities-list');
+const toggleBnrBtn = document.querySelector('#ts-toggle-BNR');
+
+let bnrEnabled = false;
 
 let currentMediaStreams = [];
 
@@ -954,6 +991,31 @@ function toggleSendVideo() {
   }
 }
 
+function toggleBNR() {
+  const meeting = getCurrentMeeting();
+
+  if (!meeting) {
+    return;
+  }
+
+  if (bnrEnabled) {
+    meeting.disableBNR().then((success) => {
+      if (success) {
+        bnrEnabled = false;
+        toggleBnrBtn.innerText = 'Enable BNR';
+      }
+    });
+  }
+  else {
+    meeting.enableBNR().then((success) => {
+      if (success) {
+        bnrEnabled = true;
+        toggleBnrBtn.innerText = 'Disable BNR';
+      }
+    });
+  }
+}
+
 async function startScreenShare() {
   const meeting = getCurrentMeeting();
 
@@ -1087,6 +1149,7 @@ function addMedia() {
     switch (media.type) {
       case 'remoteVideo':
         meetingStreamsRemotelVideo.srcObject = media.stream;
+        updateLayoutHeightWidth();
         break;
       case 'remoteAudio':
         meetingStreamsRemoteAudio.srcObject = media.stream;
@@ -1102,8 +1165,6 @@ function addMedia() {
 
   // remove stream if media stopped
   meeting.on('media:stopped', (media) => {
-    console.log(media);
-
     // eslint-disable-next-line default-case
     switch (media.type) {
       case 'remoteVideo':
@@ -1120,6 +1181,26 @@ function addMedia() {
         break;
     }
   });
+}
+
+function updateLayoutHeightWidth() {
+  layoutHeightInp.value = meetingStreamsRemotelVideo.scrollHeight;
+  layoutWidthInp.value = meetingStreamsRemotelVideo.scrollWidth;
+}
+
+function changeLayout() {
+  const layoutVal = document.getElementById('layout-type').value;
+  const height = layoutHeightInp.value;
+  const width = layoutWidthInp.value;
+  const currentMeeting = getCurrentMeeting();
+
+  currentMeeting.changeVideoLayout(layoutVal, {main: {height, width}})
+    .then(() => {
+      console.log('Remote Layout changed successfully');
+    })
+    .catch((err) => {
+      console.error(err);
+    });
 }
 
 
@@ -1404,7 +1485,9 @@ function claimPersonalMeetingRoom() {
 }
 // The terms Members and Participants are used interchangeably
 // participants Section
-const participantsList = document.querySelector('.participantList');
+const participantsList = document.querySelector('#participant-list');
+const participantTable = document.querySelector('#participant-table');
+const participantButtons = document.querySelector('#participant-btn');
 
 function inviteMember(addButton) {
   const meeting = getCurrentMeeting();
@@ -1537,7 +1620,6 @@ function viewParticipants() {
   }
 
   function createRow(member) {
-    console.log(member);
     const tr = document.createElement('tr');
     const td1 = document.createElement('td');
     const td2 = document.createElement('td');
@@ -1581,9 +1663,11 @@ function viewParticipants() {
     thead.appendChild(createHeadRow());
 
     Object.entries(members).forEach(([key, value]) => {
-      const row = createRow(value);
+      if (value.status !== 'NOT_IN_MEETING') {
+        const row = createRow(value);
 
-      tbody.appendChild(row);
+        tbody.appendChild(row);
+      }
     });
 
     table.appendChild(thead);
@@ -1594,12 +1678,15 @@ function viewParticipants() {
 
   const meeting = getCurrentMeeting();
 
-  participantsList.innerText = '';
-
   if (meeting) {
+    emptyParticipants();
     const {members} = meeting.members.membersCollection;
 
-    participantsList.appendChild(createTable(members));
+    meeting.members.on('members:update', () => {
+      viewParticipants();
+    });
+
+    participantTable.appendChild(createTable(members));
 
     const btnDiv = document.createElement('div');
 
@@ -1609,7 +1696,7 @@ function viewParticipants() {
     btnDiv.appendChild(createButton('Remove', removeMember));
     btnDiv.appendChild(createButton('Make Host', transferHostToMember));
 
-    participantsList.appendChild(btnDiv);
+    participantButtons.appendChild(btnDiv);
 
     const inviteDiv = document.createElement('div');
     const inviteInput = document.createElement('input');
@@ -1623,12 +1710,13 @@ function viewParticipants() {
     inviteDiv.appendChild(inviteInput);
     inviteDiv.appendChild(inviteBtn);
 
-    participantsList.appendChild(inviteDiv);
+    participantButtons.appendChild(inviteDiv);
   }
 }
 
 function emptyParticipants() {
-  participantsList.innerText = '';
+  participantTable.innerText = '';
+  participantButtons.innerText = '';
 }
 
 /* ANSWER/REJECT INCOMING CALL */

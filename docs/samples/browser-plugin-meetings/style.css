@@ -92,6 +92,16 @@ button.btn-code {
   border-radius: 6px;
 }
 
+#participant-table {
+  max-height: 400px;
+  overflow: auto;
+}
+
+#events-list {
+  max-height: 200px;
+  overflow: auto;
+}
+
 /* Utilities */
 
 .flex {
