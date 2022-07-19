@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.6.0](https://github.com/webex/webex-js-sdk/compare/v2.5.0...v2.6.0) (2022-07-19)
+
+
+### Features
+
+* **device:** wdm cache optimization ([c65dbdd](https://github.com/webex/webex-js-sdk/commit/c65dbdd0c2f362f14fc300f1e1d9a6fe0231608e))
+
 ## [2.5.0](https://github.com/webex/webex-js-sdk/compare/v2.4.2...v2.5.0) (2022-07-14)
 
 
