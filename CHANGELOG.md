@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.7.0](https://github.com/webex/webex-js-sdk/compare/v2.6.0...v2.7.0) (2022-07-20)
+
+
+### Features
+
+* **plugin-meetings:** added metrics for bnr functionality ([ac6df73](https://github.com/webex/webex-js-sdk/commit/ac6df73de26c07cfb10edbb7f3471a311a95764c))
+
 ## [2.6.0](https://github.com/webex/webex-js-sdk/compare/v2.5.0...v2.6.0) (2022-07-19)
 
 
