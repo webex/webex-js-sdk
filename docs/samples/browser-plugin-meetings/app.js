@@ -383,7 +383,11 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
       }
 
       updateMeetingInfoSection(meeting);
-      viewParticipants();
+
+      meeting.members.on('members:update', (res) => {
+        console.log('member update', res);
+        viewParticipants();
+      });
 
       eventsList.innerText = '';
       meeting.on('all', (payload) => {
@@ -1681,10 +1685,6 @@ function viewParticipants() {
   if (meeting) {
     emptyParticipants();
     const {members} = meeting.members.membersCollection;
-
-    meeting.members.on('members:update', () => {
-      viewParticipants();
-    });
 
     participantTable.appendChild(createTable(members));
 
