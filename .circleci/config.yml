@@ -44,7 +44,8 @@ jobs:
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - node/install-packages
+      - node/install-packages:
+          cache-path: '~/webex-js-sdk/node_modules'
       - run:
           name: "Save NPM install log"
           command: npm ls --json > /tmp/npm_install.log || true
@@ -63,7 +64,8 @@ jobs:
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - node/install-packages
+      - node/install-packages:
+          cache-path: '~/webex-js-sdk/node_modules'
       - run:
           name: "Build all packages"
           command: npm run build
@@ -91,7 +93,8 @@ jobs:
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - node/install-packages
+      - node/install-packages:
+          cache-path: '~/webex-js-sdk/node_modules'
       - run:
           name: "Build all packages"
           command: npm run build
@@ -106,7 +109,7 @@ jobs:
     steps:
       - checkout_and_fetch_tags
       - node/install-packages:
-        check-cache: always
+          cache-path: '~/webex-js-sdk/node_modules'
       - run:
           name: "Run ESLint"
           command: npm run lint
@@ -122,7 +125,8 @@ jobs:
     executor: main-executor
     steps:
       - checkout_and_fetch_tags
-      - node/install-packages
+      - node/install-packages:
+          cache-path: '~/webex-js-sdk/node_modules'
       - run:
           name: "List Modified Packages"
           command: |
@@ -139,7 +143,8 @@ jobs:
       COVERAGE: true
     steps:
       - checkout_and_fetch_tags
-      - node/install-packages
+      - node/install-packages:
+          cache-path: '~/webex-js-sdk/node_modules'
       - skip_check
       # Generate build number for a single identifier for SauceLabs
       - run:
@@ -192,7 +197,8 @@ jobs:
       COVERAGE: true
     steps:
       - checkout_and_fetch_tags
-      - node/install-packages
+      - node/install-packages:
+          cache-path: '~/webex-js-sdk/node_modules'
       # Generate build number for a single identifier for SauceLabs
       - run:
           name: "Generate Build Number"
@@ -226,7 +232,8 @@ jobs:
       - browser-tools/install-browser-tools
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - node/install-packages
+      - node/install-packages:
+          cache-path: '~/webex-js-sdk/node_modules'
       - skip_check
       # Generate build number for a single identifier for SauceLabs
       - run:
@@ -275,7 +282,8 @@ jobs:
     executor: main-executor
     steps:
       - checkout_and_fetch_tags
-      - node/install-packages
+      - node/install-packages:
+          cache-path: '~/webex-js-sdk/node_modules'
       - add_ssh_keys:
           fingerprints:
             - "89:ed:56:33:f5:1b:7b:b6:a1:04:02:a0:f9:47:13:0a"
@@ -369,7 +377,8 @@ jobs:
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - node/install-packages
+      - node/install-packages:
+          cache-path: '~/webex-js-sdk/node_modules'
       - run:
           name: "Generate Build Number"
           command: echo "export BUILD_NUMBER=CircleCI-SDK-TAP-<< parameters.package >>_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
