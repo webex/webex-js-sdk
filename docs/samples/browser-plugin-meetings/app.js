@@ -80,11 +80,6 @@ function initOauth() {
     redirectUri += window.location.pathname;
   }
 
-  integrationEnv.disabled = true;
-  tokenElm.disabled = true;
-  saveElm.disabled = true;
-  authStatusElm.innerText = 'initializing...';
-
   webex = window.webex = Webex.init({
     config: {
       appName: 'sdk-samples',
@@ -347,40 +342,34 @@ function createMeeting(e) {
 
 function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: false}) {
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
+  let resourceId = null;
 
   if (!meeting) {
     throw new Error(`meeting ${selectedMeetingId} is invalid or no longer exists`);
   }
 
+  if (withDevice) {
+    resourceId = webex.devicemanager._pairedDevice ?
+      webex.devicemanager._pairedDevice.identity.id :
+      undefined;
+
+    clearMediaDeviceList();
+    getMediaDevices();
+  }
+
+
   const joinOptions = {
     pin: meetingsJoinPinElm.value,
     moderator: meetingsJoinModeratorElm.checked,
-    resourceId: webex.devicemanager._pairedDevice ?
-      webex.devicemanager._pairedDevice.identity.id :
-      undefined,
+    moveToResource: false,
+    resourceId,
     receiveTranscription: receiveTranscriptionOption
   };
 
   meeting.join(joinOptions)
-    .then(() => {
+    .then(() => { // eslint-disable-line
       // For meeting controls button onclick handlers
       window.meeting = meeting;
-
-      if (withDevice) {
-        meeting.moveTo(webex.devicemanager._pairedDevice.identity.id).then(
-          () => {
-            console.log('Move to Device :: Successful');
-          }
-        );
-      }
-
-      if (withMedia) {
-        clearMediaDeviceList();
-        getMediaDevices();
-        getMediaStreams().then(() => {
-          addMedia();
-        });
-      }
 
       updateMeetingInfoSection(meeting);
 
@@ -393,6 +382,12 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
       meeting.on('all', (payload) => {
         updatePublishedEvents(payload);
       });
+
+      if (withMedia) {
+        clearMediaDeviceList();
+
+        return getMediaStreams().then(() => addMedia());
+      }
     });
 }
 
@@ -455,10 +450,8 @@ function updateMeetingInfoSection(meeting) {
   const titleElm = document.getElementById('meeting-info-title');
   const subtitleElm = document.getElementById('meeting-info-subtitle');
 
-  titleElm.innerText = meeting.destination.info.webExMeetingName;
+  titleElm.innerText = meeting.destination.info ? meeting.destination?.info?.webExMeetingName : meeting.destination;
   subtitleElm.innerText = `${meeting.sipUri} (${meeting.id})`;
-
-  // meetingsCurrentDetailsElm.innerText = meeting.destination.info.webExMeetingName || meeting.sipUri || meeting.id;
 
   meetingsLeaveElm.onclick = () => leaveMeeting(getCurrentMeeting().id);
   meetingsLeaveElm.classList.add('btn--red');
@@ -1103,16 +1096,17 @@ function stopMediaTrack(type) {
   if (!meeting) return;
   const {audioTrack, videoTrack, shareTrack} = meeting.mediaProperties;
 
+  // Note: sometimes we are adding new track so the old track might not be present
   // eslint-disable-next-line default-case
   switch (type) {
     case 'audio':
-      audioTrack.stop();
+      audioTrack?.stop();
       break;
     case 'video':
-      videoTrack.stop();
+      videoTrack?.stop();
       break;
     case 'share':
-      shareTrack.stop();
+      shareTrack?.stop();
       break;
   }
 }
@@ -1765,3 +1759,18 @@ document.querySelectorAll('.collapsible').forEach((el) => {
     sectionContentElement.classList.toggle('collapsed');
   });
 });
+
+// Get Access Token from URL and put in access token field
+if (window.location.hash) {
+  // hacky way to get access token from hash
+  const urlParams = new URLSearchParams(window.location.hash.replace('#', '?'));
+
+  const accessToken = urlParams.get('access_token');
+  const expiresIn = urlParams.get('expires_in');
+
+  if (accessToken) {
+    localStorage.setItem('access-token', accessToken);
+    localStorage.setItem('date', new Date().getTime() + parseInt(expiresIn, 10));
+    tokenElm.value = accessToken;
+  }
+}
