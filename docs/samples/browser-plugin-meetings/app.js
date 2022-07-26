@@ -247,6 +247,7 @@ function unregister() {
 // Meetings Management Section --------------------------------------------------
 const createMeetingForm = document.querySelector('#meetings-create');
 const createMeetingDestinationElm = document.querySelector('#create-meeting-destination');
+const createMeetingSelectElm = document.querySelector('#createMeetingDest');
 const createMeetingActionElm = document.querySelector('#create-meeting-action');
 const meetingsJoinDeviceElm = document.querySelector('#meetings-join-device');
 const meetingsJoinPinElm = document.querySelector('#meetings-join-pin');
@@ -323,14 +324,23 @@ function collectMeetings() {
     });
 }
 
+createMeetingSelectElm.addEventListener('change', event => {
+  if (event.target.value === "CONVERSATION_URL"){
+    createMeetingActionElm.innerText = 'Create Adhoc Meeting';
+  } else {
+    createMeetingActionElm.innerText = 'Create Meeting';
+  }
+});
+
 function createMeeting(e) {
   e.preventDefault();
 
-  const {value} = createMeetingDestinationElm;
+  const { value } = createMeetingDestinationElm;
+  const type = createMeetingSelectElm.value;
 
   console.log('MeetingsManagement#createMeeting', value);
 
-  webex.meetings.create(value)
+  webex.meetings.create(value, type)
     .then((meeting) => {
       createMeetingDestinationElm.value = '';
       generalStartReceivingTranscription.disabled = false; // eslint-disable-line no-use-before-define
