@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.8.0](https://github.com/webex/webex-js-sdk/compare/v2.7.0...v2.8.0) (2022-07-28)
+
+
+### Features
+
+* get status about whether raise hand is supported ([d7c5b13](https://github.com/webex/webex-js-sdk/commit/d7c5b136f868c20b0838aa0b7db0bf17f7b2b0e7))
+* **raisehand:** removed extra line ([104758e](https://github.com/webex/webex-js-sdk/commit/104758e2014acc2a839e90f86aece7f96185bb47))
+* **raisehand:** updated plugin-meetings readme ([f2581ae](https://github.com/webex/webex-js-sdk/commit/f2581aeadd67539c3cdf288f40a057b88ac72ad5))
+
 ## [2.7.0](https://github.com/webex/webex-js-sdk/compare/v2.6.0...v2.7.0) (2022-07-20)
 
 
