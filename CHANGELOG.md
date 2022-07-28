@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.9.0](https://github.com/webex/webex-js-sdk/compare/v2.8.0...v2.9.0) (2022-07-28)
+
+
+### Features
+
+* add raise hand to members ([89e52da](https://github.com/webex/webex-js-sdk/commit/89e52da813598613f7c741e20a89e714d8447c27))
+
+
+### Bug Fixes
+
+* linting issue ([443d13b](https://github.com/webex/webex-js-sdk/commit/443d13b47bca1cf4c226f57e8d7e468bed7fba98))
+
 ## [2.8.0](https://github.com/webex/webex-js-sdk/compare/v2.7.0...v2.8.0) (2022-07-28)
 
 
