@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.10.0](https://github.com/webex/webex-js-sdk/compare/v2.9.0...v2.10.0) (2022-07-29)
+
+
+### Features
+
+* **raisehand:** added isRaiseHand to processParticipant ([979d6d6](https://github.com/webex/webex-js-sdk/commit/979d6d689344559dcb1fee201927cc1c8f38bf8e))
+* **raisehand:** changed return to returns ([b55cba8](https://github.com/webex/webex-js-sdk/commit/b55cba81d72d05fea37931a9cca28d58cb738b67))
+* **raisehand:** member test improvements ([c3c710c](https://github.com/webex/webex-js-sdk/commit/c3c710c77aa5ae983ed5346206a0d4c111e74b83))
+* **raisehand:** memeber test review update ([dc84a39](https://github.com/webex/webex-js-sdk/commit/dc84a3959407577f8ac453504fea52d7af468874))
+* **raisehand:** review update ([2fe26cd](https://github.com/webex/webex-js-sdk/commit/2fe26cdff6e05a3e9ed28d3e8b5aa1d6ed2f18c8))
+* **raisehand:** sinon restore after each added ([ae0ce0f](https://github.com/webex/webex-js-sdk/commit/ae0ce0ffef822dc3807bc1d1b23ce0c28ec22895))
+* **raisehand:** util test typo fixed ([0d6ef76](https://github.com/webex/webex-js-sdk/commit/0d6ef7652e874cfbbb17a07e06265e5a77294218))
+
 ## [2.9.0](https://github.com/webex/webex-js-sdk/compare/v2.8.0...v2.9.0) (2022-07-28)
 
 
