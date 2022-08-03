@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.12.0](https://github.com/webex/webex-js-sdk/compare/v2.11.1...v2.12.0) (2022-08-03)
+
+
+### Features
+
+* added lower all hands to plugin-meetings ([dded507](https://github.com/webex/webex-js-sdk/commit/dded507013773ab8aff33ccd62bfa74edd1f5a3e))
+* added lower all hands to plugin-meetings ([fde7809](https://github.com/webex/webex-js-sdk/commit/fde7809da45424ddb63be40d4a0da9076af38c11))
+* added lower hands ([41a6170](https://github.com/webex/webex-js-sdk/commit/41a61704948a3b0eac573754d3536299f647a9c9))
+
+
+### Bug Fixes
+
+* lint issues ([d2f033f](https://github.com/webex/webex-js-sdk/commit/d2f033f6097d59a0cf1b04785062ca9cbd90c39b))
+
 ### [2.11.1](https://github.com/webex/webex-js-sdk/compare/v2.11.0...v2.11.1) (2022-08-01)
 
 
