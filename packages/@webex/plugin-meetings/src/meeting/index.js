@@ -125,6 +125,8 @@ export const MEDIA_UPDATE_TYPE = {
   * @property {String} audio.deviceId
   * @property {Object} video
   * @property {String} video.deviceId
+  * @property {String} video.localVideoQuality // [240p, 360p, 480p, 720p, 1080p] // we can add _1, _2 for more options like
+  * https://docs.agora.io/en/Video/API%20Reference/web_ng/globals.html#videoencoderconfigurationpreset
   */
 
 /**
@@ -4003,6 +4005,8 @@ export default class Meeting extends StatelessWebexPlugin {
         LoggerProxy.logger.warn('Meeting:index#getMediaStreams --> Enabling `sendShare` along with `sendAudio` & `sendVideo`, on Safari, causes a failure while setting up a screen share at the same time as the camera+mic stream');
         LoggerProxy.logger.warn('Meeting:index#getMediaStreams --> Please use `meeting.shareScreen()` to manually start the screen share after successfully joining the meeting');
       }
+
+      audioVideo = {...audioVideo, ...VIDEO_RESOLUTIONS[this.mediaProperties.localQualityLevel]};
 
       // extract deviceId if exists otherwise default to null.
       const {deviceId: preferredVideoDevice} = (audioVideo && audioVideo.video || {deviceId: null});
