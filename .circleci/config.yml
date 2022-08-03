@@ -7,11 +7,11 @@ executors:
   main-executor:
     working_directory: ~/webex-js-sdk
     docker:
-      - image: cimg/node:16.11-browsers
-
+      - image: cimg/node:16.16-browsers
 # orbs
 orbs:
-  browser-tools: circleci/browser-tools@1.2.5
+  browser-tools: circleci/browser-tools@1.3.0
+  node: circleci/node@5.0.2
 
 # Reusable commands for jobs
 commands:
@@ -27,18 +27,7 @@ commands:
       - checkout
       - run: git remote add upstream git@github.com:webex/webex-js-sdk.git
       - run: git fetch upstream --tags
-  restore_node_modules:
-    description: "Restore the node_modules dependencies cache"
-    steps:
-      - restore_cache:
-          keys:
-            - node-modules-cache-node-gallium-npm-8-{{ .Environment.CACHE_VERSION }}-{{ checksum "package-lock.json" }}
-            - node-modules-cache-node-gallium-npm-8-{{ .Environment.CACHE_VERSION }}-
-  restore_built_packages:
-    description: "Restore built packages"
-    steps:
-      - attach_workspace:
-          at: ~/webex-js-sdk
+
   skip_check:
     description: "Check to see if testing needs to be skipped"
     steps:
@@ -55,22 +44,7 @@ jobs:
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - run:
-          name: "Update NPM"
-          command: sudo npm install -g npm@8
-      - run:
-          name: "Install dependencies"
-          command: npm ci
-      # Cache workaround to cache patch changes
-      # https://github.com/ds300/patch-package#docker-and-ci
-      - run:
-          name: "Hash patch-package patches"
-          command: cat patches/* | md5sum > patches.hash
-      # Cache node_modules across different internal jobs in the workflow and across different circleci runs
-      - save_cache:
-          key: node-modules-cache-node-gallium-npm-8-{{ .Environment.CACHE_VERSION }}-{{ checksum "package-lock.json" }}-{{ checksum "patches.hash" }}
-          paths:
-            - node_modules
+      - node/install-packages
       - run:
           name: "Save NPM install log"
           command: npm ls --json > /tmp/npm_install.log || true
@@ -89,7 +63,7 @@ jobs:
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - restore_node_modules
+      - node/install-packages
       - run:
           name: "Build all packages"
           command: npm run build
@@ -117,7 +91,7 @@ jobs:
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - restore_node_modules
+      - node/install-packages
       - run:
           name: "Build all packages"
           command: npm run build
@@ -131,8 +105,8 @@ jobs:
     executor: main-executor
     steps:
       - checkout_and_fetch_tags
-      - restore_node_modules
-      - restore_built_packages
+      - node/install-packages:
+        check-cache: always
       - run:
           name: "Run ESLint"
           command: npm run lint
@@ -148,8 +122,7 @@ jobs:
     executor: main-executor
     steps:
       - checkout_and_fetch_tags
-      - restore_node_modules
-      - restore_built_packages
+      - node/install-packages
       - run:
           name: "List Modified Packages"
           command: |
@@ -166,8 +139,7 @@ jobs:
       COVERAGE: true
     steps:
       - checkout_and_fetch_tags
-      - restore_node_modules
-      - restore_built_packages
+      - node/install-packages
       - skip_check
       # Generate build number for a single identifier for SauceLabs
       - run:
@@ -220,8 +192,7 @@ jobs:
       COVERAGE: true
     steps:
       - checkout_and_fetch_tags
-      - restore_node_modules
-      - restore_built_packages
+      - node/install-packages
       # Generate build number for a single identifier for SauceLabs
       - run:
           name: "Generate Build Number"
@@ -255,8 +226,7 @@ jobs:
       - browser-tools/install-browser-tools
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - restore_node_modules
-      - restore_built_packages
+      - node/install-packages
       - skip_check
       # Generate build number for a single identifier for SauceLabs
       - run:
@@ -305,7 +275,7 @@ jobs:
     executor: main-executor
     steps:
       - checkout_and_fetch_tags
-      - restore_node_modules
+      - node/install-packages
       - add_ssh_keys:
           fingerprints:
             - "89:ed:56:33:f5:1b:7b:b6:a1:04:02:a0:f9:47:13:0a"
@@ -399,8 +369,7 @@ jobs:
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - restore_node_modules
-      - restore_built_packages
+      - node/install-packages
       - run:
           name: "Generate Build Number"
           command: echo "export BUILD_NUMBER=CircleCI-SDK-TAP-<< parameters.package >>_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV

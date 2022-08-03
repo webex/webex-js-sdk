@@ -2,6 +2,112 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.12.0](https://github.com/webex/webex-js-sdk/compare/v2.11.1...v2.12.0) (2022-08-03)
+
+
+### Features
+
+* added lower all hands to plugin-meetings ([dded507](https://github.com/webex/webex-js-sdk/commit/dded507013773ab8aff33ccd62bfa74edd1f5a3e))
+* added lower all hands to plugin-meetings ([fde7809](https://github.com/webex/webex-js-sdk/commit/fde7809da45424ddb63be40d4a0da9076af38c11))
+* added lower hands ([41a6170](https://github.com/webex/webex-js-sdk/commit/41a61704948a3b0eac573754d3536299f647a9c9))
+
+
+### Bug Fixes
+
+* lint issues ([d2f033f](https://github.com/webex/webex-js-sdk/commit/d2f033f6097d59a0cf1b04785062ca9cbd90c39b))
+
+### [2.11.1](https://github.com/webex/webex-js-sdk/compare/v2.11.0...v2.11.1) (2022-08-01)
+
+
+### Bug Fixes
+
+* use the correct members request in raiseOrLowerHand ([6da6818](https://github.com/webex/webex-js-sdk/commit/6da681807e4d479e582018cb39cfc784976582d2))
+
+## [2.11.0](https://github.com/webex/webex-js-sdk/compare/v2.10.0...v2.11.0) (2022-08-01)
+
+
+### Features
+
+* **plugin-meetings:** added metrics for actions and failures (USM Flow) ([550f381](https://github.com/webex/webex-js-sdk/commit/550f381f28f78b5125a715f0925a238ddc96f1cb))
+
+## [2.10.0](https://github.com/webex/webex-js-sdk/compare/v2.9.0...v2.10.0) (2022-07-29)
+
+
+### Features
+
+* **raisehand:** added isRaiseHand to processParticipant ([979d6d6](https://github.com/webex/webex-js-sdk/commit/979d6d689344559dcb1fee201927cc1c8f38bf8e))
+* **raisehand:** changed return to returns ([b55cba8](https://github.com/webex/webex-js-sdk/commit/b55cba81d72d05fea37931a9cca28d58cb738b67))
+* **raisehand:** member test improvements ([c3c710c](https://github.com/webex/webex-js-sdk/commit/c3c710c77aa5ae983ed5346206a0d4c111e74b83))
+* **raisehand:** memeber test review update ([dc84a39](https://github.com/webex/webex-js-sdk/commit/dc84a3959407577f8ac453504fea52d7af468874))
+* **raisehand:** review update ([2fe26cd](https://github.com/webex/webex-js-sdk/commit/2fe26cdff6e05a3e9ed28d3e8b5aa1d6ed2f18c8))
+* **raisehand:** sinon restore after each added ([ae0ce0f](https://github.com/webex/webex-js-sdk/commit/ae0ce0ffef822dc3807bc1d1b23ce0c28ec22895))
+* **raisehand:** util test typo fixed ([0d6ef76](https://github.com/webex/webex-js-sdk/commit/0d6ef7652e874cfbbb17a07e06265e5a77294218))
+
+## [2.9.0](https://github.com/webex/webex-js-sdk/compare/v2.8.0...v2.9.0) (2022-07-28)
+
+
+### Features
+
+* add raise hand to members ([89e52da](https://github.com/webex/webex-js-sdk/commit/89e52da813598613f7c741e20a89e714d8447c27))
+
+
+### Bug Fixes
+
+* linting issue ([443d13b](https://github.com/webex/webex-js-sdk/commit/443d13b47bca1cf4c226f57e8d7e468bed7fba98))
+
+## [2.8.0](https://github.com/webex/webex-js-sdk/compare/v2.7.0...v2.8.0) (2022-07-28)
+
+
+### Features
+
+* get status about whether raise hand is supported ([d7c5b13](https://github.com/webex/webex-js-sdk/commit/d7c5b136f868c20b0838aa0b7db0bf17f7b2b0e7))
+* **raisehand:** removed extra line ([104758e](https://github.com/webex/webex-js-sdk/commit/104758e2014acc2a839e90f86aece7f96185bb47))
+* **raisehand:** updated plugin-meetings readme ([f2581ae](https://github.com/webex/webex-js-sdk/commit/f2581aeadd67539c3cdf288f40a057b88ac72ad5))
+
+## [2.7.0](https://github.com/webex/webex-js-sdk/compare/v2.6.0...v2.7.0) (2022-07-20)
+
+
+### Features
+
+* **plugin-meetings:** added metrics for bnr functionality ([ac6df73](https://github.com/webex/webex-js-sdk/commit/ac6df73de26c07cfb10edbb7f3471a311a95764c))
+
+## [2.6.0](https://github.com/webex/webex-js-sdk/compare/v2.5.0...v2.6.0) (2022-07-19)
+
+
+### Features
+
+* **device:** wdm cache optimization ([c65dbdd](https://github.com/webex/webex-js-sdk/commit/c65dbdd0c2f362f14fc300f1e1d9a6fe0231608e))
+
+## [2.5.0](https://github.com/webex/webex-js-sdk/compare/v2.4.2...v2.5.0) (2022-07-14)
+
+
+### Features
+
+* **plugin-meetings:** disable BNR api included ([8307b2c](https://github.com/webex/webex-js-sdk/commit/8307b2cb48f1831a200d9e6acd6febd2d82b1798))
+* **plugin-meetings:** enable BNR api included ([c316338](https://github.com/webex/webex-js-sdk/commit/c316338be85854e0da76f815830bb1393dae16ba))
+
+### [2.4.2](https://github.com/webex/webex-js-sdk/compare/v2.4.1...v2.4.2) (2022-07-12)
+
+
+### Bug Fixes
+
+* **internal-plugin-device:** fixing the boolean check for cisco-device-url ([21e4ed8](https://github.com/webex/webex-js-sdk/commit/21e4ed873aff7f5fdb08b9179906f21420872900))
+
+### [2.4.1](https://github.com/webex/webex-js-sdk/compare/v2.4.0...v2.4.1) (2022-07-11)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** loggerProxy error ([538d394](https://github.com/webex/webex-js-sdk/commit/538d3940ab087cd13daa569a59783774f84dcc55))
+
+## [2.4.0](https://github.com/webex/webex-js-sdk/compare/v2.3.0...v2.4.0) (2022-07-07)
+
+
+### Features
+
+* **imc:** add unit tests ([aed8378](https://github.com/webex/webex-js-sdk/commit/aed83789de299fc0bf16a8d7d826cec42267c530))
+* **imc:** handle imc mercury events and allow imc creation ([c811e1c](https://github.com/webex/webex-js-sdk/commit/c811e1c1eaf9a963e004d4acf13f43c98bf79eeb))
+
 ## [2.3.0](https://github.com/webex/webex-js-sdk/compare/v2.2.4...v2.3.0) (2022-06-24)
 
 
