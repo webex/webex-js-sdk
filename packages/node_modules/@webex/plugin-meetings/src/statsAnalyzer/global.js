@@ -2,6 +2,7 @@ const STATS_DEFAULT = {
   encryption: 'sha-256',
   audio: {
     send: {
+      trackLabel: '',
       maxPacketLossRatio: 0,
       availableBandwidth: 0,
       bytesSent: 0,
@@ -17,6 +18,7 @@ const STATS_DEFAULT = {
   },
   video: {
     send: {
+      trackLabel: '',
       maxPacketLossRatio: 0,
       availableBandwidth: 0,
       meanRemoteJitter: [],
