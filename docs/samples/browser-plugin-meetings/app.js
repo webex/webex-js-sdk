@@ -27,7 +27,7 @@ const unregisterElm = document.querySelector('#registration-unregister');
 const registrationStatusElm = document.querySelector('#registration-status');
 const integrationEnv = document.getElementById('integration-env');
 const eventsList = document.getElementById('events-list');
-
+const fqdn = document.getElementById('fqdn');
 // Disable screenshare on join in Safari patch
 const isSafari = /Version\/[\d.]+.*Safari/.test(navigator.userAgent);
 const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -324,10 +324,11 @@ function collectMeetings() {
     });
 }
 
-createMeetingSelectElm.addEventListener('change', event => {
-  if (event.target.value === "CONVERSATION_URL"){
+createMeetingSelectElm.addEventListener('change', (event) => {
+  if (event.target.value === 'CONVERSATION_URL') {
     createMeetingActionElm.innerText = 'Create Adhoc Meeting';
-  } else {
+  }
+  else {
     createMeetingActionElm.innerText = 'Create Meeting';
   }
 });
@@ -335,7 +336,7 @@ createMeetingSelectElm.addEventListener('change', event => {
 function createMeeting(e) {
   e.preventDefault();
 
-  const { value } = createMeetingDestinationElm;
+  const {value} = createMeetingDestinationElm;
   const type = createMeetingSelectElm.value;
 
   console.log('MeetingsManagement#createMeeting', value);
@@ -353,6 +354,8 @@ function createMeeting(e) {
 function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: false}) {
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
   let resourceId = null;
+
+  meeting.fqdn = fqdn.value;
 
   if (!meeting) {
     throw new Error(`meeting ${selectedMeetingId} is invalid or no longer exists`);
