@@ -43,6 +43,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     fs: 'empty'
   },
   resolve: {
+    extensions: ['.ts', '.js', '.json'],
     alias: glob
       .sync('**/package.json', {cwd: './packages/node_modules'})
       .map((p) => path.dirname(p))
@@ -65,13 +66,13 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
   module: {
     rules: [
       {
-        test: /\.js$/,
+        test: /\.(js|tsx|ts)$/,
         include: [
           /packages\/node_modules/,
         ],
         use: {
           loader: 'babel-loader'
-        }
+        },
       }
     ]
   },
