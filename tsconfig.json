@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "emitDeclarationOnly": true,
+  // Ensure that Babel can safely transpile files in the TypeScript project
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "alwaysStrict": true,
@@ -10,11 +12,6 @@
     "moduleResolution": "node",
     "outDir": "./dist",
     "baseUrl": ".",
-    "paths": {
-      "@webex/webex-core": [
-        "./packages/node_modules/@webex/webex-core"
-      ]
-    },
     "preserveConstEnums": true,
     "removeComments": false,
     "sourceMap": true,
