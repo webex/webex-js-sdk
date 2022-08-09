@@ -219,7 +219,7 @@ jobs:
   samples:
     working_directory: ~/webex-js-sdk
     docker:
-      - image: circleci/node:Gallium
+      - image: circleci/node:gallium
     environment:
       NODE_ENV: "test"
       COVERAGE: true
