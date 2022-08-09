@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.12.1](https://github.com/webex/webex-js-sdk/compare/v2.12.0...v2.12.1) (2022-08-09)
+
+
+### Bug Fixes
+
+* return the response from the meetingInfo API ([3673a05](https://github.com/webex/webex-js-sdk/commit/3673a05d719a2b37276112df0391270d06155486))
+
 ## [2.12.0](https://github.com/webex/webex-js-sdk/compare/v2.11.1...v2.12.0) (2022-08-03)
 
 
