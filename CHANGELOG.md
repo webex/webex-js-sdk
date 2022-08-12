@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.13.0](https://github.com/webex/webex-js-sdk/compare/v2.12.1...v2.13.0) (2022-08-12)
+
+
+### Features
+
+* **plugin-meetings:** bnr enable refactor for change device case ([d9b73fd](https://github.com/webex/webex-js-sdk/commit/d9b73fd7d9ccf9f9f8731fdc2760a7cac554410c))
+
+
+### Bug Fixes
+
+* remove internal-media-core from excludes ([3f308cd](https://github.com/webex/webex-js-sdk/commit/3f308cdf630a3f6fc80ce2e72f03f4cde10ca2d8))
+* upgrade internal-media-core ([f6e9d26](https://github.com/webex/webex-js-sdk/commit/f6e9d268ec7a33890e963fbc9398b7b98d829479))
+
 ### [2.12.1](https://github.com/webex/webex-js-sdk/compare/v2.12.0...v2.12.1) (2022-08-09)
 
 
