@@ -32,9 +32,6 @@ commands:
     description: "Restore the node_modules dependencies cache"
     steps:
       - run:
-          name: "NPM Version"
-          command: npm -v
-      - run:
           name: "Install dependencies"
           command: npm ci
       # Cache workaround to cache patch changes
