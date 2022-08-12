@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.14.0](https://github.com/webex/webex-js-sdk/compare/v2.13.0...v2.14.0) (2022-08-12)
+
+
+### Features
+
+* **plugin-meetings:** bnr methods updated for handling multiple requests ([4365fb6](https://github.com/webex/webex-js-sdk/commit/4365fb6c140912e76df21f52243c7708d0293b9e))
+
 ## [2.13.0](https://github.com/webex/webex-js-sdk/compare/v2.12.1...v2.13.0) (2022-08-12)
 
 
