@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.14.1](https://github.com/webex/webex-js-sdk/compare/v2.14.0...v2.14.1) (2022-08-12)
+
+
+### Bug Fixes
+
+* unit test and meetinginfo ([6af9473](https://github.com/webex/webex-js-sdk/commit/6af9473af308b704a6f6ba1d26080f589b3cc28d))
+
+## [2.14.0](https://github.com/webex/webex-js-sdk/compare/v2.13.0...v2.14.0) (2022-08-12)
+
+
+### Features
+
+* **plugin-meetings:** bnr methods updated for handling multiple requests ([4365fb6](https://github.com/webex/webex-js-sdk/commit/4365fb6c140912e76df21f52243c7708d0293b9e))
+
+## [2.13.0](https://github.com/webex/webex-js-sdk/compare/v2.12.1...v2.13.0) (2022-08-12)
+
+
+### Features
+
+* **plugin-meetings:** bnr enable refactor for change device case ([d9b73fd](https://github.com/webex/webex-js-sdk/commit/d9b73fd7d9ccf9f9f8731fdc2760a7cac554410c))
+
+
+### Bug Fixes
+
+* remove internal-media-core from excludes ([3f308cd](https://github.com/webex/webex-js-sdk/commit/3f308cdf630a3f6fc80ce2e72f03f4cde10ca2d8))
+* upgrade internal-media-core ([f6e9d26](https://github.com/webex/webex-js-sdk/commit/f6e9d268ec7a33890e963fbc9398b7b98d829479))
+
+### [2.12.1](https://github.com/webex/webex-js-sdk/compare/v2.12.0...v2.12.1) (2022-08-09)
+
+
+### Bug Fixes
+
+* return the response from the meetingInfo API ([3673a05](https://github.com/webex/webex-js-sdk/commit/3673a05d719a2b37276112df0391270d06155486))
+
 ## [2.12.0](https://github.com/webex/webex-js-sdk/compare/v2.11.1...v2.12.0) (2022-08-03)
 
 

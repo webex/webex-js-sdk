@@ -7,11 +7,12 @@ executors:
   main-executor:
     working_directory: ~/webex-js-sdk
     docker:
-      - image: cimg/node:16.16-browsers
+      - image: cimg/node:16.16.0-browsers
+
 # orbs
 orbs:
   browser-tools: circleci/browser-tools@1.3.0
-  node: circleci/node@5.0.2
+
 
 # Reusable commands for jobs
 commands:
@@ -27,7 +28,22 @@ commands:
       - checkout
       - run: git remote add upstream git@github.com:webex/webex-js-sdk.git
       - run: git fetch upstream --tags
-
+  restore_node_modules:
+    description: "Restore the node_modules dependencies cache"
+    steps:
+      - run:
+          name: "Install dependencies"
+          command: npm ci
+      # Cache workaround to cache patch changes
+      # https://github.com/ds300/patch-package#docker-and-ci
+      - run:
+          name: "Hash patch-package patches"
+          command: cat patches/* | md5sum > patches.hash
+  restore_built_packages:
+    description: "Restore built packages"
+    steps:
+      - attach_workspace:
+          at: ~/webex-js-sdk
   skip_check:
     description: "Check to see if testing needs to be skipped"
     steps:
@@ -44,7 +60,19 @@ jobs:
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - node/install-packages
+      - run:
+          name: "Install dependencies"
+          command: npm ci
+      # Cache workaround to cache patch changes
+      # https://github.com/ds300/patch-package#docker-and-ci
+      - run:
+          name: "Hash patch-package patches"
+          command: cat patches/* | md5sum > patches.hash
+      # Cache node_modules across different internal jobs in the workflow and across different circleci runs
+      - save_cache:
+          key: node-modules-cache-node-Gallium-npm-6-{{ .Environment.CACHE_VERSION }}-{{ checksum "package-lock.json" }}-{{ checksum "patches.hash" }}
+          paths:
+            - node_modules
       - run:
           name: "Save NPM install log"
           command: npm ls --json > /tmp/npm_install.log || true
@@ -63,7 +91,7 @@ jobs:
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - node/install-packages
+      - restore_node_modules
       - run:
           name: "Build all packages"
           command: npm run build
@@ -91,7 +119,7 @@ jobs:
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - node/install-packages
+      - restore_node_modules
       - run:
           name: "Build all packages"
           command: npm run build
@@ -105,8 +133,8 @@ jobs:
     executor: main-executor
     steps:
       - checkout_and_fetch_tags
-      - node/install-packages:
-        check-cache: always
+      - restore_node_modules
+      - restore_built_packages
       - run:
           name: "Run ESLint"
           command: npm run lint
@@ -122,7 +150,8 @@ jobs:
     executor: main-executor
     steps:
       - checkout_and_fetch_tags
-      - node/install-packages
+      - restore_node_modules
+      - restore_built_packages
       - run:
           name: "List Modified Packages"
           command: |
@@ -139,7 +168,11 @@ jobs:
       COVERAGE: true
     steps:
       - checkout_and_fetch_tags
-      - node/install-packages
+      - attach_workspace:
+        # Must be absolute path or relative path from working_directory
+          at: ~/webex-js-sdk
+      - restore_node_modules
+      - restore_built_packages
       - skip_check
       # Generate build number for a single identifier for SauceLabs
       - run:
@@ -192,7 +225,11 @@ jobs:
       COVERAGE: true
     steps:
       - checkout_and_fetch_tags
-      - node/install-packages
+      - attach_workspace:
+        # Must be absolute path or relative path from working_directory
+          at: ~/webex-js-sdk
+      - restore_node_modules
+      - restore_built_packages
       # Generate build number for a single identifier for SauceLabs
       - run:
           name: "Generate Build Number"
@@ -226,7 +263,11 @@ jobs:
       - browser-tools/install-browser-tools
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - node/install-packages
+      - attach_workspace:
+        # Must be absolute path or relative path from working_directory
+          at: ~/webex-js-sdk
+      - restore_node_modules
+      - restore_built_packages
       - skip_check
       # Generate build number for a single identifier for SauceLabs
       - run:
@@ -275,7 +316,7 @@ jobs:
     executor: main-executor
     steps:
       - checkout_and_fetch_tags
-      - node/install-packages
+      - restore_node_modules
       - add_ssh_keys:
           fingerprints:
             - "89:ed:56:33:f5:1b:7b:b6:a1:04:02:a0:f9:47:13:0a"
@@ -320,7 +361,8 @@ jobs:
           command: |
             if ! \
               { git log "$( git describe --tags --abbrev=0 )..HEAD" --format='%s' | cut -d: -f1 | sort -u | sed -e 's/([^)]*)//' | grep -q -i -E '^feat|fix|perf|revert$' ; } || \
-              { git log "$( git describe --tags --abbrev=0 )..HEAD" --format='%s' | cut -d: -f1 | sort -u | sed -e 's/([^)]*)//' | grep -q -E '\!$' ; }
+              { git log "$( git describe --tags --abbrev=0 )..HEAD" --format='%s' | cut -d: -f1 | sort -u | sed -e 's/([^)]*)//' | grep -q -E '\!$' ; } || \
+              { git log "$( git describe --tags --abbrev=0 )..HEAD" --format='%b' | grep -q -E '^BREAKING CHANGE:' ; }
             then
               echo "No applicable changes since the previous tag, skipping..."
               circleci step halt
@@ -369,7 +411,8 @@ jobs:
     steps:
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - node/install-packages
+      - restore_node_modules
+      - restore_built_packages
       - run:
           name: "Generate Build Number"
           command: echo "export BUILD_NUMBER=CircleCI-SDK-TAP-<< parameters.package >>_${CIRCLE_WORKFLOW_ID}" >> $BASH_ENV
