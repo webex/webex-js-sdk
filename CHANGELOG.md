@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.14.3](https://github.com/webex/webex-js-sdk/compare/v2.14.2...v2.14.3) (2022-08-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix moveTo and moveFrom logic on devices ([a38f9c0](https://github.com/webex/webex-js-sdk/commit/a38f9c00528a44e0b0852402d16d8a22ac0506cb))
+
 ### [2.14.2](https://github.com/webex/webex-js-sdk/compare/v2.14.1...v2.14.2) (2022-08-16)
 
 ### [2.14.1](https://github.com/webex/webex-js-sdk/compare/v2.14.0...v2.14.1) (2022-08-12)
