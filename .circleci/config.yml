@@ -13,7 +13,6 @@ executors:
 orbs:
   browser-tools: circleci/browser-tools@1.3.0
 
-
 # Reusable commands for jobs
 commands:
   install_graphicsmagick_and_libgcrypt:
@@ -196,7 +195,7 @@ jobs:
       - run:
           name: "Check if any unit tests failed"
           command: |
-            mkdir -p reports/junit/mocha
+            mkdir -p reports/junit/mocha/mocha
             FAILURES=$(find reports/junit/mocha/ -iname '*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
 
             echo Failures $FAILURES
