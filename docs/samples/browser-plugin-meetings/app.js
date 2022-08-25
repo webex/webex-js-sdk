@@ -847,6 +847,30 @@ function getMediaDevices() {
   }
 }
 
+async function updateMedia() {
+  const meeting = getCurrentMeeting();
+
+  await getMediaStreams();
+  const [localStream, localShare] = currentMediaStreams;
+
+  console.log('MeetingStreams#updateMedia()');
+
+  if (!meeting) {
+    console.log('MeetingStreams#updateMedia() :: no valid meeting object!');
+  }
+
+  meeting.updateMedia({
+    localShare,
+    localStream,
+    mediaSettings: getMediaSettings()
+  }).then(() => {
+    console.log('MeetingStreams#addMedia() :: successfully updating media!');
+  }).catch((error) => {
+    console.log('MeetingStreams#addMedia() :: Error updating media!');
+    console.error(error);
+  });
+}
+
 const getOptionValue = (select) => {
   const selected = select.options[select.options.selectedIndex];
 
