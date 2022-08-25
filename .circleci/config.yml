@@ -132,8 +132,8 @@ jobs:
     executor: main-executor
     steps:
       - checkout_and_fetch_tags
-      - node/install-packages:
-        check-cache: always
+      - restore_node_modules
+      - restore_built_packages
       - run:
           name: "Run ESLint"
           command: npm run lint
@@ -167,7 +167,11 @@ jobs:
       COVERAGE: true
     steps:
       - checkout_and_fetch_tags
-      - node/install-packages
+      - attach_workspace:
+        # Must be absolute path or relative path from working_directory
+          at: ~/webex-js-sdk
+      - restore_node_modules
+      - restore_built_packages
       - skip_check
       # Generate build number for a single identifier for SauceLabs
       - run:
@@ -258,7 +262,11 @@ jobs:
       - browser-tools/install-browser-tools
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - node/install-packages
+      - attach_workspace:
+        # Must be absolute path or relative path from working_directory
+          at: ~/webex-js-sdk
+      - restore_node_modules
+      - restore_built_packages
       - skip_check
       # Generate build number for a single identifier for SauceLabs
       - run:
