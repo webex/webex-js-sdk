@@ -7,7 +7,9 @@ const Mocha = require('mocha');
 require('@babel/register')({
   only: [
     './packages/node_modules/**/*.js',
+    './packages/node_modules/**/*.ts'
   ],
+  extensions: ['.js', '.ts'],
   sourceMaps: true
 });
 
