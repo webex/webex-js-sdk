@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.14.4](https://github.com/webex/webex-js-sdk/compare/v2.14.3...v2.14.4) (2022-08-29)
+
+
+### Bug Fixes
+
+* **plugin-meeting:** add validation for device registration ([44b7bec](https://github.com/webex/webex-js-sdk/commit/44b7bec1bdb08f251ae003f844906ed2941664d8))
+
 ### [2.14.3](https://github.com/webex/webex-js-sdk/compare/v2.14.2...v2.14.3) (2022-08-16)
 
 
