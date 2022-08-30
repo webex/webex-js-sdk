@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.16.0](https://github.com/webex/webex-js-sdk/compare/v2.15.0...v2.16.0) (2022-08-30)
+
+
+### Features
+
+* **samples:** implemented password and captcha flow in samples app ([2afc082](https://github.com/webex/webex-js-sdk/commit/2afc08270d2024861bb9a4e07de171b916c65ab1))
+
 ## [2.15.0](https://github.com/webex/webex-js-sdk/compare/v2.14.4...v2.15.0) (2022-08-30)
 
 
