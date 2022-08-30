@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.15.0](https://github.com/webex/webex-js-sdk/compare/v2.14.4...v2.15.0) (2022-08-30)
+
+
+### Features
+
+* **raisehand:** lowering someoneelses hand ([8256cad](https://github.com/webex/webex-js-sdk/commit/8256cadea170e9442bd7141fdbe88ca8eadfdf22))
+* **raisehand:** review update ([1d20751](https://github.com/webex/webex-js-sdk/commit/1d20751490bac53bdff157f5f23c400d3e7f2317))
+* **raisehand:** review update ([ea262b1](https://github.com/webex/webex-js-sdk/commit/ea262b1b9a44b60762e94fa4630f052d4c094315))
+* **raisehand:** updated readme ([698a59c](https://github.com/webex/webex-js-sdk/commit/698a59c56de7455df5e286039bd3ece74b8249ae))
+
 ### [2.14.4](https://github.com/webex/webex-js-sdk/compare/v2.14.3...v2.14.4) (2022-08-29)
 
 
