@@ -129,7 +129,7 @@
     "readable-stream": "^3.6.0",
     "request": "^2.88.0",
     "request-id": "^0.11.1",
-    "require-dir": "^0.3.2",
+    "require-dir": "^1.2.0",
     "response-time": "^2.3.2",
     "rimraf": "^2.6.3",
     "rxjs-compat": "^6.5.2",
