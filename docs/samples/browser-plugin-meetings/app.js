@@ -257,6 +257,12 @@ const meetingsListMsgElm = document.querySelector('#meetings-list-msg');
 const meetingsListElm = document.querySelector('#meetings-list');
 const meetingsAddMediaElm = document.querySelector('#meetings-add-media');
 const meetingsLeaveElm = document.querySelector('#meetings-leave');
+// captcha elements
+const meetingsJoinCaptchaImgElm = document.querySelector('#meetings-join-captcha');
+const meetingsJoinCaptchaElm = document.querySelector('#meetings-join-captcha-input');
+const passwordCaptchaStatusElm = document.querySelector('#password-captcha-status');
+const refreshCaptchaElm = document.querySelector('#meetings-join-captcha-refresh');
+const verifyPasswordElm = document.querySelector('#btn-verify-password');
 
 let selectedMeetingId = null;
 
@@ -335,6 +341,9 @@ createMeetingSelectElm.addEventListener('change', event => {
 function createMeeting(e) {
   e.preventDefault();
 
+  meetingsJoinCaptchaImgElm.hidden = true;
+  meetingsJoinCaptchaElm.type = "hidden";
+  refreshCaptchaElm.hidden = true;
   const { value } = createMeetingDestinationElm;
   const type = createMeetingSelectElm.value;
 
@@ -350,7 +359,85 @@ function createMeeting(e) {
   return false;
 }
 
-function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: false}) {
+function refreshCaptcha() {
+  const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
+  meeting.refreshCaptcha()
+    .then(() => {
+      console.log('MeetingsManagement#refreshCaptcha() :: successfully refreshed captcha');
+      meetingsJoinCaptchaImgElm.src = meeting.requiredCaptcha.verificationImageURL;
+      meetingsJoinCaptchaImgElm.hidden = false;
+      meetingsJoinCaptchaElm.type = "text";
+      meetingsJoinCaptchaElm.value = "";
+      refreshCaptchaElm.hidden = false;
+    })
+    .catch((error) => {
+      console.error('MeetingsManagement#refreshCaptcha() :: error refreshing captcha', error);
+      throw (error);
+    });
+}
+
+meetingsListElm.onclick = (e) => {
+  selectedMeetingId = e.target.value;
+  const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
+
+  if(meeting && meeting.passwordStatus === 'REQUIRED'){
+    meetingsJoinPinElm.disabled = false;
+    verifyPasswordElm.disabled = false;
+    document.getElementById('btn-join').disabled = true;
+    document.getElementById('btn-join-media').disabled = true;
+  } else {
+    meetingsJoinPinElm.disabled = true;
+    verifyPasswordElm.disabled = true;
+    document.getElementById('btn-join').disabled = false;
+    document.getElementById('btn-join-media').disabled = false;
+  }
+}
+
+function verifyPassword() {
+  const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
+
+  if (!meeting) {
+    throw new Error(`meeting ${selectedMeetingId} is invalid or no longer exists`);
+  }
+
+  const joinOptions = {
+    pin: meetingsJoinPinElm.value,
+    captcha: meetingsJoinCaptchaElm.value
+  };
+
+  if (meeting && meeting.passwordStatus === 'REQUIRED') {
+    meeting
+      .verifyPassword(joinOptions.pin, joinOptions.captcha)
+      .then((res) => {
+        if (res.failureReason === 'NONE') {
+          passwordCaptchaStatusElm.innerText = 'Password is verified';
+          passwordCaptchaStatusElm.style.backgroundColor = '#49e849';
+          verifyPasswordElm.disabled = true;
+          document.getElementById('btn-join').disabled = false;
+          document.getElementById('btn-join-media').disabled = false;
+          // joinMeetingNow();
+        } else if (res.failureReason === "WRONG_PASSWORD") {
+          passwordCaptchaStatusElm.innerText = 'Password is required';
+          passwordCaptchaStatusElm.style.backgroundColor = '#fa6e6e';
+        } else if (res.failureReason === 'WRONG_CAPTCHA') {
+          passwordCaptchaStatusElm.innerText = 'Password & Captcha is required';
+          passwordCaptchaStatusElm.style.backgroundColor = '#fa6e6e';
+          meetingsJoinCaptchaImgElm.src = res.requiredCaptcha.verificationImageURL;
+          meetingsJoinCaptchaImgElm.hidden = false;
+          meetingsJoinCaptchaElm.type = "text";
+          refreshCaptchaElm.hidden = false;
+        } else {
+          passwordCaptchaStatusElm.innerText = 'Check the logs for more info';
+        }
+      })
+      .catch((err) => {
+        console.log('error', err)
+        throw (err);
+      })
+  }
+}
+
+function joinMeeting({ withMedia, withDevice } = { withMedia: false, withDevice: false }) {
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
   let resourceId = null;
 
@@ -367,16 +454,17 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
     getMediaDevices();
   }
 
-
   const joinOptions = {
     pin: meetingsJoinPinElm.value,
+    captcha: meetingsJoinCaptchaElm.value,
     moderator: meetingsJoinModeratorElm.checked,
     moveToResource: false,
     resourceId,
     receiveTranscription: receiveTranscriptionOption
   };
 
-  meeting.join(joinOptions)
+  let joinMeetingNow = () => {
+    meeting.join(joinOptions)
     .then(() => { // eslint-disable-line
       // For meeting controls button onclick handlers
       window.meeting = meeting;
@@ -399,6 +487,11 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
         return getMediaStreams().then(() => addMedia());
       }
     });
+  }
+  if(!meeting.requiredCaptcha){
+    joinOptions.captcha = '';
+  }
+  joinMeetingNow();
 }
 
 function leaveMeeting(meetingId) {
@@ -419,6 +512,13 @@ function leaveMeeting(meetingId) {
       // eslint-disable-next-line no-use-before-define
       cleanUpMedia(htmlMediaElements);
       emptyParticipants();
+      meetingsJoinCaptchaImgElm.hidden = true;
+      meetingsJoinCaptchaElm.type = "hidden";
+      refreshCaptchaElm.hidden = true;
+      passwordCaptchaStatusElm.innerText = 'Click verifyPassword for details';
+      passwordCaptchaStatusElm.style.backgroundColor = 'white';
+      meetingsJoinPinElm.value = "";
+      meetingsJoinCaptchaElm.value = "";
     });
 }
 
