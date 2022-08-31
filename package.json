@@ -143,7 +143,7 @@
     "uuid": "^3.3.2",
     "valid-url": "^1.0.9",
     "webrtc-adapter": "^7.7.0",
-    "whatwg-fetch": "^2.0.4",
+    "whatwg-fetch": "^3.6.2",
     "ws": "^8.2.2",
     "xhr": "^2.5.0",
     "xtend": "^4.0.2",
