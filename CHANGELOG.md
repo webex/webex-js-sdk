@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.17.0](https://github.com/webex/webex-js-sdk/compare/v2.16.0...v2.17.0) (2022-09-02)
+
+
+### Features
+
+* **dependencies:** add ts dependencies ([78ceee3](https://github.com/webex/webex-js-sdk/commit/78ceee3ec5a468b47f7c2a16445b1ae1f35987d7))
+* **tooling:** add ts build flow ([0f85a21](https://github.com/webex/webex-js-sdk/commit/0f85a216f1c087e7d3a6c4a2f3d7b8c3277acc2d))
+* **webex-core:** add default config for plugin ([e435508](https://github.com/webex/webex-js-sdk/commit/e4355080f907bb30c69fb97d0d2b2395779c54dd))
+
+
+### Bug Fixes
+
+* added debug logs for mocha ([c368eba](https://github.com/webex/webex-js-sdk/commit/c368eba3bd79867cd67e6d86324fb00b3c1aeee9))
+* check joined display hints ([4b1e0e2](https://github.com/webex/webex-js-sdk/commit/4b1e0e209c52586c7f625ff8526c363dd0f1f8ab))
+* **config/wdio:** add polyfill for babel ([6ac9dd1](https://github.com/webex/webex-js-sdk/commit/6ac9dd16bc7adb71548499fb6da8593c7e79e6e3))
+* **docs:** fix docs build for ts files ([2993a09](https://github.com/webex/webex-js-sdk/commit/2993a09182ec52e13f34ffe5a441e34a8d1a62a2))
+* **plugin-meetings:** add check for intent type wait, rename methods ([ab1eca6](https://github.com/webex/webex-js-sdk/commit/ab1eca60678356ac7f95300ac048a788168006ae))
+* **plugin-meetings:** should throw user in lobby ([e8b6c9f](https://github.com/webex/webex-js-sdk/commit/e8b6c9f4e5472789d3556c5a40497c8bbc6e2e6c))
+
 ## [2.16.0](https://github.com/webex/webex-js-sdk/compare/v2.15.0...v2.16.0) (2022-08-30)
 
 
