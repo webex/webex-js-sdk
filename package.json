@@ -25,7 +25,7 @@
     "build:script": "node ./tooling/index.js build --umd",
     "build:dev": "NODE_ENV=development node ./tooling/index.js build",
     "prebuild:docs": "rimraf ./docs/api",
-    "build:docs": "documentation build --config documentation/config.yml --np --project-name webex --project-version 1.x --format html --output ./docs/api --github ./packages/node_modules/webex/src/index.js ./packages/node_modules/{@ciscospark,@webex}/plugin-*/src/index.js --babel=./babel.config.json",
+    "build:docs": "documentation build --config documentation/config.yml --require-extension=.ts --np --project-name webex --project-version 1.x --format html --output ./docs/api --github ./packages/node_modules/webex/src/index.js ./packages/node_modules/{@ciscospark,@webex}/plugin-*/src/index.[tj]s --babel=./babel.config.json",
     "check-karma-output": "./scripts/analyze-output.sh",
     "build:package": "node ./tooling/index.js build",
     "changelog:generate": "npx standard-changelog",
