@@ -11,7 +11,7 @@ exports.gatherFiles = async function gatherFiles(env, packageName) {
   let files = [];
 
   debug(`looking for ${env} tests for ${packageName}`);
-  files = files.concat(await glob(`test/${env}/spec/**/*.js`, {packageName}));
+  files = files.concat(await glob(`test/${env}/spec/**/*.[tj]s`, {packageName}));
 
   return files.map((f) => `packages/node_modules/${packageName}/${f}`);
 };
