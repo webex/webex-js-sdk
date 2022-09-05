@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.18.0](https://github.com/webex/webex-js-sdk/compare/v2.17.0...v2.18.0) (2022-09-05)
+
+
+### Features
+
+* **plugin-meetings:** can invite guest and can admit participant ([b5c772e](https://github.com/webex/webex-js-sdk/commit/b5c772eaac833d8a37ca0d2def5092e526b77db3))
+
 ## [2.17.0](https://github.com/webex/webex-js-sdk/compare/v2.16.0...v2.17.0) (2022-09-02)
 
 
