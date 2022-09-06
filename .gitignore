@@ -32,6 +32,7 @@ tasks/selenium
 .nvm
 .python-version
 .sauce
+.yarn/cache
 .sauce.tid
 browsers.processed.js
 docs/samples/webex.min.js
@@ -39,3 +40,4 @@ docs/samples/webex.min.js.map
 
 # patch-package
 patches.hash
+bundle.js.map

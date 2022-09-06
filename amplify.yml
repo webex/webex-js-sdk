@@ -3,7 +3,7 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm ci --also=dev
+        - yarn --also=dev
     build:
       commands:
         - npm run samples:build

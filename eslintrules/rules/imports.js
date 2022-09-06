@@ -22,7 +22,7 @@ module.exports = {
       'ignorePackages'
     ],
     'import/external-module-folders': [
-      'packages/node_modules',
+      'packages',
       'node_modules'
     ],
     'import/core-modules': [

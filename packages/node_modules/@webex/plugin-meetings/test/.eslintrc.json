@@ -1,6 +1,0 @@
-{
-  "rules": {
-    "no-underscore-dangle": "off",
-    "prefer-arrow-callback": "off"
-  }
-}

@@ -49,8 +49,8 @@ exports.updated = async function updated({dependents, npm = !!process.env.CI}) {
  */
 function fileToPackage(d) {
   debug(d);
-  if (d.startsWith('packages/node_modules/')) {
-    d = d.replace('packages/node_modules/', '');
+  if (d.startsWith('packages/')) {
+    d = d.replace('packages/', '');
     d = d.split('/');
     if (d[0].startsWith('@')) {
       return d.slice(0, 2).join('/');

@@ -13,7 +13,7 @@
 > - [Read why this is more than just a rebrand.](https://developer.webex.com/blog/the-new-cisco-webex-for-developers-is-here---what-developers-need-to-know-from-our-rebrand)
 
 This is a monorepo containing all officially maintained Cisco Webex JS SDK modules in the same repo.
-[webex](/packages/node_modules/webex) is a collection of node modules targeting our [external APIs](https://developers.webex.com).
+[webex](/packages/webex) is a collection of node modules targeting our [external APIs](https://developers.webex.com).
 
 - [webex-js-sdk](#webex-js-sdk)
 - [The Cisco Webex JS SDK](#the-cisco-webex-js-sdk)

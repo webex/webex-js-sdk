@@ -12,7 +12,7 @@ const fs = require('fs-extra');
 
 const _spawn = require('./spawn');
 
-const cwd = 'packages/node_modules';
+const cwd = 'packages';
 
 exports.list = async function list() {
   const packages = await g('**/package.json', {cwd});

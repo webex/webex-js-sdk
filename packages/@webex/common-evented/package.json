@@ -1,0 +1,27 @@
+{
+    "name": "@webex/common-evented",
+    "version": "2.24.1",
+    "description": "Class property decorator the adds change events to properties",
+    "license": "MIT",
+    "main": "dist/index.js",
+    "devMain": "src/index.js",
+    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/common-evented",
+    "engines": {
+        "node": ">=14"
+    },
+    "browserify": {
+        "transform": [
+            "babelify",
+            "envify"
+        ]
+    },
+    "dependencies": {
+        "@webex/common": "workspace:^"
+    },
+    "devDependencies": {
+        "@webex/common-evented": "workspace:^",
+        "@webex/test-helper-chai": "workspace:^",
+        "ampersand-events": "^2.0.2",
+        "sinon": "^9.2.4"
+    }
+}

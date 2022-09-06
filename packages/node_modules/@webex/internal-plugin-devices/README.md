@@ -1,9 +1,0 @@
-# @webex/internal-plugin-devices
-
-## WARNING
-
-We renamed this module to [@webex/internal-plugin-device](https://www.npmjs.com/package/@webex/internal-plugin-device). Please install it instead.
-
-## License
-
-© 2016-2020 Cisco and/or its affiliates. All Rights Reserved.

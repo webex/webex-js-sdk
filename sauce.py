@@ -5,7 +5,7 @@ import threading
 
 # Gather the packages to test.
 
-PREFIX = './packages/node_modules/'
+PREFIX = './packages/'
 CISCOSPARK = os.path.join(PREFIX, '@ciscospark')
 WEBEX = os.path.join(PREFIX, '@webex')
 

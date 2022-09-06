@@ -1,0 +1,36 @@
+{
+    "name": "@webex/plugin-memberships",
+    "version": "2.24.1",
+    "description": "",
+    "license": "MIT",
+    "main": "dist/index.js",
+    "devMain": "src/index.js",
+    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/plugin-memberships",
+    "engines": {
+        "node": ">=14"
+    },
+    "browserify": {
+        "transform": [
+            "babelify",
+            "envify"
+        ]
+    },
+    "devDependencies": {
+        "@webex/test-helper-chai": "workspace:^",
+        "@webex/test-helper-test-users": "workspace:^",
+        "sinon": "^9.2.4"
+    },
+    "dependencies": {
+        "@webex/common": "workspace:^",
+        "@webex/internal-plugin-conversation": "workspace:^",
+        "@webex/internal-plugin-mercury": "workspace:^",
+        "@webex/plugin-logger": "workspace:^",
+        "@webex/plugin-memberships": "workspace:^",
+        "@webex/plugin-messages": "workspace:^",
+        "@webex/plugin-people": "workspace:^",
+        "@webex/plugin-rooms": "workspace:^",
+        "@webex/webex-core": "workspace:^",
+        "debug": "^4.3.4",
+        "lodash": "^4.17.21"
+    }
+}

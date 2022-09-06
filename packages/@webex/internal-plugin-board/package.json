@@ -1,0 +1,41 @@
+{
+  "name": "@webex/internal-plugin-board",
+  "version": "2.24.1",
+  "description": "",
+  "license": "MIT",
+  "author": "Greg Hewett <ghewett@cisco.com>",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/internal-plugin-board",
+  "engines": {
+    "node": ">=14"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "devDependencies": {
+    "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-file": "workspace:^",
+    "@webex/test-helper-mocha": "workspace:^",
+    "@webex/test-helper-mock-web-socket": "workspace:^",
+    "@webex/test-helper-mock-webex": "workspace:^",
+    "@webex/test-helper-test-users": "workspace:^",
+    "sinon": "^9.2.4"
+  },
+  "dependencies": {
+    "@webex/common": "workspace:^",
+    "@webex/internal-plugin-board": "workspace:^",
+    "@webex/internal-plugin-conversation": "workspace:^",
+    "@webex/internal-plugin-encryption": "workspace:^",
+    "@webex/internal-plugin-feature": "workspace:^",
+    "@webex/internal-plugin-mercury": "workspace:^",
+    "@webex/webex-core": "workspace:^",
+    "ampersand-collection": "^2.0.2",
+    "es6-promise-series": "^0.2.2",
+    "lodash": "^4.17.21",
+    "uuid": "^9.0.0"
+  }
+}

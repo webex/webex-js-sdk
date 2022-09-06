@@ -1,5 +1,9 @@
-// eslint-disable-next-line no-unused-expressions
-require('yargs')
+/* eslint-disable */
+
+const yargs = require('yargs/yargs')
+const { hideBin } = require('yargs/helpers')
+
+yargs(hideBin(process.argv))
   .env('')
   .commandDir('./commands')
   .demandCommand(1)
