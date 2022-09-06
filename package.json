@@ -6,6 +6,11 @@
   "bugs": {
     "url": "https://github.com/webex/webex-js-sdk/issues"
   },
+  "private": true,
+  "workspaces": [
+    "packages/@webex/*",
+    "packages/@ciscospark/*"
+  ],
   "license": "MIT",
   "author": "devsupport@webex.com",
   "engines": {
@@ -18,6 +23,7 @@
     "url": "https://github.com/webex/webex-js-sdk"
   },
   "scripts": {
+    "g:build": "yarn workspaces foreach -p --topological-dev -v run build",
     "clean": "rimraf packages/node_modules/**/.coverage packages/node_modules/**/dist",
     "bootstrap": "echo 'npm run bootstrap is no longer required. Hooray!'",
     "prebuild": "npm run clean",
@@ -234,7 +240,6 @@
     "wdio-chromedriver-service": "^7.3.2",
     "wdio-geckodriver-service": "^2.1.1",
     "webdriverio": "^7.19.5",
-    "webpack": "^5.74.0",
     "webpack-cli": "^4.8.0",
     "webpack-dev-server": "^4.3.1",
     "yakbak": "^3.0.0"
@@ -243,21 +248,21 @@
     "@ciscospark/test-users-legacy": "^1.2.0"
   },
   "browser": {
-    "mmmagic": false,
-    "crypto": false,
-    "gm": false,
-    "underscore": "lodash",
     "./src/client/client/client.js": "./src/client/client/client.shim.js",
     "./src/client/client/processors/request/request.js": "./src/client/client/processors/request/request.shim.js",
     "./src/client/credentials/credentials.js": "./src/client/credentials/credentials.shim.js",
     "./src/client/mercury/socket/socket.js": "./src/client/mercury/socket/socket.shim.js",
-    "./src/client/services/conversation/share-activity/share-activity.js": "./src/client/services/conversation/share-activity/share-activity.shim.js",
     "./src/client/services/conversation/file-cache/collection/collection.js": "./src/client/services/conversation/file-cache/collection/collection.shim.js",
     "./src/client/services/conversation/file-cache/model/model.js": "./src/client/services/conversation/file-cache/model/model.shim.js",
+    "./src/client/services/conversation/share-activity/share-activity.js": "./src/client/services/conversation/share-activity/share-activity.shim.js",
     "./src/client/services/encryption/encryption/encryption.js": "./src/client/services/encryption/encryption/encryption.shim.js",
-    "./src/util/html/html.js": "./src/util/html/html.shim.js",
     "./src/lib/image/image.js": "./src/lib/image/image.shim.js",
-    "./src/test/test.js": "./src/test/test.shim.js"
+    "./src/test/test.js": "./src/test/test.shim.js",
+    "./src/util/html/html.js": "./src/util/html/html.shim.js",
+    "crypto": false,
+    "gm": false,
+    "mmmagic": false,
+    "underscore": "lodash"
   },
   "browserify": {
     "transform": [

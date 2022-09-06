@@ -1,0 +1,23 @@
+{
+  "name": "@webex/internal-plugin-mercury",
+  "version": "2.24.1",
+  "description": "",
+  "license": "MIT",
+  "author": "Ian W. Remmel <iremmel@cisco.com>",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/@webex/internal-plugin-mercury",
+  "engines": {
+    "node": ">=8"
+  },
+  "browser": {
+    "./dist/socket/socket.js": "./dist/socket/socket.shim.js",
+    "./src/socket/socket.js": "./src/socket/socket.shim.js"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  }
+}
