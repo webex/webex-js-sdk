@@ -49,7 +49,7 @@ exports.buildPackage = async function buildPackage(packageName) {
    * In the consolidated mapped object below, absolute path for src & dest added
    */
   const mapped = files
-    .map((filename) => path.join('packages', 'node_modules', packageName, filename))
+    .map((filename) => path.join('packages', packageName, filename))
     .map((filename) => ({
       src: filename,
       dest: filename.replace('src', 'dist').replace('.ts', '.js')
@@ -117,7 +117,7 @@ ${samples.map((s) => `<li><a href="${s}">${capitalize(humanize(s))}</a></li>`).j
 exports.buildUMDScript = async function buildUMDScript() {
   let data = '';
 
-  await rimraf('packages/node_modules/webex/umd/webex*');
+  await rimraf('packages/webex/umd/webex*');
 
   // reminder: samples:build calls this script, not webpack
   // hence we must call webpack here

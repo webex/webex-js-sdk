@@ -14,19 +14,19 @@ require('dotenv').config({path: '.env.default'});
 
 // Alias @webex packages
 require('@babel/register')({
-  only: ['./packages/node_modules/**/*.js', './docs/samples/**/*.js'],
+  only: ['./packages/**/*.js', './docs/samples/**/*.js'],
   sourceMaps: true,
   plugins: [
     [
       'module-resolver',
       {
         alias: glob
-          .sync('**/package.json', {cwd: './packages/node_modules'})
+          .sync('**/package.json', {cwd: './packages'})
           .map((p) => path.dirname(p))
           .reduce((alias, packageName) => {
             alias[`${packageName}`] = path.resolve(
               __dirname,
-              `./packages/node_modules/${packageName}/src/index.js`
+              `./packages/${packageName}/src/index.js`
             );
 
             return alias;

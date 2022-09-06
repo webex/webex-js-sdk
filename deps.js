@@ -10,7 +10,7 @@
 // simpler if we don't have to deal with adding `../` to every file operation.
 
 // Reminder: because this script uses the package.jsons in
-// packages/node_modules, it should be used *after* new versions have been
+// packages, it should be used *after* new versions have been
 // determined by babel.
 
 // DO NOT COPY THIS FILE INTO THE react-ciscospark REPO.
@@ -40,7 +40,7 @@ const depsToVersions = _.curry((rootPkg, deps) => deps.reduce((acc, dep) => {
 
   if (!acc[dep]) {
     try {
-      acc[dep] = require(`./packages/node_modules/${dep}/package.json`).version;
+      acc[dep] = require(`./packages/${dep}/package.json`).version;
     }
     catch (err) {
       // eslint-disable-next-line no-console
@@ -306,7 +306,7 @@ if (require.main === module) {
     // eslint-disable-next-line no-console
     console.log();
     // eslint-disable-next-line no-console
-    console.log(`update dependency lists for all packages in ${__dirname}/packages/node_modules`);
+    console.log(`update dependency lists for all packages in ${__dirname}/packages/`);
     // eslint-disable-next-line no-console
     console.log('\tnode deps.js');
     // eslint-disable-next-line no-console
@@ -314,7 +314,7 @@ if (require.main === module) {
     // eslint-disable-next-line no-console
     console.log('update dependency list for single package "webex"');
     // eslint-disable-next-line no-console
-    console.log('\tnode deps.js ./packages/node_modules/webex');
+    console.log('\tnode deps.js ./packages/webex');
     // eslint-disable-next-line no-console
     console.log();
     // eslint-disable-next-line no-process-exit
@@ -328,7 +328,7 @@ if (require.main === module) {
     p = updateSinglePackage(rootPkgPath, process.argv[2]);
   }
   else {
-    p = updateAllPackages(rootPkgPath, path.resolve(process.cwd(), './packages/node_modules'));
+    p = updateAllPackages(rootPkgPath, path.resolve(process.cwd(), './packages'));
   }
   p.catch((err) => {
     // eslint-disable-next-line no-console

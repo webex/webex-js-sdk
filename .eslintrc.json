@@ -15,6 +15,7 @@
     "/node_modules/*"
   ],
   "rules": {
+    "import/no-extraneous-dependencies": "error",
     "comma-dangle": [
       "error",
       "only-multiline"
@@ -92,7 +93,7 @@
   "overrides": [
     {
       "files": [
-        "packages/node_modules/**/*.js"
+        "packages/**/*.js"
       ],
       "rules": {
         "valid-jsdoc": [
@@ -127,8 +128,8 @@
     },
     {
       "files": [
-        "packages/node_modules/**/test/**/*.js",
-        "packages/node_modules/**/*-spec/**/*.js"
+        "packages/**/test/**/*.js",
+        "packages/**/*-spec/**/*.js"
       ],
       "env": {
         "mocha": true
@@ -163,7 +164,7 @@
     },
     {
       "files": [
-        "packages/node_modules/@webex/xunit-with-logs"
+        "packages/@webex/xunit-with-logs"
       ],
       "rules": {
         "func-names": 0,
@@ -172,10 +173,18 @@
     },
     {
       "files": [
-        "packages/node_modules/**/bin-*/**"
+        "packages/**/bin-*/**"
       ],
       "rules": {
         "no-sync": 0
+      }
+    },
+    {
+      "files": [
+        "tooling/**"
+      ],
+      "rules": {
+        "no-await-in-loop": 0
       }
     }
   ]

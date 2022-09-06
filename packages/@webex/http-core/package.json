@@ -1,0 +1,45 @@
+{
+    "name": "@webex/http-core",
+    "version": "2.24.1",
+    "description": "Core HTTP library for the Cisco Webex",
+    "license": "MIT",
+    "main": "dist/index.js",
+    "devMain": "src/index.js",
+    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/http-core",
+    "engines": {
+        "node": ">=14"
+    },
+    "browser": {
+        "./dist/request/request.js": "./dist/request/request.shim.js",
+        "./src/request/request.js": "./src/request/request.shim.js"
+    },
+    "browserify": {
+        "transform": [
+            "babelify",
+            "envify"
+        ]
+    },
+    "devDependencies": {
+        "@webex/test-helper-chai": "workspace:^",
+        "@webex/test-helper-file": "workspace:^",
+        "@webex/test-helper-make-local-url": "workspace:^",
+        "@webex/test-helper-mocha": "workspace:^",
+        "sinon": "^9.2.4"
+    },
+    "dependencies": {
+        "@webex/common": "workspace:^",
+        "@webex/http-core": "workspace:^",
+        "@webex/internal-plugin-device": "workspace:^",
+        "@webex/test-helper-test-users": "workspace:^",
+        "@webex/webex-core": "workspace:^",
+        "file-type": "^16.0.1",
+        "global": "^4.4.0",
+        "is-function": "^1.0.1",
+        "lodash": "^4.17.21",
+        "parse-headers": "^2.0.2",
+        "qs": "^6.7.0",
+        "request": "^2.88.0",
+        "safe-buffer": "^5.2.0",
+        "xtend": "^4.0.2"
+    }
+}

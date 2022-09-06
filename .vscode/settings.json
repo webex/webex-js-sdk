@@ -19,7 +19,7 @@
     "**/bower_components": true,
     "**/dist": true,
     "node_modules/**": true,
-    "packages/node_modules/**": false
+    "packages/**": false
   },
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true,

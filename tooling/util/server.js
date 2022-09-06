@@ -20,7 +20,7 @@ async function start() {
   }
 
   return new Promise((resolve) => {
-    const serverPath = path.resolve(process.cwd(), 'packages/node_modules/@webex/test-helper-server');
+    const serverPath = path.resolve(process.cwd(), 'packages/@webex/test-helper-server');
 
     child = spawn(process.argv[0], [serverPath], {
       env: process.env,

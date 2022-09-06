@@ -6,8 +6,8 @@ const Mocha = require('mocha');
 
 require('@babel/register')({
   only: [
-    './packages/node_modules/**/*.js',
-    './packages/node_modules/**/*.ts'
+    './packages/**/*.js',
+    './packages/**/*.ts'
   ],
   extensions: ['.js', '.ts'],
   sourceMaps: true
@@ -43,7 +43,7 @@ async function run(options, files) {
   };
 
   if (options.xunit || process.env.COVERAGE || process.env.CIRCLECI || process.env.CI) {
-    cfg.reporter = 'packages/node_modules/@webex/xunit-with-logs';
+    cfg.reporter = 'packages/@webex/xunit-with-logs';
     cfg.reporterOptions = {
       output: options.output
     };

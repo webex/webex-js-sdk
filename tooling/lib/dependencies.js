@@ -1,16 +1,18 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
+/* eslint import/no-dynamic-require: 0 */
 
 const debug = require('debug')('tooling:dependencies');
 const builtins = require('builtins')();
 const {values} = require('lodash');
 const detective = require('detective');
+const fs = require('fs-extra');
 
 const {read} = require('../util/package');
 
 const path = require('path');
-const fs = require('fs');
+
 
 const _list = require('../lib/package').list;
 
@@ -128,7 +130,7 @@ exports.listVersions = async function listVersions(packageName, options) {
     if (!acc[dep]) {
       try {
         // eslint-disable-next-line global-require
-        acc[dep] = require(path.resolve(process.cwd(), `./packages/node_modules/${dep}/package.json`)).version;
+        acc[dep] = require(path.resolve(process.cwd(), `./packages/${dep}/package.json`)).version;
       }
       catch (err) {
         // eslint-disable-next-line no-console
