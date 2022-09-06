@@ -85,7 +85,7 @@ async function runBrowserSuite(options, packageName) {
 async function runAutomationSuite(options, packageName) {
   debug(`Running automation suite for ${packageName}`);
   const files = (await glob('test/automation/spec/**/*.js', {packageName}))
-    .map((f) => `packages/node_modules/${packageName}/${f}`);
+    .map((f) => `packages/${packageName}/${f}`);
 
   if (files.length === 0) {
     debug(`no files found for ${packageName}`);

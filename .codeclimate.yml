@@ -4,8 +4,8 @@ exclude_paths:
   - examples
   # skip the test directories because it the spec blocks aggressively show up as
   # duplicates
-  - packages/node_modules/*/test
-  - packages/node_modules/@ciscospark/*/test
-  - packages/node_modules/@webex/*/test
+  - packages/*/test
+  - packages/@ciscospark/*/test
+  - packages/@webex/*/test
   - src
   - test

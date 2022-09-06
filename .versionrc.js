@@ -1,5 +1,5 @@
 const glob = require('glob');
-const webexPackagesPath = glob.sync(`packages/node_modules/@webex/**/*/package.json`)
+const webexPackagesPath = glob.sync(`packages/@webex/**/*/package.json`)
 const webexPackages = webexPackagesPath.map(file => ({
   filename: file,
   type: 'json'
@@ -10,7 +10,7 @@ module.exports = {
   packageFiles: [
     'package.json',
     'package-lock.json',
-    'packages/node_modules/webex/package.json',
+    'packages/webex/package.json',
     ...webexPackagesPath,
   ],
   bumpFiles: [
@@ -23,7 +23,7 @@ module.exports = {
       type: 'json'
     },
     {
-      filename: 'packages/node_modules/webex/package.json',
+      filename: 'packages/webex/package.json',
       type: 'json'
     },
     ...webexPackages
