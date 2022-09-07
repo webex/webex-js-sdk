@@ -259,6 +259,49 @@
                 <p id="password-captcha-status" class="status-par">Click verifyPassword for details</p>
               </div>
 
+              <!-- meetings / media quality -->
+              <div>
+                <fieldset>
+                  <legend>Media Quality</legend>
+              
+                  <!-- Media quality dropdown -->
+                  <p class="note">NOTE: You can change the local, remote or meeting quality.</p>
+
+                  <div >
+                    <!-- Local Media -->
+                    <div class="u-mv flex flex--align-center">
+                      <label class="media-button-label" for="local-resolution">Local Resolution</label>
+                      <select name="local-resolution" id="local-resolution" class="media-select"></select>
+
+                      <button 
+                        id="ts-set-local-meeting-quality" 
+                        type="button" 
+                        onclick="setLocalMeetingQuality()"
+                        class="btn-code media-button"
+                      >
+                        meeting.setLocalVideoQuality()
+                      </button>
+                    </div>
+
+                    <!-- Remote Media -->
+                    <div class="u-mv flex flex--align-center">
+                      <label class="media-button-label" for="remote-resolution">Remote Resolution</label>
+                      <select name="remote-resolution" id="remote-resolution" class="media-select"></select>
+
+                      <button 
+                        id="ts-set-remote-meeting-quality" 
+                        type="button" 
+                        onclick="setRemoteMeetingQuality()"
+                        class="btn-code media-button"
+                      >
+                        meeting.setRemoteVideoQuality()
+                      </button>
+                    </div>
+                    <label id="ts-sending-quality-status"></label>
+                  </div>                  
+                </fieldset>
+              </div>
+
               <div>
                 <p class="note">NOTE: Choose your sending and receiving options for the meeting.</p>
                 <div class="u-mv">
@@ -363,39 +406,7 @@
               </div>
             </fieldset>
           </div>
-
-          <!-- meeting-controls / media-quality -->
-          <div>
-            <fieldset id="meetingControlsQuality">
-              <legend>Media Quality</legend>
-              <div>
-                <p class="note">NOTE: You can change the local, remote or meeting quality.</p>
-                <div>
-                  <label for="sendQualityLow">
-                    <input type="radio" id="sendQualityLow" name="sendingQuality" value="LOW" />
-                    Low
-                  </label>
-                  <label for="sendQualityMedium">
-                    <input type="radio" id="sendQualityMedium" name="sendingQuality" value="MEDIUM" />
-                    Medium
-                  </label>
-                  <label for="sendQualityHigh">
-                    <input type="radio" id="sendQualityHigh" name="sendingQuality" value="HIGH" />
-                    High
-                  </label>
-                </div>
-                <br />
-                <button id="ts-set-local-meeting-quality" type="button" onclick="setLocalMeetingQuality()"
-                  class="btn-code">meeting.setLocalVideoQuality()</button>
-                <button id="ts-set-remote-meeting-quality" type="button" onclick="setRemoteMeetingQuality()"
-                  class="btn-code">meeting.setRemoteVideoQuality()</button>
-                <button id="ts-set-all-meeting-quality" type="button" onclick="setMeetingQuality()"
-                  class="btn-code">meeting.setMeetingQuality()</button>
-                <label id="ts-sending-quality-status"></label>
-              </div>
-            </fieldset>
-          </div>
-
+        
           <!-- PMR management -->
           <div>
             <form id="pmr-management">
@@ -441,7 +452,10 @@
               <div class="flex" style="gap: 0.5rem;">
                 <fieldset>
                   <legend>Local Video</legend>
-                  <video id="local-video" muted="true" autoplay playsinline style="height: 200px;"></video>
+                  <div class="video-container">
+                    <video id="local-video" class="video-el" muted="true" autoplay playsinline style="height: 200px;"></video>
+                    <span id="local-video-resolution" class="video-resolution"></span>
+                  </div>
                 </fieldset>
 
                 <fieldset style="display: flex; align-items: center;">
@@ -482,8 +496,11 @@
             <div>
               <fieldset>
                 <legend>Remote Video</legend>
-                <video id="remote-video" autoplay playsinline></video>
-                <audio id="remote-audio" autoplay></audio>
+                <div class="video-container">
+                  <video id="remote-video" class="video-el" autoplay playsinline></video>
+                  <audio id="remote-audio" autoplay></audio>
+                  <span id="remote-video-resolution" class="video-resolution"></span>
+                </div>
 
                 <fieldset>
                   <legend>Set Resolution (Experimental)</legend>

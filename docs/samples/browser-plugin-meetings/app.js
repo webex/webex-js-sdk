@@ -589,6 +589,11 @@ const meetingStreamsLocalShare = document.querySelector('#local-screenshare');
 const meetingStreamsRemoteShare = document.querySelector('#remote-screenshare');
 const layoutWidthInp = document.querySelector('#layout-width');
 const layoutHeightInp = document.querySelector('#layout-height');
+const localResolutionInp = document.getElementById('local-resolution');
+const remoteResolutionInp = document.getElementById('remote-resolution');
+const localVideoResElm = document.getElementById('local-video-resolution');
+const remoteVideoResElm = document.getElementById('remote-video-resolution');
+
 
 const toggleSourcesMediaDirection = document.querySelectorAll('[name=ts-media-direction]');
 const toggleSourcesQualityStatus = document.querySelector('#ts-sending-quality-status');
@@ -1166,12 +1171,14 @@ async function stopScreenShare() {
 
 function setLocalMeetingQuality() {
   const meeting = getCurrentMeeting();
-  const level = getRadioValue('sendingQuality');
+  const level = localResolutionInp.value;
 
   meeting.setLocalVideoQuality(level)
     .then(() => {
       toggleSourcesQualityStatus.innerText = `Local meeting quality level set to ${level}!`;
       console.log('MeetingControls#setLocalMeetingQuality() :: Meeting quality level set successfully!');
+
+      getLocalMediaSettings();
     })
     .catch((error) => {
       toggleSourcesQualityStatus.innerText = 'MeetingControls#setLocalMeetingQuality() :: Error setting quality level!';
@@ -1182,32 +1189,18 @@ function setLocalMeetingQuality() {
 
 function setRemoteMeetingQuality() {
   const meeting = getCurrentMeeting();
-  const level = getRadioValue('sendingQuality');
+  const level = remoteResolutionInp.value;
 
   meeting.setRemoteQualityLevel(level)
     .then(() => {
       toggleSourcesQualityStatus.innerText = `Remote meeting quality level set to ${level}!`;
       console.log('MeetingControls#setRemoteMeetingQuality :: Meeting quality level set successfully!');
+
+      getRemoteMediaSettings();
     })
     .catch((error) => {
       toggleSourcesQualityStatus.innerText = 'MeetingControls#setRemoteMeetingQuality :: Error setting quality level!';
       console.log('MeetingControls#setRemoteMeetingQuality :: Error meeting quality!');
-      console.error(error);
-    });
-}
-
-function setMeetingQuality() {
-  const meeting = getCurrentMeeting();
-  const level = getRadioValue('sendingQuality');
-
-  meeting.setMeetingQuality(level)
-    .then(() => {
-      toggleSourcesQualityStatus.innerText = `Meeting quality level set to ${level}!`;
-      console.log('MeetingControls#setMeetingQuality :: Meeting quality level set successfully!');
-    })
-    .catch((error) => {
-      toggleSourcesQualityStatus.innerText = 'MeetingControls#setMeetingQuality() :: Error setting quality level!';
-      console.log('MeetingControls#setMeetingQuality :: Error meeting quality!');
       console.error(error);
     });
 }
@@ -1239,8 +1232,59 @@ function clearMediaDeviceList() {
   sourceDevicesVideoInput.innerText = '';
 }
 
+function getLocalMediaSettings() {
+  const meeting = getCurrentMeeting();
+  const videoSettings = meeting.mediaProperties.videoTrack.getSettings();
+
+  const {frameRate, height} = videoSettings;
+
+  localVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
+}
+
+function getRemoteMediaSettings() {
+  const meeting = getCurrentMeeting();
+  const videoSettings = meeting.mediaProperties.remoteVideoTrack.getSettings();
+
+  const {frameRate, height} = videoSettings;
+
+  remoteVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
+}
+
+let resolutionInterval;
+const INTERVAL_TIME = 3000;
+
+function startResolutionCheckInterval() {
+  resolutionInterval = setInterval(() => {
+    getLocalMediaSettings();
+    getRemoteMediaSettings();
+  }, INTERVAL_TIME);
+}
+
+function clearResolutionCheckInterval() {
+  localVideoResElm.innerText = '';
+  remoteVideoResElm.innerText = '';
+
+  clearInterval(resolutionInterval);
+}
 
 // Meeting Streams --------------------------------------------------
+
+function addMediaOptions(elementId) {
+  const mediaOptions = ['360p', '480p', '720p', '1080p', 'LOW', 'MEDIUM', 'HIGH'];
+  const element = document.getElementById(elementId);
+  const optionElements = mediaOptions.reduce((acc, resolution) => {
+    acc += `<option value="${resolution}" ${resolution === '480p' && 'selected'}>${resolution}</option>`;
+
+    return acc;
+  }, '');
+
+  element.innerHTML = optionElements;
+}
+
+(() => {
+  addMediaOptions('local-resolution');
+  addMediaOptions('remote-resolution');
+})();
 
 function addMedia() {
   const meeting = getCurrentMeeting();
@@ -1265,6 +1309,8 @@ function addMedia() {
 
   // Wait for media in order to show video/share
   meeting.on('media:ready', (media) => {
+    startResolutionCheckInterval();
+
     // eslint-disable-next-line default-case
     switch (media.type) {
       case 'remoteVideo':
@@ -1285,6 +1331,8 @@ function addMedia() {
 
   // remove stream if media stopped
   meeting.on('media:stopped', (media) => {
+    clearResolutionCheckInterval();
+
     // eslint-disable-next-line default-case
     switch (media.type) {
       case 'remoteVideo':
