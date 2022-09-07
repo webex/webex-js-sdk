@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.19.0](https://github.com/webex/webex-js-sdk/compare/v2.18.0...v2.19.0) (2022-09-07)
+
+
+### Features
+
+* **samples:** incorporated marcin review comments ([e41900f](https://github.com/webex/webex-js-sdk/commit/e41900f65f8707a6747b2c0a36ad3bc5356742c2))
+
 ## [2.18.0](https://github.com/webex/webex-js-sdk/compare/v2.17.0...v2.18.0) (2022-09-05)
 
 
