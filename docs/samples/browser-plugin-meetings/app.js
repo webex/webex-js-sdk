@@ -385,6 +385,11 @@ meetingsListElm.onclick = (e) => {
     verifyPasswordElm.disabled = false;
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
+  } else if(meeting.passwordStatus === 'UNKNOWN') {
+    meetingsJoinPinElm.disabled = true;
+    verifyPasswordElm.disabled = true;
+    document.getElementById('btn-join').disabled = true;
+    document.getElementById('btn-join-media').disabled = true;
   } else {
     meetingsJoinPinElm.disabled = true;
     verifyPasswordElm.disabled = true;
@@ -409,17 +414,14 @@ function verifyPassword() {
     meeting
       .verifyPassword(joinOptions.pin, joinOptions.captcha)
       .then((res) => {
-        if (res.failureReason === 'NONE') {
+        /* we have a bug in the SDK code: for case if wbxappapi requires only captcha and no password */
+        if (res.isPasswordValid) {
           passwordCaptchaStatusElm.innerText = 'Password is verified';
           passwordCaptchaStatusElm.style.backgroundColor = '#49e849';
           verifyPasswordElm.disabled = true;
           document.getElementById('btn-join').disabled = false;
           document.getElementById('btn-join-media').disabled = false;
-          // joinMeetingNow();
-        } else if (res.failureReason === "WRONG_PASSWORD") {
-          passwordCaptchaStatusElm.innerText = 'Password is required';
-          passwordCaptchaStatusElm.style.backgroundColor = '#fa6e6e';
-        } else if (res.failureReason === 'WRONG_CAPTCHA') {
+        } else if (res.requiredCaptcha) {
           passwordCaptchaStatusElm.innerText = 'Password & Captcha is required';
           passwordCaptchaStatusElm.style.backgroundColor = '#fa6e6e';
           meetingsJoinCaptchaImgElm.src = res.requiredCaptcha.verificationImageURL;
@@ -427,7 +429,8 @@ function verifyPassword() {
           meetingsJoinCaptchaElm.type = "text";
           refreshCaptchaElm.hidden = false;
         } else {
-          passwordCaptchaStatusElm.innerText = 'Check the logs for more info';
+          passwordCaptchaStatusElm.innerText = 'Password is required';
+          passwordCaptchaStatusElm.style.backgroundColor = '#fa6e6e';
         }
       })
       .catch((err) => {
@@ -456,7 +459,6 @@ function joinMeeting({ withMedia, withDevice } = { withMedia: false, withDevice:
 
   const joinOptions = {
     pin: meetingsJoinPinElm.value,
-    captcha: meetingsJoinCaptchaElm.value,
     moderator: meetingsJoinModeratorElm.checked,
     moveToResource: false,
     resourceId,
@@ -1334,7 +1336,6 @@ function changeLayout() {
       console.error(err);
     });
 }
-
 
 let currentDevice;
 
