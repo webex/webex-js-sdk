@@ -962,7 +962,7 @@ export const QUALITY_LEVELS = {
 
 
 export const AVALIABLE_RESOLUTIONS = {
-  '240P': {
+  '240p': {
     video: {
       width: {
         max: 320,
@@ -974,7 +974,7 @@ export const AVALIABLE_RESOLUTIONS = {
       }
     }
   },
-  '360P': {
+  '360p': {
     video: {
       width: {
         max: 640,
@@ -1025,7 +1025,7 @@ export const AVALIABLE_RESOLUTIONS = {
 };
 
 export const VIDEO_RESOLUTIONS = {
-  [QUALITY_LEVELS.LOW]: AVALIABLE_RESOLUTIONS['360P'],
+  [QUALITY_LEVELS.LOW]: AVALIABLE_RESOLUTIONS['360p'],
 
   [QUALITY_LEVELS.MEDIUM]: AVALIABLE_RESOLUTIONS['480p'],
 
