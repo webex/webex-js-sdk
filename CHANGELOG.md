@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.19.1](https://github.com/webex/webex-js-sdk/compare/v2.19.0...v2.19.1) (2022-09-07)
+
+
+### Bug Fixes
+
+* internal-media-core upgrade for enablebnr ([8b17103](https://github.com/webex/webex-js-sdk/commit/8b17103ddcb3386e97a2e3a16574de42916411b3))
+* **plugin-meetings:** bnr enabled upon microphone switch ([5358018](https://github.com/webex/webex-js-sdk/commit/535801893588a5ba003ae0f9121e62eedb9c5fb5))
+
 ## [2.19.0](https://github.com/webex/webex-js-sdk/compare/v2.18.0...v2.19.0) (2022-09-07)
 
 
