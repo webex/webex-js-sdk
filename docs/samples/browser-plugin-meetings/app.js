@@ -330,10 +330,11 @@ function collectMeetings() {
     });
 }
 
-createMeetingSelectElm.addEventListener('change', event => {
-  if (event.target.value === "CONVERSATION_URL"){
+createMeetingSelectElm.addEventListener('change', (event) => {
+  if (event.target.value === 'CONVERSATION_URL') {
     createMeetingActionElm.innerText = 'Create Adhoc Meeting';
-  } else {
+  }
+  else {
     createMeetingActionElm.innerText = 'Create Meeting';
   }
 });
@@ -342,9 +343,9 @@ function createMeeting(e) {
   e.preventDefault();
 
   meetingsJoinCaptchaImgElm.hidden = true;
-  meetingsJoinCaptchaElm.type = "hidden";
+  meetingsJoinCaptchaElm.type = 'hidden';
   refreshCaptchaElm.hidden = true;
-  const { value } = createMeetingDestinationElm;
+  const {value} = createMeetingDestinationElm;
   const type = createMeetingSelectElm.value;
 
   console.log('MeetingsManagement#createMeeting', value);
@@ -361,13 +362,14 @@ function createMeeting(e) {
 
 function refreshCaptcha() {
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
+
   meeting.refreshCaptcha()
     .then(() => {
       console.log('MeetingsManagement#refreshCaptcha() :: successfully refreshed captcha');
       meetingsJoinCaptchaImgElm.src = meeting.requiredCaptcha.verificationImageURL;
       meetingsJoinCaptchaImgElm.hidden = false;
-      meetingsJoinCaptchaElm.type = "text";
-      meetingsJoinCaptchaElm.value = "";
+      meetingsJoinCaptchaElm.type = 'text';
+      meetingsJoinCaptchaElm.value = '';
       refreshCaptchaElm.hidden = false;
     })
     .catch((error) => {
@@ -380,23 +382,25 @@ meetingsListElm.onclick = (e) => {
   selectedMeetingId = e.target.value;
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
 
-  if(meeting && meeting.passwordStatus === 'REQUIRED'){
+  if (meeting && meeting.passwordStatus === 'REQUIRED') {
     meetingsJoinPinElm.disabled = false;
     verifyPasswordElm.disabled = false;
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
-  } else if(meeting.passwordStatus === 'UNKNOWN') {
+  }
+  else if (meeting.passwordStatus === 'UNKNOWN') {
     meetingsJoinPinElm.disabled = true;
     verifyPasswordElm.disabled = true;
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
-  } else {
+  }
+  else {
     meetingsJoinPinElm.disabled = true;
     verifyPasswordElm.disabled = true;
     document.getElementById('btn-join').disabled = false;
     document.getElementById('btn-join-media').disabled = false;
   }
-}
+};
 
 function verifyPassword() {
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
@@ -421,26 +425,28 @@ function verifyPassword() {
           verifyPasswordElm.disabled = true;
           document.getElementById('btn-join').disabled = false;
           document.getElementById('btn-join-media').disabled = false;
-        } else if (res.requiredCaptcha) {
+        }
+        else if (res.requiredCaptcha) {
           passwordCaptchaStatusElm.innerText = 'Password & Captcha is required';
           passwordCaptchaStatusElm.style.backgroundColor = '#fa6e6e';
           meetingsJoinCaptchaImgElm.src = res.requiredCaptcha.verificationImageURL;
           meetingsJoinCaptchaImgElm.hidden = false;
-          meetingsJoinCaptchaElm.type = "text";
+          meetingsJoinCaptchaElm.type = 'text';
           refreshCaptchaElm.hidden = false;
-        } else {
+        }
+        else {
           passwordCaptchaStatusElm.innerText = 'Password is required';
           passwordCaptchaStatusElm.style.backgroundColor = '#fa6e6e';
         }
       })
       .catch((err) => {
-        console.log('error', err)
+        console.log('error', err);
         throw (err);
-      })
+      });
   }
 }
 
-function joinMeeting({ withMedia, withDevice } = { withMedia: false, withDevice: false }) {
+function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: false}) {
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
   let resourceId = null;
 
@@ -465,32 +471,33 @@ function joinMeeting({ withMedia, withDevice } = { withMedia: false, withDevice:
     receiveTranscription: receiveTranscriptionOption
   };
 
-  let joinMeetingNow = () => {
+  const joinMeetingNow = () => {
     meeting.join(joinOptions)
     .then(() => { // eslint-disable-line
       // For meeting controls button onclick handlers
-      window.meeting = meeting;
+        window.meeting = meeting;
 
-      updateMeetingInfoSection(meeting);
+        updateMeetingInfoSection(meeting);
 
-      meeting.members.on('members:update', (res) => {
-        console.log('member update', res);
-        viewParticipants();
+        meeting.members.on('members:update', (res) => {
+          console.log('member update', res);
+          viewParticipants();
+        });
+
+        eventsList.innerText = '';
+        meeting.on('all', (payload) => {
+          updatePublishedEvents(payload);
+        });
+
+        if (withMedia) {
+          clearMediaDeviceList();
+
+          return getMediaStreams().then(() => addMedia());
+        }
       });
+  };
 
-      eventsList.innerText = '';
-      meeting.on('all', (payload) => {
-        updatePublishedEvents(payload);
-      });
-
-      if (withMedia) {
-        clearMediaDeviceList();
-
-        return getMediaStreams().then(() => addMedia());
-      }
-    });
-  }
-  if(!meeting.requiredCaptcha){
+  if (!meeting.requiredCaptcha) {
     joinOptions.captcha = '';
   }
   joinMeetingNow();
@@ -515,12 +522,12 @@ function leaveMeeting(meetingId) {
       cleanUpMedia(htmlMediaElements);
       emptyParticipants();
       meetingsJoinCaptchaImgElm.hidden = true;
-      meetingsJoinCaptchaElm.type = "hidden";
+      meetingsJoinCaptchaElm.type = 'hidden';
       refreshCaptchaElm.hidden = true;
       passwordCaptchaStatusElm.innerText = 'Click verifyPassword for details';
       passwordCaptchaStatusElm.style.backgroundColor = 'white';
-      meetingsJoinPinElm.value = "";
-      meetingsJoinCaptchaElm.value = "";
+      meetingsJoinPinElm.value = '';
+      meetingsJoinCaptchaElm.value = '';
     });
 }
 
@@ -603,6 +610,11 @@ const meetingStreamsLocalShare = document.querySelector('#local-screenshare');
 const meetingStreamsRemoteShare = document.querySelector('#remote-screenshare');
 const layoutWidthInp = document.querySelector('#layout-width');
 const layoutHeightInp = document.querySelector('#layout-height');
+const localResolutionInp = document.getElementById('local-resolution');
+const remoteResolutionInp = document.getElementById('remote-resolution');
+const localVideoResElm = document.getElementById('local-video-resolution');
+const remoteVideoResElm = document.getElementById('remote-video-resolution');
+
 
 const toggleSourcesMediaDirection = document.querySelectorAll('[name=ts-media-direction]');
 const toggleSourcesQualityStatus = document.querySelector('#ts-sending-quality-status');
@@ -1180,12 +1192,14 @@ async function stopScreenShare() {
 
 function setLocalMeetingQuality() {
   const meeting = getCurrentMeeting();
-  const level = getRadioValue('sendingQuality');
+  const level = localResolutionInp.value;
 
   meeting.setLocalVideoQuality(level)
     .then(() => {
       toggleSourcesQualityStatus.innerText = `Local meeting quality level set to ${level}!`;
       console.log('MeetingControls#setLocalMeetingQuality() :: Meeting quality level set successfully!');
+
+      getLocalMediaSettings();
     })
     .catch((error) => {
       toggleSourcesQualityStatus.innerText = 'MeetingControls#setLocalMeetingQuality() :: Error setting quality level!';
@@ -1196,32 +1210,18 @@ function setLocalMeetingQuality() {
 
 function setRemoteMeetingQuality() {
   const meeting = getCurrentMeeting();
-  const level = getRadioValue('sendingQuality');
+  const level = remoteResolutionInp.value;
 
   meeting.setRemoteQualityLevel(level)
     .then(() => {
       toggleSourcesQualityStatus.innerText = `Remote meeting quality level set to ${level}!`;
       console.log('MeetingControls#setRemoteMeetingQuality :: Meeting quality level set successfully!');
+
+      getRemoteMediaSettings();
     })
     .catch((error) => {
       toggleSourcesQualityStatus.innerText = 'MeetingControls#setRemoteMeetingQuality :: Error setting quality level!';
       console.log('MeetingControls#setRemoteMeetingQuality :: Error meeting quality!');
-      console.error(error);
-    });
-}
-
-function setMeetingQuality() {
-  const meeting = getCurrentMeeting();
-  const level = getRadioValue('sendingQuality');
-
-  meeting.setMeetingQuality(level)
-    .then(() => {
-      toggleSourcesQualityStatus.innerText = `Meeting quality level set to ${level}!`;
-      console.log('MeetingControls#setMeetingQuality :: Meeting quality level set successfully!');
-    })
-    .catch((error) => {
-      toggleSourcesQualityStatus.innerText = 'MeetingControls#setMeetingQuality() :: Error setting quality level!';
-      console.log('MeetingControls#setMeetingQuality :: Error meeting quality!');
       console.error(error);
     });
 }
@@ -1253,8 +1253,59 @@ function clearMediaDeviceList() {
   sourceDevicesVideoInput.innerText = '';
 }
 
+function getLocalMediaSettings() {
+  const meeting = getCurrentMeeting();
+  const videoSettings = meeting.mediaProperties.videoTrack.getSettings();
+
+  const {frameRate, height} = videoSettings;
+
+  localVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
+}
+
+function getRemoteMediaSettings() {
+  const meeting = getCurrentMeeting();
+  const videoSettings = meeting.mediaProperties.remoteVideoTrack.getSettings();
+
+  const {frameRate, height} = videoSettings;
+
+  remoteVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
+}
+
+let resolutionInterval;
+const INTERVAL_TIME = 3000;
+
+function startResolutionCheckInterval() {
+  resolutionInterval = setInterval(() => {
+    getLocalMediaSettings();
+    getRemoteMediaSettings();
+  }, INTERVAL_TIME);
+}
+
+function clearResolutionCheckInterval() {
+  localVideoResElm.innerText = '';
+  remoteVideoResElm.innerText = '';
+
+  clearInterval(resolutionInterval);
+}
 
 // Meeting Streams --------------------------------------------------
+
+function addMediaOptions(elementId) {
+  const mediaOptions = ['360p', '480p', '720p', '1080p', 'LOW', 'MEDIUM', 'HIGH'];
+  const element = document.getElementById(elementId);
+  const optionElements = mediaOptions.reduce((acc, resolution) => {
+    acc += `<option value="${resolution}" ${resolution === '480p' && 'selected'}>${resolution}</option>`;
+
+    return acc;
+  }, '');
+
+  element.innerHTML = optionElements;
+}
+
+(() => {
+  addMediaOptions('local-resolution');
+  addMediaOptions('remote-resolution');
+})();
 
 function addMedia() {
   const meeting = getCurrentMeeting();
@@ -1279,6 +1330,8 @@ function addMedia() {
 
   // Wait for media in order to show video/share
   meeting.on('media:ready', (media) => {
+    startResolutionCheckInterval();
+
     // eslint-disable-next-line default-case
     switch (media.type) {
       case 'remoteVideo':
@@ -1299,6 +1352,8 @@ function addMedia() {
 
   // remove stream if media stopped
   meeting.on('media:stopped', (media) => {
+    clearResolutionCheckInterval();
+
     // eslint-disable-next-line default-case
     switch (media.type) {
       case 'remoteVideo':

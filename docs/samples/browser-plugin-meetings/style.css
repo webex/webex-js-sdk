@@ -114,6 +114,10 @@ button.btn-code {
   justify-content: center;
 }
 
+.flex--align-center {
+  align-items: center;
+}
+
 /* Margin utils */
 .u-m {
   margin: 1rem !important;
@@ -130,6 +134,10 @@ button.btn-code {
 
 .u-mt {
   margin-top: 1rem !important;
+}
+
+.u-ml {
+  margin-left: 1rem;
 }
 
 /* Padding Utils */
@@ -197,4 +205,43 @@ button.btn-code {
 
 .hidden {
   display: none;
+}
+
+.media-button-label {
+  flex: 0.25;
+  font-weight: 500;
+  color: #b70303;
+}
+
+.media-select {
+  flex: 0.15;
+  margin-right: 1rem;
+}
+
+.media-button {
+  flex: 0.5;
+  width: 23rem;
+}
+
+legend {
+  font-size: 1.15rem;
+  color: #1a73e8;
+}
+
+.video-container {
+  position: relative;
+}
+
+.video-el {
+  height: 100%;
+  width: 100%;
+}
+
+.video-resolution {
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  opacity: 0.75;
+  user-select: none;
+  color: #20f020;
 }
