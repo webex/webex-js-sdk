@@ -672,7 +672,7 @@ describe('plugin-meetings', () => {
           const audioVideoSettings = {};
 
           sinon.stub(meeting.mediaProperties, 'videoDeviceId').value(videoDevice);
-
+          sinon.stub(meeting.mediaProperties, 'localQualityLevel').value('MEDIUM');
           await meeting.getMediaStreams(mediaDirection, audioVideoSettings);
 
           assert.calledWith(Media.getUserMedia, {
@@ -681,6 +681,8 @@ describe('plugin-meetings', () => {
           },
           {
             video: {
+              width: {max: 640, ideal: 640},
+              height: {max: 480, ideal: 480},
               deviceId: videoDevice
             }
           });
