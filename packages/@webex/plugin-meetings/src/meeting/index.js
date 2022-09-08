@@ -4006,7 +4006,7 @@ export default class Meeting extends StatelessWebexPlugin {
         LoggerProxy.logger.warn('Meeting:index#getMediaStreams --> Please use `meeting.shareScreen()` to manually start the screen share after successfully joining the meeting');
       }
 
-      audioVideo = {...audioVideo, ...VIDEO_RESOLUTIONS[this.mediaProperties.localQualityLevel]};
+      audioVideo = {...audioVideo, video: {...audioVideo.video, ...VIDEO_RESOLUTIONS[this.mediaProperties.localQualityLevel].video}};
 
       // extract deviceId if exists otherwise default to null.
       const {deviceId: preferredVideoDevice} = (audioVideo && audioVideo.video || {deviceId: null});
