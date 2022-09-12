@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.19.2](https://github.com/webex/webex-js-sdk/compare/v2.19.1...v2.19.2) (2022-09-12)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** removal of old stats code ([e73859e](https://github.com/webex/webex-js-sdk/commit/e73859eab29927a74c6cc49e9969b8aa876d6c9b))
+
+### [2.19.1](https://github.com/webex/webex-js-sdk/compare/v2.19.0...v2.19.1) (2022-09-07)
+
+
+### Bug Fixes
+
+* internal-media-core upgrade for enablebnr ([8b17103](https://github.com/webex/webex-js-sdk/commit/8b17103ddcb3386e97a2e3a16574de42916411b3))
+* **plugin-meetings:** bnr enabled upon microphone switch ([5358018](https://github.com/webex/webex-js-sdk/commit/535801893588a5ba003ae0f9121e62eedb9c5fb5))
+
+## [2.19.0](https://github.com/webex/webex-js-sdk/compare/v2.18.0...v2.19.0) (2022-09-07)
+
+
+### Features
+
+* **samples:** incorporated marcin review comments ([e41900f](https://github.com/webex/webex-js-sdk/commit/e41900f65f8707a6747b2c0a36ad3bc5356742c2))
+
+## [2.18.0](https://github.com/webex/webex-js-sdk/compare/v2.17.0...v2.18.0) (2022-09-05)
+
+
+### Features
+
+* **plugin-meetings:** can invite guest and can admit participant ([b5c772e](https://github.com/webex/webex-js-sdk/commit/b5c772eaac833d8a37ca0d2def5092e526b77db3))
+
+## [2.17.0](https://github.com/webex/webex-js-sdk/compare/v2.16.0...v2.17.0) (2022-09-02)
+
+
+### Features
+
+* **dependencies:** add ts dependencies ([78ceee3](https://github.com/webex/webex-js-sdk/commit/78ceee3ec5a468b47f7c2a16445b1ae1f35987d7))
+* **tooling:** add ts build flow ([0f85a21](https://github.com/webex/webex-js-sdk/commit/0f85a216f1c087e7d3a6c4a2f3d7b8c3277acc2d))
+* **webex-core:** add default config for plugin ([e435508](https://github.com/webex/webex-js-sdk/commit/e4355080f907bb30c69fb97d0d2b2395779c54dd))
+
+
+### Bug Fixes
+
+* added debug logs for mocha ([c368eba](https://github.com/webex/webex-js-sdk/commit/c368eba3bd79867cd67e6d86324fb00b3c1aeee9))
+* check joined display hints ([4b1e0e2](https://github.com/webex/webex-js-sdk/commit/4b1e0e209c52586c7f625ff8526c363dd0f1f8ab))
+* **config/wdio:** add polyfill for babel ([6ac9dd1](https://github.com/webex/webex-js-sdk/commit/6ac9dd16bc7adb71548499fb6da8593c7e79e6e3))
+* **docs:** fix docs build for ts files ([2993a09](https://github.com/webex/webex-js-sdk/commit/2993a09182ec52e13f34ffe5a441e34a8d1a62a2))
+* **plugin-meetings:** add check for intent type wait, rename methods ([ab1eca6](https://github.com/webex/webex-js-sdk/commit/ab1eca60678356ac7f95300ac048a788168006ae))
+* **plugin-meetings:** should throw user in lobby ([e8b6c9f](https://github.com/webex/webex-js-sdk/commit/e8b6c9f4e5472789d3556c5a40497c8bbc6e2e6c))
+
 ## [2.16.0](https://github.com/webex/webex-js-sdk/compare/v2.15.0...v2.16.0) (2022-08-30)
 
 
