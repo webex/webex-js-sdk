@@ -503,19 +503,21 @@
                 </div>
 
                 <fieldset>
-                  <legend>Set Resolution (Experimental)</legend>
-                  <select name="layout" id="layout-type">
-                    <option value="Single">Single</option>
-                    <option value="Equal" selected="selected">Equal</option>
-                    <option value="ActivePresence">Active Presence</option>
-                    <option value="Prominent">Prominent</option>
-                    <option value="OnePlusN">One+N</option>
-                  </select>
-                  <div class="flex u-mt u-mb" style="align-items: center; gap:10px">
-                    <label for="width">Width</label>
-                    <input type="number" name="width" id="layout-width" />
-                    <label for="height">Height</label>
-                    <input type="number" name='height' id="layout-height" />
+                  <legend>Set Resolution</legend>
+                  <div class="u-mv">
+                    <div class="flex" style="align-items: center; gap:10px">
+                      <select name="layout" id="layout-type">
+                        <option value="Single">Single</option>
+                        <option value="Equal" selected="selected">Equal</option>
+                        <option value="ActivePresence">Active Presence</option>
+                        <option value="Prominent">Prominent</option>
+                        <option value="OnePlusN">One+N</option>
+                      </select>
+                      <label for="width">Width</label>
+                      <input type="number" name="width" id="layout-width" />
+                      <label for="height">Height</label>
+                      <input type="number" name='height' id="layout-height" />
+                    </div>
                   </div>
                   <button type="submit" name="submit" id="layout-submit" onclick="changeLayout()">Submit</button>
                 </fieldset>
