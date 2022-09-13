@@ -223,6 +223,10 @@ button.btn-code {
   width: 23rem;
 }
 
+h2 {
+  color: #0052bf;
+}
+
 legend {
   font-size: 1.15rem;
   color: #1a73e8;
@@ -232,16 +236,13 @@ legend {
   position: relative;
 }
 
-.video-el {
-  height: 100%;
-  width: 100%;
-}
-
 .video-resolution {
   position: absolute;
-  right: 1rem;
-  top: 1rem;
+  left: 0.5rem;
+  top: 0.5rem;
   opacity: 0.75;
   user-select: none;
-  color: #20f020;
+  color: #083f88;
+  background-color: rgb(255 255 255);
+  padding: 0.3rem;
 }

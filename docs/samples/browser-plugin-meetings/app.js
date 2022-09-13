@@ -178,6 +178,7 @@ function register() {
       toggleUnifiedMeetings.removeAttribute('disabled');
       unregisterElm.disabled = false;
       unregisterElm.classList.add('btn--red');
+      meetingsResolutionCheckInterval();
     })
     .catch((error) => {
       console.warn('Authentication#register() :: error registering', error);
@@ -367,7 +368,7 @@ meetingsListElm.onclick = (e) => {
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
   }
-  else if (meeting.passwordStatus === 'UNKNOWN') {
+  else if (meeting && meeting.passwordStatus === 'UNKNOWN') {
     meetingsJoinPinElm.disabled = true;
     verifyPasswordElm.disabled = true;
     document.getElementById('btn-join').disabled = true;
@@ -1234,33 +1235,33 @@ function clearMediaDeviceList() {
 
 function getLocalMediaSettings() {
   const meeting = getCurrentMeeting();
-  const videoSettings = meeting.mediaProperties.videoTrack.getSettings();
-
-  const {frameRate, height} = videoSettings;
-
-  localVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
+  if(meeting && meeting.mediaProperties.videoTrack) {
+    const videoSettings = meeting.mediaProperties.videoTrack.getSettings();
+    const {frameRate, height} = videoSettings;
+    localVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
+  }
 }
 
 function getRemoteMediaSettings() {
   const meeting = getCurrentMeeting();
-  const videoSettings = meeting.mediaProperties.remoteVideoTrack.getSettings();
-
-  const {frameRate, height} = videoSettings;
-
-  remoteVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
+  if(meeting && meeting.mediaProperties.remoteVideoTrack){
+      const videoSettings = meeting.mediaProperties.remoteVideoTrack.getSettings();
+      const {frameRate, height} = videoSettings;
+      remoteVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
+  }
 }
 
 let resolutionInterval;
 const INTERVAL_TIME = 3000;
 
-function startResolutionCheckInterval() {
+function meetingsResolutionCheckInterval() {
   resolutionInterval = setInterval(() => {
     getLocalMediaSettings();
     getRemoteMediaSettings();
   }, INTERVAL_TIME);
 }
 
-function clearResolutionCheckInterval() {
+function clearMeetingsResolutionCheckInterval() {
   localVideoResElm.innerText = '';
   remoteVideoResElm.innerText = '';
 
@@ -1309,8 +1310,6 @@ function addMedia() {
 
   // Wait for media in order to show video/share
   meeting.on('media:ready', (media) => {
-    startResolutionCheckInterval();
-
     // eslint-disable-next-line default-case
     switch (media.type) {
       case 'remoteVideo':
@@ -1331,7 +1330,7 @@ function addMedia() {
 
   // remove stream if media stopped
   meeting.on('media:stopped', (media) => {
-    clearResolutionCheckInterval();
+    clearMeetingsResolutionCheckInterval();
 
     // eslint-disable-next-line default-case
     switch (media.type) {
@@ -1364,7 +1363,7 @@ function changeLayout() {
 
   currentMeeting.changeVideoLayout(layoutVal, {main: {height, width}})
     .then(() => {
-      console.log('Remote Layout changed successfully');
+      console.log('Remote Video Layout changed successfully');
     })
     .catch((err) => {
       console.error(err);
