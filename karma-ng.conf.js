@@ -68,10 +68,10 @@ function makeConfig(packageName, argv) {
     browserify: {
       debug: true,
       watch: argv && argv.karmaDebug,
-      extensions: ['.ts', '.js', '.json'],
+      extensions: ['.ts', '.js'],
       transform: [
         ['babelify', {
-          extensions: ['.ts', '.js', '.json'],
+          extensions: ['.ts', '.js'],
           global: true,
           ignore: ['node_modules'],
         }],
