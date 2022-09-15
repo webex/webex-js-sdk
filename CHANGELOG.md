@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.19.3](https://github.com/webex/webex-js-sdk/compare/v2.19.2...v2.19.3) (2022-09-15)
+
+
+### Bug Fixes
+
+* karma tests fail to start in a real browser ([5ebb946](https://github.com/webex/webex-js-sdk/commit/5ebb946831cf6113bf5be85edb7e4cbf986eb928))
+
 ### [2.19.2](https://github.com/webex/webex-js-sdk/compare/v2.19.1...v2.19.2) (2022-09-12)
 
 
