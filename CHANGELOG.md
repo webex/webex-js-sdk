@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.20.2](https://github.com/webex/webex-js-sdk/compare/v2.20.1...v2.20.2) (2022-09-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix some flaky integration tests ([1b898da](https://github.com/webex/webex-js-sdk/commit/1b898da30eba1290bd67fb8f2665e19e8721e84b))
+* **plugin-meetings:** integration tests incorrectly waiting for participant update ([c7e4532](https://github.com/webex/webex-js-sdk/commit/c7e453295d220a639d6df7b7acaf04e46b1699bf))
+
+### [2.20.1](https://github.com/webex/webex-js-sdk/compare/v2.20.0...v2.20.1) (2022-09-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix direct info uri ([9d38109](https://github.com/webex/webex-js-sdk/commit/9d38109376d30463980e0671e707422f878c1d89))
+
+## [2.20.0](https://github.com/webex/webex-js-sdk/compare/v2.19.3...v2.20.0) (2022-09-15)
+
+
+### Features
+
+* **meetings:** add layout control eventing ([28299a2](https://github.com/webex/webex-js-sdk/commit/28299a290bdef15236e8589cc35edc678b828ff2))
+
+### [2.19.3](https://github.com/webex/webex-js-sdk/compare/v2.19.2...v2.19.3) (2022-09-15)
+
+
+### Bug Fixes
+
+* karma tests fail to start in a real browser ([5ebb946](https://github.com/webex/webex-js-sdk/commit/5ebb946831cf6113bf5be85edb7e4cbf986eb928))
+
 ### [2.19.2](https://github.com/webex/webex-js-sdk/compare/v2.19.1...v2.19.2) (2022-09-12)
 
 
