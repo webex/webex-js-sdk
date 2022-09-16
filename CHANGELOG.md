@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.20.2](https://github.com/webex/webex-js-sdk/compare/v2.20.1...v2.20.2) (2022-09-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix some flaky integration tests ([1b898da](https://github.com/webex/webex-js-sdk/commit/1b898da30eba1290bd67fb8f2665e19e8721e84b))
+* **plugin-meetings:** integration tests incorrectly waiting for participant update ([c7e4532](https://github.com/webex/webex-js-sdk/commit/c7e453295d220a639d6df7b7acaf04e46b1699bf))
+
 ### [2.20.1](https://github.com/webex/webex-js-sdk/compare/v2.20.0...v2.20.1) (2022-09-16)
 
 
