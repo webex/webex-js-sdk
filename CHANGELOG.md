@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.20.3](https://github.com/webex/webex-js-sdk/compare/v2.20.2...v2.20.3) (2022-09-16)
+
+
+### Bug Fixes
+
+* **metrics:** added value for name enum value in events ([f2b7377](https://github.com/webex/webex-js-sdk/commit/f2b7377af4be81e80abcdec03a186e3be6726d71))
+
 ### [2.20.2](https://github.com/webex/webex-js-sdk/compare/v2.20.1...v2.20.2) (2022-09-16)
 
 
