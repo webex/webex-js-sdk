@@ -28,6 +28,9 @@ const registrationStatusElm = document.querySelector('#registration-status');
 const integrationEnv = document.getElementById('integration-env');
 const eventsList = document.getElementById('events-list');
 const fqdn = document.getElementById('fqdn');
+const turnUserName = document.getElementById('turn-username');
+const turnPassword = document.getElementById('turn-password');
+
 // Disable screenshare on join in Safari patch
 const isSafari = /Version\/[\d.]+.*Safari/.test(navigator.userAgent);
 const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -356,6 +359,8 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
   let resourceId = null;
 
   meeting.fqdn = fqdn.value;
+  meeting.turnUserName = turnUserName.value;
+  meeting.turnPassword = turnPassword.value;
 
   if (!meeting) {
     throw new Error(`meeting ${selectedMeetingId} is invalid or no longer exists`);
