@@ -154,7 +154,7 @@
   "devDependencies": {
     "@babel/cli": "^7.17.10",
     "@babel/core": "^7.17.10",
-    "@babel/eslint-parser": "^7.17.0",
+    "@babel/eslint-parser": "^7.19.1",
     "@babel/generator": "^7.14.9",
     "@babel/node": "^7.14.9",
     "@babel/plugin-proposal-async-generator-functions": "^7.14.9",
