@@ -25,7 +25,7 @@ export default class MediaProperties {
     this.remoteShare = options.remoteShare;
     this.remoteAudioTrack = options.remoteAudioTrack;
     this.remoteVideoTrack = options.remoteVideoTrack;
-    this.localQualityLevel = options.localQualityLevel || QUALITY_LEVELS.HIGH;
+    this.localQualityLevel = options.localQualityLevel || QUALITY_LEVELS['720p'];
     this.remoteQualityLevel = options.remoteQualityLevel || QUALITY_LEVELS.HIGH;
     this.mediaSettings = {};
     this.videoDeviceId = null;
