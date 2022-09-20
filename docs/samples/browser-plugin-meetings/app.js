@@ -1270,11 +1270,23 @@ function clearMeetingsResolutionCheckInterval() {
 
 // Meeting Streams --------------------------------------------------
 
-function addMediaOptions(elementId) {
-  const mediaOptions = ['360p', '480p', '720p', '1080p', 'LOW', 'MEDIUM', 'HIGH'];
+function addMediaOptionsLocal(elementId) {
+  const mediaOptions = ['360p', '480p', '720p', '1080p'];
   const element = document.getElementById(elementId);
   const optionElements = mediaOptions.reduce((acc, resolution) => {
-    acc += `<option value="${resolution}" ${resolution === '480p' && 'selected'}>${resolution}</option>`;
+    acc += `<option value="${resolution}" ${resolution === '720p' && 'selected'}>${resolution}</option>`;
+
+    return acc;
+  }, '');
+
+  element.innerHTML = optionElements;
+}
+
+function addMediaOptionsRemote(elementId) {
+  const mediaOptions = ['LOW', 'MEDIUM', 'HIGH'];
+  const element = document.getElementById(elementId);
+  const optionElements = mediaOptions.reduce((acc, resolution) => {
+    acc += `<option value="${resolution}" ${resolution === 'HIGH' && 'selected'}>${resolution}</option>`;
 
     return acc;
   }, '');
@@ -1283,8 +1295,8 @@ function addMediaOptions(elementId) {
 }
 
 (() => {
-  addMediaOptions('local-resolution');
-  addMediaOptions('remote-resolution');
+  addMediaOptionsLocal('local-resolution');
+  addMediaOptionsRemote('remote-resolution');
 })();
 
 function addMedia() {
