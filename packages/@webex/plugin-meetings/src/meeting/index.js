@@ -5414,65 +5414,6 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Sets the quality level of all meeting media (incoming/outgoing)
-   * @param {String} level {LOW|MEDIUM|HIGH}
-   * @returns {Promise}
-   */
-  setMeetingQuality(level) {
-    LoggerProxy.logger.log(`Meeting:index#setMeetingQuality --> Setting quality to ${level}`);
-
-    if (!QUALITY_LEVELS[level]) {
-      return this.rejectWithErrorLog(`Meeting:index#setMeetingQuality --> ${level} not defined`);
-    }
-
-    const previousLevel = {
-      local: this.mediaProperties.localQualityLevel,
-      remote: this.mediaProperties.remoteQualityLevel
-    };
-
-    // If level is already the same, don't do anything
-    if (
-      level === this.mediaProperties.localQualityLevel &&
-      level === this.mediaProperties.remoteQualityLevel
-    ) {
-      LoggerProxy.logger.warn(`Meeting:index#setMeetingQuality --> Quality already set to ${level}`);
-
-      return Promise.resolve();
-    }
-
-    // Determine the direction of our current media
-    const {receiveAudio, receiveVideo, sendVideo} = this.mediaProperties.mediaDirection;
-
-    return (sendVideo ? this.setLocalVideoQuality(level) : Promise.resolve())
-      .then(() =>
-        ((receiveAudio || receiveVideo) ?
-          this.setRemoteQualityLevel(level) :
-          Promise.resolve()))
-      .catch((error) => {
-        // From troubleshooting it seems that the stream itself doesn't change the max-fs if the peer connection isn't stable
-        this.mediaProperties.setLocalQualityLevel(previousLevel.local);
-        this.mediaProperties.setRemoteQualityLevel(previousLevel.remote);
-
-        LoggerProxy.logger.error(`Meeting:index#setMeetingQuality --> ${error.message}`);
-
-        Metrics.sendBehavioralMetric(
-          BEHAVIORAL_METRICS.SET_MEETING_QUALITY_FAILURE,
-          {
-            correlation_id: this.correlationId,
-            locus_id: this.locusUrl.split('/').pop(),
-            reason: error.message,
-            stack: error.stack
-          },
-          {
-            type: error.name
-          }
-        );
-
-        return Promise.reject(error);
-      });
-  }
-
-  /**
   * @param {Object} options parameter
   * @param {Boolean} options.sendAudio send audio from the display share
   * @param {Boolean} options.sendShare send video from the display share
