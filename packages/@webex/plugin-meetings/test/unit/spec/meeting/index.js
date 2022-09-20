@@ -671,7 +671,7 @@ describe('plugin-meetings', () => {
           const audioVideoSettings = {};
 
           sinon.stub(meeting.mediaProperties, 'videoDeviceId').value(videoDevice);
-          sinon.stub(meeting.mediaProperties, 'localQualityLevel').value('MEDIUM');
+          sinon.stub(meeting.mediaProperties, 'localQualityLevel').value('480p');
           await meeting.getMediaStreams(mediaDirection, audioVideoSettings);
 
           assert.calledWith(Media.getUserMedia, {
@@ -2216,54 +2216,6 @@ describe('plugin-meetings', () => {
         it('should error if receiveVideo is set to false', () => {
           meeting.mediaProperties.mediaDirection = {receiveVideo: false};
           assert.isRejected(meeting.setRemoteQualityLevel('LOW'));
-        });
-      });
-
-      describe('#setMeetingQuality', () => {
-        let mediaDirection;
-
-        beforeEach(() => {
-          mediaDirection = {
-            receiveAudio: true, receiveVideo: true, receiveShare: false, sendVideo: true
-          };
-          meeting.setRemoteQualityLevel = sinon.stub().returns(Promise.resolve());
-          meeting.setLocalVideoQuality = sinon.stub().returns(Promise.resolve());
-          meeting.mediaProperties.mediaDirection = mediaDirection;
-        });
-
-        it('should have #setMeetingQuality', () => {
-          assert.exists(meeting.setMeetingQuality);
-        });
-
-        it('should call setRemoteQualityLevel', () => meeting.setMeetingQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
-          assert.calledOnce(meeting.setRemoteQualityLevel);
-        }));
-
-        it('should not call setRemoteQualityLevel when receiveVideo and receiveAudio are false', () => {
-          mediaDirection.receiveAudio = false;
-          mediaDirection.receiveVideo = false;
-          meeting.mediaProperties.mediaDirection = mediaDirection;
-
-          return meeting.setMeetingQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
-            assert.notCalled(meeting.setRemoteQualityLevel);
-          });
-        });
-
-        it('should call setLocalVideoQuality', () => meeting.setMeetingQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
-          assert.calledOnce(meeting.setLocalVideoQuality);
-        }));
-
-        it('should not call setLocalVideoQuality when sendVideo is false', () => {
-          mediaDirection.sendVideo = false;
-          meeting.mediaProperties.mediaDirection = mediaDirection;
-
-          return meeting.setMeetingQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
-            assert.notCalled(meeting.setLocalVideoQuality);
-          });
-        });
-
-        it('should error if set to a invalid level', () => {
-          assert.isRejected(meeting.setMeetingQuality('invalid'));
         });
       });
 
