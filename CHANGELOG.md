@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.21.1](https://github.com/webex/webex-js-sdk/compare/v2.21.0...v2.21.1) (2022-09-22)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** removed some old, deprecated code for remoteStream ([9899724](https://github.com/webex/webex-js-sdk/commit/98997244a911556639a3b2ccd6334fde8f4a528e))
+
+## [2.21.0](https://github.com/webex/webex-js-sdk/compare/v2.20.3...v2.21.0) (2022-09-21)
+
+
+### Features
+
+* **plugin-meetings:** fetch country codes from meeting info ([1a4ee3b](https://github.com/webex/webex-js-sdk/commit/1a4ee3bf184f5f0a2902845a4b799473a3d2de86))
+
 ### [2.20.3](https://github.com/webex/webex-js-sdk/compare/v2.20.2...v2.20.3) (2022-09-16)
 
 
