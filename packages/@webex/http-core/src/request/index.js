@@ -4,8 +4,82 @@
 
 import {EventEmitter} from 'events';
 
-import _request from './request';
+import {isBuffer} from '@webex/common';
 
+import {detect} from '../lib/detect';
+
+function _request(options) {
+  return prepareOptions(options)
+    .then((options) => {
+      const param = {
+        method: options.method,
+        headers: options.headers
+      };
+
+      // some request like region lookup does not have method
+      if (options.method !== 'GET' && options.method) {
+        param.body = param.form || JSON.stringify(options.body || {});
+      }
+
+      // Only set the content type for json
+      // eg: application/x-www-form-urlencoded
+      if (options.json && !options.form) {
+        options.headers['Content-Type'] = 'application/json';
+      }
+      else if (options.form) {
+        options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        param.body = new URLSearchParams(options.form);
+      }
+
+      const queryString = new URLSearchParams(options.qs).toString();
+
+      console.log(`REQUEST OBJECT ${options.uri}\n ${param}`);
+
+      return fetch(queryString ? `${options.uri}?${queryString}` : options.uri, param)
+        .then(async (response) => {
+          console.log('RESPONSE ', response);
+          const body = await response.json();
+          const result = {
+            body,
+            statusCode: response.status,
+            method: options.method,
+            headers: response.headers,
+            url: response.url,
+            rawRequest: response.rawRequest,
+            options
+          };
+
+          return result;
+        });
+    });
+}
+
+
+/**
+ * @param {Object} options
+ * @private
+ * @returns {Promise}
+ */
+function prepareOptions(options) {
+  if (options.responseType === 'buffer' || options.responseType === 'blob') {
+    options.encoding = null;
+  }
+
+  if (options.withCredentials) {
+    options.jar = true;
+  }
+
+  if (isBuffer(options.body)) {
+    return detect(options.body)
+      .then((type) => {
+        options.headers['content-type'] = type;
+
+        return options;
+      });
+  }
+
+  return Promise.resolve(options);
+}
 /**
  * @param {Object} options
  * @returns {Promise}
