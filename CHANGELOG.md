@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.21.1](https://github.com/webex/webex-js-sdk/compare/v2.21.0...v2.21.1) (2022-09-22)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** removed some old, deprecated code for remoteStream ([9899724](https://github.com/webex/webex-js-sdk/commit/98997244a911556639a3b2ccd6334fde8f4a528e))
+
+## [2.21.0](https://github.com/webex/webex-js-sdk/compare/v2.20.3...v2.21.0) (2022-09-21)
+
+
+### Features
+
+* **plugin-meetings:** fetch country codes from meeting info ([1a4ee3b](https://github.com/webex/webex-js-sdk/commit/1a4ee3bf184f5f0a2902845a4b799473a3d2de86))
+
+### [2.20.3](https://github.com/webex/webex-js-sdk/compare/v2.20.2...v2.20.3) (2022-09-16)
+
+
+### Bug Fixes
+
+* **metrics:** added value for name enum value in events ([f2b7377](https://github.com/webex/webex-js-sdk/commit/f2b7377af4be81e80abcdec03a186e3be6726d71))
+
+### [2.20.2](https://github.com/webex/webex-js-sdk/compare/v2.20.1...v2.20.2) (2022-09-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix some flaky integration tests ([1b898da](https://github.com/webex/webex-js-sdk/commit/1b898da30eba1290bd67fb8f2665e19e8721e84b))
+* **plugin-meetings:** integration tests incorrectly waiting for participant update ([c7e4532](https://github.com/webex/webex-js-sdk/commit/c7e453295d220a639d6df7b7acaf04e46b1699bf))
+
 ### [2.20.1](https://github.com/webex/webex-js-sdk/compare/v2.20.0...v2.20.1) (2022-09-16)
 
 
