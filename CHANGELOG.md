@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.22.0](https://github.com/webex/webex-js-sdk/compare/v2.21.1...v2.22.0) (2022-09-23)
+
+
+### Features
+
+* **internal-plugin-dss:** directory search plugin ([656e04b](https://github.com/webex/webex-js-sdk/commit/656e04bcfc76606ae5436730754a0054a10934a6))
+
 ### [2.21.1](https://github.com/webex/webex-js-sdk/compare/v2.21.0...v2.21.1) (2022-09-22)
 
 
