@@ -9,9 +9,22 @@
     "esModuleInterop": true,
     "moduleResolution": "node",
     "paths": {
-       "@webex/*" :["./packages/@webex/*"],
-       "@webex/common" :["./packages/@webex/common/src/index.js"],
-       "@webex/http-core" :["./packages/@webex/http-core/src/index.js"]
+      "@webex/*" :["./packages/@webex/*"],
+      "@webex/common" :["./packages/@webex/common/src/index.js"],
+      "@webex/webex-core" :["./packages/@webex/webex-core/src/index.js"],
+      "@webex/http-core" :["./packages/@webex/http-core/src/index.js"],
+      "@webex/common-timers" :["./packages/@webex/common-timers/src/index.js"],
+      "@webex/helper-image" :["./packages/@webex/helper-image/src/index.js"],
+      "@webex/helper-html" :["./packages/@webex/helper-html/src/index.js"],
+      "@webex/plugin-meetings" :["./packages/@webex/plugin-meetings/src/index.js"],
+      "@webex/internal-plugin-conversation" :["./packages/@webex/internal-plugin-conversation/src/index.js"],
+      "@webex/internal-plugin-mercury" :["./packages/@webex/internal-plugin-mercury/src/index.js"],
+      "@webex/internal-plugin-encryption" :["./packages/@webex/internal-plugin-encryption/src/index.js"],
+      "@webex/internal-plugin-user" :["./packages/@webex/internal-plugin-user/src/index.js"],
+      "@webex/internal-plugin-device" :["./packages/@webex/internal-plugin-device/src/index.js"],
+      "@webex/internal-plugin-feature" :["./packages/@webex/internal-plugin-feature/src/index.js"],
+      "@webex/internal-plugin-metrics" :["./packages/@webex/internal-plugin-metrics/src/index.js"],
+      "@webex/storage-adapter-local-storage" : ["./packages/@webex/storage-adapter-local-storage/src/index.js"]
     }
   },
   "include": ["./packages/@webex/**/src/*.ts"],

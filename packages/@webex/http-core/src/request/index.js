@@ -6,7 +6,7 @@ import {EventEmitter} from 'events';
 
 import {isBuffer} from '@webex/common';
 
-import {detect} from '../lib/detect';
+import detect from '../lib/detect';
 
 function _request(options) {
   return prepareOptions(options)
