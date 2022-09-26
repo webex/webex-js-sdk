@@ -5,7 +5,7 @@
 /* eslint no-unused-vars: ["error", { "vars": "local" }] */
 /* global FileReader */
 
-const {Buffer} = require('safe-buffer');
+
 const {parse} = require('exifr/dist/lite.umd');
 
 /**

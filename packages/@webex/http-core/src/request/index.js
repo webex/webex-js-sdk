@@ -70,12 +70,11 @@ function prepareOptions(options) {
   }
 
   if (isBuffer(options.body)) {
-    return detect(options.body)
-      .then((type) => {
-        options.headers['content-type'] = type;
+    const type = detect(options.body);
 
-        return options;
-      });
+    options.headers['content-type'] = type;
+
+    return options;
   }
 
   return Promise.resolve(options);

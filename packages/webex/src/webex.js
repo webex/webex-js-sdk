@@ -18,7 +18,9 @@
 // require('@webex/plugin-attachment-actions');
 // require('@webex/plugin-device-manager');
 // require('@webex/plugin-logger');
-require('@webex/plugin-meetings');
+import config from './config';
+
+import('@webex/plugin-meetings');
 // require('@webex/plugin-messages');
 // require('@webex/plugin-memberships');
 // require('@webex/plugin-people');
@@ -27,10 +29,7 @@ require('@webex/plugin-meetings');
 // require('@webex/plugin-team-memberships');
 // require('@webex/plugin-webhooks');
 
-const merge = require('lodash/merge');
 const WebexCore = require('@webex/webex-core').default;
-
-const config = require('./config');
 
 // documentation.js puts hashes in relative urls, so need to specify full urls
 // here
@@ -72,9 +71,9 @@ const Webex = WebexCore.extend({
  * @returns {Webex}
  */
 Webex.init = function init(attrs = {}) {
-  attrs.config = merge({}, config, attrs.config); // eslint-disable-line no-param-reassign
+  attrs.config = Object.assign(config, attrs.config); // eslint-disable-line no-param-reassign
 
   return new Webex(attrs);
 };
 
-module.exports = Webex;
+export default Webex;

@@ -3,10 +3,10 @@ index e7e3b8e..e6a78ab 100644
 --- a/node_modules/karma-edgium-launcher/index.js
 +++ b/node_modules/karma-edgium-launcher/index.js
 @@ -1,258 +1,263 @@
--var fs = require('fs')
+-var fs = require(`fs-extra`)
 -var path = require('path')
 -var which = require('which')
-+const fs = require('fs')
++const fs = require(`fs-extra`)
 +const path = require('path')
  
 +// #region Common

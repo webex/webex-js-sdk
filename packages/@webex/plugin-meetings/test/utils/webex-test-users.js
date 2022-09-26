@@ -16,7 +16,7 @@ require('@webex/plugin-people');
 require('@webex/plugin-rooms');
 require('@webex/plugin-meetings');
 
-const generateTestUsers = (options) => testUser.create({count: options.count})
+export const generateTestUsers = (options) => testUser.create({count: options.count})
   .then(async (userSet) => {
     if (userSet.length !== options.count) {
       return Promise.reject(new Error('Test users not created'));
@@ -51,7 +51,7 @@ const generateTestUsers = (options) => testUser.create({count: options.count})
     console.error('#generateTestUsers=>ERROR', error);
   });
 
-const reserveCMR = (user) => user.webex.request({
+export const reserveCMR = (user) => user.webex.request({
   method: 'POST',
   uri: 'https://whistler-prod.allnint.ciscospark.com/api/v1/reservations',
   headers: {
@@ -73,7 +73,3 @@ const reserveCMR = (user) => user.webex.request({
     console.log('SUCCESS ', res);
   });
 
-module.exports = {
-  generateTestUsers,
-  reserveCMR
-};

@@ -2,9 +2,9 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-const jwt = require('jsonwebtoken');
-const uuid = require('uuid');
-const {Buffer} = require('safe-buffer');
+
+import  jwt  from 'jsonwebtoken'
+import uuid from 'uuid'
 
 /**
  * Creates a jwt user token
@@ -15,7 +15,7 @@ const {Buffer} = require('safe-buffer');
  * @param {String} options.userId *no spaces*
  * @returns {Promise<object>}
  */
-module.exports = function createUser({
+function createUser({
   displayName,
   expiresInSeconds,
   issuer,
@@ -43,3 +43,5 @@ module.exports = function createUser({
     return Promise.reject(e);
   }
 };
+
+export default createUser

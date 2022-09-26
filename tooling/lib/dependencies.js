@@ -6,11 +6,12 @@ const debug = require('debug')('tooling:dependencies');
 const builtins = require('builtins')();
 const {values} = require('lodash');
 const detective = require('detective');
+const fs = require('fs-extra');
 
 const {read} = require('../util/package');
 
 const path = require('path');
-const fs = require('fs');
+
 
 const _list = require('../lib/package').list;
 
