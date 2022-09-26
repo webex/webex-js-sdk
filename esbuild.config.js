@@ -3,6 +3,8 @@ import glob from 'tiny-glob';
 import resolve from 'esbuild-plugin-resolve';
 import alias from 'esbuild-plugin-alias';
 import babel from 'esbuild-plugin-babel';
+import {commonjs} from '@hyrious/esbuild-plugin-commonjs';
+
 // https:// github.com/evanw/esbuild/issues/90
 (async () => {
   // const entryPoints = await glob('./packages/**/src/index.js');
@@ -19,13 +21,15 @@ import babel from 'esbuild-plugin-babel';
   console.log(entryPoints);
   await build({
     entryPoints,
-    bundle: true,
+    bundle: false,
     format: 'esm',
     minify: true,
     sourcemap: true,
+    target: 'es6',
     platform: 'node',
+    plugins: [babel(), commonjs()],
     tsconfig: './tsconfig.json',
-    external: ['require', 'fs', 'path', 'os', 'https', 'gm'],
+    // external: ['require', 'fs', 'path', 'os', 'https', 'gm'],
     outdir: 'dist',
     outbase: './packages'
   });
