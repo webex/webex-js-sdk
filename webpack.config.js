@@ -1,5 +1,6 @@
 const path = require('path');
 
+const webpack = require('webpack');
 const dotenv = require('dotenv');
 const glob = require('glob');
 const {BannerPlugin, DefinePlugin, EnvironmentPlugin} = require('webpack');
@@ -39,10 +40,14 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     port: process.env.PORT || 8000,
     static: './docs'
   },
-  node: {
-    fs: 'empty'
-  },
   resolve: {
+    fallback: {
+      fs: false,
+      os: require.resolve('os-browserify'),
+      stream: require.resolve('stream-browserify'),
+      crypto: false,
+    },
+    extensions: ['.ts', '.js', '.json'],
     alias: glob
       .sync('**/package.json', {cwd: './packages/node_modules'})
       .map((p) => path.dirname(p))
@@ -65,13 +70,13 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
   module: {
     rules: [
       {
-        test: /\.js$/,
+        test: /\.(js|tsx|ts)$/,
         include: [
           /packages\/node_modules/,
         ],
         use: {
           loader: 'babel-loader'
-        }
+        },
       }
     ]
   },
@@ -98,6 +103,9 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     // If in integration and building for production (not testing) use production URLS
     ...(env && env.NODE_ENV === 'test' ?
       [
+        new webpack.ProvidePlugin({
+          process: 'process/browser',
+        }),
         // Environment Plugin doesn't override already defined Environment Variables (i.e. DotENV)
         new EnvironmentPlugin({
           WEBEX_LOG_LEVEL: 'log',
@@ -117,6 +125,9 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
           WEBEX_CONVERSATION_DEFAULT_CLUSTER: 'urn:TEAM:us-east-1_int13:identityLookup'
         })
       ] : [
+        new webpack.ProvidePlugin({
+          process: 'process/browser',
+        }),
         new BannerPlugin({
           banner: `Webex JS SDK v${process.env.VERSION || version}`
         }),

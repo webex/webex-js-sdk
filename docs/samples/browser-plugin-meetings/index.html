@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <title>Webex JavaScript SDK Sample: Meetings Plugin</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/light.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="./style.css" />
 </head>
 
@@ -183,7 +184,7 @@
                           class="btn-code">
                           webex.devicemanager.mute()
                         </button>
-                        <button id="device-volume-mute" type="button" onclick="webex.devicemanager.unmute()"
+                        <button id="device-volume-unmute" type="button" onclick="webex.devicemanager.unmute()"
                           class="btn-code">
                           webex.devicemanager.unmute()
                         </button>
@@ -231,10 +232,24 @@
           <div>
             <fieldset>
               <legend>Join Meeting</legend>
-              <div class="u-mv flex" style="align-items: center;">
-                <input id="meetings-join-pin" name="createMeetingHostpin" placeholder="PIN" value="" type="text">
+              <!-- Password, captcha image and input html code -->
+              <div class="u-mv">
+                <input id="meetings-join-pin" name="meetingPin" placeholder="Password/PIN" value="" type="text">
+                <div>
+                  <img id="meetings-join-captcha" src="" alt="captcha" style="width: 150px; height: 70px;" hidden>
+              
+                  <!-- refresh icon -->
+                  <span id="meetings-join-captcha-refresh" type="button" onclick="refreshCaptcha()" hidden>
+                    <i class="fa fa-refresh"></i>
+                  </span>
+                  <input id="meetings-join-captcha-input" name="createMeetingCaptcha" placeholder="Captcha" value="" type="hidden">
+                </div>
+                <div class="u-mt">
+                  <button id="btn-verify-password" disabled onclick="verifyPassword()">Verify Password</button>
+                </div>
                 <input id="meetings-join-moderator" type="checkbox">
                 <label for="meetings-join-moderator">Join as Moderator</label>
+                <p id="password-captcha-status" class="status-par">Click verifyPassword for details</p>
               </div>
 
               <div>

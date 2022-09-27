@@ -45,7 +45,8 @@
           "maintained node versions"
         ]
       }
-    ]
+    ],
+    "@babel/preset-typescript"
   ],
   "sourceMaps": true
 }
