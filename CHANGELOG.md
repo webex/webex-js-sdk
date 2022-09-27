@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.20.0](https://github.com/webex/webex-js-sdk/compare/v2.19.3...v2.20.0) (2022-09-15)
+
+
+### Features
+
+* **meetings:** add layout control eventing ([28299a2](https://github.com/webex/webex-js-sdk/commit/28299a290bdef15236e8589cc35edc678b828ff2))
+
 ### [2.19.3](https://github.com/webex/webex-js-sdk/compare/v2.19.2...v2.19.3) (2022-09-15)
 
 
