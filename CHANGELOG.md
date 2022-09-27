@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.20.1](https://github.com/webex/webex-js-sdk/compare/v2.20.0...v2.20.1) (2022-09-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix direct info uri ([9d38109](https://github.com/webex/webex-js-sdk/commit/9d38109376d30463980e0671e707422f878c1d89))
+
 ## [2.20.0](https://github.com/webex/webex-js-sdk/compare/v2.19.3...v2.20.0) (2022-09-15)
 
 
