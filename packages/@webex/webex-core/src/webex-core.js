@@ -319,9 +319,8 @@ const WebexCore = AmpState.extend({
     };
 
     // This needs to run on nextTick or we'll never be able to wire up listeners
-    process.nextTick(() => {
       this.listenToAndRun(this, 'change:loaded', onLoaded);
-    });
+
 
     const onReady = () => {
       if (this.ready) {
@@ -337,10 +336,8 @@ const WebexCore = AmpState.extend({
       }
     };
 
-    // This needs to run on nextTick or we'll never be able to wire up listeners
-    process.nextTick(() => {
+
       this.listenToAndRun(this, 'change:ready', onReady);
-    });
 
     // Make nested events propagate in a consistent manner
     Object.keys(this.constructor.prototype._children).forEach((key) => {

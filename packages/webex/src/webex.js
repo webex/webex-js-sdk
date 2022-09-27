@@ -14,13 +14,13 @@
 // require('@webex/internal-plugin-calendar');
 // require('@webex/internal-plugin-device');
 // require('@webex/internal-plugin-presence');
-// require('@webex/internal-plugin-support');
+require('@webex/internal-plugin-support');
 // require('@webex/plugin-attachment-actions');
 // require('@webex/plugin-device-manager');
 // require('@webex/plugin-logger');
 import config from './config';
 
-import('@webex/plugin-meetings');
+require('@webex/plugin-meetings');
 // require('@webex/plugin-messages');
 // require('@webex/plugin-memberships');
 // require('@webex/plugin-people');

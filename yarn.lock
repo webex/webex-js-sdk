@@ -1724,6 +1724,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@esbuild-plugins/node-globals-polyfill@npm:^0.1.1":
+  version: 0.1.1
+  resolution: "@esbuild-plugins/node-globals-polyfill@npm:0.1.1"
+  peerDependencies:
+    esbuild: "*"
+  checksum: 68a41e2c377724e9cd46ca344ad219d289cc41a8b273d0d89bbc82bd90025b067b28234a865d8862a3f38c2a028ca4c93138dfca4e1e75e617efc314156c1ce0
+  languageName: node
+  linkType: hard
+
 "@esbuild-plugins/node-modules-polyfill@npm:^0.1.4":
   version: 0.1.4
   resolution: "@esbuild-plugins/node-modules-polyfill@npm:0.1.4"
@@ -2836,6 +2845,13 @@ __metadata:
     "@types/qs": "*"
     "@types/serve-static": "*"
   checksum: 15c1af46d02de834e4a225eccaa9d85c0370fdbb3ed4e1bc2d323d24872309961542b993ae236335aeb3e278630224a6ea002078d39e651d78a3b0356b1eaa79
+  languageName: node
+  linkType: hard
+
+"@types/format-util@npm:^1":
+  version: 1.0.2
+  resolution: "@types/format-util@npm:1.0.2"
+  checksum: 59b5d0f7d83cd64cd4ef57485db1f62d232c48e1d30b04f78386de974446ed57d3415134fcdaa2e8052baf0926b89148a34f6575ab21245fea77802a9f4de0a3
   languageName: node
   linkType: hard
 
@@ -5503,12 +5519,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"backoff@npm:^2.5.0":
+"backoff@npm:2.5.0":
   version: 2.5.0
   resolution: "backoff@npm:2.5.0"
   dependencies:
     precond: 0.2
   checksum: ccdcf2a26acd9379d0d4f09e3fb3b7ee34dee94f07ab74d1e38b38f89a3675d9f3cbebb142d9c61c655f4c9eb63f1d6ec28cebeb3dc9215efd8fe7cef92725b9
+  languageName: node
+  linkType: hard
+
+"backoff@patch:backoff@npm:2.5.0#.yarn/patches/backoff-npm-2.5.0-2f29e91e19.patch::locator=webex-js-sdk%40workspace%3A.":
+  version: 2.5.0
+  resolution: "backoff@patch:backoff@npm%3A2.5.0#.yarn/patches/backoff-npm-2.5.0-2f29e91e19.patch::version=2.5.0&hash=707921&locator=webex-js-sdk%40workspace%3A."
+  dependencies:
+    precond: 0.2
+  checksum: e301dc8015ad55c86415a4ebd6f704ad4d358784670b663fafe6ff865b823b1560f5f441e8ab9f8394c141636314b780ceada93acd93784f7ded49e0004b1046
   languageName: node
   linkType: hard
 
@@ -6012,7 +6037,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"browserify-sign@npm:^4.0.0":
+"browserify-sign@npm:^4.0.0, browserify-sign@npm:^4.2.1":
   version: 4.2.1
   resolution: "browserify-sign@npm:4.2.1"
   dependencies:
@@ -6093,64 +6118,6 @@ __metadata:
   bin:
     browserify: bin/cmd.js
   checksum: 75dacf5c82355146b49a2febb3bf9f7898893931973cf901849791827e44782afcb562be7bc3a893d9022ae528fd6fccdf24fc8812cb5aa1b081bb7ce34c46b5
-  languageName: node
-  linkType: hard
-
-"browserify@npm:^17.0.0":
-  version: 17.0.0
-  resolution: "browserify@npm:17.0.0"
-  dependencies:
-    JSONStream: ^1.0.3
-    assert: ^1.4.0
-    browser-pack: ^6.0.1
-    browser-resolve: ^2.0.0
-    browserify-zlib: ~0.2.0
-    buffer: ~5.2.1
-    cached-path-relative: ^1.0.0
-    concat-stream: ^1.6.0
-    console-browserify: ^1.1.0
-    constants-browserify: ~1.0.0
-    crypto-browserify: ^3.0.0
-    defined: ^1.0.0
-    deps-sort: ^2.0.1
-    domain-browser: ^1.2.0
-    duplexer2: ~0.1.2
-    events: ^3.0.0
-    glob: ^7.1.0
-    has: ^1.0.0
-    htmlescape: ^1.1.0
-    https-browserify: ^1.0.0
-    inherits: ~2.0.1
-    insert-module-globals: ^7.2.1
-    labeled-stream-splicer: ^2.0.0
-    mkdirp-classic: ^0.5.2
-    module-deps: ^6.2.3
-    os-browserify: ~0.3.0
-    parents: ^1.0.1
-    path-browserify: ^1.0.0
-    process: ~0.11.0
-    punycode: ^1.3.2
-    querystring-es3: ~0.2.0
-    read-only-stream: ^2.0.0
-    readable-stream: ^2.0.2
-    resolve: ^1.1.4
-    shasum-object: ^1.0.0
-    shell-quote: ^1.6.1
-    stream-browserify: ^3.0.0
-    stream-http: ^3.0.0
-    string_decoder: ^1.1.1
-    subarg: ^1.0.0
-    syntax-error: ^1.1.1
-    through2: ^2.0.0
-    timers-browserify: ^1.0.1
-    tty-browserify: 0.0.1
-    url: ~0.11.0
-    util: ~0.12.0
-    vm-browserify: ^1.0.0
-    xtend: ^4.0.0
-  bin:
-    browserify: bin/cmd.js
-  checksum: 6b1dda742eb0eaef8bddffc00328fe4a874e4db251fcea85402663aa74c41d39bee424bedab6094ea9e965b9207cb0ac836f44c024e47045fde5ccb2bb845cb8
   languageName: node
   linkType: hard
 
@@ -7914,6 +7881,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"crypto@npm:1.0.0":
+  version: 1.0.0
+  resolution: "crypto@npm:1.0.0"
+  checksum: c4ba8c2ffdf3cb0a661c47d3a7ae11d3886be394362f24363b272aebcb49f9c954955182c309fa77b216f8b9b20f6b30c31d5012021426a6867f9877cbf61403
+  languageName: node
+  linkType: hard
+
 "css-shorthand-properties@npm:^1.1.1":
   version: 1.1.1
   resolution: "css-shorthand-properties@npm:1.1.1"
@@ -8366,7 +8340,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"deps-sort@npm:^2.0.0, deps-sort@npm:^2.0.1":
+"deps-sort@npm:^2.0.0":
   version: 2.0.1
   resolution: "deps-sort@npm:2.0.1"
   dependencies:
@@ -10226,7 +10200,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"events@npm:^3.0.0, events@npm:^3.3.0":
+"events@npm:^3.3.0":
   version: 3.3.0
   resolution: "events@npm:3.3.0"
   checksum: f6f487ad2198aa41d878fa31452f1a3c00958f46e9019286ff4787c84aac329332ab45c9cdc8c445928fc6d7ded294b9e005a7fce9426488518017831b272780
@@ -11122,6 +11096,13 @@ __metadata:
     combined-stream: ^1.0.6
     mime-types: ^2.1.12
   checksum: 10c1780fa13dbe1ff3100114c2ce1f9307f8be10b14bf16e103815356ff567b6be39d70fc4a40f8990b9660012dc24b0f5e1dde1b6426166eb23a445ba068ca3
+  languageName: node
+  linkType: hard
+
+"format-util@npm:1.0.3":
+  version: 1.0.3
+  resolution: "format-util@npm:1.0.3"
+  checksum: 6d6cf155a7f07be41374e72079f4394892ff7c79de50ad3cb3a3335d92202cfaee217e3cf0ac4431522963d9ab308fe9ecbec23d38a6bf93e692609abe47dd8d
   languageName: node
   linkType: hard
 
@@ -12741,7 +12722,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"insert-module-globals@npm:^7.0.0, insert-module-globals@npm:^7.2.1":
+"insert-module-globals@npm:^7.0.0":
   version: 7.2.1
   resolution: "insert-module-globals@npm:7.2.1"
   dependencies:
@@ -17285,7 +17266,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"path-browserify@npm:^1.0.0, path-browserify@npm:^1.0.1":
+"path-browserify@npm:^1.0.1":
   version: 1.0.1
   resolution: "path-browserify@npm:1.0.1"
   checksum: c6d7fa376423fe35b95b2d67990060c3ee304fc815ff0a2dc1c6c3cfaff2bd0d572ee67e18f19d0ea3bbe32e8add2a05021132ac40509416459fffee35200699
@@ -17724,6 +17705,13 @@ __metadata:
     picocolors: ^1.0.0
     source-map-js: ^1.0.2
   checksum: 10eee25efd77868036403858577da0cefaf2e0905feeaba5770d5438ccdddba3d01cba8063e96b8aac4c6daa0ed413dd5ae0554a433a3c4db38df1d134cffc1f
+  languageName: node
+  linkType: hard
+
+"postinstall-postinstall@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "postinstall-postinstall@npm:2.1.0"
+  checksum: e1d34252cf8d2c5641c7d2db7426ec96e3d7a975f01c174c68f09ef5b8327bc8d5a9aa2001a45e693db2cdbf69577094d3fe6597b564ad2d2202b65fba76134b
   languageName: node
   linkType: hard
 
@@ -22106,7 +22094,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"util@npm:^0.12.0, util@npm:^0.12.3, util@npm:^0.12.4, util@npm:~0.12.0":
+"util@npm:^0.12.0, util@npm:^0.12.3, util@npm:^0.12.4":
   version: 0.12.4
   resolution: "util@npm:0.12.4"
   dependencies:
@@ -22618,9 +22606,11 @@ __metadata:
     "@ciscospark/test-users-legacy": ^1.2.0
     "@commitlint/cli": ^15.0.0
     "@commitlint/config-conventional": ^15.0.0
+    "@esbuild-plugins/node-globals-polyfill": ^0.1.1
     "@esbuild-plugins/node-modules-polyfill": ^0.1.4
     "@hyrious/esbuild-plugin-commonjs": ^0.2.1
     "@sinonjs/fake-timers": ^6.0.1
+    "@types/format-util": ^1
     "@wdio/allure-reporter": ^7.19.5
     "@wdio/browserstack-service": ^7.19.5
     "@wdio/cli": ^7.19.6
@@ -22649,8 +22639,8 @@ __metadata:
     body-parser: ^1.19.0
     bowser: ^2.11.0
     browser-saveas: ^1.0.1
-    browserify: ^17.0.0
     browserify-middleware: ^8.1.1
+    browserify-sign: ^4.2.1
     btoa: ^1.2.1
     buffer: ^6.0.3
     builtins: ^2.0.1
@@ -22663,6 +22653,8 @@ __metadata:
     cookie-parser: ^1.4.4
     core-decorators: ^0.20.0
     cors: ^2.8.5
+    crypto: 1.0.0
+    crypto-browserify: ^3.12.0
     crypto-js: ^4.1.1
     debug: ^4.3.4
     detective: ^5.2.0
@@ -22693,6 +22685,7 @@ __metadata:
     express-validator: ^5.3.1
     file-type: ^18.0.0
     firefox-profile: ^4.0.0
+    format-util: 1.0.3
     fs-extra: ^10.1.0
     geckodriver: ^3.0.1
     glob: ^7.1.4
@@ -22703,6 +22696,7 @@ __metadata:
     humanize-string: ^1.0.2
     husky: ^7.0.4
     in-publish: ^2.0.0
+    inherits: 2.0.3
     intern: ^4.10.1
     ip-anonymize: ^0.1.0
     is-function: ^1.0.1
@@ -22751,6 +22745,7 @@ __metadata:
     path: ^0.12.7
     path-parse: ^1.0.7
     pkijs: ^2.1.84
+    postinstall-postinstall: ^2.1.0
     ps-node: ^0.1.6
     qs: ^6.7.0
     readable-stream: ^3.6.0

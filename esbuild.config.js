@@ -12,7 +12,8 @@ import {commonjs} from '@hyrious/esbuild-plugin-commonjs';
   const entryPoints = [
     'packages/@webex/common/src/index.js',
     'packages/@webex/webex-core/src/index.js',
-    'packages/@webex/plugin-meetings/src/index.js'
+    'packages/@webex/plugin-meetings/src/index.js',
+    'packages/@webex/internal-plugin-support/src/index.js'
   ];
 
   // TODO: change the entry point and change to promise , Also move the tsconfig to the plugin meetings

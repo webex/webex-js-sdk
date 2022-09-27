@@ -19,55 +19,20 @@ import NodeModulesPolyfills from '@esbuild-plugins/node-modules-polyfill'
     .then((module) => module.config({debug: true}));
   // const entryPoints = await glob('./packages/**/src/index.js');
 
-  const ESM_REQUIRE_SHIM = `
-await (async () => {
-  const { dirname } = await import("path");
-  const { fileURLToPath } = await import("url");
-
-  /**
-   * Shim entry-point related paths.
-   */
-  if (typeof globalThis.__filename === "undefined") {
-    globalThis.__filename = fileURLToPath(import.meta.url);
-  }
-  if (typeof globalThis.__dirname === "undefined") {
-    globalThis.__dirname = dirname(globalThis.__filename);
-  }
-  /**
-   * Shim require if needed.
-   */
-  if (typeof globalThis.require === "undefined") {
-    const { default: module } = await import("module");
-    globalThis.require = module.createRequire(import.meta.url);
-  }
-})();
-`;
-
-/** Whether or not you're bundling. */
-const bundle = true;
-
-/** Tell esbuild to add the shim to emitted JS. */
-const shimBanner = {
-  "js": ESM_REQUIRE_SHIM
-};
-
-
-  
   await build({
     entryPoints: ['./packages/webex/src/webex.js'],
     bundle: true,
     format: 'iife',
     minify: false,
-    platform: 'node',
+    platform: 'browser',
     sourcemap: true,
     target: "chrome100",
-    plugins: [ babel(),nodePolyfills(), commonjs()],
+    plugins: [ babel(),nodePolyfills()/*, commonjs()*/],
     tsconfig: './tsconfig.json',
     external: ['require', 'fs', 'path', 'os', 'https', 'gm', 'stream', 'crypto', 'buffer', 'file-type', 'util','emitter'],
     outfile: './samples/bundle.js',
     inject: ['./process-shim.js'],
     define: {PACKAGE_VERSION: 'false', global: 'window'},
-    // banner: bundle ? shimBanner : undefined,
   }).catch((error) => {
     console.error(" ERROR" , error);
   });

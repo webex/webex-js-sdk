@@ -40,3 +40,4 @@ docs/samples/webex.min.js.map
 
 # patch-package
 patches.hash
+bundle.js.map
