@@ -179,6 +179,7 @@
     "@commitlint/cli": "^15.0.0",
     "@commitlint/config-conventional": "^15.0.0",
     "@sinonjs/fake-timers": "^6.0.1",
+    "@types/uuid": "^8.3.4",
     "@wdio/allure-reporter": "^7.19.5",
     "@wdio/browserstack-service": "^7.19.5",
     "@wdio/cli": "^7.19.6",
