@@ -1170,15 +1170,23 @@ async function stopScreenShare() {
   }
 }
 
+function updateLocalVideoStream(localStream) {
+  const [currLocalStream, currLocalShare] = currentMediaStreams;
+  currentMediaStreams = [localStream || currLocalStream, currLocalShare];
+
+  meetingStreamsLocalVideo.srcObject = new MediaStream(localStream.getVideoTracks());
+  meetingStreamsLocalAudio.srcObject = new MediaStream(localStream.getAudioTracks());
+}
+
 function setLocalMeetingQuality() {
   const meeting = getCurrentMeeting();
   const level = localResolutionInp.value;
 
   meeting.setLocalVideoQuality(level)
-    .then(() => {
+    .then((localStream) => {
       toggleSourcesQualityStatus.innerText = `Local meeting quality level set to ${level}!`;
+      updateLocalVideoStream(localStream)
       console.log('MeetingControls#setLocalMeetingQuality() :: Meeting quality level set successfully!');
-
       getLocalMediaSettings();
     })
     .catch((error) => {
