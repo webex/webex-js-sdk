@@ -307,7 +307,14 @@ export const EVENT_TRIGGERS = {
   MEETINGS_NETWORK_CONNECTED: 'network:connected',
   MEETING_SELF_LEFT: 'meeting:self:left',
   NETWORK_QUALITY: 'network:quality',
-  MEDIA_NEGOTIATED: 'media:negotiated'
+  MEDIA_NEGOTIATED: 'media:negotiated',
+  // the following events apply only to multistream media connections
+  ACTIVE_SPEAKER_CHANGED: 'media:activeSpeakerChanged',
+  REMOTE_VIDEO_SOURCE_COUNT_CHANGED: 'media:remoteVideoSourceCountChanged',
+  REMOTE_AUDIO_SOURCE_COUNT_CHANGED: 'media:remoteAudioSourceCountChanged',
+  REMOTE_MEDIA_AUDIO_CREATED: 'media:remoteAudio:created',
+  REMOTE_MEDIA_SCREEN_SHARE_AUDIO_CREATED: 'media:remoteScrenShareAudio:created',
+  REMOTE_MEDIA_VIDEO_LAYOUT_CHANGED: 'media:remoteVideo:layoutChanged',
 };
 
 export const EVENT_TYPES = {

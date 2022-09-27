@@ -71,6 +71,10 @@ import ParameterError from '../common/errors/parameter';
 import MediaError from '../common/errors/media';
 import {MeetingInfoV2PasswordError, MeetingInfoV2CaptchaError} from '../meeting-info/meeting-info-v2';
 import BrowserDetection from '../common/browser-detection';
+import {ReceiveSlotManager} from '../multistream/receiveSlotManager';
+import {MediaRequestManager} from '../multistream/mediaRequestManager';
+import {RemoteMediaManager, Event as RemoteMediaManagerEvent} from '../multistream/remoteMediaManager';
+import {MultistreamMedia} from '../multistream/multistreamMedia';
 
 import InMeetingActions from './in-meeting-actions';
 
@@ -137,6 +141,7 @@ export const MEDIA_UPDATE_TYPE = {
  * @property {String} [meetingQuality.local]
  * @property {String} [meetingQuality.remote]
  * @property {Boolean} [rejoin]
+ * @property {Boolean} [enableMultistream]
  */
 
 /**
@@ -472,12 +477,42 @@ export default class Meeting extends StatelessWebexPlugin {
     // TODO: needs to be defined as a class
     this.meetingInfo = {};
     /**
+     * helper class for managing receive slots (for multistream media connections)
+     */
+    this.receiveSlotManager = new ReceiveSlotManager(this);
+    /**
+     * Helper class for managing media requests for main video (for multistream media connections)
+     * All media requests sent out for main video for this meeting have to go through it.
+     */
+    this.mediaRequestManagers = {
+      audio: new MediaRequestManager((mediaRequests) => {
+        if (!this.mediaProperties.webrtcMediaConnection) {
+          LoggerProxy.logger.warn('Meeting:index#mediaRequestManager --> trying to send audio media request before media connection was created');
+
+          return;
+        }
+        this.mediaProperties.webrtcMediaConnection.requestMedia(MC.MediaType.AudioMain, mediaRequests);
+      }),
+      video: new MediaRequestManager((mediaRequests) => {
+        if (!this.mediaProperties.webrtcMediaConnection) {
+          LoggerProxy.logger.warn('Meeting:index#mediaRequestManager --> trying to send video media request before media connection was created');
+
+          return;
+        }
+        this.mediaProperties.webrtcMediaConnection.requestMedia(MC.MediaType.VideoMain, mediaRequests);
+      })
+    };
+    /**
      * @instance
      * @type {Members}
      * @public
      * @memberof Meeting
      */
-    this.members = new Members({locusUrl: (attrs.locus && attrs.locus.url)}, {parent: this.webex});
+    this.members = new Members({
+      locusUrl: (attrs.locus && attrs.locus.url),
+      receiveSlotManager: this.receiveSlotManager,
+      mediaRequestManagers: this.mediaRequestManagers,
+    }, {parent: this.webex});
     /**
      * @instance
      * @type {Roap}
@@ -633,6 +668,11 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.mediaConnections = null;
 
+    /**
+     * If true, then media is sent over multiple separate streams.
+     * If false, then media is transcoded by the server into a single stream.
+     */
+    this.isMultistream = false;
     /**
      * Fetching meeting info can be done randomly 2-5 mins before meeting start
      * In case it is done before the timer expires, this timeout id is reset to cancel the timer.
@@ -872,6 +912,13 @@ export default class Meeting extends StatelessWebexPlugin {
     this.setUpLocusInfoListeners();
     this.locusInfo.init(attrs.locus ? attrs.locus : {});
     this.hasJoinedOnce = false;
+
+    this.media = new MultistreamMedia(this);
+
+    /**
+     * helper class for managing remote streams
+     */
+    this.remoteMediaManager = null;
   }
 
   /**
@@ -2806,12 +2853,22 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Close the peer connections and remove them from the class.
+   * Cleanup any media connection related things.
+   *
    * @returns {Promise}
    * @public
    * @memberof Meeting
    */
   closePeerConnections() {
     if (this.mediaProperties.webrtcMediaConnection) {
+      if (this.remoteMediaManager) {
+        this.remoteMediaManager.stop();
+        this.remoteMediaManager = null;
+      }
+
+      Object.values(this.mediaRequestManagers).forEach((mediaRequestManager) => mediaRequestManager.reset());
+
+      this.receiveSlotManager.reset();
       this.mediaProperties.webrtcMediaConnection.close();
     }
 
@@ -3471,6 +3528,8 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     }
 
+    this.isMultistream = !!options.enableMultistream;
+
     return MeetingUtil.joinMeetingOptions(this, options)
       .then((join) => {
         this.meetingFiniteStateMachine.join();
@@ -3822,6 +3881,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Get local media streams based on options passed
+   *
+   * NOTE: this method can only be used with transcoded meetings, not with multistream meetings
+   *
    * @param {MediaDirection} mediaDirection A configurable options object for joining a meeting
    * @param {AudioVideo} [audioVideo] audio/video object to set audioinput and videoinput devices, see #Media.getUserMedia
    * @param {SharePreferences} [sharePreferences] audio/video object to set audioinput and videoinput devices, see #Media.getUserMedia
@@ -4130,6 +4192,54 @@ export default class Meeting extends StatelessWebexPlugin {
           break;
       }
     });
+
+    this.mediaProperties.webrtcMediaConnection.on(MC.Event.ACTIVE_SPEAKERS_CHANGED,
+      (msg) => {
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setupMediaConnectionListeners'
+          },
+          EVENT_TRIGGERS.ACTIVE_SPEAKER_CHANGED,
+          {
+            seqNum: msg.seqNum,
+            memberIds: msg.csis.map((csi) => this.members.findMemberByCsi(csi)?.id).filter((item) => (item !== undefined))
+          }
+        );
+      });
+
+    this.mediaProperties.webrtcMediaConnection.on(MC.Event.VIDEO_SOURCES_COUNT_CHANGED,
+      (numTotalSources, numLiveSources) => {
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setupMediaConnectionListeners'
+          },
+          EVENT_TRIGGERS.REMOTE_VIDEO_SOURCE_COUNT_CHANGED,
+          {
+            numTotalSources,
+            numLiveSources
+          }
+        );
+      });
+
+    this.mediaProperties.webrtcMediaConnection.on(MC.Event.AUDIO_SOURCES_COUNT_CHANGED,
+      (numTotalSources, numLiveSources) => {
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setupMediaConnectionListeners'
+          },
+          EVENT_TRIGGERS.REMOTE_AUDIO_SOURCE_COUNT_CHANGED,
+          {
+            numTotalSources,
+            numLiveSources
+          }
+        );
+      });
   };
 
   /**
@@ -4203,6 +4313,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
   createMediaConnection(turnServerInfo) {
     const mc = Media.createMediaConnection(this.mediaProperties, {
+      isMultistream: this.isMultistream,
       meetingId: this.id,
       remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
       enableRtx: this.config.enableRtx,
@@ -4217,12 +4328,34 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Listens for an event emitted by eventEmitter and emits it from the meeting object
+   *
+   * @private
+   * @param {*} eventEmitter object from which to forward the event
+   * @param {*} eventTypeToForward which event type to listen on and to forward
+   * @param {string} meetingEventType event type to be used in the event emitted from the meeting object
+   * @returns {void}
+   */
+  forwardEvent(eventEmitter, eventTypeToForward, meetingEventType) {
+    eventEmitter.on(eventTypeToForward, (data) => Trigger.trigger(
+      this,
+      {
+        file: 'meetings',
+        function: 'addMedia'
+      },
+      meetingEventType,
+      data
+    ));
+  }
+
+  /**
    * Specify joining via audio (option: pstn), video, screenshare
    * @param {Object} options A configurable options object for joining a meeting
    * @param {Object} options.resourceId pass the deviceId
    * @param {MediaDirection} options.mediaSettings pass media options
    * @param {MediaStream} options.localStream
    * @param {MediaStream} options.localShare
+   * @param {RemoteMediaManagerConfig} options.remoteMediaManagerConfig only applies if multistream is enabled
    * @returns {Promise}
    * @public
    * @memberof Meeting
@@ -4242,7 +4375,9 @@ export default class Meeting extends StatelessWebexPlugin {
       return Promise.reject(new UserInLobbyError());
     }
 
-    const {localStream, localShare, mediaSettings} = options;
+    const {
+      localStream, localShare, mediaSettings, remoteMediaManagerConfig
+    } = options;
 
     LoggerProxy.logger.info(`${LOG_HEADER} Adding Media.`);
 
@@ -4275,6 +4410,21 @@ export default class Meeting extends StatelessWebexPlugin {
         this.preMedia(localStream, localShare, mediaSettings);
 
         const mc = this.createMediaConnection(turnServerInfo);
+
+        if (this.isMultistream) {
+          this.remoteMediaManager = new RemoteMediaManager(
+            this.receiveSlotManager,
+            this.mediaRequestManagers,
+            remoteMediaManagerConfig
+          );
+
+          this.forwardEvent(this.remoteMediaManager, RemoteMediaManagerEvent.AudioCreated, EVENT_TRIGGERS.REMOTE_MEDIA_AUDIO_CREATED);
+          this.forwardEvent(this.remoteMediaManager, RemoteMediaManagerEvent.ScreenShareAudioCreated, EVENT_TRIGGERS.REMOTE_MEDIA_SCREEN_SHARE_AUDIO_CREATED);
+          this.forwardEvent(this.remoteMediaManager, RemoteMediaManagerEvent.VideoLayoutChanged, EVENT_TRIGGERS.REMOTE_MEDIA_VIDEO_LAYOUT_CHANGED);
+
+          return this.remoteMediaManager.start()
+            .then(() => mc.initiateOffer());
+        }
 
         return mc.initiateOffer();
       })
@@ -4592,6 +4742,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Update the main audio track with new parameters
+   *
+   * NOTE: this method can only be used with transcoded meetings, for multistream meetings use publishTrack()
+   *
    * @param {Object} options
    * @param {boolean} options.sendAudio
    * @param {boolean} options.receiveAudio
@@ -4644,6 +4797,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Update the main video track with new parameters
+   *
+   * NOTE: this method can only be used with transcoded meetings, for multistream meetings use publishTrack()
+   *
    * @param {Object} options
    * @param {boolean} options.sendVideo
    * @param {boolean} options.receiveVideo
@@ -4708,6 +4864,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Update the share streams, can be used to start sharing
+   *
+   * NOTE: this method can only be used with transcoded meetings, for multistream meetings use publishTrack()
+   *
    * @param {Object} options
    * @param {boolean} options.sendShare
    * @param {boolean} options.receiveShare
@@ -5451,6 +5610,9 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+  *
+  * NOTE: this method can only be used with transcoded meetings, for multistream use publishTrack()
+  *
   * @param {Object} options parameter
   * @param {Boolean} options.sendAudio send audio from the display share
   * @param {Boolean} options.sendShare send video from the display share

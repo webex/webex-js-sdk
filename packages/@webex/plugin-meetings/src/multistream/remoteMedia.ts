@@ -1,0 +1,258 @@
+/* eslint-disable valid-jsdoc */
+import LoggerProxy from '../common/logs/logger-proxy';
+import EventsScope from '../common/events/events-scope';
+
+import {MediaRequestId, MediaRequestManager} from './mediaRequestManager';
+import {CSI, ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
+
+export const RemoteMediaEvents = {
+  MediaStarted: ReceiveSlotEvents.MediaStarted,
+  MediaStopped: ReceiveSlotEvents.MediaStopped,
+  SourceUpdate: ReceiveSlotEvents.SourceUpdate,
+};
+
+export type RemoteVideoResolution =
+  | 'thumbnail' // the smallest possible resolution, 90p or less
+  | 'very small' // 180p or less
+  | 'small' // 360p or less
+  | 'medium' // 720p or less
+  | 'large' // 1080p or less
+  | 'best'; // highest possible resolution
+
+/**
+ * Converts pane size into h264 maxFs
+ * @param {PaneSize} paneSize
+ * @returns {number}
+ */
+export function getMaxFs(paneSize: RemoteVideoResolution): number {
+  let maxFs;
+
+  switch (paneSize) {
+    case 'thumbnail':
+      maxFs = 60;
+      break;
+    case 'very small':
+      maxFs = 240;
+      break;
+    case 'small':
+      maxFs = 920;
+      break;
+    case 'medium':
+      maxFs = 3600;
+      break;
+    case 'large':
+      maxFs = 8192;
+      break;
+    case 'best':
+      maxFs = 8192; // for now 'best' is 1080p, so same as 'large'
+      break;
+    default:
+      LoggerProxy.logger.warn(
+        `RemoteMedia#getMaxFs --> unuspported paneSize: ${paneSize}, using "medium" instead`
+      );
+      maxFs = 3600;
+  }
+
+  return maxFs;
+}
+
+type Options = {
+  resolution?: RemoteVideoResolution; // applies only to groups of type MC.MediaType.VideoMain and MC.MediaType.VideoSlides
+};
+
+export type RemoteMediaId = string;
+
+let remoteMediaCounter = 0;
+
+/**
+ * Class representing a remote audio/video stream.
+ *
+ * Internally it is associated with a specific receive slot
+ * and a media request for it.
+ */
+export class RemoteMedia extends EventsScope {
+  private receiveSlot?: ReceiveSlot;
+
+  private readonly mediaRequestManager: MediaRequestManager;
+
+  private readonly options: Options;
+
+  private mediaRequestId?: MediaRequestId;
+
+  public readonly id: RemoteMediaId;
+
+  /**
+   * Constructs RemoteMedia instance
+   *
+   * @param receiveSlot
+   * @param mediaRequestManager
+   * @param options
+   */
+  constructor(
+    receiveSlot: ReceiveSlot,
+    mediaRequestManager: MediaRequestManager,
+    options?: Options
+  ) {
+    super();
+    remoteMediaCounter += 1;
+    this.receiveSlot = receiveSlot;
+    this.mediaRequestManager = mediaRequestManager;
+    this.options = options || {};
+    this.setupEventListeners();
+    this.id = `RM${remoteMediaCounter}-${this.receiveSlot.id}`;
+  }
+
+  /**
+   * Invalidates the remote media by clearing the reference to a receive slot and
+   * cancelling the media request.
+   * After this call the remote media is unusable.
+   *
+   * @param {boolean} commit - whether to commit the cancellation of the media request
+   * @internal
+   */
+  public stop(commit: boolean = true) {
+    this.cancelMediaRequest(commit);
+    this.receiveSlot?.removeAllListeners();
+    this.receiveSlot = undefined;
+  }
+
+  /**
+   * Sends a new media request. This method can only be used for receiver-selected policy,
+   * because only in that policy we have a 1-1 relationship between RemoteMedia and MediaRequest
+   * and the request id is then stored in this RemoteMedia instance.
+   * For active-speaker policy, the same request is shared among many RemoteMedia instances,
+   * so it's managed through RemoteMediaGroup
+   *
+   * @internal
+   */
+  public sendMediaRequest(csi: CSI, commit: boolean) {
+    if (this.mediaRequestId) {
+      this.cancelMediaRequest(false);
+    }
+
+    if (!this.receiveSlot) {
+      throw new Error('sendMediaRequest() called on an invalidated RemoteMedia instance');
+    }
+
+    this.mediaRequestId = this.mediaRequestManager.addRequest(
+      {
+        policyInfo: {
+          policy: 'receiver-selected',
+          csi,
+        },
+        receiveSlots: [this.receiveSlot],
+        codecInfo: this.options.resolution && {
+          codec: 'h264',
+          maxFs: getMaxFs(this.options.resolution),
+        },
+      },
+      commit
+    );
+  }
+
+  /**
+   * @internal
+   */
+  public cancelMediaRequest(commit: boolean) {
+    if (this.mediaRequestId) {
+      this.mediaRequestManager.cancelRequest(this.mediaRequestId, commit);
+      this.mediaRequestId = undefined;
+    }
+  }
+
+  /**
+   * registers event listeners on the receive slot and forwards all the events
+   */
+  private setupEventListeners() {
+    if (this.receiveSlot) {
+      const scope = {
+        file: 'meeting/remoteMedia',
+        function: 'setupEventListeners',
+      };
+
+      this.receiveSlot.on(ReceiveSlotEvents.MediaStarted, (data) => {
+        this.emit(scope, RemoteMediaEvents.MediaStarted, data);
+      });
+
+      this.receiveSlot.on(ReceiveSlotEvents.MediaStopped, (data) => {
+        this.emit(scope, RemoteMediaEvents.MediaStopped, data);
+      });
+
+      this.receiveSlot.on(ReceiveSlotEvents.SourceUpdate, (data) => {
+        this.emit(scope, RemoteMediaEvents.SourceUpdate, data);
+      });
+    }
+  }
+
+  /**
+   * Checks if the underlying receive slot's media has already started,
+   * if so then it emits MediaStarted event, because we will never get
+   * it from the receive slot.
+   *
+   * @internal
+   */
+  public checkMediaAlreadyStarted() {
+    if (this.mediaState === 'started') {
+      this.emit(
+        {
+          file: 'meeting/remoteMedia',
+          function: 'checkMediaAlreadyStarted',
+        },
+        RemoteMediaEvents.MediaStarted,
+        {
+          stream: this.stream,
+        }
+      );
+    }
+  }
+
+  /**
+   * Getter for mediaType
+   */
+  public get mediaType() {
+    return this.receiveSlot?.mediaType;
+  }
+
+  /**
+   * Getter for memberId
+   */
+  public get memberId() {
+    return this.receiveSlot?.memberId;
+  }
+
+  /**
+   * Getter for csi
+   */
+  public get csi() {
+    return this.receiveSlot?.csi;
+  }
+
+  /**
+   * Getter for media state
+   */
+  public get mediaState() {
+    return this.receiveSlot?.mediaState;
+  }
+
+  /**
+   * Getter for source state
+   */
+  public get sourceState() {
+    return this.receiveSlot?.sourceState;
+  }
+
+  /**
+   * Getter for remote media stream
+   */
+  public get stream() {
+    return this.receiveSlot?.stream;
+  }
+
+  /**
+   * @internal
+   * @returns {ReceiveSlot}
+   */
+  public getUnderlyingReceiveSlot() {
+    return this.receiveSlot;
+  }
+}

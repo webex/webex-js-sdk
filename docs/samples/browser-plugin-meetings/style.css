@@ -1,3 +1,7 @@
+:root {
+  --video-grid-max-width: 100%;
+}
+
 body {
   max-width: 100%;
   margin: 1rem;
@@ -40,6 +44,7 @@ button.btn-code {
   width: 100%;
   flex-direction: row;
   justify-content: space-between;
+  margin-bottom: 1rem;
 }
 
 .column {
@@ -59,6 +64,10 @@ button.btn-code {
 
 .section-box h2 {
   margin: 1rem 0rem;
+}
+
+.section-wide {
+  width: 100%;
 }
 
 .collapsible {
@@ -100,6 +109,112 @@ button.btn-code {
 #events-list {
   max-height: 200px;
   overflow: auto;
+}
+
+.multistream-videos-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.multistream-videos-container video {
+  border-radius: 0.5rem;
+}
+
+.video-grid-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+}
+
+.video-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin: 0.4rem;
+}
+
+.multistream-remote-video {
+  z-index: 0;
+}
+.video-label {
+  z-index: 2;
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  width: 100%;
+  text-align: center;
+  color: black;
+  background-color: rgba(255,255,255,0.5);
+}
+
+.video-overlay {
+  z-index: 1;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  align-content: center;
+  border-radius: 0.5rem;
+  background-color: lightgray;
+}
+
+.video-overlay-text {
+  color: black;
+  width: 100%;
+  text-align: center;
+}
+
+.speaking {
+  background-color: rgba(94, 217, 248, 0.5);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.grid-video {
+  max-width: var(--video-grid-max-width);
+}
+
+.big-video {
+  max-width: 100%;
+}
+
+.small-video {
+  max-width: 18%;
+}
+
+.multistream-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.multistream-buttons select {
+  /* margin: 0 0.5rem; */
+}
+
+.stage {
+  min-height: 30rem;
+}
+
+.stageThumbnails {
+  min-height: 7rem;
+}
+
+.stage-control-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.stage-control-wrapper span {
+  margin-right: 0.5rem;
 }
 
 /* Utilities */

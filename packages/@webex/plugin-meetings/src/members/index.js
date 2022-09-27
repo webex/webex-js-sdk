@@ -148,6 +148,18 @@ export default class Members extends StatelessWebexPlugin {
      * @memberof Members
     */
     this.recordingId = null;
+
+    /**
+     * reference to a ReceiveSlotManager instance (for multistream)
+     * @private
+     */
+    this.receiveSlotManager = attrs.receiveSlotManager;
+
+    /**
+     * reference to a MediaRequestManager instance that manages main video requests (for multistream)
+     * @private
+     */
+    this.mediaRequestManagers = attrs.mediaRequestManagers;
   }
 
   /**
@@ -832,5 +844,41 @@ export default class Members extends StatelessWebexPlugin {
     }
 
     return Promise.reject(new Error('Members:index#sendDialPadKey --> cannot send DTMF, meeting does not have a connection to the "locus" call control service.'));
+  }
+
+  /** Finds a member that has any device with a csi matching provided value
+   *
+   * @param {number} csi
+   * @returns {Member}
+   */
+  findMemberByCsi(csi) {
+    return Object.values(this.membersCollection.getAll())
+      .find((member) => (
+        member.participant?.devices?.find((device) => (
+          device.csis?.find((memberCsi) => memberCsi === csi)))));
+  }
+
+  /**
+   * Returns an array of a member's CSIs matching the mediaType and mediaContent
+   *
+   * @param {string} memberId
+   * @param {string} mediaType 'audio' or 'video'
+   * @param {string} mediaContent 'main' or 'slides'
+   * @returns {Member}
+   */
+  getCsisForMember(memberId, mediaType = 'video', mediaContent = 'main') {
+    const csis = [];
+
+    this.membersCollection.get(memberId)?.participant?.devices?.forEach((device) => {
+      if (device.mediaSessions) {
+        const deviceCsis = device.mediaSessions
+          ?.filter((mediaSession) => mediaSession.mediaType === mediaType && mediaSession.mediaContent === mediaContent)
+          .map((mediaSession) => mediaSession.csi);
+
+        csis.push(...deviceCsis);
+      }
+    });
+
+    return csis;
   }
 }
