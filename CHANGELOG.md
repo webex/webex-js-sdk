@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.23.0](https://github.com/webex/webex-js-sdk/compare/v2.22.0...v2.23.0) (2022-09-27)
+
+
+### Features
+
+* add voicea-plugin ([d12f9d7](https://github.com/webex/webex-js-sdk/commit/d12f9d71409769bc6f35be9d1560090638bcf386))
+
 ## [2.22.0](https://github.com/webex/webex-js-sdk/compare/v2.21.1...v2.22.0) (2022-09-23)
 
 
