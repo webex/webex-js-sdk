@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.19.2](https://github.com/webex/webex-js-sdk/compare/v2.19.1...v2.19.2) (2022-09-12)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** removal of old stats code ([e73859e](https://github.com/webex/webex-js-sdk/commit/e73859eab29927a74c6cc49e9969b8aa876d6c9b))
+
 ### [2.19.1](https://github.com/webex/webex-js-sdk/compare/v2.19.0...v2.19.1) (2022-09-07)
 
 
