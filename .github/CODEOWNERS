@@ -5,18 +5,18 @@
 
 # Web Client Team Ownership
 
-packages/node_modules/@webex/webex-core                                @webex/web-client
-packages/node_modules/@webex/common                                    @webex/web-client
-packages/node_modules/@webex/helper-html                               @webex/web-client
-packages/node_modules/@webex/helper-image                              @webex/web-client
-packages/node_modules/@webex/http-core                                 @webex/web-client
-packages/node_modules/@webex/internal-plugin-*                         @webex/web-client
-packages/node_modules/@webex/plugin-authorization-browser-first-party  @webex/web-client
-packages/node_modules/@webex/plugin-device-manager                     @webex/web-client
-packages/node_modules/@webex/plugin-logger                             @webex/web-client
-packages/node_modules/@webex/plugin-meetings                           @webex/web-client
-packages/node_modules/@webex/recipe-private-web-client                 @webex/web-client
-packages/node_modules/@webex/storage-adapter-local-forage              @webex/web-client
-packages/node_modules/@webex/storage-adapter-local-storage             @webex/web-client
-packages/node_modules/@webex/storage-adapter-session-storage           @webex/web-client
-packages/node_modules/@webex/storage-adapter-spec                      @webex/web-client
+packages/@webex/webex-core                                @webex/web-client
+packages/@webex/common                                    @webex/web-client
+packages/@webex/helper-html                               @webex/web-client
+packages/@webex/helper-image                              @webex/web-client
+packages/@webex/http-core                                 @webex/web-client
+packages/@webex/internal-plugin-*                         @webex/web-client
+packages/@webex/plugin-authorization-browser-first-party  @webex/web-client
+packages/@webex/plugin-device-manager                     @webex/web-client
+packages/@webex/plugin-logger                             @webex/web-client
+packages/@webex/plugin-meetings                           @webex/web-client
+packages/@webex/recipe-private-web-client                 @webex/web-client
+packages/@webex/storage-adapter-local-forage              @webex/web-client
+packages/@webex/storage-adapter-local-storage             @webex/web-client
+packages/@webex/storage-adapter-session-storage           @webex/web-client
+packages/@webex/storage-adapter-spec                      @webex/web-client

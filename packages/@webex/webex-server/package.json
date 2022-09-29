@@ -10,7 +10,7 @@
   "main": "dist/index.js",
   "devMain": "src/index.js",
   "bin": "./bin/webex-server",
-  "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/@webex/webex-server",
+  "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/webex-server",
   "engines": {
     "node": ">=8"
   },

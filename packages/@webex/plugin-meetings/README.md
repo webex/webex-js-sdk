@@ -536,7 +536,7 @@ You can also directly access the following media properties that are not on a me
 this.media.getUserMedia(mediaSetting, audioVideo, sharePreferences, config)
 ```
 
-See the [Media](https://github.com/webex/webex-js-sdk/blob/master/packages/node_modules/%40webex/plugin-meetings/src/media/index.js) util file for method signatures.
+See the [Media](https://github.com/webex/webex-js-sdk/blob/master/packages/%40webex/plugin-meetings/src/media/index.js) util file for method signatures.
 
 ##### Leave a Meeting
 To leave a meeting, simply call leave
@@ -604,7 +604,7 @@ webex.meetings.personalMeetingRoom.get().then((pmr) => {
 ```
 
 #### Usage of Webex Devices
-For details on how to use the devices see https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/%40webex/plugin-device-manager
+For details on how to use the devices see https://github.com/webex/webex-js-sdk/tree/master/packages/%40webex/plugin-device-manager
 
 ##### Leave a Meeting Using a Device
 ```js
@@ -685,7 +685,7 @@ meeting.reconnect();
 ```
 
 #### Scheduled Meetings
-For scheduled meetings see https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/%40webex/internal-plugin-calendar
+For scheduled meetings see https://github.com/webex/webex-js-sdk/tree/master/packages/%40webex/internal-plugin-calendar
 
 
 #### Member

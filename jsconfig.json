@@ -3,11 +3,11 @@
     "experimentalDecorators": true
   },
   "include": [
-    "packages/node_modules/**/*",
+    "packages/**/*",
     "node_modules/@wdio/mocha-framework"
   ],
   "exclude": [
-    "packages/node_modules/**/dist/*",
+    "packages/**/dist/*",
     "node_modules/**/*",
     "dist"
   ]

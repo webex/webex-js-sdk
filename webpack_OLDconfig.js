@@ -6,7 +6,7 @@ const glob = require('glob');
 const {BannerPlugin, DefinePlugin, EnvironmentPlugin} = require('webpack');
 const TerserPlugin = require('terser-webpack-plugin');
 
-const {version} = require('./packages/node_modules/webex/package.json');
+const {version} = require('./packages/webex/package.json');
 
 dotenv.config();
 dotenv.config({path: '.env.default'});
@@ -20,8 +20,8 @@ dotenv.config({path: '.env.default'});
  */
 module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
   entry: env && env.NODE_ENV === 'development' ?
-    `${path.resolve(__dirname)}/packages/node_modules/webex/src/index.js` :
-    './packages/node_modules/webex',
+    `${path.resolve(__dirname)}/packages/webex/src/index.js` :
+    './packages/webex',
   mode: env && env.NODE_ENV === 'development' ? 'development' : 'production',
   output: {
     filename: 'webex.min.js',
@@ -29,7 +29,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     libraryTarget: 'umd',
     sourceMapFilename: '[file].map',
     path: env && env.umd ?
-      `${path.resolve(__dirname)}/packages/node_modules/webex/umd` :
+      `${path.resolve(__dirname)}/packages/webex/umd` :
       `${path.resolve(__dirname)}/docs/samples`
   },
   devtool:
@@ -49,19 +49,19 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     },
     extensions: ['.ts', '.js', '.json'],
     alias: glob
-      .sync('**/package.json', {cwd: './packages/node_modules'})
+      .sync('**/package.json', {cwd: './packages/'})
       .map((p) => path.dirname(p))
       .reduce((alias, packageName) => {
         // Always use src as the entry point for local files so that we have the
         // best opportunity for treeshaking; also makes developing easier since
         // we don't need to manually rebuild after changing code.
-        alias[`./packages/node_modules/${packageName}`] = path.resolve(
+        alias[`./packages/${packageName}`] = path.resolve(
           __dirname,
-          `./packages/node_modules/${packageName}/src/index.js`
+          `./packages/${packageName}/src/index.js`
         );
         alias[`${packageName}`] = path.resolve(
           __dirname,
-          `./packages/node_modules/${packageName}/src/index.js`
+          `./packages/${packageName}/src/index.js`
         );
 
         return alias;

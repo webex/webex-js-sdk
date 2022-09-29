@@ -289,14 +289,14 @@ module.exports = function (packageName, argv) {
       // Check if the package generated a browsers package dynamically. This is
       // necessary when the package needs to e.g. use FirefoxProfile to manipulate
       // the browser environment
-      browsers = require('./packages/node_modules/' + packageName + '/browsers.processed.js')(browsers);
+      browsers = require('./packages/' + packageName + '/browsers.processed.js')(browsers);
     }
     catch (error) {
       if (error.code !== `MODULE_NOT_FOUND`) {
         throw error;
       }
       try {
-        browsers = require('./packages/node_modules/' + packageName + '/browsers.js')(browsers);
+        browsers = require('./packages/' + packageName + '/browsers.js')(browsers);
       }
       catch (error2) {
         if (error2.code !== `MODULE_NOT_FOUND`) {
@@ -327,7 +327,7 @@ module.exports = function (packageName, argv) {
 
   if (!argv.browsers) {
     try {
-      browsers = require(`./packages/node_modules/${packageName}/browsers.js`)(browsers);
+      browsers = require(`./packages/${packageName}/browsers.js`)(browsers);
     }
     catch (err) {
       if (err.code !== `MODULE_NOT_FOUND`) {

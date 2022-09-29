@@ -30,7 +30,7 @@ function makeConfig(packageName, argv) {
     argv.os.map((os) => (os.includes(',') ? os.toLowerCase().split(',') : os.toLowerCase()))
   );
 
-  const pkg = require(`./packages/node_modules/${packageName}/package`);
+  const pkg = require(`./packages/${packageName}/package`);
   /* eslint complexity: [0] */
   const launchers = makeBrowsers(packageName, argv);
   const integrationTestPath = path.join('packages', 'node_modules', packageName, 'test', 'integration', 'spec', '**', '*.js');
@@ -193,7 +193,7 @@ function makeConfig(packageName, argv) {
   }
 
   try {
-    cfg = require(`./packages/node_modules/${packageName}/karma.conf.js`)(cfg);
+    cfg = require(`./packages/${packageName}/karma.conf.js`)(cfg);
   }
   catch (error) {
     // ignore

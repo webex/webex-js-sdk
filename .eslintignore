@@ -1,6 +1,6 @@
-packages/node_modules/generator-ciscospark/generators/plugin/templates/src/__plugin__.js
-packages/node_modules/generator-ciscospark/generators/plugin/templates/src/_config.js
-packages/node_modules/generator-ciscospark/generators/plugin/templates/src/_index.js
+packages/generator-ciscospark/generators/plugin/templates/src/__plugin__.js
+packages/generator-ciscospark/generators/plugin/templates/src/_config.js
+packages/generator-ciscospark/generators/plugin/templates/src/_index.js
 
 # The follwowing is copied from .gitignore
 .DS_Store

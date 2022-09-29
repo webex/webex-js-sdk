@@ -105,7 +105,7 @@ ${samples.map((s) => `<li><a href="${s}">${capitalize(humanize(s))}</a></li>`).j
 exports.buildUMDScript = async function buildUMDScript() {
   let data = '';
 
-  await rimraf('packages/node_modules/webex/umd/webex*');
+  await rimraf('packages/webex/umd/webex*');
 
   // reminder: samples:build calls this script, not webpack
   // hence we must call webpack here

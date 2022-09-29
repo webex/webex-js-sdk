@@ -129,7 +129,7 @@ exports.listVersions = async function listVersions(packageName, options) {
     if (!acc[dep]) {
       try {
         // eslint-disable-next-line global-require
-        acc[dep] = require(path.resolve(process.cwd(), `./packages/node_modules/${dep}/package.json`)).version;
+        acc[dep] = require(path.resolve(process.cwd(), `./packages/${dep}/package.json`)).version;
       }
       catch (err) {
         // eslint-disable-next-line no-console
