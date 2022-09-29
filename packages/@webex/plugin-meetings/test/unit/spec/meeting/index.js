@@ -2157,11 +2157,18 @@ describe('plugin-meetings', () => {
       describe('#setLocalVideoQuality', () => {
         let mediaDirection;
 
+        const fakeTrack = {getSettings: () => ({height: 720})};
+        const USER_AGENT_CHROME_MAC =
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ' +
+        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.85 Safari/537.36';
+
         beforeEach(() => {
           mediaDirection = {sendAudio: true, sendVideo: true, sendShare: false};
           meeting.getMediaStreams = sinon.stub().returns(Promise.resolve([]));
-          meeting.updateVideo = sinon.stub().returns(Promise.resolve());
           meeting.mediaProperties.mediaDirection = mediaDirection;
+          meeting.canUpdateMedia = sinon.stub().returns(true);
+          MeetingUtil.validateOptions = sinon.stub().returns(Promise.resolve());
+          MeetingUtil.updateTransceiver = sinon.stub().returns(Promise.resolve());
         });
 
         it('should have #setLocalVideoQuality', () => {
@@ -2169,14 +2176,34 @@ describe('plugin-meetings', () => {
         });
 
         it('should call getMediaStreams with the proper level', () => meeting.setLocalVideoQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
+          delete mediaDirection.receiveVideo;
           assert.calledWith(meeting.getMediaStreams,
             mediaDirection,
             CONSTANTS.VIDEO_RESOLUTIONS[CONSTANTS.QUALITY_LEVELS.LOW]);
         }));
 
+        it('when browser is chrome then it should stop previous video track', () => {
+          meeting.mediaProperties.videoTrack = fakeTrack;
+          assert.equal(
+            BrowserDetection(USER_AGENT_CHROME_MAC).getBrowserName(),
+            'Chrome'
+          );
+          meeting.setLocalVideoQuality(CONSTANTS.QUALITY_LEVELS.LOW)
+            .then(() => {
+              assert.calledWith(Media.stopTracks, fakeTrack);
+            });
+        });
+
         it('should set mediaProperty with the proper level', () => meeting.setLocalVideoQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
           assert.equal(meeting.mediaProperties.localQualityLevel, CONSTANTS.QUALITY_LEVELS.LOW);
         }));
+
+        it('when device does not support 1080p then it should set localQualityLevel with highest possible resolution', () => {
+          meeting.setLocalVideoQuality(CONSTANTS.QUALITY_LEVELS['1080p'])
+            .then(() => {
+              assert.equal(meeting.mediaProperties.localQualityLevel, CONSTANTS.QUALITY_LEVELS['720p']);
+            });
+        });
 
         it('should error if set to a invalid level', () => {
           assert.isRejected(meeting.setLocalVideoQuality('invalid'));
