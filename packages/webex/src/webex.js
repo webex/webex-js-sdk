@@ -11,23 +11,23 @@
 // require('@webex/plugin-authorization');
 // explicitly load wdm, since we're relying on preDiscoveryServices and the
 // url interceptor
-// require('@webex/internal-plugin-calendar');
-// require('@webex/internal-plugin-device');
-// require('@webex/internal-plugin-presence');
+require('@webex/internal-plugin-calendar');
+require('@webex/internal-plugin-device');
+require('@webex/internal-plugin-presence');
 require('@webex/internal-plugin-support');
-// require('@webex/plugin-attachment-actions');
-// require('@webex/plugin-device-manager');
-// require('@webex/plugin-logger');
+require('@webex/plugin-attachment-actions');
+require('@webex/plugin-device-manager');
+require('@webex/plugin-logger');
 import config from './config';
 
 require('@webex/plugin-meetings');
-// require('@webex/plugin-messages');
-// require('@webex/plugin-memberships');
-// require('@webex/plugin-people');
-// require('@webex/plugin-rooms');
-// require('@webex/plugin-teams');
-// require('@webex/plugin-team-memberships');
-// require('@webex/plugin-webhooks');
+require('@webex/plugin-messages');
+require('@webex/plugin-memberships');
+require('@webex/plugin-people');
+require('@webex/plugin-rooms');
+require('@webex/plugin-teams');
+require('@webex/plugin-team-memberships');
+require('@webex/plugin-webhooks');
 
 const WebexCore = require('@webex/webex-core').default;
 

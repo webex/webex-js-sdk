@@ -23,12 +23,12 @@
     "url": "https://github.com/webex/webex-js-sdk"
   },
   "scripts": {
-    "clean": "rimraf packages/node_modules/**/.coverage packages/node_modules/**/dist",
+    "clean": "rimraf packages/**/.coverage packages/**/dist ./samples/bundle.js",
     "bootstrap": "echo 'npm run bootstrap is no longer required. Hooray!'",
     "prebuild": "npm run clean",
-    "build": "node ./esbuild.config.js",
-    "build:cdn": "rimraf ./samples/bundle.js &&  node ./esbuild.cdn.mjs -w",
-    "samples": "esbuild ./packages/webex/src/webex.js --servedir=samples  --outdir=samples --bundle",
+    "transpile": "tsc --project ./tsconfig.dev.json",
+    "build": "node ./esbuild.node.js",
+    "build:cdn": "node ./esbuild.cdn.mjs -w",
     "build:script": "node ./tooling/index.js build --umd",
     "build:dev": "NODE_ENV=development node ./tooling/index.js build",
     "prebuild:docs": "rimraf ./docs/api",
@@ -114,7 +114,6 @@
     "fs-extra": "^10.1.0",
     "glob": "^7.1.4",
     "global": "^4.4.0",
-    "gm": "^1.25.0",
     "highlight.js": "^11.0.1",
     "https": "^1.0.0",
     "humanize-string": "^1.0.2",
@@ -158,11 +157,8 @@
     "safe-buffer": "^5.2.0",
     "sdp-transform": "^2.12.0",
     "serve-handler": "^6.1.3",
-<<<<<<< HEAD
-    "stream-browserify": "^3.0.0",
-=======
     "stream": "^0.0.2",
->>>>>>> cd23d2618 (fix: local server running with the min file)
+    "stream-browserify": "^3.0.0",
     "supertest": "^3.4.2",
     "time-grunt": "^1.4.0",
     "tiny-glob": "^0.2.9",
@@ -265,7 +261,7 @@
     "sinon": "^9.2.4",
     "standard-version": "^9.1.1",
     "terser-webpack-plugin": "^4.2.3",
-    "typescript": "^4.7.4",
+    "typescript": "^4.8.4",
     "wd": "^1.14.0",
     "wdio-chromedriver-service": "^7.3.2",
     "wdio-geckodriver-service": "^2.1.1",
