@@ -2,11 +2,10 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-
 import UrlSafeBase64 from 'urlsafe-base64';
+import {Buffer} from 'safe-buffer';
 
 import isBuffer from './isBuffer';
-
 
 /**
  * Converts a string from a base64url-encoded string

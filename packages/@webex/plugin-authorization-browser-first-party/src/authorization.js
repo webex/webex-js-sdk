@@ -106,13 +106,14 @@ const Authorization = WebexPlugin.extend({
     this._cleanUrl(location);
 
     // Wait until nextTick in case `credentials` hasn't initialized yet
-   this.webex.internal.services.collectPreauthCatalog({emailhash})
+    process.nextTick(() => {
+      this.webex.internal.services.collectPreauthCatalog({emailhash})
         .catch(() => Promise.resolve())
         .then(() => this.requestAuthorizationCodeGrant({code, codeVerifier}))
         .then(() => {
           this.ready = true;
         });
-
+    });
 
 
     return ret;

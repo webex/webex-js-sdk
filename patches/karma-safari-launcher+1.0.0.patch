@@ -3,7 +3,7 @@ index d7337bc..77efd34 100644
 --- a/node_modules/karma-safari-launcher/index.js
 +++ b/node_modules/karma-safari-launcher/index.js
 @@ -1,8 +1,121 @@
--var fs = require(`fs-extra`);
+-var fs = require('fs');
 -var path = require('path');
 +var wd = require('wd');
 +var url = require('url');

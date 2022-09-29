@@ -5,7 +5,7 @@
 
 const bodyParser = require(`body-parser`);
 const express = require(`express`);
-const fs = require(`fs-extra`);
+const fs = require(`fs`);
 const mkdirp = require(`mkdirp`);
 const multer = require(`multer`);
 const path = require(`path`);

@@ -1,6 +1,6 @@
 import {isString} from 'lodash';
 
-import ParameterError from '../common/errors/parameter';
+import ParameterError from './errors/parameter';
 
 /**
  * @class Collection

@@ -12,7 +12,7 @@ const browserify = require(`browserify-middleware`);
 const compression = require(`compression`);
 const cors = require(`cors`);
 const express = require(`express`);
-const fs = require(`fs-extra`);
+const fs = require(`fs`);
 const glob = require(`glob`);
 const http = require(`http`);
 const morgan = require(`morgan`);
@@ -66,11 +66,11 @@ app.use((req, res, next) => {
 // Configure Browserify
 // --------------------
 
-const appPattern = `packages/{*,*/*}/test/automation/fixtures/app.js`;
+const appPattern = `packages/node_modules/{*,*/*}/test/automation/fixtures/app.js`;
 
 glob.sync(appPattern).forEach((appjs) => {
   const packageName = appjs
-    .replace(`packages/`, ``)
+    .replace(`packages/node_modules/`, ``)
     .replace(`/test/automation/fixtures/app.js`, ``);
 
   // eslint-disable-next-line no-sync
@@ -146,12 +146,12 @@ app.get(`/embargoed`, (req, res) => {
 // Enable static routes
 // --------------------
 
-const fixturePattern = `packages/{*,*/*}/test/automation/fixtures`;
+const fixturePattern = `packages/node_modules/{*,*/*}/test/automation/fixtures`;
 
 
 glob.sync(fixturePattern).forEach((fixturePath) => {
   const packageName = fixturePath
-    .replace(`packages/`, ``)
+    .replace(`packages/node_modules/`, ``)
     .replace(`/test/automation/fixtures`, ``);
 
   app.get(`/${packageName}`, (req, res, next) => {

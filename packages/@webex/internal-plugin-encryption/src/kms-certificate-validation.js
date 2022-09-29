@@ -1,6 +1,5 @@
 import {parse as parseUrl} from 'url';
 
-
 import {isUri} from 'valid-url';
 import {fromBER} from 'asn1js';
 import {
@@ -13,7 +12,7 @@ import {
 import {isArray} from 'lodash';
 import jose from 'node-jose';
 import crypto from 'isomorphic-webcrypto';
-
+import {Buffer} from 'safe-buffer';
 
 setEngine(
   'newEngine',

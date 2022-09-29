@@ -5,7 +5,7 @@
 import querystring from 'querystring';
 import url from 'url';
 
-import jwt_decode from "jwt-decode";
+import jwt from 'jsonwebtoken';
 import {
   base64,
   makeStateDataType,
@@ -174,7 +174,7 @@ const Credentials = WebexPlugin.extend({
    */
   extractOrgIdFromJWT(token = '') {
     // Decoded the provided token.
-    const decodedJWT = jwt_decode(token);
+    const decodedJWT = jwt.decode(token);
 
     // Validate that the provided token is a JWT.
     if (!decodedJWT) {

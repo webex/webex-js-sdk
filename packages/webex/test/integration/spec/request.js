@@ -7,7 +7,7 @@ import testUsers from '@webex/test-helper-test-users';
 import sinon from 'sinon';
 import Webex from 'webex';
 
-import pkg from '../../../package';
+import pkg from '@webex/webex/package';
 
 describe('webex', function () {
   this.timeout(60000);

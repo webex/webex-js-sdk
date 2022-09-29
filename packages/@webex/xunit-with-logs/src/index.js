@@ -12,8 +12,8 @@
  */
 
 const util = require('util');
+const fs = require('fs');
 
-const fs = require('fs-extra');
 const Base = require('mocha/lib/reporters/base');
 const utils = require('mocha/lib/utils');
 

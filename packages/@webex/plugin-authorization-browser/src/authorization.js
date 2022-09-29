@@ -104,10 +104,10 @@ const Authorization = WebexPlugin.extend({
     this._cleanUrl(location);
 
     // Wait until nextTick in case `credentials` hasn't initialized yet
-
+    process.nextTick(() => {
       this.webex.credentials.set({supertoken: tokenData});
       this.ready = true;
-
+    });
 
     return ret;
   },
