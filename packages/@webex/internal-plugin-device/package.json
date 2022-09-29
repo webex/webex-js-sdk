@@ -6,7 +6,7 @@
   "author": "Timothy Scheuering <timsch@cisco.com>",
   "main": "dist/index.js",
   "devMain": "src/index.js",
-  "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/internal-plugin-device",
+  "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/@webex/internal-plugin-device",
   "engines": {
     "node": ">=8"
   },

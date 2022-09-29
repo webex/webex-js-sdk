@@ -33,8 +33,8 @@ function makeConfig(packageName, argv) {
   const pkg = require(`./packages/${packageName}/package`);
   /* eslint complexity: [0] */
   const launchers = makeBrowsers(packageName, argv);
-  const integrationTestPath = path.join('packages', 'node_modules', packageName, 'test', 'integration', 'spec', '**', '*.js');
-  const unitTestPath = path.join('packages', 'node_modules', packageName, 'test', 'unit', 'spec', '**', '*.js');
+  const integrationTestPath = path.join('packages', packageName, 'test', 'integration', 'spec', '**', '*.js');
+  const unitTestPath = path.join('packages',packageName, 'test', 'unit', 'spec', '**', '*.js');
 
   const preprocessors = {
     'packages/**': ['browserify'],

@@ -5,7 +5,7 @@
   "include": [
     "packages/**/*",
     "node_modules/@wdio/mocha-framework"
-, "packages/node_modules/@webex"  ],
+, "packages/@webex"  ],
   "exclude": [
     "packages/**/dist/*",
     "node_modules/**/*",

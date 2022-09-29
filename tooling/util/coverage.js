@@ -19,7 +19,7 @@ const makeCoverageVariable = (packageName) =>
 
 
 async function deinstrument(packageName) {
-  await rimraf(path.join('packages/node_modules', packageName, '.coverage'));
+  await rimraf(path.join('packages', packageName, '.coverage'));
 }
 
 async function collect(packageName) {

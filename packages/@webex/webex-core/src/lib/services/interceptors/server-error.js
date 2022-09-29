@@ -3,8 +3,7 @@
  */
 
 import {Interceptor} from '@webex/http-core';
-
-import WebexHttpError from '../../../lib/webex-http-error';
+import {WebexHttpError} from '@webex/webex-core';
 /**
  * Changes server url when it fails
  */

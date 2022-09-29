@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {SDK_EVENT} from './constants';
+import {SDK_EVENT} from '@webex/common';
 
 /**
  * Creates a 'webhook' envelope to wrap Webex events in

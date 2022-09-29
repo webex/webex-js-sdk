@@ -13,7 +13,7 @@
   ],
   "main": "dist/index.js",
   "devMain": "src/index.js",
-  "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/plugin-meetings",
+  "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/@webex/plugin-meetings",
   "engines": {
     "node": ">=8"
   },
@@ -22,15 +22,5 @@
       "babelify",
       "envify"
     ]
-  },
-  "scripts": {
-    "build": "tsc"
-  },
-  "dependencies": {
-    "@webex/common": "workspace:^",
-    "@webex/common-timers": "workspace:^",
-    "@webex/internal-plugin-conversation": "workspace:^",
-    "@webex/internal-plugin-mercury": "workspace:^",
-    "@webex/webex-core": "workspace:^"
   }
 }

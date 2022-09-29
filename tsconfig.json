@@ -1,49 +1,27 @@
 {
-  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "outDir": "dist/transpiled/",
-    "declarationDir": "dist/types",
+    "emitDeclarationOnly": true,
+  // Ensure that Babel can safely transpile files in the TypeScript project
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "alwaysStrict": true,
+    "declaration": true,
     "esModuleInterop": true,
+    "isolatedModules": true,
+    "module": "commonjs",
     "moduleResolution": "node",
-    "paths": {
-      "@webex/*" :["./packages/@webex/*"],
-      "@webex/common" :["./packages/@webex/common/src/index.js"],
-      "@webex/webex-core" :["./packages/@webex/webex-core/src/index.js"],
-      "@webex/http-core" :["./packages/@webex/http-core/src/index.js"],
-      "@webex/common-timers" :["./packages/@webex/common-timers/src/index.js"],
-      "@webex/helper-image" :["./packages/@webex/helper-image/src/index.js"],
-      "@webex/helper-html" :["./packages/@webex/helper-html/src/index.js"],
-      "@webex/plugin-meetings" :["./packages/@webex/plugin-meetings/src/index.js"],
-      "@webex/storage-adapter-local-storage" : ["./packages/@webex/storage-adapter-local-storage/src/index.js"],
-      "@webex/plugin-logger" :["./packages/@webex/plugin-logger/src/index.js"],
-      "@webex/plugin-attachment-actions" :["./packages/@webex/plugin-attachment-actions/src/index.js"],
-      "@webex/internal-plugin-support" :["./packages/@webex/internal-plugin-support/src/index.js"],
-      "@webex/plugin-messages" :["./packages/@webex/plugin-messages/src/index.js"],
-      "@webex/plugin-memberships" :["./packages/@webex/plugin-memberships/src/index.js"],
-      "@webex/plugin-people" :["./packages/@webex/plugin-people/src/index.js"],
-      "@webex/plugin-rooms" :["./packages/@webex/plugin-rooms/src/index.js"],
-      "@webex/plugin-teams" :["./packages/@webex/plugin-teams/src/index.js"],
-      "@webex/plugin-team-memberships" :["./packages/@webex/plugin-team-memberships/src/index.js"],
-      "@webex/plugin-webhooks" :["./packages/@webex/plugin-webhooks/src/index.js"],
-      "@webex/plugin-device-manager" :["./packages/@webex/plugin-device-manager/src/index.js"],
-      "@webex/internal-plugin-conversation" :["./packages/@webex/internal-plugin-conversation/src/index.js"],
-      "@webex/internal-plugin-mercury" :["./packages/@webex/internal-plugin-mercury/src/index.js"],
-      "@webex/internal-plugin-encryption" :["./packages/@webex/internal-plugin-encryption/src/index.js"],
-      "@webex/internal-plugin-user" :["./packages/@webex/internal-plugin-user/src/index.js"],
-      "@webex/internal-plugin-device" :["./packages/@webex/internal-plugin-device/src/index.js"],
-      "@webex/internal-plugin-feature" :["./packages/@webex/internal-plugin-feature/src/index.js"],
-      "@webex/internal-plugin-metrics" :["./packages/@webex/internal-plugin-metrics/src/index.js"],
-      "@webex/internal-plugin-calendar" :["./packages/@webex/internal-plugin-calendar/src/index.js"],
-      "@webex/internal-plugin-presence" :["./packages/@webex/internal-plugin-presence/src/index.js"],
-      "@webex/internal-plugin-lyra" :["./packages/@webex/internal-plugin-lyra/src/index.js"],
-      "@webex/internal-plugin-search" :["./packages/@webex/internal-plugin-search/src/index.js"],
-      "@webex/test-helper-appid" :["./packages/@webex/test-helper-appid/src/index.js"],
-      "@webex/test-helper-make-local-url": ["./packages/@webex/test-helper-make-local-url/src/index.js"],
-      "@webex/test-helper-sinon": ["./packages/@webex/test-helper-sinon/src/index.js"],
-    }
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "preserveConstEnums": true,
+    "removeComments": false,
+    "sourceMap": true,
+    "target": "ES6",
+    "lib": [
+      "ESNext",
+      "DOM"
+    ]
   },
-  "exclude": ["test", "docs/examples", "*test.ts"]
+  "include": [
+    "./packages/node_modules/**/*.*"
+  ]
 }

@@ -6,7 +6,7 @@
 
 
 /* eslint camelcase: [0] */
-function createBrowsers() {
+module.exports = function createBrowsers() {
   if (process.env.SC_TUNNEL_IDENTIFIER || process.env.SAUCE) {
     return {
       sl_chrome_latest_macOS_Catalina: {
@@ -109,7 +109,5 @@ function createBrowsers() {
       ]
     }
   };
-}
-
-export default createBrowsers;
+};
 

@@ -48,10 +48,5 @@
     ],
     "@babel/preset-typescript"
   ],
-  "ignore": [
-    "node_modules",
-    "**/*.d.ts",
-    "**/*.json"
-],
   "sourceMaps": true
 }

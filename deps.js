@@ -10,7 +10,7 @@
 // simpler if we don't have to deal with adding `../` to every file operation.
 
 // Reminder: because this script uses the package.jsons in
-// packages/node_modules, it should be used *after* new versions have been
+// packages, it should be used *after* new versions have been
 // determined by babel.
 
 // DO NOT COPY THIS FILE INTO THE react-ciscospark REPO.

@@ -38,7 +38,7 @@ exports.buildPackage = async function buildPackage(packageName) {
 
   debug('building files ', files);
   const mapped = files
-    .map((filename) => path.join('packages', 'node_modules', packageName, filename))
+    .map((filename) => path.join('packages', packageName, filename))
     .map((filename) => ({
       src: filename,
       dest: filename.replace('src', 'dist').replace('.ts', '.js')

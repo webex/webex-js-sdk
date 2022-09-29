@@ -98,7 +98,7 @@ jobs:
       - persist_to_workspace:
           root: ~/webex-js-sdk
           paths:
-            - packages/node_modules
+            - packages
 
   build_production:
     executor: main-executor
@@ -126,7 +126,7 @@ jobs:
       - persist_to_workspace:
           root: ~/webex-js-sdk
           paths:
-            - packages/node_modules
+            - packages
 
   static_analysis:
     executor: main-executor
