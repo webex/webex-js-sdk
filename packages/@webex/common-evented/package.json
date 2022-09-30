@@ -15,8 +15,13 @@
             "envify"
         ]
     },
-    "devDependencies": {},
     "dependencies": {
-       "@webex/common": "workspace^"
+        "@webex/common": "workspace:^"
+    },
+    "devDependencies": {
+        "@webex/common-evented": "workspace:^",
+        "@webex/test-helper-chai": "workspace:^",
+        "ampersand-events": "^2.0.2",
+        "sinon": "^9.2.4"
     }
 }

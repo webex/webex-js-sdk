@@ -20,18 +20,19 @@
         ]
     },
     "devDependencies": {
-        "sinon": "^9.2.4",
-        "@sinonjs/fake-timers": "^6.0.1"
+        "@sinonjs/fake-timers": "^6.0.1",
+        "@webex/common": "workspace:^",
+        "@webex/test-helper-chai": "workspace:^",
+        "ampersand-state": "^5.0.3",
+        "sinon": "^9.2.4"
     },
     "dependencies": {
-        "@webex/test-helper-chai": "workspace^",
-        "@webex/common": "workspace^",
-        "safe-buffer": "^5.2.0",
+        "backoff": "^2.5.0",
         "bowser": "^2.11.0",
-        "urlsafe-base64": "^1.0.0",
-        "lodash": "^4.17.21",
-        "global": "^4.4.0",
         "core-decorators": "^0.20.0",
-        "backoff": "^2.5.0"
+        "global": "^4.4.0",
+        "lodash": "^4.17.21",
+        "safe-buffer": "^5.2.0",
+        "urlsafe-base64": "^1.0.0"
     }
 }

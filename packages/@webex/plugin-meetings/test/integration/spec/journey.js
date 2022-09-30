@@ -1,4 +1,6 @@
 /* globals navigator */
+/* eslint prefer-arrow-callback: 0 */
+
 import {assert} from '@webex/test-helper-chai';
 import {skipInNode} from '@webex/test-helper-mocha';
 import sinon from 'sinon';

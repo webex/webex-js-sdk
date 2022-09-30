@@ -1,6 +1,7 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
+/* eslint import/no-dynamic-require: 0 */
 
 const debug = require('debug')('tooling:dependencies');
 const builtins = require('builtins')();

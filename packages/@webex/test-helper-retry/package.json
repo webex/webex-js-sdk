@@ -8,8 +8,7 @@
     "engines": {
         "node": ">=14"
     },
-    "devDependencies": {},
     "dependencies": {
-       "es6-promise": "^4.2.8"
+        "es6-promise": "^4.2.8"
     }
 }

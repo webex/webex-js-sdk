@@ -16,26 +16,26 @@
         ]
     },
     "dependencies": {
-       "@webex/test-helper-chai": "workspace^",
-       "@webex/test-helper-mock-webex": "workspace^",
-       "@webex/internal-plugin-conversation": "workspace^",
-       "crypto-js": "^4.1.1",
-       "@webex/common": "workspace^",
-       "@webex/webex-core": "workspace^",
-       "@webex/test-helper-test-users": "workspace^",
-       "lodash": "^4.17.21",
-       "uuid": "^3.3.2",
-       "@webex/test-helper-file": "workspace^",
-       "@webex/test-helper-make-local-url": "workspace^",
-       "@webex/test-helper-retry": "workspace^",
-       "@webex/test-helper-mocha": "workspace^",
-       "@webex/helper-image": "workspace^",
-       "@webex/internal-plugin-encryption": "workspace^",
-       "@webex/internal-plugin-user": "workspace^",
-       "@webex/helper-html": "workspace^",
-       "node-scr": "^0.3.0"
+        "@webex/common": "workspace:^",
+        "@webex/helper-html": "workspace:^",
+        "@webex/helper-image": "workspace:^",
+        "@webex/internal-plugin-conversation": "workspace:^",
+        "@webex/internal-plugin-encryption": "workspace:^",
+        "@webex/internal-plugin-user": "workspace:^",
+        "@webex/webex-core": "workspace:^",
+        "crypto-js": "^4.1.1",
+        "lodash": "^4.17.21",
+        "node-scr": "^0.3.0",
+        "uuid": "^9.0.0"
     },
     "devDependencies": {
-       "sinon": "^9.2.4"
+        "@webex/test-helper-chai": "workspace:^",
+        "@webex/test-helper-file": "workspace:^",
+        "@webex/test-helper-make-local-url": "workspace:^",
+        "@webex/test-helper-mocha": "workspace:^",
+        "@webex/test-helper-mock-webex": "workspace:^",
+        "@webex/test-helper-retry": "workspace:^",
+        "@webex/test-helper-test-users": "workspace:^",
+        "sinon": "^9.2.4"
     }
 }

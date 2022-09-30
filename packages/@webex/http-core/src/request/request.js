@@ -6,7 +6,7 @@ import request from 'request';
 import {Buffer} from 'safe-buffer';
 import {isBuffer} from '@webex/common';
 
-import {detect} from '../lib/detect';
+import detect from '../lib/detect';
 import ProgressEvent from '../progress-event';
 
 /**

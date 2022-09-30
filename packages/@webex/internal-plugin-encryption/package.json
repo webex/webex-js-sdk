@@ -1,50 +1,51 @@
 {
-    "name": "@webex/internal-plugin-encryption",
-    "version": "2.24.1",
-    "description": "",
-    "license": "MIT",
-    "main": "dist/index.js",
-    "devMain": "src/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/internal-plugin-encryption",
-    "engines": {
-        "node": ">=14"
-    },
-    "browser": {
-        "./dist/ensure-buffer.js": "./dist/ensure-buffer.browser.js",
-        "./src/ensure-buffer.js": "./src/ensure-buffer.browser.js"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
-    "devDependencies": {
-       "sinon": "^9.2.4"
-    },
-    "dependencies": {
-       "@webex/test-helper-chai": "workspace^",
-       "@webex/test-helper-mock-webex": "workspace^",
-       "@webex/internal-plugin-encryption": "workspace^",
-       "@webex/common": "workspace^",
-       "@webex/test-helper-file": "workspace^",
-       "@webex/webex-core": "workspace^",
-       "@webex/test-helper-test-users": "workspace^",
-       "@webex/test-helper-make-local-url": "workspace^",
-       "uuid": "^3.3.2",
-       "@webex/test-helper-mocha": "workspace^",
-       "debug": "^4.3.4",
-       "node-jose": "^2.0.0",
-       "node-scr": "^0.3.0",
-       "lodash": "^4.17.21",
-       "@webex/internal-plugin-device": "workspace^",
-       "@webex/internal-plugin-mercury": "workspace^",
-       "@webex/common-timers": "workspace^",
-       "valid-url": "^1.0.9",
-       "asn1js": "^2.0.26",
-       "pkijs": "^2.1.84",
-       "isomorphic-webcrypto": "^2.3.8",
-       "safe-buffer": "^5.2.0",
-       "@webex/http-core": "workspace^"
-    }
+  "name": "@webex/internal-plugin-encryption",
+  "version": "2.24.1",
+  "description": "",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/internal-plugin-encryption",
+  "engines": {
+    "node": ">=14"
+  },
+  "browser": {
+    "./dist/ensure-buffer.js": "./dist/ensure-buffer.browser.js",
+    "./src/ensure-buffer.js": "./src/ensure-buffer.browser.js"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "devDependencies": {
+    "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-make-local-url": "workspace:^",
+    "@webex/test-helper-mocha": "workspace:^",
+    "@webex/test-helper-mock-webex": "workspace:^",
+    "@webex/test-helper-test-users": "workspace:^",
+    "sinon": "^9.2.4"
+  },
+  "dependencies": {
+    "@webex/common": "workspace:^",
+    "@webex/common-timers": "workspace:^",
+    "@webex/http-core": "workspace:^",
+    "@webex/internal-plugin-device": "workspace:^",
+    "@webex/internal-plugin-encryption": "workspace:^",
+    "@webex/internal-plugin-mercury": "workspace:^",
+    "@webex/test-helper-file": "workspace:^",
+    "@webex/webex-core": "workspace:^",
+    "asn1js": "^2.0.26",
+    "debug": "^4.3.4",
+    "isomorphic-webcrypto": "^2.3.8",
+    "lodash": "^4.17.21",
+    "node-jose": "^2.0.0",
+    "node-kms": "^0.4.0",
+    "node-scr": "^0.3.0",
+    "pkijs": "^2.1.84",
+    "safe-buffer": "^5.2.0",
+    "uuid": "^9.0.0",
+    "valid-url": "^1.0.9"
+  }
 }

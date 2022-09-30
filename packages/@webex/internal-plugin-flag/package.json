@@ -16,15 +16,14 @@
             "envify"
         ]
     },
-    "devDependencies": {},
     "dependencies": {
-       "@webex/test-helper-chai": "workspace^",
-       "@webex/internal-plugin-flag": "workspace^",
-       "@webex/test-helper-mock-webex": "workspace^",
-       "@webex/webex-core": "workspace^",
-       "@webex/internal-plugin-conversation": "workspace^",
-       "lodash": "^4.17.21",
-       "@webex/test-helper-test-users": "workspace^",
-       "@webex/internal-plugin-device": "workspace^"
+        "@webex/internal-plugin-conversation": "workspace:^",
+        "@webex/internal-plugin-device": "workspace:^",
+        "@webex/internal-plugin-flag": "workspace:^",
+        "@webex/test-helper-chai": "workspace:^",
+        "@webex/test-helper-mock-webex": "workspace:^",
+        "@webex/test-helper-test-users": "workspace:^",
+        "@webex/webex-core": "workspace:^",
+        "lodash": "^4.17.21"
     }
 }

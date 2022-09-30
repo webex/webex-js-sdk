@@ -9,11 +9,11 @@
         "node": ">=14"
     },
     "devDependencies": {
-       "sinon": "^9.2.4"
+        "sinon": "^9.2.4"
     },
     "dependencies": {
-       "es6-promise": "^4.2.8",
-       "lodash": "^4.17.21",
-       "ampersand-state": "^5.0.3"
+        "ampersand-state": "^5.0.3",
+        "es6-promise": "^4.2.8",
+        "lodash": "^4.17.21"
     }
 }

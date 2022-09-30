@@ -16,10 +16,13 @@
             "envify"
         ]
     },
-    "devDependencies": {},
+    "devDependencies": {
+        "@webex/test-helper-mocha": "workspace:^"
+    },
     "dependencies": {
-       "@webex/storage-adapter-spec": "workspace^",
-       "@webex/test-helper-mocha": "workspace^",
-       "@webex/storage-adapter-local-forage": "workspace^"
+        "@webex/common": "workspace:^",
+        "@webex/storage-adapter-local-forage": "workspace:^",
+        "@webex/storage-adapter-spec": "workspace:^",
+        "@webex/webex-core": "workspace:^"
     }
 }

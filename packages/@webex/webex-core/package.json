@@ -26,28 +26,32 @@
         ]
     },
     "devDependencies": {
-       "sinon": "^9.2.4",
-       "chai": "^4.3.4",
-       "chai-as-promised": "^7.1.1",
-       "@sinonjs/fake-timers": "^6.0.1"
+        "@sinonjs/fake-timers": "^6.0.1",
+        "@webex/test-helper-chai": "workspace:^",
+        "@webex/test-helper-make-local-url": "workspace:^",
+        "@webex/test-helper-mocha": "workspace:^",
+        "@webex/test-helper-mock-webex": "workspace:^",
+        "@webex/test-helper-refresh-callback": "workspace:^",
+        "@webex/test-helper-test-users": "workspace:^",
+        "chai": "^4.3.4",
+        "chai-as-promised": "^7.1.1",
+        "sinon": "^9.2.4"
     },
     "dependencies": {
-       "@webex/webex-core": "workspace^",
-       "@webex/test-helper-chai": "workspace^",
-       "lodash": "^4.17.21",
-       "@webex/storage-adapter-spec": "workspace^",
-       "@webex/test-helper-mock-webex": "workspace^",
-       "@webex/test-helper-mocha": "workspace^",
-       "@webex/plugin-logger": "workspace^",
-       "@webex/common": "workspace^",
-       "@webex/test-helper-make-local-url": "workspace^",
-       "@webex/internal-plugin-device": "workspace^",
-       "@webex/test-helper-test-users": "workspace^",
-       "uuid": "^3.3.2",
-       "@webex/test-helper-refresh-callback": "workspace^",
-       "ampersand-state": "^5.0.3",
-       "@webex/http-core": "workspace^",
-       "crypto-js": "^4.1.1",
-       "ampersand-collection": "^2.0.2"
+        "@webex/common": "workspace:^",
+        "@webex/common-timers": "workspace:^",
+        "@webex/http-core": "workspace:^",
+        "@webex/internal-plugin-device": "workspace:^",
+        "@webex/plugin-logger": "workspace:^",
+        "@webex/storage-adapter-spec": "workspace:^",
+        "@webex/webex-core": "workspace:^",
+        "ampersand-collection": "^2.0.2",
+        "ampersand-events": "^2.0.2",
+        "ampersand-state": "^5.0.3",
+        "core-decorators": "^0.20.0",
+        "crypto-js": "^4.1.1",
+        "jsonwebtoken": "^8.5.1",
+        "lodash": "^4.17.21",
+        "uuid": "^9.0.0"
     }
 }

@@ -17,19 +17,20 @@
         ]
     },
     "devDependencies": {
-       "sinon": "^9.2.4"
+        "@webex/test-helper-chai": "workspace:^",
+        "@webex/test-helper-file": "workspace:^",
+        "@webex/test-helper-mock-webex": "workspace:^",
+        "@webex/test-helper-test-users": "workspace:^",
+        "sinon": "^9.2.4"
     },
     "dependencies": {
-       "@webex/test-helper-chai": "workspace^",
-       "@webex/internal-plugin-avatar": "workspace^",
-       "@webex/test-helper-mock-webex": "workspace^",
-       "@webex/webex-core": "workspace^",
-       "@webex/internal-plugin-user": "workspace^",
-       "@webex/test-helper-file": "workspace^",
-       "@webex/test-helper-test-users": "workspace^",
-       "lodash": "^4.17.21",
-       "@webex/common": "workspace^",
-       "@webex/common-timers": "workspace^",
-       "@webex/internal-plugin-device": "workspace^"
+        "@webex/common": "workspace:^",
+        "@webex/common-timers": "workspace:^",
+        "@webex/helper-image": "workspace:^",
+        "@webex/internal-plugin-avatar": "workspace:^",
+        "@webex/internal-plugin-device": "workspace:^",
+        "@webex/internal-plugin-user": "workspace:^",
+        "@webex/webex-core": "workspace:^",
+        "lodash": "^4.17.21"
     }
 }

@@ -8,22 +8,21 @@
     "engines": {
         "node": ">=14"
     },
-    "devDependencies": {},
     "dependencies": {
-       "cookie-parser": "^1.4.4",
-       "express": "^4.17.1",
-       "body-parser": "^1.19.0",
-       "mkdirp": "^0.5.1",
-       "multer": "^1.4.2",
-       "uuid": "^3.3.2",
-       "btoa": "^1.2.1",
-       "browserify-middleware": "^8.1.1",
-       "compression": "^1.7.4",
-       "cors": "^2.8.5",
-       "glob": "^7.1.4",
-       "morgan": "^1.9.1",
-       "request": "^2.88.0",
-       "urlsafe-base64": "^1.0.0",
-       "@webex/test-helper-appid": "workspace^"
+        "@webex/test-helper-appid": "workspace:^",
+        "body-parser": "^1.19.0",
+        "browserify-middleware": "^8.1.1",
+        "btoa": "^1.2.1",
+        "compression": "^1.7.4",
+        "cookie-parser": "^1.4.4",
+        "cors": "^2.8.5",
+        "express": "^4.17.1",
+        "glob": "^7.1.4",
+        "mkdirp": "^0.5.1",
+        "morgan": "^1.9.1",
+        "multer": "^1.4.2",
+        "request": "^2.88.0",
+        "urlsafe-base64": "^1.0.0",
+        "uuid": "^9.0.0"
     }
 }

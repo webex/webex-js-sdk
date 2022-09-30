@@ -8,7 +8,7 @@
 
 /* eslint camelcase: [0] */
 
-// require('@webex/plugin-authorization');
+require('@webex/plugin-authorization');
 // explicitly load wdm, since we're relying on preDiscoveryServices and the
 // url interceptor
 require('@webex/internal-plugin-calendar');
@@ -18,8 +18,6 @@ require('@webex/internal-plugin-support');
 require('@webex/plugin-attachment-actions');
 require('@webex/plugin-device-manager');
 require('@webex/plugin-logger');
-import config from './config';
-
 require('@webex/plugin-meetings');
 require('@webex/plugin-messages');
 require('@webex/plugin-memberships');
@@ -29,7 +27,10 @@ require('@webex/plugin-teams');
 require('@webex/plugin-team-memberships');
 require('@webex/plugin-webhooks');
 
+const merge = require('lodash/merge');
 const WebexCore = require('@webex/webex-core').default;
+
+const config = require('./config');
 
 // documentation.js puts hashes in relative urls, so need to specify full urls
 // here
@@ -71,9 +72,9 @@ const Webex = WebexCore.extend({
  * @returns {Webex}
  */
 Webex.init = function init(attrs = {}) {
-  attrs.config = Object.assign(config, attrs.config); // eslint-disable-line no-param-reassign
+  attrs.config = merge({}, config, attrs.config); // eslint-disable-line no-param-reassign
 
   return new Webex(attrs);
 };
 
-export default Webex;
+module.exports = Webex;

@@ -15,12 +15,11 @@
             "envify"
         ]
     },
-    "devDependencies": {},
     "dependencies": {
-       "@webex/test-helper-chai": "workspace^",
-       "@webex/internal-plugin-wdm": "workspace^",
-       "@webex/webex-core": "workspace^",
-       "@webex/test-helper-test-users": "workspace^",
-       "@webex/internal-plugin-device": "workspace^"
+        "@webex/internal-plugin-device": "workspace:^",
+        "@webex/internal-plugin-wdm": "workspace:^",
+        "@webex/test-helper-chai": "workspace:^",
+        "@webex/test-helper-test-users": "workspace:^",
+        "@webex/webex-core": "workspace:^"
     }
 }

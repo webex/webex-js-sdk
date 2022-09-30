@@ -16,10 +16,9 @@
             "envify"
         ]
     },
-    "devDependencies": {},
     "dependencies": {
-       "lodash": "^4.17.21",
-       "@webex/test-helper-retry": "workspace^",
-       "@webex/test-users": "workspace^"
+        "@webex/test-helper-retry": "workspace:^",
+        "@webex/test-users": "workspace:^",
+        "lodash": "^4.17.21"
     }
 }

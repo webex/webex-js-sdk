@@ -32,7 +32,7 @@ commands:
     steps:
       - run:
           name: "Install dependencies"
-          command: npm ci
+          command: yarn
       # Cache workaround to cache patch changes
       # https://github.com/ds300/patch-package#docker-and-ci
       - run:

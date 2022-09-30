@@ -1,4 +1,4 @@
-
+/* eslint prefer-arrow-callback: 0 */
 import {assert} from '@webex/test-helper-chai';
 import {skipInNode, jenkinsOnly} from '@webex/test-helper-mocha';
 import {patterns} from '@webex/common';

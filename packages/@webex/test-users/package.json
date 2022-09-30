@@ -16,16 +16,16 @@
         ]
     },
     "devDependencies": {
-       "chai": "^4.3.4",
-       "chai-as-promised": "^7.1.1"
+        "chai": "^4.3.4",
+        "chai-as-promised": "^7.1.1"
     },
     "dependencies": {
-       "uuid": "^3.3.2",
-       "@webex/test-users": "workspace^",
-       "@webex/http-core": "workspace^",
-       "@webex/test-helper-mocha": "workspace^",
-       "btoa": "^1.2.1",
-       "lodash": "^4.17.21",
-       "node-random-name": "^1.0.1"
+        "@webex/http-core": "workspace:^",
+        "@webex/test-helper-mocha": "workspace:^",
+        "@webex/test-users": "workspace:^",
+        "btoa": "^1.2.1",
+        "lodash": "^4.17.21",
+        "node-random-name": "^1.0.1",
+        "uuid": "^9.0.0"
     }
 }

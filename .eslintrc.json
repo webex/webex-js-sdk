@@ -15,6 +15,7 @@
     "/node_modules/*"
   ],
   "rules": {
+    "import/no-extraneous-dependencies": "error",
     "comma-dangle": [
       "error",
       "only-multiline"
@@ -176,6 +177,14 @@
       ],
       "rules": {
         "no-sync": 0
+      }
+    },
+    {
+      "files": [
+        "tooling/**"
+      ],
+      "rules": {
+        "no-await-in-loop": 0
       }
     }
   ]

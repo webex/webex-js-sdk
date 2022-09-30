@@ -12,12 +12,11 @@
         "./dist/file.js": "./dist/file.shim.js",
         "./src/file.js": "./src/file.shim.js"
     },
-    "devDependencies": {},
     "dependencies": {
-       "file-type": "^16.0.1",
-       "@webex/common": "workspace^",
-       "@webex/test-helper-make-local-url": "workspace^",
-       "xhr": "^2.5.0",
-       "es6-promise": "^4.2.8"
+        "@webex/common": "workspace:^",
+        "@webex/test-helper-make-local-url": "workspace:^",
+        "es6-promise": "^4.2.8",
+        "file-type": "^16.0.1",
+        "xhr": "^2.5.0"
     }
 }

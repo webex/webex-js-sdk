@@ -21,18 +21,18 @@
         ]
     },
     "devDependencies": {
-       "sinon": "^9.2.4"
+        "sinon": "^9.2.4"
     },
     "dependencies": {
-       "@webex/test-helper-chai": "workspace^",
-       "@webex/helper-image": "workspace^",
-       "@webex/test-helper-file": "workspace^",
-       "@webex/test-helper-mocha": "workspace^",
-       "@webex/http-core": "workspace^",
-       "mime": "^2.4.4",
-       "safe-buffer": "^5.2.0",
-       "exifr": "^5.0.3",
-       "lodash": "^4.17.21",
-       "gm": "^1.23.1"
+        "@webex/helper-image": "workspace:^",
+        "@webex/http-core": "workspace:^",
+        "@webex/test-helper-chai": "workspace:^",
+        "@webex/test-helper-file": "workspace:^",
+        "@webex/test-helper-mocha": "workspace:^",
+        "exifr": "^5.0.3",
+        "gm": "^1.23.1",
+        "lodash": "^4.17.21",
+        "mime": "^2.4.4",
+        "safe-buffer": "^5.2.0"
     }
 }

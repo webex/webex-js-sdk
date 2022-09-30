@@ -4,17 +4,18 @@
     "description": "chai extended with webex specific assertions",
     "license": "MIT",
     "main": "dist/index.js",
+    "devMain": "src/index.js",
     "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/test-helper-chai",
     "engines": {
         "node": ">=14"
     },
     "devDependencies": {
-       "chai": "^4.3.4",
-       "sinon": "^9.2.4"
+        "chai": "^4.3.4",
+        "sinon": "^9.2.4"
     },
     "dependencies": {
-       "check-error": "^1.0.2",
-       "@webex/test-helper-file": "workspace^",
-       "lodash": "^4.17.21"
+        "@webex/test-helper-file": "workspace:^",
+        "check-error": "^1.0.2",
+        "lodash": "^4.17.21"
     }
 }

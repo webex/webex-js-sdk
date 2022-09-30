@@ -15,14 +15,13 @@
         "./src/create-user.js": "./src/create-user.browser.js",
         "./src/router.js": false
     },
-    "devDependencies": {},
     "dependencies": {
-       "whatwg-fetch": "^2.0.4",
-       "@webex/test-helper-make-local-url": "workspace^",
-       "jsonwebtoken": "^8.5.1",
-       "uuid": "^3.3.2",
-       "safe-buffer": "^5.2.0",
-       "body-parser": "^1.19.0",
-       "express": "^4.17.1"
+        "@webex/test-helper-make-local-url": "workspace:^",
+        "body-parser": "^1.19.0",
+        "express": "^4.17.1",
+        "jsonwebtoken": "^8.5.1",
+        "safe-buffer": "^5.2.0",
+        "uuid": "^9.0.0",
+        "whatwg-fetch": "^2.0.4"
     }
 }

@@ -16,15 +16,15 @@
         ]
     },
     "devDependencies": {
-       "sinon": "^9.2.4"
+        "@webex/test-helper-chai": "workspace:^",
+        "@webex/test-helper-test-users": "workspace:^",
+        "sinon": "^9.2.4"
     },
     "dependencies": {
-       "@webex/internal-plugin-device": "workspace^",
-       "@webex/plugin-logger": "workspace^",
-       "@webex/plugin-rooms": "workspace^",
-       "@webex/plugin-webhooks": "workspace^",
-       "@webex/webex-core": "workspace^",
-       "@webex/test-helper-chai": "workspace^",
-       "@webex/test-helper-test-users": "workspace^"
+        "@webex/internal-plugin-device": "workspace:^",
+        "@webex/plugin-logger": "workspace:^",
+        "@webex/plugin-rooms": "workspace:^",
+        "@webex/plugin-webhooks": "workspace:^",
+        "@webex/webex-core": "workspace:^"
     }
 }

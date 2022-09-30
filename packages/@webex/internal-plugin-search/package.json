@@ -16,17 +16,19 @@
             "envify"
         ]
     },
-    "devDependencies": {},
+    "devDependencies": {
+        "@webex/test-helper-chai": "workspace:^",
+        "@webex/test-helper-retry": "workspace:^",
+        "@webex/test-helper-test-users": "workspace:^"
+    },
     "dependencies": {
-       "@webex/internal-plugin-search": "workspace^",
-       "@webex/webex-core": "workspace^",
-       "@webex/test-helper-chai": "workspace^",
-       "@webex/test-helper-test-users": "workspace^",
-       "@webex/test-helper-retry": "workspace^",
-       "@webex/internal-plugin-conversation": "workspace^",
-       "@webex/internal-plugin-device": "workspace^",
-       "lodash": "^4.17.21",
-       "uuid": "^3.3.2",
-       "@webex/internal-plugin-encryption": "workspace^"
+        "@webex/common": "workspace:^",
+        "@webex/internal-plugin-conversation": "workspace:^",
+        "@webex/internal-plugin-device": "workspace:^",
+        "@webex/internal-plugin-encryption": "workspace:^",
+        "@webex/internal-plugin-search": "workspace:^",
+        "@webex/webex-core": "workspace:^",
+        "lodash": "^4.17.21",
+        "uuid": "^9.0.0"
     }
 }

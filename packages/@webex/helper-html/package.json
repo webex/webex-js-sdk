@@ -19,11 +19,12 @@
             "envify"
         ]
     },
-    "devDependencies": {},
+    "devDependencies": {
+        "@webex/test-helper-chai": "workspace:^",
+        "@webex/test-helper-mocha": "workspace:^"
+    },
     "dependencies": {
-        "@webex/test-helper-chai": "workspace^",
-        "@webex/helper-html": "workspace^",
-        "@webex/test-helper-mocha": "workspace^",
+        "@webex/helper-html": "workspace:^",
         "lodash": "^4.17.21"
     }
 }

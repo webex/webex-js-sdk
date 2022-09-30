@@ -330,10 +330,11 @@ function collectMeetings() {
     });
 }
 
-createMeetingSelectElm.addEventListener('change', event => {
-  if (event.target.value === "CONVERSATION_URL"){
+createMeetingSelectElm.addEventListener('change', (event) => {
+  if (event.target.value === 'CONVERSATION_URL') {
     createMeetingActionElm.innerText = 'Create Adhoc Meeting';
-  } else {
+  }
+  else {
     createMeetingActionElm.innerText = 'Create Meeting';
   }
 });
@@ -342,9 +343,9 @@ function createMeeting(e) {
   e.preventDefault();
 
   meetingsJoinCaptchaImgElm.hidden = true;
-  meetingsJoinCaptchaElm.type = "hidden";
+  meetingsJoinCaptchaElm.type = 'hidden';
   refreshCaptchaElm.hidden = true;
-  const { value } = createMeetingDestinationElm;
+  const {value} = createMeetingDestinationElm;
   const type = createMeetingSelectElm.value;
 
   console.log('MeetingsManagement#createMeeting', value);
@@ -361,13 +362,14 @@ function createMeeting(e) {
 
 function refreshCaptcha() {
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
+
   meeting.refreshCaptcha()
     .then(() => {
       console.log('MeetingsManagement#refreshCaptcha() :: successfully refreshed captcha');
       meetingsJoinCaptchaImgElm.src = meeting.requiredCaptcha.verificationImageURL;
       meetingsJoinCaptchaImgElm.hidden = false;
-      meetingsJoinCaptchaElm.type = "text";
-      meetingsJoinCaptchaElm.value = "";
+      meetingsJoinCaptchaElm.type = 'text';
+      meetingsJoinCaptchaElm.value = '';
       refreshCaptchaElm.hidden = false;
     })
     .catch((error) => {
@@ -380,23 +382,25 @@ meetingsListElm.onclick = (e) => {
   selectedMeetingId = e.target.value;
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
 
-  if(meeting && meeting.passwordStatus === 'REQUIRED'){
+  if (meeting && meeting.passwordStatus === 'REQUIRED') {
     meetingsJoinPinElm.disabled = false;
     verifyPasswordElm.disabled = false;
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
-  } else if(meeting.passwordStatus === 'UNKNOWN') {
+  }
+  else if (meeting.passwordStatus === 'UNKNOWN') {
     meetingsJoinPinElm.disabled = true;
     verifyPasswordElm.disabled = true;
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
-  } else {
+  }
+  else {
     meetingsJoinPinElm.disabled = true;
     verifyPasswordElm.disabled = true;
     document.getElementById('btn-join').disabled = false;
     document.getElementById('btn-join-media').disabled = false;
   }
-}
+};
 
 function verifyPassword() {
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
@@ -421,26 +425,28 @@ function verifyPassword() {
           verifyPasswordElm.disabled = true;
           document.getElementById('btn-join').disabled = false;
           document.getElementById('btn-join-media').disabled = false;
-        } else if (res.requiredCaptcha) {
+        }
+        else if (res.requiredCaptcha) {
           passwordCaptchaStatusElm.innerText = 'Password & Captcha is required';
           passwordCaptchaStatusElm.style.backgroundColor = '#fa6e6e';
           meetingsJoinCaptchaImgElm.src = res.requiredCaptcha.verificationImageURL;
           meetingsJoinCaptchaImgElm.hidden = false;
-          meetingsJoinCaptchaElm.type = "text";
+          meetingsJoinCaptchaElm.type = 'text';
           refreshCaptchaElm.hidden = false;
-        } else {
+        }
+        else {
           passwordCaptchaStatusElm.innerText = 'Password is required';
           passwordCaptchaStatusElm.style.backgroundColor = '#fa6e6e';
         }
       })
       .catch((err) => {
-        console.log('error', err)
+        console.log('error', err);
         throw (err);
-      })
+      });
   }
 }
 
-function joinMeeting({ withMedia, withDevice } = { withMedia: false, withDevice: false }) {
+function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: false}) {
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
   let resourceId = null;
 
@@ -465,32 +471,33 @@ function joinMeeting({ withMedia, withDevice } = { withMedia: false, withDevice:
     receiveTranscription: receiveTranscriptionOption
   };
 
-  let joinMeetingNow = () => {
+  const joinMeetingNow = () => {
     meeting.join(joinOptions)
     .then(() => { // eslint-disable-line
       // For meeting controls button onclick handlers
-      window.meeting = meeting;
+        window.meeting = meeting;
 
-      updateMeetingInfoSection(meeting);
+        updateMeetingInfoSection(meeting);
 
-      meeting.members.on('members:update', (res) => {
-        console.log('member update', res);
-        viewParticipants();
+        meeting.members.on('members:update', (res) => {
+          console.log('member update', res);
+          viewParticipants();
+        });
+
+        eventsList.innerText = '';
+        meeting.on('all', (payload) => {
+          updatePublishedEvents(payload);
+        });
+
+        if (withMedia) {
+          clearMediaDeviceList();
+
+          return getMediaStreams().then(() => addMedia());
+        }
       });
+  };
 
-      eventsList.innerText = '';
-      meeting.on('all', (payload) => {
-        updatePublishedEvents(payload);
-      });
-
-      if (withMedia) {
-        clearMediaDeviceList();
-
-        return getMediaStreams().then(() => addMedia());
-      }
-    });
-  }
-  if(!meeting.requiredCaptcha){
+  if (!meeting.requiredCaptcha) {
     joinOptions.captcha = '';
   }
   joinMeetingNow();
@@ -515,12 +522,12 @@ function leaveMeeting(meetingId) {
       cleanUpMedia(htmlMediaElements);
       emptyParticipants();
       meetingsJoinCaptchaImgElm.hidden = true;
-      meetingsJoinCaptchaElm.type = "hidden";
+      meetingsJoinCaptchaElm.type = 'hidden';
       refreshCaptchaElm.hidden = true;
       passwordCaptchaStatusElm.innerText = 'Click verifyPassword for details';
       passwordCaptchaStatusElm.style.backgroundColor = 'white';
-      meetingsJoinPinElm.value = "";
-      meetingsJoinCaptchaElm.value = "";
+      meetingsJoinPinElm.value = '';
+      meetingsJoinCaptchaElm.value = '';
     });
 }
 
