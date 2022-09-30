@@ -1,34 +1,74 @@
 {
-  "name": "@webex/webex-server",
-  "version": "2.24.1",
-  "description": ".",
-  "license": "MIT",
-  "contributors": [
-    "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
-    "Ian W. Remmel <iremmel@cisco.com>"
-  ],
-  "main": "dist/index.js",
-  "devMain": "src/index.js",
-  "bin": "./bin/webex-server",
-  "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/webex-server",
-  "engines": {
-    "node": ">=8"
-  },
-  "browserify": {
-    "transform": [
-      "babelify",
-      "envify"
-    ]
-  },
-  "keywords": [
-    "api",
-    "cisco",
-    "sdk",
-    "web",
-    "webex",
-    "cli",
-    "http",
-    "http-server",
-    "server"
-  ]
+    "name": "@webex/webex-server",
+    "version": "2.24.1",
+    "description": ".",
+    "license": "MIT",
+    "contributors": [
+        "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
+        "Ian W. Remmel <iremmel@cisco.com>"
+    ],
+    "main": "dist/index.js",
+    "devMain": "src/index.js",
+    "bin": "./bin/webex-server",
+    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/webex-server",
+    "engines": {
+        "node": ">=14"
+    },
+    "browserify": {
+        "transform": [
+            "babelify",
+            "envify"
+        ]
+    },
+    "keywords": [
+        "api",
+        "cisco",
+        "sdk",
+        "web",
+        "webex",
+        "cli",
+        "http",
+        "http-server",
+        "server"
+    ],
+    "devDependencies": {
+       "@babel/polyfill": "^7.12.1"
+    },
+    "dependencies": {
+       "@webex/test-helper-chai": "workspace^",
+       "@webex/webex-server": "workspace^",
+       "supertest": "^3.4.2",
+       "@webex/test-helper-test-users": "workspace^",
+       "@webex/test-helper-mocha": "workspace^",
+       "compression": "^1.7.4",
+       "cors": "^2.8.5",
+       "errorhandler": "^1.5.1",
+       "express": "^4.17.1",
+       "morgan": "^1.9.1",
+       "on-finished": "^2.3.0",
+       "request-id": "^0.11.1",
+       "response-time": "^2.3.2",
+       "uuid": "^3.3.2",
+       "express-session": "^1.16.2",
+       "body-parser": "^1.19.0",
+       "express-validator": "^5.3.1",
+       "lodash": "^4.17.21",
+       "@webex/plugin-authorization-node": "workspace^",
+       "@webex/internal-plugin-avatar": "workspace^",
+       "@webex/internal-plugin-board": "workspace^",
+       "@webex/internal-plugin-calendar": "workspace^",
+       "@webex/internal-plugin-conversation": "workspace^",
+       "@webex/internal-plugin-encryption": "workspace^",
+       "@webex/internal-plugin-feature": "workspace^",
+       "@webex/internal-plugin-flag": "workspace^",
+       "@webex/plugin-logger": "workspace^",
+       "@webex/internal-plugin-mercury": "workspace^",
+       "@webex/internal-plugin-metrics": "workspace^",
+       "@webex/internal-plugin-search": "workspace^",
+       "@webex/internal-plugin-support": "workspace^",
+       "@webex/internal-plugin-team": "workspace^",
+       "@webex/internal-plugin-user": "workspace^",
+       "@webex/internal-plugin-device": "workspace^",
+       "@webex/webex-core": "workspace^"
+    }
 }

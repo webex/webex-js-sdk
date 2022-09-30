@@ -1,28 +1,53 @@
 {
-  "name": "@webex/webex-core",
-  "version": "2.24.1",
-  "description": "Plugin handling for Cisco Webex",
-  "license": "MIT",
-  "contributors": [
-    "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
-    "Andrew Holsted <holsted@cisco.com>",
-    "Arun Ganeshan <arungane@cisco.com>",
-    "Christopher DuBois <chdubois@cisco.com> (https://chrisadubois.github.io/)",
-    "Ian W. Remmel (https://www.ianwremmel.com)",
-    "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
-    "Moriah Maney <momaney@cisco.com>",
-    "Taymoor Khan <taykhan@cisco.com>"
-  ],
-  "main": "dist/index.js",
-  "devMain": "src/index.js",
-  "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/@webex/webex-core",
-  "engines": {
-    "node": ">=8"
-  },
-  "browserify": {
-    "transform": [
-      "babelify",
-      "envify"
-    ]
-  }
+    "name": "@webex/webex-core",
+    "version": "2.24.1",
+    "description": "Plugin handling for Cisco Webex",
+    "license": "MIT",
+    "contributors": [
+        "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
+        "Andrew Holsted <holsted@cisco.com>",
+        "Arun Ganeshan <arungane@cisco.com>",
+        "Christopher DuBois <chdubois@cisco.com> (https://chrisadubois.github.io/)",
+        "Ian W. Remmel (https://www.ianwremmel.com)",
+        "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
+        "Moriah Maney <momaney@cisco.com>",
+        "Taymoor Khan <taykhan@cisco.com>"
+    ],
+    "main": "dist/index.js",
+    "devMain": "src/index.js",
+    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/webex-core",
+    "engines": {
+        "node": ">=14"
+    },
+    "browserify": {
+        "transform": [
+            "babelify",
+            "envify"
+        ]
+    },
+    "devDependencies": {
+       "sinon": "^9.2.4",
+       "chai": "^4.3.4",
+       "chai-as-promised": "^7.1.1",
+       "@sinonjs/fake-timers": "^6.0.1"
+    },
+    "dependencies": {
+       "@webex/webex-core": "workspace^",
+       "@webex/test-helper-chai": "workspace^",
+       "lodash": "^4.17.21",
+       "@webex/storage-adapter-spec": "workspace^",
+       "@webex/test-helper-mock-webex": "workspace^",
+       "@webex/test-helper-mocha": "workspace^",
+       "@webex/plugin-logger": "workspace^",
+       "@webex/common": "workspace^",
+       "@webex/test-helper-make-local-url": "workspace^",
+       "@webex/internal-plugin-device": "workspace^",
+       "@webex/test-helper-test-users": "workspace^",
+       "uuid": "^3.3.2",
+       "@webex/test-helper-refresh-callback": "workspace^",
+       "ampersand-state": "^5.0.3",
+       "@webex/http-core": "workspace^",
+       "crypto-js": "^4.1.1",
+       "ampersand-collection": "^2.0.2"
+    }
 }

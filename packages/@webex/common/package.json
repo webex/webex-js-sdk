@@ -1,23 +1,37 @@
 {
-  "name": "@webex/common",
-  "version": "2.24.1",
-  "description": "Common utilities for Cisco Webex",
-  "license": "MIT",
-  "author": "Ian W. Remmel <iremmel@cisco.com>",
-  "main": "dist/index.js",
-  "devMain": "src/index.js",
-  "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/@webex/common",
-  "engines": {
-    "node": ">=8"
-  },
-  "browser": {
-    "./dist/in-browser/node.js": "./dist/in-browser/browser.js",
-    "./src/in-browser/node.js": "./src/in-browser/browser.js"
-  },
-  "browserify": {
-    "transform": [
-      "babelify",
-      "envify"
-    ]
-  }
+    "name": "@webex/common",
+    "version": "2.24.1",
+    "description": "Common utilities for Cisco Webex",
+    "license": "MIT",
+    "main": "dist/index.js",
+    "devMain": "src/index.js",
+    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/common",
+    "engines": {
+        "node": ">=14"
+    },
+    "browser": {
+        "./dist/in-browser/node.js": "./dist/in-browser/browser.js",
+        "./src/in-browser/node.js": "./src/in-browser/browser.js"
+    },
+    "browserify": {
+        "transform": [
+            "babelify",
+            "envify"
+        ]
+    },
+    "devDependencies": {
+        "sinon": "^9.2.4",
+        "@sinonjs/fake-timers": "^6.0.1"
+    },
+    "dependencies": {
+        "@webex/test-helper-chai": "workspace^",
+        "@webex/common": "workspace^",
+        "safe-buffer": "^5.2.0",
+        "bowser": "^2.11.0",
+        "urlsafe-base64": "^1.0.0",
+        "lodash": "^4.17.21",
+        "global": "^4.4.0",
+        "core-decorators": "^0.20.0",
+        "backoff": "^2.5.0"
+    }
 }

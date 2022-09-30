@@ -1,23 +1,50 @@
 {
-  "name": "@webex/internal-plugin-encryption",
-  "version": "2.24.1",
-  "description": "",
-  "license": "MIT",
-  "author": "Ian W. Remmel <iremmel@cisco.com>",
-  "main": "dist/index.js",
-  "devMain": "src/index.js",
-  "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/@webex/internal-plugin-encryption",
-  "engines": {
-    "node": ">=8"
-  },
-  "browser": {
-    "./dist/ensure-buffer.js": "./dist/ensure-buffer.browser.js",
-    "./src/ensure-buffer.js": "./src/ensure-buffer.browser.js"
-  },
-  "browserify": {
-    "transform": [
-      "babelify",
-      "envify"
-    ]
-  }
+    "name": "@webex/internal-plugin-encryption",
+    "version": "2.24.1",
+    "description": "",
+    "license": "MIT",
+    "main": "dist/index.js",
+    "devMain": "src/index.js",
+    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/internal-plugin-encryption",
+    "engines": {
+        "node": ">=14"
+    },
+    "browser": {
+        "./dist/ensure-buffer.js": "./dist/ensure-buffer.browser.js",
+        "./src/ensure-buffer.js": "./src/ensure-buffer.browser.js"
+    },
+    "browserify": {
+        "transform": [
+            "babelify",
+            "envify"
+        ]
+    },
+    "devDependencies": {
+       "sinon": "^9.2.4"
+    },
+    "dependencies": {
+       "@webex/test-helper-chai": "workspace^",
+       "@webex/test-helper-mock-webex": "workspace^",
+       "@webex/internal-plugin-encryption": "workspace^",
+       "@webex/common": "workspace^",
+       "@webex/test-helper-file": "workspace^",
+       "@webex/webex-core": "workspace^",
+       "@webex/test-helper-test-users": "workspace^",
+       "@webex/test-helper-make-local-url": "workspace^",
+       "uuid": "^3.3.2",
+       "@webex/test-helper-mocha": "workspace^",
+       "debug": "^4.3.4",
+       "node-jose": "^2.0.0",
+       "node-scr": "^0.3.0",
+       "lodash": "^4.17.21",
+       "@webex/internal-plugin-device": "workspace^",
+       "@webex/internal-plugin-mercury": "workspace^",
+       "@webex/common-timers": "workspace^",
+       "valid-url": "^1.0.9",
+       "asn1js": "^2.0.26",
+       "pkijs": "^2.1.84",
+       "isomorphic-webcrypto": "^2.3.8",
+       "safe-buffer": "^5.2.0",
+       "@webex/http-core": "workspace^"
+    }
 }

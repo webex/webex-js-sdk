@@ -1,26 +1,61 @@
 {
-  "name": "@webex/plugin-meetings",
-  "version": "2.24.1",
-  "description": "",
-  "license": "MIT",
-  "contributors": [
-    "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
-    "Arun Ganeshan <arungane@cisco.com>",
-    "Christopher DuBois <chdubois@cisco.com> (https://chrisadubois.github.io/)",
-    "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
-    "Moriah Maney <momaney@cisco.com>",
-    "Taymoor Khan <taykhan@cisco.com>"
-  ],
-  "main": "dist/index.js",
-  "devMain": "src/index.js",
-  "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/@webex/plugin-meetings",
-  "engines": {
-    "node": ">=8"
-  },
-  "browserify": {
-    "transform": [
-      "babelify",
-      "envify"
-    ]
-  }
+    "name": "@webex/plugin-meetings",
+    "version": "2.24.1",
+    "description": "",
+    "license": "MIT",
+    "contributors": [
+        "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
+        "Arun Ganeshan <arungane@cisco.com>",
+        "Christopher DuBois <chdubois@cisco.com> (https://chrisadubois.github.io/)",
+        "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
+        "Moriah Maney <momaney@cisco.com>",
+        "Taymoor Khan <taykhan@cisco.com>"
+    ],
+    "main": "dist/index.js",
+    "devMain": "src/index.js",
+    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/plugin-meetings",
+    "engines": {
+        "node": ">=14"
+    },
+    "browserify": {
+        "transform": [
+            "babelify",
+            "envify"
+        ]
+    },
+    "devDependencies": {
+       "sinon": "^9.2.4",
+       "jsdom-global": "3.0.2",
+       "chai": "^4.3.4",
+       "chai-as-promised": "^7.1.1"
+    },
+    "dependencies": {
+       "uuid": "^3.3.2",
+       "@webex/test-helper-retry": "workspace^",
+       "@webex/test-helper-chai": "workspace^",
+       "@webex/common": "workspace^",
+       "@webex/webex-core": "workspace^",
+       "@webex/test-helper-test-users": "workspace^",
+       "@webex/internal-plugin-mercury": "workspace^",
+       "@webex/internal-plugin-user": "workspace^",
+       "@webex/internal-plugin-device": "workspace^",
+       "@webex/internal-plugin-conversation": "workspace^",
+       "@webex/internal-plugin-support": "workspace^",
+       "@webex/plugin-people": "workspace^",
+       "@webex/plugin-rooms": "workspace^",
+       "@webex/plugin-meetings": "workspace^",
+       "@webex/internal-plugin-metrics": "workspace^",
+       "@webex/test-helper-mock-webex": "workspace^",
+       "@webex/test-helper-mocha": "workspace^",
+       "lodash": "^4.17.21",
+       "javascript-state-machine": "^3.1.0",
+       "dotenv": "^4.0.0",
+       "global": "^4.4.0",
+       "sdp-transform": "^2.12.0",
+       "ip-anonymize": "^0.1.0",
+       "webrtc-adapter": "^7.7.0",
+       "btoa": "^1.2.1",
+       "@webex/internal-media-core": "^0.0.7-beta",
+       "bowser": "^2.11.0"
+    }
 }

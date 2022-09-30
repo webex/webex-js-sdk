@@ -51,8 +51,6 @@ fs.readdir(directoryPath, function (err, files) {
       const fullpath = join(directoryPath, path)
   
       depcheck(fullpath, options).then((unused) => {
-       
-          console.log("PATH" ,path)
           fullList[path] = {
             dependencies : Object.keys(unused.dependencies),
             devDependencies : Object.keys(unused.devDependencies),
@@ -70,19 +68,26 @@ fs.readdir(directoryPath, function (err, files) {
 
           let devDependencies = {}
           let dependencies = {}
-          fullList[path].using.forEach((dep) =>{
+          new Promise((res, reject) => {
+          fullList[path].using.forEach((dep, index) =>{
+            const key = `"`+dep+`"`;
               if(globalParsedPackages["devDependencies"][dep]) {
-                devDependencies[path] = globalParsedPackages["devDependencies"][dep]
+                devDependencies[key] = globalParsedPackages["devDependencies"][dep]
               } else if(globalParsedPackages["dependencies"][dep]) {
-                dependencies[path] = globalParsedPackages["dependencies"][dep]
-              } else if(x.match(/webex\//)) {
-                dependencies[path] = "workspace^"
+                dependencies[key] = globalParsedPackages["dependencies"][dep] +''
+              } else if(dep.match(/webex\//)) {
+                dependencies[key] = "workspace^"
               }
+              if(index === (fullList[path].using.length -1)) res();
           })
+        }).then(() =>{
           parsedPackages.devDependencies = devDependencies;
           parsedPackages.dependencies = dependencies;
 
-          console.log(parsedPackages.dependencies)
+          let data = JSON.stringify(parsedPackages);
+          fs.writeFileSync(fullpath+'/package.json', data);
+        })
+
 
           if(Object.keys(fullList).length === files.length) resolve();
   
@@ -93,8 +98,6 @@ fs.readdir(directoryPath, function (err, files) {
   })
   
   done.then(() =>{
-
-    console.log("RESSS ", fullList)
 
     let data = JSON.stringify(fullList);
     fs.writeFileSync('depcheck-result.json', data);
