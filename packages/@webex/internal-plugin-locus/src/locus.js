@@ -4,7 +4,7 @@
 
 import {WebexPlugin, WebexHttpError} from '@webex/webex-core';
 import {cloneDeep, difference, first, last, memoize} from 'lodash';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 export const USE_INCOMING = 'USE_INCOMING';
 export const USE_CURRENT = 'USE_CURRENT';
@@ -588,7 +588,7 @@ const Locus = WebexPlugin.extend({
       body: {
         deviceUrl: this.webex.internal.device.url,
         dtmf: {
-          correlationId: uuid.v4(),
+          correlationId: uuidv4(),
           tones
         }
       }

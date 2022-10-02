@@ -9,7 +9,7 @@ import {assert} from '@webex/test-helper-chai';
 import WebexCore from '@webex/webex-core';
 import {find, findLast} from 'lodash';
 import testUsers from '@webex/test-helper-test-users';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 describe('plugin-team', () => {
   let displayName, kirk, participants, webex, spock, summary, team;
@@ -33,8 +33,8 @@ describe('plugin-team', () => {
     }));
 
   beforeEach(() => {
-    displayName = `team-conv-name-${uuid.v4()}`;
-    summary = `team-summary-${uuid.v4()}`;
+    displayName = `team-conv-name-${uuidv4()}`;
+    summary = `team-summary-${uuidv4()}`;
   });
 
   after(() => kirk && kirk.webex.internal.mercury.disconnect());
@@ -86,7 +86,7 @@ describe('plugin-team', () => {
       }));
 
     beforeEach(() => {
-      displayName = `team-conv-name-${uuid.v4()}`;
+      displayName = `team-conv-name-${uuidv4()}`;
     });
 
     it('creates a team conversation with a single participant', () => webex.internal.team.createConversation(team, {displayName, participants: [kirk]})

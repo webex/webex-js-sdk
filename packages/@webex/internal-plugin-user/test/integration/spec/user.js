@@ -12,7 +12,7 @@ import sinon from 'sinon';
 import WebexCore from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import {patterns} from '@webex/common';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import {merge} from 'lodash';
 
 // Run the tests with and without Federation enabled,
@@ -57,7 +57,7 @@ runs.forEach((run) => {
     describe('#verify()', () => {
       const unauthWebex = new WebexCore(run.attrs);
 
-      it('registers a new user', () => unauthWebex.internal.user.verify({email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`})
+      it('registers a new user', () => unauthWebex.internal.user.verify({email: `Collabctg+webex-js-sdk-${uuidv4()}@gmail.com`})
         .then((res) => {
           assert.property(res, 'hasPassword');
           assert.property(res, 'verificationEmailTriggered');
@@ -104,7 +104,7 @@ runs.forEach((run) => {
 
       it('retrieves a valid user token', () => {
         assert.isUndefined(unauthWebex.credentials.supertoken);
-        const email = `collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`;
+        const email = `collabctg+webex-js-sdk-${uuidv4()}@gmail.com`;
 
         return unauthWebex.internal.user.verify({email})
           .then((res) => {
@@ -139,7 +139,7 @@ runs.forEach((run) => {
         const unauthWebex = new WebexCore(run.attrs);
 
         assert.isUndefined(unauthWebex.credentials.supertoken);
-        const email = `collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`;
+        const email = `collabctg+webex-js-sdk-${uuidv4()}@gmail.com`;
 
         return unauthWebex.internal.user.verify({email})
           .then((res) => {
@@ -178,7 +178,7 @@ runs.forEach((run) => {
 
         assert.isUndefined(unauthWebex.credentials.supertoken);
         // NOTE: need collabctg+*@gmail.com to get oneTimePassword
-        const email = `collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`;
+        const email = `collabctg+webex-js-sdk-${uuidv4()}@gmail.com`;
 
         return unauthWebex.internal.user.verify({email})
           .then((res) => {
@@ -228,7 +228,7 @@ runs.forEach((run) => {
 
     describe('#asUUID()', () => {
       function makeEmailAddress() {
-        return `webex-js-sdk--test-${uuid.v4()}@example.com`;
+        return `webex-js-sdk--test-${uuidv4()}@example.com`;
       }
 
       let email;

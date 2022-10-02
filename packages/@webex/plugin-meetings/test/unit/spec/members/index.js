@@ -4,7 +4,7 @@
 
 import 'jsdom-global/register';
 import sinon from 'sinon';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import {Credentials} from '@webex/webex-core';
@@ -109,7 +109,7 @@ describe('plugin-meetings', () => {
         }
       });
 
-      url1 = `https://example.com/${uuid.v4()}`;
+      url1 = `https://example.com/${uuidv4()}`;
 
       createMembers = (options) => new Members({locusUrl: options.url}, {parent: webex});
     });
@@ -228,13 +228,13 @@ describe('plugin-meetings', () => {
       it('should not make a request if there is no locus url', async () => {
         const {members, spies} = setup();
 
-        const resultPromise = members.raiseOrLowerHand(uuid.v4());
+        const resultPromise = members.raiseOrLowerHand(uuidv4());
 
         await checkInvalid(resultPromise, 'The associated locus url for this meetings members object must be defined.', spies);
       });
 
       it('should make the correct request when called with raise as true', async () => {
-        const memberId = uuid.v4();
+        const memberId = uuidv4();
         const {members, spies} = setup(url1);
 
         const resultPromise = members.raiseOrLowerHand(memberId, true);
@@ -243,7 +243,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should make the correct request when called with raise as false', async () => {
-        const memberId = uuid.v4();
+        const memberId = uuidv4();
         const {members, spies} = setup(url1);
 
         const resultPromise = members.raiseOrLowerHand(memberId, false);
@@ -252,7 +252,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should make the correct request when called with raise as default', async () => {
-        const memberId = uuid.v4();
+        const memberId = uuidv4();
         const {members, spies} = setup(url1);
 
         const resultPromise = members.raiseOrLowerHand(memberId);
@@ -297,13 +297,13 @@ describe('plugin-meetings', () => {
       it('should not make a request if there is no locus url', async () => {
         const {members, spies} = setup();
 
-        const resultPromise = members.lowerAllHands(uuid.v4());
+        const resultPromise = members.lowerAllHands(uuidv4());
 
         await checkInvalid(resultPromise, 'The associated locus url for this meetings members object must be defined.', spies);
       });
 
       it('should make the correct request when called with requestingMemberId', async () => {
-        const requestingMemberId = uuid.v4();
+        const requestingMemberId = uuidv4();
         const {members, spies} = setup(url1);
 
         const resultPromise = members.lowerAllHands(requestingMemberId);

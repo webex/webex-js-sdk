@@ -10,7 +10,7 @@ import WebexCore from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import fh from '@webex/test-helper-file';
 import {map} from 'lodash';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 describe('plugin-board', () => {
   describe('realtime', () => {
@@ -97,7 +97,7 @@ describe('plugin-board', () => {
         let uniqueRealtimeData;
 
         before(() => {
-          uniqueRealtimeData = uuid.v4();
+          uniqueRealtimeData = uuidv4();
         });
 
         flaky(it, process.env.SKIP_FLAKY_TESTS)('posts a message to the specified board', () => {

@@ -4,7 +4,7 @@
 
 import {WebexPlugin} from '@webex/webex-core';
 import {defaults} from 'lodash';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 const Support = WebexPlugin.extend({
   namespace: 'Support',
@@ -19,7 +19,7 @@ const Support = WebexPlugin.extend({
       body: defaults(options, {
         appVersion: this.config.appVersion,
         appType: this.config.appType,
-        feedbackId: options.feedbackId || uuid.v4(),
+        feedbackId: options.feedbackId || uuidv4(),
         languageCode: this.config.languageCode
       })
     })

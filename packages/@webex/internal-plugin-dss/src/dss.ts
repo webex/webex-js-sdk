@@ -2,7 +2,7 @@
 /*!
  * Copyright (c) 2015-2022 Cisco Systems, Inc. See LICENSE file.
  */
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import {WebexPlugin} from '@webex/webex-core';
 import '@webex/internal-plugin-mercury';
 import {range, isEqual, get} from 'lodash';
@@ -135,7 +135,7 @@ const DSS = WebexPlugin.extend({
   _request(options) {
     const {resource, params, dataPath} = options;
 
-    const requestId = uuid.v4();
+    const requestId = uuidv4();
     const eventName = this._getResultEventName(requestId);
     const result = {};
     let expectedSeqNums;

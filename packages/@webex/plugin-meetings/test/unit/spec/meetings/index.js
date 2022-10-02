@@ -8,7 +8,7 @@ import Mercury from '@webex/internal-plugin-mercury';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 import StaticConfig from '@webex/plugin-meetings/src/common/config';
 import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy';
@@ -62,11 +62,11 @@ describe('plugin-meetings', () => {
   describe('meetings index', () => {
     beforeEach(() => {
       MeetingsUtil.checkH264Support = sinon.stub();
-      uuid1 = uuid.v4();
-      url1 = `https://example.com/${uuid.v4()}`;
-      uri1 = `test-${uuid.v4()}@example.com`;
-      test1 = `test-${uuid.v4()}`;
-      test2 = `test2-${uuid.v4()}`;
+      uuid1 = uuidv4();
+      url1 = `https://example.com/${uuidv4()}`;
+      uri1 = `test-${uuidv4()}@example.com`;
+      test1 = `test-${uuidv4()}`;
+      test2 = `test2-${uuidv4()}`;
       webex = new MockWebex({
         children: {
           device: Device,
@@ -516,7 +516,7 @@ describe('plugin-meetings', () => {
         it('creates a new meeting when a scheduled meeting exists in the conversation', async () => {
           const conversationId = '3b1ce9a0-777d-11eb-ba2e-b9fd98c6d469';
           const conversationUrl = `https://conv-a.wbx2.com/conversation/api/v1/conversations/${conversationId}`;
-          const correlationId = uuid.v4();
+          const correlationId = uuidv4();
           const scheduledMeetingFixture = {
             conversationId,
             conversationUrl,

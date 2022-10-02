@@ -11,7 +11,7 @@ import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import testUsers from '@webex/test-helper-test-users';
 import {find} from 'lodash';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import {flaky, skipInNode, browserOnly} from '@webex/test-helper-mocha';
 
 /**
@@ -232,7 +232,7 @@ describe('plugin-conversation', function () {
         let objectUrl;
 
         beforeEach(() => {
-          clientTempId = uuid.v4();
+          clientTempId = uuidv4();
           activities = [];
           webex.internal.mercury.on('event:conversation.activity', onMessage);
           blockUntilTranscode = new Defer();

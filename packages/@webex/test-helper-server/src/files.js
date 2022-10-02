@@ -32,7 +32,7 @@ router.post(`/upload`, (req, res, next) => {
       return next(err);
     }
 
-    const id = uuid.v4();
+    const id = uuidv4();
     const storeAt = path.join(uploadPath, id);
     const getFrom = `/files/download/${id}`;
 

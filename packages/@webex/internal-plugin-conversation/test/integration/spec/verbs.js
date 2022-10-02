@@ -9,7 +9,7 @@ import WebexCore, {WebexHttpError} from '@webex/webex-core';
 import {assert} from '@webex/test-helper-chai';
 import testUsers from '@webex/test-helper-test-users';
 import {find, map} from 'lodash';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import fh from '@webex/test-helper-file';
 import {skipInNode} from '@webex/test-helper-mocha';
 
@@ -50,7 +50,7 @@ describe('plugin-conversation', function () {
     ]));
 
     function makeEmailAddress() {
-      return `webex-js-sdk--test-${uuid.v4()}@example.com`;
+      return `webex-js-sdk--test-${uuidv4()}@example.com`;
     }
 
     let conversation;

@@ -9,7 +9,7 @@ import {assert} from '@webex/test-helper-chai';
 import WebexCore from '@webex/webex-core';
 import {find} from 'lodash';
 import testUsers from '@webex/test-helper-test-users';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 describe('plugin-team', () => {
   describe('Team', () => {
@@ -57,7 +57,7 @@ describe('plugin-team', () => {
 
       before(() => {
         const teamPromise = kirk.webex.internal.team.create({
-          displayName: `team-${uuid.v4()}`,
+          displayName: `team-${uuidv4()}`,
           participants: [
             kirk,
             spock
@@ -65,7 +65,7 @@ describe('plugin-team', () => {
         });
 
         const conversation = {
-          displayName: `group-conversation-${uuid.v4()}`,
+          displayName: `group-conversation-${uuidv4()}`,
           participants: [
             kirk
           ]
@@ -114,7 +114,7 @@ describe('plugin-team', () => {
       let additionalConversation, team;
 
       before(() => kirk.webex.internal.team.create({
-        displayName: `team-${uuid.v4()}`,
+        displayName: `team-${uuidv4()}`,
         participants: [
           kirk
         ]
@@ -123,7 +123,7 @@ describe('plugin-team', () => {
           team = res;
 
           return kirk.webex.internal.team.createConversation(team, {
-            displayName: `team-conversation-${uuid.v4()}`,
+            displayName: `team-conversation-${uuidv4()}`,
             participants: [
               kirk
             ]
@@ -174,7 +174,7 @@ describe('plugin-team', () => {
       let team;
 
       before(() => kirk.webex.internal.team.create({
-        displayName: `team-${uuid.v4()}`,
+        displayName: `team-${uuidv4()}`,
         participants: [
           kirk,
           spock
@@ -207,7 +207,7 @@ describe('plugin-team', () => {
       let conversation, team;
 
       before(() => kirk.webex.internal.team.create({
-        displayName: `team-${uuid.v4()}`,
+        displayName: `team-${uuidv4()}`,
         participants: [
           kirk
         ]
@@ -216,7 +216,7 @@ describe('plugin-team', () => {
           team = t;
 
           return kirk.webex.internal.team.createConversation(team, {
-            displayName: `team-conversation-${uuid.v4()}`,
+            displayName: `team-conversation-${uuidv4()}`,
             participants: [
               kirk
             ]
@@ -277,7 +277,7 @@ describe('plugin-team', () => {
       let conversation, team;
 
       before(() => kirk.webex.internal.team.create({
-        displayName: `team-${uuid.v4()}`,
+        displayName: `team-${uuidv4()}`,
         participants: [
           kirk,
           spock
@@ -287,7 +287,7 @@ describe('plugin-team', () => {
           team = t;
 
           return kirk.webex.internal.team.createConversation(t, {
-            displayName: `team-room-${uuid.v4()}`,
+            displayName: `team-room-${uuidv4()}`,
             participants: [kirk]
           });
         })
@@ -303,7 +303,7 @@ describe('plugin-team', () => {
       let conversation, team;
 
       before(() => kirk.webex.internal.team.create({
-        displayName: `team-${uuid.v4()}`,
+        displayName: `team-${uuidv4()}`,
         participants: [
           kirk,
           spock
@@ -313,7 +313,7 @@ describe('plugin-team', () => {
           team = t;
 
           return kirk.webex.internal.team.createConversation(t, {
-            displayName: `team-room-${uuid.v4()}`,
+            displayName: `team-room-${uuidv4()}`,
             participants: [kirk]
           });
         })
@@ -340,7 +340,7 @@ describe('plugin-team', () => {
       let team;
 
       before(() => kirk.webex.internal.team.create({
-        displayName: `team-${uuid.v4()}`,
+        displayName: `team-${uuidv4()}`,
         participants: [
           kirk,
           spock
@@ -371,7 +371,7 @@ describe('plugin-team', () => {
       let team;
 
       before(() => kirk.webex.internal.team.create({
-        displayName: `team-${uuid.v4()}`,
+        displayName: `team-${uuidv4()}`,
         participants: [
           kirk,
           spock
@@ -406,7 +406,7 @@ describe('plugin-team', () => {
       let conversation, team;
 
       before(() => kirk.webex.internal.team.create({
-        displayName: `team-${uuid.v4()}`,
+        displayName: `team-${uuidv4()}`,
         participants: [
           kirk
         ]
@@ -415,7 +415,7 @@ describe('plugin-team', () => {
           team = t;
 
           return kirk.webex.internal.team.createConversation(team, {
-            displayName: `team-conversation-${uuid.v4()}`,
+            displayName: `team-conversation-${uuidv4()}`,
             participants: [
               kirk
             ]
@@ -484,7 +484,7 @@ describe('plugin-team', () => {
       let team;
 
       before(() => kirk.webex.internal.team.create({
-        displayName: `team-${uuid.v4()}`,
+        displayName: `team-${uuidv4()}`,
         participants: [
           kirk
         ]
@@ -495,7 +495,7 @@ describe('plugin-team', () => {
 
       it('updates a team displayName', () => {
         const obj = {
-          displayName: `updated-team-title-${uuid.v4()}`,
+          displayName: `updated-team-title-${uuidv4()}`,
           objectType: 'team'
         };
 
@@ -511,7 +511,7 @@ describe('plugin-team', () => {
 
       it('updates a team summary', () => {
         const obj = {
-          summary: `updated-team-summary-${uuid.v4()}`,
+          summary: `updated-team-summary-${uuidv4()}`,
           objectType: 'team'
         };
 

@@ -7,14 +7,14 @@ import {browserOnly} from '@webex/test-helper-mocha';
 import {assert} from '@webex/test-helper-chai';
 import {createUser} from '@webex/test-helper-appid';
 import WebexCore from '@webex/webex-core';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import sinon from 'sinon';
 
 browserOnly(describe)('plugin-authorization-browser', () => {
   describe('Authorization', () => {
     describe('#requestAccessTokenFromJwt', () => {
       it('exchanges a JWT for an appid access token', () => {
-        const userId = uuid.v4();
+        const userId = uuidv4();
         const displayName = `test-${userId}`;
 
         return createUser({displayName, userId})
@@ -28,7 +28,7 @@ browserOnly(describe)('plugin-authorization-browser', () => {
 
       it('should call services#initServiceCatalogs()', () => {
         const webex = new WebexCore();
-        const userId = uuid.v4();
+        const userId = uuidv4();
         const displayName = `test-${userId}`;
 
         webex.internal.services.initServiceCatalogs = sinon.spy();
@@ -42,7 +42,7 @@ browserOnly(describe)('plugin-authorization-browser', () => {
     describe.skip('\'#refresh', () => {
       describe('when used with an appid access token', () => {
         it('refreshes the access token', () => {
-          const userId = uuid.v4();
+          const userId = uuidv4();
           const displayName = `test-${userId}`;
 
           return createUser({displayName, userId})

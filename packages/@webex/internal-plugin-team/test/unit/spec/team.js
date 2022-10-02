@@ -8,7 +8,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import Team from '@webex/internal-plugin-team';
 import User from '@webex/internal-plugin-user';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 const TEAM_URL = 'https://example.com/team';
 const TEAM_DISPLAY_NAME = 'test';
@@ -88,7 +88,7 @@ describe('plugin-team', () => {
 
       it('resolves if there is a LYRA_SPACE user', () => {
         const user = {
-          id: uuid.v4(),
+          id: uuidv4(),
           type: 'LYRA_SPACE'
         };
 

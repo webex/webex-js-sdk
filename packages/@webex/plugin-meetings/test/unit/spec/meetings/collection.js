@@ -6,7 +6,7 @@ import {assert} from '@webex/test-helper-chai';
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -27,8 +27,8 @@ describe('plugin-meetings', () => {
     let meetingCollection;
 
     beforeEach(() => {
-      uuid1 = uuid.v4();
-      uuid2 = uuid.v4();
+      uuid1 = uuidv4();
+      uuid2 = uuidv4();
       meetingCollection = new MeetingCollection();
     });
     describe('#set', () => {

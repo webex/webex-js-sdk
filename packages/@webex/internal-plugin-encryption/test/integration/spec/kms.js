@@ -9,7 +9,7 @@ import {assert, expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import WebexCore from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import {skipInBrowser} from '@webex/test-helper-mocha';
 
 const debug = require('debug')('kms');
@@ -604,7 +604,7 @@ describe('Encryption', function () {
       before('create test user in other org', () => testUsers.create({
         count: 1,
         config: {
-          email: `webex-js-sdk--kms-fed--${uuid.v4()}@wx2.example.com`,
+          email: `webex-js-sdk--kms-fed--${uuidv4()}@wx2.example.com`,
           entitlements: ['webExSquared'],
           orgId: 'kmsFederation'
         }

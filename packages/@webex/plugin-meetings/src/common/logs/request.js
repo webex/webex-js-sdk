@@ -1,4 +1,4 @@
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 import LoggerProxy from './logger-proxy';
 
@@ -29,7 +29,7 @@ export default class LogsRequest {
    * @memberof LogsRequest
    */
   async uploadLogs(options = {}) {
-    const id = options.feedbackId || uuid.v4();
+    const id = options.feedbackId || uuidv4();
     const {
       locusId, correlationId, meetingId, callStart
     } = options;

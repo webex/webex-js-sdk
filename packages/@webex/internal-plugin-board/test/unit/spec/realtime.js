@@ -8,7 +8,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
 import sinon from 'sinon';
 import Board, {config, RealtimeChannel} from '@webex/internal-plugin-board';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 function delay(timeout) {
   return new Promise((resolve) => {
@@ -124,7 +124,7 @@ describe('plugin-board', () => {
       it('sends encrypted data on the socket', () => {
         assert.calledOnce(webex.internal.encryption.encryptText);
         assert.calledWith(mockRealtimeChannel.socket.send, {
-          id: uuid.v4(),
+          id: uuidv4(),
           type: 'publishRequest',
           recipients: [{
             alertType: 'none',
@@ -163,7 +163,7 @@ describe('plugin-board', () => {
       it('sends encrypted data on the socket', () => {
         assert.notCalled(webex.internal.encryption.encryptText);
         assert.calledWith(mockRealtimeChannel.socket.send, {
-          id: uuid.v4(),
+          id: uuidv4(),
           type: 'publishRequest',
           recipients: [{
             alertType: 'none',
@@ -350,7 +350,7 @@ describe('plugin-board', () => {
       it('finds the realtimeChannel from the envelope', () => {
         let realtime1, realtime2;
         const boardEvent = {
-          id: uuid.v4(),
+          id: uuidv4(),
           data: {
             eventType: 'board.activity',
             actor: {
@@ -396,16 +396,16 @@ describe('plugin-board', () => {
 
       beforeEach(() => {
         fakeEvent = {
-          id: uuid.v4(),
+          id: uuidv4(),
           data: {
             eventType: 'board.activity',
             actor: {
               id: 'actorId'
             },
-            conversationId: uuid.v4()
+            conversationId: uuidv4()
           },
           timestamp: Date.now(),
-          trackingId: `suffix_${uuid.v4()}_${Date.now()}`
+          trackingId: `suffix_${uuidv4()}_${Date.now()}`
         };
       });
 

@@ -4,7 +4,7 @@
 import util from 'util';
 
 import {includes} from 'lodash';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import window from 'global/window';
 import anonymize from 'ip-anonymize';
 
@@ -182,7 +182,7 @@ class Metrics {
 
   initPayload(eventType, identifiers, options) {
     const payload = {
-      eventId: uuid.v4(),
+      eventId: uuidv4(),
       version: 1,
       origin: {
         name: 'endpoint',
@@ -271,7 +271,7 @@ class Metrics {
     const {audioSetupDelay, videoSetupDelay, joinTimes} = options;
 
     const payload = {
-      eventId: uuid.v4(),
+      eventId: uuidv4(),
       version: 1,
       origin: {
         audioSetupDelay,

@@ -6,7 +6,7 @@ import UserService from '@webex/internal-plugin-user';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 describe('plugin-user', () => {
   describe('User', () => {
@@ -36,7 +36,7 @@ describe('plugin-user', () => {
       it('requires a valid email', () => assert.isRejected(userService.asUUID('not valid email'), /Provided user object does not appear to identify a user/));
 
       it('resolves id if id is passed', () => {
-        const id = uuid.v4();
+        const id = uuidv4();
 
         return userService.asUUID(id)
           .then((res) => {
@@ -55,11 +55,11 @@ describe('plugin-user', () => {
       }), /`user.id` must be a uuid/));
 
       it('requires an `emailAddress`', () => assert.isRejected(userService.recordUUID({
-        id: uuid.v4()
+        id: uuidv4()
       }), /`user.emailAddress` is required/));
 
       it('requires the `emailAddress` to be a uuid', () => assert.isRejected(userService.recordUUID({
-        id: uuid.v4(),
+        id: uuidv4(),
         emailAddress: 'not an email address'
       }), /`user.emailAddress` must be an email address/));
 
@@ -67,7 +67,7 @@ describe('plugin-user', () => {
         const spy = sinon.stub(userService.store, 'add').returns(Promise.resolve());
 
         const user = {
-          id: uuid.v4(),
+          id: uuidv4(),
           emailAddress: 'test@example.com'
         };
 

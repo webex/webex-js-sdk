@@ -3,12 +3,12 @@ import ReportRequest from '@webex/internal-plugin-ediscovery/src/report-request'
 import {assert} from '@webex/test-helper-chai';
 import WebexCore from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 describe('internal-plugin-ediscovery', () => {
   let complianceUser;
-  const reportId = uuid.v4();
-  const containerId = uuid.v4();
+  const reportId = uuidv4();
+  const containerId = uuidv4();
 
   before('create compliance officer test user', () => testUsers.create({
     count: 1,

@@ -1,0 +1,6 @@
+{
+    "packages/**/*.{js,ts}": [
+        "eslint -c eslint.new.js --fix",
+        "cspell"
+    ]
+  }

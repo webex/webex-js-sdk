@@ -8,7 +8,7 @@ import {assert} from '@webex/test-helper-chai';
 import {maxWaitForEvent} from '@webex/test-helper-mocha';
 import WebexCore from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import promiseSeries from 'es6-promise-series';
 
 describe.skip('plugin-board', () => {
@@ -79,7 +79,7 @@ describe.skip('plugin-board', () => {
         after(() => Promise.all(participants.map((participant) => participant.webex.internal.board.realtime.disconnectFromSharedMercury(board))));
 
         it('posts a message from shared connection to the specified board', () => {
-          uniqueRealtimeData = uuid.v4();
+          uniqueRealtimeData = uuidv4();
           const data = {
             envelope: {
               channelId: board,
@@ -107,7 +107,7 @@ describe.skip('plugin-board', () => {
         });
 
         it('posts a message from separated socket connection to the specified board', () => {
-          uniqueRealtimeData = uuid.v4();
+          uniqueRealtimeData = uuidv4();
           const data = {
             envelope: {
               channelId: board,
@@ -136,7 +136,7 @@ describe.skip('plugin-board', () => {
 
     describe('multiple boards sharing a connection', () => {
       beforeEach(() => {
-        uniqueRealtimeData = uuid.v4();
+        uniqueRealtimeData = uuidv4();
 
         return promiseSeries([
           spock.webex.internal.board.realtime.connectToSharedMercury.bind(spock.webex.internal.board.realtime, board),

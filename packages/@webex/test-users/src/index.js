@@ -1,6 +1,6 @@
 import assert from 'assert';
 
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import btoa from 'btoa';
 import _ from 'lodash';
 import randomName from 'node-random-name';
@@ -191,7 +191,7 @@ export function createTestUser(options = {}) {
     machineType: options.machineType,
     orgId: options.orgId,
     // The five characters on the end are to hit all the password requirements
-    password: options.password || `${uuid.v4()}zAY1*`,
+    password: options.password || `${uuidv4()}zAY1*`,
     roles: options.roles || [],
     scopes: options.scope || process.env.WEBEX_SCOPE,
     type: options.type

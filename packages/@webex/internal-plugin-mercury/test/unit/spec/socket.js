@@ -15,7 +15,7 @@ import {
   ConnectionError,
   Socket
 } from '@webex/internal-plugin-mercury';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import FakeTimers from '@sinonjs/fake-timers';
 
 describe('plugin-mercury', () => {
@@ -128,7 +128,7 @@ describe('plugin-mercury', () => {
 
         mockWebSocket.emit('message', {
           data: JSON.stringify({
-            id: uuid.v4(),
+            id: uuidv4(),
             data: {
               eventType: 'mercury.buffer_state'
             }
@@ -388,7 +388,7 @@ describe('plugin-mercury', () => {
           mockWebSocket.emit('open');
           mockWebSocket.emit('message', {
             data: JSON.stringify({
-              id: uuid.v4(),
+              id: uuidv4(),
               data: {
                 eventType: 'mercury.buffer_state'
               }
@@ -407,7 +407,7 @@ describe('plugin-mercury', () => {
           mockWebSocket.emit('open');
           mockWebSocket.emit('message', {
             data: JSON.stringify({
-              id: uuid.v4(),
+              id: uuidv4(),
               data: {
                 eventType: 'mercury.registration_status'
               }
@@ -452,7 +452,7 @@ describe('plugin-mercury', () => {
         mockWebSocket.emit('open');
         mockWebSocket.emit('message', {
           data: JSON.stringify({
-            id: uuid.v4(),
+            id: uuidv4(),
             data: {
               eventType: 'mercury.buffer_state'
             }
@@ -715,7 +715,7 @@ describe('plugin-mercury', () => {
       let id;
 
       beforeEach(() => {
-        id = uuid.v4();
+        id = uuidv4();
       });
 
       it('sends a ping up the socket', () => socket._ping(id)

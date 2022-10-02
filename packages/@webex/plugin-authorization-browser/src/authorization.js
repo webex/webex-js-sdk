@@ -10,7 +10,7 @@ import url from 'url';
 import {base64, oneFlight, whileInFlight} from '@webex/common';
 import {grantErrors, WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, isEmpty, omit} from 'lodash';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 const OAUTH2_CSRF_TOKEN = 'oauth2-csrf-token';
 const EMPTY_OBJECT_STRING = base64.encode(JSON.stringify({}));
@@ -287,7 +287,7 @@ const Authorization = WebexPlugin.extend({
   _generateSecurityToken() {
     this.logger.info('authorization: generating csrf token');
 
-    const token = uuid.v4();
+    const token = uuidv4();
 
     this.webex.getWindow().sessionStorage.setItem('oauth2-csrf-token', token);
 

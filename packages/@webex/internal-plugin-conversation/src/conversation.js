@@ -11,7 +11,7 @@ import {proxyEvents, tap} from '@webex/common';
 import {Page, WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, cloneDeepWith, defaults, isArray, isObject, isString, last, map, merge, omit, pick, uniq} from 'lodash';
 import {readExifData} from '@webex/helper-image';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 import {InvalidUserCreation} from './convo-error';
 import ShareActivity from './share-activity';
@@ -1000,7 +1000,7 @@ const Conversation = WebexPlugin.extend({
           verb: params.verb,
           kmsMessage: params.kmsMessage,
           objectType: 'activity',
-          clientTempId: uuid.v4(),
+          clientTempId: uuidv4(),
           actor: this.webex.internal.device.userId
         });
 

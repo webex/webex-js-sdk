@@ -1,5 +1,5 @@
 
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import retry from '@webex/test-helper-retry';
 
 const CMR = {};
@@ -23,12 +23,12 @@ CMR.reserve = (webex, claimed) => {
       authorization: `Bearer ${webex.credentials.supertoken.access_token}`,
       'cisco-no-http-redirect': null,
       'spark-user-agent': null,
-      trackingid: `ITCLIENT_${uuid.v4()}_0_imi:true`
+      trackingid: `ITCLIENT_${uuidv4()}_0_imi:true`
     },
     body: {
       resourceType,
       requestMetaData: {
-        emailAddress: `test${uuid.v4()}@wx2.example.com`,
+        emailAddress: `test${uuidv4()}@wx2.example.com`,
         loginType: 'loginGuest'
       },
       reservedBy: 'Webex JavaScript SDK Test Suite'

@@ -1,4 +1,4 @@
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 import {
   HTTP_VERBS,
@@ -218,7 +218,7 @@ MembersUtil.generateSendDTMFRequestParams = ({
     },
     memberId,
     dtmf: {
-      correlationId: uuid.v4(),
+      correlationId: uuidv4(),
       tones,
       direction: 'transmit'
     }

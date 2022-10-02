@@ -9,7 +9,7 @@ import WebexCore from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import fh from '@webex/test-helper-file';
 import {find, map} from 'lodash';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 function generateTonsOfContents(numOfContents) {
   return new Promise((resolve) => {
@@ -232,7 +232,7 @@ describe('plugin-board', () => {
         let convo;
 
         return participants[0].webex.internal.conversation.create({
-          displayName: `Test Get Channels Conversation ${uuid.v4()}`,
+          displayName: `Test Get Channels Conversation ${uuidv4()}`,
           participants
         })
           .then((c) => {
@@ -386,11 +386,11 @@ describe('plugin-board', () => {
         const channel = board;
         const contents = [
           {
-            id: uuid.v4(),
+            id: uuidv4(),
             type: 'file'
           },
           {
-            id: uuid.v4(),
+            id: uuidv4(),
             type: 'string'
           }
         ];
@@ -424,11 +424,11 @@ describe('plugin-board', () => {
         const data = [
           {
             type: 'STRING',
-            payload: JSON.stringify({id: uuid.v4()})
+            payload: JSON.stringify({id: uuidv4()})
           },
           {
             type: 'FILE',
-            payload: JSON.stringify({id: uuid.v4()})
+            payload: JSON.stringify({id: uuidv4()})
           }
         ];
         const contentsToKeep = [];

@@ -1,7 +1,7 @@
 
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import {createTestUser, removeTestUser, loginTestUser} from '@webex/test-users';
 import {request} from '@webex/http-core';
 import {nodeOnly} from '@webex/test-helper-mocha';
@@ -42,9 +42,9 @@ assert.isTestUser = (user) => {
 };
 
 nodeOnly(describe)('test-users', () => {
-  const emailAddress = `test-${uuid.v4()}@wx2.example.com`;
-  const password = `${uuid.v4()}1@A`;
-  const displayName = uuid.v4();
+  const emailAddress = `test-${uuidv4()}@wx2.example.com`;
+  const password = `${uuidv4()}1@A`;
+  const displayName = uuidv4();
 
   function prune(user) {
     return {

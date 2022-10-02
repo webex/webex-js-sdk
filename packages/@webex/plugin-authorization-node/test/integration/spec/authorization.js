@@ -8,7 +8,7 @@ import {assert} from '@webex/test-helper-chai';
 import testUsers from '@webex/test-helper-test-users';
 import {createUser} from '@webex/test-helper-appid';
 import WebexCore, {filterScope} from '@webex/webex-core';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import sinon from 'sinon';
 
 const apiScope = filterScope('spark:kms', process.env.WEBEX_SCOPE);
@@ -38,7 +38,7 @@ nodeOnly(describe)('plugin-authorization-node', () => {
 
     describe('#requestAccessTokenFromJwt', () => {
       it('exchanges a JWT for an appid access token', () => {
-        const userId = uuid.v4();
+        const userId = uuidv4();
         const displayName = `test-${userId}`;
 
         return createUser({displayName, userId})
@@ -52,7 +52,7 @@ nodeOnly(describe)('plugin-authorization-node', () => {
 
       it('should call services#initServiceCatalogs()', () => {
         const webex = new WebexCore();
-        const userId = uuid.v4();
+        const userId = uuidv4();
         const displayName = `test-${userId}`;
 
         webex.internal.services.initServiceCatalogs = sinon.spy();
@@ -66,7 +66,7 @@ nodeOnly(describe)('plugin-authorization-node', () => {
     describe.skip('\'#refresh', () => {
       describe('when used with an appid access token', () => {
         it('refreshes the access token', () => {
-          const userId = uuid.v4();
+          const userId = uuidv4();
           const displayName = `test-${userId}`;
 
           return createUser({displayName, userId})

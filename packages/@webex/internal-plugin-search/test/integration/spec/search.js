@@ -13,7 +13,7 @@ import retry from '@webex/test-helper-retry';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-device';
 import {map, countBy} from 'lodash';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 describe('plugin-search', () => {
   describe('#people', () => {
@@ -46,7 +46,7 @@ describe('plugin-search', () => {
         method: 'POST',
         body: {
           name: 'Personal Assistant',
-          botEmail: `${uuid.v4()}@webex.bot`,
+          botEmail: `${uuidv4()}@webex.bot`,
           type: 'bot'
         }
       })

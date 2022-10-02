@@ -7,7 +7,7 @@
 
 const path = require('path');
 
-const uuidv4 = require('uuid/v4');
+const uuid = require('uuid');
 const {flatten} = require('lodash');
 
 const makeBrowsers = require('./browsers-ng');

@@ -9,7 +9,7 @@ import {proxyEvents, retry, transferEvents} from '@webex/common';
 import {HttpStatusInterceptor, defaults as requestDefaults} from '@webex/http-core';
 import {defaultsDeep, get, isFunction, isString, last, merge, omit, set, unset} from 'lodash';
 import AmpState from 'ampersand-state';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 import AuthInterceptor from './interceptors/auth';
 import NetworkTimingInterceptor from './interceptors/network-timing';
@@ -375,7 +375,7 @@ const WebexCore = AmpState.extend({
       interceptors: ints
     });
 
-    let sessionId = `${get(this, 'config.trackingIdPrefix', 'webex-js-sdk')}_${get(this, 'config.trackingIdBase', uuid.v4())}`;
+    let sessionId = `${get(this, 'config.trackingIdPrefix', 'webex-js-sdk')}_${get(this, 'config.trackingIdBase', uuidv4())}`;
 
     if (get(this, 'config.trackingIdSuffix')) {
       sessionId += `_${get(this, 'config.trackingIdSuffix')}`;
@@ -521,7 +521,7 @@ const WebexCore = AmpState.extend({
       withCredentials: false,
       body: options.file,
       headers: {
-        'x-trans-id': uuid.v4(),
+        'x-trans-id': uuidv4(),
         authorization: undefined
       }
     });

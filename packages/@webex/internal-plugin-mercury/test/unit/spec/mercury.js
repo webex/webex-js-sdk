@@ -16,7 +16,7 @@ import Mercury, {
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import FakeTimers from '@sinonjs/fake-timers';
 import {skipInBrowser} from '@webex/test-helper-mocha';
 
@@ -31,16 +31,16 @@ describe('plugin-mercury', () => {
       webex;
 
     const statusStartTypingMessage = JSON.stringify({
-      id: uuid.v4(),
+      id: uuidv4(),
       data: {
         eventType: 'status.start_typing',
         actor: {
           id: 'actorId'
         },
-        conversationId: uuid.v4()
+        conversationId: uuidv4()
       },
       timestamp: Date.now(),
-      trackingId: `suffix_${uuid.v4()}_${Date.now()}`
+      trackingId: `suffix_${uuidv4()}_${Date.now()}`
     });
 
     beforeEach(() => {

@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import {tap} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 
@@ -61,7 +61,7 @@ const RealtimeService = WebexPlugin.extend({
     }
 
     const data = {
-      id: uuid.v4(),
+      id: uuidv4(),
       type: 'publishRequest',
       recipients: [{
         alertType: 'none',

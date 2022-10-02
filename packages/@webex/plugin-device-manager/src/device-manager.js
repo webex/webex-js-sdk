@@ -5,7 +5,7 @@ import {cloneDeep} from 'lodash';
 import '@webex/internal-plugin-lyra';
 import '@webex/internal-plugin-search';
 import {WebexPlugin} from '@webex/webex-core';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 import {LYRA_SPACE, UC_CLOUD, DEFAULT_PRODUCT_NAME} from './constants';
 import DeviceCollection from './collection';
@@ -88,7 +88,7 @@ const DeviceManager = WebexPlugin.extend({
     }
 
     return this.webex.internal.search.people({
-      searchId: uuid.v4(),
+      searchId: uuidv4(),
       searchType: 'DEVICE_SEARCH',
       searchEntity: 'device',
       includePeople: false,

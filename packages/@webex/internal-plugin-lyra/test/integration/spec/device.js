@@ -11,7 +11,7 @@ import testUsers from '@webex/test-helper-test-users';
 // eslint-disable-next-line import/no-unresolved
 import {generateRandomString} from '@ciscospark/test-users-legacy';
 import WebexCore from '@webex/webex-core';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 describe('plugin-lyra', () => {
   describe('Device', () => {
@@ -115,7 +115,7 @@ describe('plugin-lyra', () => {
       before('make a call', () => {
         const locus = {
           url: conversation.locusUrl,
-          correlationId: uuid.v4()
+          correlationId: uuidv4()
         };
 
         return spock.webex.request({

@@ -9,7 +9,7 @@ import WebexCore from '@webex/webex-core';
 import {assert} from '@webex/test-helper-chai';
 import retry from '@webex/test-helper-retry';
 import testUsers from '@webex/test-helper-test-users';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 
 /**
@@ -228,9 +228,9 @@ describe.skip('plugin-calendar', () => {
         const hour = 1000 * 60 * 60;
         const startInterval = new Date(new Date().getTime() + hour * 2).toISOString();
         const duration = 60;
-        const meetingID = uuid.v4();
-        const locusID = uuid.v4();
-        const seriesID = uuid.v4();
+        const meetingID = uuidv4();
+        const locusID = uuidv4();
+        const seriesID = uuidv4();
 
         const meetingParams = {
 
@@ -300,9 +300,9 @@ describe.skip('plugin-calendar', () => {
         const hour = 1000 * 60 * 60;
         const startInterval = new Date(new Date().getTime() + hour * 2).toISOString();
         const duration = 60;
-        const meetingID = uuid.v4();
-        const locusID = uuid.v4();
-        const seriesID = uuid.v4();
+        const meetingID = uuidv4();
+        const locusID = uuidv4();
+        const seriesID = uuidv4();
 
         const meetingParams = {
 
@@ -419,9 +419,9 @@ describe.skip('plugin-calendar', () => {
 
       it('retrieves the meeting notes for the given meetingId', () => {
         const meetingNotes = 'Dummy meeting notes';
-        const meetingID = uuid.v4();
-        const locusID = uuid.v4();
-        const seriesID = uuid.v4();
+        const meetingID = uuidv4();
+        const locusID = uuidv4();
+        const seriesID = uuidv4();
 
         const meetingParams = {
           meetingId: meetingID,
@@ -481,9 +481,9 @@ describe.skip('plugin-calendar', () => {
       after(() => webex && webex.internal.mercury.disconnect());
 
       it('retrieves the meeting participants for the given meetingId', () => {
-        const meetingID = uuid.v4();
-        const locusID = uuid.v4();
-        const seriesID = uuid.v4();
+        const meetingID = uuidv4();
+        const locusID = uuidv4();
+        const seriesID = uuidv4();
 
         const meetingParams = {
           meetingId: meetingID,

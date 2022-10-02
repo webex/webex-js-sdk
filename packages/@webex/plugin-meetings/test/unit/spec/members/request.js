@@ -1,6 +1,6 @@
 import sinon from 'sinon';
 import chai from 'chai';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import chaiAsPromised from 'chai-as-promised';
 import MockWebex from '@webex/test-helper-mock-webex';
 
@@ -28,7 +28,7 @@ describe('plugin-meetings', () => {
 
     sandbox = sinon.createSandbox();
 
-    url1 = `https://example.com/${uuid.v4()}`;
+    url1 = `https://example.com/${uuidv4()}`;
 
     membersRequest = new MembersRequest({}, {
       parent: webex

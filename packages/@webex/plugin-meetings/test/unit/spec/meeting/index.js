@@ -5,7 +5,7 @@ import 'jsdom-global/register';
 import {cloneDeep, isEqual} from 'lodash';
 import sinon from 'sinon';
 import StateMachine from 'javascript-state-machine';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import {assert} from '@webex/test-helper-chai';
 import {Credentials} from '@webex/webex-core';
 import Support from '@webex/internal-plugin-support';
@@ -181,17 +181,17 @@ describe('plugin-meetings', () => {
     MediaUtil.createPeerConnection = sinon.stub().returns({});
     MediaUtil.createMediaStream = sinon.stub().returns(true);
 
-    uuid1 = uuid.v4();
-    uuid2 = uuid.v4();
-    uuid3 = uuid.v4();
-    uuid4 = uuid.v4();
-    url1 = `https://example.com/${uuid.v4()}`;
-    url2 = `https://example2.com/${uuid.v4()}`;
-    test1 = `test-${uuid.v4()}`;
-    test2 = `test2-${uuid.v4()}`;
-    test3 = `test3-${uuid.v4()}`;
-    test4 = `test4-${uuid.v4()}`;
-    testDestination = `testDestination-${uuid.v4()}`;
+    uuid1 = uuidv4();
+    uuid2 = uuidv4();
+    uuid3 = uuidv4();
+    uuid4 = uuidv4();
+    url1 = `https://example.com/${uuidv4()}`;
+    url2 = `https://example2.com/${uuidv4()}`;
+    test1 = `test-${uuidv4()}`;
+    test2 = `test2-${uuidv4()}`;
+    test3 = `test3-${uuidv4()}`;
+    test4 = `test4-${uuidv4()}`;
+    testDestination = `testDestination-${uuidv4()}`;
 
     meeting = new Meeting(
       {

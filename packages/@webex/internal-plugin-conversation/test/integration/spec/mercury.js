@@ -7,7 +7,7 @@ import '@webex/internal-plugin-conversation';
 import WebexCore from '@webex/webex-core';
 import {assert} from '@webex/test-helper-chai';
 import testUsers from '@webex/test-helper-test-users';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 describe('plugin-conversation', function () {
   this.timeout(30000);
@@ -54,7 +54,7 @@ describe('plugin-conversation', function () {
 
     describe('when an activity is received', () => {
       it('is decrypted and normalized', () => {
-        const clientTempId = uuid.v4();
+        const clientTempId = uuidv4();
         const promise = new Promise((resolve) => {
           kirk.webex.internal.mercury.on('event:conversation.activity', (event) => {
             if (event.data.activity.clientTempId === clientTempId) {

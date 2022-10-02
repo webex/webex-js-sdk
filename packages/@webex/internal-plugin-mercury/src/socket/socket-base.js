@@ -7,7 +7,7 @@ import {EventEmitter} from 'events';
 import {checkRequired} from '@webex/common';
 import {safeSetTimeout} from '@webex/common-timers';
 import {defaults, has, isObject} from 'lodash';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 import {
   BadRequest,
@@ -360,7 +360,7 @@ export default class Socket extends EventEmitter {
     return new Promise((resolve) => {
       this.logger.info('socket: authorizing');
       this.send({
-        id: uuid.v4(),
+        id: uuidv4(),
         type: 'authorization',
         data: {
           token: this.token
@@ -467,7 +467,7 @@ export default class Socket extends EventEmitter {
       }
     };
 
-    id = id || uuid.v4();
+    id = id || uuidv4();
     this.pongTimer = safeSetTimeout(onPongNotReceived, this.pongTimeout);
     this.once('pong', scheduleNextPingAndCancelPongTimer);
     this.once('pong', confirmPongId);

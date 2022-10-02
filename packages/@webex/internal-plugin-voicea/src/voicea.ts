@@ -1,4 +1,4 @@
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import LLMChannel from '@webex/internal-plugin-llm';
 import {TriggerProxy as Trigger} from '@webex/plugin-meetings';
 import {config} from '@webex/webex-core';
@@ -200,7 +200,7 @@ export class VoiceaChannel extends LLMChannel implements IVoiceaChannel {
         eventType: 'relay.event',
         relayType: VOICEA_RELAY_TYPES.CLIENT_ANNOUNCEMENT,
       },
-      trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`
+      trackingId: `${config.trackingIdPrefix}_${uuidv4().toString()}`
     });
     this.seqNum += 1;
   };
@@ -243,12 +243,12 @@ export class VoiceaChannel extends LLMChannel implements IVoiceaChannel {
       data: {
         clientPayload: {
           translationLanguage: languageCode,
-          id: uuid.v4(),
+          id: uuidv4(),
         },
         eventType: 'relay.event',
         relayType: VOICEA_RELAY_TYPES.TRANSLATION_REQUEST,
       },
-      trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`
+      trackingId: `${config.trackingIdPrefix}_${uuidv4().toString()}`
     });
     this.seqNum += 1;
   };

@@ -12,7 +12,7 @@ import morgan from 'morgan';
 import onFinished from 'on-finished';
 import requestId from 'request-id/express';
 import responseTime from 'response-time';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 import Webex from './webex';
 import sessionRouter from './session';
@@ -25,7 +25,7 @@ app.use(requestId({
     // TODO get sequence from session data
     const sequence = 0;
 
-    return `webex-server_${uuid.v4()}_${sequence}`;
+    return `webex-server_${uuidv4()}_${sequence}`;
   },
   reqHeader: 'TrackingID',
   resHeader: 'TrackingID'

@@ -9,7 +9,7 @@ import {assert} from '@webex/test-helper-chai';
 import WebexCore from '@webex/webex-core';
 import {every, find, map} from 'lodash';
 import testUsers from '@webex/test-helper-test-users';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 function ensureGeneral(team, conversations) {
   assert.isConversation(find(conversations, (conversation) => team.generalConversationUuid === conversation.id && conversation.tags.includes('TEAM')));
@@ -76,7 +76,7 @@ describe('plugin-team', () => {
         team1 = teams[1];
 
         const emptyRoom = {
-          displayName: `team-conversation-${uuid.v4()}`,
+          displayName: `team-conversation-${uuidv4()}`,
           participants: [
             kirk
           ]

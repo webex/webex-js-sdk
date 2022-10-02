@@ -10,7 +10,7 @@ import WebexCore from '@webex/webex-core';
 import {expectActivity} from '@webex/test-helper-mocha';
 import {get} from 'lodash';
 import testUsers from '@webex/test-helper-test-users';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 describe('plugin-team', () => {
   describe('Team', () => {
@@ -57,7 +57,7 @@ describe('plugin-team', () => {
       let teamConvo, team;
 
       before('create team', () => kirk.webex.internal.team.create({
-        displayName: `team-${uuid.v4()}`,
+        displayName: `team-${uuidv4()}`,
         participants: [
           kirk,
           spock
@@ -68,7 +68,7 @@ describe('plugin-team', () => {
         }));
 
       before('create team conversation', () => kirk.webex.internal.team.createConversation(team, {
-        displayName: `team-conversation-${uuid.v4()}`,
+        displayName: `team-conversation-${uuidv4()}`,
         participants: [
           kirk
         ]
@@ -79,7 +79,7 @@ describe('plugin-team', () => {
 
       it('updates the displayName of an unjoined team convo', () => {
         const update = {
-          displayName: `updated-team-convo--${uuid.v4()}`,
+          displayName: `updated-team-convo--${uuidv4()}`,
           objectType: 'conversation'
         };
 

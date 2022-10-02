@@ -13,7 +13,7 @@ import WebexCore, {
   ServiceUrl
 } from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import sinon from 'sinon';
 
 /* eslint-disable no-underscore-dangle */
@@ -860,7 +860,7 @@ describe('webex-core', () => {
           assert(true);
         }));
 
-      it('validates a non-existing user', () => unauthServices.validateUser({email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`})
+      it('validates a non-existing user', () => unauthServices.validateUser({email: `Collabctg+webex-js-sdk-${uuidv4()}@gmail.com`})
         .then((r) => {
           assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
           assert.equal(r.activated, false);
@@ -870,7 +870,7 @@ describe('webex-core', () => {
           assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
         }));
 
-      it('validates new user with activationOptions suppressEmail false', () => unauthServices.validateUser({email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`, activationOptions: {suppressEmail: false}})
+      it('validates new user with activationOptions suppressEmail false', () => unauthServices.validateUser({email: `Collabctg+webex-js-sdk-${uuidv4()}@gmail.com`, activationOptions: {suppressEmail: false}})
         .then((r) => {
           assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
           assert.equal(r.activated, false);
@@ -881,7 +881,7 @@ describe('webex-core', () => {
           assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
         }));
 
-      it('validates new user with activationOptions suppressEmail true', () => unauthServices.validateUser({email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`, activationOptions: {suppressEmail: true}})
+      it('validates new user with activationOptions suppressEmail true', () => unauthServices.validateUser({email: `Collabctg+webex-js-sdk-${uuidv4()}@gmail.com`, activationOptions: {suppressEmail: true}})
         .then((r) => {
           assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
           assert.equal(r.activated, false);
@@ -932,7 +932,7 @@ describe('webex-core', () => {
         const requestStub = sandbox.spy(unauthServices, 'request');
 
         return unauthServices.validateUser({
-          email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+          email: `Collabctg+webex-js-sdk-${uuidv4()}@gmail.com`,
           activationOptions: {suppressEmail: true}
         }).then(() => {
           assert.isUndefined(
@@ -943,10 +943,10 @@ describe('webex-core', () => {
 
       it('sends the prelogin user id as provided when specified', () => {
         const requestStub = sandbox.spy(unauthServices, 'request');
-        const preloginUserId = uuid.v4();
+        const preloginUserId = uuidv4();
 
         return unauthServices.validateUser({
-          email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+          email: `Collabctg+webex-js-sdk-${uuidv4()}@gmail.com`,
           activationOptions: {suppressEmail: true},
           preloginUserId
         }).then(() => {

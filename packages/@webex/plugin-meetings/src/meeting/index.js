@@ -1,4 +1,4 @@
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import {cloneDeep, isEqual, pick} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {Media as WebRTCMedia} from '@webex/internal-media-core';
@@ -426,7 +426,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @public
      * @memberof Meeting
      */
-    this.id = uuid.v4();
+    this.id = uuidv4();
     /**
      * Correlation ID used for network tracking of meeting join
      * @instance
@@ -3462,7 +3462,7 @@ export default class Meeting extends StatelessWebexPlugin {
     else {
       LoggerProxy.logger.log(`Meeting:index#join --> Generating a new correlation id for meeting ${this.id}`);
       LoggerProxy.logger.log(`Meeting:index#join --> Previous correlation id ${this.correlationId}`);
-      this.setCorrelationId(uuid.v4());
+      this.setCorrelationId(uuidv4());
       LoggerProxy.logger.log(`Meeting:index#join --> New correlation id ${this.correlationId}`);
     }
 
@@ -3650,7 +3650,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     const {correlationId, locusUrl} = this;
 
-    if (!this.dialInUrl) this.dialInUrl = `dialin:///${uuid.v4()}`;
+    if (!this.dialInUrl) this.dialInUrl = `dialin:///${uuidv4()}`;
 
     return this.meetingRequest.dialIn({
       correlationId,
@@ -3688,7 +3688,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     const {correlationId, locusUrl} = this;
 
-    if (!this.dialOutUrl) this.dialOutUrl = `dialout:///${uuid.v4()}`;
+    if (!this.dialOutUrl) this.dialOutUrl = `dialout:///${uuidv4()}`;
 
     return this.meetingRequest.dialOut({
       correlationId,

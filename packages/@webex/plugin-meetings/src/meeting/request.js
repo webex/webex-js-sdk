@@ -1,4 +1,4 @@
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import {debounce} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {deviceType} from '@webex/common';
@@ -587,7 +587,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       body: {
         deviceUrl,
         dtmf: {
-          correlationId: uuid.v4(),
+          correlationId: uuidv4(),
           tones
         }
       }

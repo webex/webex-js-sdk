@@ -54,7 +54,7 @@ describe('plugin-mercury', function () {
       //     const webSocketUrl = webex.internal.device.webSocketUrl;
       //     const wsu = webex.internal.device.webSocketUrl.split(`/`);
       //     wsu.reverse();
-      //     wsu[1] = uuid.v4();
+      //     wsu[1] = uuidv4();
       //     wsu.reverse();
       //     webex.internal.device.webSocketUrl = wsu.join(`/`);
       //     return webex.internal.mercury.connect()
