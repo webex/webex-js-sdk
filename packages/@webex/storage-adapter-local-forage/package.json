@@ -1,6 +1,6 @@
 {
     "name": "@webex/storage-adapter-local-forage",
-    "version": "2.24.1",
+    "version": "2.29.3",
     "description": "",
     "license": "MIT",
     "author": "Matt Norris <matthew.g.norris@gmail.com>",
@@ -23,6 +23,7 @@
         "@webex/common": "workspace:^",
         "@webex/storage-adapter-local-forage": "workspace:^",
         "@webex/storage-adapter-spec": "workspace:^",
-        "@webex/webex-core": "workspace:^"
+        "@webex/webex-core": "workspace:^",
+        "localforage": "^1.7.3"
     }
 }

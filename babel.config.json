@@ -33,20 +33,20 @@
   ],
   "presets": [
     [
-      "@babel/preset-env",
-      {
-        "targets": [
-          ">0.25% in US",
-          "last 2 Chrome major versions",
-          "last 2 Firefox major versions",
-          "not dead",
-          "not UCAndroid > 0",
-          "ie >= 11",
-          "maintained node versions"
-        ]
-      }
-    ],
-    "@babel/preset-typescript"
-  ],
-  "sourceMaps": true
+          "@babel/preset-env",
+          {
+            "targets": [
+              ">0.25% in US",
+              "last 2 Chrome major versions",
+              "last 2 Firefox major versions",
+              "not dead",
+              "not UCAndroid > 0",
+              "ie >= 11",
+              "maintained node versions"
+            ]
+          }
+        ],
+        "@babel/preset-typescript"
+      ],
+      "sourceMaps": true
 }

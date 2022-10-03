@@ -1,6 +1,6 @@
 {
     "name": "@webex/internal-plugin-team",
-    "version": "2.24.1",
+    "version": "2.29.3",
     "description": "",
     "license": "MIT",
     "author": "Josh Dykstra <jodykstr@cisco.com>",
@@ -31,6 +31,6 @@
         "@webex/internal-plugin-user": "workspace:^",
         "@webex/webex-core": "workspace:^",
         "lodash": "^4.17.21",
-        "uuid": "^9.0.0"
+        "uuid": "^3.3.2"
     }
 }

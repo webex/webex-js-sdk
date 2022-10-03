@@ -186,7 +186,7 @@ module.exports = {
         }, '');
 
         for (const packageName of packages) {
-          const [cmd, ...args] = `npm run test --silent -- --no-coverage-report --packages ${packageName}${argString}`.split(' ');
+          const [cmd, ...args] = `yarn run test --silent --no-coverage-report --packages ${packageName}${argString}`.split(' ');
 
           await spawn(cmd, args);
         }

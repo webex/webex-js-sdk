@@ -59,7 +59,7 @@ module.exports = {
 
     console.log(`Testing packages:\n${packages.join('\n')}`);
 
-    const [cmd, ...args] = `npm run test --silent -- --packages ${packages.join(' ')} ${
+    const [cmd, ...args] = `yarn run test --silent --packages ${packages.join(' ')} ${
       argv.github ?
         '--unit --os mac --browsers chrome firefox' :
         '--browsers defaults'

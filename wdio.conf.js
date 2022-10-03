@@ -5,7 +5,7 @@ const path = require('path');
 const {createServer} = require('http');
 
 const glob = require('glob');
-const uuidv4 = require('uuid/v4');
+const uuid = require('uuid');
 const handler = require('serve-handler');
 const webpack = require('webpack');
 
@@ -343,7 +343,7 @@ exports.config = {
             ],
             tunnelDomains: ['127.0.0.1', 'localhost'],
             logfile: './sauce.log',
-            tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuidv4(),
+            tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuid.v4(),
           },
         },
       ],

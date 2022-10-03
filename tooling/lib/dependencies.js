@@ -202,7 +202,7 @@ function listEntryPoints(pkg) {
   debug(paths);
 
   return paths
-    .map((p) => path.resolve('packages', 'node_modules', pkg.name, p));
+    .map((p) => path.resolve('packages', pkg.name, p));
 }
 
 const visited = new Map();

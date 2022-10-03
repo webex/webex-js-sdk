@@ -1,6 +1,6 @@
 {
     "name": "@webex/internal-plugin-support",
-    "version": "2.24.1",
+    "version": "2.29.3",
     "description": "",
     "license": "MIT",
     "author": "nickclar <nickclar@cisco.com>",
@@ -26,6 +26,6 @@
         "@webex/test-helper-test-users": "workspace:^",
         "@webex/webex-core": "workspace:^",
         "lodash": "^4.17.21",
-        "uuid": "^9.0.0"
+        "uuid": "^3.3.2"
     }
 }

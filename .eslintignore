@@ -34,3 +34,5 @@ docker-env
 browsers.processed.js
 tasks/selenium
 umd/
+webex.min.js
+*.yml
