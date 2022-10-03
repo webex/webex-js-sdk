@@ -8,7 +8,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
 import sinon from 'sinon';
 import Board, {config, RealtimeChannel} from '@webex/internal-plugin-board';
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 
 function delay(timeout) {
   return new Promise((resolve) => {
@@ -27,34 +27,35 @@ describe('plugin-board', () => {
     const mockWebSocket = new MockWebSocket();
     const channel = {
       channelId: '1234-channel-id',
-      defaultEncryptionKeyUrl: fakeURL
+      defaultEncryptionKeyUrl: fakeURL,
     };
 
     beforeEach(() => {
       webex = new MockWebex({
         children: {
           board: Board,
-          mercury: Mercury
+          mercury: Mercury,
         },
         config: {
-          board: config.board
-        }
+          board: config.board,
+        },
       });
       Object.assign(webex.internal, {
         encryption: {
-          encryptText: sinon.stub().returns(Promise.resolve(encryptedData))
+          encryptText: sinon.stub().returns(Promise.resolve(encryptedData)),
         },
         metrics: {
-          submitClientMetrics: sinon.stub()
-        }
+          submitClientMetrics: sinon.stub(),
+        },
       });
 
       registrationRes = {
         id: '14d6abda-16de-4e02-bf7c-6d2a0e77ec38',
         url: 'https://mercury-api-a.wbx2.com/v1/apps/wx2/registrations/14d6abda-16de-4e02-bf7c-6d2a0e77ec38',
         bindings: ['board.0609e520.a21a.11e6.912e.e9562ab65926'],
-        webSocketUrl: 'wss://mercury-connection-a.wbx2.com/v1/apps/wx2/registrations/14d6abda-16de-4e02-bf7c-6d2a0e77ec38/messages',
-        messageTtl: 900000
+        webSocketUrl:
+          'wss://mercury-connection-a.wbx2.com/v1/apps/wx2/registrations/14d6abda-16de-4e02-bf7c-6d2a0e77ec38/messages',
+        messageTtl: 900000,
       };
 
       sinon.stub(Socket, 'getWebSocketConstructor').returns(() => mockWebSocket);
@@ -63,7 +64,7 @@ describe('plugin-board', () => {
       mockRealtimeChannel = new RealtimeChannel({
         socketUrl: registrationRes.webSocketUrl,
         binding: registrationRes.bindings[0],
-        channelId: channel.channelId
+        channelId: channel.channelId,
       });
 
       mockRealtimeChannel.socket = mockWebSocket;
@@ -79,7 +80,9 @@ describe('plugin-board', () => {
         return promise;
       });
 
-      sinon.stub(webex.internal.board.realtime.realtimeChannels, 'get').returns(mockRealtimeChannel);
+      sinon
+        .stub(webex.internal.board.realtime.realtimeChannels, 'get')
+        .returns(mockRealtimeChannel);
       sinon.stub(webex.internal.board.realtime.realtimeChannels, 'add');
       sinon.stub(webex.internal.board.realtime.realtimeChannels, 'remove');
 
@@ -104,20 +107,19 @@ describe('plugin-board', () => {
     describe('#publish()', () => {
       const message = {
         payload: {
-          data: 'fake'
+          data: 'fake',
         },
-        envelope: {
-        }
+        envelope: {},
       };
 
       beforeEach(() => {
-        sinon.stub(uuid, 'v4').returns('stubbedUUIDv4');
+        uuidv4 = sinon.stub().returns('stubbedUUIDv4');
 
         return webex.internal.board.realtime.publish(channel, message);
       });
 
       afterEach(() => {
-        uuid.v4.restore();
+        uuidv4.restore();
         webex.internal.encryption.encryptText.reset();
       });
 
@@ -126,37 +128,43 @@ describe('plugin-board', () => {
         assert.calledWith(mockRealtimeChannel.socket.send, {
           id: uuidv4(),
           type: 'publishRequest',
-          recipients: [{
-            alertType: 'none',
-            route: mockRealtimeChannel.binding,
-            headers: {}
-          }],
+          recipients: [
+            {
+              alertType: 'none',
+              route: mockRealtimeChannel.binding,
+              headers: {},
+            },
+          ],
           data: {
             eventType: 'board.activity',
             payload: 'encryptedData',
             envelope: {
               encryptionKeyUrl: 'fakeURL',
-              channelId: mockRealtimeChannel.channelId
+              channelId: mockRealtimeChannel.channelId,
             },
-            contentType: 'STRING'
-          }
+            contentType: 'STRING',
+          },
         });
       });
     });
 
     describe('#publishEncrypted()', () => {
       beforeEach(() => {
-        sinon.stub(uuid, 'v4').returns('stubbedUUIDv4');
+        uuidv4 = sinon.stub().returns('stubbedUUIDv4');
 
-        return webex.internal.board.realtime.publishEncrypted(channel, {
-          encryptedData: 'encryptedData',
-          encryptedKeyUrl: 'fakeURL'
-        }, 'STRING');
+        return webex.internal.board.realtime.publishEncrypted(
+          channel,
+          {
+            encryptedData: 'encryptedData',
+            encryptedKeyUrl: 'fakeURL',
+          },
+          'STRING'
+        );
       });
 
       afterEach(() => {
         webex.internal.board.realtime.boardBindings = [];
-        uuid.v4.restore();
+        uuidv4.restore();
         webex.internal.encryption.encryptText.reset();
       });
 
@@ -165,20 +173,22 @@ describe('plugin-board', () => {
         assert.calledWith(mockRealtimeChannel.socket.send, {
           id: uuidv4(),
           type: 'publishRequest',
-          recipients: [{
-            alertType: 'none',
-            headers: {},
-            route: mockRealtimeChannel.binding
-          }],
+          recipients: [
+            {
+              alertType: 'none',
+              headers: {},
+              route: mockRealtimeChannel.binding,
+            },
+          ],
           data: {
             contentType: 'STRING',
             eventType: 'board.activity',
             envelope: {
               encryptionKeyUrl: 'fakeURL',
-              channelId: channel.channelId
+              channelId: channel.channelId,
             },
-            payload: 'encryptedData'
-          }
+            payload: 'encryptedData',
+          },
         });
       });
 
@@ -187,36 +197,42 @@ describe('plugin-board', () => {
         mockRealtimeChannel.socket.send = sinon.stub().returns(Promise.resolve());
         webex.internal.board.realtime.realtimeChannels.get.returns(null);
 
-        return assert.isRejected(webex.internal.board.realtime.publishEncrypted({
-          encryptedData: 'encryptedData',
-          encryptedKeyUrl: 'fakeURL'
-        }, 'STRING'));
+        return assert.isRejected(
+          webex.internal.board.realtime.publishEncrypted(
+            {
+              encryptedData: 'encryptedData',
+              encryptedKeyUrl: 'fakeURL',
+            },
+            'STRING'
+          )
+        );
       });
     });
 
     describe('#connectByOpenNewMercuryConnection()', () => {
-      it('opens new connections using the provided socket urls', () => webex.internal.board.realtime.connectByOpenNewMercuryConnection(channel)
-        .then(() => {
+      it('opens new connections using the provided socket urls', () =>
+        webex.internal.board.realtime.connectByOpenNewMercuryConnection(channel).then(() => {
           assert.calledWith(webex.internal.board.realtime.realtimeChannels.get, channel.channelId);
           assert.called(mockRealtimeChannel.socket.open);
         }));
 
       it('creates new channel if realtime channel not found', () => {
         webex.internal.board.realtime.realtimeChannels.get
-          .onFirstCall().returns(null)
-          .onSecondCall().returns(mockRealtimeChannel);
+          .onFirstCall()
+          .returns(null)
+          .onSecondCall()
+          .returns(mockRealtimeChannel);
 
-        return webex.internal.board.realtime.connectByOpenNewMercuryConnection(channel)
-          .then(() => {
-            assert.calledWith(webex.internal.board.realtime.realtimeChannels.add, {
-              channelId: channel.channelId,
-              socketUrl: registrationRes.webSocketUrl,
-              binding: registrationRes.bindings[0]
-            });
-
-            assert.calledWith(webex.internal.board.realtime.realtimeChannels.get, channel.channelId);
-            assert.called(mockRealtimeChannel.socket.open);
+        return webex.internal.board.realtime.connectByOpenNewMercuryConnection(channel).then(() => {
+          assert.calledWith(webex.internal.board.realtime.realtimeChannels.add, {
+            channelId: channel.channelId,
+            socketUrl: registrationRes.webSocketUrl,
+            binding: registrationRes.bindings[0],
           });
+
+          assert.calledWith(webex.internal.board.realtime.realtimeChannels.get, channel.channelId);
+          assert.called(mockRealtimeChannel.socket.open);
+        });
       });
     });
 
@@ -224,11 +240,10 @@ describe('plugin-board', () => {
       it('disconnects the mercury connection', () => {
         sinon.stub(mockRealtimeChannel, 'disconnect').returns(Promise.resolve());
 
-        return webex.internal.board.realtime.disconnectMercuryConnection(channel)
-          .then(() => {
-            assert.called(mockRealtimeChannel.disconnect);
-            assert.called(webex.internal.board.realtime.realtimeChannels.remove);
-          });
+        return webex.internal.board.realtime.disconnectMercuryConnection(channel).then(() => {
+          assert.called(mockRealtimeChannel.disconnect);
+          assert.called(webex.internal.board.realtime.realtimeChannels.remove);
+        });
       });
 
       it('rejects if channel not found', () => {
@@ -246,20 +261,26 @@ describe('plugin-board', () => {
         replaceBindingRes = {
           mercuryConnectionServiceClusterUrl: 'https://mercury-connection-a5.wbx2.com/v1',
           binding: 'board.a85e2f70-528d-11e6-ad98-bd2acefef905',
-          webSocketUrl: 'wss://mercury-connection-a.wbx2.com/v1/apps/wx2/registrations/14d6abda-16de-4e02-bf7c-6d2a0e77ec38/messages',
+          webSocketUrl:
+            'wss://mercury-connection-a.wbx2.com/v1/apps/wx2/registrations/14d6abda-16de-4e02-bf7c-6d2a0e77ec38/messages',
           sharedWebSocket: true,
-          action: 'ADD'
+          action: 'ADD',
         };
 
         removeBindingRes = {
           binding: 'board.a85e2f70-528d-11e6-ad98-bd2acefef905',
-          webSocketUrl: 'wss://mercury-connection-a.wbx2.com/v1/apps/wx2/registrations/14d6abda-16de-4e02-bf7c-6d2a0e77ec38/messages',
+          webSocketUrl:
+            'wss://mercury-connection-a.wbx2.com/v1/apps/wx2/registrations/14d6abda-16de-4e02-bf7c-6d2a0e77ec38/messages',
           sharedWebSocket: false,
-          action: 'REMOVE'
+          action: 'REMOVE',
         };
 
-        sinon.stub(webex.internal.board, 'registerToShareMercury').returns(Promise.resolve(replaceBindingRes));
-        sinon.stub(webex.internal.board, 'unregisterFromSharedMercury').returns(Promise.resolve(removeBindingRes));
+        sinon
+          .stub(webex.internal.board, 'registerToShareMercury')
+          .returns(Promise.resolve(replaceBindingRes));
+        sinon
+          .stub(webex.internal.board, 'unregisterFromSharedMercury')
+          .returns(Promise.resolve(removeBindingRes));
       });
 
       afterEach(() => {
@@ -267,8 +288,8 @@ describe('plugin-board', () => {
       });
 
       describe('#connectToSharedMercury', () => {
-        it('registers and gets board binding', () => webex.internal.board.realtime.connectToSharedMercury(channel)
-          .then((res) => {
+        it('registers and gets board binding', () =>
+          webex.internal.board.realtime.connectToSharedMercury(channel).then((res) => {
             assert.isTrue(mockRealtimeChannel.isSharingMercury);
             assert.deepEqual(res, replaceBindingRes);
           }));
@@ -277,16 +298,21 @@ describe('plugin-board', () => {
           it('opens a second socket with provided webSocketUrl', () => {
             replaceBindingRes.sharedWebSocket = false;
 
-            return webex.internal.board.realtime.connectToSharedMercury(channel)
+            return webex.internal.board.realtime
+              .connectToSharedMercury(channel)
               .then((res) => {
                 assert.isFalse(mockRealtimeChannel.isSharingMercury);
                 assert.deepEqual(res, replaceBindingRes);
                 assert.match(socketOpenStub.args[0][0], new RegExp(replaceBindingRes.webSocketUrl));
-                assert.calledWith(socketOpenStub, sinon.match(replaceBindingRes.webSocketUrl), sinon.match.any);
+                assert.calledWith(
+                  socketOpenStub,
+                  sinon.match(replaceBindingRes.webSocketUrl),
+                  sinon.match.any
+                );
               })
               .then(() => {
                 const channel2 = Object.assign({}, channel, {
-                  channelId: 'channel2-id'
+                  channelId: 'channel2-id',
                 });
 
                 sinon.stub(mockRealtimeChannel, 'connect').returns(Promise.resolve());
@@ -304,19 +330,22 @@ describe('plugin-board', () => {
       });
 
       describe('#disconnectFromSharedMercury()', () => {
-        it('requests to remove board bindings', () => webex.internal.board.realtime.connectToSharedMercury(channel)
-          .then(() => webex.internal.board.realtime.disconnectFromSharedMercury(channel))
-          .then((res) => {
-            assert.deepEqual(res, removeBindingRes);
-            assert.called(webex.internal.board.realtime.realtimeChannels.remove);
-          }));
+        it('requests to remove board bindings', () =>
+          webex.internal.board.realtime
+            .connectToSharedMercury(channel)
+            .then(() => webex.internal.board.realtime.disconnectFromSharedMercury(channel))
+            .then((res) => {
+              assert.deepEqual(res, removeBindingRes);
+              assert.called(webex.internal.board.realtime.realtimeChannels.remove);
+            }));
 
         describe('when a second connection is open', () => {
           it('disconnects the second socket', () => {
             sinon.stub(mockRealtimeChannel, 'disconnect').returns(Promise.resolve());
             replaceBindingRes.sharedWebSocket = false;
 
-            return webex.internal.board.realtime.connectToSharedMercury(channel)
+            return webex.internal.board.realtime
+              .connectToSharedMercury(channel)
               .then(() => {
                 assert.isFalse(mockRealtimeChannel.isSharingMercury);
 
@@ -334,15 +363,26 @@ describe('plugin-board', () => {
 
     describe('#_boardChannelIdToMercuryBinding', () => {
       it('adds board. binding prefix', () => {
-        assert.equal(webex.internal.board.realtime._boardChannelIdToMercuryBinding('test'), 'board.test');
+        assert.equal(
+          webex.internal.board.realtime._boardChannelIdToMercuryBinding('test'),
+          'board.test'
+        );
       });
 
-      it('replaces \'-\' with \'.\' and \'_\' with \'#\'', () => {
-        assert.equal(webex.internal.board.realtime._boardChannelIdToMercuryBinding('abc-1234_bcd'), 'board.abc.1234#bcd');
+      it("replaces '-' with '.' and '_' with '#'", () => {
+        assert.equal(
+          webex.internal.board.realtime._boardChannelIdToMercuryBinding('abc-1234_bcd'),
+          'board.abc.1234#bcd'
+        );
       });
 
       it('leaves strings without - and _ alone', () => {
-        assert.equal(webex.internal.board.realtime._boardChannelIdToMercuryBinding('abcdefghijklmnopqrstuvwxyz0123456789~!@#$%^&*()+='), 'board.abcdefghijklmnopqrstuvwxyz0123456789~!@#$%^&*()+=');
+        assert.equal(
+          webex.internal.board.realtime._boardChannelIdToMercuryBinding(
+            'abcdefghijklmnopqrstuvwxyz0123456789~!@#$%^&*()+='
+          ),
+          'board.abcdefghijklmnopqrstuvwxyz0123456789~!@#$%^&*()+='
+        );
       });
     });
 
@@ -354,19 +394,20 @@ describe('plugin-board', () => {
           data: {
             eventType: 'board.activity',
             actor: {
-              id: 'actorId'
+              id: 'actorId',
             },
             envelope: {
-              channelId: '1'
-            }
-          }
+              channelId: '1',
+            },
+          },
         };
 
         webex.internal.board.realtime.realtimeChannels.get.restore();
         webex.internal.board.realtime.realtimeChannels.add.restore();
         webex.internal.board.realtime.realtimeChannels.remove.restore();
 
-        return webex.internal.board.realtime.createRealtimeChannel({channelId: '1'})
+        return webex.internal.board.realtime
+          .createRealtimeChannel({channelId: '1'})
           .then((realtimeChannel) => {
             realtime1 = realtimeChannel;
 
@@ -400,19 +441,20 @@ describe('plugin-board', () => {
           data: {
             eventType: 'board.activity',
             actor: {
-              id: 'actorId'
+              id: 'actorId',
             },
-            conversationId: uuidv4()
+            conversationId: uuidv4(),
           },
           timestamp: Date.now(),
-          trackingId: `suffix_${uuidv4()}_${Date.now()}`
+          trackingId: `suffix_${uuidv4()}_${Date.now()}`,
         };
       });
 
       it('emits message', () => {
         const spy = sinon.spy();
 
-        return webex.internal.board.realtime.createRealtimeChannel(channel)
+        return webex.internal.board.realtime
+          .createRealtimeChannel(channel)
           .then((realtimeChannel) => {
             realtimeChannel.on('event:board.activity', spy);
           })

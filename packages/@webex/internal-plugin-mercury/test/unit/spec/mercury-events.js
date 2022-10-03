@@ -7,7 +7,7 @@ import Mercury, {config as mercuryConfig, Socket} from '@webex/internal-plugin-m
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 import FakeTimers from '@sinonjs/fake-timers';
 import {wrap} from 'lodash';
 
@@ -16,19 +16,15 @@ import promiseTick from '../lib/promise-tick';
 describe('plugin-mercury', () => {
   describe('Mercury', () => {
     describe('Events', () => {
-      let clock,
-        mercury,
-        mockWebSocket,
-        socketOpenStub,
-        webex;
+      let clock, mercury, mockWebSocket, socketOpenStub, webex;
 
       const fakeTestMessage = {
         id: uuidv4(),
         data: {
-          eventType: 'fake.test'
+          eventType: 'fake.test',
         },
         timestamp: Date.now(),
-        trackingId: `suffix_${uuidv4()}_${Date.now()}`
+        trackingId: `suffix_${uuidv4()}_${Date.now()}`,
       };
 
       const statusStartTypingMessage = {
@@ -36,12 +32,12 @@ describe('plugin-mercury', () => {
         data: {
           eventType: 'status.start_typing',
           actor: {
-            id: 'actorId'
+            id: 'actorId',
           },
-          conversationId: uuidv4()
+          conversationId: uuidv4(),
         },
         timestamp: Date.now(),
-        trackingId: `suffix_${uuidv4()}_${Date.now()}`
+        trackingId: `suffix_${uuidv4()}_${Date.now()}`,
       };
 
       beforeEach(() => {
@@ -55,8 +51,8 @@ describe('plugin-mercury', () => {
       beforeEach(() => {
         webex = new MockWebex({
           children: {
-            mercury: Mercury
-          }
+            mercury: Mercury,
+          },
         });
 
         webex.internal.metrics.submitClientMetrics = sinon.stub();
@@ -100,8 +96,7 @@ describe('plugin-mercury', () => {
 
           mockWebSocket.open();
 
-          return promise
-            .then(() => assert.called(spy));
+          return promise.then(() => assert.called(spy));
         });
       });
 
@@ -120,7 +115,7 @@ describe('plugin-mercury', () => {
 
               mockWebSocket.emit('close', {
                 code: 1000,
-                reason: 'Done'
+                reason: 'Done',
               });
 
               return promise;
@@ -173,9 +168,9 @@ describe('plugin-mercury', () => {
                 data: JSON.stringify({
                   id: uuidv4(),
                   data: {
-                    eventType: 'mercury.buffer_state'
-                  }
-                })
+                    eventType: 'mercury.buffer_state',
+                  },
+                }),
               });
               // using lengthOf because notCalled doesn't allow the helpful
               // string assertion
@@ -185,8 +180,7 @@ describe('plugin-mercury', () => {
                 .then(() => {
                   assert.calledOnce(bufferStateSpy);
 
-                  return mercury.connect()
-                    .then(done);
+                  return mercury.connect().then(done);
                 })
                 .catch(done);
             });
@@ -211,54 +205,54 @@ describe('plugin-mercury', () => {
           {
             code: 1000,
             reason: 'idle',
-            action: 'reconnect'
+            action: 'reconnect',
           },
           {
             code: 1000,
             reason: 'done (forced)',
-            action: 'reconnect'
+            action: 'reconnect',
           },
           {
             code: 1000,
             reason: 'pong not received',
-            action: 'reconnect'
+            action: 'reconnect',
           },
           {
             code: 1000,
             reason: 'pong mismatch',
-            action: 'reconnect'
+            action: 'reconnect',
           },
           {
             code: 1000,
-            action: 'close'
+            action: 'close',
           },
           {
             code: 1003,
-            action: 'close'
+            action: 'close',
           },
           {
             code: 1001,
-            action: 'reconnect'
+            action: 'reconnect',
           },
           {
             code: 1005,
-            action: 'reconnect'
+            action: 'reconnect',
           },
           {
             code: 1006,
-            action: 'reconnect'
+            action: 'reconnect',
           },
           {
             code: 1011,
-            action: 'reconnect'
+            action: 'reconnect',
           },
           {
             code: 4000,
-            action: 'replace'
+            action: 'replace',
           },
           {
-            action: 'close'
-          }
+            action: 'close',
+          },
         ];
 
         events.forEach((def) => {
@@ -267,11 +261,9 @@ describe('plugin-mercury', () => {
 
           if (code && reason) {
             description = `with code \`${code}\` and reason \`${reason}\``;
-          }
-          else if (code) {
+          } else if (code) {
             description = `with code \`${code}\``;
-          }
-          else if (reason) {
+          } else if (reason) {
             description = `with reason \`${reason}\``;
           }
 
@@ -351,7 +343,7 @@ describe('plugin-mercury', () => {
       describe('when a MessageEvent is received', () => {
         it('processes the Event via any autowired event handlers', () => {
           webex.fake = {
-            processTestEvent: sinon.spy()
+            processTestEvent: sinon.spy(),
           };
 
           const promise = mercury.connect();
@@ -393,7 +385,7 @@ describe('plugin-mercury', () => {
             });
         });
 
-        it('emits the Mercury envelope named by the Mercury event\'s eventType', () => {
+        it("emits the Mercury envelope named by the Mercury event's eventType", () => {
           const startSpy = sinon.spy();
           const stopSpy = sinon.spy();
 
@@ -427,28 +419,27 @@ describe('plugin-mercury', () => {
 
           mockWebSocket.open();
 
-          return promise
-            .then(() => {
-              mockWebSocket.emit('message', {
-                data: JSON.stringify({
-                  sequenceNumber: 2,
-                  id: 'mockid',
-                  data: {
-                    eventType: 'mercury.buffer_state'
-                  }
-                })
-              });
-              mockWebSocket.emit('message', {
-                data: JSON.stringify({
-                  sequenceNumber: 4,
-                  id: 'mockid',
-                  data: {
-                    eventType: 'mercury.buffer_state'
-                  }
-                })
-              });
-              assert.called(spy);
+          return promise.then(() => {
+            mockWebSocket.emit('message', {
+              data: JSON.stringify({
+                sequenceNumber: 2,
+                id: 'mockid',
+                data: {
+                  eventType: 'mercury.buffer_state',
+                },
+              }),
             });
+            mockWebSocket.emit('message', {
+              data: JSON.stringify({
+                sequenceNumber: 4,
+                id: 'mockid',
+                data: {
+                  eventType: 'mercury.buffer_state',
+                },
+              }),
+            });
+            assert.called(spy);
+          });
         });
       });
     });

@@ -10,7 +10,7 @@ import WebexCore from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import fh from '@webex/test-helper-file';
 import {map} from 'lodash';
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 
 describe('plugin-board', () => {
   describe('realtime', () => {
@@ -18,66 +18,90 @@ describe('plugin-board', () => {
     let mccoy, spock;
     let mccoyRealtimeChannel, spockRealtimeChannel;
 
-    before('create users', () => testUsers.create({count: 2})
-      .then(async (users) => {
+    before('create users', () =>
+      testUsers.create({count: 2}).then(async (users) => {
         participants = [spock, mccoy] = users;
 
         // Pause for 5 seconds for CI
         await new Promise((done) => setTimeout(done, 5000));
 
-        return Promise.all(map(participants, (participant) => {
-          participant.webex = new WebexCore({
-            credentials: {
-              authorization: participant.token
-            },
-            // NOTE: temp fix so that realtime tests pass
-            // Test user catalogue does not include the URL from utc
-            config: {
-              services: {
-                override: {
-                  'mercury-test': 'wss://mercury-connection-llm.intb1.ciscospark.com/'
-                }
-              }
-            }
-          });
+        return Promise.all(
+          map(participants, (participant) => {
+            participant.webex = new WebexCore({
+              credentials: {
+                authorization: participant.token,
+              },
+              // NOTE: temp fix so that realtime tests pass
+              // Test user catalogue does not include the URL from utc
+              config: {
+                services: {
+                  override: {
+                    'mercury-test': 'wss://mercury-connection-llm.intb1.ciscospark.com/',
+                  },
+                },
+              },
+            });
 
-          return participant.webex.internal.device.register();
-        }));
-      }));
+            return participant.webex.internal.device.register();
+          })
+        );
+      })
+    );
 
-    before('create conversation', () => spock.webex.internal.conversation.create({
-      displayName: 'Test Board Conversation',
-      participants
-    })
-      .then((c) => {
-        conversation = c;
+    before('create conversation', () =>
+      spock.webex.internal.conversation
+        .create({
+          displayName: 'Test Board Conversation',
+          participants,
+        })
+        .then((c) => {
+          conversation = c;
 
-        return conversation;
-      }));
+          return conversation;
+        })
+    );
 
-    before('create channel (board)', () => spock.webex.internal.board.createChannel(conversation)
-      .then((channel) => {
+    before('create channel (board)', () =>
+      spock.webex.internal.board.createChannel(conversation).then((channel) => {
         board = channel;
 
         return channel;
-      }));
+      })
+    );
 
-    before('connect to realtime channel', () => Promise.all(map(participants, (participant) => participant.webex.internal.board.realtime.connectByOpenNewMercuryConnection(board))));
+    before('connect to realtime channel', () =>
+      Promise.all(
+        map(participants, (participant) =>
+          participant.webex.internal.board.realtime.connectByOpenNewMercuryConnection(board)
+        )
+      )
+    );
 
     before('get realtime channels', () => {
-      spockRealtimeChannel = spock.webex.internal.board.realtime.realtimeChannels.get(board.channelId);
-      mccoyRealtimeChannel = mccoy.webex.internal.board.realtime.realtimeChannels.get(board.channelId);
+      spockRealtimeChannel = spock.webex.internal.board.realtime.realtimeChannels.get(
+        board.channelId
+      );
+      mccoyRealtimeChannel = mccoy.webex.internal.board.realtime.realtimeChannels.get(
+        board.channelId
+      );
     });
 
-    before('load fixture image', () => fh.fetch('sample-image-small-one.png')
-      .then((fetchedFixture) => {
+    before('load fixture image', () =>
+      fh.fetch('sample-image-small-one.png').then((fetchedFixture) => {
         fixture = fetchedFixture;
 
         return fetchedFixture;
-      }));
+      })
+    );
 
     // disconnect realtime
-    after('disconnect realtime channel', () => Promise.all(map(participants, (participant) => participant.webex.internal.board.realtime.disconnectMercuryConnection(board))));
+    after('disconnect realtime channel', () =>
+      Promise.all(
+        map(participants, (participant) =>
+          participant.webex.internal.board.realtime.disconnectMercuryConnection(board)
+        )
+      )
+    );
 
     describe('#config', () => {
       it('shares board values', () => {
@@ -104,11 +128,11 @@ describe('plugin-board', () => {
           const data = {
             envelope: {
               channelId: board,
-              roomId: conversation.id
+              roomId: conversation.id,
             },
             payload: {
-              msg: uniqueRealtimeData
-            }
+              msg: uniqueRealtimeData,
+            },
           };
 
           // confirm that both are connected.
@@ -117,19 +141,20 @@ describe('plugin-board', () => {
 
           spock.webex.internal.board.realtime.publish(board, data);
 
-          return maxWaitForEvent(5000, 'event:board.activity', mccoyRealtimeChannel)
-            .then((event) => {
+          return maxWaitForEvent(5000, 'event:board.activity', mccoyRealtimeChannel).then(
+            (event) => {
               assert.equal(event.data.contentType, 'STRING');
               assert.equal(event.data.payload.msg, uniqueRealtimeData);
-            });
+            }
+          );
         });
       });
 
       describe('file payload', () => {
         let testScr;
 
-        it('uploads file to webex files which includes loc', () => mccoy.webex.internal.board._uploadImage(board, fixture)
-          .then((scr) => {
+        it('uploads file to webex files which includes loc', () =>
+          mccoy.webex.internal.board._uploadImage(board, fixture).then((scr) => {
             assert.property(scr, 'loc');
             testScr = scr;
           }));
@@ -138,15 +163,15 @@ describe('plugin-board', () => {
           const data = {
             envelope: {
               channelId: board,
-              roomId: conversation.id
+              roomId: conversation.id,
             },
             payload: {
               displayName: 'image.png',
               type: 'FILE',
               file: {
-                scr: testScr
-              }
-            }
+                scr: testScr,
+              },
+            },
           };
 
           // confirm that both are listening.
@@ -155,12 +180,13 @@ describe('plugin-board', () => {
 
           spock.webex.internal.board.realtime.publish(board, data);
 
-          return maxWaitForEvent(5000, 'event:board.activity', mccoyRealtimeChannel)
-            .then((event) => {
+          return maxWaitForEvent(5000, 'event:board.activity', mccoyRealtimeChannel).then(
+            (event) => {
               assert.equal(event.data.contentType, 'FILE');
               assert.equal(event.data.payload.file.scr.loc, testScr.loc);
               assert.equal(event.data.payload.displayName, 'image.png');
-            });
+            }
+          );
         });
       });
     });

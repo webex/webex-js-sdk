@@ -1,6 +1,6 @@
 import sinon from 'sinon';
 import chai from 'chai';
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 import chaiAsPromised from 'chai-as-promised';
 import MockWebex from '@webex/test-helper-mock-webex';
 
@@ -22,24 +22,26 @@ describe('plugin-meetings', () => {
   beforeEach(() => {
     const webex = new MockWebex({
       children: {
-        meetings: Meetings
-      }
+        meetings: Meetings,
+      },
     });
 
     sandbox = sinon.createSandbox();
 
     url1 = `https://example.com/${uuidv4()}`;
 
-    membersRequest = new MembersRequest({}, {
-      parent: webex
-    });
+    membersRequest = new MembersRequest(
+      {},
+      {
+        parent: webex,
+      }
+    );
     membersRequest.request = sinon.mock().returns(Promise.resolve({}));
   });
 
   afterEach(() => {
     sandbox.restore();
   });
-
 
   describe('members request library', () => {
     describe('#sendDialPadKey', () => {
@@ -53,7 +55,7 @@ describe('plugin-meetings', () => {
           url,
           tones,
           memberId,
-          locusUrl
+          locusUrl,
         });
         const requestParams = membersRequest.request.getCall(0).args[0];
 
@@ -68,9 +70,9 @@ describe('plugin-meetings', () => {
       it('sends a PUT to the locus endpoint', async () => {
         const options = {
           invitee: {
-            phoneNumber: '+18578675309'
+            phoneNumber: '+18578675309',
           },
-          locusUrl: url1
+          locusUrl: url1,
         };
 
         await membersRequest.addMembers(options);
@@ -86,9 +88,9 @@ describe('plugin-meetings', () => {
       it('sends a PUT to the locus endpoint', async () => {
         const options = {
           invitee: {
-            phoneNumber: '+18578675309'
+            phoneNumber: '+18578675309',
           },
-          locusUrl: url1
+          locusUrl: url1,
         };
 
         await membersRequest.cancelPhoneInvite(options);
@@ -109,7 +111,7 @@ describe('plugin-meetings', () => {
         const options = {
           memberId,
           locusUrl,
-          raised: true
+          raised: true,
         };
 
         await membersRequest.raiseOrLowerHandMember(options);
@@ -122,10 +124,15 @@ describe('plugin-meetings', () => {
     });
 
     describe('#lowerAllHands', () => {
-      const parameterErrorMessage = 'requestingParticipantId must be defined, and the associated locus url for this meeting object must be defined.';
+      const parameterErrorMessage =
+        'requestingParticipantId must be defined, and the associated locus url for this meeting object must be defined.';
 
       const checkInvalid = async (functionParams) => {
-        assert.throws(() => membersRequest.lowerAllHandsMember(functionParams), ParameterError, parameterErrorMessage);
+        assert.throws(
+          () => membersRequest.lowerAllHandsMember(functionParams),
+          ParameterError,
+          parameterErrorMessage
+        );
         assert(membersRequest.request.notCalled);
         assert(membersUtil.getLowerAllHandsMemberRequestParams.notCalled);
       };
@@ -151,7 +158,10 @@ describe('plugin-meetings', () => {
           locusUrl,
         };
 
-        assert.strictEqual(membersRequest.lowerAllHandsMember(options), membersRequest.request.getCall(0).returnValue);
+        assert.strictEqual(
+          membersRequest.lowerAllHandsMember(options),
+          membersRequest.request.getCall(0).returnValue
+        );
       });
 
       it('sends a PATCH to the locus endpoint', async () => {
@@ -163,14 +173,13 @@ describe('plugin-meetings', () => {
           locusUrl,
         };
 
-
         const getRequestParamsSpy = sandbox.spy(membersUtil, 'getLowerAllHandsMemberRequestParams');
 
         await membersRequest.lowerAllHandsMember(options);
 
         assert.calledOnceWithExactly(getRequestParamsSpy, {
           requestingParticipantId: memberId,
-          locusUrl: url1
+          locusUrl: url1,
         });
 
         const requestParams = membersRequest.request.getCall(0).args[0];
@@ -180,10 +189,10 @@ describe('plugin-meetings', () => {
           uri: `${locusUrl}/controls`,
           body: {
             hand: {
-              raised: false
+              raised: false,
             },
-            requestingParticipantId: memberId
-          }
+            requestingParticipantId: memberId,
+          },
         });
       });
     });

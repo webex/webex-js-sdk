@@ -9,67 +9,69 @@ import {assert} from '@webex/test-helper-chai';
 import WebexCore from '@webex/webex-core';
 import {every, find, map} from 'lodash';
 import testUsers from '@webex/test-helper-test-users';
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 
 function ensureGeneral(team, conversations) {
-  assert.isConversation(find(conversations, (conversation) => team.generalConversationUuid === conversation.id && conversation.tags.includes('TEAM')));
+  assert.isConversation(
+    find(
+      conversations,
+      (conversation) =>
+        team.generalConversationUuid === conversation.id && conversation.tags.includes('TEAM')
+    )
+  );
 }
 
 describe('plugin-team', () => {
   let kirk, spock, team0, team1, teamConvo0, teamConvo1;
 
-  before(() => testUsers.create({count: 2})
-    .then((users) => {
+  before(() =>
+    testUsers.create({count: 2}).then((users) => {
       [kirk, spock] = users;
 
       kirk.webex = new WebexCore({
         credentials: {
-          authorization: kirk.token
+          authorization: kirk.token,
         },
         config: {
           conversation: {
-            keepEncryptedProperties: true
-          }
-        }
+            keepEncryptedProperties: true,
+          },
+        },
       });
 
       spock.webex = new WebexCore({
         credentials: {
-          authorization: spock.token
+          authorization: spock.token,
         },
         config: {
           conversation: {
-            keepEncryptedProperties: true
-          }
-        }
+            keepEncryptedProperties: true,
+          },
+        },
       });
 
       return Promise.all([
         kirk.webex.internal.mercury.connect(),
-        spock.webex.internal.mercury.connect()
+        spock.webex.internal.mercury.connect(),
       ]);
-    }));
+    })
+  );
 
   before(() => {
     team0 = {
       displayName: 'test-team-0',
       summary: 'test-team-0-summary',
-      participants: [
-        kirk,
-        spock
-      ]
+      participants: [kirk, spock],
     };
 
     team1 = {
       displayName: 'test-team-1',
-      participants: [
-        kirk
-      ]
+      participants: [kirk],
     };
 
     return Promise.all([
       kirk.webex.internal.team.create(team0),
-      kirk.webex.internal.team.create(team1)
+      kirk.webex.internal.team.create(team1),
     ])
       .then((teams) => {
         team0 = teams[0];
@@ -77,15 +79,13 @@ describe('plugin-team', () => {
 
         const emptyRoom = {
           displayName: `team-conversation-${uuidv4()}`,
-          participants: [
-            kirk
-          ]
+          participants: [kirk],
         };
 
         // Create two conversations for team 0
         return Promise.all([
           kirk.webex.internal.team.createConversation(team0, emptyRoom),
-          kirk.webex.internal.team.createConversation(team0, emptyRoom)
+          kirk.webex.internal.team.createConversation(team0, emptyRoom),
         ]);
       })
       .then((conversations) => {
@@ -93,14 +93,16 @@ describe('plugin-team', () => {
       });
   });
 
-  after(() => Promise.all([
-    kirk && kirk.webex.internal.mercury.disconnect(),
-    spock && spock.webex.internal.mercury.disconnect()
-  ]));
+  after(() =>
+    Promise.all([
+      kirk && kirk.webex.internal.mercury.disconnect(),
+      spock && spock.webex.internal.mercury.disconnect(),
+    ])
+  );
 
   describe('#get()', () => {
-    it('retrieves a team', () => kirk.webex.internal.team.get(team0)
-      .then((t) => {
+    it('retrieves a team', () =>
+      kirk.webex.internal.team.get(team0).then((t) => {
         assert.isInternalTeam(t);
         assert.equal(t.id, team0.id);
         assert.match(t.teamColor, team0.teamColor);
@@ -112,16 +114,16 @@ describe('plugin-team', () => {
         assert.lengthOf(t.conversations.items, 0);
       }));
 
-    it('retrieves a team with teamMembers', () => kirk.webex.internal.team.get(team0, {includeTeamMembers: true})
-      .then((t) => {
+    it('retrieves a team with teamMembers', () =>
+      kirk.webex.internal.team.get(team0, {includeTeamMembers: true}).then((t) => {
         assert.isInternalTeam(t);
         assert.equal(t.id, team0.id);
         assert.lengthOf(t.teamMembers.items, team0.teamMembers.items.length);
         assert.lengthOf(t.conversations.items, 0);
       }));
 
-    it('retrieves a team with conversations', () => kirk.webex.internal.team.get(team0, {includeTeamConversations: true})
-      .then((t) => {
+    it('retrieves a team with conversations', () =>
+      kirk.webex.internal.team.get(team0, {includeTeamConversations: true}).then((t) => {
         assert.isInternalTeam(t);
         assert.equal(t.id, team0.id);
         assert.lengthOf(t.teamMembers.items, 0);
@@ -134,8 +136,8 @@ describe('plugin-team', () => {
   });
 
   describe('#listConversations()', () => {
-    it('retrieves and decrypts conversations for a team', () => kirk.webex.internal.team.listConversations(team0)
-      .then((conversations) => {
+    it('retrieves and decrypts conversations for a team', () =>
+      kirk.webex.internal.team.listConversations(team0).then((conversations) => {
         assert.lengthOf(conversations, 3);
         ensureGeneral(team0, conversations);
         assert.include(map(conversations, 'url'), teamConvo0.url);
@@ -147,8 +149,8 @@ describe('plugin-team', () => {
         });
       }));
 
-    it('retrieves and decypts conversations for a team (including unjoined)', () => spock.webex.internal.team.listConversations(team0)
-      .then((conversations) => {
+    it('retrieves and decypts conversations for a team (including unjoined)', () =>
+      spock.webex.internal.team.listConversations(team0).then((conversations) => {
         assert.lengthOf(conversations, 3);
         ensureGeneral(team0, conversations);
         assert.include(map(conversations, 'url'), teamConvo0.url);
@@ -162,8 +164,8 @@ describe('plugin-team', () => {
   });
 
   describe('#list()', () => {
-    it('retrieves a list of teams', () => kirk.webex.internal.team.list()
-      .then((teams) => {
+    it('retrieves a list of teams', () =>
+      kirk.webex.internal.team.list().then((teams) => {
         assert.equal(teams.length, 2);
 
         every(teams, (team) => {
@@ -172,8 +174,8 @@ describe('plugin-team', () => {
         });
       }));
 
-    it('retrieves a list of teams with teamMembers', () => kirk.webex.internal.team.list({includeTeamMembers: true})
-      .then((teams) => {
+    it('retrieves a list of teams with teamMembers', () =>
+      kirk.webex.internal.team.list({includeTeamMembers: true}).then((teams) => {
         assert.equal(teams.length, 2);
 
         every(teams, (team) => {
@@ -182,8 +184,8 @@ describe('plugin-team', () => {
         });
       }));
 
-    it('retrieves a list of teams with conversations', () => kirk.webex.internal.team.list({includeTeamConversations: true})
-      .then((teams) => {
+    it('retrieves a list of teams with conversations', () =>
+      kirk.webex.internal.team.list({includeTeamConversations: true}).then((teams) => {
         assert.equal(teams.length, 2);
 
         every(teams, (team) => {

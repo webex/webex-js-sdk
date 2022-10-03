@@ -4,4 +4,4 @@
 
 . "$(dirname "$0")/_/husky.sh"
 
-npm run --silent srcdist && npm run --silent lint:staged
+yarn run --silent srcdist && yarn run lint-staged --allow-empty

@@ -167,7 +167,7 @@ function makeConfig(packageName, argv) {
     cfg.sauceLabs = {
       build: process.env.BUILD_NUMBER || `local-${process.env.USER}-${packageName}-${Date.now()}`,
       testName: `${pkg.name || packageName} (karma)`,
-      tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuidv4(),
+      tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuid.v4(),
       recordScreenshots: true,
       recordVideo: true,
       public: 'team',

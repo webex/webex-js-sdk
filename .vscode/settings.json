@@ -11,18 +11,22 @@
   "files.watcherExclude": {
     "**/.git/objects/**": true,
     "**/.git/subtree-cache/**": true,
-    "**/node_modules/**": false,
-    "node_modules/**": true
   },
   "search.exclude": {
-    "**/node_modules": false,
     "**/bower_components": true,
     "**/dist": true,
-    "node_modules/**": true,
-    "packages/**": false
   },
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true,
     "source.organizeImports": false
-  }
+  },
+  "eslint": {
+    "format.enable": true,
+    "eslint.debug": true,
+    "eslint.alwaysShowStatus": true,
+  },
+  "editor.formatOnSave": true,
+  "breadcrumbs.enabled": false,
+  "prettier.bracketSameLine": true,
+  "prettier.configPath": ".prettierrc",
 }

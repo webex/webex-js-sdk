@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 import {debounce} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {deviceType} from '@webex/common';
@@ -21,7 +21,7 @@ import {
   PROVISIONAL_TYPE_DIAL_IN,
   PROVISIONAL_TYPE_DIAL_OUT,
   SEND_DTMF_ENDPOINT,
-  _SLIDES_
+  _SLIDES_,
 } from '../constants';
 
 /**
@@ -30,7 +30,10 @@ import {
 export default class MeetingRequest extends StatelessWebexPlugin {
   constructor(attrs, options) {
     super(attrs, options);
-    this.changeVideoLayoutDebounced = debounce(this.changeVideoLayout, 2000, {leading: true, trailing: true});
+    this.changeVideoLayoutDebounced = debounce(this.changeVideoLayout, 2000, {
+      leading: true,
+      trailing: true,
+    });
   }
 
   /**
@@ -63,13 +66,10 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       pin,
       moveToResource,
       roapMessage,
-      preferTranscoding
+      preferTranscoding,
     } = options;
 
-    LoggerProxy.logger.info(
-      'Meeting:request#joinMeeting --> Joining a meeting',
-      correlationId
-    );
+    LoggerProxy.logger.info('Meeting:request#joinMeeting --> Joining a meeting', correlationId);
 
     let url = '';
 
@@ -77,18 +77,18 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       asResourceOccupant,
       device: {
         url: deviceUrl,
-        deviceType: this.config.meetings.deviceType
+        deviceType: this.config.meetings.deviceType,
       },
       usingResource: resourceId || null,
-      moveMediaToResource: resourceId && moveToResource || false,
+      moveMediaToResource: (resourceId && moveToResource) || false,
       correlationId,
       respOnlySdp: true,
       allowMultiDevice: true,
       ensureConversation: ensureConversation || false,
       supportsNativeLobby: 1,
       clientMediaPreferences: {
-        preferTranscoding: preferTranscoding ?? true
-      }
+        preferTranscoding: preferTranscoding ?? true,
+      },
     };
 
     if (this.webex.meetings.clientRegion) {
@@ -110,28 +110,27 @@ export default class MeetingRequest extends StatelessWebexPlugin {
 
     if (locusUrl) {
       url = `${locusUrl}/${PARTICIPANT}`;
-    }
-    else if (inviteeAddress || meetingNumber) {
+    } else if (inviteeAddress || meetingNumber) {
       try {
         await this.webex.internal.services.waitForCatalog('postauth');
         url = `${this.webex.internal.services.get('locus')}/${LOCI}/${CALL}`;
         body.invitee = {
-          address: inviteeAddress || `wbxmn:${meetingNumber}`
+          address: inviteeAddress || `wbxmn:${meetingNumber}`,
         };
-      }
-      catch (e) {
-        LoggerProxy.logger.error(`Meeting:request#joinMeeting Error Joining ${inviteeAddress || meetingNumber} --> ${e}`);
-        throw (e);
+      } catch (e) {
+        LoggerProxy.logger.error(
+          `Meeting:request#joinMeeting Error Joining ${inviteeAddress || meetingNumber} --> ${e}`
+        );
+        throw e;
       }
     }
-
 
     // TODO: -- this will be resolved in SDK request
     url = url.concat(`?${ALTERNATE_REDIRECT_TRUE}`);
 
     if (resourceId === inviteeAddress) {
       body.callPreferences = {
-        requestedMedia: [_SLIDES_]
+        requestedMedia: [_SLIDES_],
       };
     }
 
@@ -142,7 +141,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     return this.request({
       method: HTTP_VERBS.POST,
       uri: url,
-      body
+      body,
     });
   }
 
@@ -154,18 +153,15 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @returns {Promise}
    * @private
    */
-  refreshCaptcha({
-    captchaRefreshUrl,
-    captchaId
-  }) {
+  refreshCaptcha({captchaRefreshUrl, captchaId}) {
     const body = {
-      captchaId
+      captchaId,
     };
 
     return this.request({
       method: HTTP_VERBS.POST,
       uri: captchaRefreshUrl,
-      body
+      body,
     }).catch((err) => {
       LoggerProxy.logger.error(`Meeting:request#refreshCaptcha --> Error: ${err}`);
 
@@ -183,12 +179,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @returns {Promise}
    * @private
    */
-  dialIn({
-    locusUrl,
-    dialInUrl,
-    clientUrl,
-    correlationId
-  }) {
+  dialIn({locusUrl, dialInUrl, clientUrl, correlationId}) {
     LoggerProxy.logger.info(
       'Meeting:request#dialIn --> Provisioning a dial in device',
       correlationId
@@ -200,17 +191,19 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         deviceType: deviceType.PROVISIONAL,
         provisionalType: PROVISIONAL_TYPE_DIAL_IN,
         url: dialInUrl,
-        clientUrl
+        clientUrl,
       },
-      correlationId
+      correlationId,
     };
 
     return this.request({
       method: HTTP_VERBS.POST,
       uri,
-      body
+      body,
     }).catch((err) => {
-      LoggerProxy.logger.error(`Meeting:request#dialIn --> Error provisioning a dial in device, error ${err}`);
+      LoggerProxy.logger.error(
+        `Meeting:request#dialIn --> Error provisioning a dial in device, error ${err}`
+      );
 
       throw err;
     });
@@ -227,13 +220,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @returns {Promise}
    * @private
    */
-  dialOut({
-    locusUrl,
-    dialOutUrl,
-    phoneNumber,
-    clientUrl,
-    correlationId
-  }) {
+  dialOut({locusUrl, dialOutUrl, phoneNumber, clientUrl, correlationId}) {
     LoggerProxy.logger.info(
       'Meeting:request#dialOut --> Provisioning a dial out device',
       correlationId
@@ -246,17 +233,19 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         provisionalType: PROVISIONAL_TYPE_DIAL_OUT,
         url: dialOutUrl,
         dialoutAddress: phoneNumber,
-        clientUrl
+        clientUrl,
       },
-      correlationId
+      correlationId,
     };
 
     return this.request({
       method: HTTP_VERBS.POST,
       uri,
-      body
+      body,
     }).catch((err) => {
-      LoggerProxy.logger.error(`Meeting:request#dialOut --> Error provisioning a dial out device, error ${err}`);
+      LoggerProxy.logger.error(
+        `Meeting:request#dialOut --> Error provisioning a dial out device, error ${err}`
+      );
 
       throw err;
     });
@@ -277,15 +266,19 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     /* istanbul ignore else */
     if (desync) {
       // check for existing URL parameters
-      syncUrl = syncUrl.concat(syncUrl.split('?')[1] ? '&' : '?').concat(`${LOCUS.SYNCDEBUG}=${desync}`);
+      syncUrl = syncUrl
+        .concat(syncUrl.split('?')[1] ? '&' : '?')
+        .concat(`${LOCUS.SYNCDEBUG}=${desync}`);
     }
 
     return this.request({
       method: HTTP_VERBS.GET,
-      uri: syncUrl
+      uri: syncUrl,
     }) // TODO: Handle if delta sync failed . Get the full locus object
       .catch((err) => {
-        LoggerProxy.logger.error(`Meeting:request#syncMeeting --> Error syncing meeting, error ${err}`);
+        LoggerProxy.logger.error(
+          `Meeting:request#syncMeeting --> Error syncing meeting, error ${err}`
+        );
 
         return err;
       });
@@ -309,9 +302,11 @@ export default class MeetingRequest extends StatelessWebexPlugin {
 
       return this.request({
         method: HTTP_VERBS.GET,
-        uri: locusUrl
+        uri: locusUrl,
       }).catch((err) => {
-        LoggerProxy.logger.error(`Meeting:request#getFullLocus --> Error getting full locus, error ${err}`);
+        LoggerProxy.logger.error(
+          `Meeting:request#getFullLocus --> Error getting full locus, error ${err}`
+        );
 
         return err;
       });
@@ -330,12 +325,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @returns {Promise}
    * @private
    */
-  disconnectPhoneAudio({
-    locusUrl,
-    phoneUrl,
-    correlationId,
-    selfId
-  }) {
+  disconnectPhoneAudio({locusUrl, phoneUrl, correlationId, selfId}) {
     LoggerProxy.logger.info(
       `Meeting:request#disconnectPhoneAudio --> request phone ${phoneUrl} to leave`,
       correlationId
@@ -345,15 +335,15 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     const body = {
       device: {
         deviceType: deviceType.PROVISIONAL,
-        url: phoneUrl
+        url: phoneUrl,
       },
-      correlationId
+      correlationId,
     };
 
     return this.request({
       method: HTTP_VERBS.PUT,
       uri,
-      body
+      body,
     }).catch((err) => {
       LoggerProxy.logger.error(
         `Meeting:request#disconnectPhoneAudio --> Error when requesting phone ${phoneUrl} to leave, error ${err}`
@@ -373,32 +363,23 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {String} options.correlationId
    * @returns {Promise}
    */
-  leaveMeeting({
-    locusUrl,
-    selfId,
-    deviceUrl: url,
-    resourceId,
-    correlationId
-  }) {
-    LoggerProxy.logger.info(
-      'Meeting:request#leaveMeeting --> Leaving a meeting',
-      correlationId
-    );
+  leaveMeeting({locusUrl, selfId, deviceUrl: url, resourceId, correlationId}) {
+    LoggerProxy.logger.info('Meeting:request#leaveMeeting --> Leaving a meeting', correlationId);
 
     const uri = `${locusUrl}/${PARTICIPANT}/${selfId}/${LEAVE}`;
     const body = {
       device: {
         deviceType: this.config.meetings.deviceType,
-        url
+        url,
       },
       usingResource: resourceId || null,
-      correlationId
+      correlationId,
     };
 
     return this.request({
       method: HTTP_VERBS.PUT,
       uri,
-      body
+      body,
     });
   }
 
@@ -415,15 +396,15 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     const body = {
       device: {
         deviceType: this.config.meetings.deviceType,
-        url: options.deviceUrl
+        url: options.deviceUrl,
       },
-      correlationId: options.correlationId
+      correlationId: options.correlationId,
     };
 
     return this.request({
       method: HTTP_VERBS.PUT,
       uri,
-      body
+      body,
     });
   }
 
@@ -440,14 +421,14 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     const body = {
       record: {
         recording: options.recording,
-        paused: options.paused
-      }
+        paused: options.paused,
+      },
     };
 
     return this.request({
       method: HTTP_VERBS.PATCH,
       uri,
-      body
+      body,
     });
   }
 
@@ -455,14 +436,14 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     const uri = `${options.locusUrl}/${CONTROLS}`;
     const body = {
       lock: {
-        locked: options.lock
-      }
+        locked: options.lock,
+      },
     };
 
     return this.request({
       method: HTTP_VERBS.PATCH,
       uri,
-      body
+      body,
     });
   }
 
@@ -479,15 +460,15 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     const body = {
       device: {
         deviceType: this.config.meetings.deviceType,
-        url: options.deviceUrl
+        url: options.deviceUrl,
       },
-      ...(options.reason && {reason: options.reason})
+      ...(options.reason && {reason: options.reason}),
     };
 
     return this.request({
       method: HTTP_VERBS.PUT,
       uri,
-      body
+      body,
     });
   }
 
@@ -506,21 +487,21 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     const body = {
       device: {
         deviceType: this.config.meetings.deviceType,
-        url: options.deviceUrl
+        url: options.deviceUrl,
       },
       usingResource: options.resourceId || null,
       correlationId: options.correlationId,
       respOnlySdp: true,
       localMedias: options.localMedias,
       clientMediaPreferences: {
-        preferTranscoding: options.preferTranscoding ?? true
-      }
+        preferTranscoding: options.preferTranscoding ?? true,
+      },
     };
 
     return this.request({
       method: HTTP_VERBS.PUT,
       uri,
-      body
+      body,
     });
   }
 
@@ -545,20 +526,20 @@ export default class MeetingRequest extends StatelessWebexPlugin {
           devices: [
             {
               deviceType: this.config.meetings.deviceType,
-              url: options.deviceUrl
-            }
-          ]
+              url: options.deviceUrl,
+            },
+          ],
         },
         disposition: options.disposition,
         requester: {
-          url: options.personUrl
-        }
+          url: options.personUrl,
+        },
       };
     }
 
     const body = {
       floor: floorReq,
-      resourceUrl: options.resourceUrl
+      resourceUrl: options.resourceUrl,
     };
 
     if (options?.resourceToken) {
@@ -568,7 +549,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     return this.request({
       uri: options.uri,
       method: HTTP_VERBS.PUT,
-      body
+      body,
     });
   }
 
@@ -588,9 +569,9 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         deviceUrl,
         dtmf: {
           correlationId: uuidv4(),
-          tones
-        }
-      }
+          tones,
+        },
+      },
     });
   }
 
@@ -608,33 +589,40 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {Number} options.content.height preferred height of content share stream
    * @returns {Promise}
    */
-  changeVideoLayout({
-    locusUrl,
-    deviceUrl,
-    layoutType,
-    main,
-    content
-  }) {
+  changeVideoLayout({locusUrl, deviceUrl, layoutType, main, content}) {
     // send main/content renderInfo only if both width and height are specified
     if (main && (!main.width || !main.height)) {
-      return Promise.reject(new Error(`Both width and height must be specified. One of them is missing for main: ${JSON.stringify(main)}`));
+      return Promise.reject(
+        new Error(
+          `Both width and height must be specified. One of them is missing for main: ${JSON.stringify(
+            main
+          )}`
+        )
+      );
     }
 
     if (content && (!content.width || !content.height)) {
-      return Promise.reject(new Error(`Both width and height must be specified. One of them is missing for content: ${JSON.stringify(content)}`));
+      return Promise.reject(
+        new Error(
+          `Both width and height must be specified. One of them is missing for content: ${JSON.stringify(
+            content
+          )}`
+        )
+      );
     }
 
-    const renderInfoMain = (main) ? {width: main.width, height: main.height} : undefined;
-    const renderInfoContent = (content) ? {width: content.width, height: content.height} : undefined;
+    const renderInfoMain = main ? {width: main.width, height: main.height} : undefined;
+    const renderInfoContent = content ? {width: content.width, height: content.height} : undefined;
 
-    const layoutParams = (renderInfoMain || renderInfoContent) ?
-      {
-        renderInfo:
-        {
-          main: renderInfoMain,
-          content: renderInfoContent
-        }
-      } : undefined;
+    const layoutParams =
+      renderInfoMain || renderInfoContent
+        ? {
+            renderInfo: {
+              main: renderInfoMain,
+              content: renderInfoContent,
+            },
+          }
+        : undefined;
 
     return this.request({
       method: HTTP_VERBS.PUT,
@@ -643,9 +631,9 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         layout: {
           deviceUrl,
           type: layoutType,
-          layoutParams
-        }
-      }
+          layoutParams,
+        },
+      },
     });
   }
 
@@ -655,14 +643,12 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {Url} options.locusUrl
    * @returns {Promise}
    */
-  endMeetingForAll({
-    locusUrl,
-  }) {
+  endMeetingForAll({locusUrl}) {
     const uri = `${locusUrl}/${END}`;
 
     return this.request({
       method: HTTP_VERBS.POST,
-      uri
+      uri,
     });
   }
 }

@@ -1,11 +1,16 @@
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 import LLMChannel from '@webex/internal-plugin-llm';
 import {TriggerProxy as Trigger} from '@webex/plugin-meetings';
 import {config} from '@webex/webex-core';
 
 import {EVENT_TRIGGERS, VOICEA_RELAY_TYPES, TRANSCRIPTION_TYPE} from './constants';
 // eslint-disable-next-line no-unused-vars
-import {AnnouncementPayload, CaptionLanguageResponse, TranscriptionResponse, IVoiceaChannel} from './voicea.types';
+import {
+  AnnouncementPayload,
+  CaptionLanguageResponse,
+  TranscriptionResponse,
+  IVoiceaChannel,
+} from './voicea.types';
 import {millisToMinutesAndSeconds} from './utils';
 /**
  * VoiceaChannel to hold single instance of LLM
@@ -17,7 +22,7 @@ export class VoiceaChannel extends LLMChannel implements IVoiceaChannel {
 
   private areCaptionsEnabled: boolean;
 
-  private isTranscribingEnabled:boolean;
+  private isTranscribingEnabled: boolean;
 
   private vmcDeviceId: string;
 
@@ -61,72 +66,97 @@ export class VoiceaChannel extends LLMChannel implements IVoiceaChannel {
   private processTranscription = (voiceaPayload: TranscriptionResponse): void => {
     switch (voiceaPayload.type) {
       case TRANSCRIPTION_TYPE.TRANSCRIPT_INTERIM_RESULTS:
-        Trigger.trigger(this, {
-          file: 'voicea',
-          function: 'processTranscription'
-        },
-        EVENT_TRIGGERS.NEW_CAPTION, {
-          isFinal: false,
-          transcriptId: voiceaPayload.transcript_id,
-          translations: voiceaPayload.translations,
-          transcript: {
-            csis: voiceaPayload.csis,
-            text: voiceaPayload.data
+        Trigger.trigger(
+          this,
+          {
+            file: 'voicea',
+            function: 'processTranscription',
           },
-        });
+          EVENT_TRIGGERS.NEW_CAPTION,
+          {
+            isFinal: false,
+            transcriptId: voiceaPayload.transcript_id,
+            translations: voiceaPayload.translations,
+            transcript: {
+              csis: voiceaPayload.csis,
+              text: voiceaPayload.data,
+            },
+          }
+        );
         break;
 
       case TRANSCRIPTION_TYPE.TRANSCRIPT_FINAL_RESULT:
-        Trigger.trigger(this, {
-          file: 'voicea',
-          function: 'processTranscription'
-        },
-        EVENT_TRIGGERS.NEW_CAPTION, {
-          isFinal: true,
-          transcriptId: voiceaPayload.transcript_id,
-          translations: voiceaPayload.translations,
-          transcript: {
-            csis: voiceaPayload.csis,
-            text: voiceaPayload.data
+        Trigger.trigger(
+          this,
+          {
+            file: 'voicea',
+            function: 'processTranscription',
           },
-          timestamp: millisToMinutesAndSeconds(voiceaPayload.transcript.end_millis - voiceaPayload.transcript.start_millis)
-        });
+          EVENT_TRIGGERS.NEW_CAPTION,
+          {
+            isFinal: true,
+            transcriptId: voiceaPayload.transcript_id,
+            translations: voiceaPayload.translations,
+            transcript: {
+              csis: voiceaPayload.csis,
+              text: voiceaPayload.data,
+            },
+            timestamp: millisToMinutesAndSeconds(
+              voiceaPayload.transcript.end_millis - voiceaPayload.transcript.start_millis
+            ),
+          }
+        );
         break;
 
       case TRANSCRIPTION_TYPE.HIGHLIGHT_CREATED:
-        Trigger.trigger(this, {
-          file: 'voicea',
-          function: 'processTranscription'
-        },
-        EVENT_TRIGGERS.HIGHLIGHT_CREATED, {
-          csis: voiceaPayload.highlight.csis,
-          highlightId: voiceaPayload.highlight.highlight_id,
-          text: voiceaPayload.highlight.transcript,
-          highlightLabel: voiceaPayload.highlight.highlight_label,
-          highlightSource: voiceaPayload.highlight.highlight_source,
-          timestamp: millisToMinutesAndSeconds(voiceaPayload.highlight.end_millis - voiceaPayload.highlight.start_millis)
-        });
+        Trigger.trigger(
+          this,
+          {
+            file: 'voicea',
+            function: 'processTranscription',
+          },
+          EVENT_TRIGGERS.HIGHLIGHT_CREATED,
+          {
+            csis: voiceaPayload.highlight.csis,
+            highlightId: voiceaPayload.highlight.highlight_id,
+            text: voiceaPayload.highlight.transcript,
+            highlightLabel: voiceaPayload.highlight.highlight_label,
+            highlightSource: voiceaPayload.highlight.highlight_source,
+            timestamp: millisToMinutesAndSeconds(
+              voiceaPayload.highlight.end_millis - voiceaPayload.highlight.start_millis
+            ),
+          }
+        );
         break;
 
       case TRANSCRIPTION_TYPE.EVA_THANKS:
-        Trigger.trigger(this, {
-          file: 'voicea',
-          function: 'processTranscription'
-        },
-        EVENT_TRIGGERS.EVA_COMMAND, {
-          isListening: false, text: voiceaPayload.command_response
-        });
+        Trigger.trigger(
+          this,
+          {
+            file: 'voicea',
+            function: 'processTranscription',
+          },
+          EVENT_TRIGGERS.EVA_COMMAND,
+          {
+            isListening: false,
+            text: voiceaPayload.command_response,
+          }
+        );
         break;
 
       case TRANSCRIPTION_TYPE.EVA_WAKE:
       case TRANSCRIPTION_TYPE.EVA_CANCEL:
-        Trigger.trigger(this, {
-          file: 'voicea',
-          function: 'processTranscription'
-        },
-        EVENT_TRIGGERS.EVA_COMMAND, {
-          isListening: voiceaPayload.type === TRANSCRIPTION_TYPE.EVA_WAKE
-        });
+        Trigger.trigger(
+          this,
+          {
+            file: 'voicea',
+            function: 'processTranscription',
+          },
+          EVENT_TRIGGERS.EVA_COMMAND,
+          {
+            isListening: voiceaPayload.type === TRANSCRIPTION_TYPE.EVA_WAKE,
+          }
+        );
         break;
 
       default:
@@ -139,29 +169,36 @@ export class VoiceaChannel extends LLMChannel implements IVoiceaChannel {
    * @param {CaptionLanguageResponse} voiceaPayload
    * @returns {void}
    */
-  private processCaptionLanguageResponse = (voiceaPayload: CaptionLanguageResponse):void => {
+  private processCaptionLanguageResponse = (voiceaPayload: CaptionLanguageResponse): void => {
     if (voiceaPayload.statusCode === 200) {
-      Trigger.trigger(this, {
-        file: 'voicea',
-        function: 'processCaptionLanguageResponse'
-      },
-      EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE, {statusCode: 200});
-    }
-    else {
-      Trigger.trigger(this, {
-        file: 'voicea',
-        function: 'processCaptionLanguageResponse'
-      },
-      EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE, {statusCode: voiceaPayload.errorCode, errorMessage: voiceaPayload.message});
+      Trigger.trigger(
+        this,
+        {
+          file: 'voicea',
+          function: 'processCaptionLanguageResponse',
+        },
+        EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE,
+        {statusCode: 200}
+      );
+    } else {
+      Trigger.trigger(
+        this,
+        {
+          file: 'voicea',
+          function: 'processCaptionLanguageResponse',
+        },
+        EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE,
+        {statusCode: voiceaPayload.errorCode, errorMessage: voiceaPayload.message}
+      );
     }
   };
 
   /**
- * processes voicea announcement response and triggers event
- * @param {Object} voiceaPayload
- * @returns {void}
- */
-  private processAnnouncementMessage = (voiceaPayload: AnnouncementPayload):void => {
+   * processes voicea announcement response and triggers event
+   * @param {Object} voiceaPayload
+   * @returns {void}
+   */
+  private processAnnouncementMessage = (voiceaPayload: AnnouncementPayload): void => {
     const voiceaLanguageOptions = {
       captionLanguages: voiceaPayload?.translation?.allowed_languages ?? [],
       maxLanguages: voiceaPayload?.translation?.max_languages ?? 0,
@@ -172,19 +209,18 @@ export class VoiceaChannel extends LLMChannel implements IVoiceaChannel {
       this,
       {
         file: 'voicea',
-        function: 'processAnnouncementMessage'
+        function: 'processAnnouncementMessage',
       },
       EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT,
       voiceaLanguageOptions
     );
   };
 
-
   /**
    * Sends Announcement to add voicea to the meeting
    * @returns {void}
    */
-  private sendAnnouncement = ():void => {
+  private sendAnnouncement = (): void => {
     if (this.hasVoiceaJoined) return;
     this.socket.send({
       id: `${this.seqNum}`,
@@ -200,7 +236,7 @@ export class VoiceaChannel extends LLMChannel implements IVoiceaChannel {
         eventType: 'relay.event',
         relayType: VOICEA_RELAY_TYPES.CLIENT_ANNOUNCEMENT,
       },
-      trackingId: `${config.trackingIdPrefix}_${uuidv4().toString()}`
+      trackingId: `${config.trackingIdPrefix}_${uuidv4().toString()}`,
     });
     this.seqNum += 1;
   };
@@ -210,20 +246,24 @@ export class VoiceaChannel extends LLMChannel implements IVoiceaChannel {
    * @param {string} languageCode
    * @returns {Promise}
    */
-  public setSpokenLanguage = (languageCode: string):Promise<void> => this.request({
-    method: 'PUT',
-    url: `${this.getLocusUrl()}/controls/`,
-    body: {
-      languageCode
-    }
-  }).then(() => {
-    Trigger.trigger(this, {
-      file: 'voicea',
-      function: 'setSpokenLanguage'
-    },
-    EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE,
-    {languageCode});
-  });
+  public setSpokenLanguage = (languageCode: string): Promise<void> =>
+    this.request({
+      method: 'PUT',
+      url: `${this.getLocusUrl()}/controls/`,
+      body: {
+        languageCode,
+      },
+    }).then(() => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'voicea',
+          function: 'setSpokenLanguage',
+        },
+        EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE,
+        {languageCode}
+      );
+    });
 
   /**
    * Request Language translation
@@ -248,7 +288,7 @@ export class VoiceaChannel extends LLMChannel implements IVoiceaChannel {
         eventType: 'relay.event',
         relayType: VOICEA_RELAY_TYPES.TRANSLATION_REQUEST,
       },
-      trackingId: `${config.trackingIdPrefix}_${uuidv4().toString()}`
+      trackingId: `${config.trackingIdPrefix}_${uuidv4().toString()}`,
     });
     this.seqNum += 1;
   };
@@ -264,14 +304,17 @@ export class VoiceaChannel extends LLMChannel implements IVoiceaChannel {
       method: 'PUT',
       url: `${this.getLocusUrl()}/controls/`,
       body: {
-        transcribe: {caption: true}
-      }
-    }).then(() => {
-      Trigger.trigger(this, {
-        file: 'voicea',
-        function: 'turnOnCaptions'
+        transcribe: {caption: true},
       },
-      EVENT_TRIGGERS.CAPTIONS_TURNED_ON);
+    }).then(() => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'voicea',
+          function: 'turnOnCaptions',
+        },
+        EVENT_TRIGGERS.CAPTIONS_TURNED_ON
+      );
       this.areCaptionsEnabled = true;
       this.sendAnnouncement();
     });
@@ -282,21 +325,24 @@ export class VoiceaChannel extends LLMChannel implements IVoiceaChannel {
    * @param {bool} activate if true transcribing is turned on
    * @returns {Promise}
    */
-  public toggleTranscribing = async (activate:boolean):undefined|Promise<void> => {
+  public toggleTranscribing = async (activate: boolean): undefined | Promise<void> => {
     if (this.isTranscribingEnabled === activate) return undefined;
 
     return this.request({
       method: 'PUT',
       url: `${this.getLocusUrl()}/controls/`,
       body: {
-        transcribe: {transcribing: activate}
-      }
-    }).then(() => {
-      Trigger.trigger(this, {
-        file: 'voicea',
-        function: 'toggleTranscribing'
+        transcribe: {transcribing: activate},
       },
-      activate ? EVENT_TRIGGERS.TRANSCRIBING_ON : EVENT_TRIGGERS.TRANSCRIBING_OFF);
+    }).then(() => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'voicea',
+          function: 'toggleTranscribing',
+        },
+        activate ? EVENT_TRIGGERS.TRANSCRIBING_ON : EVENT_TRIGGERS.TRANSCRIBING_OFF
+      );
       this.isTranscribingEnabled = activate;
       if (activate && !this.areCaptionsEnabled && !this.hasVoiceaJoined) this.turnOnCaptions();
     });

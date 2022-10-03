@@ -1,7 +1,7 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
-
+/* eslint-disable */
 
 const bodyParser = require(`body-parser`);
 const express = require(`express`);
@@ -32,7 +32,7 @@ router.post(`/upload`, (req, res, next) => {
       return next(err);
     }
 
-    const id = uuidv4();
+    const id = uuid.v4();
     const storeAt = path.join(uploadPath, id);
     const getFrom = `/files/download/${id}`;
 
@@ -45,7 +45,7 @@ router.post(`/upload`, (req, res, next) => {
       return res
         .status(201)
         .json({
-          loc: getFrom
+          loc: getFrom,
         })
         .end();
     });
@@ -71,10 +71,7 @@ const upload = multer({storage});
 
 [`put`, `patch`, `post`].forEach((methodName) => {
   router[methodName](`/metadata`, upload.array(`files`), (req, res) => {
-    res
-      .status(200)
-      .json(req.files)
-      .end();
+    res.status(200).json(req.files).end();
   });
 });
 

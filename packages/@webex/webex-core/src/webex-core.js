@@ -9,7 +9,7 @@ import {proxyEvents, retry, transferEvents} from '@webex/common';
 import {HttpStatusInterceptor, defaults as requestDefaults} from '@webex/http-core';
 import {defaultsDeep, get, isFunction, isString, last, merge, omit, set, unset} from 'lodash';
 import AmpState from 'ampersand-state';
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 
 import AuthInterceptor from './interceptors/auth';
 import NetworkTimingInterceptor from './interceptors/network-timing';
@@ -40,8 +40,14 @@ const interceptors = {
   RequestEventInterceptor: RequestEventInterceptor.create,
   RateLimitInterceptor: RateLimitInterceptor.create,
   /* eslint-disable no-extra-parens */
-  RequestLoggerInterceptor: (process.env.ENABLE_NETWORK_LOGGING || process.env.ENABLE_VERBOSE_NETWORK_LOGGING) ? RequestLoggerInterceptor.create : undefined,
-  ResponseLoggerInterceptor: (process.env.ENABLE_NETWORK_LOGGING || process.env.ENABLE_VERBOSE_NETWORK_LOGGING) ? ResponseLoggerInterceptor.create : undefined,
+  RequestLoggerInterceptor:
+    process.env.ENABLE_NETWORK_LOGGING || process.env.ENABLE_VERBOSE_NETWORK_LOGGING
+      ? RequestLoggerInterceptor.create
+      : undefined,
+  ResponseLoggerInterceptor:
+    process.env.ENABLE_NETWORK_LOGGING || process.env.ENABLE_VERBOSE_NETWORK_LOGGING
+      ? ResponseLoggerInterceptor.create
+      : undefined,
   /* eslint-enable no-extra-parens */
   RequestTimingInterceptor: RequestTimingInterceptor.create,
   ServiceInterceptor: undefined,
@@ -54,12 +60,12 @@ const interceptors = {
   RedirectInterceptor: RedirectInterceptor.create,
   HttpStatusInterceptor() {
     return HttpStatusInterceptor.create({
-      error: WebexHttpError
+      error: WebexHttpError,
     });
   },
   NetworkTimingInterceptor: NetworkTimingInterceptor.create,
   EmbargoInterceptor: EmbargoInterceptor.create,
-  DefaultOptionsInterceptor: DefaultOptionsInterceptor.create
+  DefaultOptionsInterceptor: DefaultOptionsInterceptor.create,
 };
 
 const preInterceptors = [
@@ -67,7 +73,7 @@ const preInterceptors = [
   'RequestTimingInterceptor',
   'RequestEventInterceptor',
   'WebexTrackingIdInterceptor',
-  'RateLimitInterceptor'
+  'RateLimitInterceptor',
 ];
 
 const postInterceptors = [
@@ -75,7 +81,7 @@ const postInterceptors = [
   'NetworkTimingInterceptor',
   'EmbargoInterceptor',
   'RequestLoggerInterceptor',
-  'RateLimitInterceptor'
+  'RateLimitInterceptor',
 ];
 
 const MAX_FILE_SIZE_IN_MB = 2048;
@@ -87,7 +93,7 @@ const WebexCore = AmpState.extend({
   version: PACKAGE_VERSION,
 
   children: {
-    internal: WebexInternalCore
+    internal: WebexInternalCore,
   },
 
   constructor(attrs = {}, options) {
@@ -96,12 +102,11 @@ const WebexCore = AmpState.extend({
         credentials: {
           supertoken: {
             // eslint-disable-next-line camelcase
-            access_token: attrs
-          }
-        }
+            access_token: attrs,
+          },
+        },
       };
-    }
-    else {
+    } else {
       // Reminder: order is important here
       [
         'credentials.authorization',
@@ -109,7 +114,7 @@ const WebexCore = AmpState.extend({
         'credentials.supertoken.supertoken',
         'supertoken',
         'access_token',
-        'credentials.authorization.supertoken'
+        'credentials.authorization.supertoken',
       ].forEach((path) => {
         const val = get(attrs, path);
 
@@ -119,22 +124,22 @@ const WebexCore = AmpState.extend({
         }
       });
 
-      [
-        'credentials',
-        'credentials.authorization'
-      ]
-        .forEach((path) => {
-          const val = get(attrs, path);
+      ['credentials', 'credentials.authorization'].forEach((path) => {
+        const val = get(attrs, path);
 
-          if (typeof val === 'string') {
-            unset(attrs, path);
-            set(attrs, 'credentials.supertoken', val);
-          }
-        });
+        if (typeof val === 'string') {
+          unset(attrs, path);
+          set(attrs, 'credentials.supertoken', val);
+        }
+      });
 
       if (typeof get(attrs, 'credentials.access_token') === 'string') {
         // Send access_token to get validated and corrected and then set it
-        set(attrs, 'credentials.access_token', this.bearerValidator(get(attrs, 'credentials.access_token').trim()));
+        set(
+          attrs,
+          'credentials.access_token',
+          this.bearerValidator(get(attrs, 'credentials.access_token').trim())
+        );
 
         set(attrs, 'credentials.supertoken', attrs.credentials);
       }
@@ -148,25 +153,31 @@ const WebexCore = AmpState.extend({
       deps: [],
       fn() {
         return makeWebexStore('bounded', this);
-      }
+      },
     },
     unboundedStorage: {
       deps: [],
       fn() {
         return makeWebexStore('unbounded', this);
-      }
+      },
     },
     ready: {
       deps: ['loaded', 'internal.ready'],
       fn() {
-        return this.loaded && Object.keys(this._children).reduce((ready, name) => ready && this[name] && this[name].ready !== false, true);
-      }
-    }
+        return (
+          this.loaded &&
+          Object.keys(this._children).reduce(
+            (ready, name) => ready && this[name] && this[name].ready !== false,
+            true
+          )
+        );
+      },
+    },
   },
 
   session: {
     config: {
-      type: 'object'
+      type: 'object',
     },
     /**
      * When true, indicates that the initial load from the storage layer is
@@ -177,18 +188,18 @@ const WebexCore = AmpState.extend({
      */
     loaded: {
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     request: {
       setOnce: true,
       // It's supposed to be a function, but that's not a type defined in
       // Ampersand
-      type: 'any'
+      type: 'any',
     },
     sessionId: {
       setOnce: true,
-      type: 'string'
-    }
+      type: 'string',
+    },
   },
 
   /**
@@ -212,32 +223,44 @@ const WebexCore = AmpState.extend({
       (p) => !p.direction || p.direction === direction
     );
     const ctx = {
-      webex: this
+      webex: this,
     };
 
-    return Promise.all(predicates.map((p) => p.test(ctx, object)
-      .then((shouldTransform) => {
-        if (!shouldTransform) {
-          return undefined;
-        }
-
-        return p.extract(object)
-          // eslint-disable-next-line max-nested-callbacks
-          .then((target) => ({
-            name: p.name,
-            target
-          }));
-      })))
-      .then((data) => data
-        .filter((d) => Boolean(d))
-        // eslint-disable-next-line max-nested-callbacks
-        .reduce((promise, {name, target, alias}) => promise.then(() => {
-          if (alias) {
-            return this.applyNamedTransform(direction, alias, target);
+    return Promise.all(
+      predicates.map((p) =>
+        p.test(ctx, object).then((shouldTransform) => {
+          if (!shouldTransform) {
+            return undefined;
           }
 
-          return this.applyNamedTransform(direction, name, target);
-        }), Promise.resolve()))
+          return (
+            p
+              .extract(object)
+              // eslint-disable-next-line max-nested-callbacks
+              .then((target) => ({
+                name: p.name,
+                target,
+              }))
+          );
+        })
+      )
+    )
+      .then((data) =>
+        data
+          .filter((d) => Boolean(d))
+          // eslint-disable-next-line max-nested-callbacks
+          .reduce(
+            (promise, {name, target, alias}) =>
+              promise.then(() => {
+                if (alias) {
+                  return this.applyNamedTransform(direction, alias, target);
+                }
+
+                return this.applyNamedTransform(direction, name, target);
+              }),
+            Promise.resolve()
+          )
+      )
       .then(() => object);
   },
 
@@ -254,7 +277,7 @@ const WebexCore = AmpState.extend({
       name = ctx;
       ctx = {
         webex: this,
-        transform: (...args) => this.applyNamedTransform(direction, ctx, ...args)
+        transform: (...args) => this.applyNamedTransform(direction, ctx, ...args),
       };
     }
 
@@ -264,13 +287,18 @@ const WebexCore = AmpState.extend({
 
     // too many implicit returns on the same line is difficult to interpret
     // eslint-disable-next-line arrow-body-style
-    return transforms.reduce((promise, tx) => promise.then(() => {
-      if (tx.alias) {
-        return ctx.transform(tx.alias, ...rest);
-      }
+    return transforms
+      .reduce(
+        (promise, tx) =>
+          promise.then(() => {
+            if (tx.alias) {
+              return ctx.transform(tx.alias, ...rest);
+            }
 
-      return Promise.resolve(tx.fn(ctx, ...rest));
-    }), Promise.resolve())
+            return Promise.resolve(tx.fn(ctx, ...rest));
+          }),
+        Promise.resolve()
+      )
       .then(() => last(rest));
   },
 
@@ -295,7 +323,6 @@ const WebexCore = AmpState.extend({
    */
   initialize(attrs = {}) {
     this.config = merge({}, config, attrs.config);
-
 
     // There's some unfortunateness with the way {@link AmpersandState#children}
     // get initialized. We'll fire the change:config event so that
@@ -372,10 +399,14 @@ const WebexCore = AmpState.extend({
 
     this.request = requestDefaults({
       json: true,
-      interceptors: ints
+      interceptors: ints,
     });
 
-    let sessionId = `${get(this, 'config.trackingIdPrefix', 'webex-js-sdk')}_${get(this, 'config.trackingIdBase', uuidv4())}`;
+    let sessionId = `${get(this, 'config.trackingIdPrefix', 'webex-js-sdk')}_${get(
+      this,
+      'config.trackingIdBase',
+      uuidv4()
+    )}`;
 
     if (get(this, 'config.trackingIdSuffix')) {
       sessionId += `_${get(this, 'config.trackingIdSuffix')}`;
@@ -408,9 +439,13 @@ const WebexCore = AmpState.extend({
   bearerValidator(token) {
     if (token.includes('Bearer') && token.split(' ').length - 1 === 0) {
       console.warn(
-        `Your access token does not have a space between 'Bearer' and the token, please add a space to it or replace it with this already fixed version:\n\n${token.replace('Bearer', 'Bearer ').replace(/\s+/g, ' ')}`
+        `Your access token does not have a space between 'Bearer' and the token, please add a space to it or replace it with this already fixed version:\n\n${token
+          .replace('Bearer', 'Bearer ')
+          .replace(/\s+/g, ' ')}`
       );
-      console.info("Tip: You don't need to add 'Bearer' to the access_token field. The token by itself is fine");
+      console.info(
+        "Tip: You don't need to add 'Bearer' to the access_token field. The token by itself is fine"
+      );
 
       return token.replace('Bearer', 'Bearer ').replace(/\s+/g, ' ');
     }
@@ -418,9 +453,13 @@ const WebexCore = AmpState.extend({
     // eslint-disable-next-line  no-else-return
     else if (token.split(' ').length - 1 > 1) {
       console.warn(
-        `Your access token has ${token.split(' ').length - 2} too many spaces, please use this format:\n\n${token.replace(/\s+/g, ' ')}`
+        `Your access token has ${
+          token.split(' ').length - 2
+        } too many spaces, please use this format:\n\n${token.replace(/\s+/g, ' ')}`
       );
-      console.info("Tip: You don't need to add 'Bearer' to the access_token field, the token by itself is fine");
+      console.info(
+        "Tip: You don't need to add 'Bearer' to the access_token field, the token by itself is fine"
+      );
 
       return token.replace(/\s+/g, ' ');
     }
@@ -436,11 +475,20 @@ const WebexCore = AmpState.extend({
    * @returns {Object}
    */
   inspect(depth) {
-    return util.inspect(omit(this.serialize({
-      props: true,
-      session: true,
-      derived: true
-    }), 'boundedStorage', 'unboundedStorage', 'request', 'config'), {depth});
+    return util.inspect(
+      omit(
+        this.serialize({
+          props: true,
+          session: true,
+          derived: true,
+        }),
+        'boundedStorage',
+        'unboundedStorage',
+        'request',
+        'config'
+      ),
+      {depth}
+    );
   },
 
   /**
@@ -459,7 +507,9 @@ const WebexCore = AmpState.extend({
   logout(options, ...rest) {
     // prefer the refresh token, but for clients that don't have one, fallback
     // to the access token
-    const token = this.credentials.supertoken && (this.credentials.supertoken.refresh_token || this.credentials.supertoken.access_token);
+    const token =
+      this.credentials.supertoken &&
+      (this.credentials.supertoken.refresh_token || this.credentials.supertoken.access_token);
 
     options = Object.assign({token}, options);
 
@@ -467,19 +517,29 @@ const WebexCore = AmpState.extend({
     // were registered. In that way, wdm unregister() will be above mercury
     // disconnect(), but disconnect() will execute first.
     // eslint-disable-next-line arrow-body-style
-    return this.config.onBeforeLogout.reverse().reduce((promise, {plugin, fn}) => promise.then(() => {
-      return Promise.resolve(Reflect.apply(fn, this[plugin] || this.internal[plugin], [options, ...rest]))
-        // eslint-disable-next-line max-nested-callbacks
-        .catch((err) => {
-          this.logger.warn(`onBeforeLogout from plugin ${plugin}: failed`, err);
-        });
-    }), Promise.resolve())
-      .then(() => Promise.all([
-        this.boundedStorage.clear(),
-        this.unboundedStorage.clear()
-      ]))
+    return this.config.onBeforeLogout
+      .reverse()
+      .reduce(
+        (promise, {plugin, fn}) =>
+          promise.then(() =>
+            Promise.resolve(
+              Reflect.apply(fn, this[plugin] || this.internal[plugin], [options, ...rest])
+            )
+              // eslint-disable-next-line max-nested-callbacks
+              .catch((err) => {
+                this.logger.warn(`onBeforeLogout from plugin ${plugin}: failed`, err);
+              })
+          ),
+        Promise.resolve()
+      )
+      .then(() => Promise.all([this.boundedStorage.clear(), this.unboundedStorage.clear()]))
       .then(() => this.credentials.invalidate(...rest))
-      .then(() => this.authorization && this.authorization.logout && this.authorization.logout(options, ...rest))
+      .then(
+        () =>
+          this.authorization &&
+          this.authorization.logout &&
+          this.authorization.logout(options, ...rest)
+      )
       .then(() => this.trigger('client:logout'));
   },
 
@@ -508,12 +568,16 @@ const WebexCore = AmpState.extend({
     options.phases.upload = options.phases.upload || {};
     options.phases.finalize = options.phases.finalize || {};
 
-    defaultsDeep(options.phases.initialize, {
-      method: 'POST',
-      body: {
-        uploadProtocol: 'content-length'
-      }
-    }, omit(options, 'file', 'phases'));
+    defaultsDeep(
+      options.phases.initialize,
+      {
+        method: 'POST',
+        body: {
+          uploadProtocol: 'content-length',
+        },
+      },
+      omit(options, 'file', 'phases')
+    );
 
     defaultsDeep(options.phases.upload, {
       method: 'PUT',
@@ -522,13 +586,17 @@ const WebexCore = AmpState.extend({
       body: options.file,
       headers: {
         'x-trans-id': uuidv4(),
-        authorization: undefined
-      }
+        authorization: undefined,
+      },
     });
 
-    defaultsDeep(options.phases.finalize, {
-      method: 'POST'
-    }, omit(options, 'file', 'phases'));
+    defaultsDeep(
+      options.phases.finalize,
+      {
+        method: 'POST',
+      },
+      omit(options, 'file', 'phases')
+    );
 
     const shunt = new EventEmitter();
 
@@ -553,7 +621,8 @@ const WebexCore = AmpState.extend({
 
     return this.request(options.phases.initialize)
       .then((...args) => {
-        const fileUploadSizeLimitInBytes = (args[0].body.fileUploadSizeLimit || MAX_FILE_SIZE_IN_MB) * 1024 * 1024;
+        const fileUploadSizeLimitInBytes =
+          (args[0].body.fileUploadSizeLimit || MAX_FILE_SIZE_IN_MB) * 1024 * 1024;
         const currentFileSizeInBytes = options.file.byteLength;
 
         if (fileUploadSizeLimitInBytes && fileUploadSizeLimitInBytes < currentFileSizeInBytes) {
@@ -575,14 +644,14 @@ const WebexCore = AmpState.extend({
     return this.request({
       method: 'DELETE',
       url: response.body.url,
-      headers: response.options.headers
+      headers: response.options.headers,
     }).then(() => {
       this.logger.debug('client: deleting uploaded file complete');
 
       const abortErrorDetails = {
         currentFileSizeInBytes,
         fileUploadSizeLimitInMB: response.body.fileUploadSizeLimit || MAX_FILE_SIZE_IN_MB,
-        message: 'file-upload-size-limit-enabled'
+        message: 'file-upload-size-limit-enabled',
       };
 
       return Promise.reject(new Error(`${JSON.stringify(abortErrorDetails)}`));
@@ -610,12 +679,11 @@ const WebexCore = AmpState.extend({
   _uploadPhaseUpload(options) {
     this.logger.debug('client: uploading file');
 
-    const promise = this.request(options.phases.upload)
-      .then((res) => {
-        this.logger.debug('client: uploaded file');
+    const promise = this.request(options.phases.upload).then((res) => {
+      this.logger.debug('client: uploaded file');
 
-        return res;
-      });
+      return res;
+    });
 
     proxyEvents(options.phases.upload.upload, promise);
 
@@ -632,13 +700,12 @@ const WebexCore = AmpState.extend({
   _uploadPhaseFinalize: function _uploadPhaseFinalize(options) {
     this.logger.debug('client: finalizing upload session');
 
-    return this.request(options.phases.finalize)
-      .then((res) => {
-        this.logger.debug('client: finalized upload session');
+    return this.request(options.phases.finalize).then((res) => {
+      this.logger.debug('client: finalized upload session');
 
-        return res;
-      });
-  }
+      return res;
+    });
+  },
 });
 
 WebexCore.version = PACKAGE_VERSION;

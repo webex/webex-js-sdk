@@ -1,20 +1,21 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
-
+/* eslint-disable no-underscore-dangle */
+/* eslint-disable no-param-reassign */
 import {EventEmitter} from 'events';
 
 import {checkRequired} from '@webex/common';
 import {safeSetTimeout} from '@webex/common-timers';
 import {defaults, has, isObject} from 'lodash';
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 
 import {
   BadRequest,
   ConnectionError,
   Forbidden,
   NotAuthorized,
-  UnknownResponse
+  UnknownResponse,
   // NotFound
 } from '../errors';
 
@@ -88,7 +89,9 @@ export default class Socket extends EventEmitter {
    * @returns {WebSocket}
    */
   static getWebSocketConstructor() {
-    throw new Error('Socket.getWebSocketConstructor() must be implemented in an environmentally appropriate way');
+    throw new Error(
+      'Socket.getWebSocketConstructor() must be implemented in an environmentally appropriate way'
+    );
   }
 
   /**
@@ -127,18 +130,19 @@ export default class Socket extends EventEmitter {
 
       options = defaults(options, {
         code: 1000,
-        reason: 'Done'
+        reason: 'Done',
       });
 
       const closeTimer = safeSetTimeout(() => {
         try {
           this.logger.info('socket: no close event received, forcing closure');
-          resolve(this.onclose({
-            code: 1000,
-            reason: 'Done (forced)'
-          }));
-        }
-        catch (error) {
+          resolve(
+            this.onclose({
+              code: 1000,
+              reason: 'Done (forced)',
+            })
+          );
+        } catch (error) {
           this.logger.warn('socket: force-close failed', error);
         }
       }, this.forceCloseDelay);
@@ -184,19 +188,15 @@ export default class Socket extends EventEmitter {
 
       options = options || {};
 
-      checkRequired([
-        'forceCloseDelay',
-        'pingInterval',
-        'pongTimeout',
-        'token',
-        'trackingId',
-        'logger'
-      ], options);
+      checkRequired(
+        ['forceCloseDelay', 'pingInterval', 'pongTimeout', 'token', 'trackingId', 'logger'],
+        options
+      );
 
       Object.keys(options).forEach((key) => {
         Reflect.defineProperty(this, key, {
           enumerable: false,
-          value: options[key]
+          value: options[key],
         });
       });
 
@@ -213,10 +213,10 @@ export default class Socket extends EventEmitter {
         this.logger.info('socket: closed before open', event.code, event.reason);
         switch (event.code) {
           case 1005:
-          // IE 11 doesn't seem to allow 4XXX codes, so if we get a 1005, assume
-          // it's a bad websocket url. That'll trigger a device refresh; if it
-          // turns out we had a bad token, the device refresh should 401 and
-          // trigger a token refresh.
+            // IE 11 doesn't seem to allow 4XXX codes, so if we get a 1005, assume
+            // it's a bad websocket url. That'll trigger a device refresh; if it
+            // turns out we had a bad token, the device refresh should 401 and
+            // trigger a token refresh.
             return reject(new UnknownResponse(event));
           case 4400:
             return reject(new BadRequest(event));
@@ -224,8 +224,8 @@ export default class Socket extends EventEmitter {
             return reject(new NotAuthorized(event));
           case 4403:
             return reject(new Forbidden(event));
-            // case 4404:
-            //   return reject(new NotFound(event));
+          // case 4404:
+          //   return reject(new NotFound(event));
           default:
             return reject(new ConnectionError(event));
         }
@@ -281,7 +281,9 @@ export default class Socket extends EventEmitter {
 
       this.logger.debug('socket: sequence number: ', sequenceNumber);
       if (this.expectedSequenceNumber && sequenceNumber !== this.expectedSequenceNumber) {
-        this.logger.debug(`socket: sequence number mismatch indicates lost mercury message. expected: ${this.expectedSequenceNumber}, actual: ${sequenceNumber}`);
+        this.logger.debug(
+          `socket: sequence number mismatch indicates lost mercury message. expected: ${this.expectedSequenceNumber}, actual: ${sequenceNumber}`
+        );
         this.emit('sequence-mismatch', sequenceNumber, this.expectedSequenceNumber);
       }
       this.expectedSequenceNumber = sequenceNumber + 1;
@@ -294,12 +296,10 @@ export default class Socket extends EventEmitter {
       this._acknowledge(processedEvent);
       if (data.type === 'pong') {
         this.emit('pong', processedEvent);
-      }
-      else {
+      } else {
         this.emit('message', processedEvent);
       }
-    }
-    catch (error) {
+    } catch (error) {
       // The above code should only be able to throw if we receive an unparsable
       // message from Mercury. At this time, the only action we have is to
       // ignore it and move on.
@@ -347,7 +347,7 @@ export default class Socket extends EventEmitter {
 
     return this.send({
       messageId: event.data.id,
-      type: 'ack'
+      type: 'ack',
     });
   }
 
@@ -363,14 +363,18 @@ export default class Socket extends EventEmitter {
         id: uuidv4(),
         type: 'authorization',
         data: {
-          token: this.token
+          token: this.token,
         },
         trackingId: this.trackingId,
-        logLevelToken: this.logLevelToken
+        logLevelToken: this.logLevelToken,
       });
 
       const waitForBufferState = (event) => {
-        if (!event.data.type && (event.data.data.eventType === 'mercury.buffer_state' || event.data.data.eventType === 'mercury.registration_status')) {
+        if (
+          !event.data.type &&
+          (event.data.data.eventType === 'mercury.buffer_state' ||
+            event.data.data.eventType === 'mercury.registration_status')
+        ) {
           this.removeListener('message', waitForBufferState);
           this._ping();
           resolve();
@@ -423,11 +427,10 @@ export default class Socket extends EventEmitter {
           this.logger.debug('socket: expected', id, 'received', event.data.id);
           this.close({
             code: 1000,
-            reason: 'Pong mismatch'
+            reason: 'Pong mismatch',
           });
         }
-      }
-      catch (error) {
+      } catch (error) {
         // This try/catch block was added as a debugging step; to the best of my
         // knowledge, the above can never throw.
         /* istanbul ignore next */
@@ -440,13 +443,11 @@ export default class Socket extends EventEmitter {
         this.logger.info('socket: pong not receive in expected period, closing socket');
         this.close({
           code: 1000,
-          reason: 'Pong not received'
-        })
-          .catch((reason) => {
-            this.logger.warn('socket: failed to close socket after missed pong', reason);
-          });
-      }
-      catch (error) {
+          reason: 'Pong not received',
+        }).catch((reason) => {
+          this.logger.warn('socket: failed to close socket after missed pong', reason);
+        });
+      } catch (error) {
         // This try/catch block was added as a debugging step; to the best of my
         // knowledge, the above can never throw.
         /* istanbul ignore next */
@@ -458,8 +459,7 @@ export default class Socket extends EventEmitter {
       try {
         clearTimeout(this.pongTimer);
         this.pingTimer = safeSetTimeout(() => this._ping(), this.pingInterval);
-      }
-      catch (error) {
+      } catch (error) {
         // This try/catch block was added as a debugging step; to the best of my
         // knowledge, the above can never throw.
         /* istanbul ignore next */
@@ -476,7 +476,7 @@ export default class Socket extends EventEmitter {
 
     return this.send({
       id,
-      type: 'ping'
+      type: 'ping',
     });
   }
 }

@@ -14,12 +14,13 @@ module.exports = {
     PACKAGE_VERSION: false,
     WebSocket: false,
   },
-  plugins: ['@typescript-eslint', 'import', 'eslint-plugin-tsdoc', 'jest'],
+  plugins: ['@typescript-eslint', 'prettier', 'import', 'eslint-plugin-tsdoc', 'jest'],
   extends: [
     'airbnb-base',
     'plugin:import/typescript',
     'plugin:@typescript-eslint/eslint-recommended',
     'plugin:@typescript-eslint/recommended',
+    'plugin:prettier/recommended',
     'plugin:import/recommended',
   ],
   rules: {
@@ -31,11 +32,9 @@ module.exports = {
         avoidEscape: true,
       },
     ],
-    'tsdoc/syntax': 'error',
     'object-curly-spacing': 0,
     'no-shadow': 0,
     '@typescript-eslint/no-shadow': ['error'],
-    indent: 'off',
     '@typescript-eslint/no-unused-vars': 'error',
     '@typescript-eslint/no-explicit-any': 'error',
     'import/prefer-default-export': 0,
@@ -112,13 +111,16 @@ module.exports = {
         enforceForClassMembers: true,
       },
     ],
+    'no-confusing-arrow': ['error', {
+      allowParens: true
+    }],
     'no-dupe-keys': 'error',
     'no-dupe-class-members': 'error',
     'newline-after-var': 'error',
     'newline-before-return': 'error',
     'lines-around-directive': 'error',
     'no-useless-call': 'error',
-    'operator-linebreak': 'off',
+    'operator-linebreak': 'off'
   },
 
   settings: {
@@ -211,10 +213,12 @@ module.exports = {
     },
   ],
   ignorePatterns: [
-    '**/build/**/*.*',
+    '**/test/**/*.*',
     './packages/**/dist/**/*.*',
-    'docs/^(?!examples)/*.*',
-    '*.typegen.ts',
+    'docs/*.*',
     './packages/webex/umd/**',
+    'authorization.js', // uses decorator which does not get parsed
+    'kms.js', // uses decorator which does not get parsed,
+    'webex-core.js'// uses decorator which does not get parsed,
   ],
 };

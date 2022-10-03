@@ -1,10 +1,11 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
-
+/* eslint-disable no-underscore-dangle */
+/* eslint-disable no-param-reassign */
 import {WebexPlugin, WebexHttpError} from '@webex/webex-core';
 import {cloneDeep, difference, first, last, memoize} from 'lodash';
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 
 export const USE_INCOMING = 'USE_INCOMING';
 export const USE_CURRENT = 'USE_CURRENT';
@@ -54,12 +55,10 @@ const Locus = WebexPlugin.extend({
       uri: `${locus.url}/participant/alert`,
       body: {
         deviceUrl: this.webex.internal.device.url,
-        sequence: locus.sequence
-      }
-    })
-      .then((res) => res.body);
+        sequence: locus.sequence,
+      },
+    }).then((res) => res.body);
   },
-
 
   /**
    * Compares two loci to determine which one contains the most recent state
@@ -79,7 +78,11 @@ const Locus = WebexPlugin.extend({
     function isEmpty(locus) {
       const {sequence} = locus;
 
-      return (!sequence.entries || !sequence.entries.length) && sequence.rangeStart === 0 && sequence.rangeEnd === 0;
+      return (
+        (!sequence.entries || !sequence.entries.length) &&
+        sequence.rangeStart === 0 &&
+        sequence.rangeEnd === 0
+      );
     }
 
     if (isEmpty(current) || isEmpty(incoming)) {
@@ -198,11 +201,17 @@ const Locus = WebexPlugin.extend({
     }
 
     if (!currentOnly.length && !incomingOnly.length) {
-      if (current.rangeEnd - getCompareFirstValue(current) > incoming.rangeEnd - getCompareFirstValue(incoming)) {
+      if (
+        current.rangeEnd - getCompareFirstValue(current) >
+        incoming.rangeEnd - getCompareFirstValue(incoming)
+      ) {
         return GREATER_THAN;
       }
 
-      if (current.rangeEnd - getCompareFirstValue(current) < incoming.rangeEnd - getCompareFirstValue(incoming)) {
+      if (
+        current.rangeEnd - getCompareFirstValue(current) <
+        incoming.rangeEnd - getCompareFirstValue(incoming)
+      ) {
         return LESS_THAN;
       }
 
@@ -257,39 +266,43 @@ const Locus = WebexPlugin.extend({
       throw new Error('options.correlationId is required');
     }
 
-    return this.request({
-      method: 'POST',
-      service: 'locus',
-      resource: 'loci/call',
-      body: {
-        correlationId,
-        deviceUrl: this.webex.internal.device.url,
-        invitee: {
-          invitee
+    return (
+      this.request({
+        method: 'POST',
+        service: 'locus',
+        resource: 'loci/call',
+        body: {
+          correlationId,
+          deviceUrl: this.webex.internal.device.url,
+          invitee: {
+            invitee,
+          },
+          localMedias: [
+            {
+              localSdp: JSON.stringify({
+                type: 'SDP',
+                sdp: options.localSdp,
+              }),
+            },
+          ],
+          sequence: {
+            entries: [],
+            rangeStart: 0,
+            rangeEnd: 0,
+          },
         },
-        localMedias: [{
-          localSdp: JSON.stringify({
-            type: 'SDP',
-            sdp: options.localSdp
-          })
-        }],
-        sequence: {
-          entries: [],
-          rangeStart: 0,
-          rangeEnd: 0
-        }
-      }
-    })
-      // res.body.mediaConnections is deprecated so just return the locus
-      .then((res) => {
-        res.body.locus.self.devices.map((item, index) => {
-          item.mediaConnections = [res.body.mediaConnections[index]];
+      })
+        // res.body.mediaConnections is deprecated so just return the locus
+        .then((res) => {
+          res.body.locus.self.devices.map((item, index) => {
+            item.mediaConnections = [res.body.mediaConnections[index]];
 
-          return item;
-        });
+            return item;
+          });
 
-        return res.body.locus;
-      });
+          return res.body.locus;
+        })
+    );
   },
 
   /**
@@ -323,8 +336,8 @@ const Locus = WebexPlugin.extend({
       uri: `${locus.url}/participant/decline`,
       body: {
         deviceUrl: this.webex.internal.device.url,
-        sequence: locus.sequence
-      }
+        sequence: locus.sequence,
+      },
     })
       .then((res) => res.body)
       .catch((reason) => {
@@ -346,9 +359,8 @@ const Locus = WebexPlugin.extend({
   get(locus) {
     return this.request({
       method: 'GET',
-      uri: `${locus.url}`
-    })
-      .then((res) => res.body);
+      uri: `${locus.url}`,
+    }).then((res) => res.body);
   },
 
   /**
@@ -360,15 +372,14 @@ const Locus = WebexPlugin.extend({
    * @returns {Promise<Object>}
    */
   getCallHistory(options = {}) {
-    const from = (new Date(options.from || Date.now())).toISOString();
+    const from = new Date(options.from || Date.now()).toISOString();
 
     return this.request({
       method: 'GET',
       service: 'janus',
       resource: 'history/userSessions',
-      qs: {from}
-    })
-      .then((res) => res.body);
+      qs: {from},
+    }).then((res) => res.body);
   },
 
   /**
@@ -387,35 +398,39 @@ const Locus = WebexPlugin.extend({
       throw new Error('locus.correlationId or options.correlationId is required');
     }
 
-    return this.request({
-      method: 'POST',
-      uri: `${locus.url}/participant`,
-      body: {
-        correlationId,
-        deviceUrl: this.webex.internal.device.url,
-        localMedias: [{
-          localSdp: JSON.stringify({
-            type: 'SDP',
-            sdp: options.localSdp
-          })
-        }],
-        sequence: locus.sequence || {
-          entries: [],
-          rangeStart: 0,
-          rangeEnd: 0
-        }
-      }
-    })
-      // The mediaConnections object is deprecated, so just return the locus
-      .then((res) => {
-        res.body.locus.self.devices.map((item, index) => {
-          item.mediaConnections = [res.body.mediaConnections[index]];
+    return (
+      this.request({
+        method: 'POST',
+        uri: `${locus.url}/participant`,
+        body: {
+          correlationId,
+          deviceUrl: this.webex.internal.device.url,
+          localMedias: [
+            {
+              localSdp: JSON.stringify({
+                type: 'SDP',
+                sdp: options.localSdp,
+              }),
+            },
+          ],
+          sequence: locus.sequence || {
+            entries: [],
+            rangeStart: 0,
+            rangeEnd: 0,
+          },
+        },
+      })
+        // The mediaConnections object is deprecated, so just return the locus
+        .then((res) => {
+          res.body.locus.self.devices.map((item, index) => {
+            item.mediaConnections = [res.body.mediaConnections[index]];
 
-          return item;
-        });
+            return item;
+          });
 
-        return res.body.locus;
-      });
+          return res.body.locus;
+        })
+    );
   },
 
   /**
@@ -431,8 +446,8 @@ const Locus = WebexPlugin.extend({
       uri: `${locus.self.url}/leave`,
       body: {
         deviceUrl: this.webex.internal.device.url,
-        sequence: locus.sequence
-      }
+        sequence: locus.sequence,
+      },
     })
       .then((res) => res.body.locus)
       .catch((reason) => {
@@ -454,9 +469,8 @@ const Locus = WebexPlugin.extend({
     return this.request({
       method: 'GET',
       service: 'locus',
-      resource: 'loci'
-    })
-      .then((res) => res.body.loci);
+      resource: 'loci',
+    }).then((res) => res.body.loci);
   },
 
   /**
@@ -499,8 +513,7 @@ const Locus = WebexPlugin.extend({
           // attribute `removed=true` should be removed from the working copy's
           // "participants" collection.
           toRemove.add(p.url);
-        }
-        else {
+        } else {
           // Elements of the delta events "participants" list that are absent
           // from the local working copy should be added to that collection.
           toUpsert.set(p.url, p);
@@ -537,15 +550,16 @@ const Locus = WebexPlugin.extend({
    * @returns {Promise}
    */
   releaseFloorGrant(locus, share) {
-    return this.webex.request({
-      uri: share.url,
-      method: 'PUT',
-      body: {
-        floor: {
-          disposition: 'RELEASED'
-        }
-      }
-    })
+    return this.webex
+      .request({
+        uri: share.url,
+        method: 'PUT',
+        body: {
+          floor: {
+            disposition: 'RELEASED',
+          },
+        },
+      })
       .then(({body}) => body);
   },
 
@@ -557,19 +571,20 @@ const Locus = WebexPlugin.extend({
    * @returns {Promise}
    */
   requestFloorGrant(locus, share) {
-    return this.webex.request({
-      uri: share.url,
-      method: 'PUT',
-      body: {
-        floor: {
-          beneficiary: {
-            url: locus.self.url,
-            devices: [{url: this.webex.internal.device.url}]
+    return this.webex
+      .request({
+        uri: share.url,
+        method: 'PUT',
+        body: {
+          floor: {
+            beneficiary: {
+              url: locus.self.url,
+              devices: [{url: this.webex.internal.device.url}],
+            },
+            disposition: 'GRANTED',
           },
-          disposition: 'GRANTED'
-        }
-      }
-    })
+        },
+      })
       .then(({body}) => body);
   },
 
@@ -589,9 +604,9 @@ const Locus = WebexPlugin.extend({
         deviceUrl: this.webex.internal.device.url,
         dtmf: {
           correlationId: uuidv4(),
-          tones
-        }
-      }
+          tones,
+        },
+      },
     });
   },
 
@@ -603,13 +618,15 @@ const Locus = WebexPlugin.extend({
    * @returns {Types~LocusDelta}
    */
   sync(locus) {
-    return this.request({
-      method: 'GET',
-      uri: locus.syncUrl
-    })
-      // the api may return a 204 no content, so we'll give back an empty
-      // object in that case.
-      .then((res) => res.body || {});
+    return (
+      this.request({
+        method: 'GET',
+        uri: locus.syncUrl,
+      })
+        // the api may return a 204 no content, so we'll give back an empty
+        // object in that case.
+        .then((res) => res.body || {})
+    );
   },
 
   /**
@@ -625,12 +642,10 @@ const Locus = WebexPlugin.extend({
    * @param {Boolean} options.videoMuted
    * @returns {Promise<Types~Locus>}
    */
-  updateMedia(locus, {
-    sdp, audioMuted, videoMuted, mediaId
-  }) {
+  updateMedia(locus, {sdp, audioMuted, videoMuted, mediaId}) {
     const localSdp = {
       audioMuted,
-      videoMuted
+      videoMuted,
     };
 
     if (sdp) {
@@ -643,15 +658,16 @@ const Locus = WebexPlugin.extend({
       uri: `${locus.self.url}/media`,
       body: {
         deviceUrl: this.webex.internal.device.url,
-        localMedias: [{
-          localSdp: JSON.stringify(localSdp),
-          mediaId
-        }],
-        sequence: locus.sequence
-      }
-    })
-      .then((res) => res.body.locus);
-  }
+        localMedias: [
+          {
+            localSdp: JSON.stringify(localSdp),
+            mediaId,
+          },
+        ],
+        sequence: locus.sequence,
+      },
+    }).then((res) => res.body.locus);
+  },
 });
 
 export default Locus;

@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
@@ -5,7 +6,7 @@ import 'jsdom-global/register';
 import {cloneDeep, isEqual} from 'lodash';
 import sinon from 'sinon';
 import StateMachine from 'javascript-state-machine';
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 import {assert} from '@webex/test-helper-chai';
 import {Credentials} from '@webex/webex-core';
 import Support from '@webex/internal-plugin-support';
@@ -21,7 +22,6 @@ import {
   _MEETING_ID_,
   LOCUSINFO,
 } from '@webex/plugin-meetings/src/constants';
-
 import * as StatsAnalyzerModule from '@webex/plugin-meetings/src/statsAnalyzer';
 import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
 import Meetings, {CONSTANTS} from '@webex/plugin-meetings';
@@ -49,7 +49,7 @@ import {
   UserNotJoinedError,
   MeetingNotActiveError,
   UserInLobbyError,
-  NoMediaEstablishedYetError
+  NoMediaEstablishedYetError,
 } from '../../../../src/common/errors/webex-errors';
 import WebExMeetingsErrors from '../../../../src/common/errors/webex-meetings-error';
 import ParameterError from '../../../../src/common/errors/parameter';
@@ -58,11 +58,12 @@ import CaptchaError from '../../../../src/common/errors/captcha-error';
 import IntentToJoinError from '../../../../src/common/errors/intent-to-join';
 import DefaultSDKConfig from '../../../../src/config';
 import testUtils from '../../../utils/testUtils';
-import {MeetingInfoV2CaptchaError, MeetingInfoV2PasswordError} from '../../../../src/meeting-info/meeting-info-v2';
+import {
+  MeetingInfoV2CaptchaError,
+  MeetingInfoV2PasswordError,
+} from '../../../../src/meeting-info/meeting-info-v2';
 
-const {
-  getBrowserName
-} = BrowserDetection();
+const {getBrowserName} = BrowserDetection();
 
 // Non-stubbed function
 const {getDisplayMedia} = Media;
@@ -74,7 +75,7 @@ describe('plugin-meetings', () => {
     error: () => {},
     warn: () => {},
     trace: () => {},
-    debug: () => {}
+    debug: () => {},
   };
 
   beforeEach(() => {
@@ -86,44 +87,48 @@ describe('plugin-meetings', () => {
 
   before(() => {
     const MediaStream = {
-      getVideoTracks: () => [{
-        applyConstraints: () => { }
-      }]
+      getVideoTracks: () => [
+        {
+          applyConstraints: () => {},
+        },
+      ],
     };
 
     Object.defineProperty(global.window.navigator, 'mediaDevices', {
       writable: true,
       value: {
         getDisplayMedia: sinon.stub().returns(Promise.resolve(MediaStream)),
-        enumerateDevices: sinon.stub().returns(Promise.resolve([
-          {
-            deviceId: '',
-            kind: 'audioinput',
-            label: '',
-            groupId: '29d9339cc77bffdd24cb69ee80f6d3200481099bcd0f29267558672de0430777',
-          },
-          {
-            deviceId: '',
-            kind: 'videoinput',
-            label: '',
-            groupId: '08d4f8200e7e4a3425ecf75b7edea9ae4acd934019f2a52217554bcc8e46604d',
-          },
-          {
-            deviceId: '',
-            kind: 'audiooutput',
-            label: '',
-            groupId: '29d9339cc77bffdd24cb69ee80f6d3200481099bcd0f29267558672de0430777',
-          }
-        ])),
+        enumerateDevices: sinon.stub().returns(
+          Promise.resolve([
+            {
+              deviceId: '',
+              kind: 'audioinput',
+              label: '',
+              groupId: '29d9339cc77bffdd24cb69ee80f6d3200481099bcd0f29267558672de0430777',
+            },
+            {
+              deviceId: '',
+              kind: 'videoinput',
+              label: '',
+              groupId: '08d4f8200e7e4a3425ecf75b7edea9ae4acd934019f2a52217554bcc8e46604d',
+            },
+            {
+              deviceId: '',
+              kind: 'audiooutput',
+              label: '',
+              groupId: '29d9339cc77bffdd24cb69ee80f6d3200481099bcd0f29267558672de0430777',
+            },
+          ])
+        ),
         getSupportedConstraints: sinon.stub().returns({
-          sampleRate: true
-        })
+          sampleRate: true,
+        }),
       },
     });
 
     Object.defineProperty(global.window, 'MediaStream', {
       writable: true,
-      value: MediaStream
+      value: MediaStream,
     });
     LoggerConfig.set({verboseEvents: true, enable: false});
     LoggerProxy.set(logger);
@@ -148,32 +153,31 @@ describe('plugin-meetings', () => {
       children: {
         meetings: Meetings,
         credentials: Credentials,
-        support: Support
+        support: Support,
       },
       config: {
         credentials: {
-          client_id: 'mock-client-id'
+          client_id: 'mock-client-id',
         },
         meetings: {
           reconnection: {
-            enabled: false
+            enabled: false,
           },
           mediaSettings: {},
           metrics: {},
           stats: {},
-          experimental: {enableUnifiedMeetings: true}
+          experimental: {enableUnifiedMeetings: true},
         },
         metrics: {
-          type: ['behavioral']
-        }
-      }
+          type: ['behavioral'],
+        },
+      },
     });
 
     webex.internal.support.submitLogs = sinon.stub().returns(Promise.resolve());
     webex.credentials.getOrgId = sinon.stub().returns('fake-org-id');
     webex.internal.metrics.submitClientMetrics = sinon.stub().returns(Promise.resolve());
     webex.meetings.uploadLogs = sinon.stub().returns(Promise.resolve());
-
 
     TriggerProxy.trigger = sinon.stub().returns(true);
     Metrics.postEvent = sinon.stub();
@@ -203,7 +207,7 @@ describe('plugin-meetings', () => {
         destinationType: _MEETING_ID_,
       },
       {
-        parent: webex
+        parent: webex,
       }
     );
 
@@ -433,7 +437,6 @@ describe('plugin-meetings', () => {
           it('should return a promise resolution', async () => {
             meeting.audio = {handleClientRequest};
 
-
             const audio = meeting.unmuteAudio();
 
             assert.exists(audio.then);
@@ -450,8 +453,8 @@ describe('plugin-meetings', () => {
           readyState: 'live',
           enabled: true,
           getSettings: () => ({
-            sampleRate: 48000
-          })
+            sampleRate: 48000,
+          }),
         });
 
         beforeEach(() => {
@@ -459,7 +462,7 @@ describe('plugin-meetings', () => {
           sinon.replace(meeting, 'addMedia', () => {
             sinon.stub(meeting.mediaProperties, 'audioTrack').value(fakeMediaTrack());
             sinon.stub(meeting.mediaProperties, 'mediaDirection').value({
-              receiveAudio: true
+              receiveAudio: true,
             });
           });
         });
@@ -471,7 +474,7 @@ describe('plugin-meetings', () => {
           describe('before audio attached to meeting', () => {
             it('should throw no audio error', async () => {
               await meeting.enableBNR().catch((err) => {
-                assert.equal(err.toString(), 'Error: Meeting doesn\'t have an audioTrack attached');
+                assert.equal(err.toString(), "Error: Meeting doesn't have an audioTrack attached");
               });
             });
           });
@@ -519,7 +522,7 @@ describe('plugin-meetings', () => {
 
             it('should throw no audio error', async () => {
               await meeting.disableBNR().catch((err) => {
-                assert.equal(err.toString(), 'Error: Meeting doesn\'t have an audioTrack attached');
+                assert.equal(err.toString(), "Error: Meeting doesn't have an audioTrack attached");
               });
             });
           });
@@ -651,7 +654,11 @@ describe('plugin-meetings', () => {
       });
       describe('#getMediaStreams', () => {
         beforeEach(() => {
-          sinon.stub(Media, 'getSupportedDevice').callsFake((options) => Promise.resolve({sendAudio: options.sendAudio, sendVideo: options.sendVideo}));
+          sinon
+            .stub(Media, 'getSupportedDevice')
+            .callsFake((options) =>
+              Promise.resolve({sendAudio: options.sendAudio, sendVideo: options.sendVideo})
+            );
           sinon.stub(Media, 'getUserMedia').returns(Promise.resolve(['stream1', 'stream2']));
         });
         afterEach(() => {
@@ -675,15 +682,18 @@ describe('plugin-meetings', () => {
 
           await meeting.getMediaStreams(mediaDirection, audioVideoSettings);
 
-          assert.calledWith(Media.getUserMedia, {
-            ...mediaDirection,
-            isSharing: false
-          },
-          {
-            video: {
-              deviceId: videoDevice
+          assert.calledWith(
+            Media.getUserMedia,
+            {
+              ...mediaDirection,
+              isSharing: false,
+            },
+            {
+              video: {
+                deviceId: videoDevice,
+              },
             }
-          });
+          );
         });
         it('will set a new preferred video input device if passed in', async () => {
           // if audioVideo settings parameter specifies a new video device it
@@ -739,8 +749,7 @@ describe('plugin-meetings', () => {
 
           try {
             await meeting.receiveTranscription();
-          }
-          catch (err) {
+          } catch (err) {
             assert(err, {});
           }
         });
@@ -748,7 +757,7 @@ describe('plugin-meetings', () => {
       describe('#stopReceivingTranscription', () => {
         it('should get invoked', () => {
           meeting.transcription = {
-            closeSocket: sinon.stub()
+            closeSocket: sinon.stub(),
           };
 
           meeting.stopReceivingTranscription();
@@ -829,8 +838,7 @@ describe('plugin-meetings', () => {
               try {
                 await meeting.join();
                 joinSucceeded = true;
-              }
-              catch (e) {
+              } catch (e) {
                 assert.instanceOf(e, IntentToJoinError);
               }
               assert.isFalse(joinSucceeded);
@@ -878,7 +886,7 @@ describe('plugin-meetings', () => {
       describe('#addMedia', () => {
         const muteStateStub = {
           handleClientRequest: sinon.stub().returns(Promise.resolve(true)),
-          applyClientStateLocally: sinon.stub().returns(Promise.resolve(true))
+          applyClientStateLocally: sinon.stub().returns(Promise.resolve(true)),
         };
 
         beforeEach(() => {
@@ -889,10 +897,13 @@ describe('plugin-meetings', () => {
           meeting.setMercuryListener = sinon.stub().returns(true);
           meeting.setRemoteStream = sinon.stub().returns(true);
           meeting.setMercuryListener = sinon.stub();
-          meeting.roap.sendRoapMediaRequest = sinon.stub().returns(new Promise((resolve) => {
-            meeting.mediaProperties.peerConnection.connectionState = CONSTANTS.CONNECTION_STATE.CONNECTED;
-            resolve();
-          }));
+          meeting.roap.sendRoapMediaRequest = sinon.stub().returns(
+            new Promise((resolve) => {
+              meeting.mediaProperties.peerConnection.connectionState =
+                CONSTANTS.CONNECTION_STATE.CONNECTED;
+              resolve();
+            })
+          );
           PeerConnectionManager.setContentSlides = sinon.stub().returns(true);
         });
 
@@ -921,8 +932,7 @@ describe('plugin-meetings', () => {
           try {
             await meeting.addMedia();
             assert.fail('addMedia should have thrown an exception.');
-          }
-          catch (err) {
+          } catch (err) {
             assert.instanceOf(err, UserInLobbyError);
           }
         });
@@ -951,29 +961,30 @@ describe('plugin-meetings', () => {
           try {
             await meeting.addMedia();
             assert.fail('addMedia should have thrown an exception.');
-          }
-          catch (err) {
+          } catch (err) {
             assert.exists(err);
           }
 
           try {
             await meeting.addMedia({
-              mediaSettings: {}
+              mediaSettings: {},
             });
-          }
-          catch (err) {
+          } catch (err) {
             assert.fail('should not throw an error');
           }
         });
 
         it('if an error occurs after media request has already been sent, and the user waits until the server kicks them out, a UserNotJoinedError should be thrown when attempting to addMedia again', async () => {
           meeting.meetingState = 'ACTIVE';
-          meeting.roap.sendRoapMediaRequest = sinon.stub().returns(new Promise((resolve) => {
-            meeting.mediaProperties.peerConnection.connectionState = CONSTANTS.CONNECTION_STATE.CONNECTED;
-            resolve();
-          }).then(() => {
-            throw new Error('sample error thrown');
-          }));
+          meeting.roap.sendRoapMediaRequest = sinon.stub().returns(
+            new Promise((resolve) => {
+              meeting.mediaProperties.peerConnection.connectionState =
+                CONSTANTS.CONNECTION_STATE.CONNECTED;
+              resolve();
+            }).then(() => {
+              throw new Error('sample error thrown');
+            })
+          );
           await meeting.addMedia().catch((err) => {
             assert.exists(err);
           });
@@ -986,21 +997,27 @@ describe('plugin-meetings', () => {
 
         it('if an error occurs after media request has already been sent, and the user does NOT wait until the server kicks them out, the user should be able to addMedia successfully', async () => {
           meeting.meetingState = 'ACTIVE';
-          meeting.roap.sendRoapMediaRequest = sinon.stub().returns(new Promise((resolve) => {
-            meeting.mediaProperties.peerConnection.connectionState = CONSTANTS.CONNECTION_STATE.CONNECTED;
-            resolve();
-          }).then(() => {
-            throw new Error('sample error thrown');
-          }));
+          meeting.roap.sendRoapMediaRequest = sinon.stub().returns(
+            new Promise((resolve) => {
+              meeting.mediaProperties.peerConnection.connectionState =
+                CONSTANTS.CONNECTION_STATE.CONNECTED;
+              resolve();
+            }).then(() => {
+              throw new Error('sample error thrown');
+            })
+          );
           await meeting.addMedia().catch((err) => {
             assert.exists(err);
           });
 
           meeting.mediaProperties.peerConnection = {};
-          meeting.roap.sendRoapMediaRequest = sinon.stub().returns(new Promise((resolve) => {
-            meeting.mediaProperties.peerConnection.connectionState = CONSTANTS.CONNECTION_STATE.CONNECTED;
-            resolve();
-          }));
+          meeting.roap.sendRoapMediaRequest = sinon.stub().returns(
+            new Promise((resolve) => {
+              meeting.mediaProperties.peerConnection.connectionState =
+                CONSTANTS.CONNECTION_STATE.CONNECTED;
+              resolve();
+            })
+          );
           await meeting.addMedia().catch((err) => {
             assert.fail('No error should appear: ', err);
           });
@@ -1009,7 +1026,7 @@ describe('plugin-meetings', () => {
         it('should attach the media and return promise', async () => {
           meeting.meetingState = 'ACTIVE';
           const media = meeting.addMedia({
-            mediaSettings: {}
+            mediaSettings: {},
           });
 
           assert.exists(media);
@@ -1020,15 +1037,15 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.setRemoteStream);
           assert.calledOnce(meeting.roap.sendRoapMediaRequest);
           /* statsAnalyzer is initiated inside of addMedia so there isn't
-          * a good way to mock it without mocking the constructor
-          */
+           * a good way to mock it without mocking the constructor
+           */
         });
 
         it('should attach the media and return promise', async () => {
           meeting.meetingState = 'ACTIVE';
           meeting.mediaProperties.peerConnection.connectionState = 'DISCONNECTED';
           const media = meeting.addMedia({
-            mediaSettings: {}
+            mediaSettings: {},
           });
 
           assert.exists(media);
@@ -1052,7 +1069,7 @@ describe('plugin-meetings', () => {
             sinon.stub(StatsAnalyzerModule, 'StatsAnalyzer').returns(statsAnalyzerStub);
 
             await meeting.addMedia({
-              mediaSettings: {}
+              mediaSettings: {},
             });
           });
 
@@ -1061,51 +1078,79 @@ describe('plugin-meetings', () => {
           });
 
           it('LOCAL_MEDIA_STARTED triggers "meeting:media:local:start" event and sends metrics', async () => {
-            statsAnalyzerStub.emit({file: 'test', function: 'test'}, StatsAnalyzerModule.EVENTS.LOCAL_MEDIA_STARTED, {type: 'audio'});
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.LOCAL_MEDIA_STARTED,
+              {type: 'audio'}
+            );
 
             assert.calledWith(
               TriggerProxy.trigger,
               sinon.match.instanceOf(Meeting),
               {
                 file: 'meeting/index',
-                function: 'addMedia'
+                function: 'addMedia',
               },
               EVENT_TRIGGERS.MEETING_MEDIA_LOCAL_STARTED,
               {
-                type: 'audio'
+                type: 'audio',
               }
             );
-            assert.calledWithMatch(Metrics.postEvent, {event: eventType.SENDING_MEDIA_START, data: {mediaType: 'audio'}});
+            assert.calledWithMatch(Metrics.postEvent, {
+              event: eventType.SENDING_MEDIA_START,
+              data: {mediaType: 'audio'},
+            });
           });
 
           it('LOCAL_MEDIA_STOPPED triggers the right metrics', async () => {
-            statsAnalyzerStub.emit({file: 'test', function: 'test'}, StatsAnalyzerModule.EVENTS.LOCAL_MEDIA_STOPPED, {type: 'video'});
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.LOCAL_MEDIA_STOPPED,
+              {type: 'video'}
+            );
 
-            assert.calledWithMatch(Metrics.postEvent, {event: eventType.SENDING_MEDIA_STOP, data: {mediaType: 'video'}});
+            assert.calledWithMatch(Metrics.postEvent, {
+              event: eventType.SENDING_MEDIA_STOP,
+              data: {mediaType: 'video'},
+            });
           });
 
           it('REMOTE_MEDIA_STARTED triggers "meeting:media:remote:start" event and sends metrics', async () => {
-            statsAnalyzerStub.emit({file: 'test', function: 'test'}, StatsAnalyzerModule.EVENTS.REMOTE_MEDIA_STARTED, {type: 'video'});
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.REMOTE_MEDIA_STARTED,
+              {type: 'video'}
+            );
 
             assert.calledWith(
               TriggerProxy.trigger,
               sinon.match.instanceOf(Meeting),
               {
                 file: 'meeting/index',
-                function: 'addMedia'
+                function: 'addMedia',
               },
               EVENT_TRIGGERS.MEETING_MEDIA_REMOTE_STARTED,
               {
-                type: 'video'
+                type: 'video',
               }
             );
-            assert.calledWithMatch(Metrics.postEvent, {event: eventType.RECEIVING_MEDIA_START, data: {mediaType: 'video'}});
+            assert.calledWithMatch(Metrics.postEvent, {
+              event: eventType.RECEIVING_MEDIA_START,
+              data: {mediaType: 'video'},
+            });
           });
 
           it('REMOTE_MEDIA_STOPPED triggers the right metrics', async () => {
-            statsAnalyzerStub.emit({file: 'test', function: 'test'}, StatsAnalyzerModule.EVENTS.REMOTE_MEDIA_STOPPED, {type: 'audio'});
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.REMOTE_MEDIA_STOPPED,
+              {type: 'audio'}
+            );
 
-            assert.calledWithMatch(Metrics.postEvent, {event: eventType.RECEIVING_MEDIA_STOP, data: {mediaType: 'audio'}});
+            assert.calledWithMatch(Metrics.postEvent, {
+              event: eventType.RECEIVING_MEDIA_STOP,
+              data: {mediaType: 'audio'},
+            });
           });
 
           it('MEDIA_QUALITY triggers the right metrics', async () => {
@@ -1117,7 +1162,10 @@ describe('plugin-meetings', () => {
               {data: fakeData, networkType: 'wifi'}
             );
 
-            assert.calledWithMatch(Metrics.postEvent, {event: eventType.MEDIA_QUALITY, data: {intervalData: fakeData, networkType: 'wifi'}});
+            assert.calledWithMatch(Metrics.postEvent, {
+              event: eventType.MEDIA_QUALITY,
+              data: {intervalData: fakeData, networkType: 'wifi'},
+            });
           });
         });
       });
@@ -1180,7 +1228,9 @@ describe('plugin-meetings', () => {
           sandbox = sinon.createSandbox();
           meeting.meetingFiniteStateMachine.ring();
           meeting.meetingFiniteStateMachine.join();
-          meeting.meetingRequest.leaveMeeting = sinon.stub().returns(Promise.resolve({body: 'test'}));
+          meeting.meetingRequest.leaveMeeting = sinon
+            .stub()
+            .returns(Promise.resolve({body: 'test'}));
           meeting.locusInfo.onFullLocus = sinon.stub().returns(true);
           // the 3 need to be promises because we do closeLocalStream.then(closeLocalShare.then) etc in the src code
           meeting.closeLocalStream = sinon.stub().returns(Promise.resolve());
@@ -1251,7 +1301,7 @@ describe('plugin-meetings', () => {
             correlationId: meeting.correlationId,
             selfId: meeting.selfId,
             resourceId: null,
-            deviceUrl: meeting.deviceUrl
+            deviceUrl: meeting.deviceUrl,
           });
         });
         it('should leave the meeting on the resource', async () => {
@@ -1264,7 +1314,7 @@ describe('plugin-meetings', () => {
             correlationId: meeting.correlationId,
             selfId: meeting.selfId,
             resourceId: meeting.resourceId,
-            deviceUrl: meeting.deviceUrl
+            deviceUrl: meeting.deviceUrl,
           });
         });
       });
@@ -1291,7 +1341,9 @@ describe('plugin-meetings', () => {
 
         beforeEach(() => {
           _mediaDirection = meeting.mediaProperties.mediaDirection || {};
-          sinon.stub(meeting.mediaProperties, 'mediaDirection').value({sendAudio: true, sendVideo: true, sendShare: false});
+          sinon
+            .stub(meeting.mediaProperties, 'mediaDirection')
+            .value({sendAudio: true, sendVideo: true, sendShare: false});
         });
 
         afterEach(() => {
@@ -1328,7 +1380,11 @@ describe('plugin-meetings', () => {
           it('properly assigns default values', async () => {
             await meeting.shareScreen({sharePreferences: {highFrameRate: true}});
 
-            assert.calledWith(Media.getDisplayMedia, {sendShare: true, sendAudio: false, sharePreferences: {highFrameRate: true}});
+            assert.calledWith(Media.getDisplayMedia, {
+              sendShare: true,
+              sendAudio: false,
+              sharePreferences: {highFrameRate: true},
+            });
           });
         });
 
@@ -1353,10 +1409,10 @@ describe('plugin-meetings', () => {
                   track: {
                     get readyState() {
                       return _trackReadyState;
-                    }
-                  }
-                }
-              }
+                    },
+                  },
+                },
+              },
             });
           });
 
@@ -1414,18 +1470,17 @@ describe('plugin-meetings', () => {
               sendShare,
               receiveShare,
               stream,
-              skipSignalingCheck: true
+              skipSignalingCheck: true,
             });
 
             assert.notCalled(meeting.canUpdateMedia);
           });
 
-
           it('skips canUpdateMedia() check on contentTracks.onended', () => {
             const {mediaProperties} = meeting;
             const fakeTrack = {
               getSettings: sinon.stub().returns({}),
-              onended: sinon.stub()
+              onended: sinon.stub(),
             };
 
             sandbox.stub(mediaProperties, 'setLocalShareTrack');
@@ -1439,12 +1494,11 @@ describe('plugin-meetings', () => {
             assert.calledWith(meeting.stopShare, {skipSignalingCheck: true});
           });
 
-
           it('stopShare accepts and passes along optional parameters', () => {
             const args = {
               abc: 123,
               receiveShare: false,
-              sendShare: false
+              sendShare: false,
             };
 
             sandbox.stub(meeting, 'updateShare').returns(Promise.resolve());
@@ -1487,8 +1541,8 @@ describe('plugin-meetings', () => {
             sandbox.stub(meeting, 'handleShareTrackEnded');
             sandbox.stub(meeting.mediaProperties, 'peerConnection').value({
               shareTransceiver: {
-                direction: SENDRECV
-              }
+                direction: SENDRECV,
+              },
             });
             sandbox.useFakeTimers();
 
@@ -1496,7 +1550,7 @@ describe('plugin-meetings', () => {
               sendShare,
               receiveShare,
               stream,
-              skipSignalingCheck: true
+              skipSignalingCheck: true,
             });
             // simulate the setTimeout in code
             sandbox.clock.tick(delay);
@@ -1517,12 +1571,12 @@ describe('plugin-meetings', () => {
               sinon.match.instanceOf(Meeting),
               {
                 file: 'meeting/index',
-                function: 'handleShareTrackEnded'
+                function: 'handleShareTrackEnded',
               },
               EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
               {
                 stream,
-                type: EVENT_TYPES.LOCAL_SHARE
+                type: EVENT_TYPES.LOCAL_SHARE,
               }
             );
           });
@@ -1535,20 +1589,22 @@ describe('plugin-meetings', () => {
         const {resolution} = config;
         const shareOptions = {
           sendShare: true,
-          sendAudio: false
+          sendAudio: false,
         };
         const fireFoxOptions = {
           audio: false,
           video: {
             audio: shareOptions.sendAudio,
-            video: shareOptions.sendShare
-          }
+            video: shareOptions.sendShare,
+          },
         };
 
         const MediaStream = {
-          getVideoTracks: () => [{
-            applyConstraints: () => {}
-          }]
+          getVideoTracks: () => [
+            {
+              applyConstraints: () => {},
+            },
+          ],
         };
 
         const MediaConstraint = {
@@ -1556,7 +1612,7 @@ describe('plugin-meetings', () => {
           aspectRatio: config.aspectRatio,
           frameRate: config.screenFrameRate,
           width: null,
-          height: null
+          height: null,
         };
 
         const browserConditionalValue = (value) => {
@@ -1572,31 +1628,23 @@ describe('plugin-meetings', () => {
           if (!global.navigator) {
             global.navigator = {
               mediaDevices: {
-                getDisplayMedia: null
-              }
+                getDisplayMedia: null,
+              },
             };
           }
           _getDisplayMedia = global.navigator.mediaDevices.getDisplayMedia;
-          Object.defineProperty(
-            global.navigator.mediaDevices,
-            'getDisplayMedia',
-            {
-              value: sinon.stub().returns(Promise.resolve(MediaStream)),
-              writable: true
-            }
-          );
+          Object.defineProperty(global.navigator.mediaDevices, 'getDisplayMedia', {
+            value: sinon.stub().returns(Promise.resolve(MediaStream)),
+            writable: true,
+          });
         });
 
         after(() => {
           // clean up for browser
-          Object.defineProperty(
-            global.navigator.mediaDevices,
-            'getDisplayMedia',
-            {
-              value: _getDisplayMedia,
-              writable: true
-            }
-          );
+          Object.defineProperty(global.navigator.mediaDevices, 'getDisplayMedia', {
+            value: _getDisplayMedia,
+            writable: true,
+          });
         });
 
         // eslint-disable-next-line max-len
@@ -1608,39 +1656,49 @@ describe('plugin-meetings', () => {
             maxWidth: SHARE_WIDTH,
             maxHeight: SHARE_HEIGHT,
             idealWidth: SHARE_WIDTH,
-            idealHeight: SHARE_HEIGHT
+            idealHeight: SHARE_HEIGHT,
           };
 
           // If sharePreferences.shareConstraints is defined it ignores
           // default SDK config settings
-          getDisplayMedia({
-            ...shareOptions,
-            sharePreferences: {shareConstraints}
-          }, config);
+          getDisplayMedia(
+            {
+              ...shareOptions,
+              sharePreferences: {shareConstraints},
+            },
+            config
+          );
 
           // eslint-disable-next-line no-undef
-          assert.calledWith(navigator.mediaDevices.getDisplayMedia,
+          assert.calledWith(
+            // eslint-disable-next-line no-undef
+            navigator.mediaDevices.getDisplayMedia,
             browserConditionalValue({
               default: {
-                video: {...shareConstraints}
+                video: {...shareConstraints},
               },
               // Firefox is being handled differently
-              firefox: fireFoxOptions
-            }));
+              firefox: fireFoxOptions,
+            })
+          );
         });
 
         // eslint-disable-next-line max-len
         it('will use default resolution if shareConstraints is undefined and highFrameRate is defined', () => {
           // If highFrameRate is defined it ignores default SDK config settings
-          getDisplayMedia({
-            ...shareOptions,
-            sharePreferences: {
-              highFrameRate: true
-            }
-          }, config);
+          getDisplayMedia(
+            {
+              ...shareOptions,
+              sharePreferences: {
+                highFrameRate: true,
+              },
+            },
+            config
+          );
 
           // eslint-disable-next-line no-undef
-          assert.calledWith(navigator.mediaDevices.getDisplayMedia,
+          assert.calledWith(
+            navigator.mediaDevices.getDisplayMedia,
             browserConditionalValue({
               default: {
                 video: {
@@ -1651,11 +1709,12 @@ describe('plugin-meetings', () => {
                   maxWidth: resolution.maxWidth,
                   maxHeight: resolution.maxHeight,
                   idealWidth: resolution.idealWidth,
-                  idealHeight: resolution.idealHeight
-                }
+                  idealHeight: resolution.idealHeight,
+                },
               },
-              firefox: fireFoxOptions
-            }));
+              firefox: fireFoxOptions,
+            })
+          );
         });
 
         // eslint-disable-next-line max-len
@@ -1664,17 +1723,19 @@ describe('plugin-meetings', () => {
           const {screenResolution} = config;
 
           // eslint-disable-next-line no-undef
-          assert.calledWith(navigator.mediaDevices.getDisplayMedia,
+          assert.calledWith(
+            navigator.mediaDevices.getDisplayMedia,
             browserConditionalValue({
               default: {
                 video: {
                   ...MediaConstraint,
                   width: screenResolution.idealWidth,
-                  height: screenResolution.idealHeight
-                }
+                  height: screenResolution.idealHeight,
+                },
               },
-              firefox: fireFoxOptions
-            }));
+              firefox: fireFoxOptions,
+            })
+          );
         });
 
         // Test screenResolution
@@ -1687,14 +1748,15 @@ describe('plugin-meetings', () => {
               maxWidth: SHARE_WIDTH,
               maxHeight: SHARE_HEIGHT,
               idealWidth: SHARE_WIDTH,
-              idealHeight: SHARE_HEIGHT
-            }
+              idealHeight: SHARE_HEIGHT,
+            },
           };
 
           getDisplayMedia(shareOptions, customConfig);
 
           // eslint-disable-next-line no-undef
-          assert.calledWith(navigator.mediaDevices.getDisplayMedia,
+          assert.calledWith(
+            navigator.mediaDevices.getDisplayMedia,
             browserConditionalValue({
               default: {
                 video: {
@@ -1704,11 +1766,12 @@ describe('plugin-meetings', () => {
                   maxWidth: SHARE_WIDTH,
                   maxHeight: SHARE_HEIGHT,
                   idealWidth: SHARE_WIDTH,
-                  idealHeight: SHARE_HEIGHT
-                }
+                  idealHeight: SHARE_HEIGHT,
+                },
               },
-              firefox: fireFoxOptions
-            }));
+              firefox: fireFoxOptions,
+            })
+          );
         });
 
         // Test screenFrameRate
@@ -1721,14 +1784,15 @@ describe('plugin-meetings', () => {
               maxWidth: SHARE_WIDTH,
               maxHeight: SHARE_HEIGHT,
               idealWidth: SHARE_WIDTH,
-              idealHeight: SHARE_HEIGHT
-            }
+              idealHeight: SHARE_HEIGHT,
+            },
           };
 
           getDisplayMedia(shareOptions, customConfig);
 
           // eslint-disable-next-line no-undef
-          assert.calledWith(navigator.mediaDevices.getDisplayMedia,
+          assert.calledWith(
+            navigator.mediaDevices.getDisplayMedia,
             browserConditionalValue({
               default: {
                 video: {
@@ -1739,11 +1803,12 @@ describe('plugin-meetings', () => {
                   maxWidth: SHARE_WIDTH,
                   maxHeight: SHARE_HEIGHT,
                   idealWidth: SHARE_WIDTH,
-                  idealHeight: SHARE_HEIGHT
-                }
+                  idealHeight: SHARE_HEIGHT,
+                },
               },
-              firefox: fireFoxOptions
-            }));
+              firefox: fireFoxOptions,
+            })
+          );
         });
       });
 
@@ -1779,12 +1844,15 @@ describe('plugin-meetings', () => {
                 MeetingUtil.updateTransceiver = sinon.stub();
               });
 
-              it('sets previousMediaDirection to an empty object', () => meeting.updateAudio({
-                sendAudio: true,
-                receiveAudio: true
-              }).then(() => {
-                assert.calledOnce(MeetingUtil.updateTransceiver);
-              }));
+              it('sets previousMediaDirection to an empty object', () =>
+                meeting
+                  .updateAudio({
+                    sendAudio: true,
+                    receiveAudio: true,
+                  })
+                  .then(() => {
+                    assert.calledOnce(MeetingUtil.updateTransceiver);
+                  }));
             });
           });
         });
@@ -1802,7 +1870,7 @@ describe('plugin-meetings', () => {
 
           meeting.locusInfo.self = {
             enableDTMF: true,
-            url: url2
+            url: url2,
           };
 
           await meeting.sendDTMF(tones);
@@ -1810,7 +1878,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.meetingRequest.sendDTMF, {
             locusUrl: meeting.locusInfo.self.url,
             deviceUrl: meeting.deviceUrl,
-            tones
+            tones,
           });
         });
 
@@ -1824,7 +1892,7 @@ describe('plugin-meetings', () => {
           it('should throw an error', () => {
             meeting.locusInfo.self = {
               enableDTMF: false,
-              url: url2
+              url: url2,
             };
 
             assert.isRejected(meeting.sendDTMF('123'));
@@ -1855,7 +1923,7 @@ describe('plugin-meetings', () => {
             receiveVideo: true,
             sendShare: true,
             receiveShare: true,
-            isSharing: true
+            isSharing: true,
           };
 
           sandbox.stub(meeting, 'canUpdateMedia').returns(false);
@@ -1863,11 +1931,12 @@ describe('plugin-meetings', () => {
 
           let myPromiseResolved = false;
 
-          meeting.updateMedia({
-            localStream: mockLocalStream,
-            localShare: mockLocalShare,
-            mediaSettings
-          })
+          meeting
+            .updateMedia({
+              localStream: mockLocalStream,
+              localShare: mockLocalShare,
+              mediaSettings,
+            })
             .then(() => {
               myPromiseResolved = true;
             });
@@ -1884,7 +1953,11 @@ describe('plugin-meetings', () => {
           await testUtils.flushPromises();
 
           // and check that meeting.updateMedia is called with the original args
-          assert.calledWith(meeting.updateMedia, {localStream: mockLocalStream, localShare: mockLocalShare, mediaSettings});
+          assert.calledWith(meeting.updateMedia, {
+            localStream: mockLocalStream,
+            localShare: mockLocalShare,
+            mediaSettings,
+          });
           assert.isTrue(myPromiseResolved);
         });
       });
@@ -1899,17 +1972,21 @@ describe('plugin-meetings', () => {
               sendAudio: true,
               sendVideo: true,
               sendShare: false,
-              receiveVideo: true
+              receiveVideo: true,
             };
             meeting.getMediaStreams = sinon.stub().returns(Promise.resolve([]));
             meeting.updateVideo = sinon.stub().returns(Promise.resolve());
             meeting.mediaProperties.mediaDirection = mediaDirection;
-            meeting.mediaProperties.remoteVideoTrack = sinon.stub().returns({mockTrack: 'mockTrack'});
+            meeting.mediaProperties.remoteVideoTrack = sinon
+              .stub()
+              .returns({mockTrack: 'mockTrack'});
 
-            meeting.meetingRequest.changeVideoLayoutDebounced = sinon.stub().returns(Promise.resolve());
+            meeting.meetingRequest.changeVideoLayoutDebounced = sinon
+              .stub()
+              .returns(Promise.resolve());
 
             meeting.locusInfo.self = {
-              url: url2
+              url: url2,
             };
           });
 
@@ -1938,18 +2015,20 @@ describe('plugin-meetings', () => {
               deviceUrl: meeting.deviceUrl,
               layoutType,
               main: undefined,
-              content: undefined
+              content: undefined,
             });
           });
 
-          it('doesn\'t have layoutType which exists in the list of allowed layoutTypes should throw an error', async () => {
+          it("doesn't have layoutType which exists in the list of allowed layoutTypes should throw an error", async () => {
             const layoutType = 'Invalid Layout';
 
             assert.isRejected(meeting.changeVideoLayout(layoutType));
           });
 
           it('throws if trying to send renderInfo for content when not receiving content', async () => {
-            assert.isRejected(meeting.changeVideoLayout(layoutTypeSingle, {content: {width: 1280, height: 720}}));
+            assert.isRejected(
+              meeting.changeVideoLayout(layoutTypeSingle, {content: {width: 1280, height: 720}})
+            );
           });
 
           it('calls changeVideoLayoutDebounced with renderInfo for main and content', async () => {
@@ -1961,7 +2040,7 @@ describe('plugin-meetings', () => {
               deviceUrl: meeting.deviceUrl,
               layoutType: layoutTypeSingle,
               main: {width: 100, height: 200},
-              content: undefined
+              content: undefined,
             });
 
             meeting.mediaProperties.mediaDirection.receiveShare = true;
@@ -1975,18 +2054,21 @@ describe('plugin-meetings', () => {
               deviceUrl: meeting.deviceUrl,
               layoutType: layoutTypeSingle,
               main: {width: 100, height: 200},
-              content: {width: 500, height: 600}
+              content: {width: 500, height: 600},
             });
 
             // and now call with both
-            await meeting.changeVideoLayout(layoutTypeSingle, {main: {width: 300, height: 400}, content: {width: 700, height: 800}});
+            await meeting.changeVideoLayout(layoutTypeSingle, {
+              main: {width: 300, height: 400},
+              content: {width: 700, height: 800},
+            });
 
             assert.calledWith(meeting.meetingRequest.changeVideoLayoutDebounced, {
               locusUrl: meeting.locusInfo.self.url,
               deviceUrl: meeting.deviceUrl,
               layoutType: layoutTypeSingle,
               main: {width: 300, height: 400},
-              content: {width: 700, height: 800}
+              content: {width: 700, height: 800},
             });
 
             // and now set just the layoutType, the previous main and content values should be used
@@ -1999,7 +2081,7 @@ describe('plugin-meetings', () => {
               deviceUrl: meeting.deviceUrl,
               layoutType,
               main: {width: 300, height: 400},
-              content: {width: 700, height: 800}
+              content: {width: 700, height: 800},
             });
           });
 
@@ -2011,7 +2093,7 @@ describe('plugin-meetings', () => {
               deviceUrl: meeting.deviceUrl,
               layoutType: layoutTypeSingle,
               main: {width: 1024, height: 768},
-              content: undefined
+              content: undefined,
             });
             meeting.meetingRequest.changeVideoLayoutDebounced.resetHistory();
 
@@ -2033,28 +2115,39 @@ describe('plugin-meetings', () => {
             meeting.mediaProperties.mediaDirection.receiveShare = true;
             meeting.mediaProperties.remoteShare = sinon.stub().returns({mockTrack: 'mockTrack'});
 
-            await meeting.changeVideoLayout(layoutTypeSingle, {main: {width: 500, height: 510}, content: {width: 1024, height: 768}});
+            await meeting.changeVideoLayout(layoutTypeSingle, {
+              main: {width: 500, height: 510},
+              content: {width: 1024, height: 768},
+            });
 
             assert.calledWith(meeting.meetingRequest.changeVideoLayoutDebounced, {
               locusUrl: meeting.locusInfo.self.url,
               deviceUrl: meeting.deviceUrl,
               layoutType: layoutTypeSingle,
               main: {width: 500, height: 510},
-              content: {width: 1024, height: 768}
+              content: {width: 1024, height: 768},
             });
             meeting.meetingRequest.changeVideoLayoutDebounced.resetHistory();
 
             // now send main with width/height different by just 2px - it should be ignored
-            await meeting.changeVideoLayout(layoutTypeSingle, {content: {width: 1026, height: 768}});
+            await meeting.changeVideoLayout(layoutTypeSingle, {
+              content: {width: 1026, height: 768},
+            });
             assert.notCalled(meeting.meetingRequest.changeVideoLayoutDebounced);
 
-            await meeting.changeVideoLayout(layoutTypeSingle, {content: {width: 1022, height: 768}});
+            await meeting.changeVideoLayout(layoutTypeSingle, {
+              content: {width: 1022, height: 768},
+            });
             assert.notCalled(meeting.meetingRequest.changeVideoLayoutDebounced);
 
-            await meeting.changeVideoLayout(layoutTypeSingle, {content: {width: 1024, height: 770}});
+            await meeting.changeVideoLayout(layoutTypeSingle, {
+              content: {width: 1024, height: 770},
+            });
             assert.notCalled(meeting.meetingRequest.changeVideoLayoutDebounced);
 
-            await meeting.changeVideoLayout(layoutTypeSingle, {content: {width: 1024, height: 766}});
+            await meeting.changeVideoLayout(layoutTypeSingle, {
+              content: {width: 1024, height: 766},
+            });
             assert.notCalled(meeting.meetingRequest.changeVideoLayoutDebounced);
           });
 
@@ -2062,14 +2155,17 @@ describe('plugin-meetings', () => {
             meeting.mediaProperties.mediaDirection.receiveShare = true;
             meeting.mediaProperties.remoteShare = sinon.stub().returns({mockTrack: 'mockTrack'});
 
-            await meeting.changeVideoLayout(layoutTypeSingle, {main: {width: 500.5, height: 510.09}, content: {width: 1024.2, height: 768.85}});
+            await meeting.changeVideoLayout(layoutTypeSingle, {
+              main: {width: 500.5, height: 510.09},
+              content: {width: 1024.2, height: 768.85},
+            });
 
             assert.calledWith(meeting.meetingRequest.changeVideoLayoutDebounced, {
               locusUrl: meeting.locusInfo.self.url,
               deviceUrl: meeting.deviceUrl,
               layoutType: layoutTypeSingle,
               main: {width: 501, height: 510},
-              content: {width: 1024, height: 769}
+              content: {width: 1024, height: 769},
             });
           });
         });
@@ -2081,7 +2177,7 @@ describe('plugin-meetings', () => {
             sendAudio: true,
             sendVideo: true,
             sendShare: false,
-            receiveVideo: true
+            receiveVideo: true,
           };
 
           meeting.mediaProperties.mediaDirection = mediaDirection;
@@ -2095,7 +2191,7 @@ describe('plugin-meetings', () => {
             sendAudio: true,
             sendVideo: true,
             sendShare: false,
-            receiveVideo: false
+            receiveVideo: false,
           };
 
           meeting.mediaProperties.mediaDirection = mediaDirection;
@@ -2118,15 +2214,19 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.setLocalVideoQuality);
         });
 
-        it('should call getMediaStreams with the proper level', () => meeting.setLocalVideoQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
-          assert.calledWith(meeting.getMediaStreams,
-            mediaDirection,
-            CONSTANTS.VIDEO_RESOLUTIONS[CONSTANTS.QUALITY_LEVELS.LOW]);
-        }));
+        it('should call getMediaStreams with the proper level', () =>
+          meeting.setLocalVideoQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
+            assert.calledWith(
+              meeting.getMediaStreams,
+              mediaDirection,
+              CONSTANTS.VIDEO_RESOLUTIONS[CONSTANTS.QUALITY_LEVELS.LOW]
+            );
+          }));
 
-        it('should set mediaProperty with the proper level', () => meeting.setLocalVideoQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
-          assert.equal(meeting.mediaProperties.localQualityLevel, CONSTANTS.QUALITY_LEVELS.LOW);
-        }));
+        it('should set mediaProperty with the proper level', () =>
+          meeting.setLocalVideoQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
+            assert.equal(meeting.mediaProperties.localQualityLevel, CONSTANTS.QUALITY_LEVELS.LOW);
+          }));
 
         it('should error if set to a invalid level', () => {
           assert.isRejected(meeting.setLocalVideoQuality('invalid'));
@@ -2151,13 +2251,15 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.setRemoteQualityLevel);
         });
 
-        it('should set mediaProperty with the proper level', () => meeting.setRemoteQualityLevel(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
-          assert.equal(meeting.mediaProperties.remoteQualityLevel, CONSTANTS.QUALITY_LEVELS.LOW);
-        }));
+        it('should set mediaProperty with the proper level', () =>
+          meeting.setRemoteQualityLevel(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
+            assert.equal(meeting.mediaProperties.remoteQualityLevel, CONSTANTS.QUALITY_LEVELS.LOW);
+          }));
 
-        it('should call updateMedia', () => meeting.setRemoteQualityLevel(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
-          assert.calledOnce(meeting.updateMedia);
-        }));
+        it('should call updateMedia', () =>
+          meeting.setRemoteQualityLevel(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
+            assert.calledOnce(meeting.updateMedia);
+          }));
 
         it('should error if set to a invalid level', () => {
           assert.isRejected(meeting.setRemoteQualityLevel('invalid'));
@@ -2174,7 +2276,10 @@ describe('plugin-meetings', () => {
 
         beforeEach(() => {
           mediaDirection = {
-            receiveAudio: true, receiveVideo: true, receiveShare: false, sendVideo: true
+            receiveAudio: true,
+            receiveVideo: true,
+            receiveShare: false,
+            sendVideo: true,
           };
           meeting.setRemoteQualityLevel = sinon.stub().returns(Promise.resolve());
           meeting.setLocalVideoQuality = sinon.stub().returns(Promise.resolve());
@@ -2185,9 +2290,10 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.setMeetingQuality);
         });
 
-        it('should call setRemoteQualityLevel', () => meeting.setMeetingQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
-          assert.calledOnce(meeting.setRemoteQualityLevel);
-        }));
+        it('should call setRemoteQualityLevel', () =>
+          meeting.setMeetingQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
+            assert.calledOnce(meeting.setRemoteQualityLevel);
+          }));
 
         it('should not call setRemoteQualityLevel when receiveVideo and receiveAudio are false', () => {
           mediaDirection.receiveAudio = false;
@@ -2199,9 +2305,10 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('should call setLocalVideoQuality', () => meeting.setMeetingQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
-          assert.calledOnce(meeting.setLocalVideoQuality);
-        }));
+        it('should call setLocalVideoQuality', () =>
+          meeting.setMeetingQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
+            assert.calledOnce(meeting.setLocalVideoQuality);
+          }));
 
         it('should not call setLocalVideoQuality when sendVideo is false', () => {
           mediaDirection.sendVideo = false;
@@ -2219,8 +2326,12 @@ describe('plugin-meetings', () => {
 
       describe('#usePhoneAudio', () => {
         beforeEach(() => {
-          meeting.meetingRequest.dialIn = sinon.stub().returns(Promise.resolve({body: {locus: 'testData'}}));
-          meeting.meetingRequest.dialOut = sinon.stub().returns(Promise.resolve({body: {locus: 'testData'}}));
+          meeting.meetingRequest.dialIn = sinon
+            .stub()
+            .returns(Promise.resolve({body: {locus: 'testData'}}));
+          meeting.meetingRequest.dialOut = sinon
+            .stub()
+            .returns(Promise.resolve({body: {locus: 'testData'}}));
           meeting.locusInfo.onFullLocus = sinon.stub().returns(Promise.resolve());
         });
 
@@ -2232,7 +2343,7 @@ describe('plugin-meetings', () => {
             correlationId: meeting.correlationId,
             dialInUrl: DIAL_IN_URL,
             locusUrl: meeting.locusUrl,
-            clientUrl: meeting.deviceUrl
+            clientUrl: meeting.deviceUrl,
           });
           assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialOut);
@@ -2247,7 +2358,7 @@ describe('plugin-meetings', () => {
             correlationId: meeting.correlationId,
             dialInUrl: DIAL_IN_URL,
             locusUrl: meeting.locusUrl,
-            clientUrl: meeting.deviceUrl
+            clientUrl: meeting.deviceUrl,
           });
           assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialOut);
@@ -2264,7 +2375,7 @@ describe('plugin-meetings', () => {
             dialOutUrl: DIAL_OUT_URL,
             locusUrl: meeting.locusUrl,
             clientUrl: meeting.deviceUrl,
-            phoneNumber
+            phoneNumber,
           });
           assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialIn);
@@ -2280,7 +2391,7 @@ describe('plugin-meetings', () => {
             dialOutUrl: DIAL_OUT_URL,
             locusUrl: meeting.locusUrl,
             clientUrl: meeting.deviceUrl,
-            phoneNumber
+            phoneNumber,
           });
           assert.calledWith(meeting.locusInfo.onFullLocus, 'testData');
           assert.notCalled(meeting.meetingRequest.dialIn);
@@ -2291,11 +2402,14 @@ describe('plugin-meetings', () => {
 
           meeting.meetingRequest.dialIn = sinon.stub().returns(Promise.reject(error));
 
-          return meeting.usePhoneAudio().then(() => Promise.reject(new Error('Promise resolved when it should have rejected'))).catch((e) => {
-            assert.equal(e, error);
+          return meeting
+            .usePhoneAudio()
+            .then(() => Promise.reject(new Error('Promise resolved when it should have rejected')))
+            .catch((e) => {
+              assert.equal(e, error);
 
-            return Promise.resolve();
-          });
+              return Promise.resolve();
+            });
         });
 
         it('rejects if the request failed (dial out)', async () => {
@@ -2303,11 +2417,14 @@ describe('plugin-meetings', () => {
 
           meeting.meetingRequest.dialOut = sinon.stub().returns(Promise.reject(error));
 
-          return meeting.usePhoneAudio('+441234567890').then(() => Promise.reject(new Error('Promise resolved when it should have rejected'))).catch((e) => {
-            assert.equal(e, error);
+          return meeting
+            .usePhoneAudio('+441234567890')
+            .then(() => Promise.reject(new Error('Promise resolved when it should have rejected')))
+            .catch((e) => {
+              assert.equal(e, error);
 
-            return Promise.resolve();
-          });
+              return Promise.resolve();
+            });
         });
       });
 
@@ -2326,34 +2443,42 @@ describe('plugin-meetings', () => {
           locusUrl: 'some_locus_url',
           sipUrl: 'some_sip_url', // or sipMeetingUri
           meetingNumber: '123456', // this.config.experimental.enableUnifiedMeetings
-          hostId: 'some_host_id' // this.owner;
+          hostId: 'some_host_id', // this.owner;
         };
         const FAKE_SDK_CAPTCHA_INFO = {
           captchaId: FAKE_CAPTCHA_ID,
           verificationImageURL: FAKE_CAPTCHA_IMAGE_URL,
           verificationAudioURL: FAKE_CAPTCHA_AUDIO_URL,
-          refreshURL: FAKE_CAPTCHA_REFRESH_URL
+          refreshURL: FAKE_CAPTCHA_REFRESH_URL,
         };
         const FAKE_WBXAPPAPI_CAPTCHA_INFO = {
           captchaID: `${FAKE_CAPTCHA_ID}-2`,
           verificationImageURL: `${FAKE_CAPTCHA_IMAGE_URL}-2`,
           verificationAudioURL: `${FAKE_CAPTCHA_AUDIO_URL}-2`,
-          refreshURL: `${FAKE_CAPTCHA_REFRESH_URL}-2`
+          refreshURL: `${FAKE_CAPTCHA_REFRESH_URL}-2`,
         };
 
-
         it('calls meetingInfoProvider with all the right parameters and parses the result', async () => {
-          meeting.attrs.meetingInfoProvider = {fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO})};
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+          };
           meeting.requiredCaptcha = FAKE_SDK_CAPTCHA_INFO;
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.parseMeetingInfo = sinon.stub().returns(undefined);
 
           await meeting.fetchMeetingInfo({
-            password: FAKE_PASSWORD, captchaCode: FAKE_CAPTCHA_CODE
+            password: FAKE_PASSWORD,
+            captchaCode: FAKE_CAPTCHA_CODE,
           });
 
-          assert.calledWith(meeting.attrs.meetingInfoProvider.fetchMeetingInfo, FAKE_DESTINATION, FAKE_TYPE, FAKE_PASSWORD, {code: FAKE_CAPTCHA_CODE, id: FAKE_CAPTCHA_ID});
+          assert.calledWith(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            FAKE_DESTINATION,
+            FAKE_TYPE,
+            FAKE_PASSWORD,
+            {code: FAKE_CAPTCHA_CODE, id: FAKE_CAPTCHA_ID}
+          );
 
           assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO}, FAKE_DESTINATION);
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -2361,11 +2486,18 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
           assert.equal(meeting.requiredCaptcha, null);
           assert.calledTwice(TriggerProxy.trigger);
-          assert.calledWith(TriggerProxy.trigger, meeting, {file: 'meetings', function: 'fetchMeetingInfo'}, 'meeting:meetingInfoAvailable');
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meetings', function: 'fetchMeetingInfo'},
+            'meeting:meetingInfoAvailable'
+          );
         });
 
         it('calls meetingInfoProvider with all the right parameters and parses the result when random delay is applied', async () => {
-          meeting.attrs.meetingInfoProvider = {fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO})};
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+          };
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.parseMeetingInfo = sinon.stub().returns(undefined);
@@ -2382,7 +2514,13 @@ describe('plugin-meetings', () => {
           assert.isUndefined(meeting.fetchMeetingInfoTimeoutId);
 
           // meeting info provider
-          assert.calledWith(meeting.attrs.meetingInfoProvider.fetchMeetingInfo, FAKE_DESTINATION, FAKE_TYPE, null, null);
+          assert.calledWith(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            FAKE_DESTINATION,
+            FAKE_TYPE,
+            null,
+            null
+          );
 
           // parseMeeting info
           assert.calledWith(meeting.parseMeetingInfo, {body: FAKE_MEETING_INFO}, FAKE_DESTINATION);
@@ -2393,31 +2531,48 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
 
           assert.calledTwice(TriggerProxy.trigger);
-          assert.calledWith(TriggerProxy.trigger, meeting, {file: 'meetings', function: 'fetchMeetingInfo'}, 'meeting:meetingInfoAvailable');
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meetings', function: 'fetchMeetingInfo'},
+            'meeting:meetingInfoAvailable'
+          );
         });
 
         it('fails if captchaCode is provided when captcha not needed', async () => {
-          meeting.attrs.meetingInfoProvider = {fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO})};
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+          };
           meeting.requiredCaptcha = null;
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
 
-          await assert.isRejected(meeting.fetchMeetingInfo({
-            captchaCode: FAKE_CAPTCHA_CODE
-          }), Error, 'fetchMeetingInfo() called with captchaCode when captcha was not required');
+          await assert.isRejected(
+            meeting.fetchMeetingInfo({
+              captchaCode: FAKE_CAPTCHA_CODE,
+            }),
+            Error,
+            'fetchMeetingInfo() called with captchaCode when captcha was not required'
+          );
 
           assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
         });
 
         it('fails if password is provided when not required', async () => {
-          meeting.attrs.meetingInfoProvider = {fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO})};
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon.stub().resolves({body: FAKE_MEETING_INFO}),
+          };
           meeting.passwordStatus = PASSWORD_STATUS.NOT_REQUIRED;
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
 
-          await assert.isRejected(meeting.fetchMeetingInfo({
-            password: FAKE_PASSWORD
-          }), Error, 'fetchMeetingInfo() called with password when password was not required');
+          await assert.isRejected(
+            meeting.fetchMeetingInfo({
+              password: FAKE_PASSWORD,
+            }),
+            Error,
+            'fetchMeetingInfo() called with password when password was not required'
+          );
 
           assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
         });
@@ -2426,15 +2581,26 @@ describe('plugin-meetings', () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().throws(new MeetingInfoV2PasswordError(403004, FAKE_MEETING_INFO))
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2PasswordError(403004, FAKE_MEETING_INFO)),
           };
 
           await assert.isRejected(meeting.fetchMeetingInfo({}), PasswordError);
 
-          assert.calledWith(meeting.attrs.meetingInfoProvider.fetchMeetingInfo, FAKE_DESTINATION, FAKE_TYPE, null, null);
+          assert.calledWith(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            FAKE_DESTINATION,
+            FAKE_TYPE,
+            null,
+            null
+          );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
-          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD);
+          assert.equal(
+            meeting.meetingInfoFailureReason,
+            MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD
+          );
           assert.equal(meeting.requiredCaptcha, null);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.REQUIRED);
         });
@@ -2443,25 +2609,38 @@ describe('plugin-meetings', () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().throws(new MeetingInfoV2CaptchaError(423005, FAKE_SDK_CAPTCHA_INFO))
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2CaptchaError(423005, FAKE_SDK_CAPTCHA_INFO)),
           };
           meeting.requiredCaptcha = null;
 
-          await assert.isRejected(meeting.fetchMeetingInfo({
-            password: 'aaa'
-          }), CaptchaError);
+          await assert.isRejected(
+            meeting.fetchMeetingInfo({
+              password: 'aaa',
+            }),
+            CaptchaError
+          );
 
-          assert.calledWith(meeting.attrs.meetingInfoProvider.fetchMeetingInfo, FAKE_DESTINATION, FAKE_TYPE, 'aaa', null);
-
+          assert.calledWith(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            FAKE_DESTINATION,
+            FAKE_TYPE,
+            'aaa',
+            null
+          );
 
           assert.deepEqual(meeting.meetingInfo, {});
-          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD);
+          assert.equal(
+            meeting.meetingInfoFailureReason,
+            MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD
+          );
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.REQUIRED);
           assert.deepEqual(meeting.requiredCaptcha, {
             captchaId: FAKE_CAPTCHA_ID,
             verificationImageURL: FAKE_CAPTCHA_IMAGE_URL,
             verificationAudioURL: FAKE_CAPTCHA_AUDIO_URL,
-            refreshURL: FAKE_CAPTCHA_REFRESH_URL
+            refreshURL: FAKE_CAPTCHA_REFRESH_URL,
           });
         });
 
@@ -2469,15 +2648,27 @@ describe('plugin-meetings', () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().throws(new MeetingInfoV2CaptchaError(423005, FAKE_SDK_CAPTCHA_INFO))
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2CaptchaError(423005, FAKE_SDK_CAPTCHA_INFO)),
           };
           meeting.requiredCaptcha = FAKE_SDK_CAPTCHA_INFO;
 
-          await assert.isRejected(meeting.fetchMeetingInfo({
-            password: 'aaa', captchaCode: 'bbb'
-          }), CaptchaError);
+          await assert.isRejected(
+            meeting.fetchMeetingInfo({
+              password: 'aaa',
+              captchaCode: 'bbb',
+            }),
+            CaptchaError
+          );
 
-          assert.calledWith(meeting.attrs.meetingInfoProvider.fetchMeetingInfo, FAKE_DESTINATION, FAKE_TYPE, 'aaa', {code: 'bbb', id: FAKE_CAPTCHA_ID});
+          assert.calledWith(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            FAKE_DESTINATION,
+            FAKE_TYPE,
+            'aaa',
+            {code: 'bbb', id: FAKE_CAPTCHA_ID}
+          );
 
           assert.deepEqual(meeting.meetingInfo, {});
           assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.WRONG_CAPTCHA);
@@ -2489,20 +2680,24 @@ describe('plugin-meetings', () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().resolves(
-              {
-                statusCode: 200,
-                body: FAKE_MEETING_INFO
-              }
-            )
+            fetchMeetingInfo: sinon.stub().resolves({
+              statusCode: 200,
+              body: FAKE_MEETING_INFO,
+            }),
           };
           meeting.passwordStatus = PASSWORD_STATUS.REQUIRED;
 
           await meeting.fetchMeetingInfo({
-            password: 'aaa'
+            password: 'aaa',
           });
 
-          assert.calledWith(meeting.attrs.meetingInfoProvider.fetchMeetingInfo, FAKE_DESTINATION, FAKE_TYPE, 'aaa', null);
+          assert.calledWith(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            FAKE_DESTINATION,
+            FAKE_TYPE,
+            'aaa',
+            null
+          );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
           assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
@@ -2516,36 +2711,50 @@ describe('plugin-meetings', () => {
           const refreshedCaptcha = {
             captchaID: FAKE_WBXAPPAPI_CAPTCHA_INFO.captchaID,
             verificationImageURL: FAKE_WBXAPPAPI_CAPTCHA_INFO.verificationImageURL,
-            verificationAudioURL: FAKE_WBXAPPAPI_CAPTCHA_INFO.verificationAudioURL
+            verificationAudioURL: FAKE_WBXAPPAPI_CAPTCHA_INFO.verificationAudioURL,
           };
 
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().throws(new MeetingInfoV2PasswordError(403004, FAKE_MEETING_INFO))
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2PasswordError(403004, FAKE_MEETING_INFO)),
           };
-          meeting.meetingRequest.refreshCaptcha = sinon.stub().returns(Promise.resolve(
-            {
-              body: refreshedCaptcha
-            }
-          ));
+          meeting.meetingRequest.refreshCaptcha = sinon.stub().returns(
+            Promise.resolve({
+              body: refreshedCaptcha,
+            })
+          );
           meeting.passwordStatus = PASSWORD_STATUS.REQUIRED;
           meeting.requiredCaptcha = FAKE_SDK_CAPTCHA_INFO;
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
 
-          await assert.isRejected(meeting.fetchMeetingInfo({
-            password: 'aaa', captchaCode: 'bbb'
-          }));
+          await assert.isRejected(
+            meeting.fetchMeetingInfo({
+              password: 'aaa',
+              captchaCode: 'bbb',
+            })
+          );
 
-          assert.calledWith(meeting.attrs.meetingInfoProvider.fetchMeetingInfo, FAKE_DESTINATION, FAKE_TYPE, 'aaa', {code: 'bbb', id: FAKE_CAPTCHA_ID});
+          assert.calledWith(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            FAKE_DESTINATION,
+            FAKE_TYPE,
+            'aaa',
+            {code: 'bbb', id: FAKE_CAPTCHA_ID}
+          );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
-          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD);
+          assert.equal(
+            meeting.meetingInfoFailureReason,
+            MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD
+          );
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.REQUIRED);
           assert.deepEqual(meeting.requiredCaptcha, {
             captchaId: refreshedCaptcha.captchaID,
             verificationImageURL: refreshedCaptcha.verificationImageURL,
             verificationAudioURL: refreshedCaptcha.verificationAudioURL,
-            refreshURL: FAKE_SDK_CAPTCHA_INFO.refreshURL // refresh url doesn't change
+            refreshURL: FAKE_SDK_CAPTCHA_INFO.refreshURL, // refresh url doesn't change
           });
         });
       });
@@ -2555,48 +2764,56 @@ describe('plugin-meetings', () => {
           assert.isRejected(meeting.refreshCaptcha(), Error);
         });
         it('sends correct request to captcha service refresh url', async () => {
-          const REFRESH_URL = 'https://something.webex.com/captchaservice/v1/captchas/refresh?blablabla=something&captchaID=xxx';
-          const EXPECTED_REFRESH_URL = 'https://something.webex.com/captchaservice/v1/captchas/refresh?blablabla=something&captchaID=xxx&siteFullName=something.webex.com';
+          const REFRESH_URL =
+            'https://something.webex.com/captchaservice/v1/captchas/refresh?blablabla=something&captchaID=xxx';
+          const EXPECTED_REFRESH_URL =
+            'https://something.webex.com/captchaservice/v1/captchas/refresh?blablabla=something&captchaID=xxx&siteFullName=something.webex.com';
 
           const FAKE_SDK_CAPTCHA_INFO = {
             captchaId: 'some id',
             verificationImageURL: 'some image url',
             verificationAudioURL: 'some audio url',
-            refreshURL: REFRESH_URL
+            refreshURL: REFRESH_URL,
           };
 
           const FAKE_REFRESHED_CAPTCHA = {
             captchaID: 'some id',
             verificationImageURL: 'some image url',
-            verificationAudioURL: 'some audio url'
+            verificationAudioURL: 'some audio url',
           };
 
           // setup the meeting so that a captcha is required
           meeting.attrs.meetingInfoProvider = {
-            fetchMeetingInfo: sinon.stub().throws(new MeetingInfoV2CaptchaError(423005, FAKE_SDK_CAPTCHA_INFO))
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2CaptchaError(423005, FAKE_SDK_CAPTCHA_INFO)),
           };
 
-          await assert.isRejected(meeting.fetchMeetingInfo({
-            password: ''
-          }), CaptchaError);
+          await assert.isRejected(
+            meeting.fetchMeetingInfo({
+              password: '',
+            }),
+            CaptchaError
+          );
 
           assert.deepEqual(meeting.requiredCaptcha, FAKE_SDK_CAPTCHA_INFO);
-          meeting.meetingRequest.refreshCaptcha = sinon.stub().returns(Promise.resolve({body: FAKE_REFRESHED_CAPTCHA}));
+          meeting.meetingRequest.refreshCaptcha = sinon
+            .stub()
+            .returns(Promise.resolve({body: FAKE_REFRESHED_CAPTCHA}));
 
           // test the captcha refresh
           await meeting.refreshCaptcha();
 
-          assert.calledWith(meeting.meetingRequest.refreshCaptcha,
-            {
-              captchaRefreshUrl: EXPECTED_REFRESH_URL,
-              captchaId: FAKE_SDK_CAPTCHA_INFO.captchaId
-            });
+          assert.calledWith(meeting.meetingRequest.refreshCaptcha, {
+            captchaRefreshUrl: EXPECTED_REFRESH_URL,
+            captchaId: FAKE_SDK_CAPTCHA_INFO.captchaId,
+          });
 
           assert.deepEqual(meeting.requiredCaptcha, {
             captchaId: FAKE_REFRESHED_CAPTCHA.captchaID,
             verificationImageURL: FAKE_REFRESHED_CAPTCHA.verificationImageURL,
             verificationAudioURL: FAKE_REFRESHED_CAPTCHA.verificationAudioURL,
-            refreshURL: FAKE_SDK_CAPTCHA_INFO.refreshURL // refresh url doesn't change
+            refreshURL: FAKE_SDK_CAPTCHA_INFO.refreshURL, // refresh url doesn't change
           });
         });
       });
@@ -2610,7 +2827,7 @@ describe('plugin-meetings', () => {
           assert(Metrics.sendBehavioralMetric.calledOnce);
           assert.calledWith(
             Metrics.sendBehavioralMetric,
-            BEHAVIORAL_METRICS.VERIFY_PASSWORD_SUCCESS,
+            BEHAVIORAL_METRICS.VERIFY_PASSWORD_SUCCESS
           );
           assert.equal(result.isPasswordValid, true);
           assert.equal(result.requiredCaptcha, null);
@@ -2685,7 +2902,9 @@ describe('plugin-meetings', () => {
           sandbox = sinon.createSandbox();
           meeting.meetingFiniteStateMachine.ring();
           meeting.meetingFiniteStateMachine.join();
-          meeting.meetingRequest.endMeetingForAll = sinon.stub().returns(Promise.resolve({body: 'test'}));
+          meeting.meetingRequest.endMeetingForAll = sinon
+            .stub()
+            .returns(Promise.resolve({body: 'test'}));
           meeting.locusInfo.onFullLocus = sinon.stub().returns(true);
           meeting.closeLocalStream = sinon.stub().returns(Promise.resolve());
           meeting.closeLocalShare = sinon.stub().returns(Promise.resolve());
@@ -2739,7 +2958,11 @@ describe('plugin-meetings', () => {
           sandbox.stub(meeting.mediaProperties, 'unsetMediaTracks');
 
           sandbox.stub(meeting.reconnectionManager, 'reconnectMedia').returns(Promise.resolve());
-          sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(MeetingUtil.parseLocusJoin({body: {locus, mediaConnections: []}})));
+          sandbox
+            .stub(MeetingUtil, 'joinMeeting')
+            .returns(
+              Promise.resolve(MeetingUtil.parseLocusJoin({body: {locus, mediaConnections: []}}))
+            );
         });
 
         afterEach(() => {
@@ -2750,8 +2973,7 @@ describe('plugin-meetings', () => {
         it('should throw an error if resourceId not passed', async () => {
           try {
             await meeting.moveTo();
-          }
-          catch (err) {
+          } catch (err) {
             assert.instanceOf(err, ParameterError);
             assert.equal(err.sdkMessage, 'Cannot move call without a resourceId.');
           }
@@ -2768,17 +2990,17 @@ describe('plugin-meetings', () => {
                   share: true,
                   share_audio: false,
                   video: false,
-                  whiteboard: false
+                  whiteboard: false,
                 },
                 tx: {
                   audio: false,
                   share: false,
                   share_audio: false,
                   video: false,
-                  whiteboard: false
-                }
-              }
-            }
+                  whiteboard: false,
+                },
+              },
+            },
           });
           assert.calledWithMatch(Metrics.postEvent, {event: eventType.MOVE_MEDIA});
         });
@@ -2787,17 +3009,19 @@ describe('plugin-meetings', () => {
           sinon.spy(MeetingUtil, 'joinMeetingOptions');
           await meeting.moveTo('resourceId');
 
-          assert.calledWith(MeetingUtil.joinMeetingOptions, meeting, {resourceId: 'resourceId', moveToResource: true});
+          assert.calledWith(MeetingUtil.joinMeetingOptions, meeting, {
+            resourceId: 'resourceId',
+            moveToResource: true,
+          });
         });
 
         it('should reconnectMedia after DX joins after moveTo', async () => {
           await meeting.moveTo('resourceId');
 
-
           await meeting.locusInfo.emitScoped(
             {
               file: 'locus-info',
-              function: 'updateSelf'
+              function: 'updateSelf',
             },
             'SELF_OBSERVING'
           );
@@ -2813,36 +3037,30 @@ describe('plugin-meetings', () => {
           assert.called(meeting.mediaProperties.setMediaDirection);
           assert.called(meeting.mediaProperties.unsetMediaTracks);
 
-          assert.calledWith(meeting.reconnectionManager.reconnectMedia,
-            {
-              mediaDirection: {
-                sendVideo: false,
-                receiveVideo: false,
-                sendAudio: false,
-                receiveAudio: false,
-                sendShare: false,
-                receiveShare: true
-              }
-            });
+          assert.calledWith(meeting.reconnectionManager.reconnectMedia, {
+            mediaDirection: {
+              sendVideo: false,
+              receiveVideo: false,
+              sendAudio: false,
+              receiveAudio: false,
+              sendShare: false,
+              receiveShare: true,
+            },
+          });
         });
 
         it('should throw an error if moveTo call fails', async () => {
           MeetingUtil.joinMeeting = sinon.stub().returns(Promise.reject());
           try {
             await meeting.moveTo('resourceId');
-          }
-          catch {
+          } catch {
             assert.calledOnce(Metrics.sendBehavioralMetric);
-            assert.calledWith(
-              Metrics.sendBehavioralMetric,
-              BEHAVIORAL_METRICS.MOVE_TO_FAILURE,
-              {
-                correlation_id: meeting.correlationId,
-                locus_id: meeting.locusUrl.split('/').pop(),
-                reason: sinon.match.any,
-                stack: sinon.match.any
-              }
-            );
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: sinon.match.any,
+              stack: sinon.match.any,
+            });
           }
           Metrics.sendBehavioralMetric.reset();
           meeting.reconnectionManager.reconnectMedia = sinon.stub().returns(Promise.reject());
@@ -2852,23 +3070,18 @@ describe('plugin-meetings', () => {
             await meeting.locusInfo.emitScoped(
               {
                 file: 'locus-info',
-                function: 'updateSelf'
+                function: 'updateSelf',
               },
               'SELF_OBSERVING'
             );
-          }
-          catch {
+          } catch {
             assert.calledOnce(Metrics.sendBehavioralMetric);
-            assert.calledWith(
-              Metrics.sendBehavioralMetric,
-              BEHAVIORAL_METRICS.MOVE_TO_FAILURE,
-              {
-                correlation_id: meeting.correlationId,
-                locus_id: meeting.locusUrl.split('/').pop(),
-                reason: sinon.match.any,
-                stack: sinon.match.any
-              }
-            );
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: sinon.match.any,
+              stack: sinon.match.any,
+            });
           }
         });
       });
@@ -2878,7 +3091,11 @@ describe('plugin-meetings', () => {
 
         beforeEach(() => {
           sandbox = sinon.createSandbox();
-          sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(MeetingUtil.parseLocusJoin({body: {locus, mediaConnections: []}})));
+          sandbox
+            .stub(MeetingUtil, 'joinMeeting')
+            .returns(
+              Promise.resolve(MeetingUtil.parseLocusJoin({body: {locus, mediaConnections: []}}))
+            );
           sandbox.stub(MeetingUtil, 'leaveMeeting').returns(Promise.resolve());
         });
 
@@ -2890,8 +3107,7 @@ describe('plugin-meetings', () => {
         it('should throw an error if resourceId not passed', async () => {
           try {
             await meeting.moveFrom();
-          }
-          catch (err) {
+          } catch (err) {
             assert.instanceOf(err, ParameterError);
 
             assert.equal(err.sdkMessage, 'Cannot move call without a resourceId.');
@@ -2912,33 +3128,25 @@ describe('plugin-meetings', () => {
           assert.calledWith(MeetingUtil.leaveMeeting, meeting, {
             resourceId: 'resourceId',
             correlationId: meeting.correlationId,
-            moveMeeting: true
+            moveMeeting: true,
           });
 
           assert.calledOnce(Metrics.sendBehavioralMetric);
-          assert.calledWith(
-            Metrics.sendBehavioralMetric,
-            BEHAVIORAL_METRICS.MOVE_FROM_SUCCESS,
-          );
+          assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.MOVE_FROM_SUCCESS);
         });
 
         it('should throw an error if moveFrom call fails', async () => {
           MeetingUtil.joinMeeting = sinon.stub().returns(Promise.reject());
           try {
             await meeting.moveFrom('resourceId');
-          }
-          catch {
+          } catch {
             assert.calledOnce(Metrics.sendBehavioralMetric);
-            assert.calledWith(
-              Metrics.sendBehavioralMetric,
-              BEHAVIORAL_METRICS.MOVE_FROM_FAILURE,
-              {
-                correlation_id: meeting.correlationId,
-                locus_id: meeting.locusUrl.split('/').pop(),
-                reason: sinon.match.any,
-                stack: sinon.match.any
-              }
-            );
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.MOVE_FROM_FAILURE, {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: sinon.match.any,
+              stack: sinon.match.any,
+            });
           }
         });
       });
@@ -3007,7 +3215,9 @@ describe('plugin-meetings', () => {
             meeting.config.reconnection.enabled = true;
             meeting.currentMediaStatus = {audio: true};
             meeting.reconnectionManager = new ReconnectionManager(meeting);
-            meeting.reconnectionManager.reconnect = sinon.stub().returns(Promise.reject(new Error()));
+            meeting.reconnectionManager.reconnect = sinon
+              .stub()
+              .returns(Promise.reject(new Error()));
             meeting.reconnectionManager.reset = sinon.stub().returns(true);
           });
 
@@ -3032,7 +3242,7 @@ describe('plugin-meetings', () => {
                 correlation_id: meeting.correlationId,
                 locus_id: meeting.locusUrl.split('/').pop(),
                 reason: sinon.match.any,
-                stack: sinon.match.any
+                stack: sinon.match.any,
               }
             );
           });
@@ -3044,7 +3254,7 @@ describe('plugin-meetings', () => {
               sinon.match.instanceOf(Meeting),
               {file: 'meeting/index', function: 'reconnect'},
               EVENTS.REQUEST_UPLOAD_LOGS,
-              sinon.match.instanceOf(Meeting),
+              sinon.match.instanceOf(Meeting)
             );
           });
 
@@ -3128,8 +3338,8 @@ describe('plugin-meetings', () => {
               height: 1980,
               width: 1080,
               displaySurface: true,
-              cursor: true
-            })
+              cursor: true,
+            }),
           };
           const getVideoTracks = sinon.stub().returns([track]);
 
@@ -3161,21 +3371,36 @@ describe('plugin-meetings', () => {
           meeting.setRemoteStream(pc);
           pc.ontrack({track: 'track', transceiver: {mid: '0'}});
           assert.equal(TriggerProxy.trigger.getCall(1).args[2], 'media:ready');
-          assert.deepEqual(TriggerProxy.trigger.getCall(1).args[3], {type: 'remoteAudio', stream: true});
+          assert.deepEqual(TriggerProxy.trigger.getCall(1).args[3], {
+            type: 'remoteAudio',
+            stream: true,
+          });
 
           pc.ontrack({track: 'track', transceiver: {mid: '1'}});
           assert.equal(TriggerProxy.trigger.getCall(2).args[2], 'media:ready');
-          assert.deepEqual(TriggerProxy.trigger.getCall(2).args[3], {type: 'remoteVideo', stream: true});
+          assert.deepEqual(TriggerProxy.trigger.getCall(2).args[3], {
+            type: 'remoteVideo',
+            stream: true,
+          });
 
           pc.ontrack({transceiver: {mid: '2'}, track: 'track'});
           assert.equal(TriggerProxy.trigger.getCall(3).args[2], 'media:ready');
-          assert.deepEqual(TriggerProxy.trigger.getCall(3).args[3], {type: 'remoteShare', stream: true});
-
+          assert.deepEqual(TriggerProxy.trigger.getCall(3).args[3], {
+            type: 'remoteShare',
+            stream: true,
+          });
 
           // special case for safari
-          pc.ontrack({target: {audioTransceiver: {receiver: {track: {id: 'trackId'}}}}, transceiver: {}, track: {id: 'trackId'}});
+          pc.ontrack({
+            target: {audioTransceiver: {receiver: {track: {id: 'trackId'}}}},
+            transceiver: {},
+            track: {id: 'trackId'},
+          });
           assert.equal(TriggerProxy.trigger.getCall(1).args[2], 'media:ready');
-          assert.deepEqual(TriggerProxy.trigger.getCall(1).args[3], {type: 'remoteAudio', stream: true});
+          assert.deepEqual(TriggerProxy.trigger.getCall(1).args[3], {
+            type: 'remoteAudio',
+            stream: true,
+          });
         });
       });
       describe('#setUpLocusInfoSelfListener', () => {
@@ -3211,11 +3436,12 @@ describe('plugin-meetings', () => {
 
           meeting.members = {locusUrlUpdate: sinon.stub().returns(Promise.resolve(test1))};
 
-          meeting.locusInfo.emit({function: 'test', file: 'test'}, 'LOCUS_INFO_UPDATE_URL', newLocusUrl);
-          assert.calledWith(
-            meeting.members.locusUrlUpdate,
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'LOCUS_INFO_UPDATE_URL',
             newLocusUrl
           );
+          assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
           assert(meeting.locusId, '12345');
           done();
@@ -3224,7 +3450,11 @@ describe('plugin-meetings', () => {
       describe('#setUpLocusInfoMediaInactiveListener', () => {
         it('listens to disconnect due to un activity ', (done) => {
           TriggerProxy.trigger.reset();
-          meeting.locusInfo.emit({function: 'test', file: 'test'}, EVENTS.DISCONNECT_DUE_TO_INACTIVITY, {reason: 'inactive'});
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            EVENTS.DISCONNECT_DUE_TO_INACTIVITY,
+            {reason: 'inactive'}
+          );
           assert.calledTwice(TriggerProxy.trigger);
 
           assert.calledWith(
@@ -3251,7 +3481,11 @@ describe('plugin-meetings', () => {
           sinon.stub(meeting, 'reconnect');
 
           meeting.config.reconnection.autoRejoin = true;
-          meeting.locusInfo.emit({function: 'test', file: 'test'}, EVENTS.DISCONNECT_DUE_TO_INACTIVITY, {reason: 'inactive'});
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            EVENTS.DISCONNECT_DUE_TO_INACTIVITY,
+            {reason: 'inactive'}
+          );
           assert.calledOnce(TriggerProxy.trigger);
 
           assert.calledWith(
@@ -3276,7 +3510,10 @@ describe('plugin-meetings', () => {
           sinon.stub(meeting.reconnectionManager, 'cleanUp');
           sinon.spy(MeetingUtil, 'cleanUp');
 
-          meeting.locusInfo.emit({function: 'test', file: 'test'}, EVENTS.DESTROY_MEETING, {shouldLeave: false, reason: 'ended'});
+          meeting.locusInfo.emit({function: 'test', file: 'test'}, EVENTS.DESTROY_MEETING, {
+            shouldLeave: false,
+            reason: 'ended',
+          });
           assert.calledOnce(TriggerProxy.trigger);
           assert.calledOnce(MeetingUtil.cleanUp);
           assert.calledWith(
@@ -3284,12 +3521,12 @@ describe('plugin-meetings', () => {
             meeting,
             {
               file: 'meeting/index',
-              function: 'setUpLocusInfoMeetingListener'
+              function: 'setUpLocusInfoMeetingListener',
             },
             EVENTS.DESTROY_MEETING,
             {
               reason: 'ended',
-              meetingId: meeting.id
+              meetingId: meeting.id,
             }
           );
           done();
@@ -3406,8 +3643,8 @@ describe('plugin-meetings', () => {
               permissionToken: 'abc',
               sipMeetingUri: test1,
               sipUrl: test1,
-              owner: test2
-            }
+              owner: test2,
+            },
           };
 
           meeting.parseMeetingInfo(FAKE_MEETING_INFO);
@@ -3418,7 +3655,7 @@ describe('plugin-meetings', () => {
             meetingNumber: '12345',
             meetingJoinUrl: url2,
             owner: test2,
-            permissionToken: 'abc'
+            permissionToken: 'abc',
           };
 
           checkParseMeetingInfo(expectedInfoToParse);
@@ -3432,8 +3669,8 @@ describe('plugin-meetings', () => {
             info: {
               webExMeetingId: 'locusMeetingId',
               sipUri: 'locusSipUri',
-              owner: 'locusOwner'
-            }
+              owner: 'locusOwner',
+            },
           };
           const FAKE_MEETING_INFO = {
             body: {
@@ -3444,8 +3681,8 @@ describe('plugin-meetings', () => {
               permissionToken: 'abc',
               sipMeetingUri: test1,
               sipUrl: test1,
-              owner: test2
-            }
+              owner: test2,
+            },
           };
 
           meeting.parseMeetingInfo(FAKE_MEETING_INFO, FAKE_LOCUS_MEETING);
@@ -3456,7 +3693,7 @@ describe('plugin-meetings', () => {
             meetingNumber: 'locusMeetingId',
             meetingJoinUrl: url2,
             owner: 'locusOwner',
-            permissionToken: 'abc'
+            permissionToken: 'abc',
           };
 
           checkParseMeetingInfo(expectedInfoToParse);
@@ -3473,8 +3710,8 @@ describe('plugin-meetings', () => {
               permissionToken: 'abc',
               sipMeetingUri: test1,
               sipUrl: test1,
-              owner: test2
-            }
+              owner: test2,
+            },
           };
 
           meeting.parseMeetingInfo(FAKE_MEETING_INFO);
@@ -3485,7 +3722,7 @@ describe('plugin-meetings', () => {
             meetingNumber: '12345',
             meetingJoinUrl: url2,
             owner: test2,
-            permissionToken: 'abc'
+            permissionToken: 'abc',
           };
 
           checkParseMeetingInfo(expectedInfoToParse);
@@ -3503,8 +3740,8 @@ describe('plugin-meetings', () => {
               permissionToken: 'abc',
               sipMeetingUri: test1,
               sipUrl: test1,
-              owner: test2
-            }
+              owner: test2,
+            },
           };
 
           meeting.parseMeetingInfo(FAKE_MEETING_INFO, FAKE_STRING_DESTINATION);
@@ -3515,7 +3752,7 @@ describe('plugin-meetings', () => {
             meetingNumber: '12345',
             meetingJoinUrl: url2,
             owner: test2,
-            permissionToken: 'abc'
+            permissionToken: 'abc',
           };
 
           checkParseMeetingInfo(expectedInfoToParse);
@@ -3531,7 +3768,11 @@ describe('plugin-meetings', () => {
             meeting.type = 'CALL';
             meeting.parseLocus({url: url1, participants: [{id: uuid1}], self: {id: uuid2}});
             assert.calledOnce(meeting.setLocus);
-            assert.calledWith(meeting.setLocus, {url: url1, participants: [{id: uuid1}], self: {id: uuid2}});
+            assert.calledWith(meeting.setLocus, {
+              url: url1,
+              participants: [{id: uuid1}],
+              self: {id: uuid2},
+            });
             assert.calledOnce(MeetingUtil.getLocusPartner);
             assert.calledWith(MeetingUtil.getLocusPartner, [{id: uuid1}], {id: uuid2});
             assert.deepEqual(meeting.partner, {person: {sipUrl: uuid3}});
@@ -3587,7 +3828,7 @@ describe('plugin-meetings', () => {
             meeting,
             {
               file: 'meeting/index',
-              function: 'setUpLocusInfoAssignHostListener'
+              function: 'setUpLocusInfoAssignHostListener',
             },
             'meeting:actionsUpdate',
             meeting.inMeetingActions.get()
@@ -3614,7 +3855,6 @@ describe('plugin-meetings', () => {
         let canUserLowerAllHandsSpy;
         let canUserLowerSomeoneElsesHandSpy;
 
-
         beforeEach(() => {
           locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
           canUserLockSpy = sinon.spy(MeetingUtil, 'canUserLock');
@@ -3634,7 +3874,6 @@ describe('plugin-meetings', () => {
           inMeetingActionsSetSpy.restore();
         });
 
-
         it('registers the correct MEETING_INFO_UPDATED event', () => {
           meeting.setUpLocusInfoMeetingInfoListener();
 
@@ -3647,8 +3886,8 @@ describe('plugin-meetings', () => {
 
           const payload = {
             info: {
-              userDisplayHints: ['LOCK_CONTROL_UNLOCK']
-            }
+              userDisplayHints: ['LOCK_CONTROL_UNLOCK'],
+            },
           };
 
           callback(payload);
@@ -3668,7 +3907,7 @@ describe('plugin-meetings', () => {
             meeting,
             {
               file: 'meeting/index',
-              function: 'setUpLocusInfoMeetingInfoListener'
+              function: 'setUpLocusInfoMeetingInfoListener',
             },
             'meeting:actionsUpdate',
             meeting.inMeetingActions.get()
@@ -3693,7 +3932,7 @@ describe('plugin-meetings', () => {
             locusId: uuid1,
             selfId: uuid2,
             mediaId: uuid3,
-            host: {id: uuid4}
+            host: {id: uuid4},
           });
           assert.calledOnce(meeting.locusInfo.initialSetup);
           assert.calledWith(meeting.locusInfo.initialSetup, {
@@ -3702,7 +3941,7 @@ describe('plugin-meetings', () => {
             locusId: uuid1,
             selfId: uuid2,
             mediaId: uuid3,
-            host: {id: uuid4}
+            host: {id: uuid4},
           });
           assert.equal(meeting.mediaConnections, test1);
           assert.equal(meeting.locusUrl, url1);
@@ -3751,7 +3990,7 @@ describe('plugin-meetings', () => {
           });
           it('should send the whiteboard share', async () => {
             const whiteboardShare = meeting.startWhiteboardShare({
-              channelUrl: url2
+              channelUrl: url2,
             });
 
             assert.exists(whiteboardShare.then);
@@ -3791,18 +4030,35 @@ describe('plugin-meetings', () => {
           const USER_IDS = {
             ME: '9528d952-e4de-46cf-8157-fd4823b98377',
             REMOTE_A: '5be7e7b0-b304-48da-8083-83bd72b5300d',
-            REMOTE_B: 'd4d102a1-17ce-4e17-9b08-bded3de467e4'
+            REMOTE_B: 'd4d102a1-17ce-4e17-9b08-bded3de467e4',
           };
 
           const RESOURCE_URLS = {
-            WHITEBOARD_A: 'https://board-a.wbx2.com/board/api/v1/channels/49cfb550-5517-11eb-a2af-1b9e4bc3da13',
-            WHITEBOARD_B: 'https://board-a.wbx2.com/board/api/v1/channels/977a7330-54f4-11eb-b1ef-91f5eefc7bf3'
+            WHITEBOARD_A:
+              'https://board-a.wbx2.com/board/api/v1/channels/49cfb550-5517-11eb-a2af-1b9e4bc3da13',
+            WHITEBOARD_B:
+              'https://board-a.wbx2.com/board/api/v1/channels/977a7330-54f4-11eb-b1ef-91f5eefc7bf3',
           };
 
-          const generateContent = (beneficiaryId = null, disposition = null) => ({beneficiaryId, disposition});
-          const generateWhiteboard = (beneficiaryId = null, disposition = null, resourceUrl = null) => ({beneficiaryId, disposition, resourceUrl});
+          const generateContent = (beneficiaryId = null, disposition = null) => ({
+            beneficiaryId,
+            disposition,
+          });
+          const generateWhiteboard = (
+            beneficiaryId = null,
+            disposition = null,
+            resourceUrl = null
+          ) => ({beneficiaryId, disposition, resourceUrl});
 
-          const generateData = (payload, isGranting, isContent, beneficiaryId, resourceUrl, isAccepting, otherBeneficiaryId) => {
+          const generateData = (
+            payload,
+            isGranting,
+            isContent,
+            beneficiaryId,
+            resourceUrl,
+            isAccepting,
+            otherBeneficiaryId
+          ) => {
             const newPayload = cloneDeep(payload);
 
             newPayload.previous = cloneDeep(payload.current);
@@ -3813,15 +4069,15 @@ describe('plugin-meetings', () => {
                 eventName: EVENT_TRIGGERS.MEMBERS_CONTENT_UPDATE,
                 eventPayload: {
                   activeSharingId: null,
-                  endedSharingId: null
-                }
-              }
+                  endedSharingId: null,
+                },
+              },
             };
 
             let shareStatus = null;
             const activeSharingId = {
               whiteboard: null,
-              content: null
+              content: null,
             };
 
             if (isGranting) {
@@ -3831,68 +4087,72 @@ describe('plugin-meetings', () => {
 
                 if (isEqual(newPayload.current, newPayload.previous)) {
                   eventTrigger.member = null;
-                }
-                else {
+                } else {
                   if (newPayload.current.whiteboard.beneficiaryId) {
                     if (newPayload.current.whiteboard.disposition === FLOOR_ACTION.GRANTED) {
                       newPayload.current.whiteboard.disposition = FLOOR_ACTION.RELEASED;
                       eventTrigger.share.push({
                         eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
-                        functionName: 'stopWhiteboardShare'
+                        functionName: 'stopWhiteboardShare',
                       });
-                      eventTrigger.member.eventPayload.endedSharingId = newPayload.current.whiteboard.beneficiaryId;
+                      eventTrigger.member.eventPayload.endedSharingId =
+                        newPayload.current.whiteboard.beneficiaryId;
                     }
                   }
 
                   if (newPayload.previous.content.beneficiaryId) {
-                    if (newPayload.previous.content.beneficiaryId !== newPayload.current.content.beneficiaryId) {
+                    if (
+                      newPayload.previous.content.beneficiaryId !==
+                      newPayload.current.content.beneficiaryId
+                    ) {
                       if (newPayload.previous.content.beneficiaryId === USER_IDS.ME) {
                         eventTrigger.share.push({
                           eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-                          functionName: 'stopFloorRequest'
+                          functionName: 'stopFloorRequest',
                         });
-                      }
-                      else if (newPayload.current.content.beneficiaryId === USER_IDS.ME) {
+                      } else if (newPayload.current.content.beneficiaryId === USER_IDS.ME) {
                         eventTrigger.share.push({
                           eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_REMOTE,
-                          functionName: 'remoteShare'
+                          functionName: 'remoteShare',
                         });
                       }
-                      eventTrigger.member.eventPayload.endedSharingId = newPayload.previous.content.beneficiaryId;
+                      eventTrigger.member.eventPayload.endedSharingId =
+                        newPayload.previous.content.beneficiaryId;
                     }
                   }
 
                   if (isAccepting) {
                     eventTrigger.share.push({
                       eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
-                      functionName: 'stopWhiteboardShare'
+                      functionName: 'stopWhiteboardShare',
                     });
                   }
 
                   if (beneficiaryId === USER_IDS.ME) {
                     eventTrigger.share.push({
                       eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_LOCAL,
-                      functionName: 'share'
+                      functionName: 'share',
                     });
-                  }
-                  else {
+                  } else {
                     eventTrigger.share.push({
                       eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                       functionName: 'remoteShare',
-                      eventPayload: {memberId: beneficiaryId}
+                      eventPayload: {memberId: beneficiaryId},
                     });
                   }
                 }
 
                 if (beneficiaryId === USER_IDS.ME) {
                   shareStatus = SHARE_STATUS.LOCAL_SHARE_ACTIVE;
-                }
-                else {
+                } else {
                   shareStatus = SHARE_STATUS.REMOTE_SHARE_ACTIVE;
                 }
-              }
-              else {
-                newPayload.current.whiteboard = generateWhiteboard(beneficiaryId, FLOOR_ACTION.GRANTED, resourceUrl);
+              } else {
+                newPayload.current.whiteboard = generateWhiteboard(
+                  beneficiaryId,
+                  FLOOR_ACTION.GRANTED,
+                  resourceUrl
+                );
 
                 if (newPayload.current.content.beneficiaryId) {
                   if (newPayload.current.content.disposition === FLOOR_ACTION.GRANTED) {
@@ -3900,41 +4160,48 @@ describe('plugin-meetings', () => {
                     if (newPayload.current.content.beneficiaryId === USER_IDS.ME) {
                       eventTrigger.share.push({
                         eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-                        functionName: 'stopFloorRequest'
+                        functionName: 'stopFloorRequest',
                       });
-                    }
-                    else {
+                    } else {
                       eventTrigger.share.push({
                         eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_REMOTE,
-                        functionName: 'remoteShare'
+                        functionName: 'remoteShare',
                       });
                     }
 
-                    eventTrigger.member.eventPayload.endedSharingId = newPayload.current.content.beneficiaryId;
+                    eventTrigger.member.eventPayload.endedSharingId =
+                      newPayload.current.content.beneficiaryId;
                   }
                 }
 
                 if (newPayload.previous.content.beneficiaryId) {
-                  if (newPayload.previous.content.beneficiaryId !== newPayload.current.content.beneficiaryId) {
+                  if (
+                    newPayload.previous.content.beneficiaryId !==
+                    newPayload.current.content.beneficiaryId
+                  ) {
                     if (newPayload.previous.content.beneficiaryId === USER_IDS.ME) {
                       eventTrigger.share.push({
                         eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-                        functionName: 'stopFloorRequest'
+                        functionName: 'stopFloorRequest',
                       });
-                    }
-                    else if (newPayload.current.content.beneficiaryId === USER_IDS.ME) {
+                    } else if (newPayload.current.content.beneficiaryId === USER_IDS.ME) {
                       eventTrigger.share.push({
                         eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_REMOTE,
-                        functionName: 'remoteShare'
+                        functionName: 'remoteShare',
                       });
                     }
-                    eventTrigger.member.eventPayload.endedSharingId = newPayload.previous.content.beneficiaryId;
+                    eventTrigger.member.eventPayload.endedSharingId =
+                      newPayload.previous.content.beneficiaryId;
                   }
                 }
 
                 if (newPayload.previous.whiteboard.beneficiaryId) {
-                  if (newPayload.previous.whiteboard.beneficiaryId !== newPayload.current.whiteboard.beneficiaryId) {
-                    eventTrigger.member.eventPayload.endedSharingId = newPayload.previous.whiteboard.beneficiaryId;
+                  if (
+                    newPayload.previous.whiteboard.beneficiaryId !==
+                    newPayload.current.whiteboard.beneficiaryId
+                  ) {
+                    eventTrigger.member.eventPayload.endedSharingId =
+                      newPayload.previous.whiteboard.beneficiaryId;
                   }
                 }
 
@@ -3943,7 +4210,7 @@ describe('plugin-meetings', () => {
                 eventTrigger.share.push({
                   eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_WHITEBOARD,
                   functionName: 'startWhiteboardShare',
-                  eventPayload: {resourceUrl, memberId: beneficiaryId}
+                  eventPayload: {resourceUrl, memberId: beneficiaryId},
                 });
 
                 shareStatus = SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
@@ -3952,8 +4219,7 @@ describe('plugin-meetings', () => {
               if (eventTrigger.member) {
                 eventTrigger.member.eventPayload.activeSharingId = beneficiaryId;
               }
-            }
-            else {
+            } else {
               eventTrigger.member.eventPayload.endedSharingId = beneficiaryId;
 
               if (isContent) {
@@ -3962,19 +4228,17 @@ describe('plugin-meetings', () => {
                 if (beneficiaryId === USER_IDS.ME) {
                   eventTrigger.share.push({
                     eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-                    functionName: 'stopFloorRequest'
+                    functionName: 'stopFloorRequest',
                   });
-                }
-                else {
+                } else {
                   eventTrigger.share.push({
                     eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_REMOTE,
-                    functionName: 'remoteShare'
+                    functionName: 'remoteShare',
                   });
                 }
 
                 shareStatus = SHARE_STATUS.NO_SHARE;
-              }
-              else {
+              } else {
                 newPayload.current.whiteboard.disposition = FLOOR_ACTION.RELEASED;
 
                 if (isAccepting) {
@@ -3984,15 +4248,14 @@ describe('plugin-meetings', () => {
                   eventTrigger.share.push({
                     eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_WHITEBOARD,
                     functionName: 'startWhiteboardShare',
-                    eventPayload: {resourceUrl, memberId: beneficiaryId}
+                    eventPayload: {resourceUrl, memberId: beneficiaryId},
                   });
 
                   shareStatus = SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
-                }
-                else {
+                } else {
                   eventTrigger.share.push({
                     eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
-                    functionName: 'stopWhiteboardShare'
+                    functionName: 'stopWhiteboardShare',
                   });
 
                   shareStatus = SHARE_STATUS.NO_SHARE;
@@ -4001,21 +4264,23 @@ describe('plugin-meetings', () => {
             }
 
             return {
-              payload: newPayload, eventTrigger, shareStatus, activeSharingId
+              payload: newPayload,
+              eventTrigger,
+              shareStatus,
+              activeSharingId,
             };
           };
 
           const blankPayload = {
             previous: {
               content: generateContent(),
-              whiteboard: generateWhiteboard()
+              whiteboard: generateWhiteboard(),
             },
             current: {
               content: generateContent(),
-              whiteboard: generateWhiteboard()
-            }
+              whiteboard: generateWhiteboard(),
+            },
           };
-
 
           const payloadTestHelper = (data) => {
             assert.equal(meeting.shareStatus, SHARE_STATUS.NO_SHARE);
@@ -4024,22 +4289,32 @@ describe('plugin-meetings', () => {
             let callCounter = 1;
 
             data.forEach((d, index) => {
-              meeting.locusInfo.emit({function: 'test', file: 'test'}, EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES, d.payload);
+              meeting.locusInfo.emit(
+                {function: 'test', file: 'test'},
+                EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+                d.payload
+              );
 
               assert.equal(meeting.shareStatus, data[index].shareStatus);
 
-              callCounter += data[index].eventTrigger.share.length + (data[index].eventTrigger.member ? 1 : 0);
+              callCounter +=
+                data[index].eventTrigger.share.length + (data[index].eventTrigger.member ? 1 : 0);
 
               assert.callCount(TriggerProxy.trigger, callCounter);
 
-              assert.equal(meeting.members.mediaShareWhiteboardId, data[index].activeSharingId.whiteboard);
-              assert.equal(meeting.members.mediaShareContentId, data[index].activeSharingId.content);
+              assert.equal(
+                meeting.members.mediaShareWhiteboardId,
+                data[index].activeSharingId.whiteboard
+              );
+              assert.equal(
+                meeting.members.mediaShareContentId,
+                data[index].activeSharingId.content
+              );
             });
 
             assert.callCount(TriggerProxy.trigger, callCounter);
 
             // Start with 1 to ignore members:update trigger
-
 
             let i = 1;
             let offset = 2;
@@ -4052,13 +4327,13 @@ describe('plugin-meetings', () => {
               for (let idx = 0; idx < share.length; idx += 1) {
                 const shareCallArgs = TriggerProxy.trigger.getCall(i + idx).args;
                 const {functionName, eventName, eventPayload} = share[idx];
-                const fileName = functionName === 'remoteShare' ? 'meetings/index' : 'meeting/index';
+                const fileName =
+                  functionName === 'remoteShare' ? 'meetings/index' : 'meeting/index';
 
                 assert.deepEqual(shareCallArgs[1], {
                   file: fileName,
-                  function: functionName
+                  function: functionName,
                 });
-
 
                 assert.equal(shareCallArgs[2], eventName);
 
@@ -4066,7 +4341,10 @@ describe('plugin-meetings', () => {
                   assert.deepEqual(shareCallArgs[3], eventPayload);
                 }
 
-                if (functionName === 'remoteShare' && eventName === EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE) {
+                if (
+                  functionName === 'remoteShare' &&
+                  eventName === EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE
+                ) {
                   assert.deepEqual(shareCallArgs[3], eventPayload);
                 }
               }
@@ -4077,7 +4355,7 @@ describe('plugin-meetings', () => {
 
                 assert.deepEqual(memberCallArgs[1], {
                   file: 'members',
-                  function: 'locusMediaSharesUpdate'
+                  function: 'locusMediaSharesUpdate',
                 });
                 assert.equal(memberCallArgs[2], member.eventName);
 
@@ -4091,9 +4369,8 @@ describe('plugin-meetings', () => {
 
               if (share.length + 1 > offset) {
                 offset = (offset + share.length + 1) / 2;
-              }
-              else if (share.length + 1 < offset) {
-                offset = (share.length + 1) + 0.5;
+              } else if (share.length + 1 < offset) {
+                offset = share.length + 1 + 0.5;
               }
             }
           };
@@ -4104,40 +4381,100 @@ describe('plugin-meetings', () => {
 
           describe('Whiteboard A --> Whiteboard B', () => {
             it('Scenario #1: you share both whiteboards', () => {
-              const data1 = generateData(blankPayload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A);
-              const data2 = generateData(data1.payload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_B);
+              const data1 = generateData(
+                blankPayload,
+                true,
+                false,
+                USER_IDS.ME,
+                RESOURCE_URLS.WHITEBOARD_A
+              );
+              const data2 = generateData(
+                data1.payload,
+                true,
+                false,
+                USER_IDS.ME,
+                RESOURCE_URLS.WHITEBOARD_B
+              );
               const data3 = generateData(data2.payload, false, false, USER_IDS.ME);
 
               payloadTestHelper([data1, data2, data3]);
             });
 
             it('Scenario #2: you share whiteboard A and remote person A shares whiteboard B', () => {
-              const data1 = generateData(blankPayload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A);
-              const data2 = generateData(data1.payload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_B);
+              const data1 = generateData(
+                blankPayload,
+                true,
+                false,
+                USER_IDS.ME,
+                RESOURCE_URLS.WHITEBOARD_A
+              );
+              const data2 = generateData(
+                data1.payload,
+                true,
+                false,
+                USER_IDS.REMOTE_A,
+                RESOURCE_URLS.WHITEBOARD_B
+              );
               const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
 
               payloadTestHelper([data1, data2, data3]);
             });
 
             it('Scenario #3: remote person A shares whiteboard A and you share whiteboard B', () => {
-              const data1 = generateData(blankPayload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
-              const data2 = generateData(data1.payload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_B);
+              const data1 = generateData(
+                blankPayload,
+                true,
+                false,
+                USER_IDS.REMOTE_A,
+                RESOURCE_URLS.WHITEBOARD_A
+              );
+              const data2 = generateData(
+                data1.payload,
+                true,
+                false,
+                USER_IDS.ME,
+                RESOURCE_URLS.WHITEBOARD_B
+              );
               const data3 = generateData(data2.payload, false, false, USER_IDS.ME);
 
               payloadTestHelper([data1, data2, data3]);
             });
 
             it('Scenario #4: remote person A shares both whiteboards', () => {
-              const data1 = generateData(blankPayload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
-              const data2 = generateData(data1.payload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_B);
+              const data1 = generateData(
+                blankPayload,
+                true,
+                false,
+                USER_IDS.REMOTE_A,
+                RESOURCE_URLS.WHITEBOARD_A
+              );
+              const data2 = generateData(
+                data1.payload,
+                true,
+                false,
+                USER_IDS.REMOTE_A,
+                RESOURCE_URLS.WHITEBOARD_B
+              );
               const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
 
               payloadTestHelper([data1, data2, data3]);
             });
 
             it('Scenario #5: remote person A shares whiteboard A and remote person B shares whiteboard B', () => {
-              const data1 = generateData(blankPayload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
-              const data2 = generateData(data1.payload, true, false, USER_IDS.REMOTE_B, RESOURCE_URLS.WHITEBOARD_B);
+              const data1 = generateData(
+                blankPayload,
+                true,
+                false,
+                USER_IDS.REMOTE_A,
+                RESOURCE_URLS.WHITEBOARD_A
+              );
+              const data2 = generateData(
+                data1.payload,
+                true,
+                false,
+                USER_IDS.REMOTE_B,
+                RESOURCE_URLS.WHITEBOARD_B
+              );
               const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_B);
 
               payloadTestHelper([data1, data2, data3]);
@@ -4146,45 +4483,155 @@ describe('plugin-meetings', () => {
 
           describe('Whiteboard A --> Desktop', () => {
             it('Scenario #1: you share whiteboard and then share desktop', () => {
-              const data1 = generateData(blankPayload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A);
-              const data2 = generateData(data1.payload, false, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A, true, USER_IDS.ME);
-              const data3 = generateData(data2.payload, true, true, USER_IDS.ME, undefined, true, USER_IDS.ME);
+              const data1 = generateData(
+                blankPayload,
+                true,
+                false,
+                USER_IDS.ME,
+                RESOURCE_URLS.WHITEBOARD_A
+              );
+              const data2 = generateData(
+                data1.payload,
+                false,
+                false,
+                USER_IDS.ME,
+                RESOURCE_URLS.WHITEBOARD_A,
+                true,
+                USER_IDS.ME
+              );
+              const data3 = generateData(
+                data2.payload,
+                true,
+                true,
+                USER_IDS.ME,
+                undefined,
+                true,
+                USER_IDS.ME
+              );
               const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
 
               payloadTestHelper([data1, data2, data3, data4]);
             });
 
             it('Scenario #2: you share whiteboard A and remote person A shares desktop', () => {
-              const data1 = generateData(blankPayload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A);
-              const data2 = generateData(data1.payload, false, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A, true, USER_IDS.REMOTE_A);
-              const data3 = generateData(data2.payload, true, true, USER_IDS.REMOTE_A, undefined, true, USER_IDS.ME);
+              const data1 = generateData(
+                blankPayload,
+                true,
+                false,
+                USER_IDS.ME,
+                RESOURCE_URLS.WHITEBOARD_A
+              );
+              const data2 = generateData(
+                data1.payload,
+                false,
+                false,
+                USER_IDS.ME,
+                RESOURCE_URLS.WHITEBOARD_A,
+                true,
+                USER_IDS.REMOTE_A
+              );
+              const data3 = generateData(
+                data2.payload,
+                true,
+                true,
+                USER_IDS.REMOTE_A,
+                undefined,
+                true,
+                USER_IDS.ME
+              );
               const data4 = generateData(data3.payload, false, true, USER_IDS.REMOTE_A);
 
               payloadTestHelper([data1, data2, data3, data4]);
             });
 
             it('Scenario #3: remote person A shares whiteboard and you share desktop', () => {
-              const data1 = generateData(blankPayload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
-              const data2 = generateData(data1.payload, false, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A, true, USER_IDS.ME);
-              const data3 = generateData(data2.payload, true, true, USER_IDS.ME, undefined, true, USER_IDS.REMOTE_A);
+              const data1 = generateData(
+                blankPayload,
+                true,
+                false,
+                USER_IDS.REMOTE_A,
+                RESOURCE_URLS.WHITEBOARD_A
+              );
+              const data2 = generateData(
+                data1.payload,
+                false,
+                false,
+                USER_IDS.REMOTE_A,
+                RESOURCE_URLS.WHITEBOARD_A,
+                true,
+                USER_IDS.ME
+              );
+              const data3 = generateData(
+                data2.payload,
+                true,
+                true,
+                USER_IDS.ME,
+                undefined,
+                true,
+                USER_IDS.REMOTE_A
+              );
               const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
 
               payloadTestHelper([data1, data2, data3, data4]);
             });
 
             it('Scenario #4: remote person A shares whiteboard and then shares desktop', () => {
-              const data1 = generateData(blankPayload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
-              const data2 = generateData(data1.payload, false, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A, true, USER_IDS.REMOTE_A);
-              const data3 = generateData(data2.payload, true, true, USER_IDS.REMOTE_A, undefined, true, USER_IDS.REMOTE_A);
+              const data1 = generateData(
+                blankPayload,
+                true,
+                false,
+                USER_IDS.REMOTE_A,
+                RESOURCE_URLS.WHITEBOARD_A
+              );
+              const data2 = generateData(
+                data1.payload,
+                false,
+                false,
+                USER_IDS.REMOTE_A,
+                RESOURCE_URLS.WHITEBOARD_A,
+                true,
+                USER_IDS.REMOTE_A
+              );
+              const data3 = generateData(
+                data2.payload,
+                true,
+                true,
+                USER_IDS.REMOTE_A,
+                undefined,
+                true,
+                USER_IDS.REMOTE_A
+              );
               const data4 = generateData(data3.payload, false, true, USER_IDS.REMOTE_A);
 
               payloadTestHelper([data1, data2, data3, data4]);
             });
 
             it('Scenario #5: remote person A shares whiteboard and remote person B shares desktop', () => {
-              const data1 = generateData(blankPayload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
-              const data2 = generateData(data1.payload, false, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A, true, USER_IDS.REMOTE_B);
-              const data3 = generateData(data2.payload, true, true, USER_IDS.REMOTE_B, undefined, true, USER_IDS.REMOTE_A);
+              const data1 = generateData(
+                blankPayload,
+                true,
+                false,
+                USER_IDS.REMOTE_A,
+                RESOURCE_URLS.WHITEBOARD_A
+              );
+              const data2 = generateData(
+                data1.payload,
+                false,
+                false,
+                USER_IDS.REMOTE_A,
+                RESOURCE_URLS.WHITEBOARD_A,
+                true,
+                USER_IDS.REMOTE_B
+              );
+              const data3 = generateData(
+                data2.payload,
+                true,
+                true,
+                USER_IDS.REMOTE_B,
+                undefined,
+                true,
+                USER_IDS.REMOTE_A
+              );
               const data4 = generateData(data3.payload, false, true, USER_IDS.REMOTE_B);
 
               payloadTestHelper([data1, data2, data3, data4]);
@@ -4194,7 +4641,13 @@ describe('plugin-meetings', () => {
           describe('Desktop --> Whiteboard A', () => {
             it('Scenario #1: you share desktop and then share whiteboard', () => {
               const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
-              const data2 = generateData(data1.payload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A);
+              const data2 = generateData(
+                data1.payload,
+                true,
+                false,
+                USER_IDS.ME,
+                RESOURCE_URLS.WHITEBOARD_A
+              );
               const data3 = generateData(data2.payload, false, false, USER_IDS.ME);
 
               payloadTestHelper([data1, data2, data3]);
@@ -4202,7 +4655,13 @@ describe('plugin-meetings', () => {
 
             it('Scenario #2: you share desktop and remote person A shares whiteboard', () => {
               const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
-              const data2 = generateData(data1.payload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
+              const data2 = generateData(
+                data1.payload,
+                true,
+                false,
+                USER_IDS.REMOTE_A,
+                RESOURCE_URLS.WHITEBOARD_A
+              );
               const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
 
               payloadTestHelper([data1, data2, data3]);
@@ -4210,7 +4669,13 @@ describe('plugin-meetings', () => {
 
             it('Scenario #3: remote person A shares desktop and you share whiteboard', () => {
               const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
-              const data2 = generateData(data1.payload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
+              const data2 = generateData(
+                data1.payload,
+                true,
+                false,
+                USER_IDS.REMOTE_A,
+                RESOURCE_URLS.WHITEBOARD_A
+              );
               const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
 
               payloadTestHelper([data1, data2, data3]);
@@ -4218,7 +4683,13 @@ describe('plugin-meetings', () => {
 
             it('Scenario #4: remote person A shares desktop and then shares whiteboard', () => {
               const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
-              const data2 = generateData(data1.payload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A);
+              const data2 = generateData(
+                data1.payload,
+                true,
+                false,
+                USER_IDS.ME,
+                RESOURCE_URLS.WHITEBOARD_A
+              );
               const data3 = generateData(data2.payload, false, false, USER_IDS.ME);
 
               payloadTestHelper([data1, data2, data3]);
@@ -4226,7 +4697,13 @@ describe('plugin-meetings', () => {
 
             it('Scenario #5: remote person A shares desktop and remote person B shares whiteboard', () => {
               const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
-              const data2 = generateData(data1.payload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
+              const data2 = generateData(
+                data1.payload,
+                true,
+                false,
+                USER_IDS.REMOTE_A,
+                RESOURCE_URLS.WHITEBOARD_A
+              );
               const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
 
               payloadTestHelper([data1, data2, data3]);

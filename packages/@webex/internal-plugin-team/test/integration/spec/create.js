@@ -9,28 +9,29 @@ import {assert} from '@webex/test-helper-chai';
 import WebexCore from '@webex/webex-core';
 import {find, findLast} from 'lodash';
 import testUsers from '@webex/test-helper-test-users';
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 
 describe('plugin-team', () => {
   let displayName, kirk, participants, webex, spock, summary, team;
 
-  before(() => testUsers.create({count: 3})
-    .then((users) => {
+  before(() =>
+    testUsers.create({count: 3}).then((users) => {
       participants = [kirk, spock] = users;
 
       kirk.webex = webex = new WebexCore({
         credentials: {
-          authorization: kirk.token
+          authorization: kirk.token,
         },
         config: {
           conversation: {
-            keepEncryptedProperties: true
-          }
-        }
+            keepEncryptedProperties: true,
+          },
+        },
       });
 
       return webex.internal.mercury.connect();
-    }));
+    })
+  );
 
   beforeEach(() => {
     displayName = `team-conv-name-${uuidv4()}`;
@@ -40,8 +41,8 @@ describe('plugin-team', () => {
   after(() => kirk && kirk.webex.internal.mercury.disconnect());
 
   describe('#create()', () => {
-    it('creates a team with a multiple participants', () => webex.internal.team.create({displayName, participants: [kirk, spock]})
-      .then((team) => {
+    it('creates a team with a multiple participants', () =>
+      webex.internal.team.create({displayName, participants: [kirk, spock]}).then((team) => {
         assert.isInternalTeam(team);
         assert.isNewEncryptedInternalTeam(team);
         assert.lengthOf(team.teamMembers.items, 2);
@@ -58,8 +59,8 @@ describe('plugin-team', () => {
         assert.isUndefined(spockEntry.roomProperties);
       }));
 
-    it('creates a team with a name and summary', () => webex.internal.team.create({displayName, summary, participants: [kirk]})
-      .then((team) => {
+    it('creates a team with a name and summary', () =>
+      webex.internal.team.create({displayName, summary, participants: [kirk]}).then((team) => {
         assert.isInternalTeam(team);
         assert.isNewEncryptedInternalTeam(team);
         assert.lengthOf(team.teamMembers.items, 1);
@@ -68,8 +69,8 @@ describe('plugin-team', () => {
         assert.equal(team.summary, summary);
       }));
 
-    it('creates a team with a name but without a summary', () => webex.internal.team.create({displayName, participants: [kirk]})
-      .then((team) => {
+    it('creates a team with a name but without a summary', () =>
+      webex.internal.team.create({displayName, participants: [kirk]}).then((team) => {
         assert.isInternalTeam(team);
         assert.isNewEncryptedInternalTeam(team);
         assert.lengthOf(team.teamMembers.items, 1);
@@ -80,49 +81,78 @@ describe('plugin-team', () => {
   });
 
   describe('#createConversation()', () => {
-    before(() => webex.internal.team.create({displayName, participants})
-      .then((t) => {
+    before(() =>
+      webex.internal.team.create({displayName, participants}).then((t) => {
         team = t;
-      }));
+      })
+    );
 
     beforeEach(() => {
       displayName = `team-conv-name-${uuidv4()}`;
     });
 
-    it('creates a team conversation with a single participant', () => webex.internal.team.createConversation(team, {displayName, participants: [kirk]})
-      .then((tc) => {
-        assert.isInternalTeamConversation(tc);
-        assert.equal(tc.displayName, displayName);
+    it('creates a team conversation with a single participant', () =>
+      webex.internal.team
+        .createConversation(team, {displayName, participants: [kirk]})
+        .then((tc) => {
+          assert.isInternalTeamConversation(tc);
+          assert.equal(tc.displayName, displayName);
 
-        assert.lengthOf(tc.participants.items, 1);
-      }));
+          assert.lengthOf(tc.participants.items, 1);
+        }));
 
-    it('creates a team conversation with multiple participants', () => webex.internal.team.createConversation(team, {displayName, participants: [kirk, spock]})
-      .then((tc) => {
-        assert.isInternalTeamConversation(tc);
-        assert.lengthOf(tc.participants.items, 2);
-      }));
+    it('creates a team conversation with multiple participants', () =>
+      webex.internal.team
+        .createConversation(team, {displayName, participants: [kirk, spock]})
+        .then((tc) => {
+          assert.isInternalTeamConversation(tc);
+          assert.lengthOf(tc.participants.items, 2);
+        }));
 
-    it('creates a team conversation containing all team members via `includeAllTeamMembers` parameter', () => webex.internal.team.createConversation(team, {displayName, participants: [kirk]}, {includeAllTeamMembers: true})
-      .then((tc) => {
-        assert.isInternalTeamConversation(tc);
-        assert.lengthOf(tc.participants.items, 3);
-      }));
+    it('creates a team conversation containing all team members via `includeAllTeamMembers` parameter', () =>
+      webex.internal.team
+        .createConversation(
+          team,
+          {displayName, participants: [kirk]},
+          {includeAllTeamMembers: true}
+        )
+        .then((tc) => {
+          assert.isInternalTeamConversation(tc);
+          assert.lengthOf(tc.participants.items, 3);
+        }));
 
-    it('decrypts the \'add\' activity appended to the general conversation after team room is created', () => webex.internal.team.createConversation(team, {displayName, participants: [kirk]}, {includeAllTeamMembers: true})
-      .then((tc) => webex.internal.conversation.get(find(team.conversations.items, {id: team.generalConversationUuid}), {
-        activitiesLimit: 10
-      })
-        .then((teamGeneral) => {
-          assert.isConversation(teamGeneral);
-          const addActivity = findLast(teamGeneral.activities.items, (activity) => activity.verb === 'add' && activity.object.objectType === 'conversation' && activity.object.id === tc.id);
+    it("decrypts the 'add' activity appended to the general conversation after team room is created", () =>
+      webex.internal.team
+        .createConversation(
+          team,
+          {displayName, participants: [kirk]},
+          {includeAllTeamMembers: true}
+        )
+        .then((tc) =>
+          webex.internal.conversation
+            .get(find(team.conversations.items, {id: team.generalConversationUuid}), {
+              activitiesLimit: 10,
+            })
+            .then((teamGeneral) => {
+              assert.isConversation(teamGeneral);
+              const addActivity = findLast(
+                teamGeneral.activities.items,
+                (activity) =>
+                  activity.verb === 'add' &&
+                  activity.object.objectType === 'conversation' &&
+                  activity.object.id === tc.id
+              );
 
-          assert.isDefined(addActivity);
-          assert.equal(addActivity.object.displayName, tc.displayName);
+              assert.isDefined(addActivity);
+              assert.equal(addActivity.object.displayName, tc.displayName);
 
-          assert.isDefined(addActivity.object.encryptedDisplayName);
-          assert.notEqual(addActivity.object.displayName, addActivity.object.encryptedDisplayName);
-          assert.equal(addActivity.object.displayName, displayName);
-        })));
+              assert.isDefined(addActivity.object.encryptedDisplayName);
+              assert.notEqual(
+                addActivity.object.displayName,
+                addActivity.object.encryptedDisplayName
+              );
+              assert.equal(addActivity.object.displayName, displayName);
+            })
+        ));
   });
 });

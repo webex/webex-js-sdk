@@ -17,8 +17,6 @@ module.exports = {
     // https://eslint.org/docs/rules/block-spacing
     'block-spacing': ['error', 'always'],
 
-    // enforce one true brace style
-    'brace-style': ['error', 'stroustrup', {allowSingleLine: true}],
 
     // require camel case names
     camelcase: ['error', {properties: 'never'}],
@@ -76,10 +74,6 @@ module.exports = {
     // TODO: enable
     'func-style': ['off', 'expression'],
 
-    // enforce consistent line breaks inside function parentheses
-    // https://eslint.org/docs/rules/function-paren-newline
-    'function-paren-newline': ['error', 'consistent'],
-
     // Blacklist certain identifiers to prevent them being used
     // https://eslint.org/docs/rules/id-blacklist
     'id-blacklist': 'off',
@@ -90,31 +84,6 @@ module.exports = {
 
     // require identifiers to match the provided regular expression
     'id-match': 'off',
-
-    // this option sets a specific tab width for your code
-    // https://eslint.org/docs/rules/indent
-    indent: ['error', 2, {
-      SwitchCase: 1,
-      VariableDeclarator: 1,
-      outerIIFEBody: 1,
-      // MemberExpression: null,
-      FunctionDeclaration: {
-        parameters: 1,
-        body: 1
-      },
-      FunctionExpression: {
-        parameters: 1,
-        body: 1
-      },
-      CallExpression: {
-        arguments: 1
-      },
-      ArrayExpression: 1,
-      ObjectExpression: 1,
-      ImportDeclaration: 1,
-      flatTernaryExpressions: false,
-      ignoredNodes: ['JSXElement', 'JSXElement *']
-    }],
 
     // specify whether double or single quotes should be used in JSX attributes
     // https://eslint.org/docs/rules/jsx-quotes
@@ -348,13 +317,6 @@ module.exports = {
     // require padding inside curly braces
     'object-curly-spacing': ['error', 'never'],
 
-    // enforce line breaks between braces
-    // https://eslint.org/docs/rules/object-curly-newline
-    'object-curly-newline': ['error', {
-      ObjectExpression: {minProperties: 4, multiline: true, consistent: true},
-      ObjectPattern: {minProperties: 4, multiline: true, consistent: true}
-    }],
-
     // enforce "same line" or "multiple line" on object properties.
     // https://eslint.org/docs/rules/object-property-newline
     'object-property-newline': ['error', {
@@ -373,10 +335,6 @@ module.exports = {
     // require assignment operator shorthand where possible or prohibit it entirely
     // https://eslint.org/docs/rules/operator-assignment
     'operator-assignment': ['error', 'always'],
-
-    // Requires operator at the end of the line in multiline statements
-    // https://eslint.org/docs/rules/operator-linebreak
-    'operator-linebreak': ['error', 'after'],
 
     // disallow padding within blocks
     'padded-blocks': ['error', {blocks: 'never', classes: 'never', switches: 'never'}],

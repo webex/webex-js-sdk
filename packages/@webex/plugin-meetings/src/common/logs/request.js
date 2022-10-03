@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 
 import LoggerProxy from './logger-proxy';
 
@@ -30,18 +30,21 @@ export default class LogsRequest {
    */
   async uploadLogs(options = {}) {
     const id = options.feedbackId || uuidv4();
-    const {
-      locusId, correlationId, meetingId, callStart
-    } = options;
+    const {locusId, correlationId, meetingId, callStart} = options;
 
-    LoggerProxy.logger.info(`Logs:request#uploadLogs --> uploading user logs for feedbackId: ${id}`);
+    LoggerProxy.logger.info(
+      `Logs:request#uploadLogs --> uploading user logs for feedbackId: ${id}`
+    );
 
     try {
       await this.webex.internal.support.submitLogs({
-        feedbackId: id, locusId, correlationId, meetingId, callStart
+        feedbackId: id,
+        locusId,
+        correlationId,
+        meetingId,
+        callStart,
       });
-    }
-    catch (error) {
+    } catch (error) {
       LoggerProxy.logger.error('Logs:request#uploadLogs --> uploading user logs failed', error);
 
       return Promise.reject(error);

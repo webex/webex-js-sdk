@@ -10,7 +10,7 @@ import url from 'url';
 import {base64, oneFlight, whileInFlight} from '@webex/common';
 import {grantErrors, WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, isEmpty, omit} from 'lodash';
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 import base64url from 'crypto-js/enc-base64url';
 import CryptoJS from 'crypto-js';
 
@@ -43,8 +43,8 @@ const Authorization = WebexPlugin.extend({
       deps: ['isAuthorizing'],
       fn() {
         return this.isAuthorizing;
-      }
-    }
+      },
+    },
   },
 
   session: {
@@ -56,12 +56,12 @@ const Authorization = WebexPlugin.extend({
      */
     isAuthorizing: {
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     ready: {
       default: false,
-      type: 'boolean'
-    }
+      type: 'boolean',
+    },
   },
 
   namespace: 'Credentials',
@@ -90,15 +90,13 @@ const Authorization = WebexPlugin.extend({
 
     if (location.query.state) {
       location.query.state = JSON.parse(base64.decode(location.query.state));
-    }
-    else {
+    } else {
       location.query.state = {};
     }
 
     const codeVerifier = this.webex.getWindow().sessionStorage.getItem(OAUTH2_CODE_VERIFIER);
 
     this.webex.getWindow().sessionStorage.removeItem(OAUTH2_CODE_VERIFIER);
-
 
     const {emailhash} = location.query.state;
 
@@ -107,14 +105,14 @@ const Authorization = WebexPlugin.extend({
 
     // Wait until nextTick in case `credentials` hasn't initialized yet
     process.nextTick(() => {
-      this.webex.internal.services.collectPreauthCatalog({emailhash})
+      this.webex.internal.services
+        .collectPreauthCatalog({emailhash})
         .catch(() => Promise.resolve())
         .then(() => this.requestAuthorizationCodeGrant({code, codeVerifier}))
         .then(() => {
           this.ready = true;
         });
     });
-
 
     return ret;
   },
@@ -140,7 +138,6 @@ const Authorization = WebexPlugin.extend({
     options.code_challenge = this._generateCodeChallenge();
     options.code_challenge_method = 'S256';
 
-
     return this.initiateAuthorizationCodeGrant(options);
   },
 
@@ -155,7 +152,9 @@ const Authorization = WebexPlugin.extend({
    */
   initiateAuthorizationCodeGrant(options) {
     this.logger.info('authorization: initiating authorization code grant flow');
-    this.webex.getWindow().location = this.webex.credentials.buildLoginUrl(Object.assign({response_type: 'code'}, options));
+    this.webex.getWindow().location = this.webex.credentials.buildLoginUrl(
+      Object.assign({response_type: 'code'}, options)
+    );
 
     return Promise.resolve();
   },
@@ -173,7 +172,6 @@ const Authorization = WebexPlugin.extend({
       this.webex.getWindow().location = this.webex.credentials.buildLogoutUrl(options);
     }
   },
-
 
   @whileInFlight('isAuthorizing')
   @oneFlight
@@ -196,24 +194,25 @@ const Authorization = WebexPlugin.extend({
       grant_type: 'authorization_code',
       redirect_uri: this.config.redirect_uri,
       code: options.code,
-      self_contained_token: true
+      self_contained_token: true,
     };
 
     if (options.codeVerifier) {
       form.code_verifier = options.codeVerifier;
     }
 
-    return this.webex.request({
-      method: 'POST',
-      uri: this.config.tokenUrl,
-      form,
-      auth: {
-        user: this.config.client_id,
-        pass: this.config.client_secret,
-        sendImmediately: true
-      },
-      shouldRefreshAccessToken: false
-    })
+    return this.webex
+      .request({
+        method: 'POST',
+        uri: this.config.tokenUrl,
+        form,
+        auth: {
+          user: this.config.client_id,
+          pass: this.config.client_secret,
+          sendImmediately: true,
+        },
+        shouldRefreshAccessToken: false,
+      })
       .then((res) => {
         this.webex.credentials.set({supertoken: res.body});
       })
@@ -260,9 +259,10 @@ const Authorization = WebexPlugin.extend({
       Reflect.deleteProperty(location.query, 'code');
       if (isEmpty(omit(location.query.state, 'csrf_token'))) {
         Reflect.deleteProperty(location.query, 'state');
-      }
-      else {
-        location.query.state = base64.encode(JSON.stringify(omit(location.query.state, 'csrf_token')));
+      } else {
+        location.query.state = base64.encode(
+          JSON.stringify(omit(location.query.state, 'csrf_token'))
+        );
       }
       location.search = querystring.stringify(location.query);
       Reflect.deleteProperty(location, 'query');
@@ -283,16 +283,13 @@ const Authorization = WebexPlugin.extend({
     // eslint-disable-next-line no-underscore-dangle
     const safeCharacterMap = base64url._safe_map;
 
-    const codeVerifier = lodash.times(
-      128,
-      () => safeCharacterMap[lodash.random(0, safeCharacterMap.length - 1)]
-    ).join('');
+    const codeVerifier = lodash
+      .times(128, () => safeCharacterMap[lodash.random(0, safeCharacterMap.length - 1)])
+      .join('');
 
     const codeChallenge = CryptoJS.SHA256(codeVerifier).toString(base64url);
 
-    this.webex.getWindow().sessionStorage.setItem(
-      OAUTH2_CODE_VERIFIER, codeVerifier
-    );
+    this.webex.getWindow().sessionStorage.setItem(OAUTH2_CODE_VERIFIER, codeVerifier);
 
     return codeChallenge;
   },
@@ -344,7 +341,7 @@ const Authorization = WebexPlugin.extend({
     if (token !== sessionToken) {
       throw new Error(`CSRF token ${token} does not match stored token ${sessionToken}`);
     }
-  }
+  },
 });
 
 export default Authorization;

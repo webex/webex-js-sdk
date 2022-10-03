@@ -1,5 +1,4 @@
-
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 import retry from '@webex/test-helper-retry';
 
 const CMR = {};
@@ -23,16 +22,16 @@ CMR.reserve = (webex, claimed) => {
       authorization: `Bearer ${webex.credentials.supertoken.access_token}`,
       'cisco-no-http-redirect': null,
       'spark-user-agent': null,
-      trackingid: `ITCLIENT_${uuidv4()}_0_imi:true`
+      trackingid: `ITCLIENT_${uuidv4()}_0_imi:true`,
     },
     body: {
       resourceType,
       requestMetaData: {
         emailAddress: `test${uuidv4()}@wx2.example.com`,
-        loginType: 'loginGuest'
+        loginType: 'loginGuest',
       },
-      reservedBy: 'Webex JavaScript SDK Test Suite'
-    }
+      reservedBy: 'Webex JavaScript SDK Test Suite',
+    },
   };
 
   if (claimed) {
@@ -40,7 +39,8 @@ CMR.reserve = (webex, claimed) => {
   }
   console.log('USER ID ', webex.internal.device.userId);
 
-  return webex.request(requestBody)
+  return webex
+    .request(requestBody)
     .then((response) => {
       const cmr = response.body;
 
@@ -56,47 +56,49 @@ CMR.reserve = (webex, claimed) => {
 CMR.release = (webex, reservationUrl) => {
   console.log('releasing cmr');
 
-  return webex.request({
-    method: 'DELETE',
-    uri: reservationUrl,
-    headers: {
-      authorization: `Bearer ${webex.credentials.supertoken.access_token}`,
-      'cisco-no-http-redirect': null,
-      'spark-user-agent': null
-    }
-  })
+  return webex
+    .request({
+      method: 'DELETE',
+      uri: reservationUrl,
+      headers: {
+        authorization: `Bearer ${webex.credentials.supertoken.access_token}`,
+        'cisco-no-http-redirect': null,
+        'spark-user-agent': null,
+      },
+    })
     .then(() => console.log('released cmr'));
 };
 
-CMR.waitForHostToJoin = (webex, resourceUrl) => retry(() => {
-  console.log('checking if the host has joined');
+CMR.waitForHostToJoin = (webex, resourceUrl) =>
+  retry(() => {
+    console.log('checking if the host has joined');
 
-  return webex.request({
-    method: 'GET',
-    uri: resourceUrl,
-    headers: {
-      authorization: `Bearer ${webex.credentials.supertoken.access_token}`,
-      'cisco-no-http-redirect': null,
-      'spark-user-agent': null
-    }
+    return webex
+      .request({
+        method: 'GET',
+        uri: resourceUrl,
+        headers: {
+          authorization: `Bearer ${webex.credentials.supertoken.access_token}`,
+          'cisco-no-http-redirect': null,
+          'spark-user-agent': null,
+        },
+      })
+      .then((res) => {
+        if (res.body && res.body.meeting.hostPresent) {
+          console.log('the host has joined');
+
+          return;
+        }
+
+        console.log('the host has not joined');
+        throw new Error('Meeting host has not yet joined');
+      });
   })
-    .then((res) => {
-      if (res.body && res.body.meeting.hostPresent) {
-        console.log('the host has joined');
+    .then(() => true)
+    .catch((reason) => {
+      console.warn(reason);
 
-        return;
-      }
-
-      console.log('the host has not joined');
-      throw new Error('Meeting host has not yet joined');
+      return false;
     });
-})
-  .then(() => true)
-  .catch((reason) => {
-    console.warn(reason);
-
-    return false;
-  });
-
 
 export default CMR;
