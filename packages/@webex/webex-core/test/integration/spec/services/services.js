@@ -92,7 +92,7 @@ describe('webex-core', () => {
           hosts: [],
           name: 'exampleValid'
         };
-        testUrl = new ServiceUrl({...testUrlTemplate});
+        testUrl = new ServiceUrl(testUrlTemplate);
         catalog._loadServiceUrls('preauth', [testUrl]);
       });
 
@@ -147,7 +147,7 @@ describe('webex-core', () => {
           ],
           name: 'exampleValid'
         };
-        testUrl = new ServiceUrl({...testUrlTemplate});
+        testUrl = new ServiceUrl(testUrlTemplate);
         catalog._loadServiceUrls('preauth', [testUrl]);
       });
 
@@ -203,7 +203,7 @@ describe('webex-core', () => {
           ],
           name: 'exampleValid'
         };
-        testUrl = new ServiceUrl({...testUrlTemplate});
+        testUrl = new ServiceUrl(testUrlTemplate);
         catalog._loadServiceUrls('preauth', [testUrl]);
       });
 
@@ -281,7 +281,7 @@ describe('webex-core', () => {
           ],
           name: 'exampleValid'
         };
-        testUrl = new ServiceUrl({...testUrlTemplate});
+        testUrl = new ServiceUrl(testUrlTemplate);
         catalog._loadServiceUrls('preauth', [testUrl]);
       });
 
@@ -488,7 +488,7 @@ describe('webex-core', () => {
           ],
           name: 'exampleValid'
         };
-        testUrl = new ServiceUrl({...testUrlTemplate});
+        testUrl = new ServiceUrl(testUrlTemplate);
         catalog._loadServiceUrls('preauth', [testUrl]);
       });
 
@@ -558,7 +558,7 @@ describe('webex-core', () => {
           ],
           name: 'exampleValid'
         };
-        testUrl = new ServiceUrl({...testUrlTemplate});
+        testUrl = new ServiceUrl(testUrlTemplate);
         catalog._loadServiceUrls('preauth', [testUrl]);
       });
 
@@ -612,7 +612,7 @@ describe('webex-core', () => {
           ],
           name: 'exampleValid-phr'
         };
-        testUrl = new ServiceUrl({...testUrlTemplate});
+        testUrl = new ServiceUrl(testUrlTemplate);
         catalog._loadServiceUrls('preauth', [testUrl]);
       });
 

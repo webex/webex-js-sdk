@@ -15,7 +15,7 @@ import '@webex/internal-plugin-device';
 import {map, countBy} from 'lodash';
 import uuid from 'uuid';
 
-describe('plugin-search', () => {
+xdescribe('plugin-search', () => {
   describe('#people', () => {
     let bot, checkov, mccoy, webex;
 

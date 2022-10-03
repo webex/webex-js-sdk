@@ -1,6 +1,6 @@
 {
     "name": "@webex/test-users",
-    "version": "2.24.1",
+    "version": "2.29.3",
     "description": "Cisco Webex Test Users",
     "license": "MIT",
     "main": "dist/index.js",
@@ -26,6 +26,6 @@
         "btoa": "^1.2.1",
         "lodash": "^4.17.21",
         "node-random-name": "^1.0.1",
-        "uuid": "^9.0.0"
+        "uuid": "^3.3.2"
     }
 }

@@ -1,6 +1,6 @@
 {
     "name": "@webex/internal-plugin-wdm",
-    "version": "2.24.1",
+    "version": "2.29.3",
     "description": "",
     "license": "MIT",
     "main": "dist/index.js",

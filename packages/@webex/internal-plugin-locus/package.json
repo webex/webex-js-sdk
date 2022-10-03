@@ -1,6 +1,6 @@
 {
     "name": "@webex/internal-plugin-locus",
-    "version": "2.24.1",
+    "version": "2.29.3",
     "description": "",
     "license": "MIT",
     "main": "dist/index.js",
@@ -22,6 +22,6 @@
         "@webex/test-helper-mock-webex": "workspace:^",
         "@webex/webex-core": "workspace:^",
         "lodash": "^4.17.21",
-        "uuid": "^9.0.0"
+        "uuid": "^3.3.2"
     }
 }

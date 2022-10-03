@@ -1,6 +1,6 @@
 {
     "name": "@webex/internal-plugin-device",
-    "version": "2.24.1",
+    "version": "2.29.3",
     "description": "",
     "license": "MIT",
     "author": "Timothy Scheuering <timsch@cisco.com>",

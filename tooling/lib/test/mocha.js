@@ -43,9 +43,9 @@ async function run(options, files) {
   };
 
   if (options.xunit || process.env.COVERAGE || process.env.CIRCLECI || process.env.CI) {
-    cfg.reporter = 'packages/@webex/xunit-with-logs';
+    cfg.reporter = 'mocha-junit-reporter';
     cfg.reporterOptions = {
-      output: options.output
+      mochaFile: options.output
     };
   }
 

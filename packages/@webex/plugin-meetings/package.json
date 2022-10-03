@@ -1,6 +1,6 @@
 {
     "name": "@webex/plugin-meetings",
-    "version": "2.24.1",
+    "version": "2.29.3",
     "description": "",
     "license": "MIT",
     "contributors": [
@@ -55,7 +55,7 @@
         "javascript-state-machine": "^3.1.0",
         "lodash": "^4.17.21",
         "sdp-transform": "^2.12.0",
-        "uuid": "^9.0.0",
+        "uuid": "^3.3.2",
         "webrtc-adapter": "^7.7.0"
     }
 }

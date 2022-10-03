@@ -738,8 +738,8 @@ describe('plugin-conversation', function () {
         parentActivityId: parent.id,
         activityType: 'reply'
       }).then(({parent: parentObj} = {}) => {
-        assert.equal(parentObj?.type, 'reply');
-        assert.equal(parentObj?.id, parent.id);
+        assert.equal(parentObj.type, 'reply');
+        assert.equal(parentObj.id, parent.id);
 
         return webex.internal.conversation.listParentActivityIds(conversation.url, {activityType: 'reply'});
       }).then(({reply}) => {
@@ -872,9 +872,7 @@ describe('plugin-conversation', function () {
             }
           },
           {
-            object: {
-              ...message
-            }
+            object: message
           }
         );
 

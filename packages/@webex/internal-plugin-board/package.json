@@ -1,6 +1,6 @@
 {
   "name": "@webex/internal-plugin-board",
-  "version": "2.24.1",
+  "version": "2.29.3",
   "description": "",
   "license": "MIT",
   "author": "Greg Hewett <ghewett@cisco.com>",
@@ -36,6 +36,6 @@
     "ampersand-collection": "^2.0.2",
     "es6-promise-series": "^0.2.2",
     "lodash": "^4.17.21",
-    "uuid": "^9.0.0"
+    "uuid": "^3.3.2"
   }
 }

@@ -15,7 +15,7 @@
             "envify"
         ]
     },
-    "version": "2.24.1",
+    "version": "2.29.3",
     "devDependencies": {
         "@webex/test-helper-chai": "workspace:^",
         "@webex/test-helper-mock-webex": "workspace:^",
@@ -31,6 +31,6 @@
         "@webex/webex-core": "workspace:^",
         "btoa": "^1.2.1",
         "lodash": "^4.17.21",
-        "uuid": "^9.0.0"
+        "uuid": "^3.3.2"
     }
 }

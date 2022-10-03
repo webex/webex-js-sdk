@@ -1,6 +1,6 @@
 {
   "name": "@webex/internal-plugin-encryption",
-  "version": "2.24.1",
+  "version": "2.29.3",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
@@ -45,7 +45,7 @@
     "node-scr": "^0.3.0",
     "pkijs": "^2.1.84",
     "safe-buffer": "^5.2.0",
-    "uuid": "^9.0.0",
+    "uuid": "^3.3.2",
     "valid-url": "^1.0.9"
   }
 }
