@@ -11,8 +11,7 @@
     "WebSocket": false
   },
   "ignorePatterns": [
-    "!/**/node_modules/*",
-    "/node_modules/*"
+    "node_modules/*"
   ],
   "rules": {
     "import/no-extraneous-dependencies": "error",

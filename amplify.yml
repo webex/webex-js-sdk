@@ -3,10 +3,10 @@ frontend:
   phases:
     preBuild:
       commands:
-        - yarn --also=dev
+        - yarn install --immutable
     build:
       commands:
-        - npm run samples:build
+        - yarn run samples:build
   artifacts:
     baseDirectory: docs/
     files:

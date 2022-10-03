@@ -158,7 +158,9 @@ module.exports = {
 
             return acc;
           }, '');
-          const [cmd, ...args] = `npm run test --silent -- --no-coverage-report --packages ${packageName}${argString}`.split(' ');
+
+          console.log(`Package ${packageName} Args ${argString}`);
+          const [cmd, ...args] = `yarn run test --silent --no-coverage-report --packages ${packageName}${argString}`.split(' ');
 
           await spawn(cmd, args);
         }

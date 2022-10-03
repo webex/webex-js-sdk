@@ -1,6 +1,6 @@
 {
     "name": "@webex/plugin-authorization-node",
-    "version": "2.24.1",
+    "version": "2.26.1",
     "description": "",
     "license": "MIT",
     "main": "dist/index.js",
@@ -29,6 +29,6 @@
         "@webex/internal-plugin-device": "workspace:^",
         "@webex/plugin-authorization-node": "workspace:^",
         "@webex/webex-core": "workspace:^",
-        "uuid": "^9.0.0"
+        "uuid": "^3.3.2"
     }
 }

@@ -1,6 +1,6 @@
 {
     "name": "@webex/internal-plugin-mercury",
-    "version": "2.24.1",
+    "version": "2.26.1",
     "description": "",
     "license": "MIT",
     "main": "dist/index.js",
@@ -39,7 +39,7 @@
         "@webex/webex-core": "workspace:^",
         "backoff": "^2.5.0",
         "lodash": "^4.17.21",
-        "uuid": "^9.0.0",
+        "uuid": "^3.3.2",
         "ws": "^8.2.2"
     }
 }

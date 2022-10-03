@@ -1,6 +1,6 @@
 {
     "name": "webex",
-    "version": "2.24.1",
+    "version": "2.26.1",
     "description": "SDK for Cisco Webex",
     "license": "MIT",
     "contributors": [
@@ -30,33 +30,34 @@
         ]
     },
     "devDependencies": {
+        "@webex/plugin-authorization": "workspace:^",
         "@webex/test-helper-chai": "workspace:^",
         "@webex/test-helper-mocha": "workspace:^",
         "@webex/test-helper-test-users": "workspace:^",
         "sinon": "^9.2.4",
-        "@webex/plugin-authorization": "workspace:^"
+        "webex": "workspace:^"
     },
     "dependencies": {
-        "@webex/plugin-authorization": "workspace:^",
+        "@babel/polyfill": "^7.12.1",
+        "@webex/common": "workspace:^",
         "@webex/internal-plugin-calendar": "workspace:^",
         "@webex/internal-plugin-device": "workspace:^",
         "@webex/internal-plugin-presence": "workspace:^",
         "@webex/internal-plugin-support": "workspace:^",
         "@webex/plugin-attachment-actions": "workspace:^",
+        "@webex/plugin-authorization": "workspace:^",
         "@webex/plugin-device-manager": "workspace:^",
         "@webex/plugin-logger": "workspace:^",
         "@webex/plugin-meetings": "workspace:^",
-        "@webex/plugin-messages": "workspace:^",
         "@webex/plugin-memberships": "workspace:^",
+        "@webex/plugin-messages": "workspace:^",
         "@webex/plugin-people": "workspace:^",
         "@webex/plugin-rooms": "workspace:^",
-        "@webex/plugin-teams": "workspace:^",
         "@webex/plugin-team-memberships": "workspace:^",
+        "@webex/plugin-teams": "workspace:^",
         "@webex/plugin-webhooks": "workspace:^",
-        "@webex/common": "workspace:^",
-        "@webex/webex-core": "workspace:^",
         "@webex/storage-adapter-local-storage": "workspace:^",
-        "lodash": "^4.17.21",
-        "@babel/polyfill": "^7.12.1"
+        "@webex/webex-core": "workspace:^",
+        "lodash": "^4.17.21"
     }
 }

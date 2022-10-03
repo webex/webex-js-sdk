@@ -1,6 +1,6 @@
 {
     "name": "@webex/internal-plugin-lyra",
-    "version": "2.24.1",
+    "version": "2.26.1",
     "description": "",
     "license": "MIT",
     "author": "Tran Tu <tratu@cisco.com>",
@@ -34,6 +34,6 @@
         "@webex/internal-plugin-mercury": "workspace:^",
         "@webex/webex-core": "workspace:^",
         "bowser": "^2.11.0",
-        "uuid": "^9.0.0"
+        "uuid": "^3.3.2"
     }
 }

@@ -10,10 +10,7 @@ import {has} from 'lodash';
 
 import EDiscovery from './ediscovery';
 import Transforms from './transforms';
-
-/* eslint  import/named:0 */
-
-import * as config from './config';
+import config from './config';
 
 registerInternalPlugin('ediscovery', EDiscovery, {
   config,
@@ -159,6 +156,7 @@ registerInternalPlugin('ediscovery', EDiscovery, {
 
 export default EDiscovery;
 
+// eslint-disable-next-line import/named
 export {config} from './config';
 export {default as ReportRequest} from './report-request';
 export {EdiscoveryError, InvalidEmailAddressError} from './ediscovery-error';

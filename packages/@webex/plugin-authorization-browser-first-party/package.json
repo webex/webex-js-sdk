@@ -1,6 +1,6 @@
 {
     "name": "@webex/plugin-authorization-browser-first-party",
-    "version": "2.24.1",
+    "version": "2.26.1",
     "description": "",
     "license": "MIT",
     "author": "Ian W. Remmel <iremmel@cisco.com>",
@@ -32,6 +32,6 @@
         "@webex/webex-core": "workspace:^",
         "crypto-js": "^4.1.1",
         "lodash": "^4.17.21",
-        "uuid": "^9.0.0"
+        "uuid": "^3.3.2"
     }
 }

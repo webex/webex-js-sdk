@@ -34,3 +34,4 @@ docker-env
 browsers.processed.js
 tasks/selenium
 umd/
+*.yml
