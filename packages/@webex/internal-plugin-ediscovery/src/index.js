@@ -11,10 +11,7 @@ import {has} from 'lodash';
 
 import EDiscovery from './ediscovery';
 import Transforms from './transforms';
-
-/* eslint  import/named:0 */
-
-import * as config from './config';
+import config from './config';
 
 registerInternalPlugin('ediscovery', EDiscovery, {
   config,
