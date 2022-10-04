@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.25.0](https://github.com/webex/webex-js-sdk/compare/v2.24.1...v2.25.0) (2022-10-04)
+
+
+### Features
+
+* **meetings/meeting:** add size-only layout requests ([a6a8d58](https://github.com/webex/webex-js-sdk/commit/a6a8d58d6a31e0395a9be58a9f70d46a02c4d968))
+
+### [2.24.1](https://github.com/webex/webex-js-sdk/compare/v2.24.0...v2.24.1) (2022-09-29)
+
+
+### Bug Fixes
+
+* private members ([a4dcdfc](https://github.com/webex/webex-js-sdk/commit/a4dcdfc382ed18cac44835f02b9ffb4d74ec3e57))
+* voicea imports ([9a6c6a0](https://github.com/webex/webex-js-sdk/commit/9a6c6a0a3242dfc9c8be31a8aa112dabd434195b))
+
+## [2.24.0](https://github.com/webex/webex-js-sdk/compare/v2.23.0...v2.24.0) (2022-09-28)
+
+
+### Features
+
+* add voicea related display hints in meeting actions ([5960c2f](https://github.com/webex/webex-js-sdk/commit/5960c2f7ceb6fbaa63dac4ba260b2f333a574dad))
+
+
+### Bug Fixes
+
+* address comments ([2af173b](https://github.com/webex/webex-js-sdk/commit/2af173bf488dd3766e86111ecbd9c9967b99d2e9))
+* change interface types ([001e5ad](https://github.com/webex/webex-js-sdk/commit/001e5ad367a32dbbce424606b8b3c0684d40517b))
+* member types ([5c4bf58](https://github.com/webex/webex-js-sdk/commit/5c4bf58359e2c041d2025ddc3cac03e9e07170e9))
+* member types ([a100c42](https://github.com/webex/webex-js-sdk/commit/a100c429425b49fbd7ed795492d0404775319c65))
+
+## [2.23.0](https://github.com/webex/webex-js-sdk/compare/v2.22.0...v2.23.0) (2022-09-27)
+
+
+### Features
+
+* add voicea-plugin ([d12f9d7](https://github.com/webex/webex-js-sdk/commit/d12f9d71409769bc6f35be9d1560090638bcf386))
+
+## [2.22.0](https://github.com/webex/webex-js-sdk/compare/v2.21.1...v2.22.0) (2022-09-23)
+
+
+### Features
+
+* **internal-plugin-dss:** directory search plugin ([656e04b](https://github.com/webex/webex-js-sdk/commit/656e04bcfc76606ae5436730754a0054a10934a6))
+
 ### [2.21.1](https://github.com/webex/webex-js-sdk/compare/v2.21.0...v2.21.1) (2022-09-22)
 
 
