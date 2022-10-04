@@ -87,7 +87,7 @@ describe('plugin-meetings', () => {
     sinon.restore();
   });
 
-  before(() => {
+  beforeAll(() => {
     const MediaStream = {
       getVideoTracks: () => [
         {
@@ -1784,7 +1784,7 @@ describe('plugin-meetings', () => {
           return value[key] || value[defaultKey];
         };
 
-        before(() => {
+        beforeAll(() => {
           meeting.updateShare = sinon.stub().returns(Promise.resolve());
 
           if (!global.navigator) {
@@ -1801,7 +1801,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        after(() => {
+        afterAll(() => {
           // clean up for browser
           Object.defineProperty(global.navigator.mediaDevices, 'getDisplayMedia', {
             value: _getDisplayMedia,

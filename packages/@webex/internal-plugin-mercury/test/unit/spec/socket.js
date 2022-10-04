@@ -39,11 +39,9 @@ describe('plugin-mercury', () => {
       clock.uninstall();
     });
 
-    beforeEach('mock WebSocket and open a Socket', () => {
-      sinon.stub(Socket, 'getWebSocketConstructor').callsFake(
-        () =>
-          function (...args) {
-            mockWebSocket = new MockWebSocket(...args);
+    beforeEach(() => {
+      sinon.stub(Socket, 'getWebSocketConstructor').callsFake(() => function (...args) {
+        mockWebSocket = new MockWebSocket(...args);
 
             return mockWebSocket;
           }

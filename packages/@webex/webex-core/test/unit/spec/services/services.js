@@ -14,7 +14,7 @@ describe('webex-core', () => {
     let services;
     let catalog;
 
-    before('initialize webex', () => {
+    beforeAll(() => {
       webex = new MockWebex({
         children: {
           services: Services,
@@ -73,7 +73,7 @@ describe('webex-core', () => {
     describe('#list()', () => {
       let serviceList;
 
-      beforeEach('get services list', () => {
+      beforeEach(() => {
         serviceList = services.list();
       });
 
@@ -307,7 +307,7 @@ describe('webex-core', () => {
         identity: 'https://identity.webex.com',
       };
 
-      beforeEach('get services list', async () => {
+      beforeEach(async () => {
         const servicesList = {
           idbroker: 'https://idbroker.webex.com',
           identity: 'https://identity.webex.com/',

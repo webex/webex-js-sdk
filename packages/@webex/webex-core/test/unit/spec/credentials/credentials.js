@@ -260,7 +260,7 @@ describe('webex-core', () => {
       let orgId;
       let webex;
 
-      beforeEach('generate webex and destructure credentials', () => {
+      beforeEach(() => {
         webex = new MockWebex();
         credentials = new Credentials(undefined, {parent: webex});
       });
@@ -294,7 +294,7 @@ describe('webex-core', () => {
       let credentials;
       let webex;
 
-      beforeEach('generate webex and destructure credentials', () => {
+      beforeEach(() => {
         webex = new MockWebex();
         credentials = new Credentials(undefined, {parent: webex});
       });
@@ -325,7 +325,7 @@ describe('webex-core', () => {
       let credentials;
       let webex;
 
-      beforeEach('generate webex and destructure credentials', () => {
+      beforeEach(() => {
         webex = new MockWebex();
         credentials = new Credentials(undefined, {parent: webex});
       });

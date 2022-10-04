@@ -5,7 +5,7 @@ describe('plugin-device', () => {
   describe('feature-collection', () => {
     let featureCollection;
 
-    beforeEach('create a feature collection', () => {
+    beforeEach(() => {
       featureCollection = new FeatureCollection();
     });
 

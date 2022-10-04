@@ -2,7 +2,6 @@ import {assert} from '@webex/test-helper-chai';
 import {cloneDeep} from 'lodash';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-
 import Device from '@webex/internal-plugin-device';
 
 import dto from './wdm-dto';
@@ -12,7 +11,7 @@ describe('plugin-device', () => {
     let webex;
     let device;
 
-    beforeEach('initialize webex with the device plugin', () => {
+    beforeEach(() => {
       webex = new MockWebex({
         children: {
           device: Device,
@@ -31,7 +30,7 @@ describe('plugin-device', () => {
         let spy;
         let modifiedDTOFeatures;
 
-        beforeEach('setup sinon', () => {
+        beforeEach(() => {
           spy = sinon.spy();
           modifiedDTOFeatures = {
             ...dto.features,
@@ -53,12 +52,12 @@ describe('plugin-device', () => {
       });
 
       describe('when an network inactivity property changes', () => {
-        beforeEach('setup sinon', () => {
+        beforeEach(() => {
           device.checkNetworkReachability = sinon.spy();
         });
 
-        describe("when the 'intranetInactivityCheckUrl' changes", () => {
-          beforeEach("change 'intranetInactivityCheckUrl'", () => {
+        describe('when the \'intranetInactivityCheckUrl\' changes', () => {
+          beforeEach(() => {
             device.intranetInactivityCheckUrl = 'https://not-a-url.com';
           });
 
@@ -71,8 +70,8 @@ describe('plugin-device', () => {
           });
         });
 
-        describe("when the 'intranetInactivityDuration' changes", () => {
-          beforeEach("change 'intranetInactivityDuration'", () => {
+        describe('when the \'intranetInactivityDuration\' changes', () => {
+          beforeEach(() => {
             device.intranetInactivityDuration = 1234;
           });
 
@@ -85,8 +84,8 @@ describe('plugin-device', () => {
           });
         });
 
-        describe("when the 'inNetworkInactivityDuration' changes", () => {
-          beforeEach("change 'inNetworkInactivityDuration'", () => {
+        describe('when the \'inNetworkInactivityDuration\' changes', () => {
+          beforeEach(() => {
             device.inNetworkInactivityDuration = 1234;
           });
 
@@ -101,7 +100,7 @@ describe('plugin-device', () => {
     describe('derived properties', () => {
       describe('#registered', () => {
         describe('when the device does not have a url', () => {
-          beforeEach("remove the device's url", () => {
+          beforeEach(() => {
             device.url = undefined;
           });
 
@@ -111,7 +110,7 @@ describe('plugin-device', () => {
         });
 
         describe('when the device does have a url', () => {
-          beforeEach("set the device's url", () => {
+          beforeEach(() => {
             device.url = dto.url;
           });
 
