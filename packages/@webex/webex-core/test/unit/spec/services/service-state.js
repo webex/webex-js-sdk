@@ -5,7 +5,7 @@ describe('webex-core', () => {
   describe('ServiceState', () => {
     let serviceState;
 
-    beforeEach('generate service state', () => {
+    beforeEach(() => {
       serviceState = new ServiceState();
     });
 

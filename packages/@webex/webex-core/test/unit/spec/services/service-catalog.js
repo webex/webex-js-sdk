@@ -13,7 +13,7 @@ describe('webex-core', () => {
     let services;
     let catalog;
 
-    before('initialize webex', () => {
+    beforeAll(() => {
       webex = new MockWebex();
       services = new Services(undefined, {parent: webex});
       catalog = services._getCatalog();
@@ -61,7 +61,7 @@ describe('webex-core', () => {
     });
 
     describe('#clean()', () => {
-      beforeEach('ammend data to the catalog', () => {
+      beforeEach(() => {
         catalog.serviceGroups.preauth = [1, 2, 3];
         catalog.serviceGroups.signin = [1, 2, 3];
         catalog.serviceGroups.postauth = [1, 2, 3];
@@ -90,7 +90,7 @@ describe('webex-core', () => {
     describe('#findAllowedDomain()', () => {
       const domains = [];
 
-      beforeEach('generate allowed domains', () => {
+      beforeEach(() => {
         domains.push(
           'example-a',
           'example-b',
@@ -100,7 +100,7 @@ describe('webex-core', () => {
         catalog.setAllowedDomains(domains);
       });
 
-      afterEach('remove allowed domains', () => {
+      afterEach(() => {
         domains.length = 0;
       });
 
@@ -116,7 +116,7 @@ describe('webex-core', () => {
     describe('#getAllowedDomains()', () => {
       const domains = [];
 
-      beforeEach('generate allowed domains', () => {
+      beforeEach(() => {
         domains.push(
           'example-a',
           'example-b',
@@ -126,7 +126,7 @@ describe('webex-core', () => {
         catalog.setAllowedDomains(domains);
       });
 
-      afterEach('remove allowed domains', () => {
+      afterEach(() => {
         domains.length = 0;
       });
 
@@ -140,7 +140,7 @@ describe('webex-core', () => {
     describe('#list()', () => {
       let serviceList;
 
-      beforeEach('get services list', () => {
+      beforeEach(() => {
         serviceList = catalog.list();
       });
 
@@ -159,7 +159,7 @@ describe('webex-core', () => {
     describe('#setAllowedDomains()', () => {
       const domains = [];
 
-      beforeEach('generate allowed domains', () => {
+      beforeEach(() => {
         domains.push(
           'example-a',
           'example-b',
@@ -169,7 +169,7 @@ describe('webex-core', () => {
         catalog.setAllowedDomains(domains);
       });
 
-      afterEach('remove allowed domains', () => {
+      afterEach(() => {
         domains.length = 0;
       });
 

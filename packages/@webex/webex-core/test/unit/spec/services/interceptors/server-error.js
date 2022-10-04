@@ -15,7 +15,7 @@ describe('webex-core', () => {
   describe('ServerErrorInterceptor', () => {
     let interceptor;
 
-    before(() => {
+    beforeAll(() => {
       interceptor = new ServerErrorInterceptor();
     });
 
@@ -88,7 +88,7 @@ describe('webex-core', () => {
         });
 
         describe('when the web-ha feature is enabled', () => {
-          beforeEach('mock device and metrics', () => {
+          beforeEach(() => {
             get.returns({value: true});
           });
 
@@ -150,7 +150,7 @@ describe('webex-core', () => {
         });
 
         describe('when the web-ha feature is not available or disabled', () => {
-          beforeEach('setup web-ha feature to be disabled', () => {
+          beforeEach(() => {
             get.returns({value: false});
           });
 
@@ -184,7 +184,7 @@ describe('webex-core', () => {
       });
 
       describe('when the reason is not a webex server error', () => {
-        beforeEach('set the reason to a mutable object', () => {
+        beforeEach(() => {
           options.uri = 'http://not-a-url.com/';
           reason = {};
         });
@@ -200,7 +200,7 @@ describe('webex-core', () => {
       });
 
       describe('when the uri does not exist', () => {
-        beforeEach('set uri to undefined and get the output', () => {
+        beforeEach(() => {
           delete options.uri;
           reason = new WebexHttpError.InternalServerError({
             statusCode: 500,

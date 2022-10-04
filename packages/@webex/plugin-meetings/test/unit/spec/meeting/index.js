@@ -21,7 +21,6 @@ import {
   _MEETING_ID_,
   LOCUSINFO,
 } from '@webex/plugin-meetings/src/constants';
-
 import * as StatsAnalyzerModule from '@webex/plugin-meetings/src/statsAnalyzer';
 import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
 import Meetings, {CONSTANTS} from '@webex/plugin-meetings';
@@ -84,7 +83,7 @@ describe('plugin-meetings', () => {
     sinon.restore();
   });
 
-  before(() => {
+  beforeAll(() => {
     const MediaStream = {
       getVideoTracks: () => [{
         applyConstraints: () => { }
@@ -1601,7 +1600,7 @@ describe('plugin-meetings', () => {
           return value[key] || value[defaultKey];
         };
 
-        before(() => {
+        beforeAll(() => {
           meeting.updateShare = sinon.stub().returns(Promise.resolve());
 
           if (!global.navigator) {
@@ -1622,7 +1621,7 @@ describe('plugin-meetings', () => {
           );
         });
 
-        after(() => {
+        afterAll(() => {
           // clean up for browser
           Object.defineProperty(
             global.navigator.mediaDevices,

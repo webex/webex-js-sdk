@@ -13,7 +13,7 @@ describe('webex-core', () => {
     let serviceUrl;
     let template;
 
-    beforeEach('initialize webex', () => {
+    beforeEach(() => {
       webex = new MockWebex();
       /* eslint-disable-next-line no-unused-vars */
       const services = new Services(undefined, {parent: webex});
@@ -130,7 +130,7 @@ describe('webex-core', () => {
     describe('#_getPriorityHostUrl()', () => {
       let highPriorityHost;
 
-      beforeEach('get a high priority host manually', () => {
+      beforeEach(() => {
         highPriorityHost = serviceUrl._generateHostUrl(
           serviceUrl.hosts.reduce((o, c) => (
             o.priority > c.priority || !o.homeCluster ? c : o

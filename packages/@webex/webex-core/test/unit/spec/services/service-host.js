@@ -8,7 +8,7 @@ describe('webex-core', () => {
     let fixture;
     let serviceHost;
 
-    before('generate fixture', () => {
+    beforeAll(() => {
       fixture = {
         catalog: 'discovery',
         defaultUri: 'https://example-default.com/',
@@ -32,7 +32,7 @@ describe('webex-core', () => {
     });
 
     describe('class members', () => {
-      beforeEach('generate service host', () => {
+      beforeEach(() => {
         serviceHost = new ServiceHost(fixture);
       });
 
@@ -174,7 +174,7 @@ describe('webex-core', () => {
         describe('#polyGenerate()', () => {
           let polyFixture;
 
-          beforeEach('set the poly fixture', () => {
+          beforeEach(() => {
             polyFixture = {
               catalog: fixture.catalog,
               name: fixture.id.split(':')[3],

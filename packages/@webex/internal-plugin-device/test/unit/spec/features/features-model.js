@@ -12,7 +12,7 @@ describe('plugin-device', () => {
   describe('features-model', () => {
     let featuresModel;
 
-    beforeEach('create a features model', () => {
+    beforeEach(() => {
       featuresModel = new FeaturesModel(dto.features);
     });
 
@@ -33,7 +33,7 @@ describe('plugin-device', () => {
           let spy;
           let value;
 
-          beforeEach('setup sinon', () => {
+          beforeEach(() => {
             feature = featuresModel[collectionName].models[0];
             spy = sinon.spy();
             value = 'testValue';
@@ -53,7 +53,7 @@ describe('plugin-device', () => {
           let model;
           let spy;
 
-          beforeEach('setup sinon', () => {
+          beforeEach(() => {
             collection = featuresModel[collectionName];
             key = 'testKey';
             model = new FeatureModel({
@@ -76,7 +76,7 @@ describe('plugin-device', () => {
           let model;
           let spy;
 
-          beforeEach('setup sinon', () => {
+          beforeEach(() => {
             collection = featuresModel[collectionName];
             model = new FeatureModel(dto.features[collectionName][0]);
             spy = sinon.spy();

@@ -3,7 +3,6 @@ import sinon from 'sinon';
 import {cloneDeep} from 'lodash';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
-
 import Meetings from '@webex/plugin-meetings';
 import LocusInfo from '@webex/plugin-meetings/src/locus-info';
 import SelfUtils from '@webex/plugin-meetings/src/locus-info/selfUtils';
@@ -18,7 +17,7 @@ import {
   DISPLAY_HINTS
 } from '../../../../src/constants';
 
-import {self, selfWithInactivity} from './selfConstant';
+import {self, selfWithInactivity} from './lib/selfConstant';
 
 describe('plugin-meetings', () => {
   describe('LocusInfo index', () => {
@@ -58,7 +57,7 @@ describe('plugin-meetings', () => {
     describe('#updateControls', () => {
       let newControls;
 
-      beforeEach('setup new controls', () => {
+      beforeEach(() => {
         newControls = {
           lock: {},
           meetingFull: {},
@@ -339,7 +338,7 @@ describe('plugin-meetings', () => {
     describe('#updateParticipants()', () => {
       let newParticipants;
 
-      beforeEach('setup new participants', () => {
+      beforeEach(() => {
         newParticipants = [
           {
             person: {
@@ -700,7 +699,7 @@ describe('plugin-meetings', () => {
       let getRolesSpy;
       let isJoinedSpy;
 
-      beforeEach('setup meeting info', () => {
+      beforeEach(() => {
         meetingInfo = {
           displayHints: {
             joined: ['ROSTER_IN_MEETING', 'LOCK_STATUS_UNLOCKED'],

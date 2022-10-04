@@ -232,7 +232,7 @@ describe('webex-core', () => {
           );
         });
 
-        afterEach('remove services plugin', () => {
+        afterEach(() => {
           if (webex.internal.services) {
             delete webex.internal.services;
           }
