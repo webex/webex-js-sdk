@@ -7,6 +7,13 @@ const wrapHandler = require('../lib/wrap-handler');
 const {list} = require('../util/package');
 const {lastLog} = require('../lib/git');
 
+/**
+ * As the description says, this command tells whether to run test or not
+ * It is based on the latest commit
+ * If it's not a merge or skip commit, then it prints run
+ * else it prints skip
+ */
+
 module.exports = {
   command: 'check-testable',
   desc: 'Check if this build has anything to test. Prints "run" or "skip"',

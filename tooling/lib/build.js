@@ -20,6 +20,10 @@ const {glob} = require('../util/package');
 
 exports.buildFile = async function buildFile({src, dest}) {
   debug(`transforming ${src}`);
+  /**
+   * babel's transformFile returns an object
+   * with code string and it's map file string
+  */
   const {code, map} = await transformFile(src);
 
   debug(`transformFileed ${src}`);
@@ -32,11 +36,18 @@ exports.buildFile = async function buildFile({src, dest}) {
 
 exports.buildPackage = async function buildPackage(packageName) {
   debug(`building package ${packageName}`);
+  /**
+   * glob method is to fetch absolute file path for a said pattern
+   * Lookup method for more info
+   */
   const filesJS = await glob('src/**/*.js', {packageName});
   const filesTS = await glob('src/**/*.ts', {packageName});
   const files = [...filesJS, ...filesTS];
 
   debug('building files ', files);
+  /**
+   * In the consolidated mapped object below, absolute path for src & dest added
+   */
   const mapped = files
     .map((filename) => path.join('packages', 'node_modules', packageName, filename))
     .map((filename) => ({
@@ -45,6 +56,7 @@ exports.buildPackage = async function buildPackage(packageName) {
     }));
 
   for (const file of mapped) {
+    // buildFile method transforms the file using babel-core transform method
     await exports.buildFile(file);
   }
 };

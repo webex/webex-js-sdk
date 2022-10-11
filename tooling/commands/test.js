@@ -16,6 +16,21 @@ const {start, stop} = require('../util/server');
 const {startProxies, stopProxies} = require('../util/proxies');
 
 /**
+ * Each file under commands folder is a command confirguration
+ * The file exports a JSON object with following attributes,
+ *  command - what should be the keyword to invocate command
+ *  desc - description
+ *  builder - JSON object with parameters. Each parameter has a set of options,
+ *          - default - Default value for the parameter
+ *          - description - param description
+ *          - type - what type of parameter
+ *          - required - If the parameter is mandatory
+ *  handler - * Method that is actually called when command is invoked
+ *            * Whatever option given by user and default values will be available
+ *            in argv of handler parameters
+ */
+
+/**
  * Returns true if the given package should be tested in the browser.
  * (Some packages are intended for use only in Node.)
  * @param {Array} packages
@@ -105,6 +120,7 @@ module.exports = {
     }
   },
   handler: wrapHandler(async (argv) => {
+    // Run unit and integration if both are not set in command line
     if (!argv.unit && !argv.integration) {
       argv.unit = true;
       argv.integration = true;
@@ -119,11 +135,16 @@ module.exports = {
         argv.packages = [argv.package];
       }
       if (argv.packages) {
+        /**
+         * Multiple packages can be comma separated and given in command line
+         * Below code separates comma separated packages into an array
+         */
         argv.packages = flatten(
           argv.packages.map((packageName) => (packageName.includes(',') ? packageName.toLowerCase().split(',') : packageName.toLowerCase()))
         );
-        if (argv.serve) {
+        if (argv.serve) { // defaults to true. see builder
           debug('starting test server');
+          // starts test server under packages/node_modules/@webex/test-helper-server
           await start();
           debug('started test server');
         }
@@ -133,6 +154,7 @@ module.exports = {
           await startProxies();
         }
 
+        /** Each package is run through testPackage util */
         for (const packageName of argv.packages) {
           await testPackage(argv, packageName);
         }
@@ -146,18 +168,24 @@ module.exports = {
         }
       }
       else {
+        /**
+         * When pacakges aren't listed, list util method gives list of all packages
+         * Each package is run through a silent test command with package name
+         * That command takes it into the if condition which takes care of testing the packages
+         */
         const packages = await list();
 
+        const argString = Object.keys(argv).reduce((acc, key) => {
+          const value = argv[key];
+
+          if (typeof value === 'boolean') {
+            acc += value ? ` --${key}` : ` --no-${key}`;
+          }
+
+          return acc;
+        }, '');
+
         for (const packageName of packages) {
-          const argString = Object.keys(argv).reduce((acc, key) => {
-            const value = argv[key];
-
-            if (typeof value === 'boolean') {
-              acc += value ? ` --${key}` : ` --no-${key}`;
-            }
-
-            return acc;
-          }, '');
           const [cmd, ...args] = `npm run test --silent -- --no-coverage-report --packages ${packageName}${argString}`.split(' ');
 
           await spawn(cmd, args);
