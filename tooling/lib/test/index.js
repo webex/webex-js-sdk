@@ -53,6 +53,7 @@ exports.testPackage = async function testPackage(options, packageName) {
 
 async function runNodeSuite(options, packageName) {
   debug(`Running node suite for ${packageName}`);
+  // gatherFiles obtaines absolute path of all files under unit test folder
   const files = await gatherFiles('unit', packageName);
 
   if (files.length === 0) {
@@ -61,7 +62,10 @@ async function runNodeSuite(options, packageName) {
     return;
   }
 
-
+  /**
+   * mochaTest is imported from lib/test/mocha
+   * this method in turn creates mocha object and run tests
+   */
   await mochaTest(options, packageName, 'node', files);
 
   debug(`Finished node suite for ${packageName}`);
@@ -77,6 +81,10 @@ async function runBrowserSuite(options, packageName) {
     return;
   }
 
+  /**
+   * karmaTest is imported from lib/test/karma
+   * this method in turn creates karma server and run tests
+   */
   await karmaTest(options, packageName, files);
 
   debug(`Finished browser suite for ${packageName}`);
@@ -93,6 +101,10 @@ async function runAutomationSuite(options, packageName) {
     return;
   }
 
+  /**
+   * mochaTest is imported from lib/test/mocha
+   * this method in turn creates mocha object and run tests
+   */
   await mochaTest(options, packageName, 'automation', files);
 
   debug(`Finished automation suite for ${packageName}`);

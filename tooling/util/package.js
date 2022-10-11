@@ -21,6 +21,10 @@ exports.list = async function list() {
 };
 
 exports.glob = function glob(pattern, options = {}) {
+  /**
+   * glob method is to fetch absolute file path for a said pattern
+   * the current working directory for glob is set to the package path
+   */
   return g(pattern, Object.assign({}, options, {
     cwd: path.join(cwd, options.packageName)
   }));
