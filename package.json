@@ -194,7 +194,7 @@
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "chromedriver": "^101.0.0",
-    "documentation": "^13.2.5",
+    "documentation": "^14.0.0",
     "documentation-theme-utils": "^3.0.0",
     "eslint": "^8.13.0",
     "eslint-plugin-import": "^2.26.0",
