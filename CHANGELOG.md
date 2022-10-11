@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.26.2](https://github.com/webex/webex-js-sdk/compare/v2.26.1...v2.26.2) (2022-10-11)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add waitingForOthersToJoin to in-meeting action ([fcea682](https://github.com/webex/webex-js-sdk/commit/fcea6825a777b52821a538f4646fa1c09e443452))
+
 ### [2.26.1](https://github.com/webex/webex-js-sdk/compare/v2.26.0...v2.26.1) (2022-10-07)
 
 
