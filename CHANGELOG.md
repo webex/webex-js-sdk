@@ -2,6 +2,71 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.27.0](https://github.com/webex/webex-js-sdk/compare/v2.26.2...v2.27.0) (2022-10-12)
+
+
+### Features
+
+* **internal-plugin-dss:** optional entity provider type for lookup ([d743364](https://github.com/webex/webex-js-sdk/commit/d743364f29e739de2112e0115055375da6f8d013))
+
+### [2.26.2](https://github.com/webex/webex-js-sdk/compare/v2.26.1...v2.26.2) (2022-10-11)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add waitingForOthersToJoin to in-meeting action ([fcea682](https://github.com/webex/webex-js-sdk/commit/fcea6825a777b52821a538f4646fa1c09e443452))
+
+### [2.26.1](https://github.com/webex/webex-js-sdk/compare/v2.26.0...v2.26.1) (2022-10-07)
+
+
+### Bug Fixes
+
+* **internal-plugin-voicea:** extract llm from voicea ([37589b5](https://github.com/webex/webex-js-sdk/commit/37589b5df5b88cbd80ed1432fd32b858ac7da8eb))
+
+## [2.26.0](https://github.com/webex/webex-js-sdk/compare/v2.25.0...v2.26.0) (2022-10-05)
+
+
+### Features
+
+* **plugin-meetings:** added support for TURN discovery (under a config flag) ([ea738ca](https://github.com/webex/webex-js-sdk/commit/ea738cad761366b1e01163e96f188707f6a8933b))
+
+## [2.25.0](https://github.com/webex/webex-js-sdk/compare/v2.24.1...v2.25.0) (2022-10-04)
+
+
+### Features
+
+* **meetings/meeting:** add size-only layout requests ([a6a8d58](https://github.com/webex/webex-js-sdk/commit/a6a8d58d6a31e0395a9be58a9f70d46a02c4d968))
+
+### [2.24.1](https://github.com/webex/webex-js-sdk/compare/v2.24.0...v2.24.1) (2022-09-29)
+
+
+### Bug Fixes
+
+* private members ([a4dcdfc](https://github.com/webex/webex-js-sdk/commit/a4dcdfc382ed18cac44835f02b9ffb4d74ec3e57))
+* voicea imports ([9a6c6a0](https://github.com/webex/webex-js-sdk/commit/9a6c6a0a3242dfc9c8be31a8aa112dabd434195b))
+
+## [2.24.0](https://github.com/webex/webex-js-sdk/compare/v2.23.0...v2.24.0) (2022-09-28)
+
+
+### Features
+
+* add voicea related display hints in meeting actions ([5960c2f](https://github.com/webex/webex-js-sdk/commit/5960c2f7ceb6fbaa63dac4ba260b2f333a574dad))
+
+
+### Bug Fixes
+
+* address comments ([2af173b](https://github.com/webex/webex-js-sdk/commit/2af173bf488dd3766e86111ecbd9c9967b99d2e9))
+* change interface types ([001e5ad](https://github.com/webex/webex-js-sdk/commit/001e5ad367a32dbbce424606b8b3c0684d40517b))
+* member types ([5c4bf58](https://github.com/webex/webex-js-sdk/commit/5c4bf58359e2c041d2025ddc3cac03e9e07170e9))
+* member types ([a100c42](https://github.com/webex/webex-js-sdk/commit/a100c429425b49fbd7ed795492d0404775319c65))
+
+## [2.23.0](https://github.com/webex/webex-js-sdk/compare/v2.22.0...v2.23.0) (2022-09-27)
+
+
+### Features
+
+* add voicea-plugin ([d12f9d7](https://github.com/webex/webex-js-sdk/commit/d12f9d71409769bc6f35be9d1560090638bcf386))
+
 ## [2.22.0](https://github.com/webex/webex-js-sdk/compare/v2.21.1...v2.22.0) (2022-09-23)
 
 
