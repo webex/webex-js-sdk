@@ -703,6 +703,30 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.mediaProperties.setVideoDeviceId, newVideoDevice);
         });
 
+        it('uses the passed custom video resolution', async () => {
+          const mediaDirection = {sendAudio: true, sendVideo: true, sendShare: false};
+          const customAudioVideoSettings = {
+            video: {
+              width: {
+                max: 400,
+                ideal: 400
+              },
+              height: {
+                max: 200,
+                ideal: 200
+              }
+            }
+          };
+
+          sinon.stub(meeting.mediaProperties, 'localQualityLevel').value('200p');
+          await meeting.getMediaStreams(mediaDirection, customAudioVideoSettings);
+
+          assert.calledWith(Media.getUserMedia, {
+            ...mediaDirection,
+            isSharing: false
+          },
+          customAudioVideoSettings);
+        });
         it('should not access camera if sendVideo is false ', async () => {
           await meeting.getMediaStreams({sendAudio: true, sendVideo: false});
 
@@ -2169,6 +2193,7 @@ describe('plugin-meetings', () => {
           meeting.canUpdateMedia = sinon.stub().returns(true);
           MeetingUtil.validateOptions = sinon.stub().returns(Promise.resolve());
           MeetingUtil.updateTransceiver = sinon.stub().returns(Promise.resolve());
+          sinon.stub(MeetingUtil, 'getTrack').returns({videoTrack: fakeTrack});
         });
 
         it('should have #setLocalVideoQuality', () => {
