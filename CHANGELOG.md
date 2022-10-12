@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.27.0](https://github.com/webex/webex-js-sdk/compare/v2.26.2...v2.27.0) (2022-10-12)
+
+
+### Features
+
+* **internal-plugin-dss:** optional entity provider type for lookup ([d743364](https://github.com/webex/webex-js-sdk/commit/d743364f29e739de2112e0115055375da6f8d013))
+
 ### [2.26.2](https://github.com/webex/webex-js-sdk/compare/v2.26.1...v2.26.2) (2022-10-11)
 
 
