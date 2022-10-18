@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.28.0](https://github.com/webex/webex-js-sdk/compare/v2.27.0...v2.28.0) (2022-10-18)
+
+
+### Features
+
+* **slido:** embedded app eventing ([78567c1](https://github.com/webex/webex-js-sdk/commit/78567c1734b6ee97516429535521eacbdca21985))
+
 ## [2.27.0](https://github.com/webex/webex-js-sdk/compare/v2.26.2...v2.27.0) (2022-10-12)
 
 
