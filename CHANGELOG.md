@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.28.1](https://github.com/webex/webex-js-sdk/compare/v2.28.0...v2.28.1) (2022-10-18)
+
+
+### Bug Fixes
+
+* **internal-conversation-plugin:** meeting container not deleting properly ([97b7c22](https://github.com/webex/webex-js-sdk/commit/97b7c22c375739c9b9d5bccf52f3ca31aa6da0fd))
+
 ## [2.28.0](https://github.com/webex/webex-js-sdk/compare/v2.27.0...v2.28.0) (2022-10-18)
 
 
