@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.29.2](https://github.com/webex/webex-js-sdk/compare/v2.29.1...v2.29.2) (2022-10-19)
+
+
+### Bug Fixes
+
+* **guest join:** send keepalives when in lobby ([4469240](https://github.com/webex/webex-js-sdk/commit/4469240e2b0f35b9e5bd34d5391402779e3ae450))
+
 ### [2.29.1](https://github.com/webex/webex-js-sdk/compare/v2.29.0...v2.29.1) (2022-10-19)
 
 
