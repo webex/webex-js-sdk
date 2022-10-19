@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.29.3](https://github.com/webex/webex-js-sdk/compare/v2.29.2...v2.29.3) (2022-10-19)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** reduced default reachability timeout to 3s ([4b76a32](https://github.com/webex/webex-js-sdk/commit/4b76a322737a061163715bc9e3d570617bb626cf))
+* **plugin-meetings:** using reduced timeout for reachability checks of video mesh nodes ([ea37956](https://github.com/webex/webex-js-sdk/commit/ea37956d42d4ff2a2cf2a514879aa57d35925dad))
+
 ### [2.29.2](https://github.com/webex/webex-js-sdk/compare/v2.29.1...v2.29.2) (2022-10-19)
 
 
