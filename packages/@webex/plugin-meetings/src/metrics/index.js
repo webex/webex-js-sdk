@@ -237,6 +237,9 @@ class Metrics {
       if (options.joinTimes) {
         payload.event.joinTimes = options.joinTimes;
       }
+      if (options.isRoapCallEnabled) {
+        payload.event.isRoapCallEnabled = options.isRoapCallEnabled;
+      }
     }
 
     return payload;

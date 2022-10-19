@@ -3510,7 +3510,7 @@ export default class Meeting extends StatelessWebexPlugin {
     Metrics.postEvent({
       event: eventType.CALL_INITIATED,
       meeting: this,
-      data: {trigger: trigger.USER_INTERACTION}
+      data: {trigger: trigger.USER_INTERACTION, isRoapCallEnabled: true}
     });
 
     LoggerProxy.logger.log('Meeting:index#join --> Joining a meeting');

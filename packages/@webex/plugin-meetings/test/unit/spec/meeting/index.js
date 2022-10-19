@@ -41,7 +41,7 @@ import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy';
 import BrowserDetection from '@webex/plugin-meetings/src/common/browser-detection';
 import Metrics from '@webex/plugin-meetings/src/metrics';
-import {eventType} from '@webex/plugin-meetings/src/metrics/config';
+import {trigger, eventType} from '@webex/plugin-meetings/src/metrics/config';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 
 import locus from '../fixture/locus';
@@ -782,6 +782,8 @@ describe('plugin-meetings', () => {
 
           it('should join the meeting and return promise', async () => {
             const join = meeting.join();
+
+            assert.calledWithMatch(Metrics.postEvent, {event: eventType.CALL_INITIATED, data: {trigger: trigger.USER_INTERACTION, isRoapCallEnabled: true}});
 
             assert.exists(join.then);
             await join;
