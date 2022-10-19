@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.29.0](https://github.com/webex/webex-js-sdk/compare/v2.28.1...v2.29.0) (2022-10-19)
+
+
+### Features
+
+* **plugin-meetings:** added meetings._toggleTurnDiscovery() method ([b851dbf](https://github.com/webex/webex-js-sdk/commit/b851dbfbf056da38e2a0e902db4873d3553d424f))
+
 ### [2.28.1](https://github.com/webex/webex-js-sdk/compare/v2.28.0...v2.28.1) (2022-10-18)
 
 
