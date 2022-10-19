@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.29.1](https://github.com/webex/webex-js-sdk/compare/v2.29.0...v2.29.1) (2022-10-19)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** dont create adhoc meeting if no site ([e4f37c0](https://github.com/webex/webex-js-sdk/commit/e4f37c028b593c164766208354d5afd5bc2fc6f3))
+
 ## [2.29.0](https://github.com/webex/webex-js-sdk/compare/v2.28.1...v2.29.0) (2022-10-19)
 
 
