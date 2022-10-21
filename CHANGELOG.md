@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.29.4](https://github.com/webex/webex-js-sdk/compare/v2.29.3...v2.29.4) (2022-10-21)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** added roap enabled flag in client call initiate… ([#2476](https://github.com/webex/webex-js-sdk/issues/2476)) ([307dd4a](https://github.com/webex/webex-js-sdk/commit/307dd4a0ea56ab6c8298229a6b9f0b68b4d505c0))
+
 ### [2.29.3](https://github.com/webex/webex-js-sdk/compare/v2.29.2...v2.29.3) (2022-10-19)
 
 
