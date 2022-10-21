@@ -7,21 +7,15 @@ The following npm scripts are the main entrypoints for building and testing the 
 Build all packages.
 
 ```bash
-npm run build
+yarn run build
+
 ```
 
 Build a single package.
 
 ```bash
-npm run build:package @webex/webex-core
-```
+yarn run build:package @webex/webex-core
 
-## deps:generate
-
-Detect dependencies for each package and insert into the appropriate `package.json`.
-
-```bash
-npm run deps:generate
 ```
 
 ## lint:js
@@ -29,7 +23,8 @@ npm run deps:generate
 Lint all JavaScript files.
 
 ```bash
-npm run lint:js
+yarn run lint:js
+
 ```
 
 ## test
@@ -89,7 +84,8 @@ npm test -- --packages @webex/webex-core --browser --karma-debug
 make sure Java JDK is installed on your machine to run test locally
 
 ```bash
-npm run samples:test
+yarn run samples:test
+
 ```
 
 ## SauceLabs
@@ -103,13 +99,17 @@ Start the SauceLabs tunnel, run tests using SauceLabs browsers, and stop the Sau
 
 ```bash
 # Run all tests on SauceLabs with default configuration
-SAUCE=true npm run test
+SAUCE=true yarn run test
+
 # Run the samples automation tests on SauceLabs
-SAUCE=true npm run samples:test
+SAUCE=true yarn run samples:test
+
 # Run `plugin-teams` test suite on SauceLabs only only Edge and IE 11
-SAUCE=true npm run test -- --packages @webex/plugin-teams --os Windows --browsers Edge IE
+SAUCE=true yarn run test --packages @webex/plugin-teams --os Windows --browsers Edge IE
+
 # Run all tests on SauceLabs only with Chrome on Mac and Windows
-SAUCE=true npm run test -- --browsers Chrome
+SAUCE=true yarn run test --browsers Chrome
+
 ```
 
 ## distsrc
@@ -117,7 +117,8 @@ SAUCE=true npm run test -- --browsers Chrome
 Points all of the `package.json`s' main entry to their "src" folder. This is useful when testing because it doesn't require you to build a "dist" folder before every run of the test.
 
 ```bash
-npm run distsrc
+yarn run distsrc
+
 ```
 
 ## srcdist
@@ -125,5 +126,6 @@ npm run distsrc
 Used to undo the changes made with `distsrc`.
 
 ```bash
-npm run srcdist
+yarn run srcdist
+
 ```

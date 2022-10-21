@@ -43,7 +43,7 @@ INT_ENV_VARS = {
 OUTPUT_DIR = 'output'
 OUTPUT_FILE_PATH = os.path.join(OUTPUT_DIR, 'test-comparison.csv')
 
-TEST_COMMAND = 'npm run sauce:run -- npm test -- --packages %s'
+TEST_COMMAND = 'yarn run sauce:run -- yarn run test --packages %s'
 
 SKIP_PACKAGES = [
   '@webex/test-helper-server' # no tests

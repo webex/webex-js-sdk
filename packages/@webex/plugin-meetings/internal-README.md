@@ -80,26 +80,30 @@ git checkout -b 39555-new-feature plugin-meetings
 
 ```bash
 # Point all package.json files to the src directory instead of the dist directory.
-npm run distsrc
+yarn run distsrc
+
 ```
 
 #### Testers
 
 ```bash
 # Transpile the code into the dist directory.
-npm run build
+yarn run build
+
 ```
 
 > Individual packages containing samples can usually be run this way:
 > ```
-> npm run serve:package -- --env.package @webex/plugin-meetings
+> yarn run serve:package --env.package @webex/plugin-meetings
+
 > ```
 > However, `webex` does not get compiled properly for `plugin-meetings` using this method, so do the following instead.
 
 
 ```bash
 # Run the "sample app" sample.
-npm run samples:meetings
+yarn run samples:meetings
+
 ```
 
 - Visit https://localhost:8000/
@@ -118,13 +122,16 @@ npm run samples:meetings
 
 ### Run tests
 
-Use `npm run distsrc` to point each package's `main` entry at the raw src and let `babel` compile on the fly.
+Use `yarn run distsrc` to point each package's `main` entry at the raw src and let `babel` compile on the fly.
+
 
 ```bash
 # Point all package.json files to the src directory instead of the dist directory.
-npm run distsrc
+yarn run distsrc
+
 # Run the package tests.
-npm test -- --packages @webex/plugin-meetings
+yarn run test --packages @webex/plugin-meetings
+
 ```
 
 You can use the `--unit`, `--integration`, `--automation`, and `--documentation` switches to control what types of tests you run and `--node` and `--browser` to control which environments your tests run in.
@@ -140,7 +147,8 @@ npm test -- --packages @webex/plugin-teams --browser --karma-debug
 
 ```bash
 # Point all package.json files back to the dist directory.
-npm run srcdist
+yarn run srcdist
+
 ```
 
 ### Commit changes
