@@ -93,20 +93,22 @@ git clone https://github.com/your-username/webex-js-sdk.git
 Install tooling dependencies with:
 
 ```bash
-nvm use
-npm install
+yarn install
+
 ```
 
 Build the SDK:
 
 ```bash
-npm run build
+yarn run build
+
 ```
 
 If at any point your out-of-the-box builds or failing or if you are tests are failing with complaints of an invalid node version, the following commands will reset and rebuild everything:
 
 ```bash
-nvm use; npm ci
+yarn
+
 ```
 
 By default npm uses `sh` which does not support the glob syntax and as such `distsrc` and `srcdist` will fail with *No such file or directory*. To fix this you can set npm to use bash instead using:
@@ -163,27 +165,34 @@ The JS SDK allows you to customize your experience via configuration and environ
 
 ### Running Tests
 
-`npm test` is the entrypoint to our test runner, but its not practical to use without parameters; the full suite would take over two hours to run and cross talk would probably cause tests to break each other.
+`yarn run test` is the entrypoint to our test runner, but its not practical to use without parameters; the full suite would take over two hours to run and cross talk would probably cause tests to break each other.
 
-> Get the full test-runner docs via `npm test -- --help`.
+
+> Get the full test-runner docs via `yarn run test --help`.
+
 
 A local development flow might look like
 
 1. Edit source code in `MYPACKAGE`.
-2. Use `npm run build` to build all packages .
-3. Use `npm test -- --packages @webex/MYPACKAGE --node` to run the tests for just that package only in nodejs (Usually, we don't need to test both in node and the browser during development).
+2. Use `yarn run build` to build all packages .
+3. Use `yarn run test --packages @webex/MYPACKAGE --node` to run the tests for just that package only in nodejs (Usually, we don't need to test both in node and the browser during development).
+
 4. Repeats steps 1-3 until the tests pass.
 
-`npm run build` is a bit tedious when making lots of changes, so instead, we can use `npm run distsrc` to point each package's `main` entry at the raw src and let `babel` compile on the fly.
+`yarn run build` is a bit tedious when making lots of changes, so instead, we can use `yarn run distsrc` to point each package's `main` entry at the raw src and let `babel` compile on the fly.
 
-1. At the start of development, run `npm run distsrc` once.
+
+1. At the start of development, run `yarn run distsrc` once.
+
 2. Edit source code in `MYPACKAGE`.
-3. Use `npm test -- --packages @webex/MYPACKAGE --node` to run the tests for just that package only in nodejs.
+3. Use `yarn run test --packages @webex/MYPACKAGE --node` to run the tests for just that package only in nodejs.
+
 4. Optionally, add environment variables to mimize logging and show any test specific logging, ie:
    - WEBEX_LOG_LEVEL - set this to "log" to minimize the default verbose output
    - DEBUG - if your test source includes the debug package set this to the appropriate string to enable debug output
    For exampe if you want to run only the plugin-messages test, and see the package specific logging, your command line would be:
-   > `WEBEX_LOG_LEVEL=log DEBUG=messages npm test -- --packages @webex/plugin-messages --node`
+> `WEBEX_LOG_LEVEL=log DEBUG=messages yarn run test --packages @webex/plugin-messages --node`
+
 5. Repeat steps 2-3 until the tests pass.
    > If you use VS Code, we've created a configuration to utilize the built-in debugger
    >    - Set breakpoints within the package you're working on
@@ -192,7 +201,8 @@ A local development flow might look like
    >      - _The configuration already prepends `@webex/` for you unlike the cli command, so just `plugin-teams` is fine_
    >    - Add any _optional_ flags (i.e. `--node`)
    >      - _If you don't want to add any flags, just add a space (current workaround)_
-6. Run `npm run srcdist` to restore the package.jsons to avoid committing those changes.
+6. Run `yarn run srcdist` to restore the package.jsons to avoid committing those changes.
+
 
 You can use the `--unit`, `--integration`, `--automation`, and `--documentation` switches to control what types of tests you run and `--node` and `--browser` to control which environments your tests run in.
 
@@ -204,7 +214,8 @@ You can use the `--browsers` _(not to be confused with the `--browser` tag)_ all
 The default browsers that launch are _Headless_ version of Firefox and Chrome, so `--browsers Chrome Edge` will only launch a normal version of Chrome along with Edge. If you add `defaults` to the browsers flag, it will also launch `ChromeHeadless` and `FirefoxHeadless` along with other browsers you've specified. All browsers include flags to enable WebRTC features and permissions.
 
 To run tests on [SauceLabs](https://saucelabs.com/) locally, you'll need to add a inline environment variable, `SAUCE=true`. Like mentioned above you can specify which browsers you'd like to test on with the `--browers` flag, but with SauceLabs service available to you, you can also specify which OS you'd like to test on. With the `--os` flag you have the option on testing on `Mac` and `Windows`. You can filter down the browsers that get launched by using the `--browsers` flag, so if you use `--os Windows --browsers Edge IE` it will launch only `Edge` and `IE`. Specifying just `--browsers` with `SAUCE=true` will launch that browsers in all available OSs, so `--browsers Firefox` will launch `Firefox` in `Mac` and `Windows`.
-> **The default SauceLabs configuration _"`SAUCE=true npm run test`"_ is the latest versions of `Chrome` and `Firefox` on both `Mac` and `Windows`, along with `Edge` and `IE 11` on Windows, and `Safari` on Mac**
+> **The default SauceLabs configuration _"`SAUCE=true yarn run test`"_ is the latest versions of `Chrome` and `Firefox` on both `Mac` and `Windows`, along with `Edge` and `IE 11` on Windows, and `Safari` on Mac**
+
 >
 > `--os Mac` will launch `Chrome`, `Firefox`, and `Safari`
 >
@@ -219,9 +230,10 @@ To run tests on [SauceLabs](https://saucelabs.com/) locally, you'll need to add 
 ```bash
 git clone git@github.com:webex/webex-js-sdk.git
 cd webex-js-sdk
-npm install
-npm run build
-npm run samples:serve
+yarn install
+yarn run build
+yarn run samples:serve
+
 ```
 
 > NOTE: This installs all of the SDK's tooling dependencies, so you'll need `libgcrypt` and (possibly) `graphicsmagick`.
@@ -248,14 +260,17 @@ Head to [https://localhost:8000/](https://localhost:8000/) to use the samples
 
 The samples tests are run by <https://webdriver.io> which spins up two browser instances and has them communicate between each other.
 
-These tests are run with `npm run samples:test`.
+These tests are run with `yarn run samples:test`.
+
 We have found that due to the h.264 codec downloading in Firefox, the best way to run these test is on SauceLabs.
-You can run them on SauceLabs with `SAUCE=true npm run samples:test`.
+You can run them on SauceLabs with `SAUCE=true yarn run samples:test`.
+
 
 To run a specific sample test instead of the full suite, append the `--spec` flag to the `samples:test` command and the path to the specific test
 
 ```sh
-npm run samples:test -- --spec docs/samples/browser-call-with-screenshare
+yarn run samples:test --spec docs/samples/browser-call-with-screenshare
+
 ```
 
 If an error occurs when running the above command that appears to be related to a missing [Selenium](https://www.selenium.dev/) driver, the following command should install the needed external dependencies:
@@ -278,7 +293,8 @@ When you run, you should see two instances of Chrome open.
 
 > NOTE: You will need to off VPN for localhost to tunnel correctly
 
-`SAUCE=true npm run samples:test:mobile`
+`SAUCE=true yarn run samples:test:mobile`
+
 
 - You will need to alias `localhost` which will require you to modify your `hosts` file and add that alias to your `.env` file with the name `LOCALHOST_ALIAS`.
 - By default, the config will use `local.localhost` as the alias if `LOCALHOST_ALIAS` isn't provided.
@@ -290,10 +306,12 @@ When you run, you should see two instances of Chrome open.
 > NOTE: You will need to off VPN for localhost to tunnel correctly
 > Testing on a iDevice only works on macOS due to the lockdown of `safaridriver`, you should probably switch to [two Android devices and changes to the `wdio.conf.mobile.js`](https://chromedriver.chromium.org/getting-started/getting-started---android#h.p_ID_306) or swap the iDevice config for a different browser installed on the machine.
 
-`npm run samples:test:mobile`
+`yarn run samples:test:mobile`
+
 
 By default the config will look for both a Android and iOS device attached to the system. If you wish to test on a specific/singular device and use Chrome installed on your machine, you can pass either `IOS=true` or `ANDROID=true` environment variables to the command above.
-_Ex. `ANDROID=true npm run samples:test:mobile` will open Chrome on your local machine and Chrome on your attached Android device._
+_Ex. `ANDROID=true yarn run samples:test:mobile` will open Chrome on your local machine and Chrome on your attached Android device._
+
 
 This process is more involved and requires both devices to be wired to the laptop/machine.
 

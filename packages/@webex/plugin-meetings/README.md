@@ -1114,7 +1114,8 @@ There are several events submitted by this package that you can subscribe to.
 
 ## Development
 
-To use `webpack-dev-server` to load this package, run `npm run samples:serve`.
+To use `webpack-dev-server` to load this package, run `yarn run samples:serve`.
+
 
 Files placed in the `docs/samples/browser-plugin-meetings` folder will be served statically.
 

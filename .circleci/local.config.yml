@@ -29,13 +29,13 @@ jobs:
           command: sudo npm install -g npm@6
       - run:
           name: 'Install dependencies'
-          command: npm ci
+          command: yarn
       - run:
           name: 'Run linting'
-          command: npm run lint
+          command: yarn run lint
       - run:
           name: 'Build all packages'
-          command: npm run build
+          command: yarn run build
       - run:
           # Run unit tests on modified packages
           name: 'Test modified packages'

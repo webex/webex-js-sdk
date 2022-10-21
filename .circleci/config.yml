@@ -385,9 +385,6 @@ jobs:
       - run:
           name: "Publish to NPM"
           command: |
-            echo "Generate Package Dependencies"
-            yarn run deps:generate
-
             echo "Publish to NPM"
             yarn run tooling -- exec --cmd bash -- -c 'npm publish --access public || true'
       - run:

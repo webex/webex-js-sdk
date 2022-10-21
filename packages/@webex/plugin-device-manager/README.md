@@ -25,7 +25,8 @@ This is a plugin for the Cisco Webex JS SDK . Please see our [developer portal](
 ###Samples
 
 ```
-npm run samples:devicemanager
+yarn run samples:devicemanager
+
 ```
 
 // initialize webex instance -> connects to mercury -> registers device ->
