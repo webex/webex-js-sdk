@@ -20,7 +20,7 @@ import {
   PEER_CONNECTION_STATE,
   OFFER,
   QUALITY_LEVELS,
-  MAX_FRAMESIZES
+  REMOTE_VIDEO_CONSTRAINTS
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import {error, eventType} from '../metrics/config';
@@ -70,16 +70,19 @@ const insertBandwidthLimit = (sdpLines, index) => {
  * @param {String} [level=QUALITY_LEVELS.HIGH] quality level for max-fs
  * @returns {String}
  */
-const setMaxFs = (sdp, level = QUALITY_LEVELS.HIGH) => {
-  if (!MAX_FRAMESIZES[level]) {
-    throw new ParameterError(`setMaxFs: unable to set max framesize, value for level "${level}" is not defined`);
+const setRemoteVideoConstraints = (sdp, level = QUALITY_LEVELS.HIGH) => {
+  const maxFs = REMOTE_VIDEO_CONSTRAINTS.MAX_FS[level];
+  const maxMbps = REMOTE_VIDEO_CONSTRAINTS.MAX_MBPS[level];
+
+  if (!maxFs || !maxMbps) {
+    throw new ParameterError(`setRemoteVideoConstraints: unable to set max ${!maxFs ? 'framesize' : 'mbps'}, value for level "${level}" is not defined`);
   }
   // eslint-disable-next-line no-warning-comments
   // TODO convert with sdp parser, no munging
   let replaceSdp = sdp;
-  const maxFsLine = `${SDP.MAX_FS}${MAX_FRAMESIZES[level]}`;
+  const maxFsAndMbps = `${SDP.MAX_FS}${maxFs};${SDP.MAX_MBPS}${maxMbps}`;
 
-  replaceSdp = replaceSdp.replace(/(\na=fmtp:(\d+).*profile-level-id=.*)/gi, `$1;${maxFsLine}`);
+  replaceSdp = replaceSdp.replace(/(\na=fmtp:(\d+).*profile-level-id=.*)/gi, `$1;${maxFsAndMbps}`);
 
   return replaceSdp;
 };
@@ -188,8 +191,8 @@ pc.iceCandidate = (peerConnection, {remoteQualityLevel}) =>
       const miliseconds = parseInt(Math.abs(Date.now() - now), 4);
 
       peerConnection.sdp = limitBandwidth(peerConnection.localDescription.sdp);
-      peerConnection.sdp = setMaxFs(peerConnection.sdp, remoteQualityLevel);
       peerConnection.sdp = PeerConnectionUtils.convertCLineToIpv4(peerConnection.sdp);
+      peerConnection.sdp = setRemoteVideoConstraints(peerConnection.sdp, remoteQualityLevel);
 
       const invalidSdpPresent = isSdpInvalid(peerConnection.sdp);
 
@@ -540,8 +543,9 @@ pc.createAnswer = (params, {meetingId, remoteQualityLevel}) => {
     .then(() => pc.iceCandidate(peerConnection, {remoteQualityLevel}))
     .then(() => {
       peerConnection.sdp = limitBandwidth(peerConnection.localDescription.sdp);
-      peerConnection.sdp = setMaxFs(peerConnection.sdp, remoteQualityLevel);
       peerConnection.sdp = PeerConnectionUtils.convertCLineToIpv4(peerConnection.sdp);
+      peerConnection.sdp = setRemoteVideoConstraints(peerConnection.sdp, remoteQualityLevel);
+
       if (!checkH264Support(peerConnection.sdp)) {
         throw new MediaError('openH264 is downloading please Wait. Upload logs if not working on second try');
       }
