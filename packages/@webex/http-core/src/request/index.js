@@ -36,23 +36,27 @@ export default function request(options) {
     const successKey = `on${key}`;
     const errorKey = `on${key}Error`;
 
-    return interceptors.reduce((promise, interceptor) => promise.then(
-      (result) => {
-        interceptor.logOptions(options);
-        if (interceptor[successKey]) {
-          return interceptor[successKey](options, result);
-        }
+    return interceptors.reduce(
+      (promise, interceptor) =>
+        promise.then(
+          (result) => {
+            interceptor.logOptions(options);
+            if (interceptor[successKey]) {
+              return interceptor[successKey](options, result);
+            }
 
-        return Promise.resolve(result);
-      },
-      (reason) => {
-        interceptor.logOptions(options);
-        if (interceptor[errorKey]) {
-          return interceptor[errorKey](options, reason);
-        }
+            return Promise.resolve(result);
+          },
+          (reason) => {
+            interceptor.logOptions(options);
+            if (interceptor[errorKey]) {
+              return interceptor[errorKey](options, reason);
+            }
 
-        return Promise.reject(reason);
-      }
-    ), Promise.resolve(res));
+            return Promise.reject(reason);
+          }
+        ),
+      Promise.resolve(res)
+    );
   }
 }
