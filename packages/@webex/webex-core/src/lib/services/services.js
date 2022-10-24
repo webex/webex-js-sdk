@@ -396,7 +396,8 @@ const Services = WebexPlugin.extend({
       addAuthHeader: false,
       headers: {
         'spark-user-agent': null
-      }
+      },
+      timeout: 5000
     }).then((res) => {
       this.logger.info('services: received user region info');
 
