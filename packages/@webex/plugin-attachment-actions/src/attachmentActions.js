@@ -275,7 +275,7 @@ const AttachmentActions = WebexPlugin.extend({
 
   /**
    * Constructs the data object for an event on the attachmentAction resource,
-   * adhering to Hydra's Webehook data structure messages.
+   * adhering to Hydra's Webhook data structure messages.
    * External users of the SDK should not call this function
    * @private
    * @memberof AttachmentAction

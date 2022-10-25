@@ -74,7 +74,7 @@ const People = WebexPlugin.extend({
    * @param {email} options.email - Returns people with an email that contains this string
    * @param {string} options.displayName - Returns people with a name that contains this string
    * @param {bool} showAllTypes optional flag that requires Hydra to send every type field,
-   * even if the type is not "person" (e.g.: SX10, webhook_intergation, etc.)
+   * even if the type is not "person" (e.g.: SX10, webhook_integration, etc.)
    * @returns {Promise<Page<PersonObject>>}
    * @example
    * var room;
