@@ -15,7 +15,7 @@ import {
   _LEFT_,
   MEETING_REMOVED_REASON,
   CALL_REMOVED_REASON,
-  RECORDING_STATE
+  RECORDING_STATE,
 } from '../constants';
 import Metrics from '../metrics';
 import {eventType} from '../metrics/config';
@@ -28,7 +28,6 @@ import EmbeddedAppsUtils from '../locus-info/embeddedAppsUtils';
 import MediaSharesUtils from '../locus-info/mediaSharesUtils';
 import LocusDeltaParser from '../locus-info/parser';
 
-
 /**
  * @description LocusInfo extends ChildEmitter to convert locusInfo info a private emitter to parent object
  * @export
@@ -39,7 +38,7 @@ export default class LocusInfo extends EventsScope {
   constructor(updateMeeting, webex, meetingId) {
     super();
     this.parsedLocus = {
-      states: []
+      states: [],
     };
     this.webex = webex;
     this.emitChange = false;
@@ -48,7 +47,6 @@ export default class LocusInfo extends EventsScope {
     this.updateMeeting = updateMeeting;
     this.locusParser = new LocusDeltaParser();
   }
-
 
   /**
    * Apply locus delta data to meeting
@@ -69,21 +67,24 @@ export default class LocusInfo extends EventsScope {
         meeting.needToGetFullLocus = false;
         break;
       case DESYNC:
-        meeting.meetingRequest.getFullLocus({
-          desync: true,
-          locusUrl: meeting.locusUrl
-        }).then((res) => {
-          meeting.locusInfo.onFullLocus(res.body);
-          // Notify parser to resume processing delta events
-          // now that we have full locus from DESYNC.
-          this.locusParser.resume();
-        });
+        meeting.meetingRequest
+          .getFullLocus({
+            desync: true,
+            locusUrl: meeting.locusUrl,
+          })
+          .then((res) => {
+            meeting.locusInfo.onFullLocus(res.body);
+            // Notify parser to resume processing delta events
+            // now that we have full locus from DESYNC.
+            this.locusParser.resume();
+          });
         break;
       default:
-        LoggerProxy.logger.info(`Locus-info:index#applyLocusDeltaData --> Unknown locus delta action: ${action}`);
+        LoggerProxy.logger.info(
+          `Locus-info:index#applyLocusDeltaData --> Unknown locus delta action: ${action}`
+        );
     }
   }
-
 
   /**
    * Adds locus delta to parser's queue
@@ -105,7 +106,6 @@ export default class LocusInfo extends EventsScope {
     // queue delta event with parser
     this.locusParser.onDeltaEvent(locus);
   }
-
 
   /**
    * @param {Locus} locus
@@ -230,7 +230,9 @@ export default class LocusInfo extends EventsScope {
    */
   onFullLocus(locus, eventType) {
     if (!locus) {
-      LoggerProxy.logger.error('Locus-info:index#onFullLocus --> object passed as argument was invalid, continuing.');
+      LoggerProxy.logger.error(
+        'Locus-info:index#onFullLocus --> object passed as argument was invalid, continuing.'
+      );
     }
     this.updateParticipantDeltas(locus.participants);
     this.scheduledMeeting = locus.meeting || null;
@@ -239,6 +241,7 @@ export default class LocusInfo extends EventsScope {
     this.updateParticipants(locus.participants);
     this.isMeetingActive();
     this.handleOneOnOneEvent(eventType);
+    this.updateEmbeddedApps(locus.embeddedApps);
     // set current (working copy) for parser
     this.locusParser.workingCopy = locus;
   }
@@ -250,34 +253,37 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   handleOneOnOneEvent(eventType) {
-    if (this.parsedLocus.fullState.type === _CALL_ || this.parsedLocus.fullState.type === _SIP_BRIDGE_) {
-    // for 1:1 bob calls alice and alice declines, notify the meeting state
+    if (
+      this.parsedLocus.fullState.type === _CALL_ ||
+      this.parsedLocus.fullState.type === _SIP_BRIDGE_
+    ) {
+      // for 1:1 bob calls alice and alice declines, notify the meeting state
       if (eventType === LOCUSEVENT.PARTICIPANT_DECLINED) {
-      // trigger the event for stop ringing
+        // trigger the event for stop ringing
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'handleOneonOneEvent'
+            function: 'handleOneonOneEvent',
           },
           EVENTS.REMOTE_RESPONSE,
           {
             remoteDeclined: true,
-            remoteAnswered: false
+            remoteAnswered: false,
           }
         );
       }
       // for 1:1 bob calls alice and alice answers, notify the meeting state
       if (eventType === LOCUSEVENT.PARTICIPANT_JOIN) {
-      // trigger the event for stop ringing
+        // trigger the event for stop ringing
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'handleOneonOneEvent'
+            function: 'handleOneonOneEvent',
           },
           EVENTS.REMOTE_RESPONSE,
           {
             remoteDeclined: false,
-            remoteAnswered: true
+            remoteAnswered: true,
           }
         );
       }
@@ -333,9 +339,14 @@ export default class LocusInfo extends EventsScope {
       return null;
     }
 
-    return participants.find((participant) =>
-      (self && participant.identity !== self.identity) &&
-  (participants.length <= 2 || (participant.type === _USER_ && !participant.removed))) || this.partner;
+    return (
+      participants.find(
+        (participant) =>
+          self &&
+          participant.identity !== self.identity &&
+          (participants.length <= 2 || (participant.type === _USER_ && !participant.removed))
+      ) || this.partner
+    );
   }
 
   // TODO: all the leave states need to be checked
@@ -344,7 +355,10 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   isMeetingActive() {
-    if ((this.parsedLocus.fullState.type === _CALL_) || (this.parsedLocus.fullState.type === _SIP_BRIDGE_)) {
+    if (
+      this.parsedLocus.fullState.type === _CALL_ ||
+      this.parsedLocus.fullState.type === _SIP_BRIDGE_
+    ) {
       const partner = this.getLocusPartner(this.participants, this.self);
 
       this.updateMeeting({partner});
@@ -358,104 +372,110 @@ export default class LocusInfo extends EventsScope {
 
       if (this.fullState && this.fullState.state === LOCUS.STATE.INACTIVE) {
         // TODO: update the meeting state
-        LoggerProxy.logger.warn('Locus-info:index#isMeetingActive --> Call Ended, locus state is inactive.');
+        LoggerProxy.logger.warn(
+          'Locus-info:index#isMeetingActive --> Call Ended, locus state is inactive.'
+        );
         Metrics.postEvent({
           event: eventType.REMOTE_ENDED,
-          meetingId: this.meetingId
+          meetingId: this.meetingId,
         });
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'isMeetingActive'
+            function: 'isMeetingActive',
           },
           EVENTS.DESTROY_MEETING,
           {
             reason: CALL_REMOVED_REASON.CALL_INACTIVE,
-            shouldLeave: false
+            shouldLeave: false,
           }
         );
-      }
-      else
-      if (partner.state === MEETING_STATE.STATES.LEFT &&
+      } else if (
+        partner.state === MEETING_STATE.STATES.LEFT &&
         this.parsedLocus.self &&
         (this.parsedLocus.self.state === MEETING_STATE.STATES.DECLINED ||
-        this.parsedLocus.self.state === MEETING_STATE.STATES.NOTIFIED ||
-        this.parsedLocus.self.state === MEETING_STATE.STATES.JOINED)) {
+          this.parsedLocus.self.state === MEETING_STATE.STATES.NOTIFIED ||
+          this.parsedLocus.self.state === MEETING_STATE.STATES.JOINED)
+      ) {
         Metrics.postEvent({
           event: eventType.REMOTE_ENDED,
-          meetingId: this.meetingId
+          meetingId: this.meetingId,
         });
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'isMeetingActive'
+            function: 'isMeetingActive',
           },
           EVENTS.DESTROY_MEETING,
           {
             reason: CALL_REMOVED_REASON.PARTNER_LEFT,
-            shouldLeave: this.parsedLocus.self.joinedWith && this.parsedLocus.self.joinedWith.state !== _LEFT_
+            shouldLeave:
+              this.parsedLocus.self.joinedWith && this.parsedLocus.self.joinedWith.state !== _LEFT_,
           }
         );
-      }
-      else
-      if (this.parsedLocus.self &&
+      } else if (
+        this.parsedLocus.self &&
         this.parsedLocus.self.state === MEETING_STATE.STATES.LEFT &&
-      (partner.state === MEETING_STATE.STATES.LEFT ||
-      partner.state === MEETING_STATE.STATES.DECLINED ||
-      partner.state === MEETING_STATE.STATES.NOTIFIED ||
-      partner.state === MEETING_STATE.STATES.IDLE) // Happens when user just joins and adds no Media
+        (partner.state === MEETING_STATE.STATES.LEFT ||
+          partner.state === MEETING_STATE.STATES.DECLINED ||
+          partner.state === MEETING_STATE.STATES.NOTIFIED ||
+          partner.state === MEETING_STATE.STATES.IDLE) // Happens when user just joins and adds no Media
       ) {
         Metrics.postEvent({
           event: eventType.REMOTE_ENDED,
-          meetingId: this.meetingId
+          meetingId: this.meetingId,
         });
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'isMeetingActive'
+            function: 'isMeetingActive',
           },
           EVENTS.DESTROY_MEETING,
           {
             reason: CALL_REMOVED_REASON.SELF_LEFT,
-            shouldLeave: false
+            shouldLeave: false,
           }
         );
       }
-    }
-    else if (this.parsedLocus.fullState.type === _MEETING_) {
-      if (this.fullState && (this.fullState.state === LOCUS.STATE.INACTIVE || this.fullState.state === LOCUS.STATE.TERMINATING)) {
-        LoggerProxy.logger.warn('Locus-info:index#isMeetingActive --> Meeting is ending due to inactive or terminating');
+    } else if (this.parsedLocus.fullState.type === _MEETING_) {
+      if (
+        this.fullState &&
+        (this.fullState.state === LOCUS.STATE.INACTIVE ||
+          this.fullState.state === LOCUS.STATE.TERMINATING)
+      ) {
+        LoggerProxy.logger.warn(
+          'Locus-info:index#isMeetingActive --> Meeting is ending due to inactive or terminating'
+        );
         Metrics.postEvent({
           event: eventType.REMOTE_ENDED,
-          meetingId: this.meetingId
+          meetingId: this.meetingId,
         });
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'isMeetingActive'
+            function: 'isMeetingActive',
           },
           EVENTS.DESTROY_MEETING,
           {
             reason: MEETING_REMOVED_REASON.MEETING_INACTIVE_TERMINATING,
-            shouldLeave: false
+            shouldLeave: false,
           }
         );
-      }
-      else if (this.fullState && this.fullState.removed) {
+      } else if (this.fullState && this.fullState.removed) {
         // user has been dropped from a meeting
         Metrics.postEvent({
           event: eventType.REMOTE_ENDED,
-          meetingId: this.meetingId
+          meetingId: this.meetingId,
         });
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'isMeetingActive'
+            function: 'isMeetingActive',
           },
           EVENTS.DESTROY_MEETING,
           {
             reason: MEETING_REMOVED_REASON.FULLSTATE_REMOVED,
-            shouldLeave: false
+            shouldLeave: false,
           }
         );
       }
@@ -466,17 +486,16 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'isMeetingActive'
+            function: 'isMeetingActive',
           },
           EVENTS.DESTROY_MEETING,
           {
             reason: MEETING_REMOVED_REASON.SELF_REMOVED,
-            shouldLeave: false
+            shouldLeave: false,
           }
         );
       }
-    }
-    else {
+    } else {
       LoggerProxy.logger.warn('Locus-info:index#isMeetingActive --> Meeting Type is unknown.');
     }
   }
@@ -490,7 +509,10 @@ export default class LocusInfo extends EventsScope {
   compareAndUpdate() {
     // TODO: check with locus team on host and moderator doc
     // use host as a validator if needed
-    if (this.compareAndUpdateFlags.compareSelfAndHost || this.compareAndUpdateFlags.compareHostAndSelf) {
+    if (
+      this.compareAndUpdateFlags.compareSelfAndHost ||
+      this.compareAndUpdateFlags.compareHostAndSelf
+    ) {
       this.compareSelfAndHost();
     }
   }
@@ -502,27 +524,29 @@ export default class LocusInfo extends EventsScope {
    */
   compareSelfAndHost() {
     // In some cases the host info is not present but the moderator values changes from null to false so it triggers an update
-    if ((this.parsedLocus.self.selfIdentity === this.parsedLocus.host?.hostId) && this.parsedLocus.self.moderator) {
+    if (
+      this.parsedLocus.self.selfIdentity === this.parsedLocus.host?.hostId &&
+      this.parsedLocus.self.moderator
+    ) {
       this.emitScoped(
         {
           file: 'locus-info',
-          function: 'compareSelfAndHost'
+          function: 'compareSelfAndHost',
         },
         EVENTS.LOCUS_INFO_CAN_ASSIGN_HOST,
         {
-          canAssignHost: true
+          canAssignHost: true,
         }
       );
-    }
-    else {
+    } else {
       this.emitScoped(
         {
           file: 'locus-info',
-          function: 'compareSelfAndHost'
+          function: 'compareSelfAndHost',
         },
         EVENTS.LOCUS_INFO_CAN_ASSIGN_HOST,
         {
-          canAssignHost: false
+          canAssignHost: false,
         }
       );
     }
@@ -546,42 +570,35 @@ export default class LocusInfo extends EventsScope {
       const deltas = {
         audioStatus: prevState.audioStatus !== newState.audioStatus,
         videoSlidesStatus: prevState.videoSlidesStatus !== newState.videoSlidesStatus,
-        videoStatus: prevState.videoStatus !== newState.videoStatus
+        videoStatus: prevState.videoStatus !== newState.videoStatus,
       };
 
       // Clean the object
-      Object.keys(deltas).forEach(
-        (key) => {
-          if (deltas[key] !== true) {
-            delete deltas[key];
-          }
+      Object.keys(deltas).forEach((key) => {
+        if (deltas[key] !== true) {
+          delete deltas[key];
         }
-      );
+      });
 
       return deltas;
     };
 
-    this.deltaParticipants = participants.reduce(
-      (collection, participant) => {
-        const existingParticipant = findParticipant(
-          participant,
-          this.participants || []
-        ) || {};
+    this.deltaParticipants = participants.reduce((collection, participant) => {
+      const existingParticipant = findParticipant(participant, this.participants || []) || {};
 
-        const delta = generateDelta(existingParticipant.status, participant.status);
+      const delta = generateDelta(existingParticipant.status, participant.status);
 
-        const changed = (Object.keys(delta).length > 0);
+      const changed = Object.keys(delta).length > 0;
 
-        if (changed) {
-          collection.push({
-            person: participant.person,
-            delta
-          });
-        }
+      if (changed) {
+        collection.push({
+          person: participant.person,
+          delta,
+        });
+      }
 
-        return collection;
-      }, []
-    );
+      return collection;
+    }, []);
   }
 
   /**
@@ -595,7 +612,7 @@ export default class LocusInfo extends EventsScope {
     this.emitScoped(
       {
         file: 'locus-info',
-        function: 'updateParticipants'
+        function: 'updateParticipants',
       },
       EVENTS.LOCUS_INFO_UPDATE_PARTICIPANTS,
       {
@@ -603,7 +620,7 @@ export default class LocusInfo extends EventsScope {
         recordingId: this.parsedLocus.controls && this.parsedLocus.controls.record?.modifiedBy,
         selfIdentity: this.parsedLocus.self && this.parsedLocus.self.selfIdentity,
         selfId: this.parsedLocus.self && this.parsedLocus.self.selfId,
-        hostId: this.parsedLocus.host && this.parsedLocus.host.hostId
+        hostId: this.parsedLocus.host && this.parsedLocus.host.hostId,
       }
     );
   }
@@ -621,9 +638,9 @@ export default class LocusInfo extends EventsScope {
           hasRecordingChanged,
           hasRecordingPausedChanged,
           hasMeetingContainerChanged,
-          hasTranscribeChanged
+          hasTranscribeChanged,
         },
-        current
+        current,
       } = ControlsUtils.getControls(this.controls, controls);
 
       if (hasRecordingChanged || hasRecordingPausedChanged) {
@@ -632,26 +649,24 @@ export default class LocusInfo extends EventsScope {
         if (hasRecordingPausedChanged) {
           if (current.record.paused) {
             state = RECORDING_STATE.PAUSED;
-          }
-          else {
+          } else {
             // state will be `IDLE` if the recording is not active, even when there is a `pause` status change.
             state = current.record.recording ? RECORDING_STATE.RESUMED : RECORDING_STATE.IDLE;
           }
-        }
-        else if (hasRecordingChanged) {
+        } else if (hasRecordingChanged) {
           state = current.record.recording ? RECORDING_STATE.RECORDING : RECORDING_STATE.IDLE;
         }
 
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateControls'
+            function: 'updateControls',
           },
           LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
           {
             state,
             modifiedBy: current.record.modifiedBy,
-            lastModified: current.record.lastModified
+            lastModified: current.record.lastModified,
           }
         );
       }
@@ -662,11 +677,11 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateControls'
+            function: 'updateControls',
           },
           LOCUSINFO.EVENTS.CONTROLS_MEETING_CONTAINER_UPDATED,
           {
-            meetingContainerUrl
+            meetingContainerUrl,
           }
         );
       }
@@ -677,11 +692,12 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateControls'
+            function: 'updateControls',
           },
           LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIBE_UPDATED,
           {
-            transcribing, caption
+            transcribing,
+            caption,
           }
         );
       }
@@ -700,8 +716,11 @@ export default class LocusInfo extends EventsScope {
     if (conversationUrl && !isEqual(this.conversationUrl, conversationUrl)) {
       this.conversationUrl = conversationUrl;
       this.updateMeeting({conversationUrl});
-    }
-    else if (info && info.conversationUrl && !isEqual(this.conversationUrl, info.conversationUrl)) {
+    } else if (
+      info &&
+      info.conversationUrl &&
+      !isEqual(this.conversationUrl, info.conversationUrl)
+    ) {
       this.conversationUrl = info.conversationUrl;
       this.updateMeeting({conversationUrl: info.conversationUrl});
     }
@@ -718,7 +737,6 @@ export default class LocusInfo extends EventsScope {
     }
   }
 
-
   /**
    * @param {Object} fullState
    * @returns {undefined}
@@ -734,12 +752,12 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateFullState'
+            function: 'updateFullState',
           },
           LOCUSINFO.EVENTS.FULL_STATE_MEETING_STATE_CHANGE,
           {
             previousState: result.previous && result.previous.meetingState,
-            currentState: result.current.meetingState
+            currentState: result.current.meetingState,
           }
         );
       }
@@ -748,11 +766,11 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateFullState'
+            function: 'updateFullState',
           },
           LOCUSINFO.EVENTS.FULL_STATE_TYPE_UPDATE,
           {
-            type: result.current.type
+            type: result.current.type,
           }
         );
       }
@@ -779,18 +797,17 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateHostInfo'
+            function: 'updateHostInfo',
           },
           EVENTS.LOCUS_INFO_UPDATE_HOST,
           {
             newHost: parsedHosts.current,
-            oldHost: parsedHosts.previous
+            oldHost: parsedHosts.previous,
           }
         );
       }
       this.host = host;
-    }
-    else {
+    } else {
       this.compareAndUpdateFlags.compareSelfAndHost = false;
     }
   }
@@ -802,7 +819,7 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   updateMeetingInfo(info, self) {
-    if (info && (!isEqual(this.info, info))) {
+    if (info && !isEqual(this.info, info)) {
       const roles = self ? SelfUtils.getRoles(self) : this.parsedLocus.self?.roles || [];
       const isJoined = SelfUtils.isJoined(self || this.parsedLocus.self);
       const parsedInfo = InfoUtils.getInfos(this.parsedLocus.info, info, roles, isJoined);
@@ -810,7 +827,7 @@ export default class LocusInfo extends EventsScope {
       this.emitScoped(
         {
           file: 'locus-info',
-          function: 'updateMeetingInfo'
+          function: 'updateMeetingInfo',
         },
         LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
         {info: parsedInfo.current, self}
@@ -820,7 +837,7 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateMeetingInfo'
+            function: 'updateMeetingInfo',
           },
           LOCUSINFO.EVENTS.MEETING_LOCKED,
           info
@@ -830,7 +847,7 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateMeetingInfo'
+            function: 'updateMeetingInfo',
           },
           LOCUSINFO.EVENTS.MEETING_UNLOCKED,
           info
@@ -855,15 +872,17 @@ export default class LocusInfo extends EventsScope {
       return;
     }
 
-    this.parsedLocus.embeddedApps = EmbeddedAppsUtils.parse(embeddedApps);
+    const parsedEmbeddedApps = EmbeddedAppsUtils.parse(embeddedApps);
+
+    this.updateMeeting({embeddedApps: parsedEmbeddedApps});
 
     this.emitScoped(
       {
         file: 'locus-info',
-        function: 'updateEmbeddedApps'
+        function: 'updateEmbeddedApps',
       },
       LOCUSINFO.EVENTS.EMBEDDED_APPS_UPDATED,
-      embeddedApps
+      parsedEmbeddedApps
     );
     this.embeddedApps = embeddedApps;
   }
@@ -883,12 +902,12 @@ export default class LocusInfo extends EventsScope {
       this.emitScoped(
         {
           file: 'locus-info',
-          function: 'updateMediaShares'
+          function: 'updateMediaShares',
         },
         EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
         {
           current: parsedMediaShares.current,
-          previous: parsedMediaShares.previous
+          previous: parsedMediaShares.previous,
         }
       );
       this.parsedLocus.mediaShares = parsedMediaShares.current;
@@ -941,7 +960,11 @@ export default class LocusInfo extends EventsScope {
 
       // TODO: check if we need to save the sipUri here as well
       // this.emit(LOCUSINFO.EVENTS.MEETING_UPDATE, SelfUtils.getSipUrl(this.getLocusPartner(participants, self), this.parsedLocus.fullState.type, this.parsedLocus.info.sipUri));
-      const result = SelfUtils.getSipUrl(this.getLocusPartner(participants, self), this.parsedLocus.fullState.type, this.parsedLocus.info.sipUri);
+      const result = SelfUtils.getSipUrl(
+        this.getLocusPartner(participants, self),
+        this.parsedLocus.fullState.type,
+        this.parsedLocus.info.sipUri
+      );
 
       if (result.sipUri) {
         this.updateMeeting(result);
@@ -949,8 +972,7 @@ export default class LocusInfo extends EventsScope {
 
       if (parsedSelves.updates.moderatorChanged) {
         this.compareAndUpdateFlags.compareHostAndSelf = true;
-      }
-      else {
+      } else {
         this.compareAndUpdateFlags.compareHostAndSelf = false;
       }
 
@@ -958,7 +980,7 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateSelf'
+            function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.CONTROLS_MEETING_LAYOUT_UPDATED,
           {layout: parsedSelves.current.layout}
@@ -969,7 +991,7 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateSelf'
+            function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.DISCONNECT_DUE_TO_INACTIVITY,
           {reason: self.reason}
@@ -980,7 +1002,7 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateSelf'
+            function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_MODERATOR_CHANGED,
           self
@@ -990,12 +1012,12 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateSelf'
+            function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUIRED,
           {
             muted: parsedSelves.current.remoteMuted,
-            unmuteAllowed: parsedSelves.current.unmuteAllowed
+            unmuteAllowed: parsedSelves.current.unmuteAllowed,
           }
         );
       }
@@ -1003,12 +1025,12 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateSelf'
+            function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
           {
             muted: parsedSelves.current.remoteMuted,
-            unmuteAllowed: parsedSelves.current.unmuteAllowed
+            unmuteAllowed: parsedSelves.current.unmuteAllowed,
           }
         );
       }
@@ -1016,7 +1038,7 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateSelf'
+            function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUESTED,
           {}
@@ -1026,7 +1048,7 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateSelf'
+            function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_UNADMITTED_GUEST,
           self
@@ -1036,7 +1058,7 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateSelf'
+            function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST,
           self
@@ -1047,24 +1069,28 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateSelf'
+            function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.MEDIA_INACTIVITY,
           SelfUtils.getMediaStatus(self.mediaSessions)
         );
       }
 
-      if (parsedSelves.updates.audioStateChange || parsedSelves.updates.videoStateChange || parsedSelves.updates.shareStateChange) {
+      if (
+        parsedSelves.updates.audioStateChange ||
+        parsedSelves.updates.videoStateChange ||
+        parsedSelves.updates.shareStateChange
+      ) {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateSelf'
+            function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.MEDIA_STATUS_CHANGE,
           {
             audioStatus: parsedSelves.current.currentMediaStatus?.audio,
             videoStatus: parsedSelves.current.currentMediaStatus?.video,
-            shareStatus: parsedSelves.current.currentMediaStatus?.share
+            shareStatus: parsedSelves.current.currentMediaStatus?.share,
           }
         );
       }
@@ -1073,28 +1099,26 @@ export default class LocusInfo extends EventsScope {
         this.emitScoped(
           {
             file: 'locus-info',
-            function: 'updateSelf'
+            function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_OBSERVING
         );
       }
 
-
       this.emitScoped(
         {
           file: 'locus-info',
-          function: 'updateSelf'
+          function: 'updateSelf',
         },
         EVENTS.LOCUS_INFO_UPDATE_SELF,
         {
           oldSelf: parsedSelves.previous,
-          newSelf: parsedSelves.current
+          newSelf: parsedSelves.current,
         }
       );
       this.parsedLocus.self = parsedSelves.current;
       this.self = self;
-    }
-    else {
+    } else {
       this.compareAndUpdateFlags.compareHostAndSelf = false;
     }
   }
@@ -1112,7 +1136,7 @@ export default class LocusInfo extends EventsScope {
       this.emitScoped(
         {
           file: 'locus-info',
-          function: 'updateLocusUrl'
+          function: 'updateLocusUrl',
         },
         EVENTS.LOCUS_INFO_UPDATE_URL,
         url

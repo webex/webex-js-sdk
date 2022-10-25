@@ -30,11 +30,18 @@ EmbeddedAppsUtils.parseApp = (embeddedApp) => {
  * @returns {boolean} true if the arrays are different
  */
 EmbeddedAppsUtils.areSimilar = (apps1, apps2) => {
+  if (!apps1 || !apps2) {
+    return apps1 === apps2;
+  }
+
   if (apps1?.length !== apps2?.length) {
     return false;
   }
-  if (apps1?.[0]?.state !== apps2?.[0]?.state) {
-    return false;
+
+  for (let i = 0; i < apps1.length; i += 1) {
+    if (apps1[i].state !== apps2[i].state) {
+      return false;
+    }
   }
 
   return true;
@@ -45,7 +52,7 @@ EmbeddedAppsUtils.areSimilar = (apps1, apps2) => {
  * @param {array} embeddedApps
  * @returns {array} result - new array of parsed embedded app objects
  */
-EmbeddedAppsUtils.parse = (embeddedApps) => embeddedApps && embeddedApps.map(EmbeddedAppsUtils.parseApp);
-
+EmbeddedAppsUtils.parse = (embeddedApps) =>
+  embeddedApps && embeddedApps.map(EmbeddedAppsUtils.parseApp);
 
 export default EmbeddedAppsUtils;
