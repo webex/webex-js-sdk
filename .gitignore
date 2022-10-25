@@ -33,6 +33,7 @@ tasks/selenium
 .python-version
 .sauce
 .yarn/cache
+.yarn/install-state.gz
 .sauce.tid
 browsers.processed.js
 docs/samples/webex.min.js

@@ -1,6 +1,5 @@
 {
-  "packages/**/*.{js,ts}": [
-    "prettier --write",
-    "cspell"
+  "*.js": [
+    "yarn run lint:eslint --fix"
   ]
 }
