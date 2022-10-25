@@ -845,7 +845,8 @@ describe('plugin-meetings', () => {
 
         if (expected) {
           assert.calledWith(...expectedArgs);
-        } else {
+        }
+        else {
           assert.neverCalledWith(...expectedArgs);
         }
         locusInfo.emitScoped.resetHistory();
