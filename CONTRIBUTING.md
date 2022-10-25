@@ -48,7 +48,7 @@ If you would like to contribute to this repository by adding features, enhanceme
 
 ## Reporting Issues
 
-Please reach out to our developer support team for any issues you may be experiencings with the SDK.
+Please reach out to our developer support team for any issues you may be experiencing with the SDK.
 
 - <https://developer.webex.com/support>
 - <devsupport@webex.com>
@@ -68,7 +68,7 @@ Before you can build the Cisco Webex JS SDK, you will need the following depende
 - [node-gyp](https://www.npmjs.com/package/node-gyp)
   - This is used during the dependency install process and is used to compile some native add-on modules
   - Install with `npm install -g node-gyp`
-    - On Windows _(not WSL)_, follow [Option 1](https://github.com/nodejs/node-gyp#option-1) on node-gyp's repo, as this will automatically install python 2 and neccessary build dependencies
+    - On Windows _(not WSL)_, follow [Option 1](https://github.com/nodejs/node-gyp#option-1) on node-gyp's repo, as this will automatically install python 2 and necessary build dependencies
 - [Python 2.7](https://www.python.org/download/releases/2.7/)
   - This is also used during the dependency install process
   - Attempting to update dependencies with a Python 3.x environment will fail
@@ -94,21 +94,18 @@ Install tooling dependencies with:
 
 ```bash
 yarn install
-
 ```
 
 Build the SDK:
 
 ```bash
 yarn run build
-
 ```
 
 If at any point your out-of-the-box builds or failing or if you are tests are failing with complaints of an invalid node version, the following commands will reset and rebuild everything:
 
 ```bash
 yarn
-
 ```
 
 By default npm uses `sh` which does not support the glob syntax and as such `distsrc` and `srcdist` will fail with *No such file or directory*. To fix this you can set npm to use bash instead using:
@@ -134,42 +131,40 @@ The JS SDK allows you to customize your experience via configuration and environ
 
 | **Environment Variable** | **Details** | **Default** |
 |---|---|---|
-| ATLAS_SERVICE_URL | Used to populate the atlasServiceUrl pre discovery config | https://atlas-a.wbx2.com/admin/api/v1 |
-| CLIENT_LOGS_SERVICE_URL | Used to populate the clientLogsServiceUrl pre discovery config | https://client-logs-a.wbx2.com/api/v1 |
-| CONVERSATION_SERVICE | Used for validating an auth token | https://conv-a.wbx2.com/conversation/api/v1 |
-| ENABLE_MERCURY_LOGGING | When set, will log all mercury messages | undefined |
-| ENABLE_VERBOSE_NETWORK_LOGGING | Utilized to enable interceptor logging | undefined |
-| ENCRYPTION_SERVICE_URL | Used for plugin-board tests | https://encryption-a.wbx2.com |
-| HYDRA_SERVICE_URL | Stores the public hydra api url for managing Webex resources. | https://api.ciscospark.com/v1/ |
-| IDBROKER_BASE_URL | Used throughout the SDK as the endpoint for authorization | https://idbroker.webex.com |
-| IDENTITY_BASE_URL | Used to communicate with the identity api | https://identity.webex.com |
-| MERCURY_FORCE_CLOSE_DELAY | Milliseconds to wait for a before declaring the socket dead | 2000 |
-| MERCURY_PING_INTERVAL | Milliseconds between pings sent up the socket | 15000 |
-| MERCURY_PONG_TIMEOUT | Milliseconds to wait for a pong before declaring the connection dead | 14000 |
-| METRICS_SERVICE_URL | Used to populate the metricsServiceUrl pre discovery config | https://metrics-a.wbx2.com/metrics/api/v1 |
-| U2C_SERVICE_URL | Stores the service catalog collecting url, typically the **U2C** service. | https://u2c.wbx2.com/u2c/api/v1 |
-| WEBEX_ACCESS_TOKEN | Used to provide access token when using "webex/env" | undefined |
-| WEBEX_AUTHORIZE_URL | Populdates the Authorization URL which prompts for user's password. | https://idbroker.webex.com/idb/oauth2/v1/authorize |
-| WEBEX_AUTHORIZATION_STRING | This is the authorization url for the integration from [Cisco Webex for Developers](https://developer.webex.com/my-apps) | undefined |
-| WEBEX_CLIENT_ID | The Webex client ID used to authorize | undefined |
-| WEBEX_CLIENT_SECRET | The Webex client secret used to authorize | undefined |
-| WEBEX_CONVERSATION_CLUSTER_SERVICE | Service identifier used to lookup conversation servers in hostmap | identityLookup |
-| WEBEX_CONVERSATION_DEFAULT_CLUSTER | Cluster used to convert from "us" cluster to actual cluster | urn:TEAM:us-east-2_a:identityLookup |
-| WEBEX_LOG_LEVEL | Maximum log level that should be printed to the console. | log |
-| WEBEX_REDIRECT_URI | The URI to redirect to after authorization | undefined |
-| WEBEX_SCOPE | The Webex scope the users will authorize with | undefined |
-| WDM_SERVICE_URL | The WDM service url before the catalog is downloaded | https://wdm-a.wbx2.com/wdm/api/v1 |
-| WHISTLER_API_SERVICE_URL | The url to the whistler test service | https://whistler-prod.allnint.ciscospark.com/api/v1 |
-| WHISTLER | Run (meetings) tests using Whistler users | FALSE |
-| JENKINS | Run specific tests that should be run on (internal) Jenkins | FALSE |
+| `ATLAS_SERVICE_URL` | Used to populate the atlasServiceUrl pre discovery config | https://atlas-a.wbx2.com/admin/api/v1 |
+| `CLIENT_LOGS_SERVICE_URL` | Used to populate the clientLogsServiceUrl pre discovery config | https://client-logs-a.wbx2.com/api/v1 |
+| `CONVERSATION_SERVICE` | Used for validating an auth token | https://conv-a.wbx2.com/conversation/api/v1 |
+| `ENABLE_MERCURY_LOGGING` | When set, will log all mercury messages | undefined |
+| `ENABLE_VERBOSE_NETWORK_LOGGING` | Utilized to enable interceptor logging | undefined |
+| `ENCRYPTION_SERVICE_URL` | Used for plugin-board tests | https://encryption-a.wbx2.com |
+| `HYDRA_SERVICE_URL` | Stores the public hydra api url for managing Webex resources. | https://api.ciscospark.com/v1/ |
+| `IDBROKER_BASE_URL` | Used throughout the SDK as the endpoint for authorization | https://idbroker.webex.com |
+| `IDENTITY_BASE_URL` | Used to communicate with the identity api | https://identity.webex.com |
+| `MERCURY_FORCE_CLOSE_DELAY` | Milliseconds to wait for a before declaring the socket dead | 2000 |
+| `MERCURY_PING_INTERVAL` | Milliseconds between pings sent up the socket | 15000 |
+| `MERCURY_PONG_TIMEOUT` | Milliseconds to wait for a pong before declaring the connection dead | 14000 |
+| `METRICS_SERVICE_URL` | Used to populate the metricsServiceUrl pre discovery config | https://metrics-a.wbx2.com/metrics/api/v1 |
+| `U2C_SERVICE_URL` | Stores the service catalog collecting url, typically the **U2C** service. | https://u2c.wbx2.com/u2c/api/v1 |
+| `WEBEX_ACCESS_TOKEN` | Used to provide access token when using "webex/env" | undefined |
+| `WEBEX_AUTHORIZE_URL` | Populates the Authorization URL which prompts for user's password. | https://idbroker.webex.com/idb/oauth2/v1/authorize |
+| `WEBEX_AUTHORIZATION_STRING` | This is the authorization url for the integration from [Cisco Webex for Developers](https://developer.webex.com/my-apps) | undefined |
+| `WEBEX_CLIENT_ID` | The Webex client ID used to authorize | undefined |
+| `WEBEX_CLIENT_SECRET` | The Webex client secret used to authorize | undefined |
+| `WEBEX_CONVERSATION_CLUSTER_SERVICE` | Service identifier used to lookup conversation servers in hostmap | identityLookup |
+| `WEBEX_CONVERSATION_DEFAULT_CLUSTER` | Cluster used to convert from "us" cluster to actual cluster | urn:TEAM:us-east-2_a:identityLookup |
+| `WEBEX_LOG_LEVEL` | Maximum log level that should be printed to the console. | log |
+| `WEBEX_REDIRECT_URI` | The URI to redirect to after authorization | undefined |
+| `WEBEX_SCOPE` | The Webex scope the users will authorize with | undefined |
+| `WDM_SERVICE_URL` | The WDM service url before the catalog is downloaded | https://wdm-a.wbx2.com/wdm/api/v1 |
+| `WHISTLER_API_SERVICE_URL` | The url to the whistler test service | https://whistler-prod.allnint.ciscospark.com/api/v1 |
+| `WHISTLER` | Run (meetings) tests using Whistler users | FALSE |
+| `JENKINS` | Run specific tests that should be run on (internal) Jenkins | FALSE |
 
 ### Running Tests
 
 `yarn run test` is the entrypoint to our test runner, but its not practical to use without parameters; the full suite would take over two hours to run and cross talk would probably cause tests to break each other.
 
-
 > Get the full test-runner docs via `yarn run test --help`.
-
 
 A local development flow might look like
 
@@ -177,10 +172,9 @@ A local development flow might look like
 2. Use `yarn run build` to build all packages .
 3. Use `yarn run test --packages @webex/MYPACKAGE --node` to run the tests for just that package only in nodejs (Usually, we don't need to test both in node and the browser during development).
 
-4. Repeats steps 1-3 until the tests pass.
+4. Repeat steps 1-3 until the tests pass.
 
 `yarn run build` is a bit tedious when making lots of changes, so instead, we can use `yarn run distsrc` to point each package's `main` entry at the raw src and let `babel` compile on the fly.
-
 
 1. At the start of development, run `yarn run distsrc` once.
 
@@ -203,27 +197,26 @@ A local development flow might look like
    >      - _If you don't want to add any flags, just add a space (current workaround)_
 6. Run `yarn run srcdist` to restore the package.jsons to avoid committing those changes.
 
-
 You can use the `--unit`, `--integration`, `--automation`, and `--documentation` switches to control what types of tests you run and `--node` and `--browser` to control which environments your tests run in.
 
-The `--packages` flags will allow you to test multiple packages in one command instead of separate commands for each package `--packages @webex/plugin-meetings @webex/plugin-rooms @webex/plugin-teams`. Packages are still tested synchronously  to allow for proper output to the terminal.
+The `--packages` flags will allow you to test multiple packages in one command instead of separate commands for each package `--packages @webex/plugin-meetings @webex/plugin-rooms @webex/plugin-teams`. Packages are still tested synchronously to allow for proper output to the terminal.
 
-`--browser --karma-debug` will run the browser tests with `{singleRun: false}`, thus allowing automatic rerunning everytime you save a file (though, karma does eventually get confused and you need to interrupt and restart the command).
+`--browser --karma-debug` will run the browser tests with `{singleRun: false}`, thus allowing automatic rerunning every time you save a file (though, karma does eventually get confused and you need to interrupt and restart the command).
 
 You can use the `--browsers` _(not to be confused with the `--browser` tag)_ allows you to specify which browsers you want to run locally. This is restricted to what browsers are installed and available to you on your OS.
 The default browsers that launch are _Headless_ version of Firefox and Chrome, so `--browsers Chrome Edge` will only launch a normal version of Chrome along with Edge. If you add `defaults` to the browsers flag, it will also launch `ChromeHeadless` and `FirefoxHeadless` along with other browsers you've specified. All browsers include flags to enable WebRTC features and permissions.
 
-To run tests on [SauceLabs](https://saucelabs.com/) locally, you'll need to add a inline environment variable, `SAUCE=true`. Like mentioned above you can specify which browsers you'd like to test on with the `--browers` flag, but with SauceLabs service available to you, you can also specify which OS you'd like to test on. With the `--os` flag you have the option on testing on `Mac` and `Windows`. You can filter down the browsers that get launched by using the `--browsers` flag, so if you use `--os Windows --browsers Edge IE` it will launch only `Edge` and `IE`. Specifying just `--browsers` with `SAUCE=true` will launch that browsers in all available OSs, so `--browsers Firefox` will launch `Firefox` in `Mac` and `Windows`.
-> **The default SauceLabs configuration _"`SAUCE=true yarn run test`"_ is the latest versions of `Chrome` and `Firefox` on both `Mac` and `Windows`, along with `Edge` and `IE 11` on Windows, and `Safari` on Mac**
+To run tests on [Sauce Labs](https://saucelabs.com/) locally, you'll need to add a inline environment variable, `SAUCE=true`. Like mentioned above you can specify which browsers you'd like to test on with the `--browser` flag, but with Sauce Labs service available to you, you can also specify which OS you'd like to test on. With the `--os` flag you have the option on testing on `Mac` and `Windows`. You can filter down the browsers that get launched by using the `--browsers` flag, so if you use `--os Windows --browsers Edge IE` it will launch only `Edge` and `IE`. Specifying just `--browsers` with `SAUCE=true` will launch that browsers in all available OSs, so `--browsers Firefox` will launch `Firefox` in `Mac` and `Windows`.
+> **The default Sauce Labs configuration _"`SAUCE=true yarn run test`"_ is the latest versions of `Chrome` and `Firefox` on both `Mac` and `Windows`, along with `Edge` and `IE 11` on Windows, and `Safari` on Mac**
 
 >
 > `--os Mac` will launch `Chrome`, `Firefox`, and `Safari`
 >
 > `--os Windows` will launch `Chrome`, `Firefox`, `Edge`, and `IE 11`
 >
-> `--os Linux` WILL NEED `--browsers Firefox` as SauceLabs only supports `Firefox 45` for Linux. This is why it's also not included by default and requires two flags
+> `--os Linux` WILL NEED `--browsers Firefox` as Sauce Labs only supports `Firefox 45` for Linux. This is why it's also not included by default and requires two flags
 
-> See more scripts at [SCRIPTS.md](SCRIPTS.md) to learn how to run tests and more.
+> See more scripts at [`SCRIPTS.md`](SCRIPTS.md) to learn how to run tests and more.
 
 #### Running Samples Locally
 
@@ -233,7 +226,6 @@ cd webex-js-sdk
 yarn install
 yarn run build
 yarn run samples:serve
-
 ```
 
 > NOTE: This installs all of the SDK's tooling dependencies, so you'll need `libgcrypt` and (possibly) `graphicsmagick`.
@@ -247,7 +239,7 @@ yarn run samples:serve
 > - Windows
 >   - You can install `graphicsmagick` using either [scoop](https://scoop.sh/) or [Chocolatey](https://chocolatey.org/)
 >     - scoop: `scoop install graphicsmagick`
->     - chocolotey: `choco install graphicsmagick`
+>     - chocolatey: `choco install graphicsmagick`
 >     - Also *globally* install `win-node-env` to resolve `NODE_ENV` windows related command issues
 
 Head to [https://localhost:8000/](https://localhost:8000/) to use the samples
@@ -262,15 +254,13 @@ The samples tests are run by <https://webdriver.io> which spins up two browser i
 
 These tests are run with `yarn run samples:test`.
 
-We have found that due to the h.264 codec downloading in Firefox, the best way to run these test is on SauceLabs.
-You can run them on SauceLabs with `SAUCE=true yarn run samples:test`.
-
+We have found that due to the h.264 codec downloading in Firefox, the best way to run these test is on Sauce Labs.
+You can run them on Sauce Labs with `SAUCE=true yarn run samples:test`.
 
 To run a specific sample test instead of the full suite, append the `--spec` flag to the `samples:test` command and the path to the specific test
 
 ```sh
 yarn run samples:test --spec docs/samples/browser-call-with-screenshare
-
 ```
 
 If an error occurs when running the above command that appears to be related to a missing [Selenium](https://www.selenium.dev/) driver, the following command should install the needed external dependencies:
@@ -283,9 +273,9 @@ If an error occurs when running the above command that appears to be related to 
 
 ##### Local Samples Tests
 
-If you wish to run the samples tests locally, we suggest changing from the Chrome-to-Firefox multiremote setup to Chrome-to-Chrome.
+If you wish to run the samples tests locally, we suggest changing from the Chrome-to-Firefox multi-remote setup to Chrome-to-Chrome.
 
-You can do so by modifying the [wdio.conf.js](./wdio.conf.js) file.
+You can do so by modifying the [`wdio.conf.js`](./wdio.conf.js) file.
 Simply change the `browserFirefox`'s `capabilities` object to the same as `browserChrome` (the Chrome instance).
 When you run, you should see two instances of Chrome open.
 
@@ -294,7 +284,6 @@ When you run, you should see two instances of Chrome open.
 > NOTE: You will need to off VPN for localhost to tunnel correctly
 
 `SAUCE=true yarn run samples:test:mobile`
-
 
 - You will need to alias `localhost` which will require you to modify your `hosts` file and add that alias to your `.env` file with the name `LOCALHOST_ALIAS`.
 - By default, the config will use `local.localhost` as the alias if `LOCALHOST_ALIAS` isn't provided.
@@ -311,7 +300,6 @@ When you run, you should see two instances of Chrome open.
 
 By default the config will look for both a Android and iOS device attached to the system. If you wish to test on a specific/singular device and use Chrome installed on your machine, you can pass either `IOS=true` or `ANDROID=true` environment variables to the command above.
 _Ex. `ANDROID=true yarn run samples:test:mobile` will open Chrome on your local machine and Chrome on your attached Android device._
-
 
 This process is more involved and requires both devices to be wired to the laptop/machine.
 
@@ -341,14 +329,14 @@ This process is more involved and requires both devices to be wired to the lapto
 
 ### Git Commit Guidelines
 
-We follow the (Conventional Commits)[https://www.conventionalcommits.org/] specification when writing commits and are run/linted through [conventional changelog](https://github.com/conventional-changelog/conventional-changelog)
+We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification when writing commits and are run/linted through [conventional changelog](https://github.com/conventional-changelog/conventional-changelog)
 to generate the changelog. Please adhere to the following guidelines when formatting your commit messages.
 
 #### Commit Message Format
 
 Each commit message consists of a **header**, a **body** and a **footer**. The header has a special format that includes a **type**, a **scope** and a **subject**:
 
-```
+```text
 <type>(<scope>): <subject>
 <BLANK LINE>
 <body>
@@ -366,7 +354,7 @@ If the commit reverts a previous commit, it should begin with `revert:`, followe
 
 #### Type
 
-> Examples can be found on the (Conventional Commits website)[https://www.conventionalcommits.org/en/v1.0.0/#examples]
+> Examples can be found on the [Conventional Commits website](https://www.conventionalcommits.org/en/v1.0.0/#examples)
 
 The following types will cause a version bump:
 
@@ -418,7 +406,7 @@ All of these commit messages should include an explanation for why you're using 
 
 ##### `[skip npm]`
 
-This will run through the all the Github Checks, but will skip any version bumping, tagging, and subsequent publishing to npm after a pull request is merged.
+This will run through the all the GitHub Checks, but will skip any version bumping, tagging, and subsequent publishing to npm after a pull request is merged.
 
 ##### `[skip ci]`
 
