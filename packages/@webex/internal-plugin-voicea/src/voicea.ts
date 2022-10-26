@@ -83,7 +83,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
           {
             isFinal: false,
             transcriptId: voiceaPayload.transcript_id,
-            translations: voiceaPayload.translations,
             transcripts: voiceaPayload.transcripts,
           }
         );

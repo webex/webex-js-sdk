@@ -403,7 +403,6 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(triggerSpy, {
           isFinal: false,
           transcriptId: '3ec73890-bffb-f28b-e77f-99dc13caea7e',
-          translations: undefined,
           transcripts,
         });
       });
