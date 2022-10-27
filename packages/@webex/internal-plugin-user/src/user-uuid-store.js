@@ -55,7 +55,7 @@ export default class UserUUIDStore {
   }
 
   /**
-   * Retrievves the specified user object from the store
+   * Retrieves the specified user object from the store
    * @param {string} id
    * @returns {Promise<Object>}
    */

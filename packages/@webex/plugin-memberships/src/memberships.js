@@ -67,7 +67,7 @@ const Memberships = WebexPlugin.extend({
    *     webex.memberships.on('seen', (event) => {
    *       // This represents a "read receipt" and will include a
    *       // lastSeenId for the message this member has just "read",
-   *       // There is currently no equivelent webhook for this event.
+   *       // There is currently no equivalent webhook for this event.
    *       console.log(`Got a membership:seen event:\n${event}`);
    *     }
    *     webex.memberships.on('deleted', (event) =>  => {
@@ -177,7 +177,7 @@ const Memberships = WebexPlugin.extend({
 
   /**
    * Returns a list of memberships. In most cases the results will only contain
-   * rooms that the authentiated user is a member of. You can filter the results
+   * rooms that the authenticated user is a member of. You can filter the results
    * by room to list people in a room or by person to find rooms that a
    * specific person is a member of.
    * @instance
@@ -266,14 +266,14 @@ const Memberships = WebexPlugin.extend({
               // We keep track of the last read message by each user
               const roomUUID = resp.id;
               const roomId = buildHydraRoomId(roomUUID, conversation.cluster);
-              const particpants = resp.participants.items;
+              const participants = resp.participants.items;
               const lastReadInfo = {items: []};
               const roomType = getHydraRoomType(resp.tags);
               const myId = this.webex.internal.me.id;
               const isRoomHidden = resp.tags.includes(SDK_EVENT.INTERNAL.ACTIVITY_TAG.HIDDEN);
 
-              for (let i = 0; i < particpants.length; i += 1) {
-                const participant = particpants[i];
+              for (let i = 0; i < participants.length; i += 1) {
+                const participant = participants[i];
                 const participantInfo = {
                   id: buildHydraMembershipId(participant.entryUUID, roomUUID,
                     conversation.cluster),
@@ -570,7 +570,7 @@ const Memberships = WebexPlugin.extend({
 
   /**
    * Constructs the data object for an event on the memberships resource,
-   * adhering to Hydra's Webehook data structure memberships.
+   * adhering to Hydra's Webhook data structure memberships.
    * External users of the SDK should not call this function
    * @private
    * @memberof Memberships
