@@ -33,8 +33,8 @@ const getRoomType = (roomTags) =>
 /**
  * @typedef {Object} MessageObject
  * @property {string} id - (server generated) Unique identifier for the message
- * @property {string} personId - The ID for the author of the messasge
- * @property {email} personEmail - The email for the author of the messasge
+ * @property {string} personId - The ID for the author of the message
+ * @property {email} personEmail - The email for the author of the message
  * @property {string} roomId - The ID for the room of the message
  * @property {string} text - The message posted to the room in plain text
  * @property {string} markdown - The message posted to the room in markdown
@@ -201,7 +201,7 @@ const Messages = WebexPlugin.extend({
 
   /**
    * Returns a list of messages. In most cases the results will only contain
-   * messages posted in rooms that the authentiated user is a member of.
+   * messages posted in rooms that the authenticated user is a member of.
    * @instance
    * @memberof Messages
    * @param {Object} options
@@ -341,7 +341,7 @@ const Messages = WebexPlugin.extend({
 
   /**
    * Constructs the data object for an event on the messages resource,
-   * adhering to Hydra's Webehook data structure messages.
+   * adhering to Hydra's Webhook data structure messages.
    * External users of the SDK should not call this function
    * @private
    * @memberof Messages
