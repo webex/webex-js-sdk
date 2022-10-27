@@ -6,7 +6,7 @@ import {requestWithRetries} from './retry';
 class Transforms {
   /**
    * This function is used to encrypt sensitive properties on the ReportRequest before it is sent to the eDiscovery Service createReport API
-   * @param {Object} ctx - An object containg a webex instance and a transform
+   * @param {Object} ctx - An object containing a webex instance and a transform
    * @param {Object} object - Generic object that you want to encrypt some property on based on the type
    * @returns {Promise} - Returns a transform promise
    */
@@ -87,7 +87,7 @@ class Transforms {
 
   /**
    * This function is used to decrypt encrypted properties on the ReportRequest that is returned from the eDiscovery Service getReport(s) API
-   * @param {Object} ctx - An object containg a webex instance and a transform
+   * @param {Object} ctx - An object containing a webex instance and a transform
    * @param {Object} object - Generic object that you want to decrypt some property on based on the type
    * @returns {Promise} - Returns a transform promise
    */
@@ -162,7 +162,7 @@ class Transforms {
 
   /**
    * This function is used to decrypt encrypted properties on the activities that are returned from the eDiscovery Service getContent API
-   * @param {Object} ctx - An object containg a webex instance and a transform
+   * @param {Object} ctx - An object containing a webex instance and a transform
    * @param {Object} object - Generic object that you want to decrypt some property on based on the type
    * @param {String} reportId - Id of the report for which content is being retrieved
    * @returns {Promise} - Returns a transform promise
