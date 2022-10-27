@@ -21,7 +21,6 @@ import {
   _MEETING_ID_,
   LOCUSINFO,
 } from '@webex/plugin-meetings/src/constants';
-
 import * as StatsAnalyzerModule from '@webex/plugin-meetings/src/statsAnalyzer';
 import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
 import Meetings, {CONSTANTS} from '@webex/plugin-meetings';
@@ -3667,6 +3666,7 @@ describe('plugin-meetings', () => {
         let canUserLowerAllHandsSpy;
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
+        let canUserEndMeetingSpy;
 
 
         beforeEach(() => {
@@ -3682,6 +3682,7 @@ describe('plugin-meetings', () => {
           canUserLowerAllHandsSpy = sinon.spy(MeetingUtil, 'canUserLowerAllHands');
           canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
+          canUserEndMeetingSpy = sinon.spy(MeetingUtil, 'canUserEndMeeting');
         });
 
         afterEach(() => {
@@ -3719,6 +3720,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(canUserLowerAllHandsSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserLowerSomeoneElsesHandSpy, payload.info.userDisplayHints);
           assert.calledWith(waitingForOthersToJoinSpy, payload.info.userDisplayHints);
+          assert.calledWith(canUserEndMeetingSpy, payload.info.userDisplayHints);
 
           assert.calledWith(
             TriggerProxy.trigger,

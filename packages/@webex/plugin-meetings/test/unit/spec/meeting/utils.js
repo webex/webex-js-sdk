@@ -1,6 +1,5 @@
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
-
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig
@@ -247,6 +246,15 @@ describe('plugin-meetings', () => {
       it('works as expected', () => {
         assert.deepEqual(MeetingUtil.canUserLowerSomeoneElsesHand(['LOWER_SOMEONE_ELSES_HAND']), true);
         assert.deepEqual(MeetingUtil.canUserLowerSomeoneElsesHand([]), false);
+      });
+    });
+
+    describe('canUserEndMeeting', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.canUserEndMeeting(['LEAVE_TRANSFER_HOST_END_MEETING']), true);
+        assert.deepEqual(MeetingUtil.canUserEndMeeting(['LEAVE_END_MEETING']), true);
+        assert.deepEqual(MeetingUtil.canUserEndMeeting(['LEAVE_TRANSFER_HOST_END_MEETING', 'LEAVE_END_MEETING']), true);
+        assert.deepEqual(MeetingUtil.canUserEndMeeting([]), false);
       });
     });
 

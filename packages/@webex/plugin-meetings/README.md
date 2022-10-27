@@ -29,6 +29,7 @@ This is a plugin for the Cisco Webex JS SDK . Please see our [developer portal](
 - Version `0.109.0` - Participant email has been removed to reduce PII. Please use participant identity (`members.membersCollection.members[id].participant.identity`) to lookup participant details via the [/people](https://developer.webex.com/docs/api/v1/people/get-person-details) endpoint.
 
 ## API Docs and Sample App
+
 API Docs: https://webex.github.io/webex-js-sdk/api/
 Hosted Sample App: https://webex.github.io/webex-js-sdk/samples/browser-plugin-meetings/
 See https://github.com/webex/webex-js-sdk/tree/master/docs/samples/browser-plugin-meetings for the sample app code vs the readme
@@ -42,7 +43,7 @@ These setup actions are handled with the `register` function.
 This function registers the device, connects web sockets, and listens for meeting events.
 
 ```js
-webex.meetings.register()
+webex.meetings.register();
 ```
 
 #### Device Unregistration
@@ -51,7 +52,7 @@ The inverse of the `register()` function is available as well.
 This function stops listening for meeting events, disconnects from web sockets and unregisters the device.
 
 ```js
-webex.meetings.unregister()
+webex.meetings.unregister();
 ```
 
 #### Creating a basic meeting
@@ -94,6 +95,7 @@ return webex.meetings.create(locusObj, 'LOCUS_ID').then((meeting) ==> {...});
 #### Meetings
 
 ##### List Active Meetings
+
 We want to sync our meetings collection with the server.
 
 ```js
@@ -108,15 +110,16 @@ webex.meetings.syncMeetings().then(() => {
 ##### Get a Meeting
 
 ```js
-webex.meetings.getMeetingByType('SIP_URI', sipUri)
+webex.meetings.getMeetingByType('SIP_URI', sipUri);
 ```
 
 ##### Properties
+
 ```js
-webex.meetings.personalMeetingRoom // the personal meeting room instance
-webex.meetings.reachability // the reachability instance, not initialized until after setReachability is called
-webex.meetings.meetingCollection // the collection of meetings instance
-webex.meetings.meetingInfo // the meeting info instance
+webex.meetings.personalMeetingRoom; // the personal meeting room instance
+webex.meetings.reachability; // the reachability instance, not initialized until after setReachability is called
+webex.meetings.meetingCollection; // the collection of meetings instance
+webex.meetings.meetingInfo; // the meeting info instance
 ```
 
 ##### Media
@@ -134,16 +137,19 @@ const mediaSettings = {
   receiveShare: true,
   sendVideo: true,
   sendAudio: true,
-  sendShare: false
+  sendShare: false,
 };
 
-const myStreams = {}
-meeting.getMediaStreams(mediaSettings).then(([localStream, localShare]) => {
-  return {localStream, localShare};
-}).then((streams) => {
-  myStreams.localStream = streams.localStream
-  myStreams.localShare = streams.localShare
-});
+const myStreams = {};
+meeting
+  .getMediaStreams(mediaSettings)
+  .then(([localStream, localShare]) => {
+    return {localStream, localShare};
+  })
+  .then((streams) => {
+    myStreams.localStream = streams.localStream;
+    myStreams.localShare = streams.localShare;
+  });
 ```
 
 This local stream is now ready to be added to the DOM for a self preview via:
@@ -161,32 +167,34 @@ document.getElementById('localvideo').srcObject = myStreams.localStream;
 Once you have your local streams and shares, you need to add the media to the meeting with the `addMedia` function.
 
 ```js
-meeting.addMedia({
-  localShare,
-  localStream,
-  mediaSettings
-}).then((mediaResponse) => {
-  // do something once you know media has been completed
-});
+meeting
+  .addMedia({
+    localShare,
+    localStream,
+    mediaSettings,
+  })
+  .then((mediaResponse) => {
+    // do something once you know media has been completed
+  });
 ```
 
 #### Join a meeting
 
 ##### Basic Join
+
 One can join a meeting without adding a media to just be present in the meeting without send/receive
 Once a meeting object has been created, to start it, simply `join` it.
+
 ```javascript
 let destination = `obiwan@example.com`; // email example
-return webex.meetings
-  .create(destination)
-  .then((meeting) => {
-    activeMeeting = meeting;
-    // attach listeners or other actions
-    activeMeeting.join().then(() => {
-      // now the meeting is joined!
-      // now you can addMedia
-    });
+return webex.meetings.create(destination).then((meeting) => {
+  activeMeeting = meeting;
+  // attach listeners or other actions
+  activeMeeting.join().then(() => {
+    // now the meeting is joined!
+    // now you can addMedia
   });
+});
 ```
 
 ##### Full Example
@@ -351,7 +359,9 @@ meeting.on('meeting:receiveTranscription:stopped', () => {});
 
 await meeting.join({receiveTranscription: true});
 ```
+
 ##### Microphone, Speaker and Camera
+
 Select a different device than the default:
 
 ```js
@@ -418,11 +428,13 @@ meeting.getMediaStreams(media, {audio, video}).then(...)
 ```
 
 ###### Changing remote audio output
+
 ```js
 // Attach audio output device to video element using device/sink ID.
 function attachSinkId(element, sinkId) {
   if (typeof element.sinkId !== 'undefined') {
-    element.setSinkId(sinkId)
+    element
+      .setSinkId(sinkId)
       .then(() => {
         console.log(`Success, audio output device attached: ${sinkId}`);
       })
@@ -436,8 +448,7 @@ function attachSinkId(element, sinkId) {
         // Jump back to first output device in the list as it's the default.
         audioOutputSelect.selectedIndex = 0;
       });
-  }
-  else {
+  } else {
     console.warn('Browser does not support output device selection.');
   }
 }
@@ -448,6 +459,7 @@ audioOutputSelect.onchange = function () {
 ```
 
 ##### Record
+
 ```js
 // you can only pause if recording
 // you can only start recording if not recording
@@ -465,71 +477,87 @@ meeting.stopRecording();
 ```
 
 ##### Mute Audio or Video
+
 ```js
 meeting.muteAudio();
 meeting.muteVideo();
 ```
 
 ##### Unmute Audio or Video
+
 ```js
 meeting.unmuteAudio();
 meeting.unmuteVideo();
 ```
 
 ##### Start Sending a Share
+
 ```js
 meeting.shareScreen();
 ```
 
 ##### Stop Sending a Share
+
 ```js
 meeting.stopShare();
 ```
 
 ##### Update Audio/Video Streams
+
 Use this if you want to change the actual streams send and receive for audio or video component separately; `updateAudio` and `updateVideo` is for the developer to add and remove the streams completely.
+
 ```js
 //video
-  if (media.sendVideo) {
-    meeting.getMediaStreams({sendVideo: true}, {video: videoSelect.value ? {deviceId: {exact: videoSelect.value}} : media.sendVideo})
-      .then(([localStream]) => meeting.updateVideo({
+if (media.sendVideo) {
+  meeting
+    .getMediaStreams(
+      {sendVideo: true},
+      {video: videoSelect.value ? {deviceId: {exact: videoSelect.value}} : media.sendVideo}
+    )
+    .then(([localStream]) =>
+      meeting.updateVideo({
         stream: localStream,
         sendVideo: media.sendVideo,
-        receiveVideo: media.receiveVideo
-      }));
-  }
-  else {
-    meeting.updateVideo({
-      sendVideo: media.sendVideo,
-      receiveVideo: media.receiveVideo
-    });
-  }
+        receiveVideo: media.receiveVideo,
+      })
+    );
+} else {
+  meeting.updateVideo({
+    sendVideo: media.sendVideo,
+    receiveVideo: media.receiveVideo,
+  });
+}
 //audio
-  if (media.sendAudio) {
-    meeting.getMediaStreams(media, {audio: audioInputSelect.value ? {deviceId: {exact: audioInputSelect.value}} : media.sendAudio})
-      .then(([localStream]) => meeting.updateAudio({
+if (media.sendAudio) {
+  meeting
+    .getMediaStreams(media, {
+      audio: audioInputSelect.value ? {deviceId: {exact: audioInputSelect.value}} : media.sendAudio,
+    })
+    .then(([localStream]) =>
+      meeting.updateAudio({
         stream: localStream,
         sendAudio: media.sendAudio,
-        receiveAudio: media.receiveAudio
-      }));
-  }
-  else {
-    meeting.updateAudio({
-      sendAudio: media.sendAudio,
-      receiveAudio: media.receiveAudio
-    });
-  }
+        receiveAudio: media.receiveAudio,
+      })
+    );
+} else {
+  meeting.updateAudio({
+    sendAudio: media.sendAudio,
+    receiveAudio: media.receiveAudio,
+  });
+}
 //all in one
-  meeting.getMediaStreams(media, {audio, video})
-    .then(([localStream, localShare]) => meeting.updateMedia({
-      mediaSettings: media,
-      localStream,
-      localShare
-    }));
+meeting.getMediaStreams(media, {audio, video}).then(([localStream, localShare]) =>
+  meeting.updateMedia({
+    mediaSettings: media,
+    localStream,
+    localShare,
+  })
+);
 ```
 
-
 ##### Accessing media directly (outside of a meeting)
+
 You can also directly access the following media properties that are not on a meeting instance
 
 ```
@@ -539,24 +567,29 @@ this.media.getUserMedia(mediaSetting, audioVideo, sharePreferences, config)
 See the [Media](https://github.com/webex/webex-js-sdk/blob/master/packages/node_modules/%40webex/plugin-meetings/src/media/index.js) util file for method signatures.
 
 ##### Leave a Meeting
+
 To leave a meeting, simply call leave
+
 ```js
 myMeeting.leave();
 ```
 
 ##### Lock/Unlock a Meeting
+
 ```js
 meeting.lockMeeting();
 meeting.unlockMeeting();
 ```
 
 ##### Transfer Host
+
 ```js
 const hostMemberId = ...;
 meeting.transfer(hostMemberId);
 ```
 
 ##### Check User Actions
+
 ```js
 meeting.inMeetingActions.get();
 {
@@ -572,6 +605,7 @@ meeting.inMeetingActions.get();
   canRaiseHand: boolean,
   canLowerAllHands: boolean,
   canLowerSomeoneElsesHand: boolean,
+  canEndMeeting: boolean,
 }
 ```
 
@@ -604,9 +638,11 @@ webex.meetings.personalMeetingRoom.get().then((pmr) => {
 ```
 
 #### Usage of Webex Devices
+
 For details on how to use the devices see https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/%40webex/plugin-device-manager
 
 ##### Leave a Meeting Using a Device
+
 ```js
 const resourceId = ...;
 
@@ -616,6 +652,7 @@ meeting.leave({resourceId}).then((res) => {
 ```
 
 ##### Leave a Meeting While Paired to the Device, Keep Device in Meeting
+
 ```js
 meeting.leave().then((res) => {
   console.log(`successful leave, ${res}`);
@@ -623,6 +660,7 @@ meeting.leave().then((res) => {
 ```
 
 ##### Move Meeting To Paired Device
+
 ```js
 const resourceId = ...
 
@@ -633,6 +671,7 @@ meeting.moveTo(resourceId).then((res) => {
 ```
 
 ##### Move Meeting from Paired Device
+
 ```js
 const resourceId = ...
 
@@ -642,6 +681,7 @@ meeting.moveFrom(resourceId).then((res) => {
 ```
 
 ##### Start Wireless Share
+
 ```js
 const deviceId = ...
 // create the meeting
@@ -674,23 +714,27 @@ meeting.getMediaStreams({
 ```
 
 ##### End Wireless Share
+
 ```js
 meeting.leave();
 ```
 
 ##### Reconnect a Meeting Media
+
 Warning: not necessary to use manually, internally the sdk listens to mercury reconnect events to determine for a reconnection
+
 ```js
 meeting.reconnect();
 ```
 
 #### Scheduled Meetings
-For scheduled meetings see https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/%40webex/internal-plugin-calendar
 
+For scheduled meetings see https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/%40webex/internal-plugin-calendar
 
 #### Member
 
 ##### Properties
+
 ```javascript
 member.participant ... // Object server participant object, advanced use only
 member.id ... // String key for storing
@@ -718,9 +762,11 @@ member.isModeratorAssignmentProhibited ... // Boolean
 ```
 
 #### Members
- You can access the members object on each individual meeting instance. It has some key events to listen to, and maintains what happens for members of a meeting with some key properties.
+
+You can access the members object on each individual meeting instance. It has some key events to listen to, and maintains what happens for members of a meeting with some key properties.
 
 ##### Properties
+
 ```javascript
 meeting.members.membersCollection.members ... // the members collection, object {id0: member0, ... idN: memberN}
 meeting.members.locusUrl ... // current locusUrl being used
@@ -730,38 +776,40 @@ meeting.members.mediaShareContentId ... // active content sharer id for the meet
 ```
 
 ##### Functions
+
 ```javascript
 // You can add a guest to the meeting by inviting them, this is proxied by meeting.invite
 // use an emailAddress and a boolean value alertIfActive to notify server side (usually true)
-meeting.members.addMember(emailAddress, alertIfActive)
+meeting.members.addMember(emailAddress, alertIfActive);
 
 // You can admit the guest to the meeting once they are waiting in the lobby, you can do this in bulk, proxied by meeting.admit
 // use member ids, can be singular, but has to be put into an array
-meeting.members.admitMembers([memberIds])
+meeting.members.admitMembers([memberIds]);
 
 // You can remove a member from the meeting by booting them, this is proxied by meeting.remove
 // use a memberId string
-meeting.members.removeMember(memberId)
+meeting.members.removeMember(memberId);
 
 // You can audio mute a member from the meeting by calling to mute them, this is proxied by meeting.mute
 // use a memberId string and a boolean to mute or not, default to true
 // mute them
-meeting.members.muteMember(memberId)
+meeting.members.muteMember(memberId);
 
 // You can raise or lower the hand of a member from the meeting
 // use a memberId string and a "raise" boolean to raise or lower, default to true ("raise the hand")
-meeting.members.raiseOrLowerHand(memberId)
+meeting.members.raiseOrLowerHand(memberId);
 
 // You can lower all hands in a meeting
 // use a memberId string to indicate who is requesting lowering all hands
-meeting.members.lowerAllHands(requestingMemberId)
+meeting.members.lowerAllHands(requestingMemberId);
 
 // You can transfer the host role to another member in the meeting, this is proxied by meeting.transfer
 // use a memberId string and a moderator boolean to transfer or not, default to true
-meeting.members.transferHostToMember(memberId)
+meeting.members.transferHostToMember(memberId);
 ```
 
 ##### Events
+
 ```javascript
 // members collection updated
 meeting.members.on('members:update', (payload) => {
@@ -791,44 +839,48 @@ meeting.members.on('members:content:update', (payload) => {
 meeting.members.on('members:host:update', (payload) => {
   console.log(`who started hosting: ${payload.activeHostId};`);
   console.log(`who stopped hosting: ${payload.endedHostId};`);
-})
+});
 // self updates, not typically used
 meeting.members.on('members:self:update', (payload) => {
   console.log(`active self id: ${payload.activeSelfId};`);
   console.log(`ended self Id: ${payload.endedSelfId};`);
-})
+});
 ```
 
 ## Events
 
 ### Meetings Events
+
 ```js
 webex.meetings.on(...)
 ```
-| Event Name | Description |
-|---|---|
-| `meetings:ready` | Fired when the plugin has been instantiated and is ready for action! |
-| `meeting:added` | Fired when a meeting has been added to the collection, either incoming, or outgoing, can be joined |
-| `meeting:removed` | Fired when a meeting has been deleted from the collection, this meeting cannot be rejoined |
-|`media:codec:loaded`| Fired when H.264 media codec has been loaded in the browser. Does not have a payload.|
-|`media:codec:missing`| Fired when H.264 media codec appears to be missing from the browser. Does not have a payload. |
-|---|---|
+
+| Event Name            | Description                                                                                        |
+| --------------------- | -------------------------------------------------------------------------------------------------- |
+| `meetings:ready`      | Fired when the plugin has been instantiated and is ready for action!                               |
+| `meeting:added`       | Fired when a meeting has been added to the collection, either incoming, or outgoing, can be joined |
+| `meeting:removed`     | Fired when a meeting has been deleted from the collection, this meeting cannot be rejoined         |
+| `media:codec:loaded`  | Fired when H.264 media codec has been loaded in the browser. Does not have a payload.              |
+| `media:codec:missing` | Fired when H.264 media codec appears to be missing from the browser. Does not have a payload.      |
+| ---                   | ---                                                                                                |
 
 `meetings:ready` does not have a payload
 
 `meeting:added` has the following payload
+
 ```js
 {
-  meetingId // the uuid of the meeting removed
-  type // string type can be INCOMING, JOIN, or MEETING
+  meetingId; // the uuid of the meeting removed
+  type; // string type can be INCOMING, JOIN, or MEETING
 }
 ```
 
 `meeting:removed` has the following payload
+
 ```js
 {
-  meetingId // the uuid of the meeting removed
-  response // a propagated server response
+  meetingId; // the uuid of the meeting removed
+  response; // a propagated server response
 }
 ```
 
@@ -838,41 +890,41 @@ webex.meetings.on(...)
 meeting.on(...)
 ```
 
-| Event Name | Description |
-|---|---|
-| `meetings:ready` | Fired when the meetings plugin has been successfully initialized |
-| `meetings:registered` | Fired when the meetings plugin has registered the device and is listening to websocket events |
-| `meetings:unregistered` | Fired when the meetings plugin has been disconnected from websockets and unregistered as a device |
-| `media:ready` | Fired when remote or local media has been acquired |
-| `media:stopped` | Fired when remote or local media has been torn down |
-| `meeting:media:local:start` | Fired when local media has started sending bytes |
-| `meeting:media:remote:start` | Fired when local media has started receiving bytes from the remote audio or video streams |
-| `meeting:alerted` | Fired when locus was notified that user received meeting |
-| `meeting:ringing` | Fired when meeting should have a ringing sound on repeat |
-| `meeting:ringingStop` | Fired when meeting should stop a ringing sound |
-| `meeting:startedSharingLocal` | Fired when local screen sharing was started |
-| `meeting:stoppedSharingLocal` | Fired when local screen sharing ends |
-| `meeting:startedSharingRemote` | Fired when remote screen sharing was started |
-| `meeting:stoppedSharingRemote` | Fired when remote screen sharing ends |
-| `meeting:self:lobbyWaiting` | Fired when user has entered the lobby for a PMR or the like |
-| `meeting:self:guestAdmitted` | Fired when user has entered the meeting after waiting to be admitted from join |
-| `meeting:self:mutedByOthers` | Fired when user has been audio muted by another in the muting |
-| `meeting:reconnectionStarting` | Fired when a reconnect begins |
-| `meeting:reconnectionSuccess` | Fired when the media was reconnected successfully |
-| `meeting:reconnectionFailure` | Fired when the media failed to reconnect, user will have to rejoin and connect |
-| `meeting:unlocked` | Fired when the meeting was unlocked by the host, for webex type meetings only |
-| `meeting:locked` | Fired when the meeting was locked by the host, for webex type meetings only |
-| `meeting:actionsUpdate` | Fired when the user has new actions they can take, such as lock, unlock, transferHost |
-| `meeting:logUpload:success` | Fired when the meeting logs were successfully uploaded |
-| `meeting:logUpload:failure` | Fired when the meeting logs failed to upload |
-| `meeting:recording:started` | Fired when member starts recording |
-| `meeting:recording:stopped` | Fired when member stops recording |
-| `meeting:recording:paused`  | Fired when member pauses recording |
-| `meeting:recording:resumed` | Fired when member resumes recording |
-| `meeting:receiveTranscription:started` | Fired when transcription is received |
-| `meeting:receiveTranscription:stopped` | Fired when transcription has stopped from being received |
-| `meeting:meetingContainer:update` | Fired when the meetingContainerUrl is updated |
-|---|---|
+| Event Name                             | Description                                                                                       |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `meetings:ready`                       | Fired when the meetings plugin has been successfully initialized                                  |
+| `meetings:registered`                  | Fired when the meetings plugin has registered the device and is listening to websocket events     |
+| `meetings:unregistered`                | Fired when the meetings plugin has been disconnected from websockets and unregistered as a device |
+| `media:ready`                          | Fired when remote or local media has been acquired                                                |
+| `media:stopped`                        | Fired when remote or local media has been torn down                                               |
+| `meeting:media:local:start`            | Fired when local media has started sending bytes                                                  |
+| `meeting:media:remote:start`           | Fired when local media has started receiving bytes from the remote audio or video streams         |
+| `meeting:alerted`                      | Fired when locus was notified that user received meeting                                          |
+| `meeting:ringing`                      | Fired when meeting should have a ringing sound on repeat                                          |
+| `meeting:ringingStop`                  | Fired when meeting should stop a ringing sound                                                    |
+| `meeting:startedSharingLocal`          | Fired when local screen sharing was started                                                       |
+| `meeting:stoppedSharingLocal`          | Fired when local screen sharing ends                                                              |
+| `meeting:startedSharingRemote`         | Fired when remote screen sharing was started                                                      |
+| `meeting:stoppedSharingRemote`         | Fired when remote screen sharing ends                                                             |
+| `meeting:self:lobbyWaiting`            | Fired when user has entered the lobby for a PMR or the like                                       |
+| `meeting:self:guestAdmitted`           | Fired when user has entered the meeting after waiting to be admitted from join                    |
+| `meeting:self:mutedByOthers`           | Fired when user has been audio muted by another in the muting                                     |
+| `meeting:reconnectionStarting`         | Fired when a reconnect begins                                                                     |
+| `meeting:reconnectionSuccess`          | Fired when the media was reconnected successfully                                                 |
+| `meeting:reconnectionFailure`          | Fired when the media failed to reconnect, user will have to rejoin and connect                    |
+| `meeting:unlocked`                     | Fired when the meeting was unlocked by the host, for webex type meetings only                     |
+| `meeting:locked`                       | Fired when the meeting was locked by the host, for webex type meetings only                       |
+| `meeting:actionsUpdate`                | Fired when the user has new actions they can take, such as lock, unlock, transferHost             |
+| `meeting:logUpload:success`            | Fired when the meeting logs were successfully uploaded                                            |
+| `meeting:logUpload:failure`            | Fired when the meeting logs failed to upload                                                      |
+| `meeting:recording:started`            | Fired when member starts recording                                                                |
+| `meeting:recording:stopped`            | Fired when member stops recording                                                                 |
+| `meeting:recording:paused`             | Fired when member pauses recording                                                                |
+| `meeting:recording:resumed`            | Fired when member resumes recording                                                               |
+| `meeting:receiveTranscription:started` | Fired when transcription is received                                                              |
+| `meeting:receiveTranscription:stopped` | Fired when transcription has stopped from being received                                          |
+| `meeting:meetingContainer:update`      | Fired when the meetingContainerUrl is updated                                                     |
+| ---                                    | ---                                                                                               |
 
 `meetings:ready` does not have a payload
 
@@ -881,10 +933,11 @@ meeting.on(...)
 `meetings:unregistered` does not have a payload
 
 `media:ready` has the following payload
+
 ```javascript
 {
   type, // local or remote
-  stream; // the MediaStream
+    stream; // the MediaStream
 }
 // usage
 meeting.on('media:ready', (media) => {
@@ -910,6 +963,7 @@ meeting.on('media:ready', (media) => {
 ```
 
 `media:stopped` has the following payload
+
 ```javascript
 {
   type, // local or remote
@@ -937,6 +991,7 @@ meeting.on('media:stopped', (media) => {
 `meeting:alerted` does not have a payload
 
 `meeting:ringing` has the following payload
+
 ```js
 {
   type // INCOMING or JOIN
@@ -945,6 +1000,7 @@ meeting.on('media:stopped', (media) => {
 ```
 
 `meeting:ringingStop` has the following payload
+
 ```js
 {
   type // Object {remoteAnswered: boolean, remoteDeclined: boolean}
@@ -957,57 +1013,65 @@ meeting.on('media:stopped', (media) => {
 `meeting:stoppedSharingLocal` does not have a payload
 
 `meeting:self:lobbyWaiting` has the following payload
+
 ```js
 {
-  payload // self object
+  payload; // self object
 }
 ```
 
 `meeting:self:guestAdmitted` has the following payload
+
 ```js
 {
-  payload // self object
+  payload; // self object
 }
 ```
 
 `meeting:self:mutedByOthers` has the following payload
+
 ```js
 {
-  payload // self object
+  payload; // self object
 }
 ```
 
 `meeting:reconnectionStarting` does not have a payload
 
 `meeting:reconnectionSuccess` has the following payload
+
 ```js
 {
-  reconnect // the media promise resolution
+  reconnect; // the media promise resolution
 }
 ```
 
 `meeting:reconnectionFailure` has the following payload
+
 ```js
 {
-  error // the forwarded error from media
+  error; // the forwarded error from media
 }
 ```
 
 `meeting:unlocked` has the following payload
+
 ```js
 {
-  info // info object
+  info; // info object
 }
 ```
 
 `meeting:locked` has the following payload
+
 ```js
 {
-  info // info object
+  info; // info object
 }
 ```
 
 `meeting:actionsUpdate` has the following payload
+
 ```js
 {
   canInviteNewParticipants, // boolean
@@ -1022,6 +1086,7 @@ meeting.on('media:stopped', (media) => {
   canRaiseHand, //boolean
   canLowerAllHands, //boolean
   canLowerSomeoneElsesHand, //boolean
+  canEndMeeting, //boolean
 }
 ```
 
@@ -1029,27 +1094,30 @@ meeting.on('media:stopped', (media) => {
 `meeting:recording:stopped`
 `meeting:recording:paused`
 `meeting:recording:resumed` have the following payload
+
 ```js
 {
-  state // could be etiher `recording`, `idle` or `paused`
-  modifiedBy // user's decrypted ID who made an action
-  lastModified // when the action was made
+  state; // could be etiher `recording`, `idle` or `paused`
+  modifiedBy; // user's decrypted ID who made an action
+  lastModified; // when the action was made
 }
 ```
 
 ### Event Caveats
+
 ##### Remote screen share is not displayed if started before participant joins
 
 If you notice that the remote screen share is not being displayed to a participant when they join
 after a screen has already been shared, double-check that you are following the standard plugin-meeting workflow.
 
 Standard plugin-meeting workflow is as follows:
+
 1. Set event listener for `media:ready`
 2. Call `join()`
 3. Call `addMedia()` with `options.mediaSettings.receiveShare=true`
 4. Wait to receive an event from `media:ready` with payload `type=remoteShare` that contains the remote share media stream
 5. Set `srcObject` of a `video` element in the application to the previously obtained media stream
-(e.g. `document.getElementById('remote-screen').srcObject = media.stream`)
+   (e.g. `document.getElementById('remote-screen').srcObject = media.stream`)
 
 In most cases this will resolve the issue though an extra step could be to
 use `meeting.shareStatus` to control whether to show the video element or not.
@@ -1076,8 +1144,8 @@ There are several events submitted by this package that you can subscribe to.
 | `members:self:update` | Fired when a member in the collection has a changed self value |
 |---|---|
 
-
 `members:update` has the following payload
+
 ```js
 {
   delta: { // the changes to the members list
@@ -1089,33 +1157,35 @@ There are several events submitted by this package that you can subscribe to.
 ```
 
 `members:content:update` has the following payload
+
 ```js
 {
-  activeContentSharingId // the member id
-  endedContentSharingId // the member id
+  activeContentSharingId; // the member id
+  endedContentSharingId; // the member id
 }
 ```
 
 `members:host:update` has the following payload
+
 ```js
 {
-  activeHostId // the member id
-  endedHostId // the member id
+  activeHostId; // the member id
+  endedHostId; // the member id
 }
 ```
 
 `members:self:update` has the following payload
+
 ```js
 {
-  activeSelfId // the member id
-  endedSelfId // the member id
+  activeSelfId; // the member id
+  endedSelfId; // the member id
 }
 ```
 
 ## Development
 
 To use `webpack-dev-server` to load this package, run `yarn run samples:serve`.
-
 
 Files placed in the `docs/samples/browser-plugin-meetings` folder will be served statically.
 
