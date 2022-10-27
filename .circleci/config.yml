@@ -30,9 +30,10 @@ commands:
   restore_node_modules:
     description: "Restore the node_modules dependencies cache"
     steps:
-      - run:
-          name: "Install dependencies"
-          command: yarn
+      - restore_cache:
+          keys:
+            - node-modules-cache-node-Gallium-npm-6-{{ .Environment.CACHE_VERSION }}-{{ checksum "yarn.lock" }}
+            - node-modules-cache-node-Gallium-npm-6-{{ .Environment.CACHE_VERSION }}-
       # Cache workaround to cache patch changes
       # https://github.com/ds300/patch-package#docker-and-ci
       - run:
@@ -51,10 +52,9 @@ commands:
           command: if [[ -z $(node tooling/modified-packages.js) ]]; then circleci step halt; fi
 
 jobs:
-  npm_install:
+  yarn_install:
     executor: main-executor
     environment:
-      HUSKY: 0
       SAUCE_CONNECT_DOWNLOAD_ON_INSTALL: true
     steps:
       - install_graphicsmagick_and_libgcrypt
@@ -69,15 +69,15 @@ jobs:
           command: cat patches/* | md5sum > patches.hash
       # Cache node_modules across different internal jobs in the workflow and across different circleci runs
       - save_cache:
-          key: node-modules-cache-node-Gallium-npm-6-{{ .Environment.CACHE_VERSION }}-{{ checksum "package-lock.json" }}-{{ checksum "patches.hash" }}
+          key: node-modules-cache-node-Gallium-npm-6-{{ .Environment.CACHE_VERSION }}-{{ checksum "yarn.lock" }}
           paths:
             - node_modules
       - run:
-          name: "Save NPM install log"
-          command: npm ls --json > /tmp/npm_install.log || true
+          name: "Save yarn install log"
+          command: yarn info --json > /tmp/yarn_install.log || true
       - store_artifacts:
-          path: /tmp/npm_install.log
-          destination: npm-install
+          path: /tmp/yarn_install.log
+          destination: yarn-install
 
   build:
     executor: main-executor
@@ -167,9 +167,6 @@ jobs:
       COVERAGE: true
     steps:
       - checkout_and_fetch_tags
-      - attach_workspace:
-        # Must be absolute path or relative path from working_directory
-          at: ~/webex-js-sdk
       - restore_node_modules
       - restore_built_packages
       - skip_check
@@ -196,7 +193,7 @@ jobs:
       - run:
           name: "Check if any unit tests failed"
           command: |
-            mkdir -p reports/junit/mocha/mocha
+            mkdir -p reports/junit/mocha
             FAILURES=$(find reports/junit/mocha/ -iname '*.xml' -print0 | xargs -0 sed -n 's/.*failures=\"\([^\"]*\).*/\1/p' | xargs)
 
             echo Failures $FAILURES
@@ -225,9 +222,6 @@ jobs:
       COVERAGE: true
     steps:
       - checkout_and_fetch_tags
-      - attach_workspace:
-        # Must be absolute path or relative path from working_directory
-          at: ~/webex-js-sdk
       - restore_node_modules
       - restore_built_packages
       # Generate build number for a single identifier for SauceLabs
@@ -250,8 +244,8 @@ jobs:
           path: reports/cobertura.xml
           destination: cobertura.xml
       - store_artifacts:
-          path: /home/circleci/.npm/_logs/
-          destination: npm-logs
+          path: /home/circleci/.yarn/_logs/
+          destination: yarn-logs
 
   # Run integration tests on modified packages with `--integration` flag
   # Tested against Chrome and Firefox on Mac and Windows
@@ -263,9 +257,6 @@ jobs:
       - browser-tools/install-browser-tools
       - install_graphicsmagick_and_libgcrypt
       - checkout_and_fetch_tags
-      - attach_workspace:
-        # Must be absolute path or relative path from working_directory
-          at: ~/webex-js-sdk
       - restore_node_modules
       - restore_built_packages
       - skip_check
@@ -466,20 +457,20 @@ jobs:
 workflows:
   github_checks:
     jobs:
-      - npm_install:
+      - yarn_install:
           filters:
             branches:
               ignore:
                 - master
       - build:
           requires:
-            - npm_install
+            - yarn_install
       - static_analysis:
           requires:
-            - npm_install
+            - yarn_install
       - list_changed_packages:
           requires:
-            - npm_install
+            - yarn_install
       - unit_tests:
           requires:
             - build
@@ -494,7 +485,7 @@ workflows:
             - static_analysis
   build_for_release:
     jobs:
-      - npm_install:
+      - yarn_install:
           filters:
             branches:
               only: master
@@ -503,7 +494,7 @@ workflows:
             branches:
               only: master
           requires:
-            - npm_install
+            - yarn_install
   tap_tests:
     triggers:
       - schedule:
@@ -514,13 +505,13 @@ workflows:
               only:
                 - master
     jobs:
-      - npm_install:
+      - yarn_install:
           filters:
             branches:
               only: master
       - build_production:
           requires:
-            - npm_install
+            - yarn_install
       - tap:
           name: "@webex/webex-core tap"
           package: "@webex/webex-core"
