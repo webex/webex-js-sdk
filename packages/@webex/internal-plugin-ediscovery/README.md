@@ -37,13 +37,15 @@ webex.internal.plugin.ediscovery.WHATEVER
 
 Run the ediscovery from the top level using 
 
-> npm test -- --packages @webex/internal-plugin-ediscovery
+> yarn run test --packages @webex/internal-plugin-ediscovery
+
 
 ## Debug Tests
 
 Run the following command
 
-> npm test -- --packages @webex/internal-plugin-ediscovery --grep "test name" --karmaDebug --browsers=Chrome
+> yarn run test --packages @webex/internal-plugin-ediscovery --grep "test name" --karmaDebug --browsers=Chrome
+
 
 ## Maintainers
 
