@@ -7,7 +7,7 @@ import {Interceptor} from '@webex/http-core';
 import {DryError} from './kms-errors';
 /**
  * Interceptor (only to be used in test mode) intended to replay requests that
- * fail as a result of the test-user incompatibiliy in KMS.
+ * fail as a result of the test-user incompatibility in KMS.
  * @class
  */
 export default class KmsDryErrorInterceptor extends Interceptor {

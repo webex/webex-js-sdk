@@ -12,8 +12,8 @@ const decryptTextProp = curry((name, ctx, key, object) => ctx.transform('decrypt
 export const transforms = toArray('inbound', {
 
   /**
-   * This function is used recursively to decrypt various properties on convesations, activities, etc
-   * @param   {Object} ctx    An object containg a webex instance and a transform
+   * This function is used recursively to decrypt various properties on conversations, activities, etc
+   * @param   {Object} ctx    An object containing a webex instance and a transform
    * @param   {String} key    KMS encryption key url
    * @param   {Object} object Generic object that you want to decrypt some property on based on the type
    * @returns {Promise}       Returns a transform promise
@@ -48,8 +48,8 @@ export const transforms = toArray('inbound', {
 
   /**
    * Decrypt an individual submit object from a cardAction activity
-   *   (object.objectType === 'sumbit')
-   * @param   {Object} ctx      An object containg a webex instance and a transform
+   *   (object.objectType === 'submit')
+   * @param   {Object} ctx      An object containing a webex instance and a transform
    * @param   {String} key      KMS key
    * @param   {Object} object An instance of a Webex submit object
    * these objects are returned when a user clicks on a Action.Submit button in a card
@@ -75,7 +75,7 @@ export const transforms = toArray('inbound', {
 
   /**
    * Decrypt an individual reaction2Summary activity (object.objectType === 'reaction2Summary')
-   * @param   {Object} ctx      An object containg a webex instance and a transform
+   * @param   {Object} ctx      An object containing a webex instance and a transform
    * @param   {String} key      KMS key
    * @param   {Object} object An instance of a Webex reaction2Summary object
    * these objects are returned by various conversation APIs and over mercury
@@ -92,7 +92,7 @@ export const transforms = toArray('inbound', {
 
   /**
    * Decrypt an individual reaction2SelfSummary activity (object.objectType === 'reaction2SelfSummary')
-   * @param   {Object} ctx      An object containg a webex instance and a transform
+   * @param   {Object} ctx      An object containing a webex instance and a transform
    * @param   {String} key      KMS key
    * @param   {Object} object An instance of a Webex reaction2SelfSummary object
    * these objects are returned by various conversation APIs and NOT over mercury
@@ -111,7 +111,7 @@ export const transforms = toArray('inbound', {
 
   /**
    * Decrypt an individual reaction2 activity (object.objectType === 'reaction2')
-   * @param   {Object} ctx      An object containg a webex instance and a transform
+   * @param   {Object} ctx      An object containing a webex instance and a transform
    * @param   {String} key      KMS key
    * @param   {Object} object An instance of a Webex reaction2 object
    * these objects are returned by various conversation APIs and over mercury
@@ -124,7 +124,7 @@ export const transforms = toArray('inbound', {
 
   /**
  * Decrypt an individual threadObject
- * @param   {Object} ctx      An object containg a webex instance and a transform
+ * @param   {Object} ctx      An object containing a webex instance and a transform
  * @param   {Object} threadObject An instance of a Webex threadObject (the objects returned by the /conversation/api/v1/threads api)
  * @returns {Promise}         Returns a ctx.transform promise
  */
@@ -140,7 +140,7 @@ export const transforms = toArray('inbound', {
 
   /**
  * Decrypt an individual meeting container activity
- * @param   {Object} ctx      An object containg a webex instance and a transform
+ * @param   {Object} ctx      An object containing a webex instance and a transform
  * @param   {object} key      KMS encryption key url
  * @param   {Object} meetingContainerActivity An instance of a Webex meeting container activity
  * @returns {Promise}         Returns a ctx.transform promise
@@ -166,10 +166,10 @@ export const transforms = toArray('inbound', {
   },
 
   /**
-   * Decrypts a given conversation and it's activites by building an array of promises that call
+   * Decrypts a given conversation and it's activities by building an array of promises that call
    * decryptObject, which may then call other decrypt functions
    *
-   * @param   {Object} ctx          An object containg a webex instance and a transform
+   * @param   {Object} ctx          An object containing a webex instance and a transform
    * @param   {String} key          KMS encryption key url (or actual key?)
    * @param   {Object} conversation A Webex conversation object
    * @returns {Promise}             Returns the result of Promise.all
@@ -209,7 +209,7 @@ export const transforms = toArray('inbound', {
 
   /**
    * Decrypt an individual activity
-   * @param   {Object} ctx      An object containg a webex instance and a transform
+   * @param   {Object} ctx      An object containing a webex instance and a transform
    * @param   {String} key      KMS encryption key url (or actual key?)
    * @param   {Object} activity An instance of a Webex activity
    * @returns {Promise}         Returns a ctx.transform promise
@@ -240,7 +240,7 @@ export const transforms = toArray('inbound', {
    * @param   {String} key                     KMS key
    * @param   {Object} microappInstance        A microappInstance which includes several properties of a recording
    * @param   {String} microappInstance.model  An encrypted string which decrypts to an object
-   * @returns {Promise}                        Returns a contex transform
+   * @returns {Promise}                        Returns a context transform
    */
   decryptMicroappinstance(ctx, key, microappInstance) {
     return ctx.transform('decryptPropModel', key, microappInstance);

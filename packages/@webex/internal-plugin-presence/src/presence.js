@@ -98,7 +98,7 @@ const Presence = WebexPlugin.extend({
    * @property {string} expiresTime: DateTime in RFC3339 format that the current status will expire. Missing
    * field means no known expiration.
    * @property {Object} vectorCounters: Used for packet ordering and tracking.
-   * @property {Boolean} suppressNotifications: Indicates if notification suppresion is recommended for this status.
+   * @property {Boolean} suppressNotifications: Indicates if notification suppression is recommended for this status.
    * @property {string} lastSeenDeviceUrl: Resource Identifier of the last device to post presence activity for
    * this user.
    */

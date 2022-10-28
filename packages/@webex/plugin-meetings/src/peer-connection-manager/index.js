@@ -121,7 +121,7 @@ const isSdpInvalid = (sdp) => {
 
   for (const mediaLine of parsedSdp.media) {
     if (!mediaLine.candidates || mediaLine.candidates?.length === 0) {
-      LoggerProxy.logger.error('PeerConnectionManager:index#isSdpInvalid --> iceCandidate: Ice candadate never completed');
+      LoggerProxy.logger.error('PeerConnectionManager:index#isSdpInvalid --> iceCandidate: Ice candidate never completed');
 
       return 'iceCandidate: Ice gathering never completed';
     }
@@ -378,7 +378,7 @@ pc.setRemoteSessionDetails = (
 };
 
 /**
- * create offer with a valid paramater
+ * Create offer with a valid parameter
  * @param {Object} peerConnection
  * @param {Object} meetingProperties
  * @param {string} meetingProperties.meetingId
@@ -403,7 +403,7 @@ pc.createOffer = (peerConnection, {
     .createOffer()
     .then((description) => {
       // bug https://bugs.chromium.org/p/chromium/issues/detail?id=1020642
-      // chrome currently generates RTX line irrespective of weither the server side supports it
+      // chrome currently generates RTX line irrespective of whether the server side supports it
       // we are removing apt as well because its associated with rtx line
 
       if (!enableRtx) {
