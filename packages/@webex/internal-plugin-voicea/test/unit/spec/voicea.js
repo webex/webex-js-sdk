@@ -469,7 +469,6 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(triggerSpy, {
           isFinal: true,
           transcriptId: '3ec73890-bffb-f28b-e77f-99dc13caea7e',
-          translations: undefined,
           transcript: {
             csis: [3556942592],
             text: 'Hello?',
