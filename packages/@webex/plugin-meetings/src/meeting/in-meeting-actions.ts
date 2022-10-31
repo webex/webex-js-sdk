@@ -23,7 +23,7 @@ interface IInMeetingActions {
   canRaiseHand?: boolean;
   canLowerAllHands?: boolean;
   canLowerSomeoneElsesHand?: boolean;
-  canEndMeeting?: boolean;
+  bothLeaveAndEndMeetingAvailable?: boolean;
   canEnableClosedCaption?: boolean;
   canStartTranscribing?: boolean;
   canStopTranscribing?: boolean;
@@ -65,7 +65,7 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canLowerSomeoneElsesHand = null;
 
-  canEndMeeting = null;
+  bothLeaveAndEndMeetingAvailable = null;
 
   canEnableClosedCaption = null;
 
@@ -102,7 +102,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canRaiseHand: this.canRaiseHand,
     canLowerAllHands: this.canLowerAllHands,
     canLowerSomeoneElsesHand: this.canLowerSomeoneElsesHand,
-    canEndMeeting: this.canEndMeeting,
+    bothLeaveAndEndMeetingAvailable: this.bothLeaveAndEndMeetingAvailable,
     canEnableClosedCaption: this.canEnableClosedCaption,
     canStartTranscribing: this.canStartTranscribing,
     canStopTranscribing: this.canStopTranscribing,

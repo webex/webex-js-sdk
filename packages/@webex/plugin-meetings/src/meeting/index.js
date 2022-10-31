@@ -1889,7 +1889,7 @@ export default class Meeting extends StatelessWebexPlugin {
           canRaiseHand: MeetingUtil.canUserRaiseHand(payload.info.userDisplayHints),
           canLowerAllHands: MeetingUtil.canUserLowerAllHands(payload.info.userDisplayHints),
           canLowerSomeoneElsesHand: MeetingUtil.canUserLowerSomeoneElsesHand(payload.info.userDisplayHints),
-          canEndMeeting: MeetingUtil.canUserEndMeeting(payload.info.userDisplayHints),
+          bothLeaveAndEndMeetingAvailable: MeetingUtil.bothLeaveAndEndMeetingAvailable(payload.info.userDisplayHints),
           canEnableClosedCaption: MeetingUtil.canEnableClosedCaption(payload.info.userDisplayHints),
           canStartTranscribing: MeetingUtil.canStartTranscribing(payload.info.userDisplayHints),
           canStopTranscribing: MeetingUtil.canStopTranscribing(payload.info.userDisplayHints),

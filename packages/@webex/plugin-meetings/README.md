@@ -605,7 +605,7 @@ meeting.inMeetingActions.get();
   canRaiseHand: boolean,
   canLowerAllHands: boolean,
   canLowerSomeoneElsesHand: boolean,
-  canEndMeeting: boolean,
+  bothLeaveAndEndMeetingAvailable: boolean,
 }
 ```
 
@@ -1086,7 +1086,7 @@ meeting.on('media:stopped', (media) => {
   canRaiseHand, //boolean
   canLowerAllHands, //boolean
   canLowerSomeoneElsesHand, //boolean
-  canEndMeeting, //boolean
+  bothLeaveAndEndMeetingAvailable, //boolean
 }
 ```
 
