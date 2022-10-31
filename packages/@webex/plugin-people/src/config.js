@@ -9,7 +9,7 @@ export default {
     batcherMaxWait: 1500,
     /**
      * optional flag that requires Hydra to send every type field,
-     * even if the type is not "person" (e.g.: SX10, webhook_intergation, etc.)
+     * even if the type is not "person" (e.g.: SX10, webhook_integration, etc.)
      * @private
      */
     showAllTypes: false

@@ -306,7 +306,7 @@ const ShareActivity = WebexPlugin.extend({
    */
   prepare() {
     if (!this.uploads.size) {
-      throw new Error('Cannot submit a share activity without atleast one file');
+      throw new Error('Cannot submit a share activity without at least one file');
     }
 
     const activity = {

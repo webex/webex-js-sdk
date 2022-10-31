@@ -141,7 +141,7 @@ const Rooms = WebexPlugin.extend({
 
   /**
    * Returns a list of rooms. In most cases the results will only contain rooms
-   * that the authentiated user is a member of.
+   * that the authenticated user is a member of.
    * @instance
    * @memberof Rooms
    * @param {Object} options
@@ -182,11 +182,11 @@ const Rooms = WebexPlugin.extend({
 
   /**
    * Returns a list of rooms with details about the data of the last
-   * actvity in the room, and the date of the users last presences in
+   * activity in the room, and the date of the users last presences in
    * the room. The list is sorted with this with most recent activity first
    *
    * For rooms where lastActivityDate > lastSeenDate the space
-   * can be considerd to be "unread"
+   * can be considered to be "unread"
    *
    * This differs from the rooms.list() function in the following ways:
    *  -- when called with no parameters it returns an array of all
@@ -196,7 +196,7 @@ const Rooms = WebexPlugin.extend({
    *  -- For users with hundreds of spaces, this API can take some time to
    *     to return, for this reason it supports an optional maxRecent parameter.
    *     If set this will return only the specified number of spaces with activity
-   *     in the last two weeks.  Reccomended value is 30.  Max supported is 100.
+   *     in the last two weeks.  Recommended value is 30.  Max supported is 100.
    *  -- only "id", "type", "lastActivityDate", and "lastSeenDate" are
    *     guaranteed to be available for each room in the list
    *  -- "title" is usually returned, but not guaranteed
@@ -214,7 +214,7 @@ const Rooms = WebexPlugin.extend({
    * Not all spaces may be returned, for example when users in more than 1000
    * spaces, or when a new spaces is added after this function is called,
    * but before it returns. Custom clients should be prepared to gracefully
-   * andle cases where an event occurs in a space not returned by this call,
+   * handle cases where an event occurs in a space not returned by this call,
    * by querying rooms.getWithReadStatus() with the id of the room in question
    *
    * This function may be deprecated when this info is provided in the membership
@@ -249,11 +249,11 @@ const Rooms = WebexPlugin.extend({
 
   /**
    * Returns a single room object with details about the data of the last
-   * actvity in the room, and the date of the users last presence in
+   * activity in the room, and the date of the users last presence in
    * the room.
    *
    * For rooms where lastActivityDate > lastSeenDate the room
-   * can be considerd to be "unread"
+   * can be considered to be "unread"
    *
    * This differs from the rooms.get() function in the following ways:
    *  -- it takes a single roomId parameter to fetch
@@ -423,7 +423,7 @@ const Rooms = WebexPlugin.extend({
 
   /**
    * Constructs the data object for an event on the rooms resource,
-   * adhering to Hydra's Webehook data structure.
+   * adhering to Hydra's Webhook data structure.
    * External users of the SDK should not call this function
    * @private
    * @memberof Rooms
