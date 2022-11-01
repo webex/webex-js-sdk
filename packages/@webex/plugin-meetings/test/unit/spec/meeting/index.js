@@ -3667,8 +3667,6 @@ describe('plugin-meetings', () => {
         let canUserLowerAllHandsSpy;
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
-        let canUserEndMeetingSpy;
-
 
         beforeEach(() => {
           locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
@@ -3684,7 +3682,6 @@ describe('plugin-meetings', () => {
           bothLeaveAndEndMeetingAvailableSpy = sinon.spy(MeetingUtil, 'bothLeaveAndEndMeetingAvailable');
           canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
-          canUserEndMeetingSpy = sinon.spy(MeetingUtil, 'canUserEndMeeting');
         });
 
         afterEach(() => {
@@ -3723,7 +3720,6 @@ describe('plugin-meetings', () => {
           assert.calledWith(canUserLowerAllHandsSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserLowerSomeoneElsesHandSpy, payload.info.userDisplayHints);
           assert.calledWith(waitingForOthersToJoinSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserEndMeetingSpy, payload.info.userDisplayHints);
 
           assert.calledWith(
             TriggerProxy.trigger,
