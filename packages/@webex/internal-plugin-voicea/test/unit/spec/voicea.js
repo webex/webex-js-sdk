@@ -14,13 +14,12 @@ describe('plugin-voicea', () => {
   describe('voicea', () => {
     let webex, voiceaService;
 
-
     beforeEach(() => {
       webex = new MockWebex({
         children: {
           mercury: Mercury,
           llm: LLMChannel,
-          voicea: VoiceaService
+          voicea: VoiceaService,
         },
       });
 
@@ -32,13 +31,13 @@ describe('plugin-voicea', () => {
 
       voiceaService.request = sinon.stub().resolves({
         headers: {},
-        body: ''
+        body: '',
       });
       voiceaService.register = sinon.stub().resolves({
         body: {
           binding: 'binding',
-          webSocketUrl: 'url'
-        }
+          webSocketUrl: 'url',
+        },
       });
     });
 
@@ -67,7 +66,7 @@ describe('plugin-voicea', () => {
             eventType: 'relay.event',
             relayType: 'client.annc',
           },
-          trackingId: sinon.match.string
+          trackingId: sinon.match.string,
         });
       });
     });
@@ -80,10 +79,10 @@ describe('plugin-voicea', () => {
             max_languages: 5,
           },
           ASR: {
-            spoken_languages: ['en']
+            spoken_languages: ['en'],
           },
 
-          version: 'v2'
+          version: 'v2',
         };
 
         const spy = sinon.spy();
@@ -94,7 +93,7 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(spy, {
           captionLanguages: ['af', 'am'],
           spokenLanguages: ['en'],
-          maxLanguages: 5
+          maxLanguages: 5,
         });
       });
 
@@ -107,7 +106,7 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(spy, {
           captionLanguages: [],
           spokenLanguages: [],
-          maxLanguages: 0
+          maxLanguages: 0,
         });
       });
     });
@@ -130,12 +129,12 @@ describe('plugin-voicea', () => {
           data: {
             clientPayload: {
               translationLanguage: 'en',
-              id: sinon.match.string
+              id: sinon.match.string,
             },
             eventType: 'relay.event',
-            relayType: 'voicea.transl.req'
+            relayType: 'voicea.transl.req',
           },
-          trackingId: sinon.match.string
+          trackingId: sinon.match.string,
         });
       });
     });
@@ -151,11 +150,14 @@ describe('plugin-voicea', () => {
 
         assert.calledOnceWithExactly(triggerSpy, {languageCode});
 
-        sinon.assert.calledWith(voiceaService.request, sinon.match({
-          method: 'PUT',
-          url: `${locusUrl}/controls/`,
-          body: {languageCode}
-        }));
+        sinon.assert.calledWith(
+          voiceaService.request,
+          sinon.match({
+            method: 'PUT',
+            url: `${locusUrl}/controls/`,
+            body: {languageCode},
+          })
+        );
       });
     });
 
@@ -175,22 +177,28 @@ describe('plugin-voicea', () => {
         voiceaService.listenToEvents();
 
         await voiceaService.turnOnCaptions();
-        sinon.assert.calledWith(voiceaService.request, sinon.match({
-          method: 'PUT',
-          url: `${locusUrl}/controls/`,
-          body: {transcribe: {caption: true}}
-        }));
+        sinon.assert.calledWith(
+          voiceaService.request,
+          sinon.match({
+            method: 'PUT',
+            url: `${locusUrl}/controls/`,
+            body: {transcribe: {caption: true}},
+          })
+        );
 
         assert.calledOnceWithExactly(triggerSpy, undefined);
 
         assert.calledOnce(announcementSpy);
       });
 
-      it('doesn\'t call API on captions', async () => {
+      it("doesn't call API on captions", async () => {
         await voiceaService.turnOnCaptions();
 
         // eslint-disable-next-line no-underscore-dangle
-        voiceaService.webex.internal.llm._emit('event:relay.event', {headers: {from: 'ws'}, data: {relayType: 'voicea.annc', voiceaPayload: {}}});
+        voiceaService.webex.internal.llm._emit('event:relay.event', {
+          headers: {from: 'ws'},
+          data: {relayType: 'voicea.annc', voiceaPayload: {}},
+        });
 
         const response = await voiceaService.turnOnCaptions();
 
@@ -211,7 +219,10 @@ describe('plugin-voicea', () => {
         const announcementSpy = sinon.spy(voiceaService, 'sendAnnouncement');
 
         // eslint-disable-next-line no-underscore-dangle
-        voiceaService.webex.internal.llm._emit('event:relay.event', {headers: {from: 'ws'}, data: {relayType: 'voicea.annc', voiceaPayload: {}}});
+        voiceaService.webex.internal.llm._emit('event:relay.event', {
+          headers: {from: 'ws'},
+          data: {relayType: 'voicea.annc', voiceaPayload: {}},
+        });
 
         const triggerSpy = sinon.spy();
 
@@ -219,11 +230,14 @@ describe('plugin-voicea', () => {
         voiceaService.listenToEvents();
 
         await voiceaService.toggleTranscribing(true);
-        sinon.assert.calledWith(voiceaService.request, sinon.match({
-          method: 'PUT',
-          url: `${locusUrl}/controls/`,
-          body: {transcribe: {transcribing: true}}
-        }));
+        sinon.assert.calledWith(
+          voiceaService.request,
+          sinon.match({
+            method: 'PUT',
+            url: `${locusUrl}/controls/`,
+            body: {transcribe: {transcribing: true}},
+          })
+        );
 
         assert.calledOnce(triggerSpy);
         assert.notCalled(announcementSpy);
@@ -238,11 +252,14 @@ describe('plugin-voicea', () => {
         voiceaService.listenToEvents();
 
         await voiceaService.toggleTranscribing(true);
-        sinon.assert.calledWith(voiceaService.request, sinon.match({
-          method: 'PUT',
-          url: `${locusUrl}/controls/`,
-          body: {transcribe: {transcribing: true}}
-        }));
+        sinon.assert.calledWith(
+          voiceaService.request,
+          sinon.match({
+            method: 'PUT',
+            url: `${locusUrl}/controls/`,
+            body: {transcribe: {transcribing: true}},
+          })
+        );
 
         assert.calledOnce(triggerSpy);
         assert.calledOnce(announcementSpy);
@@ -259,24 +276,25 @@ describe('plugin-voicea', () => {
         voiceaService.listenToEvents();
 
         await voiceaService.toggleTranscribing(false);
-        sinon.assert.calledWith(voiceaService.request, sinon.match({
-          method: 'PUT',
-          url: `${locusUrl}/controls/`,
-          body: {transcribe: {transcribing: true}}
-        }));
+        sinon.assert.calledWith(
+          voiceaService.request,
+          sinon.match({
+            method: 'PUT',
+            url: `${locusUrl}/controls/`,
+            body: {transcribe: {transcribing: true}},
+          })
+        );
 
         assert.calledOnce(triggerSpy);
         assert.notCalled(announcementSpy);
       });
 
-      it('doesn\'t call API on same value', async () => {
+      it("doesn't call API on same value", async () => {
         await voiceaService.toggleTranscribing(true);
         const triggerSpy = sinon.spy();
         const announcementSpy = sinon.spy(voiceaService, 'sendAnnouncement');
 
-
         voiceaService.on(EVENT_TRIGGERS.TRANSCRIBING_OFF, triggerSpy);
-
 
         await voiceaService.toggleTranscribing(true);
 
@@ -301,9 +319,9 @@ describe('plugin-voicea', () => {
           data: {
             relayType: 'voicea.transl.rsp',
             voiceaPayload: {
-              statusCode: 200
-            }
-          }
+              statusCode: 200,
+            },
+          },
         });
 
         assert.calledOnceWithExactly(triggerSpy, {statusCode: 200});
@@ -319,13 +337,13 @@ describe('plugin-voicea', () => {
 
         const payload = {
           errorCode: 300,
-          message: 'error text'
+          message: 'error text',
         };
 
         // eslint-disable-next-line no-underscore-dangle
         voiceaService.webex.internal.llm._emit('event:relay.event', {
           headers: {from: 'ws'},
-          data: {relayType: 'voicea.transl.rsp', voiceaPayload: payload}
+          data: {relayType: 'voicea.transl.rsp', voiceaPayload: payload},
         });
         assert.calledOnce(functionSpy);
         assert.calledOnceWithExactly(triggerSpy, {statusCode: 300, errorMessage: 'error text'});
@@ -343,7 +361,24 @@ describe('plugin-voicea', () => {
 
       it('processes interim transcription', async () => {
         voiceaService.on(EVENT_TRIGGERS.NEW_CAPTION, triggerSpy);
-
+        const transcripts = [
+          {
+            text: 'Hello.',
+            csis: [3556942592],
+            transcript_language_code: 'en',
+            translations: {
+              fr: 'Bonjour.',
+            },
+          },
+          {
+            text: 'This is Webex',
+            csis: [3556942593],
+            transcript_language_code: 'en',
+            translations: {
+              fr: "C'est Webex",
+            },
+          },
+        ];
         const voiceaPayload = {
           audio_received_millis: 0,
           command_response: '',
@@ -355,40 +390,20 @@ describe('plugin-voicea', () => {
           ts: 1611653204.3147924,
           type: 'transcript_interim_results',
 
-          transcripts: [
-            {
-              text: 'Hello.',
-              csis: [
-                3556942592
-              ],
-              transcript_language_code: 'en',
-              translations: {
-                fr: 'Bonjour.'
-              }
-            },
-            {
-              text: 'This is Webex',
-              csis: [
-                3556942593
-              ],
-              transcript_language_code: 'en',
-              translations: {
-                fr: "C'est Webex"
-              }
-            }
-          ]
-
+          transcripts,
         };
 
         // eslint-disable-next-line no-underscore-dangle
         await voiceaService.webex.internal.llm._emit('event:relay.event', {
           headers: {from: 'ws'},
-          data: {relayType: 'voicea.transcription', voiceaPayload}
+          data: {relayType: 'voicea.transcription', voiceaPayload},
         });
 
         assert.calledOnceWithExactly(functionSpy, voiceaPayload);
         assert.calledOnceWithExactly(triggerSpy, {
-          isFinal: false, transcriptId: '3ec73890-bffb-f28b-e77f-99dc13caea7e', translations: undefined, transcript: {text: 'Hello.', csis: [3556942592], transcriptLanguageCode: 'en'}
+          isFinal: false,
+          transcriptId: '3ec73890-bffb-f28b-e77f-99dc13caea7e',
+          transcripts,
         });
       });
 
@@ -410,64 +425,56 @@ describe('plugin-voicea', () => {
               {
                 end_millis: 12474,
                 start_millis: 12204,
-                word: 'Hello?'
-              }
+                word: 'Hello?',
+              },
             ],
-            csis: [
-              3556942592
-            ],
+            csis: [3556942592],
             end_millis: 13044,
             last_packet_timestamp_ms: 1611653206784,
             start_millis: 12204,
             text: 'Hello?',
-            transcript_language_code: 'en'
+            transcript_language_code: 'en',
           },
           transcripts: [
             {
               start_millis: 12204,
               end_millis: 13044,
               text: 'Hello.',
-              csis: [
-                3556942592
-              ],
+              csis: [3556942592],
               transcript_language_code: 'en',
               translations: {
-                fr: 'Bonjour.'
-              }
+                fr: 'Bonjour.',
+              },
             },
             {
               start_millis: 12204,
               end_millis: 13044,
               text: 'This is Webex',
-              csis: [
-                3556942593
-              ],
+              csis: [3556942593],
               transcript_language_code: 'en',
               translations: {
-                fr: "C'est Webex"
-              }
-            }
-          ]
-
+                fr: "C'est Webex",
+              },
+            },
+          ],
         };
 
         // eslint-disable-next-line no-underscore-dangle
         await voiceaService.webex.internal.llm._emit('event:relay.event', {
           headers: {from: 'ws'},
-          data: {relayType: 'voicea.transcription', voiceaPayload}
+          data: {relayType: 'voicea.transcription', voiceaPayload},
         });
 
         assert.calledOnceWithExactly(functionSpy, voiceaPayload);
         assert.calledOnceWithExactly(triggerSpy, {
           isFinal: true,
           transcriptId: '3ec73890-bffb-f28b-e77f-99dc13caea7e',
-          translations: undefined,
           transcript: {
             csis: [3556942592],
             text: 'Hello?',
-            transcriptLanguageCode: 'en'
+            transcriptLanguageCode: 'en',
           },
-          timestamp: '0:13'
+          timestamp: '0:13',
         });
       });
 
@@ -485,22 +492,23 @@ describe('plugin-voicea', () => {
             ews_keyphrase: 'OkayWebEx',
             model_version: 'WebEx',
             offset_seconds: 2336.5900000000001,
-            recording_file_name: 'OkayWebEx_fd5bd0fc-06fb-4fd1-982b-554c4368f101_47900f3f-8579-25eb-3f6a-74d81a3c66a4_2335.8900000000003_2336.79.raw',
-            type: 'live-hotword'
+            recording_file_name:
+              'OkayWebEx_fd5bd0fc-06fb-4fd1-982b-554c4368f101_47900f3f-8579-25eb-3f6a-74d81a3c66a4_2335.8900000000003_2336.79.raw',
+            type: 'live-hotword',
           },
           ts: 1616137504.8107769,
-          type: 'eva_wake'
+          type: 'eva_wake',
         };
 
         // eslint-disable-next-line no-underscore-dangle
         await voiceaService.webex.internal.llm._emit('event:relay.event', {
           headers: {from: 'ws'},
-          data: {relayType: 'voicea.transcription', voiceaPayload}
+          data: {relayType: 'voicea.transcription', voiceaPayload},
         });
 
         assert.calledOnceWithExactly(functionSpy, voiceaPayload);
         assert.calledOnceWithExactly(triggerSpy, {
-          isListening: true
+          isListening: true,
         });
       });
 
@@ -514,18 +522,19 @@ describe('plugin-voicea', () => {
           intent: 'decision',
           meeting: 'fd5bd0fc-06fb-4fd1-982b-554c4368f101',
           ts: 1616135828.2552843,
-          type: 'eva_thanks'
+          type: 'eva_thanks',
         };
 
         // eslint-disable-next-line no-underscore-dangle
         await voiceaService.webex.internal.llm._emit('event:relay.event', {
           headers: {from: 'ws'},
-          data: {relayType: 'voicea.transcription', voiceaPayload}
+          data: {relayType: 'voicea.transcription', voiceaPayload},
         });
 
         assert.calledOnceWithExactly(functionSpy, voiceaPayload);
         assert.calledOnceWithExactly(triggerSpy, {
-          isListening: false, text: 'OK! Decision created.'
+          isListening: false,
+          text: 'OK! Decision created.',
         });
       });
 
@@ -539,19 +548,19 @@ describe('plugin-voicea', () => {
           intent: 'decision',
           meeting: 'fd5bd0fc-06fb-4fd1-982b-554c4368f101',
           ts: 1616135828.2552843,
-          type: 'eva_cancel'
+          type: 'eva_cancel',
         };
 
         // eslint-disable-next-line no-underscore-dangle
         await voiceaService.webex.internal.llm._emit('event:relay.event', {
           headers: {from: 'ws'},
-          data: {relayType: 'voicea.transcription', voiceaPayload}
+          data: {relayType: 'voicea.transcription', voiceaPayload},
         });
 
         assert.calledOnceWithExactly(functionSpy, voiceaPayload);
 
         assert.calledOnceWithExactly(triggerSpy, {
-          isListening: false
+          isListening: false,
         });
       });
 
@@ -569,18 +578,18 @@ describe('plugin-voicea', () => {
             highlight_source: 'voice-command',
             start_millis: 652756,
             transcript: 'Create a decision to move ahead with the last proposal.',
-            trigger_info: {type: 'live-hotword'}
+            trigger_info: {type: 'live-hotword'},
           },
           id: 'e6df0262-6289-db2e-581a-d44bb41b1c9c',
           meeting: 'fd5bd0fc-06fb-4fd1-982b-554c4368f101',
           ts: 1616135858.5349569,
-          type: 'highlight_created'
+          type: 'highlight_created',
         };
 
         // eslint-disable-next-line no-underscore-dangle
         await voiceaService.webex.internal.llm._emit('event:relay.event', {
           headers: {from: 'ws'},
-          data: {relayType: 'voicea.transcription', voiceaPayload}
+          data: {relayType: 'voicea.transcription', voiceaPayload},
         });
 
         assert.calledOnceWithExactly(functionSpy, voiceaPayload);
@@ -590,7 +599,7 @@ describe('plugin-voicea', () => {
           text: 'Create a decision to move ahead with the last proposal.',
           highlightLabel: 'Decision',
           highlightSource: 'voice-command',
-          timestamp: '11:00'
+          timestamp: '11:00',
         });
       });
     });
