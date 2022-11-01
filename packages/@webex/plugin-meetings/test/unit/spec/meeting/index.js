@@ -3663,6 +3663,7 @@ describe('plugin-meetings', () => {
         let canUserPauseSpy;
         let canUserResumeSpy;
         let canUserRaiseHandSpy;
+        let bothLeaveAndEndMeetingAvailableSpy;
         let canUserLowerAllHandsSpy;
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
@@ -3680,6 +3681,7 @@ describe('plugin-meetings', () => {
           inMeetingActionsSetSpy = sinon.spy(meeting.inMeetingActions, 'set');
           canUserRaiseHandSpy = sinon.spy(MeetingUtil, 'canUserRaiseHand');
           canUserLowerAllHandsSpy = sinon.spy(MeetingUtil, 'canUserLowerAllHands');
+          bothLeaveAndEndMeetingAvailableSpy = sinon.spy(MeetingUtil, 'bothLeaveAndEndMeetingAvailable');
           canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
           canUserEndMeetingSpy = sinon.spy(MeetingUtil, 'canUserEndMeeting');
@@ -3717,6 +3719,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(canUserPauseSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserResumeSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserRaiseHandSpy, payload.info.userDisplayHints);
+          assert.calledWith(bothLeaveAndEndMeetingAvailableSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserLowerAllHandsSpy, payload.info.userDisplayHints);
           assert.calledWith(canUserLowerSomeoneElsesHandSpy, payload.info.userDisplayHints);
           assert.calledWith(waitingForOthersToJoinSpy, payload.info.userDisplayHints);

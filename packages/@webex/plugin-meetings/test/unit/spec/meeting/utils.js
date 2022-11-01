@@ -249,12 +249,12 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('canUserEndMeeting', () => {
+    describe('bothLeaveAndEndMeetingAvailable', () => {
       it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.canUserEndMeeting(['LEAVE_TRANSFER_HOST_END_MEETING']), true);
-        assert.deepEqual(MeetingUtil.canUserEndMeeting(['LEAVE_END_MEETING']), true);
-        assert.deepEqual(MeetingUtil.canUserEndMeeting(['LEAVE_TRANSFER_HOST_END_MEETING', 'LEAVE_END_MEETING']), true);
-        assert.deepEqual(MeetingUtil.canUserEndMeeting([]), false);
+        assert.deepEqual(MeetingUtil.bothLeaveAndEndMeetingAvailable(['LEAVE_TRANSFER_HOST_END_MEETING']), true);
+        assert.deepEqual(MeetingUtil.bothLeaveAndEndMeetingAvailable(['LEAVE_END_MEETING']), true);
+        assert.deepEqual(MeetingUtil.bothLeaveAndEndMeetingAvailable(['LEAVE_TRANSFER_HOST_END_MEETING', 'LEAVE_END_MEETING']), true);
+        assert.deepEqual(MeetingUtil.bothLeaveAndEndMeetingAvailable([]), false);
       });
     });
 
