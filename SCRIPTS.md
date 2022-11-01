@@ -37,43 +37,50 @@ npm test
 See all options.
 
 ```bash
-npm test -- --help
+yarn run test --help
+
 ```
 
 Test a single package.
 
 ```bash
-npm test -- --packages @webex/webex-core
+yarn run test --packages @webex/webex-core
+
 ```
 
 Test a single package, but only in a browser.
 
 ```bash
-npm test -- --packages @webex/webex-core --browser
+yarn run test --packages @webex/webex-core --browser
+
 ```
 
 Test a single package, but only in a specific browser.
 
 ```bash
-BROWSER=chrome npm test -- --packages @webex/webex-core --browser
+BROWSER=chrome yarn run test --packages @webex/webex-core --browser
+
 ```
 
 Test a single package and generate coverage and XUnit reports.
 
 ```bash
-npm test -- --packages @webex/webex-core --coverage --xunit
+yarn run test --packages @webex/webex-core --coverage --xunit
+
 ```
 
 Test a single package using [snapshots](https://github.com/flickr/yakbak#yakbak) rather than live network requests. **The test must be run in Node.**
 
 ```bash
-npm test -- --packages @webex/webex-core --node --snapshots
+yarn run test --packages @webex/webex-core --node --snapshots
+
 ```
 
 Keeps the browser open in debug mode so that you can set break points and reload the page with code updates.
 
 ```bash
-npm test -- --packages @webex/webex-core --browser --karma-debug
+yarn run test --packages @webex/webex-core --browser --karma-debug
+
 ```
 
 ## Run the samples automation tests locally
