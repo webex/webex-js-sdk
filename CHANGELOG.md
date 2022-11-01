@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.30.0](https://github.com/webex/webex-js-sdk/compare/v2.29.5...v2.30.0) (2022-11-01)
+
+
+### Features
+
+* add end meeting diaplay hints ([#2494](https://github.com/webex/webex-js-sdk/issues/2494)) ([f30461f](https://github.com/webex/webex-js-sdk/commit/f30461f057fd93c74cc005ade530f93f50d169ff))
+
 ### [2.29.5](https://github.com/webex/webex-js-sdk/compare/v2.29.4...v2.29.5) (2022-11-01)
 
 

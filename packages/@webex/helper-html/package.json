@@ -1,6 +1,6 @@
 {
     "name": "@webex/helper-html",
-    "version": "2.29.5",
+    "version": "2.30.0",
     "description": "HTML Utiltities",
     "license": "MIT",
     "main": "dist/index.js",
