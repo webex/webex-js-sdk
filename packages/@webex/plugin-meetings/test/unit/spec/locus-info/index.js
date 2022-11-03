@@ -3,7 +3,6 @@ import sinon from 'sinon';
 import {cloneDeep} from 'lodash';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
-
 import Meetings from '@webex/plugin-meetings';
 import LocusInfo from '@webex/plugin-meetings/src/locus-info';
 import SelfUtils from '@webex/plugin-meetings/src/locus-info/selfUtils';
@@ -73,8 +72,9 @@ describe('plugin-meetings', () => {
           shareControl: {},
           transcribe: {},
           meetingContainer: {
-            meetingContainerUrl: 'http://new-url.com'
-          }
+            meetingContainerUrl: 'http://new-url.com',
+          },
+          entryExitTone: {enabled: true, mode: 'foo'},
         };
       });
 
@@ -333,6 +333,35 @@ describe('plugin-meetings', () => {
         },
         LOCUSINFO.EVENTS.CONTROLS_MEETING_CONTAINER_UPDATED,
         {meetingContainerUrl: 'http://new-url.com'});
+      });
+
+      it('should update the entryExitTone when changed', () => {
+        locusInfo.controls = {};
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_ENTRY_EXIT_TONE_UPDATED,
+          {entryExitTone: 'foo'}
+        );
+      });
+
+      it('should not update the entryExitTone when unchanged', () => {
+        locusInfo.controls = {entryExitTone: {enabled: true, mode: 'foo'}};
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        locusInfo.emitScoped.getCalls().forEach((x) => {
+          // check that no calls in emitScoped are for CONTROLS_ENTRY_EXIT_TONE_UPDATED
+          assert.notEqual(x.args[1], LOCUSINFO.EVENTS.CONTROLS_ENTRY_EXIT_TONE_UPDATED);
+        });
       });
     });
 
@@ -691,6 +720,124 @@ describe('plugin-meetings', () => {
           function: 'updateSelf'
         },
         LOCUSINFO.EVENTS.SELF_OBSERVING);
+      });
+
+      it('should trigger CONTROLS_MEETING_LAYOUT_UPDATED when the meeting layout controls change', () => {
+        const layoutType = 'EXAMPLE TYPE';
+
+        locusInfo.self = undefined;
+        const selfWithLayoutChanged = cloneDeep(self);
+
+        selfWithLayoutChanged.controls.layouts = [
+          {
+            type: layoutType,
+          },
+        ];
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateSelf(selfWithLayoutChanged, []);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_LAYOUT_UPDATED,
+          {layout: layoutType}
+        );
+      });
+
+      it('should not trigger SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE when not updated', () => {
+        const selfClone = cloneDeep(self);
+
+        selfClone.canNotViewTheParticipantList = false; // same
+
+        // Set the layout prior to stubbing to validate it does not change.
+        locusInfo.updateSelf(self, []);
+
+        locusInfo.emitScoped = sinon.stub();
+
+        locusInfo.updateSelf(selfClone, []);
+
+        assert.neverCalledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE,
+          {canNotViewTheParticipantList: false}
+        );
+      });
+
+      it('should trigger SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE when updated', () => {
+        const selfClone = cloneDeep(self);
+
+        selfClone.canNotViewTheParticipantList = true; // different
+
+        // Set the layout prior to stubbing to validate it does not change.
+        locusInfo.updateSelf(self, []);
+
+        locusInfo.emitScoped = sinon.stub();
+
+        locusInfo.updateSelf(selfClone, []);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE,
+          {canNotViewTheParticipantList: true}
+        );
+      });
+
+      it('should not trigger SELF_IS_SHARING_BLOCKED_CHANGE when not updated', () => {
+        const selfClone = cloneDeep(self);
+
+        selfClone.isSharingBlocked = false; // same
+
+        // Set the layout prior to stubbing to validate it does not change.
+        locusInfo.updateSelf(self, []);
+
+        locusInfo.emitScoped = sinon.stub();
+
+        locusInfo.updateSelf(selfClone, []);
+
+        assert.neverCalledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_IS_SHARING_BLOCKED_CHANGE,
+          {isSharingBlocked: false}
+        );
+      });
+
+      it('should trigger SELF_IS_SHARING_BLOCKED_CHANGE when updated', () => {
+        const selfClone = cloneDeep(self);
+
+        selfClone.isSharingBlocked = true; // different
+
+        // Set the layout prior to stubbing to validate it does not change.
+        locusInfo.updateSelf(self, []);
+
+        locusInfo.emitScoped = sinon.stub();
+
+        locusInfo.updateSelf(selfClone, []);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_IS_SHARING_BLOCKED_CHANGE,
+          {isSharingBlocked: true}
+        );
       });
     });
 

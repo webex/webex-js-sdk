@@ -1589,6 +1589,19 @@ export default class Meeting extends StatelessWebexPlugin {
           );
         }
       });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_ENTRY_EXIT_TONE_UPDATED,
+      ({entryExitTone}) => {
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setupLocusControlsListener'
+          },
+          EVENT_TRIGGERS.MEETING_ENTRY_EXIT_TONE_UPDATE,
+          {entryExitTone}
+        );
+      });
   }
 
   /**
@@ -1939,6 +1952,29 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Internal function to set up a basic listener which listens for
+   * the inEvent and tiggers the outEvent passing the payload.
+   * @returns {undefined}
+   * @param {string} inEvent
+   * @param {string} outEvent
+   */
+  setupDefaultSelfListener(inEvent, outEvent) {
+    this.locusInfo.on(inEvent, (payload) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpLocusInfoSelfListener'
+        },
+        outEvent,
+        {
+          payload
+        }
+      );
+    });
+  }
+
+  /**
    * Internal function to listen to the self object changes
    * @returns {undefined}
    * @private
@@ -1984,19 +2020,12 @@ export default class Meeting extends StatelessWebexPlugin {
         }
       }
     });
-    this.locusInfo.on(LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUESTED, (payload) => {
-      Trigger.trigger(
-        this,
-        {
-          file: 'meeting/index',
-          function: 'setUpLocusInfoSelfListener'
-        },
-        EVENT_TRIGGERS.MEETING_SELF_REQUESTED_TO_UNMUTE,
-        {
-          payload
-        }
-      );
-    });
+
+    this.setupDefaultSelfListener(
+      LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUESTED,
+      EVENT_TRIGGERS.MEETING_SELF_REQUESTED_TO_UNMUTE
+    );
+
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_UNADMITTED_GUEST, (payload) => {
       if (payload) {
         this.startKeepAlive();
@@ -2072,6 +2101,16 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       }
     });
+
+    this.setupDefaultSelfListener(
+      LOCUSINFO.EVENTS.SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE,
+      EVENT_TRIGGERS.MEETING_SELF_CANNOT_VIEW_PARTICIPANT_LIST
+    );
+
+    this.setupDefaultSelfListener(
+      LOCUSINFO.EVENTS.SELF_IS_SHARING_BLOCKED_CHANGE,
+      EVENT_TRIGGERS.MEETING_SELF_IS_SHARING_BLOCKED
+    );
   }
 
   /**
