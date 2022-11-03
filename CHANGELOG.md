@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.30.1](https://github.com/webex/webex-js-sdk/compare/v2.30.0...v2.30.1) (2022-11-02)
+
+
+### Bug Fixes
+
+* release to publish correct version number ([#2498](https://github.com/webex/webex-js-sdk/issues/2498)) ([1653ca0](https://github.com/webex/webex-js-sdk/commit/1653ca0997eb7200756f111297f14879ede7c99a))
+
+## [2.30.0](https://github.com/webex/webex-js-sdk/compare/v2.29.5...v2.30.0) (2022-11-01)
+
+
+### Features
+
+* add end meeting diaplay hints ([#2494](https://github.com/webex/webex-js-sdk/issues/2494)) ([f30461f](https://github.com/webex/webex-js-sdk/commit/f30461f057fd93c74cc005ade530f93f50d169ff))
+
+### [2.29.5](https://github.com/webex/webex-js-sdk/compare/v2.29.4...v2.29.5) (2022-11-01)
+
+
+### Bug Fixes
+
+* revert last commit and fix npm publish script ([#2497](https://github.com/webex/webex-js-sdk/issues/2497)) ([dff0683](https://github.com/webex/webex-js-sdk/commit/dff0683755a5e727e8d8c3c90b94fe54fee83ed0))
+* **voicea:** pass all interim transcripts ([#2493](https://github.com/webex/webex-js-sdk/issues/2493)) ([6192d27](https://github.com/webex/webex-js-sdk/commit/6192d27716b7315eb3ce6416f63ea4699fa9acc5))
+
 ### [2.29.4](https://github.com/webex/webex-js-sdk/compare/v2.29.3...v2.29.4) (2022-10-21)
 
 

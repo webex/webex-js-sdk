@@ -447,6 +447,8 @@ MeetingUtil.canUserLowerAllHands = (displayHints) => displayHints.includes(DISPL
 
 MeetingUtil.canUserLowerSomeoneElsesHand = (displayHints) => displayHints.includes(DISPLAY_HINTS.LOWER_SOMEONE_ELSES_HAND);
 
+MeetingUtil.bothLeaveAndEndMeetingAvailable = (displayHints) => displayHints.includes(DISPLAY_HINTS.LEAVE_TRANSFER_HOST_END_MEETING) || displayHints.includes(DISPLAY_HINTS.LEAVE_END_MEETING);
+
 MeetingUtil.lockMeeting = (actions, request, locusUrl) => {
   if (actions && actions.canLock) {
     return request.lockMeeting({locusUrl, lock: true});

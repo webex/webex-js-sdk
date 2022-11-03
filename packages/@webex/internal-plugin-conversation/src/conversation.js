@@ -440,7 +440,7 @@ const Conversation = WebexPlugin.extend({
    * Downloads an unencrypted file
    * @param {string} uri
    * @param {Object} options
-   * @param {Ojbect} options.headers
+   * @param {Object} options.headers
    * @returns {Promise<File>}
    */
   _downloadUnencryptedFile(uri, options = {}) {

@@ -1,6 +1,6 @@
 {
     "name": "@webex/test-helper-mock-webex",
-    "version": "2.29.4",
+    "version": "2.30.1",
     "description": "",
     "license": "MIT",
     "main": "dist/index.js",

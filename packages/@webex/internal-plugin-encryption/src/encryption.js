@@ -71,7 +71,7 @@ const Encryption = WebexPlugin.extend({
    * Validate and initiate a Download request for requested file
    *
    * @param {Object} scr - Plaintext
-   * @param {Object} options - optional paramaters to download a file
+   * @param {Object} options - optional parameters to download a file
    * @returns {promise}
    */
   download(scr, options) {
@@ -106,7 +106,7 @@ const Encryption = WebexPlugin.extend({
    * Fetch Download URL for the requested file
    *
    * @param {Object} scr - Plaintext
-   * @param {Object} options - optional paramaters to download a file
+   * @param {Object} options - optional parameters to download a file
    * @returns {promise} url of the downloadable file
    */
   _fetchDownloadUrl(scr, options) {

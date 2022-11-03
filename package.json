@@ -1,6 +1,6 @@
 {
   "name": "webex-js-sdk",
-  "version": "2.29.4",
+  "version": "2.30.1",
   "description": "JavaScript SDK for interacting with the Webex API",
   "homepage": "https://github.com/webex/webex-js-sdk",
   "bugs": {
@@ -48,7 +48,7 @@
     "srcdist": "find ./packages -name 'package.json' -print0 | xargs -0 sed -ibak 's#\"main\": \"src/index.js#\"main\": \"dist/index.js#' && find ./packages -name '*bak' -print0 | xargs -0 rimraf",
     "get-current-version": "node ./tooling/index.js version current",
     "get-next-version": "node ./tooling/index.js version next --alwaysIncrement --includeSamples",
-    "deps:generate": "node ./deps.js",
+    "deps:generate": "node ./tooling/dep2.js",
     "samples:build": "node ./tooling/index.js build --only-samples",
     "samples:serve": "webpack serve --color --env NODE_ENV=development",
     "samples:serve:integration": "webpack serve --color --env NODE_ENV=test",
@@ -217,8 +217,7 @@
     "scripts": {
       "postbump": "yarn run build --skip-samples && yarn run build:script && git add packages/webex/umd/*.js",
       "release": "git add packages/*/package.json  packages/@webex/*/package.json CHANGELOG.md && standard-version -a"
-    },
-    "packageManager": "yarn@4.0.0-rc.20"
+    }
   },
   "packageManager": "yarn@4.0.0-rc.22"
 }
