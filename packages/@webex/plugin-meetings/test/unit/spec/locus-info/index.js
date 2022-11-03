@@ -722,32 +722,6 @@ describe('plugin-meetings', () => {
         LOCUSINFO.EVENTS.SELF_OBSERVING);
       });
 
-      it('should trigger CONTROLS_MEETING_LAYOUT_UPDATED when the meeting layout controls change', () => {
-        const layoutType = 'EXAMPLE TYPE';
-
-        locusInfo.self = undefined;
-        const selfWithLayoutChanged = cloneDeep(self);
-
-        selfWithLayoutChanged.controls.layouts = [
-          {
-            type: layoutType,
-          },
-        ];
-
-        locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(selfWithLayoutChanged, []);
-
-        assert.calledWith(
-          locusInfo.emitScoped,
-          {
-            file: 'locus-info',
-            function: 'updateSelf',
-          },
-          LOCUSINFO.EVENTS.CONTROLS_MEETING_LAYOUT_UPDATED,
-          {layout: layoutType}
-        );
-      });
-
       it('should not trigger SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE when not updated', () => {
         const selfClone = cloneDeep(self);
 
