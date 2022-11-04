@@ -4606,6 +4606,7 @@ __metadata:
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/test-helper-retry": "workspace:^"
     "@webex/test-helper-test-users": "workspace:^"
+    "@webex/ts-sdp": "npm:^1.0.1"
     "@webex/webex-core": "workspace:^"
     bowser: "npm:^2.11.0"
     btoa: "npm:^1.2.1"
