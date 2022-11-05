@@ -28,28 +28,37 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private vmcDeviceId: string;
 
+  private eventProcessor = (e) => {
+    this.seqNum = e.sequenceNumber + 1;
+    switch (e.data.relayType) {
+      case VOICEA_RELAY_TYPES.ANNOUNCEMENT:
+        this.vmcDeviceId = e.headers.from;
+        this.hasVoiceaJoined = true;
+        this.processAnnouncementMessage(e.data.voiceaPayload);
+        break;
+      case VOICEA_RELAY_TYPES.TRANSLATION_RESPONSE:
+        this.processCaptionLanguageResponse(e.data.voiceaPayload);
+        break;
+      case VOICEA_RELAY_TYPES.TRANSCRIPTION:
+        this.processTranscription(e.data.voiceaPayload);
+        break;
+      default:
+        break;
+    }
+  };
   /**
    * Listen to websocket messages
    */
   private listenToEvents() {
-    this.webex.internal.llm.on('event:relay.event', (e) => {
-      this.seqNum = e.sequenceNumber + 1;
-      switch (e.data.relayType) {
-        case VOICEA_RELAY_TYPES.ANNOUNCEMENT:
-          this.vmcDeviceId = e.headers.from;
-          this.hasVoiceaJoined = true;
-          this.processAnnouncementMessage(e.data.voiceaPayload);
-          break;
-        case VOICEA_RELAY_TYPES.TRANSLATION_RESPONSE:
-          this.processCaptionLanguageResponse(e.data.voiceaPayload);
-          break;
-        case VOICEA_RELAY_TYPES.TRANSCRIPTION:
-          this.processTranscription(e.data.voiceaPayload);
-          break;
-        default:
-          break;
-      }
-    });
+    this.webex.internal.llm.on('event:relay.event', this.eventProcessor);
+  }
+
+  public deregisterEvents() {
+    this.hasVoiceaJoined = false;
+    this.areCaptionsEnabled = false;
+    this.isTranscribingEnabled = false;
+    this.vmcDeviceId = undefined;
+    this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
   }
 
   /**
@@ -221,7 +230,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   private sendAnnouncement = (): void => {
     if (this.hasVoiceaJoined || !this.webex.internal.llm.isConnected()) return;
-
     this.listenToEvents();
     this.webex.internal.llm.socket.send({
       id: `${this.seqNum}`,

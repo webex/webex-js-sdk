@@ -71,6 +71,15 @@ describe('plugin-voicea', () => {
       });
     });
 
+    describe('#deregisterEvents', () => {
+      it('deregisters voicea service', () => {
+        voiceaService.deregisterEvents();
+        assert.equal(voiceaService.hasVoiceaJoined, false);
+        assert.equal(voiceaService.areCaptionsEnabled, false);
+        assert.equal(voiceaService.isTranscribingEnabled, false);
+        assert.equal(voiceaService.vmcDeviceId, undefined);
+      });
+    });
     describe('#processAnnouncementMessage', () => {
       it('works on non-empty payload', async () => {
         const voiceaPayload = {
