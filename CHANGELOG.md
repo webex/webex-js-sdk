@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.30.2](https://github.com/webex/webex-js-sdk/compare/v2.30.1...v2.30.2) (2022-11-03)
+
+
+### Bug Fixes
+
+* **embedded-apps:** parsed apps now stored in meeting, fixed similari… ([#2487](https://github.com/webex/webex-js-sdk/issues/2487)) ([3c6e638](https://github.com/webex/webex-js-sdk/commit/3c6e638769e61243eab15e1b9b10e5a3c29fa85e))
+
 ### [2.30.1](https://github.com/webex/webex-js-sdk/compare/v2.30.0...v2.30.1) (2022-11-02)
 
 
