@@ -72,19 +72,14 @@ const insertBandwidthLimit = (sdpLines, index) => {
  */
 const setRemoteVideoConstraints = (sdp, level = QUALITY_LEVELS.HIGH) => {
   const maxFs = REMOTE_VIDEO_CONSTRAINTS.MAX_FS[level];
-  const maxMbps = REMOTE_VIDEO_CONSTRAINTS.MAX_MBPS[level];
 
-  if (!maxFs || !maxMbps) {
-    throw new ParameterError(`setRemoteVideoConstraints: unable to set max ${!maxFs ? 'framesize' : 'mbps'}, value for level "${level}" is not defined`);
+  if (!maxFs) {
+    throw new ParameterError(`setRemoteVideoConstraints: unable to set max framesize, value for level "${level}" is not defined`);
   }
-  // eslint-disable-next-line no-warning-comments
-  // TODO convert with sdp parser, no munging
-  let replaceSdp = sdp;
-  const maxFsAndMbps = `${SDP.MAX_FS}${maxFs};${SDP.MAX_MBPS}${maxMbps}`;
 
-  replaceSdp = replaceSdp.replace(/(\na=fmtp:(\d+).*profile-level-id=.*)/gi, `$1;${maxFsAndMbps}`);
+  const modifiedSdp = PeerConnectionUtils.adjustH264Profile(sdp, maxFs);
 
-  return replaceSdp;
+  return modifiedSdp;
 };
 
 
