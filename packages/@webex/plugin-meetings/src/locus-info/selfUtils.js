@@ -58,7 +58,9 @@ SelfUtils.parse = (self, deviceId) => {
       removed: self.removed,
       roles: SelfUtils.getRoles(self),
       isUserUnadmitted: self.state === _IDLE_ && joinedWith?.intent?.type === _WAIT_,
-      layout: SelfUtils.getLayout(self)
+      layout: SelfUtils.getLayout(self),
+      canNotViewTheParticipantList: SelfUtils.canNotViewTheParticipantList(self),
+      isSharingBlocked: SelfUtils.isSharingBlocked(self)
     };
   }
 
@@ -74,6 +76,10 @@ SelfUtils.getRoles = (self) => (self?.controls?.role?.roles || []).reduce((roles
 
   return roles;
 }, []);
+
+SelfUtils.canNotViewTheParticipantList = (self) => !!self?.canNotViewTheParticipantList;
+
+SelfUtils.isSharingBlocked = (self) => !!self?.isSharingBlocked;
 
 SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
   const previous = oldSelf && SelfUtils.parse(oldSelf, deviceId);
@@ -94,6 +100,9 @@ SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
   updates.audioStateChange = previous?.currentMediaStatus.audio !== current.currentMediaStatus.audio;
   updates.videoStateChange = previous?.currentMediaStatus.video !== current.currentMediaStatus.video;
   updates.shareStateChange = previous?.currentMediaStatus.share !== current.currentMediaStatus.share;
+
+  updates.canNotViewTheParticipantListChanged = previous?.canNotViewTheParticipantList !== current.canNotViewTheParticipantList;
+  updates.isSharingBlockedChanged = previous?.isSharingBlocked !== current.isSharingBlocked;
 
   return {
     previous,

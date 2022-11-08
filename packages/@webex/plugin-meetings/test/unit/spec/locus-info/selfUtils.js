@@ -1,7 +1,6 @@
 import {assert} from '@webex/test-helper-chai';
 import Sinon from 'sinon';
 import {cloneDeep} from 'lodash';
-
 import SelfUtils from '@webex/plugin-meetings/src/locus-info/selfUtils';
 
 import {self} from './selfConstant';
@@ -59,6 +58,34 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('canNotViewTheParticipantList', () => {
+      it('should return the correct value', () => {
+        assert.equal(SelfUtils.canNotViewTheParticipantList(self), self.canNotViewTheParticipantList);
+      });
+
+      it('should return false if the new self does not have a value', () => {
+        const mutatedSelf = cloneDeep(self);
+
+        delete mutatedSelf.canNotViewTheParticipantList;
+
+        assert.equal(SelfUtils.canNotViewTheParticipantList(mutatedSelf), false);
+      });
+    });
+
+    describe('isSharingBlocked', () => {
+      it('should return the correct value', () => {
+        assert.equal(SelfUtils.isSharingBlocked(self), self.isSharingBlocked);
+      });
+
+      it('should return false if the new self does not have a value', () => {
+        const mutatedSelf = cloneDeep(self);
+
+        delete mutatedSelf.isSharingBlocked;
+
+        assert.equal(SelfUtils.isSharingBlocked(mutatedSelf), false);
+      });
+    });
+
     describe('getRoles', () => {
       it('get roles works', () => {
         assert.deepEqual(SelfUtils.getRoles(self), ['PRESENTER']);
@@ -77,6 +104,52 @@ describe('plugin-meetings', () => {
 
         assert.deepEqual(SelfUtils.getRoles({}), []);
         assert.deepEqual(SelfUtils.getRoles(), []);
+      });
+    });
+
+    describe('getSelves', () => {
+      describe('canNotViewTheParticipantListChanged', () => {
+        it('should return canNotViewTheParticipantListChanged = true when changed', () => {
+          const clonedSelf = cloneDeep(self);
+
+          clonedSelf.canNotViewTheParticipantList = true; // different
+
+          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+
+          assert.equal(updates.canNotViewTheParticipantListChanged, true);
+        });
+
+        it('should return canNotViewTheParticipantListChanged = false when unchanged', () => {
+          const clonedSelf = cloneDeep(self);
+
+          clonedSelf.canNotViewTheParticipantList = false; // same
+
+          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+
+          assert.equal(updates.canNotViewTheParticipantListChanged, false);
+        });
+      });
+    });
+
+    describe('isSharingBlocked', () => {
+      it('should return isSharingBlockedChanged = true when changed', () => {
+        const clonedSelf = cloneDeep(self);
+
+        clonedSelf.isSharingBlocked = true; // different
+
+        const {updates} = SelfUtils.getSelves(self, clonedSelf);
+
+        assert.equal(updates.isSharingBlockedChanged, true);
+      });
+
+      it('should return isSharingBlockedChanged = false when unchanged', () => {
+        const clonedSelf = cloneDeep(self);
+
+        clonedSelf.isSharingBlocked = false; // same
+
+        const {updates} = SelfUtils.getSelves(self, clonedSelf);
+
+        assert.equal(updates.isSharingBlockedChanged, false);
       });
     });
   });

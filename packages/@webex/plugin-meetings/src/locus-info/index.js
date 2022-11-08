@@ -645,6 +645,7 @@ export default class LocusInfo extends EventsScope {
           hasRecordingPausedChanged,
           hasMeetingContainerChanged,
           hasTranscribeChanged,
+          hasEntryExitToneChanged,
         },
         current,
       } = ControlsUtils.getControls(this.controls, controls);
@@ -708,6 +709,23 @@ export default class LocusInfo extends EventsScope {
             caption,
           }
         );
+      }
+
+      if (hasEntryExitToneChanged) {
+        const {entryExitTone} = current;
+
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_ENTRY_EXIT_TONE_UPDATED,
+          {
+            entryExitTone
+          }
+        );
+
+        this.updateMeeting({entryExitTone});
       }
 
       this.controls = controls;
@@ -1113,6 +1131,28 @@ export default class LocusInfo extends EventsScope {
             function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_OBSERVING
+        );
+      }
+
+      if (parsedSelves.updates.canNotViewTheParticipantListChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE,
+          {canNotViewTheParticipantList: parsedSelves.current.canNotViewTheParticipantList}
+        );
+      }
+
+      if (parsedSelves.updates.isSharingBlockedChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_IS_SHARING_BLOCKED_CHANGE,
+          {isSharingBlocked: parsedSelves.current.isSharingBlocked}
         );
       }
 

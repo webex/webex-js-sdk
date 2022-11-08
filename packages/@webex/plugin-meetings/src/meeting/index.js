@@ -1589,6 +1589,19 @@ export default class Meeting extends StatelessWebexPlugin {
           );
         }
       });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_ENTRY_EXIT_TONE_UPDATED,
+      ({entryExitTone}) => {
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setupLocusControlsListener'
+          },
+          EVENT_TRIGGERS.MEETING_ENTRY_EXIT_TONE_UPDATE,
+          {entryExitTone}
+        );
+      });
   }
 
   /**
@@ -2071,6 +2084,34 @@ export default class Meeting extends StatelessWebexPlugin {
           }
         });
       }
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE, (payload) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpLocusInfoSelfListener'
+        },
+        EVENT_TRIGGERS.MEETING_SELF_CANNOT_VIEW_PARTICIPANT_LIST,
+        {
+          payload
+        }
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_IS_SHARING_BLOCKED_CHANGE, (payload) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpLocusInfoSelfListener'
+        },
+        EVENT_TRIGGERS.MEETING_SELF_IS_SHARING_BLOCKED,
+        {
+          payload
+        }
+      );
     });
   }
 

@@ -9,7 +9,6 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import uuid from 'uuid';
-
 import StaticConfig from '@webex/plugin-meetings/src/common/config';
 import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
@@ -27,7 +26,9 @@ import {
   LOCUSEVENT,
   OFFLINE,
   ONLINE,
-  ROAP
+  ROAP,
+  LOCUSINFO,
+  EVENT_TRIGGERS
 } from '../../../../src/constants';
 
 describe('plugin-meetings', () => {
@@ -1108,6 +1109,85 @@ describe('plugin-meetings', () => {
               assert.equal(webex.meetings.preferredWebexSite, '');
             });
         });
+      });
+    });
+
+    describe('#setupLocusControlListeners', () => {
+      let meeting;
+
+      beforeEach(async () => {
+        MediaUtil.createPeerConnection = sinon.stub().returns(true);
+        webex.internal.device.userId = uuid1;
+        webex.internal.device.url = url1;
+        MeetingCollection.set = sinon.stub().returns(true);
+        MeetingsUtil.getMeetingAddedType = sinon.stub().returns('test meeting added type');
+        TriggerProxy.trigger.reset();
+        // clock = sinon.useFakeTimers();
+        // setTimeoutSpy = sinon.spy(clock, 'setTimeout');
+        webex.meetings.meetingInfo.fetchMeetingInfo = sinon.stub().returns(Promise.resolve({
+          body: {
+            permissionToken: 'PT', meetingJoinUrl: 'meetingJoinUrl'
+          }
+        }));
+
+        meeting = await webex.meetings.createMeeting('test destination', 'test type');
+
+        TriggerProxy.trigger.reset();
+      });
+
+      it('triggers correct event when CONTROLS_ENTRY_EXIT_TONE_UPDATED emitted', async () => {
+        await meeting.locusInfo.emitScoped(
+          {},
+          LOCUSINFO.EVENTS.CONTROLS_ENTRY_EXIT_TONE_UPDATED,
+          {entryExitTone: 'foo'}
+        );
+
+        assert.calledOnce(TriggerProxy.trigger);
+        assert.calledWith(TriggerProxy.trigger, sinon.match.instanceOf(Meeting),
+          {
+            file: 'meeting/index',
+            function: 'setupLocusControlsListener'
+          },
+          EVENT_TRIGGERS.MEETING_ENTRY_EXIT_TONE_UPDATE,
+          {entryExitTone: 'foo'});
+      });
+
+      const checkSelfTrigger = async (inEvent, outEvent) => {
+        await meeting.locusInfo.emitScoped(
+          {},
+          inEvent,
+          {foo: 'bar'}
+        );
+
+        assert.calledOnce(TriggerProxy.trigger);
+        assert.calledWith(TriggerProxy.trigger, sinon.match.instanceOf(Meeting),
+          {
+            file: 'meeting/index',
+            function: 'setUpLocusInfoSelfListener'
+          },
+          outEvent,
+          {payload: {foo: 'bar'}});
+      };
+
+      it('triggers correct event when SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE emitted', async () => {
+        checkSelfTrigger(
+          LOCUSINFO.EVENTS.SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE,
+          EVENT_TRIGGERS.MEETING_SELF_CANNOT_VIEW_PARTICIPANT_LIST
+        );
+      });
+
+      it('triggers correct event when SELF_IS_SHARING_BLOCKED_CHANGE emitted', async () => {
+        checkSelfTrigger(
+          LOCUSINFO.EVENTS.SELF_IS_SHARING_BLOCKED_CHANGE,
+          EVENT_TRIGGERS.MEETING_SELF_IS_SHARING_BLOCKED
+        );
+      });
+
+      it('triggers correct event when LOCAL_UNMUTE_REQUESTED emitted', async () => {
+        checkSelfTrigger(
+          LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUESTED,
+          EVENT_TRIGGERS.MEETING_SELF_REQUESTED_TO_UNMUTE
+        );
       });
     });
   });

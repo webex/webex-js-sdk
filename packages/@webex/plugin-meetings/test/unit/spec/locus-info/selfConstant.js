@@ -154,7 +154,9 @@ export const self = {
   resourceGuest: false,
   moderator: true,
   panelist: false,
-  mediaBaseUrl: 'https://locus.meet-a.prod.meetapi.webex.com/locus/api/v1/loci/4e073f82-f5b6-31e5-93b3/participant/e0d54e94-226c-3290-b75a-/media'
+  mediaBaseUrl: 'https://locus.meet-a.prod.meetapi.webex.com/locus/api/v1/loci/4e073f82-f5b6-31e5-93b3/participant/e0d54e94-226c-3290-b75a-/media',
+  canNotViewTheParticipantList: false,
+  isSharingBlocked: false,
 };
 
 export const selfWithInactivity = {
