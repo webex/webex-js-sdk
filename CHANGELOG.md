@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.31.0](https://github.com/webex/webex-js-sdk/compare/v2.30.2...v2.31.0) (2022-11-08)
+
+
+### Features
+
+* **participant-privs:** sdk updates for participant privs ([#2499](https://github.com/webex/webex-js-sdk/issues/2499)) ([8b4a321](https://github.com/webex/webex-js-sdk/commit/8b4a3211c6b9586d255aabf52b7e860634402d31))
+
 ### [2.30.2](https://github.com/webex/webex-js-sdk/compare/v2.30.1...v2.30.2) (2022-11-03)
 
 
