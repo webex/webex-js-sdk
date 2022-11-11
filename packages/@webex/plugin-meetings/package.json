@@ -2,7 +2,7 @@
     "name": "@webex/plugin-meetings",
     "version": "2.31.3",
     "description": "",
-    "license": "MIT",
+    "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
     "contributors": [
         "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
         "Arun Ganeshan <arungane@cisco.com>",

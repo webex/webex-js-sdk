@@ -11,7 +11,7 @@
     "./packages/@webex/*",
     "./packages/webex"
   ],
-  "license": "MIT",
+  "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "author": "devsupport@webex.com",
   "engines": {
     "node": ">=14.x <=16.x",
