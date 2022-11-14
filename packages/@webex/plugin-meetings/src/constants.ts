@@ -1,4 +1,4 @@
-import {hydraTypes} from '@webex/common';
+import { hydraTypes } from '@webex/common';
 
 // *********** LOWERCASE / CAMELCASE STRINGS ************
 
@@ -854,7 +854,6 @@ export const SDP = {
   OFFER: 'offer',
   M_LINE: 'm=',
   MAX_FS: 'max-fs=',
-  MAX_MBPS: 'max-mbps=',
   B_LINE: 'b=TIAS',
   // Edonus repeated key frames request
   PERIODIC_KEYFRAME: 'a=periodic-keyframes:20',
@@ -1035,20 +1034,14 @@ export const VIDEO_RESOLUTIONS = {
 };
 
 /**
- * Max frame sizes and bandwith constraints based on h264 configs
+ * Max frame sizes based on h264 configs
  * https://en.wikipedia.org/wiki/Advanced_Video_Coding
  */
- export const REMOTE_VIDEO_CONSTRAINTS = {
+export const REMOTE_VIDEO_CONSTRAINTS = {
   MAX_FS: {
     [QUALITY_LEVELS.LOW]: 1620,
     [QUALITY_LEVELS.MEDIUM]: 3600,
     [QUALITY_LEVELS.HIGH]: 8192
-  },
-  // Decoder's maximum processing speed in macroblocks per second
-  MAX_MBPS: {   
-    [QUALITY_LEVELS.LOW]: 48600,
-    [QUALITY_LEVELS.MEDIUM]: 108000,
-    [QUALITY_LEVELS.HIGH]: 245760
   }
 };
 

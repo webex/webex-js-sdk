@@ -46,6 +46,7 @@
         "@webex/internal-plugin-user": "workspace:^",
         "@webex/plugin-people": "workspace:^",
         "@webex/plugin-rooms": "workspace:^",
+        "@webex/ts-sdp": "^1.0.1",
         "@webex/webex-core": "workspace:^",
         "bowser": "^2.11.0",
         "btoa": "^1.2.1",

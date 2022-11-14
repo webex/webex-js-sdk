@@ -125,8 +125,7 @@ export const MEDIA_UPDATE_TYPE = {
   * @property {String} audio.deviceId
   * @property {Object} video
   * @property {String} video.deviceId
-  * @property {String} video.localVideoQuality // [240p, 360p, 480p, 720p, 1080p] // we can add _1, _2 for more options like
-  * https://docs.agora.io/en/Video/API%20Reference/web_ng/globals.html#videoencoderconfigurationpreset
+  * @property {String} video.localVideoQuality // [240p, 360p, 480p, 720p, 1080p]
   */
 
 /**
@@ -5430,6 +5429,66 @@ export default class Meeting extends StatelessWebexPlugin {
     this.mediaProperties.setRemoteQualityLevel(level);
 
     return this.updateMedia({mediaSettings: this.mediaProperties.mediaDirection});
+  }
+
+  /**
+   * This is deprecated, please use setLocalVideoQuality for setting local and setRemoteQualityLevel for remote
+   * @param {String} level {LOW|MEDIUM|HIGH}
+   * @returns {Promise}
+   * @deprecated After FHD support
+   */
+  setMeetingQuality(level) {
+    LoggerProxy.logger.log(`Meeting:index#setMeetingQuality --> Setting quality to ${level}`);
+
+    if (!QUALITY_LEVELS[level]) {
+      return this.rejectWithErrorLog(`Meeting:index#setMeetingQuality --> ${level} not defined`);
+    }
+
+    const previousLevel = {
+      local: this.mediaProperties.localQualityLevel,
+      remote: this.mediaProperties.remoteQualityLevel
+    };
+
+    // If level is already the same, don't do anything
+    if (
+      level === this.mediaProperties.localQualityLevel &&
+      level === this.mediaProperties.remoteQualityLevel
+    ) {
+      LoggerProxy.logger.warn(`Meeting:index#setMeetingQuality --> Quality already set to ${level}`);
+
+      return Promise.resolve();
+    }
+
+    // Determine the direction of our current media
+    const {receiveAudio, receiveVideo, sendVideo} = this.mediaProperties.mediaDirection;
+
+    return (sendVideo ? this.setLocalVideoQuality(level) : Promise.resolve())
+      .then(() =>
+        ((receiveAudio || receiveVideo) ?
+          this.setRemoteQualityLevel(level) :
+          Promise.resolve()))
+      .catch((error) => {
+        // From troubleshooting it seems that the stream itself doesn't change the max-fs if the peer connection isn't stable
+        this.mediaProperties.setLocalQualityLevel(previousLevel.local);
+        this.mediaProperties.setRemoteQualityLevel(previousLevel.remote);
+
+        LoggerProxy.logger.error(`Meeting:index#setMeetingQuality --> ${error.message}`);
+
+        Metrics.sendBehavioralMetric(
+          BEHAVIORAL_METRICS.SET_MEETING_QUALITY_FAILURE,
+          {
+            correlation_id: this.correlationId,
+            locus_id: this.locusUrl.split('/').pop(),
+            reason: error.message,
+            stack: error.stack
+          },
+          {
+            type: error.name
+          }
+        );
+
+        return Promise.reject(error);
+      });
   }
 
   /**
