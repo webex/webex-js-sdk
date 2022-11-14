@@ -5,9 +5,7 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-
 import {Services, ServiceRegistry, ServiceState} from '@webex/webex-core';
-import {WEBEXAPI} from '@webex/webex-core/src/lib/services/constants';
 
 /* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
@@ -112,7 +110,8 @@ describe('webex-core', () => {
 
         assert.calledWith(webex.request, {
           method: 'GET',
-          url: `${WEBEXAPI}v1/meetingPreferences`
+          service: 'hydra',
+          resource: 'meetingPreferences'
         });
         assert.isDefined(res);
         assert.equal(res, userPreferences);
@@ -125,7 +124,8 @@ describe('webex-core', () => {
 
         assert.calledWith(webex.request, {
           method: 'GET',
-          url: `${WEBEXAPI}v1/meetingPreferences`
+          service: 'hydra',
+          resource: 'meetingPreferences'
         });
         assert.isUndefined(res);
       });

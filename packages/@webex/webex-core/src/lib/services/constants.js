@@ -1,5 +1,4 @@
 const NAMESPACE = 'services';
-const WEBEXAPI = 'https://webexapis.com/';
 const SERVICE_CATALOGS = [
   'discovery',
   'limited',
@@ -14,7 +13,6 @@ const SERVICE_CATALOGS_ENUM_TYPES = {
 };
 
 export {
-  WEBEXAPI,
   SERVICE_CATALOGS_ENUM_TYPES,
   NAMESPACE,
   SERVICE_CATALOGS
