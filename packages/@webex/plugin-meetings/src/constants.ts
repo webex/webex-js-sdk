@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { hydraTypes } from '@webex/common';
 
 // *********** LOWERCASE / CAMELCASE STRINGS ************

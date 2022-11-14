@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import LoggerProxy from '../common/logs/logger-proxy';
 import {
   HTTP_VERBS,
@@ -20,12 +22,14 @@ export type ClusterList = {
  * @class ReachabilityRequest
  */
 class ReachabilityRequest {
+  webex: any;
+
   /**
    * Creates an instance of ReachabilityRequest.
    * @param {object} webex
    * @memberof ReachabilityRequest
    */
-  constructor(webex) {
+  constructor(webex: object) {
     this.webex = webex;
   }
 
@@ -58,7 +62,7 @@ class ReachabilityRequest {
    * @param {Object} localSDPList localSDPs for the cluster
    * @returns {Object}
    */
-  remoteSDPForClusters = (localSDPList) => this.webex.request({
+  remoteSDPForClusters = (localSDPList: object) => this.webex.request({
     method: HTTP_VERBS.POST,
     shouldRefreshAccessToken: false,
     api: API.CALLIOPEDISCOVERY,
