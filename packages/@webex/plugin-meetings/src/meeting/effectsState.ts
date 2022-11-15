@@ -46,7 +46,7 @@ class EffectsState {
     return new Promise((resolve, reject) => {
       if (this.pendingPromiseResolve) {
         // resolve the last promise we returned to the client as the client has issued a new request that has superseded the previous one
-        this.pendingPromiseResolve();
+        this.pendingPromiseResolve(true);
       }
       this.pendingPromiseResolve = resolve;
       this.pendingPromiseReject = reject;
@@ -134,13 +134,15 @@ class EffectsState {
       this.state.callToWebrtcBNRInProgress = false;
       LoggerProxy.logger.error('Meeting:index#enableBNR.', error);
 
-      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ENABLE_BNR_FAILURE, {
-        reason: error.message,
-        stack: error.stack,
-      });
-      this.rejectPromise(error);
+      Metrics.sendBehavioralMetric(
+        BEHAVIORAL_METRICS.ENABLE_BNR_FAILURE,
+        {
+          reason: error.message,
+          stack: error.stack
+        }
+      );
 
-      throw error;
+      return this.rejectPromise(error);
     }
 
     return this.resolvePromise();
@@ -195,13 +197,15 @@ class EffectsState {
       this.state.callToWebrtcBNRInProgress = false;
       LoggerProxy.logger.error(`Meeting:index#disableBNR. ${error}`);
 
-      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DISABLE_BNR_FAILURE, {
-        reason: error.message,
-        stack: error.stack,
-      });
-      this.rejectPromise(error);
+      Metrics.sendBehavioralMetric(
+        BEHAVIORAL_METRICS.DISABLE_BNR_FAILURE,
+        {
+          reason: error.message,
+          stack: error.stack
+        }
+      );
 
-      throw error;
+      return this.rejectPromise(error);
     }
 
     return this.resolvePromise();
