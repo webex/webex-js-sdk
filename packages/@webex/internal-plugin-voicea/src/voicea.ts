@@ -26,9 +26,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private isTranscribingEnabled: boolean;
 
-  private vmcDeviceId: string;
+  private vmcDeviceId?: string;
 
   private eventProcessor = (e) => {
+    e;
     this.seqNum = e.sequenceNumber + 1;
     switch (e.data.relayType) {
       case VOICEA_RELAY_TYPES.ANNOUNCEMENT:

@@ -72,7 +72,27 @@ describe('plugin-voicea', () => {
     });
 
     describe('#deregisterEvents', () => {
-      it('deregisters voicea service', () => {
+      beforeEach(async () => {
+        const mockWebSocket = new MockWebSocket();
+
+        voiceaService.webex.internal.llm.socket = mockWebSocket;
+      });
+
+      it('deregisters voicea service', async () => {
+        voiceaService.listenToEvents();
+        await voiceaService.toggleTranscribing(true);
+
+        // eslint-disable-next-line no-underscore-dangle
+        voiceaService.webex.internal.llm._emit('event:relay.event', {
+          headers: {from: 'ws'},
+          data: {relayType: 'voicea.annc', voiceaPayload: {}},
+        });
+
+        assert.equal(voiceaService.hasVoiceaJoined, true);
+        assert.equal(voiceaService.areCaptionsEnabled, true);
+        assert.equal(voiceaService.isTranscribingEnabled, true);
+        assert.equal(voiceaService.vmcDeviceId, 'ws');
+
         voiceaService.deregisterEvents();
         assert.equal(voiceaService.hasVoiceaJoined, false);
         assert.equal(voiceaService.areCaptionsEnabled, false);

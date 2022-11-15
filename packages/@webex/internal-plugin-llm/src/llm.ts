@@ -50,11 +50,11 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    */
   private registered: boolean = false;
 
-  private webSocketUrl: string;
+  private webSocketUrl?: string;
 
-  private binding: string;
+  private binding?: string;
 
-  private locusUrl: string;
+  private locusUrl?: string;
 
   /**
    * Initializes the LLM Plugin
