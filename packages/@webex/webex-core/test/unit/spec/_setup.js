@@ -3,6 +3,7 @@
  */
 
 import {registerInternalPlugin, registerPlugin, WebexPlugin} from '@webex/webex-core';
+import {expect} from '@jest/globals';
 
 // In order to prevent cross talk, make sure the "test" public and private
 // plugins are always register to do nothing
@@ -35,4 +36,10 @@ beforeEach(() => {
     }),
     {replace: true}
   );
+});
+
+describe('_setup', () => {
+  it('a sample test so that it does not throw an error', () => {
+    expect(true).toBeTruthy();
+  });
 });

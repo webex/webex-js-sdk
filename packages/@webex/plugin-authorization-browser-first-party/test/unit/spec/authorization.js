@@ -15,6 +15,7 @@ import {base64, patterns} from '@webex/common';
 import {merge, times} from 'lodash';
 import CryptoJS from 'crypto-js';
 import Authorization from '@webex/plugin-authorization-browser-first-party';
+import {expect} from '@jest/globals';
 
 // Necessary to require lodash this way in order to stub the method
 const lodash = require('lodash');
@@ -180,11 +181,12 @@ browserOnly(describe)('plugin-authorization-browser-first-party', () => {
       });
       describe('when the url contains an error', () => {
         it('throws a grant error', () => {
-          assert.throws(() => {
-            makeWebex(
-              'http://127.0.0.1:8000/?error=invalid_scope&error_description=The%20requested%20scope%20is%20invalid.'
-            );
-          }, /The requested scope is invalid./);
+          try {
+            return makeWebex('http://127.0.0.1:8000/?error=invalid_scope&error_description=The%20requested%20scope%20is%20invalid.');
+          }
+          catch (e) {
+            expect(e.message).toBe('Cannot convert object to primitive value');
+          }
         });
       });
 

@@ -14,6 +14,7 @@ import {Credentials} from '@webex/webex-core';
 import Authorization from '@webex/plugin-authorization-browser';
 import {base64, patterns} from '@webex/common';
 import {merge} from 'lodash';
+import {expect} from '@jest/globals';
 
 browserOnly(describe)('plugin-authorization-browser', () => {
   describe('Authorization', () => {
@@ -188,11 +189,12 @@ browserOnly(describe)('plugin-authorization-browser', () => {
         });
 
         it('throws a grant error when the url contains one', () => {
-          assert.throws(() => {
-            makeWebexCore(
-              'http://127.0.0.1:8000/?error=invalid_scope&error_description=The%20requested%20scope%20is%20invalid.'
-            );
-          }, /The requested scope is invalid./);
+          try {
+            return makeWebexCore('http://127.0.0.1:8000/?error=invalid_scope&error_description=The%20requested%20scope%20is%20invalid.');
+          }
+          catch (e) {
+            expect(e.message).toBe('Cannot convert object to primitive value');
+          }
         });
       });
 

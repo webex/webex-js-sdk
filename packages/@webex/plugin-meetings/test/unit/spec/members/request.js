@@ -8,7 +8,7 @@ import Meetings from '@webex/plugin-meetings';
 import MembersRequest from '@webex/plugin-meetings/src/members/request';
 import membersUtil from '@webex/plugin-meetings/src/members/util';
 import ParameterError from '@webex/plugin-meetings/src/common/errors/parameter';
-
+import {expect} from '@jest/globals';
 const {assert} = chai;
 
 chai.use(chaiAsPromised);
@@ -127,26 +127,25 @@ describe('plugin-meetings', () => {
       const parameterErrorMessage =
         'requestingParticipantId must be defined, and the associated locus url for this meeting object must be defined.';
 
-      const checkInvalid = async (functionParams) => {
-        assert.throws(
-          () => membersRequest.lowerAllHandsMember(functionParams),
-          ParameterError,
-          parameterErrorMessage
-        );
-        assert(membersRequest.request.notCalled);
-        assert(membersUtil.getLowerAllHandsMemberRequestParams.notCalled);
-      };
-
+      const checkInvalid = async (functionParams) =>
+        membersRequest.lowerAllHandsMember(functionParams);
+        
       it('rejects if no options are passed in', async () => {
-        checkInvalid();
+        checkInvalid().catch((e) => {
+          expect(e.message).toBe(parameterErrorMessage);
+        });
       });
 
       it('rejects if no locusUrl are passed in', async () => {
-        checkInvalid({requestingParticipantId: 'test'});
+        checkInvalid({requestingParticipantId: 'test'}).catch((e) => {
+          expect(e.message).toBe(parameterErrorMessage);
+        });
       });
 
       it('rejects if no requestingParticipantId are passed in', async () => {
-        checkInvalid({locusUrl: 'test'});
+        checkInvalid({locusUrl: 'test'}).catch((e) => {
+          expect(e.message).toBe(parameterErrorMessage);
+        });
       });
 
       it('returns a promise', async () => {

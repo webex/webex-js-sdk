@@ -139,9 +139,7 @@ describe('plugin-conversation', () => {
       it('should convert a "us" cluster to WEBEX_CONVERSATION_DEFAULT_CLUSTER cluster', async () => {
         await webex.internal.conversation.getUrlFromClusterId({cluster: 'us'});
 
-        sinon.assert.calledWith(webex.internal.services.getServiceFromClusterId, {
-          clusterId: process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER,
-        });
+        sinon.assert.calledWith(webex.internal.services.getServiceFromClusterId, {clusterId: 'urn:TEAM:us-east-2_a:identityLookup'});
       });
 
       it('should add the cluster service when missing', async () => {
@@ -155,11 +153,9 @@ describe('plugin-conversation', () => {
 
     describe('paginate', () => {
       it('should throw an error if a page is passed with no links', () => {
-        try {
-          webex.internal.conversation.paginate({page: {}});
-        } catch (error) {
+        webex.internal.conversation.paginate({page: {}}).catch((error) => {
           assert.equal(error.message, 'No link to follow for the provided page');
-        }
+        });
       });
     });
 
@@ -334,14 +330,12 @@ describe('plugin-conversation', () => {
               conversationUrl: convoUrl,
             });
 
-            try {
-              jumpToActivity();
-            } catch (e) {
+            jumpToActivity().catch((e) => {
               assert.equal(
                 e.message,
                 'Search must be an activity object from conversation service'
               );
-            }
+            });
           });
 
           it('should throw an error if activity.target.url is missing', () => {
@@ -349,11 +343,9 @@ describe('plugin-conversation', () => {
               conversationUrl: convoUrl,
             });
 
-            try {
-              assert.throws(jumpToActivity({target: null}));
-            } catch (e) {
-              //
-            }
+            jumpToActivity({target: null}).catch((e) => {
+              assert.equal(e.message, 'Search object must have a target url!');
+            });
           });
 
           it('should implement the iterator protocol', () => {
