@@ -9,7 +9,6 @@ import ServiceCatalog from './service-catalog';
 import ServiceRegistry from './service-registry';
 import ServiceState from './service-state';
 import fedRampServices from './service-fed-ramp';
-import {WEBEXAPI} from './constants';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
 
@@ -373,7 +372,8 @@ const Services = WebexPlugin.extend({
   getMeetingPreferences() {
     return this.request({
       method: 'GET',
-      url: `${WEBEXAPI}v1/meetingPreferences`
+      service: 'hydra',
+      resource: 'meetingPreferences'
     }).then((res) => {
       this.logger.info('services: received user region info');
 

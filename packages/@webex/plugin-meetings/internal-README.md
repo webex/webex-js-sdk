@@ -140,7 +140,8 @@ You can use the `--unit`, `--integration`, `--automation`, and `--documentation`
 
 ```bash
 # Example running browser tests in debug mode.
-npm test -- --packages @webex/plugin-teams --browser --karma-debug
+yarn run test --packages @webex/plugin-teams --browser --karma-debug
+
 ```
 
 > See [SCRIPTS.md](https://github.com/webex/webex-js-sdk/blob/master/SCRIPTS.md) to learn how to run tests on [SauceLabs](https://saucelabs.com/) and more.
