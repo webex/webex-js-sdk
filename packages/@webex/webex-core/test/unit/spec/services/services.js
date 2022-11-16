@@ -94,8 +94,8 @@ describe('webex-core', () => {
         webex.request = sinon.stub().returns(Promise.reject());
 
         return services.fetchClientRegionInfo().then((r) => {
-            assert.isUndefined(r);
-          });
+          assert.isUndefined(r);
+        });
       });
     });
 

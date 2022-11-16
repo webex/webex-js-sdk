@@ -186,16 +186,6 @@ module.exports = {
          */
         const packages = await list();
 
-        const argString = Object.keys(argv).reduce((acc, key) => {
-          const value = argv[key];
-
-          if (typeof value === 'boolean') {
-            acc += value ? ` --${key}` : ` --no-${key}`;
-          }
-
-          return acc;
-        }, '');
-
         for (const packageName of packages) {
           const argString = Object.keys(argv).reduce((acc, key) => {
             const value = argv[key];

@@ -380,7 +380,7 @@ jobs:
             yarn run deps:generate
 
             echo "Publish to NPM"
-            yarn run tooling -- exec --cmd bash -- -c 'npm publish --access public || true'
+            npm run tooling -- exec --cmd bash -- -c 'npm publish --access public || true'
       - run:
           name: "Push to upstream/master"
           command: git push --follow-tags upstream master

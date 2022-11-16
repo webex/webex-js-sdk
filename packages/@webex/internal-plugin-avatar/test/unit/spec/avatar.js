@@ -4,11 +4,9 @@
 
 import {assert} from '@webex/test-helper-chai';
 import Avatar from '@webex/internal-plugin-avatar';
-import {WebexHttpError} from '@webex/webex-core';
 import User from '@webex/internal-plugin-user';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import { expect, jest } from '@jest/globals';
 
 describe('plugin-avatar', () => {
   let avatar;
@@ -107,7 +105,9 @@ describe('plugin-avatar', () => {
       it('fails to retrieve an avatar url', async () => {
         avatar._fetchAvatarUrl = jest
           .fn()
+          // eslint-disable-next-line prefer-promise-reject-errors
           .mockReturnValue(Promise.reject('fails to retrieve an avatar url'));
+
         return avatar
           .retrieveAvatarUrl('88888888-4444-4444-4444-aaaaaaaaaaa0')
           .catch((err) => expect(err).toBe('fails to retrieve an avatar url'));
@@ -522,6 +522,7 @@ describe('plugin-avatar', () => {
       });
 
       it('rejects each requested avatar if the api call fails', () => {
+        // eslint-disable-next-line prefer-promise-reject-errors
         avatar._fetchAvatarUrl = jest.fn().mockReturnValue(Promise.reject('api call failed'));
 
         const a0 = avatar.retrieveAvatarUrl('88888888-4444-4444-4444-aaaaaaaaaaa0');
@@ -532,7 +533,7 @@ describe('plugin-avatar', () => {
           a0.catch((err) => expect(err).toBe('api call failed')),
         ]).then(() => {
           expect(avatar._fetchAvatarUrl).toHaveBeenCalledTimes(2);
-          });
+        });
       });
 
       it.skip('rejects each avatar missing from the response', () => {

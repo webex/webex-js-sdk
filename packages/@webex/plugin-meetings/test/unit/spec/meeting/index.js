@@ -61,7 +61,6 @@ import IntentToJoinError from '../../../../src/common/errors/intent-to-join';
 import DefaultSDKConfig from '../../../../src/config';
 import testUtils from '../../../utils/testUtils';
 import {MeetingInfoV2CaptchaError, MeetingInfoV2PasswordError} from '../../../../src/meeting-info/meeting-info-v2';
-import {expect, jest} from '@jest/globals';
 
 const {getBrowserName} = BrowserDetection();
 
@@ -770,8 +769,8 @@ describe('plugin-meetings', () => {
       });
       describe('#receiveTranscription', () => {
         beforeEach(() => {
-          meeting.locusInfo.info = { datachannelUrl: true };
-          });
+          meeting.locusInfo.info = {datachannelUrl: true};
+        });
 
         it.skip('should invoke subscribe method to invoke the callback', async () => {
           /* jest.mock('Transcription', () => ({
@@ -786,9 +785,10 @@ describe('plugin-meetings', () => {
         });
 
         it('should throw error', async () => {
+          // eslint-disable-next-line prefer-promise-reject-errors
           meeting.request = jest.fn().mockReturnValue(Promise.reject('mock function error'));
 
-            await meeting.receiveTranscription();
+          await meeting.receiveTranscription();
           expect(meeting.request).toHaveBeenCalled();
         });
       });
@@ -2145,11 +2145,11 @@ describe('plugin-meetings', () => {
           it("doesn't have layoutType which exists in the list of allowed layoutTypes should throw an error", async () => {
             const layoutType = 'Invalid Layout';
 
-              meeting.changeVideoLayout(layoutType).catch((e) => {
-                expect(e.message).toBe(
-                  'Meeting:index#changeVideoLayout --> cannot change video layout, invalid layoutType recieved.'
-                );
-              });
+            meeting.changeVideoLayout(layoutType).catch((e) => {
+              expect(e.message).toBe(
+                'Meeting:index#changeVideoLayout --> cannot change video layout, invalid layoutType recieved.'
+              );
+            });
           });
 
           it('should send no layoutType when layoutType is not provided', async () => {
@@ -2165,13 +2165,13 @@ describe('plugin-meetings', () => {
           });
 
           it('throws if trying to send renderInfo for content when not receiving content', async () => {
-              meeting
-                .changeVideoLayout(layoutTypeSingle, {content: {width: 1280, height: 720}})
-                .catch((e) => {
-                  expect(e.message).toBe(
-                    'Meeting:index#changeVideoLayout --> unable to send renderInfo for content, you are not receiving remote share'
-                  );
-                });
+            meeting
+              .changeVideoLayout(layoutTypeSingle, {content: {width: 1280, height: 720}})
+              .catch((e) => {
+                expect(e.message).toBe(
+                  'Meeting:index#changeVideoLayout --> unable to send renderInfo for content, you are not receiving remote share'
+                );
+              });
           });
 
           it('calls changeVideoLayoutDebounced with renderInfo for main and content', async () => {
@@ -3169,7 +3169,8 @@ describe('plugin-meetings', () => {
           MeetingUtil.joinMeeting = sinon.stub().returns(Promise.reject());
           try {
             await meeting.moveTo('resourceId');
-          } catch (e) {
+          }
+          catch (e) {
             assert.calledOnce(Metrics.sendBehavioralMetric);
             assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
               correlation_id: meeting.correlationId,
@@ -3182,7 +3183,8 @@ describe('plugin-meetings', () => {
           // meeting.reconnectionManager.reconnectMedia = sinon.stub().returns(Promise.reject());
           try {
             await meeting.moveTo('resourceId');
-          } catch (e) {
+          }
+          catch (e) {
             assert.calledOnce(Metrics.sendBehavioralMetric);
             assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
               correlation_id: meeting.correlationId,
@@ -3193,518 +3195,901 @@ describe('plugin-meetings', () => {
           }
         });
       });
+    });
+
+    describe('#moveFrom', () => {
+      let sandbox;
+
+      beforeEach(() => {
+        sandbox = sinon.createSandbox();
+        sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(MeetingUtil.parseLocusJoin({body: {locus, mediaConnections: []}})));
+        sandbox.stub(MeetingUtil, 'leaveMeeting').returns(Promise.resolve());
       });
 
-      describe('#moveFrom', () => {
-        let sandbox;
+      afterEach(() => {
+        sandbox.restore();
+        sandbox = null;
+      });
 
-        beforeEach(() => {
-          sandbox = sinon.createSandbox();
-          sandbox
-            .stub(MeetingUtil, 'joinMeeting')
-            .returns(
-              Promise.resolve(MeetingUtil.parseLocusJoin({body: {locus, mediaConnections: []}}))
-            );
-          sandbox.stub(MeetingUtil, 'leaveMeeting').returns(Promise.resolve());
+      it('should throw an error if resourceId not passed', async () => {
+        try {
+          await meeting.moveFrom();
+        }
+        catch (err) {
+          assert.instanceOf(err, ParameterError);
+
+          assert.equal(err.sdkMessage, 'Cannot move call without a resourceId.');
+        }
+      });
+
+      it('should postEvent on moveFrom ', async () => {
+        await meeting.moveFrom('resourceId');
+
+        assert.calledWithMatch(Metrics.postEvent, {event: eventType.MOVE_MEDIA});
+      });
+
+      it('should call `MeetingUtil.joinMeetingOptions` with resourceId', async () => {
+        sinon.spy(MeetingUtil, 'joinMeetingOptions');
+        await meeting.moveFrom('resourceId');
+
+        assert.calledWith(MeetingUtil.joinMeetingOptions, meeting);
+        assert.calledWith(MeetingUtil.leaveMeeting, meeting, {
+          resourceId: 'resourceId',
+          correlationId: meeting.correlationId,
+          moveMeeting: true
         });
 
-        afterEach(() => {
-          sandbox.restore();
-          sandbox = null;
-        });
+        assert.calledOnce(Metrics.sendBehavioralMetric);
+        assert.calledWith(
+          Metrics.sendBehavioralMetric,
+          BEHAVIORAL_METRICS.MOVE_FROM_SUCCESS,
+        );
+      });
 
-        it('should throw an error if resourceId not passed', async () => {
-          try {
-            await meeting.moveFrom();
-          } catch (err) {
-            assert.instanceOf(err, ParameterError);
-
-            assert.equal(err.sdkMessage, 'Cannot move call without a resourceId.');
-          }
-        });
-
-        it('should postEvent on moveFrom ', async () => {
+      it('should throw an error if moveFrom call fails', async () => {
+        MeetingUtil.joinMeeting = sinon.stub().returns(Promise.reject());
+        try {
           await meeting.moveFrom('resourceId');
-
-          assert.calledWithMatch(Metrics.postEvent, {event: eventType.MOVE_MEDIA});
-        });
-
-        it('should call `MeetingUtil.joinMeetingOptions` with resourceId', async () => {
-          sinon.spy(MeetingUtil, 'joinMeetingOptions');
-          await meeting.moveFrom('resourceId');
-
-          assert.calledWith(MeetingUtil.joinMeetingOptions, meeting);
-          assert.calledWith(MeetingUtil.leaveMeeting, meeting, {
-            resourceId: 'resourceId',
-            correlationId: meeting.correlationId,
-            moveMeeting: true,
-          });
-
+        }
+        catch {
           assert.calledOnce(Metrics.sendBehavioralMetric);
-          assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.MOVE_FROM_SUCCESS);
-        });
-
-        it('should throw an error if moveFrom call fails', async () => {
-          MeetingUtil.joinMeeting = sinon.stub().returns(Promise.reject());
-          try {
-            await meeting.moveFrom('resourceId');
-          } catch {
-            assert.calledOnce(Metrics.sendBehavioralMetric);
-            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.MOVE_FROM_FAILURE, {
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.MOVE_FROM_FAILURE,
+            {
               correlation_id: meeting.correlationId,
               locus_id: meeting.locusUrl.split('/').pop(),
               reason: sinon.match.any,
-              stack: sinon.match.any,
-            });
-          }
-        });
-      });
-    });
-
-    describe('Public Event Triggers', () => {
-      let sandbox;
-      const {ENDED} = CONSTANTS;
-
-      beforeEach(() => {
-        const fakeMediaTrack = () => ({stop: () => {}, readyState: ENDED});
-
-        sandbox = sinon.createSandbox();
-        sandbox.stub(Media, 'stopTracks').returns(Promise.resolve());
-        sandbox.stub(meeting.mediaProperties, 'audioTrack').value(fakeMediaTrack());
-        sandbox.stub(meeting.mediaProperties, 'videoTrack').value(fakeMediaTrack());
-        sandbox.stub(meeting.mediaProperties, 'shareTrack').value(fakeMediaTrack());
-        sandbox.stub(meeting.mediaProperties, 'remoteAudioTrack').value(fakeMediaTrack());
-        sandbox.stub(meeting.mediaProperties, 'remoteVideoTrack').value(fakeMediaTrack());
-        sandbox.stub(meeting.mediaProperties, 'remoteShare').value(fakeMediaTrack());
-      });
-      afterEach(() => {
-        sandbox.restore();
-        sandbox = null;
-      });
-
-      describe('#reconnect', () => {
-        it('should have #reconnect', () => {
-          assert.exists(meeting.reconnect);
-        });
-        describe('successful reconnect', () => {
-          beforeEach(() => {
-            meeting.config.reconnection.enabled = true;
-            meeting.currentMediaStatus = {audio: true};
-            meeting.reconnectionManager = new ReconnectionManager(meeting);
-            meeting.reconnectionManager.reconnect = sinon.stub().returns(Promise.resolve());
-            meeting.reconnectionManager.reset = sinon.stub().returns(true);
-            meeting.reconnectionManager.cleanup = sinon.stub().returns(true);
-          });
-
-          it('should throw error if media not established before trying reconenct', async () => {
-            meeting.currentMediaStatus = null;
-            await meeting.reconnect().catch((err) => {
-              assert.instanceOf(err, ParameterError);
-            });
-          });
-
-          it('should trigger reconnection success', async () => {
-            await meeting.reconnect();
-            assert.calledWith(
-              TriggerProxy.trigger,
-              sinon.match.instanceOf(Meeting),
-              {file: 'meeting/index', function: 'reconnect'},
-              'meeting:reconnectionSuccess'
-            );
-          });
-
-          it('should reset after reconnection success', async () => {
-            await meeting.reconnect();
-            assert.calledOnce(meeting.reconnectionManager.reset);
-          });
-        });
-
-        describe('unsuccessful reconnect', () => {
-          beforeEach(() => {
-            meeting.config.reconnection.enabled = true;
-            meeting.currentMediaStatus = {audio: true};
-            meeting.reconnectionManager = new ReconnectionManager(meeting);
-            meeting.reconnectionManager.reconnect = sinon
-              .stub()
-              .returns(Promise.reject(new Error()));
-            meeting.reconnectionManager.reset = sinon.stub().returns(true);
-          });
-
-          it('should trigger an unsuccessful reconnection', async () => {
-            await assert.isRejected(meeting.reconnect());
-            assert.calledWith(
-              TriggerProxy.trigger,
-              sinon.match.instanceOf(Meeting),
-              {file: 'meeting/index', function: 'reconnect'},
-              'meeting:reconnectionFailure',
-              {error: sinon.match.any}
-            );
-          });
-
-          it('should send metrics on reconnect failure', async () => {
-            await assert.isRejected(meeting.reconnect());
-            assert(Metrics.sendBehavioralMetric.calledOnce);
-            assert.calledWith(
-              Metrics.sendBehavioralMetric,
-              BEHAVIORAL_METRICS.MEETING_RECONNECT_FAILURE,
-              {
-                correlation_id: meeting.correlationId,
-                locus_id: meeting.locusUrl.split('/').pop(),
-                reason: sinon.match.any,
-                stack: sinon.match.any,
-              }
-            );
-          });
-
-          it('should upload logs on reconnect failure', async () => {
-            await assert.isRejected(meeting.reconnect());
-            assert.calledWith(
-              TriggerProxy.trigger,
-              sinon.match.instanceOf(Meeting),
-              {file: 'meeting/index', function: 'reconnect'},
-              EVENTS.REQUEST_UPLOAD_LOGS,
-              sinon.match.instanceOf(Meeting)
-            );
-          });
-
-          it('should reset after an unsuccessful reconnection', async () => {
-            await assert.isRejected(meeting.reconnect());
-            assert.calledOnce(meeting.reconnectionManager.reset);
-          });
-        });
-      });
-      describe('#closeRemoteStream', () => {
-        it('should stop remote tracks, and trigger a media:stopped event when the remote tracks are stopped', async () => {
-          await meeting.closeRemoteTracks();
-
-          assert.equal(TriggerProxy.trigger.callCount, 4);
-          assert.calledWith(
-            TriggerProxy.trigger,
-            sinon.match.instanceOf(Meeting),
-            {file: 'meeting/index', function: 'closeRemoteTracks'},
-            'media:stopped',
-            {type: 'remoteAudio'}
-          );
-          assert.calledWith(
-            TriggerProxy.trigger,
-            sinon.match.instanceOf(Meeting),
-            {file: 'meeting/index', function: 'closeRemoteTracks'},
-            'media:stopped',
-            {type: 'remoteVideo'}
-          );
-          assert.calledWith(
-            TriggerProxy.trigger,
-            sinon.match.instanceOf(Meeting),
-            {file: 'meeting/index', function: 'closeRemoteTracks'},
-            'media:stopped',
-            {type: 'remoteShare'}
-          );
-        });
-      });
-      describe('#closeLocalShare', () => {
-        it('should stop the stream, and trigger a media:stopped event when the local share stream stops', async () => {
-          await meeting.closeLocalShare();
-          assert.calledTwice(TriggerProxy.trigger);
-
-          assert.equal(TriggerProxy.trigger.getCall(1).args[2], 'media:stopped');
-          assert.deepEqual(TriggerProxy.trigger.getCall(1).args[3], {type: 'localShare'});
-        });
-      });
-      describe('#closeLocalStream', () => {
-        it('should stop the stream, and trigger a media:stopped event when the local stream stops', async () => {
-          await meeting.closeLocalStream();
-          assert.calledTwice(TriggerProxy.trigger);
-          assert.calledWith(
-            TriggerProxy.trigger,
-            sinon.match.instanceOf(Meeting),
-            {file: 'meeting/index', function: 'closeLocalStream'},
-            'media:stopped',
-            {type: 'local'}
-          );
-        });
-      });
-      describe('#setLocalTracks', () => {
-        it('stores the current video device as the preferred video device', () => {
-          const videoDevice = 'video1';
-          const fakeTrack = {getSettings: () => ({deviceId: videoDevice})};
-          const fakeStream = 'stream1';
-
-          sandbox.stub(MeetingUtil, 'getTrack').returns({audioTrack: null, videoTrack: fakeTrack});
-          sandbox.stub(meeting.mediaProperties, 'setMediaSettings');
-          sandbox.stub(meeting.mediaProperties, 'setVideoDeviceId');
-
-          meeting.setLocalTracks(fakeStream);
-
-          assert.calledWith(meeting.mediaProperties.setVideoDeviceId, videoDevice);
-        });
-      });
-      describe('#setLocalShareTrack', () => {
-        it('should trigger a media:ready event with local share stream', () => {
-          const track = {
-            getSettings: sinon.stub().returns({
-              aspectRatio: '1.7',
-              frameRate: 30,
-              height: 1980,
-              width: 1080,
-              displaySurface: true,
-              cursor: true,
-            }),
-          };
-          const getVideoTracks = sinon.stub().returns([track]);
-
-          meeting.mediaProperties.setLocalShareTrack = sinon.stub().returns(true);
-          meeting.mediaProperties.shareTrack = {getVideoTracks, getSettings: track.getSettings};
-          meeting.stopShare = sinon.stub().resolves(true);
-          meeting.mediaProperties.mediaDirection = {};
-          meeting.setLocalShareTrack(test1);
-          assert.calledTwice(TriggerProxy.trigger);
-          assert.calledWith(
-            TriggerProxy.trigger,
-            sinon.match.instanceOf(Meeting),
-            {file: 'meeting/index', function: 'setLocalShareTrack'},
-            'media:ready'
-          );
-          assert.calledOnce(meeting.mediaProperties.setLocalShareTrack);
-          assert.equal(meeting.mediaProperties.localStream, undefined);
-          meeting.mediaProperties.shareTrack.onended();
-          assert.calledOnce(meeting.stopShare);
-        });
-      });
-      describe('#setRemoteStream', () => {
-        beforeEach(() => {
-          meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
-        });
-        it('should trigger a media:ready event when remote stream track ontrack is fired', () => {
-          const pc = {};
-
-          meeting.setRemoteStream(pc);
-          pc.ontrack({track: 'track', transceiver: {mid: '0'}});
-          assert.equal(TriggerProxy.trigger.getCall(1).args[2], 'media:ready');
-          assert.deepEqual(TriggerProxy.trigger.getCall(1).args[3], {
-            type: 'remoteAudio',
-            stream: true,
-          });
-
-          pc.ontrack({track: 'track', transceiver: {mid: '1'}});
-          assert.equal(TriggerProxy.trigger.getCall(2).args[2], 'media:ready');
-          assert.deepEqual(TriggerProxy.trigger.getCall(2).args[3], {
-            type: 'remoteVideo',
-            stream: true,
-          });
-
-          pc.ontrack({transceiver: {mid: '2'}, track: 'track'});
-          assert.equal(TriggerProxy.trigger.getCall(3).args[2], 'media:ready');
-          assert.deepEqual(TriggerProxy.trigger.getCall(3).args[3], {
-            type: 'remoteShare',
-            stream: true,
-          });
-
-          // special case for safari
-          pc.ontrack({
-            target: {audioTransceiver: {receiver: {track: {id: 'trackId'}}}},
-            transceiver: {},
-            track: {id: 'trackId'},
-          });
-          assert.equal(TriggerProxy.trigger.getCall(1).args[2], 'media:ready');
-          assert.deepEqual(TriggerProxy.trigger.getCall(1).args[3], {
-            type: 'remoteAudio',
-            stream: true,
-          });
-        });
-      });
-      describe('#setUpLocusInfoSelfListener', () => {
-        it('listens to the self unadmitted guest event', (done) => {
-          meeting.startKeepAlive = sinon.stub();
-          meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_UNADMITTED_GUEST', test1);
-          assert.calledOnceWithExactly(meeting.startKeepAlive);
-          assert.calledTwice(TriggerProxy.trigger);
-          assert.calledWith(
-            TriggerProxy.trigger,
-            sinon.match.instanceOf(Meeting),
-            {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
-            'meeting:self:lobbyWaiting',
-            {payload: test1}
-          );
-          done();
-        });
-        it('listens to the self admitted guest event', (done) => {
-          meeting.stopKeepAlive = sinon.stub();
-          meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ADMITTED_GUEST', test1);
-          assert.calledOnceWithExactly(meeting.stopKeepAlive);
-          assert.calledTwice(TriggerProxy.trigger);
-          assert.calledWith(
-            TriggerProxy.trigger,
-            sinon.match.instanceOf(Meeting),
-            {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
-            'meeting:self:guestAdmitted',
-            {payload: test1}
-          );
-          done();
-        });
-      });
-
-      describe('#setUpLocusUrlListener', () => {
-        it('listens to the locus url update event', (done) => {
-          const newLocusUrl = 'newLocusUrl/12345';
-
-          meeting.members = {locusUrlUpdate: sinon.stub().returns(Promise.resolve(test1))};
-          meeting.recordingController = {setLocusUrl: sinon.stub().returns(undefined)};
-          meeting.controlsOptionsManager = {setLocusUrl: sinon.stub().returns(undefined)};
-
-          meeting.locusInfo.emit(
-            {function: 'test', file: 'test'},
-            'LOCUS_INFO_UPDATE_URL',
-            newLocusUrl
-          );
-          assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
-          assert.calledWith(meeting.recordingController.setLocusUrl, newLocusUrl);
-          assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl);
-          assert.equal(meeting.locusUrl, newLocusUrl);
-          assert(meeting.locusId, '12345');
-          done();
-        });
-      });
-
-      describe('#setUpLocusServicesListener', () => {
-        it('listens to the locus services update event', (done) => {
-          const newLocusServices = {
-              services: {
-                record: {
-                  url: 'url',
-                }
-              },
-          };
-
-          meeting.recordingController = {setServiceUrl: sinon.stub().returns(undefined), setSessionId: sinon.stub().returns(undefined)};
-
-          meeting.locusInfo.emit(
-            {function: 'test', file: 'test'},
-            'LINKS_SERVICES',
-            newLocusServices
-          );
-
-          assert.calledWith(meeting.recordingController.setServiceUrl, newLocusServices.services.record.url);
-          assert.calledOnce(meeting.recordingController.setSessionId);
-          done();
-        });
-      });
-      describe('#setUpLocusInfoMediaInactiveListener', () => {
-        it('listens to disconnect due to un activity ', (done) => {
-          TriggerProxy.trigger.reset();
-          meeting.locusInfo.emit(
-            {function: 'test', file: 'test'},
-            EVENTS.DISCONNECT_DUE_TO_INACTIVITY,
-            {reason: 'inactive'}
-          );
-          assert.calledTwice(TriggerProxy.trigger);
-
-          assert.calledWith(
-            TriggerProxy.trigger,
-            meeting,
-            {file: 'meeting/index', function: 'setUpLocusInfoMediaInactiveListener'},
-            EVENTS.REQUEST_UPLOAD_LOGS,
-            meeting
-          );
-
-          assert.calledWith(
-            TriggerProxy.trigger,
-            meeting,
-            {file: 'meeting/index', function: 'setUpLocusInfoMediaInactiveListener'},
-            EVENT_TRIGGERS.MEETING_SELF_LEFT,
-            'inactive'
-          );
-
-          done();
-        });
-
-        it('listens to disconnect due to in activity and rejoin', (done) => {
-          TriggerProxy.trigger.reset();
-          sinon.stub(meeting, 'reconnect');
-
-          meeting.config.reconnection.autoRejoin = true;
-          meeting.locusInfo.emit(
-            {function: 'test', file: 'test'},
-            EVENTS.DISCONNECT_DUE_TO_INACTIVITY,
-            {reason: 'inactive'}
-          );
-          assert.calledOnce(TriggerProxy.trigger);
-
-          assert.calledWith(
-            TriggerProxy.trigger,
-            meeting,
-            {file: 'meeting/index', function: 'setUpLocusInfoMediaInactiveListener'},
-            EVENTS.REQUEST_UPLOAD_LOGS,
-            meeting
-          );
-
-          assert.calledOnce(meeting.reconnect);
-
-          meeting.reconnect.restore();
-
-          done();
-        });
-      });
-
-      describe('#setUpLocusInfoMeetingListener', () => {
-        it('listens to destroy meeting event from locus info  ', (done) => {
-          TriggerProxy.trigger.reset();
-          sinon.stub(meeting.reconnectionManager, 'cleanUp');
-          sinon.spy(MeetingUtil, 'cleanUp');
-
-          meeting.locusInfo.emit({function: 'test', file: 'test'}, EVENTS.DESTROY_MEETING, {
-            shouldLeave: false,
-            reason: 'ended',
-          });
-          assert.calledOnce(TriggerProxy.trigger);
-          assert.calledOnce(MeetingUtil.cleanUp);
-          assert.calledWith(
-            TriggerProxy.trigger,
-            meeting,
-            {
-              file: 'meeting/index',
-              function: 'setUpLocusInfoMeetingListener',
-            },
-            EVENTS.DESTROY_MEETING,
-            {
-              reason: 'ended',
-              meetingId: meeting.id,
+              stack: sinon.match.any
             }
           );
-          done();
+        }
+      });
+    });
+  });
+
+  describe('Public Event Triggers', () => {
+    let sandbox;
+    const {ENDED} = CONSTANTS;
+
+    beforeEach(() => {
+      const fakeMediaTrack = () => ({stop: () => {}, readyState: ENDED});
+
+      sandbox = sinon.createSandbox();
+      sandbox.stub(Media, 'stopTracks').returns(Promise.resolve());
+      sandbox.stub(meeting.mediaProperties, 'audioTrack').value(fakeMediaTrack());
+      sandbox.stub(meeting.mediaProperties, 'videoTrack').value(fakeMediaTrack());
+      sandbox.stub(meeting.mediaProperties, 'shareTrack').value(fakeMediaTrack());
+      sandbox.stub(meeting.mediaProperties, 'remoteAudioTrack').value(fakeMediaTrack());
+      sandbox.stub(meeting.mediaProperties, 'remoteVideoTrack').value(fakeMediaTrack());
+      sandbox.stub(meeting.mediaProperties, 'remoteShare').value(fakeMediaTrack());
+    });
+    afterEach(() => {
+      sandbox.restore();
+      sandbox = null;
+    });
+
+    describe('#reconnect', () => {
+      it('should have #reconnect', () => {
+        assert.exists(meeting.reconnect);
+      });
+      describe('successful reconnect', () => {
+        beforeEach(() => {
+          meeting.config.reconnection.enabled = true;
+          meeting.currentMediaStatus = {audio: true};
+          meeting.reconnectionManager = new ReconnectionManager(meeting);
+          meeting.reconnectionManager.reconnect = sinon.stub().returns(Promise.resolve());
+          meeting.reconnectionManager.reset = sinon.stub().returns(true);
+          meeting.reconnectionManager.cleanup = sinon.stub().returns(true);
+        });
+
+        it('should throw error if media not established before trying reconenct', async () => {
+          meeting.currentMediaStatus = null;
+          await meeting.reconnect().catch((err) => {
+            assert.instanceOf(err, ParameterError);
+          });
+        });
+
+        it('should trigger reconnection success', async () => {
+          await meeting.reconnect();
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {file: 'meeting/index', function: 'reconnect'},
+            'meeting:reconnectionSuccess'
+          );
+        });
+
+        it('should reset after reconnection success', async () => {
+          await meeting.reconnect();
+          assert.calledOnce(meeting.reconnectionManager.reset);
+        });
+      });
+
+      describe('unsuccessful reconnect', () => {
+        beforeEach(() => {
+          meeting.config.reconnection.enabled = true;
+          meeting.currentMediaStatus = {audio: true};
+          meeting.reconnectionManager = new ReconnectionManager(meeting);
+          meeting.reconnectionManager.reconnect = sinon.stub().returns(Promise.reject(new Error()));
+          meeting.reconnectionManager.reset = sinon.stub().returns(true);
+        });
+
+        it('should trigger an unsuccessful reconnection', async () => {
+          await assert.isRejected(meeting.reconnect());
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {file: 'meeting/index', function: 'reconnect'},
+            'meeting:reconnectionFailure',
+            {error: sinon.match.any}
+          );
+        });
+
+        it('should send metrics on reconnect failure', async () => {
+          await assert.isRejected(meeting.reconnect());
+          assert(Metrics.sendBehavioralMetric.calledOnce);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.MEETING_RECONNECT_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: sinon.match.any,
+              stack: sinon.match.any
+            }
+          );
+        });
+
+        it('should upload logs on reconnect failure', async () => {
+          await assert.isRejected(meeting.reconnect());
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {file: 'meeting/index', function: 'reconnect'},
+            EVENTS.REQUEST_UPLOAD_LOGS,
+            sinon.match.instanceOf(Meeting),
+          );
+        });
+
+        it('should reset after an unsuccessful reconnection', async () => {
+          await assert.isRejected(meeting.reconnect());
+          assert.calledOnce(meeting.reconnectionManager.reset);
         });
       });
     });
-    describe('Private Detailed API and Helpers', () => {
-      let sandbox;
+    describe('#closeRemoteStream', () => {
+      it('should stop remote tracks, and trigger a media:stopped event when the remote tracks are stopped', async () => {
+        await meeting.closeRemoteTracks();
+
+        assert.equal(TriggerProxy.trigger.callCount, 4);
+        assert.calledWith(
+          TriggerProxy.trigger,
+          sinon.match.instanceOf(Meeting),
+          {file: 'meeting/index', function: 'closeRemoteTracks'},
+          'media:stopped',
+          {type: 'remoteAudio'}
+        );
+        assert.calledWith(
+          TriggerProxy.trigger,
+          sinon.match.instanceOf(Meeting),
+          {file: 'meeting/index', function: 'closeRemoteTracks'},
+          'media:stopped',
+          {type: 'remoteVideo'}
+        );
+        assert.calledWith(
+          TriggerProxy.trigger,
+          sinon.match.instanceOf(Meeting),
+          {file: 'meeting/index', function: 'closeRemoteTracks'},
+          'media:stopped',
+          {type: 'remoteShare'}
+        );
+      });
+    });
+    describe('#closeLocalShare', () => {
+      it('should stop the stream, and trigger a media:stopped event when the local share stream stops', async () => {
+        await meeting.closeLocalShare();
+        assert.calledTwice(TriggerProxy.trigger);
+
+        assert.equal(TriggerProxy.trigger.getCall(1).args[2], 'media:stopped');
+        assert.deepEqual(TriggerProxy.trigger.getCall(1).args[3], {type: 'localShare'});
+      });
+    });
+    describe('#closeLocalStream', () => {
+      it('should stop the stream, and trigger a media:stopped event when the local stream stops', async () => {
+        await meeting.closeLocalStream();
+        assert.calledTwice(TriggerProxy.trigger);
+        assert.calledWith(
+          TriggerProxy.trigger,
+          sinon.match.instanceOf(Meeting),
+          {file: 'meeting/index', function: 'closeLocalStream'},
+          'media:stopped',
+          {type: 'local'}
+        );
+      });
+    });
+    describe('#setLocalTracks', () => {
+      it('stores the current video device as the preferred video device', () => {
+        const videoDevice = 'video1';
+        const fakeTrack = {getSettings: () => ({deviceId: videoDevice})};
+        const fakeStream = 'stream1';
+
+        sandbox.stub(MeetingUtil, 'getTrack').returns({audioTrack: null, videoTrack: fakeTrack});
+        sandbox.stub(meeting.mediaProperties, 'setMediaSettings');
+        sandbox.stub(meeting.mediaProperties, 'setVideoDeviceId');
+
+        meeting.setLocalTracks(fakeStream);
+
+        assert.calledWith(meeting.mediaProperties.setVideoDeviceId, videoDevice);
+      });
+    });
+    describe('#setLocalShareTrack', () => {
+      it('should trigger a media:ready event with local share stream', () => {
+        const track = {
+          getSettings: sinon.stub().returns({
+            aspectRatio: '1.7',
+            frameRate: 30,
+            height: 1980,
+            width: 1080,
+            displaySurface: true,
+            cursor: true
+          })
+        };
+        const getVideoTracks = sinon.stub().returns([track]);
+
+        meeting.mediaProperties.setLocalShareTrack = sinon.stub().returns(true);
+        meeting.mediaProperties.shareTrack = {getVideoTracks, getSettings: track.getSettings};
+        meeting.stopShare = sinon.stub().resolves(true);
+        meeting.mediaProperties.mediaDirection = {};
+        meeting.setLocalShareTrack(test1);
+        assert.calledTwice(TriggerProxy.trigger);
+        assert.calledWith(
+          TriggerProxy.trigger,
+          sinon.match.instanceOf(Meeting),
+          {file: 'meeting/index', function: 'setLocalShareTrack'},
+          'media:ready'
+        );
+        assert.calledOnce(meeting.mediaProperties.setLocalShareTrack);
+        assert.equal(meeting.mediaProperties.localStream, undefined);
+        meeting.mediaProperties.shareTrack.onended();
+        assert.calledOnce(meeting.stopShare);
+      });
+    });
+    describe('#setRemoteStream', () => {
+      beforeEach(() => {
+        meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
+      });
+      it('should trigger a media:ready event when remote stream track ontrack is fired', () => {
+        const pc = {};
+
+        meeting.setRemoteStream(pc);
+        pc.ontrack({track: 'track', transceiver: {mid: '0'}});
+        assert.equal(TriggerProxy.trigger.getCall(1).args[2], 'media:ready');
+        assert.deepEqual(TriggerProxy.trigger.getCall(1).args[3], {type: 'remoteAudio', stream: true});
+
+        pc.ontrack({track: 'track', transceiver: {mid: '1'}});
+        assert.equal(TriggerProxy.trigger.getCall(2).args[2], 'media:ready');
+        assert.deepEqual(TriggerProxy.trigger.getCall(2).args[3], {type: 'remoteVideo', stream: true});
+
+        pc.ontrack({transceiver: {mid: '2'}, track: 'track'});
+        assert.equal(TriggerProxy.trigger.getCall(3).args[2], 'media:ready');
+        assert.deepEqual(TriggerProxy.trigger.getCall(3).args[3], {type: 'remoteShare', stream: true});
+
+
+        // special case for safari
+        pc.ontrack({target: {audioTransceiver: {receiver: {track: {id: 'trackId'}}}}, transceiver: {}, track: {id: 'trackId'}});
+        assert.equal(TriggerProxy.trigger.getCall(1).args[2], 'media:ready');
+        assert.deepEqual(TriggerProxy.trigger.getCall(1).args[3], {type: 'remoteAudio', stream: true});
+      });
+    });
+    describe('#setUpLocusInfoSelfListener', () => {
+      it('listens to the self unadmitted guest event', (done) => {
+        meeting.startKeepAlive = sinon.stub();
+        meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_UNADMITTED_GUEST', test1);
+        assert.calledOnceWithExactly(meeting.startKeepAlive);
+        assert.calledTwice(TriggerProxy.trigger);
+        assert.calledWith(
+          TriggerProxy.trigger,
+          sinon.match.instanceOf(Meeting),
+          {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
+          'meeting:self:lobbyWaiting',
+          {payload: test1}
+        );
+        done();
+      });
+      it('listens to the self admitted guest event', (done) => {
+        meeting.stopKeepAlive = sinon.stub();
+        meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ADMITTED_GUEST', test1);
+        assert.calledOnceWithExactly(meeting.stopKeepAlive);
+        assert.calledTwice(TriggerProxy.trigger);
+        assert.calledWith(
+          TriggerProxy.trigger,
+          sinon.match.instanceOf(Meeting),
+          {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
+          'meeting:self:guestAdmitted',
+          {payload: test1}
+        );
+        done();
+      });
+    });
+
+    describe('#setUpLocusUrlListener', () => {
+      it('listens to the locus url update event', (done) => {
+        const newLocusUrl = 'newLocusUrl/12345';
+
+        meeting.members = {locusUrlUpdate: sinon.stub().returns(Promise.resolve(test1))};
+
+        meeting.locusInfo.emit({function: 'test', file: 'test'}, 'LOCUS_INFO_UPDATE_URL', newLocusUrl);
+        assert.calledWith(
+          meeting.members.locusUrlUpdate,
+          newLocusUrl
+        );
+        assert.equal(meeting.locusUrl, newLocusUrl);
+        assert(meeting.locusId, '12345');
+        done();
+      });
+    });
+    describe('#setUpLocusInfoMediaInactiveListener', () => {
+      it('listens to disconnect due to un activity ', (done) => {
+        TriggerProxy.trigger.reset();
+        meeting.locusInfo.emit({function: 'test', file: 'test'}, EVENTS.DISCONNECT_DUE_TO_INACTIVITY, {reason: 'inactive'});
+        assert.calledTwice(TriggerProxy.trigger);
+
+        assert.calledWith(
+          TriggerProxy.trigger,
+          meeting,
+          {file: 'meeting/index', function: 'setUpLocusInfoMediaInactiveListener'},
+          EVENTS.REQUEST_UPLOAD_LOGS,
+          meeting
+        );
+
+        assert.calledWith(
+          TriggerProxy.trigger,
+          meeting,
+          {file: 'meeting/index', function: 'setUpLocusInfoMediaInactiveListener'},
+          EVENT_TRIGGERS.MEETING_SELF_LEFT,
+          'inactive'
+        );
+
+        done();
+      });
+
+      it('listens to disconnect due to in activity and rejoin', (done) => {
+        TriggerProxy.trigger.reset();
+        sinon.stub(meeting, 'reconnect');
+
+        meeting.config.reconnection.autoRejoin = true;
+        meeting.locusInfo.emit({function: 'test', file: 'test'}, EVENTS.DISCONNECT_DUE_TO_INACTIVITY, {reason: 'inactive'});
+        assert.calledOnce(TriggerProxy.trigger);
+
+        assert.calledWith(
+          TriggerProxy.trigger,
+          meeting,
+          {file: 'meeting/index', function: 'setUpLocusInfoMediaInactiveListener'},
+          EVENTS.REQUEST_UPLOAD_LOGS,
+          meeting
+        );
+
+        assert.calledOnce(meeting.reconnect);
+
+        meeting.reconnect.restore();
+
+        done();
+      });
+    });
+
+    describe('#setUpLocusInfoMeetingListener', () => {
+      it('listens to destroy meeting event from locus info  ', (done) => {
+        TriggerProxy.trigger.reset();
+        sinon.stub(meeting.reconnectionManager, 'cleanUp');
+        sinon.spy(MeetingUtil, 'cleanUp');
+
+        meeting.locusInfo.emit({function: 'test', file: 'test'}, EVENTS.DESTROY_MEETING, {shouldLeave: false, reason: 'ended'});
+        assert.calledOnce(TriggerProxy.trigger);
+        assert.calledOnce(MeetingUtil.cleanUp);
+        assert.calledWith(
+          TriggerProxy.trigger,
+          meeting,
+          {
+            file: 'meeting/index',
+            function: 'setUpLocusInfoMeetingListener'
+          },
+          EVENTS.DESTROY_MEETING,
+          {
+            reason: 'ended',
+            meetingId: meeting.id
+          }
+        );
+        done();
+      });
+    });
+  });
+  describe('Private Detailed API and Helpers', () => {
+    let sandbox;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      sandbox.stub(meeting.mediaProperties, 'unsetRemoteTracks').returns(Promise.resolve());
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+      sandbox = null;
+    });
+
+    describe('#stopFloorRequest', () => {
+      it('should have #stopFloorRequest', () => {
+        assert.exists(meeting.stopFloorRequest);
+      });
+      beforeEach(() => {
+        meeting.locusInfo.mediaShares = [{name: 'content', url: url1}];
+        meeting.locusInfo.self = {url: url2};
+        meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
+      });
+      it('should call change meeting floor', async () => {
+        const share = meeting.share();
+
+        assert.exists(share.then);
+        await share;
+        assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
+      });
+    });
+
+    describe('#setSipUri', () => {
+      it('should set the sip Uri and return null', () => {
+        assert.notOk(meeting.sipUri);
+        meeting.setSipUri(test1);
+        assert.equal(meeting.sipUri, test1);
+      });
+    });
+    describe('#unsetRemoteTracks', () => {
+      it('should unset the remote tracks and return null', () => {
+        meeting.mediaProperties.unsetRemoteTracks = sinon.stub().returns(true);
+        meeting.unsetRemoteTracks();
+        assert.calledOnce(meeting.mediaProperties.unsetRemoteTracks);
+      });
+    });
+    describe('#unsetLocalVideoTrack', () => {
+      it('should unset the local stream and return null', () => {
+        meeting.mediaProperties.unsetLocalVideoTrack = sinon.stub().returns(true);
+        meeting.unsetLocalVideoTrack();
+        assert.calledOnce(meeting.mediaProperties.unsetLocalVideoTrack);
+      });
+    });
+    describe('#unsetLocalShareTrack', () => {
+      it('should unset the local share stream and return null', () => {
+        meeting.mediaProperties.unsetLocalShareTrack = sinon.stub().returns(true);
+        meeting.unsetLocalShareTrack();
+        assert.calledOnce(meeting.mediaProperties.unsetLocalShareTrack);
+      });
+    });
+    // TODO: remove
+    describe('#setMercuryListener', () => {
+      it('should listen to mercury events', () => {
+        meeting.reconnect = sinon.stub().returns(true);
+        meeting.webex.internal.mercury.on = sinon.stub().returns(true);
+        meeting.setMercuryListener(test1, test2);
+        assert.instanceOf(meeting.reconnectionManager, ReconnectionManager);
+        assert.calledTwice(meeting.webex.internal.mercury.on);
+      });
+    });
+    describe('#closePeerConnections', () => {
+      it('should close the peer connections, and return a promise', async () => {
+        PeerConnectionManager.close = sinon.stub().returns(Promise.resolve());
+        const pcs = meeting.closePeerConnections();
+
+        assert.exists(pcs.then);
+        await pcs;
+        assert.calledOnce(PeerConnectionManager.close);
+      });
+    });
+    describe('#unsetPeerConnections', () => {
+      it('should unset the peer connections', () => {
+        meeting.mediaProperties.unsetPeerConnection = sinon.stub().returns(true);
+        meeting.webex.internal.mercury.off = sinon.stub().returns(true);
+        meeting.unsetPeerConnections();
+        assert.calledOnce(meeting.mediaProperties.unsetPeerConnection);
+      });
+    });
+    describe('#parseMeetingInfo', () => {
+      const checkParseMeetingInfo = (expectedInfoToParse) => {
+        assert.equal(meeting.conversationUrl, expectedInfoToParse.conversationUrl);
+        assert.equal(meeting.locusUrl, expectedInfoToParse.locusUrl);
+        assert.equal(meeting.sipUri, expectedInfoToParse.sipUri);
+        assert.equal(meeting.meetingNumber, expectedInfoToParse.meetingNumber);
+        assert.equal(meeting.meetingJoinUrl, expectedInfoToParse.meetingJoinUrl);
+        assert.equal(meeting.owner, expectedInfoToParse.owner);
+        assert.equal(meeting.permissionToken, expectedInfoToParse.permissionToken);
+      };
+
+      it('should parse meeting info from api return when locus meeting object is not available, set values, and return null', () => {
+        meeting.config.experimental = {enableMediaNegotiatedEvent: true};
+        meeting.config.experimental.enableUnifiedMeetings = true;
+        const FAKE_MEETING_INFO = {
+          body: {
+            conversationUrl: uuid1,
+            locusUrl: url1,
+            meetingJoinUrl: url2,
+            meetingNumber: '12345',
+            permissionToken: 'abc',
+            sipMeetingUri: test1,
+            sipUrl: test1,
+            owner: test2
+          }
+        };
+
+        meeting.parseMeetingInfo(FAKE_MEETING_INFO);
+        const expectedInfoToParse = {
+          conversationUrl: uuid1,
+          locusUrl: url1,
+          sipUri: test1,
+          meetingNumber: '12345',
+          meetingJoinUrl: url2,
+          owner: test2,
+          permissionToken: 'abc'
+        };
+
+        checkParseMeetingInfo(expectedInfoToParse);
+      });
+      it('should parse meeting info from locus meeting object if possible, else from api return, set values, and return null', () => {
+        meeting.config.experimental = {enableMediaNegotiatedEvent: true};
+        meeting.config.experimental.enableUnifiedMeetings = true;
+        const FAKE_LOCUS_MEETING = {
+          conversationUrl: 'locusConvURL',
+          url: 'locusUrl',
+          info: {
+            webExMeetingId: 'locusMeetingId',
+            sipUri: 'locusSipUri',
+            owner: 'locusOwner'
+          }
+        };
+        const FAKE_MEETING_INFO = {
+          body: {
+            conversationUrl: uuid1,
+            locusUrl: url1,
+            meetingJoinUrl: url2,
+            meetingNumber: '12345',
+            permissionToken: 'abc',
+            sipMeetingUri: test1,
+            sipUrl: test1,
+            owner: test2
+          }
+        };
+
+        meeting.parseMeetingInfo(FAKE_MEETING_INFO, FAKE_LOCUS_MEETING);
+        const expectedInfoToParse = {
+          conversationUrl: 'locusConvURL',
+          locusUrl: 'locusUrl',
+          sipUri: 'locusSipUri',
+          meetingNumber: 'locusMeetingId',
+          meetingJoinUrl: url2,
+          owner: 'locusOwner',
+          permissionToken: 'abc'
+        };
+
+        checkParseMeetingInfo(expectedInfoToParse);
+      });
+      it('should parse meeting info from api return, set values, and return null', () => {
+        meeting.config.experimental = {enableMediaNegotiatedEvent: true};
+        meeting.config.experimental.enableUnifiedMeetings = true;
+        const FAKE_MEETING_INFO = {
+          body: {
+            conversationUrl: uuid1,
+            locusUrl: url1,
+            meetingJoinUrl: url2,
+            meetingNumber: '12345',
+            permissionToken: 'abc',
+            sipMeetingUri: test1,
+            sipUrl: test1,
+            owner: test2
+          }
+        };
+
+        meeting.parseMeetingInfo(FAKE_MEETING_INFO);
+        const expectedInfoToParse = {
+          conversationUrl: uuid1,
+          locusUrl: url1,
+          sipUri: test1,
+          meetingNumber: '12345',
+          meetingJoinUrl: url2,
+          owner: test2,
+          permissionToken: 'abc'
+        };
+
+        checkParseMeetingInfo(expectedInfoToParse);
+      });
+      it('should parse meeting info, set values, and return null when destination is a string', () => {
+        meeting.config.experimental = {enableMediaNegotiatedEvent: true};
+        meeting.config.experimental.enableUnifiedMeetings = true;
+        const FAKE_STRING_DESTINATION = 'sipUrl';
+        const FAKE_MEETING_INFO = {
+          body: {
+            conversationUrl: uuid1,
+            locusUrl: url1,
+            meetingJoinUrl: url2,
+            meetingNumber: '12345',
+            permissionToken: 'abc',
+            sipMeetingUri: test1,
+            sipUrl: test1,
+            owner: test2
+          }
+        };
+
+        meeting.parseMeetingInfo(FAKE_MEETING_INFO, FAKE_STRING_DESTINATION);
+        const expectedInfoToParse = {
+          conversationUrl: uuid1,
+          locusUrl: url1,
+          sipUri: test1,
+          meetingNumber: '12345',
+          meetingJoinUrl: url2,
+          owner: test2,
+          permissionToken: 'abc'
+        };
+
+        checkParseMeetingInfo(expectedInfoToParse);
+      });
+    });
+    describe('#parseLocus', () => {
+      describe('when CALL and participants', () => {
+        beforeEach(() => {
+          meeting.setLocus = sinon.stub().returns(true);
+          MeetingUtil.getLocusPartner = sinon.stub().returns({person: {sipUrl: uuid3}});
+        });
+        it('should parse the locus object and set meeting properties and return null', () => {
+          meeting.type = 'CALL';
+          meeting.parseLocus({url: url1, participants: [{id: uuid1}], self: {id: uuid2}});
+          assert.calledOnce(meeting.setLocus);
+          assert.calledWith(meeting.setLocus, {url: url1, participants: [{id: uuid1}], self: {id: uuid2}});
+          assert.calledOnce(MeetingUtil.getLocusPartner);
+          assert.calledWith(MeetingUtil.getLocusPartner, [{id: uuid1}], {id: uuid2});
+          assert.deepEqual(meeting.partner, {person: {sipUrl: uuid3}});
+          assert.equal(meeting.sipUri, uuid3);
+        });
+      });
+    });
+    describe('#setRoapSeq', () => {
+      it('should set the roap seq and return null', () => {
+        assert.equal(-1, meeting.roapSeq);
+        meeting.setRoapSeq(1);
+        assert.equal(meeting.roapSeq, 1);
+      });
+    });
+    describe('#setCorrelationId', () => {
+      it('should set the correlationId and return undefined', () => {
+        assert.ok(meeting.correlationId);
+        meeting.setCorrelationId(uuid1);
+        assert.equal(meeting.correlationId, uuid1);
+      });
+    });
+
+    describe('#setUpLocusInfoAssignHostListener', () => {
+      let locusInfoOnSpy;
+      let inMeetingActionsSetSpy;
 
       beforeEach(() => {
-        sandbox = sinon.createSandbox();
-        sandbox.stub(meeting.mediaProperties, 'unsetRemoteTracks').returns(Promise.resolve());
+        locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
+        inMeetingActionsSetSpy = sinon.spy(meeting.inMeetingActions, 'set');
       });
 
       afterEach(() => {
-        sandbox.restore();
-        sandbox = null;
+        locusInfoOnSpy.restore();
+        inMeetingActionsSetSpy.restore();
       });
 
-      describe('#releaseScreenShareFloor', () => {
-        it('should have #releaseScreenShareFloor', () => {
-          assert.exists(meeting.releaseScreenShareFloor);
+      it('registers the correct event', () => {
+        meeting.setUpLocusInfoAssignHostListener();
+
+        assert.calledOnce(locusInfoOnSpy);
+
+        assert.equal(locusInfoOnSpy.firstCall.args[0], 'LOCUS_INFO_CAN_ASSIGN_HOST');
+        const callback = locusInfoOnSpy.firstCall.args[1];
+
+        const payload = {canAssignHost: true};
+
+        callback(payload);
+
+        assert.calledWith(inMeetingActionsSetSpy, payload);
+
+        assert.calledWith(
+          TriggerProxy.trigger,
+          meeting,
+          {
+            file: 'meeting/index',
+            function: 'setUpLocusInfoAssignHostListener'
+          },
+          'meeting:actionsUpdate',
+          meeting.inMeetingActions.get()
+        );
+
+        TriggerProxy.trigger.resetHistory();
+
+        callback(payload);
+
+        assert.notCalled(TriggerProxy.trigger);
+      });
+    });
+
+    describe('#setUpLocusInfoMeetingInfoListener', () => {
+      let locusInfoOnSpy;
+      let inMeetingActionsSetSpy;
+      let canUserLockSpy;
+      let canUserUnlockSpy;
+      let canUserRecordSpy;
+      let canUserStopSpy;
+      let canUserPauseSpy;
+      let canUserResumeSpy;
+      let canUserRaiseHandSpy;
+      let bothLeaveAndEndMeetingAvailableSpy;
+      let canUserLowerAllHandsSpy;
+      let canUserLowerSomeoneElsesHandSpy;
+      let waitingForOthersToJoinSpy;
+
+      beforeEach(() => {
+        locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
+        canUserLockSpy = sinon.spy(MeetingUtil, 'canUserLock');
+        canUserUnlockSpy = sinon.spy(MeetingUtil, 'canUserUnlock');
+        canUserRecordSpy = sinon.spy(MeetingUtil, 'canUserRecord');
+        canUserStopSpy = sinon.spy(MeetingUtil, 'canUserStop');
+        canUserPauseSpy = sinon.spy(MeetingUtil, 'canUserPause');
+        canUserResumeSpy = sinon.spy(MeetingUtil, 'canUserResume');
+        inMeetingActionsSetSpy = sinon.spy(meeting.inMeetingActions, 'set');
+        canUserRaiseHandSpy = sinon.spy(MeetingUtil, 'canUserRaiseHand');
+        canUserLowerAllHandsSpy = sinon.spy(MeetingUtil, 'canUserLowerAllHands');
+        bothLeaveAndEndMeetingAvailableSpy = sinon.spy(MeetingUtil, 'bothLeaveAndEndMeetingAvailable');
+        canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
+        waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
+      });
+
+      afterEach(() => {
+        locusInfoOnSpy.restore();
+        inMeetingActionsSetSpy.restore();
+        waitingForOthersToJoinSpy.restore();
+      });
+
+
+      it('registers the correct MEETING_INFO_UPDATED event', () => {
+        meeting.setUpLocusInfoMeetingInfoListener();
+
+        assert.calledThrice(locusInfoOnSpy);
+
+        assert.equal(locusInfoOnSpy.firstCall.args[0], 'MEETING_LOCKED');
+        assert.equal(locusInfoOnSpy.secondCall.args[0], 'MEETING_UNLOCKED');
+        assert.equal(locusInfoOnSpy.thirdCall.args[0], 'MEETING_INFO_UPDATED');
+        const callback = locusInfoOnSpy.thirdCall.args[1];
+
+        const payload = {
+          info: {
+            userDisplayHints: ['LOCK_CONTROL_UNLOCK']
+          }
+        };
+
+        callback(payload);
+
+        assert.calledWith(canUserLockSpy, payload.info.userDisplayHints);
+        assert.calledWith(canUserUnlockSpy, payload.info.userDisplayHints);
+        assert.calledWith(canUserRecordSpy, payload.info.userDisplayHints);
+        assert.calledWith(canUserStopSpy, payload.info.userDisplayHints);
+        assert.calledWith(canUserPauseSpy, payload.info.userDisplayHints);
+        assert.calledWith(canUserResumeSpy, payload.info.userDisplayHints);
+        assert.calledWith(canUserRaiseHandSpy, payload.info.userDisplayHints);
+        assert.calledWith(bothLeaveAndEndMeetingAvailableSpy, payload.info.userDisplayHints);
+        assert.calledWith(canUserLowerAllHandsSpy, payload.info.userDisplayHints);
+        assert.calledWith(canUserLowerSomeoneElsesHandSpy, payload.info.userDisplayHints);
+        assert.calledWith(waitingForOthersToJoinSpy, payload.info.userDisplayHints);
+
+        assert.calledWith(
+          TriggerProxy.trigger,
+          meeting,
+          {
+            file: 'meeting/index',
+            function: 'setUpLocusInfoMeetingInfoListener'
+          },
+          'meeting:actionsUpdate',
+          meeting.inMeetingActions.get()
+        );
+
+        TriggerProxy.trigger.resetHistory();
+
+        callback(payload);
+
+        assert.notCalled(TriggerProxy.trigger);
+      });
+    });
+
+    describe('#setLocus', () => {
+      beforeEach(() => {
+        meeting.locusInfo.initialSetup = sinon.stub().returns(true);
+      });
+      it('should read the locus object, set on the meeting and return null', () => {
+        meeting.parseLocus({
+          mediaConnections: [test1],
+          locusUrl: url1,
+          locusId: uuid1,
+          selfId: uuid2,
+          mediaId: uuid3,
+          host: {id: uuid4}
         });
+        assert.calledOnce(meeting.locusInfo.initialSetup);
+        assert.calledWith(meeting.locusInfo.initialSetup, {
+          mediaConnections: [test1],
+          locusUrl: url1,
+          locusId: uuid1,
+          selfId: uuid2,
+          mediaId: uuid3,
+          host: {id: uuid4}
+        });
+        assert.equal(meeting.mediaConnections, test1);
+        assert.equal(meeting.locusUrl, url1);
+        assert.equal(meeting.locusId, uuid1);
+        assert.equal(meeting.selfId, uuid2);
+        assert.equal(meeting.mediaId, uuid3);
+        assert.equal(meeting.hostId, uuid4);
+      });
+    });
+    describe('preferred video device', () => {
+      describe('#getVideoDeviceId', () => {
+        it('returns the preferred video device', () => {
+          const videoDevice = 'video1';
+
+          sandbox.stub(meeting.mediaProperties, 'videoDeviceId').value(videoDevice);
+
+          assert.equal(meeting.mediaProperties.getVideoDeviceId(), videoDevice);
+        });
+        it('returns null if the preferred video device is not set', () => {
+          sandbox.stub(meeting.mediaProperties, 'videoDeviceId').value(undefined);
+
+          assert.equal(meeting.mediaProperties.getVideoDeviceId(), null);
+        });
+      });
+      describe('#setVideoDeviceId', () => {
+        it('sets the preferred video device', () => {
+          const videoDevice = 'video1';
+
+          sandbox.stub(meeting.mediaProperties, 'videoDeviceId').value(undefined);
+          meeting.mediaProperties.setVideoDeviceId(videoDevice);
+
+          assert.equal(meeting.mediaProperties.videoDeviceId, videoDevice);
+        });
+      });
+    });
+
+    describe('whiteboard share', () => {
+      describe('#startWhiteboardShare', () => {
         beforeEach(() => {
-          meeting.selfId = 'some self id';
-          meeting.locusInfo.mediaShares = [
-            {name: 'content', url: url1, floor: {beneficiary: {id: meeting.selfId}}},
-          ];
-          meeting.locusInfo.self = {url: url2};
-          meeting.mediaProperties = {mediaDirection: {sendShare: true}};
+          meeting.locusInfo.mediaShares = [{name: 'whiteboard', url: url1}];
+          meeting.locusInfo.self = {url: url1};
           meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
         });
-        it('should call changeMeetingFloor()', async () => {
-          const share = meeting.releaseScreenShareFloor();
+        it('should have #startWhiteboardShare', () => {
+          assert.exists(meeting.startWhiteboardShare);
+        });
+        it('should send the whiteboard share', async () => {
+          const whiteboardShare = meeting.startWhiteboardShare({
+            channelUrl: url2
+          });
 
-          assert.exists(share.then);
-          await share;
+          assert.exists(whiteboardShare.then);
+          await whiteboardShare;
           assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
         });
         it('should not call changeMeetingFloor() if someone else already has the floor', async () => {
@@ -3718,636 +4103,88 @@ describe('plugin-meetings', () => {
           assert.notCalled(meeting.meetingRequest.changeMeetingFloor);
         });
       });
+      describe('#stopWhiteboardShare', () => {
+        it('should have #stopWhiteboardShare', () => {
+          assert.exists(meeting.stopWhiteboardShare);
+        });
+        beforeEach(() => {
+          meeting.locusInfo.mediaShares = [{name: 'whiteboard', url: url1}];
+          meeting.locusInfo.self = {url: url1};
+          meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
+        });
+        it('should stop the whiteboard share', async () => {
+          const whiteboardShare = meeting.stopWhiteboardShare();
 
-      describe('#setSipUri', () => {
-        it('should set the sip Uri and return null', () => {
-          assert.notOk(meeting.sipUri);
-          meeting.setSipUri(test1);
-          assert.equal(meeting.sipUri, test1);
+          assert.exists(whiteboardShare.then);
+          await whiteboardShare;
+          assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
         });
       });
-      describe('#unsetRemoteTracks', () => {
-        it('should unset the remote tracks and return null', () => {
-          meeting.mediaProperties.unsetRemoteTracks = sinon.stub().returns(true);
-          meeting.unsetRemoteTracks();
-          assert.calledOnce(meeting.mediaProperties.unsetRemoteTracks);
+    });
+    describe('share scenarios', () => {
+      describe('setUpLocusMediaSharesListener', () => {
+        beforeEach(() => {
+          meeting.selfId = '9528d952-e4de-46cf-8157-fd4823b98377';
+          sinon.stub(meeting, 'updateShare').returns(Promise.resolve());
         });
-      });
-      describe('#unsetLocalVideoTrack', () => {
-        it('should unset the local stream and return null', () => {
-          meeting.mediaProperties.unsetLocalVideoTrack = sinon.stub().returns(true);
-          meeting.unsetLocalVideoTrack();
-          assert.calledOnce(meeting.mediaProperties.unsetLocalVideoTrack);
-        });
-      });
-      describe('#unsetLocalShareTrack', () => {
-        it('should unset the local share stream and return null', () => {
-          meeting.mediaProperties.unsetLocalShareTrack = sinon.stub().returns(true);
-          meeting.unsetLocalShareTrack();
-          assert.calledOnce(meeting.mediaProperties.unsetLocalShareTrack);
-        });
-      });
-      // TODO: remove
-      describe('#setMercuryListener', () => {
-        it('should listen to mercury events', () => {
-          meeting.reconnect = sinon.stub().returns(true);
-          meeting.webex.internal.mercury.on = sinon.stub().returns(true);
-          meeting.setMercuryListener(test1, test2);
-          assert.instanceOf(meeting.reconnectionManager, ReconnectionManager);
-          assert.calledTwice(meeting.webex.internal.mercury.on);
-        });
-      });
-      describe('#closePeerConnections', () => {
-        it('should close the peer connections, and return a promise', async () => {
-          PeerConnectionManager.close = sinon.stub().returns(Promise.resolve());
-          const pcs = meeting.closePeerConnections();
 
-          assert.exists(pcs.then);
-          await pcs;
-          assert.calledOnce(PeerConnectionManager.close);
+        afterEach(() => {
+          meeting.updateShare.restore();
         });
-      });
-      describe('#unsetPeerConnections', () => {
-        it('should unset the peer connections', () => {
-          meeting.mediaProperties.unsetPeerConnection = sinon.stub().returns(true);
-          meeting.webex.internal.mercury.off = sinon.stub().returns(true);
-          meeting.unsetPeerConnections();
-          assert.calledOnce(meeting.mediaProperties.unsetPeerConnection);
-        });
-      });
-      describe('#parseMeetingInfo', () => {
-        const checkParseMeetingInfo = (expectedInfoToParse) => {
-          assert.equal(meeting.conversationUrl, expectedInfoToParse.conversationUrl);
-          assert.equal(meeting.locusUrl, expectedInfoToParse.locusUrl);
-          assert.equal(meeting.sipUri, expectedInfoToParse.sipUri);
-          assert.equal(meeting.meetingNumber, expectedInfoToParse.meetingNumber);
-          assert.equal(meeting.meetingJoinUrl, expectedInfoToParse.meetingJoinUrl);
-          assert.equal(meeting.owner, expectedInfoToParse.owner);
-          assert.equal(meeting.permissionToken, expectedInfoToParse.permissionToken);
+
+        const USER_IDS = {
+          ME: '9528d952-e4de-46cf-8157-fd4823b98377',
+          REMOTE_A: '5be7e7b0-b304-48da-8083-83bd72b5300d',
+          REMOTE_B: 'd4d102a1-17ce-4e17-9b08-bded3de467e4'
         };
 
-        it('should parse meeting info from api return when locus meeting object is not available, set values, and return null', () => {
-          meeting.config.experimental = {enableMediaNegotiatedEvent: true};
-          meeting.config.experimental.enableUnifiedMeetings = true;
-          const FAKE_MEETING_INFO = {
-            body: {
-              conversationUrl: uuid1,
-              locusUrl: url1,
-              meetingJoinUrl: url2,
-              meetingNumber: '12345',
-              permissionToken: 'abc',
-              sipMeetingUri: test1,
-              sipUrl: test1,
-              owner: test2,
-            },
+        const RESOURCE_URLS = {
+          WHITEBOARD_A: 'https://board-a.wbx2.com/board/api/v1/channels/49cfb550-5517-11eb-a2af-1b9e4bc3da13',
+          WHITEBOARD_B: 'https://board-a.wbx2.com/board/api/v1/channels/977a7330-54f4-11eb-b1ef-91f5eefc7bf3'
+        };
+
+        const generateContent = (beneficiaryId = null, disposition = null) => ({beneficiaryId, disposition});
+        const generateWhiteboard = (beneficiaryId = null, disposition = null, resourceUrl = null) => ({beneficiaryId, disposition, resourceUrl});
+
+        const generateData = (payload, isGranting, isContent, beneficiaryId, resourceUrl, isAccepting, otherBeneficiaryId) => {
+          const newPayload = cloneDeep(payload);
+
+          newPayload.previous = cloneDeep(payload.current);
+
+          const eventTrigger = {
+            share: [],
+            member: {
+              eventName: EVENT_TRIGGERS.MEMBERS_CONTENT_UPDATE,
+              eventPayload: {
+                activeSharingId: null,
+                endedSharingId: null
+              }
+            }
           };
 
-          meeting.parseMeetingInfo(FAKE_MEETING_INFO);
-          const expectedInfoToParse = {
-            conversationUrl: uuid1,
-            locusUrl: url1,
-            sipUri: test1,
-            meetingNumber: '12345',
-            meetingJoinUrl: url2,
-            owner: test2,
-            permissionToken: 'abc',
+          let shareStatus = null;
+          const activeSharingId = {
+            whiteboard: null,
+            content: null
           };
 
-          checkParseMeetingInfo(expectedInfoToParse);
-        });
-        it('should parse meeting info from locus meeting object if possible, else from api return, set values, and return null', () => {
-          meeting.config.experimental = {enableMediaNegotiatedEvent: true};
-          meeting.config.experimental.enableUnifiedMeetings = true;
-          const FAKE_LOCUS_MEETING = {
-            conversationUrl: 'locusConvURL',
-            url: 'locusUrl',
-            info: {
-              webExMeetingId: 'locusMeetingId',
-              sipUri: 'locusSipUri',
-              owner: 'locusOwner',
-            },
-          };
-          const FAKE_MEETING_INFO = {
-            body: {
-              conversationUrl: uuid1,
-              locusUrl: url1,
-              meetingJoinUrl: url2,
-              meetingNumber: '12345',
-              permissionToken: 'abc',
-              sipMeetingUri: test1,
-              sipUrl: test1,
-              owner: test2,
-            },
-          };
+          if (isGranting) {
+            if (isContent) {
+              activeSharingId.content = beneficiaryId;
+              newPayload.current.content = generateContent(beneficiaryId, FLOOR_ACTION.GRANTED);
 
-          meeting.parseMeetingInfo(FAKE_MEETING_INFO, FAKE_LOCUS_MEETING);
-          const expectedInfoToParse = {
-            conversationUrl: 'locusConvURL',
-            locusUrl: 'locusUrl',
-            sipUri: 'locusSipUri',
-            meetingNumber: 'locusMeetingId',
-            meetingJoinUrl: url2,
-            owner: 'locusOwner',
-            permissionToken: 'abc',
-          };
-
-          checkParseMeetingInfo(expectedInfoToParse);
-        });
-        it('should parse meeting info from api return, set values, and return null', () => {
-          meeting.config.experimental = {enableMediaNegotiatedEvent: true};
-          meeting.config.experimental.enableUnifiedMeetings = true;
-          const FAKE_MEETING_INFO = {
-            body: {
-              conversationUrl: uuid1,
-              locusUrl: url1,
-              meetingJoinUrl: url2,
-              meetingNumber: '12345',
-              permissionToken: 'abc',
-              sipMeetingUri: test1,
-              sipUrl: test1,
-              owner: test2,
-            },
-          };
-
-          meeting.parseMeetingInfo(FAKE_MEETING_INFO);
-          const expectedInfoToParse = {
-            conversationUrl: uuid1,
-            locusUrl: url1,
-            sipUri: test1,
-            meetingNumber: '12345',
-            meetingJoinUrl: url2,
-            owner: test2,
-            permissionToken: 'abc',
-          };
-
-          checkParseMeetingInfo(expectedInfoToParse);
-        });
-        it('should parse meeting info, set values, and return null when destination is a string', () => {
-          meeting.config.experimental = {enableMediaNegotiatedEvent: true};
-          meeting.config.experimental.enableUnifiedMeetings = true;
-          const FAKE_STRING_DESTINATION = 'sipUrl';
-          const FAKE_MEETING_INFO = {
-            body: {
-              conversationUrl: uuid1,
-              locusUrl: url1,
-              meetingJoinUrl: url2,
-              meetingNumber: '12345',
-              permissionToken: 'abc',
-              sipMeetingUri: test1,
-              sipUrl: test1,
-              owner: test2,
-            },
-          };
-
-          meeting.parseMeetingInfo(FAKE_MEETING_INFO, FAKE_STRING_DESTINATION);
-          const expectedInfoToParse = {
-            conversationUrl: uuid1,
-            locusUrl: url1,
-            sipUri: test1,
-            meetingNumber: '12345',
-            meetingJoinUrl: url2,
-            owner: test2,
-            permissionToken: 'abc',
-          };
-
-          checkParseMeetingInfo(expectedInfoToParse);
-        });
-      });
-      describe('#parseLocus', () => {
-        describe('when CALL and participants', () => {
-          beforeEach(() => {
-            meeting.setLocus = sinon.stub().returns(true);
-            MeetingUtil.getLocusPartner = sinon.stub().returns({person: {sipUrl: uuid3}});
-          });
-          it('should parse the locus object and set meeting properties and return null', () => {
-            meeting.type = 'CALL';
-            meeting.parseLocus({url: url1, participants: [{id: uuid1}], self: {id: uuid2}});
-            assert.calledOnce(meeting.setLocus);
-            assert.calledWith(meeting.setLocus, {
-              url: url1,
-              participants: [{id: uuid1}],
-              self: {id: uuid2},
-            });
-            assert.calledOnce(MeetingUtil.getLocusPartner);
-            assert.calledWith(MeetingUtil.getLocusPartner, [{id: uuid1}], {id: uuid2});
-            assert.deepEqual(meeting.partner, {person: {sipUrl: uuid3}});
-            assert.equal(meeting.sipUri, uuid3);
-          });
-        });
-      });
-      describe('#setRoapSeq', () => {
-        it('should set the roap seq and return null', () => {
-          assert.equal(-1, meeting.roapSeq);
-          meeting.setRoapSeq(1);
-          assert.equal(meeting.roapSeq, 1);
-        });
-      });
-      describe('#setCorrelationId', () => {
-        it('should set the correlationId and return undefined', () => {
-          assert.ok(meeting.correlationId);
-          meeting.setCorrelationId(uuid1);
-          assert.equal(meeting.correlationId, uuid1);
-        });
-      });
-
-      describe('#setUpLocusInfoAssignHostListener', () => {
-        let locusInfoOnSpy;
-        let inMeetingActionsSetSpy;
-
-        beforeEach(() => {
-          locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
-          inMeetingActionsSetSpy = sinon.spy(meeting.inMeetingActions, 'set');
-        });
-
-        afterEach(() => {
-          locusInfoOnSpy.restore();
-          inMeetingActionsSetSpy.restore();
-        });
-
-        it('registers the correct event', () => {
-          meeting.setUpLocusInfoAssignHostListener();
-
-          assert.calledOnce(locusInfoOnSpy);
-
-          assert.equal(locusInfoOnSpy.firstCall.args[0], 'LOCUS_INFO_CAN_ASSIGN_HOST');
-          const callback = locusInfoOnSpy.firstCall.args[1];
-
-          const payload = {canAssignHost: true};
-
-          callback(payload);
-
-          assert.calledWith(inMeetingActionsSetSpy, payload);
-
-          assert.calledWith(
-            TriggerProxy.trigger,
-            meeting,
-            {
-              file: 'meeting/index',
-              function: 'setUpLocusInfoAssignHostListener',
-            },
-            'meeting:actionsUpdate',
-            meeting.inMeetingActions.get()
-          );
-
-          TriggerProxy.trigger.resetHistory();
-
-          callback(payload);
-
-          assert.notCalled(TriggerProxy.trigger);
-        });
-      });
-
-      describe('#setUpLocusInfoMeetingInfoListener', () => {
-        let locusInfoOnSpy;
-        let inMeetingActionsSetSpy;
-        let canUserLockSpy;
-        let canUserUnlockSpy;
-        let canUserStartSpy;
-        let canUserStopSpy;
-        let canUserPauseSpy;
-        let canUserResumeSpy;
-        let canSetMuteOnEntrySpy;
-        let canUnsetMuteOnEntrySpy;
-        let canSetDisallowUnmuteSpy;
-        let canUnsetDisallowUnmuteSpy;
-        let canUserRaiseHandSpy;
-        let bothLeaveAndEndMeetingAvailableSpy;
-        let canUserLowerAllHandsSpy;
-        let canUserLowerSomeoneElsesHandSpy;
-        let waitingForOthersToJoinSpy;
-
-        beforeEach(() => {
-          locusInfoOnSpy = sinon.spy(meeting.locusInfo, 'on');
-          canUserLockSpy = sinon.spy(MeetingUtil, 'canUserLock');
-          canUserUnlockSpy = sinon.spy(MeetingUtil, 'canUserUnlock');
-          canUserStartSpy = sinon.spy(RecordingUtil, 'canUserStart');
-          canUserStopSpy = sinon.spy(RecordingUtil, 'canUserStop');
-          canUserPauseSpy = sinon.spy(RecordingUtil, 'canUserPause');
-          canUserResumeSpy = sinon.spy(RecordingUtil, 'canUserResume');
-          canSetMuteOnEntrySpy = sinon.spy(ControlsOptionsUtil, 'canSetMuteOnEntry');
-          canUnsetMuteOnEntrySpy = sinon.spy(ControlsOptionsUtil, 'canUnsetMuteOnEntry');
-          canSetDisallowUnmuteSpy = sinon.spy(ControlsOptionsUtil, 'canSetDisallowUnmute');
-          canUnsetDisallowUnmuteSpy = sinon.spy(ControlsOptionsUtil, 'canUnsetDisallowUnmute');
-          inMeetingActionsSetSpy = sinon.spy(meeting.inMeetingActions, 'set');
-          canUserRaiseHandSpy = sinon.spy(MeetingUtil, 'canUserRaiseHand');
-          canUserLowerAllHandsSpy = sinon.spy(MeetingUtil, 'canUserLowerAllHands');
-          bothLeaveAndEndMeetingAvailableSpy = sinon.spy(
-            MeetingUtil,
-            'bothLeaveAndEndMeetingAvailable'
-          );
-          canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
-          waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
-        });
-
-        afterEach(() => {
-          locusInfoOnSpy.restore();
-          inMeetingActionsSetSpy.restore();
-          waitingForOthersToJoinSpy.restore();
-        });
-
-        it('registers the correct MEETING_INFO_UPDATED event', () => {
-          meeting.setUpLocusInfoMeetingInfoListener();
-
-          assert.calledThrice(locusInfoOnSpy);
-
-          assert.equal(locusInfoOnSpy.firstCall.args[0], 'MEETING_LOCKED');
-          assert.equal(locusInfoOnSpy.secondCall.args[0], 'MEETING_UNLOCKED');
-          assert.equal(locusInfoOnSpy.thirdCall.args[0], 'MEETING_INFO_UPDATED');
-          const callback = locusInfoOnSpy.thirdCall.args[1];
-
-          const payload = {
-            info: {
-              userDisplayHints: ['LOCK_CONTROL_UNLOCK'],
-            },
-          };
-
-          callback(payload);
-
-          assert.calledWith(canUserLockSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserUnlockSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserStartSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserStopSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserPauseSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserResumeSpy, payload.info.userDisplayHints);
-          assert.calledWith(canSetMuteOnEntrySpy, payload.info.userDisplayHints);
-          assert.calledWith(canUnsetMuteOnEntrySpy, payload.info.userDisplayHints);
-          assert.calledWith(canSetDisallowUnmuteSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUnsetDisallowUnmuteSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserRaiseHandSpy, payload.info.userDisplayHints);
-          assert.calledWith(bothLeaveAndEndMeetingAvailableSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserLowerAllHandsSpy, payload.info.userDisplayHints);
-          assert.calledWith(canUserLowerSomeoneElsesHandSpy, payload.info.userDisplayHints);
-          assert.calledWith(waitingForOthersToJoinSpy, payload.info.userDisplayHints);
-
-          assert.calledWith(
-            TriggerProxy.trigger,
-            meeting,
-            {
-              file: 'meeting/index',
-              function: 'setUpLocusInfoMeetingInfoListener',
-            },
-            'meeting:actionsUpdate',
-            meeting.inMeetingActions.get()
-          );
-
-          TriggerProxy.trigger.resetHistory();
-
-          callback(payload);
-
-          assert.notCalled(TriggerProxy.trigger);
-        });
-      });
-
-      describe('#setLocus', () => {
-        beforeEach(() => {
-          meeting.locusInfo.initialSetup = sinon.stub().returns(true);
-        });
-        it('should read the locus object, set on the meeting and return null', () => {
-          meeting.parseLocus({
-            mediaConnections: [test1],
-            locusUrl: url1,
-            locusId: uuid1,
-            selfId: uuid2,
-            mediaId: uuid3,
-            host: {id: uuid4},
-          });
-          assert.calledOnce(meeting.locusInfo.initialSetup);
-          assert.calledWith(meeting.locusInfo.initialSetup, {
-            mediaConnections: [test1],
-            locusUrl: url1,
-            locusId: uuid1,
-            selfId: uuid2,
-            mediaId: uuid3,
-            host: {id: uuid4},
-          });
-          assert.equal(meeting.mediaConnections, test1);
-          assert.equal(meeting.locusUrl, url1);
-          assert.equal(meeting.locusId, uuid1);
-          assert.equal(meeting.selfId, uuid2);
-          assert.equal(meeting.mediaId, uuid3);
-          assert.equal(meeting.hostId, uuid4);
-        });
-      });
-      describe('preferred video device', () => {
-        describe('#getVideoDeviceId', () => {
-          it('returns the preferred video device', () => {
-            const videoDevice = 'video1';
-
-            sandbox.stub(meeting.mediaProperties, 'videoDeviceId').value(videoDevice);
-
-            assert.equal(meeting.mediaProperties.getVideoDeviceId(), videoDevice);
-          });
-          it('returns null if the preferred video device is not set', () => {
-            sandbox.stub(meeting.mediaProperties, 'videoDeviceId').value(undefined);
-
-            assert.equal(meeting.mediaProperties.getVideoDeviceId(), null);
-          });
-        });
-        describe('#setVideoDeviceId', () => {
-          it('sets the preferred video device', () => {
-            const videoDevice = 'video1';
-
-            sandbox.stub(meeting.mediaProperties, 'videoDeviceId').value(undefined);
-            meeting.mediaProperties.setVideoDeviceId(videoDevice);
-
-            assert.equal(meeting.mediaProperties.videoDeviceId, videoDevice);
-          });
-        });
-      });
-
-      describe('whiteboard share', () => {
-        describe('#startWhiteboardShare', () => {
-          beforeEach(() => {
-            meeting.locusInfo.mediaShares = [{name: 'whiteboard', url: url1}];
-            meeting.locusInfo.self = {url: url1};
-            meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
-          });
-          it('should have #startWhiteboardShare', () => {
-            assert.exists(meeting.startWhiteboardShare);
-          });
-          it('should send the whiteboard share', async () => {
-            const whiteboardShare = meeting.startWhiteboardShare({
-              channelUrl: url2,
-            });
-
-            assert.exists(whiteboardShare.then);
-            await whiteboardShare;
-            assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
-          });
-        });
-        describe('#stopWhiteboardShare', () => {
-          it('should have #stopWhiteboardShare', () => {
-            assert.exists(meeting.stopWhiteboardShare);
-          });
-          beforeEach(() => {
-            meeting.locusInfo.mediaShares = [{name: 'whiteboard', url: url1}];
-            meeting.locusInfo.self = {url: url1};
-            meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
-          });
-          it('should stop the whiteboard share', async () => {
-            const whiteboardShare = meeting.stopWhiteboardShare();
-
-            assert.exists(whiteboardShare.then);
-            await whiteboardShare;
-            assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
-          });
-        });
-      });
-      describe('share scenarios', () => {
-        describe('setUpLocusMediaSharesListener', () => {
-          beforeEach(() => {
-            meeting.selfId = '9528d952-e4de-46cf-8157-fd4823b98377';
-            sinon.stub(meeting, 'updateShare').returns(Promise.resolve());
-          });
-
-          afterEach(() => {
-            meeting.updateShare.restore();
-          });
-
-          const USER_IDS = {
-            ME: '9528d952-e4de-46cf-8157-fd4823b98377',
-            REMOTE_A: '5be7e7b0-b304-48da-8083-83bd72b5300d',
-            REMOTE_B: 'd4d102a1-17ce-4e17-9b08-bded3de467e4',
-          };
-
-          const RESOURCE_URLS = {
-            WHITEBOARD_A:
-              'https://board-a.wbx2.com/board/api/v1/channels/49cfb550-5517-11eb-a2af-1b9e4bc3da13',
-            WHITEBOARD_B:
-              'https://board-a.wbx2.com/board/api/v1/channels/977a7330-54f4-11eb-b1ef-91f5eefc7bf3',
-          };
-
-          const generateContent = (beneficiaryId = null, disposition = null) => ({
-            beneficiaryId,
-            disposition,
-          });
-          const generateWhiteboard = (
-            beneficiaryId = null,
-            disposition = null,
-            resourceUrl = null
-          ) => ({beneficiaryId, disposition, resourceUrl});
-
-          const generateData = (
-            payload,
-            isGranting,
-            isContent,
-            beneficiaryId,
-            resourceUrl,
-            isAccepting,
-            otherBeneficiaryId
-          ) => {
-            const newPayload = cloneDeep(payload);
-
-            newPayload.previous = cloneDeep(payload.current);
-
-            const eventTrigger = {
-              share: [],
-              member: {
-                eventName: EVENT_TRIGGERS.MEMBERS_CONTENT_UPDATE,
-                eventPayload: {
-                  activeSharingId: null,
-                  endedSharingId: null,
-                },
-              },
-            };
-
-            let shareStatus = null;
-            const activeSharingId = {
-              whiteboard: null,
-              content: null,
-            };
-
-            if (isGranting) {
-              if (isContent) {
-                activeSharingId.content = beneficiaryId;
-                newPayload.current.content = generateContent(beneficiaryId, FLOOR_ACTION.GRANTED);
-
-                if (isEqual(newPayload.current, newPayload.previous)) {
-                  eventTrigger.member = null;
-                } else {
-                  if (newPayload.current.whiteboard.beneficiaryId) {
-                    if (newPayload.current.whiteboard.disposition === FLOOR_ACTION.GRANTED) {
-                      newPayload.current.whiteboard.disposition = FLOOR_ACTION.RELEASED;
-                      eventTrigger.share.push({
-                        eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
-                        functionName: 'stopWhiteboardShare',
-                      });
-                      eventTrigger.member.eventPayload.endedSharingId =
-                        newPayload.current.whiteboard.beneficiaryId;
-                    }
-                  }
-
-                  if (newPayload.previous.content.beneficiaryId) {
-                    if (
-                      newPayload.previous.content.beneficiaryId !==
-                      newPayload.current.content.beneficiaryId
-                    ) {
-                      if (newPayload.previous.content.beneficiaryId === USER_IDS.ME) {
-                        eventTrigger.share.push({
-                          eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-                          functionName: 'stopFloorRequest',
-                        });
-                      } else if (newPayload.current.content.beneficiaryId === USER_IDS.ME) {
-                        eventTrigger.share.push({
-                          eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_REMOTE,
-                          functionName: 'remoteShare',
-                        });
-                      }
-                      eventTrigger.member.eventPayload.endedSharingId =
-                        newPayload.previous.content.beneficiaryId;
-                    }
-                  }
-
-                  if (isAccepting) {
+              if (isEqual(newPayload.current, newPayload.previous)) {
+                eventTrigger.member = null;
+              }
+              else {
+                if (newPayload.current.whiteboard.beneficiaryId) {
+                  if (newPayload.current.whiteboard.disposition === FLOOR_ACTION.GRANTED) {
+                    newPayload.current.whiteboard.disposition = FLOOR_ACTION.RELEASED;
                     eventTrigger.share.push({
                       eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
                       functionName: 'stopWhiteboardShare',
                     });
-                  }
-
-                  if (beneficiaryId === USER_IDS.ME) {
-                    eventTrigger.share.push({
-                      eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_LOCAL,
-                      functionName: 'share',
-                    });
-                  } else {
-                    eventTrigger.share.push({
-                      eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
-                      functionName: 'remoteShare',
-                      eventPayload: {memberId: beneficiaryId},
-                    });
-                  }
-                }
-
-                if (beneficiaryId === USER_IDS.ME) {
-                  shareStatus = SHARE_STATUS.LOCAL_SHARE_ACTIVE;
-                } else {
-                  shareStatus = SHARE_STATUS.REMOTE_SHARE_ACTIVE;
-                }
-              } else {
-                newPayload.current.whiteboard = generateWhiteboard(
-                  beneficiaryId,
-                  FLOOR_ACTION.GRANTED,
-                  resourceUrl
-                );
-
-                if (newPayload.current.content.beneficiaryId) {
-                  if (newPayload.current.content.disposition === FLOOR_ACTION.GRANTED) {
-                    newPayload.current.content.disposition = FLOOR_ACTION.RELEASED;
-                    if (newPayload.current.content.beneficiaryId === USER_IDS.ME) {
-                      eventTrigger.share.push({
-                        eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-                        functionName: 'stopFloorRequest',
-                      });
-                    } else {
-                      eventTrigger.share.push({
-                        eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_REMOTE,
-                        functionName: 'remoteShare',
-                      });
-                    }
-
-                    eventTrigger.member.eventPayload.endedSharingId =
-                      newPayload.current.content.beneficiaryId;
+                    eventTrigger.member.eventPayload.endedSharingId = newPayload.current.whiteboard.beneficiaryId;
                   }
                 }
 
@@ -4372,17 +4209,124 @@ describe('plugin-meetings', () => {
                   }
                 }
 
-                if (newPayload.previous.whiteboard.beneficiaryId) {
-                  if (
-                    newPayload.previous.whiteboard.beneficiaryId !==
-                    newPayload.current.whiteboard.beneficiaryId
-                  ) {
-                    eventTrigger.member.eventPayload.endedSharingId =
-                      newPayload.previous.whiteboard.beneficiaryId;
-                  }
+                if (isAccepting) {
+                  eventTrigger.share.push({
+                    eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
+                    functionName: 'stopWhiteboardShare'
+                  });
                 }
 
-                activeSharingId.whiteboard = beneficiaryId;
+                if (beneficiaryId === USER_IDS.ME) {
+                  eventTrigger.share.push({
+                    eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_LOCAL,
+                    functionName: 'share'
+                  });
+                }
+                else {
+                  eventTrigger.share.push({
+                    eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
+                    functionName: 'remoteShare',
+                    eventPayload: {memberId: beneficiaryId}
+                  });
+                }
+              }
+
+              if (beneficiaryId === USER_IDS.ME) {
+                shareStatus = SHARE_STATUS.LOCAL_SHARE_ACTIVE;
+              }
+              else {
+                shareStatus = SHARE_STATUS.REMOTE_SHARE_ACTIVE;
+              }
+            }
+            else {
+              newPayload.current.whiteboard = generateWhiteboard(beneficiaryId, FLOOR_ACTION.GRANTED, resourceUrl);
+
+              if (newPayload.current.content.beneficiaryId) {
+                if (newPayload.current.content.disposition === FLOOR_ACTION.GRANTED) {
+                  newPayload.current.content.disposition = FLOOR_ACTION.RELEASED;
+                  if (newPayload.current.content.beneficiaryId === USER_IDS.ME) {
+                    eventTrigger.share.push({
+                      eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
+                      functionName: 'stopFloorRequest'
+                    });
+                  }
+                  else {
+                    eventTrigger.share.push({
+                      eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_REMOTE,
+                      functionName: 'remoteShare'
+                    });
+                  }
+
+                  eventTrigger.member.eventPayload.endedSharingId = newPayload.current.content.beneficiaryId;
+                }
+              }
+
+              if (newPayload.previous.content.beneficiaryId) {
+                if (newPayload.previous.content.beneficiaryId !== newPayload.current.content.beneficiaryId) {
+                  if (newPayload.previous.content.beneficiaryId === USER_IDS.ME) {
+                    eventTrigger.share.push({
+                      eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
+                      functionName: 'stopFloorRequest'
+                    });
+                  }
+                  else if (newPayload.current.content.beneficiaryId === USER_IDS.ME) {
+                    eventTrigger.share.push({
+                      eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_REMOTE,
+                      functionName: 'remoteShare'
+                    });
+                  }
+                  eventTrigger.member.eventPayload.endedSharingId = newPayload.previous.content.beneficiaryId;
+                }
+              }
+
+              if (newPayload.previous.whiteboard.beneficiaryId) {
+                if (newPayload.previous.whiteboard.beneficiaryId !== newPayload.current.whiteboard.beneficiaryId) {
+                  eventTrigger.member.eventPayload.endedSharingId = newPayload.previous.whiteboard.beneficiaryId;
+                }
+              }
+
+              activeSharingId.whiteboard = beneficiaryId;
+
+              eventTrigger.share.push({
+                eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_WHITEBOARD,
+                functionName: 'startWhiteboardShare',
+                eventPayload: {resourceUrl, memberId: beneficiaryId}
+              });
+
+              shareStatus = SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
+            }
+
+            if (eventTrigger.member) {
+              eventTrigger.member.eventPayload.activeSharingId = beneficiaryId;
+            }
+          }
+          else {
+            eventTrigger.member.eventPayload.endedSharingId = beneficiaryId;
+
+            if (isContent) {
+              newPayload.current.content.disposition = FLOOR_ACTION.RELEASED;
+
+              if (beneficiaryId === USER_IDS.ME) {
+                eventTrigger.share.push({
+                  eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
+                  functionName: 'stopFloorRequest'
+                });
+              }
+              else {
+                eventTrigger.share.push({
+                  eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_REMOTE,
+                  functionName: 'remoteShare'
+                });
+              }
+
+              shareStatus = SHARE_STATUS.NO_SHARE;
+            }
+            else {
+              newPayload.current.whiteboard.disposition = FLOOR_ACTION.RELEASED;
+
+              if (isAccepting) {
+                newPayload.current.content.disposition = FLOOR_ACTION.ACCEPTED;
+                newPayload.current.content.beneficiaryId = otherBeneficiaryId;
 
                 eventTrigger.share.push({
                   eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_WHITEBOARD,
@@ -4392,702 +4336,291 @@ describe('plugin-meetings', () => {
 
                 shareStatus = SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
               }
-
-              if (eventTrigger.member) {
-                eventTrigger.member.eventPayload.activeSharingId = beneficiaryId;
-              }
-            } else {
-              eventTrigger.member.eventPayload.endedSharingId = beneficiaryId;
-
-              if (isContent) {
-                newPayload.current.content.disposition = FLOOR_ACTION.RELEASED;
-
-                if (beneficiaryId === USER_IDS.ME) {
-                  eventTrigger.share.push({
-                    eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-                    functionName: 'stopFloorRequest',
-                  });
-                } else {
-                  eventTrigger.share.push({
-                    eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_REMOTE,
-                    functionName: 'remoteShare',
-                  });
-                }
+              else {
+                eventTrigger.share.push({
+                  eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
+                  functionName: 'stopWhiteboardShare'
+                });
 
                 shareStatus = SHARE_STATUS.NO_SHARE;
-              } else {
-                newPayload.current.whiteboard.disposition = FLOOR_ACTION.RELEASED;
-
-                if (isAccepting) {
-                  newPayload.current.content.disposition = FLOOR_ACTION.ACCEPTED;
-                  newPayload.current.content.beneficiaryId = otherBeneficiaryId;
-
-                  eventTrigger.share.push({
-                    eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_WHITEBOARD,
-                    functionName: 'startWhiteboardShare',
-                    eventPayload: {resourceUrl, memberId: beneficiaryId},
-                  });
-
-                  shareStatus = SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
-                } else {
-                  eventTrigger.share.push({
-                    eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
-                    functionName: 'stopWhiteboardShare',
-                  });
-
-                  shareStatus = SHARE_STATUS.NO_SHARE;
-                }
               }
             }
+          }
 
-            return {
-              payload: newPayload,
-              eventTrigger,
-              shareStatus,
-              activeSharingId,
-            };
+          return {
+            payload: newPayload, eventTrigger, shareStatus, activeSharingId
           };
+        };
 
-          const blankPayload = {
-            previous: {
-              content: generateContent(),
-              whiteboard: generateWhiteboard(),
-            },
-            current: {
-              content: generateContent(),
-              whiteboard: generateWhiteboard(),
-            },
-          };
+        const blankPayload = {
+          previous: {
+            content: generateContent(),
+            whiteboard: generateWhiteboard()
+          },
+          current: {
+            content: generateContent(),
+            whiteboard: generateWhiteboard()
+          }
+        };
 
-          const payloadTestHelper = (data) => {
-            assert.equal(meeting.shareStatus, SHARE_STATUS.NO_SHARE);
 
-            // Called once --> members:update (ignore)
-            let callCounter = 1;
+        const payloadTestHelper = (data) => {
+          assert.equal(meeting.shareStatus, SHARE_STATUS.NO_SHARE);
 
-            data.forEach((d, index) => {
-              meeting.locusInfo.emit(
-                {function: 'test', file: 'test'},
-                EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
-                d.payload
-              );
+          // Called once --> members:update (ignore)
+          let callCounter = 1;
 
-              assert.equal(meeting.shareStatus, data[index].shareStatus);
+          data.forEach((d, index) => {
+            meeting.locusInfo.emit({function: 'test', file: 'test'}, EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES, d.payload);
 
-              callCounter +=
-                data[index].eventTrigger.share.length + (data[index].eventTrigger.member ? 1 : 0);
+            assert.equal(meeting.shareStatus, data[index].shareStatus);
 
-              assert.callCount(TriggerProxy.trigger, callCounter);
-
-              assert.equal(
-                meeting.members.mediaShareWhiteboardId,
-                data[index].activeSharingId.whiteboard
-              );
-              assert.equal(
-                meeting.members.mediaShareContentId,
-                data[index].activeSharingId.content
-              );
-            });
+            callCounter += data[index].eventTrigger.share.length + (data[index].eventTrigger.member ? 1 : 0);
 
             assert.callCount(TriggerProxy.trigger, callCounter);
 
-            // Start with 1 to ignore members:update trigger
+            assert.equal(meeting.members.mediaShareWhiteboardId, data[index].activeSharingId.whiteboard);
+            assert.equal(meeting.members.mediaShareContentId, data[index].activeSharingId.content);
+          });
 
-            let i = 1;
-            let offset = 2;
+          assert.callCount(TriggerProxy.trigger, callCounter);
 
-            while (i < callCounter) {
-              const index = Math.floor(i / offset);
+          // Start with 1 to ignore members:update trigger
 
-              const {share, member} = data[index].eventTrigger;
 
-              for (let idx = 0; idx < share.length; idx += 1) {
-                const shareCallArgs = TriggerProxy.trigger.getCall(i + idx).args;
-                const {functionName, eventName, eventPayload} = share[idx];
-                const fileName =
-                  functionName === 'remoteShare' ? 'meetings/index' : 'meeting/index';
+          let i = 1;
+          let offset = 2;
 
-                assert.deepEqual(shareCallArgs[1], {
-                  file: fileName,
-                  function: functionName,
-                });
+          while (i < callCounter) {
+            const index = Math.floor(i / offset);
 
-                assert.equal(shareCallArgs[2], eventName);
+            const {share, member} = data[index].eventTrigger;
 
-                if (functionName === 'startWhiteboardShare') {
-                  assert.deepEqual(shareCallArgs[3], eventPayload);
-                }
+            for (let idx = 0; idx < share.length; idx += 1) {
+              const shareCallArgs = TriggerProxy.trigger.getCall(i + idx).args;
+              const {functionName, eventName, eventPayload} = share[idx];
+              const fileName = functionName === 'remoteShare' ? 'meetings/index' : 'meeting/index';
 
-                if (
-                  functionName === 'remoteShare' &&
-                  eventName === EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE
-                ) {
-                  assert.deepEqual(shareCallArgs[3], eventPayload);
-                }
+              assert.deepEqual(shareCallArgs[1], {
+                file: fileName,
+                function: functionName
+              });
+
+
+              assert.equal(shareCallArgs[2], eventName);
+
+              if (functionName === 'startWhiteboardShare') {
+                assert.deepEqual(shareCallArgs[3], eventPayload);
               }
 
-              // Check Trigger --> members:content:update
-              if (member) {
-                const memberCallArgs = TriggerProxy.trigger.getCall(i + share.length).args;
-
-                assert.deepEqual(memberCallArgs[1], {
-                  file: 'members',
-                  function: 'locusMediaSharesUpdate',
-                });
-                assert.equal(memberCallArgs[2], member.eventName);
-
-                // Check payload --> {activeSharingId, endedSharingId}
-                assert.deepEqual(memberCallArgs[3], member.eventPayload);
-
-                i += 1;
-              }
-
-              i += share.length;
-
-              if (share.length + 1 > offset) {
-                offset = (offset + share.length + 1) / 2;
-              } else if (share.length + 1 < offset) {
-                offset = share.length + 1 + 0.5;
+              if (functionName === 'remoteShare' && eventName === EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE) {
+                assert.deepEqual(shareCallArgs[3], eventPayload);
               }
             }
-          };
 
-          it('should have #setUpLocusMediaSharesListener', () => {
-            assert.exists(meeting.setUpLocusMediaSharesListener);
-          });
+            // Check Trigger --> members:content:update
+            if (member) {
+              const memberCallArgs = TriggerProxy.trigger.getCall(i + share.length).args;
 
-          describe('Whiteboard A --> Whiteboard B', () => {
-            it('Scenario #1: you share both whiteboards', () => {
-              const data1 = generateData(
-                blankPayload,
-                true,
-                false,
-                USER_IDS.ME,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data2 = generateData(
-                data1.payload,
-                true,
-                false,
-                USER_IDS.ME,
-                RESOURCE_URLS.WHITEBOARD_B
-              );
-              const data3 = generateData(data2.payload, false, false, USER_IDS.ME);
+              assert.deepEqual(memberCallArgs[1], {
+                file: 'members',
+                function: 'locusMediaSharesUpdate'
+              });
+              assert.equal(memberCallArgs[2], member.eventName);
 
-              payloadTestHelper([data1, data2, data3]);
-            });
+              // Check payload --> {activeSharingId, endedSharingId}
+              assert.deepEqual(memberCallArgs[3], member.eventPayload);
 
-            it('Scenario #2: you share whiteboard A and remote person A shares whiteboard B', () => {
-              const data1 = generateData(
-                blankPayload,
-                true,
-                false,
-                USER_IDS.ME,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data2 = generateData(
-                data1.payload,
-                true,
-                false,
-                USER_IDS.REMOTE_A,
-                RESOURCE_URLS.WHITEBOARD_B
-              );
-              const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
+              i += 1;
+            }
 
-              payloadTestHelper([data1, data2, data3]);
-            });
+            i += share.length;
 
-            it('Scenario #3: remote person A shares whiteboard A and you share whiteboard B', () => {
-              const data1 = generateData(
-                blankPayload,
-                true,
-                false,
-                USER_IDS.REMOTE_A,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data2 = generateData(
-                data1.payload,
-                true,
-                false,
-                USER_IDS.ME,
-                RESOURCE_URLS.WHITEBOARD_B
-              );
-              const data3 = generateData(data2.payload, false, false, USER_IDS.ME);
-
-              payloadTestHelper([data1, data2, data3]);
-            });
-
-            it('Scenario #4: remote person A shares both whiteboards', () => {
-              const data1 = generateData(
-                blankPayload,
-                true,
-                false,
-                USER_IDS.REMOTE_A,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data2 = generateData(
-                data1.payload,
-                true,
-                false,
-                USER_IDS.REMOTE_A,
-                RESOURCE_URLS.WHITEBOARD_B
-              );
-              const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
-
-              payloadTestHelper([data1, data2, data3]);
-            });
-
-            it('Scenario #5: remote person A shares whiteboard A and remote person B shares whiteboard B', () => {
-              const data1 = generateData(
-                blankPayload,
-                true,
-                false,
-                USER_IDS.REMOTE_A,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data2 = generateData(
-                data1.payload,
-                true,
-                false,
-                USER_IDS.REMOTE_B,
-                RESOURCE_URLS.WHITEBOARD_B
-              );
-              const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_B);
-
-              payloadTestHelper([data1, data2, data3]);
-            });
-          });
-
-          describe('Whiteboard A --> Desktop', () => {
-            it('Scenario #1: you share whiteboard and then share desktop', () => {
-              const data1 = generateData(
-                blankPayload,
-                true,
-                false,
-                USER_IDS.ME,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data2 = generateData(
-                data1.payload,
-                false,
-                false,
-                USER_IDS.ME,
-                RESOURCE_URLS.WHITEBOARD_A,
-                true,
-                USER_IDS.ME
-              );
-              const data3 = generateData(
-                data2.payload,
-                true,
-                true,
-                USER_IDS.ME,
-                undefined,
-                true,
-                USER_IDS.ME
-              );
-              const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
-
-              payloadTestHelper([data1, data2, data3, data4]);
-            });
-
-            it('Scenario #2: you share whiteboard A and remote person A shares desktop', () => {
-              const data1 = generateData(
-                blankPayload,
-                true,
-                false,
-                USER_IDS.ME,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data2 = generateData(
-                data1.payload,
-                false,
-                false,
-                USER_IDS.ME,
-                RESOURCE_URLS.WHITEBOARD_A,
-                true,
-                USER_IDS.REMOTE_A
-              );
-              const data3 = generateData(
-                data2.payload,
-                true,
-                true,
-                USER_IDS.REMOTE_A,
-                undefined,
-                true,
-                USER_IDS.ME
-              );
-              const data4 = generateData(data3.payload, false, true, USER_IDS.REMOTE_A);
-
-              payloadTestHelper([data1, data2, data3, data4]);
-            });
-
-            it('Scenario #3: remote person A shares whiteboard and you share desktop', () => {
-              const data1 = generateData(
-                blankPayload,
-                true,
-                false,
-                USER_IDS.REMOTE_A,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data2 = generateData(
-                data1.payload,
-                false,
-                false,
-                USER_IDS.REMOTE_A,
-                RESOURCE_URLS.WHITEBOARD_A,
-                true,
-                USER_IDS.ME
-              );
-              const data3 = generateData(
-                data2.payload,
-                true,
-                true,
-                USER_IDS.ME,
-                undefined,
-                true,
-                USER_IDS.REMOTE_A
-              );
-              const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
-
-              payloadTestHelper([data1, data2, data3, data4]);
-            });
-
-            it('Scenario #4: remote person A shares whiteboard and then shares desktop', () => {
-              const data1 = generateData(
-                blankPayload,
-                true,
-                false,
-                USER_IDS.REMOTE_A,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data2 = generateData(
-                data1.payload,
-                false,
-                false,
-                USER_IDS.REMOTE_A,
-                RESOURCE_URLS.WHITEBOARD_A,
-                true,
-                USER_IDS.REMOTE_A
-              );
-              const data3 = generateData(
-                data2.payload,
-                true,
-                true,
-                USER_IDS.REMOTE_A,
-                undefined,
-                true,
-                USER_IDS.REMOTE_A
-              );
-              const data4 = generateData(data3.payload, false, true, USER_IDS.REMOTE_A);
-
-              payloadTestHelper([data1, data2, data3, data4]);
-            });
-
-            it('Scenario #5: remote person A shares whiteboard and remote person B shares desktop', () => {
-              const data1 = generateData(
-                blankPayload,
-                true,
-                false,
-                USER_IDS.REMOTE_A,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data2 = generateData(
-                data1.payload,
-                false,
-                false,
-                USER_IDS.REMOTE_A,
-                RESOURCE_URLS.WHITEBOARD_A,
-                true,
-                USER_IDS.REMOTE_B
-              );
-              const data3 = generateData(
-                data2.payload,
-                true,
-                true,
-                USER_IDS.REMOTE_B,
-                undefined,
-                true,
-                USER_IDS.REMOTE_A
-              );
-              const data4 = generateData(data3.payload, false, true, USER_IDS.REMOTE_B);
-
-              payloadTestHelper([data1, data2, data3, data4]);
-            });
-          });
-
-          describe('Desktop --> Whiteboard A', () => {
-            it('Scenario #1: you share desktop and then share whiteboard', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
-              const data2 = generateData(
-                data1.payload,
-                true,
-                false,
-                USER_IDS.ME,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data3 = generateData(data2.payload, false, false, USER_IDS.ME);
-
-              payloadTestHelper([data1, data2, data3]);
-            });
-
-            it('Scenario #2: you share desktop and remote person A shares whiteboard', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
-              const data2 = generateData(
-                data1.payload,
-                true,
-                false,
-                USER_IDS.REMOTE_A,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
-
-              payloadTestHelper([data1, data2, data3]);
-            });
-
-            it('Scenario #3: remote person A shares desktop and you share whiteboard', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
-              const data2 = generateData(
-                data1.payload,
-                true,
-                false,
-                USER_IDS.REMOTE_A,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
-
-              payloadTestHelper([data1, data2, data3]);
-            });
-
-            it('Scenario #4: remote person A shares desktop and then shares whiteboard', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
-              const data2 = generateData(
-                data1.payload,
-                true,
-                false,
-                USER_IDS.ME,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data3 = generateData(data2.payload, false, false, USER_IDS.ME);
-
-              payloadTestHelper([data1, data2, data3]);
-            });
-
-            it('Scenario #5: remote person A shares desktop and remote person B shares whiteboard', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
-              const data2 = generateData(
-                data1.payload,
-                true,
-                false,
-                USER_IDS.REMOTE_A,
-                RESOURCE_URLS.WHITEBOARD_A
-              );
-              const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
-
-              payloadTestHelper([data1, data2, data3]);
-            });
-          });
-
-          describe('Desktop A --> Desktop B', () => {
-            it('Scenario #1: you share desktop A and then share desktop B', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
-              const data2 = generateData(data1.payload, false, true, USER_IDS.ME);
-              const data3 = generateData(data2.payload, true, true, USER_IDS.ME);
-              const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
-
-              payloadTestHelper([data1, data2, data3, data4]);
-            });
-
-            it('Scenario #2: you share desktop A and remote person A shares desktop B', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
-              const data2 = generateData(data1.payload, true, true, USER_IDS.REMOTE_A);
-              const data3 = generateData(data2.payload, false, true, USER_IDS.REMOTE_A);
-
-              payloadTestHelper([data1, data2, data3]);
-            });
-
-            it('Scenario #3: remote person A shares desktop A and you share desktop B', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
-              const data2 = generateData(data1.payload, true, true, USER_IDS.ME);
-              const data3 = generateData(data2.payload, false, true, USER_IDS.ME);
-
-              payloadTestHelper([data1, data2, data3]);
-            });
-
-            it('Scenario #4: remote person A shares desktop A and then shares desktop B', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
-              const data2 = generateData(data1.payload, true, true, USER_IDS.REMOTE_A);
-              const data3 = generateData(data2.payload, false, true, USER_IDS.REMOTE_A);
-
-              payloadTestHelper([data1, data2, data3]);
-            });
-
-            it('Scenario #5: remote person A shares desktop A and remote person B shares desktop B', () => {
-              const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
-              const data2 = generateData(data1.payload, true, true, USER_IDS.REMOTE_B);
-              const data3 = generateData(data2.payload, false, true, USER_IDS.REMOTE_B);
-
-              payloadTestHelper([data1, data2, data3]);
-            });
-          });
-        });
-      });
-
-      describe('#startKeepAlive', () => {
-        let clock;
-        const defaultKeepAliveUrl = 'keep.alive.url';
-        const defaultKeepAliveSecs = 23;
-        const defaultExpectedInterval = (defaultKeepAliveSecs - 1) * 750;
-
-        beforeEach(() => {
-          clock = sinon.useFakeTimers();
-        });
-        afterEach(() => {
-          clock.restore();
-        });
-
-        const progressTime = async (interval) => {
-          await clock.tickAsync(interval);
-          await testUtils.flushPromises();
+            if (share.length + 1 > offset) {
+              offset = (offset + share.length + 1) / 2;
+            }
+            else if (share.length + 1 < offset) {
+              offset = (share.length + 1) + 0.5;
+            }
+          }
         };
 
-        it('startKeepAlive starts the keep alive', async () => {
-          meeting.meetingRequest.keepAlive = sinon.stub().returns(Promise.resolve());
-
-          assert.isNull(meeting.keepAliveTimerId);
-          meeting.joinedWith = {
-            keepAliveUrl: defaultKeepAliveUrl,
-            keepAliveSecs: defaultKeepAliveSecs,
-          };
-          meeting.startKeepAlive();
-          assert.isNumber(meeting.keepAliveTimerId.id);
-          await testUtils.flushPromises();
-          assert.notCalled(meeting.meetingRequest.keepAlive);
-          await progressTime(defaultExpectedInterval);
-          assert.calledOnceWithExactly(meeting.meetingRequest.keepAlive, {
-            keepAliveUrl: defaultKeepAliveUrl,
-          });
-          await progressTime(defaultExpectedInterval);
-          assert.calledTwice(meeting.meetingRequest.keepAlive);
-          assert.alwaysCalledWithExactly(meeting.meetingRequest.keepAlive, {
-            keepAliveUrl: defaultKeepAliveUrl,
-          });
-        });
-        it('startKeepAlive handles existing keepAliveTimerId', async () => {
-          meeting.meetingRequest.keepAlive = sinon.stub().returns(Promise.resolve());
-          logger.warn = sinon.spy();
-
-          meeting.keepAliveTimerId = 7;
-          meeting.joinedWith = {
-            keepAliveUrl: defaultKeepAliveUrl,
-            keepAliveSecs: defaultKeepAliveSecs,
-          };
-          meeting.startKeepAlive();
-          assert.equal(meeting.keepAliveTimerId, 7);
-          await progressTime(defaultExpectedInterval);
-          assert.notCalled(meeting.meetingRequest.keepAlive);
-        });
-        it('startKeepAlive handles missing keepAliveUrl', async () => {
-          meeting.meetingRequest.keepAlive = sinon.stub().returns(Promise.resolve());
-          logger.warn = sinon.spy();
-
-          assert.isNull(meeting.keepAliveTimerId);
-          meeting.joinedWith = {
-            keepAliveSecs: defaultKeepAliveSecs,
-          };
-          meeting.startKeepAlive();
-          assert.isNull(meeting.keepAliveTimerId);
-          await progressTime(defaultExpectedInterval);
-          assert.notCalled(meeting.meetingRequest.keepAlive);
-        });
-        it('startKeepAlive handles missing keepAliveSecs', async () => {
-          meeting.meetingRequest.keepAlive = sinon.stub().returns(Promise.resolve());
-          logger.warn = sinon.spy();
-
-          assert.isNull(meeting.keepAliveTimerId);
-          meeting.joinedWith = {
-            keepAliveUrl: defaultKeepAliveUrl,
-          };
-          meeting.startKeepAlive();
-          assert.isNull(meeting.keepAliveTimerId);
-          await progressTime(1);
-          assert.notCalled(meeting.meetingRequest.keepAlive);
-        });
-        it('startKeepAlive handles too low keepAliveSecs', async () => {
-          meeting.meetingRequest.keepAlive = sinon.stub().returns(Promise.resolve());
-          logger.warn = sinon.spy();
-
-          assert.isNull(meeting.keepAliveTimerId);
-          meeting.joinedWith = {
-            keepAliveUrl: defaultKeepAliveUrl,
-            keepAliveSecs: 1,
-          };
-          meeting.startKeepAlive();
-          assert.isNull(meeting.keepAliveTimerId);
-          await progressTime(1);
-          assert.notCalled(meeting.meetingRequest.keepAlive);
-        });
-        it.skip('failed keepAlive stops the keep alives', async () => {
-          meeting.meetingRequest.keepAlive = sinon.stub().returns(Promise.reject());
-
-          assert.isNull(meeting.keepAliveTimerId);
-          meeting.joinedWith = {
-            keepAliveUrl: defaultKeepAliveUrl,
-            keepAliveSecs: defaultKeepAliveSecs,
-          };
-          meeting.startKeepAlive();
-          assert.isNumber(meeting.keepAliveTimerId.id);
-          await testUtils.flushPromises();
-          assert.notCalled(meeting.meetingRequest.keepAlive);
-          await progressTime(defaultExpectedInterval);
-          assert.calledOnceWithExactly(meeting.meetingRequest.keepAlive, {
-            keepAliveUrl: defaultKeepAliveUrl,
-          });
-          assert.isNull(meeting.keepAliveTimerId);
-          await progressTime(defaultExpectedInterval);
-          assert.calledOnce(meeting.meetingRequest.keepAlive);
-        });
-      });
-      describe('#stopKeepAlive', () => {
-        let clock;
-        const defaultKeepAliveUrl = 'keep.alive.url';
-        const defaultKeepAliveSecs = 23;
-        const defaultExpectedInterval = (defaultKeepAliveSecs - 1) * 750;
-
-        beforeEach(() => {
-          clock = sinon.useFakeTimers();
-        });
-        afterEach(() => {
-          clock.restore();
+        it('should have #setUpLocusMediaSharesListener', () => {
+          assert.exists(meeting.setUpLocusMediaSharesListener);
         });
 
-        const progressTime = async (interval) => {
-          await clock.tickAsync(interval);
-          await testUtils.flushPromises();
-        };
+        describe('Whiteboard A --> Whiteboard B', () => {
+          it('Scenario #1: you share both whiteboards', () => {
+            const data1 = generateData(blankPayload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A);
+            const data2 = generateData(data1.payload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_B);
+            const data3 = generateData(data2.payload, false, false, USER_IDS.ME);
 
-        it('stopKeepAlive stops the keep alive', async () => {
-          meeting.meetingRequest.keepAlive = sinon.stub().returns(Promise.resolve());
-
-          assert.isNull(meeting.keepAliveTimerId);
-          meeting.joinedWith = {
-            keepAliveUrl: defaultKeepAliveUrl,
-            keepAliveSecs: defaultKeepAliveSecs,
-          };
-          meeting.startKeepAlive();
-          assert.isNumber(meeting.keepAliveTimerId.id);
-          await progressTime(defaultExpectedInterval);
-          assert.calledOnceWithExactly(meeting.meetingRequest.keepAlive, {
-            keepAliveUrl: defaultKeepAliveUrl,
+            payloadTestHelper([data1, data2, data3]);
           });
 
-          meeting.stopKeepAlive();
-          assert.isNull(meeting.keepAliveTimerId);
-          await progressTime(defaultExpectedInterval);
-          assert.calledOnce(meeting.meetingRequest.keepAlive);
+          it('Scenario #2: you share whiteboard A and remote person A shares whiteboard B', () => {
+            const data1 = generateData(blankPayload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A);
+            const data2 = generateData(data1.payload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_B);
+            const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
+
+            payloadTestHelper([data1, data2, data3]);
+          });
+
+          it('Scenario #3: remote person A shares whiteboard A and you share whiteboard B', () => {
+            const data1 = generateData(blankPayload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
+            const data2 = generateData(data1.payload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_B);
+            const data3 = generateData(data2.payload, false, false, USER_IDS.ME);
+
+            payloadTestHelper([data1, data2, data3]);
+          });
+
+          it('Scenario #4: remote person A shares both whiteboards', () => {
+            const data1 = generateData(blankPayload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
+            const data2 = generateData(data1.payload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_B);
+            const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
+
+            payloadTestHelper([data1, data2, data3]);
+          });
+
+          it('Scenario #5: remote person A shares whiteboard A and remote person B shares whiteboard B', () => {
+            const data1 = generateData(blankPayload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
+            const data2 = generateData(data1.payload, true, false, USER_IDS.REMOTE_B, RESOURCE_URLS.WHITEBOARD_B);
+            const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_B);
+
+            payloadTestHelper([data1, data2, data3]);
+          });
         });
-        it('stopKeepAlive handles missing keepAliveTimerId', async () => {
-          assert.isNull(meeting.keepAliveTimerId);
-          meeting.stopKeepAlive();
+
+        describe('Whiteboard A --> Desktop', () => {
+          it('Scenario #1: you share whiteboard and then share desktop', () => {
+            const data1 = generateData(blankPayload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A);
+            const data2 = generateData(data1.payload, false, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A, true, USER_IDS.ME);
+            const data3 = generateData(data2.payload, true, true, USER_IDS.ME, undefined, true, USER_IDS.ME);
+            const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
+
+            payloadTestHelper([data1, data2, data3, data4]);
+          });
+
+          it('Scenario #2: you share whiteboard A and remote person A shares desktop', () => {
+            const data1 = generateData(blankPayload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A);
+            const data2 = generateData(data1.payload, false, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A, true, USER_IDS.REMOTE_A);
+            const data3 = generateData(data2.payload, true, true, USER_IDS.REMOTE_A, undefined, true, USER_IDS.ME);
+            const data4 = generateData(data3.payload, false, true, USER_IDS.REMOTE_A);
+
+            payloadTestHelper([data1, data2, data3, data4]);
+          });
+
+          it('Scenario #3: remote person A shares whiteboard and you share desktop', () => {
+            const data1 = generateData(blankPayload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
+            const data2 = generateData(data1.payload, false, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A, true, USER_IDS.ME);
+            const data3 = generateData(data2.payload, true, true, USER_IDS.ME, undefined, true, USER_IDS.REMOTE_A);
+            const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
+
+            payloadTestHelper([data1, data2, data3, data4]);
+          });
+
+          it('Scenario #4: remote person A shares whiteboard and then shares desktop', () => {
+            const data1 = generateData(blankPayload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
+            const data2 = generateData(data1.payload, false, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A, true, USER_IDS.REMOTE_A);
+            const data3 = generateData(data2.payload, true, true, USER_IDS.REMOTE_A, undefined, true, USER_IDS.REMOTE_A);
+            const data4 = generateData(data3.payload, false, true, USER_IDS.REMOTE_A);
+
+            payloadTestHelper([data1, data2, data3, data4]);
+          });
+
+          it('Scenario #5: remote person A shares whiteboard and remote person B shares desktop', () => {
+            const data1 = generateData(blankPayload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
+            const data2 = generateData(data1.payload, false, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A, true, USER_IDS.REMOTE_B);
+            const data3 = generateData(data2.payload, true, true, USER_IDS.REMOTE_B, undefined, true, USER_IDS.REMOTE_A);
+            const data4 = generateData(data3.payload, false, true, USER_IDS.REMOTE_B);
+
+            payloadTestHelper([data1, data2, data3, data4]);
+          });
+        });
+
+        describe('Desktop --> Whiteboard A', () => {
+          it('Scenario #1: you share desktop and then share whiteboard', () => {
+            const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
+            const data2 = generateData(data1.payload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A);
+            const data3 = generateData(data2.payload, false, false, USER_IDS.ME);
+
+            payloadTestHelper([data1, data2, data3]);
+          });
+
+          it('Scenario #2: you share desktop and remote person A shares whiteboard', () => {
+            const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
+            const data2 = generateData(data1.payload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
+            const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
+
+            payloadTestHelper([data1, data2, data3]);
+          });
+
+          it('Scenario #3: remote person A shares desktop and you share whiteboard', () => {
+            const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
+            const data2 = generateData(data1.payload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
+            const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
+
+            payloadTestHelper([data1, data2, data3]);
+          });
+
+          it('Scenario #4: remote person A shares desktop and then shares whiteboard', () => {
+            const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
+            const data2 = generateData(data1.payload, true, false, USER_IDS.ME, RESOURCE_URLS.WHITEBOARD_A);
+            const data3 = generateData(data2.payload, false, false, USER_IDS.ME);
+
+            payloadTestHelper([data1, data2, data3]);
+          });
+
+          it('Scenario #5: remote person A shares desktop and remote person B shares whiteboard', () => {
+            const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
+            const data2 = generateData(data1.payload, true, false, USER_IDS.REMOTE_A, RESOURCE_URLS.WHITEBOARD_A);
+            const data3 = generateData(data2.payload, false, false, USER_IDS.REMOTE_A);
+
+            payloadTestHelper([data1, data2, data3]);
+          });
+        });
+
+        describe('Desktop A --> Desktop B', () => {
+          it('Scenario #1: you share desktop A and then share desktop B', () => {
+            const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
+            const data2 = generateData(data1.payload, false, true, USER_IDS.ME);
+            const data3 = generateData(data2.payload, true, true, USER_IDS.ME);
+            const data4 = generateData(data3.payload, false, true, USER_IDS.ME);
+
+            payloadTestHelper([data1, data2, data3, data4]);
+          });
+
+          it('Scenario #2: you share desktop A and remote person A shares desktop B', () => {
+            const data1 = generateData(blankPayload, true, true, USER_IDS.ME);
+            const data2 = generateData(data1.payload, true, true, USER_IDS.REMOTE_A);
+            const data3 = generateData(data2.payload, false, true, USER_IDS.REMOTE_A);
+
+            payloadTestHelper([data1, data2, data3]);
+          });
+
+          it('Scenario #3: remote person A shares desktop A and you share desktop B', () => {
+            const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
+            const data2 = generateData(data1.payload, true, true, USER_IDS.ME);
+            const data3 = generateData(data2.payload, false, true, USER_IDS.ME);
+
+            payloadTestHelper([data1, data2, data3]);
+          });
+
+          it('Scenario #4: remote person A shares desktop A and then shares desktop B', () => {
+            const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
+            const data2 = generateData(data1.payload, true, true, USER_IDS.REMOTE_A);
+            const data3 = generateData(data2.payload, false, true, USER_IDS.REMOTE_A);
+
+            payloadTestHelper([data1, data2, data3]);
+          });
+
+          it('Scenario #5: remote person A shares desktop A and remote person B shares desktop B', () => {
+            const data1 = generateData(blankPayload, true, true, USER_IDS.REMOTE_A);
+            const data2 = generateData(data1.payload, true, true, USER_IDS.REMOTE_B);
+            const data3 = generateData(data2.payload, false, true, USER_IDS.REMOTE_B);
+
+            payloadTestHelper([data1, data2, data3]);
+          });
         });
       });
 
@@ -5186,4 +4719,156 @@ describe('plugin-meetings', () => {
         });
       });
     });
+
+    describe('#startKeepAlive', () => {
+      let clock;
+      const defaultKeepAliveUrl = 'keep.alive.url';
+      const defaultKeepAliveSecs = 23;
+      const defaultExpectedInterval = (defaultKeepAliveSecs - 1) * 750;
+
+      beforeEach(() => {
+        clock = sinon.useFakeTimers();
+      });
+      afterEach(() => {
+        clock.restore();
+      });
+
+      const progressTime = async (interval) => {
+        await clock.tickAsync(interval);
+        await testUtils.flushPromises();
+      };
+
+      it('startKeepAlive starts the keep alive', async () => {
+        meeting.meetingRequest.keepAlive = sinon.stub().returns(Promise.resolve());
+
+        assert.isNull(meeting.keepAliveTimerId);
+        meeting.joinedWith = {
+          keepAliveUrl: defaultKeepAliveUrl,
+          keepAliveSecs: defaultKeepAliveSecs
+        };
+        meeting.startKeepAlive();
+        assert.isNumber(meeting.keepAliveTimerId.id);
+        await testUtils.flushPromises();
+        assert.notCalled(meeting.meetingRequest.keepAlive);
+        await progressTime(defaultExpectedInterval);
+        assert.calledOnceWithExactly(meeting.meetingRequest.keepAlive, {keepAliveUrl: defaultKeepAliveUrl});
+        await progressTime(defaultExpectedInterval);
+        assert.calledTwice(meeting.meetingRequest.keepAlive);
+        assert.alwaysCalledWithExactly(meeting.meetingRequest.keepAlive, {keepAliveUrl: defaultKeepAliveUrl});
+      });
+      it('startKeepAlive handles existing keepAliveTimerId', async () => {
+        meeting.meetingRequest.keepAlive = sinon.stub().returns(Promise.resolve());
+        logger.warn = sinon.spy();
+
+        meeting.keepAliveTimerId = 7;
+        meeting.joinedWith = {
+          keepAliveUrl: defaultKeepAliveUrl,
+          keepAliveSecs: defaultKeepAliveSecs
+        };
+        meeting.startKeepAlive();
+        assert.equal(meeting.keepAliveTimerId, 7);
+        await progressTime(defaultExpectedInterval);
+        assert.notCalled(meeting.meetingRequest.keepAlive);
+      });
+      it('startKeepAlive handles missing keepAliveUrl', async () => {
+        meeting.meetingRequest.keepAlive = sinon.stub().returns(Promise.resolve());
+        logger.warn = sinon.spy();
+
+        assert.isNull(meeting.keepAliveTimerId);
+        meeting.joinedWith = {
+          keepAliveSecs: defaultKeepAliveSecs
+        };
+        meeting.startKeepAlive();
+        assert.isNull(meeting.keepAliveTimerId);
+        await progressTime(defaultExpectedInterval);
+        assert.notCalled(meeting.meetingRequest.keepAlive);
+      });
+      it('startKeepAlive handles missing keepAliveSecs', async () => {
+        meeting.meetingRequest.keepAlive = sinon.stub().returns(Promise.resolve());
+        logger.warn = sinon.spy();
+
+        assert.isNull(meeting.keepAliveTimerId);
+        meeting.joinedWith = {
+          keepAliveUrl: defaultKeepAliveUrl
+        };
+        meeting.startKeepAlive();
+        assert.isNull(meeting.keepAliveTimerId);
+        await progressTime(1);
+        assert.notCalled(meeting.meetingRequest.keepAlive);
+      });
+      it('startKeepAlive handles too low keepAliveSecs', async () => {
+        meeting.meetingRequest.keepAlive = sinon.stub().returns(Promise.resolve());
+        logger.warn = sinon.spy();
+
+        assert.isNull(meeting.keepAliveTimerId);
+        meeting.joinedWith = {
+          keepAliveUrl: defaultKeepAliveUrl,
+          keepAliveSecs: 1
+        };
+        meeting.startKeepAlive();
+        assert.isNull(meeting.keepAliveTimerId);
+        await progressTime(1);
+        assert.notCalled(meeting.meetingRequest.keepAlive);
+      });
+      it.skip('failed keepAlive stops the keep alives', async () => {
+        meeting.meetingRequest.keepAlive = sinon.stub().returns(Promise.reject());
+
+        assert.isNull(meeting.keepAliveTimerId);
+        meeting.joinedWith = {
+          keepAliveUrl: defaultKeepAliveUrl,
+          keepAliveSecs: defaultKeepAliveSecs
+        };
+        meeting.startKeepAlive();
+        assert.isNumber(meeting.keepAliveTimerId.id);
+        await testUtils.flushPromises();
+        assert.notCalled(meeting.meetingRequest.keepAlive);
+        await progressTime(defaultExpectedInterval);
+        assert.calledOnceWithExactly(meeting.meetingRequest.keepAlive, {keepAliveUrl: defaultKeepAliveUrl});
+        assert.isNull(meeting.keepAliveTimerId);
+        await progressTime(defaultExpectedInterval);
+        assert.calledOnce(meeting.meetingRequest.keepAlive);
+      });
+    });
+    describe('#stopKeepAlive', () => {
+      let clock;
+      const defaultKeepAliveUrl = 'keep.alive.url';
+      const defaultKeepAliveSecs = 23;
+      const defaultExpectedInterval = (defaultKeepAliveSecs - 1) * 750;
+
+      beforeEach(() => {
+        clock = sinon.useFakeTimers();
+      });
+      afterEach(() => {
+        clock.restore();
+      });
+
+      const progressTime = async (interval) => {
+        await clock.tickAsync(interval);
+        await testUtils.flushPromises();
+      };
+
+      it('stopKeepAlive stops the keep alive', async () => {
+        meeting.meetingRequest.keepAlive = sinon.stub().returns(Promise.resolve());
+
+        assert.isNull(meeting.keepAliveTimerId);
+        meeting.joinedWith = {
+          keepAliveUrl: defaultKeepAliveUrl,
+          keepAliveSecs: defaultKeepAliveSecs
+        };
+        meeting.startKeepAlive();
+        assert.isNumber(meeting.keepAliveTimerId.id);
+        await progressTime(defaultExpectedInterval);
+        assert.calledOnceWithExactly(meeting.meetingRequest.keepAlive, {keepAliveUrl: defaultKeepAliveUrl});
+
+        meeting.stopKeepAlive();
+        assert.isNull(meeting.keepAliveTimerId);
+        await progressTime(defaultExpectedInterval);
+        assert.calledOnce(meeting.meetingRequest.keepAlive);
+      });
+      it('stopKeepAlive handles missing keepAliveTimerId', async () => {
+        assert.isNull(meeting.keepAliveTimerId);
+        meeting.stopKeepAlive();
+      });
+    });
+  });
 });

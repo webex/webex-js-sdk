@@ -11,7 +11,6 @@ import {inBrowser} from '@webex/common';
 import FakeTimers from '@sinonjs/fake-timers';
 import {skipInBrowser} from '@webex/test-helper-mocha';
 import Logger from '@webex/plugin-logger';
-import {expect} from '@jest/globals';
 
 /* eslint camelcase: [0] */
 
@@ -465,7 +464,7 @@ describe('webex-core', () => {
     });
 
     describe('#getUserToken()', () => {
-      //it('resolves with the supertoken if the supertoken matches the requested scopes');
+      // it('resolves with the supertoken if the supertoken matches the requested scopes');
 
       it('resolves with the token identified by the specified scopes', () => {
         const webex = new MockWebex();
@@ -717,7 +716,7 @@ describe('webex-core', () => {
       });
 
 
-      //it('does not induce any token refreshes');
+      // it('does not induce any token refreshes');
 
       it('prevents #getUserToken() from being invoked', () => {
         const webex = new MockWebex();

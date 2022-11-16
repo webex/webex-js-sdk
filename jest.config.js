@@ -1,4 +1,3 @@
-const {forEach} = require('lodash');
 
 const packages = [
   '@webex/common',

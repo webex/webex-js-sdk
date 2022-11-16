@@ -3,7 +3,6 @@ import sinon from 'sinon';
 import Mercury from '@webex/internal-plugin-mercury';
 import Presence from '@webex/internal-plugin-presence';
 import MockWebex from '@webex/test-helper-mock-webex';
-import {expect} from '@jest/globals';
 
 import PresenceWorker from '../../../src/presence-worker';
 

@@ -3,12 +3,10 @@ import chai from 'chai';
 import uuid from 'uuid';
 import chaiAsPromised from 'chai-as-promised';
 import MockWebex from '@webex/test-helper-mock-webex';
-
 import Meetings from '@webex/plugin-meetings';
 import MembersRequest from '@webex/plugin-meetings/src/members/request';
 import membersUtil from '@webex/plugin-meetings/src/members/util';
-import ParameterError from '@webex/plugin-meetings/src/common/errors/parameter';
-import {expect} from '@jest/globals';
+
 const {assert} = chai;
 
 chai.use(chaiAsPromised);
@@ -129,7 +127,7 @@ describe('plugin-meetings', () => {
 
       const checkInvalid = async (functionParams) =>
         membersRequest.lowerAllHandsMember(functionParams);
-        
+
       it('rejects if no options are passed in', async () => {
         checkInvalid().catch((e) => {
           expect(e.message).toBe(parameterErrorMessage);

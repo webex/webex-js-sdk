@@ -3,7 +3,6 @@
  */
 
 import {assert} from '@webex/test-helper-chai';
-import {beforeAll} from '@jest/globals';
 
 function noop() {
   // intentionally empty
