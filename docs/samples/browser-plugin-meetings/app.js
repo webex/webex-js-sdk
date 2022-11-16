@@ -658,9 +658,7 @@ function addPlayIfPausedEvents(mediaElements) {
 }
 
 function getCurrentMeeting() {
-  const meetings = webex.meetings.getAllMeetings();
-
-  return meetings[Object.keys(meetings)[0]];
+  return webex?.meetings?.getAllMeetings()[selectedMeetingId];
 }
 
 function lockMeeting() {
