@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.31.3](https://github.com/webex/webex-js-sdk/compare/v2.31.2...v2.31.3) (2022-11-16)
+
+
+### Bug Fixes
+
+* **sample app:** apply settings to correct meeting ([#2506](https://github.com/webex/webex-js-sdk/issues/2506)) ([cb5fa49](https://github.com/webex/webex-js-sdk/commit/cb5fa49d419753fad211f50c552210fd818df51a))
+
 ### [2.31.2](https://github.com/webex/webex-js-sdk/compare/v2.31.1...v2.31.2) (2022-11-16)
 
 
