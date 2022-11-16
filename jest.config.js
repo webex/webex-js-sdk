@@ -101,8 +101,9 @@ module.exports = {
   clearMocks: true,
   rootDir: './',
   testEnvironment: 'jsdom',
-  collectCoverage: true,
-  coverageReporters: ['lcov', 'cobertura'],
+  collectCoverage: false,
+  coverageReporters: ['text'],
+  coverageProvider: 'v8',
   transform: {
     '\\.[jt]sx?$': ['babel-jest', {rootMode: 'upward'}],
   },
