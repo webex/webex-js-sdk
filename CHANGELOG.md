@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.31.4](https://github.com/webex/webex-js-sdk/compare/v2.31.3...v2.31.4) (2022-11-16)
+
+
+### Bug Fixes
+
+* sdk licence update to cisco eula ([#2504](https://github.com/webex/webex-js-sdk/issues/2504)) ([21423a0](https://github.com/webex/webex-js-sdk/commit/21423a00707d1e78d7562b8f8050f7b289eef9eb))
+
 ### [2.31.3](https://github.com/webex/webex-js-sdk/compare/v2.31.2...v2.31.3) (2022-11-16)
 
 
