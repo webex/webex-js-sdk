@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.31.2](https://github.com/webex/webex-js-sdk/compare/v2.31.1...v2.31.2) (2022-11-16)
+
+
+### Bug Fixes
+
+* **voices:** add deregister events ([#2500](https://github.com/webex/webex-js-sdk/issues/2500)) ([9460a60](https://github.com/webex/webex-js-sdk/commit/9460a607be92ad78253a3ff6fcb05a9406fa289d))
+
 ### [2.31.1](https://github.com/webex/webex-js-sdk/compare/v2.31.0...v2.31.1) (2022-11-14)
 
 ## [2.31.0](https://github.com/webex/webex-js-sdk/compare/v2.30.2...v2.31.0) (2022-11-08)
