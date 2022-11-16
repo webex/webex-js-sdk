@@ -2,7 +2,7 @@
     "name": "webex",
     "version": "2.31.3",
     "description": "SDK for Cisco Webex",
-    "license": "MIT",
+    "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
     "contributors": [
         "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
         "Andrew Holsted <holsted@cisco.com>",
