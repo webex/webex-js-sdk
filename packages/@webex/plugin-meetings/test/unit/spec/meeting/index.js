@@ -3193,6 +3193,7 @@ describe('plugin-meetings', () => {
           meeting.setupMediaConnectionListeners();
           assert.isFunction(eventListeners[MC.Event.ROAP_STARTED]);
           assert.isFunction(eventListeners[MC.Event.ROAP_DONE]);
+          assert.isFunction(eventListeners[MC.Event.ROAP_FAILURE]);
           assert.isFunction(eventListeners[MC.Event.ROAP_MESSAGE_TO_SEND]);
           assert.isFunction(eventListeners[MC.Event.REMOTE_TRACK_ADDED]);
           assert.isFunction(eventListeners[MC.Event.CONNECTION_STATE_CHANGED]);
@@ -3211,6 +3212,217 @@ describe('plugin-meetings', () => {
           eventListeners[MC.Event.REMOTE_TRACK_ADDED]({track: 'track', type: MC.RemoteTrackType.SCREENSHARE_VIDEO});
           assert.equal(TriggerProxy.trigger.getCall(3).args[2], 'media:ready');
           assert.deepEqual(TriggerProxy.trigger.getCall(3).args[3], {type: 'remoteShare', stream: true});
+        });
+
+        describe('should send correct metrics for ROAP_FAILURE event', () => {
+          const fakeErrorMessage = 'test error';
+          const fakeRootCauseName = 'root cause name';
+          const fakeErrorName = 'test error name';
+
+          beforeEach(() => {
+            meeting.setupMediaConnectionListeners();
+          });
+
+          const checkMetricSent = (event) => {
+            assert.calledOnce(Metrics.postEvent);
+            assert.calledWithMatch(Metrics.postEvent, {event, meetingId: meeting.id, data: {canProceed: false}});
+          };
+
+          const checkBehavioralMetricSent = (metricName, expectedCode, expectedReason, expectedMetadataType) => {
+            assert.calledOnce(Metrics.sendBehavioralMetric);
+            assert.calledWith(
+              Metrics.sendBehavioralMetric,
+              metricName,
+              {
+                code: expectedCode,
+                correlation_id: meeting.correlationId,
+                reason: expectedReason,
+                stack: sinon.match.any
+              },
+              {
+                type: expectedMetadataType
+              }
+            );
+          };
+
+          it('should send metrics for SdpOfferCreationError error', () => {
+            const fakeError = new MC.Errors.SdpOfferCreationError(fakeErrorMessage, {name: fakeErrorName, cause: {name: fakeRootCauseName}});
+
+            eventListeners[MC.Event.ROAP_FAILURE](fakeError);
+
+            checkMetricSent(eventType.LOCAL_SDP_GENERATED);
+            checkBehavioralMetricSent(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, MC.Errors.ErrorCode.SdpOfferCreationError, fakeErrorMessage, fakeRootCauseName);
+          });
+
+          it('should send metrics for SdpOfferHandlingError error', () => {
+            const fakeError = new MC.Errors.SdpOfferHandlingError(fakeErrorMessage, {name: fakeErrorName, cause: {name: fakeRootCauseName}});
+
+            eventListeners[MC.Event.ROAP_FAILURE](fakeError);
+
+            checkMetricSent(eventType.REMOTE_SDP_RECEIVED);
+            checkBehavioralMetricSent(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, MC.Errors.ErrorCode.SdpOfferHandlingError, fakeErrorMessage, fakeRootCauseName);
+          });
+
+          it('should send metrics for SdpAnswerHandlingError error', () => {
+            const fakeError = new MC.Errors.SdpAnswerHandlingError(fakeErrorMessage, {name: fakeErrorName, cause: {name: fakeRootCauseName}});
+
+            eventListeners[MC.Event.ROAP_FAILURE](fakeError);
+
+            checkMetricSent(eventType.REMOTE_SDP_RECEIVED);
+            checkBehavioralMetricSent(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, MC.Errors.ErrorCode.SdpAnswerHandlingError, fakeErrorMessage, fakeRootCauseName);
+          });
+
+          it('should send metrics for SdpError error', () => {
+            // SdpError is usually without a cause
+            const fakeError = new MC.Errors.SdpError(fakeErrorMessage, {name: fakeErrorName});
+
+            eventListeners[MC.Event.ROAP_FAILURE](fakeError);
+
+            checkMetricSent(eventType.LOCAL_SDP_GENERATED);
+            // expectedMetadataType is the error name in this case
+            checkBehavioralMetricSent(BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE, MC.Errors.ErrorCode.SdpError, fakeErrorMessage, fakeErrorName);
+          });
+
+          it('should send metrics for IceGatheringError error', () => {
+            // IceGatheringError is usually without a cause
+            const fakeError = new MC.Errors.IceGatheringError(fakeErrorMessage, {name: fakeErrorName});
+
+            eventListeners[MC.Event.ROAP_FAILURE](fakeError);
+
+            checkMetricSent(eventType.LOCAL_SDP_GENERATED);
+            // expectedMetadataType is the error name in this case
+            checkBehavioralMetricSent(BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE, MC.Errors.ErrorCode.IceGatheringError, fakeErrorMessage, fakeErrorName);
+          });
+        });
+
+        describe('handles MC.Event.ROAP_MESSAGE_TO_SEND correctly', () => {
+          let sendRoapOKStub;
+          let sendRoapMediaRequestStub;
+          let sendRoapAnswerStub;
+          let sendRoapErrorStub;
+
+          beforeEach(() => {
+            sendRoapOKStub = sinon.stub(meeting.roap, 'sendRoapOK').resolves({});
+            sendRoapMediaRequestStub = sinon.stub(meeting.roap, 'sendRoapMediaRequest').resolves({});
+            sendRoapAnswerStub = sinon.stub(meeting.roap, 'sendRoapAnswer').resolves({});
+            sendRoapErrorStub = sinon.stub(meeting.roap, 'sendRoapError').resolves({});
+
+            meeting.setupMediaConnectionListeners();
+          });
+
+          it('handles OK message correctly', () => {
+            eventListeners[MC.Event.ROAP_MESSAGE_TO_SEND]({roapMessage: {messageType: 'OK', seq: 1}});
+
+            assert.calledOnce(Metrics.postEvent);
+            assert.calledWithMatch(Metrics.postEvent, {event: eventType.REMOTE_SDP_RECEIVED, meetingId: meeting.id});
+
+            assert.calledOnce(sendRoapOKStub);
+            assert.calledWith(sendRoapOKStub, {seq: 1, mediaId: meeting.mediaId, correlationId: meeting.correlationId});
+          });
+
+          it('handles OFFER message correctly', () => {
+            eventListeners[MC.Event.ROAP_MESSAGE_TO_SEND]({
+              roapMessage: {
+                messageType: 'OFFER',
+                seq: 1,
+                sdp: 'fake sdp',
+                tieBreaker: 12345,
+              }
+            });
+
+            assert.calledOnce(Metrics.postEvent);
+            assert.calledWithMatch(Metrics.postEvent, {event: eventType.LOCAL_SDP_GENERATED, meetingId: meeting.id});
+
+            assert.calledOnce(sendRoapMediaRequestStub);
+            assert.calledWith(sendRoapMediaRequestStub, {
+              seq: 1, sdp: 'fake sdp', tieBreaker: 12345, meeting, reconnect: false
+            });
+          });
+
+          it('handles ANSWER message correctly', () => {
+            eventListeners[MC.Event.ROAP_MESSAGE_TO_SEND]({
+              roapMessage: {
+                messageType: 'ANSWER',
+                seq: 10,
+                sdp: 'fake sdp answer',
+                tieBreaker: 12345,
+              }
+            });
+
+            assert.calledOnce(Metrics.postEvent);
+            assert.calledWithMatch(Metrics.postEvent, {event: eventType.REMOTE_SDP_RECEIVED, meetingId: meeting.id});
+
+            assert.calledOnce(sendRoapAnswerStub);
+            assert.calledWith(sendRoapAnswerStub, {
+              seq: 10, sdp: 'fake sdp answer', mediaId: meeting.mediaId, correlationId: meeting.correlationId
+            });
+          });
+
+          it('sends metrics if fails to send roap ANSWER message', async () => {
+            sendRoapAnswerStub.rejects(new Error('sending answer failed'));
+
+            await eventListeners[MC.Event.ROAP_MESSAGE_TO_SEND]({
+              roapMessage: {
+                messageType: 'ANSWER',
+                seq: 10,
+                sdp: 'fake sdp answer',
+                tieBreaker: 12345,
+              }
+            });
+            await testUtils.flushPromises();
+
+            assert.calledOnce(Metrics.sendBehavioralMetric);
+            assert.calledWithMatch(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ROAP_ANSWER_FAILURE, {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: 'sending answer failed'
+            });
+          });
+
+          [MC.ErrorType.CONFLICT, MC.ErrorType.DOUBLECONFLICT].forEach((errorType) =>
+            it(`handles ERROR message indicating glare condition correctly (errorType=${errorType})`, () => {
+              eventListeners[MC.Event.ROAP_MESSAGE_TO_SEND]({
+                roapMessage: {
+                  messageType: 'ERROR',
+                  seq: 10,
+                  errorType,
+                  tieBreaker: 12345,
+                }
+              });
+
+              assert.calledOnce(Metrics.sendBehavioralMetric);
+              assert.calledWithMatch(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ROAP_GLARE_CONDITION, {
+                correlation_id: meeting.correlationId,
+                locus_id: meeting.locusUrl.split('/').pop(),
+                sequence: 10
+              });
+
+              assert.calledOnce(sendRoapErrorStub);
+              assert.calledWith(sendRoapErrorStub, {
+                seq: 10, errorType, mediaId: meeting.mediaId, correlationId: meeting.correlationId
+              });
+            }));
+
+          it('handles ERROR message indicating other errors correctly', () => {
+            eventListeners[MC.Event.ROAP_MESSAGE_TO_SEND]({
+              roapMessage: {
+                messageType: 'ERROR',
+                seq: 10,
+                errorType: MC.ErrorType.FAILED,
+                tieBreaker: 12345,
+              }
+            });
+
+            assert.notCalled(Metrics.sendBehavioralMetric);
+
+            assert.calledOnce(sendRoapErrorStub);
+            assert.calledWith(sendRoapErrorStub, {
+              seq: 10,
+              errorType: MC.ErrorType.FAILED,
+              mediaId: meeting.mediaId,
+              correlationId: meeting.correlationId
+            });
+          });
         });
       });
       describe('#setUpLocusInfoSelfListener', () => {

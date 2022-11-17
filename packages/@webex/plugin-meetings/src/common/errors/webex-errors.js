@@ -101,24 +101,6 @@ class UserInLobbyError extends WebexMeetingsError {
 export {UserInLobbyError};
 WebExMeetingsErrors[UserInLobbyError.CODE] = UserInLobbyError;
 
-/**
- * @class InvalidSdpError
- * @classdesc Raised whenever SDP generated via browser is invalid.
- * @extends WebexMeetingsError
- * @property {number} code - 30201
- * @property {string} message - 'user is still in the lobby or not joined'
- */
-class InvalidSdpError extends WebexMeetingsError {
-  static CODE = 30201;
-
-  constructor(message) {
-    super(InvalidSdpError.CODE, message || 'iceConnection: sdp generated is invalid');
-  }
-}
-
-export {InvalidSdpError};
-WebExMeetingsErrors[InvalidSdpError.CODE] = InvalidSdpError;
-
 
 /**
  * @class IceGatheringFailed
