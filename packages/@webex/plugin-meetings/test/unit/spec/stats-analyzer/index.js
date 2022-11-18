@@ -131,7 +131,7 @@ describe('plugin-meetings', () => {
         };
 
         pc = {
-          getConnectionState: sinon.stub().returns(MC.ConnectionState.CONNECTED),
+          getConnectionState: sinon.stub().returns(MC.ConnectionState.Connected),
           getTransceiverStats: sinon.stub().resolves({
             audio: {
               sender: [fakeStats.audio.sender],
