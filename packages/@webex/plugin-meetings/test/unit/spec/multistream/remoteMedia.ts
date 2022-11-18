@@ -71,17 +71,21 @@ describe('RemoteMedia', () => {
       remoteMedia.sendMediaRequest(csi, true);
 
       assert.calledOnce(fakeMediaRequestManager.addRequest);
-      assert.calledWith(fakeMediaRequestManager.addRequest, sinon.match({
-        policyInfo: sinon.match({
-          policy: 'receiver-selected',
-          csi,
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'receiver-selected',
+            csi,
+          }),
+          receiveSlots: [fakeReceiveSlot],
+          codecInfo: sinon.match({
+            codec: 'h264',
+            maxFs: 3600,
+          }),
         }),
-        receiveSlots: [fakeReceiveSlot],
-        codecInfo: sinon.match({
-          codec: 'h264',
-          maxFs: 3600,
-        })
-      }), true);
+        true
+      );
 
       fakeMediaRequestManager.addRequest.resetHistory();
 
@@ -89,17 +93,21 @@ describe('RemoteMedia', () => {
       remoteMedia.sendMediaRequest(csi2, false);
 
       assert.calledOnce(fakeMediaRequestManager.addRequest);
-      assert.calledWith(fakeMediaRequestManager.addRequest, sinon.match({
-        policyInfo: sinon.match({
-          policy: 'receiver-selected',
-          csi: csi2,
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'receiver-selected',
+            csi: csi2,
+          }),
+          receiveSlots: [fakeReceiveSlot],
+          codecInfo: sinon.match({
+            codec: 'h264',
+            maxFs: 3600,
+          }),
         }),
-        receiveSlots: [fakeReceiveSlot],
-        codecInfo: sinon.match({
-          codec: 'h264',
-          maxFs: 3600,
-        })
-      }), false);
+        false
+      );
     });
 
     it('cancels previous request', () => {
@@ -119,17 +127,21 @@ describe('RemoteMedia', () => {
       assert.calledWith(fakeMediaRequestManager.cancelRequest, fakeRequestId);
 
       assert.calledOnce(fakeMediaRequestManager.addRequest);
-      assert.calledWith(fakeMediaRequestManager.addRequest, sinon.match({
-        policyInfo: sinon.match({
-          policy: 'receiver-selected',
-          csi: 5678,
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'receiver-selected',
+            csi: 5678,
+          }),
+          receiveSlots: [fakeReceiveSlot],
+          codecInfo: sinon.match({
+            codec: 'h264',
+            maxFs: 3600,
+          }),
         }),
-        receiveSlots: [fakeReceiveSlot],
-        codecInfo: sinon.match({
-          codec: 'h264',
-          maxFs: 3600,
-        })
-      }), false);
+        false
+      );
     });
 
     it('throws when called on a stopped RemoteMedia instance', () => {

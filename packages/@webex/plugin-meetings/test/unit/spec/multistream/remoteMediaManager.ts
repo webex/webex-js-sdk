@@ -2,7 +2,13 @@
 import EventEmitter from 'events';
 
 import {MediaConnection as MC} from '@webex/internal-media-core';
-import {Configuration, DefaultConfiguration, Event, RemoteMediaManager, VideoLayoutChangedEventData} from '@webex/plugin-meetings/src/multistream/remoteMediaManager';
+import {
+  Configuration,
+  DefaultConfiguration,
+  Event,
+  RemoteMediaManager,
+  VideoLayoutChangedEventData,
+} from '@webex/plugin-meetings/src/multistream/remoteMediaManager';
 import {RemoteMediaGroup} from '@webex/plugin-meetings/src/multistream/remoteMediaGroup';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
@@ -54,7 +60,7 @@ describe('RemoteMediaManager', () => {
         addRequest: sinon.stub(),
         cancelRequest: sinon.stub(),
         commit: sinon.stub(),
-      }
+      },
     };
 
     // create remote media manager with default configuration
@@ -72,14 +78,13 @@ describe('RemoteMediaManager', () => {
     fakeMediaRequestManagers.video.commit.resetHistory();
   };
 
-
   it('creates a RemoteMediaGroup for audio correctly', async () => {
-    let createdAudioGroup: RemoteMediaGroup|null = null;
+    let createdAudioGroup: RemoteMediaGroup | null = null;
 
     // create a config with just audio, no video at all and no screen share
     const config = {
       audio: {
-        numOfActiveSpeakerStreams: 5
+        numOfActiveSpeakerStreams: 5,
       },
       video: {
         preferLiveVideo: false,
@@ -89,16 +94,20 @@ describe('RemoteMediaManager', () => {
             screenShareVideo: {
               size: null,
             },
-          }
-        }
+          },
+        },
       },
       screenShare: {
         audio: false,
         video: false,
-      }
+      },
     };
 
-    remoteMediaManager = new RemoteMediaManager(fakeReceiveSlotManager, fakeMediaRequestManagers, config);
+    remoteMediaManager = new RemoteMediaManager(
+      fakeReceiveSlotManager,
+      fakeMediaRequestManagers,
+      config
+    );
 
     remoteMediaManager.on(Event.AudioCreated, (audio: RemoteMediaGroup) => {
       createdAudioGroup = audio;
@@ -114,19 +123,26 @@ describe('RemoteMediaManager', () => {
     assert.isNotNull(createdAudioGroup);
     if (createdAudioGroup) {
       assert.strictEqual(createdAudioGroup.getRemoteMedia().length, 5);
-      assert.isTrue(createdAudioGroup.getRemoteMedia().every((remoteMedia) => remoteMedia.mediaType === MC.MediaType.AudioMain));
+      assert.isTrue(
+        createdAudioGroup
+          .getRemoteMedia()
+          .every((remoteMedia) => remoteMedia.mediaType === MC.MediaType.AudioMain)
+      );
       assert.strictEqual(createdAudioGroup.getPinnedRemoteMedia().length, 0);
     }
 
     assert.calledOnce(fakeMediaRequestManagers.audio.addRequest);
-    assert.calledWith(fakeMediaRequestManagers.audio.addRequest, sinon.match({
-      policyInfo: sinon.match({
-        policy: 'active-speaker',
-        priority: 255,
-      }),
-      receiveSlots: Array(5).fill(fakeAudioSlot),
-      codecInfo: undefined,
-    }));
+    assert.calledWith(
+      fakeMediaRequestManagers.audio.addRequest,
+      sinon.match({
+        policyInfo: sinon.match({
+          policy: 'active-speaker',
+          priority: 255,
+        }),
+        receiveSlots: Array(5).fill(fakeAudioSlot),
+        codecInfo: undefined,
+      })
+    );
   });
 
   it('pre-allocates receive slots based on the biggest layout', async () => {
@@ -139,12 +155,19 @@ describe('RemoteMediaManager', () => {
       },
       activeSpeakerVideoPaneGroups: [
         {
-          id: 'big one', numPanes: 99, size: 'small', priority: 255
-        }
-      ]
+          id: 'big one',
+          numPanes: 99,
+          size: 'small',
+          priority: 255,
+        },
+      ],
     };
 
-    remoteMediaManager = new RemoteMediaManager(fakeReceiveSlotManager, fakeMediaRequestManagers, config);
+    remoteMediaManager = new RemoteMediaManager(
+      fakeReceiveSlotManager,
+      fakeMediaRequestManagers,
+      config
+    );
 
     await remoteMediaManager.start();
 
@@ -155,7 +178,7 @@ describe('RemoteMediaManager', () => {
   });
 
   it('starts with the initial layout', async () => {
-    let receivedLayoutInfo: VideoLayoutChangedEventData|null = null;
+    let receivedLayoutInfo: VideoLayoutChangedEventData | null = null;
 
     remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
       receivedLayoutInfo = layoutInfo;
@@ -170,7 +193,10 @@ describe('RemoteMediaManager', () => {
       assert.strictEqual(receivedLayoutInfo.layoutId, 'AllEqual');
       assert.strictEqual(Object.keys(receivedLayoutInfo.memberVideoPanes).length, 0);
       assert.strictEqual(Object.keys(receivedLayoutInfo.activeSpeakerVideoPanes).length, 1); // this layout has only 1 active speaker group
-      assert.strictEqual(receivedLayoutInfo.activeSpeakerVideoPanes.main.getRemoteMedia().length, 9);
+      assert.strictEqual(
+        receivedLayoutInfo.activeSpeakerVideoPanes.main.getRemoteMedia().length,
+        9
+      );
     }
   });
 
@@ -181,7 +207,11 @@ describe('RemoteMediaManager', () => {
       config.video.initialLayoutId = 'invalid';
 
       assert.throws(() => {
-        remoteMediaManager = new RemoteMediaManager(fakeReceiveSlotManager, fakeMediaRequestManagers, config);
+        remoteMediaManager = new RemoteMediaManager(
+          fakeReceiveSlotManager,
+          fakeMediaRequestManagers,
+          config
+        );
       }, 'invalid config: initialLayoutId "invalid" doesn\'t match any of the layouts');
     });
 
@@ -190,26 +220,34 @@ describe('RemoteMediaManager', () => {
 
       config.video.layouts.test = {
         screenShareVideo: {size: null},
-        activeSpeakerVideoPaneGroups: [{
-          id: 'someDuplicate',
-          numPanes: 10,
-          priority: 255,
-          size: 'best',
-        }, {
-          id: 'other',
-          numPanes: 10,
-          priority: 254,
-          size: 'best',
-        }, {
-          id: 'someDuplicate',
-          numPanes: 10,
-          priority: 255,
-          size: 'best',
-        }]
+        activeSpeakerVideoPaneGroups: [
+          {
+            id: 'someDuplicate',
+            numPanes: 10,
+            priority: 255,
+            size: 'best',
+          },
+          {
+            id: 'other',
+            numPanes: 10,
+            priority: 254,
+            size: 'best',
+          },
+          {
+            id: 'someDuplicate',
+            numPanes: 10,
+            priority: 255,
+            size: 'best',
+          },
+        ],
       };
 
       assert.throws(() => {
-        remoteMediaManager = new RemoteMediaManager(fakeReceiveSlotManager, fakeMediaRequestManagers, config);
+        remoteMediaManager = new RemoteMediaManager(
+          fakeReceiveSlotManager,
+          fakeMediaRequestManagers,
+          config
+        );
       }, 'invalid config: duplicate active speaker video pane group id: someDuplicate');
     });
 
@@ -218,26 +256,34 @@ describe('RemoteMediaManager', () => {
 
       config.video.layouts.test = {
         screenShareVideo: {size: null},
-        activeSpeakerVideoPaneGroups: [{
-          id: 'group1',
-          numPanes: 10,
-          priority: 200,
-          size: 'best',
-        }, {
-          id: 'group2',
-          numPanes: 2,
-          priority: 200,
-          size: 'medium',
-        }, {
-          id: 'group3',
-          numPanes: 5,
-          priority: 100,
-          size: 'large',
-        }]
+        activeSpeakerVideoPaneGroups: [
+          {
+            id: 'group1',
+            numPanes: 10,
+            priority: 200,
+            size: 'best',
+          },
+          {
+            id: 'group2',
+            numPanes: 2,
+            priority: 200,
+            size: 'medium',
+          },
+          {
+            id: 'group3',
+            numPanes: 5,
+            priority: 100,
+            size: 'large',
+          },
+        ],
       };
 
       assert.throws(() => {
-        remoteMediaManager = new RemoteMediaManager(fakeReceiveSlotManager, fakeMediaRequestManagers, config);
+        remoteMediaManager = new RemoteMediaManager(
+          fakeReceiveSlotManager,
+          fakeMediaRequestManagers,
+          config
+        );
       }, 'invalid config: multiple active speaker video pane groups have same priority: 200');
     });
 
@@ -255,7 +301,11 @@ describe('RemoteMediaManager', () => {
       };
 
       assert.throws(() => {
-        remoteMediaManager = new RemoteMediaManager(fakeReceiveSlotManager, fakeMediaRequestManagers, config);
+        remoteMediaManager = new RemoteMediaManager(
+          fakeReceiveSlotManager,
+          fakeMediaRequestManagers,
+          config
+        );
       }, 'invalid config: duplicate member video pane id: paneB');
     });
   });
@@ -271,7 +321,11 @@ describe('RemoteMediaManager', () => {
 
       config.video.initialLayoutId = 'Stage';
 
-      remoteMediaManager = new RemoteMediaManager(fakeReceiveSlotManager, fakeMediaRequestManagers, config);
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
 
       remoteMediaManager.on(Event.AudioCreated, (audio: RemoteMediaGroup) => {
         audioStopStub = sinon.stub(audio, 'stop');
@@ -279,7 +333,10 @@ describe('RemoteMediaManager', () => {
 
       remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
         // The "Stage" layout that we're using has only 1 active speaker group called "thumbnails"
-        videoActiveSpeakerGroupStopStub = sinon.stub(layoutInfo.activeSpeakerVideoPanes.thumbnails, 'stop');
+        videoActiveSpeakerGroupStopStub = sinon.stub(
+          layoutInfo.activeSpeakerVideoPanes.thumbnails,
+          'stop'
+        );
 
         Object.values(layoutInfo.memberVideoPanes).forEach((pane) => {
           memberVideoPaneStopStubs.push(sinon.stub(pane, 'stop'));
@@ -318,7 +375,11 @@ describe('RemoteMediaManager', () => {
 
       config.video.initialLayoutId = 'Single';
 
-      remoteMediaManager = new RemoteMediaManager(fakeReceiveSlotManager, fakeMediaRequestManagers, config);
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
 
       await remoteMediaManager.start();
 
@@ -337,7 +398,11 @@ describe('RemoteMediaManager', () => {
 
       config.video.initialLayoutId = 'AllEqual';
 
-      remoteMediaManager = new RemoteMediaManager(fakeReceiveSlotManager, fakeMediaRequestManagers, config);
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
 
       await remoteMediaManager.start();
 
@@ -365,7 +430,11 @@ describe('RemoteMediaManager', () => {
           {id: 'stage-3', size: 'medium', csi: undefined},
           {id: 'stage-4', size: 'medium', csi: undefined},
         ];
-        remoteMediaManager = new RemoteMediaManager(fakeReceiveSlotManager, fakeMediaRequestManagers, config);
+        remoteMediaManager = new RemoteMediaManager(
+          fakeReceiveSlotManager,
+          fakeMediaRequestManagers,
+          config
+        );
 
         await remoteMediaManager.start();
 
@@ -376,39 +445,48 @@ describe('RemoteMediaManager', () => {
         await remoteMediaManager.setLayout('Stage');
 
         assert.callCount(fakeMediaRequestManagers.video.addRequest, 3);
-        assert.calledWith(fakeMediaRequestManagers.video.addRequest, sinon.match({
-          policyInfo: sinon.match({
-            policy: 'active-speaker',
-            priority: 255,
-          }),
-          receiveSlots: Array(6).fill(fakeVideoSlot),
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 60,
-          }),
-        }));
-        assert.calledWith(fakeMediaRequestManagers.video.addRequest, sinon.match({
-          policyInfo: sinon.match({
-            policy: 'receiver-selected',
-            csi: 11111,
-          }),
-          receiveSlots: Array(1).fill(fakeVideoSlot),
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
-          }),
-        }));
-        assert.calledWith(fakeMediaRequestManagers.video.addRequest, sinon.match({
-          policyInfo: sinon.match({
-            policy: 'receiver-selected',
-            csi: 22222,
-          }),
-          receiveSlots: Array(1).fill(fakeVideoSlot),
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
-          }),
-        }));
+        assert.calledWith(
+          fakeMediaRequestManagers.video.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({
+              policy: 'active-speaker',
+              priority: 255,
+            }),
+            receiveSlots: Array(6).fill(fakeVideoSlot),
+            codecInfo: sinon.match({
+              codec: 'h264',
+              maxFs: 60,
+            }),
+          })
+        );
+        assert.calledWith(
+          fakeMediaRequestManagers.video.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({
+              policy: 'receiver-selected',
+              csi: 11111,
+            }),
+            receiveSlots: Array(1).fill(fakeVideoSlot),
+            codecInfo: sinon.match({
+              codec: 'h264',
+              maxFs: 3600,
+            }),
+          })
+        );
+        assert.calledWith(
+          fakeMediaRequestManagers.video.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({
+              policy: 'receiver-selected',
+              csi: 22222,
+            }),
+            receiveSlots: Array(1).fill(fakeVideoSlot),
+            codecInfo: sinon.match({
+              codec: 'h264',
+              maxFs: 3600,
+            }),
+          })
+        );
       });
 
       it('sends correct media requests when switching to a layout with multiple active-speaker groups', async () => {
@@ -417,7 +495,11 @@ describe('RemoteMediaManager', () => {
 
         config.video.initialLayoutId = 'AllEqual';
 
-        remoteMediaManager = new RemoteMediaManager(fakeReceiveSlotManager, fakeMediaRequestManagers, config);
+        remoteMediaManager = new RemoteMediaManager(
+          fakeReceiveSlotManager,
+          fakeMediaRequestManagers,
+          config
+        );
 
         const allEqualMediaRequestId = 'fake request id';
 
@@ -436,34 +518,40 @@ describe('RemoteMediaManager', () => {
 
         // check that 2 correct active speaker media requests were sent out
         assert.callCount(fakeMediaRequestManagers.video.addRequest, 2);
-        assert.calledWith(fakeMediaRequestManagers.video.addRequest, sinon.match({
-          policyInfo: sinon.match({
-            policy: 'active-speaker',
-            priority: 255,
-          }),
-          receiveSlots: Array(1).fill(fakeVideoSlot),
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 8192,
-          }),
-        }));
-        assert.calledWith(fakeMediaRequestManagers.video.addRequest, sinon.match({
-          policyInfo: sinon.match({
-            policy: 'active-speaker',
-            priority: 254,
-          }),
-          receiveSlots: Array(5).fill(fakeVideoSlot),
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 240,
-          }),
-        }));
+        assert.calledWith(
+          fakeMediaRequestManagers.video.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({
+              policy: 'active-speaker',
+              priority: 255,
+            }),
+            receiveSlots: Array(1).fill(fakeVideoSlot),
+            codecInfo: sinon.match({
+              codec: 'h264',
+              maxFs: 8192,
+            }),
+          })
+        );
+        assert.calledWith(
+          fakeMediaRequestManagers.video.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({
+              policy: 'active-speaker',
+              priority: 254,
+            }),
+            receiveSlots: Array(5).fill(fakeVideoSlot),
+            codecInfo: sinon.match({
+              codec: 'h264',
+              maxFs: 240,
+            }),
+          })
+        );
       });
 
       it('cancels all media requests for the previous layout when switching to a new one', async () => {
         const config: Configuration = {
           audio: {
-            numOfActiveSpeakerStreams: 0
+            numOfActiveSpeakerStreams: 0,
           },
           video: {
             preferLiveVideo: true,
@@ -473,29 +561,39 @@ describe('RemoteMediaManager', () => {
                 screenShareVideo: {size: null},
                 activeSpeakerVideoPaneGroups: [
                   {
-                    id: 'big', numPanes: 10, priority: 255, size: 'large'
+                    id: 'big',
+                    numPanes: 10,
+                    priority: 255,
+                    size: 'large',
                   },
                   {
-                    id: 'small', numPanes: 3, priority: 254, size: 'medium'
+                    id: 'small',
+                    numPanes: 3,
+                    priority: 254,
+                    size: 'medium',
                   },
                 ],
                 memberVideoPanes: [
                   {id: 'pane 1', size: 'best', csi: 123},
                   {id: 'pane 2', size: 'best', csi: 234},
-                ]
+                ],
               },
               other: {
                 screenShareVideo: {size: null},
-              }
-            }
+              },
+            },
           },
           screenShare: {
             audio: false,
             video: false,
-          }
+          },
         };
 
-        remoteMediaManager = new RemoteMediaManager(fakeReceiveSlotManager, fakeMediaRequestManagers, config);
+        remoteMediaManager = new RemoteMediaManager(
+          fakeReceiveSlotManager,
+          fakeMediaRequestManagers,
+          config
+        );
 
         let activeSpeakerRequestCounter = 0;
         let receiverSelectedRequestCounter = 0;
@@ -523,8 +621,14 @@ describe('RemoteMediaManager', () => {
         assert.callCount(fakeMediaRequestManagers.video.cancelRequest, 4);
         assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, 'active speaker request 1');
         assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, 'active speaker request 2');
-        assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, 'receiver selected request 1');
-        assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, 'receiver selected request 2');
+        assert.calledWith(
+          fakeMediaRequestManagers.video.cancelRequest,
+          'receiver selected request 1'
+        );
+        assert.calledWith(
+          fakeMediaRequestManagers.video.cancelRequest,
+          'receiver selected request 2'
+        );
 
         // new layout has no videos, so no new requests should be sent out
         // check that 2 correct active speaker media requests were sent out
@@ -535,7 +639,7 @@ describe('RemoteMediaManager', () => {
 
   describe('setRemoteVideoCsi', () => {
     it('sends correct media requests', async () => {
-      let currentLayoutInfo: VideoLayoutChangedEventData|null = null;
+      let currentLayoutInfo: VideoLayoutChangedEventData | null = null;
 
       await remoteMediaManager.start();
 
@@ -558,17 +662,20 @@ describe('RemoteMediaManager', () => {
 
         // a new media request should have been sent out
         assert.calledOnce(fakeMediaRequestManagers.video.addRequest);
-        assert.calledWith(fakeMediaRequestManagers.video.addRequest, sinon.match({
-          policyInfo: sinon.match({
-            policy: 'receiver-selected',
-            csi: 1001,
-          }),
-          receiveSlots: Array(1).fill(fakeVideoSlot),
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
-          }),
-        }));
+        assert.calledWith(
+          fakeMediaRequestManagers.video.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({
+              policy: 'receiver-selected',
+              csi: 1001,
+            }),
+            receiveSlots: Array(1).fill(fakeVideoSlot),
+            codecInfo: sinon.match({
+              codec: 'h264',
+              maxFs: 3600,
+            }),
+          })
+        );
         assert.notCalled(fakeMediaRequestManagers.video.cancelRequest);
 
         resetHistory();
@@ -578,17 +685,20 @@ describe('RemoteMediaManager', () => {
 
         // a new media request should have been sent out
         assert.calledOnce(fakeMediaRequestManagers.video.addRequest);
-        assert.calledWith(fakeMediaRequestManagers.video.addRequest, sinon.match({
-          policyInfo: sinon.match({
-            policy: 'receiver-selected',
-            csi: 1002,
-          }),
-          receiveSlots: Array(1).fill(fakeVideoSlot),
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
-          }),
-        }));
+        assert.calledWith(
+          fakeMediaRequestManagers.video.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({
+              policy: 'receiver-selected',
+              csi: 1002,
+            }),
+            receiveSlots: Array(1).fill(fakeVideoSlot),
+            codecInfo: sinon.match({
+              codec: 'h264',
+              maxFs: 3600,
+            }),
+          })
+        );
         // and previous one should have been cancelled
         assert.calledOnce(fakeMediaRequestManagers.video.cancelRequest);
         assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, fakeRequestId1);
@@ -602,24 +712,30 @@ describe('RemoteMediaManager', () => {
 
         // a new media request should have been sent out
         assert.calledOnce(fakeMediaRequestManagers.video.addRequest);
-        assert.calledWith(fakeMediaRequestManagers.video.addRequest, sinon.match({
-          policyInfo: sinon.match({
-            policy: 'receiver-selected',
-            csi: 2001,
-          }),
-          receiveSlots: Array(1).fill(fakeVideoSlot),
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
-          }),
-        }));
+        assert.calledWith(
+          fakeMediaRequestManagers.video.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({
+              policy: 'receiver-selected',
+              csi: 2001,
+            }),
+            receiveSlots: Array(1).fill(fakeVideoSlot),
+            codecInfo: sinon.match({
+              codec: 'h264',
+              maxFs: 3600,
+            }),
+          })
+        );
         // nothing should have been cancelled
         assert.notCalled(fakeMediaRequestManagers.video.cancelRequest);
 
         resetHistory();
 
         // now set CSI back to undefined
-        remoteMediaManager.setRemoteVideoCsi(currentLayoutInfo.memberVideoPanes['stage-3'], undefined);
+        remoteMediaManager.setRemoteVideoCsi(
+          currentLayoutInfo.memberVideoPanes['stage-3'],
+          undefined
+        );
 
         // no new media request should have been sent out
         assert.notCalled(fakeMediaRequestManagers.video.addRequest);
@@ -633,14 +749,18 @@ describe('RemoteMediaManager', () => {
   describe('addMemberVideoPane()', () => {
     it('fails if there is no current layout', () => {
       // we haven't called start() so there is no layout set, yet
-      assert.isRejected(remoteMediaManager.addMemberVideoPane({id: 'newPane', size: 'best', csi: 54321}));
+      assert.isRejected(
+        remoteMediaManager.addMemberVideoPane({id: 'newPane', size: 'best', csi: 54321})
+      );
     });
 
     it('fails if called with a duplicate paneId', async () => {
       await remoteMediaManager.start();
       await remoteMediaManager.setLayout('Stage');
 
-      assert.isRejected(remoteMediaManager.addMemberVideoPane({id: 'stage-3', size: 'best', csi: 54321}));
+      assert.isRejected(
+        remoteMediaManager.addMemberVideoPane({id: 'stage-3', size: 'best', csi: 54321})
+      );
     });
 
     it('works as expected when called with a CSI value', async () => {
@@ -657,17 +777,20 @@ describe('RemoteMediaManager', () => {
 
       // and a media request sent out
       assert.calledOnce(fakeMediaRequestManagers.video.addRequest);
-      assert.calledWith(fakeMediaRequestManagers.video.addRequest, sinon.match({
-        policyInfo: sinon.match({
-          policy: 'receiver-selected',
-          csi: 54321,
-        }),
-        receiveSlots: Array(1).fill(fakeVideoSlot),
-        codecInfo: sinon.match({
-          codec: 'h264',
-          maxFs: 8192,
-        }),
-      }));
+      assert.calledWith(
+        fakeMediaRequestManagers.video.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'receiver-selected',
+            csi: 54321,
+          }),
+          receiveSlots: Array(1).fill(fakeVideoSlot),
+          codecInfo: sinon.match({
+            codec: 'h264',
+            maxFs: 8192,
+          }),
+        })
+      );
     });
     it('works as expected when called without a CSI value', async () => {
       await remoteMediaManager.setLayout('Stage');
@@ -733,7 +856,7 @@ describe('RemoteMediaManager', () => {
 
   describe('pinActiveSpeakerVideoPane() and isPinned()', () => {
     it('throws if called on a pane not belonging to an active speaker group', async () => {
-      let currentLayoutInfo: VideoLayoutChangedEventData|null = null;
+      let currentLayoutInfo: VideoLayoutChangedEventData | null = null;
 
       remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
         currentLayoutInfo = layoutInfo;
@@ -753,7 +876,7 @@ describe('RemoteMediaManager', () => {
     });
 
     it('calls pin()/isPinned() on the correct remote media group', async () => {
-      let currentLayoutInfo: VideoLayoutChangedEventData|null = null;
+      let currentLayoutInfo: VideoLayoutChangedEventData | null = null;
       let pinStub;
       let isPinnedStub;
 
@@ -787,7 +910,7 @@ describe('RemoteMediaManager', () => {
 
   describe('unpinActiveSpeakerVideoPane', () => {
     it('throws if called on a remote media instance that was not pinned', async () => {
-      let currentLayoutInfo: VideoLayoutChangedEventData|null = null;
+      let currentLayoutInfo: VideoLayoutChangedEventData | null = null;
 
       remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
         currentLayoutInfo = layoutInfo;
@@ -798,14 +921,15 @@ describe('RemoteMediaManager', () => {
       assert.isNotNull(currentLayoutInfo);
 
       if (currentLayoutInfo) {
-        const remoteVideoToUnPin = currentLayoutInfo.activeSpeakerVideoPanes.main.getRemoteMedia()[0];
+        const remoteVideoToUnPin =
+          currentLayoutInfo.activeSpeakerVideoPanes.main.getRemoteMedia()[0];
 
         assert.throws(() => remoteMediaManager.unpinActiveSpeakerVideoPane(remoteVideoToUnPin));
       }
     });
 
     it('calls unpin() on the correct remote media group', async () => {
-      let currentLayoutInfo: VideoLayoutChangedEventData|null = null;
+      let currentLayoutInfo: VideoLayoutChangedEventData | null = null;
       let unpinStub;
 
       remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {

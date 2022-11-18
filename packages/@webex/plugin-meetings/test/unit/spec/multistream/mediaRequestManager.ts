@@ -7,12 +7,12 @@ type ExpectedActiveSpeaker = {
   policy: 'active-speaker';
   priority: number;
   receiveSlots: Array<ReceiveSlot>;
-}
+};
 type ExpectedReceiverSelected = {
   policy: 'receiver-selected';
   csi: number;
   receiveSlot: ReceiveSlot;
-}
+};
 type ExpectedRequest = ExpectedActiveSpeaker | ExpectedReceiverSelected;
 
 describe('MediaRequestManager', () => {
@@ -34,45 +34,60 @@ describe('MediaRequestManager', () => {
     mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback);
 
     // create some fake receive slots used by the tests
-    fakeWcmeSlots = Array(NUM_SLOTS).fill(null).map((_, index) => ({
-      id: `fake WCME slot ${index}`
-    }));
+    fakeWcmeSlots = Array(NUM_SLOTS)
+      .fill(null)
+      .map((_, index) => ({
+        id: `fake WCME slot ${index}`,
+      }));
 
-    fakeReceiveSlots = Array(NUM_SLOTS).fill(null).map((_, index) => ({
-      id: `fake receive slot ${index}`,
-      wcmeReceiveSlot: fakeWcmeSlots[index],
-      resetSourceState: sinon.stub()
-    } as unknown as ReceiveSlot));
+    fakeReceiveSlots = Array(NUM_SLOTS)
+      .fill(null)
+      .map(
+        (_, index) =>
+          ({
+            id: `fake receive slot ${index}`,
+            wcmeReceiveSlot: fakeWcmeSlots[index],
+            resetSourceState: sinon.stub(),
+          } as unknown as ReceiveSlot)
+      );
   });
 
   // helper function for adding an active speaker request
-  const addActiveSpeakerRequest = (priority, receiveSlots, commit = false) => mediaRequestManager.addRequest({
-    policyInfo: {
-      policy: 'active-speaker',
-      priority,
-      crossPriorityDuplication: CROSS_PRIORITY_DUPLICATION,
-      crossPolicyDuplication: CROSS_POLICY_DUPLICATION,
-      preferLiveVideo: PREFER_LIVE_VIDEO,
-    },
-    receiveSlots,
-    codecInfo: {
-      codec: 'h264',
-      maxFs: ACTIVE_SPEAKER_MAX_FS,
-    },
-  }, commit);
+  const addActiveSpeakerRequest = (priority, receiveSlots, commit = false) =>
+    mediaRequestManager.addRequest(
+      {
+        policyInfo: {
+          policy: 'active-speaker',
+          priority,
+          crossPriorityDuplication: CROSS_PRIORITY_DUPLICATION,
+          crossPolicyDuplication: CROSS_POLICY_DUPLICATION,
+          preferLiveVideo: PREFER_LIVE_VIDEO,
+        },
+        receiveSlots,
+        codecInfo: {
+          codec: 'h264',
+          maxFs: ACTIVE_SPEAKER_MAX_FS,
+        },
+      },
+      commit
+    );
 
   // helper function for adding a receiver selected request
-  const addReceiverSelectedRequest = (csi, receiveSlot, commit = false) => mediaRequestManager.addRequest({
-    policyInfo: {
-      policy: 'receiver-selected',
-      csi,
-    },
-    receiveSlots: [receiveSlot],
-    codecInfo: {
-      codec: 'h264',
-      maxFs: RECEIVER_SELECTED_MAX_FS,
-    },
-  }, commit);
+  const addReceiverSelectedRequest = (csi, receiveSlot, commit = false) =>
+    mediaRequestManager.addRequest(
+      {
+        policyInfo: {
+          policy: 'receiver-selected',
+          csi,
+        },
+        receiveSlots: [receiveSlot],
+        codecInfo: {
+          codec: 'h264',
+          maxFs: RECEIVER_SELECTED_MAX_FS,
+        },
+      },
+      commit
+    );
 
   // helper function for verifying that the right active speaker and receiver selected
   // requests have been sent out
@@ -81,7 +96,8 @@ describe('MediaRequestManager', () => {
   // hardcoded values used in them
   const checkMediaRequestsSent = (expectedRequests: ExpectedRequest[]) => {
     assert.calledOnce(sendMediaRequestsCallback);
-    assert.calledWith(sendMediaRequestsCallback,
+    assert.calledWith(
+      sendMediaRequestsCallback,
       expectedRequests.map((expectedRequest) => {
         if (expectedRequest.policy === 'active-speaker') {
           return sinon.match({
@@ -93,12 +109,14 @@ describe('MediaRequestManager', () => {
               preferLiveVideo: PREFER_LIVE_VIDEO,
             }),
             receiveSlots: expectedRequest.receiveSlots,
-            codecInfos: [sinon.match({
-              payloadType: 0x80,
-              h264: sinon.match({
-                maxFs: ACTIVE_SPEAKER_MAX_FS
-              })
-            })]
+            codecInfos: [
+              sinon.match({
+                payloadType: 0x80,
+                h264: sinon.match({
+                  maxFs: ACTIVE_SPEAKER_MAX_FS,
+                }),
+              }),
+            ],
           });
         }
         if (expectedRequest.policy === 'receiver-selected') {
@@ -108,17 +126,20 @@ describe('MediaRequestManager', () => {
               csi: expectedRequest.csi,
             }),
             receiveSlots: [expectedRequest.receiveSlot],
-            codecInfos: [sinon.match({
-              payloadType: 0x80,
-              h264: sinon.match({
-                maxFs: RECEIVER_SELECTED_MAX_FS
-              })
-            })]
+            codecInfos: [
+              sinon.match({
+                payloadType: 0x80,
+                h264: sinon.match({
+                  maxFs: RECEIVER_SELECTED_MAX_FS,
+                }),
+              }),
+            ],
           });
         }
 
         return undefined;
-      }));
+      })
+    );
     sendMediaRequestsCallback.resetHistory();
   };
 
@@ -134,49 +155,58 @@ describe('MediaRequestManager', () => {
     // because it tests other values for some of the parameters that are otherwise always fixed by those helpers
 
     // first call addRequest a couple of times with commit=false
-    mediaRequestManager.addRequest({
-      policyInfo: {
-        policy: 'active-speaker',
-        priority: 255,
-        crossPriorityDuplication: true,
-        crossPolicyDuplication: false,
-        preferLiveVideo: false,
+    mediaRequestManager.addRequest(
+      {
+        policyInfo: {
+          policy: 'active-speaker',
+          priority: 255,
+          crossPriorityDuplication: true,
+          crossPolicyDuplication: false,
+          preferLiveVideo: false,
+        },
+        receiveSlots: [fakeReceiveSlots[0], fakeReceiveSlots[1], fakeReceiveSlots[2]],
+        codecInfo: {
+          codec: 'h264',
+          maxFs: 1620,
+          maxFps: 1500,
+        },
       },
-      receiveSlots: [fakeReceiveSlots[0], fakeReceiveSlots[1], fakeReceiveSlots[2]],
-      codecInfo: {
-        codec: 'h264',
-        maxFs: 1620,
-        maxFps: 1500,
+      false
+    );
+    mediaRequestManager.addRequest(
+      {
+        policyInfo: {
+          policy: 'receiver-selected',
+          csi: 123,
+        },
+        receiveSlots: [fakeReceiveSlots[3]],
+        codecInfo: {
+          codec: 'h264',
+          maxFs: 3600,
+          maxFps: 2500,
+          maxMbps: 90000,
+        },
       },
-    }, false);
-    mediaRequestManager.addRequest({
-      policyInfo: {
-        policy: 'receiver-selected',
-        csi: 123,
-      },
-      receiveSlots: [fakeReceiveSlots[3]],
-      codecInfo: {
-        codec: 'h264',
-        maxFs: 3600,
-        maxFps: 2500,
-        maxMbps: 90000
-      },
-    }, false);
+      false
+    );
 
     // finally call it with commit=true
-    mediaRequestManager.addRequest({
-      policyInfo: {
-        policy: 'receiver-selected',
-        csi: 123,
+    mediaRequestManager.addRequest(
+      {
+        policyInfo: {
+          policy: 'receiver-selected',
+          csi: 123,
+        },
+        receiveSlots: [fakeReceiveSlots[4]],
+        codecInfo: {
+          codec: 'h264',
+          maxFs: 8192,
+          maxFps: 2500,
+          maxMbps: 204800,
+        },
       },
-      receiveSlots: [fakeReceiveSlots[4]],
-      codecInfo: {
-        codec: 'h264',
-        maxFs: 8192,
-        maxFps: 2500,
-        maxMbps: 204800
-      },
-    }, true);
+      true
+    );
 
     // all 3 requests should be sent out together
     assert.calledOnce(sendMediaRequestsCallback);
@@ -190,14 +220,16 @@ describe('MediaRequestManager', () => {
           preferLiveVideo: false,
         }),
         receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1], fakeWcmeSlots[2]],
-        codecInfos: [sinon.match({
-          payloadType: 0x80,
-          h264: sinon.match({
-            maxFs: 1620,
-            maxFps: 1500,
-            maxMbps: 245760
-          })
-        })]
+        codecInfos: [
+          sinon.match({
+            payloadType: 0x80,
+            h264: sinon.match({
+              maxFs: 1620,
+              maxFps: 1500,
+              maxMbps: 245760,
+            }),
+          }),
+        ],
       }),
       sinon.match({
         policy: 'receiver-selected',
@@ -205,14 +237,16 @@ describe('MediaRequestManager', () => {
           csi: 123,
         }),
         receiveSlots: [fakeWcmeSlots[3]],
-        codecInfos: [sinon.match({
-          payloadType: 0x80,
-          h264: sinon.match({
-            maxFs: 3600,
-            maxFps: 2500,
-            maxMbps: 90000
-          })
-        })]
+        codecInfos: [
+          sinon.match({
+            payloadType: 0x80,
+            h264: sinon.match({
+              maxFs: 3600,
+              maxFps: 2500,
+              maxMbps: 90000,
+            }),
+          }),
+        ],
       }),
       sinon.match({
         policy: 'receiver-selected',
@@ -220,15 +254,17 @@ describe('MediaRequestManager', () => {
           csi: 123,
         }),
         receiveSlots: [fakeWcmeSlots[4]],
-        codecInfos: [sinon.match({
-          payloadType: 0x80,
-          h264: sinon.match({
-            maxFs: 8192,
-            maxFps: 2500,
-            maxMbps: 204800
-          })
-        })]
-      })
+        codecInfos: [
+          sinon.match({
+            payloadType: 0x80,
+            h264: sinon.match({
+              maxFs: 8192,
+              maxFps: 2500,
+              maxMbps: 204800,
+            }),
+          }),
+        ],
+      }),
     ]);
   });
 
@@ -249,12 +285,20 @@ describe('MediaRequestManager', () => {
     ]);
 
     // and one more
-    addActiveSpeakerRequest(1, [fakeReceiveSlots[2], fakeReceiveSlots[3], fakeReceiveSlots[4]], true);
+    addActiveSpeakerRequest(
+      1,
+      [fakeReceiveSlots[2], fakeReceiveSlots[3], fakeReceiveSlots[4]],
+      true
+    );
 
     checkMediaRequestsSent([
       {policy: 'receiver-selected', csi: 100, receiveSlot: fakeWcmeSlots[0]},
       {policy: 'receiver-selected', csi: 101, receiveSlot: fakeWcmeSlots[1]},
-      {policy: 'active-speaker', priority: 1, receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3], fakeWcmeSlots[4]]},
+      {
+        policy: 'active-speaker',
+        priority: 1,
+        receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3], fakeWcmeSlots[4]],
+      },
     ]);
   });
 
@@ -287,7 +331,11 @@ describe('MediaRequestManager', () => {
   });
 
   it('does not send out anything if addRequest() is called with commit=false', () => {
-    addActiveSpeakerRequest(10, [fakeReceiveSlots[0], fakeReceiveSlots[1], fakeReceiveSlots[2]], false);
+    addActiveSpeakerRequest(
+      10,
+      [fakeReceiveSlots[0], fakeReceiveSlots[1], fakeReceiveSlots[2]],
+      false
+    );
     addReceiverSelectedRequest(123, fakeReceiveSlots[3], false);
 
     // nothing should be sent out as we didn't commit the requests
@@ -298,7 +346,11 @@ describe('MediaRequestManager', () => {
 
     // check that the 2 requests have been sent out
     checkMediaRequestsSent([
-      {policy: 'active-speaker', priority: 10, receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1], fakeWcmeSlots[2]]},
+      {
+        policy: 'active-speaker',
+        priority: 10,
+        receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1], fakeWcmeSlots[2]],
+      },
       {policy: 'receiver-selected', csi: 123, receiveSlot: fakeWcmeSlots[3]},
     ]);
   });
@@ -306,14 +358,22 @@ describe('MediaRequestManager', () => {
   it('does not send out anything if cancelRequest() is called with commit=false', () => {
     // send 4 requests
     const requestIds = [
-      addActiveSpeakerRequest(250, [fakeReceiveSlots[0], fakeReceiveSlots[1], fakeReceiveSlots[2]], false),
+      addActiveSpeakerRequest(
+        250,
+        [fakeReceiveSlots[0], fakeReceiveSlots[1], fakeReceiveSlots[2]],
+        false
+      ),
       addReceiverSelectedRequest(98765, fakeReceiveSlots[3], false),
       addReceiverSelectedRequest(99999, fakeReceiveSlots[4], false),
       addReceiverSelectedRequest(88888, fakeReceiveSlots[5], true),
     ];
 
     checkMediaRequestsSent([
-      {policy: 'active-speaker', priority: 250, receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1], fakeWcmeSlots[2]]},
+      {
+        policy: 'active-speaker',
+        priority: 250,
+        receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1], fakeWcmeSlots[2]],
+      },
       {policy: 'receiver-selected', csi: 98765, receiveSlot: fakeWcmeSlots[3]},
       {policy: 'receiver-selected', csi: 99999, receiveSlot: fakeWcmeSlots[4]},
       {policy: 'receiver-selected', csi: 88888, receiveSlot: fakeWcmeSlots[5]},
@@ -338,8 +398,16 @@ describe('MediaRequestManager', () => {
     // send some requests, all of them with commit=false
     addReceiverSelectedRequest(123000, fakeReceiveSlots[0], false);
     addReceiverSelectedRequest(456000, fakeReceiveSlots[1], false);
-    addActiveSpeakerRequest(255, [fakeReceiveSlots[2], fakeReceiveSlots[3], fakeReceiveSlots[4]], false);
-    addActiveSpeakerRequest(254, [fakeReceiveSlots[5], fakeReceiveSlots[6], fakeReceiveSlots[7]], false);
+    addActiveSpeakerRequest(
+      255,
+      [fakeReceiveSlots[2], fakeReceiveSlots[3], fakeReceiveSlots[4]],
+      false
+    );
+    addActiveSpeakerRequest(
+      254,
+      [fakeReceiveSlots[5], fakeReceiveSlots[6], fakeReceiveSlots[7]],
+      false
+    );
 
     // nothing should be sent out as we didn't commit the requests
     assert.notCalled(sendMediaRequestsCallback);
@@ -351,8 +419,16 @@ describe('MediaRequestManager', () => {
     checkMediaRequestsSent([
       {policy: 'receiver-selected', csi: 123000, receiveSlot: fakeWcmeSlots[0]},
       {policy: 'receiver-selected', csi: 456000, receiveSlot: fakeWcmeSlots[1]},
-      {policy: 'active-speaker', priority: 255, receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3], fakeWcmeSlots[4]]},
-      {policy: 'active-speaker', priority: 254, receiveSlots: [fakeWcmeSlots[5], fakeWcmeSlots[6], fakeWcmeSlots[7]]},
+      {
+        policy: 'active-speaker',
+        priority: 255,
+        receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3], fakeWcmeSlots[4]],
+      },
+      {
+        policy: 'active-speaker',
+        priority: 254,
+        receiveSlots: [fakeWcmeSlots[5], fakeWcmeSlots[6], fakeWcmeSlots[7]],
+      },
     ]);
   });
 
@@ -360,8 +436,16 @@ describe('MediaRequestManager', () => {
     // send some requests and commit them one by one
     addReceiverSelectedRequest(1500, fakeReceiveSlots[0], true);
     addReceiverSelectedRequest(1501, fakeReceiveSlots[1], true);
-    addActiveSpeakerRequest(255, [fakeReceiveSlots[2], fakeReceiveSlots[3], fakeReceiveSlots[4]], true);
-    addActiveSpeakerRequest(254, [fakeReceiveSlots[5], fakeReceiveSlots[6], fakeReceiveSlots[7]], true);
+    addActiveSpeakerRequest(
+      255,
+      [fakeReceiveSlots[2], fakeReceiveSlots[3], fakeReceiveSlots[4]],
+      true
+    );
+    addActiveSpeakerRequest(
+      254,
+      [fakeReceiveSlots[5], fakeReceiveSlots[6], fakeReceiveSlots[7]],
+      true
+    );
 
     sendMediaRequestsCallback.resetHistory();
 
@@ -371,8 +455,16 @@ describe('MediaRequestManager', () => {
     checkMediaRequestsSent([
       {policy: 'receiver-selected', csi: 1500, receiveSlot: fakeWcmeSlots[0]},
       {policy: 'receiver-selected', csi: 1501, receiveSlot: fakeWcmeSlots[1]},
-      {policy: 'active-speaker', priority: 255, receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3], fakeWcmeSlots[4]]},
-      {policy: 'active-speaker', priority: 254, receiveSlots: [fakeWcmeSlots[5], fakeWcmeSlots[6], fakeWcmeSlots[7]]},
+      {
+        policy: 'active-speaker',
+        priority: 255,
+        receiveSlots: [fakeWcmeSlots[2], fakeWcmeSlots[3], fakeWcmeSlots[4]],
+      },
+      {
+        policy: 'active-speaker',
+        priority: 254,
+        receiveSlots: [fakeWcmeSlots[5], fakeWcmeSlots[6], fakeWcmeSlots[7]],
+      },
     ]);
 
     // now reset everything

@@ -49,7 +49,7 @@ describe('ReceiveSlot', () => {
       assert.deepEqual(eventData, {
         state: 'live',
         csi,
-        memberId: fakeMemberId
+        memberId: fakeMemberId,
       });
       assert.calledOnce(findMemberIdCallbackStub);
       assert.calledWith(findMemberIdCallbackStub, csi);
