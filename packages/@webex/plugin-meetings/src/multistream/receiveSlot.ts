@@ -4,8 +4,6 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 
 export const ReceiveSlotEvents = {
-  MediaStarted: 'mediaStarted',
-  MediaStopped: 'mediaStopped',
   SourceUpdate: 'sourceUpdate',
 };
 
@@ -35,8 +33,6 @@ export class ReceiveSlot extends EventsScope {
 
   #csi?: CSI;
 
-  #mediaState: 'stopped' | 'started';
-
   #sourceState: MC.SourceState;
 
   /**
@@ -59,7 +55,6 @@ export class ReceiveSlot extends EventsScope {
     this.findMemberIdCallback = findMemberIdCallback;
     this.mediaType = mediaType;
     this.mcReceiveSlot = mcReceiveSlot;
-    this.#mediaState = 'stopped';
     this.#sourceState = 'no source';
     this.id = `r${receiveSlotCounter}`;
 
@@ -81,13 +76,6 @@ export class ReceiveSlot extends EventsScope {
   }
 
   /**
-   * Getter for mediaState
-   */
-  public get mediaState() {
-    return this.#mediaState;
-  }
-
-  /**
    * Getter for sourceState
    */
   public get sourceState() {
@@ -102,33 +90,6 @@ export class ReceiveSlot extends EventsScope {
       file: 'meeting/receiveSlot',
       function: 'setupEventListeners',
     };
-
-    this.mcReceiveSlot.on(MC.ReceiveSlotEvents.MediaStarted, () => {
-      this.#mediaState = 'started';
-
-      LoggerProxy.logger.log(
-        `ReceiveSlot#setupEventListeners --> got mediaStarted on receive slot ${
-          this.id
-        }, mediaType=${this.mediaType}, state=${this.#sourceState}`
-      );
-      this.emit(scope, ReceiveSlotEvents.MediaStarted, {
-        stream: this.mcReceiveSlot.stream,
-      });
-    });
-
-    this.mcReceiveSlot.on(MC.ReceiveSlotEvents.MediaStopped, () => {
-      this.#mediaState = 'stopped';
-
-      // mediaStopped events can come when there are temporary problems with decoding of the media
-      // (for example due to packet loss), so we don't reset memberId, csi or sourceState here
-
-      LoggerProxy.logger.log(
-        `ReceiveSlot#setupEventListeners --> got mediaStopped on receive slot ${
-          this.id
-        }, mediaType=${this.mediaType}, state=${this.#sourceState}`
-      );
-      this.emit(scope, ReceiveSlotEvents.MediaStopped, {});
-    });
 
     this.mcReceiveSlot.on(
       MC.ReceiveSlotEvents.SourceUpdate,

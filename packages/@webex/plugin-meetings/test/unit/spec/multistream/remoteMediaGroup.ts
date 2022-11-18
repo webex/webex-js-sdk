@@ -323,28 +323,4 @@ describe('RemoteMediaGroup', () => {
       assert.strictEqual(group.includes(otherRemoteMedia, false), false);
     });
   });
-
-  describe('checkMediaAlreadyStarted', () => {
-    it('calls checkMediaAlreadyStarted() on all remote media instance', () => {
-      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {resolution: 'medium', preferLiveVideo: true});
-
-      const spies:any[] = [];
-
-      // setup spies on all remote media instances in the group
-      group.getRemoteMedia().forEach((remoteMedia) => {
-        spies.push(sinon.spy(remoteMedia, 'checkMediaAlreadyStarted'));
-      });
-
-      assert.strictEqual(spies.length, NUM_SLOTS); // just a sanity check
-
-      group.pin(group.getRemoteMedia()[1], 1000);
-      group.pin(group.getRemoteMedia()[0], 2000);
-
-      group.checkMediaAlreadyStarted();
-
-      spies.forEach((spy) => {
-        assert.calledOnce(spy);
-      });
-    });
-  });
 });

@@ -209,14 +209,4 @@ export class RemoteMediaGroup {
 
     return this.remoteMedia.includes(remoteMedia);
   }
-
-  /**
-   * Calls checkMediaAlreadyStarted() on all remoteMedia and pinnedRemoteMedia
-   *
-   * @internal
-   */
-  public checkMediaAlreadyStarted() {
-    this.remoteMedia.forEach((remoteMedia) => remoteMedia.checkMediaAlreadyStarted());
-    this.pinnedRemoteMedia.forEach((remoteMedia) => remoteMedia.checkMediaAlreadyStarted());
-  }
 }

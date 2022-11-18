@@ -1695,6 +1695,9 @@ async function addToStage() {
     multistreamStage.stagedMemberIds[index] = memberId;
     multistreamStage.lastAddedIndex = index;
   }
+  else {
+    console.warn('selected person is not sending any main video, so cannot be added to the stage');
+  }
 }
 
 function populateStageSelector() {
@@ -1765,21 +1768,13 @@ function processNewVideoPane(meeting, paneGroupId, paneId, remoteMedia) {
   const videoPane = allVideoPanes[paneGroupId][paneId];
 
   videoPane.remoteMedia = remoteMedia;
+  videoPane.videoEl.srcObject = remoteMedia.stream;
 
   // update our UI with the current state of the new remote media instance we got and setup listeners for any changes
   updateVideoPane(videoPane, meeting, remoteMedia.sourceState, remoteMedia.memberId, `${paneGroupId}.${paneId} ${remoteMedia.id}`, 'initialization');
 
   remoteMedia.on('sourceUpdate', (data) => {
     updateVideoPane(videoPane, meeting, data.state, data.memberId, `${paneGroupId}.${paneId} ${remoteMedia.id}`, 'update');
-  });
-
-  remoteMedia.on('mediaStopped', (data) => {
-    updateVideoPane(videoPane, meeting, remoteMedia.sourceState, remoteMedia.memberId, `${paneGroupId}.${paneId} ${remoteMedia.id}`, 'mediaStopped');
-  });
-
-  remoteMedia.on('mediaStarted', (data) => {
-    videoPane.videoEl.srcObject = data.stream;
-    updateVideoPane(videoPane, meeting, remoteMedia.sourceState, remoteMedia.memberId, `${paneGroupId}.${paneId} ${remoteMedia.id}`, 'mediaStarted');
   });
 }
 

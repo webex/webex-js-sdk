@@ -708,15 +708,6 @@ export class RemoteMediaManager extends EventsScope {
         screenShareVideo: undefined, // todo: screen share (SPARK-377812)
       }
     );
-
-    // if a receive slot was re-used then the client may get a RemoteMedia instance that has media already running
-    // and so they will not get a MediaStarted event for it and we need to trigger it manually
-    Object.values(this.media.video.activeSpeakerGroups).forEach((remoteMediaGroup) => {
-      remoteMediaGroup.checkMediaAlreadyStarted();
-    });
-    Object.values(this.media.video.memberPanes).forEach((remoteMedia) => {
-      remoteMedia.checkMediaAlreadyStarted();
-    });
   }
 
   /**

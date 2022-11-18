@@ -6,8 +6,6 @@ import {MediaRequestId, MediaRequestManager} from './mediaRequestManager';
 import {CSI, ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
 
 export const RemoteMediaEvents = {
-  MediaStarted: ReceiveSlotEvents.MediaStarted,
-  MediaStopped: ReceiveSlotEvents.MediaStopped,
   SourceUpdate: ReceiveSlotEvents.SourceUpdate,
 };
 
@@ -170,39 +168,9 @@ export class RemoteMedia extends EventsScope {
         function: 'setupEventListeners',
       };
 
-      this.receiveSlot.on(ReceiveSlotEvents.MediaStarted, (data) => {
-        this.emit(scope, RemoteMediaEvents.MediaStarted, data);
-      });
-
-      this.receiveSlot.on(ReceiveSlotEvents.MediaStopped, (data) => {
-        this.emit(scope, RemoteMediaEvents.MediaStopped, data);
-      });
-
       this.receiveSlot.on(ReceiveSlotEvents.SourceUpdate, (data) => {
         this.emit(scope, RemoteMediaEvents.SourceUpdate, data);
       });
-    }
-  }
-
-  /**
-   * Checks if the underlying receive slot's media has already started,
-   * if so then it emits MediaStarted event, because we will never get
-   * it from the receive slot.
-   *
-   * @internal
-   */
-  public checkMediaAlreadyStarted() {
-    if (this.mediaState === 'started') {
-      this.emit(
-        {
-          file: 'meeting/remoteMedia',
-          function: 'checkMediaAlreadyStarted',
-        },
-        RemoteMediaEvents.MediaStarted,
-        {
-          stream: this.stream,
-        }
-      );
     }
   }
 
@@ -225,13 +193,6 @@ export class RemoteMedia extends EventsScope {
    */
   public get csi() {
     return this.receiveSlot?.csi;
-  }
-
-  /**
-   * Getter for media state
-   */
-  public get mediaState() {
-    return this.receiveSlot?.mediaState;
   }
 
   /**

@@ -78,8 +78,7 @@ export class MediaRequestManager {
     );
 
     // when we stop using some receive slots and they are not included in the new media request,
-    // we will never get a 'no source' notification for them, only the mediaStopped event,
-    // but that event comes later (up to 1s later), so we reset their state now
+    // we will never get a 'no source' notification for them, so we reset their state,
     // so that the client doesn't try to display their video anymore
     for (const [slotId, slot] of Object.entries(this.slotsActiveInLastMediaRequest)) {
       if (!(slotId in activeSlots)) {

@@ -13,14 +13,12 @@ describe('RemoteMedia', () => {
   let fakeStream;
   let fakeMediaRequestManager;
 
-
   beforeEach(() => {
     fakeStream = {id: 'fake stream'};
     fakeReceiveSlot = new EventEmitter();
     fakeReceiveSlot.mediaType = MC.MediaType.AudioMain;
     fakeReceiveSlot.memberId = '12345678';
     fakeReceiveSlot.csi = 999;
-    fakeReceiveSlot.mediaState = 'stopped';
     fakeReceiveSlot.sourceState = 'avatar';
     fakeReceiveSlot.stream = fakeStream;
 
@@ -33,9 +31,11 @@ describe('RemoteMedia', () => {
 
   describe('forwards events from the underlying receive slot', () => {
     [
-      {receiveSlotEvent: ReceiveSlotEvents.MediaStarted, expectedEvent: RemoteMediaEvents.MediaStarted, title: 'MediaStarted'},
-      {receiveSlotEvent: ReceiveSlotEvents.MediaStopped, expectedEvent: RemoteMediaEvents.MediaStopped, title: 'MediaStopped'},
-      {receiveSlotEvent: ReceiveSlotEvents.SourceUpdate, expectedEvent: RemoteMediaEvents.SourceUpdate, title: 'SourceUpdate'},
+      {
+        receiveSlotEvent: ReceiveSlotEvents.SourceUpdate,
+        expectedEvent: RemoteMediaEvents.SourceUpdate,
+        title: 'SourceUpdate',
+      },
     ].forEach(({receiveSlotEvent, expectedEvent, title}) =>
       it(`forwards ${title}`, () => {
         let eventEmittedCount = 0;
@@ -51,49 +51,16 @@ describe('RemoteMedia', () => {
 
         assert.strictEqual(eventEmittedCount, 1);
         assert.strictEqual(eventData, fakeData);
-      }));
+      })
+    );
   });
 
-  it('exposes underlying receive slot\'s properties', () => {
+  it("exposes underlying receive slot's properties", () => {
     assert.strictEqual(remoteMedia.mediaType, fakeReceiveSlot.mediaType);
     assert.strictEqual(remoteMedia.memberId, fakeReceiveSlot.memberId);
     assert.strictEqual(remoteMedia.csi, fakeReceiveSlot.csi);
-    assert.strictEqual(remoteMedia.mediaState, fakeReceiveSlot.mediaState);
     assert.strictEqual(remoteMedia.sourceState, fakeReceiveSlot.sourceState);
     assert.strictEqual(remoteMedia.stream, fakeReceiveSlot.stream);
-  });
-
-  describe('checkMediaAlreadyStarted()', () => {
-    it('emits MediaStarted event if media is already running', () => {
-      let mediaStartedEmittedCount = 0;
-      let lastEventData;
-
-      remoteMedia.on(RemoteMediaEvents.MediaStarted, (data) => {
-        mediaStartedEmittedCount += 1;
-        lastEventData = data;
-      });
-
-      fakeReceiveSlot.mediaState = 'started';
-
-      remoteMedia.checkMediaAlreadyStarted();
-
-      assert.strictEqual(mediaStartedEmittedCount, 1);
-      assert.deepEqual(lastEventData, {stream: fakeStream});
-    });
-
-    it('does not do anything if media is not running', () => {
-      let mediaStartedEmittedCount = 0;
-
-      assert.strictEqual(remoteMedia.mediaState, 'stopped'); // just a sanity check
-
-      remoteMedia.on(RemoteMediaEvents.MediaStarted, () => {
-        mediaStartedEmittedCount += 1;
-      });
-
-      remoteMedia.checkMediaAlreadyStarted();
-
-      assert.strictEqual(mediaStartedEmittedCount, 0);
-    });
   });
 
   describe('sendMediaRequest', () => {
@@ -213,15 +180,15 @@ describe('RemoteMedia', () => {
       assert.strictEqual(remoteMedia.mediaType, undefined);
       assert.strictEqual(remoteMedia.memberId, undefined);
       assert.strictEqual(remoteMedia.csi, undefined);
-      assert.strictEqual(remoteMedia.mediaState, undefined);
       assert.strictEqual(remoteMedia.sourceState, undefined);
       assert.strictEqual(remoteMedia.stream, undefined);
 
       // check that events emitted from receive slot don't get forwarded anymore
       [
-        {receiveSlotEvent: ReceiveSlotEvents.MediaStarted, remoteMediaEvent: RemoteMediaEvents.MediaStarted},
-        {receiveSlotEvent: ReceiveSlotEvents.MediaStopped, remoteMediaEvent: RemoteMediaEvents.MediaStopped},
-        {receiveSlotEvent: ReceiveSlotEvents.SourceUpdate, remoteMediaEvent: RemoteMediaEvents.SourceUpdate},
+        {
+          receiveSlotEvent: ReceiveSlotEvents.SourceUpdate,
+          remoteMediaEvent: RemoteMediaEvents.SourceUpdate,
+        },
       ].forEach(({receiveSlotEvent, remoteMediaEvent}) => {
         let eventEmitted = false;
 
