@@ -1,6 +1,6 @@
 {
     "name": "@webex/internal-plugin-team",
-    "version": "2.31.4",
+    "version": "2.32.0",
     "description": "",
     "license": "MIT",
     "author": "Josh Dykstra <jodykstr@cisco.com>",
