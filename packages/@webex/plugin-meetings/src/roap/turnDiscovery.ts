@@ -3,7 +3,7 @@ import {Defer} from '@webex/common';
 import Metrics from '../metrics';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import LoggerProxy from '../common/logs/logger-proxy';
-import {ROAP} from '../constants';
+import {ROAP, REACHABILITY} from '../constants';
 
 import RoapRequest from './request';
 
