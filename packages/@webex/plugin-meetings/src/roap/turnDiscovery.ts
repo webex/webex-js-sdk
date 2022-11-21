@@ -202,6 +202,28 @@ export default class TurnDiscovery {
    * @returns {Promise}
    */
   doTurnDiscovery(meeting, isReconnecting) {
+    const reachabilityData = window.localStorage.getItem(REACHABILITY.localStorage);
+    if (reachabilityData) {
+      try {
+        const reachabilityResult = JSON.parse(reachabilityData);
+
+        const reachable = Object.values(reachabilityResult).some((result: {udp: {reachable: 'true'| 'false'}, tcp: {reachable: 'true'| 'false'}}) => {
+          if (result.udp.reachable === 'true' || result.tcp.reachable === 'true') {
+            LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> reachability has not failed, skipping it');
+            return true;
+          }
+        });
+
+        if (reachable) {
+          return Promise.resolve(undefined);
+        }
+
+      }
+      catch (e) {
+        LoggerProxy.logger.error(`Roap:request#attachReachabilityData --> Error in parsing reachability data: ${e}`);
+      }
+    }
+
     if (!meeting.config.experimental.enableTurnDiscovery) {
       LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> TURN discovery disabled in config, skipping it');
 

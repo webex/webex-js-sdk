@@ -19,6 +19,10 @@ describe('TurnDiscovery', () => {
   const FAKE_LOCUS_ID = '09493311-f5d5-3e58-b491-009cc628162e';
   const FAKE_MEDIA_CONNECTIONS_FROM_LOCUS = [{mediaId: '464ff97f-4bda-466a-ad06-3a22184a2274'}];
 
+  before(function () {
+    this.jsdom = require('jsdom-global')('', {url: 'http://localhost'});
+  });
+
   beforeEach(() => {
     clock = sinon.useFakeTimers();
 
@@ -47,6 +51,11 @@ describe('TurnDiscovery', () => {
       }),
       updateMediaConnections: sinon.stub(),
     };
+  });
+
+
+  after(function () {
+    this.jsdom();
   });
 
   afterEach(() => {
@@ -218,6 +227,40 @@ describe('TurnDiscovery', () => {
 
       assert.isUndefined(result);
       checkFailureMetricsSent();
+    });
+
+    it('resolves with undefined when udp is reachable', async () => {
+      window.localStorage.setItem('reachability.result', JSON.stringify({x: {udp: {reachable: 'true'}, tcp: {reachable: 'false'}}}))
+
+      const result = await new TurnDiscovery(mockRoapRequest).doTurnDiscovery(testMeeting);
+
+      assert.isUndefined(result);
+      assert.notCalled(mockRoapRequest.sendRoap);
+      assert.notCalled(Metrics.sendBehavioralMetric);
+
+      window.localStorage.clear();
+    });
+
+    it('resolves with undefined when udp and tcp are reachable', async () => {
+      window.localStorage.setItem('reachability.result', JSON.stringify({x: {udp: {reachable: 'true'}, tcp: {reachable: 'true'}}}))
+
+      const result = await new TurnDiscovery(mockRoapRequest).doTurnDiscovery(testMeeting);
+
+      assert.isUndefined(result);
+      assert.notCalled(mockRoapRequest.sendRoap);
+      assert.notCalled(Metrics.sendBehavioralMetric);
+      window.localStorage.clear();
+    });
+
+    it('resolves with undefined when tcp is reachable', async () => {
+      window.localStorage.setItem('reachability.result', JSON.stringify({x: {udp: {reachable: 'false'}, tcp: {reachable: 'true'}}}))
+
+      const result = await new TurnDiscovery(mockRoapRequest).doTurnDiscovery(testMeeting);
+
+      assert.isUndefined(result);
+      assert.notCalled(mockRoapRequest.sendRoap);
+      assert.notCalled(Metrics.sendBehavioralMetric);
+      window.localStorage.clear();
     });
 
     it('resolves with undefined if we don\'t get a response within 10s', async () => {
