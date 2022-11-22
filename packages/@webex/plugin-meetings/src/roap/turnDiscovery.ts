@@ -205,16 +205,16 @@ export default class TurnDiscovery {
     const reachabilityData = window.localStorage.getItem(REACHABILITY.localStorage);
     if (reachabilityData) {
       try {
-        const reachabilityResult = JSON.parse(reachabilityData);
+        const reachabilityResults = JSON.parse(reachabilityData);
 
-        const reachable = Object.values(reachabilityResult).some((result: {udp: {reachable: 'true'| 'false'}, tcp: {reachable: 'true'| 'false'}}) => {
-          if (result.udp.reachable === 'true' || result.tcp.reachable === 'true') {
-            LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> reachability has not failed, skipping it');
+        const reachable = Object.values(reachabilityResults).some((result: {udp: {reachable: 'true'| 'false'}, tcp: {reachable: 'true'| 'false'}}) => {
+          if (result.udp?.reachable === 'true' || result.tcp?.reachable === 'true') {
             return true;
           }
         });
 
         if (reachable) {
+          LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> reachability has not failed, skipping it');
           return Promise.resolve(undefined);
         }
 

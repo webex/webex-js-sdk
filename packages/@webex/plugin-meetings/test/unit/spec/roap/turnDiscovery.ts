@@ -104,6 +104,8 @@ describe('TurnDiscovery', () => {
     it('sends TURN_DISCOVERY_REQUEST, waits for response and sends OK', async () => {
       const td = new TurnDiscovery(mockRoapRequest);
 
+      window.localStorage.setItem('reachability.result', JSON.stringify({x: {udp: {reachable: 'false'}, tcp: {reachable: 'false'}}}))
+
       const result = td.doTurnDiscovery(testMeeting, false);
 
       // check that TURN_DISCOVERY_REQUEST was sent
@@ -132,6 +134,45 @@ describe('TurnDiscovery', () => {
         username: FAKE_TURN_USERNAME,
         password: FAKE_TURN_PASSWORD
       });
+
+      window.localStorage.clear();
+    });
+
+    it('sends TURN_DISCOVERY_REQUEST, reachability is empty', async () => {
+      const td = new TurnDiscovery(mockRoapRequest);
+
+      window.localStorage.setItem('reachability.result', JSON.stringify({x: {}}))
+
+      const result = td.doTurnDiscovery(testMeeting, false);
+
+      // check that TURN_DISCOVERY_REQUEST was sent
+      await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0);
+
+      mockRoapRequest.sendRoap.resetHistory();
+
+      // simulate the response
+      td.handleTurnDiscoveryResponse({
+        headers: [
+          `x-cisco-turn-url=${FAKE_TURN_URL}`,
+          `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
+          `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
+        ]
+      });
+
+      await testUtils.flushPromises();
+
+      // check that we've sent OK
+      await checkRoapMessageSent('OK', 0);
+
+      const turnInfo = await result;
+
+      assert.deepEqual(turnInfo, {
+        url: FAKE_TURN_URL,
+        username: FAKE_TURN_USERNAME,
+        password: FAKE_TURN_PASSWORD
+      });
+
+      window.localStorage.clear();
     });
 
     it('sends TURN_DISCOVERY_REQUEST with empty mediaId when isReconnecting is true', async () => {
