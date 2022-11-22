@@ -69,10 +69,12 @@ describe('RemoteMediaGroup', () => {
       });
 
       assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS);
-      assert.strictEqual(group.getPinnedRemoteMedia().length, 0);
+      assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('pinned').length, 0);
 
       assert.strictEqual(
-        group.getRemoteMedia().every((item) => item instanceof RemoteMedia),
+        group.getRemoteMedia('all').every((item) => item instanceof RemoteMedia),
         true
       );
 
@@ -107,16 +109,24 @@ describe('RemoteMediaGroup', () => {
         preferLiveVideo: true,
       });
 
+      // initially nothing should be pinned
+      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS); // by default should return 'all'
+      assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('pinned').length, 0);
+
       // take one instance of remote media from the group
-      const remoteMedia = group.getRemoteMedia()[PINNED_INDEX];
+      const remoteMedia = group.getRemoteMedia('all')[PINNED_INDEX];
 
       resetHistory();
 
       // pin it
       group.pin(remoteMedia, CSI);
 
-      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS - 1);
-      assert.strictEqual(group.getPinnedRemoteMedia().length, 1);
+      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS); // by default should return 'all'
+      assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS - 1);
+      assert.strictEqual(group.getRemoteMedia('pinned').length, 1);
 
       assert.strictEqual(group.isPinned(remoteMedia), true);
 
@@ -164,12 +174,14 @@ describe('RemoteMediaGroup', () => {
       resetHistory();
 
       // pin another video
-      const remoteMedia2 = group.getRemoteMedia()[PINNED_INDEX2];
+      const remoteMedia2 = group.getRemoteMedia('all')[PINNED_INDEX2];
 
       group.pin(remoteMedia2, CSI2);
 
-      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS - 2);
-      assert.strictEqual(group.getPinnedRemoteMedia().length, 2);
+      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS - 2);
+      assert.strictEqual(group.getRemoteMedia('pinned').length, 2);
 
       assert.strictEqual(group.isPinned(remoteMedia2), true);
 
@@ -219,8 +231,10 @@ describe('RemoteMediaGroup', () => {
       group.unpin(remoteMedia);
 
       // one pane should still remain pinned
-      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS - 1);
-      assert.strictEqual(group.getPinnedRemoteMedia().length, 1);
+      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS - 1);
+      assert.strictEqual(group.getRemoteMedia('pinned').length, 1);
 
       assert.strictEqual(group.isPinned(remoteMedia), false);
 
@@ -260,7 +274,7 @@ describe('RemoteMediaGroup', () => {
       });
 
       // take one instance of remote media from the group
-      const remoteMedia = group.getRemoteMedia()[PINNED_INDEX];
+      const remoteMedia = group.getRemoteMedia('all')[PINNED_INDEX];
 
       resetHistory();
 
@@ -316,17 +330,17 @@ describe('RemoteMediaGroup', () => {
       });
       const stopStubs: any[] = [];
 
-      group.getRemoteMedia().forEach((remoteMedia) => {
+      group.getRemoteMedia('all').forEach((remoteMedia) => {
         stopStubs.push(sinon.stub(remoteMedia, 'stop'));
       });
 
       // pin a few remote media instances
-      group.pin(group.getRemoteMedia()[2], 12345);
-      group.pin(group.getRemoteMedia()[1], 12345);
-      group.pin(group.getRemoteMedia()[0], 12345);
+      group.pin(group.getRemoteMedia('unpinned')[2], 12345);
+      group.pin(group.getRemoteMedia('unpinned')[1], 12345);
+      group.pin(group.getRemoteMedia('unpinned')[0], 12345);
 
-      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS - 3);
-      assert.strictEqual(group.getPinnedRemoteMedia().length, 3);
+      assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS - 3);
+      assert.strictEqual(group.getRemoteMedia('pinned').length, 3);
 
       resetHistory();
 
@@ -352,14 +366,14 @@ describe('RemoteMediaGroup', () => {
         preferLiveVideo: true,
       });
 
-      const remoteMediaFromGroup = group.getRemoteMedia()[0];
+      const remoteMediaFromGroup = group.getRemoteMedia('all')[0];
       const otherRemoteMedia = new RemoteMedia(
         new FakeSlot(MC.MediaType.VideoMain, 'other slot') as unknown as ReceiveSlot,
         fakeMediaRequestManager
       );
 
-      group.pin(group.getRemoteMedia()[1], 12345);
-      const pinnedRemoteMedia = group.getPinnedRemoteMedia()[0];
+      group.pin(group.getRemoteMedia('all')[1], 12345);
+      const pinnedRemoteMedia = group.getRemoteMedia('pinned')[0];
 
       // check with includePinned: true
       assert.strictEqual(group.includes(remoteMediaFromGroup, true), true);

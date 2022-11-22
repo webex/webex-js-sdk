@@ -463,8 +463,6 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
     receiveTranscription: receiveTranscriptionOption
   };
 
-  document.getElementById('transcoded-video-resolution').hidden = isMultistream;
-
   const joinMeetingNow = () => {
     meeting.join(joinOptions)
     .then(() => { // eslint-disable-line
@@ -621,6 +619,34 @@ const toggleBnrBtn = document.querySelector('#ts-toggle-BNR');
 let bnrEnabled = false;
 
 let currentMediaStreams = [];
+
+/**
+ * Enables and disables the UI elements specific to multistream or transcoded connections
+ * based on the "Use a multistream connection" checkbox
+ */
+function updateMultistreamUI() {
+  const multistreamEnabled = meetingsJoinMultistreamElm.checked;
+
+  toggleSourcesMediaDirection.forEach((element) => {
+    // eslint-disable-next-line no-param-reassign
+    element.disabled = multistreamEnabled;
+  });
+
+  document.getElementById('meetingControlsQuality').disabled = multistreamEnabled;
+
+  if (multistreamEnabled) {
+    document.getElementById('remote-transcoded-video-wrapper').classList.add('hidden');
+    document.getElementById('remote-transcoded-screenshare-wrapper').classList.add('hidden');
+
+    document.getElementById('multistream-remote-streams').classList.remove('hidden');
+  }
+  else {
+    document.getElementById('remote-transcoded-video-wrapper').classList.remove('hidden');
+    document.getElementById('remote-transcoded-screenshare-wrapper').classList.remove('hidden');
+
+    document.getElementById('multistream-remote-streams').classList.add('hidden');
+  }
+}
 
 function getMediaSettings() {
   const settings = {};
@@ -2490,7 +2516,10 @@ function rejectMeeting() {
 
 // Separate logic for Safari enables video playback after previously
 // setting the srcObject to null regardless if autoplay is set.
-window.onload = () => addPlayIfPausedEvents(htmlMediaElements);
+window.onload = () => {
+  addPlayIfPausedEvents(htmlMediaElements);
+  updateMultistreamUI();
+};
 
 document.querySelectorAll('.collapsible').forEach((el) => {
   el.addEventListener('click', (event) => {

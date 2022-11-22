@@ -19,7 +19,7 @@ export class RemoteMediaGroup {
 
   private options: Options;
 
-  private remoteMedia: RemoteMedia[];
+  private unpinnedRemoteMedia: RemoteMedia[];
 
   private mediaRequestId?: MediaRequestId; // id of the "active-speaker" media request id
 
@@ -36,7 +36,7 @@ export class RemoteMediaGroup {
     this.priority = priority;
     this.options = options;
 
-    this.remoteMedia = receiveSlots.map(
+    this.unpinnedRemoteMedia = receiveSlots.map(
       (slot) =>
         new RemoteMedia(slot, this.mediaRequestManager, {
           resolution: this.options.resolution,
@@ -48,23 +48,21 @@ export class RemoteMediaGroup {
   }
 
   /**
-   * Gets the array of all remote media elements from the group (excluding the pinned ones)
+   * Gets the array of remote media elements from the group
    *
+   * @param {string} filter - 'all' (default) returns both pinned and unpinned
    * @returns {Array<RemoteMedia>}
    */
-  public getRemoteMedia() {
-    // return a shallow copy so that the client cannot modify this.remoteMedia array
-    return [...this.remoteMedia];
-  }
-
-  /**
-   * Gets the array of all pinned remote media elements from the group
-   *
-   * @returns {Array<RemoteMedia>}
-   */
-  public getPinnedRemoteMedia() {
-    // return a shallow copy so that the client cannot modify this.pinnedRemoteMedia array
-    return [...this.pinnedRemoteMedia];
+  public getRemoteMedia(filter: 'all' | 'pinned' | 'unpinned' = 'all') {
+    if (filter === 'unpinned') {
+      // return a shallow copy so that the client cannot modify this.unpinnedRemoteMedia array
+      return [...this.unpinnedRemoteMedia];
+    }
+    if (filter === 'pinned') {
+      // return a shallow copy so that the client cannot modify this.pinnedRemoteMedia array
+      return [...this.pinnedRemoteMedia];
+    }
+    return [...this.unpinnedRemoteMedia, ...this.pinnedRemoteMedia];
   }
 
   /**
@@ -93,7 +91,7 @@ export class RemoteMediaGroup {
         return;
       }
     } else {
-      const idx = this.remoteMedia.indexOf(remoteMedia);
+      const idx = this.unpinnedRemoteMedia.indexOf(remoteMedia);
 
       if (idx < 0) {
         throw new Error(
@@ -101,7 +99,7 @@ export class RemoteMediaGroup {
         );
       }
 
-      this.remoteMedia.splice(idx, 1);
+      this.unpinnedRemoteMedia.splice(idx, 1);
       this.pinnedRemoteMedia.push(remoteMedia);
 
       this.cancelActiveSpeakerMediaRequest(false);
@@ -117,7 +115,7 @@ export class RemoteMediaGroup {
    *
    */
   public unpin(remoteMedia: RemoteMedia) {
-    if (this.remoteMedia.indexOf(remoteMedia) >= 0) {
+    if (this.unpinnedRemoteMedia.indexOf(remoteMedia) >= 0) {
       LoggerProxy.logger.log(
         `RemoteMediaGroup#pin --> remote media ${remoteMedia.id} already unpinned`
       );
@@ -133,7 +131,7 @@ export class RemoteMediaGroup {
     }
 
     this.pinnedRemoteMedia.splice(idx, 1);
-    this.remoteMedia.push(remoteMedia);
+    this.unpinnedRemoteMedia.push(remoteMedia);
 
     remoteMedia.cancelMediaRequest(false);
     this.cancelActiveSpeakerMediaRequest(false);
@@ -142,7 +140,7 @@ export class RemoteMediaGroup {
   }
 
   public isPinned(remoteMedia: RemoteMedia) {
-    if (this.remoteMedia.indexOf(remoteMedia) >= 0) {
+    if (this.unpinnedRemoteMedia.indexOf(remoteMedia) >= 0) {
       return false;
     }
     if (this.pinnedRemoteMedia.indexOf(remoteMedia) >= 0) {
@@ -165,7 +163,7 @@ export class RemoteMediaGroup {
           crossPolicyDuplication: false,
           preferLiveVideo: !!this.options?.preferLiveVideo,
         },
-        receiveSlots: this.remoteMedia.map((remoteMedia) =>
+        receiveSlots: this.unpinnedRemoteMedia.map((remoteMedia) =>
           remoteMedia.getUnderlyingReceiveSlot()
         ) as ReceiveSlot[],
         codecInfo: this.options.resolution && {
@@ -193,7 +191,7 @@ export class RemoteMediaGroup {
    * @internal
    */
   public stop(commit: boolean = true) {
-    this.remoteMedia.forEach((remoteMedia) => remoteMedia.stop(false));
+    this.unpinnedRemoteMedia.forEach((remoteMedia) => remoteMedia.stop(false));
     this.pinnedRemoteMedia.forEach((remoteMedia) => remoteMedia.stop(false));
     this.cancelActiveSpeakerMediaRequest(false);
 
@@ -202,11 +200,21 @@ export class RemoteMediaGroup {
     }
   }
 
+  /**
+   * Checks if a given RemoteMedia instance belongs to this group.
+   *
+   * @param remoteMedia RemoteMedia instance to check
+   * @param includePinned whether the check should be done also among the pinned media or only unpinned
+   * @returns true if remote media is found
+   */
   public includes(remoteMedia: RemoteMedia, includePinned: boolean): boolean {
     if (includePinned) {
-      return this.remoteMedia.includes(remoteMedia) || this.pinnedRemoteMedia.includes(remoteMedia);
+      return (
+        this.unpinnedRemoteMedia.includes(remoteMedia) ||
+        this.pinnedRemoteMedia.includes(remoteMedia)
+      );
     }
 
-    return this.remoteMedia.includes(remoteMedia);
+    return this.unpinnedRemoteMedia.includes(remoteMedia);
   }
 }

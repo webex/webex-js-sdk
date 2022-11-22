@@ -134,6 +134,48 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('remoteUpdateAudioVideo', () => {
+      it('#Should call meetingRequest.remoteAudioVideoToggle with correct parameters (multistream)', async () => {
+        const meeting = {
+          correlationId: 'correlation id',
+          isMultistream: true,
+          mediaId: '12345',
+          meetingJoinUrl: 'meetingJoinUrl',
+          locusUrl: 'locusUrl',
+          deviceUrl: 'some device url',
+          selfId: 'self id',
+          meetingRequest: {remoteAudioVideoToggle: sinon.stub().returns(Promise.resolve({body: {}, headers: {}}))}
+        };
+
+        await MeetingUtil.remoteUpdateAudioVideo(true, false, meeting);
+
+        assert.calledOnce(meeting.meetingRequest.remoteAudioVideoToggle);
+        const parameter = meeting.meetingRequest.remoteAudioVideoToggle.getCall(0).args[0];
+
+        assert.equal(parameter.locusUrl, 'locusUrl');
+        assert.equal(parameter.selfId, 'self id');
+        assert.equal(parameter.correlationId, 'correlation id');
+        assert.equal(parameter.deviceUrl, 'some device url');
+        assert.deepEqual(parameter.localMedias, [{localSdp: '{"audioMuted":true,"videoMuted":false}', mediaId: '12345'}]);
+        assert.equal(parameter.preferTranscoding, false);
+      });
+
+      it('#Should call meetingRequest.remoteAudioVideoToggle with preferTranscoding:true for non multistream connections', async () => {
+        const meeting = {
+          isMultistream: false,
+          mediaId: '12345',
+          meetingRequest: {remoteAudioVideoToggle: sinon.stub().returns(Promise.resolve({body: {}, headers: {}}))}
+        };
+
+        await MeetingUtil.remoteUpdateAudioVideo(true, false, meeting);
+
+        assert.calledOnce(meeting.meetingRequest.remoteAudioVideoToggle);
+        const parameter = meeting.meetingRequest.remoteAudioVideoToggle.getCall(0).args[0];
+
+        assert.equal(parameter.preferTranscoding, true);
+      });
+    });
+
     describe('joinMeeting', () => {
       it('#Should call `meetingRequest.joinMeeting', async () => {
         const meeting = {meetingJoinUrl: 'meetingJoinUrl', locusUrl: 'locusUrl', meetingRequest: {joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}}))}};
@@ -145,6 +187,25 @@ describe('plugin-meetings', () => {
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.inviteeAddress, 'meetingJoinUrl');
+        assert.equal(parameter.preferTranscoding, true);
+      });
+
+      it('#Should call meetingRequest.joinMeeting with preferTranscoding=false when multistream is enabled', async () => {
+        const meeting = {
+          isMultistream: true,
+          meetingJoinUrl: 'meetingJoinUrl',
+          locusUrl: 'locusUrl',
+          meetingRequest: {joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}}))}
+        };
+
+        MeetingUtil.parseLocusJoin = sinon.stub();
+        await MeetingUtil.joinMeeting(meeting, {});
+
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+
+        assert.equal(parameter.inviteeAddress, 'meetingJoinUrl');
+        assert.equal(parameter.preferTranscoding, false);
       });
 
       it('#Should fallback sipUrl if meetingJoinUrl does not exists', async () => {

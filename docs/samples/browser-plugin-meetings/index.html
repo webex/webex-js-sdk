@@ -33,7 +33,7 @@
               </select>
             </div>
             <div id="stage-selector-wrapper" class="stage-control-wrapper hidden">
-              <select name="multistream-stage-selector" id="multistream-stage-selector"></select> 
+              <select name="multistream-stage-selector" id="multistream-stage-selector"></select>
               <button id="add-to-stage" type="submit" onclick="addToStage()">Add to stage</button>
             </div>
           </div>
@@ -275,7 +275,7 @@
                 <input id="meetings-join-pin" name="meetingPin" placeholder="Password/PIN" value="" type="text">
                 <div>
                   <img id="meetings-join-captcha" src="" alt="captcha" style="width: 150px; height: 70px;" hidden>
-              
+
                   <!-- refresh icon -->
                   <span id="meetings-join-captcha-refresh" type="button" onclick="refreshCaptcha()" hidden>
                     <i class="fa fa-refresh"></i>
@@ -292,7 +292,7 @@
 
               <div>
                 <p class="note">NOTE: Choose your sending and receiving options for the meeting.</p>
-                <input id="meetings-join-multistream" type="checkbox" checked>
+                <input id="meetings-join-multistream" type="checkbox" checked onclick="updateMultistreamUI()">
                 <label for="meetings-join-multistream">Use a multistream connection</label>
                 <div class="u-mv">
                   <label>
@@ -512,7 +512,7 @@
               </div>
             </div>
 
-            <div>              
+            <div id="remote-transcoded-video-wrapper">
               <fieldset>
                 <legend>Remote Video</legend>
                 <video id="remote-video" autoplay playsinline></video>
@@ -551,7 +551,7 @@
               </div>
             </div>
 
-            <div class="u-mt">
+            <div class="u-mt" id="remote-transcoded-screenshare-wrapper">
               <fieldset>
                 <legend>Remote Screenshare</legend>
                 <video id="remote-screenshare" autoplay playsinline></video>

@@ -128,7 +128,7 @@ describe('RemoteMediaManager', () => {
           .getRemoteMedia()
           .every((remoteMedia) => remoteMedia.mediaType === MC.MediaType.AudioMain)
       );
-      assert.strictEqual(createdAudioGroup.getPinnedRemoteMedia().length, 0);
+      assert.strictEqual(createdAudioGroup.getRemoteMedia('pinned').length, 0);
     }
 
     assert.calledOnce(fakeMediaRequestManagers.audio.addRequest);
@@ -922,7 +922,7 @@ describe('RemoteMediaManager', () => {
 
       if (currentLayoutInfo) {
         const remoteVideoToUnPin =
-          currentLayoutInfo.activeSpeakerVideoPanes.main.getRemoteMedia()[0];
+          currentLayoutInfo.activeSpeakerVideoPanes.main.getRemoteMedia('unpinned')[0];
 
         assert.throws(() => remoteMediaManager.unpinActiveSpeakerVideoPane(remoteVideoToUnPin));
       }

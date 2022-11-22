@@ -836,7 +836,9 @@ export class RemoteMediaManager extends EventsScope {
     );
 
     if (!remoteMediaGroup) {
-      throw new Error('remoteMedia not found among the active speaker remote media groups');
+      throw new Error(
+        'remoteMedia not found among the unpinned remote media from any active speaker group'
+      );
     }
 
     remoteMediaGroup.pin(remoteMedia, csi);
@@ -849,7 +851,7 @@ export class RemoteMediaManager extends EventsScope {
    */
   public unpinActiveSpeakerVideoPane(remoteMedia: RemoteMedia) {
     const remoteMediaGroup = Object.values(this.media.video.activeSpeakerGroups).find((group) =>
-      group.getPinnedRemoteMedia().includes(remoteMedia)
+      group.getRemoteMedia('pinned').includes(remoteMedia)
     );
 
     if (!remoteMediaGroup) {
@@ -875,7 +877,7 @@ export class RemoteMediaManager extends EventsScope {
 
     if (!remoteMediaGroup) {
       throw new Error(
-        'remoteMedia not found among the pinned remote media from any active speaker group'
+        'remoteMedia not found among any remote media (pinned or unpinned) from any active speaker group'
       );
     }
 

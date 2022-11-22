@@ -92,15 +92,13 @@ export class MediaRequestManager {
     this.slotsActiveInLastMediaRequest = activeSlots;
   }
 
-  private async sendRequests() {
+  private sendRequests() {
     const wcmeMediaRequests: MC.MediaRequest[] = [];
 
     // todo: check how many streams we're asking for and what resolution and introduce some limits (spark-377701)
 
     // map all the client media requests to wcme media requests
-    Object.keys(this.clientRequests).forEach((requestId) => {
-      const mr = this.clientRequests[requestId];
-
+    Object.values(this.clientRequests).forEach((mr) => {
       wcmeMediaRequests.push(
         new MC.MediaRequest(
           mr.policyInfo.policy,
