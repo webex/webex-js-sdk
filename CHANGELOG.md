@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.32.0](https://github.com/webex/webex-js-sdk/compare/v2.31.4...v2.32.0) (2022-11-21)
+
+
+### Features
+
+* **plugin-meetings:** added support for full HD(1080p)  video ([#2414](https://github.com/webex/webex-js-sdk/issues/2414)) ([cc0c61a](https://github.com/webex/webex-js-sdk/commit/cc0c61a411e2936caeda84dbd37ed99c72527956))
+
 ### [2.31.4](https://github.com/webex/webex-js-sdk/compare/v2.31.3...v2.31.4) (2022-11-16)
 
 

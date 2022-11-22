@@ -1,6 +1,6 @@
 {
     "name": "@webex/plugin-meetings",
-    "version": "2.31.4",
+    "version": "2.32.0",
     "description": "",
     "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
     "contributors": [
@@ -46,6 +46,7 @@
         "@webex/internal-plugin-user": "workspace:^",
         "@webex/plugin-people": "workspace:^",
         "@webex/plugin-rooms": "workspace:^",
+        "@webex/ts-sdp": "^1.0.1",
         "@webex/webex-core": "workspace:^",
         "bowser": "^2.11.0",
         "btoa": "^1.2.1",
