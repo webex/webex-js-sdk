@@ -91,6 +91,30 @@ export default class Reachability {
     }
   }
 
+  /**
+   * fetches reachability data
+   * @returns {boolean}
+   * @public
+   * @memberof Reachability
+   */
+  isAnyClusterReachable() {
+    let reachable = false;
+    const reachabilityData = window.localStorage.getItem(REACHABILITY.localStorage);
+
+    if (reachabilityData) {
+      try {
+        const reachabilityResults = JSON.parse(reachabilityData);
+
+        reachable = Object.values(reachabilityResults).some((result) => result.udp?.reachable === 'true' || result.tcp?.reachable === 'true');
+      }
+      catch (e) {
+        LoggerProxy.logger.error(`Roap:request#attachReachabilityData --> Error in parsing reachability data: ${e}`);
+      }
+    }
+
+    return reachable;
+  }
+
 
   /**
    * Generate peerConnection config settings

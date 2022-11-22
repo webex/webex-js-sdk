@@ -19,10 +19,6 @@ describe('TurnDiscovery', () => {
   const FAKE_LOCUS_ID = '09493311-f5d5-3e58-b491-009cc628162e';
   const FAKE_MEDIA_CONNECTIONS_FROM_LOCUS = [{mediaId: '464ff97f-4bda-466a-ad06-3a22184a2274'}];
 
-  before(function () {
-    this.jsdom = require('jsdom-global')('', {url: 'http://localhost'});
-  });
-
   beforeEach(() => {
     clock = sinon.useFakeTimers();
 
@@ -50,12 +46,8 @@ describe('TurnDiscovery', () => {
         testMeeting.roapSeq = newSeq;
       }),
       updateMediaConnections: sinon.stub(),
+      webex: {meetings: {reachability: {isAnyClusterReachable: () => false}}}
     };
-  });
-
-
-  after(function () {
-    this.jsdom();
   });
 
   afterEach(() => {
@@ -104,8 +96,6 @@ describe('TurnDiscovery', () => {
     it('sends TURN_DISCOVERY_REQUEST, waits for response and sends OK', async () => {
       const td = new TurnDiscovery(mockRoapRequest);
 
-      window.localStorage.setItem('reachability.result', JSON.stringify({x: {udp: {reachable: 'false'}, tcp: {reachable: 'false'}}}))
-
       const result = td.doTurnDiscovery(testMeeting, false);
 
       // check that TURN_DISCOVERY_REQUEST was sent
@@ -135,44 +125,6 @@ describe('TurnDiscovery', () => {
         password: FAKE_TURN_PASSWORD
       });
 
-      window.localStorage.clear();
-    });
-
-    it('sends TURN_DISCOVERY_REQUEST, reachability is empty', async () => {
-      const td = new TurnDiscovery(mockRoapRequest);
-
-      window.localStorage.setItem('reachability.result', JSON.stringify({x: {}}))
-
-      const result = td.doTurnDiscovery(testMeeting, false);
-
-      // check that TURN_DISCOVERY_REQUEST was sent
-      await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0);
-
-      mockRoapRequest.sendRoap.resetHistory();
-
-      // simulate the response
-      td.handleTurnDiscoveryResponse({
-        headers: [
-          `x-cisco-turn-url=${FAKE_TURN_URL}`,
-          `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
-          `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
-        ]
-      });
-
-      await testUtils.flushPromises();
-
-      // check that we've sent OK
-      await checkRoapMessageSent('OK', 0);
-
-      const turnInfo = await result;
-
-      assert.deepEqual(turnInfo, {
-        url: FAKE_TURN_URL,
-        username: FAKE_TURN_USERNAME,
-        password: FAKE_TURN_PASSWORD
-      });
-
-      window.localStorage.clear();
     });
 
     it('sends TURN_DISCOVERY_REQUEST with empty mediaId when isReconnecting is true', async () => {
@@ -270,38 +222,17 @@ describe('TurnDiscovery', () => {
       checkFailureMetricsSent();
     });
 
-    it('resolves with undefined when udp is reachable', async () => {
-      window.localStorage.setItem('reachability.result', JSON.stringify({x: {udp: {reachable: 'true'}, tcp: {reachable: 'false'}}}))
-
+    it('resolves with undefined when reachable', async () => {
+      // window.localStorage.setItem('reachability.result', JSON.stringify({x: {udp: {reachable: 'true'}, tcp: {reachable: 'false'}}}))
+      const prev = testMeeting.webex.meetings.reachability.isAnyClusterReachable;
+      testMeeting.webex.meetings.reachability.isAnyClusterReachable = () => true;
       const result = await new TurnDiscovery(mockRoapRequest).doTurnDiscovery(testMeeting);
 
       assert.isUndefined(result);
       assert.notCalled(mockRoapRequest.sendRoap);
       assert.notCalled(Metrics.sendBehavioralMetric);
+      testMeeting.webex.meetings.reachability.isAnyClusterReachable = prev;
 
-      window.localStorage.clear();
-    });
-
-    it('resolves with undefined when udp and tcp are reachable', async () => {
-      window.localStorage.setItem('reachability.result', JSON.stringify({x: {udp: {reachable: 'true'}, tcp: {reachable: 'true'}}}))
-
-      const result = await new TurnDiscovery(mockRoapRequest).doTurnDiscovery(testMeeting);
-
-      assert.isUndefined(result);
-      assert.notCalled(mockRoapRequest.sendRoap);
-      assert.notCalled(Metrics.sendBehavioralMetric);
-      window.localStorage.clear();
-    });
-
-    it('resolves with undefined when tcp is reachable', async () => {
-      window.localStorage.setItem('reachability.result', JSON.stringify({x: {udp: {reachable: 'false'}, tcp: {reachable: 'true'}}}))
-
-      const result = await new TurnDiscovery(mockRoapRequest).doTurnDiscovery(testMeeting);
-
-      assert.isUndefined(result);
-      assert.notCalled(mockRoapRequest.sendRoap);
-      assert.notCalled(Metrics.sendBehavioralMetric);
-      window.localStorage.clear();
     });
 
     it('resolves with undefined if we don\'t get a response within 10s', async () => {

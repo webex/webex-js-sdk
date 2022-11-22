@@ -3,7 +3,7 @@ import {Defer} from '@webex/common';
 import Metrics from '../metrics';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import LoggerProxy from '../common/logs/logger-proxy';
-import {ROAP, REACHABILITY} from '../constants';
+import {ROAP} from '../constants';
 
 import RoapRequest from './request';
 
@@ -202,26 +202,11 @@ export default class TurnDiscovery {
    * @returns {Promise}
    */
   doTurnDiscovery(meeting, isReconnecting) {
-    const reachabilityData = window.localStorage.getItem(REACHABILITY.localStorage);
-    if (reachabilityData) {
-      try {
-        const reachabilityResults = JSON.parse(reachabilityData);
+    const isAnyClusterReachable = meeting.webex.meetings.reachability.isAnyClusterReachable();
 
-        const reachable = Object.values(reachabilityResults).some((result: {udp: {reachable: 'true'| 'false'}, tcp: {reachable: 'true'| 'false'}}) => {
-          if (result.udp?.reachable === 'true' || result.tcp?.reachable === 'true') {
-            return true;
-          }
-        });
-
-        if (reachable) {
-          LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> reachability has not failed, skipping it');
-          return Promise.resolve(undefined);
-        }
-
-      }
-      catch (e) {
-        LoggerProxy.logger.error(`Roap:request#attachReachabilityData --> Error in parsing reachability data: ${e}`);
-      }
+    if (isAnyClusterReachable) {
+      LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> reachability has not failed, skipping it');
+      return Promise.resolve(undefined);
     }
 
     if (!meeting.config.experimental.enableTurnDiscovery) {
