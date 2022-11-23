@@ -3,8 +3,6 @@
  */
 /* globals navigator */
 
-import {MediaConnection as MC} from '@webex/internal-media-core';
-
 import LoggerProxy from '../common/logs/logger-proxy';
 import {
   AUDIO_INPUT,
@@ -15,6 +13,8 @@ import Config from '../config';
 import StaticConfig from '../common/config';
 import MediaError from '../common/errors/media';
 import BrowserDetection from '../common/browser-detection';
+
+import {RoapMediaConnection, MultistreamRoapMediaConnection} from './internal-media-core-wrapper';
 
 const {isBrowser} = BrowserDetection();
 
@@ -118,17 +118,18 @@ Media.getLocalMedia = (options, config) => {
 
 /**
  * creates a webrtc media connection with provided tracks and mediaDirection configuration
- * @param {MediaDirection} mediaProperties
- * @param {Object} meetingProperties contains mediaDirection and local tracks: audioTrack, videoTrack and shareTrack
- * @param {string} meetingId
- * @param {string} remoteQualityLevel LOW|MEDIUM|HIGH
- * @param {boolean} enableRtx
- * @param {boolean} enableExtmap
- * @returns {MC.RoapMediaConnection}
+ * @param {Object} mediaProperties only applicable to non-multistream connections, contains mediaDirection and local tracks:
+ *                                 audioTrack, videoTrack and shareTrack
+ * @param {Object} options
+ * @param {boolean} options.isMultistream
+ * @param {string} [options.remoteQualityLevel] LOW|MEDIUM|HIGH applicable only to non-multistream connections
+ * @param {boolean} [options.enableRtx] applicable only to non-multistream connections
+ * @param {boolean} [options.enableExtmap] applicable only to non-multistream connections
+ * @param {Object} [options.turnServerInfo]
+ * @returns {RoapMediaConnection}
  */
 Media.createMediaConnection = (mediaProperties, {
   isMultistream,
-  // meetingId, // todo: use this unused param - it used to be used for sending metrics (check if we're sending all the right metrics now)
   remoteQualityLevel,
   enableRtx,
   enableExtmap,
@@ -152,12 +153,12 @@ Media.createMediaConnection = (mediaProperties, {
   }
 
   if (isMultistream) {
-    return new MC.MultistreamRoapMediaConnection({
+    return new MultistreamRoapMediaConnection({
       iceServers,
     }, 'mc');
   }
 
-  return new MC.RoapMediaConnection({
+  return new RoapMediaConnection({
     iceServers,
     skipInactiveTransceivers: false,
     requireH264: true,
@@ -187,7 +188,6 @@ Media.createMediaConnection = (mediaProperties, {
     }
   }, 'mc');
 };
-
 
 /**
  * generates share streams
