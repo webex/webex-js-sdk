@@ -11,12 +11,13 @@ export enum EntityProviderType {
 }
 
 export interface LookupOptions {
-  ids: string[];
+  id: string;
   entityProviderType?: EntityProviderType;
+  shouldBatch?: boolean;
 }
 
 export interface LookupByEmailOptions {
-  emails: string[];
+  email: string;
 }
 
 // eslint-disable-next-line no-shadow
