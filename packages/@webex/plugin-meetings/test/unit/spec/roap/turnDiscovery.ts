@@ -46,6 +46,7 @@ describe('TurnDiscovery', () => {
         testMeeting.roapSeq = newSeq;
       }),
       updateMediaConnections: sinon.stub(),
+      webex: {meetings: {reachability: {isAnyClusterReachable: () => false}}}
     };
   });
 
@@ -123,6 +124,7 @@ describe('TurnDiscovery', () => {
         username: FAKE_TURN_USERNAME,
         password: FAKE_TURN_PASSWORD
       });
+
     });
 
     it('sends TURN_DISCOVERY_REQUEST with empty mediaId when isReconnecting is true', async () => {
@@ -218,6 +220,18 @@ describe('TurnDiscovery', () => {
 
       assert.isUndefined(result);
       checkFailureMetricsSent();
+    });
+
+    it('resolves with undefined when cluster is reachable', async () => {
+      const prev = testMeeting.webex.meetings.reachability.isAnyClusterReachable;
+      testMeeting.webex.meetings.reachability.isAnyClusterReachable = () => true;
+      const result = await new TurnDiscovery(mockRoapRequest).doTurnDiscovery(testMeeting);
+
+      assert.isUndefined(result);
+      assert.notCalled(mockRoapRequest.sendRoap);
+      assert.notCalled(Metrics.sendBehavioralMetric);
+      testMeeting.webex.meetings.reachability.isAnyClusterReachable = prev;
+
     });
 
     it('resolves with undefined if we don\'t get a response within 10s', async () => {
