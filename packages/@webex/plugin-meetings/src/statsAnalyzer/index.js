@@ -639,7 +639,7 @@ export class StatsAnalyzer extends EventsScope {
       return Promise.resolve();
     }
 
-    if (this.mediaConnection && this.mediaConnection.getConnectionState() === MC.ConnectionState.FAILED) {
+    if (this.mediaConnection && this.mediaConnection.getConnectionState() === MC.ConnectionState.Failed) {
       LoggerProxy.logger.trace('StatsAnalyzer:index#getStatsAndParse --> media connection is in failed state');
 
       return Promise.resolve();

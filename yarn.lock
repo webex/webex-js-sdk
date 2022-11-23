@@ -2453,79 +2453,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@protobufjs/aspromise@npm:^1.1.1, @protobufjs/aspromise@npm:^1.1.2":
-  version: 1.1.2
-  resolution: "@protobufjs/aspromise@npm:1.1.2"
-  checksum: cab3149954b2e788b21aef9ec244b639b99412b79ca75aa65d942c2f8f626d08758fe360393be6878966675498b5d61b9a68a1690a589def7f6f33b41aa5f2a2
-  languageName: node
-  linkType: hard
-
-"@protobufjs/base64@npm:^1.1.2":
-  version: 1.1.2
-  resolution: "@protobufjs/base64@npm:1.1.2"
-  checksum: 493645603791ad44f67f4943204e65350f85eb52a255ddc5d523359f78dbcfd25ca81b4582701ac5b4f38ba5a948cc06dfbce0a8b6ca932f04b80b02c8e6b25f
-  languageName: node
-  linkType: hard
-
-"@protobufjs/codegen@npm:^2.0.4":
-  version: 2.0.4
-  resolution: "@protobufjs/codegen@npm:2.0.4"
-  checksum: c865ce94fc36a6b0a5306df26172b4cbc1d492cdddf37220a09aaec0a164bc2a4e1fecff6bc9ac60342dcad868403ba6814bcb0aecf57c730499123e818898f5
-  languageName: node
-  linkType: hard
-
-"@protobufjs/eventemitter@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "@protobufjs/eventemitter@npm:1.1.0"
-  checksum: afdb637b90482e453815b15bc4b62f817d9faa517ffd9a556cd61998953f7df566afdefd37ebfb66da034bb77f2debdfdfe97ddca311769a52f43845216f80f3
-  languageName: node
-  linkType: hard
-
-"@protobufjs/fetch@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "@protobufjs/fetch@npm:1.1.0"
-  dependencies:
-    "@protobufjs/aspromise": "npm:^1.1.1"
-    "@protobufjs/inquire": "npm:^1.1.0"
-  checksum: 94e99ae347dc3906106600e74da3f29f1dd192132c9693b6aba4a9705eef4d27111727d0020a9b90bd4d87980b211a64bf0c30862ce3a916858033184ccd604a
-  languageName: node
-  linkType: hard
-
-"@protobufjs/float@npm:^1.0.2":
-  version: 1.0.2
-  resolution: "@protobufjs/float@npm:1.0.2"
-  checksum: 760cc9bc24c18c7f7fe37f83f108d2daf42e4f9ac6a8e6c0a8b0d95eaa9618c74e6d9c2706eba5d28bd7baf3206fe34c19c4f2f094069c643f4a68e82024dddb
-  languageName: node
-  linkType: hard
-
-"@protobufjs/inquire@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "@protobufjs/inquire@npm:1.1.0"
-  checksum: 619e7c31f972458bec6511ddaa987f47014b847788e6a3f2dc8af0978ebdf0df52536bc0efa4406d7764b6f7e05979289e0882e027a881f0a4ffb33211ea888d
-  languageName: node
-  linkType: hard
-
-"@protobufjs/path@npm:^1.1.2":
-  version: 1.1.2
-  resolution: "@protobufjs/path@npm:1.1.2"
-  checksum: 85960f22ef76d802d3b1102bd0d14a2ee6b61e96e16e7e129f846a71fd5975c684993b4743e7f1cc7246b6bf287b0abff9425331104dac696eac6b8b75e62920
-  languageName: node
-  linkType: hard
-
-"@protobufjs/pool@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "@protobufjs/pool@npm:1.1.0"
-  checksum: 8ceda1b6ab3ba81accc0f9781f4f2182441ad00d35020b13814cf1045c2482b0e002be5aaacabaccb15f15454900e4739771079e40f81011b829aa4d1103b5da
-  languageName: node
-  linkType: hard
-
-"@protobufjs/utf8@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "@protobufjs/utf8@npm:1.1.0"
-  checksum: a9dd3eca80967bab9175c860b87e4e2fd2cc867460df5431fc47898f5b817e6a88f670e5f58655c3753bccde25bcd77ec18f0a433b6dee8e4b50711707b2f7c1
-  languageName: node
-  linkType: hard
-
 "@sinclair/typebox@npm:^0.24.1":
   version: 0.24.44
   resolution: "@sinclair/typebox@npm:0.24.44"
@@ -3015,13 +2942,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/long@npm:^4.0.1":
-  version: 4.0.2
-  resolution: "@types/long@npm:4.0.2"
-  checksum: b6e4c16ca43a11f229cf2d54697404e791f48ac9107fb1052b8dec92e730f54ebfe6773d68fe7d27531d9b75de1aafce0fbac206cea0ef13bb1b97f5436d90cf
-  languageName: node
-  linkType: hard
-
 "@types/mdast@npm:^3.0.0, @types/mdast@npm:^3.0.3":
   version: 3.0.10
   resolution: "@types/mdast@npm:3.0.10"
@@ -3075,17 +2995,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:>=13.7.0, @types/node@npm:^18.7.6":
-  version: 18.11.9
-  resolution: "@types/node@npm:18.11.9"
-  checksum: 7b7d90894dd1ae9b6836e49ace5bdea55cc08806a508e38851e333f1ad77ec81ea6dca58e6a2444ad0471fee965b9908cc1ef06028eebca9c20d54729df98bab
-  languageName: node
-  linkType: hard
-
 "@types/node@npm:^14.0.0":
   version: 14.18.32
   resolution: "@types/node@npm:14.18.32"
   checksum: 6a15ba3e0052e301317bd87f241e439b21dab13147a316c2e576390ecc6fda1eec57f837d35163c00ea7a35218c97497f9ea00c51f8b6c9f88346fc280dc6a4d
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^18.7.6":
+  version: 18.11.9
+  resolution: "@types/node@npm:18.11.9"
+  checksum: 7b7d90894dd1ae9b6836e49ace5bdea55cc08806a508e38851e333f1ad77ec81ea6dca58e6a2444ad0471fee965b9908cc1ef06028eebca9c20d54729df98bab
   languageName: node
   linkType: hard
 
@@ -4007,26 +3927,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex-connect/json-multistream@npm:1.17.0":
-  version: 1.17.0
-  resolution: "@webex-connect/json-multistream@npm:1.17.0"
-  checksum: ba4f36931caf2112a9ed8d13057833b6b1d2f6562c3d73dfceb43b05bf088b5ed7d8d39051b2a7981fa44352df314418566d48fb9900ebf17db7785840b11116
-  languageName: node
-  linkType: hard
-
-"@webex-connect/json-multistream@npm:^1.17.0":
+"@webex-connect/json-multistream@npm:1.19.0, @webex-connect/json-multistream@npm:^1.19.0":
   version: 1.19.0
   resolution: "@webex-connect/json-multistream@npm:1.19.0"
   checksum: c4076889b0eba2f07a6a3cf1cff8ff331cdc89e5e88a0c5123bf9e900159d369ce5dce1916823061468eecc1bf9556dacd1126cb1f455d3d7f848d073e58e69a
-  languageName: node
-  linkType: hard
-
-"@webex-connect/ladon-ts@npm:^2.7.0":
-  version: 2.8.0
-  resolution: "@webex-connect/ladon-ts@npm:2.8.0"
-  dependencies:
-    onnxruntime-web: "npm:^1.9.0"
-  checksum: 70638f57a7e8d9b081be09868772956d9ad0bf1d34a2b32161c0426da675373eec23d0656200b46be9ee5ef93de71dfd74e09ae34dedbe9a6e7b0a9c040f3bd9
   languageName: node
   linkType: hard
 
@@ -4040,42 +3944,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex-connect/web-client-media-engine@npm:1.23.0":
-  version: 1.23.0
-  resolution: "@webex-connect/web-client-media-engine@npm:1.23.0"
+"@webex-connect/web-client-media-engine@npm:1.30.2":
+  version: 1.30.2
+  resolution: "@webex-connect/web-client-media-engine@npm:1.30.2"
   dependencies:
-    "@webex-connect/json-multistream": "npm:^1.17.0"
+    "@webex-connect/json-multistream": "npm:^1.19.0"
     "@webex-connect/rtcstats": "npm:^0.5.0"
-    "@webex-connect/web-media-effects": "npm:^0.4.0"
-    "@webex-connect/webrtc-core": "npm:^1.6.1"
-    "@webex/ts-sdp": "npm:1.0.1"
+    "@webex/ts-sdp": "npm:1.3.0"
+    "@webex/webrtc-core": "npm:^1.0.2"
     bowser: "npm:^2.11.0"
     js-logger: "npm:^1.6.1"
-    typed-emitter: "npm:^1.4.0"
+    typed-emitter: "npm:^2.1.0"
     uuid: "npm:^8.3.2"
-  checksum: bfc4ca494a49415353be0e9cded45aff0428d8554d60aca733a99bb96d2d4dd1885a72e3989bfae61ca80f9b8b0b2e4067d7c3362ac7775ea968a20921dd12a7
-  languageName: node
-  linkType: hard
-
-"@webex-connect/web-media-effects@npm:^0.4.0":
-  version: 0.4.0
-  resolution: "@webex-connect/web-media-effects@npm:0.4.0"
-  dependencies:
-    "@webex-connect/ladon-ts": "npm:^2.7.0"
-    events: "npm:^3.3.0"
-    js-logger: "npm:^1.6.1"
-    typed-emitter: "npm:^1.4.0"
-  checksum: fc9d45813b08fa9c4177cee707cdf432b3c4d836afec8062889a65a7852572ac1fbe167997b2dabcb43e1011d7dc797ff0e403630966ff6eb56f218e0674827a
-  languageName: node
-  linkType: hard
-
-"@webex-connect/webrtc-core@npm:^1.6.1":
-  version: 1.6.1
-  resolution: "@webex-connect/webrtc-core@npm:1.6.1"
-  dependencies:
-    events: "npm:^3.3.0"
-    webrtc-adapter: "npm:^8.1.2"
-  checksum: 7234e5d1f0bd06d512b17b8e92593450b27e6c04ab84038169d224355c9056d56fc2c89da04c8d6f0779d51fb9cf621433ea32ceac5a817eabd29a4183653cb3
+  checksum: 02459ac10b802295625b87b7ce2f4098706ab5f4d34e9a2c7e0590e0424f44d60c5be9ee9533816cbc9dc6f5a97bfe312783966094741a54993e63cf5d00fa00
   languageName: node
   linkType: hard
 
@@ -4171,13 +4052,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:^0.0.13-beta":
-  version: 0.0.13-beta
-  resolution: "@webex/internal-media-core@npm:0.0.13-beta"
+"@webex/internal-media-core@npm:^0.0.15-beta":
+  version: 0.0.15-beta
+  resolution: "@webex/internal-media-core@npm:0.0.15-beta"
   dependencies:
     "@babel/runtime": "npm:^7.18.9"
-    "@webex-connect/json-multistream": "npm:1.17.0"
-    "@webex-connect/web-client-media-engine": "npm:1.23.0"
+    "@webex-connect/json-multistream": "npm:1.19.0"
+    "@webex-connect/web-client-media-engine": "npm:1.30.2"
     "@webex/ts-sdp": "npm:^1.0.1"
     detectrtc: "npm:^1.4.1"
     events: "npm:^3.3.0"
@@ -4185,7 +4066,7 @@ __metadata:
     uuid: "npm:^8.3.2"
     webrtc-adapter: "npm:^8.1.1"
     xstate: "npm:^4.30.6"
-  checksum: d1fe489dfa635ae9ecb967b1ce10f1318baffd53a4354ddf4c9d8529026daaa7d9ef839108ff3078a835c9aa39342abebefe8d229c21d8f36eb8526818efaded
+  checksum: 1b9680deebe0e0fb0f4f012b26a5d7e29796de16236edc5cd2805f16b49f3218394a74bc7ed3e7ba13d0dff7d895b017c3640fd01d52c28db1b177bc0a71b47b
   languageName: node
   linkType: hard
 
@@ -4751,7 +4632,7 @@ __metadata:
   resolution: "@webex/plugin-meetings@workspace:packages/@webex/plugin-meetings"
   dependencies:
     "@webex/common": "workspace:^"
-    "@webex/internal-media-core": "npm:^0.0.13-beta"
+    "@webex/internal-media-core": "npm:^0.0.15-beta"
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-mercury": "workspace:^"
@@ -5135,7 +5016,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/ts-sdp@npm:1.0.1, @webex/ts-sdp@npm:^1.0.1":
+"@webex/ts-sdp@npm:1.3.0":
+  version: 1.3.0
+  resolution: "@webex/ts-sdp@npm:1.3.0"
+  checksum: 8c6429392cea0ecc0b6dde6543ae337096053ac8043906160bfac275b11a9667ae68e23ea790d683132aef6490807fa93b86a770009a8395cc804e4cbf650fb7
+  languageName: node
+  linkType: hard
+
+"@webex/ts-sdp@npm:^1.0.1":
   version: 1.0.1
   resolution: "@webex/ts-sdp@npm:1.0.1"
   checksum: 8be36b8e379972aa333026e09b6f2bf6507fff4282b71ec0354ad8c0c9856b9c7976976d3021c9b3e871e51fa48af61b8065ea329011b066295fcd80bcfabca8
@@ -5218,6 +5106,18 @@ __metadata:
     webex-server: ./bin/webex-server
   languageName: unknown
   linkType: soft
+
+"@webex/webrtc-core@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "@webex/webrtc-core@npm:1.0.2"
+  dependencies:
+    events: "npm:^3.3.0"
+    js-logger: "npm:^1.6.1"
+    typed-emitter: "npm:^2.1.0"
+    webrtc-adapter: "npm:^8.1.2"
+  checksum: abd58061a209d621e39c745409d7fca7456653c7362d170da8faa8c4c944a99a6eaf4418b514b37b450c81379a54d19fe538b7d902b5598c798e2376003de6e0
+  languageName: node
+  linkType: hard
 
 "@webex/webrtc@workspace:packages/@webex/webrtc":
   version: 0.0.0-use.local
@@ -11335,13 +11235,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"flatbuffers@npm:^1.12.0":
-  version: 1.12.0
-  resolution: "flatbuffers@npm:1.12.0"
-  checksum: 2fcc53f2be95357a56175917957ea8d06a9501d7611648b3ac193701f3d804c5f4423e2fd5a3ebb2efd0c56a83f63a3154ab21b834ab9edf1a4f5cb0e6918481
-  languageName: node
-  linkType: hard
-
 "flatted@npm:^3.1.0, flatted@npm:^3.2.7":
   version: 3.2.7
   resolution: "flatted@npm:3.2.7"
@@ -12233,13 +12126,6 @@ __metadata:
   version: 1.0.4
   resolution: "grapheme-splitter@npm:1.0.4"
   checksum: c67a8e522758dd907770a78ad750e6dfdcce327b0696fdd82f4b7acb8bb22b0574c88f806afb3c6597a536fa9016e6e3486071535fd0e9226b8505c67cf2fb01
-  languageName: node
-  linkType: hard
-
-"guid-typescript@npm:^1.0.9":
-  version: 1.0.9
-  resolution: "guid-typescript@npm:1.0.9"
-  checksum: 28b66dd3973853ea93fd2ac276ecc5724656447689d0ec22cc31ce2051e84f7357aeaa466eecd2c2a6f8a28297a1051a4ced3fb4dcca9524339f29aeef99d4ed
   languageName: node
   linkType: hard
 
@@ -15340,13 +15226,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"long@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "long@npm:4.0.0"
-  checksum: fc6d1bf0f251ec045c1004cb3a15be1dd6da11d8232cbfd63a4e7c5becd6d269ecac2e2f267114328280b20cdb00af435bd9a3d7b3af824484b59a635b9d52ab
-  languageName: node
-  linkType: hard
-
 "long@npm:^5.2.0":
   version: 5.2.0
   resolution: "long@npm:5.2.0"
@@ -16935,36 +16814,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"onnx-proto@npm:^4.0.4":
-  version: 4.0.4
-  resolution: "onnx-proto@npm:4.0.4"
-  dependencies:
-    protobufjs: "npm:^6.8.8"
-  checksum: b3a52ef433b4dc51f8ade46fda2a9997ae184366ae7791c37bd8824410e184afdadd3baab8ee6488ae602ed671edb6cb59b6a067a83c55cfbc9d9011a5b4c554
-  languageName: node
-  linkType: hard
-
-"onnxruntime-common@npm:~1.13.1":
-  version: 1.13.1
-  resolution: "onnxruntime-common@npm:1.13.1"
-  checksum: 742b11a260be5c1964e620f3529c9e6a3a7e2bc8120f0125ae48b57868381349bc5a3c27c13c1701b71fc26d8af1b6123fb852900870ae51de6406baa1f70692
-  languageName: node
-  linkType: hard
-
-"onnxruntime-web@npm:^1.9.0":
-  version: 1.13.1
-  resolution: "onnxruntime-web@npm:1.13.1"
-  dependencies:
-    flatbuffers: "npm:^1.12.0"
-    guid-typescript: "npm:^1.0.9"
-    long: "npm:^4.0.0"
-    onnx-proto: "npm:^4.0.4"
-    onnxruntime-common: "npm:~1.13.1"
-    platform: "npm:^1.3.6"
-  checksum: 7df0e40b366119a2d38720d0daca78c81a97ffb94f74927679847ba7289210b526cf1899fa129218a1bd66516ebac330939cbbe9d4bc0202d67463d77df1e88c
-  languageName: node
-  linkType: hard
-
 "open@npm:^7.4.2":
   version: 7.4.2
   resolution: "open@npm:7.4.2"
@@ -17818,7 +17667,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"platform@npm:^1.3.3, platform@npm:^1.3.6, platform@npm:~1.3.6":
+"platform@npm:^1.3.3, platform@npm:~1.3.6":
   version: 1.3.6
   resolution: "platform@npm:1.3.6"
   checksum: 3aa67d72b8adae85896985e8b9f166ccc6bdbc67973e057c7f680f2da242371d4a1cc399c44d855b47e48445288b44645a746efdbfb0417062c71644e113262a
@@ -18028,30 +17877,6 @@ __metadata:
   version: 1.2.4
   resolution: "proto-list@npm:1.2.4"
   checksum: 36a4a77fb1642d5c5edfd77612c2fe67bf8bbc61336e9708342c27115159cc444604714356b778b0cd43c113e420b64a44873cdfefb6827261bd5a93088a1e4e
-  languageName: node
-  linkType: hard
-
-"protobufjs@npm:^6.8.8":
-  version: 6.11.3
-  resolution: "protobufjs@npm:6.11.3"
-  dependencies:
-    "@protobufjs/aspromise": "npm:^1.1.2"
-    "@protobufjs/base64": "npm:^1.1.2"
-    "@protobufjs/codegen": "npm:^2.0.4"
-    "@protobufjs/eventemitter": "npm:^1.1.0"
-    "@protobufjs/fetch": "npm:^1.1.0"
-    "@protobufjs/float": "npm:^1.0.2"
-    "@protobufjs/inquire": "npm:^1.1.0"
-    "@protobufjs/path": "npm:^1.1.2"
-    "@protobufjs/pool": "npm:^1.1.0"
-    "@protobufjs/utf8": "npm:^1.1.0"
-    "@types/long": "npm:^4.0.1"
-    "@types/node": "npm:>=13.7.0"
-    long: "npm:^4.0.0"
-  bin:
-    pbjs: bin/pbjs
-    pbts: bin/pbts
-  checksum: 5a7a343bc1f4029022433690e9a1734a89a80fc441b580ddc8486262417b7755bddafd637a88c0f8105e594e361a02218508df67caf1ac9c18bbca82e6ab60ee
   languageName: node
   linkType: hard
 
@@ -21552,13 +21377,6 @@ __metadata:
     media-typer: "npm:0.3.0"
     mime-types: "npm:~2.1.24"
   checksum: 1cf58e1d0c2129201bee6abe8029f5dda621f86a1094955b6510c9baf879a45f725b2e19c7dc1f04a623a0edd8f3cc39cc4d4899287c805b6b1177c961f46564
-  languageName: node
-  linkType: hard
-
-"typed-emitter@npm:^1.4.0":
-  version: 1.4.0
-  resolution: "typed-emitter@npm:1.4.0"
-  checksum: 542f3a58486f66f019f801a89d8553b9dc5a4f0e52669dce24ef5290fc6620d48765527fe5ab71a890f653b04b1128347b0bed13439f2b7af87d270c24f787c8
   languageName: node
   linkType: hard
 

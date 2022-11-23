@@ -4099,10 +4099,10 @@ export default class Meeting extends StatelessWebexPlugin {
 
       LoggerProxy.logger.info(`Meeting:index#setupMediaConnectionListeners --> connection state changed to ${event.state}`);
       switch (event.state) {
-        case MC.ConnectionState.CONNECTING:
+        case MC.ConnectionState.Connecting:
           Metrics.postEvent({event: eventType.ICE_START, meeting: this});
           break;
-        case MC.ConnectionState.CONNECTED:
+        case MC.ConnectionState.Connected:
           Metrics.postEvent({event: eventType.ICE_END, meeting: this});
           Metrics.sendBehavioralMetric(
             BEHAVIORAL_METRICS.CONNECTION_SUCCESS,
@@ -4114,7 +4114,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.setNetworkStatus(NETWORK_STATUS.CONNECTED);
           this.reconnectionManager.iceReconnected();
           break;
-        case MC.ConnectionState.DISCONNECTED:
+        case MC.ConnectionState.Disconnected:
           this.setNetworkStatus(NETWORK_STATUS.DISCONNECTED);
           this.reconnectionManager.waitForIceReconnect()
             .catch(() => {
@@ -4123,7 +4123,7 @@ export default class Meeting extends StatelessWebexPlugin {
               connectionFailed();
             });
           break;
-        case MC.ConnectionState.FAILED:
+        case MC.ConnectionState.Failed:
           connectionFailed();
           break;
         default:
@@ -4338,7 +4338,7 @@ export default class Meeting extends StatelessWebexPlugin {
         return new Promise((resolve, reject) => {
           const connState = webrtcMediaConnection.getConnectionState();
 
-          if (connState === MC.ConnectionState.CONNECTED) {
+          if (connState === MC.ConnectionState.Connected) {
             LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection CONNECTED`);
 
             resolve();
@@ -4347,7 +4347,7 @@ export default class Meeting extends StatelessWebexPlugin {
           }
           // Check if Peer Connection is STABLE (connected)
           const stabilityTimeout = setTimeout(() => {
-            if (webrtcMediaConnection.getConnectionState() !== MC.ConnectionState.CONNECTED) {
+            if (webrtcMediaConnection.getConnectionState() !== MC.ConnectionState.Connected) {
               // TODO: Fix this after the error code pr goes in
               reject(createMeetingsError(30202, 'Meeting connection failed'));
             }

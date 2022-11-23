@@ -886,7 +886,7 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           fakeMediaConnection = {
             close: sinon.stub(),
-            getConnectionState: sinon.stub().returns(MC.ConnectionState.CONNECTED),
+            getConnectionState: sinon.stub().returns(MC.ConnectionState.Connected),
             initiateOffer: sinon.stub().resolves({}),
             on: sinon.stub(),
           };
@@ -1070,7 +1070,7 @@ describe('plugin-meetings', () => {
 
         it('should attach the media and return WebExMeetingsErrors when connection does not reach CONNECTED state', async () => {
           meeting.meetingState = 'ACTIVE';
-          fakeMediaConnection.getConnectionState = sinon.stub().returns(MC.ConnectionState.CONNECTING);
+          fakeMediaConnection.getConnectionState = sinon.stub().returns(MC.ConnectionState.Connecting);
           const clock = sinon.useFakeTimers();
           const media = meeting.addMedia({
             mediaSettings: {}
