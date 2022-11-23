@@ -214,7 +214,7 @@ class Transforms {
         // post and share activities have content which needs to be decrypted
         // as do meeting, recording activities, customApp extensions, and space information updates
         if (!['post', 'share'].includes(activity.verb) && !activity.meeting && !activity.recording && !(activity.extension && activity.extension.extensionType === 'customApp') &&
-          !activity.spaceInfo?.name && !activity.spaceInfo?.description) {
+          !activity.spaceInfo?.name && !activity.spaceInfo?.description && !activity.encryptedTextKeyValues) {
           return Promise.resolve(object);
         }
 
@@ -362,8 +362,8 @@ class Transforms {
         }
 
         // Decrypt encrypted text map if present
-        if (activity.encryptedTextKeyValues) {
-          for (let [key, value] of Object.entries(activity.encryptedTextKeyValues)) {
+        if (activity.encryptedTextKeyValues !== undefined) {
+          for (let [value] of activity.encryptedTextKeyValues.values()) {
             promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
               [activity.encryptionKeyUrl, value])
               .then((decryptedMessage) => {

@@ -416,6 +416,22 @@ describe('EDiscovery Transform Tests', () => {
 
         return result;
       });
+
+      it('Calls the correct decrypt functions when transforming activity.encryptedTextKeyValues', () => {
+        object.body.verb = 'add';
+        object.body.objectDisplayName = undefined;
+        object.body.encryptedTextKeyValues = new Map();
+        object.body.encryptedTextKeyValues.set('CallingLineId', 'Encrypted Phone Number 1');
+        object.body.encryptedTextKeyValues.set('CallingNumber', 'Encrypted Phone Number 2');
+        object.body.encryptedTextKeyValues.set('RedirectingNumber', 'Encrypted Phone Number 3');
+        const result = Transforms.decryptReportContent(ctx, object, reportId)
+          .then(() => {
+            assert.callCount(ctx.webex.internal.encryption.decryptText, object.body.encryptedTextKeyValues.size);
+            assert.equal(activity.error, undefined);
+          });
+
+        return result;
+      });
     });
   });
 });
