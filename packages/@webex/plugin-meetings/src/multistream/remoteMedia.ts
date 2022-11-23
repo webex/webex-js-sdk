@@ -46,7 +46,7 @@ export function getMaxFs(paneSize: RemoteVideoResolution): number {
       break;
     default:
       LoggerProxy.logger.warn(
-        `RemoteMedia#getMaxFs --> unuspported paneSize: ${paneSize}, using "medium" instead`
+        `RemoteMedia#getMaxFs --> unsupported paneSize: ${paneSize}, using "medium" instead`
       );
       maxFs = 3600;
   }

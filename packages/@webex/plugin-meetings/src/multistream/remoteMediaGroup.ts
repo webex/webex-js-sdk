@@ -151,9 +151,8 @@ export class RemoteMediaGroup {
   }
 
   private sendActiveSpeakerMediaRequest(commit: boolean) {
-    if (this.mediaRequestId) {
-      this.cancelActiveSpeakerMediaRequest(false);
-    }
+    this.cancelActiveSpeakerMediaRequest(false);
+
     this.mediaRequestId = this.mediaRequestManager.addRequest(
       {
         policyInfo: {

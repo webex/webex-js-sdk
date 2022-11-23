@@ -18,8 +18,6 @@ export interface ReceiverSelectedPolicyInfo {
   csi: number;
 }
 
-export type Policy = MC.Policy.ActiveSpeaker | MC.Policy.ReceiverSelected;
-
 export type PolicyInfo = ActiveSpeakerPolicyInfo | ReceiverSelectedPolicyInfo;
 
 export interface H264CodecInfo {
@@ -101,7 +99,9 @@ export class MediaRequestManager {
     Object.values(this.clientRequests).forEach((mr) => {
       wcmeMediaRequests.push(
         new MC.MediaRequest(
-          mr.policyInfo.policy,
+          mr.policyInfo.policy === 'active-speaker'
+            ? MC.Policy.ActiveSpeaker
+            : MC.Policy.ReceiverSelected,
           mr.policyInfo.policy === 'active-speaker'
             ? new MC.ActiveSpeakerInfo(
                 mr.policyInfo.priority,
