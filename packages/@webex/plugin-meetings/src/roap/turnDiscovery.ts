@@ -205,7 +205,7 @@ export default class TurnDiscovery {
     const isAnyClusterReachable = meeting.webex.meetings.reachability.isAnyClusterReachable();
 
     if (isAnyClusterReachable) {
-      LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> reachability has not failed, skipping it');
+      LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> reachability has not failed, skipping TURN discovery');
       return Promise.resolve(undefined);
     }
 

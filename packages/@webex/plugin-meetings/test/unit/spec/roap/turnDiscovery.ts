@@ -222,8 +222,7 @@ describe('TurnDiscovery', () => {
       checkFailureMetricsSent();
     });
 
-    it('resolves with undefined when reachable', async () => {
-      // window.localStorage.setItem('reachability.result', JSON.stringify({x: {udp: {reachable: 'true'}, tcp: {reachable: 'false'}}}))
+    it('resolves with undefined when cluster is reachable', async () => {
       const prev = testMeeting.webex.meetings.reachability.isAnyClusterReachable;
       testMeeting.webex.meetings.reachability.isAnyClusterReachable = () => true;
       const result = await new TurnDiscovery(mockRoapRequest).doTurnDiscovery(testMeeting);

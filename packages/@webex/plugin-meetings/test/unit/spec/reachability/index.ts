@@ -15,8 +15,9 @@ describe('isAnyClusterReachable', () => {
 
   const checkIsClusterReachable = (mockStorage: any, expectedValue: boolean) => {
 
-    window.localStorage.setItem('reachability.result', JSON.stringify(mockStorage))
-
+    if (mockStorage) {
+      window.localStorage.setItem('reachability.result', JSON.stringify(mockStorage))
+    }
     const reachability = new Reachability({});
 
     const result = reachability.isAnyClusterReachable();
@@ -43,5 +44,9 @@ describe('isAnyClusterReachable', () => {
 
   it('returns false when reachability result is empty', () => {
     checkIsClusterReachable({x: {}}, false)
+  });
+
+  it('returns false when reachability.result item is not there', () => {
+    checkIsClusterReachable(undefined, false)
   });
 });
