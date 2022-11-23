@@ -92,7 +92,7 @@ export default class Reachability {
   }
 
   /**
-   * fetches reachability data
+   * fetches reachability data and checks for cluster reachability
    * @returns {boolean}
    * @public
    * @memberof Reachability
