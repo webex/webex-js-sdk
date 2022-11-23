@@ -832,7 +832,7 @@ export class RemoteMediaManager extends EventsScope {
    */
   public pinActiveSpeakerVideoPane(remoteMedia: RemoteMedia, csi?: CSI): void {
     const remoteMediaGroup = Object.values(this.media.video.activeSpeakerGroups).find((group) =>
-      group.includes(remoteMedia, false)
+      group.includes(remoteMedia, 'unpinned')
     );
 
     if (!remoteMediaGroup) {
@@ -851,7 +851,7 @@ export class RemoteMediaManager extends EventsScope {
    */
   public unpinActiveSpeakerVideoPane(remoteMedia: RemoteMedia) {
     const remoteMediaGroup = Object.values(this.media.video.activeSpeakerGroups).find((group) =>
-      group.getRemoteMedia('pinned').includes(remoteMedia)
+      group.includes(remoteMedia, 'pinned')
     );
 
     if (!remoteMediaGroup) {
@@ -872,7 +872,7 @@ export class RemoteMediaManager extends EventsScope {
    */
   public isPinned(remoteMedia: RemoteMedia) {
     const remoteMediaGroup = Object.values(this.media.video.activeSpeakerGroups).find((group) =>
-      group.includes(remoteMedia, true)
+      group.includes(remoteMedia)
     );
 
     if (!remoteMediaGroup) {

@@ -203,17 +203,22 @@ export class RemoteMediaGroup {
    * Checks if a given RemoteMedia instance belongs to this group.
    *
    * @param remoteMedia RemoteMedia instance to check
-   * @param includePinned whether the check should be done also among the pinned media or only unpinned
+   * @param filter controls which remote media from the group to check
    * @returns true if remote media is found
    */
-  public includes(remoteMedia: RemoteMedia, includePinned: boolean): boolean {
-    if (includePinned) {
-      return (
-        this.unpinnedRemoteMedia.includes(remoteMedia) ||
-        this.pinnedRemoteMedia.includes(remoteMedia)
-      );
+  public includes(
+    remoteMedia: RemoteMedia,
+    filter: 'all' | 'pinned' | 'unpinned' = 'all'
+  ): boolean {
+    if (filter === 'pinned') {
+      return this.pinnedRemoteMedia.includes(remoteMedia);
+    }
+    if (filter === 'unpinned') {
+      return this.unpinnedRemoteMedia.includes(remoteMedia);
     }
 
-    return this.unpinnedRemoteMedia.includes(remoteMedia);
+    return (
+      this.unpinnedRemoteMedia.includes(remoteMedia) || this.pinnedRemoteMedia.includes(remoteMedia)
+    );
   }
 }

@@ -366,7 +366,7 @@ describe('RemoteMediaGroup', () => {
         preferLiveVideo: true,
       });
 
-      const remoteMediaFromGroup = group.getRemoteMedia('all')[0];
+      const unpinnedRemoteMediaFromGroup = group.getRemoteMedia('all')[0];
       const otherRemoteMedia = new RemoteMedia(
         new FakeSlot(MC.MediaType.VideoMain, 'other slot') as unknown as ReceiveSlot,
         fakeMediaRequestManager
@@ -375,15 +375,22 @@ describe('RemoteMediaGroup', () => {
       group.pin(group.getRemoteMedia('all')[1], 12345);
       const pinnedRemoteMedia = group.getRemoteMedia('pinned')[0];
 
-      // check with includePinned: true
-      assert.strictEqual(group.includes(remoteMediaFromGroup, true), true);
-      assert.strictEqual(group.includes(otherRemoteMedia, true), false);
-      assert.strictEqual(group.includes(pinnedRemoteMedia, true), true);
+      // by default includes() uses 'all' filter
+      assert.strictEqual(group.includes(unpinnedRemoteMediaFromGroup), true);
+      assert.strictEqual(group.includes(otherRemoteMedia), false);
+      assert.strictEqual(group.includes(pinnedRemoteMedia), true);
 
-      // check with includePinned: false
-      assert.strictEqual(group.includes(remoteMediaFromGroup, false), true);
-      assert.strictEqual(group.includes(pinnedRemoteMedia, false), false);
-      assert.strictEqual(group.includes(otherRemoteMedia, false), false);
+      assert.strictEqual(group.includes(unpinnedRemoteMediaFromGroup, 'all'), true);
+      assert.strictEqual(group.includes(otherRemoteMedia, 'all'), false);
+      assert.strictEqual(group.includes(pinnedRemoteMedia, 'all'), true);
+
+      assert.strictEqual(group.includes(unpinnedRemoteMediaFromGroup, 'pinned'), false);
+      assert.strictEqual(group.includes(otherRemoteMedia, 'pinned'), false);
+      assert.strictEqual(group.includes(pinnedRemoteMedia, 'pinned'), true);
+
+      assert.strictEqual(group.includes(unpinnedRemoteMediaFromGroup, 'unpinned'), true);
+      assert.strictEqual(group.includes(pinnedRemoteMedia, 'unpinned'), false);
+      assert.strictEqual(group.includes(otherRemoteMedia, 'unpinned'), false);
     });
   });
 });
