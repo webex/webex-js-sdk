@@ -77,12 +77,6 @@ export default {
       hydraServiceUrl: process.env.HYDRA_SERVICE_URL || 'https://api.ciscospark.com/v1'
     },
     validateDomains: true,
-    // It is okay to pass the auth token to the following domains:
-    whitelistedServiceDomains: [
-      'wbx2.com',
-      'ciscospark.com',
-      'webex.com'
-    ]
   },
   metrics: {
     type: ['behavioral', 'operational']

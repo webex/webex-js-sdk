@@ -178,6 +178,7 @@ function register() {
       toggleUnifiedMeetings.removeAttribute('disabled');
       unregisterElm.disabled = false;
       unregisterElm.classList.add('btn--red');
+      meetingsResolutionCheckInterval();
     })
     .catch((error) => {
       console.warn('Authentication#register() :: error registering', error);
@@ -367,7 +368,7 @@ meetingsListElm.onclick = (e) => {
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
   }
-  else if (meeting.passwordStatus === 'UNKNOWN') {
+  else if (meeting && meeting.passwordStatus === 'UNKNOWN') {
     meetingsJoinPinElm.disabled = true;
     verifyPasswordElm.disabled = true;
     document.getElementById('btn-join').disabled = true;
@@ -589,6 +590,11 @@ const meetingStreamsLocalShare = document.querySelector('#local-screenshare');
 const meetingStreamsRemoteShare = document.querySelector('#remote-screenshare');
 const layoutWidthInp = document.querySelector('#layout-width');
 const layoutHeightInp = document.querySelector('#layout-height');
+const localResolutionInp = document.getElementById('local-resolution');
+const remoteResolutionInp = document.getElementById('remote-resolution');
+const localVideoResElm = document.getElementById('local-video-resolution');
+const remoteVideoResElm = document.getElementById('remote-video-resolution');
+
 
 const toggleSourcesMediaDirection = document.querySelectorAll('[name=ts-media-direction]');
 const toggleSourcesQualityStatus = document.querySelector('#ts-sending-quality-status');
@@ -658,9 +664,7 @@ function addPlayIfPausedEvents(mediaElements) {
 }
 
 function getCurrentMeeting() {
-  const meetings = webex.meetings.getAllMeetings();
-
-  return meetings[Object.keys(meetings)[0]];
+  return webex?.meetings?.getAllMeetings()[selectedMeetingId];
 }
 
 function lockMeeting() {
@@ -1164,14 +1168,24 @@ async function stopScreenShare() {
   }
 }
 
+function updateLocalVideoStream(localStream) {
+  const [currLocalStream, currLocalShare] = currentMediaStreams;
+  currentMediaStreams = [localStream || currLocalStream, currLocalShare];
+
+  meetingStreamsLocalVideo.srcObject = new MediaStream(localStream.getVideoTracks());
+  meetingStreamsLocalAudio.srcObject = new MediaStream(localStream.getAudioTracks());
+}
+
 function setLocalMeetingQuality() {
   const meeting = getCurrentMeeting();
-  const level = getRadioValue('sendingQuality');
+  const level = localResolutionInp.value;
 
   meeting.setLocalVideoQuality(level)
-    .then(() => {
+    .then((localStream) => {
       toggleSourcesQualityStatus.innerText = `Local meeting quality level set to ${level}!`;
+      updateLocalVideoStream(localStream)
       console.log('MeetingControls#setLocalMeetingQuality() :: Meeting quality level set successfully!');
+      getLocalMediaSettings();
     })
     .catch((error) => {
       toggleSourcesQualityStatus.innerText = 'MeetingControls#setLocalMeetingQuality() :: Error setting quality level!';
@@ -1182,32 +1196,18 @@ function setLocalMeetingQuality() {
 
 function setRemoteMeetingQuality() {
   const meeting = getCurrentMeeting();
-  const level = getRadioValue('sendingQuality');
+  const level = remoteResolutionInp.value;
 
   meeting.setRemoteQualityLevel(level)
     .then(() => {
       toggleSourcesQualityStatus.innerText = `Remote meeting quality level set to ${level}!`;
       console.log('MeetingControls#setRemoteMeetingQuality :: Meeting quality level set successfully!');
+
+      getRemoteMediaSettings();
     })
     .catch((error) => {
       toggleSourcesQualityStatus.innerText = 'MeetingControls#setRemoteMeetingQuality :: Error setting quality level!';
       console.log('MeetingControls#setRemoteMeetingQuality :: Error meeting quality!');
-      console.error(error);
-    });
-}
-
-function setMeetingQuality() {
-  const meeting = getCurrentMeeting();
-  const level = getRadioValue('sendingQuality');
-
-  meeting.setMeetingQuality(level)
-    .then(() => {
-      toggleSourcesQualityStatus.innerText = `Meeting quality level set to ${level}!`;
-      console.log('MeetingControls#setMeetingQuality :: Meeting quality level set successfully!');
-    })
-    .catch((error) => {
-      toggleSourcesQualityStatus.innerText = 'MeetingControls#setMeetingQuality() :: Error setting quality level!';
-      console.log('MeetingControls#setMeetingQuality :: Error meeting quality!');
       console.error(error);
     });
 }
@@ -1239,8 +1239,71 @@ function clearMediaDeviceList() {
   sourceDevicesVideoInput.innerText = '';
 }
 
+function getLocalMediaSettings() {
+  const meeting = getCurrentMeeting();
+  if(meeting && meeting.mediaProperties.videoTrack) {
+    const videoSettings = meeting.mediaProperties.videoTrack.getSettings();
+    const {frameRate, height} = videoSettings;
+    localVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
+  }
+}
+
+function getRemoteMediaSettings() {
+  const meeting = getCurrentMeeting();
+  if(meeting && meeting.mediaProperties.remoteVideoTrack){
+      const videoSettings = meeting.mediaProperties.remoteVideoTrack.getSettings();
+      const {frameRate, height} = videoSettings;
+      remoteVideoResElm.innerText = `${height}p ${Math.round(frameRate)}fps`;
+  }
+}
+
+let resolutionInterval;
+const INTERVAL_TIME = 3000;
+
+function meetingsResolutionCheckInterval() {
+  resolutionInterval = setInterval(() => {
+    getLocalMediaSettings();
+    getRemoteMediaSettings();
+  }, INTERVAL_TIME);
+}
+
+function clearMeetingsResolutionCheckInterval() {
+  localVideoResElm.innerText = '';
+  remoteVideoResElm.innerText = '';
+
+  clearInterval(resolutionInterval);
+}
 
 // Meeting Streams --------------------------------------------------
+
+function addMediaOptionsLocal(elementId) {
+  const mediaOptions = ['360p', '480p', '720p', '1080p'];
+  const element = document.getElementById(elementId);
+  const optionElements = mediaOptions.reduce((acc, resolution) => {
+    acc += `<option value="${resolution}" ${resolution === '720p' && 'selected'}>${resolution}</option>`;
+
+    return acc;
+  }, '');
+
+  element.innerHTML = optionElements;
+}
+
+function addMediaOptionsRemote(elementId) {
+  const mediaOptions = ['LOW', 'MEDIUM', 'HIGH'];
+  const element = document.getElementById(elementId);
+  const optionElements = mediaOptions.reduce((acc, resolution) => {
+    acc += `<option value="${resolution}" ${resolution === 'HIGH' && 'selected'}>${resolution}</option>`;
+
+    return acc;
+  }, '');
+
+  element.innerHTML = optionElements;
+}
+
+(() => {
+  addMediaOptionsLocal('local-resolution');
+  addMediaOptionsRemote('remote-resolution');
+})();
 
 function addMedia() {
   const meeting = getCurrentMeeting();
@@ -1285,6 +1348,8 @@ function addMedia() {
 
   // remove stream if media stopped
   meeting.on('media:stopped', (media) => {
+    clearMeetingsResolutionCheckInterval();
+
     // eslint-disable-next-line default-case
     switch (media.type) {
       case 'remoteVideo':
@@ -1316,7 +1381,7 @@ function changeLayout() {
 
   currentMeeting.changeVideoLayout(layoutVal, {main: {height, width}})
     .then(() => {
-      console.log('Remote Layout changed successfully');
+      console.log('Remote Video Layout changed successfully');
     })
     .catch((err) => {
       console.error(err);

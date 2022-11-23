@@ -1,4 +1,4 @@
-import {hydraTypes} from '@webex/common';
+import { hydraTypes } from '@webex/common';
 
 // *********** LOWERCASE / CAMELCASE STRINGS ************
 
@@ -964,24 +964,16 @@ export const MQA_STATS = {
 export const QUALITY_LEVELS = {
   LOW: 'LOW',
   MEDIUM: 'MEDIUM',
-  HIGH: 'HIGH'
+  HIGH: 'HIGH',
+  '360p': '360p',
+  '480p': '480p',
+  '720p': '720p',
+  '1080p': '1080p',
 };
 
-export const VIDEO_RESOLUTIONS = {
-  [QUALITY_LEVELS.LOW]: {
-    video: {
-      width: {
-        max: 320,
-        ideal: 320
-      },
-      height: {
-        max: 180,
-        ideal: 180
-      }
-    }
-  },
 
-  [QUALITY_LEVELS.MEDIUM]: {
+export const AVALIABLE_RESOLUTIONS = {
+  '360p': {
     video: {
       width: {
         max: 640,
@@ -993,8 +985,19 @@ export const VIDEO_RESOLUTIONS = {
       }
     }
   },
-
-  [QUALITY_LEVELS.HIGH]: {
+  '480p': {
+    video: {
+      width: {
+        max: 640,
+        ideal: 640
+      },
+      height: {
+        max: 480,
+        ideal: 480
+      }
+    }
+  },
+  '720p': {
     video: {
       width: {
         max: 1280,
@@ -1005,19 +1008,42 @@ export const VIDEO_RESOLUTIONS = {
         ideal: 720
       }
     }
+  },
+  '1080p': {
+    video: {
+      width: {
+        max: 1920,
+        ideal: 1920
+      },
+      height: {
+        max: 1080,
+        ideal: 1080
+      }
+    }
   }
+};
+
+export const VIDEO_RESOLUTIONS = {
+  [QUALITY_LEVELS.LOW]: AVALIABLE_RESOLUTIONS['480p'],
+  [QUALITY_LEVELS.MEDIUM]: AVALIABLE_RESOLUTIONS['720p'],
+  [QUALITY_LEVELS.HIGH]: AVALIABLE_RESOLUTIONS['1080p'],
+  [QUALITY_LEVELS['360p']]: AVALIABLE_RESOLUTIONS['360p'],
+  [QUALITY_LEVELS['480p']]: AVALIABLE_RESOLUTIONS['480p'],
+  [QUALITY_LEVELS['720p']]: AVALIABLE_RESOLUTIONS['720p'],
+  [QUALITY_LEVELS['1080p']]: AVALIABLE_RESOLUTIONS['1080p'],
 };
 
 /**
  * Max frame sizes based on h264 configs
  * https://en.wikipedia.org/wiki/Advanced_Video_Coding
  */
-export const MAX_FRAMESIZES = {
-  [QUALITY_LEVELS.LOW]: 1620,
-  [QUALITY_LEVELS.MEDIUM]: 3600,
-  [QUALITY_LEVELS.HIGH]: 8192
+export const REMOTE_VIDEO_CONSTRAINTS = {
+  MAX_FS: {
+    [QUALITY_LEVELS.LOW]: 1620,
+    [QUALITY_LEVELS.MEDIUM]: 3600,
+    [QUALITY_LEVELS.HIGH]: 8192
+  }
 };
-
 
 /*
 *  mqa Interval for sending stats metrics

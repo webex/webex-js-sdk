@@ -43,19 +43,18 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   namespace = LLM;
 
   /**
-     * If the LLM plugin has been registered and listening
-     * @instance
-     * @type {Boolean}
-     * @public
-     */
-  private registered:boolean = false;
+   * If the LLM plugin has been registered and listening
+   * @instance
+   * @type {Boolean}
+   * @public
+   */
+  private registered: boolean = false;
 
-  private webSocketUrl: string;
+  private webSocketUrl?: string;
 
-  private binding: string;
+  private binding?: string;
 
-  private locusUrl: string;
-
+  private locusUrl?: string;
 
   /**
    * Initializes the LLM Plugin
@@ -66,7 +65,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     // eslint-disable-next-line constructor-super
     super(...args);
 
-
     this.registered = false;
   }
 
@@ -75,16 +73,19 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @param {string} llmSocketUrl
    * @returns {Promise<void>}
    */
-  private register = (llmSocketUrl:string):Promise<void> => this.request({
-    method: 'POST',
-    url: llmSocketUrl,
-  }).then((res: { body: { webSocketUrl: string; binding: string; }; }) => {
-    this.webSocketUrl = res.body.webSocketUrl;
-    this.binding = res.body.binding;
-  }).catch((error:any) => {
-    LoggerProxy.logger.error(`Error connecting to websocket: ${error}`);
-    throw error;
-  });
+  private register = (llmSocketUrl: string): Promise<void> =>
+    this.request({
+      method: 'POST',
+      url: llmSocketUrl,
+    })
+      .then((res: {body: {webSocketUrl: string; binding: string}}) => {
+        this.webSocketUrl = res.body.webSocketUrl;
+        this.binding = res.body.binding;
+      })
+      .catch((error: any) => {
+        LoggerProxy.logger.error(`Error connecting to websocket: ${error}`);
+        throw error;
+      });
 
   /**
    * Register and connect to the websocket
@@ -92,36 +93,42 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @param {string} datachannelUrl
    * @returns {Promise<void>}
    */
-  public registerAndConnect = (locusUrl:string, datachannelUrl:string):Promise<void> => this.register(datachannelUrl).then(() => {
-    if (!locusUrl || !datachannelUrl) return undefined;
-    this.locusUrl = locusUrl;
-    this.connect(this.webSocketUrl).then(() => {
-      this.registered = true;
+  public registerAndConnect = (locusUrl: string, datachannelUrl: string): Promise<void> =>
+    this.register(datachannelUrl).then(() => {
+      if (!locusUrl || !datachannelUrl) return undefined;
+      this.locusUrl = locusUrl;
+      this.connect(this.webSocketUrl).then(() => {
+        this.registered = true;
+      });
     });
-  });
 
   /**
    * Tells if LLM socket is connected
    * @returns {boolean} isRegistered
    */
-  public isConnected = ():boolean => this.registered;
+  public isConnected = (): boolean => this.registered;
 
   /**
    * Tells if LLM socket is connected
    * @returns {bool} isRegistered
    */
-  public getBinding = ():string => this.binding;
+  public getBinding = (): string => this.binding;
 
   /**
    * Get Locus URL for the connection
    * @returns {string} locus Url
    */
-  public getLocusUrl = ():string => this.locusUrl;
+  public getLocusUrl = (): string => this.locusUrl;
 
   /**
    * Disconnects websocket connection
    * @returns {Promise<void>}
    */
-  public disconnectLLM = (): Promise<void> => this.disconnect();
+  public disconnectLLM = (): Promise<void> =>
+    this.disconnect().then(() => {
+      this.registered = false;
+      this.locusUrl = undefined;
+      this.binding = undefined;
+      this.webSocketUrl = undefined;
+    });
 }
-
