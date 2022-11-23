@@ -961,6 +961,18 @@ describe('plugin-meetings', () => {
           await meeting.addMedia().catch((err) => {
             assert.exists(err);
             assert.isNull(meeting.statsAnalyzer);
+            assert(Metrics.sendBehavioralMetric.calledOnce);
+            assert.calledWith(
+              Metrics.sendBehavioralMetric,
+              BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
+                correlation_id: meeting.correlationId,
+                locus_id: meeting.locusUrl.split('/').pop(),
+                reason: err.message,
+                stack: err.stack,
+                code: err.code,
+                turnDiscoveryEnabled: true
+              }
+            );
           });
         });
 
@@ -970,6 +982,17 @@ describe('plugin-meetings', () => {
           await meeting.addMedia().catch((err) => {
             assert.exists(err);
             assert.isNull(meeting.mediaProperties.peerConnection);
+            assert(Metrics.sendBehavioralMetric.calledOnce);
+            assert.calledWith(
+              Metrics.sendBehavioralMetric,
+              BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
+                correlation_id: meeting.correlationId,
+                locus_id: meeting.locusUrl.split('/').pop(),
+                reason: err.message,
+                stack: err.stack,
+                turnDiscoveryEnabled: true
+              }
+            );
           });
         });
 

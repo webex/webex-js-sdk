@@ -4266,7 +4266,8 @@ export default class Meeting extends StatelessWebexPlugin {
               correlation_id: this.correlationId,
               locus_id: this.locusUrl.split('/').pop(),
               reason: error.message,
-              stack: error.stack
+              stack: error.stack,
+              turnDiscoveryEnabled: true
             }
           );
 
@@ -4376,7 +4377,8 @@ export default class Meeting extends StatelessWebexPlugin {
                 locus_id: this.locusUrl.split('/').pop(),
                 reason: error.message,
                 stack: error.stack,
-                code: error.code
+                code: error.code,
+                turnDiscoveryEnabled: true
               }
             );
 
