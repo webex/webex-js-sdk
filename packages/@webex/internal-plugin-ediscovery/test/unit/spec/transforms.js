@@ -428,6 +428,9 @@ describe('EDiscovery Transform Tests', () => {
           .then(() => {
             assert.callCount(ctx.webex.internal.encryption.decryptText, object.body.encryptedTextKeyValues.size);
             assert.equal(activity.error, undefined);
+            for (const value of object.body.encryptedTextKeyValues.values()) {
+              assert.equal(value, decryptedText);
+            }
           });
 
         return result;
