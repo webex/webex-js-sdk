@@ -5,7 +5,7 @@ import {Media as WebRTCMedia, MediaConnection as MC} from '@webex/internal-media
 
 import {
   MeetingNotActiveError, createMeetingsError, UserInLobbyError,
-  NoMediaEstablishedYetError, UserNotJoinedError, InvalidSdpError
+  NoMediaEstablishedYetError, UserNotJoinedError
 } from '../common/errors/webex-errors';
 import {StatsAnalyzer, EVENTS as StatsAnalyzerEvents} from '../statsAnalyzer';
 import NetworkQualityMonitor from '../networkQualityMonitor';
@@ -3944,20 +3944,91 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   getDevices = () => Media.getDevices();
 
+  /**
+   * Handles ROAP_FAILURE event from the webrtc media connection
+   *
+   * @param {Error} error
+   * @returns {void}
+   */
+  handleRoapFailure = (error) => {
+    const sendBehavioralMetric = (metricName, error, correlationId) => {
+      const data = {
+        code: error.code,
+        correlation_id: correlationId,
+        reason: error.message,
+        stack: error.stack
+      };
+      const metadata = {
+        type: error.cause?.name || error.name
+      };
+
+      Metrics.sendBehavioralMetric(metricName, data, metadata);
+    };
+
+
+    if (error instanceof MC.Errors.SdpOfferCreationError) {
+      sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.id);
+
+      Metrics.postEvent({
+        event: eventType.LOCAL_SDP_GENERATED,
+        meetingId: this.id,
+        data: {
+          canProceed: false,
+          errors: [
+            Metrics.generateErrorPayload(2001, true, MetricsError.name.MEDIA_ENGINE)]
+        }
+      });
+    }
+    else if ((error instanceof MC.Errors.SdpOfferHandlingError) || (error instanceof MC.Errors.SdpAnswerHandlingError)) {
+      sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.id);
+
+      Metrics.postEvent({
+        event: eventType.REMOTE_SDP_RECEIVED,
+        meetingId: this.id,
+        data: {
+          canProceed: false,
+          errors: [Metrics.generateErrorPayload(2001, true, error.name.MEDIA_ENGINE)]
+        }
+      });
+    }
+    else if (error instanceof MC.Errors.SdpError) { // this covers also the case of MC.Errors.IceGatheringError which extends MC.Errors.SdpError
+      sendBehavioralMetric(BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE, error, this.id);
+
+      Metrics.postEvent({
+        event: eventType.LOCAL_SDP_GENERATED,
+        meetingId: this.id,
+        data: {
+          canProceed: false,
+          errors: [
+            Metrics.generateErrorPayload(2001, true, MetricsError.name.MEDIA_ENGINE)]
+        }
+      });
+    }
+  };
+
   setupMediaConnectionListeners = () => {
     this.mediaProperties.webrtcMediaConnection.on(MC.Event.ROAP_STARTED, () => {
       this.isRoapInProgress = true;
     });
+
     this.mediaProperties.webrtcMediaConnection.on(MC.Event.ROAP_DONE, () => {
       this.mediaNegotiatedEvent();
       this.isRoapInProgress = false;
       this.processNextQueuedMediaUpdate();
     });
+
+    this.mediaProperties.webrtcMediaConnection.on(MC.Event.ROAP_FAILURE, this.handleRoapFailure);
+
     this.mediaProperties.webrtcMediaConnection.on(MC.Event.ROAP_MESSAGE_TO_SEND, (event) => {
       const LOG_HEADER = 'Meeting:index#setupMediaConnectionListeners.ROAP_MESSAGE_TO_SEND -->';
 
       switch (event.roapMessage.messageType) {
         case 'OK':
+          Metrics.postEvent({
+            event: eventType.REMOTE_SDP_RECEIVED,
+            meetingId: this.id,
+          });
+
           logRequest(this.roap.sendRoapOK({
             seq: event.roapMessage.seq,
             mediaId: this.mediaId,
@@ -3970,6 +4041,11 @@ export default class Meeting extends StatelessWebexPlugin {
           break;
 
         case 'OFFER':
+          Metrics.postEvent({
+            event: eventType.LOCAL_SDP_GENERATED,
+            meetingId: this.id,
+          });
+
           logRequest(this.roap
             .sendRoapMediaRequest({
               sdp: event.roapMessage.sdp,
@@ -3985,6 +4061,11 @@ export default class Meeting extends StatelessWebexPlugin {
           break;
 
         case 'ANSWER':
+          Metrics.postEvent({
+            event: eventType.REMOTE_SDP_RECEIVED,
+            meetingId: this.id,
+          });
+
           logRequest(this.roap.sendRoapAnswer({
             sdp: event.roapMessage.sdp,
             seq: event.roapMessage.seq,
@@ -3994,19 +4075,40 @@ export default class Meeting extends StatelessWebexPlugin {
             header: `${LOG_HEADER} Send Roap Answer.`,
             success: `${LOG_HEADER} Successfully send roap answer`,
             failure: `${LOG_HEADER} Error joining the call on send roap answer, `
-          });
+          })
+            .catch((error) => {
+              const metricName = BEHAVIORAL_METRICS.ROAP_ANSWER_FAILURE;
+              const data = {
+                correlation_id: this.correlationId,
+                locus_id: this.locusUrl.split('/').pop(),
+                reason: error.message,
+                stack: error.stack
+              };
+              const metadata = {
+                type: error.name
+              };
+
+              Metrics.sendBehavioralMetric(metricName, data, metadata);
+            });
           break;
 
         case 'ERROR':
+          if (event.roapMessage.errorType === MC.ErrorType.CONFLICT || event.roapMessage.errorType === MC.ErrorType.DOUBLECONFLICT) {
+            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_GLARE_CONDITION, {
+              correlation_id: this.correlationId,
+              locus_id: this.locusUrl.split('/').pop(),
+              sequence: event.roapMessage.seq
+            });
+          }
           logRequest(this.roap.sendRoapError({
             seq: event.roapMessage.seq,
             errorType: event.roapMessage.errorType,
             mediaId: this.mediaId,
             correlationId: this.correlationId
           }), {
-            header: `${LOG_HEADER} Send Roap Answer.`,
-            success: `${LOG_HEADER} Successfully send roap answer`,
-            failure: `${LOG_HEADER} Error joining the call on send roap answer, `
+            header: `${LOG_HEADER} Send Roap Error.`,
+            success: `${LOG_HEADER} Successfully send roap error`,
+            failure: `${LOG_HEADER} Failed to send roap error, `
           });
           break;
 
@@ -4421,10 +4523,7 @@ export default class Meeting extends StatelessWebexPlugin {
               this
             );
 
-            // If addMedia failes for not establishing connection then
-            // leave the meeting with reson connection failed as meeting anyways will end
-            // and cannot be connected unless network condition is checked for firewall
-            if (error.code === InvalidSdpError.CODE) {
+            if (error instanceof MC.Errors.SdpError) {
               this.leave({reason: MEETING_REMOVED_REASON.MEETING_CONNECTION_FAILED});
             }
 
