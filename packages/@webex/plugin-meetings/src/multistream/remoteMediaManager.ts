@@ -434,6 +434,11 @@ export class RemoteMediaManager extends EventsScope {
    * @returns {Promise}
    */
   public async setLayout(layoutId: LayoutId) {
+    if (!(layoutId in this.config.video.layouts)) {
+      throw new Error(
+        `invalid layoutId: "${layoutId}" doesn't match any of the configured layouts`
+      );
+    }
     this.currentLayoutId = layoutId;
     this.currentLayout = cloneDeep(this.config.video.layouts[this.currentLayoutId]);
 

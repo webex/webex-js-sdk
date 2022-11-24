@@ -369,6 +369,10 @@ describe('RemoteMediaManager', () => {
     });
   });
   describe('setLayout', () => {
+    it('rejects if called with invalid layoutId', async () => {
+      await assert.isRejected(remoteMediaManager.setLayout('invalid value'));
+    });
+
     it('allocates more slots when switching to a layout that requires more slots', async () => {
       // start with "Single" layout that needs just 1 video slot
       const config = cloneDeep(DefaultConfiguration);
