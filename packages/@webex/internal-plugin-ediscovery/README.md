@@ -39,7 +39,7 @@ Run the ediscovery from the top level using
 
 > yarn run test --packages @webex/internal-plugin-ediscovery
 
-## Run some unit tests, for exmaple: spaceInfo
+## Run some unit tests, for example: spaceInfo
 
 Run the following command
 

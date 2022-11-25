@@ -435,6 +435,45 @@ describe('EDiscovery Transform Tests', () => {
 
         return result;
       });
+
+      it('Calls the correct decrypt functions when transforming activity.encryptedTextKeyValues and no onBehalfOfUser user is present', () => {
+        contentContainer.onBehalfOfUser = undefined;
+        object.body.verb = 'add';
+        object.body.objectDisplayName = undefined;
+        object.body.encryptedTextKeyValues = new Map();
+        object.body.encryptedTextKeyValues.set('CallingLineId', 'Encrypted Phone Number 1');
+        object.body.encryptedTextKeyValues.set('CallingNumber', 'Encrypted Phone Number 2');
+        object.body.encryptedTextKeyValues.set('RedirectingNumber', 'Encrypted Phone Number 3');
+        const result = Transforms.decryptReportContent(ctx, object, reportId)
+          .then(() => {
+            assert.callCount(ctx.webex.internal.encryption.decryptText, object.body.encryptedTextKeyValues.size);
+            assert.equal(activity.error, undefined);
+            for (const value of object.body.encryptedTextKeyValues.values()) {
+              assert.equal(value, decryptedText);
+            }
+          });
+
+        return result;
+      });
+
+      it('Decrypt function throws an exception when processing activity.encryptedTextKeyValues', () => {
+        ctx.webex.internal.encryption.decryptText = sinon.stub().returns(Promise.reject(new Error('Failed to acquire a key')));
+        object.body.verb = 'add';
+        object.body.objectDisplayName = undefined;
+        object.body.encryptedTextKeyValues = new Map();
+        object.body.encryptedTextKeyValues.set('CallingLineId', 'Encrypted Phone Number 1');
+        object.body.encryptedTextKeyValues.set('CallingNumber', 'Encrypted Phone Number 2');
+        object.body.encryptedTextKeyValues.set('RedirectingNumber', 'Encrypted Phone Number 3');
+        const result = Transforms.decryptReportContent(ctx, object, reportId)
+          .then(() => {
+            assert.fail('Decrypt did not fail as expected');
+          })
+          .catch(() => {
+            assert.isDefined(activity.error);
+          });
+
+        return result;
+      });
     });
   });
 });
