@@ -1,7 +1,7 @@
 import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import RoapUtil from '@webex/plugin-meetings/src/roap/util';
-import PeerConnectionManager from '@webex/plugin-meetings/src/peer-connection-manager/index.js';
+import PeerConnectionManager from '@webex/plugin-meetings/src/peer-connection-manager/index';
 import sinon from 'sinon';
 
 describe('RoapUtil', () => {
