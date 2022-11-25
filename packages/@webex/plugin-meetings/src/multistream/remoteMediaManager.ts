@@ -216,6 +216,8 @@ export interface Events extends EventMap {
 export class RemoteMediaManager extends EventsScope {
   private config: Configuration;
 
+  private started: boolean;
+
   private receiveSlotManager: ReceiveSlotManager;
 
   private mediaRequestManagers: {
@@ -269,6 +271,7 @@ export class RemoteMediaManager extends EventsScope {
     config: Configuration = DefaultConfiguration
   ) {
     super();
+    this.started = false;
     this.config = config;
     this.receiveSlotManager = receiveSlotManager;
     this.mediaRequestManagers = mediaRequestManagers;
@@ -349,6 +352,11 @@ export class RemoteMediaManager extends EventsScope {
    * @returns {Promise}
    */
   public async start() {
+    if (this.started) {
+      throw new Error('start() failure: already started');
+    }
+    this.started = true;
+
     await this.createAudioMedia();
 
     // todo: create screen share audio remote media (SPARK-377812)
@@ -369,6 +377,7 @@ export class RemoteMediaManager extends EventsScope {
 
     // release all audio receive slots
     this.slots.audio.forEach((slot) => this.receiveSlotManager.releaseSlot(slot));
+    this.slots.audio.length = 0;
 
     // todo: screenshare slots... (SPARK-377812)
 
@@ -384,6 +393,7 @@ export class RemoteMediaManager extends EventsScope {
 
     this.currentLayout = undefined;
     this.currentLayoutId = undefined;
+    this.started = false;
   }
 
   /**
@@ -439,11 +449,14 @@ export class RemoteMediaManager extends EventsScope {
         `invalid layoutId: "${layoutId}" doesn't match any of the configured layouts`
       );
     }
+    if (!this.started) {
+      throw new Error('setLayout() called before start()');
+    }
     this.currentLayoutId = layoutId;
     this.currentLayout = cloneDeep(this.config.video.layouts[this.currentLayoutId]);
 
-    await this.updateReceiveSlots();
-    this.updateRemoteMediaObjects();
+    await this.updateVideoReceiveSlots();
+    this.updateVideoRemoteMediaObjects();
     this.emitVideoLayoutChangedEvent();
   }
 
@@ -497,18 +510,21 @@ export class RemoteMediaManager extends EventsScope {
       }
     });
 
-    const isCsiNeededByCurrentLayout = (csi?: CSI) => {
+    const isCsiNeededByCurrentLayout = (csi?: CSI): boolean => {
       if (csi === undefined) {
         return false;
       }
 
-      return requiredCsis[csi];
+      return !!requiredCsis[csi];
     };
 
     // keep receiverSelected slots that match our new requiredCsis, move the rest of receiverSelected slots to unused
-    this.slots.video.unused.push(
-      ...remove(this.slots.video.receiverSelected, (slot) => !isCsiNeededByCurrentLayout(slot.csi))
+    const notNeededReceiverSelectedSlots = remove(
+      this.slots.video.receiverSelected,
+      (slot) => isCsiNeededByCurrentLayout(slot.csi) === false
     );
+
+    this.slots.video.unused.push(...notNeededReceiverSelectedSlots);
   }
 
   /**
@@ -545,7 +561,11 @@ export class RemoteMediaManager extends EventsScope {
         (slot) => slot.csi === memberPane.csi
       );
 
-      if (memberPane.csi !== undefined && existingSlot) {
+      const isExistingSlotAlreadyAllocated = Object.values(
+        this.receiveSlotAllocations.receiverSelected
+      ).includes(existingSlot);
+
+      if (memberPane.csi !== undefined && existingSlot && !isExistingSlotAlreadyAllocated) {
         // found it, so use it
         this.receiveSlotAllocations.receiverSelected[memberPane.id] = existingSlot;
       } else {
@@ -562,11 +582,11 @@ export class RemoteMediaManager extends EventsScope {
 
   /**
    * Makes sure we have the right number of receive slots created for the current layout
-   * and allocates them to the right video pane groups
+   * and allocates them to the right video panes / pane groups
    *
    * @returns {Promise}
    */
-  private async updateReceiveSlots() {
+  private async updateVideoReceiveSlots() {
     const requiredNumSlots = this.getRequiredNumVideoSlotsForLayout(this.currentLayout);
     const totalNumSlots =
       this.slots.video.unused.length +
@@ -593,11 +613,11 @@ export class RemoteMediaManager extends EventsScope {
     this.slots.video.unused.push(...this.slots.video.activeSpeaker);
     this.slots.video.activeSpeaker.length = 0;
 
-    // allocate the slots to the right pane groups
+    // allocate the slots to the right panes / pane groups
     this.allocateSlotsToVideoPaneGroups();
 
     LoggerProxy.logger.log(
-      `RemoteMediaManager#updateReceiveSlots --> receive slots updated: unused=${this.slots.video.unused.length}, activeSpeaker=${this.slots.video.activeSpeaker.length}, receiverSelected=${this.slots.video.receiverSelected.length}`
+      `RemoteMediaManager#updateVideoReceiveSlots --> receive slots updated: unused=${this.slots.video.unused.length}, activeSpeaker=${this.slots.video.activeSpeaker.length}, receiverSelected=${this.slots.video.receiverSelected.length}`
     );
 
     // If this is the initial layout, there may be some "unused" slots left because of the preallocation
@@ -609,7 +629,7 @@ export class RemoteMediaManager extends EventsScope {
    * Creates new RemoteMedia and RemoteMediaGroup objects for the current layout
    * and sends the media requests for all of them.
    */
-  private updateRemoteMediaObjects() {
+  private updateVideoRemoteMediaObjects() {
     // invalidate all the previous remote media objects and cancel their media requests
     this.invalidateCurrentRemoteMedia({audio: false, video: true, commit: false});
 

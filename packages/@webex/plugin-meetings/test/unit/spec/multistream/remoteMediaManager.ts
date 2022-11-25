@@ -4,7 +4,6 @@ import EventEmitter from 'events';
 import {MediaConnection as MC} from '@webex/internal-media-core';
 import {
   Configuration,
-  DefaultConfiguration,
   Event,
   RemoteMediaManager,
   VideoLayoutChangedEventData,
@@ -13,7 +12,8 @@ import {RemoteMediaGroup} from '@webex/plugin-meetings/src/multistream/remoteMed
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {cloneDeep} from 'lodash';
-
+import {MediaRequest} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
+import {CSI, ReceiveSlotId} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import testUtils from '../../../utils/testUtils';
 
 class FakeSlot extends EventEmitter {
@@ -21,12 +21,91 @@ class FakeSlot extends EventEmitter {
 
   public id: string;
 
+  public csi?: number;
+
   constructor(mediaType: MC.MediaType, id: string) {
     super();
     this.mediaType = mediaType;
     this.id = id;
+    // Many of the tests use the same FakeSlot instance for all remote media, so it gets
+    // a lot of listeners registered causing a warning about a potential listener leak.
+    // Calling setMaxListeners() fixes the warning.
+    this.setMaxListeners(50);
   }
 }
+
+const DefaultTestConfiguration: Configuration = {
+  audio: {
+    numOfActiveSpeakerStreams: 3,
+  },
+  video: {
+    preferLiveVideo: true,
+    initialLayoutId: 'AllEqual',
+
+    layouts: {
+      AllEqual: {
+        screenShareVideo: {size: null},
+        activeSpeakerVideoPaneGroups: [
+          {
+            id: 'main',
+            numPanes: 9,
+            size: 'best',
+            priority: 255,
+          },
+        ],
+      },
+      OnePlusFive: {
+        screenShareVideo: {size: null},
+        activeSpeakerVideoPaneGroups: [
+          {
+            id: 'mainBigOne',
+            numPanes: 1,
+            size: 'large',
+            priority: 255,
+          },
+          {
+            id: 'secondarySetOfSmallPanes',
+            numPanes: 5,
+            size: 'very small',
+            priority: 254,
+          },
+        ],
+      },
+      Single: {
+        screenShareVideo: {size: null},
+        activeSpeakerVideoPaneGroups: [
+          {
+            id: 'main',
+            numPanes: 1,
+            size: 'best',
+            priority: 255,
+          },
+        ],
+      },
+      Stage: {
+        screenShareVideo: {size: null},
+        activeSpeakerVideoPaneGroups: [
+          {
+            id: 'thumbnails',
+            numPanes: 6,
+            size: 'thumbnail',
+            priority: 255,
+          },
+        ],
+        memberVideoPanes: [
+          {id: 'stage-1', size: 'medium', csi: undefined},
+          {id: 'stage-2', size: 'medium', csi: undefined},
+          {id: 'stage-3', size: 'medium', csi: undefined},
+          {id: 'stage-4', size: 'medium', csi: undefined},
+        ],
+      },
+    },
+  },
+  screenShare: {
+    audio: true,
+    video: true,
+  },
+};
 
 describe('RemoteMediaManager', () => {
   let remoteMediaManager;
@@ -64,7 +143,11 @@ describe('RemoteMediaManager', () => {
     };
 
     // create remote media manager with default configuration
-    remoteMediaManager = new RemoteMediaManager(fakeReceiveSlotManager, fakeMediaRequestManagers);
+    remoteMediaManager = new RemoteMediaManager(
+      fakeReceiveSlotManager,
+      fakeMediaRequestManagers,
+      DefaultTestConfiguration
+    );
   });
 
   const resetHistory = () => {
@@ -78,131 +161,154 @@ describe('RemoteMediaManager', () => {
     fakeMediaRequestManagers.video.commit.resetHistory();
   };
 
-  it('creates a RemoteMediaGroup for audio correctly', async () => {
-    let createdAudioGroup: RemoteMediaGroup | null = null;
+  describe('start', () => {
+    it('rejects if called twice', async () => {
+      await remoteMediaManager.start();
+      await assert.isRejected(remoteMediaManager.start());
+    });
 
-    // create a config with just audio, no video at all and no screen share
-    const config = {
-      audio: {
-        numOfActiveSpeakerStreams: 5,
-      },
-      video: {
-        preferLiveVideo: false,
-        initialLayoutId: 'empty',
-        layouts: {
-          empty: {
-            screenShareVideo: {
-              size: null,
+    it('can be called again after stop()', async () => {
+      await remoteMediaManager.start();
+      remoteMediaManager.stop();
+
+      fakeReceiveSlotManager.allocateSlot.resetHistory();
+
+      await remoteMediaManager.start();
+
+      // check that the 2nd start() creates slots and media requests and is not a no-op
+      assert.calledWith(fakeReceiveSlotManager.allocateSlot, MC.MediaType.AudioMain);
+      assert.calledWith(fakeReceiveSlotManager.allocateSlot, MC.MediaType.VideoMain);
+
+      assert.called(fakeMediaRequestManagers.audio.addRequest);
+      assert.called(fakeMediaRequestManagers.video.addRequest);
+    });
+
+    it('creates a RemoteMediaGroup for audio correctly', async () => {
+      let createdAudioGroup: RemoteMediaGroup | null = null;
+
+      // create a config with just audio, no video at all and no screen share
+      const config = {
+        audio: {
+          numOfActiveSpeakerStreams: 5,
+        },
+        video: {
+          preferLiveVideo: false,
+          initialLayoutId: 'empty',
+          layouts: {
+            empty: {
+              screenShareVideo: {
+                size: null,
+              },
             },
           },
         },
-      },
-      screenShare: {
-        audio: false,
-        video: false,
-      },
-    };
-
-    remoteMediaManager = new RemoteMediaManager(
-      fakeReceiveSlotManager,
-      fakeMediaRequestManagers,
-      config
-    );
-
-    remoteMediaManager.on(Event.AudioCreated, (audio: RemoteMediaGroup) => {
-      createdAudioGroup = audio;
-    });
-
-    remoteMediaManager.start();
-
-    await testUtils.flushPromises();
-
-    assert.callCount(fakeReceiveSlotManager.allocateSlot, 5);
-    assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MC.MediaType.AudioMain);
-
-    assert.isNotNull(createdAudioGroup);
-    if (createdAudioGroup) {
-      assert.strictEqual(createdAudioGroup.getRemoteMedia().length, 5);
-      assert.isTrue(
-        createdAudioGroup
-          .getRemoteMedia()
-          .every((remoteMedia) => remoteMedia.mediaType === MC.MediaType.AudioMain)
-      );
-      assert.strictEqual(createdAudioGroup.getRemoteMedia('pinned').length, 0);
-    }
-
-    assert.calledOnce(fakeMediaRequestManagers.audio.addRequest);
-    assert.calledWith(
-      fakeMediaRequestManagers.audio.addRequest,
-      sinon.match({
-        policyInfo: sinon.match({
-          policy: 'active-speaker',
-          priority: 255,
-        }),
-        receiveSlots: Array(5).fill(fakeAudioSlot),
-        codecInfo: undefined,
-      })
-    );
-  });
-
-  it('pre-allocates receive slots based on the biggest layout', async () => {
-    const config = cloneDeep(DefaultConfiguration);
-
-    config.audio.numOfActiveSpeakerStreams = 0;
-    config.video.layouts.huge = {
-      screenShareVideo: {
-        size: null,
-      },
-      activeSpeakerVideoPaneGroups: [
-        {
-          id: 'big one',
-          numPanes: 99,
-          size: 'small',
-          priority: 255,
+        screenShare: {
+          audio: false,
+          video: false,
         },
-      ],
-    };
+      };
 
-    remoteMediaManager = new RemoteMediaManager(
-      fakeReceiveSlotManager,
-      fakeMediaRequestManagers,
-      config
-    );
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
 
-    await remoteMediaManager.start();
+      remoteMediaManager.on(Event.AudioCreated, (audio: RemoteMediaGroup) => {
+        createdAudioGroup = audio;
+      });
 
-    // even though our "big one" layout is not the default one, the remote media manager should still
-    // preallocate enough video receive slots for it up front
-    assert.callCount(fakeReceiveSlotManager.allocateSlot, 99);
-    assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MC.MediaType.VideoMain);
-  });
+      remoteMediaManager.start();
 
-  it('starts with the initial layout', async () => {
-    let receivedLayoutInfo: VideoLayoutChangedEventData | null = null;
+      await testUtils.flushPromises();
 
-    remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
-      receivedLayoutInfo = layoutInfo;
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 5);
+      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MC.MediaType.AudioMain);
+
+      assert.isNotNull(createdAudioGroup);
+      if (createdAudioGroup) {
+        assert.strictEqual(createdAudioGroup.getRemoteMedia().length, 5);
+        assert.isTrue(
+          createdAudioGroup
+            .getRemoteMedia()
+            .every((remoteMedia) => remoteMedia.mediaType === MC.MediaType.AudioMain)
+        );
+        assert.strictEqual(createdAudioGroup.getRemoteMedia('pinned').length, 0);
+      }
+
+      assert.calledOnce(fakeMediaRequestManagers.audio.addRequest);
+      assert.calledWith(
+        fakeMediaRequestManagers.audio.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 255,
+          }),
+          receiveSlots: Array(5).fill(fakeAudioSlot),
+          codecInfo: undefined,
+        })
+      );
     });
 
-    // the initial layout is "AllEqual", so we check that it gets selected by default
-    await remoteMediaManager.start();
+    it('pre-allocates receive slots based on the biggest layout', async () => {
+      const config = cloneDeep(DefaultTestConfiguration);
 
-    assert.strictEqual(remoteMediaManager.getLayoutId(), 'AllEqual');
-    assert.isNotNull(receivedLayoutInfo);
-    if (receivedLayoutInfo) {
-      assert.strictEqual(receivedLayoutInfo.layoutId, 'AllEqual');
-      assert.strictEqual(Object.keys(receivedLayoutInfo.memberVideoPanes).length, 0);
-      assert.strictEqual(Object.keys(receivedLayoutInfo.activeSpeakerVideoPanes).length, 1); // this layout has only 1 active speaker group
-      assert.strictEqual(
-        receivedLayoutInfo.activeSpeakerVideoPanes.main.getRemoteMedia().length,
-        9
+      config.audio.numOfActiveSpeakerStreams = 0;
+      config.video.layouts.huge = {
+        screenShareVideo: {
+          size: null,
+        },
+        activeSpeakerVideoPaneGroups: [
+          {
+            id: 'big one',
+            numPanes: 99,
+            size: 'small',
+            priority: 255,
+          },
+        ],
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
       );
-    }
+
+      await remoteMediaManager.start();
+
+      // even though our "big one" layout is not the default one, the remote media manager should still
+      // preallocate enough video receive slots for it up front
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 99);
+      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MC.MediaType.VideoMain);
+    });
+
+    it('starts with the initial layout', async () => {
+      let receivedLayoutInfo: VideoLayoutChangedEventData | null = null;
+
+      remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
+        receivedLayoutInfo = layoutInfo;
+      });
+
+      // the initial layout is "AllEqual", so we check that it gets selected by default
+      await remoteMediaManager.start();
+
+      assert.strictEqual(remoteMediaManager.getLayoutId(), 'AllEqual');
+      assert.isNotNull(receivedLayoutInfo);
+      if (receivedLayoutInfo) {
+        assert.strictEqual(receivedLayoutInfo.layoutId, 'AllEqual');
+        assert.strictEqual(Object.keys(receivedLayoutInfo.memberVideoPanes).length, 0);
+        assert.strictEqual(Object.keys(receivedLayoutInfo.activeSpeakerVideoPanes).length, 1); // this layout has only 1 active speaker group
+        assert.strictEqual(
+          receivedLayoutInfo.activeSpeakerVideoPanes.main.getRemoteMedia().length,
+          9
+        );
+      }
+    });
   });
 
   describe('constructor', () => {
     it('throws if the initial layout in the config is invalid', () => {
-      const config = cloneDeep(DefaultConfiguration);
+      const config = cloneDeep(DefaultTestConfiguration);
 
       config.video.initialLayoutId = 'invalid';
 
@@ -216,7 +322,7 @@ describe('RemoteMediaManager', () => {
     });
 
     it('throws if there are duplicate active speaker video pane groups', () => {
-      const config = cloneDeep(DefaultConfiguration);
+      const config = cloneDeep(DefaultTestConfiguration);
 
       config.video.layouts.test = {
         screenShareVideo: {size: null},
@@ -252,7 +358,7 @@ describe('RemoteMediaManager', () => {
     });
 
     it('throws if there are active speaker video pane groups with duplicate priority', () => {
-      const config = cloneDeep(DefaultConfiguration);
+      const config = cloneDeep(DefaultTestConfiguration);
 
       config.video.layouts.test = {
         screenShareVideo: {size: null},
@@ -288,7 +394,7 @@ describe('RemoteMediaManager', () => {
     });
 
     it('throws if there are duplicate member video panes', () => {
-      const config = cloneDeep(DefaultConfiguration);
+      const config = cloneDeep(DefaultTestConfiguration);
 
       config.video.layouts.test = {
         screenShareVideo: {size: null},
@@ -317,7 +423,7 @@ describe('RemoteMediaManager', () => {
       const memberVideoPaneStopStubs: any[] = [];
 
       // change the initial layout to one that has both active speakers and receveiver selected videos
-      const config = cloneDeep(DefaultConfiguration);
+      const config = cloneDeep(DefaultTestConfiguration);
 
       config.video.initialLayoutId = 'Stage';
 
@@ -367,15 +473,27 @@ describe('RemoteMediaManager', () => {
       });
       assert.calledOnce(fakeMediaRequestManagers.video.commit);
     });
+
+    it('can be called multiple times', async () => {
+      await remoteMediaManager.start();
+
+      // just checking that nothing crashes etc.
+      remoteMediaManager.stop();
+      remoteMediaManager.stop();
+    });
   });
   describe('setLayout', () => {
     it('rejects if called with invalid layoutId', async () => {
       await assert.isRejected(remoteMediaManager.setLayout('invalid value'));
     });
 
+    it('rejects if called before calling start()', async () => {
+      await assert.isRejected(remoteMediaManager.setLayout('Stage'));
+    });
+
     it('allocates more slots when switching to a layout that requires more slots', async () => {
       // start with "Single" layout that needs just 1 video slot
-      const config = cloneDeep(DefaultConfiguration);
+      const config = cloneDeep(DefaultTestConfiguration);
 
       config.video.initialLayoutId = 'Single';
 
@@ -396,9 +514,9 @@ describe('RemoteMediaManager', () => {
       assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MC.MediaType.VideoMain);
     });
 
-    it('releases slots when switching to layout that requires less slots', async () => {
+    it('releases slots when switching to layout that requires less active speaker slots', async () => {
       // start with "AllEqual" layout that needs just 9 video slots
-      const config = cloneDeep(DefaultConfiguration);
+      const config = cloneDeep(DefaultTestConfiguration);
 
       config.video.initialLayoutId = 'AllEqual';
 
@@ -424,9 +542,179 @@ describe('RemoteMediaManager', () => {
       });
     });
 
+    describe('switching between different receiver selected layouts', () => {
+      let fakeSlots: {[key: ReceiveSlotId]: FakeSlot};
+      let slotCounter: number;
+
+      type Csi2SlotsMapping = {[key: CSI]: Array<ReceiveSlotId>};
+      // in these mappings: key is the CSI and value is an array of slot ids
+      // of slots that were used in media requests for that CSI
+      let csi2slotMappingBeforeLayoutChange: Csi2SlotsMapping;
+      let csi2slotMappingAfterLayoutChange: Csi2SlotsMapping;
+      let csi2slotMapping: Csi2SlotsMapping;
+
+      beforeEach(() => {
+        // setup the mocks so that we can keep track of all the slots and their CSIs
+        fakeSlots = {};
+        slotCounter = 0;
+
+        fakeReceiveSlotManager.allocateSlot.callsFake(() => {
+          slotCounter += 1;
+          const newSlotId = `fake video slot ${slotCounter}`;
+
+          fakeSlots[newSlotId] = new FakeSlot(MC.MediaType.VideoMain, newSlotId);
+          return fakeSlots[newSlotId];
+        });
+
+        csi2slotMappingBeforeLayoutChange = {};
+        csi2slotMappingAfterLayoutChange = {};
+
+        csi2slotMapping = csi2slotMappingBeforeLayoutChange;
+
+        fakeMediaRequestManagers.video.addRequest.callsFake((mediaRequest: MediaRequest) => {
+          if (mediaRequest.policyInfo.policy === 'receiver-selected') {
+            const slot = mediaRequest.receiveSlots[0] as unknown as FakeSlot;
+            const csi = mediaRequest.policyInfo.csi;
+
+            slot.csi = csi;
+            if (csi2slotMapping[csi]) {
+              csi2slotMapping[csi].push(slot.id);
+            } else {
+              csi2slotMapping[csi] = [slot.id];
+            }
+
+            return slot.id;
+          }
+        });
+      });
+
+      it('releases slots when switching to layout that requires less receiver selected slots', async () => {
+        const config = cloneDeep(DefaultTestConfiguration);
+
+        // This test starts with a layout that has 5 receiver selected video slots
+        // and switches to a different layout that has fewer slots, but 2 of them match CSIs
+        // from the initial layout. We want to verify that these 2 slots get re-used correctly.
+        config.audio.numOfActiveSpeakerStreams = 0;
+        config.screenShare.audio = false;
+        config.screenShare.video = false;
+        config.video.initialLayoutId = 'biggerLayout';
+        config.video.layouts['biggerLayout'] = {
+          screenShareVideo: {size: null},
+          memberVideoPanes: [
+            {id: '1', size: 'best', csi: 100},
+            {id: '2', size: 'best', csi: 200},
+            {id: '3', size: 'best', csi: 300},
+            {id: '4', size: 'best', csi: 400},
+            {id: '5', size: 'best', csi: 500},
+          ],
+        };
+        config.video.layouts['smallerLayout'] = {
+          screenShareVideo: {size: null},
+          memberVideoPanes: [
+            {id: '1', size: 'medium', csi: 200}, // this csi matches pane '2' from biggerLayout
+            {id: '2', size: 'medium', csi: 123},
+            {id: '3', size: 'medium', csi: 400}, // this csi matches pane '4' from biggerLayout
+          ],
+        };
+
+        remoteMediaManager = new RemoteMediaManager(
+          fakeReceiveSlotManager,
+          fakeMediaRequestManagers,
+          config
+        );
+
+        await remoteMediaManager.start();
+
+        resetHistory();
+
+        // switch the mock to now use csi2slotMappingAfterLayoutChange as we're about to change the layout
+        csi2slotMapping = csi2slotMappingAfterLayoutChange;
+
+        // switch to "smallerLayout" layout that requires 2 less video slots and has 2 receive selected slots with same CSIs
+        await remoteMediaManager.setLayout('smallerLayout');
+
+        // verify that 2 main video slots were released
+        assert.callCount(fakeReceiveSlotManager.releaseSlot, 2);
+
+        // verify that each CSI has 1 slot assigned
+        assert.equal(Object.keys(csi2slotMappingAfterLayoutChange).length, 3);
+        assert.equal(csi2slotMappingAfterLayoutChange[200].length, 1);
+        assert.equal(csi2slotMappingAfterLayoutChange[123].length, 1);
+        assert.equal(csi2slotMappingAfterLayoutChange[400].length, 1);
+
+        // verify that the slots have been re-used for csi 200 and 400
+        assert.equal(
+          csi2slotMappingBeforeLayoutChange[200][0],
+          csi2slotMappingAfterLayoutChange[200][0]
+        );
+        assert.equal(
+          csi2slotMappingBeforeLayoutChange[400][0],
+          csi2slotMappingAfterLayoutChange[400][0]
+        );
+      });
+
+      it('correctly handles a change to a layout that has member video panes with duplicate CSIs', async () => {
+        const config = cloneDeep(DefaultTestConfiguration);
+
+        // This test starts with a layout that has video slot with a specific CSI
+        // and switches to a different layout that 2 panes with that same CSI.
+        // We want to verify that the slot gets reused, but also that a 2nd slot is allocated.
+        config.audio.numOfActiveSpeakerStreams = 0;
+        config.screenShare.audio = false;
+        config.screenShare.video = false;
+        config.video.initialLayoutId = 'initialEmptyLayout';
+        config.video.layouts['initialEmptyLayout'] = {
+          screenShareVideo: {size: null},
+          memberVideoPanes: [{id: '2', size: 'medium', csi: 456}],
+        };
+        config.video.layouts['layoutWithDuplicateCSIs'] = {
+          screenShareVideo: {size: null},
+          memberVideoPanes: [
+            {id: '1', size: 'medium', csi: 123},
+            {id: '2', size: 'medium', csi: 456},
+            {id: '3', size: 'medium', csi: 456}, // duplicate CSI and also matching one of CSIs from previous layout
+            {id: '4', size: 'medium', csi: 789},
+          ],
+        };
+
+        remoteMediaManager = new RemoteMediaManager(
+          fakeReceiveSlotManager,
+          fakeMediaRequestManagers,
+          config
+        );
+
+        await remoteMediaManager.start();
+
+        resetHistory();
+
+        // switch the mock to now use csi2slotMappingAfterLayoutChange as we're about to change the layout
+        csi2slotMapping = csi2slotMappingAfterLayoutChange;
+
+        // switch to "smallerLayout" layout that requires 2 less video slots and has 2 receive selected slots with same CSIs
+        await remoteMediaManager.setLayout('layoutWithDuplicateCSIs');
+
+        // verify that the 2 member panes with duplicate CSI value of 456 have 2 separate receive slots allocated
+        assert.equal(csi2slotMappingAfterLayoutChange[456].length, 2);
+        assert.notEqual(
+          csi2slotMappingAfterLayoutChange[456][0],
+          csi2slotMappingAfterLayoutChange[456][1]
+        );
+
+        // and that one of them is the same re-used slot from previous layout
+        assert.isTrue(
+          csi2slotMappingBeforeLayoutChange[456][0] === csi2slotMappingAfterLayoutChange[456][0] ||
+            csi2slotMappingBeforeLayoutChange[456][0] === csi2slotMappingAfterLayoutChange[456][1]
+        );
+
+        // and the other panes have 1 slot each
+        assert.equal(csi2slotMappingAfterLayoutChange[123].length, 1);
+        assert.equal(csi2slotMappingAfterLayoutChange[789].length, 1);
+      });
+    });
+
     describe('media requests', () => {
       it('sends correct media requests when switching to a layout with receiver selected slots', async () => {
-        const config = cloneDeep(DefaultConfiguration);
+        const config = cloneDeep(DefaultTestConfiguration);
 
         config.video.layouts.Stage.memberVideoPanes = [
           {id: 'stage-1', size: 'medium', csi: 11111},
@@ -495,7 +783,7 @@ describe('RemoteMediaManager', () => {
 
       it('sends correct media requests when switching to a layout with multiple active-speaker groups', async () => {
         // start with "AllEqual" layout that needs just 9 video slots
-        const config = cloneDeep(DefaultConfiguration);
+        const config = cloneDeep(DefaultTestConfiguration);
 
         config.video.initialLayoutId = 'AllEqual';
 
@@ -797,6 +1085,7 @@ describe('RemoteMediaManager', () => {
       );
     });
     it('works as expected when called without a CSI value', async () => {
+      await remoteMediaManager.start();
       await remoteMediaManager.setLayout('Stage');
 
       resetHistory();
