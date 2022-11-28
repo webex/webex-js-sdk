@@ -69,6 +69,16 @@ describe('plugin-voicea', () => {
           trackingId: sinon.match.string,
         });
       });
+
+      it('listens to events once', () => {
+        assert.equal(voiceaService.hasSubscribedToEvents, false);
+        voiceaService.sendAnnouncement();
+        assert.equal(voiceaService.hasSubscribedToEvents, true);
+        const spy = sinon.spy(voiceaService, 'listenToEvents');
+
+        voiceaService.sendAnnouncement();
+        assert.notCalled(spy);
+      });
     });
 
     describe('#deregisterEvents', () => {
