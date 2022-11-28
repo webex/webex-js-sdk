@@ -1704,7 +1704,7 @@ function inviteMember(addButton) {
 
 function admitMember(admitButton) {
   const meeting = getCurrentMeeting();
-  const participantID = admitButton.value;
+  const participantID = getRadioValue('participant-select');
 
   if (meeting) {
     meeting.admit([participantID]).then((res) => {

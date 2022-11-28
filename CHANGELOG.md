@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.33.1](https://github.com/webex/webex-js-sdk/compare/v2.33.0...v2.33.1) (2022-11-28)
+
+
+### Bug Fixes
+
+* **samples:** fix admit button functionality ([#2518](https://github.com/webex/webex-js-sdk/issues/2518)) ([52ae61e](https://github.com/webex/webex-js-sdk/commit/52ae61eb1d84ace64032c69c320a2094e0042d28))
+
 ## [2.33.0](https://github.com/webex/webex-js-sdk/compare/v2.32.0...v2.33.0) (2022-11-23)
 
 
