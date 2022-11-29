@@ -4660,6 +4660,7 @@ __metadata:
     lodash: "npm:^4.17.21"
     sdp-transform: "npm:^2.12.0"
     sinon: "npm:^9.2.4"
+    typed-emitter: "npm:^2.1.0"
     uuid: "npm:^3.3.2"
     webrtc-adapter: "npm:^7.7.0"
   languageName: unknown

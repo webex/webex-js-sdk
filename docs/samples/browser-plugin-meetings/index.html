@@ -11,6 +11,37 @@
 
 <body>
   <div class="container">
+    <section id="multistream-remote-streams" class="section-box section-wide">
+      <h2 class="collapsible">Multistream Media</h2>
+      <div class="section-content">
+        <fieldset>
+          <legend>Multistream Remote Videos</legend>
+          <audio id="multistream-remote-audio-0" class="multistream-remote-audio" autoplay ></audio>
+          <audio id="multistream-remote-audio-1" class="multistream-remote-audio" autoplay ></audio>
+          <audio id="multistream-remote-audio-2" class="multistream-remote-audio" autoplay ></audio>
+          <div id="multistream-videos-container" class="multistream-videos-container">
+          </div>
+          <div class="multistream-buttons"">
+            <div class="stage-control-wrapper">
+              <span>Choose Layout:</span>
+              <select name="multistream-layout" id="multistream-layout" disabled onchange="updateMultistreamVideoLayout()">
+                <option value="AllEqual">All Equal (max 9)</option>
+                <option value="OnePlusFive">One big plane + five small</option>
+                <option value="Single">Single video pane</option>
+                <option value="Stage">Stage with thumbnails</option>
+                <option value="ScreenShareView">Screen share with thumbnails</option>
+              </select>
+            </div>
+            <div id="stage-selector-wrapper" class="stage-control-wrapper hidden">
+              <select name="multistream-stage-selector" id="multistream-stage-selector"></select>
+              <button id="add-to-stage" type="submit" onclick="addToStage()">Add to stage</button>
+            </div>
+          </div>
+        </fieldset>
+      </div>
+    </section>
+  </div>
+  <div class="container">
     <div id="docs-content" class="column">
       <section id="meetingAuthentication" class="section-box">
         <h2 class="collapsible">Meeting Management</h2>
@@ -244,7 +275,7 @@
                 <input id="meetings-join-pin" name="meetingPin" placeholder="Password/PIN" value="" type="text">
                 <div>
                   <img id="meetings-join-captcha" src="" alt="captcha" style="width: 150px; height: 70px;" hidden>
-              
+
                   <!-- refresh icon -->
                   <span id="meetings-join-captcha-refresh" type="button" onclick="refreshCaptcha()" hidden>
                     <i class="fa fa-refresh"></i>
@@ -261,6 +292,8 @@
 
               <div>
                 <p class="note">NOTE: Choose your sending and receiving options for the meeting.</p>
+                <input id="meetings-join-multistream" type="checkbox" onclick="updateMultistreamUI()">
+                <label for="meetings-join-multistream">Use a multistream connection</label>
                 <div class="u-mv">
                   <label>
                     <input type="checkbox" name="ts-media-direction" value="receiveAudio" checked="">receiveAudio
@@ -479,13 +512,13 @@
               </div>
             </div>
 
-            <div>
+            <div id="remote-transcoded-video-wrapper">
               <fieldset>
                 <legend>Remote Video</legend>
                 <video id="remote-video" autoplay playsinline></video>
                 <audio id="remote-audio" autoplay></audio>
 
-                <fieldset>
+                <fieldset id="transcoded-video-resolution">
                   <legend>Set Resolution (Experimental)</legend>
                   <select name="layout" id="layout-type">
                     <option value="Single">Single</option>
@@ -518,7 +551,7 @@
               </div>
             </div>
 
-            <div class="u-mt">
+            <div class="u-mt" id="remote-transcoded-screenshare-wrapper">
               <fieldset>
                 <legend>Remote Screenshare</legend>
                 <video id="remote-screenshare" autoplay playsinline></video>
@@ -533,6 +566,7 @@
                 <div id="participant-table"></div>
                 <div id="participant-btn"></div>
               </div>
+              <p class="note multistream" id="remote-sources-info"></p>
             </fieldset>
           </div>
           <!-- meetings / events published -->

@@ -127,6 +127,7 @@ Media.getLocalMedia = (options, config) => {
  * @returns {MC.RoapMediaConnection}
  */
 Media.createMediaConnection = (mediaProperties, {
+  isMultistream,
   // meetingId, // todo: use this unused param - it used to be used for sending metrics (check if we're sending all the right metrics now)
   remoteQualityLevel,
   enableRtx,
@@ -150,7 +151,13 @@ Media.createMediaConnection = (mediaProperties, {
     });
   }
 
-  const mc = new MC.RoapMediaConnection({
+  if (isMultistream) {
+    return new MC.MultistreamRoapMediaConnection({
+      iceServers,
+    }, 'mc');
+  }
+
+  return new MC.RoapMediaConnection({
     iceServers,
     skipInactiveTransceivers: false,
     requireH264: true,
@@ -179,8 +186,6 @@ Media.createMediaConnection = (mediaProperties, {
       remoteQualityLevel
     }
   }, 'mc');
-
-  return mc;
 };
 
 

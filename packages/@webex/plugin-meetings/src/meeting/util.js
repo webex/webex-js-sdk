@@ -58,7 +58,8 @@ MeetingUtil.remoteUpdateAudioVideo = (audioMuted, videoMuted, meeting) => {
     selfId: meeting.selfId,
     localMedias,
     deviceUrl: meeting.deviceUrl,
-    correlationId: meeting.correlationId
+    correlationId: meeting.correlationId,
+    preferTranscoding: !meeting.isMultistream,
   }).then((response) => {
     Metrics.postEvent({event: eventType.MEDIA_RESPONSE, meeting});
 
@@ -95,7 +96,7 @@ MeetingUtil.joinMeeting = (meeting, options) => {
       moderator: options.moderator,
       pin: options.pin,
       moveToResource: options.moveToResource,
-      preferTranscoding: options.preferTranscoding,
+      preferTranscoding: !meeting.isMultistream,
       asResourceOccupant: options.asResourceOccupant
     })
     .then((res) => {

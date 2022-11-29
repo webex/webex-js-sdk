@@ -499,6 +499,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {String} options.deviceUrl Url of a device
    * @param {String} options.resourceId Populated if you are paired to a device
    * @param {String} options.localMedias local sdps
+   * @param {Boolean} options.preferTranscoding false for multistream (Homer), true for transcoded media (Edonus)
    * @returns {Promise}
    */
   remoteAudioVideoToggle(options) {
