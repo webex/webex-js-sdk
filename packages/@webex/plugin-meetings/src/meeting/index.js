@@ -4184,6 +4184,9 @@ export default class Meeting extends StatelessWebexPlugin {
   addMedia(options = {}) {
     const LOG_HEADER = 'Meeting:index#addMedia -->';
 
+    let turnDiscoverySkippedReason;
+    let turnServerUsed = false;
+
     if (this.meetingState !== FULL_STATE.ACTIVE) {
       return Promise.reject(new MeetingNotActiveError());
     }
@@ -4225,7 +4228,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return MeetingUtil.validateOptions(options)
       .then(() => this.roap.doTurnDiscovery(this, false))
-      .then((turnServerInfo) => {
+      .then((turnDiscoveryObject) => {
+        ({turnDiscoverySkippedReason} = turnDiscoveryObject);
+        turnServerUsed = !turnDiscoverySkippedReason;
+
+        const {turnServerInfo} = turnDiscoveryObject;
+
         this.mediaProperties.setMediaPeerConnection(MediaUtil.createPeerConnection(turnServerInfo));
         this.setMercuryListener();
         PeerConnectionManager.setPeerConnectionEvents(this);
@@ -4260,6 +4268,8 @@ export default class Meeting extends StatelessWebexPlugin {
         .catch((error) => {
           LoggerProxy.logger.error(`${LOG_HEADER} Error adding media , setting up peerconnection, `, error);
 
+          console.log(error);
+
           Metrics.sendBehavioralMetric(
             BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
             {
@@ -4267,7 +4277,8 @@ export default class Meeting extends StatelessWebexPlugin {
               locus_id: this.locusUrl.split('/').pop(),
               reason: error.message,
               stack: error.stack,
-              turnDiscoveryEnabled: true
+              turnDiscoverySkippedReason,
+              turnServerUsed
             }
           );
 
@@ -4357,6 +4368,7 @@ export default class Meeting extends StatelessWebexPlugin {
         }))
       .catch((error) => {
         // Clean up stats analyzer, peer connection, and turn off listeners
+        console.log(error);
         const stopStatsAnalyzer = (this.statsAnalyzer) ? this.statsAnalyzer.stopAnalyzer() : Promise.resolve();
 
         stopStatsAnalyzer
@@ -4378,7 +4390,8 @@ export default class Meeting extends StatelessWebexPlugin {
                 reason: error.message,
                 stack: error.stack,
                 code: error.code,
-                turnDiscoveryEnabled: true
+                turnDiscoverySkippedReason,
+                turnServerUsed
               }
             );
 

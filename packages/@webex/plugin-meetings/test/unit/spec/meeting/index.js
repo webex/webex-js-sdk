@@ -920,7 +920,7 @@ describe('plugin-meetings', () => {
             meeting.mediaProperties.peerConnection.connectionState = CONSTANTS.CONNECTION_STATE.CONNECTED;
             resolve();
           }));
-          meeting.roap.doTurnDiscovery = sinon.stub().resolves();
+          meeting.roap.doTurnDiscovery = sinon.stub().resolves({turnServeInfo: {}, turnDiscoverySkippedReason: undefined});
           PeerConnectionManager.setContentSlides = sinon.stub().returns(true);
         });
 
@@ -970,7 +970,8 @@ describe('plugin-meetings', () => {
                 reason: err.message,
                 stack: err.stack,
                 code: err.code,
-                turnDiscoveryEnabled: true
+                turnDiscoverySkippedReason: undefined,
+                turnServerUsed: true
               }
             );
           });
@@ -990,7 +991,8 @@ describe('plugin-meetings', () => {
                 locus_id: meeting.locusUrl.split('/').pop(),
                 reason: err.message,
                 stack: err.stack,
-                turnDiscoveryEnabled: true
+                turnDiscoverySkippedReason: undefined,
+                turnServerUsed: true
               }
             );
           });
@@ -1088,10 +1090,14 @@ describe('plugin-meetings', () => {
           meeting.meetingState = 'ACTIVE';
           MediaUtil.createPeerConnection.resetHistory();
 
+
           meeting.roap.doTurnDiscovery = sinon.stub().resolves({
-            url: FAKE_TURN_URL,
-            username: FAKE_TURN_USER,
-            password: FAKE_TURN_PASSWORD
+            turnServerInfo: {
+              url: FAKE_TURN_URL,
+              username: FAKE_TURN_USER,
+              password: FAKE_TURN_PASSWORD
+            },
+            turnServerSkippedReason: undefined
           });
           const media = meeting.addMedia({
             mediaSettings: {}
