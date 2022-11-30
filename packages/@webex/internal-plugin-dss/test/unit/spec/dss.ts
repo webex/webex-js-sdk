@@ -2,11 +2,10 @@
  * Copyright (c) 2015-2022 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {assert} from '@webex/test-helper-chai';
+import {assert, expect} from '@webex/test-helper-chai';
 import DSS from '@webex/internal-plugin-dss';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import {expect} from 'chai';
 import {set} from 'lodash';
 import uuid from 'uuid';
 
@@ -96,19 +95,29 @@ describe('plugin-dss', () => {
       });
     });
 
-    const createData = (requestId, sequence, finished, dataPath) => {
+    const createData = (requestId, sequence, finished, dataPath, results, extraReturnData = {}) => {
       const data = {
         requestId,
         sequence,
+        ...extraReturnData,
       };
       if (finished) {
         (data as any).finished = finished;
       }
-      set(data, dataPath, [`data${sequence}`]);
+      set(data, dataPath, results);
       return {data};
     };
 
-    const testRequest = async ({method, resource, params, bodyParams, dataPath, event}) => {
+    const testRequest = async ({
+      method,
+      resource,
+      params,
+      bodyParams,
+      dataPath,
+      event,
+      numResults,
+      extraReturnData = {},
+    }) => {
       webex.request = sinon.stub();
 
       await webex.internal.dss.register();
@@ -116,6 +125,8 @@ describe('plugin-dss', () => {
       const promise = webex.internal.dss[method](params);
 
       const requestId = 'randomid';
+
+      let result;
 
       expect(webex.request.getCall(0).args).to.deep.equal([
         {
@@ -130,18 +141,45 @@ describe('plugin-dss', () => {
         },
       ]);
 
-      mercuryCallbacks[event](createData(requestId, 1, false, dataPath));
-      mercuryCallbacks[event](createData(requestId, 2, true, dataPath));
-      mercuryCallbacks[event](createData(requestId, 0, false, dataPath));
+      switch (numResults) {
+        case 3:
+          mercuryCallbacks[event](createData(requestId, 1, false, dataPath, ['data1']));
+          mercuryCallbacks[event](
+            createData(requestId, 2, true, dataPath, ['data2'], extraReturnData)
+          );
+          mercuryCallbacks[event](createData(requestId, 0, false, dataPath, ['data0']));
 
-      const result = await promise;
-      expect(result).to.deep.equal(['data0', 'data1', 'data2']);
+          result = await promise;
+          expect(result).to.deep.equal(['data0', 'data1', 'data2']);
+          break;
+        case 1:
+          mercuryCallbacks[event](
+            createData(requestId, 0, true, dataPath, ['data0'], extraReturnData)
+          );
+
+          result = await promise;
+          expect(result).to.deep.equal('data0');
+          break;
+        case 0:
+          mercuryCallbacks[event](createData(requestId, 0, true, dataPath, [], extraReturnData));
+
+          result = await promise;
+          expect(result).to.be.rejectedWith(Error, 'something');
+          break;
+        default:
+          throw new Error('numResults invalid');
+      }
     };
 
     describe('#lookupDetail', () => {
       it('calls _request correctly', async () => {
         webex.internal.device.orgId = 'userOrgId';
-        webex.internal.dss._request = sinon.stub().returns(Promise.resolve('some return value'));
+        webex.internal.dss._request = sinon.stub().returns(
+          Promise.resolve({
+            resultArray: ['some return value'],
+            data: {entitiesFound: ['test id']},
+          })
+        );
 
         const result = await webex.internal.dss.lookupDetail({id: 'test id'});
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
@@ -163,6 +201,10 @@ describe('plugin-dss', () => {
             id: 'test id',
           },
           bodyParams: {},
+          numResults: 1,
+          extraReturnData: {
+            entitiesFound: ['test id'],
+          },
         });
       });
     });
@@ -170,15 +212,20 @@ describe('plugin-dss', () => {
     describe('#lookup', () => {
       it('calls _request correctly', async () => {
         webex.internal.device.orgId = 'userOrgId';
-        webex.internal.dss._request = sinon.stub().returns(Promise.resolve('some return value'));
+        webex.internal.dss._request = sinon.stub().returns(
+          Promise.resolve({
+            resultArray: ['some return value'],
+            data: {entitiesFound: ['id1']},
+          })
+        );
 
-        const result = await webex.internal.dss.lookup({ids: ['id1', 'id2']});
+        const result = await webex.internal.dss.lookup({id: 'id1', shouldBatch: false});
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {
             dataPath: 'lookupResult.entities',
             resource: '/lookup/orgid/userOrgId/identities',
             params: {
-              lookupValues: ['id1', 'id2'],
+              lookupValues: ['id1'],
             },
           },
         ]);
@@ -187,18 +234,24 @@ describe('plugin-dss', () => {
 
       it('calls _request correctly with entityProviderType', async () => {
         webex.internal.device.orgId = 'userOrgId';
-        webex.internal.dss._request = sinon.stub().returns(Promise.resolve('some return value'));
+        webex.internal.dss._request = sinon.stub().returns(
+          Promise.resolve({
+            resultArray: ['some return value'],
+            data: {entitiesFound: ['id1']},
+          })
+        );
 
         const result = await webex.internal.dss.lookup({
-          ids: ['id1', 'id2'],
+          id: 'id1',
           entityProviderType: 'CI_USER',
+          shouldBatch: false,
         });
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {
             dataPath: 'lookupResult.entities',
             resource: '/lookup/orgid/userOrgId/entityprovidertype/CI_USER',
             params: {
-              lookupValues: ['id1', 'id2'],
+              lookupValues: ['id1'],
             },
           },
         ]);
@@ -212,10 +265,15 @@ describe('plugin-dss', () => {
           event: 'event:directory.lookup',
           resource: '/lookup/orgid/userOrgId/identities',
           params: {
-            ids: ['id1', 'id2'],
+            id: 'id1',
+            shouldBatch: false,
           },
           bodyParams: {
-            lookupValues: ['id1', 'id2'],
+            lookupValues: ['id1'],
+          },
+          numResults: 1,
+          extraReturnData: {
+            entitiesFound: ['id1'],
           },
         });
       });
@@ -224,17 +282,22 @@ describe('plugin-dss', () => {
     describe('#lookupByEmail', () => {
       it('calls _request correctly', async () => {
         webex.internal.device.orgId = 'userOrgId';
-        webex.internal.dss._request = sinon.stub().returns(Promise.resolve('some return value'));
+        webex.internal.dss._request = sinon.stub().returns(
+          Promise.resolve({
+            resultArray: ['some return value'],
+            data: {entitiesFound: ['email1']},
+          })
+        );
 
         const result = await webex.internal.dss.lookupByEmail({
-          emails: ['email1', 'email2'],
+          email: 'email1',
         });
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {
             dataPath: 'lookupResult.entities',
             resource: '/lookup/orgid/userOrgId/emails',
             params: {
-              lookupValues: ['email1', 'email2'],
+              lookupValues: ['email1'],
             },
           },
         ]);
@@ -248,10 +311,14 @@ describe('plugin-dss', () => {
           event: 'event:directory.lookup',
           resource: '/lookup/orgid/userOrgId/emails',
           params: {
-            emails: ['email1', 'email2'],
+            email: 'email1',
           },
           bodyParams: {
-            lookupValues: ['email1', 'email2'],
+            lookupValues: ['email1'],
+          },
+          numResults: 1,
+          extraReturnData: {
+            entitiesFound: ['email1'],
           },
         });
       });
@@ -260,7 +327,9 @@ describe('plugin-dss', () => {
     describe('#search', () => {
       it('calls _request correctly', async () => {
         webex.internal.device.orgId = 'userOrgId';
-        webex.internal.dss._request = sinon.stub().returns(Promise.resolve('some return value'));
+        webex.internal.dss._request = sinon
+          .stub()
+          .returns(Promise.resolve({resultArray: 'some return value'}));
 
         const result = await webex.internal.dss.search({
           requestedTypes: ['PERSON', 'ROBOT'],
@@ -297,6 +366,7 @@ describe('plugin-dss', () => {
             resultSize: 100,
             queryString: 'query',
           },
+          numResults: 3,
         });
       });
     });
@@ -353,7 +423,18 @@ describe('plugin-dss', () => {
         });
 
         const result = await promise;
-        expect(result).to.deep.equal(['data0', 'data1', 'data2']);
+        expect(result).to.deep.equal({
+          resultArray: ['data0', 'data1', 'data2'],
+          data: {
+            sequence: 2,
+            finished: true,
+            a: {
+              b: {
+                c: ['data2'],
+              },
+            },
+          },
+        });
       });
     });
   });

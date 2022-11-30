@@ -151,6 +151,7 @@ const DSS = WebexPlugin.extend({
     const eventName = this._getResultEventName(requestId);
     const result = {};
     let expectedSeqNums;
+    let returnData;
 
     return new Promise((resolve) => {
       this.listenTo(this, eventName, (data) => {
@@ -160,6 +161,7 @@ const DSS = WebexPlugin.extend({
 
         if (data.finished) {
           expectedSeqNums = range(data.sequence + 1).map(String);
+          returnData = data;
         }
 
         const done = isEqual(expectedSeqNums, Object.keys(result));
@@ -173,7 +175,7 @@ const DSS = WebexPlugin.extend({
             }
           });
 
-          resolve({resultArray, data});
+          resolve({resultArray, data: returnData});
           this.stopListening(this, eventName);
         }
       });
@@ -231,6 +233,7 @@ const DSS = WebexPlugin.extend({
       dataPath: 'lookupResult.entities',
       resource,
     }).then(({resultArray, data}) => {
+      // TODO: find out what is actually returned!
       if (data.entitiesFound[0] === id) {
         return resultArray[0];
       } else {
@@ -322,6 +325,8 @@ const DSS = WebexPlugin.extend({
         resultSize,
         requestedTypes,
       },
+    }).then(({resultArray, data}) => {
+      return resultArray;
     });
   },
 });
