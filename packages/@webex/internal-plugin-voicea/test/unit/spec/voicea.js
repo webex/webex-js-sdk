@@ -69,6 +69,16 @@ describe('plugin-voicea', () => {
           trackingId: sinon.match.string,
         });
       });
+
+      it('listens to events once', () => {
+        const spy = sinon.spy(webex.internal.llm, 'on');
+
+        voiceaService.sendAnnouncement();
+
+        voiceaService.sendAnnouncement();
+
+        assert.calledOnceWithExactly(spy, 'event:relay.event', sinon.match.func);
+      });
     });
 
     describe('#deregisterEvents', () => {
