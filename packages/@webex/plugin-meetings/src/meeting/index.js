@@ -4268,8 +4268,6 @@ export default class Meeting extends StatelessWebexPlugin {
         .catch((error) => {
           LoggerProxy.logger.error(`${LOG_HEADER} Error adding media , setting up peerconnection, `, error);
 
-          console.log(error);
-
           Metrics.sendBehavioralMetric(
             BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
             {
@@ -4368,7 +4366,6 @@ export default class Meeting extends StatelessWebexPlugin {
         }))
       .catch((error) => {
         // Clean up stats analyzer, peer connection, and turn off listeners
-        console.log(error);
         const stopStatsAnalyzer = (this.statsAnalyzer) ? this.statsAnalyzer.stopAnalyzer() : Promise.resolve();
 
         stopStatsAnalyzer
