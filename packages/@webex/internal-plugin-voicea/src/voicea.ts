@@ -53,8 +53,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * Listen to websocket messages
    */
   private listenToEvents() {
-    this.webex.internal.llm.on('event:relay.event', this.eventProcessor);
-    this.hasSubscribedToEvents = true;
+    if (!this.hasSubscribedToEvents) {
+      this.webex.internal.llm.on('event:relay.event', this.eventProcessor);
+      this.hasSubscribedToEvents = true;
+    }
   }
 
   public deregisterEvents() {
@@ -235,9 +237,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   private sendAnnouncement = (): void => {
     if (this.hasVoiceaJoined || !this.webex.internal.llm.isConnected()) return;
-    if (!this.hasSubscribedToEvents) {
-      this.listenToEvents();
-    }
+
+    this.listenToEvents();
+
     this.webex.internal.llm.socket.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',

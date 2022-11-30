@@ -71,13 +71,13 @@ describe('plugin-voicea', () => {
       });
 
       it('listens to events once', () => {
-        assert.equal(voiceaService.hasSubscribedToEvents, false);
-        voiceaService.sendAnnouncement();
-        assert.equal(voiceaService.hasSubscribedToEvents, true);
-        const spy = sinon.spy(voiceaService, 'listenToEvents');
+        const spy = sinon.spy(webex.internal.llm, 'on');
 
         voiceaService.sendAnnouncement();
-        assert.notCalled(spy);
+
+        voiceaService.sendAnnouncement();
+
+        assert.calledOnceWithExactly(spy, 'event:relay.event', sinon.match.func);
       });
     });
 
