@@ -1,6 +1,6 @@
 {
     "name": "@webex/webex-core",
-    "version": "2.33.1",
+    "version": "2.33.2",
     "description": "Plugin handling for Cisco Webex",
     "license": "MIT",
     "contributors": [
