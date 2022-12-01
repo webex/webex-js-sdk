@@ -42,6 +42,7 @@ import BrowserDetection from '@webex/plugin-meetings/src/common/browser-detectio
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import {trigger, eventType} from '@webex/plugin-meetings/src/metrics/config';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
+import {IceGatheringFailed} from '@webex/plugin-meetings/src/common/errors/webex-errors';
 
 import locus from '../fixture/locus';
 import {
@@ -910,6 +911,8 @@ describe('plugin-meetings', () => {
 
         beforeEach(() => {
           meeting.mediaProperties.setMediaDirection = sinon.stub().returns(true);
+          meeting.mediaProperties.waitForIceConnectedState = sinon.stub().resolves();
+          meeting.mediaProperties.getCurrentConnectionType = sinon.stub().resolves('udp');
           meeting.audio = muteStateStub;
           meeting.video = muteStateStub;
           Media.attachMedia = sinon.stub().returns(Promise.resolve([test1, test2]));
@@ -1149,6 +1152,41 @@ describe('plugin-meetings', () => {
           await media.catch((err) => {
             assert.instanceOf(err, WebExMeetingsErrors);
           });
+        });
+
+        it('should reject if waitForIceConnectedState() rejects', async () => {
+          meeting.meetingState = 'ACTIVE';
+          meeting.mediaProperties.waitForIceConnectedState.rejects(new Error('fake error'));
+
+          let errorThrown = false;
+
+          await meeting.addMedia({
+            mediaSettings: {}
+          })
+            .catch((error) => {
+              assert.equal(error.code, IceGatheringFailed.CODE);
+              errorThrown = true;
+            });
+
+          assert.isTrue(errorThrown);
+        });
+
+        it('should send ADD_MEDIA_SUCCESS metrics', async () => {
+          meeting.meetingState = 'ACTIVE';
+          await meeting.addMedia({
+            mediaSettings: {}
+          });
+
+          assert.calledOnce(Metrics.sendBehavioralMetric);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              connectionType: 'udp'
+            }
+          );
         });
 
         describe('handles StatsAnalyzer events', () => {
