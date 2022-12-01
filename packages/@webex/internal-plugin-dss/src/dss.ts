@@ -29,8 +29,6 @@ import DssBatcher from './dss-batcher';
 const DSS = WebexPlugin.extend({
   namespace: 'DSS',
 
-  batchers: {},
-
   /**
    * registered value indicating events registration is successful
    * @instance
@@ -39,6 +37,18 @@ const DSS = WebexPlugin.extend({
    */
   registered: false,
 
+  /**
+   * Initializer
+   * @private
+   * @param {Object} attrs
+   * @param {Object} options
+   * @returns {undefined}
+   */
+  initialize(...args) {
+    Reflect.apply(WebexPlugin.prototype.initialize, this, args);
+    this.batchers = {};
+  },
+  
   /**
    * Explicitly sets up the DSS plugin by connecting to mercury, and listening for DSS events.
    * @returns {Promise}
@@ -198,7 +208,7 @@ const DSS = WebexPlugin.extend({
    * @returns {Promise} Resolves with an array of entities found
    */
   _batchedLookup(options) {
-    const {resource, requestType, entityKey} = options;
+    const {resource, requestType, lookupValue} = options;
     const dataPath = 'lookupResult.entities';
     const entitiesFoundPath = 'lookupResult.entitiesFound';
     const entitiesNotFoundPath = 'lookupResult.entitiesNotFound';
@@ -214,7 +224,7 @@ const DSS = WebexPlugin.extend({
         requestKey,
         parent: this,
       }));
-    batcher.request(entityKey);
+    return batcher.request(lookupValue);
   },
 
   /**
@@ -262,7 +272,7 @@ const DSS = WebexPlugin.extend({
       return this._batchedLookup({
         resource,
         requestType,
-        entityKey: id,
+        lookupValue: id,
       });
     }
     return this._request({

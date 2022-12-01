@@ -13,37 +13,37 @@ const DssBatcher = Batcher.extend({
 
   props: {
     resource: {
-      type: string,
+      type: 'string',
       required: true,
       setOnce: true,
       allowNull: false,
     },
     requestType: {
-      type: string,
+      type: 'string',
       required: true,
       setOnce: true,
       allowNull: false,
     },
     dataPath: {
-      type: string,
+      type: 'string',
       required: true,
       setOnce: true,
       allowNull: false,
     },
     entitiesFoundPath: {
-      type: string,
+      type: 'string',
       required: true,
       setOnce: true,
       allowNull: false,
     },
     entitiesNotFoundPath: {
-      type: string,
+      type: 'string',
       required: true,
       setOnce: true,
       allowNull: false,
     },
     requestKey: {
-      type: string,
+      type: 'string',
       required: true,
       setOnce: true,
       allowNull: false,
@@ -70,11 +70,11 @@ const DssBatcher = Batcher.extend({
    * @returns {Promise<undefined>}
    */
   handleHttpSuccess(res) {
-    const successItems = res.data.get(this.entitiesFoundPath).map((entityKey, index) => {
-      return {entityKey, entity: res.resultArray[index]};
+    const successItems = res.data.get(this.entitiesFoundPath).map((requestValue, index) => {
+      return {requestValue, entity: res.resultArray[index]};
     });
-    const failureItems = res.data.get(this.entitiesNotFoundPath).map((entityKey) => {
-      return {entityKey, entity: null};
+    const failureItems = res.data.get(this.entitiesNotFoundPath).map((requestValue) => {
+      return {requestValue, entity: null};
     });
     return Promise.all(res.map((item) => this.acceptItem(successItems.concat(failureItems))));
   },
@@ -96,7 +96,7 @@ const DssBatcher = Batcher.extend({
   handleItemFailure(item) {
     return this.getDeferredForResponse(item).then((defer) => {
       defer.reject(
-        new Error(`DSS entity with ${this.requestType} ${item.entityKey} was not found`)
+        new Error(`DSS entity with ${this.requestType} ${item.requestValue} was not found`)
       );
     });
   },
@@ -126,7 +126,7 @@ const DssBatcher = Batcher.extend({
    * @returns {Promise}
    */
   fingerprintResponse(item) {
-    return Promise.resolve(item.entityKey);
+    return Promise.resolve(item.requestValue);
   },
 });
 

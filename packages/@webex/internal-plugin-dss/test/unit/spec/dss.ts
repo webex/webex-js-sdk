@@ -4,24 +4,30 @@
 
 import {assert, expect} from '@webex/test-helper-chai';
 import DSS from '@webex/internal-plugin-dss';
+import {Batcher} from '@webex/webex-core';
+import DssBatcher from '@webex/internal-plugin-dss/src/dss-batcher';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {set} from 'lodash';
 import uuid from 'uuid';
+import config from '@webex/internal-plugin-dss/src/config';
+import FakeTimers from '@sinonjs/fake-timers';
 
 describe('plugin-dss', () => {
   describe('DSS', () => {
     let webex;
     let uuidStub;
     let mercuryCallbacks;
+    let clock;
 
     beforeEach(() => {
-      webex = new MockWebex({
+      webex = MockWebex({
         canAuthorize: false,
         children: {
           dss: DSS,
         },
       });
+      webex.config.dss = config.dss;
 
       uuidStub = sinon.stub(uuid, 'v4').returns('randomid');
 
@@ -38,10 +44,13 @@ describe('plugin-dss', () => {
         }),
         off: sinon.spy(),
       };
+
+      clock = FakeTimers.install();
     });
 
     afterEach(() => {
       uuidStub.restore();
+      clock.uninstall()
     });
 
     describe('#register()', () => {
@@ -117,6 +126,7 @@ describe('plugin-dss', () => {
       event,
       numResults,
       extraReturnData = {},
+      requestType = null,
     }) => {
       webex.request = sinon.stub();
 
@@ -163,8 +173,7 @@ describe('plugin-dss', () => {
         case 0:
           mercuryCallbacks[event](createData(requestId, 0, true, dataPath, [], extraReturnData));
 
-          result = await promise;
-          expect(result).to.be.rejectedWith(Error, 'something');
+          expect(promise).to.be.rejectedWith(Error, `DSS entity with ${requestType} ${params[requestType]} was not found`);
           break;
         default:
           throw new Error('numResults invalid');
@@ -205,6 +214,25 @@ describe('plugin-dss', () => {
           extraReturnData: {
             entitiesFound: ['test id'],
           },
+        });
+      });
+
+      it('fails correctly if lookup fails', async () => {
+        await testRequest({
+          method: 'lookupDetail',
+          dataPath: 'lookupResult.entities',
+          event: 'event:directory.lookup',
+          resource: '/lookup/orgid/userOrgId/identity/test id/detail',
+          params: {
+            id: 'test id',
+            shouldBatch: false,
+          },
+          bodyParams: {},
+          numResults: 0,
+          extraReturnData: {
+            entitiesFound: [],
+          },
+          requestType: 'id',
         });
       });
     });
@@ -277,6 +305,104 @@ describe('plugin-dss', () => {
           },
         });
       });
+
+      it('fails correctly if lookup fails', async () => {
+        await testRequest({
+          method: 'lookup',
+          dataPath: 'lookupResult.entities',
+          event: 'event:directory.lookup',
+          resource: '/lookup/orgid/userOrgId/identities',
+          params: {
+            id: 'id1',
+            shouldBatch: false,
+          },
+          bodyParams: {
+            lookupValues: ['id1'],
+          },
+          numResults: 0,
+          extraReturnData: {
+            entitiesFound: [],
+          },
+          requestType: 'id',
+        });
+      });
+
+      it('calls _batchedLookup correctly', async () => {
+        webex.internal.device.orgId = 'userOrgId';
+        webex.internal.dss._batchedLookup = sinon.stub().returns(
+          Promise.resolve('some return value')
+        );
+
+        const result = await webex.internal.dss.lookup({id: 'id1'});
+        expect(webex.internal.dss._batchedLookup.getCall(0).args).to.deep.equal([
+          {
+            resource: '/lookup/orgid/userOrgId/identities',
+            requestType: 'id',
+            lookupValue: 'id1',
+          },
+        ]);
+        expect(result).to.equal('some return value');
+      });
+
+      it('calls _batchedLookup correctly with entityProviderType', async () => {
+        webex.internal.device.orgId = 'userOrgId';
+        webex.internal.dss._batchedLookup = sinon.stub().returns(
+          Promise.resolve('some return value'),
+        );
+
+        const result = await webex.internal.dss.lookup({
+          id: 'id1',
+          entityProviderType: 'CI_USER',
+        });
+        expect(webex.internal.dss._batchedLookup.getCall(0).args).to.deep.equal([
+          {
+            resource: '/lookup/orgid/userOrgId/entityprovidertype/CI_USER',
+            requestType: 'id',
+            lookupValue: 'id1',
+          },
+        ]);
+        expect(result).to.equal('some return value');
+      });
+
+      it.skip('works correctly', async () => {
+        await testBatchedRequest({
+          method: 'lookup',
+          dataPath: 'lookupResult.entities',
+          event: 'event:directory.lookup',
+          resource: '/lookup/orgid/userOrgId/identities',
+          params: {
+            id: 'id1',
+          },
+          bodyParams: {
+            lookupValues: ['id1'],
+          },
+          numResults: 1,
+          extraReturnData: {
+            entitiesFound: ['id1'],
+          },
+        });
+      });
+
+      it.skip('fails correctly if lookup fails', async () => {
+        await testBatchedRequest({
+          method: 'lookup',
+          dataPath: 'lookupResult.entities',
+          event: 'event:directory.lookup',
+          resource: '/lookup/orgid/userOrgId/identities',
+          params: {
+            id: 'id1',
+            shouldBatch: false,
+          },
+          bodyParams: {
+            lookupValues: ['id1'],
+          },
+          numResults: 0,
+          extraReturnData: {
+            entitiesFound: [],
+          },
+          requestType: 'id',
+        });
+      });
     });
 
     describe('#lookupByEmail', () => {
@@ -320,6 +446,27 @@ describe('plugin-dss', () => {
           extraReturnData: {
             entitiesFound: ['email1'],
           },
+        });
+      });
+
+      it('fails correctly if lookup fails', async () => {
+        await testRequest({
+          method: 'lookupByEmail',
+          dataPath: 'lookupResult.entities',
+          event: 'event:directory.lookup',
+          resource: '/lookup/orgid/userOrgId/emails',
+          params: {
+            email: 'email1',
+            shouldBatch: false,
+          },
+          bodyParams: {
+            lookupValues: ['email1'],
+          },
+          numResults: 0,
+          extraReturnData: {
+            entitiesFound: [],
+          },
+          requestType: 'email',
         });
       });
     });
@@ -435,6 +582,73 @@ describe('plugin-dss', () => {
             },
           },
         });
+      });
+    });
+
+    describe('#_batchedLookup', ()=>{
+      const checkStandardProperties = (batcher) => {
+        expect(batcher.dataPath).to.equal('lookupResult.entities');
+        expect(batcher.entitiesFoundPath).to.equal('lookupResult.entitiesFound');
+        expect(batcher.entitiesNotFoundPath).to.equal('lookupResult.entitiesNotFound');
+        expect(batcher.requestKey).to.equal('lookupValues');
+        expect(batcher.config).to.deep.equal({
+          batcherWait: 50, 
+          batcherMaxCalls: 50, 
+          batcherMaxWait: 150
+        });
+      }
+      it('calls batcher.request on new batcher for first lookup', async () => {
+        const resource = '/lookup/orgid/userOrgId/identities';
+        Batcher.prototype.request = sinon.stub()
+        .returns(Promise.resolve('some return value'));
+
+        expect(webex.internal.dss.batchers).to.deep.equal({});
+
+        const result = await webex.internal.dss._batchedLookup({
+          resource,
+          requestType: 'id',
+          lookupValue: 'id1',
+        });
+
+        const batcher = webex.internal.dss.batchers[resource];
+        expect(batcher).to.exist;
+        expect(batcher.resource).to.equal(resource);
+        expect(batcher.requestType).to.equal('id');
+        checkStandardProperties(batcher);
+
+        expect(Batcher.prototype.request.getCall(0).args).to.deep.equal(['id1']);
+        expect(result).to.equal('some return value');
+      });
+
+      it('calls batcher.request on new batcher for lookup with new reource', async () => {
+        const resource1 = '/lookup/orgid/userOrgId/identities';
+        const resource2 = '/lookup/orgid/userOrgId/entityprovidertype/CI_USER';
+        Batcher.prototype.request = sinon.stub()
+        .returns(Promise.resolve('some return value'));
+
+        expect(webex.internal.dss.batchers).to.deep.equal({});
+
+        await webex.internal.dss._batchedLookup({
+          resource: resource1,
+          requestType: 'idtype1',
+          lookupValue: 'id1',
+        });
+
+        const result = await webex.internal.dss._batchedLookup({
+          resource: resource2,
+          requestType: 'idtype2',
+          lookupValue: 'id2',
+        });
+
+        expect(webex.internal.dss.batchers[resource1]).to.exist;
+        const batcher = webex.internal.dss.batchers[resource2];
+        expect(batcher).to.exist;
+        expect(batcher.resource).to.equal(resource2);
+        expect(batcher.requestType).to.equal('idtype2');
+        checkStandardProperties(batcher);
+
+        expect(Batcher.prototype.request.getCall(1).args).to.deep.equal(['id2']);
+        expect(result).to.equal('some return value');
       });
     });
   });
