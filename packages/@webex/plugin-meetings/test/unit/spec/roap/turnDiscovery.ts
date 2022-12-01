@@ -117,14 +117,15 @@ describe('TurnDiscovery', () => {
       // check that we've sent OK
       await checkRoapMessageSent('OK', 0);
 
-      const turnInfo = await result;
+      const {turnServerInfo, turnDiscoverySkippedReason} = await result;
 
-      assert.deepEqual(turnInfo, {
+      assert.deepEqual(turnServerInfo, {
         url: FAKE_TURN_URL,
         username: FAKE_TURN_USERNAME,
         password: FAKE_TURN_PASSWORD
       });
 
+      assert.isUndefined(turnDiscoverySkippedReason);
     });
 
     it('sends TURN_DISCOVERY_REQUEST with empty mediaId when isReconnecting is true', async () => {
@@ -152,13 +153,14 @@ describe('TurnDiscovery', () => {
       // check that we've sent OK
       await checkRoapMessageSent('OK', 0);
 
-      const turnInfo = await result;
+      const {turnServerInfo, turnDiscoverySkippedReason} = await result;
 
-      assert.deepEqual(turnInfo, {
+      assert.deepEqual(turnServerInfo, {
         url: FAKE_TURN_URL,
         username: FAKE_TURN_USERNAME,
         password: FAKE_TURN_PASSWORD
       });
+      assert.isUndefined(turnDiscoverySkippedReason);
     });
 
     it('ignores any extra, unexpected headers in the response', async () => {
@@ -187,13 +189,13 @@ describe('TurnDiscovery', () => {
       // check that we've sent OK and still parsed the headers we care about
       await checkRoapMessageSent('OK', 0);
 
-      const turnInfo = await result;
-
-      assert.deepEqual(turnInfo, {
+      const {turnServerInfo, turnDiscoverySkippedReason} = await result;
+      assert.deepEqual(turnServerInfo, {
         url: FAKE_TURN_URL,
         username: FAKE_TURN_USERNAME,
         password: FAKE_TURN_PASSWORD
       });
+      assert.isUndefined(turnDiscoverySkippedReason);
     });
 
     it('resolves with undefined if turn discovery feature is disabled in config', async () => {
@@ -203,7 +205,10 @@ describe('TurnDiscovery', () => {
 
       const result = await new TurnDiscovery(mockRoapRequest).doTurnDiscovery(testMeeting);
 
-      assert.isUndefined(result);
+      const {turnServerInfo, turnDiscoverySkippedReason} = result;
+
+      assert.isUndefined(turnServerInfo);
+      assert.equal(turnDiscoverySkippedReason, 'config');
       assert.notCalled(mockRoapRequest.sendRoap);
       assert.notCalled(Metrics.sendBehavioralMetric);
 
@@ -218,7 +223,10 @@ describe('TurnDiscovery', () => {
 
       const result = await td.doTurnDiscovery(testMeeting, false);
 
-      assert.isUndefined(result);
+      const {turnServerInfo, turnDiscoverySkippedReason} = result;
+
+      assert.isUndefined(turnServerInfo);
+      assert.isUndefined(turnDiscoverySkippedReason);
       checkFailureMetricsSent();
     });
 
@@ -227,7 +235,10 @@ describe('TurnDiscovery', () => {
       testMeeting.webex.meetings.reachability.isAnyClusterReachable = () => true;
       const result = await new TurnDiscovery(mockRoapRequest).doTurnDiscovery(testMeeting);
 
-      assert.isUndefined(result);
+      const {turnServerInfo, turnDiscoverySkippedReason} = result;
+
+      assert.isUndefined(turnServerInfo);
+      assert.equal(turnDiscoverySkippedReason, 'reachability');
       assert.notCalled(mockRoapRequest.sendRoap);
       assert.notCalled(Metrics.sendBehavioralMetric);
       testMeeting.webex.meetings.reachability.isAnyClusterReachable = prev;
@@ -242,9 +253,10 @@ describe('TurnDiscovery', () => {
       await clock.tickAsync(10 * 1000);
       await testUtils.flushPromises();
 
-      const turnInfo = await promise;
+      const {turnServerInfo, turnDiscoverySkippedReason} = await promise;
 
-      assert.isUndefined(turnInfo);
+      assert.isUndefined(turnServerInfo);
+      assert.isUndefined(turnDiscoverySkippedReason);
       checkFailureMetricsSent();
     });
 
@@ -260,9 +272,10 @@ describe('TurnDiscovery', () => {
         ]
       });
       await testUtils.flushPromises();
-      const turnInfo = await turnDiscoveryPromise;
+      const {turnServerInfo, turnDiscoverySkippedReason} = await turnDiscoveryPromise;
 
-      assert.isUndefined(turnInfo);
+      assert.isUndefined(turnServerInfo);
+      assert.isUndefined(turnDiscoverySkippedReason);
       checkFailureMetricsSent();
     });
 
@@ -274,9 +287,10 @@ describe('TurnDiscovery', () => {
       td.handleTurnDiscoveryResponse({});
 
       await testUtils.flushPromises();
-      const turnInfo = await turnDiscoveryPromise;
+      const {turnServerInfo, turnDiscoverySkippedReason} = await turnDiscoveryPromise;
 
-      assert.isUndefined(turnInfo);
+      assert.isUndefined(turnServerInfo);
+      assert.isUndefined(turnDiscoverySkippedReason);
       checkFailureMetricsSent();
     });
 
@@ -288,9 +302,10 @@ describe('TurnDiscovery', () => {
       td.handleTurnDiscoveryResponse({headers: []});
 
       await testUtils.flushPromises();
-      const turnInfo = await turnDiscoveryPromise;
+      const {turnServerInfo, turnDiscoverySkippedReason}= await turnDiscoveryPromise;
 
-      assert.isUndefined(turnInfo);
+      assert.isUndefined(turnServerInfo);
+      assert.isUndefined(turnDiscoverySkippedReason);
       checkFailureMetricsSent();
     });
 
@@ -321,9 +336,10 @@ describe('TurnDiscovery', () => {
       // check that we've sent OK
       await checkRoapMessageSent('OK', 0);
 
-      const turnInfo = await turnDiscoveryPromise;
+      const {turnServerInfo, turnDiscoverySkippedReason} = await turnDiscoveryPromise;
 
-      assert.isUndefined(turnInfo);
+      assert.isUndefined(turnServerInfo);
+      assert.isUndefined(turnDiscoverySkippedReason);
       checkFailureMetricsSent();
     });
   });

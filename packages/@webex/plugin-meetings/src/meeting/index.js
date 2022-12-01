@@ -4184,6 +4184,9 @@ export default class Meeting extends StatelessWebexPlugin {
   addMedia(options = {}) {
     const LOG_HEADER = 'Meeting:index#addMedia -->';
 
+    let turnDiscoverySkippedReason;
+    let turnServerUsed = false;
+
     if (this.meetingState !== FULL_STATE.ACTIVE) {
       return Promise.reject(new MeetingNotActiveError());
     }
@@ -4225,7 +4228,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return MeetingUtil.validateOptions(options)
       .then(() => this.roap.doTurnDiscovery(this, false))
-      .then((turnServerInfo) => {
+      .then((turnDiscoveryObject) => {
+        ({turnDiscoverySkippedReason} = turnDiscoveryObject);
+        turnServerUsed = !turnDiscoverySkippedReason;
+
+        const {turnServerInfo} = turnDiscoveryObject;
+
         this.mediaProperties.setMediaPeerConnection(MediaUtil.createPeerConnection(turnServerInfo));
         this.setMercuryListener();
         PeerConnectionManager.setPeerConnectionEvents(this);
@@ -4266,7 +4274,9 @@ export default class Meeting extends StatelessWebexPlugin {
               correlation_id: this.correlationId,
               locus_id: this.locusUrl.split('/').pop(),
               reason: error.message,
-              stack: error.stack
+              stack: error.stack,
+              turnDiscoverySkippedReason,
+              turnServerUsed
             }
           );
 
@@ -4376,7 +4386,9 @@ export default class Meeting extends StatelessWebexPlugin {
                 locus_id: this.locusUrl.split('/').pop(),
                 reason: error.message,
                 stack: error.stack,
-                code: error.code
+                code: error.code,
+                turnDiscoverySkippedReason,
+                turnServerUsed
               }
             );
 

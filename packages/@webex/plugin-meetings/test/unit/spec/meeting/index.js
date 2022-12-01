@@ -920,7 +920,7 @@ describe('plugin-meetings', () => {
             meeting.mediaProperties.peerConnection.connectionState = CONSTANTS.CONNECTION_STATE.CONNECTED;
             resolve();
           }));
-          meeting.roap.doTurnDiscovery = sinon.stub().resolves();
+          meeting.roap.doTurnDiscovery = sinon.stub().resolves({turnServerInfo: {}, turnDiscoverySkippedReason: undefined});
           PeerConnectionManager.setContentSlides = sinon.stub().returns(true);
         });
 
@@ -961,6 +961,39 @@ describe('plugin-meetings', () => {
           await meeting.addMedia().catch((err) => {
             assert.exists(err);
             assert.isNull(meeting.statsAnalyzer);
+            assert(Metrics.sendBehavioralMetric.calledOnce);
+            assert.calledWith(
+              Metrics.sendBehavioralMetric,
+              BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
+                correlation_id: meeting.correlationId,
+                locus_id: meeting.locusUrl.split('/').pop(),
+                reason: err.message,
+                stack: err.stack,
+                code: err.code,
+                turnDiscoverySkippedReason: undefined,
+                turnServerUsed: true
+              }
+            );
+          });
+        });
+
+        it('checks metrics called with skipped reason config', async () => {
+          meeting.roap.doTurnDiscovery = sinon.stub().resolves({turnServerInfo: undefined, turnDiscoverySkippedReason: 'config'});
+          meeting.meetingState = 'ACTIVE';
+          await meeting.addMedia().catch((err) => {
+            assert.exists(err);
+            assert(Metrics.sendBehavioralMetric.calledOnce);
+            assert.calledWith(
+              Metrics.sendBehavioralMetric,
+              BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
+                correlation_id: meeting.correlationId,
+                locus_id: meeting.locusUrl.split('/').pop(),
+                reason: err.message,
+                stack: err.stack,
+                turnDiscoverySkippedReason: 'config',
+                turnServerUsed: false
+              }
+            );
           });
         });
 
@@ -970,6 +1003,18 @@ describe('plugin-meetings', () => {
           await meeting.addMedia().catch((err) => {
             assert.exists(err);
             assert.isNull(meeting.mediaProperties.peerConnection);
+            assert(Metrics.sendBehavioralMetric.calledOnce);
+            assert.calledWith(
+              Metrics.sendBehavioralMetric,
+              BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
+                correlation_id: meeting.correlationId,
+                locus_id: meeting.locusUrl.split('/').pop(),
+                reason: err.message,
+                stack: err.stack,
+                turnDiscoverySkippedReason: undefined,
+                turnServerUsed: true
+              }
+            );
           });
         });
 
@@ -1035,6 +1080,8 @@ describe('plugin-meetings', () => {
         });
 
         it('should attach the media and return promise', async () => {
+          meeting.roap.doTurnDiscovery = sinon.stub().resolves({turnServerInfo: undefined, turnDiscoverySkippedReason: undefined});
+
           meeting.meetingState = 'ACTIVE';
           MediaUtil.createPeerConnection.resetHistory();
           const media = meeting.addMedia({
@@ -1065,10 +1112,14 @@ describe('plugin-meetings', () => {
           meeting.meetingState = 'ACTIVE';
           MediaUtil.createPeerConnection.resetHistory();
 
+
           meeting.roap.doTurnDiscovery = sinon.stub().resolves({
-            url: FAKE_TURN_URL,
-            username: FAKE_TURN_USER,
-            password: FAKE_TURN_PASSWORD
+            turnServerInfo: {
+              url: FAKE_TURN_URL,
+              username: FAKE_TURN_USER,
+              password: FAKE_TURN_PASSWORD
+            },
+            turnServerSkippedReason: undefined
           });
           const media = meeting.addMedia({
             mediaSettings: {}
@@ -1087,6 +1138,7 @@ describe('plugin-meetings', () => {
         });
 
         it('should attach the media and return promise', async () => {
+          meeting.roap.doTurnDiscovery = sinon.stub().resolves({turnServerInfo: undefined, turnDiscoverySkippedReason: undefined});
           meeting.meetingState = 'ACTIVE';
           meeting.mediaProperties.peerConnection.connectionState = 'DISCONNECTED';
           const media = meeting.addMedia({

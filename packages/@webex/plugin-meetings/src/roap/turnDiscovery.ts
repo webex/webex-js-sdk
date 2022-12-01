@@ -206,13 +206,13 @@ export default class TurnDiscovery {
 
     if (isAnyClusterReachable) {
       LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> reachability has not failed, skipping TURN discovery');
-      return Promise.resolve(undefined);
+      return Promise.resolve({turnServerInfo: undefined, turnDiscoverySkippedReason: 'reachability'});
     }
 
     if (!meeting.config.experimental.enableTurnDiscovery) {
       LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> TURN discovery disabled in config, skipping it');
 
-      return Promise.resolve(undefined);
+      return Promise.resolve({turnServerInfo: undefined, turnDiscoverySkippedReason: 'config'});
     }
 
     return this.sendRoapTurnDiscoveryRequest(meeting, isReconnecting)
@@ -223,7 +223,7 @@ export default class TurnDiscovery {
 
         LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> TURN discovery completed');
 
-        return this.turnInfo;
+        return {turnServerInfo: this.turnInfo, turnDiscoverySkippedReason: undefined};
       })
       .catch((e) => {
         // we catch any errors and resolve with no turn information so that the normal call join flow can continue without TURN
@@ -239,7 +239,7 @@ export default class TurnDiscovery {
           }
         );
 
-        return Promise.resolve(undefined);
+        return Promise.resolve({turnServerInfo: undefined, turnDiscoverySkippedReason: undefined});
       });
   }
 }
