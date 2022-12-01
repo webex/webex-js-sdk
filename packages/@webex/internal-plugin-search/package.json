@@ -1,6 +1,6 @@
 {
     "name": "@webex/internal-plugin-search",
-    "version": "2.33.2",
+    "version": "2.34.0",
     "description": "",
     "license": "MIT",
     "author": "Michael Wegman <mwegman@cisco.com>",

@@ -1,6 +1,6 @@
 {
     "name": "@webex/storage-adapter-local-forage",
-    "version": "2.33.2",
+    "version": "2.34.0",
     "description": "",
     "license": "MIT",
     "author": "Matt Norris <matthew.g.norris@gmail.com>",

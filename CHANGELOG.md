@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.34.0](https://github.com/webex/webex-js-sdk/compare/v2.33.2...v2.34.0) (2022-12-01)
+
+
+### Features
+
+* added turnDiscoveryEnabled to js_sdk_add_media_failures ([#2513](https://github.com/webex/webex-js-sdk/issues/2513)) ([d12fd1d](https://github.com/webex/webex-js-sdk/commit/d12fd1d5c33669f38362f8181ef33b32f3920991))
+
 ### [2.33.2](https://github.com/webex/webex-js-sdk/compare/v2.33.1...v2.33.2) (2022-11-30)
 
 ### [2.33.1](https://github.com/webex/webex-js-sdk/compare/v2.33.0...v2.33.1) (2022-11-28)
