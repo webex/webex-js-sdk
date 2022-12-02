@@ -19,7 +19,7 @@
     "directory": "packages/@webex/plugin-meetings"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browserify": {
     "transform": [

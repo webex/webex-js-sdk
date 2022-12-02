@@ -11,7 +11,7 @@
     "directory": "packages/@webex/http-core"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browser": {
     "./dist/request/request.js": "./dist/request/request.shim.js",

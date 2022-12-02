@@ -36,6 +36,7 @@ import {
   _INCOMING_,
   _JOIN_,
   AUDIO,
+  CONNECTION_STATE,
   CONTENT,
   ENDED,
   EVENT_TRIGGERS,
@@ -57,6 +58,7 @@ import {
   ONLINE,
   OFFLINE,
   PASSWORD_STATUS,
+  PC_BAIL_TIMEOUT,
   PSTN_STATUS,
   QUALITY_LEVELS,
   RECORDING_STATE,
@@ -4254,110 +4256,129 @@ export default class Meeting extends StatelessWebexPlugin {
         enableRtx: this.config.enableRtx,
         enableExtmap: this.config.enableExtmap,
         setStartLocalSDPGenRemoteSDPRecvDelay: this.setStartLocalSDPGenRemoteSDPRecvDelay.bind(this)
-      }))
-      .then((peerConnection) => this.getDevices().then((devices) => {
-        MeetingUtil.handleDeviceLogging(devices);
-
-        return peerConnection;
-      }))
-      .then((peerConnection) => {
-        this.handleMediaLogging(this.mediaProperties);
-        LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection Received from attachMedia `);
-
-        this.setRemoteStream(peerConnection);
-        if (this.config.stats.enableStatsAnalyzer) {
-          // TODO: ** Dont re create StatsAnalyzer on reconnect or rejoin
-          this.networkQualityMonitor = new NetworkQualityMonitor(this.config.stats);
-          this.statsAnalyzer = new StatsAnalyzer(this.config.stats, this.networkQualityMonitor);
-          this.setupStatsAnalyzerEventHandlers();
-          this.networkQualityMonitor.on(EVENT_TRIGGERS.NETWORK_QUALITY, this.sendNetworkQualityEvent.bind(this));
-        }
       })
-      .catch((error) => {
-        LoggerProxy.logger.error(`${LOG_HEADER} Error adding media , setting up peerconnection, `, error);
+        .then((peerConnection) => this.getDevices().then((devices) => {
+          MeetingUtil.handleDeviceLogging(devices);
 
-        Metrics.sendBehavioralMetric(
-          BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
-          {
-            correlation_id: this.correlationId,
-            locus_id: this.locusUrl.split('/').pop(),
-            reason: error.message,
-            stack: error.stack,
-            turnDiscoverySkippedReason,
-            turnServerUsed
+          return peerConnection;
+        }))
+        .then((peerConnection) => {
+          this.handleMediaLogging(this.mediaProperties);
+          LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection Received from attachMedia `);
+
+          this.setRemoteStream(peerConnection);
+          if (this.config.stats.enableStatsAnalyzer) {
+            // TODO: ** Dont re create StatsAnalyzer on reconnect or rejoin
+            this.networkQualityMonitor = new NetworkQualityMonitor(this.config.stats);
+            this.statsAnalyzer = new StatsAnalyzer(this.config.stats, this.networkQualityMonitor);
+            this.setupStatsAnalyzerEventHandlers();
+            this.networkQualityMonitor.on(EVENT_TRIGGERS.NETWORK_QUALITY, this.sendNetworkQualityEvent.bind(this));
           }
-        );
+        })
+        .catch((error) => {
+          LoggerProxy.logger.error(`${LOG_HEADER} Error adding media , setting up peerconnection, `, error);
 
-        throw error;
-      })
-      .then(() => new Promise((resolve, reject) => {
-        let timerCount = 0;
+          Metrics.sendBehavioralMetric(
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
+            {
+              correlation_id: this.correlationId,
+              locus_id: this.locusUrl.split('/').pop(),
+              reason: error.message,
+              stack: error.stack,
+              turnDiscoverySkippedReason,
+              turnServerUsed
+            }
+          );
 
-        // eslint-disable-next-line func-names
-        // eslint-disable-next-line prefer-arrow-callback
-        if (this.type === _CALL_) {
-          resolve();
-        }
-        const joiningTimer = setInterval(() => {
-          timerCount += 1;
-          if (this.meetingState === FULL_STATE.ACTIVE) {
-            clearInterval(joiningTimer);
+          throw error;
+        })
+        .then(() => new Promise((resolve, reject) => {
+          let timerCount = 0;
+
+          // eslint-disable-next-line func-names
+          // eslint-disable-next-line prefer-arrow-callback
+          if (this.type === _CALL_) {
             resolve();
           }
+          const joiningTimer = setInterval(() => {
+            timerCount += 1;
+            if (this.meetingState === FULL_STATE.ACTIVE) {
+              clearInterval(joiningTimer);
+              resolve();
+            }
 
-          if (timerCount === 4) {
-            clearInterval(joiningTimer);
-            reject(new Error('Meeting is still not active '));
-          }
-        }, 1000);
-      }))
-      .then(() =>
-        logRequest(this.roap
-          .sendRoapMediaRequest({
-            sdp: this.mediaProperties.peerConnection.sdp,
-            roapSeq: this.roapSeq,
-            meeting: this // or can pass meeting ID
-          }), {
-          header: `${LOG_HEADER} Send Roap Media Request.`,
-          success: `${LOG_HEADER} Successfully send roap media request`,
-          failure: `${LOG_HEADER} Error joining the call on send roap media request, `
+            if (timerCount === 4) {
+              clearInterval(joiningTimer);
+              reject(new Error('Meeting is still not active '));
+            }
+          }, 1000);
         }))
-      .then(
-        () => this.mediaProperties.waitForIceConnectedState()
-          .catch(() => {
-            throw createMeetingsError(30202, 'Meeting connection failed');
-          })
-      )
-      .then(() => {
-        LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection CONNECTED`);
+        .then(() =>
+          logRequest(this.roap
+            .sendRoapMediaRequest({
+              sdp: this.mediaProperties.peerConnection.sdp,
+              roapSeq: this.roapSeq,
+              meeting: this // or can pass meeting ID
+            }), {
+            header: `${LOG_HEADER} Send Roap Media Request.`,
+            success: `${LOG_HEADER} Successfully send roap media request`,
+            failure: `${LOG_HEADER} Error joining the call on send roap media request, `
+          }))
+        .then(() => {
+          const {peerConnection} = this.mediaProperties;
 
-        if (mediaSettings && mediaSettings.sendShare && localShare) {
-          if (this.state === MEETING_STATE.STATES.JOINED) {
-            return this.share();
+          return new Promise((resolve, reject) => {
+            if (peerConnection.connectionState === CONNECTION_STATE.CONNECTED) {
+              LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection CONNECTED`);
+
+              resolve(peerConnection);
+
+              return;
+            }
+            // Check if Peer Connection is STABLE (connected)
+            const stabilityTimeout = setTimeout(() => {
+              if (peerConnection.connectionState !== CONNECTION_STATE.CONNECTED) {
+                // TODO: Fix this after the error code pr goes in
+                reject(createMeetingsError(30202, 'Meeting connection failed'));
+              }
+              else {
+                LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection CONNECTED`);
+                resolve(peerConnection);
+              }
+            }, PC_BAIL_TIMEOUT);
+
+            this.once(EVENT_TRIGGERS.MEDIA_READY, () => {
+              LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection CONNECTED, clearing stability timer.`);
+              clearTimeout(stabilityTimeout);
+              resolve(peerConnection);
+            });
+          });
+        })
+        .then(() => {
+          if (mediaSettings && mediaSettings.sendShare && localShare) {
+            if (this.state === MEETING_STATE.STATES.JOINED) {
+              return this.share();
+            }
+
+            // When the self state changes to JOINED then request the floor
+            this.floorGrantPending = true;
           }
 
-          // When the self state changes to JOINED then request the floor
-          this.floorGrantPending = true;
-        }
+          Metrics.sendBehavioralMetric(
+            BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS,
+            {
+              correlation_id: this.correlationId,
+              locus_id: this.locusUrl.split('/').pop()
+            }
+          );
 
-        return {};
-      })
-      .then(() => this.mediaProperties.getCurrentConnectionType())
-      .then((connectionType) => {
-        Metrics.sendBehavioralMetric(
-          BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS,
-          {
-            correlation_id: this.correlationId,
-            locus_id: this.locusUrl.split('/').pop(),
-            connectionType
-          }
-        );
-      })
+          return Promise.resolve();
+        }))
       .catch((error) => {
         // Clean up stats analyzer, peer connection, and turn off listeners
         const stopStatsAnalyzer = (this.statsAnalyzer) ? this.statsAnalyzer.stopAnalyzer() : Promise.resolve();
 
-        return stopStatsAnalyzer
+        stopStatsAnalyzer
           .then(() => {
             this.statsAnalyzer = null;
 

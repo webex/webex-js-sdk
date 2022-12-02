@@ -11,7 +11,7 @@
     "directory": "packages/@webex/test-helper-chaid"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "devDependencies": {
     "chai": "^4.3.4",

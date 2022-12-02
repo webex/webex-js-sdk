@@ -12,7 +12,7 @@
     "directory": "packages/@webex/internal-plugin-device"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browserify": {
     "transform": [

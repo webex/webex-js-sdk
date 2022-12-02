@@ -12,7 +12,7 @@
     "directory": "packages/@webex/helper-image"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browser": {
     "./dist/process-image.js": "./dist/process-image.browser.js",
