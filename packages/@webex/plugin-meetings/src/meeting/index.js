@@ -55,7 +55,6 @@ import {
   ONLINE,
   OFFLINE,
   PASSWORD_STATUS,
-  PC_BAIL_TIMEOUT,
   PSTN_STATUS,
   QUALITY_LEVELS,
   RECORDING_STATE,
@@ -4562,7 +4561,6 @@ export default class Meeting extends StatelessWebexPlugin {
         LoggerProxy.logger.info(`${LOG_HEADER} media connection created`);
 
         if (this.config.stats.enableStatsAnalyzer) {
-          // TODO: ** Dont re create StatsAnalyzer on reconnect or rejoin  // todo: check if this comment is still relevant
           this.networkQualityMonitor = new NetworkQualityMonitor(this.config.stats);
           this.statsAnalyzer = new StatsAnalyzer(this.config.stats, this.networkQualityMonitor);
           this.setupStatsAnalyzerEventHandlers();
@@ -4595,39 +4593,14 @@ export default class Meeting extends StatelessWebexPlugin {
           }
         }, 1000);
       }))
+      .then(
+        () => this.mediaProperties.waitForMediaConnectionConnected()
+          .catch(() => {
+            throw createMeetingsError(30202, 'Meeting connection failed');
+          })
+      )
       .then(() => {
-        const {webrtcMediaConnection} = this.mediaProperties;
-
-        return new Promise((resolve, reject) => {
-          const connState = webrtcMediaConnection.getConnectionState();
-
-          if (connState === MC.ConnectionState.Connected) {
-            LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection CONNECTED`);
-
-            resolve();
-
-            return;
-          }
-          // Check if Peer Connection is STABLE (connected)
-          const stabilityTimeout = setTimeout(() => {
-            if (webrtcMediaConnection.getConnectionState() !== MC.ConnectionState.Connected) {
-              // TODO: Fix this after the error code pr goes in
-              reject(createMeetingsError(30202, 'Meeting connection failed'));
-            }
-            else {
-              LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection CONNECTED`);
-              resolve();
-            }
-          }, PC_BAIL_TIMEOUT);
-
-          this.once(EVENT_TRIGGERS.MEDIA_READY, () => {
-            LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection CONNECTED, clearing stability timer.`);
-            clearTimeout(stabilityTimeout);
-            resolve();
-          });
-        });
-      })
-      .then(() => {
+        LoggerProxy.logger.info(`${LOG_HEADER} PeerConnection CONNECTED`);
         if (mediaSettings && mediaSettings.sendShare && localShare) {
           if (this.state === MEETING_STATE.STATES.JOINED) {
             return this.share();
@@ -4637,15 +4610,18 @@ export default class Meeting extends StatelessWebexPlugin {
           this.floorGrantPending = true;
         }
 
+        return {};
+      })
+      .then(() => this.mediaProperties.getCurrentConnectionType())
+      .then((connectionType) => {
         Metrics.sendBehavioralMetric(
           BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS,
           {
             correlation_id: this.correlationId,
-            locus_id: this.locusUrl.split('/').pop()
+            locus_id: this.locusUrl.split('/').pop(),
+            connectionType
           }
         );
-
-        return Promise.resolve();
       })
       .catch((error) => {
         // Clean up stats analyzer, peer connection, and turn off listeners

@@ -1,5 +1,8 @@
+import {MediaConnection as MC} from '@webex/internal-media-core';
+
 import {
   MEETINGS,
+  PC_BAIL_TIMEOUT,
   QUALITY_LEVELS
 } from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -188,5 +191,99 @@ export default class MediaProperties {
   unsetMediaTracks() {
     this.unsetLocalVideoTrack();
     this.unsetRemoteMedia();
+  }
+
+  /**
+   * Waits for the webrtc media connection to be connected.
+   *
+   * @returns {Promise<void>}
+   */
+  waitForMediaConnectionConnected() {
+    const isConnected = () => (
+      this.webrtcMediaConnection.getConnectionState() === MC.ConnectionState.Connected
+    );
+
+    if (isConnected()) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+      let timer;
+
+      const connectionStateListener = () => {
+        LoggerProxy.logger.log(`Media:properties#waitForMediaConnectionConnected --> connection state: ${this.webrtcMediaConnection.getConnectionState()}`);
+
+        if (isConnected()) {
+          clearTimeout(timer);
+          this.webrtcMediaConnection.off(MC.Event.CONNECTION_STATE_CHANGED, connectionStateListener);
+          resolve();
+        }
+      };
+
+      timer = setTimeout(() => {
+        this.webrtcMediaConnection.off(MC.Event.CONNECTION_STATE_CHANGED, connectionStateListener);
+        reject();
+      }, PC_BAIL_TIMEOUT);
+
+      this.webrtcMediaConnection.on(MC.Event.CONNECTION_STATE_CHANGED, connectionStateListener);
+    });
+  }
+
+  /**
+   * Returns the type of a connection that has been established
+   *
+   * @returns {Promise<'UDP' | 'TCP' | 'TURN-TLS' | 'TURN-TCP' | 'TURN-UDP' | 'unknown'>}
+   */
+  async getCurrentConnectionType() {
+    // we can only get the connection type after ICE connection has been established
+    await this.waitForMediaConnectionConnected();
+
+    const allStatsReports = [];
+
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const statsResult = await this.webrtcMediaConnection.getStats();
+
+      statsResult.forEach((report) => allStatsReports.push(report));
+    }
+    catch (error) {
+      LoggerProxy.logger.warn(`Media:properties#getCurrentConnectionType --> getStats() failed: ${error}`);
+    }
+
+    const successfulCandidatePairs = allStatsReports.filter(
+      (report) => report.type === 'candidate-pair' && report.state?.toLowerCase() === 'succeeded'
+    );
+
+    let foundConnectionType = 'unknown';
+
+    // all of the successful pairs should have the same connection type, so just return the type for the first one
+    successfulCandidatePairs.some((pair) => {
+      const localCandidate = allStatsReports.find((report) => report.type === 'local-candidate' && report.id === pair.localCandidateId);
+
+      if (localCandidate === undefined) {
+        LoggerProxy.logger.warn(`Media:properties#getCurrentConnectionType --> failed to find local candidate "${pair.localCandidateId}" in getStats() results`);
+
+        return false;
+      }
+
+      let connectionType;
+
+      if (localCandidate.relayProtocol) {
+        connectionType = `TURN-${localCandidate.relayProtocol.toUpperCase()}`;
+      }
+      else {
+        connectionType = localCandidate.protocol?.toUpperCase(); // it will be UDP or TCP
+      }
+
+      if (connectionType) {
+        foundConnectionType = connectionType;
+
+        return true;
+      }
+
+      return false;
+    });
+
+    return foundConnectionType;
   }
 }
