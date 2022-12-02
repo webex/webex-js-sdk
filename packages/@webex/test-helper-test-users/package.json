@@ -1,6 +1,6 @@
 {
   "name": "@webex/test-helper-test-users",
-  "version": "2.35.0",
+  "version": "3.0.0-beta.0",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
@@ -13,7 +13,7 @@
     "@ciscospark/test-users-legacy": "^1.0.2"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browserify": {
     "transform": [

@@ -1,6 +1,6 @@
 {
   "name": "webex",
-  "version": "2.35.0",
+  "version": "3.0.0-beta.0",
   "description": "SDK for Cisco Webex",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "contributors": [
@@ -21,7 +21,7 @@
     "directory": "packages/webex"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browser": {
     "./dist/config-storage.js": "./dist/config-storage.shim.js",

@@ -1,6 +1,6 @@
 {
   "name": "@webex/http-core",
-  "version": "2.35.0",
+  "version": "3.0.0-beta.0",
   "description": "Core HTTP library for the Cisco Webex",
   "license": "MIT",
   "main": "dist/index.js",
@@ -11,7 +11,7 @@
     "directory": "packages/@webex/http-core"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browser": {
     "./dist/request/request.js": "./dist/request/request.shim.js",

@@ -1,6 +1,6 @@
 {
   "name": "@webex/test-helper-file",
-  "version": "2.35.0",
+  "version": "3.0.0-beta.0",
   "description": "File helpers for writing isomorphicish mocha tests",
   "license": "MIT",
   "main": "dist/index.js",
@@ -10,7 +10,7 @@
     "directory": "packages/@webex/test-helper-file"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browser": {
     "./dist/file.js": "./dist/file.shim.js",

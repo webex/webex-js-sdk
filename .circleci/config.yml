@@ -384,6 +384,86 @@ jobs:
       - run:
           name: "Push to upstream/master"
           command: git push --follow-tags upstream master
+  versioning_and_publish_beta:
+    executor: main-executor
+    steps:
+      - checkout_and_fetch_tags
+      - restore_node_modules
+      - add_ssh_keys:
+          fingerprints:
+            - "89:ed:56:33:f5:1b:7b:b6:a1:04:02:a0:f9:47:13:0a"
+      - run:
+          name: "Temporary change origin url to HTTPS for documentation generation"
+          command: git remote set-url origin https://github.com/webex/webex-js-sdk.git
+      - run:
+          name: "Build Docs"
+          command: yarn run build:docs
+      - run:
+          name: "Change origin url back to ssh"
+          command: git remote set-url origin git@github.com:webex/webex-js-sdk.git
+      - run:
+          name: "Build Samples"
+          command: yarn run samples:build
+      - run:
+          name: "Publish Docs Folder"
+          command: |
+            # Check if there's anything to commit before committing
+            if [ -n "$(git status --porcelain)" ]; then
+              git add docs/
+              git add -f docs/samples/webex.min.js*
+              git commit -m "docs(api): update docs [skip ci]"
+              git push upstream HEAD:beta
+            fi
+      - run:
+          name: "Check if we need to skip version bumping and publishing to npm [skip npm]"
+          command: |
+            # Grab the 2nd to last commit message from the log for [skip npm]
+            # Last commit is the update docs
+            MESSAGE=$(git log -n 1 --skip 1 --pretty=format:%s)
+
+            if [[ "$MESSAGE" == *\["skip npm"\]* ]]; then
+              circleci step halt
+            fi
+      - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+      - run:
+          name: "Grab Current Version Number"
+          command: echo "export CURRENT_VERSION=$(node -p "require('./package.json').version")" >> $BASH_ENV
+      - run:
+          name: "Check if we need to bump"
+          command: |
+            if ! \
+              { git log "$( git describe --tags --abbrev=0 )..HEAD" --format='%s' | cut -d: -f1 | sort -u | sed -e 's/([^)]*)//' | grep -q -i -E '^feat|fix|perf|revert$' ; } || \
+              { git log "$( git describe --tags --abbrev=0 )..HEAD" --format='%s' | cut -d: -f1 | sort -u | sed -e 's/([^)]*)//' | grep -q -E '\!$' ; }
+            then
+              echo "No applicable changes since the previous tag, skipping..."
+              circleci step halt
+            fi
+      - run:
+          name: "Run standard-version"
+          command: yarn run release --prerelease beta
+      - run:
+          name: "Grab Upcoming Version Number"
+          command: echo "export UPCOMING_VERSION=$(node -p "require('./package.json').version")" >> $BASH_ENV
+      - run:
+          name: "Check if we need to publish a new version"
+          command: |
+            echo "Current Version: $CURRENT_VERSION"
+            echo "Upcoming Version: $UPCOMING_VERSION"
+
+            if [[ "$CURRENT_VERSION" == "$UPCOMING_VERSION" ]]; then
+              circleci step halt
+            fi
+      - run:
+          name: "Publish to NPM"
+          command: |
+            echo "replace yarn workspace environment variables "
+            yarn run deps:generate
+
+            echo "Publish to NPM"
+            npm run tooling -- exec --cmd bash -- -c 'npm publish --access public --tag beta|| true'
+      - run:
+          name: "Push to upstream/beta"
+          command: git push --follow-tags upstream beta
   tap:
     executor: main-executor
     parameters:
@@ -491,11 +571,19 @@ workflows:
       - yarn_install:
           filters:
             branches:
-              only: master
+              only: 
+                - master
+                - beta
       - versioning_and_publish:
           filters:
             branches:
               only: master
+          requires:
+            - yarn_install
+      - versioning_and_publish_beta:
+          filters:
+            branches:
+              only: beta
           requires:
             - yarn_install
   tap_tests:

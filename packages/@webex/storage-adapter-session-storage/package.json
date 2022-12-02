@@ -1,6 +1,6 @@
 {
   "name": "@webex/storage-adapter-session-storage",
-  "version": "2.35.0",
+  "version": "3.0.0-beta.0",
   "description": "",
   "license": "MIT",
   "author": "Andrew Holsted <holsted@cisco.com>",
@@ -12,7 +12,7 @@
     "directory": "packages/@webex/storage-adapter-session-storage"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browserify": {
     "transform": [

@@ -1,6 +1,6 @@
 {
   "name": "@webex/helper-html",
-  "version": "2.35.0",
+  "version": "3.0.0-beta.0",
   "description": "HTML Utiltities",
   "license": "MIT",
   "main": "dist/index.js",
@@ -11,7 +11,7 @@
     "directory": "packages/@webex/helper-html"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browser": {
     "./dist/html.js": "./dist/html.shim.js",
