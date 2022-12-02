@@ -1,41 +1,45 @@
 {
-    "name": "@webex/internal-plugin-conversation",
-    "version": "2.35.0",
-    "description": "",
-    "license": "MIT",
-    "main": "dist/index.js",
-    "devMain": "src/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/internal-plugin-conversation",
-    "engines": {
-        "node": ">=14"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
-    "dependencies": {
-        "@webex/common": "workspace:^",
-        "@webex/helper-html": "workspace:^",
-        "@webex/helper-image": "workspace:^",
-        "@webex/internal-plugin-conversation": "workspace:^",
-        "@webex/internal-plugin-encryption": "workspace:^",
-        "@webex/internal-plugin-user": "workspace:^",
-        "@webex/webex-core": "workspace:^",
-        "crypto-js": "^4.1.1",
-        "lodash": "^4.17.21",
-        "node-scr": "^0.3.0",
-        "uuid": "^3.3.2"
-    },
-    "devDependencies": {
-        "@webex/test-helper-chai": "workspace:^",
-        "@webex/test-helper-file": "workspace:^",
-        "@webex/test-helper-make-local-url": "workspace:^",
-        "@webex/test-helper-mocha": "workspace:^",
-        "@webex/test-helper-mock-webex": "workspace:^",
-        "@webex/test-helper-retry": "workspace:^",
-        "@webex/test-helper-test-users": "workspace:^",
-        "sinon": "^9.2.4"
-    }
+  "name": "@webex/internal-plugin-conversation",
+  "version": "2.35.0",
+  "description": "",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/internal-plugin-conversation"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "dependencies": {
+    "@webex/common": "workspace:^",
+    "@webex/helper-html": "workspace:^",
+    "@webex/helper-image": "workspace:^",
+    "@webex/internal-plugin-conversation": "workspace:^",
+    "@webex/internal-plugin-encryption": "workspace:^",
+    "@webex/internal-plugin-user": "workspace:^",
+    "@webex/webex-core": "workspace:^",
+    "crypto-js": "^4.1.1",
+    "lodash": "^4.17.21",
+    "node-scr": "^0.3.0",
+    "uuid": "^3.3.2"
+  },
+  "devDependencies": {
+    "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-file": "workspace:^",
+    "@webex/test-helper-make-local-url": "workspace:^",
+    "@webex/test-helper-mocha": "workspace:^",
+    "@webex/test-helper-mock-webex": "workspace:^",
+    "@webex/test-helper-retry": "workspace:^",
+    "@webex/test-helper-test-users": "workspace:^",
+    "sinon": "^9.2.4"
+  }
 }

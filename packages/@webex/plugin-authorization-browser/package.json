@@ -1,38 +1,42 @@
 {
-    "name": "@webex/plugin-authorization-browser",
-    "version": "2.35.0",
-    "description": "",
-    "license": "MIT",
-    "main": "dist/index.js",
-    "devMain": "src/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/plugin-authorization-browser",
-    "engines": {
-        "node": ">=14"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
-    "devDependencies": {
-        "@webex/plugin-authorization-browser": "workspace:^",
-        "@webex/test-helper-appid": "workspace:^",
-        "@webex/test-helper-automation": "workspace:^",
-        "@webex/test-helper-chai": "workspace:^",
-        "@webex/test-helper-mocha": "workspace:^",
-        "@webex/test-helper-mock-webex": "workspace:^",
-        "@webex/test-helper-test-users": "workspace:^",
-        "sinon": "^9.2.4"
-    },
-    "dependencies": {
-        "@webex/common": "workspace:^",
-        "@webex/internal-plugin-device": "workspace:^",
-        "@webex/plugin-authorization-node": "workspace:^",
-        "@webex/storage-adapter-local-storage": "workspace:^",
-        "@webex/storage-adapter-spec": "workspace:^",
-        "@webex/webex-core": "workspace:^",
-        "lodash": "^4.17.21",
-        "uuid": "^3.3.2"
-    }
+  "name": "@webex/plugin-authorization-browser",
+  "version": "2.35.0",
+  "description": "",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/plugin-authorization-browser"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "devDependencies": {
+    "@webex/plugin-authorization-browser": "workspace:^",
+    "@webex/test-helper-appid": "workspace:^",
+    "@webex/test-helper-automation": "workspace:^",
+    "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-mocha": "workspace:^",
+    "@webex/test-helper-mock-webex": "workspace:^",
+    "@webex/test-helper-test-users": "workspace:^",
+    "sinon": "^9.2.4"
+  },
+  "dependencies": {
+    "@webex/common": "workspace:^",
+    "@webex/internal-plugin-device": "workspace:^",
+    "@webex/plugin-authorization-node": "workspace:^",
+    "@webex/storage-adapter-local-storage": "workspace:^",
+    "@webex/storage-adapter-spec": "workspace:^",
+    "@webex/webex-core": "workspace:^",
+    "lodash": "^4.17.21",
+    "uuid": "^3.3.2"
+  }
 }

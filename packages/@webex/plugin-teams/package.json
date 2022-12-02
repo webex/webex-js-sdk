@@ -1,32 +1,36 @@
 {
-    "name": "@webex/plugin-teams",
-    "version": "2.35.0",
-    "description": "",
-    "license": "MIT",
-    "main": "dist/index.js",
-    "devMain": "src/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/plugin-teams",
-    "engines": {
-        "node": ">=14"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
-    "devDependencies": {
-        "sinon": "^9.2.4"
-    },
-    "dependencies": {
-        "@webex/internal-plugin-device": "workspace:^",
-        "@webex/plugin-logger": "workspace:^",
-        "@webex/plugin-memberships": "workspace:^",
-        "@webex/plugin-rooms": "workspace:^",
-        "@webex/plugin-teams": "workspace:^",
-        "@webex/test-helper-chai": "workspace:^",
-        "@webex/test-helper-test-users": "workspace:^",
-        "@webex/webex-core": "workspace:^",
-        "lodash": "^4.17.21"
-    }
+  "name": "@webex/plugin-teams",
+  "version": "2.35.0",
+  "description": "",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/plugin-teams"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "devDependencies": {
+    "sinon": "^9.2.4"
+  },
+  "dependencies": {
+    "@webex/internal-plugin-device": "workspace:^",
+    "@webex/plugin-logger": "workspace:^",
+    "@webex/plugin-memberships": "workspace:^",
+    "@webex/plugin-rooms": "workspace:^",
+    "@webex/plugin-teams": "workspace:^",
+    "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-test-users": "workspace:^",
+    "@webex/webex-core": "workspace:^",
+    "lodash": "^4.17.21"
+  }
 }

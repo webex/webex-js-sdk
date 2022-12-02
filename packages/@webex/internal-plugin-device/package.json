@@ -1,38 +1,42 @@
 {
-    "name": "@webex/internal-plugin-device",
-    "version": "2.35.0",
-    "description": "",
-    "license": "MIT",
-    "author": "Timothy Scheuering <timsch@cisco.com>",
-    "main": "dist/index.js",
-    "devMain": "src/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/internal-plugin-device",
-    "engines": {
-        "node": ">=14"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
-    "devDependencies": {
-        "@webex/test-helper-chai": "workspace:^",
-        "@webex/test-helper-mock-webex": "workspace:^",
-        "@webex/test-helper-test-users": "workspace:^",
-        "chai": "^4.3.4",
-        "chai-as-promised": "^7.1.1",
-        "sinon": "^9.2.4"
-    },
-    "dependencies": {
-        "@webex/common": "workspace:^",
-        "@webex/common-timers": "workspace:^",
-        "@webex/http-core": "workspace:^",
-        "@webex/internal-plugin-device": "workspace:^",
-        "@webex/internal-plugin-metrics": "workspace:^",
-        "@webex/webex-core": "workspace:^",
-        "ampersand-collection": "^2.0.2",
-        "ampersand-state": "^5.0.3",
-        "lodash": "^4.17.21"
-    }
+  "name": "@webex/internal-plugin-device",
+  "version": "2.35.0",
+  "description": "",
+  "license": "MIT",
+  "author": "Timothy Scheuering <timsch@cisco.com>",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/internal-plugin-device"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "devDependencies": {
+    "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-mock-webex": "workspace:^",
+    "@webex/test-helper-test-users": "workspace:^",
+    "chai": "^4.3.4",
+    "chai-as-promised": "^7.1.1",
+    "sinon": "^9.2.4"
+  },
+  "dependencies": {
+    "@webex/common": "workspace:^",
+    "@webex/common-timers": "workspace:^",
+    "@webex/http-core": "workspace:^",
+    "@webex/internal-plugin-device": "workspace:^",
+    "@webex/internal-plugin-metrics": "workspace:^",
+    "@webex/webex-core": "workspace:^",
+    "ampersand-collection": "^2.0.2",
+    "ampersand-state": "^5.0.3",
+    "lodash": "^4.17.21"
+  }
 }

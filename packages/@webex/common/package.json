@@ -1,38 +1,42 @@
 {
-    "name": "@webex/common",
-    "version": "2.35.0",
-    "description": "Common utilities for Cisco Webex",
-    "license": "MIT",
-    "main": "dist/index.js",
-    "devMain": "src/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/common",
-    "engines": {
-        "node": ">=14"
-    },
-    "browser": {
-        "./dist/in-browser/node.js": "./dist/in-browser/browser.js",
-        "./src/in-browser/node.js": "./src/in-browser/browser.js"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
-    "devDependencies": {
-        "@sinonjs/fake-timers": "^6.0.1",
-        "@webex/common": "workspace:^",
-        "@webex/test-helper-chai": "workspace:^",
-        "ampersand-state": "^5.0.3",
-        "sinon": "^9.2.4"
-    },
-    "dependencies": {
-        "backoff": "^2.5.0",
-        "bowser": "^2.11.0",
-        "core-decorators": "^0.20.0",
-        "global": "^4.4.0",
-        "lodash": "^4.17.21",
-        "safe-buffer": "^5.2.0",
-        "urlsafe-base64": "^1.0.0"
-    }
+  "name": "@webex/common",
+  "version": "2.35.0",
+  "description": "Common utilities for Cisco Webex",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/common"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "browser": {
+    "./dist/in-browser/node.js": "./dist/in-browser/browser.js",
+    "./src/in-browser/node.js": "./src/in-browser/browser.js"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "devDependencies": {
+    "@sinonjs/fake-timers": "^6.0.1",
+    "@webex/common": "workspace:^",
+    "@webex/test-helper-chai": "workspace:^",
+    "ampersand-state": "^5.0.3",
+    "sinon": "^9.2.4"
+  },
+  "dependencies": {
+    "backoff": "^2.5.0",
+    "bowser": "^2.11.0",
+    "core-decorators": "^0.20.0",
+    "global": "^4.4.0",
+    "lodash": "^4.17.21",
+    "safe-buffer": "^5.2.0",
+    "urlsafe-base64": "^1.0.0"
+  }
 }
