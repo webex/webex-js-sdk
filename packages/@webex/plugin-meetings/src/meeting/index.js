@@ -122,6 +122,7 @@ export const MEDIA_UPDATE_TYPE = {
   * @property {String} audio.deviceId
   * @property {Object} video
   * @property {String} video.deviceId
+  * @property {String} video.localVideoQuality // [240p, 360p, 480p, 720p, 1080p]
   */
 
 /**
@@ -2643,6 +2644,15 @@ export default class Meeting extends StatelessWebexPlugin {
         aspectRatio, frameRate, height, width, deviceId
       } = videoTrack.getSettings();
 
+      const {localQualityLevel} = this.mediaProperties;
+
+      if (Number(localQualityLevel.slice(0, -1)) > height) {
+        LoggerProxy.logger.error(`Meeting:index#setLocalVideoTrack --> Local video quality of ${localQualityLevel} not supported,
+         downscaling to highest possible resolution of ${height}p`);
+
+        this.mediaProperties.setLocalQualityLevel(`${height}p`);
+      }
+
       this.mediaProperties.setLocalVideoTrack(videoTrack);
       if (this.video) this.video.applyClientStateLocally(this);
 
@@ -3922,6 +3932,9 @@ export default class Meeting extends StatelessWebexPlugin {
         LoggerProxy.logger.warn('Meeting:index#getMediaStreams --> Please use `meeting.shareScreen()` to manually start the screen share after successfully joining the meeting');
       }
 
+      if (!audioVideo.video) {
+        audioVideo = {...audioVideo, video: {...audioVideo.video, ...VIDEO_RESOLUTIONS[this.mediaProperties.localQualityLevel].video}};
+      }
       // extract deviceId if exists otherwise default to null.
       const {deviceId: preferredVideoDevice} = (audioVideo && audioVideo.video || {deviceId: null});
       const lastVideoDeviceId = this.mediaProperties.getVideoDeviceId();
@@ -4465,6 +4478,9 @@ export default class Meeting extends StatelessWebexPlugin {
   addMedia(options = {}) {
     const LOG_HEADER = 'Meeting:index#addMedia -->';
 
+    let turnDiscoverySkippedReason;
+    let turnServerUsed = false;
+
     if (this.meetingState !== FULL_STATE.ACTIVE) {
       return Promise.reject(new MeetingNotActiveError());
     }
@@ -4508,7 +4524,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return MeetingUtil.validateOptions(options)
       .then(() => this.roap.doTurnDiscovery(this, false))
-      .then((turnServerInfo) => {
+      .then((turnDiscoveryObject) => {
+        ({turnDiscoverySkippedReason} = turnDiscoveryObject);
+        turnServerUsed = !turnDiscoverySkippedReason;
+
+        const {turnServerInfo} = turnDiscoveryObject;
+
         this.preMedia(localStream, localShare, mediaSettings);
 
         const mc = this.createMediaConnection(turnServerInfo);
@@ -4550,16 +4571,6 @@ export default class Meeting extends StatelessWebexPlugin {
       })
       .catch((error) => {
         LoggerProxy.logger.error(`${LOG_HEADER} Error adding media , setting up peerconnection, `, error);
-
-        Metrics.sendBehavioralMetric(
-          BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
-          {
-            correlation_id: this.correlationId,
-            locus_id: this.locusUrl.split('/').pop(),
-            reason: error.message,
-            stack: error.stack
-          }
-        );
 
         throw error;
       })
@@ -4658,7 +4669,9 @@ export default class Meeting extends StatelessWebexPlugin {
                 locus_id: this.locusUrl.split('/').pop(),
                 reason: error.message,
                 stack: error.stack,
-                code: error.code
+                code: error.code,
+                turnDiscoverySkippedReason,
+                turnServerUsed
               }
             );
 
@@ -4789,6 +4802,10 @@ export default class Meeting extends StatelessWebexPlugin {
 
     const previousSendShareStatus = this.mediaProperties.mediaDirection.sendShare;
 
+    if (!this.mediaProperties.webrtcMediaConnection) {
+      return Promise.reject(new Error('media connection not established, call addMedia() first'));
+    }
+
     return MeetingUtil.validateOptions(options)
       .then(() => this.preMedia(localStream, localShare, mediaSettings))
       .then(() => this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions({
@@ -4863,6 +4880,10 @@ export default class Meeting extends StatelessWebexPlugin {
       return Promise.reject(new ParameterError('Pass sendAudio and receiveAudio parameter'));
     }
 
+    if (!this.mediaProperties.webrtcMediaConnection) {
+      return Promise.reject(new Error('media connection not established, call addMedia() first'));
+    }
+
     if (this.effects && this.effects.state) {
       const bnrEnabled = this.effects.state.bnr.enabled;
 
@@ -4916,6 +4937,10 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (typeof sendVideo !== 'boolean' || typeof receiveVideo !== 'boolean') {
       return Promise.reject(new ParameterError('Pass sendVideo and receiveVideo parameter'));
+    }
+
+    if (!this.mediaProperties.webrtcMediaConnection) {
+      return Promise.reject(new Error('media connection not established, call addMedia() first'));
     }
 
     return MeetingUtil.validateOptions({sendVideo, localStream: stream})
@@ -4983,6 +5008,11 @@ export default class Meeting extends StatelessWebexPlugin {
     if (typeof sendShare !== 'boolean' || typeof receiveShare !== 'boolean') {
       return Promise.reject(new ParameterError('Pass sendShare and receiveShare parameter'));
     }
+
+    if (!this.mediaProperties.webrtcMediaConnection) {
+      return Promise.reject(new Error('media connection not established, call addMedia() first'));
+    }
+
     const previousSendShareStatus = this.mediaProperties.mediaDirection.sendShare;
 
     this.setLocalShareTrack(stream);
@@ -5582,7 +5612,7 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Sets the quality of the local video stream
    * @param {String} level {LOW|MEDIUM|HIGH}
-   * @returns {Promise}
+   * @returns {Promise<MediaStream>} localStream
    */
   setLocalVideoQuality(level) {
     LoggerProxy.logger.log(`Meeting:index#setLocalVideoQuality --> Setting quality to ${level}`);
@@ -5611,13 +5641,22 @@ export default class Meeting extends StatelessWebexPlugin {
       sendShare: this.mediaProperties.mediaDirection.sendShare
     };
 
+    // When changing local video quality level
+    // Need to stop current track first as chrome doesn't support resolution upscaling(for eg. changing 480p to 720p)
+    // Without feeding it a new track
+    // open bug link: https://bugs.chromium.org/p/chromium/issues/detail?id=943469
+    if (isBrowser('chrome') && this.mediaProperties.videoTrack) Media.stopTracks(this.mediaProperties.videoTrack);
+
     return this.getMediaStreams(mediaDirection, VIDEO_RESOLUTIONS[level])
-      .then(([localStream]) =>
-        this.updateVideo({
+      .then(async ([localStream]) => {
+        await this.updateVideo({
           sendVideo: true,
           receiveVideo: true,
           stream: localStream
-        }));
+        });
+
+        return localStream;
+      });
   }
 
   /**
@@ -5650,9 +5689,10 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Sets the quality level of all meeting media (incoming/outgoing)
+   * This is deprecated, please use setLocalVideoQuality for setting local and setRemoteQualityLevel for remote
    * @param {String} level {LOW|MEDIUM|HIGH}
    * @returns {Promise}
+   * @deprecated After FHD support
    */
   setMeetingQuality(level) {
     LoggerProxy.logger.log(`Meeting:index#setMeetingQuality --> Setting quality to ${level}`);

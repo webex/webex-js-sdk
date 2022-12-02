@@ -2,6 +2,59 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.34.0](https://github.com/webex/webex-js-sdk/compare/v2.33.2...v2.34.0) (2022-12-01)
+
+
+### Features
+
+* added turnDiscoveryEnabled to js_sdk_add_media_failures ([#2513](https://github.com/webex/webex-js-sdk/issues/2513)) ([d12fd1d](https://github.com/webex/webex-js-sdk/commit/d12fd1d5c33669f38362f8181ef33b32f3920991))
+
+### [2.33.2](https://github.com/webex/webex-js-sdk/compare/v2.33.1...v2.33.2) (2022-11-30)
+
+### [2.33.1](https://github.com/webex/webex-js-sdk/compare/v2.33.0...v2.33.1) (2022-11-28)
+
+
+### Bug Fixes
+
+* **samples:** fix admit button functionality ([#2518](https://github.com/webex/webex-js-sdk/issues/2518)) ([52ae61e](https://github.com/webex/webex-js-sdk/commit/52ae61eb1d84ace64032c69c320a2094e0042d28))
+
+## [2.33.0](https://github.com/webex/webex-js-sdk/compare/v2.32.0...v2.33.0) (2022-11-23)
+
+
+### Features
+
+* avoid unnecessary turn request ([#2510](https://github.com/webex/webex-js-sdk/issues/2510)) ([6e240f7](https://github.com/webex/webex-js-sdk/commit/6e240f7cd1ad03a8f7f03209f6ee119d1684b2e3))
+
+## [2.32.0](https://github.com/webex/webex-js-sdk/compare/v2.31.4...v2.32.0) (2022-11-21)
+
+
+### Features
+
+* **plugin-meetings:** added support for full HD(1080p)  video ([#2414](https://github.com/webex/webex-js-sdk/issues/2414)) ([cc0c61a](https://github.com/webex/webex-js-sdk/commit/cc0c61a411e2936caeda84dbd37ed99c72527956))
+
+### [2.31.4](https://github.com/webex/webex-js-sdk/compare/v2.31.3...v2.31.4) (2022-11-16)
+
+
+### Bug Fixes
+
+* sdk licence update to cisco eula ([#2504](https://github.com/webex/webex-js-sdk/issues/2504)) ([21423a0](https://github.com/webex/webex-js-sdk/commit/21423a00707d1e78d7562b8f8050f7b289eef9eb))
+
+### [2.31.3](https://github.com/webex/webex-js-sdk/compare/v2.31.2...v2.31.3) (2022-11-16)
+
+
+### Bug Fixes
+
+* **sample app:** apply settings to correct meeting ([#2506](https://github.com/webex/webex-js-sdk/issues/2506)) ([cb5fa49](https://github.com/webex/webex-js-sdk/commit/cb5fa49d419753fad211f50c552210fd818df51a))
+
+### [2.31.2](https://github.com/webex/webex-js-sdk/compare/v2.31.1...v2.31.2) (2022-11-16)
+
+
+### Bug Fixes
+
+* **voices:** add deregister events ([#2500](https://github.com/webex/webex-js-sdk/issues/2500)) ([9460a60](https://github.com/webex/webex-js-sdk/commit/9460a607be92ad78253a3ff6fcb05a9406fa289d))
+
+### [2.31.1](https://github.com/webex/webex-js-sdk/compare/v2.31.0...v2.31.1) (2022-11-14)
+
 ## [2.31.0](https://github.com/webex/webex-js-sdk/compare/v2.30.2...v2.31.0) (2022-11-08)
 
 

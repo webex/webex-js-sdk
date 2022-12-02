@@ -670,7 +670,7 @@ describe('plugin-meetings', () => {
           const audioVideoSettings = {};
 
           sinon.stub(meeting.mediaProperties, 'videoDeviceId').value(videoDevice);
-
+          sinon.stub(meeting.mediaProperties, 'localQualityLevel').value('480p');
           await meeting.getMediaStreams(mediaDirection, audioVideoSettings);
 
           assert.calledWith(Media.getUserMedia, {
@@ -679,6 +679,8 @@ describe('plugin-meetings', () => {
           },
           {
             video: {
+              width: {max: 640, ideal: 640},
+              height: {max: 480, ideal: 480},
               deviceId: videoDevice
             }
           });
@@ -700,6 +702,30 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.mediaProperties.setVideoDeviceId, newVideoDevice);
         });
 
+        it('uses the passed custom video resolution', async () => {
+          const mediaDirection = {sendAudio: true, sendVideo: true, sendShare: false};
+          const customAudioVideoSettings = {
+            video: {
+              width: {
+                max: 400,
+                ideal: 400
+              },
+              height: {
+                max: 200,
+                ideal: 200
+              }
+            }
+          };
+
+          sinon.stub(meeting.mediaProperties, 'localQualityLevel').value('200p');
+          await meeting.getMediaStreams(mediaDirection, customAudioVideoSettings);
+
+          assert.calledWith(Media.getUserMedia, {
+            ...mediaDirection,
+            isSharing: false
+          },
+          customAudioVideoSettings);
+        });
         it('should not access camera if sendVideo is false ', async () => {
           await meeting.getMediaStreams({sendAudio: true, sendVideo: false});
 
@@ -897,7 +923,7 @@ describe('plugin-meetings', () => {
           meeting.setMercuryListener = sinon.stub().returns(true);
           meeting.setupMediaConnectionListeners = sinon.stub();
           meeting.setMercuryListener = sinon.stub();
-          meeting.roap.doTurnDiscovery = sinon.stub().resolves();
+          meeting.roap.doTurnDiscovery = sinon.stub().resolves({turnServerInfo: {}, turnDiscoverySkippedReason: undefined});
         });
 
         it('should have #addMedia', () => {
@@ -941,8 +967,42 @@ describe('plugin-meetings', () => {
           });
           // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
-          await assert.isRejected(meeting.addMedia());
+          const error = await assert.isRejected(meeting.addMedia());
+
           assert.isNull(meeting.statsAnalyzer);
+          assert(Metrics.sendBehavioralMetric.calledOnce);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: error.message,
+              stack: error.stack,
+              code: error.code,
+              turnDiscoverySkippedReason: undefined,
+              turnServerUsed: true
+            }
+          );
+        });
+
+        it('checks metrics called with skipped reason config', async () => {
+          meeting.roap.doTurnDiscovery = sinon.stub().resolves({turnServerInfo: undefined, turnDiscoverySkippedReason: 'config'});
+          meeting.meetingState = 'ACTIVE';
+          await meeting.addMedia().catch((err) => {
+            assert.exists(err);
+            assert(Metrics.sendBehavioralMetric.calledOnce);
+            assert.calledWith(
+              Metrics.sendBehavioralMetric,
+              BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
+                correlation_id: meeting.correlationId,
+                locus_id: meeting.locusUrl.split('/').pop(),
+                reason: err.message,
+                stack: err.stack,
+                turnDiscoverySkippedReason: 'config',
+                turnServerUsed: false
+              }
+            );
+          });
         });
 
         it('should reset the webrtcMediaConnection to null if addMedia throws an error', async () => {
@@ -956,6 +1016,18 @@ describe('plugin-meetings', () => {
 
           assert.instanceOf(result, Error);
           assert.isNull(meeting.mediaProperties.webrtcMediaConnection);
+
+          assert(Metrics.sendBehavioralMetric.calledOnce);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, sinon.match({
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: result.message,
+              turnDiscoverySkippedReason: undefined,
+              turnServerUsed: true
+            })
+          );
         });
 
         it('should work the second time addMedia is called in case the first time fails', async () => {
@@ -1017,6 +1089,8 @@ describe('plugin-meetings', () => {
         });
 
         it('should attach the media and return promise', async () => {
+          meeting.roap.doTurnDiscovery = sinon.stub().resolves({turnServerInfo: undefined, turnDiscoverySkippedReason: undefined});
+
           meeting.meetingState = 'ACTIVE';
           const media = meeting.addMedia({
             mediaSettings: {}
@@ -1044,10 +1118,14 @@ describe('plugin-meetings', () => {
           meeting.meetingState = 'ACTIVE';
           Media.createMediaConnection.resetHistory();
 
+
           meeting.roap.doTurnDiscovery = sinon.stub().resolves({
-            url: FAKE_TURN_URL,
-            username: FAKE_TURN_USER,
-            password: FAKE_TURN_PASSWORD
+            turnServerInfo: {
+              url: FAKE_TURN_URL,
+              username: FAKE_TURN_USER,
+              password: FAKE_TURN_PASSWORD
+            },
+            turnServerSkippedReason: undefined
           });
           const media = meeting.addMedia({
             mediaSettings: {}
@@ -2133,11 +2211,19 @@ describe('plugin-meetings', () => {
       describe('#setLocalVideoQuality', () => {
         let mediaDirection;
 
+        const fakeTrack = {getSettings: () => ({height: 720})};
+        const USER_AGENT_CHROME_MAC =
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ' +
+        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.85 Safari/537.36';
+
         beforeEach(() => {
           mediaDirection = {sendAudio: true, sendVideo: true, sendShare: false};
           meeting.getMediaStreams = sinon.stub().returns(Promise.resolve([]));
-          meeting.updateVideo = sinon.stub().returns(Promise.resolve());
           meeting.mediaProperties.mediaDirection = mediaDirection;
+          meeting.canUpdateMedia = sinon.stub().returns(true);
+          MeetingUtil.validateOptions = sinon.stub().returns(Promise.resolve());
+          meeting.updateVideo = sinon.stub().resolves();
+          sinon.stub(MeetingUtil, 'getTrack').returns({videoTrack: fakeTrack});
         });
 
         it('should have #setLocalVideoQuality', () => {
@@ -2145,14 +2231,34 @@ describe('plugin-meetings', () => {
         });
 
         it('should call getMediaStreams with the proper level', () => meeting.setLocalVideoQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
+          delete mediaDirection.receiveVideo;
           assert.calledWith(meeting.getMediaStreams,
             mediaDirection,
             CONSTANTS.VIDEO_RESOLUTIONS[CONSTANTS.QUALITY_LEVELS.LOW]);
         }));
 
+        it('when browser is chrome then it should stop previous video track', () => {
+          meeting.mediaProperties.videoTrack = fakeTrack;
+          assert.equal(
+            BrowserDetection(USER_AGENT_CHROME_MAC).getBrowserName(),
+            'Chrome'
+          );
+          meeting.setLocalVideoQuality(CONSTANTS.QUALITY_LEVELS.LOW)
+            .then(() => {
+              assert.calledWith(Media.stopTracks, fakeTrack);
+            });
+        });
+
         it('should set mediaProperty with the proper level', () => meeting.setLocalVideoQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
           assert.equal(meeting.mediaProperties.localQualityLevel, CONSTANTS.QUALITY_LEVELS.LOW);
         }));
+
+        it('when device does not support 1080p then it should set localQualityLevel with highest possible resolution', () => {
+          meeting.setLocalVideoQuality(CONSTANTS.QUALITY_LEVELS['1080p'])
+            .then(() => {
+              assert.equal(meeting.mediaProperties.localQualityLevel, CONSTANTS.QUALITY_LEVELS['720p']);
+            });
+        });
 
         it('should error if set to a invalid level', () => {
           assert.isRejected(meeting.setLocalVideoQuality('invalid'));
@@ -2192,54 +2298,6 @@ describe('plugin-meetings', () => {
         it('should error if receiveVideo is set to false', () => {
           meeting.mediaProperties.mediaDirection = {receiveVideo: false};
           assert.isRejected(meeting.setRemoteQualityLevel('LOW'));
-        });
-      });
-
-      describe('#setMeetingQuality', () => {
-        let mediaDirection;
-
-        beforeEach(() => {
-          mediaDirection = {
-            receiveAudio: true, receiveVideo: true, receiveShare: false, sendVideo: true
-          };
-          meeting.setRemoteQualityLevel = sinon.stub().returns(Promise.resolve());
-          meeting.setLocalVideoQuality = sinon.stub().returns(Promise.resolve());
-          meeting.mediaProperties.mediaDirection = mediaDirection;
-        });
-
-        it('should have #setMeetingQuality', () => {
-          assert.exists(meeting.setMeetingQuality);
-        });
-
-        it('should call setRemoteQualityLevel', () => meeting.setMeetingQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
-          assert.calledOnce(meeting.setRemoteQualityLevel);
-        }));
-
-        it('should not call setRemoteQualityLevel when receiveVideo and receiveAudio are false', () => {
-          mediaDirection.receiveAudio = false;
-          mediaDirection.receiveVideo = false;
-          meeting.mediaProperties.mediaDirection = mediaDirection;
-
-          return meeting.setMeetingQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
-            assert.notCalled(meeting.setRemoteQualityLevel);
-          });
-        });
-
-        it('should call setLocalVideoQuality', () => meeting.setMeetingQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
-          assert.calledOnce(meeting.setLocalVideoQuality);
-        }));
-
-        it('should not call setLocalVideoQuality when sendVideo is false', () => {
-          mediaDirection.sendVideo = false;
-          meeting.mediaProperties.mediaDirection = mediaDirection;
-
-          return meeting.setMeetingQuality(CONSTANTS.QUALITY_LEVELS.LOW).then(() => {
-            assert.notCalled(meeting.setLocalVideoQuality);
-          });
-        });
-
-        it('should error if set to a invalid level', () => {
-          assert.isRejected(meeting.setMeetingQuality('invalid'));
         });
       });
 
