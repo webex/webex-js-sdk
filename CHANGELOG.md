@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.0](https://github.com/webex/webex-js-sdk/compare/v2.35.0...v3.0.0-beta.0) (2022-12-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* release breaking changes for multistream
+
+### Features
+
+* creating a beta release for v3 of SDK ([f2e5a9c](https://github.com/webex/webex-js-sdk/commit/f2e5a9c4ea741975d4b42c60928b4a00ba228e60))
+
 ## [2.35.0](https://github.com/webex/webex-js-sdk/compare/v2.34.0...v2.35.0) (2022-12-05)
 
 
