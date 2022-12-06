@@ -1,62 +1,66 @@
 {
-    "name": "@webex/plugin-meetings",
-    "version": "2.35.0",
-    "description": "",
-    "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
-    "contributors": [
-        "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
-        "Arun Ganeshan <arungane@cisco.com>",
-        "Christopher DuBois <chdubois@cisco.com> (https://chrisadubois.github.io/)",
-        "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
-        "Moriah Maney <momaney@cisco.com>",
-        "Taymoor Khan <taykhan@cisco.com>"
-    ],
-    "main": "dist/index.js",
-    "devMain": "src/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/plugin-meetings",
-    "engines": {
-        "node": ">=14"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
-    "devDependencies": {
-        "@webex/plugin-meetings": "workspace:^",
-        "@webex/test-helper-chai": "workspace:^",
-        "@webex/test-helper-mocha": "workspace:^",
-        "@webex/test-helper-mock-webex": "workspace:^",
-        "@webex/test-helper-retry": "workspace:^",
-        "@webex/test-helper-test-users": "workspace:^",
-        "chai": "^4.3.4",
-        "chai-as-promised": "^7.1.1",
-        "jsdom-global": "3.0.2",
-        "sinon": "^9.2.4"
-    },
-    "dependencies": {
-        "@webex/common": "workspace:^",
-        "@webex/internal-media-core": "^0.0.7-beta",
-        "@webex/internal-plugin-conversation": "workspace:^",
-        "@webex/internal-plugin-device": "workspace:^",
-        "@webex/internal-plugin-mercury": "workspace:^",
-        "@webex/internal-plugin-metrics": "workspace:^",
-        "@webex/internal-plugin-support": "workspace:^",
-        "@webex/internal-plugin-user": "workspace:^",
-        "@webex/plugin-people": "workspace:^",
-        "@webex/plugin-rooms": "workspace:^",
-        "@webex/ts-sdp": "^1.0.1",
-        "@webex/webex-core": "workspace:^",
-        "bowser": "^2.11.0",
-        "btoa": "^1.2.1",
-        "dotenv": "^4.0.0",
-        "global": "^4.4.0",
-        "ip-anonymize": "^0.1.0",
-        "javascript-state-machine": "^3.1.0",
-        "lodash": "^4.17.21",
-        "sdp-transform": "^2.12.0",
-        "uuid": "^3.3.2",
-        "webrtc-adapter": "^7.7.0"
-    }
+  "name": "@webex/plugin-meetings",
+  "version": "2.35.0",
+  "description": "",
+  "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
+  "contributors": [
+    "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
+    "Arun Ganeshan <arungane@cisco.com>",
+    "Christopher DuBois <chdubois@cisco.com> (https://chrisadubois.github.io/)",
+    "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
+    "Moriah Maney <momaney@cisco.com>",
+    "Taymoor Khan <taykhan@cisco.com>"
+  ],
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/plugin-meetings"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "devDependencies": {
+    "@webex/plugin-meetings": "workspace:^",
+    "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-mocha": "workspace:^",
+    "@webex/test-helper-mock-webex": "workspace:^",
+    "@webex/test-helper-retry": "workspace:^",
+    "@webex/test-helper-test-users": "workspace:^",
+    "chai": "^4.3.4",
+    "chai-as-promised": "^7.1.1",
+    "jsdom-global": "3.0.2",
+    "sinon": "^9.2.4"
+  },
+  "dependencies": {
+    "@webex/common": "workspace:^",
+    "@webex/internal-media-core": "^0.0.7-beta",
+    "@webex/internal-plugin-conversation": "workspace:^",
+    "@webex/internal-plugin-device": "workspace:^",
+    "@webex/internal-plugin-mercury": "workspace:^",
+    "@webex/internal-plugin-metrics": "workspace:^",
+    "@webex/internal-plugin-support": "workspace:^",
+    "@webex/internal-plugin-user": "workspace:^",
+    "@webex/plugin-people": "workspace:^",
+    "@webex/plugin-rooms": "workspace:^",
+    "@webex/ts-sdp": "^1.0.1",
+    "@webex/webex-core": "workspace:^",
+    "bowser": "^2.11.0",
+    "btoa": "^1.2.1",
+    "dotenv": "^4.0.0",
+    "global": "^4.4.0",
+    "ip-anonymize": "^0.1.0",
+    "javascript-state-machine": "^3.1.0",
+    "lodash": "^4.17.21",
+    "sdp-transform": "^2.12.0",
+    "uuid": "^3.3.2",
+    "webrtc-adapter": "^7.7.0"
+  }
 }
