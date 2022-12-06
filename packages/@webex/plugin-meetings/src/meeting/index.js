@@ -1,5 +1,5 @@
 import uuid from 'uuid';
-import {cloneDeep, isEqual, pick} from 'lodash';
+import {cloneDeep, isEqual, pick, isString} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {Media as WebRTCMedia, MediaConnection as MC} from '@webex/internal-media-core';
 
@@ -2646,7 +2646,7 @@ export default class Meeting extends StatelessWebexPlugin {
       const {localQualityLevel} = this.mediaProperties;
 
       if (Number(localQualityLevel.slice(0, -1)) > height) {
-        LoggerProxy.logger.error(`Meeting:index#setLocalVideoTrack --> Local video quality of ${localQualityLevel} not supported,
+        LoggerProxy.logger.warn(`Meeting:index#setLocalVideoTrack --> Local video quality of ${localQualityLevel} not supported,
          downscaling to highest possible resolution of ${height}p`);
 
         this.mediaProperties.setLocalQualityLevel(`${height}p`);
@@ -3929,6 +3929,16 @@ export default class Meeting extends StatelessWebexPlugin {
 
         LoggerProxy.logger.warn('Meeting:index#getMediaStreams --> Enabling `sendShare` along with `sendAudio` & `sendVideo`, on Safari, causes a failure while setting up a screen share at the same time as the camera+mic stream');
         LoggerProxy.logger.warn('Meeting:index#getMediaStreams --> Please use `meeting.shareScreen()` to manually start the screen share after successfully joining the meeting');
+      }
+
+      if (audioVideo && isString(audioVideo)) {
+        if (Object.keys(VIDEO_RESOLUTIONS).includes(audioVideo)) {
+          this.mediaProperties.setLocalQualityLevel(audioVideo);
+          audioVideo = {video: VIDEO_RESOLUTIONS[audioVideo].video};
+        }
+        else {
+          throw new ParameterError(`${audioVideo} not supported. Either pass level from pre-defined resolutions or pass complete audioVideo object`);
+        }
       }
 
       if (!audioVideo.video) {

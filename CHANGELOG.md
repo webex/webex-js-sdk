@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.35.0](https://github.com/webex/webex-js-sdk/compare/v2.34.0...v2.35.0) (2022-12-05)
+
+
+### Features
+
+* **plugin-meetings:** added connection type to "js_sdk_add_media_success" metric ([#2517](https://github.com/webex/webex-js-sdk/issues/2517)) ([bf685e4](https://github.com/webex/webex-js-sdk/commit/bf685e452f0efa03a62e1b552ad1bdeccd3efeb8))
+
+
+### Bug Fixes
+
+* **plugin-meetings:** support for level in getMediaStreams ([#2521](https://github.com/webex/webex-js-sdk/issues/2521)) ([ef59737](https://github.com/webex/webex-js-sdk/commit/ef59737b3d7243be264a2f75846ae3ee398fc132))
+
 ## [2.34.0](https://github.com/webex/webex-js-sdk/compare/v2.33.2...v2.34.0) (2022-12-01)
 
 
