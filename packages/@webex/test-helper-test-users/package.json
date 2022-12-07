@@ -1,24 +1,28 @@
 {
-    "name": "@webex/test-helper-test-users",
-    "version": "2.35.0",
-    "description": "",
-    "license": "MIT",
-    "main": "dist/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/test-helper-test-users",
-    "optionalDependencies": {
-        "@ciscospark/test-users-legacy": "^1.0.2"
-    },
-    "engines": {
-        "node": ">=14"
-    },
-    "browserify": {
-        "transform": [
-            "envify"
-        ]
-    },
-    "dependencies": {
-        "@webex/test-helper-retry": "workspace:^",
-        "@webex/test-users": "workspace:^",
-        "lodash": "^4.17.21"
-    }
+  "name": "@webex/test-helper-test-users",
+  "version": "2.35.0",
+  "description": "",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/test-helper-test-users"
+  },
+  "optionalDependencies": {
+    "@ciscospark/test-users-legacy": "^1.0.2"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "browserify": {
+    "transform": [
+      "envify"
+    ]
+  },
+  "dependencies": {
+    "@webex/test-helper-retry": "workspace:^",
+    "@webex/test-users": "workspace:^",
+    "lodash": "^4.17.21"
+  }
 }

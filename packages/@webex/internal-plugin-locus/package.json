@@ -1,27 +1,31 @@
 {
-    "name": "@webex/internal-plugin-locus",
-    "version": "2.35.0",
-    "description": "",
-    "license": "MIT",
-    "main": "dist/index.js",
-    "devMain": "src/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/internal-plugin-locus",
-    "engines": {
-        "node": ">=14"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
-    "dependencies": {
-        "@webex/internal-plugin-locus": "workspace:^",
-        "@webex/internal-plugin-mercury": "workspace:^",
-        "@webex/test-helper-chai": "workspace:^",
-        "@webex/test-helper-mock-webex": "workspace:^",
-        "@webex/webex-core": "workspace:^",
-        "lodash": "^4.17.21",
-        "uuid": "^3.3.2"
-    }
+  "name": "@webex/internal-plugin-locus",
+  "version": "2.35.0",
+  "description": "",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/internal-plugin-locus"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "dependencies": {
+    "@webex/internal-plugin-locus": "workspace:^",
+    "@webex/internal-plugin-mercury": "workspace:^",
+    "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-mock-webex": "workspace:^",
+    "@webex/webex-core": "workspace:^",
+    "lodash": "^4.17.21",
+    "uuid": "^3.3.2"
+  }
 }
