@@ -18,11 +18,9 @@ import {
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ReconnectionError from '../common/errors/reconnection';
 import ReconnectInProgress from '../common/errors/reconnection-in-progress';
-import PeerConnectionManager from '../peer-connection-manager';
 import {eventType, reconnection, errorObjects} from '../metrics/config';
 import Media from '../media';
 import Metrics from '../metrics';
-import RoapCollection from '../roap/collection';
 
 /**
  * Used to indicate that the reconnect logic needs to be retried.
@@ -120,6 +118,21 @@ export default class ReconnectionManager {
   }
 
   /**
+   * @public
+   * @memberof ReconnectionManager
+   * @returns {void}
+   */
+  resetReconnectionTimer() {
+    this.iceState.resolve();
+    this.iceState.resolve = () => {};
+
+    if (this.iceState.timer) {
+      clearTimeout(this.iceState.timer);
+      delete this.iceState.timer;
+    }
+  }
+
+  /**
    * Sets the iceState to connected and clears any disconnect timeouts and
    * related timeout data within the iceState.
    *
@@ -131,13 +144,7 @@ export default class ReconnectionManager {
     if (this.iceState.disconnected) {
       LoggerProxy.logger.log('ReconnectionManager:index#iceReconnected --> ice has reconnected');
 
-      this.iceState.resolve();
-      this.iceState.resolve = () => {};
-
-      if (this.iceState.timer) {
-        clearTimeout(this.iceState.timer);
-        delete this.iceState.timer;
-      }
+      this.resetReconnectionTimer();
 
       this.iceState.disconnected = false;
     }
@@ -197,6 +204,16 @@ export default class ReconnectionManager {
   cleanUp() {
     this.reset();
     this.meeting = null;
+  }
+
+
+  /**
+   * @public
+   * @memberof ReconnectionManager
+   * @returns {Boolean} true if reconnection operation is in progress
+   */
+  isReconnectInProgress() {
+    return (this.status === RECONNECTION.STATE.IN_PROGRESS);
   }
 
   /**
@@ -388,12 +405,9 @@ export default class ReconnectionManager {
   async rejoinMeeting(wasSharing = false) {
     try {
       LoggerProxy.logger.info('ReconnectionManager:index#rejoinMeeting --> attemping meeting rejoin');
-      const previousCorrelationId = this.meeting.correlationId;
 
       await this.meeting.join({rejoin: true});
       LoggerProxy.logger.info('ReconnectionManager:index#rejoinMeeting --> meeting rejoined');
-
-      RoapCollection.deleteSession(previousCorrelationId);
 
       if (wasSharing) {
         // Stop the share streams if user tried to rejoin
@@ -451,28 +465,22 @@ export default class ReconnectionManager {
    * @private
    * @memberof ReconnectionManager
    */
-  reconnectMedia() {
+  async reconnectMedia() {
     LoggerProxy.logger.log('ReconnectionManager:index#reconnectMedia --> Begin reestablishment of media');
 
-    return ReconnectionManager.setupPeerConnection(this.meeting)
-      .then(() => Media.attachMedia(this.meeting.mediaProperties, {
-        meetingId: this.meeting.id,
-        remoteQualityLevel: this.meeting.mediaProperties.remoteQualityLevel,
-        enableRtx: this.meeting.config.enableRtx,
-        enableExtmap: this.meeting.config.enableExtmap
-      }))
-      .then((peerConnection) => this.meeting.setRemoteStream(peerConnection))
-      .then(() => {
-        LoggerProxy.logger.log('ReconnectionManager:index#reconnectMedia --> Sending ROAP media request');
+    // we are not simply calling this.meeting.mediaProperties.webrtcMediaConnection.reconnect(),
+    // but instead manually closing and creating new media connection, because we need to do the TURN discovery again
 
-        return this.meeting.roap
-          .sendRoapMediaRequest({
-            sdp: this.meeting.mediaProperties.peerConnection.sdp,
-            roapSeq: this.meeting.roapSeq,
-            meeting: this.meeting,
-            reconnect: true
-          });
-      });
+    await this.meeting.closePeerConnections();
+    this.meeting.mediaProperties.unsetPeerConnection();
+
+    const turnServerInfo = await this.meeting.roap.doTurnDiscovery(this.meeting, true);
+
+    const mc = this.meeting.createMediaConnection(turnServerInfo);
+
+    this.meeting.statsAnalyzer.updateMediaConnection(mc);
+
+    return mc.initiateOffer();
   }
 
   /**
@@ -507,26 +515,5 @@ export default class ReconnectionManager {
 
       throw (connectError);
     }
-  }
-
-  /**
-   * @param {Meeting} meeting
-   * @returns {undefined}
-   * @private
-   * @memberof ReconnectionManager
-   */
-  static async setupPeerConnection(meeting) {
-    LoggerProxy.logger.log('ReconnectionManager:index#setupPeerConnection --> Begin resetting peer connection');
-    // close pcs, unset to null and create a new one with out closing any streams
-    PeerConnectionManager.close(meeting.mediaProperties.peerConnection);
-    meeting.mediaProperties.unsetPeerConnection();
-
-    const turnInfo = await meeting.roap.doTurnDiscovery(meeting, true);
-
-    meeting.mediaProperties.reInitiatePeerconnection(turnInfo);
-    PeerConnectionManager.setPeerConnectionEvents(meeting);
-
-    // update the peerconnection in the stats manager when ever we reconnect
-    meeting.statsAnalyzer.updatePeerconnection(meeting.mediaProperties.peerConnection);
   }
 }

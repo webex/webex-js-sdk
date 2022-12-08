@@ -3,7 +3,6 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {BNR_STATUS} from '@webex/plugin-meetings/src/constants';
-
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import Meeting from '@webex/plugin-meetings/src/meeting';
 import Meetings from '@webex/plugin-meetings';
@@ -161,7 +160,6 @@ describe('plugin-meetings', () => {
         meetings: Meetings
       }
     });
-    MediaUtil.createPeerConnection = sinon.stub().returns({});
     meeting = new Meeting(
       {
         userId: uuid1
@@ -174,7 +172,6 @@ describe('plugin-meetings', () => {
     effects = createEffectsState('BNR');
     meeting.canUpdateMedia = sinon.stub().returns(true);
     MeetingUtil.validateOptions = sinon.stub().returns(Promise.resolve());
-    MeetingUtil.updateTransceiver = sinon.stub();
 
     meeting.addMedia = sinon.stub().returns(Promise.resolve());
     meeting.getMediaStreams = sinon.stub().returns(Promise.resolve());
@@ -184,6 +181,7 @@ describe('plugin-meetings', () => {
       sinon.stub(meeting.mediaProperties, 'mediaDirection').value({
         receiveAudio: true
       });
+      sinon.stub(meeting.mediaProperties, 'webrtcMediaConnection').value({updateSendReceiveOptions: sinon.stub()});
     });
   });
 

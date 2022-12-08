@@ -1,5 +1,6 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
+import {MediaConnection as MC} from '@webex/internal-media-core';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import MediaUtil from '@webex/plugin-meetings/src/media/util';
 import testUtils from '../../../utils/testUtils';
@@ -8,47 +9,39 @@ import {Defer} from '@webex/common';
 
 describe('MediaProperties', () => {
   let mediaProperties;
-  let mockPc;
+  let mockMC;
   let clock;
 
   beforeEach(() => {
     clock = sinon.useFakeTimers();
 
-    mockPc = {
+    mockMC = {
       getStats: sinon.stub().resolves([]),
-      addEventListener: sinon.stub(),
-      removeEventListener: sinon.stub(),
-      iceConnectionState: 'connected',
+      on: sinon.stub(),
+      off: sinon.stub(),
+      getConnectionState: sinon.stub().returns(MC.ConnectionState.Connected),
     };
 
-    sinon.stub(MediaUtil, 'createPeerConnection').returns(mockPc);
-
     mediaProperties = new MediaProperties();
+    mediaProperties.setMediaPeerConnection(mockMC);
   });
 
   afterEach(() => {
     clock.restore();
     sinon.restore();
   });
-  describe('waitForIceConnectedState', () => {
+  describe('waitForMediaConnectionConnected', () => {
     it('resolves immediately if ice state is connected', async () => {
-      mockPc.iceConnectionState = 'connected';
-
-      await mediaProperties.waitForIceConnectedState();
-    });
-    it('resolves immediately if ice state is completed', async () => {
-      mockPc.iceConnectionState = 'completed';
-
-      await mediaProperties.waitForIceConnectedState();
+      await mediaProperties.waitForMediaConnectionConnected();
     });
     it('rejects after timeout if ice state does not reach connected/completed', async () => {
-      mockPc.iceConnectionState = 'connecting';
+      mockMC.getConnectionState.returns(MC.ConnectionState.Connecting);
 
       let promiseResolved = false;
       let promiseRejected = false;
 
       mediaProperties
-        .waitForIceConnectedState()
+        .waitForMediaConnectionConnected()
         .then(() => {
           promiseResolved = true;
         })
@@ -66,128 +59,126 @@ describe('MediaProperties', () => {
       assert.equal(promiseRejected, true);
 
       // check that listener was registered and removed
-      assert.calledOnce(mockPc.addEventListener);
-      assert.equal(mockPc.addEventListener.getCall(0).args[0], 'iceconnectionstatechange');
-      const listener = mockPc.addEventListener.getCall(0).args[1];
+      assert.calledOnce(mockMC.on);
+      assert.equal(mockMC.on.getCall(0).args[0], MC.Event.CONNECTION_STATE_CHANGED);
+      const listener = mockMC.on.getCall(0).args[1];
 
-      assert.calledOnce(mockPc.removeEventListener);
-      assert.calledWith(mockPc.removeEventListener, 'iceconnectionstatechange', listener);
+      assert.calledOnce(mockMC.off);
+      assert.calledWith(mockMC.off, MC.Event.CONNECTION_STATE_CHANGED, listener);
     });
 
-    ['connected', 'completed'].forEach((successIceState) =>
-      it(`resolves when ice state reaches ${successIceState}`, async () => {
-        mockPc.iceConnectionState = 'connecting';
+    it(`resolves when media connection reaches "connected" state`, async () => {
+      mockMC.getConnectionState.returns(MC.ConnectionState.Connecting);
 
-        const clearTimeoutSpy = sinon.spy(clock, 'clearTimeout');
+      const clearTimeoutSpy = sinon.spy(clock, 'clearTimeout');
 
-        let promiseResolved = false;
-        let promiseRejected = false;
+      let promiseResolved = false;
+      let promiseRejected = false;
 
-        mediaProperties
-          .waitForIceConnectedState()
-          .then(() => {
-            promiseResolved = true;
-          })
-          .catch(() => {
-            promiseRejected = true;
-          });
+      mediaProperties
+        .waitForMediaConnectionConnected()
+        .then(() => {
+          promiseResolved = true;
+        })
+        .catch(() => {
+          promiseRejected = true;
+        });
 
-        assert.equal(promiseResolved, false);
-        assert.equal(promiseRejected, false);
+      assert.equal(promiseResolved, false);
+      assert.equal(promiseRejected, false);
 
-        // check the right listener was registered
-        assert.calledOnce(mockPc.addEventListener);
-        assert.equal(mockPc.addEventListener.getCall(0).args[0], 'iceconnectionstatechange');
-        const listener = mockPc.addEventListener.getCall(0).args[1];
+      // check the right listener was registered
+      assert.calledOnce(mockMC.on);
+      assert.equal(mockMC.on.getCall(0).args[0], MC.Event.CONNECTION_STATE_CHANGED);
+      const listener = mockMC.on.getCall(0).args[1];
 
-        // call the listener and pretend we are now connected
-        mockPc.iceConnectionState = successIceState;
-        listener();
-        await testUtils.flushPromises();
+      // call the listener and pretend we are now connected
+      mockMC.getConnectionState.returns(MC.ConnectionState.Connected);
+      listener();
+      await testUtils.flushPromises();
 
-        assert.equal(promiseResolved, true);
-        assert.equal(promiseRejected, false);
+      assert.equal(promiseResolved, true);
+      assert.equal(promiseRejected, false);
 
-        // check that listener was removed
-        assert.calledOnce(mockPc.removeEventListener);
-        assert.calledWith(mockPc.removeEventListener, 'iceconnectionstatechange', listener);
+      // check that listener was removed
+      assert.calledOnce(mockMC.off);
+      assert.calledWith(mockMC.off, MC.Event.CONNECTION_STATE_CHANGED, listener);
 
-        assert.calledOnce(clearTimeoutSpy);
-      })
-    );
+      assert.calledOnce(clearTimeoutSpy);
+    });
   });
 
   describe('getCurrentConnectionType', () => {
-    it('calls waitForIceConnectedState', async () => {
-      const spy = sinon.stub(mediaProperties, 'waitForIceConnectedState');
+    it('calls waitForMediaConnectionConnected', async () => {
+      const spy = sinon.stub(mediaProperties, 'waitForMediaConnectionConnected');
 
       await mediaProperties.getCurrentConnectionType();
 
       assert.calledOnce(spy);
     });
-    it('calls getStats() only after waitForIceConnectedState resolves', async () => {
-      const waitForIceConnectedStateResult = new Defer();
+    it('calls getStats() only after waitForMediaConnectionConnected resolves', async () => {
+      const waitForMediaConnectionConnectedResult = new Defer();
 
-      const waitForIceConnectedStateStub = sinon
-        .stub(mediaProperties, 'waitForIceConnectedState')
-        .returns(waitForIceConnectedStateResult.promise);
+      const waitForMediaConnectionConnectedStub = sinon
+        .stub(mediaProperties, 'waitForMediaConnectionConnected')
+        .returns(waitForMediaConnectionConnectedResult.promise);
 
       const result = mediaProperties.getCurrentConnectionType();
 
       await testUtils.flushPromises();
 
-      assert.called(waitForIceConnectedStateStub);
-      assert.notCalled(mockPc.getStats);
+      assert.called(waitForMediaConnectionConnectedStub);
+      assert.notCalled(mockMC.getStats);
 
-      waitForIceConnectedStateResult.resolve();
+      waitForMediaConnectionConnectedResult.resolve();
       await testUtils.flushPromises();
 
-      assert.called(mockPc.getStats);
+      assert.called(mockMC.getStats);
       await result;
     });
-    it('rejects if waitForIceConnectedState rejects', async () => {
-      const waitForIceConnectedStateResult = new Defer();
+    it('rejects if waitForMediaConnectionConnected rejects', async () => {
+      const waitForMediaConnectionConnectedResult = new Defer();
 
-      const waitForIceConnectedStateStub = sinon
-        .stub(mediaProperties, 'waitForIceConnectedState')
-        .returns(waitForIceConnectedStateResult.promise);
+      const waitForMediaConnectionConnectedStub = sinon
+        .stub(mediaProperties, 'waitForMediaConnectionConnected')
+        .returns(waitForMediaConnectionConnectedResult.promise);
 
       const result = mediaProperties.getCurrentConnectionType();
 
       await testUtils.flushPromises();
 
-      assert.called(waitForIceConnectedStateStub);
+      assert.called(waitForMediaConnectionConnectedStub);
 
-      waitForIceConnectedStateResult.reject(new Error('fake error'));
+      waitForMediaConnectionConnectedResult.reject(new Error('fake error'));
       await testUtils.flushPromises();
 
-      assert.notCalled(mockPc.getStats);
+      assert.notCalled(mockMC.getStats);
 
       await assert.isRejected(result);
     });
     it('returns "unknown" if getStats() fails', async () => {
-      mockPc.getStats.rejects(new Error());
+      mockMC.getStats.rejects(new Error());
 
       const connectionType = await mediaProperties.getCurrentConnectionType();
       assert.equal(connectionType, 'unknown');
     });
 
     it('returns "unknown" if getStats() returns no candidate pairs', async () => {
-      mockPc.getStats.resolves([{type: 'something', id: '1234'}]);
+      mockMC.getStats.resolves([{type: 'something', id: '1234'}]);
 
       const connectionType = await mediaProperties.getCurrentConnectionType();
       assert.equal(connectionType, 'unknown');
     });
 
     it('returns "unknown" if getStats() returns no successful candidate pair', async () => {
-      mockPc.getStats.resolves([{type: 'candidate-pair', id: '1234', state: 'inprogress'}]);
+      mockMC.getStats.resolves([{type: 'candidate-pair', id: '1234', state: 'inprogress'}]);
 
       const connectionType = await mediaProperties.getCurrentConnectionType();
       assert.equal(connectionType, 'unknown');
     });
 
     it('returns "unknown" if getStats() returns a successful candidate pair but local candidate is missing', async () => {
-      mockPc.getStats.resolves([
+      mockMC.getStats.resolves([
         {type: 'candidate-pair', id: '1234', state: 'succeeded', localCandidateId: 'wrong id'},
       ]);
 
@@ -196,7 +187,7 @@ describe('MediaProperties', () => {
     });
 
     it('returns "UDP" if getStats() returns a successful candidate pair with udp local candidate', async () => {
-      mockPc.getStats.resolves([
+      mockMC.getStats.resolves([
         {
           type: 'candidate-pair',
           id: 'some candidate pair id',
@@ -212,7 +203,7 @@ describe('MediaProperties', () => {
     });
 
     it('returns "TCP" if getStats() returns a successful candidate pair with tcp local candidate', async () => {
-      mockPc.getStats.resolves([
+      mockMC.getStats.resolves([
         {
           type: 'candidate-pair',
           id: 'some candidate pair id',
@@ -233,7 +224,7 @@ describe('MediaProperties', () => {
       {relayProtocol: 'udp', expectedConnectionType: 'TURN-UDP'},
     ].forEach(({relayProtocol, expectedConnectionType}) =>
       it(`returns "${expectedConnectionType}" if getStats() returns a successful candidate pair with a local candidate with relayProtocol=${relayProtocol}`, async () => {
-        mockPc.getStats.resolves([
+        mockMC.getStats.resolves([
           {
             type: 'candidate-pair',
             id: 'some candidate pair id',
@@ -265,7 +256,7 @@ describe('MediaProperties', () => {
       // in real life this will never happen and all active candidate pairs will have same transport,
       // but here we're simulating a situation where they have different transports and just checking
       // that the code still works and just returns the first one
-      mockPc.getStats.resolves([
+      mockMC.getStats.resolves([
         {
           type: 'inbound-rtp',
           id: 'whatever',

@@ -11,6 +11,37 @@
 
 <body>
   <div class="container">
+    <section id="multistream-remote-streams" class="section-box section-wide">
+      <h2 class="collapsible">Multistream Media</h2>
+      <div class="section-content">
+        <fieldset>
+          <legend>Multistream Remote Videos</legend>
+          <audio id="multistream-remote-audio-0" class="multistream-remote-audio" autoplay ></audio>
+          <audio id="multistream-remote-audio-1" class="multistream-remote-audio" autoplay ></audio>
+          <audio id="multistream-remote-audio-2" class="multistream-remote-audio" autoplay ></audio>
+          <div id="multistream-videos-container" class="multistream-videos-container">
+          </div>
+          <div class="multistream-buttons"">
+            <div class="stage-control-wrapper">
+              <span>Choose Layout:</span>
+              <select name="multistream-layout" id="multistream-layout" disabled onchange="updateMultistreamVideoLayout()">
+                <option value="AllEqual">All Equal (max 9)</option>
+                <option value="OnePlusFive">One big plane + five small</option>
+                <option value="Single">Single video pane</option>
+                <option value="Stage">Stage with thumbnails</option>
+                <option value="ScreenShareView">Screen share with thumbnails</option>
+              </select>
+            </div>
+            <div id="stage-selector-wrapper" class="stage-control-wrapper hidden">
+              <select name="multistream-stage-selector" id="multistream-stage-selector"></select>
+              <button id="add-to-stage" type="submit" onclick="addToStage()">Add to stage</button>
+            </div>
+          </div>
+        </fieldset>
+      </div>
+    </section>
+  </div>
+  <div class="container">
     <div id="docs-content" class="column">
       <section id="meetingAuthentication" class="section-box">
         <h2 class="collapsible">Meeting Management</h2>
@@ -244,7 +275,7 @@
                 <input id="meetings-join-pin" name="meetingPin" placeholder="Password/PIN" value="" type="text">
                 <div>
                   <img id="meetings-join-captcha" src="" alt="captcha" style="width: 150px; height: 70px;" hidden>
-              
+
                   <!-- refresh icon -->
                   <span id="meetings-join-captcha-refresh" type="button" onclick="refreshCaptcha()" hidden>
                     <i class="fa fa-refresh"></i>
@@ -261,9 +292,9 @@
 
               <!-- meetings / media quality -->
               <div>
-                <fieldset>
+                <fieldset id="meeting-quality">
                   <legend>Media Quality</legend>
-              
+
                   <!-- Media quality dropdown -->
                   <p class="note">NOTE: You can change the local, remote or meeting quality.</p>
 
@@ -273,9 +304,9 @@
                       <label class="media-button-label" for="local-resolution">Local Resolution</label>
                       <select name="local-resolution" id="local-resolution" class="media-select"></select>
 
-                      <button 
-                        id="ts-set-local-meeting-quality" 
-                        type="button" 
+                      <button
+                        id="ts-set-local-meeting-quality"
+                        type="button"
                         onclick="setLocalMeetingQuality()"
                         class="btn-code media-button"
                       >
@@ -288,9 +319,9 @@
                       <label class="media-button-label" for="remote-resolution">Remote Resolution</label>
                       <select name="remote-resolution" id="remote-resolution" class="media-select"></select>
 
-                      <button 
-                        id="ts-set-remote-meeting-quality" 
-                        type="button" 
+                      <button
+                        id="ts-set-remote-meeting-quality"
+                        type="button"
                         onclick="setRemoteMeetingQuality()"
                         class="btn-code media-button"
                       >
@@ -298,12 +329,14 @@
                       </button>
                     </div>
                     <label id="ts-sending-quality-status"></label>
-                  </div>                  
+                  </div>
                 </fieldset>
               </div>
 
               <div>
                 <p class="note">NOTE: Choose your sending and receiving options for the meeting.</p>
+                <input id="meetings-join-multistream" type="checkbox" onclick="updateMultistreamUI()">
+                <label for="meetings-join-multistream">Use a multistream connection</label>
                 <div class="u-mv">
                   <label>
                     <input type="checkbox" name="ts-media-direction" value="receiveAudio" checked="">receiveAudio
@@ -406,7 +439,7 @@
               </div>
             </fieldset>
           </div>
-        
+
           <!-- PMR management -->
           <div>
             <form id="pmr-management">
@@ -493,7 +526,7 @@
               </div>
             </div>
 
-            <div>
+            <div id="remote-transcoded-video-wrapper">
               <fieldset>
                 <legend>Remote Video</legend>
                 <div class="video-container">
@@ -502,7 +535,7 @@
                   <span id="remote-video-resolution" class="video-resolution"></span>
                 </div>
 
-                <fieldset>
+                <fieldset id="transcoded-video-resolution">
                   <legend>Set Resolution</legend>
                   <div class="u-mv">
                     <div class="flex" style="align-items: center; gap:10px">
@@ -537,7 +570,7 @@
               </div>
             </div>
 
-            <div class="u-mt">
+            <div class="u-mt" id="remote-transcoded-screenshare-wrapper">
               <fieldset>
                 <legend>Remote Screenshare</legend>
                 <video id="remote-screenshare" autoplay playsinline></video>
@@ -552,6 +585,7 @@
                 <div id="participant-table"></div>
                 <div id="participant-btn"></div>
               </div>
+              <p class="note multistream" id="remote-sources-info"></p>
             </fieldset>
           </div>
           <!-- meetings / events published -->

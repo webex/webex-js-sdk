@@ -1,7 +1,8 @@
 import {cloneDeep} from 'lodash';
+import {MediaConnection as MC} from '@webex/internal-media-core';
 
 import EventsScope from '../common/events/events-scope';
-import {DEFAULT_GET_STATS_FILTER, CONNECTION_STATE, STATS, MQA_INTEVAL, NETWORK_TYPE, MEDIA_DEVICES, _UNKNOWN_} from '../constants';
+import {DEFAULT_GET_STATS_FILTER, STATS, MQA_INTEVAL, NETWORK_TYPE, MEDIA_DEVICES, _UNKNOWN_} from '../constants';
 import mqaData from '../mediaQualityMetrics/config';
 import LoggerProxy from '../common/logs/logger-proxy';
 
@@ -175,7 +176,7 @@ export class StatsAnalyzer extends EventsScope {
   }
 
   /**
-   * captures MQA data from peerconnection
+   * captures MQA data from media connection
    *
    * @public
    * @memberof StatsAnalyzer
@@ -232,8 +233,8 @@ export class StatsAnalyzer extends EventsScope {
     // Adding peripheral information
     mqaData.intervals[0].intervalMetadata.peripherals = [];
     mqaData.intervals[0].intervalMetadata.peripherals.push({information: _UNKNOWN_, name: MEDIA_DEVICES.SPEAKER});
-    mqaData.intervals[0].intervalMetadata.peripherals.push({information: this.peerConnection?.audioTransceiver?.sender?.track?.label || _UNKNOWN_, name: MEDIA_DEVICES.MICROPHONE});
-    mqaData.intervals[0].intervalMetadata.peripherals.push({information: this.peerConnection?.videoTransceiver?.sender?.track?.label || _UNKNOWN_, name: MEDIA_DEVICES.CAMERA});
+    mqaData.intervals[0].intervalMetadata.peripherals.push({information: this.statsResults[STATS.AUDIO_CORRELATE][STATS.SEND_DIRECTION].trackLabel || _UNKNOWN_, name: MEDIA_DEVICES.MICROPHONE});
+    mqaData.intervals[0].intervalMetadata.peripherals.push({information: this.statsResults[STATS.VIDEO_CORRELATE][STATS.SEND_DIRECTION].trackLabel || _UNKNOWN_, name: MEDIA_DEVICES.CAMERA});
 
 
     mqaData.networkType = this.statsResults.connectionType.local.networkType;
@@ -263,15 +264,15 @@ export class StatsAnalyzer extends EventsScope {
   }
 
   /**
-   * updated the peerconnection when changed
+   * updated the media connection when changed
    *
    * @private
-   * @memberof updatePeerconnection
-   * @param {PeerConnection} peerConnection
+   * @memberof StatsAnalyzer
+   * @param {MC.RoapMediaConnection} mediaConnection
    * @returns {void}
    */
-  updatePeerconnection(peerConnection) {
-    this.peerConnection = peerConnection;
+  updateMediaConnection(mediaConnection) {
+    this.mediaConnection = mediaConnection;
   }
 
   /**
@@ -279,13 +280,13 @@ export class StatsAnalyzer extends EventsScope {
    *
    * @public
    * @memberof StatsAnalyzer
-   * @param {PeerConnection} peerConnection
+   * @param {MC.RoapMediaConnection} mediaConnection
    * @returns {Promise}
    */
-  startAnalyzer(peerConnection) {
+  startAnalyzer(mediaConnection) {
     if (!this.statsStarted) {
       this.statsStarted = true;
-      this.peerConnection = peerConnection;
+      this.mediaConnection = mediaConnection;
 
       return this.getStatsAndParse()
         .then(() => {
@@ -326,10 +327,10 @@ export class StatsAnalyzer extends EventsScope {
     if (sendOneLastMqa) {
       return this.getStatsAndParse().then(() => {
         this.sendMqaData();
-        this.peerConnection = null;
+        this.mediaConnection = null;
       });
     }
-    this.peerConnection = null;
+    this.mediaConnection = null;
 
     return Promise.resolve();
   }
@@ -634,53 +635,38 @@ export class StatsAnalyzer extends EventsScope {
    * @returns {Promise}
    */
   getStatsAndParse() {
-    if (!this.peerConnection) {
+    if (!this.mediaConnection) {
       return Promise.resolve();
     }
 
-    if (this.peerConnection && this.peerConnection.connectionState === CONNECTION_STATE.FAILED) {
-      LoggerProxy.logger.trace('StatsAnalyzer:index#getStatsAndParse --> PeerConnection is in failed state');
+    if (this.mediaConnection && this.mediaConnection.getConnectionState() === MC.ConnectionState.Failed) {
+      LoggerProxy.logger.trace('StatsAnalyzer:index#getStatsAndParse --> media connection is in failed state');
 
       return Promise.resolve();
     }
 
     LoggerProxy.logger.trace('StatsAnalyzer:index#getStatsAndParse --> Collecting Stats');
 
-    return Promise.all([
-      this.peerConnection.videoTransceiver.sender.getStats().then((res) => {
-        this.filterAndParseGetStatsResults(res, STATS.VIDEO_CORRELATE, true);
-      }),
+    return this.mediaConnection.getTransceiverStats().then((transceiverStats) => {
+      this.filterAndParseGetStatsResults(transceiverStats.video.sender, STATS.VIDEO_CORRELATE, true);
+      this.filterAndParseGetStatsResults(transceiverStats.video.receiver, STATS.VIDEO_CORRELATE, false);
+      this.filterAndParseGetStatsResults(transceiverStats.audio.sender, STATS.AUDIO_CORRELATE, true);
+      this.filterAndParseGetStatsResults(transceiverStats.audio.receiver, STATS.AUDIO_CORRELATE, false);
+      this.filterAndParseGetStatsResults(transceiverStats.screenShareVideo.sender, STATS.SHARE_CORRELATE, true);
+      this.filterAndParseGetStatsResults(transceiverStats.screenShareVideo.receiver, STATS.SHARE_CORRELATE, false);
 
-      this.peerConnection.videoTransceiver.receiver.getStats().then((res) => {
-        this.filterAndParseGetStatsResults(res, STATS.VIDEO_CORRELATE, false);
-      }),
+      // updates the current direction of media
+      this.statsResults[STATS.AUDIO_CORRELATE].direction = transceiverStats.audio.currentDirection;
+      this.statsResults[STATS.VIDEO_CORRELATE].direction = transceiverStats.video.currentDirection;
+      this.statsResults[STATS.SHARE_CORRELATE].direction = transceiverStats.screenShareVideo.currentDirection;
 
-      this.peerConnection.audioTransceiver.sender.getStats().then((res) => {
-        this.filterAndParseGetStatsResults(res, STATS.AUDIO_CORRELATE, true);
-      }),
+      this.statsResults[STATS.AUDIO_CORRELATE][STATS.SEND_DIRECTION].trackLabel = transceiverStats.audio.localTrackLabel;
+      this.statsResults[STATS.VIDEO_CORRELATE][STATS.SEND_DIRECTION].trackLabel = transceiverStats.video.localTrackLabel;
 
-      this.peerConnection.audioTransceiver.receiver.getStats().then((res) => {
-        this.filterAndParseGetStatsResults(res, STATS.AUDIO_CORRELATE, false);
-      }),
-
-      // TODO: add checks for screen share
-      this.peerConnection.shareTransceiver.sender.getStats().then((res) => {
-        this.filterAndParseGetStatsResults(res, STATS.SHARE_CORRELATE, true);
-      }),
-
-      this.peerConnection.shareTransceiver.receiver.getStats().then((res) => {
-        this.filterAndParseGetStatsResults(res, STATS.SHARE_CORRELATE, false);
-      }),
-
-    ]).then(() => {
-      this.statsResults[STATS.AUDIO_CORRELATE].direction = this.peerConnection.audioTransceiver.currentDirection;
-      this.statsResults[STATS.VIDEO_CORRELATE].direction = this.peerConnection.videoTransceiver.currentDirection;
-      this.statsResults[STATS.SHARE_CORRELATE].direction = this.peerConnection.shareTransceiver.currentDirection;
-
-      // Process Stats results every 5 seconds
       this.compareLastStatsResult();
 
       // Save the last results to compare with the current
+      // DO Deep copy, for some reason it takes the reference all the time rather then old value set
       this.lastStatsResults = JSON.parse(JSON.stringify(this.statsResults));
 
       LoggerProxy.logger.trace('StatsAnalyzer:index#getStatsAndParse --> Finished Collecting Stats');

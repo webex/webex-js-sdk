@@ -58,7 +58,8 @@ MeetingUtil.remoteUpdateAudioVideo = (audioMuted, videoMuted, meeting) => {
     selfId: meeting.selfId,
     localMedias,
     deviceUrl: meeting.deviceUrl,
-    correlationId: meeting.correlationId
+    correlationId: meeting.correlationId,
+    preferTranscoding: !meeting.isMultistream,
   }).then((response) => {
     Metrics.postEvent({event: eventType.MEDIA_RESPONSE, meeting});
 
@@ -95,7 +96,7 @@ MeetingUtil.joinMeeting = (meeting, options) => {
       moderator: options.moderator,
       pin: options.pin,
       moveToResource: options.moveToResource,
-      preferTranscoding: options.preferTranscoding,
+      preferTranscoding: !meeting.isMultistream,
       asResourceOccupant: options.asResourceOccupant
     })
     .then((res) => {
@@ -130,7 +131,6 @@ MeetingUtil.cleanUp = (meeting) => {
       meeting.unsetPeerConnections();
       meeting.reconnectionManager.cleanUp();
     })
-    .then(() => meeting.roap.stop(meeting.correlationId, meeting.roapSeq))
     .then(() => meeting.stopKeepAlive());
 };
 
@@ -277,49 +277,6 @@ MeetingUtil.joinMeetingOptions = (meeting, options = {}) => {
 
       return Promise.reject(new JoinMeetingError(options, 'Error Joining Meeting', err));
     });
-};
-
-MeetingUtil.updateTransceiver = (options, meetingOptions) => {
-  const {
-    type,
-    sendTrack,
-    receiveTrack,
-    track,
-    transceiver,
-    peerConnection,
-    previousMediaDirection
-  } = options;
-
-  if ((sendTrack !== undefined && sendTrack !== previousMediaDirection.sendTrack) ||
-  (receiveTrack !== undefined && receiveTrack !== previousMediaDirection.receiveTrack)) {
-    return Media.updateTransceiver({
-      meetingId: meetingOptions.meeting.id,
-      remoteQualityLevel: meetingOptions.mediaProperties.remoteQualityLevel,
-      enableRtx: meetingOptions.meeting.config.enableRtx,
-      enableExtmap: meetingOptions.meeting.config.enableExtmap
-    }, peerConnection, transceiver,
-    {
-      track,
-      type,
-      receiveTrack,
-      sendTrack
-    })
-      .then(() => meetingOptions.meeting.roap
-        .sendRoapMediaRequest({
-          sdp: meetingOptions.mediaProperties.peerConnection.sdp,
-          roapSeq: meetingOptions.meeting.roapSeq,
-          meeting: meetingOptions.meeting // or can pass meeting ID
-        }))
-      .catch((e) => {
-        LoggerProxy.logger.error(`Meeting:util#updateTransceiver --> Error updating the ${type} streams with error: ${e}`);
-      });
-  } if (track) {
-    transceiver.sender.replaceTrack(track);
-
-    return Promise.resolve();
-  }
-
-  return Promise.reject(new ParameterError('update Failed: please pass valid parameter'));
 };
 
 MeetingUtil.validateOptions = (options) => {

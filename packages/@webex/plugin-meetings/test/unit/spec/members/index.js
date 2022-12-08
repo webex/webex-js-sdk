@@ -10,9 +10,8 @@ import chaiAsPromised from 'chai-as-promised';
 import {Credentials} from '@webex/webex-core';
 import Support from '@webex/internal-plugin-support';
 import MockWebex from '@webex/test-helper-mock-webex';
-
-import Meetings from '@webex/plugin-meetings';
 import ParameterError from '@webex/plugin-meetings/src/common/errors/parameter';
+import Meetings from '@webex/plugin-meetings';
 import Members from '@webex/plugin-meetings/src/members';
 import MembersUtil from '@webex/plugin-meetings/src/members/util';
 
@@ -309,6 +308,169 @@ describe('plugin-meetings', () => {
         const resultPromise = members.lowerAllHands(requestingMemberId);
 
         await checkValid(resultPromise, spies, requestingMemberId, url1);
+      });
+    });
+
+    describe('findMemberByCsi()', () => {
+      let members;
+
+      // fake collection that contains all combinations of members data structure (with respect to CSIs)
+      const fakeCollection = {
+        oneWithoutDevices: {
+          participant: {
+          }
+        },
+        oneWithEmptyDevices: {
+          participant: {
+            devices: [],
+          }
+        },
+        oneWithDevicesWithoutCsis: {
+          participant: {
+            devices: [
+              {
+                url: 'https://fakeURL1.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                csis: [],
+              },
+              {
+                url: 'dialout:///fakeagain',
+                deviceType: 'PROVISIONAL',
+                state: 'JOINED',
+              }
+            ],
+          },
+          id: 'abc-123-abc-123',
+          status: 'IN_MEETING',
+        },
+        oneWithSomeCsis: {
+          participant: {
+            devices: [
+              {
+                url: 'https://fakeURL2.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                csis: [1000, 1001, 1002],
+              },
+              {
+                url: 'https://fakeURL3.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                csis: [2000, 2001, 2002],
+              }
+            ]
+          }
+        }
+      };
+
+      beforeEach(() => {
+        members = createMembers({url: url1});
+        members.membersCollection.setAll(fakeCollection);
+      });
+
+      it('returns undefined if member not found', () => {
+        assert.strictEqual(members.findMemberByCsi(123), undefined);
+      });
+
+      it('returns correct member when CSI matches the first device', () => {
+        assert.strictEqual(members.findMemberByCsi(1001), fakeCollection.oneWithSomeCsis);
+      });
+
+      it('returns correct member when CSI matches the second device', () => {
+        assert.strictEqual(members.findMemberByCsi(2001), fakeCollection.oneWithSomeCsis);
+      });
+    });
+
+    describe('getCsisForMember()', () => {
+      let members;
+
+      // fake collection that contains all combinations of members data structure (with respect to CSIs)
+      const fakeCollection = {
+        oneWithoutParticipant: {
+          id: 'oneWithoutParticipant',
+        },
+        oneWithoutDevices: {
+          id: 'oneWithoutDevices',
+          participant: {
+          }
+        },
+        oneWithEmptyDevices: {
+          id: 'oneWithEmptyDevices',
+          participant: {
+            devices: [],
+          }
+        },
+        oneWithDevicesWithoutCsis: {
+          id: 'oneWithDevicesWithoutCsis',
+          participant: {
+            devices: [
+              {
+                url: 'https://fakeURL1.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                mediaSessions: [],
+              },
+              {
+                url: 'dialout:///fakeagain',
+                deviceType: 'PROVISIONAL',
+                state: 'JOINED',
+              }
+            ],
+          },
+          status: 'IN_MEETING',
+        },
+        oneWithSomeCsis: {
+          id: 'oneWithSomeCsis',
+          participant: {
+            devices: [
+              {
+                url: 'https://fakeURL2.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                mediaSessions: [
+                  {mediaType: 'audio', mediaContent: 'main', csi: 1000},
+                  {mediaType: 'video', mediaContent: 'main', csi: 1001},
+                  {mediaType: 'video', mediaContent: 'content', csi: 1002}
+                ],
+              },
+              {
+                url: 'https://fakeURL3.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                mediaSessions: [
+                  {mediaType: 'audio', mediaContent: 'main', csi: 2000},
+                  {mediaType: 'video', mediaContent: 'main', csi: 2001},
+                  {mediaType: 'video', mediaContent: 'content', csi: 2002}
+                ],
+              }
+            ]
+          }
+        }
+      };
+
+      beforeEach(() => {
+        members = createMembers({url: url1});
+        members.membersCollection.setAll(fakeCollection);
+      });
+
+      it('returns empty array if member not found', () => {
+        assert.deepEqual(members.getCsisForMember('wrong id'), []);
+      });
+
+      it('returns empty array if member does not have CSIs', () => {
+        assert.deepEqual(members.getCsisForMember('oneWithoutParticipant'), []);
+        assert.deepEqual(members.getCsisForMember('oneWithoutDevices'), []);
+        assert.deepEqual(members.getCsisForMember('oneWithEmptyDevices'), []);
+        assert.deepEqual(members.getCsisForMember('oneWithDevicesWithoutCsis'), []);
+      });
+
+      it('returns empty array if mediaType and mediaContent do not match', () => {
+        assert.deepEqual(members.getCsisForMember('oneWithSomeCsis', 'audio', 'content'), []);
+      });
+
+      it('returns correct CSI values when there is a match', () => {
+        assert.deepEqual(members.getCsisForMember('oneWithSomeCsis', 'video', 'main'), [1001, 2001]);
       });
     });
   });

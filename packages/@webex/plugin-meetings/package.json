@@ -37,11 +37,12 @@
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "jsdom-global": "3.0.2",
-    "sinon": "^9.2.4"
+    "sinon": "^9.2.4",
+    "typed-emitter": "^2.1.0"
   },
   "dependencies": {
     "@webex/common": "workspace:^",
-    "@webex/internal-media-core": "^0.0.7-beta",
+    "@webex/internal-media-core": "^0.0.16-beta",
     "@webex/internal-plugin-conversation": "workspace:^",
     "@webex/internal-plugin-device": "workspace:^",
     "@webex/internal-plugin-mercury": "workspace:^",

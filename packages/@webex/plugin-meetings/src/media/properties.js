@@ -1,12 +1,11 @@
+import {MediaConnection as MC} from '@webex/internal-media-core';
+
 import {
-  ICE_STATE,
   MEETINGS,
   PC_BAIL_TIMEOUT,
   QUALITY_LEVELS
 } from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
-
-import MediaUtil from './util';
 
 /**
  * @class MediaProperties
@@ -19,7 +18,7 @@ export default class MediaProperties {
    * @returns {MediaProperties}
    */
   constructor(options = {}) {
-    this.peerConnection = MediaUtil.createPeerConnection();
+    this.webrtcMediaConnection = null;
     this.mediaDirection = options.mediaDirection;
     this.videoTrack = options.videoTrack;
     this.audioTrack = options.audioTrack;
@@ -49,8 +48,8 @@ export default class MediaProperties {
     this.mediaSettings[type] = values;
   }
 
-  setMediaPeerConnection(peerConnection) {
-    this.peerConnection = peerConnection;
+  setMediaPeerConnection(mediaPeerConnection) {
+    this.webrtcMediaConnection = mediaPeerConnection;
   }
 
   setLocalVideoTrack(videoTrack) {
@@ -105,11 +104,7 @@ export default class MediaProperties {
   }
 
   unsetPeerConnection() {
-    this.peerConnection = null;
-  }
-
-  reInitiatePeerconnection(turnServerInfo) {
-    this.peerConnection = MediaUtil.createPeerConnection(turnServerInfo);
+    this.webrtcMediaConnection = null;
   }
 
   unsetLocalVideoTrack() {
@@ -199,39 +194,38 @@ export default class MediaProperties {
   }
 
   /**
-   * Waits until ice connection is established
+   * Waits for the webrtc media connection to be connected.
    *
    * @returns {Promise<void>}
    */
-  waitForIceConnectedState() {
-    const isIceConnected = () => (
-      this.peerConnection.iceConnectionState === ICE_STATE.CONNECTED ||
-        this.peerConnection.iceConnectionState === ICE_STATE.COMPLETED
+  waitForMediaConnectionConnected() {
+    const isConnected = () => (
+      this.webrtcMediaConnection.getConnectionState() === MC.ConnectionState.Connected
     );
 
-    if (isIceConnected()) {
+    if (isConnected()) {
       return Promise.resolve();
     }
 
     return new Promise((resolve, reject) => {
       let timer;
 
-      const iceListener = () => {
-        LoggerProxy.logger.log(`Media:properties#waitForIceConnectedState --> ice state: ${this.peerConnection.iceConnectionState}, conn state: ${this.peerConnection.connectionState}`);
+      const connectionStateListener = () => {
+        LoggerProxy.logger.log(`Media:properties#waitForMediaConnectionConnected --> connection state: ${this.webrtcMediaConnection.getConnectionState()}`);
 
-        if (isIceConnected()) {
+        if (isConnected()) {
           clearTimeout(timer);
-          this.peerConnection.removeEventListener('iceconnectionstatechange', iceListener);
+          this.webrtcMediaConnection.off(MC.Event.CONNECTION_STATE_CHANGED, connectionStateListener);
           resolve();
         }
       };
 
       timer = setTimeout(() => {
-        this.peerConnection.removeEventListener('iceconnectionstatechange', iceListener);
+        this.webrtcMediaConnection.off(MC.Event.CONNECTION_STATE_CHANGED, connectionStateListener);
         reject();
       }, PC_BAIL_TIMEOUT);
 
-      this.peerConnection.addEventListener('iceconnectionstatechange', iceListener);
+      this.webrtcMediaConnection.on(MC.Event.CONNECTION_STATE_CHANGED, connectionStateListener);
     });
   }
 
@@ -242,13 +236,13 @@ export default class MediaProperties {
    */
   async getCurrentConnectionType() {
     // we can only get the connection type after ICE connection has been established
-    await this.waitForIceConnectedState();
+    await this.waitForMediaConnectionConnected();
 
     const allStatsReports = [];
 
     try {
       // eslint-disable-next-line no-await-in-loop
-      const statsResult = await this.peerConnection.getStats();
+      const statsResult = await this.webrtcMediaConnection.getStats();
 
       statsResult.forEach((report) => allStatsReports.push(report));
     }

@@ -9,6 +9,12 @@ import RoapRequest from './request';
 
 const TURN_DISCOVERY_TIMEOUT = 10; // in seconds
 
+// Roap spec says that seq should start from 1, but TURN discovery works fine with seq=0
+// and this is handy for us, because TURN discovery is always done before the first SDP exchange,
+// so we can do it with seq=0 or not do it at all and then we create the RoapMediaConnection
+// and do the SDP offer with seq=1
+const TURN_DISCOVERY_SEQ = 0;
+
 /**
  * Handles the process of finding out TURN server information from Linus.
  * This is achieved by sending a TURN_DISCOVERY_REQUEST.
@@ -126,8 +132,6 @@ export default class TurnDiscovery {
    * @memberof Roap
    */
   sendRoapTurnDiscoveryRequest(meeting, isReconnecting) {
-    const seq = meeting.roapSeq + 1;
-
     if (this.defer) {
       LoggerProxy.logger.warn('Roap:turnDiscovery#sendRoapTurnDiscoveryRequest --> already in progress');
 
@@ -139,7 +143,7 @@ export default class TurnDiscovery {
     const roapMessage = {
       messageType: ROAP.ROAP_TYPES.TURN_DISCOVERY_REQUEST,
       version: ROAP.ROAP_VERSION,
-      seq,
+      seq: TURN_DISCOVERY_SEQ,
     };
 
     LoggerProxy.logger.info('Roap:turnDiscovery#sendRoapTurnDiscoveryRequest --> sending TURN_DISCOVERY_REQUEST');
@@ -155,8 +159,6 @@ export default class TurnDiscovery {
         meetingId: meeting.id
       })
       .then(({mediaConnections}) => {
-        meeting.setRoapSeq(seq);
-
         if (mediaConnections) {
           meeting.updateMediaConnections(mediaConnections);
         }
@@ -177,7 +179,7 @@ export default class TurnDiscovery {
       roapMessage: {
         messageType: ROAP.ROAP_TYPES.OK,
         version: ROAP.ROAP_VERSION,
-        seq: meeting.roapSeq
+        seq: TURN_DISCOVERY_SEQ,
       },
       locusSelfUrl: meeting.selfUrl,
       mediaId: meeting.mediaId,
@@ -195,6 +197,10 @@ export default class TurnDiscovery {
    *  | -----TURN_DISCOVERY_REQUEST-----> |
    *  | <----TURN_DISCOVERY_RESPONSE----- |
    *  | --------------OK----------------> |
+   *
+   * This TURN discovery roap exchange is always done with seq=0.
+   * The RoapMediaConnection SDP exchange always starts with seq=1,
+   * so it works fine no matter if TURN discovery is done or not.
    *
    * @param {Meeting} meeting
    * @param {Boolean} isReconnecting should be set to true if this is a new
