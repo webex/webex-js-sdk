@@ -1,32 +1,36 @@
 {
-    "name": "@webex/internal-plugin-voicea",
-    "version": "2.35.0",
-    "description": "",
-    "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
-    "main": "dist/index.js",
-    "devMain": "src/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/internal-plugin-voicea",
-    "engines": {
-        "node": ">=14"
-    },
-    "dependencies": {
-        "@webex/internal-plugin-llm": "workspace:^",
-        "@webex/internal-plugin-mercury": "workspace:^",
-        "@webex/internal-plugin-voicea": "workspace:^",
-        "@webex/plugin-meetings": "workspace:^",
-        "@webex/webex-core": "workspace:^",
-        "uuid": "^3.3.2"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
-    "devDependencies": {
-        "@webex/test-helper-chai": "workspace:^",
-        "@webex/test-helper-mock-web-socket": "workspace:^",
-        "@webex/test-helper-mock-webex": "workspace:^",
-        "sinon": "^9.2.4"
-    }
+  "name": "@webex/internal-plugin-voicea",
+  "version": "2.35.0",
+  "description": "",
+  "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/internal-plugin-voicea"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "dependencies": {
+    "@webex/internal-plugin-llm": "workspace:^",
+    "@webex/internal-plugin-mercury": "workspace:^",
+    "@webex/internal-plugin-voicea": "workspace:^",
+    "@webex/plugin-meetings": "workspace:^",
+    "@webex/webex-core": "workspace:^",
+    "uuid": "^3.3.2"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "devDependencies": {
+    "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-mock-web-socket": "workspace:^",
+    "@webex/test-helper-mock-webex": "workspace:^",
+    "sinon": "^9.2.4"
+  }
 }

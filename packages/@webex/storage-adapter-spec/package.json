@@ -1,21 +1,25 @@
 {
-    "name": "@webex/storage-adapter-spec",
-    "version": "2.35.0",
-    "description": "",
-    "license": "MIT",
-    "main": "dist/index.js",
-    "devMain": "src/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/@webex/storage-adapter-spec",
-    "engines": {
-        "node": ">=14"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
-    "dependencies": {
-        "@webex/test-helper-chai": "workspace:^"
-    }
+  "name": "@webex/storage-adapter-spec",
+  "version": "2.35.0",
+  "description": "",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/storage-adapter-spec"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "dependencies": {
+    "@webex/test-helper-chai": "workspace:^"
+  }
 }

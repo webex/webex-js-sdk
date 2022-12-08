@@ -1,63 +1,67 @@
 {
-    "name": "webex",
-    "version": "2.35.0",
-    "description": "SDK for Cisco Webex",
-    "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
-    "contributors": [
-        "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
-        "Andrew Holsted <holsted@cisco.com>",
-        "Arun Ganeshan <arungane@cisco.com>",
-        "Christopher DuBois <chdubois@cisco.com> (https://chrisadubois.github.io/)",
-        "Ian W. Remmel (https://www.ianwremmel.com)",
-        "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
-        "Moriah Maney <momaney@cisco.com>",
-        "Taymoor Khan <taykhan@cisco.com>"
-    ],
-    "main": "dist/index.js",
-    "devMain": "src/index.js",
-    "repository": "https://github.com/webex/webex-js-sdk/tree/master/packages/webex",
-    "engines": {
-        "node": ">=14"
-    },
-    "browser": {
-        "./dist/config-storage.js": "./dist/config-storage.shim.js",
-        "./src/config-storage.js": "./src/config-storage.shim.js"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
-    "devDependencies": {
-        "@webex/plugin-authorization": "workspace:^",
-        "@webex/test-helper-chai": "workspace:^",
-        "@webex/test-helper-mocha": "workspace:^",
-        "@webex/test-helper-test-users": "workspace:^",
-        "sinon": "^9.2.4",
-        "webex": "workspace:^"
-    },
-    "dependencies": {
-        "@babel/polyfill": "^7.12.1",
-        "@webex/common": "workspace:^",
-        "@webex/internal-plugin-calendar": "workspace:^",
-        "@webex/internal-plugin-device": "workspace:^",
-        "@webex/internal-plugin-presence": "workspace:^",
-        "@webex/internal-plugin-support": "workspace:^",
-        "@webex/plugin-attachment-actions": "workspace:^",
-        "@webex/plugin-authorization": "workspace:^",
-        "@webex/plugin-device-manager": "workspace:^",
-        "@webex/plugin-logger": "workspace:^",
-        "@webex/plugin-meetings": "workspace:^",
-        "@webex/plugin-memberships": "workspace:^",
-        "@webex/plugin-messages": "workspace:^",
-        "@webex/plugin-people": "workspace:^",
-        "@webex/plugin-rooms": "workspace:^",
-        "@webex/plugin-team-memberships": "workspace:^",
-        "@webex/plugin-teams": "workspace:^",
-        "@webex/plugin-webhooks": "workspace:^",
-        "@webex/storage-adapter-local-storage": "workspace:^",
-        "@webex/webex-core": "workspace:^",
-        "lodash": "^4.17.21"
-    }
+  "name": "webex",
+  "version": "2.35.0",
+  "description": "SDK for Cisco Webex",
+  "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
+  "contributors": [
+    "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
+    "Andrew Holsted <holsted@cisco.com>",
+    "Arun Ganeshan <arungane@cisco.com>",
+    "Christopher DuBois <chdubois@cisco.com> (https://chrisadubois.github.io/)",
+    "Ian W. Remmel (https://www.ianwremmel.com)",
+    "Matt Norris <matnorri@cisco.com> (http://mattnorris.me)",
+    "Moriah Maney <momaney@cisco.com>",
+    "Taymoor Khan <taykhan@cisco.com>"
+  ],
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/webex"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "browser": {
+    "./dist/config-storage.js": "./dist/config-storage.shim.js",
+    "./src/config-storage.js": "./src/config-storage.shim.js"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "devDependencies": {
+    "@webex/plugin-authorization": "workspace:^",
+    "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-mocha": "workspace:^",
+    "@webex/test-helper-test-users": "workspace:^",
+    "sinon": "^9.2.4",
+    "webex": "workspace:^"
+  },
+  "dependencies": {
+    "@babel/polyfill": "^7.12.1",
+    "@webex/common": "workspace:^",
+    "@webex/internal-plugin-calendar": "workspace:^",
+    "@webex/internal-plugin-device": "workspace:^",
+    "@webex/internal-plugin-presence": "workspace:^",
+    "@webex/internal-plugin-support": "workspace:^",
+    "@webex/plugin-attachment-actions": "workspace:^",
+    "@webex/plugin-authorization": "workspace:^",
+    "@webex/plugin-device-manager": "workspace:^",
+    "@webex/plugin-logger": "workspace:^",
+    "@webex/plugin-meetings": "workspace:^",
+    "@webex/plugin-memberships": "workspace:^",
+    "@webex/plugin-messages": "workspace:^",
+    "@webex/plugin-people": "workspace:^",
+    "@webex/plugin-rooms": "workspace:^",
+    "@webex/plugin-team-memberships": "workspace:^",
+    "@webex/plugin-teams": "workspace:^",
+    "@webex/plugin-webhooks": "workspace:^",
+    "@webex/storage-adapter-local-storage": "workspace:^",
+    "@webex/webex-core": "workspace:^",
+    "lodash": "^4.17.21"
+  }
 }
