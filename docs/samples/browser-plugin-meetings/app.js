@@ -34,6 +34,7 @@ const integrationEnv = document.getElementById('integration-env');
 const turnDiscoveryCheckbox = document.getElementById('enable-turn-discovery');
 const eventsList = document.getElementById('events-list');
 const multistreamLayoutElm = document.querySelector('#multistream-layout');
+const getStatsButton = document.getElementById('get-stats');
 
 // Disable screenshare on join in Safari patch
 const isSafari = /Version\/[\d.]+.*Safari/.test(navigator.userAgent);
@@ -1446,7 +1447,7 @@ function addVideoPane(parent, className) {
 
   parent.appendChild(containerEl);
 
-  return {
+  const videoPane = {
     containerEl,
     videoEl,
     nameLabelEl,
@@ -1456,7 +1457,20 @@ function addVideoPane(parent, className) {
     remoteMedia: null,
     debugText: '',
     isActive: false,
+    onclick: null,
+    onCtrlClick: null,
   };
+
+  containerEl.onclick = (event) => {
+    if (event.ctrlKey) {
+      videoPane.onCtrlClick(event);
+    }
+    else {
+      videoPane.onclick(event);
+    }
+  };
+
+  return videoPane;
 }
 
 function createSingleVideo() {
@@ -1493,7 +1507,7 @@ function createOnePlusFiveVideos() {
 function createStageVideoPane(stageContainer, paneId, remoteMedia) {
   const videoPane = addVideoPane(stageContainer, 'grid-video clickable');
 
-  videoPane.containerEl.onclick = () => {
+  videoPane.onclick = () => {
     const meeting = getCurrentMeeting();
 
     if (videoPane.isActive) {
@@ -1562,7 +1576,6 @@ function setGridVideoPaneMaxWidth(numOfActiveVideoPanes) {
     maxWidth = '18%'; // we want 20% but because of the gaps between the panes, we have to use a bit less
   }
 
-  console.log(`marcin: setGridVideoPaneMaxWidth: numOfActiveVideoPanes=${numOfActiveVideoPanes}, maxWidth=${maxWidth}`);
   document.documentElement.style.setProperty('--video-grid-max-width', maxWidth);
 }
 function createVideoGrid(rows, columns) {
@@ -1575,7 +1588,7 @@ function createVideoGrid(rows, columns) {
   for (let idx = 0; idx < columns * rows; idx += 1) {
     const videoPane = addVideoPane(gridContainer, 'grid-video clickable');
 
-    videoPane.containerEl.onclick = () => {
+    videoPane.onclick = () => {
       const meeting = getCurrentMeeting();
 
       if (meeting.remoteMediaManager.isPinned(videoPane.remoteMedia)) {
@@ -1825,11 +1838,49 @@ function updateMultistreamVideoLayout() {
   }
 }
 
+async function getStatsForVideoPane(meeting, videoPane) {
+  const {remoteMedia} = videoPane;
+  const {wcmeReceiveSlot} = remoteMedia.getUnderlyingReceiveSlot();
+  const {multistreamConnection} = meeting.mediaProperties.webrtcMediaConnection;
+
+  // there is no public API in WCME to get the transceiver of a receive slot, but
+  // this is javascript so we can access private fields to get it anyway until we have some API for this
+  // todo: 'VIDEO-MAIN' will need to change when we support screen sharing (SPARK-377812)
+  const transceiver = multistreamConnection.recvTransceivers.get('VIDEO-MAIN')?.find((t) => t.receiveSlot === wcmeReceiveSlot);
+
+  let result = {};
+
+  if (transceiver) {
+    const statsResult = await transceiver.receiver?.getStats();
+
+    statsResult?.forEach((report) => {
+      if (report.type === 'inbound-rtp') {
+        // augment the stats with some more useful info
+        result = {
+          ...report,
+          mediaType: remoteMedia.mediaType,
+          csi: remoteMedia.csi,
+          memberId: remoteMedia.memberId,
+          memberDisplayName: getDisplayNameForMemberId(meeting, remoteMedia.memberId),
+        };
+      }
+    });
+  }
+
+  return result;
+}
+
 function processNewVideoPane(meeting, paneGroupId, paneId, remoteMedia) {
   const videoPane = allVideoPanes[paneGroupId][paneId];
 
   videoPane.remoteMedia = remoteMedia;
   videoPane.videoEl.srcObject = remoteMedia.stream;
+
+  videoPane.onCtrlClick = async (ev) => {
+    const stats = await getStatsForVideoPane(meeting, videoPane);
+
+    console.log(`stats for video pane "${videoPane.remoteMedia.id}": `, stats);
+  };
 
   // update our UI with the current state of the new remote media instance we got and setup listeners for any changes
   updateVideoPane(videoPane, meeting, remoteMedia.sourceState, remoteMedia.memberId, `${paneGroupId}.${paneId} ${remoteMedia.id}`, 'initialization');
@@ -1837,6 +1888,22 @@ function processNewVideoPane(meeting, paneGroupId, paneId, remoteMedia) {
   remoteMedia.on('sourceUpdate', (data) => {
     updateVideoPane(videoPane, meeting, data.state, data.memberId, `${paneGroupId}.${paneId} ${remoteMedia.id}`, 'update');
   });
+}
+
+async function getStats() {
+  const meeting = getCurrentMeeting();
+
+  if (meeting) {
+    console.log('Stats for all video panes:');
+    // extract the stats for each video pane
+    Object.values(allVideoPanes).forEach((paneGroup) => {
+      Object.values(paneGroup).forEach(async (videoPane) => {
+        const stats = await getStatsForVideoPane(meeting, videoPane);
+
+        console.log(`stats for video pane "${videoPane.remoteMedia.id}": `, stats);
+      });
+    });
+  }
 }
 
 const meetingsWithMultistreamListeners = {};
@@ -1896,6 +1963,7 @@ function setupMultistreamEventListeners(meeting) {
 
 function enableMultistreamControls(enable) {
   multistreamLayoutElm.disabled = !enable;
+  getStatsButton.disabled = !enable;
 }
 
 function addMediaOptionsLocal(elementId) {
