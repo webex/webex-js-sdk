@@ -263,9 +263,6 @@ describe('plugin-voicea', () => {
           data: {relayType: 'voicea.annc', voiceaPayload: {}},
         });
 
-        const triggerSpy = sinon.spy();
-
-        voiceaService.on(EVENT_TRIGGERS.TRANSCRIBING_ON, triggerSpy);
         voiceaService.listenToEvents();
 
         await voiceaService.toggleTranscribing(true);
@@ -278,16 +275,12 @@ describe('plugin-voicea', () => {
           })
         );
 
-        assert.calledOnce(triggerSpy);
         assert.notCalled(announcementSpy);
       });
 
       it('turns on transcribing with CC disabled', async () => {
         const announcementSpy = sinon.spy(voiceaService, 'sendAnnouncement');
 
-        const triggerSpy = sinon.spy();
-
-        voiceaService.on(EVENT_TRIGGERS.TRANSCRIBING_ON, triggerSpy);
         voiceaService.listenToEvents();
 
         await voiceaService.toggleTranscribing(true);
@@ -300,7 +293,6 @@ describe('plugin-voicea', () => {
           })
         );
 
-        assert.calledOnce(triggerSpy);
         assert.calledOnce(announcementSpy);
       });
 
@@ -309,9 +301,6 @@ describe('plugin-voicea', () => {
 
         const announcementSpy = sinon.spy(voiceaService, 'sendAnnouncement');
 
-        const triggerSpy = sinon.spy();
-
-        voiceaService.on(EVENT_TRIGGERS.TRANSCRIBING_OFF, triggerSpy);
         voiceaService.listenToEvents();
 
         await voiceaService.toggleTranscribing(false);
@@ -324,20 +313,15 @@ describe('plugin-voicea', () => {
           })
         );
 
-        assert.calledOnce(triggerSpy);
         assert.notCalled(announcementSpy);
       });
 
       it("doesn't call API on same value", async () => {
         await voiceaService.toggleTranscribing(true);
-        const triggerSpy = sinon.spy();
         const announcementSpy = sinon.spy(voiceaService, 'sendAnnouncement');
-
-        voiceaService.on(EVENT_TRIGGERS.TRANSCRIBING_OFF, triggerSpy);
 
         await voiceaService.toggleTranscribing(true);
 
-        assert.notCalled(triggerSpy);
         assert.notCalled(announcementSpy);
 
         assert.calledTwice(voiceaService.request);

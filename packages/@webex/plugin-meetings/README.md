@@ -923,6 +923,8 @@ meeting.on(...)
 | `meeting:recording:resumed`            | Fired when member resumes recording                                                               |
 | `meeting:receiveTranscription:started` | Fired when transcription is received                                                              |
 | `meeting:receiveTranscription:stopped` | Fired when transcription has stopped from being received                                          |
+| `voicea:transcribing:on` | Fired when transcription is turned on in locus data                                                              |
+| `voicea:transcribing:off` | Fired when transcription is turned off in locus data                                                              |
 | `meeting:meetingContainer:update`      | Fired when the meetingContainerUrl is updated                                                     |
 | ---                                    | ---                                                                                               |
 
