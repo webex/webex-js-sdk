@@ -1826,9 +1826,9 @@ describe('plugin-meetings', () => {
             config
           );
 
-          // eslint-disable-next-line no-undef
           assert.calledWith(
-            global.navigator.mediaDevices.getDisplayMedia,
+            // eslint-disable-next-line no-undef
+            navigator.mediaDevices.getDisplayMedia,
             browserConditionalValue({
               default: {
                 video: {...shareConstraints},
@@ -1852,9 +1852,9 @@ describe('plugin-meetings', () => {
             config
           );
 
-          // eslint-disable-next-line no-undef
           assert.calledWith(
-            global.navigator.mediaDevices.getDisplayMedia,
+            // eslint-disable-next-line no-undef
+            navigator.mediaDevices.getDisplayMedia,
             browserConditionalValue({
               default: {
                 video: {
@@ -1878,9 +1878,9 @@ describe('plugin-meetings', () => {
           getDisplayMedia(shareOptions);
           const {screenResolution} = config;
 
-          // eslint-disable-next-line no-undef
           assert.calledWith(
-            global.navigator.mediaDevices.getDisplayMedia,
+            // eslint-disable-next-line no-undef
+            navigator.mediaDevices.getDisplayMedia,
             browserConditionalValue({
               default: {
                 video: {
@@ -1910,9 +1910,9 @@ describe('plugin-meetings', () => {
 
           getDisplayMedia(shareOptions, customConfig);
 
-          // eslint-disable-next-line no-undef
           assert.calledWith(
-            global.navigator.mediaDevices.getDisplayMedia,
+            // eslint-disable-next-line no-undef
+            navigator.mediaDevices.getDisplayMedia,
             browserConditionalValue({
               default: {
                 video: {
@@ -1946,9 +1946,9 @@ describe('plugin-meetings', () => {
 
           getDisplayMedia(shareOptions, customConfig);
 
-          // eslint-disable-next-line no-undef
           assert.calledWith(
-            global.navigator.mediaDevices.getDisplayMedia,
+            // eslint-disable-next-line no-undef
+            navigator.mediaDevices.getDisplayMedia,
             browserConditionalValue({
               default: {
                 video: {
