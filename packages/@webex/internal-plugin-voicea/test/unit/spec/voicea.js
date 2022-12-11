@@ -313,17 +313,6 @@ describe('plugin-voicea', () => {
 
         assert.notCalled(announcementSpy);
       });
-
-      it("doesn't call API on same value", async () => {
-        await voiceaService.toggleTranscribing(true);
-        const announcementSpy = sinon.spy(voiceaService, 'sendAnnouncement');
-
-        await voiceaService.toggleTranscribing(true);
-
-        assert.notCalled(announcementSpy);
-
-        assert.calledTwice(voiceaService.request);
-      });
     });
 
     describe('#processCaptionLanguageResponse', () => {
