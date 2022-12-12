@@ -2,8 +2,8 @@ import 'jsdom-global/register';
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
-
-import ReconnectionManager from '../../../../src/reconnection-manager';
+import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
+import Metrics from '@webex/plugin-meetings/src/metrics';
 
 const {assert} = chai;
 
@@ -11,6 +11,71 @@ chai.use(chaiAsPromised);
 sinon.assert.expose(chai.assert, {prefix: ''});
 
 describe('plugin-meetings', () => {
+  describe('ReconnectionManager.reconnect', () => {
+    it('uses correct TURN TLS information on the new connection', async () => {
+      Metrics.postEvent = sinon.stub();
+
+      const fakeMediaConnection = {
+        initiateOffer: sinon.stub().resolves({})
+      };
+      const fakeMeeting = {
+        closePeerConnections: sinon.stub().resolves({}),
+        createMediaConnection: sinon.stub().returns(fakeMediaConnection),
+        config: {
+          reconnection: {
+            enabled: true,
+            detection: true,
+            iceReconnectionTimeout: 10000,
+            retry: {
+              times: 2,
+              backOff: {
+                start: 1000,
+                rate: 2
+              }
+            }
+          }
+        },
+        mediaProperties: {
+          unsetPeerConnection: sinon.stub(),
+        },
+        roap: {
+          doTurnDiscovery: sinon.stub().resolves({
+            turnServerInfo: {
+              url: 'fake_turn_url',
+              username: 'fake_turn_username',
+              password: 'fake_turn_password',
+            },
+            turnDiscoverySkippedReason: undefined
+          })
+        },
+        statsAnalyzer: {
+          updateMediaConnection: sinon.stub(),
+        },
+        webex: {
+          meetings: {
+            getMeetingByType: sinon.stub().returns(true),
+            syncMeetings: sinon.stub().resolves({})
+          }
+        }
+      };
+
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      await rm.reconnect();
+
+      assert.calledOnce(fakeMeeting.closePeerConnections);
+      assert.calledOnce(fakeMeeting.mediaProperties.unsetPeerConnection);
+      assert.calledOnce(fakeMeeting.roap.doTurnDiscovery);
+      assert.calledOnce(fakeMeeting.createMediaConnection);
+      assert.calledWith(fakeMeeting.createMediaConnection, {
+        url: 'fake_turn_url',
+        username: 'fake_turn_username',
+        password: 'fake_turn_password',
+      });
+      assert.calledOnce(fakeMediaConnection.initiateOffer);
+    });
+  });
+
   /**
    * Currently, testing dependent classes that aren't available at the top
    * level causes testing errors in CI based around related files. Skipping this here until a solution

@@ -474,9 +474,9 @@ export default class ReconnectionManager {
     await this.meeting.closePeerConnections();
     this.meeting.mediaProperties.unsetPeerConnection();
 
-    const turnServerInfo = await this.meeting.roap.doTurnDiscovery(this.meeting, true);
+    const turnServerResult = await this.meeting.roap.doTurnDiscovery(this.meeting, true);
 
-    const mc = this.meeting.createMediaConnection(turnServerInfo);
+    const mc = this.meeting.createMediaConnection(turnServerResult.turnServerInfo);
 
     this.meeting.statsAnalyzer.updateMediaConnection(mc);
 
