@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.4](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.3...v3.0.0-beta.4) (2022-12-12)
+
+
+### Bug Fixes
+
+* use correct TURN TLS information when reconnecting ([#2534](https://github.com/webex/webex-js-sdk/issues/2534)) ([bda9b19](https://github.com/webex/webex-js-sdk/commit/bda9b197d4aa67b8575987a4d1e85a31d64accb4))
+
 ## [3.0.0-beta.3](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.2...v3.0.0-beta.3) (2022-12-12)
 
 
