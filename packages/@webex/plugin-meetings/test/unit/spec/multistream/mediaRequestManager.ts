@@ -15,6 +15,8 @@ type ExpectedReceiverSelected = {
 };
 type ExpectedRequest = ExpectedActiveSpeaker | ExpectedReceiverSelected;
 
+const maxPayloadBitsPerSecond = 10 * 1000 * 1000; // for now we always send this fixed constant
+
 describe('MediaRequestManager', () => {
   const CROSS_PRIORITY_DUPLICATION = true;
   const CROSS_POLICY_DUPLICATION = true;
@@ -109,6 +111,7 @@ describe('MediaRequestManager', () => {
               preferLiveVideo: PREFER_LIVE_VIDEO,
             }),
             receiveSlots: expectedRequest.receiveSlots,
+            maxPayloadBitsPerSecond,
             codecInfos: [
               sinon.match({
                 payloadType: 0x80,
@@ -126,6 +129,7 @@ describe('MediaRequestManager', () => {
               csi: expectedRequest.csi,
             }),
             receiveSlots: [expectedRequest.receiveSlot],
+            maxPayloadBitsPerSecond,
             codecInfos: [
               sinon.match({
                 payloadType: 0x80,

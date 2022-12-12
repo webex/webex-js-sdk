@@ -42,7 +42,7 @@
   },
   "dependencies": {
     "@webex/common": "workspace:^",
-    "@webex/internal-media-core": "^0.0.16-beta",
+    "@webex/internal-media-core": "^0.0.17-beta",
     "@webex/internal-plugin-conversation": "workspace:^",
     "@webex/internal-plugin-device": "workspace:^",
     "@webex/internal-plugin-mercury": "workspace:^",

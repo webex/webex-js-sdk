@@ -94,6 +94,7 @@ export class MediaRequestManager {
     const wcmeMediaRequests: MC.MediaRequest[] = [];
 
     // todo: check how many streams we're asking for and what resolution and introduce some limits (spark-377701)
+    const maxPayloadBitsPerSecond = 10 * 1000 * 1000;
 
     // map all the client media requests to wcme media requests
     Object.values(this.clientRequests).forEach((mr) => {
@@ -111,6 +112,7 @@ export class MediaRequestManager {
               )
             : new MC.ReceiverSelectedInfo(mr.policyInfo.csi),
           mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),
+          maxPayloadBitsPerSecond,
           mr.codecInfo && [
             new MC.CodecInfo(
               0x80,
