@@ -15,6 +15,7 @@ import {
   AUDIO,
   SDP,
   ICE_STATE,
+  ICE_GATHERING_TIMEOUT,
   CONNECTION_STATE,
   NETWORK_STATUS,
   PEER_CONNECTION_STATE,
@@ -181,9 +182,14 @@ pc.setContentSlides = (screenPc) => {
  */
 pc.iceCandidate = (peerConnection, {remoteQualityLevel}) =>
   new Promise((resolve, reject) => {
-    const now = Date.now();
+    let timer;
+    const startTime = performance.now();
     const doneGatheringIceCandidate = () => {
-      const miliseconds = parseInt(Math.abs(Date.now() - now), 4);
+      const milliseconds = performance.now() - startTime;
+
+      if (timer) {
+        clearTimeout(timer);
+      }
 
       peerConnection.sdp = limitBandwidth(peerConnection.localDescription.sdp);
       peerConnection.sdp = PeerConnectionUtils.convertCLineToIpv4(peerConnection.sdp);
@@ -192,10 +198,10 @@ pc.iceCandidate = (peerConnection, {remoteQualityLevel}) =>
       const invalidSdpPresent = isSdpInvalid(peerConnection.sdp);
 
       if (invalidSdpPresent) {
-        LoggerProxy.logger.error('PeerConnectionManager:index#iceCandidate --> SDP not valid after waiting.');
+        LoggerProxy.logger.error(`PeerConnectionManager:index#iceCandidate --> SDP not valid after waiting ${milliseconds} ms`);
         reject(new InvalidSdpError(invalidSdpPresent));
       }
-      LoggerProxy.logger.log(`PeerConnectionManager:index#iceCandidate --> Time to gather ice candidate ${miliseconds} miliseconds`);
+      LoggerProxy.logger.log(`PeerConnectionManager:index#iceCandidate --> Time to gather ice candidates: ${milliseconds} ms`);
 
 
       resolve();
@@ -224,11 +230,16 @@ pc.iceCandidate = (peerConnection, {remoteQualityLevel}) =>
       }
     };
 
-    peerConnection.onicecandidateerror = (event) => {
+    peerConnection.onicecandidateerror = (error) => {
       // we can often get ICE candidate errors (for example when failing to communicate with a TURN server)
-      // they don't mean that the whole ICE connection will fail, so it's OK to ignore them
-      LoggerProxy.logger.error('PeerConnectionManager:index#onicecandidateerror --> ignoring ice error:', event);
+      // they don't mean that the whole ICE connection will fail, so it's OK to ignore them errorCode, errorText
+      LoggerProxy.logger.error(`PeerConnectionManager:index#onicecandidateerror --> ignoring ice error: ${error.errorCode} "${error.errorText}" address=${error.address} port=${error.port} url=${error.url}`);
     };
+
+    setTimeout(() => {
+      LoggerProxy.logger.log('PeerConnectionManager:index#setTimeout --> timed out waiting for ICE candidates gathering');
+      doneGatheringIceCandidate();
+    }, ICE_GATHERING_TIMEOUT);
   });
 
 /**

@@ -186,8 +186,7 @@ export const MODERATOR_FALSE = false;
 // ******************** NUMBERS ********************
 
 export const INTENT_TO_JOIN = [2423005, 2423006, 2423016, 2423017, 2423018];
-export const ICE_TIMEOUT = 2000;
-export const ICE_FAIL_TIMEOUT = 3000;
+export const ICE_GATHERING_TIMEOUT = 5000;
 
 export const RETRY_TIMEOUT = 3000;
 export const ROAP_SEQ_PRE = -1;
