@@ -521,9 +521,9 @@ export default class ReconnectionManager {
     PeerConnectionManager.close(meeting.mediaProperties.peerConnection);
     meeting.mediaProperties.unsetPeerConnection();
 
-    const turnInfo = await meeting.roap.doTurnDiscovery(meeting, true);
+    const turnServerResult = await meeting.roap.doTurnDiscovery(meeting, true);
 
-    meeting.mediaProperties.reInitiatePeerconnection(turnInfo);
+    meeting.mediaProperties.reInitiatePeerconnection(turnServerResult.turnServerInfo);
     PeerConnectionManager.setPeerConnectionEvents(meeting);
 
     // update the peerconnection in the stats manager when ever we reconnect
