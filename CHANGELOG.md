@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.35.1](https://github.com/webex/webex-js-sdk/compare/v2.35.0...v2.35.1) (2022-12-13)
+
+
+### Bug Fixes
+
+* **voicea:** remove custom state and triggers for webex assistant ([#2532](https://github.com/webex/webex-js-sdk/issues/2532)) ([c1bd494](https://github.com/webex/webex-js-sdk/commit/c1bd494a9046016567b1e3861e6115f70ef10736))
+
 ## [2.35.0](https://github.com/webex/webex-js-sdk/compare/v2.34.0...v2.35.0) (2022-12-05)
 
 
