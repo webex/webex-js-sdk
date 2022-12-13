@@ -24,8 +24,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private areCaptionsEnabled: boolean;
 
-  private isTranscribingEnabled: boolean;
-
   private hasSubscribedToEvents: boolean = false;
 
   private vmcDeviceId?: string;
@@ -62,7 +60,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   public deregisterEvents() {
     this.hasVoiceaJoined = false;
     this.areCaptionsEnabled = false;
-    this.isTranscribingEnabled = false;
     this.vmcDeviceId = undefined;
     this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
     this.hasSubscribedToEvents = false;
@@ -77,7 +74,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.seqNum = 1;
     this.hasVoiceaJoined = false;
     this.areCaptionsEnabled = false;
-    this.isTranscribingEnabled = false;
     this.vmcDeviceId = undefined;
   }
 
@@ -345,8 +341,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {Promise}
    */
   public toggleTranscribing = async (activate: boolean): undefined | Promise<void> => {
-    if (this.isTranscribingEnabled === activate) return undefined;
-
     return this.request({
       method: 'PUT',
       url: `${this.webex.internal.llm.getLocusUrl()}/controls/`,
@@ -354,15 +348,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         transcribe: {transcribing: activate},
       },
     }).then(() => {
-      Trigger.trigger(
-        this,
-        {
-          file: 'voicea',
-          function: 'toggleTranscribing',
-        },
-        activate ? EVENT_TRIGGERS.TRANSCRIBING_ON : EVENT_TRIGGERS.TRANSCRIBING_OFF
-      );
-      this.isTranscribingEnabled = activate;
       if (activate && !this.areCaptionsEnabled && !this.hasVoiceaJoined) this.turnOnCaptions();
     });
   };
