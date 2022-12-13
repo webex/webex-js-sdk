@@ -37,9 +37,7 @@ webex.internal.voicea.registerAndConnect(locusUrl, datachannelUrl);
 Toggle Transcribing
 
 * Enable/Disable Transcribing in a meeting
-* Automatically activates Closed Captions(CC) if enabled.
-* Triggers voicea:transcribingOn / voicea:transcribingOff
-  
+* Automatically activates Closed Captions(CC) if enabled.  
 ```js
 await webex.internal.voicea.toggleTranscribing(true);
 await webex.internal.voicea.toggleTranscribing(false);
