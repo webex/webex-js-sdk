@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.35.2](https://github.com/webex/webex-js-sdk/compare/v2.35.1...v2.35.2) (2022-12-13)
+
+
+### Bug Fixes
+
+* setup peer connection in reconnection manager ([#2535](https://github.com/webex/webex-js-sdk/issues/2535)) ([5bcf541](https://github.com/webex/webex-js-sdk/commit/5bcf5418d54d76c3e9a6d87044d1f39e5528e0be))
+
 ### [2.35.1](https://github.com/webex/webex-js-sdk/compare/v2.35.0...v2.35.1) (2022-12-13)
 
 
