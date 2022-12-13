@@ -15,11 +15,7 @@ sinon.assert.expose(chai.assert, {prefix: ''});
 describe('plugin-meetings', () => {
   describe('ReconnectionManager.reconnectMedia', () => {
     it('uses correct TURN TLS information on reInitiatePeerconnection', async () => {
-      const fakeMediaConnection = {
-        initiateOffer: sinon.stub().resolves({})
-      };
       const fakeMeeting = {
-        peerConnection: sinon.stub().returns(fakeMediaConnection),
         setRemoteStream: sinon.stub().resolves({}),
         config: {
           reconnection: {
@@ -37,7 +33,7 @@ describe('plugin-meetings', () => {
         },
         mediaProperties: {
           unsetPeerConnection: sinon.stub(),
-          reInitiatePeerconnection: sinon.stub().returns(fakeMediaConnection),
+          reInitiatePeerconnection: sinon.stub().resolves({}),
           peerConnection: sinon.stub(),
         },
         roap: {
