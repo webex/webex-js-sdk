@@ -184,7 +184,15 @@ describe('RemoteMedia', () => {
     it('cancels media request, unsets the receive slot and removes all the listeners from it', () => {
       const cancelMediaRequestSpy = sinon.spy(remoteMedia, 'cancelMediaRequest');
 
+      let stoppedListenerCalled = false;
+
+      remoteMedia.on(RemoteMediaEvents.Stopped, () => {
+        stoppedListenerCalled = true;
+      });
+
       remoteMedia.stop(true);
+
+      assert.isTrue(stoppedListenerCalled);
 
       assert.calledOnce(cancelMediaRequestSpy);
       assert.calledWith(cancelMediaRequestSpy, true);

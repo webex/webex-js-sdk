@@ -7,6 +7,7 @@ import {CSI, ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
 
 export const RemoteMediaEvents = {
   SourceUpdate: ReceiveSlotEvents.SourceUpdate,
+  Stopped: 'stopped',
 };
 
 export type RemoteVideoResolution =
@@ -112,6 +113,14 @@ export class RemoteMedia extends EventsScope {
     this.cancelMediaRequest(commit);
     this.receiveSlot?.removeAllListeners();
     this.receiveSlot = undefined;
+    this.emit(
+      {
+        file: 'multistream/remoteMedia',
+        function: 'stop',
+      },
+      RemoteMediaEvents.Stopped,
+      {}
+    );
   }
 
   /**
@@ -164,7 +173,7 @@ export class RemoteMedia extends EventsScope {
   private setupEventListeners() {
     if (this.receiveSlot) {
       const scope = {
-        file: 'meeting/remoteMedia',
+        file: 'multistream/remoteMedia',
         function: 'setupEventListeners',
       };
 
