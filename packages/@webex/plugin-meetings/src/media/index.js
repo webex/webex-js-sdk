@@ -118,29 +118,30 @@ Media.getLocalMedia = (options, config) => {
 
 /**
  * creates a webrtc media connection with provided tracks and mediaDirection configuration
- * @param {Object} mediaProperties only applicable to non-multistream connections, contains mediaDirection and local tracks:
- *                                 audioTrack, videoTrack and shareTrack
+ *
+ * @param {boolean} isMultistream
+ * @param {string} debugId string useful for debugging (will appear in media connection logs)
  * @param {Object} options
- * @param {boolean} options.isMultistream
+ * @param {Object} [options.mediaProperties] only applicable to non-multistream connections, contains mediaDirection and local tracks:
+ *                                 audioTrack, videoTrack and shareTrack
  * @param {string} [options.remoteQualityLevel] LOW|MEDIUM|HIGH applicable only to non-multistream connections
  * @param {boolean} [options.enableRtx] applicable only to non-multistream connections
  * @param {boolean} [options.enableExtmap] applicable only to non-multistream connections
  * @param {Object} [options.turnServerInfo]
  * @returns {RoapMediaConnection}
  */
-Media.createMediaConnection = (mediaProperties, {
+Media.createMediaConnection = (
   isMultistream,
-  remoteQualityLevel,
-  enableRtx,
-  enableExtmap,
-  turnServerInfo
-}) => {
+  debugId,
+  options
+) => {
   const {
-    mediaDirection,
-    audioTrack,
-    videoTrack,
-    shareTrack
-  } = mediaProperties;
+    mediaProperties,
+    remoteQualityLevel,
+    enableRtx,
+    enableExtmap,
+    turnServerInfo
+  } = options;
 
   const iceServers = [];
 
@@ -155,8 +156,20 @@ Media.createMediaConnection = (mediaProperties, {
   if (isMultistream) {
     return new MultistreamRoapMediaConnection({
       iceServers,
-    }, 'mc');
+    }, debugId);
   }
+
+  if (!mediaProperties) {
+    throw new Error('mediaProperties have to be provided for non-multistream media connections');
+  }
+
+  const {
+    mediaDirection,
+    audioTrack,
+    videoTrack,
+    shareTrack
+  } = mediaProperties;
+
 
   return new RoapMediaConnection({
     iceServers,
@@ -186,7 +199,7 @@ Media.createMediaConnection = (mediaProperties, {
       screenShareVideo: mediaDirection.receiveShare,
       remoteQualityLevel
     }
-  }, 'mc');
+  }, debugId);
 };
 
 /**

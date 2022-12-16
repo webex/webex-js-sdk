@@ -29,8 +29,8 @@ describe('createMediaConnection', () => {
     const ENABLE_EXTMAP = false;
     const ENABLE_RTX = true;
 
-    Media.createMediaConnection(
-      {
+    Media.createMediaConnection(false, 'some debug id', {
+      mediaProperties: {
         mediaDirection: {
           sendAudio: true,
           sendVideo: true,
@@ -43,18 +43,15 @@ describe('createMediaConnection', () => {
         videoTrack: fakeVideoTrack,
         shareTrack: null,
       },
-      {
-        isMultistream: false,
-        remoteQualityLevel: 'HIGH',
-        enableRtx: ENABLE_RTX,
-        enableExtmap: ENABLE_EXTMAP,
-        turnServerInfo: {
-          url: 'turn server url',
-          username: 'turn username',
-          password: 'turn password',
-        },
-      }
-    );
+      remoteQualityLevel: 'HIGH',
+      enableRtx: ENABLE_RTX,
+      enableExtmap: ENABLE_EXTMAP,
+      turnServerInfo: {
+        url: 'turn server url',
+        username: 'turn username',
+        password: 'turn password',
+      },
+    });
     assert.calledOnce(roapMediaConnectionConstructorStub);
     assert.calledWith(
       roapMediaConnectionConstructorStub,
@@ -94,7 +91,7 @@ describe('createMediaConnection', () => {
           remoteQualityLevel: 'HIGH',
         },
       },
-      'mc'
+      'some debug id'
     );
   });
 
@@ -103,17 +100,13 @@ describe('createMediaConnection', () => {
       .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
       .returns(fakeRoapMediaConnection);
 
-    Media.createMediaConnection(
-      {},
-      {
-        isMultistream: true,
-        turnServerInfo: {
-          url: 'turn server url',
-          username: 'turn username',
-          password: 'turn password',
-        },
-      }
-    );
+    Media.createMediaConnection(true, 'some debug id', {
+      turnServerInfo: {
+        url: 'turn server url',
+        username: 'turn username',
+        password: 'turn password',
+      },
+    });
     assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
     assert.calledWith(
       multistreamRoapMediaConnectionConstructorStub,
@@ -126,7 +119,7 @@ describe('createMediaConnection', () => {
           },
         ],
       },
-      'mc'
+      'some debug id'
     );
   });
 
@@ -135,20 +128,14 @@ describe('createMediaConnection', () => {
       .stub(internalMediaModule, 'MultistreamRoapMediaConnection')
       .returns(fakeRoapMediaConnection);
 
-    Media.createMediaConnection(
-      {},
-      {
-        isMultistream: true,
-        turnServerInfo: undefined,
-      }
-    );
+    Media.createMediaConnection(true, 'debug string', {});
     assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
     assert.calledWith(
       multistreamRoapMediaConnectionConstructorStub,
       {
         iceServers: [],
       },
-      'mc'
+      'debug string'
     );
   });
 
@@ -162,8 +149,8 @@ describe('createMediaConnection', () => {
     const ENABLE_EXTMAP = false;
     const ENABLE_RTX = true;
 
-    Media.createMediaConnection(
-      {
+    Media.createMediaConnection(false, 'some debug id', {
+      mediaProperties: {
         mediaDirection: {
           sendAudio: true,
           sendVideo: true,
@@ -176,14 +163,11 @@ describe('createMediaConnection', () => {
         videoTrack: null,
         shareTrack: fakeVideoTrack,
       },
-      {
-        isMultistream: false,
-        remoteQualityLevel: 'HIGH',
-        enableRtx: ENABLE_RTX,
-        enableExtmap: ENABLE_EXTMAP,
-        turnServerInfo: undefined,
-      }
-    );
+      remoteQualityLevel: 'HIGH',
+      enableRtx: ENABLE_RTX,
+      enableExtmap: ENABLE_EXTMAP,
+      turnServerInfo: undefined,
+    });
     assert.calledOnce(roapMediaConnectionConstructorStub);
     assert.calledWith(
       roapMediaConnectionConstructorStub,
@@ -217,7 +201,7 @@ describe('createMediaConnection', () => {
           remoteQualityLevel: 'HIGH',
         },
       },
-      'mc'
+      'some debug id'
     );
   });
 });
