@@ -4435,10 +4435,14 @@ export default class Meeting extends StatelessWebexPlugin {
     });
   };
 
+  getMediaConnectionDebugId() {
+    return `MC-${this.id.substring(0, 4)}`;
+  }
+
   createMediaConnection(turnServerInfo) {
     const mc = Media.createMediaConnection(
       this.isMultistream,
-      `MC-${this.id.substring(0, 4)}`,
+      this.getMediaConnectionDebugId(),
       {
         mediaProperties: this.mediaProperties,
         remoteQualityLevel: this.mediaProperties.remoteQualityLevel,

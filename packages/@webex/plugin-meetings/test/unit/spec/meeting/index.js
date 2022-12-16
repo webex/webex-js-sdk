@@ -1105,7 +1105,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.roap.doTurnDiscovery, meeting, false);
           assert.calledOnce(meeting.mediaProperties.setMediaDirection);
           assert.calledOnce(Media.createMediaConnection);
-          assert.calledWith(Media.createMediaConnection, false, `MC-${meeting.id.substring(0, 4)}`, sinon.match({turnServerInfo: undefined}));
+          assert.calledWith(Media.createMediaConnection, false, meeting.getMediaConnectionDebugId(), sinon.match({turnServerInfo: undefined}));
           assert.calledOnce(meeting.setMercuryListener);
           assert.calledOnce(fakeMediaConnection.initiateOffer);
           /* statsAnalyzer is initiated inside of addMedia so there isn't
@@ -1139,7 +1139,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.roap.doTurnDiscovery);
           assert.calledWith(meeting.roap.doTurnDiscovery, meeting, false);
           assert.calledOnce(Media.createMediaConnection);
-          assert.calledWith(Media.createMediaConnection, false, `MC-${meeting.id.substring(0, 4)}`, sinon.match({
+          assert.calledWith(Media.createMediaConnection, false, meeting.getMediaConnectionDebugId(), sinon.match({
             turnServerInfo: {
               url: FAKE_TURN_URL,
               username: FAKE_TURN_USER,
