@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.5](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.4...v3.0.0-beta.5) (2022-12-19)
+
+
+### Bug Fixes
+
+* set unique debugId for media connections ([#2538](https://github.com/webex/webex-js-sdk/issues/2538)) ([aad4007](https://github.com/webex/webex-js-sdk/commit/aad400713f7ea779b515ec8ed076a2ac10b41fe1))
+
 ## [3.0.0-beta.4](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.3...v3.0.0-beta.4) (2022-12-12)
 
 
