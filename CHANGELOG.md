@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.6](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.5...v3.0.0-beta.6) (2022-12-19)
+
+
+### Features
+
+* showing stats results in logs on CTRL+click on a video pane in the sample app ([#2540](https://github.com/webex/webex-js-sdk/issues/2540)) ([ce37407](https://github.com/webex/webex-js-sdk/commit/ce374071e96ae62e335f92a2d0fd55e15484d1a3))
+
 ## [3.0.0-beta.5](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.4...v3.0.0-beta.5) (2022-12-19)
 
 
