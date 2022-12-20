@@ -481,8 +481,8 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.receiveSlotManager = new ReceiveSlotManager(this);
     /**
-     * Helper class for managing media requests for main video (for multistream media connections)
-     * All media requests sent out for main video for this meeting have to go through it.
+     * Object containing helper classes for managing media requests for audio/video/screenshare (for multistream media connections)
+     * All multistream media requests sent out for this meeting have to go through them.
      */
     this.mediaRequestManagers = {
       audio: new MediaRequestManager((mediaRequests) => {
@@ -500,6 +500,22 @@ export default class Meeting extends StatelessWebexPlugin {
           return;
         }
         this.mediaProperties.webrtcMediaConnection.requestMedia(MC.MediaType.VideoMain, mediaRequests);
+      }),
+      screenShareAudio: new MediaRequestManager((mediaRequests) => {
+        if (!this.mediaProperties.webrtcMediaConnection) {
+          LoggerProxy.logger.warn('Meeting:index#mediaRequestManager --> trying to send screenshare audio media request before media connection was created');
+
+          return;
+        }
+        this.mediaProperties.webrtcMediaConnection.requestMedia(MC.MediaType.AudioSlides, mediaRequests);
+      }),
+      screenShareVideo: new MediaRequestManager((mediaRequests) => {
+        if (!this.mediaProperties.webrtcMediaConnection) {
+          LoggerProxy.logger.warn('Meeting:index#mediaRequestManager --> trying to send screenshare video media request before media connection was created');
+
+          return;
+        }
+        this.mediaProperties.webrtcMediaConnection.requestMedia(MC.MediaType.VideoSlides, mediaRequests);
       })
     };
     /**

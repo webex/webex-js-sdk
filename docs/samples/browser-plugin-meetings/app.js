@@ -1554,6 +1554,23 @@ function createStageLayoutVideos() {
   document.getElementById('multistream-videos-container').appendChild(thumbnailsFieldset);
 }
 
+function createScreenshareView() {
+  allVideoPanes.screenShare = [];
+  allVideoPanes.thumbnails = [];
+
+  // create the thumbnails
+  const thumbnailsContainer = createContainer();
+
+  for (let i = 0; i < 8; i += 1) {
+    allVideoPanes.thumbnails.push(addVideoPane(thumbnailsContainer, 'small-video'));
+  }
+
+  // create the pane for the screen share
+  const screenshareContainer = createContainer();
+
+  allVideoPanes.screenShare.push(addVideoPane(screenshareContainer, 'big-video'));
+}
+
 function setGridVideoPaneMaxWidth(numOfActiveVideoPanes) {
   let maxWidth = '0px';
 
@@ -1624,6 +1641,7 @@ function createVideoElementsForLayout(layoutId) {
       break;
 
     case 'ScreenShareView':
+      createScreenshareView();
       break;
 
     default:
@@ -1845,8 +1863,10 @@ async function getStatsForVideoPane(meeting, videoPane) {
 
   // there is no public API in WCME to get the transceiver of a receive slot, but
   // this is javascript so we can access private fields to get it anyway until we have some API for this
-  // todo: 'VIDEO-MAIN' will need to change when we support screen sharing (SPARK-377812)
-  const transceiver = multistreamConnection.recvTransceivers.get('VIDEO-MAIN')?.find((t) => t.receiveSlot === wcmeReceiveSlot);
+  const transceiver = [
+    ...multistreamConnection.recvTransceivers.get('VIDEO-MAIN'),
+    ...multistreamConnection.recvTransceivers.get('VIDEO-SLIDES'),
+  ].find((t) => t.receiveSlot === wcmeReceiveSlot);
 
   let result = {};
 
@@ -1865,6 +1885,9 @@ async function getStatsForVideoPane(meeting, videoPane) {
         };
       }
     });
+  }
+  else {
+    console.warn(`cannot find transceiver for video pane: "${remoteMedia.id}"`);
   }
 
   return result;
@@ -1907,6 +1930,37 @@ async function getStats() {
 }
 
 const meetingsWithMultistreamListeners = {};
+let layoutSelectedBeforeRemoteShareStarted;
+
+function forceLayoutChange(newLayoutId) {
+  const selectLayoutElm = document.getElementById('multistream-layout');
+
+  selectLayoutElm.value = newLayoutId;
+  selectLayoutElm.dispatchEvent(new Event('change'));
+}
+
+function forceScreenShareViewLayout(meeting) {
+  // remoteMediaManager might be null if we're in the lobby
+  if (meeting.remoteMediaManager) {
+    layoutSelectedBeforeRemoteShareStarted = meeting.remoteMediaManager.getLayoutId();
+
+    forceLayoutChange('ScreenShareView');
+  }
+}
+
+function stopForcedScreenShareViewLayout(meeting) {
+  if (meeting.remoteMediaManager) {
+    if (meeting.remoteMediaManager.getLayoutId() === 'ScreenShareView') {
+      const selectLayoutElm = document.getElementById('multistream-layout');
+
+      const newLayout = layoutSelectedBeforeRemoteShareStarted || selectLayoutElm.firstElementChild.value;
+
+      forceLayoutChange(newLayout);
+    }
+  }
+  layoutSelectedBeforeRemoteShareStarted = undefined;
+}
+
 
 function setupMultistreamEventListeners(meeting) {
   if (meetingsWithMultistreamListeners[meeting.id]) {
@@ -1921,11 +1975,18 @@ function setupMultistreamEventListeners(meeting) {
     });
   });
 
-  meeting.on('media:remoteVideo:layoutChanged', ({layoutId, activeSpeakerVideoPanes, memberVideoPanes}) => {
+  meeting.on('media:remoteScreenShareAudio:created', (screenShareAudioMedia) => {
+    document.getElementById('multistream-remote-share-audio').srcObject = screenShareAudioMedia.stream;
+  });
+
+  meeting.on('media:remoteVideo:layoutChanged', ({
+    layoutId, activeSpeakerVideoPanes, memberVideoPanes, screenShareVideo
+  }) => {
     console.log(`MeetingStreams#VideoLayoutChanged :: got video layout changed: layoutId=${layoutId}`);
 
     console.log('activeSpeakerVideoPanes:', activeSpeakerVideoPanes);
     console.log('memberVideoPanes:', memberVideoPanes);
+    console.log('screenShareVideo:', screenShareVideo);
 
     currentVideoPaneList.length = 0;
     clearAllMultistreamVideoElements();
@@ -1938,6 +1999,10 @@ function setupMultistreamEventListeners(meeting) {
     for (const [paneId, remoteMedia] of Object.entries(memberVideoPanes)) {
       // staged layout is the only one we use that has memberVideoPanes defined
       processNewVideoPane(meeting, 'stage', paneId, remoteMedia);
+    }
+
+    if (screenShareVideo) {
+      processNewVideoPane(meeting, 'screenShare', 0, screenShareVideo);
     }
   });
 
@@ -1956,6 +2021,14 @@ function setupMultistreamEventListeners(meeting) {
   meeting.on('media:activeSpeakerChanged', (data) => {
     currentActiveSpeakersMemberIds = data.memberIds;
     updateVideoPanesForActiveSpeaker();
+  });
+
+  meeting.on('meeting:startedSharingRemote', () => {
+    forceScreenShareViewLayout(meeting);
+  });
+
+  meeting.on('meeting:stoppedSharingRemote', () => {
+    stopForcedScreenShareViewLayout(meeting);
   });
 
   meetingsWithMultistreamListeners[meeting.id] = true;
@@ -2014,6 +2087,13 @@ function addMedia() {
 
     // addMedia using the default RemoteMediaManagerConfig
     meeting.addMedia().then(() => {
+      // we need to check shareStatus, because may have missed the 'meeting:startedSharingRemote' event
+      // if someone started sharing before our page was loaded,
+      // or we didn't act on that event if the user clicked "add media" while being in the lobby
+      if (meeting.shareStatus === 'remote_share_active') {
+        forceScreenShareViewLayout(meeting);
+      }
+
       publishTracks(meeting);
       console.log('MeetingStreams#addMedia() :: successfully added media!');
     }).catch((error) => {
