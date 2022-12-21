@@ -256,10 +256,13 @@ export default class MediaProperties {
     const allStatsReports = [];
 
     try {
-      // eslint-disable-next-line no-await-in-loop
       const statsResult = await this.webrtcMediaConnection.getStats();
 
-      statsResult.forEach((report) => allStatsReports.push(report));
+      if (typeof statsResult.forEach === 'function') {
+        statsResult.forEach((report) => allStatsReports.push(report));
+      } else {
+        allStatsReports.push(...Object.values(statsResult));
+      }
     } catch (error) {
       LoggerProxy.logger.warn(
         `Media:properties#getCurrentConnectionType --> getStats() failed: ${error}`
