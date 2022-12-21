@@ -3,7 +3,7 @@
  */
 
 import {Batcher} from '@webex/webex-core';
-import {string} from 'yargs';
+import {get} from 'lodash';
 
 /**
  * @class
@@ -70,13 +70,13 @@ const DssBatcher = Batcher.extend({
    * @returns {Promise<undefined>}
    */
   handleHttpSuccess(res) {
-    const successItems = res.data.get(this.entitiesFoundPath).map((requestValue, index) => {
+    const successItems = get(res.data, this.entitiesFoundPath).map((requestValue, index) => {
       return {requestValue, entity: res.resultArray[index]};
     });
-    const failureItems = res.data.get(this.entitiesNotFoundPath).map((requestValue) => {
+    const failureItems = get(res.data, this.entitiesNotFoundPath).map((requestValue) => {
       return {requestValue, entity: null};
     });
-    return Promise.all(res.map((item) => this.acceptItem(successItems.concat(failureItems))));
+    return Promise.all(successItems.concat(failureItems).map((item) => this.acceptItem(item)));
   },
 
   /**
