@@ -542,6 +542,64 @@ describe('RemoteMediaManager', () => {
       });
     });
 
+    it('stops all current video remoteMedia instances when switching to new layout', async () => {
+      const audioStopStubs = [];
+      const videoStopStubs = [];
+
+      const config = cloneDeep(DefaultTestConfiguration);
+
+      // start with the stage layout because it has both active speaker and receiver selected panes
+      config.video.initialLayoutId = 'Stage';
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      // mock all stop() methods for all remote audio objects we get with AudioCreated event
+      remoteMediaManager.on(Event.AudioCreated, (audio: RemoteMediaGroup) => {
+        audio
+          .getRemoteMedia()
+          .forEach((remoteAudio) => audioStopStubs.push(sinon.stub(remoteAudio, 'stop')));
+      });
+
+      // mock all stop() methods for all remote video objects we get with VideoLayoutChanged event
+      remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
+        Object.values(layoutInfo.activeSpeakerVideoPanes).forEach((group) =>
+          group
+            .getRemoteMedia()
+            .forEach((remoteMedia) => videoStopStubs.push(sinon.stub(remoteMedia, 'stop')))
+        );
+
+        Object.values(layoutInfo.memberVideoPanes).forEach((pane) => {
+          videoStopStubs.push(sinon.stub(pane, 'stop'));
+        });
+      });
+
+      await remoteMediaManager.start();
+
+      // sanity check that we've got all our stop() mocks setup correctly
+      assert.strictEqual(audioStopStubs.length, 3);
+      assert.strictEqual(videoStopStubs.length, 10); // 10 = 6 thumbnail panes + 4 stage panes
+
+      // next, we'll change the layout, we don't care about the new video panes from the new layout, so unregister the event listeners
+      remoteMediaManager.removeAllListeners();
+
+      await remoteMediaManager.setLayout('AllEqual');
+
+      // check that NONE of the audio RemoteMedia instances were stopped
+      audioStopStubs.forEach((audioStopStub) => {
+        assert.notCalled(audioStopStub);
+      });
+
+      // check that ALL of the video RemoteMedia instances were stopped
+      videoStopStubs.forEach((videoStopStub) => {
+        assert.calledOnce(videoStopStub);
+        assert.calledWith(videoStopStub, false);
+      });
+    });
+
     describe('switching between different receiver selected layouts', () => {
       let fakeSlots: {[key: ReceiveSlotId]: FakeSlot};
       let slotCounter: number;
