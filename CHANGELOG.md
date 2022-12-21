@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.7](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.6...v3.0.0-beta.7) (2022-12-21)
+
+
+### Bug Fixes
+
+* added stopped event to RemoteMedia ([#2539](https://github.com/webex/webex-js-sdk/issues/2539)) ([defc590](https://github.com/webex/webex-js-sdk/commit/defc5903b8dd676744b8888e7cbb4afeb54ebd87))
+
 ## [3.0.0-beta.6](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.5...v3.0.0-beta.6) (2022-12-19)
 
 
