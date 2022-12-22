@@ -210,8 +210,8 @@ const DSS = WebexPlugin.extend({
   _batchedLookup(options) {
     const {resource, requestType, lookupValue} = options;
     const dataPath = 'lookupResult.entities';
-    const entitiesFoundPath = 'lookupResult.entitiesFound';
-    const entitiesNotFoundPath = 'lookupResult.entitiesNotFound';
+    const entitiesFoundPath = 'entitiesFound';
+    const entitiesNotFoundPath = 'entitiesNotFound';
     const requestKey = 'lookupValues';
     const batcher = (this.batchers[resource] =
       this.batchers[resource] ||
