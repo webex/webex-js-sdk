@@ -1864,8 +1864,8 @@ async function getStatsForVideoPane(meeting, videoPane) {
   // there is no public API in WCME to get the transceiver of a receive slot, but
   // this is javascript so we can access private fields to get it anyway until we have some API for this
   const transceiver = [
-    ...multistreamConnection.recvTransceivers.get('VIDEO-MAIN'),
-    ...multistreamConnection.recvTransceivers.get('VIDEO-SLIDES'),
+    ...(multistreamConnection.recvTransceivers.get('VIDEO-MAIN') || []),
+    ...(multistreamConnection.recvTransceivers.get('VIDEO-SLIDES') || []),
   ].find((t) => t.receiveSlot === wcmeReceiveSlot);
 
   let result = {};

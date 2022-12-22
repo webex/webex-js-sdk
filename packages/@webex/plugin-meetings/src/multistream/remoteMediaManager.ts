@@ -117,7 +117,7 @@ const TwoMainPlusSixSmallLayout: VideoLayout = {
 
 // A strip of 8 small video panes (thumbnails) displayed at the top of a remote screenshare:
 const RemoteScreenShareWithSmallThumbnailsLayout: VideoLayout = {
-  screenShareVideo: {size: 'best'},
+  // screenShareVideo: {size: 'best'}, // todo: SPARK-393485
   activeSpeakerVideoPaneGroups: [
     {
       id: 'thumbnails',
@@ -169,8 +169,8 @@ export const DefaultConfiguration: Configuration = {
     },
   },
   screenShare: {
-    audio: true,
-    video: true,
+    audio: false, // todo: SPARK-393485
+    video: false, // todo: SPARK-393485
   },
 };
 
