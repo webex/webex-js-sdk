@@ -1919,13 +1919,13 @@ async function getStats() {
   if (meeting) {
     console.log('Stats for all video panes:');
     // extract the stats for each video pane
-    Object.values(allVideoPanes).forEach((paneGroup) => {
+    for (const [groupId, paneGroup] of Object.entries(allVideoPanes)) {
       Object.values(paneGroup).forEach(async (videoPane) => {
         const stats = await getStatsForVideoPane(meeting, videoPane);
 
-        console.log(`stats for video pane "${videoPane.remoteMedia.id}": `, stats);
+        console.log(`stats for ${groupId} video pane "${videoPane.remoteMedia.id}": `, stats);
       });
-    });
+    }
   }
 }
 
