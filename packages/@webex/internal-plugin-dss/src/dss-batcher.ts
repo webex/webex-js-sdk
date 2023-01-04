@@ -57,6 +57,8 @@ const DssBatcher = Batcher.extend({
   submitHttpRequest(payload) {
     return this.parent._request({
       dataPath: this.dataPath,
+      foundPath: this.entitiesFoundPath,
+      notFoundPath: this.entitiesNotFoundPath,
       resource: this.resource,
       params: {
         lookupValues: payload,
@@ -70,10 +72,10 @@ const DssBatcher = Batcher.extend({
    * @returns {Promise<undefined>}
    */
   handleHttpSuccess(res) {
-    const successItems = get(res.data, this.entitiesFoundPath).map((requestValue, index) => {
+    const successItems = res.foundArray.map((requestValue, index) => {
       return {requestValue, entity: res.resultArray[index]};
     });
-    const failureItems = get(res.data, this.entitiesNotFoundPath).map((requestValue) => {
+    const failureItems = res.notFoundArray.map((requestValue) => {
       return {requestValue, entity: null};
     });
     return Promise.all(successItems.concat(failureItems).map((item) => this.acceptItem(item)));

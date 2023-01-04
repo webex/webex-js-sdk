@@ -5,7 +5,6 @@
 import {assert, expect} from '@webex/test-helper-chai';
 import DSS from '@webex/internal-plugin-dss';
 import {Batcher} from '@webex/webex-core';
-import DssBatcher from '@webex/internal-plugin-dss/src/dss-batcher';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {set} from 'lodash';
@@ -186,7 +185,7 @@ describe('plugin-dss', () => {
         webex.internal.dss._request = sinon.stub().returns(
           Promise.resolve({
             resultArray: ['some return value'],
-            data: {entitiesFound: ['test id']},
+            foundArray: ['test id'],
           })
         );
 
@@ -194,6 +193,7 @@ describe('plugin-dss', () => {
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {
             dataPath: 'lookupResult.entities',
+            foundPath: 'entitiesFound',
             resource: '/lookup/orgid/userOrgId/identity/test id/detail',
           },
         ]);
@@ -234,7 +234,7 @@ describe('plugin-dss', () => {
         webex.internal.dss._request = sinon.stub().returns(
           Promise.resolve({
             resultArray: ['some return value'],
-            data: {entitiesFound: ['id1']},
+            foundArray: ['id1'],
           })
         );
 
@@ -242,6 +242,7 @@ describe('plugin-dss', () => {
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {
             dataPath: 'lookupResult.entities',
+            foundPath: 'entitiesFound',
             resource: '/lookup/orgid/userOrgId/identities',
             params: {
               lookupValues: ['id1'],
@@ -256,7 +257,7 @@ describe('plugin-dss', () => {
         webex.internal.dss._request = sinon.stub().returns(
           Promise.resolve({
             resultArray: ['some return value'],
-            data: {entitiesFound: ['id1']},
+            foundArray: ['id1'],
           })
         );
 
@@ -268,6 +269,7 @@ describe('plugin-dss', () => {
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {
             dataPath: 'lookupResult.entities',
+            foundPath: 'entitiesFound',
             resource: '/lookup/orgid/userOrgId/entityprovidertype/CI_USER',
             params: {
               lookupValues: ['id1'],
@@ -538,7 +540,7 @@ describe('plugin-dss', () => {
         webex.internal.dss._request = sinon.stub().returns(
           Promise.resolve({
             resultArray: ['some return value'],
-            data: {entitiesFound: ['email1']},
+            foundArray: ['email1'],
           })
         );
 
@@ -548,7 +550,9 @@ describe('plugin-dss', () => {
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {
             dataPath: 'lookupResult.entities',
+            foundPath: 'entitiesFound',
             resource: '/lookup/orgid/userOrgId/emails',
+
             params: {
               lookupValues: ['email1'],
             },
@@ -659,44 +663,118 @@ describe('plugin-dss', () => {
 
         webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
           sequence: 1,
-          a: {
-            b: {
-              c: ['data1'],
-            },
-          },
+          a: { b: { c: ['data1'], }, },
         });
-
         webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
           sequence: 2,
           finished: true,
-          a: {
-            b: {
-              c: ['data2'],
-            },
-          },
+          a: { b: { c: ['data2'], }, },
         });
-
         webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
           sequence: 0,
-          a: {
-            b: {
-              c: ['data0'],
-            },
-          },
+          a: { b: { c: ['data0'], }, },
         });
 
         const result = await promise;
         expect(result).to.deep.equal({
           resultArray: ['data0', 'data1', 'data2'],
-          data: {
-            sequence: 2,
-            finished: true,
-            a: {
-              b: {
-                c: ['data2'],
-              },
+        });
+      });
+
+      it('handles a request with foundPath correctly', async () => {
+        webex.request = sinon.stub();
+        uuid.v4.returns('randomid');
+        const promise = webex.internal.dss._request({
+          resource: '/search/orgid/userOrgId/entities',
+          params: {some: 'param'},
+          dataPath: 'a.b.c',
+          foundPath: 'someFoundPath'
+        });
+
+        expect(webex.request.getCall(0).args).to.deep.equal([
+          {
+            service: 'directorySearch',
+            body: {
+              requestId: 'randomid',
+              some: 'param',
             },
+            contentType: 'application/json',
+            method: 'POST',
+            resource: '/search/orgid/userOrgId/entities',
           },
+        ]);
+
+        webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
+          sequence: 1,
+          a: { b: { c: ['data1'], }, },
+          someFoundPath: ['id1'],
+        });
+        webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
+          sequence: 2,
+          finished: true,
+          a: { b: { c: ['data2'], }, },
+          someFoundPath: ['id2'],
+        });
+        webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
+          sequence: 0,
+          a: { b: { c: ['data0'], }, },
+          someFoundPath: ['id0'],
+        });
+
+        const result = await promise;
+        expect(result).to.deep.equal({
+          resultArray: ['data0', 'data1', 'data2'],
+          foundArray: ['id0', 'id1', 'id2'],
+        });
+      });
+
+      it('handles a request with foundPath and notFoundPath correctly', async () => {
+        webex.request = sinon.stub();
+        uuid.v4.returns('randomid');
+        const promise = webex.internal.dss._request({
+          resource: '/search/orgid/userOrgId/entities',
+          params: {some: 'param'},
+          dataPath: 'a.b.c',
+          foundPath: 'someFoundPath',
+          notFoundPath: 'someNotFoundPath',
+        });
+
+        expect(webex.request.getCall(0).args).to.deep.equal([
+          {
+            service: 'directorySearch',
+            body: {
+              requestId: 'randomid',
+              some: 'param',
+            },
+            contentType: 'application/json',
+            method: 'POST',
+            resource: '/search/orgid/userOrgId/entities',
+          },
+        ]);
+
+        webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
+          sequence: 1,
+          a: { b: { c: ['data1'], }, },
+          someFoundPath: ['id1'],
+        });
+        webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
+          sequence: 2,
+          finished: true,
+          a: { b: { c: ['data2'], }, },
+          someFoundPath: ['id2'],
+          someNotFoundPath: ['id3'],
+        });
+        webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
+          sequence: 0,
+          a: { b: { c: ['data0'], }, },
+          someFoundPath: ['id0'],
+        });
+
+        const result = await promise;
+        expect(result).to.deep.equal({
+          resultArray: ['data0', 'data1', 'data2'],
+          foundArray: ['id0', 'id1', 'id2'],
+          notFoundArray: ['id3'],
         });
       });
     });

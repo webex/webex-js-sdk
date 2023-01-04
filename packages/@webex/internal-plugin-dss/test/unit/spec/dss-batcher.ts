@@ -43,6 +43,8 @@ describe('plugin-dss', () => {
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {
             dataPath: 'fakeDataPath',
+            foundPath: 'fakeEntitiesFoundPath',
+            notFoundPath: 'fakeEntitiesNotFoundPath',
             resource: 'fakeResource',
             params: {
               lookupValues: ['id1'],
@@ -61,16 +63,14 @@ describe('plugin-dss', () => {
             'item1',
             'item2',
           ],
-          data: {
-            fakeEntitiesFoundPath: [
-              'id1',
-              'id2',
-            ],
-            fakeEntitiesNotFoundPath: [
-              'id3',
-              'id4',
-            ]
-          }
+          foundArray: [
+            'id1',
+            'id2',
+          ],
+          notFoundArray: [
+            'id3',
+            'id4',
+          ],
         };
         const result = await batcher.handleHttpSuccess(res);
         expect(batcher.acceptItem.getCalls().map(call => call.args)).to.deep.equal([

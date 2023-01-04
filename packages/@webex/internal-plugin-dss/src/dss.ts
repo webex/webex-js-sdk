@@ -150,42 +150,60 @@ const DSS = WebexPlugin.extend({
    * @param {string} options.resource the URL to query
    * @param {string} options.params additional params for the body of the request
    * @param {string} options.dataPath the path to get the data in the result object
+   * @param {string} options.foundPath the path to get the lookups of the found data (optional)
+   * @param {string} options.notFoundPath the path to get the lookups of the not found data (optional)
    * @returns {Promise<Object>} result Resolves with an object
    * @returns {Array} result.resultArray an array of entities found
-   * @returns {Object} result.data data from the last message in the sequence
+   * @returns {Array} result.foundArray an array of the lookups of the found entities (if foundPath provided)
+   * @returns {Array} result.notFoundArray an array of the lookups of the not found entities (if notFoundPath provided)
    */
   _request(options) {
-    const {resource, params, dataPath} = options;
+    const {resource, params, dataPath, foundPath, notFoundPath} = options;
 
     const requestId = uuid.v4();
     const eventName = this._getResultEventName(requestId);
     const result = {};
     let expectedSeqNums;
-    let returnData;
+    let notFoundArray;
 
     return new Promise((resolve) => {
       this.listenTo(this, eventName, (data) => {
         const resultData = get(data, dataPath);
-
-        result[data.sequence] = resultData;
+        let found;
+        if (foundPath) {
+          found = get(data, foundPath);
+        }
+        result[data.sequence] = foundPath ? {resultData, found} : {resultData};
 
         if (data.finished) {
           expectedSeqNums = range(data.sequence + 1).map(String);
-          returnData = data;
+          if (notFoundPath) {
+            notFoundArray = get(data, notFoundPath);
+          }
         }
 
         const done = isEqual(expectedSeqNums, Object.keys(result));
 
         if (done) {
           const resultArray = [];
+          const foundArray = [];
           expectedSeqNums.forEach((index) => {
             const seqResult = result[index];
             if (seqResult) {
-              resultArray.push(...seqResult);
+              resultArray.push(...seqResult.resultData);
+              if (foundPath) {
+                foundArray.push(...seqResult.found)
+              }
             }
           });
-
-          resolve({resultArray, data: returnData});
+          const resolveValue = {resultArray}
+          if (foundPath) {
+            resolveValue['foundArray'] = foundArray;
+          }
+          if (notFoundPath) {
+            resolveValue['notFoundArray'] = notFoundArray;
+          }
+          resolve(resolveValue)
           this.stopListening(this, eventName);
         }
       });
@@ -241,10 +259,11 @@ const DSS = WebexPlugin.extend({
 
     return this._request({
       dataPath: 'lookupResult.entities',
+      foundPath: 'entitiesFound',
       resource,
-    }).then(({resultArray, data}) => {
+    }).then(({resultArray, foundArray}) => {
       // TODO: find out what is actually returned!
-      if (data.entitiesFound[0] === id) {
+      if (foundArray[0] === id) {
         return resultArray[0];
       } else {
         return Promise.reject(new Error(`DSS entity with ${requestType} ${id} was not found`));
@@ -277,12 +296,13 @@ const DSS = WebexPlugin.extend({
     }
     return this._request({
       dataPath: 'lookupResult.entities',
+      foundPath: 'entitiesFound',
       resource,
       params: {
         lookupValues: [id],
       },
-    }).then(({resultArray, data}) => {
-      if (data.entitiesFound[0] === id) {
+    }).then(({resultArray, foundArray}) => {
+      if (foundArray[0] === id) {
         return resultArray[0];
       } else {
         return Promise.reject(new Error(`DSS entity with ${requestType} ${id} was not found`));
@@ -303,12 +323,13 @@ const DSS = WebexPlugin.extend({
 
     return this._request({
       dataPath: 'lookupResult.entities',
+      foundPath: 'entitiesFound',
       resource,
       params: {
         lookupValues: [email],
       },
-    }).then(({resultArray, data}) => {
-      if (data.entitiesFound[0] === email) {
+    }).then(({resultArray, foundArray}) => {
+      if (foundArray[0] === email) {
         return resultArray[0];
       } else {
         return Promise.reject(new Error(`DSS entity with ${requestType} ${email} was not found`));
@@ -335,7 +356,7 @@ const DSS = WebexPlugin.extend({
         resultSize,
         requestedTypes,
       },
-    }).then(({resultArray, data}) => {
+    }).then(({resultArray}) => {
       return resultArray;
     });
   },
