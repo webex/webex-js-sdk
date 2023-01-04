@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.35.4](https://github.com/webex/webex-js-sdk/compare/v2.35.3...v2.35.4) (2023-01-04)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** return feedbackId from uploadLogs ([#2546](https://github.com/webex/webex-js-sdk/issues/2546)) ([eaa7d28](https://github.com/webex/webex-js-sdk/commit/eaa7d28f7c22523bdd1534470a2ab930e30c0ce7))
+
 ### [2.35.3](https://github.com/webex/webex-js-sdk/compare/v2.35.2...v2.35.3) (2022-12-21)
 
 
