@@ -19,17 +19,17 @@ export default class WebexHttpError extends HttpError {
 
     Reflect.defineProperty(this, 'options', {
       enumerable: false,
-      value: res.options
+      value: res.options,
     });
 
     if (this.options.url) {
       message += `\n${this.options.method} ${this.options.url}`;
-    }
-    else if (this.options.uri) {
+    } else if (this.options.uri) {
       message += `\n${this.options.method} ${this.options.uri}`;
-    }
-    else {
-      message += `\n${this.options.method} ${this.options.service.toUpperCase()}/${this.options.resource}`;
+    } else {
+      message += `\n${this.options.method} ${this.options.service.toUpperCase()}/${
+        this.options.resource
+      }`;
     }
     message += `\nWEBEX_TRACKING_ID: ${this.options.headers.trackingid}`;
     if (this.options.headers && this.options.headers['x-trans-id']) {
@@ -39,7 +39,7 @@ export default class WebexHttpError extends HttpError {
       Reflect.defineProperty(this, 'retryAfter', {
         enumerable: true,
         value: this.headers['retry-after'],
-        writeable: false
+        writeable: false,
       });
 
       message += `\nRETRY-AFTER: ${this.retryAfter}`;
@@ -51,7 +51,6 @@ export default class WebexHttpError extends HttpError {
 }
 
 HttpError.makeSubTypes(WebexHttpError);
-
 
 /**
  * TooManyRequests

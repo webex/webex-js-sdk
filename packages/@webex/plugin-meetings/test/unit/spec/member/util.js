@@ -2,7 +2,6 @@ import {assert} from '@webex/test-helper-chai';
 
 import MemberUtil from '@webex/plugin-meetings/src/member/util';
 
-
 describe('isHandRaised', () => {
   it('throws error when there is no participant', () => {
     assert.throws(() => {
@@ -18,7 +17,7 @@ describe('isHandRaised', () => {
 
   it('returns false when hand is not there in controls', () => {
     const participant = {
-      controls: {}
+      controls: {},
     };
 
     assert.isFalse(MemberUtil.isHandRaised(participant));
@@ -28,9 +27,9 @@ describe('isHandRaised', () => {
     const participant = {
       controls: {
         hand: {
-          raised: true
+          raised: true,
         },
-      }
+      },
     };
 
     assert.isTrue(MemberUtil.isHandRaised(participant));
@@ -40,9 +39,9 @@ describe('isHandRaised', () => {
     const participant = {
       controls: {
         hand: {
-          raised: false
+          raised: false,
         },
-      }
+      },
     };
 
     assert.isFalse(MemberUtil.isHandRaised(participant));

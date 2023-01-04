@@ -21,7 +21,6 @@ const {assert} = chai;
 chai.use(chaiAsPromised);
 sinon.assert.expose(chai.assert, {prefix: ''});
 
-
 describe('plugin-meetings', () => {
   let webex;
   let url1;
@@ -35,37 +34,33 @@ describe('plugin-meetings', () => {
           id: '6eb08f8b-bf69-3251-a126-b161bead2d21',
           phoneNumber: '+18578675309',
           isExternal: true,
-          primaryDisplayString: '+18578675309'
+          primaryDisplayString: '+18578675309',
         },
         devices: [
           {
             url: 'https://fakeURL.com',
             deviceType: 'SIP',
             state: 'JOINED',
-            intents: [
-              null
-            ],
+            intents: [null],
             correlationId: '1234',
             provisionalUrl: 'dialout:///fake',
-            isSparkPstn: true
+            isSparkPstn: true,
           },
           {
             url: 'dialout:///fakeagain',
             deviceType: 'PROVISIONAL',
             state: 'JOINED',
-            intents: [
-              null
-            ],
+            intents: [null],
             correlationId: '4321',
             isVideoCallback: false,
             clientUrl: 'https://fakeURL',
             provisionalType: 'DIAL_OUT_ONLY',
-            dialingStatus: 'SUCCESS'
-          }
+            dialingStatus: 'SUCCESS',
+          },
         ],
         status: {
           audioStatus: 'SENDRECV',
-          videoStatus: 'INACTIVE'
+          videoStatus: 'INACTIVE',
         },
         id: 'abc-123-abc-123',
         guest: true,
@@ -73,15 +68,14 @@ describe('plugin-meetings', () => {
         moderator: false,
         panelist: false,
         moveToLobbyNotAllowed: true,
-        deviceUrl: 'https://fakeDeviceurl'
+        deviceUrl: 'https://fakeDeviceurl',
       },
       id: 'abc-123-abc-123',
       status: 'IN_MEETING',
       type: 'MEETING',
-      isModerator: false
-    }
+      isModerator: false,
+    },
   };
-
 
   describe('members', () => {
     const sandbox = sinon.createSandbox();
@@ -92,21 +86,21 @@ describe('plugin-meetings', () => {
         children: {
           meetings: Meetings,
           credentials: Credentials,
-          support: Support
+          support: Support,
         },
         config: {
           credentials: {
-            client_id: 'mock-client-id'
+            client_id: 'mock-client-id',
           },
           meetings: {
             reconnection: {
-              enabled: false
+              enabled: false,
             },
             mediaSettings: {},
             metrics: {},
-            stats: {}
-          }
-        }
+            stats: {},
+          },
+        },
       });
 
       url1 = `https://example.com/${uuid.v4()}`;
@@ -156,7 +150,13 @@ describe('plugin-meetings', () => {
 
         members.membersCollection.setAll(fakeMembersCollection);
         await members.sendDialPadKey('1', 'test1');
-        assert.calledWith(MembersUtil.genderateSendDTMFOptions, 'https://fakeURL.com', '1', 'test1', url1);
+        assert.calledWith(
+          MembersUtil.genderateSendDTMFOptions,
+          'https://fakeURL.com',
+          '1',
+          'test1',
+          url1
+        );
       });
 
       it('should call the sendDialPadKey method on membersRequest if the member is valid', async () => {
@@ -197,7 +197,10 @@ describe('plugin-meetings', () => {
         const members = createMembers({url: locusUrl});
 
         const spies = {
-          generateRaiseHandMemberOptions: sandbox.spy(MembersUtil, 'generateRaiseHandMemberOptions'),
+          generateRaiseHandMemberOptions: sandbox.spy(
+            MembersUtil,
+            'generateRaiseHandMemberOptions'
+          ),
           raiseOrLowerHandMember: sandbox.spy(members.membersRequest, 'raiseOrLowerHandMember'),
         };
 
@@ -210,10 +213,25 @@ describe('plugin-meetings', () => {
         assert.notCalled(spies.raiseOrLowerHandMember);
       };
 
-      const checkValid = async (resultPromise, spies, expectedMemberId, expectedRaise, expectedLocusUrl) => {
+      const checkValid = async (
+        resultPromise,
+        spies,
+        expectedMemberId,
+        expectedRaise,
+        expectedLocusUrl
+      ) => {
         await assert.isFulfilled(resultPromise);
-        assert.calledOnceWithExactly(spies.generateRaiseHandMemberOptions, expectedMemberId, expectedRaise, expectedLocusUrl);
-        assert.calledOnceWithExactly(spies.raiseOrLowerHandMember, {memberId: expectedMemberId, raised: expectedRaise, locusUrl: expectedLocusUrl});
+        assert.calledOnceWithExactly(
+          spies.generateRaiseHandMemberOptions,
+          expectedMemberId,
+          expectedRaise,
+          expectedLocusUrl
+        );
+        assert.calledOnceWithExactly(spies.raiseOrLowerHandMember, {
+          memberId: expectedMemberId,
+          raised: expectedRaise,
+          locusUrl: expectedLocusUrl,
+        });
         assert.strictEqual(resultPromise, spies.raiseOrLowerHandMember.getCall(0).returnValue);
       };
 
@@ -222,7 +240,11 @@ describe('plugin-meetings', () => {
 
         const resultPromise = members.raiseOrLowerHand();
 
-        await checkInvalid(resultPromise, 'The member id must be defined to raise/lower the hand of the member.', spies);
+        await checkInvalid(
+          resultPromise,
+          'The member id must be defined to raise/lower the hand of the member.',
+          spies
+        );
       });
 
       it('should not make a request if there is no locus url', async () => {
@@ -230,7 +252,11 @@ describe('plugin-meetings', () => {
 
         const resultPromise = members.raiseOrLowerHand(uuid.v4());
 
-        await checkInvalid(resultPromise, 'The associated locus url for this meetings members object must be defined.', spies);
+        await checkInvalid(
+          resultPromise,
+          'The associated locus url for this meetings members object must be defined.',
+          spies
+        );
       });
 
       it('should make the correct request when called with raise as true', async () => {
@@ -266,7 +292,10 @@ describe('plugin-meetings', () => {
         const members = createMembers({url: locusUrl});
 
         const spies = {
-          generateLowerAllHandsMemberOptions: sandbox.spy(MembersUtil, 'generateLowerAllHandsMemberOptions'),
+          generateLowerAllHandsMemberOptions: sandbox.spy(
+            MembersUtil,
+            'generateLowerAllHandsMemberOptions'
+          ),
           lowerAllHandsMember: sandbox.spy(members.membersRequest, 'lowerAllHandsMember'),
         };
 
@@ -279,10 +308,22 @@ describe('plugin-meetings', () => {
         assert.notCalled(spies.lowerAllHandsMember);
       };
 
-      const checkValid = async (resultPromise, spies, expectedRequestingMemberId, expectedLocusUrl) => {
+      const checkValid = async (
+        resultPromise,
+        spies,
+        expectedRequestingMemberId,
+        expectedLocusUrl
+      ) => {
         await assert.isFulfilled(resultPromise);
-        assert.calledOnceWithExactly(spies.generateLowerAllHandsMemberOptions, expectedRequestingMemberId, expectedLocusUrl);
-        assert.calledOnceWithExactly(spies.lowerAllHandsMember, {requestingParticipantId: expectedRequestingMemberId, locusUrl: expectedLocusUrl});
+        assert.calledOnceWithExactly(
+          spies.generateLowerAllHandsMemberOptions,
+          expectedRequestingMemberId,
+          expectedLocusUrl
+        );
+        assert.calledOnceWithExactly(spies.lowerAllHandsMember, {
+          requestingParticipantId: expectedRequestingMemberId,
+          locusUrl: expectedLocusUrl,
+        });
         assert.strictEqual(resultPromise, spies.lowerAllHandsMember.getCall(0).returnValue);
       };
 
@@ -291,7 +332,11 @@ describe('plugin-meetings', () => {
 
         const resultPromise = members.lowerAllHands();
 
-        await checkInvalid(resultPromise, 'The requestingMemberId must be defined to lower all hands in a meeting.', spies);
+        await checkInvalid(
+          resultPromise,
+          'The requestingMemberId must be defined to lower all hands in a meeting.',
+          spies
+        );
       });
 
       it('should not make a request if there is no locus url', async () => {
@@ -299,7 +344,11 @@ describe('plugin-meetings', () => {
 
         const resultPromise = members.lowerAllHands(uuid.v4());
 
-        await checkInvalid(resultPromise, 'The associated locus url for this meetings members object must be defined.', spies);
+        await checkInvalid(
+          resultPromise,
+          'The associated locus url for this meetings members object must be defined.',
+          spies
+        );
       });
 
       it('should make the correct request when called with requestingMemberId', async () => {

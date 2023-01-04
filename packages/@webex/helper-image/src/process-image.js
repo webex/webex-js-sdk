@@ -16,7 +16,12 @@ import {pick} from 'lodash';
  * @returns {Promise<Array>} Buffer, Dimensions, thumbnailDimensions
  */
 export default function processImage({
-  file, type, thumbnailMaxWidth, thumbnailMaxHeight, enableThumbnails, logger
+  file,
+  type,
+  thumbnailMaxWidth,
+  thumbnailMaxHeight,
+  enableThumbnails,
+  logger,
 }) {
   const fileType = type || file.type;
 
@@ -40,7 +45,8 @@ export default function processImage({
 
   if (enableThumbnails) {
     thumbnail = new Promise((resolve, reject) => {
-      gm(file).resize(thumbnailMaxWidth, thumbnailMaxHeight)
+      gm(file)
+        .resize(thumbnailMaxWidth, thumbnailMaxHeight)
         .autoOrient()
         .toBuffer('PNG', (err, buffer) => {
           if (err) {
@@ -53,43 +59,43 @@ export default function processImage({
         });
     });
 
-    thumbnailDimensions = thumbnail.then((buffer) => new Promise((resolve, reject) => {
-      gm(buffer)
-        .size((err, size) => {
-          if (err) {
-            reject(err);
+    thumbnailDimensions = thumbnail.then(
+      (buffer) =>
+        new Promise((resolve, reject) => {
+          gm(buffer).size((err, size) => {
+            if (err) {
+              reject(err);
 
-            return;
-          }
+              return;
+            }
 
-          resolve(pick(size, 'width', 'height'));
-        });
-    }));
+            resolve(pick(size, 'width', 'height'));
+          });
+        })
+    );
   }
 
+  return Promise.all([thumbnail, fileDimensions, thumbnailDimensions]).catch((err) => {
+    const errorString = err.toString();
 
-  return Promise.all([thumbnail, fileDimensions, thumbnailDimensions])
-    .catch((err) => {
-      const errorString = err.toString();
+    if (errorString.includes('EPIPE')) {
+      logger.warn(err, 'Is GraphicsMagick installed?');
 
-      if (errorString.includes('EPIPE')) {
-        logger.warn(err, 'Is GraphicsMagick installed?');
+      return Promise.resolve();
+    }
 
-        return Promise.resolve();
-      }
+    if (errorString.includes('No decode delegate for this image format')) {
+      logger.debug(err, 'File does not appear to be an image');
 
-      if (errorString.includes('No decode delegate for this image format')) {
-        logger.debug(err, 'File does not appear to be an image');
+      return Promise.resolve();
+    }
 
-        return Promise.resolve();
-      }
+    if (errorString.includes('Stream yields empty buffer')) {
+      logger.debug(err, 'File does not appear to be an image');
 
-      if (errorString.includes('Stream yields empty buffer')) {
-        logger.debug(err, 'File does not appear to be an image');
+      return Promise.resolve();
+    }
 
-        return Promise.resolve();
-      }
-
-      return Promise.reject(err);
-    });
+    return Promise.reject(err);
+  });
 }

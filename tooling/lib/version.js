@@ -46,10 +46,12 @@ function compare([l, ...left], [r, ...right]) {
 exports.last = async function last(includeSamples = false) {
   const packages = Array.from(await list());
   const version = _(
-    await Promise.all(packages
-      // TODO stop omitting eslint config once it's fully removed from the repo
-      .filter((p) => p !== '@webex/eslint-config')
-      .map((v) => getDistTag({packageName: v, includeSamples})))
+    await Promise.all(
+      packages
+        // TODO stop omitting eslint config once it's fully removed from the repo
+        .filter((p) => p !== '@webex/eslint-config')
+        .map((v) => getDistTag({packageName: v, includeSamples}))
+    )
   )
     .filter()
     .map((v) => v.split('.').map((n) => parseInt(n, 10)))
@@ -165,8 +167,7 @@ exports.set = async function set(version, {all, lastLog}) {
       debug(`${packageName} was at ${pkg.version}`);
       pkg.version = version;
       await write(packageName, pkg);
-    }
-    catch (err) {
+    } catch (err) {
       if (err.code !== 'ENOENT') {
         throw err;
       }
@@ -263,8 +264,7 @@ function increment(type, version) {
       default:
         throw new Error('unrecognized change type');
     }
-  }
-  else {
+  } else {
     switch (type) {
       case 'major':
         major += 1;

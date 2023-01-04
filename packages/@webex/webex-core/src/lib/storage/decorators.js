@@ -4,13 +4,7 @@
 
 /* eslint no-invalid-this: [0] */
 
-import {
-  curry,
-  debounce,
-  identity,
-  result,
-  wrap
-} from 'lodash';
+import {curry, debounce, identity, result, wrap} from 'lodash';
 import {make} from '@webex/common';
 
 import {NotFoundError} from './errors';
@@ -32,7 +26,9 @@ export function persist(...args) {
     if (prop !== 'initialize') {
       // Once we have class-based alternative to AmpersandState, it should be
       // detected here.
-      throw new TypeError('@persist can only currently be applied to AmpersandState objects or their derivatives and must be applied to the initialize method');
+      throw new TypeError(
+        '@persist can only currently be applied to AmpersandState objects or their derivatives and must be applied to the initialize method'
+      );
     }
 
     descriptor.value = wrap(descriptor.value, function persistExecutor(fn, ...initializeArgs) {
@@ -44,20 +40,23 @@ export function persist(...args) {
       // a debounce of zero, we're effectively coalescing all the changes
       // triggered by a single call to set() and commiting them on the next tick
       // eslint-disable-next-line no-invalid-this
-      this.on(changeEvent, debounce(() => {
-        const shouldPersist = !decider || Reflect.apply(decider, this, ...initializeArgs);
+      this.on(
+        changeEvent,
+        debounce(() => {
+          const shouldPersist = !decider || Reflect.apply(decider, this, ...initializeArgs);
 
-        if (!shouldPersist) {
-          return Promise.resolve();
-        }
-        if (key === '@') {
+          if (!shouldPersist) {
+            return Promise.resolve();
+          }
+          if (key === '@') {
+            // eslint-disable-next-line no-invalid-this
+            return this.boundedStorage.put(key, this);
+          }
+
           // eslint-disable-next-line no-invalid-this
-          return this.boundedStorage.put(key, this);
-        }
-
-        // eslint-disable-next-line no-invalid-this
-        return this.boundedStorage.put(key, this[key]);
-      }, 0));
+          return this.boundedStorage.put(key, this[key]);
+        }, 0)
+      );
 
       return ret;
     });
@@ -88,8 +87,9 @@ export function waitForValue(key) {
     descriptor.value = wrap(descriptor.value, function waitForValueExecutor(fn, ...args) {
       const keys = blockingKeys.get(target, prop);
 
-      return Promise.all([...keys].map((k) => this.boundedStorage.waitFor(k)))
-        .then(() => Reflect.apply(fn, this, args));
+      return Promise.all([...keys].map((k) => this.boundedStorage.waitFor(k))).then(() =>
+        Reflect.apply(fn, this, args)
+      );
     });
 
     // This *should* make decorators compatible with AmpersandState class
@@ -159,60 +159,62 @@ function prepareInitialize(target, prop) {
     const self = this;
     const namespace = this.getNamespace();
 
-    this.webex.initialize = wrap(this.webex.initialize || identity, function applyInit(fn, ...args) {
-      // Call webex's initalize method first
-      // Reminder: in order for MockWebex to accept initial storage data, the
-      // wrapped initialize() must be invoked before attempting to load data.
-      // Reminder: context here is `webex`, not `self`.
-      stack.add(namespace);
-      Reflect.apply(fn, this, args);
+    this.webex.initialize = wrap(
+      this.webex.initialize || identity,
+      function applyInit(fn, ...args) {
+        // Call webex's initalize method first
+        // Reminder: in order for MockWebex to accept initial storage data, the
+        // wrapped initialize() must be invoked before attempting to load data.
+        // Reminder: context here is `webex`, not `self`.
+        stack.add(namespace);
+        Reflect.apply(fn, this, args);
 
-      // Then prepare a function for setting values retrieved from storage
-      const set = curry((key, value) => {
-        this.logger.debug(`storage:(${namespace}): got \`${key}\` for first time`);
-        if (key === '@') {
-          self.parent.set({
-            [namespace.toLowerCase()]: value
-          });
-        }
-        else if (result(self[key], 'isState')) {
-          self[key].set(value);
-        }
-        else {
-          self.set(key, value);
-        }
-        this.logger.debug(`storage:(${namespace}): set \`${key}\` for first time`);
-      });
+        // Then prepare a function for setting values retrieved from storage
+        const set = curry((key, value) => {
+          this.logger.debug(`storage:(${namespace}): got \`${key}\` for first time`);
+          if (key === '@') {
+            self.parent.set({
+              [namespace.toLowerCase()]: value,
+            });
+          } else if (result(self[key], 'isState')) {
+            self[key].set(value);
+          } else {
+            self.set(key, value);
+          }
+          this.logger.debug(`storage:(${namespace}): set \`${key}\` for first time`);
+        });
 
-      // And prepare an error handler for when those keys can't be found
-      const handle = curry((key, reason) => {
-        if (reason instanceof NotFoundError || process.env.NODE_ENV !== 'production' && reason.toString().includes('MockNotFoundError')) {
-          this.logger.debug(`storage(${namespace}): no data for \`${key}\`, continuing`);
+        // And prepare an error handler for when those keys can't be found
+        const handle = curry((key, reason) => {
+          if (
+            reason instanceof NotFoundError ||
+            (process.env.NODE_ENV !== 'production' &&
+              reason.toString().includes('MockNotFoundError'))
+          ) {
+            this.logger.debug(`storage(${namespace}): no data for \`${key}\`, continuing`);
 
-          return Promise.resolve();
-        }
-        this.logger.error(`storage(${namespace}): failed to init \`${key}\``, reason);
+            return Promise.resolve();
+          }
+          this.logger.error(`storage(${namespace}): failed to init \`${key}\``, reason);
 
-        return Promise.reject(reason);
-      });
+          return Promise.reject(reason);
+        });
 
-      // Iterate over the list of keys marked as blocking via `@waitForValue`
-      const keys = blockingKeys.get(target, prop);
-      const promises = [];
+        // Iterate over the list of keys marked as blocking via `@waitForValue`
+        const keys = blockingKeys.get(target, prop);
+        const promises = [];
 
-      keys.forEach((key) => {
-        promises.push(this.boundedStorage.get(namespace, key)
-          .then(set(key))
-          .catch(handle(key)));
-      });
+        keys.forEach((key) => {
+          promises.push(this.boundedStorage.get(namespace, key).then(set(key)).catch(handle(key)));
+        });
 
-      Promise.all(promises)
-        .then(() => {
+        Promise.all(promises).then(() => {
           stack.delete(namespace);
           if (stack.size === 0) {
             this.loaded = true;
           }
         });
-    });
+      }
+    );
   }
 }

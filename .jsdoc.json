@@ -24,10 +24,10 @@
     "parser": "gfm",
     "hardwrap": true
   },
-	"opts": {
-		"destination": "doc",
-		"package": "./package.json",
-		"readme": "./README.md",
-		"template": "node_modules/ink-docstrap/template"
-	}
+  "opts": {
+    "destination": "doc",
+    "package": "./package.json",
+    "readme": "./README.md",
+    "template": "node_modules/ink-docstrap/template"
+  }
 }

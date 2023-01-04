@@ -18,8 +18,11 @@ const PresenceBatcher = Batcher.extend({
    * @returns {Promise}
    */
   handleHttpSuccess(res) {
-    return Promise.all(res.body.statusList.map((presenceResponse) =>
-      this.handleItemSuccess(presenceResponse.subject, presenceResponse)));
+    return Promise.all(
+      res.body.statusList.map((presenceResponse) =>
+        this.handleItemSuccess(presenceResponse.subject, presenceResponse)
+      )
+    );
   },
 
   /**
@@ -30,10 +33,9 @@ const PresenceBatcher = Batcher.extend({
    * @returns {Promise}
    */
   handleItemFailure(item, response) {
-    return this.getDeferredForResponse(item)
-      .then((defer) => {
-        defer.reject(response);
-      });
+    return this.getDeferredForResponse(item).then((defer) => {
+      defer.reject(response);
+    });
   },
 
   /**
@@ -44,10 +46,9 @@ const PresenceBatcher = Batcher.extend({
    * @returns {Promise}
    */
   handleItemSuccess(item, response) {
-    return this.getDeferredForResponse(item)
-      .then((defer) => {
-        defer.resolve(response);
-      });
+    return this.getDeferredForResponse(item).then((defer) => {
+      defer.resolve(response);
+    });
   },
 
   /**
@@ -91,9 +92,9 @@ const PresenceBatcher = Batcher.extend({
       method: 'POST',
       api: 'apheleia',
       resource: 'compositions',
-      body: {subjects}
+      body: {subjects},
     });
-  }
+  },
 });
 
 export default PresenceBatcher;

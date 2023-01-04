@@ -8,7 +8,7 @@ import {
   AUDIO_INPUT,
   VIDEO_INPUT,
   PEER_CONNECTION_STATE,
-  MEDIA_TRACK_CONSTRAINT
+  MEDIA_TRACK_CONSTRAINT,
 } from '../constants';
 import Config from '../config';
 import PeerConnectionManager from '../peer-connection-manager';
@@ -82,11 +82,13 @@ Media.reconnectMedia = (
     meetingId: string;
     remoteQualityLevel: string;
     enableRtx: any;
-    enableExtmap: any
+    enableExtmap: any;
   }
 ) => {
-  if (peerConnection.connectionState === PEER_CONNECTION_STATE.CLOSED ||
-    peerConnection.connectionState === PEER_CONNECTION_STATE.FAILED) {
+  if (
+    peerConnection.connectionState === PEER_CONNECTION_STATE.CLOSED ||
+    peerConnection.connectionState === PEER_CONNECTION_STATE.FAILED
+  ) {
     return Promise.reject(new ReconnectionError('Reinitiate peerconnection'));
   }
 
@@ -94,7 +96,7 @@ Media.reconnectMedia = (
     meetingId,
     remoteQualityLevel,
     enableRtx,
-    enableExtmap
+    enableExtmap,
   });
 };
 
@@ -111,10 +113,10 @@ Media.generateLocalMedias = (mediaId: string, audioMuted: boolean, videoMuted: b
       {
         localSdp: JSON.stringify({
           audioMuted,
-          videoMuted
+          videoMuted,
         }),
-        mediaId
-      }
+        mediaId,
+      },
     ];
   }
 
@@ -128,9 +130,7 @@ Media.generateLocalMedias = (mediaId: string, audioMuted: boolean, videoMuted: b
  * @returns {Promise}
  */
 Media.getLocalMedia = (options: any, config: object) => {
-  const {
-    sendAudio, sendVideo, sendShare, sharePreferences, isSharing
-  } = options;
+  const {sendAudio, sendVideo, sendShare, sharePreferences, isSharing} = options;
 
   if (sendAudio || sendVideo) {
     return Media.getMedia(sendAudio, sendVideo, config);
@@ -141,7 +141,7 @@ Media.getLocalMedia = (options: any, config: object) => {
       {
         sendAudio: false,
         sendShare: true,
-        sharePreferences
+        sharePreferences,
       },
       config
     );
@@ -160,9 +160,11 @@ Media.checkTracks = (trackType: string, track: object, receiveTracks: boolean) =
   const getDirection = (sendTracks, receiveTracks) => {
     if (sendTracks && receiveTracks) {
       return 'sendrecv';
-    } if (sendTracks && !receiveTracks) {
+    }
+    if (sendTracks && !receiveTracks) {
       return 'sendonly';
-    } if (!sendTracks && receiveTracks) {
+    }
+    if (!sendTracks && receiveTracks) {
       return 'recvonly';
     }
 
@@ -197,37 +199,51 @@ Media.attachMedia = (
     enableExtmap: any;
   }
 ) => {
-  const {
-    mediaDirection,
-    audioTrack,
-    videoTrack,
-    shareTrack,
-    peerConnection
-  } = mediaProperties;
+  const {mediaDirection, audioTrack, videoTrack, shareTrack, peerConnection} = mediaProperties;
 
   let result = null;
 
   // Add Transceiver for audio
-  result = Media.checkTracks('audio', mediaDirection.sendAudio && audioTrack, mediaDirection.receiveAudio);
-  peerConnection.audioTransceiver = peerConnection.addTransceiver(result.track, {direction: result.direction});
+  result = Media.checkTracks(
+    'audio',
+    mediaDirection.sendAudio && audioTrack,
+    mediaDirection.receiveAudio
+  );
+  peerConnection.audioTransceiver = peerConnection.addTransceiver(result.track, {
+    direction: result.direction,
+  });
 
   // Add Transceiver for video
-  result = Media.checkTracks('video', mediaDirection.sendVideo && videoTrack, mediaDirection.receiveVideo);
-  peerConnection.videoTransceiver = peerConnection.addTransceiver(result.track, {direction: result.direction});
+  result = Media.checkTracks(
+    'video',
+    mediaDirection.sendVideo && videoTrack,
+    mediaDirection.receiveVideo
+  );
+  peerConnection.videoTransceiver = peerConnection.addTransceiver(result.track, {
+    direction: result.direction,
+  });
 
   // Add Transceiver for share
-  result = Media.checkTracks('video', mediaDirection.sendShare && shareTrack, mediaDirection.receiveShare);
-  peerConnection.shareTransceiver = peerConnection.addTransceiver(result.track, {direction: result.direction});
+  result = Media.checkTracks(
+    'video',
+    mediaDirection.sendShare && shareTrack,
+    mediaDirection.receiveShare
+  );
+  peerConnection.shareTransceiver = peerConnection.addTransceiver(result.track, {
+    direction: result.direction,
+  });
 
   peerConnection.onnegotiationneeded = (event) => {
-    LoggerProxy.logger.info(`Media:index#attachMedia --> onnegotiationneeded#PeerConnection: ${event}`);
+    LoggerProxy.logger.info(
+      `Media:index#attachMedia --> onnegotiationneeded#PeerConnection: ${event}`
+    );
   };
 
   return PeerConnectionManager.createOffer(peerConnection, {
     meetingId,
     remoteQualityLevel,
     enableRtx,
-    enableExtmap
+    enableExtmap,
   });
 };
 
@@ -253,20 +269,14 @@ Media.updateMedia = (
     enableExtmap: any;
   }
 ) => {
-  const {
-    mediaDirection,
-    audioTrack,
-    videoTrack,
-    shareTrack,
-    peerConnection
-  } = mediaProperties;
+  const {mediaDirection, audioTrack, videoTrack, shareTrack, peerConnection} = mediaProperties;
 
   // update audio transceiver
   Media.setTrackOnTransceiver(peerConnection.audioTransceiver, {
     type: 'audio',
     track: audioTrack,
     sendTrack: mediaDirection.sendAudio && audioTrack,
-    receiveTrack: mediaDirection.receiveAudio
+    receiveTrack: mediaDirection.receiveAudio,
   });
 
   // update video transceiver
@@ -274,7 +284,7 @@ Media.updateMedia = (
     type: 'video',
     track: videoTrack,
     sendTrack: mediaDirection.sendVideo && videoTrack,
-    receiveTrack: mediaDirection.receiveVideo
+    receiveTrack: mediaDirection.receiveVideo,
   });
 
   // update content transceiver
@@ -282,17 +292,19 @@ Media.updateMedia = (
     type: 'video',
     track: shareTrack,
     sendTrack: mediaDirection.sendShare && shareTrack,
-    receiveTrack: mediaDirection.receiveShare
+    receiveTrack: mediaDirection.receiveShare,
   });
   peerConnection.onnegotiationneeded = (event) => {
-    LoggerProxy.logger.info(`Media:index#updateMedia --> onnegotiationneeded#PeerConnection: ${event}`);
+    LoggerProxy.logger.info(
+      `Media:index#updateMedia --> onnegotiationneeded#PeerConnection: ${event}`
+    );
   };
 
   return PeerConnectionManager.createOffer(peerConnection, {
     meetingId,
     remoteQualityLevel,
     enableRtx,
-    enableExtmap
+    enableExtmap,
   });
 };
 
@@ -311,9 +323,7 @@ Media.setTrackOnTransceiver = (
     receiveTrack: any;
   }
 ) => {
-  const {
-    type, track, sendTrack, receiveTrack
-  } = options;
+  const {type, track, sendTrack, receiveTrack} = options;
 
   try {
     const result = Media.checkTracks(type, sendTrack && track, receiveTrack);
@@ -322,8 +332,7 @@ Media.setTrackOnTransceiver = (
     if (options.track) {
       transceiver.sender.replaceTrack(track);
     }
-  }
-  catch (e) {
+  } catch (e) {
     LoggerProxy.logger.error(`Media:index#setTrackOnTransceiver --> ${e}`);
     throw e;
   }
@@ -361,7 +370,7 @@ Media.updateTransceiver = (
     meetingId,
     remoteQualityLevel,
     enableRtx,
-    enableExtmap
+    enableExtmap,
   });
 };
 
@@ -396,38 +405,31 @@ Media.getDisplayMedia = (
   const hasSharePreferences = options.sharePreferences;
   const hasCustomConstraints = hasSharePreferences && hasSharePreferences.shareConstraints;
   const hasHighFrameRate = hasSharePreferences && hasSharePreferences.highFrameRate;
-  const {
-    screenResolution,
-    resolution,
-    videoShareFrameRate,
-    screenFrameRate,
-    aspectRatio
-  } = Config.meetings;
+  const {screenResolution, resolution, videoShareFrameRate, screenFrameRate, aspectRatio} =
+    Config.meetings;
 
   let shareConstraints: any = {
     cursor: MEDIA_TRACK_CONSTRAINT.CURSOR.AWLAYS,
-    aspectRatio
+    aspectRatio,
   };
 
   if (hasCustomConstraints) {
     shareConstraints = hasSharePreferences.shareConstraints;
-  }
-  else if (hasHighFrameRate) {
+  } else if (hasHighFrameRate) {
     shareConstraints = {
       ...shareConstraints,
       frameRate: videoShareFrameRate,
       height: resolution.idealHeight,
       width: resolution.idealWidth,
-      ...config.resolution
+      ...config.resolution,
     };
-  }
-  else {
+  } else {
     shareConstraints = {
       ...shareConstraints,
       frameRate: customShareFrameRate || screenFrameRate,
       height: customResolution.idealHeight || screenResolution.idealHeight,
       width: customResolution.idealWidth || screenResolution.idealWidth,
-      ...config.screenResolution
+      ...config.screenResolution,
     };
   }
 
@@ -438,15 +440,14 @@ Media.getDisplayMedia = (
   // to have higher quality, and for developers to control the values
   // eventually we may have to add the same functionality to chrome, OR conversely, get to with firefox
 
-
   if (isBrowser('firefox')) {
     const mediaConfig: any = {
       audio: options.sendAudio,
-      video: options.sendShare
+      video: options.sendShare,
     };
 
-
-    return navigator.mediaDevices.getDisplayMedia({audio: options.sendAudio, video: mediaConfig})
+    return navigator.mediaDevices
+      .getDisplayMedia({audio: options.sendAudio, video: mediaConfig})
       .then((stream) => {
         if (options.sendShare && stream.getVideoTracks().length > 0) {
           // Firefox has a bug with the spec where changing in the height and width only happens
@@ -454,7 +455,6 @@ Media.getDisplayMedia = (
           // https://bugzilla.mozilla.org/show_bug.cgi?id=1321221
           stream.getVideoTracks()[0].applyConstraints(shareConstraints);
         }
-
 
         return stream;
       });
@@ -485,34 +485,32 @@ Media.getMedia = (audio: any | boolean, video: any | boolean, config: any) => {
     audio,
     // TODO: Remove temporary workaround once Firefox fixes low constraint issues
     // eslint-disable-next-line no-nested-ternary
-    video: video ?
-      isBrowser('firefox') && video.width && video.width.max === 320 ?
-        {
-          deviceId: video.deviceId ? video.deviceId : undefined,
-          width: 320,
-          height: 180,
-          frameRate: video.frameRate ? video.frameRate : undefined,
-          facingMode: video.facingMode ? video.facingMode : undefined,
-        } :
-        {
-          deviceId: video.deviceId ? video.deviceId : undefined,
-          width: video.width ? video.width : defaultWidth,
-          height: video.height ? video.height : defaultHeight,
-          frameRate: video.frameRate ? video.frameRate : undefined,
-          facingMode: video.facingMode ? video.facingMode : undefined,
-        } :
-      false,
-    fake: process.env.NODE_ENV === 'test' // Special case to get fake media for Firefox browser for testing
+    video: video
+      ? isBrowser('firefox') && video.width && video.width.max === 320
+        ? {
+            deviceId: video.deviceId ? video.deviceId : undefined,
+            width: 320,
+            height: 180,
+            frameRate: video.frameRate ? video.frameRate : undefined,
+            facingMode: video.facingMode ? video.facingMode : undefined,
+          }
+        : {
+            deviceId: video.deviceId ? video.deviceId : undefined,
+            width: video.width ? video.width : defaultWidth,
+            height: video.height ? video.height : defaultHeight,
+            frameRate: video.frameRate ? video.frameRate : undefined,
+            facingMode: video.facingMode ? video.facingMode : undefined,
+          }
+      : false,
+    fake: process.env.NODE_ENV === 'test', // Special case to get fake media for Firefox browser for testing
   };
 
-  return navigator.mediaDevices
-    .getUserMedia(mediaConfig)
-    .catch((err) => {
-      const logPath = 'Media:index#getMedia --> navigator.mediaDevices.getUserMedia';
+  return navigator.mediaDevices.getUserMedia(mediaConfig).catch((err) => {
+    const logPath = 'Media:index#getMedia --> navigator.mediaDevices.getUserMedia';
 
-      LoggerProxy.logger.error(`${logPath} failed - ${err} (${err.constraint})`);
-      throw err;
-    });
+    LoggerProxy.logger.error(`${logPath} failed - ${err} (${err.constraint})`);
+    throw err;
+  });
 };
 
 /**
@@ -527,24 +525,24 @@ Media.getMedia = (audio: any | boolean, video: any | boolean, config: any) => {
  *    sendVideo: true/false
  *}
  */
-Media.getSupportedDevice = ({ sendAudio, sendVideo }: { sendAudio: boolean; sendVideo: boolean }) =>
+Media.getSupportedDevice = ({sendAudio, sendVideo}: {sendAudio: boolean; sendVideo: boolean}) =>
   Promise.resolve().then(() => {
     if (!navigator.mediaDevices || navigator.mediaDevices.enumerateDevices === undefined) {
       return {
         sendAudio: false,
-        sendVideo: false
+        sendVideo: false,
       };
     }
 
     return navigator.mediaDevices.enumerateDevices().then((devices) => {
       const supported = {
         audio: devices.filter((device) => device.kind === AUDIO_INPUT).length > 0,
-        video: devices.filter((device) => device.kind === VIDEO_INPUT).length > 0
+        video: devices.filter((device) => device.kind === VIDEO_INPUT).length > 0,
       };
 
       return {
         sendAudio: supported.audio && sendAudio,
-        sendVideo: supported.video && sendVideo
+        sendVideo: supported.video && sendVideo,
       };
     });
   });
@@ -583,9 +581,10 @@ Media.stopTracks = (track: any) => {
     if (track && track.stop) {
       try {
         track.stop();
-      }
-      catch (e) {
-        LoggerProxy.logger.error(`Media:index#stopTracks --> Unable to stop the track with state ${track.readyState}, error: ${e}`);
+      } catch (e) {
+        LoggerProxy.logger.error(
+          `Media:index#stopTracks --> Unable to stop the track with state ${track.readyState}, error: ${e}`
+        );
       }
     }
   });
@@ -599,7 +598,9 @@ Media.stopTracks = (track: any) => {
  * @deprecated after v1.89.3
  */
 Media.stopStream = (stream: any) => {
-  LoggerProxy.logger.warn('Media:index#stopStream --> [DEPRECATION WARNING]: stopStream has been deprecated after v1.89.3');
+  LoggerProxy.logger.warn(
+    'Media:index#stopStream --> [DEPRECATION WARNING]: stopStream has been deprecated after v1.89.3'
+  );
   if (!stream) {
     return Promise.resolve();
   }
@@ -614,8 +615,7 @@ Media.stopStream = (stream: any) => {
       stream.getTracks().forEach((track) => {
         track.stop();
       });
-    }
-    else if (stream.stop) {
+    } else if (stream.stop) {
       stream.stop();
     }
   });
@@ -654,13 +654,21 @@ Media.getUserMedia = (
   },
   config: object
 ) =>
-Media.getLocalMedia({
-  sendAudio: mediaSetting.sendAudio ? audioVideo.audio || mediaSetting.sendAudio : false,
-  sendVideo: mediaSetting.sendVideo ? audioVideo.video || mediaSetting.sendVideo : false
-}, config).then((localStream) => Media.getLocalMedia({
-  sendShare: mediaSetting.sendShare,
-  isSharing: mediaSetting.isSharing,
-  sharePreferences
-}, config).then((shareStream) => [localStream, shareStream]));
+  Media.getLocalMedia(
+    {
+      sendAudio: mediaSetting.sendAudio ? audioVideo.audio || mediaSetting.sendAudio : false,
+      sendVideo: mediaSetting.sendVideo ? audioVideo.video || mediaSetting.sendVideo : false,
+    },
+    config
+  ).then((localStream) =>
+    Media.getLocalMedia(
+      {
+        sendShare: mediaSetting.sendShare,
+        isSharing: mediaSetting.isSharing,
+        sharePreferences,
+      },
+      config
+    ).then((shareStream) => [localStream, shareStream])
+  );
 
 export default Media;

@@ -3,11 +3,7 @@
  */
 
 import template from '@babel/template';
-import {
-  booleanLiteral,
-  numericLiteral,
-  stringLiteral
-} from '@babel/types';
+import {booleanLiteral, numericLiteral, stringLiteral} from '@babel/types';
 
 const pattern = /^\s*?=>( async)?\s*/;
 
@@ -34,7 +30,7 @@ export function test(value) {
  */
 export function build(value) {
   return tpl({
-    ASSERTION: literal(value.replace(pattern, ''))
+    ASSERTION: literal(value.replace(pattern, '')),
   });
 }
 

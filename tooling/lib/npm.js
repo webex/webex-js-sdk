@@ -21,8 +21,7 @@ exports.getDistTag = async function getDistTag({packageName, includeSamples = fa
 
   try {
     pkg = await read(packageName);
-  }
-  catch (err) {
+  } catch (err) {
     // Assume this is a not-yet-cleaned-up, removed package.
     if (err.code === 'ENOENT') {
       return undefined;
@@ -53,12 +52,10 @@ exports.getDistTag = async function getDistTag({packageName, includeSamples = fa
       debug(`${packageName} is published as version ${tags.latest}`);
 
       return tags.latest;
+    } catch (err) {
+      debug("Something went wrong, but we had to use --silent, so it's hard to tell what", err);
     }
-    catch (err) {
-      debug('Something went wrong, but we had to use --silent, so it\'s hard to tell what', err);
-    }
-  }
-  else if (includeSamples && packageName === 'samples') {
+  } else if (includeSamples && packageName === 'samples') {
     return pkg.version;
   }
 

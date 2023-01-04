@@ -13,7 +13,7 @@ export default class Parser {
   static status = {
     IDLE: 'IDLE',
     PAUSED: 'PAUSED',
-    WORKING: 'WORKING'
+    WORKING: 'WORKING',
   };
 
   // loci comparison states
@@ -24,7 +24,7 @@ export default class Parser {
     DESYNC: 'DESYNC',
     USE_INCOMING: 'USE_INCOMING',
     USE_CURRENT: 'USE_CURRENT',
-    ERROR: 'ERROR'
+    ERROR: 'ERROR',
   };
 
   queue: any;
@@ -40,7 +40,6 @@ export default class Parser {
     this.onDeltaAction = null;
     this.workingCopy = null;
   }
-
 
   /**
    * Checks if two sequences overlap in time,
@@ -68,7 +67,6 @@ export default class Parser {
     return comparison;
   }
 
-
   /**
    * Checks if two sequences have unequal ranges.
    * Chooses sequence with most larger range.
@@ -94,8 +92,7 @@ export default class Parser {
       else if (currentTotalRange < incomingTotalRange) {
         // choose right side (incoming)
         comparison = `${Parser.loci.LT}:UR002`;
-      }
-      else {
+      } else {
         // with no unique entries and with ranges either absent or
         // of the same size, the sequences are considered equal.
         comparison = `${Parser.loci.EQ}:UR003`;
@@ -104,7 +101,6 @@ export default class Parser {
 
     return comparison;
   }
-
 
   /**
    * Checks if either sequences has unique entries.
@@ -133,7 +129,6 @@ export default class Parser {
 
     return comparison;
   }
-
 
   /**
    * Checks both Locus Delta objects to see if they are
@@ -164,19 +159,16 @@ export default class Parser {
 
       // send DESYNC to server
       comparison = `${Parser.loci.DESYNC}:OOS001:${debugInfo}`;
-    }
-    else if (currentUniqueMin > incomingUniqueMin) {
+    } else if (currentUniqueMin > incomingUniqueMin) {
       // choose left side (current)
       comparison = `${Parser.loci.GT}:OOS002`;
-    }
-    else {
+    } else {
       // choose right side (incoming)
       comparison = `${Parser.loci.LT}:OOS003`;
     }
 
     return comparison;
   }
-
 
   /**
    * Compares two loci to determine which one contains the most recent state
@@ -190,7 +182,6 @@ export default class Parser {
     const {isSequenceEmpty} = Parser;
     const {extractComparisonState: extract} = Parser;
     const {packComparisonResult: pack} = Parser;
-
 
     if (isSequenceEmpty(current) || isSequenceEmpty(incoming)) {
       return pack(Parser.loci.USE_INCOMING, 'C001');
@@ -206,7 +197,6 @@ export default class Parser {
     return pack(action, result);
   }
 
-
   /**
    * Compares two loci sequences (with delta params) and indicates what action
    * to take.
@@ -218,15 +208,12 @@ export default class Parser {
    * @returns {string} loci comparison state
    */
   private static compareDelta(current, incoming) {
-    const {
-      LT, GT, EQ, DESYNC, USE_INCOMING
-    } = Parser.loci;
+    const {LT, GT, EQ, DESYNC, USE_INCOMING} = Parser.loci;
     const {extractComparisonState: extract} = Parser;
     const {packComparisonResult: pack} = Parser;
 
     const result = Parser.compareSequence(current.sequence, incoming.sequence);
     let comparison = extract(result);
-
 
     if (comparison !== LT) {
       return pack(Parser.compareToAction(comparison), result);
@@ -246,7 +233,6 @@ export default class Parser {
 
     return pack(comparison, result);
   }
-
 
   /**
    * Compares Locus sequences
@@ -271,7 +257,7 @@ export default class Parser {
       Parser.checkSequenceOverlap,
       Parser.checkUnequalRanges,
       Parser.checkForUniqueEntries,
-      Parser.checkIfOutOfSync
+      Parser.checkIfOutOfSync,
     ];
 
     for (const rule of rules) {
@@ -290,16 +276,13 @@ export default class Parser {
     return Parser.loci.ERROR;
   }
 
-
   /**
    * Transates the result of a sequence comparison into an intended behavior
    * @param {string} result
    * @returns {string} Locus comparison action
    */
   static compareToAction(result: string) {
-    const {
-      DESYNC, EQ, ERROR, GT, LT, USE_CURRENT, USE_INCOMING
-    } = Parser.loci;
+    const {DESYNC, EQ, ERROR, GT, LT, USE_CURRENT, USE_INCOMING} = Parser.loci;
 
     let action = ERROR;
 
@@ -315,12 +298,13 @@ export default class Parser {
         action = DESYNC;
         break;
       default:
-        LoggerProxy.logger.info(`Locus-info:parser#compareToAction --> Error: ${result} is not a recognized sequence comparison result.`);
+        LoggerProxy.logger.info(
+          `Locus-info:parser#compareToAction --> Error: ${result} is not a recognized sequence comparison result.`
+        );
     }
 
     return action;
   }
-
 
   /**
    * Extracts a loci comparison from a string of data.
@@ -330,7 +314,6 @@ export default class Parser {
   static extractComparisonState(lociComparisonResult: string) {
     return lociComparisonResult.split(':')[0];
   }
-
 
   /**
    * @typedef {object} LociMetadata
@@ -368,10 +351,9 @@ export default class Parser {
       // Grab last entry if exist else default to rangeEnd
       max: last || end,
       // keep reference to actual sequence entries
-      entries
+      entries,
     };
   }
-
 
   /**
    * Compares two Locus delta objects and notes unique
@@ -381,15 +363,11 @@ export default class Parser {
    * @returns {Array.<number>} List of unique sequences
    */
   static getUniqueSequences(baseLoci: any, otherLoci: any) {
-    const diff: any = difference(
-      baseLoci.entries,
-      otherLoci.entries
-    );
+    const diff: any = difference(baseLoci.entries, otherLoci.entries);
     const {start, end} = otherLoci;
 
     return Parser.getNumbersOutOfRange(diff, start, end);
   }
-
 
   /**
    * Returns an array of numbers outside of a given range.
@@ -406,7 +384,6 @@ export default class Parser {
     return output.sort((a, b) => a - b);
   }
 
-
   /**
    * Checks if newLoci or workingCopy is invalid.
    * @param {Types~Locus} newLoci
@@ -417,20 +394,25 @@ export default class Parser {
     const {IDLE} = Parser.status;
     const {isLoci} = Parser;
     // @ts-ignore
-    const setStatus = (status) => { this.status = status; };
+    const setStatus = (status) => {
+      this.status = status;
+    };
 
     // one or both objects are not locus delta events
     if (!isLoci(this.workingCopy) || !isLoci(newLoci)) {
       setStatus(IDLE);
-      LoggerProxy.logger.info('Locus-info:parser#processDeltaEvent --> Ignoring non-locus object. workingCopy:', this.workingCopy, 'newLoci:', newLoci);
-    }
-    else {
+      LoggerProxy.logger.info(
+        'Locus-info:parser#processDeltaEvent --> Ignoring non-locus object. workingCopy:',
+        this.workingCopy,
+        'newLoci:',
+        newLoci
+      );
+    } else {
       isValid = true;
     }
 
     return isValid;
   }
-
 
   /**
    * Determines if a paricular locus's sequence is empty
@@ -445,7 +427,6 @@ export default class Parser {
     return hasEmptyEntries && hasEmptyRange;
   }
 
-
   /**
    * Determines if an object has basic
    * structure of a locus object.
@@ -456,8 +437,7 @@ export default class Parser {
     if (!loci || !loci.sequence) {
       return false;
     }
-    const hasProp = (prop) =>
-      Object.prototype.hasOwnProperty.call(loci.sequence, prop);
+    const hasProp = (prop) => Object.prototype.hasOwnProperty.call(loci.sequence, prop);
 
     if (hasProp('rangeStart') && hasProp('rangeEnd')) {
       return true;
@@ -482,13 +462,11 @@ export default class Parser {
     // continue processing until queue is empty
     if (this.queue.size() > 0) {
       this.processDeltaEvent();
-    }
-    else {
+    } else {
       // @ts-ignore
       this.status = Parser.status.IDLE;
     }
   }
-
 
   /**
    * Function handler for delta actions,
@@ -499,7 +477,6 @@ export default class Parser {
    */
   // eslint-disable-next-line no-unused-vars
   onDeltaAction(action: string, locus) {}
-
 
   /**
    * Event handler for locus delta events
@@ -521,7 +498,6 @@ export default class Parser {
     }
   }
 
-
   /**
    * Appends new data onto a string of existing data.
    * @param {string} newData
@@ -532,7 +508,6 @@ export default class Parser {
     return `${newData}:${oldData}`;
   }
 
-
   /**
    * Pause locus processing
    * @returns {undefined}
@@ -542,7 +517,6 @@ export default class Parser {
     this.status = Parser.status.PAUSED;
     LoggerProxy.logger.info('Locus-info:parser#pause --> Locus parser paused.');
   }
-
 
   /**
    * Processes next locus delta in the queue,
@@ -569,8 +543,7 @@ export default class Parser {
     if (lociComparison === DESYNC) {
       // wait for desync response
       this.pause();
-    }
-    else if (lociComparison === USE_INCOMING) {
+    } else if (lociComparison === USE_INCOMING) {
       // update working copy for future comparisons.
       // Note: The working copy of parser gets updated in .onFullLocus()
       // and here when USE_INCOMING locus.
@@ -578,13 +551,14 @@ export default class Parser {
     }
 
     if (this.onDeltaAction) {
-      LoggerProxy.logger.info(`Locus-info:parser#processDeltaEvent --> Locus Delta Action: ${lociComparison}`);
+      LoggerProxy.logger.info(
+        `Locus-info:parser#processDeltaEvent --> Locus Delta Action: ${lociComparison}`
+      );
       this.onDeltaAction.call(this, lociComparison, newLoci);
     }
 
     this.nextEvent();
   }
-
 
   /**
    * Resume from a paused state
@@ -596,7 +570,6 @@ export default class Parser {
     this.status = Parser.status.WORKING;
     this.nextEvent();
   }
-
 
   /**
    * Gets related debug info for given error code
@@ -611,7 +584,7 @@ export default class Parser {
     const resolutionMap = {
       EQ: `${Parser.loci.LT}: is equal (current == incoming).`,
       LT: `${Parser.loci.LT}: choose right side (incoming).`,
-      GT: `${Parser.loci.GT}: choose left side (current).`
+      GT: `${Parser.loci.GT}: choose left side (current).`,
     };
 
     const debugMap = {
@@ -619,28 +592,28 @@ export default class Parser {
         title: 'checkSequenceOverlap-001',
         description: mStr`Occurs if earliest working copy sequence is more \
             recent than last incoming sequence.`,
-        logic: 'current.min > incoming.max'
+        logic: 'current.min > incoming.max',
       },
 
       SO002: {
         title: 'checkSequenceOverlap-002',
         description: mStr`Occurs if last working copy sequence is before the \
           earliest incoming sequence.`,
-        logic: 'current.max < incoming.min'
+        logic: 'current.max < incoming.min',
       },
 
       UR001: {
         title: 'checkUnequalRanges-001',
         description: mStr`Occurs if there are no unique values for both loci, \
           and the current working copy loci has a larger range.`,
-        logic: 'currentTotalRange > incomingTotalRange'
+        logic: 'currentTotalRange > incomingTotalRange',
       },
 
       UR002: {
         title: 'checkUnequalRanges-002',
         description: mStr`Occurs if there are no unique values for both loci, \
           and the incoming delta loci has a larger range.`,
-        logic: 'currentTotalRange < incomingTotalRange'
+        logic: 'currentTotalRange < incomingTotalRange',
       },
 
       UR003: {
@@ -648,7 +621,7 @@ export default class Parser {
         description: mStr`Occurs if there are no unique values for both loci, \
           and with ranges either absent or of the same size, the sequences \
           are considered equal.`,
-        logic: 'currentTotalRange == incomingTotalRange'
+        logic: 'currentTotalRange == incomingTotalRange',
       },
 
       UE001: {
@@ -656,7 +629,7 @@ export default class Parser {
         description: mStr`Occurs if current loci has unique entries and \
           incoming does not. Entries are considered unique if they \
           do not overlap with other Loci sequences or range values.`,
-        logic: 'currentIsUnique && !incomingIsUnique'
+        logic: 'currentIsUnique && !incomingIsUnique',
       },
 
       UE002: {
@@ -664,7 +637,7 @@ export default class Parser {
         description: mStr`Occurs if current has no unique entries but \
           incoming does. Entries are considered unique if they \
           do not overlap with other Loci sequences or range values.`,
-        logic: '!currentIsUnique && incomingIsUnique'
+        logic: '!currentIsUnique && incomingIsUnique',
       },
 
       OOS001: {
@@ -673,7 +646,7 @@ export default class Parser {
           if the current loci unique entries overlap the total range of the \
           incoming sequence, or if the incoming unique entries overlap \
           the total range of current sequence.`,
-        logic: 'neitherSeqHasRange || currentUniqOverlap || incomingUniqOverlap'
+        logic: 'neitherSeqHasRange || currentUniqOverlap || incomingUniqOverlap',
       },
 
       OOS002: {
@@ -681,15 +654,15 @@ export default class Parser {
         description: mStr`Occurs if the minimum value from sequences that are \
           unique to the current loci is greater than the minimum value from \
           sequences that are unique to the incoming loci.`,
-        logic: 'currentUniqueMin > incomingUniqueMin'
+        logic: 'currentUniqueMin > incomingUniqueMin',
       },
 
       OOS003: {
         title: 'checkIfOutOfSync-003',
         description: mStr`Occurs if none of the comparison rules applied. \
           It is a catch all.`,
-        logic: 'else (catch all)'
-      }
+        logic: 'else (catch all)',
+      },
     };
 
     const debugObj = debugMap[debugCode];

@@ -27,10 +27,12 @@ export default class RedirectInterceptor extends Interceptor {
    */
   onRequest(options) {
     if (options && options.uri && typeof options.uri === 'string') {
-      if (options.uri.includes('https://idbroker') ||
+      if (
+        options.uri.includes('https://idbroker') ||
         options.uri.includes(this.webex.config.credentials.samlUrl) ||
         options.uri.includes(this.webex.config.credentials.tokenUrl) ||
-        options.uri.includes(this.webex.config.credentials.authorizeUrl)) {
+        options.uri.includes(this.webex.config.credentials.authorizeUrl)
+      ) {
         return options;
       }
     }
@@ -68,20 +70,22 @@ export default class RedirectInterceptor extends Interceptor {
       }
 
       return this.webex.request(options);
-    }
-    else if (response.headers &&
+    } else if (
+      response.headers &&
       response.body &&
       response.body.errorCode === LOCUS_REDIRECT_ERROR &&
-      response.body.location) {
+      response.body.location
+    ) {
       options = clone(options);
 
       this.webex.logger.warn('redirect: url redirects needed from', options.uri);
-      if (response.options && response.options.qs) { // for POST requests
+      if (response.options && response.options.qs) {
+        // for POST requests
         const newUrl = response.body.location.split('?');
 
         options.uri = newUrl[0]; // params are already present in the qs
-      }
-      else { // for GET requests
+      } else {
+        // for GET requests
         options.uri = response.body.location;
       }
 

@@ -80,7 +80,7 @@ function _filterSync(processCallback, allowedTags, allowedStyles, html) {
     throw new Error('`allowedTags`, `allowedStyles`, and `html` must be provided');
   }
 
-  const doc = (new DOMParser()).parseFromString(html, 'text/html');
+  const doc = new DOMParser().parseFromString(html, 'text/html');
 
   depthFirstForEach(doc.body.childNodes, filterNode);
   processCallback(doc.body);
@@ -112,8 +112,7 @@ function _filterSync(processCallback, allowedTags, allowedStyles, html) {
       forEach(listAttributeNames(node.attributes), (attrName) => {
         if (!includes(allowedAttributes, attrName)) {
           node.removeAttribute(attrName);
-        }
-        else if (attrName === 'href' || attrName === 'src') {
+        } else if (attrName === 'href' || attrName === 'src') {
           const attrValue = node.attributes.getNamedItem(attrName).value.trim().toLowerCase();
 
           // We're doing at runtime what the no-script-url rule does at compile
@@ -122,13 +121,10 @@ function _filterSync(processCallback, allowedTags, allowedStyles, html) {
           if (attrValue.indexOf('javascript:') === 0 || attrValue.indexOf('vbscript:') === 0) {
             reparent(node);
           }
-        }
-        else if (attrName === 'style') {
-          const styles = node
-            .attributes
+        } else if (attrName === 'style') {
+          const styles = node.attributes
             .getNamedItem('style')
-            .value
-            .split(';')
+            .value.split(';')
             .map((style) => {
               const styleName = trim(style.split(':')[0]);
 
@@ -144,8 +140,7 @@ function _filterSync(processCallback, allowedTags, allowedStyles, html) {
           node.setAttribute('style', styles);
         }
       });
-    }
-    else {
+    } else {
       reparent(node);
     }
   }
@@ -182,7 +177,7 @@ function _filterEscapeSync(processCallback, allowedTags, allowedStyles, html) {
     throw new Error('`allowedTags`, `allowedStyles`, and `html` must be provided');
   }
 
-  const doc = (new DOMParser()).parseFromString(html, 'text/html');
+  const doc = new DOMParser().parseFromString(html, 'text/html');
 
   depthFirstForEach(doc.body.childNodes, filterNode);
   processCallback(doc.body);
@@ -214,8 +209,7 @@ function _filterEscapeSync(processCallback, allowedTags, allowedStyles, html) {
       forEach(listAttributeNames(node.attributes), (attrName) => {
         if (!includes(allowedAttributes, attrName)) {
           node.removeAttribute(attrName);
-        }
-        else if (attrName === 'href' || attrName === 'src') {
+        } else if (attrName === 'href' || attrName === 'src') {
           const attrValue = node.attributes.getNamedItem(attrName).value.toLowerCase();
 
           // We're doing at runtime what the no-script-url rule does at compile
@@ -224,13 +218,10 @@ function _filterEscapeSync(processCallback, allowedTags, allowedStyles, html) {
           if (attrValue.indexOf('javascript:') === 0 || attrValue.indexOf('vbscript:') === 0) {
             reparent(node);
           }
-        }
-        else if (attrName === 'style') {
-          const styles = node
-            .attributes
+        } else if (attrName === 'style') {
+          const styles = node.attributes
             .getNamedItem('style')
-            .value
-            .split(';')
+            .value.split(';')
             .map((style) => {
               const styleName = trim(style.split(':')[0]);
 
@@ -246,8 +237,7 @@ function _filterEscapeSync(processCallback, allowedTags, allowedStyles, html) {
           node.setAttribute('style', styles);
         }
       });
-    }
-    else {
+    } else {
       escapeNode(node);
     }
   }
@@ -299,11 +289,15 @@ function reparent(node) {
  * @returns {Array<string>}
  */
 function listAttributeNames(attributes) {
-  return reduce(attributes, (attrNames, attr) => {
-    attrNames.push(attr.name);
+  return reduce(
+    attributes,
+    (attrNames, attr) => {
+      attrNames.push(attr.name);
 
-    return attrNames;
-  }, []);
+      return attrNames;
+    },
+    []
+  );
 }
 
 /**

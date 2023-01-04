@@ -29,35 +29,35 @@ describe('plugin-metrics', () => {
     const eventName = 'test_event';
     const mockPayload = {
       fields: {
-        testField: 123
+        testField: 123,
       },
       tags: {
-        testTag: 'tag value'
+        testTag: 'tag value',
       },
       metricName: eventName,
       test: 'this field should not be included in final payload',
       type: 'behavioral',
-      eventPayload: {value: 'splunk business metric payload'}
+      eventPayload: {value: 'splunk business metric payload'},
     };
     const transformedProps = {
       fields: {
-        testField: 123
+        testField: 123,
       },
       tags: {
-        testTag: 'tag value'
+        testTag: 'tag value',
       },
       metricName: eventName,
       type: 'behavioral',
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
     const preLoginId = '1b90cf5e-27a6-41aa-a208-1f6eb6b9e6b6';
     const preLoginProps = {
-      metrics: [transformedProps]
+      metrics: [transformedProps],
     };
     const mockCallDiagnosticEvent = {
       originTime: {
-        triggered: 'mock triggered timestamp'
-      }
+        triggered: 'mock triggered timestamp',
+      },
     };
 
     beforeEach(() => {
@@ -71,8 +71,8 @@ describe('plugin-metrics', () => {
     beforeEach(() => {
       webex = new MockWebex({
         children: {
-          metrics: Metrics
-        }
+          metrics: Metrics,
+        },
       });
 
       webex.config.metrics = config.metrics;
@@ -82,7 +82,7 @@ describe('plugin-metrics', () => {
         return Promise.resolve({
           statusCode: 204,
           body: undefined,
-          options
+          options,
         });
       };
 
@@ -94,8 +94,7 @@ describe('plugin-metrics', () => {
         ...webex.config,
         appName: 'appName',
         appPlatform: 'appPlatform',
-        appVersion: 'appVersion'
-
+        appVersion: 'appVersion',
       };
       webex.config.metrics.type = ['operational'];
       webex.config.metrics.appType = 'sdk';
@@ -167,15 +166,18 @@ describe('plugin-metrics', () => {
       });
       describe('after login', () => {
         it('submits a metric to clientmetrics', () => {
-          webex.credentials.supertoken = new Token({
-            access_token: 'a_b_orgid'
-          }, {parent: webex});
+          webex.credentials.supertoken = new Token(
+            {
+              access_token: 'a_b_orgid',
+            },
+            {parent: webex}
+          );
 
           const testPayload = {
             tags: {success: true},
             fields: {perceivedDurationInMillis: 314},
             context: {},
-            eventPayload: {value: 'splunk business metric payload'}
+            eventPayload: {value: 'splunk business metric payload'},
           };
           const date = clock.now;
 
@@ -212,7 +214,6 @@ describe('plugin-metrics', () => {
               assert.property(metric.context, 'app');
               assert.property(metric.context, 'locale');
               assert.property(metric.context, 'os');
-
 
               assert.equal(metric.timestamp, date);
               assert.equal(metric.metricName, 'test');
@@ -294,8 +295,8 @@ describe('plugin-metrics', () => {
         const promise = metrics.submitCallDiagnosticEvents({
           ...mockCallDiagnosticEvent,
           origin: {
-            buildType: 'prod'
-          }
+            buildType: 'prod',
+          },
         });
 
         return promiseTick(50)

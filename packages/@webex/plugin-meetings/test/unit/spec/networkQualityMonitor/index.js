@@ -20,7 +20,7 @@ describe('plugin-meetings', () => {
     const initialConfig = {
       videoPacketLossRatioThreshold: 9,
       rttThreshold: 500,
-      jitterThreshold: 500
+      jitterThreshold: 500,
     };
 
     const configObject = {
@@ -39,20 +39,20 @@ describe('plugin-meetings', () => {
         roundTripTime: 0.648,
         fractionLost: 0,
         totalRoundTripTime: 3.554,
-        roundTripTimeMeasurements: 14
+        roundTripTimeMeasurements: 14,
       },
       statsAnalyzerCurrentStats: {
         audio: {
           send: {
-            currentPacketLossRatio: 8
-          }
+            currentPacketLossRatio: 8,
+          },
         },
         video: {
           send: {
-            currentPacketLossRatio: 10
-          }
-        }
-      }
+            currentPacketLossRatio: 10,
+          },
+        },
+      },
     };
 
     const sandbox = sinon.createSandbox();
@@ -75,13 +75,19 @@ describe('plugin-meetings', () => {
 
     it('should emit a network quality judgement event with the proper payload', async () => {
       await networkQualityMonitor.determineUplinkNetworkQuality(configObject);
-      assert(sandBoxEmitSpy.calledWith(sinon.match({
-        file: 'networkQualityMonitor',
-        function: 'emitNetworkQuality'
-      }), sinon.match(EVENT_TRIGGERS.NETWORK_QUALITY), sinon.match({
-        mediaType: 'video',
-        networkQualityScore: 0
-      })));
+      assert(
+        sandBoxEmitSpy.calledWith(
+          sinon.match({
+            file: 'networkQualityMonitor',
+            function: 'emitNetworkQuality',
+          }),
+          sinon.match(EVENT_TRIGGERS.NETWORK_QUALITY),
+          sinon.match({
+            mediaType: 'video',
+            networkQualityScore: 0,
+          })
+        )
+      );
     });
 
     it('should reset to default values after determineUplinkNetworkQuality call stack is complete', async () => {

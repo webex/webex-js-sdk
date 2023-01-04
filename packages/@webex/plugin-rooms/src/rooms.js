@@ -11,7 +11,7 @@ import {
   buildHydraRoomId,
   getHydraClusterString,
   getHydraRoomType,
-  deconstructHydraId
+  deconstructHydraId,
 } from '@webex/common';
 
 const debug = require('debug')('rooms');
@@ -65,16 +65,15 @@ const Rooms = WebexPlugin.extend({
    * webex.rooms.off('updated');
    */
   listen() {
-    return createEventEnvelope(this.webex, SDK_EVENT.EXTERNAL.RESOURCE.ROOMS)
-      .then((envelope) => {
-        this.eventEnvelope = envelope;
+    return createEventEnvelope(this.webex, SDK_EVENT.EXTERNAL.RESOURCE.ROOMS).then((envelope) => {
+      this.eventEnvelope = envelope;
 
-        return this.webex.internal.mercury.connect().then(() => {
-          this.listenTo(this.webex.internal.mercury,
-            SDK_EVENT.INTERNAL.WEBEX_ACTIVITY,
-            (event) => this.onWebexApiEvent(event));
-        });
+      return this.webex.internal.mercury.connect().then(() => {
+        this.listenTo(this.webex.internal.mercury, SDK_EVENT.INTERNAL.WEBEX_ACTIVITY, (event) =>
+          this.onWebexApiEvent(event)
+        );
       });
+    });
   },
 
   /**
@@ -102,9 +101,8 @@ const Rooms = WebexPlugin.extend({
       method: 'POST',
       service: 'hydra',
       resource: 'rooms',
-      body: room
-    })
-      .then((res) => res.body);
+      body: room,
+    }).then((res) => res.body);
   },
 
   /**
@@ -134,9 +132,8 @@ const Rooms = WebexPlugin.extend({
     return this.request({
       service: 'hydra',
       resource: `rooms/${id}`,
-      qs: options
-    })
-      .then((res) => res.body.items || res.body);
+      qs: options,
+    }).then((res) => res.body.items || res.body);
   },
 
   /**
@@ -175,9 +172,8 @@ const Rooms = WebexPlugin.extend({
     return this.request({
       service: 'hydra',
       resource: 'rooms/',
-      qs: options
-    })
-      .then((res) => new Page(res, this.webex));
+      qs: options,
+    }).then((res) => new Page(res, this.webex));
   },
 
   /**
@@ -230,19 +226,23 @@ const Rooms = WebexPlugin.extend({
       activitiesLimit: 0,
       computeTitleIfEmpty: true,
       conversationsLimit: 1000,
-      isActive: true
+      isActive: true,
     };
 
     if (maxRecent > 0) {
       options.conversationsLimit = maxRecent;
       options.sinceDate = now.setDate(now.getDate() - 14);
-    }
-    else if ((maxRecent < 0) || (maxRecent > 100)) {
-      return Promise.reject(new Error('rooms.listWithReadStatus: ' +
-        'optional maxRecent parameter must be an integer between 1 and 100'));
+    } else if (maxRecent < 0 || maxRecent > 100) {
+      return Promise.reject(
+        new Error(
+          'rooms.listWithReadStatus: ' +
+            'optional maxRecent parameter must be an integer between 1 and 100'
+        )
+      );
     }
 
-    return this.webex.internal.services.waitForCatalog('postauth')
+    return this.webex.internal.services
+      .waitForCatalog('postauth')
       .then(() => this.webex.internal.conversation.list(options))
       .then((conversations) => buildRoomInfoList(this.webex, conversations));
   },
@@ -283,16 +283,17 @@ const Rooms = WebexPlugin.extend({
     const deconstructedId = deconstructHydraId(roomId);
     const conversation = {
       id: deconstructedId.id,
-      cluster: deconstructedId.cluster
+      cluster: deconstructedId.cluster,
     };
 
-    return this.webex.internal.services.waitForCatalog('postauth')
-      .then(() => this.webex.internal.conversation.get(conversation,
-        {
+    return this.webex.internal.services.waitForCatalog('postauth').then(() =>
+      this.webex.internal.conversation
+        .get(conversation, {
           computeTitleIfEmpty: true,
-          activitiesLimit: 0 // don't send the whole history of activity
+          activitiesLimit: 0, // don't send the whole history of activity
         })
-        .then((convo) => buildRoomInfo(this.webex, convo)));
+        .then((convo) => buildRoomInfo(this.webex, convo))
+    );
   },
 
   /**
@@ -328,17 +329,16 @@ const Rooms = WebexPlugin.extend({
     return this.request({
       method: 'DELETE',
       service: 'hydra',
-      resource: `rooms/${id}`
-    })
-      .then((res) => {
-        // Firefox has some issues with 204s and/or DELETE. This should move to
-        // http-core
-        if (res.statusCode === 204) {
-          return undefined;
-        }
+      resource: `rooms/${id}`,
+    }).then((res) => {
+      // Firefox has some issues with 204s and/or DELETE. This should move to
+      // http-core
+      if (res.statusCode === 204) {
+        return undefined;
+      }
 
-        return res.body;
-      });
+      return res.body;
+    });
   },
 
   /**
@@ -372,9 +372,8 @@ const Rooms = WebexPlugin.extend({
       method: 'PUT',
       service: 'hydra',
       resource: `rooms/${id}`,
-      body: room
-    })
-      .then((res) => res.body);
+      body: room,
+    }).then((res) => res.body);
   },
 
   /**
@@ -392,8 +391,11 @@ const Rooms = WebexPlugin.extend({
     /* eslint-disable no-case-declarations */
     switch (activity.verb) {
       case SDK_EVENT.INTERNAL.ACTIVITY_VERB.CREATE:
-        const roomCreatedEvent =
-          this.getRoomEvent(this.webex, activity, SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED);
+        const roomCreatedEvent = this.getRoomEvent(
+          this.webex,
+          activity,
+          SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED
+        );
 
         if (roomCreatedEvent) {
           debug(`room "created" payload: \
@@ -406,8 +408,11 @@ const Rooms = WebexPlugin.extend({
       case SDK_EVENT.INTERNAL.ACTIVITY_VERB.LOCK:
       case SDK_EVENT.INTERNAL.ACTIVITY_VERB.UNLOCK:
         debug(`generating a rooms:updated based on ${activity.verb} activity`);
-        const roomUpdatedEvent =
-          this.getRoomEvent(this.webex, activity, SDK_EVENT.EXTERNAL.EVENT_TYPE.UPDATED);
+        const roomUpdatedEvent = this.getRoomEvent(
+          this.webex,
+          activity,
+          SDK_EVENT.EXTERNAL.EVENT_TYPE.UPDATED
+        );
 
         if (roomUpdatedEvent) {
           debug(`room "updated" payload: \
@@ -443,16 +448,14 @@ const Rooms = WebexPlugin.extend({
       sdkEvent.actorId = buildHydraPersonId(activity.actor.entryUUID, cluster);
       if (activity.object.id) {
         sdkEvent.data.id = buildHydraRoomId(activity.object.id, cluster);
-      }
-      else {
+      } else {
         sdkEvent.data.id = buildHydraRoomId(activity.target.id, cluster);
       }
 
       if (event === SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED) {
         sdkEvent.data.creatorId = buildHydraPersonId(activity.actor.entryUUID, cluster);
         sdkEvent.data.lastActivity = activity.published;
-      }
-      else if (event === SDK_EVENT.EXTERNAL.EVENT_TYPE.UPDATED) {
+      } else if (event === SDK_EVENT.EXTERNAL.EVENT_TYPE.UPDATED) {
         if (activity.verb === 'update') {
           // For some reason the tags are not in the object for an update activity
           tags = activity.target.tags;
@@ -466,23 +469,21 @@ const Rooms = WebexPlugin.extend({
         // in the activity.target object.  See: hydra/HydraRoom.java#L51
         // This elements seems to be missing from the activity that the SDK is getting
         // sdkEvent.data.lastActivity = activity.target.lastReadableActivityDate;
-      }
-      else {
+      } else {
         throw new Error('unexpected event type');
       }
       sdkEvent.data.type = getHydraRoomType(tags);
-      sdkEvent.data.isLocked =
-        tags.includes(SDK_EVENT.INTERNAL.ACTIVITY_TAG.LOCKED);
+      sdkEvent.data.isLocked = tags.includes(SDK_EVENT.INTERNAL.ACTIVITY_TAG.LOCKED);
 
       return sdkEvent;
-    }
-    catch (e) {
-      this.webex.logger.error(`Unable to generate SDK event from mercury socket activity for rooms:${event} event: ${e.message}`);
+    } catch (e) {
+      this.webex.logger.error(
+        `Unable to generate SDK event from mercury socket activity for rooms:${event} event: ${e.message}`
+      );
 
       return null;
     }
-  }
-
+  },
 });
 
 export default Rooms;
@@ -497,26 +498,24 @@ async function buildRoomInfo(webex, conversation) {
   try {
     const type = getHydraRoomType(conversation.tags);
     const cluster = getHydraClusterString(webex, conversation.url);
-    const title = conversation.displayName ?
-      conversation.displayName : conversation.computedTitle;
-    const lastActivityDate = conversation.lastReadableActivityDate ?
-      conversation.lastReadableActivityDate :
-      conversation.lastRelevantActivityDate;
+    const title = conversation.displayName ? conversation.displayName : conversation.computedTitle;
+    const lastActivityDate = conversation.lastReadableActivityDate
+      ? conversation.lastReadableActivityDate
+      : conversation.lastRelevantActivityDate;
 
     const roomInfo = {
       id: buildHydraRoomId(conversation.id, cluster),
       type,
       ...(title && {title: conversation.displayName}),
       ...(lastActivityDate && {lastActivityDate}),
-      lastSeenActivityDate: conversation.lastSeenActivityDate ?
-        conversation.lastSeenActivityDate :
-        // If user has never been seen set the date to "a long time ago"
-        new Date(0).toISOString()
+      lastSeenActivityDate: conversation.lastSeenActivityDate
+        ? conversation.lastSeenActivityDate
+        : // If user has never been seen set the date to "a long time ago"
+          new Date(0).toISOString(),
     };
 
     return Promise.resolve(roomInfo);
-  }
-  catch (e) {
+  } catch (e) {
     return Promise.reject(e);
   }
 }
@@ -536,11 +535,10 @@ async function buildRoomInfoList(webex, conversations) {
     roomInfoPromises.push(buildRoomInfo(webex, conversation));
   }
 
-  return Promise.all(roomInfoPromises)
-    .then((roomInfoList) => {
-      roomReadInfo.items = roomInfoList;
-      roomReadInfo.items.sort((a, b) => (a.lastActivityDate < b.lastActivityDate ? 1 : -1));
+  return Promise.all(roomInfoPromises).then((roomInfoList) => {
+    roomReadInfo.items = roomInfoList;
+    roomReadInfo.items.sort((a, b) => (a.lastActivityDate < b.lastActivityDate ? 1 : -1));
 
-      return roomReadInfo;
-    });
+    return roomReadInfo;
+  });
 }

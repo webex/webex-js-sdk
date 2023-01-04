@@ -9,7 +9,7 @@ import config from './config';
 import '@webex/internal-plugin-device';
 
 registerInternalPlugin('support', Support, {
-  config
+  config,
 });
 
 export {default} from './support';

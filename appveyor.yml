@@ -4,7 +4,7 @@
 
 # Test against the latest version of this Node.js version
 environment:
-  nodejs_version: "6.10.1"
+  nodejs_version: '6.10.1'
 
 # Install scripts. (runs after repo cloning)
 install:
@@ -18,10 +18,10 @@ install:
 
 # Run basic validation
 test_script:
-# TODO replace with `npm run lint` when lint:packagenames is rewritten in js
-- npm run lint:js
-- npm run lint:jenkinsfile
+  # TODO replace with `npm run lint` when lint:packagenames is rewritten in js
+  - npm run lint:js
+  - npm run lint:jenkinsfile
 
 # Prove babel builds
 build_script:
-- npm run build -- --skip-samples
+  - npm run build -- --skip-samples

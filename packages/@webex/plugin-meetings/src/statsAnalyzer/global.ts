@@ -6,31 +6,30 @@ const STATS_DEFAULT = {
       availableBandwidth: 0,
       bytesSent: 0,
       meanRemoteJitter: [],
-      meanRoundTripTime: []
+      meanRoundTripTime: [],
     },
     recv: {
       availableBandwidth: 0,
       bytesReceived: 0,
       meanRtpJitter: [],
-      meanRoundTripTime: []
-    }
+      meanRoundTripTime: [],
+    },
   },
   video: {
     send: {
       maxPacketLossRatio: 0,
       availableBandwidth: 0,
       meanRemoteJitter: [],
-      meanRoundTripTime: []
+      meanRoundTripTime: [],
     },
     recv: {
       availableBandwidth: 0,
       totalPacketsLost: 0,
       meanRtpJitter: [],
-      meanRoundTripTime: []
-
+      meanRoundTripTime: [],
     },
     latency: 0,
-    packetsLost: 0
+    packetsLost: 0,
   },
   share: {
     send: {
@@ -38,16 +37,16 @@ const STATS_DEFAULT = {
       availableBandwidth: 0,
       totalPacketsLost: 0,
       meanRemoteJitter: [],
-      meanRoundTripTime: []
+      meanRoundTripTime: [],
     },
     recv: {
       availableBandwidth: 0,
       meanRtpJitter: [],
-      meanRoundTripTime: []
+      meanRoundTripTime: [],
     },
 
     latency: 0,
-    packetsLost: 0
+    packetsLost: 0,
   },
   bandwidth: {
     systemBandwidth: 0,
@@ -55,9 +54,9 @@ const STATS_DEFAULT = {
     encodedPerSecond: 0,
     helper: {
       audioBytesSent: 0,
-      videoBytestSent: 0
+      videoBytestSent: 0,
     },
-    speed: 0
+    speed: 0,
   },
   results: {},
   connectionType: {
@@ -67,65 +66,63 @@ const STATS_DEFAULT = {
       candidateType: [],
       transport: [],
       ipAddress: [],
-      networkType: []
+      networkType: [],
     },
     remote: {
       candidateType: [],
       transport: [],
       ipAddress: [],
-      networkType: []
-    }
+      networkType: [],
+    },
   },
   resolutions: {
     audio: {
       send: {
         width: 0,
-        height: 0
+        height: 0,
       },
       recv: {
         width: 0,
-        height: 0
-      }
+        height: 0,
+      },
     },
     video: {
       send: {
         width: 0,
-        height: 0
+        height: 0,
       },
       recv: {
         width: 0,
-        height: 0
-      }
+        height: 0,
+      },
     },
     share: {
       send: {
         width: 0,
-        height: 0
+        height: 0,
       },
       recv: {
         width: 0,
-        height: 0
-      }
-    }
+        height: 0,
+      },
+    },
   },
   internal: {
     audio: {
       send: {},
-      recv: {}
+      recv: {},
     },
     video: {
       send: {},
-      recv: {}
+      recv: {},
     },
     share: {
       send: {},
-      recv: {}
+      recv: {},
     },
-    remote: {
-
-    },
-    candidates: {}
-  }
+    remote: {},
+    candidates: {},
+  },
 };
 
 export default STATS_DEFAULT;

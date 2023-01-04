@@ -20,39 +20,41 @@ describe('EDiscovery Report API Tests', () => {
       children: {
         ediscovery: EDiscovery,
         encryption: Encryption,
-        mercury: Mercury
-      }
+        mercury: Mercury,
+      },
     });
     webex.config.ediscovery = config.ediscovery;
   });
 
   describe('CreateReport Tests', () => {
     it('CreateReport succeeds', async () => {
-      const result = webex.internal.ediscovery.createReport(reportRequest)
-        .then((res) => {
-          expect(res.statusCode).to.equal(200);
-        });
+      const result = webex.internal.ediscovery.createReport(reportRequest).then((res) => {
+        expect(res.statusCode).to.equal(200);
+      });
 
       return result;
     });
 
     it('CreateReport fails with no param', async () => {
-      const result = expect(webex.internal.ediscovery.createReport()).to.be.rejectedWith(Error, 'Undefined parameter');
+      const result = expect(webex.internal.ediscovery.createReport()).to.be.rejectedWith(
+        Error,
+        'Undefined parameter'
+      );
 
       return result;
     });
 
     it('CreateReport timeout defaults to 30s', async () => {
-      const result = webex.internal.ediscovery.createReport(reportRequest)
-        .then(() => {
-          sinon.assert.calledWith(webex.request, sinon.match.has('timeout', defaultTimeout));
-        });
+      const result = webex.internal.ediscovery.createReport(reportRequest).then(() => {
+        sinon.assert.calledWith(webex.request, sinon.match.has('timeout', defaultTimeout));
+      });
 
       return result;
     });
 
     it('CreateReport timeout can be overwritten to 5s', async () => {
-      const result = webex.internal.ediscovery.createReport(reportRequest, {timeoutMs: 5000})
+      const result = webex.internal.ediscovery
+        .createReport(reportRequest, {timeoutMs: 5000})
         .then(() => {
           sinon.assert.calledWith(webex.request, sinon.match.has('timeout', 5000));
         });
@@ -66,12 +68,15 @@ describe('EDiscovery Report API Tests', () => {
 
       error.message = JSON.stringify(invalidEmails);
       error.errorCode = InvalidEmailAddressError.getErrorCode();
-      const result = webex.internal.ediscovery._handleReportRequestError({body: error})
+      const result = webex.internal.ediscovery
+        ._handleReportRequestError({body: error})
         .catch((response) => {
           const invalidEmailsError = new InvalidEmailAddressError(invalidEmails);
 
           expect(response.name).to.equal(invalidEmailsError.name);
-          expect(JSON.stringify(response.message)).to.equal(JSON.stringify(invalidEmailsError.message));
+          expect(JSON.stringify(response.message)).to.equal(
+            JSON.stringify(invalidEmailsError.message)
+          );
         });
 
       return result;
@@ -80,28 +85,25 @@ describe('EDiscovery Report API Tests', () => {
 
   describe('GetReports Tests', () => {
     it('GetReports succeeds', async () => {
-      const result = webex.internal.ediscovery.getReports({})
-        .then((res) => {
-          expect(res.statusCode).to.equal(200);
-        });
+      const result = webex.internal.ediscovery.getReports({}).then((res) => {
+        expect(res.statusCode).to.equal(200);
+      });
 
       return result;
     });
 
     it('GetReports timeout defaults to 30s', async () => {
-      const result = webex.internal.ediscovery.getReports()
-        .then(() => {
-          sinon.assert.calledWith(webex.request, sinon.match.has('timeout', defaultTimeout));
-        });
+      const result = webex.internal.ediscovery.getReports().then(() => {
+        sinon.assert.calledWith(webex.request, sinon.match.has('timeout', defaultTimeout));
+      });
 
       return result;
     });
 
     it('GetReports timeout can be overwritten to 5s', async () => {
-      const result = webex.internal.ediscovery.getReports({timeoutMs: 5000})
-        .then(() => {
-          sinon.assert.calledWith(webex.request, sinon.match.has('timeout', 5000));
-        });
+      const result = webex.internal.ediscovery.getReports({timeoutMs: 5000}).then(() => {
+        sinon.assert.calledWith(webex.request, sinon.match.has('timeout', 5000));
+      });
 
       return result;
     });
@@ -109,34 +111,34 @@ describe('EDiscovery Report API Tests', () => {
 
   describe('GetReport Tests', () => {
     it('GetReport succeeds', async () => {
-      const result = webex.internal.ediscovery.getReport(uuid)
-        .then((res) => {
-          expect(res.statusCode).to.equal(200);
-        });
+      const result = webex.internal.ediscovery.getReport(uuid).then((res) => {
+        expect(res.statusCode).to.equal(200);
+      });
 
       return result;
     });
 
     it('GetReport fails with no params', async () => {
-      const result = expect(webex.internal.ediscovery.getReport()).to.be.rejectedWith(Error, 'Undefined parameter');
+      const result = expect(webex.internal.ediscovery.getReport()).to.be.rejectedWith(
+        Error,
+        'Undefined parameter'
+      );
 
       return result;
     });
 
     it('GetReport timeout defaults to 30s', async () => {
-      const result = webex.internal.ediscovery.getReport(uuid)
-        .then(() => {
-          sinon.assert.calledWith(webex.request, sinon.match.has('timeout', defaultTimeout));
-        });
+      const result = webex.internal.ediscovery.getReport(uuid).then(() => {
+        sinon.assert.calledWith(webex.request, sinon.match.has('timeout', defaultTimeout));
+      });
 
       return result;
     });
 
     it('GetReport timeout can be overwritten to 5s', async () => {
-      const result = webex.internal.ediscovery.getReport(uuid, {timeoutMs: 5000})
-        .then(() => {
-          sinon.assert.calledWith(webex.request, sinon.match.has('timeout', 5000));
-        });
+      const result = webex.internal.ediscovery.getReport(uuid, {timeoutMs: 5000}).then(() => {
+        sinon.assert.calledWith(webex.request, sinon.match.has('timeout', 5000));
+      });
 
       return result;
     });
@@ -144,34 +146,34 @@ describe('EDiscovery Report API Tests', () => {
 
   describe('DeleteReport Tests', () => {
     it('DeleteReport suceeds', async () => {
-      const result = webex.internal.ediscovery.deleteReport(uuid)
-        .then((res) => {
-          expect(res.statusCode).to.equal(200);
-        });
+      const result = webex.internal.ediscovery.deleteReport(uuid).then((res) => {
+        expect(res.statusCode).to.equal(200);
+      });
 
       return result;
     });
 
     it('DeleteReport fails with no params', async () => {
-      const result = expect(webex.internal.ediscovery.deleteReport()).to.be.rejectedWith(Error, 'Undefined parameter');
+      const result = expect(webex.internal.ediscovery.deleteReport()).to.be.rejectedWith(
+        Error,
+        'Undefined parameter'
+      );
 
       return result;
     });
 
     it('DeleteReport timeout defaults to 30s', async () => {
-      const result = webex.internal.ediscovery.deleteReport(uuid)
-        .then(() => {
-          sinon.assert.calledWith(webex.request, sinon.match.has('timeout', defaultTimeout));
-        });
+      const result = webex.internal.ediscovery.deleteReport(uuid).then(() => {
+        sinon.assert.calledWith(webex.request, sinon.match.has('timeout', defaultTimeout));
+      });
 
       return result;
     });
 
     it('DeleteReport timeout can be overwritten to 5s', async () => {
-      const result = webex.internal.ediscovery.deleteReport(uuid, {timeoutMs: 5000})
-        .then(() => {
-          sinon.assert.calledWith(webex.request, sinon.match.has('timeout', 5000));
-        });
+      const result = webex.internal.ediscovery.deleteReport(uuid, {timeoutMs: 5000}).then(() => {
+        sinon.assert.calledWith(webex.request, sinon.match.has('timeout', 5000));
+      });
 
       return result;
     });
@@ -179,34 +181,34 @@ describe('EDiscovery Report API Tests', () => {
 
   describe('RestartReport Tests', () => {
     it('RestartReport succeeds', async () => {
-      const result = webex.internal.ediscovery.restartReport(uuid)
-        .then((res) => {
-          expect(res.statusCode).to.equal(200);
-        });
+      const result = webex.internal.ediscovery.restartReport(uuid).then((res) => {
+        expect(res.statusCode).to.equal(200);
+      });
 
       return result;
     });
 
     it('RestartReport fails with no params', async () => {
-      const result = expect(webex.internal.ediscovery.restartReport()).to.be.rejectedWith(Error, 'Undefined parameter');
+      const result = expect(webex.internal.ediscovery.restartReport()).to.be.rejectedWith(
+        Error,
+        'Undefined parameter'
+      );
 
       return result;
     });
 
     it('RestartReport timeout defaults to 30s', async () => {
-      const result = webex.internal.ediscovery.restartReport(uuid)
-        .then(() => {
-          sinon.assert.calledWith(webex.request, sinon.match.has('timeout', defaultTimeout));
-        });
+      const result = webex.internal.ediscovery.restartReport(uuid).then(() => {
+        sinon.assert.calledWith(webex.request, sinon.match.has('timeout', defaultTimeout));
+      });
 
       return result;
     });
 
     it('RestartReport timeout can be overwritten to 5s', async () => {
-      const result = webex.internal.ediscovery.restartReport(uuid, {timeoutMs: 5000})
-        .then(() => {
-          sinon.assert.calledWith(webex.request, sinon.match.has('timeout', 5000));
-        });
+      const result = webex.internal.ediscovery.restartReport(uuid, {timeoutMs: 5000}).then(() => {
+        sinon.assert.calledWith(webex.request, sinon.match.has('timeout', 5000));
+      });
 
       return result;
     });
@@ -214,28 +216,25 @@ describe('EDiscovery Report API Tests', () => {
 
   describe('GetClientConfig Tests', () => {
     it('GetClientConfig succeeds', async () => {
-      const result = webex.internal.ediscovery.getClientConfig()
-        .then((res) => {
-          expect(res.statusCode).to.equal(200);
-        });
+      const result = webex.internal.ediscovery.getClientConfig().then((res) => {
+        expect(res.statusCode).to.equal(200);
+      });
 
       return result;
     });
 
     it('GetClientConfig timeout defaults to 30s', async () => {
-      const result = webex.internal.ediscovery.getClientConfig()
-        .then(() => {
-          sinon.assert.calledWith(webex.request, sinon.match.has('timeout', defaultTimeout));
-        });
+      const result = webex.internal.ediscovery.getClientConfig().then(() => {
+        sinon.assert.calledWith(webex.request, sinon.match.has('timeout', defaultTimeout));
+      });
 
       return result;
     });
 
     it('GetClientConfig timeout can be overwritten to 5s', async () => {
-      const result = webex.internal.ediscovery.getClientConfig({timeoutMs: 5000})
-        .then(() => {
-          sinon.assert.calledWith(webex.request, sinon.match.has('timeout', 5000));
-        });
+      const result = webex.internal.ediscovery.getClientConfig({timeoutMs: 5000}).then(() => {
+        sinon.assert.calledWith(webex.request, sinon.match.has('timeout', 5000));
+      });
 
       return result;
     });

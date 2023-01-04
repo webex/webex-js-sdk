@@ -6,13 +6,7 @@ import querystring from 'querystring';
 import url from 'url';
 
 import jwt from 'jsonwebtoken';
-import {
-  base64,
-  makeStateDataType,
-  oneFlight,
-  tap,
-  whileInFlight
-} from '@webex/common';
+import {base64, makeStateDataType, oneFlight, tap, whileInFlight} from '@webex/common';
 import {safeSetTimeout} from '@webex/common-timers';
 import {clone, cloneDeep, isObject, isEmpty} from 'lodash';
 
@@ -29,29 +23,22 @@ import TokenCollection from './token-collection';
  */
 const Credentials = WebexPlugin.extend({
   collections: {
-    userTokens: TokenCollection
+    userTokens: TokenCollection,
   },
 
   dataTypes: {
-    token: makeStateDataType(Token, 'token').dataType
+    token: makeStateDataType(Token, 'token').dataType,
   },
 
   derived: {
     canAuthorize: {
-      deps: [
-        'supertoken',
-        'supertoken.canAuthorize',
-        'canRefresh'
-      ],
+      deps: ['supertoken', 'supertoken.canAuthorize', 'canRefresh'],
       fn() {
-        return Boolean(this.supertoken && this.supertoken.canAuthorize || this.canRefresh);
-      }
+        return Boolean((this.supertoken && this.supertoken.canAuthorize) || this.canRefresh);
+      },
     },
     canRefresh: {
-      deps: [
-        'supertoken',
-        'supertoken.canRefresh'
-      ],
+      deps: ['supertoken', 'supertoken.canRefresh'],
       fn() {
         // If we're operating in JWT mode, we have to delegate to the consumer
         if (this.config.jwtRefreshCallback) {
@@ -59,12 +46,12 @@ const Credentials = WebexPlugin.extend({
         }
 
         return Boolean(this.supertoken && this.supertoken.canRefresh);
-      }
-    }
+      },
+    },
   },
 
   props: {
-    supertoken: makeStateDataType(Token, 'token').prop
+    supertoken: makeStateDataType(Token, 'token').prop,
   },
 
   namespace: 'Credentials',
@@ -72,7 +59,7 @@ const Credentials = WebexPlugin.extend({
   session: {
     isRefreshing: {
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     /**
      * Becomes `true` once the {@link loaded} event fires.
@@ -83,12 +70,12 @@ const Credentials = WebexPlugin.extend({
      */
     ready: {
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     refreshTimer: {
       default: undefined,
-      type: 'any'
-    }
+      type: 'any',
+    },
   },
 
   /**
@@ -120,8 +107,7 @@ const Credentials = WebexPlugin.extend({
     if (options.state) {
       if (!isEmpty(options.state)) {
         options.state = base64.toBase64Url(JSON.stringify(options.state));
-      }
-      else {
+      } else {
         delete options.state;
       }
     }
@@ -137,27 +123,21 @@ const Credentials = WebexPlugin.extend({
    * @returns {string} - The OrgId.
    */
   getOrgId() {
-    this.logger.info(
-      'credentials: attempting to retrieve the OrgId from token'
-    );
+    this.logger.info('credentials: attempting to retrieve the OrgId from token');
 
     try {
       // Attempt to extract a client-authenticated token's OrgId.
       this.logger.info('credentials: trying to extract OrgId from JWT');
 
       return this.extractOrgIdFromJWT(this.supertoken.access_token);
-    }
-    catch (e) {
+    } catch (e) {
       // Attempt to extract a user token's OrgId.
       this.logger.info('credentials: could not extract OrgId from JWT');
-      this.logger.info(
-        'credentials: attempting to extract OrgId from user token'
-      );
+      this.logger.info('credentials: attempting to extract OrgId from user token');
 
       try {
         return this.extractOrgIdFromUserToken(this.supertoken?.access_token);
-      }
-      catch (f) {
+      } catch (f) {
         this.logger.info('credentials: could not extract OrgId from user token');
         throw f;
       }
@@ -218,10 +198,15 @@ const Credentials = WebexPlugin.extend({
    * @returns {[type]}
    */
   buildLogoutUrl(options = {}) {
-    return `${this.config.logoutUrl}?${querystring.stringify(Object.assign({
-      cisService: this.config.service,
-      goto: this.config.redirect_uri
-    }, options))}`;
+    return `${this.config.logoutUrl}?${querystring.stringify(
+      Object.assign(
+        {
+          cisService: this.config.service,
+          goto: this.config.redirect_uri,
+        },
+        options
+      )
+    )}`;
   },
 
   /**
@@ -233,7 +218,7 @@ const Credentials = WebexPlugin.extend({
    * @returns {number}
    */
   calcRefreshTimeout(expiration) {
-    return Math.floor((Math.floor(Math.random() * 4) + 6) / 10 * expiration);
+    return Math.floor(((Math.floor(Math.random() * 4) + 6) / 10) * expiration);
   },
 
   constructor(...args) {
@@ -258,13 +243,14 @@ const Credentials = WebexPlugin.extend({
    * @returns {Promise<Token>}
    */
   downscope(scope) {
-    return this.supertoken.downscope(scope)
-      .catch((reason) => {
-        this.logger.trace(`credentials: failed to downscope supertoken to ${scope}`, reason);
-        this.logger.trace(`credentials: falling back to supertoken for ${scope}`);
+    return this.supertoken.downscope(scope).catch((reason) => {
+      this.logger.trace(`credentials: failed to downscope supertoken to ${scope}`, reason);
+      this.logger.trace(`credentials: falling back to supertoken for ${scope}`);
 
-        return Promise.resolve(new Token(Object.assign({scope}, this.supertoken.serialize())), {parent: this});
+      return Promise.resolve(new Token(Object.assign({scope}, this.supertoken.serialize())), {
+        parent: this,
       });
+    });
   },
 
   /**
@@ -279,23 +265,24 @@ const Credentials = WebexPlugin.extend({
   getClientToken(options = {}) {
     this.logger.info('credentials: requesting client credentials grant');
 
-    return this.webex.request({
-      /* eslint-disable camelcase */
-      method: 'POST',
-      uri: options.uri || this.config.tokenUrl,
-      form: {
-        grant_type: 'client_credentials',
-        scope: options.scope || 'webexsquare:admin',
-        self_contained_token: true
-      },
-      auth: {
-        user: this.config.client_id,
-        pass: this.config.client_secret,
-        sendImmediately: true
-      },
-      shouldRefreshAccessToken: false
-      /* eslint-enable camelcase */
-    })
+    return this.webex
+      .request({
+        /* eslint-disable camelcase */
+        method: 'POST',
+        uri: options.uri || this.config.tokenUrl,
+        form: {
+          grant_type: 'client_credentials',
+          scope: options.scope || 'webexsquare:admin',
+          self_contained_token: true,
+        },
+        auth: {
+          user: this.config.client_id,
+          pass: this.config.client_secret,
+          sendImmediately: true,
+        },
+        shouldRefreshAccessToken: false,
+        /* eslint-enable camelcase */
+      })
       .then((res) => new Token(res.body, {parent: this}))
       .catch((res) => {
         if (res.statusCode !== 400) {
@@ -320,41 +307,44 @@ const Credentials = WebexPlugin.extend({
    * @returns {Promise<Token>}
    */
   getUserToken(scope) {
-    return Promise.resolve(!this.isRefreshing || new Promise((resolve) => {
-      this.logger.info('credentials: token refresh inflight; delaying getUserToken until refresh completes');
-      this.once('change:isRefreshing', () => {
-        this.logger.info('credentials: token refresh complete; reinvoking getUserToken');
-        resolve();
-      });
-    }))
-      .then(() => {
-        if (!this.canAuthorize) {
-          this.logger.info('credentials: cannot produce an access token from current state');
+    return Promise.resolve(
+      !this.isRefreshing ||
+        new Promise((resolve) => {
+          this.logger.info(
+            'credentials: token refresh inflight; delaying getUserToken until refresh completes'
+          );
+          this.once('change:isRefreshing', () => {
+            this.logger.info('credentials: token refresh complete; reinvoking getUserToken');
+            resolve();
+          });
+        })
+    ).then(() => {
+      if (!this.canAuthorize) {
+        this.logger.info('credentials: cannot produce an access token from current state');
 
-          return Promise.reject(new Error('Current state cannot produce an access token'));
-        }
+        return Promise.reject(new Error('Current state cannot produce an access token'));
+      }
 
-        if (!scope) {
-          scope = filterScope('spark:kms', this.config.scope);
-        }
+      if (!scope) {
+        scope = filterScope('spark:kms', this.config.scope);
+      }
 
-        scope = sortScope(scope);
+      scope = sortScope(scope);
 
-        if (scope === sortScope(this.config.scope)) {
-          return Promise.resolve(this.supertoken);
-        }
+      if (scope === sortScope(this.config.scope)) {
+        return Promise.resolve(this.supertoken);
+      }
 
-        const token = this.userTokens.get(scope);
+      const token = this.userTokens.get(scope);
 
-        // we should also check for the token.access_token since token object does
-        // not get cleared on unsetting while logging out.
-        if (!token || !token.access_token) {
-          return this.downscope(scope)
-            .then(tap((t) => this.userTokens.add(t)));
-        }
+      // we should also check for the token.access_token since token object does
+      // not get cleared on unsetting while logging out.
+      if (!token || !token.access_token) {
+        return this.downscope(scope).then(tap((t) => this.userTokens.add(t)));
+      }
 
-        return Promise.resolve(token);
-      });
+      return Promise.resolve(token);
+    });
   },
 
   @persist('@')
@@ -380,8 +370,7 @@ const Credentials = WebexPlugin.extend({
       if (attrs.authorization) {
         if (attrs.authorization.supertoken) {
           this.supertoken = attrs.authorization.supertoken;
-        }
-        else {
+        } else {
           this.supertoken = attrs.authorization;
         }
       }
@@ -434,16 +423,14 @@ const Credentials = WebexPlugin.extend({
 
     try {
       this.unset('supertoken');
-    }
-    catch (err) {
+    } catch (err) {
       this.logger.warn('credentials: failed to clear supertoken', err);
     }
 
     while (this.userTokens.models.length) {
       try {
         this.userTokens.remove(this.userTokens.models[0]);
-      }
-      catch (err) {
+      } catch (err) {
         this.logger.warn('credentials: failed to remove user token', err);
       }
     }
@@ -480,7 +467,8 @@ const Credentials = WebexPlugin.extend({
     // while I like #2 from a code simplicity standpoint, the third-party DX
     // isn't great
     if (this.config.jwtRefreshCallback) {
-      return this.config.jwtRefreshCallback(this.webex)
+      return this.config
+        .jwtRefreshCallback(this.webex)
         .then((jwt) => this.webex.authorization.requestAccessTokenFromJwt({jwt}));
     }
 
@@ -488,7 +476,8 @@ const Credentials = WebexPlugin.extend({
       this.webex.internal.services.updateCredentialsConfig();
     }
 
-    return supertoken.refresh()
+    return supertoken
+      .refresh()
       .then((st) => {
         // clear refresh timer
         if (this.refreshTimer) {
@@ -497,20 +486,25 @@ const Credentials = WebexPlugin.extend({
         }
         this.supertoken = st;
 
-        return Promise.all(tokens.map((token) => this.downscope(token.scope)
-          // eslint-disable-next-line max-nested-callbacks
-          .then((t) => {
-            this.logger.info(`credentials: revoking token for ${token.scope}`);
+        return Promise.all(
+          tokens.map((token) =>
+            this.downscope(token.scope)
+              // eslint-disable-next-line max-nested-callbacks
+              .then((t) => {
+                this.logger.info(`credentials: revoking token for ${token.scope}`);
 
-            return token.revoke()
-              .catch((err) => {
-                this.logger.warn('credentials: failed to revoke user token', err);
+                return token
+                  .revoke()
+                  .catch((err) => {
+                    this.logger.warn('credentials: failed to revoke user token', err);
+                  })
+                  .then(() => {
+                    this.userTokens.remove(token.scope);
+                    this.userTokens.add(t);
+                  });
               })
-              .then(() => {
-                this.userTokens.remove(token.scope);
-                this.userTokens.add(t);
-              });
-          })));
+          )
+        );
       })
       .then(() => {
         this.scheduleRefresh(this.supertoken.expires);
@@ -524,8 +518,7 @@ const Credentials = WebexPlugin.extend({
           while (this.userTokens.models.length) {
             try {
               this.userTokens.remove(this.userTokens.models[0]);
-            }
-            catch (err) {
+            } catch (err) {
               this.logger.warn('credentials: failed to remove user token', err);
             }
           }
@@ -551,12 +544,10 @@ const Credentials = WebexPlugin.extend({
       const timeoutLength = this.calcRefreshTimeout(expiresIn);
 
       this.refreshTimer = safeSetTimeout(() => this.refresh(), timeoutLength);
-    }
-    else {
+    } else {
       this.refresh();
     }
-  }
-
+  },
 });
 
 export default Credentials;

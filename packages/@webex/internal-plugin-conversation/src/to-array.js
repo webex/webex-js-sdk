@@ -20,7 +20,7 @@ export default function toArray(direction, obj) {
       return {
         name,
         direction,
-        fn: entry
+        fn: entry,
       };
     }
 

@@ -23,14 +23,19 @@ const KmsBatcher = Batcher.extend({
   processKmsMessageEvent(event) {
     this.logger.info('kms-batcher: received kms message');
 
-    return Promise.all(event.encryption.kmsMessages.map((kmsMessage) => new Promise((resolve) => {
-      /* istanbul ignore else */
-      if (process.env.NODE_ENV !== 'production') {
-        this.logger.info('kms-batcher:', kmsMessage.body);
-      }
+    return Promise.all(
+      event.encryption.kmsMessages.map(
+        (kmsMessage) =>
+          new Promise((resolve) => {
+            /* istanbul ignore else */
+            if (process.env.NODE_ENV !== 'production') {
+              this.logger.info('kms-batcher:', kmsMessage.body);
+            }
 
-      resolve(this.acceptItem(kmsMessage));
-    })));
+            resolve(this.acceptItem(kmsMessage));
+          })
+      )
+    );
   },
 
   /**
@@ -39,30 +44,34 @@ const KmsBatcher = Batcher.extend({
    * @returns {Promise<Object>}
    */
   prepareItem(item) {
-    return this.getDeferredForRequest(item)
-      .then((defer) => {
-        const timeout = item[TIMEOUT_SYMBOL];
+    return this.getDeferredForRequest(item).then((defer) => {
+      const timeout = item[TIMEOUT_SYMBOL];
 
-        /* istanbul ignore if */
-        if (!timeout) {
-          throw new Error('timeout is required');
-        }
+      /* istanbul ignore if */
+      if (!timeout) {
+        throw new Error('timeout is required');
+      }
 
-        const timer = safeSetTimeout(() => {
-          this.logger.warn(`kms: request timed out; request id: ${item.requestId}; timeout: ${timeout}`);
-          this.handleItemFailure(item, new KmsTimeoutError({
+      const timer = safeSetTimeout(() => {
+        this.logger.warn(
+          `kms: request timed out; request id: ${item.requestId}; timeout: ${timeout}`
+        );
+        this.handleItemFailure(
+          item,
+          new KmsTimeoutError({
             timeout,
-            request: item
-          }));
-        }, timeout);
+            request: item,
+          })
+        );
+      }, timeout);
 
-        // Reminder: reassign `promise` is not a viable means of inserting into
-        // the Promise chain
-        defer.promise.then(() => clearTimeout(timer));
-        defer.promise.catch(() => clearTimeout(timer));
+      // Reminder: reassign `promise` is not a viable means of inserting into
+      // the Promise chain
+      defer.promise.then(() => clearTimeout(timer));
+      defer.promise.catch(() => clearTimeout(timer));
 
-        return item;
-      });
+      return item;
+    });
   },
 
   /**
@@ -71,11 +80,10 @@ const KmsBatcher = Batcher.extend({
    * @returns {Promise<Array>}
    */
   prepareRequest(queue) {
-    return this.webex.internal.encryption.kms._getKMSCluster()
-      .then((cluster) => ({
-        destination: cluster,
-        kmsMessages: queue.map((req) => req.wrapped)
-      }));
+    return this.webex.internal.encryption.kms._getKMSCluster().then((cluster) => ({
+      destination: cluster,
+      kmsMessages: queue.map((req) => req.wrapped),
+    }));
   },
 
   /**
@@ -89,7 +97,7 @@ const KmsBatcher = Batcher.extend({
       method: 'POST',
       service: 'encryption',
       resource: '/kms/messages',
-      body: payload
+      body: payload,
     });
   },
 
@@ -114,10 +122,9 @@ const KmsBatcher = Batcher.extend({
    * @returns {Promise}
    */
   handleItemSuccess(item) {
-    return this.getDeferredForResponse(item)
-      .then((defer) => {
-        defer.resolve(item.body);
-      });
+    return this.getDeferredForResponse(item).then((defer) => {
+      defer.resolve(item.body);
+    });
   },
 
   /**
@@ -126,10 +133,9 @@ const KmsBatcher = Batcher.extend({
    * @returns {Promise}
    */
   handleItemFailure(item, reason) {
-    return this.getDeferredForResponse(item)
-      .then((defer) => {
-        defer.reject(reason || new KmsError(item.body));
-      });
+    return this.getDeferredForResponse(item).then((defer) => {
+      defer.reject(reason || new KmsError(item.body));
+    });
   },
 
   /**
@@ -146,7 +152,7 @@ const KmsBatcher = Batcher.extend({
    */
   fingerprintResponse(item) {
     return Promise.resolve(item.requestId);
-  }
+  },
 });
 
 export default KmsBatcher;
