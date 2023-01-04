@@ -618,6 +618,8 @@ export default class Meetings extends WebexPlugin {
             details: uploadResult
           }
         );
+
+        return uploadResult;
       })
       .catch((uploadError) => {
         LoggerProxy.logger.error('Meetings:index#uploadLogs --> Unable to upload logs for meeting', uploadError);
