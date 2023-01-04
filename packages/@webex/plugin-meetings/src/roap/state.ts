@@ -19,8 +19,14 @@ const shouldStep = (roap, meeting) => {
       return false;
     }
   }
-  LoggerProxy.logger.log('Roap:state#shouldStep --> RoapStateMachine: PeerConnectionState, ', meeting.mediaProperties.peerConnection.signalingState);
-  LoggerProxy.logger.log('Roap:state#shouldStep --> RoapStateMachine: success save proceeding with transition, ', roap.msg);
+  LoggerProxy.logger.log(
+    'Roap:state#shouldStep --> RoapStateMachine: PeerConnectionState, ',
+    meeting.mediaProperties.peerConnection.signalingState
+  );
+  LoggerProxy.logger.log(
+    'Roap:state#shouldStep --> RoapStateMachine: success save proceeding with transition, ',
+    roap.msg
+  );
 
   return true;
 };
@@ -49,7 +55,9 @@ const handleTransition = (value, signal, meeting) => {
         if (meeting.mediaId) {
           return ROAP.ROAP_STATE.WAIT_TX_OK;
         }
-        LoggerProxy.logger.error('Roap:state#handleTransition --> Race Condition no mediaId, continuing.');
+        LoggerProxy.logger.error(
+          'Roap:state#handleTransition --> Race Condition no mediaId, continuing.'
+        );
 
         return value;
       }
@@ -124,8 +132,8 @@ const RoapStateMachine = {
             }
 
             return handleTransition(value, signal, meeting);
-          }
-        }
+          },
+        },
       ],
       methods: {
         /**
@@ -135,16 +143,14 @@ const RoapStateMachine = {
          */
         onAfterStep(transition: any) {
           LoggerProxy.logger.log(
-            `Roap:state#onAfterStep --> RoapStateMachine->onAfterStep#fired! State changed from '${transition.from}' to '${
-              transition.to
-            }' with transition '${transition.transition}''.`
+            `Roap:state#onAfterStep --> RoapStateMachine->onAfterStep#fired! State changed from '${transition.from}' to '${transition.to}' with transition '${transition.transition}''.`
           );
-        }
-      }
+        },
+      },
     });
 
     return new RoapState();
-  }
+  },
 };
 
 export default RoapStateMachine;

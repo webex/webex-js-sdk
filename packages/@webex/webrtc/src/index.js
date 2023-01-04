@@ -37,7 +37,5 @@ export default class WebRTC {
    * e.g., setPeerConnection, setVideo
    * @returns {undefined}
    */
-  setPeerConnectionAndVideo() {
-
-  }
+  setPeerConnectionAndVideo() {}
 }

@@ -8,14 +8,16 @@ describe('plugin-meetings', () => {
     const slidoApp = {
       url: 'https://hecate-b.wbx2.com/apps/api/v1/locus/7a4994a7',
       sequence: 138849877016800000,
-      appId: 'Y2lzY29zcGFyazovL3VzL0FQUExJQ0FUSU9OLzQxODc1MGQ0LTM3ZDctNGY2MC1hOWE3LWEwZTE1NDFhNjRkNg',
+      appId:
+        'Y2lzY29zcGFyazovL3VzL0FQUExJQ0FUSU9OLzQxODc1MGQ0LTM3ZDctNGY2MC1hOWE3LWEwZTE1NDFhNjRkNg',
       instanceInfo: {
-        appInstanceUrl: 'https://webex.sli.do/participant/event/mFKKjcYxzx9h31eyWgngFS?clusterId=eu1',
+        appInstanceUrl:
+          'https://webex.sli.do/participant/event/mFKKjcYxzx9h31eyWgngFS?clusterId=eu1',
         externalAppInstanceUrl: '',
-        title: 'Active session'
+        title: 'Active session',
       },
       state: 'STARTED',
-      lastModified: '2022-10-13T21:01:41.680Z'
+      lastModified: '2022-10-13T21:01:41.680Z',
     };
     const otherApp = {
       url: 'https://hecate-b.wbx2.com/apps/api/v1/locus/7a4994a7',
@@ -24,10 +26,10 @@ describe('plugin-meetings', () => {
       instanceInfo: {
         appInstanceUrl: 'https://webex.someotherapp.com/mFKKjcYxzx9h31eyWgngFS?clusterId=eu1',
         externalAppInstanceUrl: '',
-        title: 'Active session'
+        title: 'Active session',
       },
       state: 'STARTED',
-      lastModified: '2022-10-13T21:01:31.680Z'
+      lastModified: '2022-10-13T21:01:31.680Z',
     };
 
     describe('parseApp', () => {

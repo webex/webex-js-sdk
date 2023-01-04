@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-
 const path = require('path');
 const {spawn} = require('child_process');
 
@@ -24,7 +23,7 @@ async function start() {
 
     child = spawn(process.argv[0], [serverPath], {
       env: process.env,
-      stdio: ['ignore', 'pipe', process.stderr]
+      stdio: ['ignore', 'pipe', process.stderr],
     });
 
     child.stdout.on('data', (data) => {
@@ -60,5 +59,5 @@ function stop() {
 
 module.exports = {
   start,
-  stop
+  stop,
 };

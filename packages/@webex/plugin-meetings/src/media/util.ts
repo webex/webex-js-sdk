@@ -15,7 +15,7 @@ MediaUtil.createPeerConnection = (turnServerInfo) => {
     config.iceServers.push({
       urls: turnServerInfo.url,
       username: turnServerInfo.username || '',
-      credential: turnServerInfo.password || ''
+      credential: turnServerInfo.password || '',
     });
   }
   if (isBrowser('firefox')) {
@@ -27,7 +27,7 @@ MediaUtil.createPeerConnection = (turnServerInfo) => {
 
 MediaUtil.createMediaStream = (tracks) => {
   if (!tracks) {
-    LoggerProxy.logger.error('Media:util#createMediaStream --> Tracks don\'t exist');
+    LoggerProxy.logger.error("Media:util#createMediaStream --> Tracks don't exist");
   }
   const filtredTracks = tracks.filter((element) => !!element);
 

@@ -2,10 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-export {
-  persist,
-  waitForValue
-} from './decorators';
+export {persist, waitForValue} from './decorators';
 export {default as makeWebexStore} from './make-webex-store.js';
 export {default as makeWebexPluginStore} from './make-webex-plugin-store.js';
 export {default as MemoryStoreAdapter} from './memory-store-adapter';

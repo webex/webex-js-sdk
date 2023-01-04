@@ -86,18 +86,20 @@ function ensureArrayBuffer(file) {
  */
 function fetch(filename) {
   return new Promise((resolve, reject) => {
-    xhr({
-      uri: makeLocalUrl(`/${filename}`),
-      responseType: 'blob'
-    }, (err, res, body) => {
-      if (err) {
-        reject(err);
+    xhr(
+      {
+        uri: makeLocalUrl(`/${filename}`),
+        responseType: 'blob',
+      },
+      (err, res, body) => {
+        if (err) {
+          reject(err);
+        } else {
+          body.name = body.name || filename;
+          resolve(body);
+        }
       }
-      else {
-        body.name = body.name || filename;
-        resolve(body);
-      }
-    });
+    );
   });
 }
 
@@ -120,38 +122,34 @@ const FileShim = {
    * @returns {Boolean}
    */
   isMatchingFile: function isMatchingFile(left, right) {
-    return Promise.all([
-      ensureArrayBuffer(left),
-      ensureArrayBuffer(right)
-    ])
-      .then((buffers) => {
-        const innerLeft = buffers[0];
-        const innerRight = buffers[1];
+    return Promise.all([ensureArrayBuffer(left), ensureArrayBuffer(right)]).then((buffers) => {
+      const innerLeft = buffers[0];
+      const innerRight = buffers[1];
 
-        if (!FileShim.isBufferLike(innerLeft)) {
-          throw new Error('`innerLeft` must be a `Buffer`');
-        }
+      if (!FileShim.isBufferLike(innerLeft)) {
+        throw new Error('`innerLeft` must be a `Buffer`');
+      }
 
-        if (!FileShim.isBufferLike(innerRight)) {
-          throw new Error('`innerRight` must be a `Buffer`');
-        }
+      if (!FileShim.isBufferLike(innerRight)) {
+        throw new Error('`innerRight` must be a `Buffer`');
+      }
 
-        if (innerLeft.byteLength !== innerRight.byteLength) {
+      if (innerLeft.byteLength !== innerRight.byteLength) {
+        return false;
+      }
+
+      const l = new Uint8Array(innerLeft);
+      const r = new Uint8Array(innerRight);
+
+      for (let i = 0; i < l.length; i += 1) {
+        if (l[i] !== r[i]) {
           return false;
         }
+      }
 
-        const l = new Uint8Array(innerLeft);
-        const r = new Uint8Array(innerRight);
-
-        for (let i = 0; i < l.length; i += 1) {
-          if (l[i] !== r[i]) {
-            return false;
-          }
-        }
-
-        return true;
-      });
-  }
+      return true;
+    });
+  },
 };
 
 module.exports = FileShim;

@@ -28,7 +28,7 @@ describe('webex-core', () => {
         return webex.request({
           service: 'mock',
           resource: '/batch',
-          body: payload
+          body: payload,
         });
       },
       fingerprintRequest(req) {
@@ -36,7 +36,7 @@ describe('webex-core', () => {
       },
       fingerprintResponse(res) {
         return Promise.resolve(res);
-      }
+      },
     });
 
     const OutOfBandBatcher = MockBatcher.extend({
@@ -49,7 +49,7 @@ describe('webex-core', () => {
       },
       fingerprintResponse(res) {
         return Promise.resolve(res.id);
-      }
+      },
     });
 
     const BATCHER_MAX_CALLS = 10;
@@ -60,14 +60,14 @@ describe('webex-core', () => {
       webex = new MockWebex({
         children: {
           batcher: MockBatcher,
-          outOfBandBatcher: OutOfBandBatcher
-        }
+          outOfBandBatcher: OutOfBandBatcher,
+        },
       });
 
       webex.config.mock = {
         batcherMaxCalls: BATCHER_MAX_CALLS,
         batcherWait: BATCHER_WAIT,
-        batcherMaxWait: BATCHER_MAX_WAIT
+        batcherMaxWait: BATCHER_MAX_WAIT,
       };
     });
 
@@ -95,7 +95,6 @@ describe('webex-core', () => {
 
         promises.push(webex.internal.batcher.request(2));
         assert.notCalled(webex.request);
-
 
         return promiseTick(50)
           .then(() => {
@@ -130,7 +129,9 @@ describe('webex-core', () => {
       it('propagates error from inside the call chain', () => {
         // This is way easier to prove if we don't need to control the clock
         clock.uninstall();
-        sinon.stub(webex.internal.batcher, 'fingerprintResponse').throws(new Error('simulated failure'));
+        sinon
+          .stub(webex.internal.batcher, 'fingerprintResponse')
+          .throws(new Error('simulated failure'));
         webex.request.returns(Promise.resolve({body: [{id: 1}]}));
 
         return assert.isRejected(webex.internal.batcher.request({id: 1}), /simulated failure/);
@@ -150,10 +151,7 @@ describe('webex-core', () => {
             .then(() => {
               assert.calledOnce(webex.request);
 
-              return Promise.all([
-                assert.isRejected(p1),
-                assert.isRejected(p2)
-              ]);
+              return Promise.all([assert.isRejected(p1), assert.isRejected(p2)]);
             });
         });
       });
@@ -208,12 +206,17 @@ describe('webex-core', () => {
             webex.request.returns(Promise.resolve({body: result}));
             webex.request.onCall(1).returns(Promise.resolve({body: []}));
 
-            return result.reduce((promise, i) => promise.then(() => {
-              promises.push(webex.internal.batcher.request(i));
-              clock.tick(1);
+            return result
+              .reduce(
+                (promise, i) =>
+                  promise.then(() => {
+                    promises.push(webex.internal.batcher.request(i));
+                    clock.tick(1);
 
-              return promiseTick(50);
-            }), Promise.resolve())
+                    return promiseTick(50);
+                  }),
+                Promise.resolve()
+              )
               .then(() => {
                 assert.calledOnce(webex.request);
 
@@ -253,13 +256,12 @@ describe('webex-core', () => {
               promises.push(webex.internal.batcher.request(i));
             }
 
-            return Promise.all(promises)
-              .then((results) => {
-                assert.calledTwice(webex.request);
-                assert.lengthOf(webex.request.args[0][0].body, BATCHER_MAX_CALLS);
-                assert.lengthOf(webex.request.args[1][0].body, BATCHER_MAX_CALLS);
-                assert.lengthOf(results, BATCHER_MAX_CALLS * 2);
-              });
+            return Promise.all(promises).then((results) => {
+              assert.calledTwice(webex.request);
+              assert.lengthOf(webex.request.args[0][0].body, BATCHER_MAX_CALLS);
+              assert.lengthOf(webex.request.args[1][0].body, BATCHER_MAX_CALLS);
+              assert.lengthOf(results, BATCHER_MAX_CALLS * 2);
+            });
           });
         });
       });
@@ -267,7 +269,6 @@ describe('webex-core', () => {
       describe('when the same request is made twice before the first one completes', () => {
         it('returns the same result', () => {
           webex.request.returns(Promise.resolve({body: [1]}));
-
 
           const p1 = webex.internal.batcher.request(1);
           const p2 = webex.internal.batcher.request(1);
@@ -285,16 +286,15 @@ describe('webex-core', () => {
               assert.deepEqual(webex.request.args[0][0], {
                 service: 'mock',
                 resource: '/batch',
-                body: [1]
+                body: [1],
               });
 
-              return promise
-                .then((result) => assert.deepEqual(result, [1, 1]));
+              return promise.then((result) => assert.deepEqual(result, [1, 1]));
             });
         });
       });
 
-      describe('when it\'s overridden to handle out-of-band responses', () => {
+      describe("when it's overridden to handle out-of-band responses", () => {
         it('resolves as expected', () => {
           sinon.spy(webex.internal.outOfBandBatcher, 'fingerprintResponse');
           const promise = webex.internal.outOfBandBatcher.request({id: 1});
@@ -312,7 +312,7 @@ describe('webex-core', () => {
             .then((res) => {
               assert.deepEqual(res, {
                 id: 1,
-                data: 2
+                data: 2,
               });
             });
         });
@@ -320,7 +320,11 @@ describe('webex-core', () => {
     });
 
     describe('#handleHttpError()', () => {
-      it('handles a non WebexHttpError object passed', () => assert.isRejected(webex.internal.batcher.handleHttpError('simulated failure'), /simulated failure/));
+      it('handles a non WebexHttpError object passed', () =>
+        assert.isRejected(
+          webex.internal.batcher.handleHttpError('simulated failure'),
+          /simulated failure/
+        ));
     });
   });
 });

@@ -24,7 +24,7 @@ function fixToken(token) {
   }
 
   if (token.refresh_token_expires_in && !token.refresh_token_expires) {
-  /* eslint camelcase: [0] */
+    /* eslint camelcase: [0] */
     token.refresh_token_expires = now + token.refresh_token_expires_in * 1000;
   }
 
@@ -61,14 +61,14 @@ function getClientCredentials({clientId, clientSecret, idbrokerUrl}) {
       grant_type: 'client_credentials',
       scope: 'Identity:SCIM webexsquare:get_conversation',
       client_id: clientId,
-      client_secret: clientSecret
+      client_secret: clientSecret,
     },
     headers: {
       // Note: we can't request's auth hash here because this endpoint expects
       // us to send the auth header *without including "Basic "* before the
       // token string
-      authorization: btoa(`${clientId}:${clientSecret}`)
-    }
+      authorization: btoa(`${clientId}:${clientSecret}`),
+    },
   })
     .then((res) => {
       const token = fixToken(res.body);
@@ -93,13 +93,12 @@ function getClientCredentials({clientId, clientSecret, idbrokerUrl}) {
  * @returns {Promise<HttpResponseObject>}
  */
 function requestWithAuth(options) {
-  return getClientCredentials(options.body)
-    .then((authorization) => {
-      options.headers = options.headers || {};
-      options.headers.authorization = authorization;
+  return getClientCredentials(options.body).then((authorization) => {
+    options.headers = options.headers || {};
+    options.headers.authorization = authorization;
 
-      return request(options);
-    });
+    return request(options);
+  });
 }
 
 /**
@@ -132,20 +131,20 @@ function requestWithAuth(options) {
  */
 
 /**
-  * @typedef {Object} TestUserObject
-  * @property {string} password
-  * @property {string} emailAddress
-  * @property {string} displayName
-  * @property {string} id
-  * @property {string} userName
-  * @property {string} email
-  * @property {string} name
-  * @property {string} givenName
-  * @property {string} type
-  * @property {Array.<string>} entitlements
-  * @property {string} orgId
-  * @property {AccessTokenObject} token
-  */
+ * @typedef {Object} TestUserObject
+ * @property {string} password
+ * @property {string} emailAddress
+ * @property {string} displayName
+ * @property {string} id
+ * @property {string} userName
+ * @property {string} email
+ * @property {string} name
+ * @property {string} givenName
+ * @property {string} type
+ * @property {Array.<string>} entitlements
+ * @property {string} orgId
+ * @property {AccessTokenObject} token
+ */
 
 /**
  * Creates a test user
@@ -156,7 +155,10 @@ export function createTestUser(options = {}) {
   const clientId = options.clientId || process.env.WEBEX_CLIENT_ID;
   const clientSecret = options.clientSecret || process.env.WEBEX_CLIENT_SECRET;
   const idbrokerUrl = options.idbrokerUrl || process.env.IDBROKER_BASE_URL;
-  const cigServiceUrl = options.cigServiceUrl || process.env.WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL || process.env.WEBEX_TEST_USERS_CONVERSATION_SERVICE_URL;
+  const cigServiceUrl =
+    options.cigServiceUrl ||
+    process.env.WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL ||
+    process.env.WEBEX_TEST_USERS_CONVERSATION_SERVICE_URL;
 
   if (!clientId) {
     throw new Error('options.clientId or process.env.WEBEX_CLIENT_ID must be defined');
@@ -171,7 +173,9 @@ export function createTestUser(options = {}) {
   }
 
   if (!cigServiceUrl) {
-    throw new Error('options.cigServiceUrl or process.env.WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL must be defined');
+    throw new Error(
+      'options.cigServiceUrl or process.env.WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL must be defined'
+    );
   }
 
   const body = {
@@ -185,7 +189,7 @@ export function createTestUser(options = {}) {
       'squaredCallInitiation',
       'squaredRoomModeration',
       'squaredInviter',
-      'webExSquared'
+      'webExSquared',
     ],
     idbrokerUrl,
     machineType: options.machineType,
@@ -194,20 +198,25 @@ export function createTestUser(options = {}) {
     password: options.password || `${uuid.v4()}zAY1*`,
     roles: options.roles || [],
     scopes: options.scope || process.env.WEBEX_SCOPE,
-    type: options.type
+    type: options.type,
   };
 
   return requestWithAuth({
     method: 'POST',
     uri: `${cigServiceUrl}${BASE_PATH_SECURE}`,
     json: true,
-    body
-  })
-    .then((res) => Object.assign({
-      password: body.password,
-      emailAddress: res.body.user.email,
-      displayName: res.body.user.name
-    }, res.body.user, {token: fixToken(res.body.token)}));
+    body,
+  }).then((res) =>
+    Object.assign(
+      {
+        password: body.password,
+        emailAddress: res.body.user.email,
+        displayName: res.body.user.name,
+      },
+      res.body.user,
+      {token: fixToken(res.body.token)}
+    )
+  );
 }
 
 /**
@@ -224,7 +233,10 @@ export function createTestUser(options = {}) {
 export function loginTestUser(options) {
   const clientId = options.clientId || process.env.WEBEX_CLIENT_ID;
   const clientSecret = options.clientSecret || process.env.WEBEX_CLIENT_SECRET;
-  const cigServiceUrl = options.cigServiceUrl || process.env.WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL || process.env.WEBEX_TEST_USERS_CONVERSATION_SERVICE_URL;
+  const cigServiceUrl =
+    options.cigServiceUrl ||
+    process.env.WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL ||
+    process.env.WEBEX_TEST_USERS_CONVERSATION_SERVICE_URL;
 
   if (!clientId) {
     throw new Error('options.clientId or process.env.WEBEX_CLIENT_ID must be defined');
@@ -235,7 +247,9 @@ export function loginTestUser(options) {
   }
 
   if (!cigServiceUrl) {
-    throw new Error('options.cigServiceUrl or process.env.WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL must be defined');
+    throw new Error(
+      'options.cigServiceUrl or process.env.WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL must be defined'
+    );
   }
 
   return request({
@@ -244,10 +258,9 @@ export function loginTestUser(options) {
     json: true,
     body: _.defaultsDeep(options, {
       clientId,
-      clientSecret
-    })
-  })
-    .then((res) => fixToken(res.body));
+      clientSecret,
+    }),
+  }).then((res) => fixToken(res.body));
 }
 
 /**
@@ -261,10 +274,15 @@ export function loginTestUser(options) {
  * @returns {Promise}
  */
 export function removeTestUser(options = {}) {
-  const cigServiceUrl = options.cigServiceUrl || process.env.WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL || process.env.WEBEX_TEST_USERS_CONVERSATION_SERVICE_URL;
+  const cigServiceUrl =
+    options.cigServiceUrl ||
+    process.env.WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL ||
+    process.env.WEBEX_TEST_USERS_CONVERSATION_SERVICE_URL;
 
   if (!cigServiceUrl) {
-    throw new Error('options.cigServiceUrl or process.env.WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL must be defined');
+    throw new Error(
+      'options.cigServiceUrl or process.env.WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL must be defined'
+    );
   }
 
   if (!options.id) {
@@ -272,12 +290,11 @@ export function removeTestUser(options = {}) {
   }
 
   if (!options.token) {
-    return loginTestUser(options)
-      .then((token) => {
-        options.token = token;
+    return loginTestUser(options).then((token) => {
+      options.token = token;
 
-        return removeTestUser(options);
-      });
+      return removeTestUser(options);
+    });
   }
 
   assert(options.token.authorization, 'options.token.authorization must be defined');
@@ -286,20 +303,20 @@ export function removeTestUser(options = {}) {
     method: 'POST',
     json: true,
     headers: {
-      authorization: options.token.authorization
+      authorization: options.token.authorization,
     },
     body: {
       /* eslint-disable camelcase */
       user_id: options.id,
       refresh_token: options.token.refresh_token,
-      user_type: options.userType || 'PERSON'
+      user_type: options.userType || 'PERSON',
       /* eslint-enable camelcase */
     },
-    uri: `${cigServiceUrl}${BASE_PATH}/delete`
+    uri: `${cigServiceUrl}${BASE_PATH}/delete`,
   });
 }
 
 export {
   default as createWhistlerTestUser,
-  removeTestUser as removeWhistlerTestUser
+  removeTestUser as removeWhistlerTestUser,
 } from './whistler';

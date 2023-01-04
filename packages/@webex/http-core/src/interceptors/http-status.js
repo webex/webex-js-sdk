@@ -18,12 +18,12 @@ export default class HttpStatusInterceptor extends Interceptor {
    */
   constructor(webex, options) {
     super(webex);
-    const ErrorConstructor = options && (options.error || options.ErrorConstructor) || HttpError;
+    const ErrorConstructor = (options && (options.error || options.ErrorConstructor)) || HttpError;
 
     Object.defineProperties(this, {
       ErrorConstructor: {
-        value: ErrorConstructor
-      }
+        value: ErrorConstructor,
+      },
     });
   }
 
@@ -46,9 +46,11 @@ export default class HttpStatusInterceptor extends Interceptor {
         return Promise.resolve(response);
       }
       // to handle locus redirects
-      if (response.statusCode === 404 &&
+      if (
+        response.statusCode === 404 &&
         response.body &&
-        response.body.errorCode === LOCUS_REDIRECT_ERROR) {
+        response.body.errorCode === LOCUS_REDIRECT_ERROR
+      ) {
         return Promise.resolve(response);
       }
     }

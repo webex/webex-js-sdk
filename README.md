@@ -9,6 +9,7 @@
 # The Cisco Webex JS SDK
 
 > Upgrading from Cisco Spark to Webex?
+>
 > - [Follow this short guide.](UPGRADING.md)
 > - [Read why this is more than just a rebrand.](https://developer.webex.com/blog/the-new-cisco-webex-for-developers-is-here---what-developers-need-to-know-from-our-rebrand)
 
@@ -19,8 +20,8 @@ This is a monorepo containing all officially maintained Cisco Webex JS SDK modul
 - [The Cisco Webex JS SDK](#the-cisco-webex-js-sdk)
   - [Install](#install)
   - [Usage](#usage)
-      - [_A note on browser usage_](#a-note-on-browser-usage)
-      - [_Still using `webex/env` or `ciscospark/env`?_](#still-using-webexenv-or-ciscosparkenv)
+    - [_A note on browser usage_](#a-note-on-browser-usage)
+    - [_Still using `webex/env` or `ciscospark/env`?_](#still-using-webexenv-or-ciscosparkenv)
   - [Samples](#samples)
   - [FedRAMP Environment](#fedramp-environment)
     - [Features that do not work in FedRAMP](#features-that-do-not-work-in-fedramp)
@@ -85,7 +86,9 @@ We provide a built, minified version of the SDK, that includes `window.Webex`. Y
 <!-- jsdelivr -->
 <script crossorigin src="https://cdn.jsdelivr.net/npm/webex/umd/webex.min.js"></script>
 <!-- gitcdn -->
-<script crossorigin src="https://gitcdn.xyz/repo/webex/webex-js-sdk/master/docs/samples/webex.min.js"></script>
+<script
+  crossorigin
+  src="https://gitcdn.xyz/repo/webex/webex-js-sdk/master/docs/samples/webex.min.js"></script>
 ```
 
 If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `webex` variable to `window.webex`.
@@ -156,7 +159,7 @@ webex.rooms
 </html>
 ```
 
-3. Add a compatible browser version for parcel to compile for 
+3. Add a compatible browser version for parcel to compile for
 
 - Add the `browserlist` property to your `package.json`. We're using the last two versions of both Chrome and Firefox in this example
 
@@ -178,11 +181,12 @@ webex.rooms
 
 Sample code can be found in [docs/samples](./docs/samples). You can demo them by going to [webex.github.io/webex-js-sdk/samples/](https://webex.github.io/webex-js-sdk/samples/) or you can run them yourself by following this guide in the [Contribution Guide](CONTRIBUTING.md#running-samples-locally)
 
-Samples | Hosted
---- | ---
-[Samples code](./docs/samples/) | [webex.github.io/webex-js-sdk/samples/](https://webex.github.io/webex-js-sdk/samples/)
+| Samples                         | Hosted                                                                                 |
+| ------------------------------- | -------------------------------------------------------------------------------------- |
+| [Samples code](./docs/samples/) | [webex.github.io/webex-js-sdk/samples/](https://webex.github.io/webex-js-sdk/samples/) |
 
 ## FedRAMP Environment
+
 The `webex` JavaScript SDK is officially supporting FedRAMP environments.
 
 To enable usage simply use the `fedramp` configuration setting when creating your `webex` instance:
@@ -191,11 +195,11 @@ To enable usage simply use the `fedramp` configuration setting when creating you
 const Webex = require('webex');
 const webex = Webex.init({
   config: {
-    fedramp: true
+    fedramp: true,
   },
   credentials: {
-    access_token: `<token>`
-  }
+    access_token: `<token>`,
+  },
 });
 
 // Use sdk as normal
@@ -205,6 +209,7 @@ webex.rooms.list().then(console.log);
 > For more information on FedRAMP visit https://developer.webex.com/docs/fedramp-overview
 
 ### Features that do not work in FedRAMP
+
 - Creating Guest tokens aka JWT tokens (not SDK limitation but environment limitation)
 
 ## Contribute

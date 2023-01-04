@@ -50,7 +50,7 @@ registerInternalPlugin('board', Board, {
 
         extract(options) {
           return Promise.resolve(options.body);
-        }
+        },
       },
       {
         name: 'encryptChannel',
@@ -68,8 +68,8 @@ registerInternalPlugin('board', Board, {
 
         extract(options) {
           return Promise.resolve(options.body);
-        }
-      }
+        },
+      },
     ],
     transforms: [
       {
@@ -77,29 +77,27 @@ registerInternalPlugin('board', Board, {
         direction: 'inbound',
 
         fn(ctx, object) {
-          return ctx.webex.internal.board.decryptContents(object)
-            .then((decryptedContents) => {
-              object.items = decryptedContents;
-            });
-        }
+          return ctx.webex.internal.board.decryptContents(object).then((decryptedContents) => {
+            object.items = decryptedContents;
+          });
+        },
       },
       {
         name: 'encryptChannel',
         direciton: 'outbound',
         fn(ctx, object) {
-          return ctx.webex.internal.encryption.kms.createUnboundKeys({count: 1})
-            .then((keys) => {
-              const key = keys[0];
+          return ctx.webex.internal.encryption.kms.createUnboundKeys({count: 1}).then((keys) => {
+            const key = keys[0];
 
-              object.defaultEncryptionKeyUrl = key.uri;
-              object.kmsMessage.keyUris.push(key.uri);
+            object.defaultEncryptionKeyUrl = key.uri;
+            object.kmsMessage.keyUris.push(key.uri);
 
-              return ctx.transform('encryptKmsMessage', object);
-            });
-        }
-      }
-    ]
-  }
+            return ctx.transform('encryptKmsMessage', object);
+          });
+        },
+      },
+    ],
+  },
 });
 
 export {default} from './board';

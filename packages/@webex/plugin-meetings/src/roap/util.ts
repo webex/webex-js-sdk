@@ -1,11 +1,5 @@
 import PeerConnectionManager from '../peer-connection-manager';
-import {
-  _ANSWER_,
-  _ERROR_,
-  _CONFLICT_,
-  ROAP,
-  SDP
-} from '../constants';
+import {_ANSWER_, _ERROR_, _CONFLICT_, ROAP, SDP} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 import ParameterError from '../common/errors/parameter';
 
@@ -34,10 +28,16 @@ RoapUtil.handleError = (pc) =>
     });
 
 RoapUtil.findError = (messageType, errorType, type) =>
-  (type === ROAP.RECEIVE_ROAP_MSG || type === ROAP.SEND_ROAP_MSG) && messageType === _ERROR_ && errorType === _CONFLICT_;
+  (type === ROAP.RECEIVE_ROAP_MSG || type === ROAP.SEND_ROAP_MSG) &&
+  messageType === _ERROR_ &&
+  errorType === _CONFLICT_;
 
 RoapUtil.ensureMeeting = (meeting, type) => {
-  if (type === ROAP.RECEIVE_ROAP_MSG || type === ROAP.SEND_ROAP_MSG || type === ROAP.SEND_ROAP_MSG_SUCCESS) {
+  if (
+    type === ROAP.RECEIVE_ROAP_MSG ||
+    type === ROAP.SEND_ROAP_MSG ||
+    type === ROAP.SEND_ROAP_MSG_SUCCESS
+  ) {
     if (!meeting) {
       return false;
     }
@@ -46,25 +46,30 @@ RoapUtil.ensureMeeting = (meeting, type) => {
   return true;
 };
 
-RoapUtil.updatePeerConnection = (meeting, session) => PeerConnectionManager.updatePeerConnection({
-  offerSdp: session.OFFER.sdps,
-  peerConnection: meeting.mediaProperties.peerConnection
-},
-{
-  meetingId: meeting.id,
-  remoteQualityLevel: meeting.mediaProperties.remoteQualityLevel
-})
-  .then((res) => {
+RoapUtil.updatePeerConnection = (meeting, session) =>
+  PeerConnectionManager.updatePeerConnection(
+    {
+      offerSdp: session.OFFER.sdps,
+      peerConnection: meeting.mediaProperties.peerConnection,
+    },
+    {
+      meetingId: meeting.id,
+      remoteQualityLevel: meeting.mediaProperties.remoteQualityLevel,
+    }
+  ).then((res) => {
     meeting.roap.lastRoapOffer = session.OFFER.sdps;
 
     return res;
   });
 
-
 RoapUtil.setRemoteDescription = (meeting, session) => {
-  LoggerProxy.logger.info(`Roap:util#setRemoteDescription --> Transmit WAIT_TX_OK, correlationId: ${meeting.correlationId}`);
-  if (!(meeting && (meeting.mediaProperties.peerConnection))) {
-    LoggerProxy.logger.error(`Roap:util#setRemoteDescription --> DANGER no media or screen peer connection, correlationId: ${meeting.correlationId}`);
+  LoggerProxy.logger.info(
+    `Roap:util#setRemoteDescription --> Transmit WAIT_TX_OK, correlationId: ${meeting.correlationId}`
+  );
+  if (!(meeting && meeting.mediaProperties.peerConnection)) {
+    LoggerProxy.logger.error(
+      `Roap:util#setRemoteDescription --> DANGER no media or screen peer connection, correlationId: ${meeting.correlationId}`
+    );
 
     return Promise.reject(new ParameterError('Must provide a media or screen peer connection'));
   }
@@ -74,15 +79,18 @@ RoapUtil.setRemoteDescription = (meeting, session) => {
     ROAP_ANSWER,
     session.ANSWER.sdps[0],
     meeting.id
-  ).then(() => {
-    LoggerProxy.logger.info(`Roap:util#setRemoteDescription --> Success for correlationId: ${meeting.correlationId}`);
+  )
+    .then(() => {
+      LoggerProxy.logger.info(
+        `Roap:util#setRemoteDescription --> Success for correlationId: ${meeting.correlationId}`
+      );
 
-    return {
-      seq: session.ANSWER.seq,
-      mediaId: meeting.mediaId,
-      correlationId: meeting.correlationId
-    };
-  })
+      return {
+        seq: session.ANSWER.seq,
+        mediaId: meeting.mediaId,
+        correlationId: meeting.correlationId,
+      };
+    })
     .catch((err) => {
       LoggerProxy.logger.error(`Roap:util#setRemoteDescription --> ${err}`);
       throw err;

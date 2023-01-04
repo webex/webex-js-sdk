@@ -34,7 +34,8 @@ export default class MeetingInfoCollection extends Collection {
     return find(
       // @ts-ignore
       this.meetingInfos,
-      (info) => info.sipUrl === id || info.locusId === id || info.userId === id || info.meetingLink === id
+      (info) =>
+        info.sipUrl === id || info.locusId === id || info.userId === id || info.meetingLink === id
     );
   }
 }

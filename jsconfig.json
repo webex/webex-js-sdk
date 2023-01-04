@@ -2,13 +2,6 @@
   "compilerOptions": {
     "experimentalDecorators": true
   },
-  "include": [
-    "packages/**/*",
-    "node_modules/@wdio/mocha-framework"
-, "packages/@webex"  ],
-  "exclude": [
-    "packages/**/dist/*",
-    "node_modules/**/*",
-    "dist"
-  ]
+  "include": ["packages/**/*", "node_modules/@wdio/mocha-framework", "packages/@webex"],
+  "exclude": ["packages/**/dist/*", "node_modules/**/*", "dist"]
 }

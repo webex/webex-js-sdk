@@ -21,20 +21,22 @@ const Team = WebexPlugin.extend({
    */
   addConversation(team, conversation, activity) {
     return this._ensureGeneralConversation(team)
-      .then((generalConversation) => this.webex.internal.conversation.prepare(activity, {
-        verb: 'add',
-        target: this.webex.internal.conversation.prepareConversation(generalConversation),
-        object: {
-          id: conversation.id,
-          objectType: 'conversation'
-        },
-        kmsMessage: {
-          method: 'create',
-          uri: '/authorizations',
-          resourceUri: conversation.kmsResourceObjectUrl,
-          userIds: [generalConversation.kmsResourceObjectUrl]
-        }
-      }))
+      .then((generalConversation) =>
+        this.webex.internal.conversation.prepare(activity, {
+          verb: 'add',
+          target: this.webex.internal.conversation.prepareConversation(generalConversation),
+          object: {
+            id: conversation.id,
+            objectType: 'conversation',
+          },
+          kmsMessage: {
+            method: 'create',
+            uri: '/authorizations',
+            resourceUri: conversation.kmsResourceObjectUrl,
+            userIds: [generalConversation.kmsResourceObjectUrl],
+          },
+        })
+      )
       .then((a) => this.webex.internal.conversation.submit(a));
   },
 
@@ -48,8 +50,9 @@ const Team = WebexPlugin.extend({
    * @returns {Promise} Resolves with activity that was posted
    */
   addMember(team, participant, activity) {
-    return this._ensureGeneralConversation(team)
-      .then((generalConversation) => this.webex.internal.conversation.add(generalConversation, participant, activity));
+    return this._ensureGeneralConversation(team).then((generalConversation) =>
+      this.webex.internal.conversation.add(generalConversation, participant, activity)
+    );
   },
 
   /**
@@ -69,18 +72,24 @@ const Team = WebexPlugin.extend({
       return Promise.reject(new Error('`params.participants` is required'));
     }
 
-    return Promise.all(params.participants.map((participant) => this.webex.internal.user.asUUID(participant, {create: true})))
+    return Promise.all(
+      params.participants.map((participant) =>
+        this.webex.internal.user.asUUID(participant, {create: true})
+      )
+    )
       .then((participants) => {
         participants.unshift(this.webex.internal.device.userId);
         params.participants = uniq(participants);
       })
       .then(() => this._prepareTeam(params))
-      .then((payload) => this.webex.request({
-        method: 'POST',
-        service: 'conversation',
-        resource: 'teams',
-        body: payload
-      }))
+      .then((payload) =>
+        this.webex.request({
+          method: 'POST',
+          service: 'conversation',
+          resource: 'teams',
+          body: payload,
+        })
+      )
       .then((res) => res.body);
   },
 
@@ -106,18 +115,26 @@ const Team = WebexPlugin.extend({
     }
 
     return this._ensureGeneralConversation(team)
-      .then((generalConversation) => Promise.all(params.participants.map((participant) => this.webex.internal.user.asUUID(participant, {create: true})))
-        .then((participants) => {
-          participants.unshift(this.webex.internal.device.userId);
-          params.participants = uniq(participants);
+      .then((generalConversation) =>
+        Promise.all(
+          params.participants.map((participant) =>
+            this.webex.internal.user.asUUID(participant, {create: true})
+          )
+        )
+          .then((participants) => {
+            participants.unshift(this.webex.internal.device.userId);
+            params.participants = uniq(participants);
+          })
+          .then(() => this._prepareTeamConversation(generalConversation, params))
+      )
+      .then((payload) =>
+        this.webex.request({
+          method: 'POST',
+          uri: `${team.url}/conversations`,
+          qs: pick(options, 'includeAllTeamMembers'),
+          body: payload,
         })
-        .then(() => this._prepareTeamConversation(generalConversation, params)))
-      .then((payload) => this.webex.request({
-        method: 'POST',
-        uri: `${team.url}/conversations`,
-        qs: pick(options, 'includeAllTeamMembers'),
-        body: payload
-      }))
+      )
       .then((res) => res.body);
   },
 
@@ -134,17 +151,20 @@ const Team = WebexPlugin.extend({
     if (!url) {
       return Promise.reject(new Error('`team.url` is required'));
     }
-    const params = Object.assign({
-      includeTeamConversations: false,
-      includeTeamMembers: false
-    }, options);
+    const params = Object.assign(
+      {
+        includeTeamConversations: false,
+        includeTeamMembers: false,
+      },
+      options
+    );
 
-    return this.webex.request({
-      uri: url,
-      qs: params
-    })
-      .then((res) => this._recordUUIDs(res.body)
-        .then(() => res.body));
+    return this.webex
+      .request({
+        uri: url,
+        qs: params,
+      })
+      .then((res) => this._recordUUIDs(res.body).then(() => res.body));
   },
 
   /**
@@ -158,9 +178,10 @@ const Team = WebexPlugin.extend({
       return Promise.reject(new Error('`team.url` is required'));
     }
 
-    return this.webex.request({
-      uri: `${url}/conversations`
-    })
+    return this.webex
+      .request({
+        uri: `${url}/conversations`,
+      })
       .then((res) => res.body.items);
   },
 
@@ -171,10 +192,11 @@ const Team = WebexPlugin.extend({
    * @returns {Promise} Resolves with the conversation
    */
   joinConversation(team, conversation) {
-    return this.webex.request({
-      method: 'POST',
-      uri: `${team.url}/conversations/${conversation.id}/participants`
-    })
+    return this.webex
+      .request({
+        method: 'POST',
+        uri: `${team.url}/conversations/${conversation.id}/participants`,
+      })
       .then((res) => res.body);
   },
 
@@ -186,16 +208,19 @@ const Team = WebexPlugin.extend({
    * @returns {Promise} Resolves with the requested teams
    */
   async list(options = {}) {
-    const params = Object.assign({
-      includeTeamConversations: false,
-      includeTeamMembers: false
-    }, options);
+    const params = Object.assign(
+      {
+        includeTeamConversations: false,
+        includeTeamMembers: false,
+      },
+      options
+    );
     const resource = 'teams';
 
     const res = await this.webex.request({
       api: 'conversation',
       resource,
-      qs: params
+      qs: params,
     });
 
     let list = res.body.items.slice(0);
@@ -207,7 +232,7 @@ const Team = WebexPlugin.extend({
 
           return this.webex.request({
             uri,
-            qs: params
+            qs: params,
           });
         })
       );
@@ -234,8 +259,9 @@ const Team = WebexPlugin.extend({
    * @returns {Promise} Resolves with activity that was posted
    */
   removeMember(team, participant, activity) {
-    return this._ensureGeneralConversation(team)
-      .then((generalConversation) => this.webex.internal.conversation.leave(generalConversation, participant, activity));
+    return this._ensureGeneralConversation(team).then((generalConversation) =>
+      this.webex.internal.conversation.leave(generalConversation, participant, activity)
+    );
   },
 
   /**
@@ -256,8 +282,8 @@ const Team = WebexPlugin.extend({
           target: pick(generalConversation, 'id', 'url', 'objectType'),
           kmsMessage: {
             method: 'delete',
-            uri: `<KRO>/authorizations?${querystring.stringify({authId: conversation.id})}`
-          }
+            uri: `<KRO>/authorizations?${querystring.stringify({authId: conversation.id})}`,
+          },
         };
 
         return this.webex.internal.conversation.prepare(activity, properties);
@@ -285,7 +311,9 @@ const Team = WebexPlugin.extend({
     }
 
     if (team.conversations.items.length) {
-      const generalConversation = find(team.conversations.items, {id: team.generalConversationUuid});
+      const generalConversation = find(team.conversations.items, {
+        id: team.generalConversationUuid,
+      });
 
       if (generalConversation) {
         return Promise.resolve(generalConversation);
@@ -326,19 +354,21 @@ const Team = WebexPlugin.extend({
       return Promise.resolve(team);
     }
 
-    return Promise.all(team.teamMembers.items.map((participant) => {
-      // ROOMs or LYRA_SPACEs do not have email addresses, so there's no point attempting to
-      // record their UUIDs.
-      if (participant.type === 'ROOM' || participant.type === 'LYRA_SPACE') {
-        return Promise.resolve();
-      }
+    return Promise.all(
+      team.teamMembers.items.map((participant) => {
+        // ROOMs or LYRA_SPACEs do not have email addresses, so there's no point attempting to
+        // record their UUIDs.
+        if (participant.type === 'ROOM' || participant.type === 'LYRA_SPACE') {
+          return Promise.resolve();
+        }
 
-      return this.webex.internal.user.recordUUID(participant)
-        .catch((err) => this.logger.warn('Could not record uuid', err));
-    }));
-  }
+        return this.webex.internal.user
+          .recordUUID(participant)
+          .catch((err) => this.logger.warn('Could not record uuid', err));
+      })
+    );
+  },
   /* eslint-enable require-jsdoc */
-
 });
 
 /**
@@ -348,13 +378,11 @@ const Team = WebexPlugin.extend({
  * @param {Object} activity
  * @returns {Promise} Resolves with activity that was posted
  */
-[
-  'assignModerator',
-  'unassignModerator'
-].forEach((verb) => {
+['assignModerator', 'unassignModerator'].forEach((verb) => {
   Team.prototype[verb] = function submitModerationChangeActivity(team, member, activity) {
-    return this._ensureGeneralConversation(team)
-      .then((teamConversation) => this.webex.internal.conversation[verb](teamConversation, member, activity));
+    return this._ensureGeneralConversation(team).then((teamConversation) =>
+      this.webex.internal.conversation[verb](teamConversation, member, activity)
+    );
   };
 });
 
@@ -366,10 +394,7 @@ const Team = WebexPlugin.extend({
  * provisional activity
  * @returns {Promise} Resolves with the posted activity
  */
-[
-  'archive',
-  'unarchive'
-].forEach((verb) => {
+['archive', 'unarchive'].forEach((verb) => {
   Team.prototype[verb] = function submitArchiveStateChangeActivity(target, activity) {
     if (!target.objectType) {
       return Promise.reject(new Error('`target.objectType` is required'));
@@ -378,7 +403,7 @@ const Team = WebexPlugin.extend({
     const properties = {
       verb,
       object: pick(target, 'id', 'url', 'objectType'),
-      target: pick(target, 'id', 'url', 'objectType')
+      target: pick(target, 'id', 'url', 'objectType'),
     };
 
     const teamUrl = this.webex.internal.conversation.getConvoUrl(target);

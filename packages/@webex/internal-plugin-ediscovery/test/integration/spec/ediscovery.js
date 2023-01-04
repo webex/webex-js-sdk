@@ -10,39 +10,43 @@ describe('internal-plugin-ediscovery', () => {
   const reportId = uuid.v4();
   const containerId = uuid.v4();
 
-  before('create compliance officer test user', () => testUsers.create({
-    count: 1,
-    config: {
-      entitlements: [
-        'sparkCompliance',
-        'sparkAdmin',
-        'spark',
-        'squaredCallInitiation',
-        'squaredRoomModeration',
-        'squaredInviter',
-        'webExSquared'
-      ],
-      scope: 'spark-compliance:ediscovery_report',
-      roles: [{name: 'spark.kms_orgagent'}]
-    }
-  })
-    .then((users) => {
-      complianceUser = users[0];
-      complianceUser.webex = new WebexCore({
-        credentials: {
-          authorization: complianceUser.token
-        }
-      });
-      assert.isTrue(complianceUser.webex.canAuthorize);
-    })
-    .catch((error) => {
-      assert.isTrue(error);
-    })
-    .then(() => complianceUser.webex.internal.device.register()));
+  before('create compliance officer test user', () =>
+    testUsers
+      .create({
+        count: 1,
+        config: {
+          entitlements: [
+            'sparkCompliance',
+            'sparkAdmin',
+            'spark',
+            'squaredCallInitiation',
+            'squaredRoomModeration',
+            'squaredInviter',
+            'webExSquared',
+          ],
+          scope: 'spark-compliance:ediscovery_report',
+          roles: [{name: 'spark.kms_orgagent'}],
+        },
+      })
+      .then((users) => {
+        complianceUser = users[0];
+        complianceUser.webex = new WebexCore({
+          credentials: {
+            authorization: complianceUser.token,
+          },
+        });
+        assert.isTrue(complianceUser.webex.canAuthorize);
+      })
+      .catch((error) => {
+        assert.isTrue(error);
+      })
+      .then(() => complianceUser.webex.internal.device.register())
+  );
 
   describe('Requests connect to ediscovery and return 4xx response', () => {
     it('createReport fails with 400 due to invalid report request', async () => {
-      await complianceUser.webex.internal.ediscovery.createReport(new ReportRequest())
+      await complianceUser.webex.internal.ediscovery
+        .createReport(new ReportRequest())
         .then(() => {
           assert.fail('Expected error response due to invalid report request');
         })
@@ -53,18 +57,23 @@ describe('internal-plugin-ediscovery', () => {
     });
 
     it('getReports fails with 404 due to no reports for this user', async () => {
-      await complianceUser.webex.internal.ediscovery.getReports()
+      await complianceUser.webex.internal.ediscovery
+        .getReports()
         .then(() => {
           assert.fail('Expected error response due to no reports for user');
         })
         .catch((error) => {
           assert.equal(error.statusCode, 404);
-          assert.include(error.message, `No records were found for this compliance officer: ${complianceUser.id}`);
+          assert.include(
+            error.message,
+            `No records were found for this compliance officer: ${complianceUser.id}`
+          );
         });
     });
 
     it('getReport fails with 404 due to invalid report id', async () => {
-      await complianceUser.webex.internal.ediscovery.getReport(reportId)
+      await complianceUser.webex.internal.ediscovery
+        .getReport(reportId)
         .then(() => {
           assert.fail('Expected error response due to invalid report id');
         })
@@ -75,7 +84,8 @@ describe('internal-plugin-ediscovery', () => {
     });
 
     it('deleteReport fails with 404 due to invalid report id', async () => {
-      await complianceUser.webex.internal.ediscovery.deleteReport(reportId)
+      await complianceUser.webex.internal.ediscovery
+        .deleteReport(reportId)
         .then(() => {
           assert.fail('Expected error response due to invalid report id');
         })
@@ -86,7 +96,8 @@ describe('internal-plugin-ediscovery', () => {
     });
 
     it('restartReport fails with 404 due to invalid report id', async () => {
-      await complianceUser.webex.internal.ediscovery.restartReport(reportId)
+      await complianceUser.webex.internal.ediscovery
+        .restartReport(reportId)
         .then(() => {
           assert.fail('Expected error response due to invalid report id');
         })
@@ -97,7 +108,8 @@ describe('internal-plugin-ediscovery', () => {
     });
 
     it('getContent fails with 404 due to invalid report id', async () => {
-      await complianceUser.webex.internal.ediscovery.getContent(reportId)
+      await complianceUser.webex.internal.ediscovery
+        .getContent(reportId)
         .then(() => {
           assert.fail('Expected error response due to invalid report id');
         })
@@ -108,7 +120,8 @@ describe('internal-plugin-ediscovery', () => {
     });
 
     it('getClientConfig succeeds', async () => {
-      await complianceUser.webex.internal.ediscovery.getClientConfig()
+      await complianceUser.webex.internal.ediscovery
+        .getClientConfig()
         .then((res) => {
           assert.equal(res.statusCode, 200);
           assert.isNotEmpty(res);
@@ -123,7 +136,8 @@ describe('internal-plugin-ediscovery', () => {
       const invalidUrl = `https://ediscovery-intz.wbx2.com/ediscovery/api/v1/reports/${reportId}`;
 
       it('getContent by url succeeds with valid url', async () => {
-        await complianceUser.webex.internal.ediscovery.getContent(validUrl)
+        await complianceUser.webex.internal.ediscovery
+          .getContent(validUrl)
           .then(() => {
             assert.fail('Expected error response due to invalid report id');
           })
@@ -134,7 +148,8 @@ describe('internal-plugin-ediscovery', () => {
       });
 
       it('getContent by url fails with invalid url', async () => {
-        await complianceUser.webex.internal.ediscovery.getContent(invalidUrl)
+        await complianceUser.webex.internal.ediscovery
+          .getContent(invalidUrl)
           .then(() => {
             assert.fail('Expected error response due to invalid url');
           })
@@ -144,7 +159,8 @@ describe('internal-plugin-ediscovery', () => {
       });
 
       it('getContentContainer by url succeeds with valid url', async () => {
-        await complianceUser.webex.internal.ediscovery.getContentContainer(validUrl)
+        await complianceUser.webex.internal.ediscovery
+          .getContentContainer(validUrl)
           .then(() => {
             assert.fail('Expected error response due to invalid report id');
           })
@@ -155,7 +171,8 @@ describe('internal-plugin-ediscovery', () => {
       });
 
       it('getContentContainer by url fails with invalid url', async () => {
-        await complianceUser.webex.internal.ediscovery.getContentContainer(invalidUrl)
+        await complianceUser.webex.internal.ediscovery
+          .getContentContainer(invalidUrl)
           .then(() => {
             assert.fail('Expected error response due to invalid url');
           })
@@ -165,7 +182,8 @@ describe('internal-plugin-ediscovery', () => {
       });
 
       it('getContentContainerByContainerId by url succeeds with valid url', async () => {
-        await complianceUser.webex.internal.ediscovery.getContentContainerByContainerId(validUrl, containerId)
+        await complianceUser.webex.internal.ediscovery
+          .getContentContainerByContainerId(validUrl, containerId)
           .then(() => {
             assert.fail('Expected error response due to invalid report id');
           })
@@ -176,7 +194,8 @@ describe('internal-plugin-ediscovery', () => {
       });
 
       it('getContentContainerByContainerId by url fails with invalid url', async () => {
-        await complianceUser.webex.internal.ediscovery.getContentContainerByContainerId(invalidUrl, containerId)
+        await complianceUser.webex.internal.ediscovery
+          .getContentContainerByContainerId(invalidUrl, containerId)
           .then(() => {
             assert.fail('Expected error response due to invalid url');
           })

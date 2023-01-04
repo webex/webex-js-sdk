@@ -69,7 +69,7 @@ const createConfig = {
   clientSecret: mySpecificValue,
   idbrokerUrl: mySpecificValue,
   cigServiceUrl: mySpecificValue,
-  scope: mySpecificValue
+  scope: mySpecificValue,
 };
 
 testUsers.create({config: createConfig});

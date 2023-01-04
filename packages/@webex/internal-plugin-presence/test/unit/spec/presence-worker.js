@@ -18,22 +18,18 @@ describe('presence-worker', () => {
       webex = new MockWebex({
         children: {
           mercury: Mercury,
-          presence: Presence
-        }
+          presence: Presence,
+        },
       });
       worker = new PresenceWorker();
       worker.webex = webex;
     });
 
     describe('#initialize()', () => {
-      it('requires webex', () => assert.throws(
-        worker.initialize,
-        /Must initialize Presence Worker with webex!/
-      ));
-      it('requires webex internal', () => assert.throws(
-        () => worker.initialize({}),
-        /Must initialize Presence Worker with webex!/
-      ));
+      it('requires webex', () =>
+        assert.throws(worker.initialize, /Must initialize Presence Worker with webex!/));
+      it('requires webex internal', () =>
+        assert.throws(() => worker.initialize({}), /Must initialize Presence Worker with webex!/));
     });
 
     describe('#enqueue()', () => {
@@ -119,12 +115,11 @@ describe('presence-worker', () => {
       const boarding = {
         pam: true,
         jim: true,
-        dwight: true
+        dwight: true,
       };
 
       it('moves fetchers to flights', () => {
-        webex.internal.presence.list = sinon.stub()
-          .returns(Promise.resolve({statusList: []}));
+        webex.internal.presence.list = sinon.stub().returns(Promise.resolve({statusList: []}));
 
         worker.fetchers = boarding;
 
@@ -134,13 +129,10 @@ describe('presence-worker', () => {
       });
 
       it('calls presence.list', async () => {
-        const response = [
-          {subject: 'pam'},
-          {subject: 'jim'},
-          {subject: 'dwight'}
-        ];
+        const response = [{subject: 'pam'}, {subject: 'jim'}, {subject: 'dwight'}];
 
-        webex.internal.presence.list = sinon.stub()
+        webex.internal.presence.list = sinon
+          .stub()
           .returns(Promise.resolve({statusList: response}));
         webex.internal.presence.emitEvent = sinon.stub();
 
@@ -151,9 +143,10 @@ describe('presence-worker', () => {
         assert.calledWith(webex.internal.presence.list, Object.keys(boarding));
         assert.isEmpty(worker.flights);
         assert.deepEqual(Object.keys(worker.presences), Object.keys(boarding));
-        assert.calledWith(webex.internal.presence.emitEvent,
-          'updated',
-          {type: 'presence', payload: {statusList: response}});
+        assert.calledWith(webex.internal.presence.emitEvent, 'updated', {
+          type: 'presence',
+          payload: {statusList: response},
+        });
       });
     });
 
@@ -163,7 +156,7 @@ describe('presence-worker', () => {
         const scouts = {
           pam: now - 60001, // move them back a little over a minute
           jim: now - 60001,
-          dwight: now
+          dwight: now,
         };
 
         worker.campers = scouts;
@@ -180,11 +173,11 @@ describe('presence-worker', () => {
         const subbies = {
           pam: now,
           jim: now + 61000, // move forward a little over a minute
-          dwight: now
+          dwight: now,
         };
         const watching = {
           pam: 1,
-          jim: 1
+          jim: 1,
         };
 
         worker.watchers = watching;
@@ -200,7 +193,7 @@ describe('presence-worker', () => {
         const subbies = {
           pam: now + 600000, // move forward 10 minutes
           jim: now - 20000, // move back 20 seconds
-          dwight: now - 60000 // move back 1 minute
+          dwight: now - 60000, // move back 1 minute
         };
 
         worker.subscribers = subbies;
@@ -218,7 +211,7 @@ describe('presence-worker', () => {
         const presences = {
           pam: now - 300000, // 5 minutes ago
           jim: now - 600001, // little over 10 minutes ago
-          dwight: now - 1200000 // 20 minutes ago
+          dwight: now - 1200000, // 20 minutes ago
         };
 
         webex.internal.presence.emitEvent = sinon.stub();
@@ -226,30 +219,33 @@ describe('presence-worker', () => {
 
         worker.cleanPresences();
 
-        assert.calledWith(webex.internal.presence.emitEvent,
-          'updated',
-          {type: 'delete', payload: ['jim', 'dwight']});
+        assert.calledWith(webex.internal.presence.emitEvent, 'updated', {
+          type: 'delete',
+          payload: ['jim', 'dwight'],
+        });
       });
     });
 
     describe('#groundskeeper()', () => {
       it('renews subscriptions', async () => {
-        webex.internal.presence.subscribe = sinon.stub()
-          .returns(Promise.resolve({
+        webex.internal.presence.subscribe = sinon.stub().returns(
+          Promise.resolve({
             responses: [
               {
                 responseCode: 200,
                 subscriptionTtl: 600,
                 subject: 'pam',
                 status: {
-                  subject: 'pam'
-                }
+                  subject: 'pam',
+                },
               },
               {
                 responseCode: 500,
-                subject: 'jim'
-              }]
-          }));
+                subject: 'jim',
+              },
+            ],
+          })
+        );
         worker.checkCampers = sinon.stub().returns(['pam']);
         worker.checkSubscriptions = sinon.stub().returns(['jim']);
         worker.cleanPresences = sinon.stub();

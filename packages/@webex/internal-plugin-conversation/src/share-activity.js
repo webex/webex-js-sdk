@@ -22,7 +22,7 @@ const ShareActivity = WebexPlugin.extend({
   getSymbols() {
     return {
       file: FILE_SYMBOL,
-      emitter: EMITTER_SYMBOL
+      emitter: EMITTER_SYMBOL,
     };
   },
 
@@ -33,15 +33,15 @@ const ShareActivity = WebexPlugin.extend({
       deps: ['conversation'],
       fn() {
         return this.conversation;
-      }
-    }
+      },
+    },
   },
 
   session: {
     claimedFileType: 'string',
     conversation: {
       required: true,
-      type: 'object'
+      type: 'object',
     },
 
     content: 'string',
@@ -52,7 +52,7 @@ const ShareActivity = WebexPlugin.extend({
 
     enableThumbnails: {
       default: true,
-      type: 'boolean'
+      type: 'boolean',
     },
 
     hiddenSpaceUrl: 'object',
@@ -65,26 +65,30 @@ const ShareActivity = WebexPlugin.extend({
       type: 'object',
       default() {
         return new Map();
-      }
-    }
+      },
+    },
   },
 
   initialize(attrs, options) {
     Reflect.apply(WebexPlugin.prototype.initialize, this, [attrs, options]);
 
     if (attrs && attrs.conversation) {
-      this.spaceUrl = Promise.resolve(attrs.conversation._spaceUrl || this._retrieveSpaceUrl(`${attrs.conversation.url}/space`)
-        .then((url) => {
-          attrs.conversation._spaceUrl = url;
+      this.spaceUrl = Promise.resolve(
+        attrs.conversation._spaceUrl ||
+          this._retrieveSpaceUrl(`${attrs.conversation.url}/space`).then((url) => {
+            attrs.conversation._spaceUrl = url;
 
-          return url;
-        }));
-      this.hiddenSpaceUrl = Promise.resolve(attrs.conversation._hiddenSpaceUrl || this._retrieveSpaceUrl(`${attrs.conversation.url}/space/hidden`)
-        .then((url) => {
-          attrs.conversation._hiddenSpaceUrl = url;
+            return url;
+          })
+      );
+      this.hiddenSpaceUrl = Promise.resolve(
+        attrs.conversation._hiddenSpaceUrl ||
+          this._retrieveSpaceUrl(`${attrs.conversation.url}/space/hidden`).then((url) => {
+            attrs.conversation._hiddenSpaceUrl = url;
 
-          return url;
-        }));
+            return url;
+          })
+      );
     }
   },
 
@@ -105,21 +109,24 @@ const ShareActivity = WebexPlugin.extend({
       return Promise.resolve();
     }
 
-    gifToAdd = Object.assign({
-      displayName: gif.name,
-      fileSize: gif.size || gif.byteLength || gif.length,
-      mimeType: gif.type,
-      url: 'https://giphy.com',
-      objectType: 'file',
-      height: gif.height,
-      width: gif.width,
-      image: {
-        height: gif.image.height,
-        width: gif.image.width,
-        url: 'https://giphy.com'
+    gifToAdd = Object.assign(
+      {
+        displayName: gif.name,
+        fileSize: gif.size || gif.byteLength || gif.length,
+        mimeType: gif.type,
+        url: 'https://giphy.com',
+        objectType: 'file',
+        height: gif.height,
+        width: gif.width,
+        image: {
+          height: gif.image.height,
+          width: gif.image.width,
+          url: 'https://giphy.com',
+        },
+        [FILE_SYMBOL]: gif,
       },
-      [FILE_SYMBOL]: gif
-    }, pick(options, 'actions'));
+      pick(options, 'actions')
+    );
 
     this.uploads.set(gif, gifToAdd);
 
@@ -159,14 +166,17 @@ const ShareActivity = WebexPlugin.extend({
     }
     const emitter = new EventEmitter();
 
-    upload = Object.assign({
-      displayName: file.name,
-      fileSize: file.size || file.byteLength || file.length,
-      mimeType: file.type,
-      objectType: 'file',
-      [EMITTER_SYMBOL]: emitter,
-      [FILE_SYMBOL]: file
-    }, pick(options, 'actions'));
+    upload = Object.assign(
+      {
+        displayName: file.name,
+        fileSize: file.size || file.byteLength || file.length,
+        mimeType: file.type,
+        objectType: 'file',
+        [EMITTER_SYMBOL]: emitter,
+        [FILE_SYMBOL]: file,
+      },
+      pick(options, 'actions')
+    );
 
     this.uploads.set(file, upload);
     const promise = detectFileType(file, this.logger)
@@ -179,11 +189,12 @@ const ShareActivity = WebexPlugin.extend({
           thumbnailMaxWidth: this.config.thumbnailMaxWidth,
           thumbnailMaxHeight: this.config.thumbnailMaxHeight,
           enableThumbnails: this.enableThumbnails,
-          logger: this.logger
+          logger: this.logger,
         });
       })
       .then((imageData) => {
-        const main = this.webex.internal.encryption.encryptBinary(file)
+        const main = this.webex.internal.encryption
+          .encryptBinary(file)
           .then(({scr, cdata}) => {
             upload.scr = scr;
 
@@ -200,7 +211,6 @@ const ShareActivity = WebexPlugin.extend({
             upload.url = upload.scr.loc = metadata.downloadUrl;
           });
 
-
         let thumb;
 
         if (imageData) {
@@ -210,7 +220,8 @@ const ShareActivity = WebexPlugin.extend({
 
           if (thumbnail && thumbnailDimensions) {
             upload.image = thumbnailDimensions;
-            thumb = this.webex.internal.encryption.encryptBinary(thumbnail)
+            thumb = this.webex.internal.encryption
+              .encryptBinary(thumbnail)
               .then(({scr, cdata}) => {
                 upload.image.scr = scr;
 
@@ -225,7 +236,6 @@ const ShareActivity = WebexPlugin.extend({
 
         return Promise.all([main, thumb]);
       });
-
 
     upload[PROMISE_SYMBOL] = promise;
 
@@ -248,7 +258,6 @@ const ShareActivity = WebexPlugin.extend({
     return files;
   },
 
-
   /**
    * @param {File} file
    * @param {string} uri
@@ -266,24 +275,24 @@ const ShareActivity = WebexPlugin.extend({
       uri,
       file,
       qs: {
-        transcode: true
+        transcode: true,
       },
       phases: {
         initialize: {
-          body: initializeBody
+          body: initializeBody,
         },
         upload: {
           $url(session) {
             return session.uploadUrl;
-          }
+          },
         },
         finalize: {
           $uri(session) {
             return session.finishUploadUrl;
           },
-          body: {fileSize, fileHash}
-        }
-      }
+          body: {fileSize, fileHash},
+        },
+      },
     });
   },
 
@@ -317,10 +326,10 @@ const ShareActivity = WebexPlugin.extend({
         content: this.object && this.object.content ? this.object.content : undefined,
         mentions: this.object && this.object.mentions ? this.object.mentions : undefined,
         files: {
-          items: []
-        }
+          items: [],
+        },
       },
-      clientTempId: this.clientTempId
+      clientTempId: this.clientTempId,
     };
 
     const promises = [];
@@ -332,8 +341,7 @@ const ShareActivity = WebexPlugin.extend({
 
     activity.object.contentCategory = this._determineContentCategory(activity.object.files.items);
 
-    return Promise.all(promises)
-      .then(() => activity);
+    return Promise.all(promises).then(() => activity);
   },
 
   /**
@@ -383,12 +391,13 @@ const ShareActivity = WebexPlugin.extend({
    * @returns {Promise}
    */
   _retrieveSpaceUrl(uri) {
-    return this.webex.request({
-      method: 'PUT',
-      uri
-    })
+    return this.webex
+      .request({
+        method: 'PUT',
+        uri,
+      })
       .then((res) => res.body.spaceUrl);
-  }
+  },
 });
 
 /**
@@ -410,11 +419,17 @@ ShareActivity.create = function create(conversation, object, webex) {
     Reflect.deleteProperty(object.object, 'files');
   }
 
-  const share = new ShareActivity(Object.assign({
-    conversation
-  }, object), {
-    parent: webex
-  });
+  const share = new ShareActivity(
+    Object.assign(
+      {
+        conversation,
+      },
+      object
+    ),
+    {
+      parent: webex,
+    }
+  );
 
   files = files?.items ?? files;
   if (files) {

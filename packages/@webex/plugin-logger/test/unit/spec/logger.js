@@ -45,8 +45,8 @@ describe('plugin-logger', () => {
   beforeEach(() => {
     webex = new MockWebex({
       children: {
-        logger: Logger
-      }
+        logger: Logger,
+      },
     });
   });
 
@@ -55,7 +55,7 @@ describe('plugin-logger', () => {
     warn: ['error', 'log'],
     info: ['log'],
     debug: ['info', 'log'],
-    trace: ['debug', 'info', 'log']
+    trace: ['debug', 'info', 'log'],
   };
 
   function impl(level) {
@@ -154,12 +154,12 @@ describe('plugin-logger', () => {
       const error = new WebexHttpError({
         statusCode: 500,
         body: {
-          error: 'Internal Error'
+          error: 'Internal Error',
         },
         options: {
           service: '',
-          headers: {}
-        }
+          headers: {},
+        },
       });
 
       webex.logger.log(error);
@@ -172,12 +172,12 @@ describe('plugin-logger', () => {
       const error = new WebexHttpError({
         statusCode: 500,
         body: {
-          error: 'Internal Error'
+          error: 'Internal Error',
         },
         options: {
           service: '',
-          headers: {}
-        }
+          headers: {},
+        },
       });
 
       webex.logger.log(error);
@@ -196,60 +196,186 @@ describe('plugin-logger', () => {
     function testLevels(logType, logConfigSetting) {
       /* eslint max-statements: [0] */
       webex.logger.config[logConfigSetting] = 'trace';
-      assert.isTrue(webex.logger.shouldPrint('error', logType), 'it prints `error` logs when the level is `trace`');
-      assert.isTrue(webex.logger.shouldPrint('warn', logType), 'it prints `warn` logs when the level is `trace`');
-      assert.isTrue(webex.logger.shouldPrint('log', logType), 'it prints `log` logs when the level is `trace`');
-      assert.isTrue(webex.logger.shouldPrint('info', logType), 'it prints `info` logs when the level is `trace`');
-      assert.isTrue(webex.logger.shouldPrint('debug', logType), 'it prints `debug` logs when the level is `trace`');
-      assert.isTrue(webex.logger.shouldPrint('trace', logType), 'it prints `trace` logs when the level is `trace`');
+      assert.isTrue(
+        webex.logger.shouldPrint('error', logType),
+        'it prints `error` logs when the level is `trace`'
+      );
+      assert.isTrue(
+        webex.logger.shouldPrint('warn', logType),
+        'it prints `warn` logs when the level is `trace`'
+      );
+      assert.isTrue(
+        webex.logger.shouldPrint('log', logType),
+        'it prints `log` logs when the level is `trace`'
+      );
+      assert.isTrue(
+        webex.logger.shouldPrint('info', logType),
+        'it prints `info` logs when the level is `trace`'
+      );
+      assert.isTrue(
+        webex.logger.shouldPrint('debug', logType),
+        'it prints `debug` logs when the level is `trace`'
+      );
+      assert.isTrue(
+        webex.logger.shouldPrint('trace', logType),
+        'it prints `trace` logs when the level is `trace`'
+      );
 
       webex.logger.config[logConfigSetting] = 'debug';
-      assert.isTrue(webex.logger.shouldPrint('error', logType), 'it prints `error` logs when the level is `debug`');
-      assert.isTrue(webex.logger.shouldPrint('warn', logType), 'it prints `warn` logs when the level is `debug`');
-      assert.isTrue(webex.logger.shouldPrint('log', logType), 'it prints `log` logs when the level is `debug`');
-      assert.isTrue(webex.logger.shouldPrint('info', logType), 'it prints `info` logs when the level is `debug`');
-      assert.isTrue(webex.logger.shouldPrint('debug', logType), 'it prints `debug` logs when the level is `debug`');
-      assert.isFalse(webex.logger.shouldPrint('trace', logType), 'it does not print `trace` logs when the level is `debug`');
+      assert.isTrue(
+        webex.logger.shouldPrint('error', logType),
+        'it prints `error` logs when the level is `debug`'
+      );
+      assert.isTrue(
+        webex.logger.shouldPrint('warn', logType),
+        'it prints `warn` logs when the level is `debug`'
+      );
+      assert.isTrue(
+        webex.logger.shouldPrint('log', logType),
+        'it prints `log` logs when the level is `debug`'
+      );
+      assert.isTrue(
+        webex.logger.shouldPrint('info', logType),
+        'it prints `info` logs when the level is `debug`'
+      );
+      assert.isTrue(
+        webex.logger.shouldPrint('debug', logType),
+        'it prints `debug` logs when the level is `debug`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('trace', logType),
+        'it does not print `trace` logs when the level is `debug`'
+      );
 
       webex.logger.config[logConfigSetting] = 'info';
-      assert.isTrue(webex.logger.shouldPrint('error', logType), 'it prints `error` logs when the level is `info`');
-      assert.isTrue(webex.logger.shouldPrint('warn', logType), 'it prints `warn` logs when the level is `info`');
-      assert.isTrue(webex.logger.shouldPrint('log', logType), 'it prints `log` logs when the level is `info`');
-      assert.isTrue(webex.logger.shouldPrint('info', logType), 'it prints `info` logs when the level is `info`');
-      assert.isFalse(webex.logger.shouldPrint('debug', logType), 'it does not print `debug` logs when the level is `info`');
-      assert.isFalse(webex.logger.shouldPrint('trace', logType), 'it does not print `trace` logs when the level is `info`');
+      assert.isTrue(
+        webex.logger.shouldPrint('error', logType),
+        'it prints `error` logs when the level is `info`'
+      );
+      assert.isTrue(
+        webex.logger.shouldPrint('warn', logType),
+        'it prints `warn` logs when the level is `info`'
+      );
+      assert.isTrue(
+        webex.logger.shouldPrint('log', logType),
+        'it prints `log` logs when the level is `info`'
+      );
+      assert.isTrue(
+        webex.logger.shouldPrint('info', logType),
+        'it prints `info` logs when the level is `info`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('debug', logType),
+        'it does not print `debug` logs when the level is `info`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('trace', logType),
+        'it does not print `trace` logs when the level is `info`'
+      );
 
       webex.logger.config[logConfigSetting] = 'log';
-      assert.isTrue(webex.logger.shouldPrint('error', logType), 'it prints `error` logs when the level is `log`');
-      assert.isTrue(webex.logger.shouldPrint('warn', logType), 'it prints `warn` logs when the level is `log`');
-      assert.isTrue(webex.logger.shouldPrint('log', logType), 'it prints `log` logs when the level is `log`');
-      assert.isFalse(webex.logger.shouldPrint('info', logType), 'it does not print `info` logs when the level is `log`');
-      assert.isFalse(webex.logger.shouldPrint('debug', logType), 'it does not print `debug` logs when the level is `log`');
-      assert.isFalse(webex.logger.shouldPrint('trace', logType), 'it does not print `trace` logs when the level is `log`');
+      assert.isTrue(
+        webex.logger.shouldPrint('error', logType),
+        'it prints `error` logs when the level is `log`'
+      );
+      assert.isTrue(
+        webex.logger.shouldPrint('warn', logType),
+        'it prints `warn` logs when the level is `log`'
+      );
+      assert.isTrue(
+        webex.logger.shouldPrint('log', logType),
+        'it prints `log` logs when the level is `log`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('info', logType),
+        'it does not print `info` logs when the level is `log`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('debug', logType),
+        'it does not print `debug` logs when the level is `log`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('trace', logType),
+        'it does not print `trace` logs when the level is `log`'
+      );
 
       webex.logger.config[logConfigSetting] = 'warn';
-      assert.isTrue(webex.logger.shouldPrint('error', logType), 'it prints `error` logs when the level is `warn`');
-      assert.isTrue(webex.logger.shouldPrint('warn', logType), 'it prints `warn` logs when the level is `warn`');
-      assert.isFalse(webex.logger.shouldPrint('log', logType), 'it does not print `log` logs when the level is `warn`');
-      assert.isFalse(webex.logger.shouldPrint('info', logType), 'it does not print `info` logs when the level is `warn`');
-      assert.isFalse(webex.logger.shouldPrint('debug', logType), 'it does not print `debug` logs when the level is `warn`');
-      assert.isFalse(webex.logger.shouldPrint('trace', logType), 'it does not print `trace` logs when the level is `warn`');
+      assert.isTrue(
+        webex.logger.shouldPrint('error', logType),
+        'it prints `error` logs when the level is `warn`'
+      );
+      assert.isTrue(
+        webex.logger.shouldPrint('warn', logType),
+        'it prints `warn` logs when the level is `warn`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('log', logType),
+        'it does not print `log` logs when the level is `warn`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('info', logType),
+        'it does not print `info` logs when the level is `warn`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('debug', logType),
+        'it does not print `debug` logs when the level is `warn`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('trace', logType),
+        'it does not print `trace` logs when the level is `warn`'
+      );
 
       webex.logger.config[logConfigSetting] = 'error';
-      assert.isTrue(webex.logger.shouldPrint('error', logType), 'it prints `error` logs when the level is `error`');
-      assert.isFalse(webex.logger.shouldPrint('warn', logType), 'it does not print `warn` logs when the level `error` is ');
-      assert.isFalse(webex.logger.shouldPrint('log', logType), 'it does not print `log` logs when the level is `error`');
-      assert.isFalse(webex.logger.shouldPrint('info', logType), 'it does not print `info` logs when the level is `error`');
-      assert.isFalse(webex.logger.shouldPrint('debug', logType), 'it does not print `debug` logs when the level is `error`');
-      assert.isFalse(webex.logger.shouldPrint('trace', logType), 'it does not print `trace` logs when the level is `error`');
+      assert.isTrue(
+        webex.logger.shouldPrint('error', logType),
+        'it prints `error` logs when the level is `error`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('warn', logType),
+        'it does not print `warn` logs when the level `error` is '
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('log', logType),
+        'it does not print `log` logs when the level is `error`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('info', logType),
+        'it does not print `info` logs when the level is `error`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('debug', logType),
+        'it does not print `debug` logs when the level is `error`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('trace', logType),
+        'it does not print `trace` logs when the level is `error`'
+      );
 
       webex.logger.config[logConfigSetting] = 'silent';
-      assert.isFalse(webex.logger.shouldPrint('error', logType), 'it does not print `error` logs when the level is `silent`');
-      assert.isFalse(webex.logger.shouldPrint('warn', logType), 'it does not print `warn` logs when the level is `silent`');
-      assert.isFalse(webex.logger.shouldPrint('log', logType), 'it does not print `log` logs when the level is `silent`');
-      assert.isFalse(webex.logger.shouldPrint('info', logType), 'it does not print `info` logs when the level is `silent`');
-      assert.isFalse(webex.logger.shouldPrint('debug', logType), 'it does not print `debug` logs when the level is `silent`');
-      assert.isFalse(webex.logger.shouldPrint('trace', logType), 'it does not print `trace` logs when the level is `silent`');
+      assert.isFalse(
+        webex.logger.shouldPrint('error', logType),
+        'it does not print `error` logs when the level is `silent`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('warn', logType),
+        'it does not print `warn` logs when the level is `silent`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('log', logType),
+        'it does not print `log` logs when the level is `silent`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('info', logType),
+        'it does not print `info` logs when the level is `silent`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('debug', logType),
+        'it does not print `debug` logs when the level is `silent`'
+      );
+      assert.isFalse(
+        webex.logger.shouldPrint('trace', logType),
+        'it does not print `trace` logs when the level is `silent`'
+      );
     }
 
     it('indicates whether or not the desired log should be printed at the current log level', () => {
@@ -310,20 +436,20 @@ describe('plugin-logger', () => {
           developer: {
             get() {
               return 'info';
-            }
+            },
           },
           entitlement: {
             get() {
               return false;
-            }
-          }
-        }
+            },
+          },
+        },
       };
       webex.logger.info('test');
       assert.called(console.info);
     });
 
-    nodeOnly(it)('doesn\'t break if the feature toggle is set to an incorrect value', () => {
+    nodeOnly(it)("doesn't break if the feature toggle is set to an incorrect value", () => {
       assert.doesNotThrow(() => {
         assert.notCalled(console.info);
         webex.logger.info('test');
@@ -334,14 +460,14 @@ describe('plugin-logger', () => {
             developer: {
               get() {
                 return 'not-a-log-method';
-              }
+              },
             },
             entitlement: {
               get() {
                 return false;
-              }
-            }
-          }
+              },
+            },
+          },
         };
         webex.logger.info('test');
         assert.notCalled(console.info);
@@ -378,29 +504,30 @@ describe('plugin-logger', () => {
     });
   });
 
-
   describe('#filter', () => {
     it('redacts email addresses', () => {
       const message = {
-        blarg: 'test@example.com'
+        blarg: 'test@example.com',
       };
 
-      assert.deepEqual(webex.logger.filter(message), [{
-        blarg: '[REDACTED]'
-      }]);
+      assert.deepEqual(webex.logger.filter(message), [
+        {
+          blarg: '[REDACTED]',
+        },
+      ]);
     });
 
     it('strips auth headers from log output', () => {
       const msg = {
         headers: {
-          authorization: 'Bearer'
+          authorization: 'Bearer',
         },
         options: {
           headers: {
             trackingid: '123',
-            authorization: 'Bearer'
-          }
-        }
+            authorization: 'Bearer',
+          },
+        },
       };
 
       assert.doesNotThrow(() => {
@@ -416,23 +543,36 @@ describe('plugin-logger', () => {
       const [filtered] = webex.logger.filter(msg);
 
       assert.nestedProperty(msg, 'headers.authorization', 'it does not alter the original message');
-      assert.nestedProperty(msg, 'options.headers.authorization', 'it does not alter the original message');
+      assert.nestedProperty(
+        msg,
+        'options.headers.authorization',
+        'it does not alter the original message'
+      );
 
-      assert.notNestedProperty(filtered, 'headers.authorization', 'it removes headers.authorization');
-      assert.notNestedProperty(filtered, 'options.headers.authorization', 'it removes options.headers.authorization');
-      assert.nestedProperty(msg, 'options.headers.trackingid', 'it does not remove other header values');
-      assert.nestedProperty(filtered, 'options.headers.trackingid', 'it does not remove other header values');
+      assert.notNestedProperty(
+        filtered,
+        'headers.authorization',
+        'it removes headers.authorization'
+      );
+      assert.notNestedProperty(
+        filtered,
+        'options.headers.authorization',
+        'it removes options.headers.authorization'
+      );
+      assert.nestedProperty(
+        msg,
+        'options.headers.trackingid',
+        'it does not remove other header values'
+      );
+      assert.nestedProperty(
+        filtered,
+        'options.headers.trackingid',
+        'it does not remove other header values'
+      );
     });
   });
 
-  [
-    'error',
-    'warn',
-    'log',
-    'info',
-    'debug',
-    'trace'
-  ].forEach((level) => {
+  ['error', 'warn', 'log', 'info', 'debug', 'trace'].forEach((level) => {
     describe(`#${level}()`, () => {
       it(`proxies console.${level}`, () => {
         webex.logger.config.level = level;
@@ -446,13 +586,13 @@ describe('plugin-logger', () => {
         webex.logger[level]({
           headers: {
             authorization: 'Bearer',
-            trackingid: '123'
-          }
+            trackingid: '123',
+          },
         });
         assert.calledWith(console[impl(level)], 'wx-js-sdk', {
           headers: {
-            trackingid: '123'
-          }
+            trackingid: '123',
+          },
         });
       });
     });
@@ -463,7 +603,7 @@ describe('plugin-logger', () => {
       webex.config.logger.level = 'trace';
       webex.logger.log({
         Authorization: 'XXXXXXX',
-        Key: 'myKey'
+        Key: 'myKey',
       });
 
       // Assert auth was filtered
@@ -471,7 +611,7 @@ describe('plugin-logger', () => {
 
       webex.logger.log({
         authorization: 'XXXXXXX',
-        Key: 'myKey'
+        Key: 'myKey',
       });
 
       assert.calledWith(console.log, 'wx-js-sdk', {Key: 'myKey'});
@@ -493,7 +633,7 @@ describe('plugin-logger', () => {
       const object = {
         authorization: 'XXXXXXX',
         string: 'test@cisco.com',
-        Key: 'myKey'
+        Key: 'myKey',
       };
 
       // Add a circular reference to the object
@@ -503,7 +643,7 @@ describe('plugin-logger', () => {
 
       const expected = {
         string: '[REDACTED]',
-        Key: 'myKey'
+        Key: 'myKey',
       };
 
       expected.selfReference = expected;
@@ -530,8 +670,8 @@ describe('plugin-logger', () => {
           otherPrimativeNum: 6,
           subPrimativeBool: true,
           otherPrimativeBool: false,
-          subPrimativeSymbol: sym
-        }
+          subPrimativeSymbol: sym,
+        },
       };
 
       object.subObject.circularObjectRef = object;
@@ -555,8 +695,8 @@ describe('plugin-logger', () => {
           otherPrimativeBool: false,
           subPrimativeSymbol: sym,
           circularObjectRef: object,
-          circularFunctionRef: func
-        }
+          circularFunctionRef: func,
+        },
       });
     });
   });
@@ -584,7 +724,6 @@ describe('plugin-logger', () => {
         lastvalue = fields[3];
       }
     }
-
 
     it('formats mixed log types in order by default', async () => {
       for (let i = 0; i < 10; i += 1) {

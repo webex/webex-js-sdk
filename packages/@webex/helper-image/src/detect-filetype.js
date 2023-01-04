@@ -26,16 +26,15 @@ export default function detectFileType(file, logger) {
 
   // This kinda belongs in http core, but since we have no guarantee that
   // buffers are expected to have names there, it'll stay here for now.
-  return detect(file)
-    .then((type) => {
-      if (type === 'application/x-msi' || type === 'application/octet-stream') {
-        logger.info(`detected filetype to be ${type}. Falling back to mime.lookup`);
+  return detect(file).then((type) => {
+    if (type === 'application/x-msi' || type === 'application/octet-stream') {
+      logger.info(`detected filetype to be ${type}. Falling back to mime.lookup`);
 
-        return getType(file.name);
-      }
+      return getType(file.name);
+    }
 
-      logger.info(`detected filetype to be ${type}. returning it`);
+    logger.info(`detected filetype to be ${type}. returning it`);
 
-      return type;
-    });
+    return type;
+  });
 }

@@ -15,7 +15,7 @@ describe('webex-core', () => {
         hostGroup: 'example-host-group.com',
         id: 'example-head:example-group:example-cluster:example-name',
         priority: 1,
-        uri: 'example-uri.com'
+        uri: 'example-uri.com',
       };
 
       defaultHostGroup = 'example-default.com';
@@ -132,7 +132,6 @@ describe('webex-core', () => {
         assert.isTrue(serviceHost.setStatus({failed: true}).failed);
       });
 
-
       it('should set the property failed to false', () => {
         assert.isFalse(serviceHost.setStatus({failed: false}).failed);
       });
@@ -141,33 +140,40 @@ describe('webex-core', () => {
         assert.isTrue(serviceHost.setStatus({replaced: true}).replaced);
       });
 
-
       it('should set the property replaced to false', () => {
         assert.isFalse(serviceHost.setStatus({replaced: false}).replaced);
       });
 
       it('should set the property replaced and failed to true', () => {
-        assert.isTrue(serviceHost.setStatus({
-          failed: true,
-          replaced: true
-        }).failed);
+        assert.isTrue(
+          serviceHost.setStatus({
+            failed: true,
+            replaced: true,
+          }).failed
+        );
 
-        assert.isTrue(serviceHost.setStatus({
-          failed: true,
-          replaced: true
-        }).replaced);
+        assert.isTrue(
+          serviceHost.setStatus({
+            failed: true,
+            replaced: true,
+          }).replaced
+        );
       });
 
       it('should set the property replaced and failed to false', () => {
-        assert.isFalse(serviceHost.setStatus({
-          failed: false,
-          replaced: false
-        }).failed);
+        assert.isFalse(
+          serviceHost.setStatus({
+            failed: false,
+            replaced: false,
+          }).failed
+        );
 
-        assert.isFalse(serviceHost.setStatus({
-          failed: false,
-          replaced: false
-        }).replaced);
+        assert.isFalse(
+          serviceHost.setStatus({
+            failed: false,
+            replaced: false,
+          }).replaced
+        );
       });
 
       describe('static methods', () => {
@@ -178,15 +184,12 @@ describe('webex-core', () => {
             polyFixture = {
               catalog: fixture.catalog,
               name: fixture.id.split(':')[3],
-              url: fixture.defaultUri
+              url: fixture.defaultUri,
             };
           });
 
           it('should generate a new ServiceHost', () => {
-            assert.instanceOf(
-              ServiceHost.polyGenerate(polyFixture),
-              ServiceHost
-            );
+            assert.instanceOf(ServiceHost.polyGenerate(polyFixture), ServiceHost);
           });
         });
 

@@ -15,11 +15,11 @@ describe('webex-core', () => {
         sinon.stub(Page, 'parseLinkHeaders');
         const response = {
           body: {
-            items: [1, 2, 3]
+            items: [1, 2, 3],
           },
           headers: {
-            link: 'FakeHeaderLinks'
-          }
+            link: 'FakeHeaderLinks',
+          },
         };
 
         page = new Page(response, 'FakeWebex');
@@ -47,22 +47,24 @@ describe('webex-core', () => {
 
       before(() => {
         webex = {
-          request: sinon.stub().returns(Promise.resolve({
-            body: {
-              items: [4, 5, 6]
-            },
-            headers: {
-              link: '<https://www.cisco.com>; rel=previous'
-            }
-          }))
+          request: sinon.stub().returns(
+            Promise.resolve({
+              body: {
+                items: [4, 5, 6],
+              },
+              headers: {
+                link: '<https://www.cisco.com>; rel=previous',
+              },
+            })
+          ),
         };
         const response = {
           body: {
-            items: [1, 2, 3]
+            items: [1, 2, 3],
           },
           headers: {
-            link: '<https://www.cisco.com>; rel=next'
-          }
+            link: '<https://www.cisco.com>; rel=next',
+          },
         };
 
         page = new Page(response, webex);
@@ -72,8 +74,8 @@ describe('webex-core', () => {
         assert(page.hasNext());
       });
 
-      it('retrieves previous link', () => page.next()
-        .then((nextPage) => {
+      it('retrieves previous link', () =>
+        page.next().then((nextPage) => {
           assert.deepEqual(nextPage.items, [4, 5, 6]);
           assert.calledWith(webex.request, {uri: 'https://www.cisco.com'});
         }));
@@ -84,22 +86,24 @@ describe('webex-core', () => {
 
       before(() => {
         webex = {
-          request: sinon.stub().returns(Promise.resolve({
-            body: {
-              items: [4, 5, 6]
-            },
-            headers: {
-              link: '<https://www.cisco.com>; rel=previous'
-            }
-          }))
+          request: sinon.stub().returns(
+            Promise.resolve({
+              body: {
+                items: [4, 5, 6],
+              },
+              headers: {
+                link: '<https://www.cisco.com>; rel=previous',
+              },
+            })
+          ),
         };
         const response = {
           body: {
-            items: [1, 2, 3]
+            items: [1, 2, 3],
           },
           headers: {
-            link: '<https://www.cisco.com>; rel=previous'
-          }
+            link: '<https://www.cisco.com>; rel=previous',
+          },
         };
 
         page = new Page(response, webex);
@@ -109,8 +113,8 @@ describe('webex-core', () => {
         assert(page.hasPrevious());
       });
 
-      it('retrieves previous link', () => page.previous()
-        .then((prevPage) => {
+      it('retrieves previous link', () =>
+        page.previous().then((prevPage) => {
           assert.deepEqual(prevPage.items, [4, 5, 6]);
           assert.calledWith(webex.request, {uri: 'https://www.cisco.com'});
         }));
@@ -120,7 +124,7 @@ describe('webex-core', () => {
       const singleLinkHeader = '<https://www.cisco.com>; rel=cisco';
       const multipleLinkHeader = [
         '<https://www.ciscospark.com>; rel=webex',
-        '<https://www.cisco.com>; rel=cisco'
+        '<https://www.cisco.com>; rel=cisco',
       ];
 
       it('returns empty object if there are not any link headers', () => {
@@ -129,14 +133,14 @@ describe('webex-core', () => {
 
       it('returns object containing one link if only one link header passed as a string', () => {
         assert.deepEqual(Page.parseLinkHeaders(singleLinkHeader), {
-          cisco: 'https://www.cisco.com'
+          cisco: 'https://www.cisco.com',
         });
       });
 
       it('returns object containing multiple links when multiple headers passed as an array', () => {
         assert.deepEqual(Page.parseLinkHeaders(multipleLinkHeader), {
           webex: 'https://www.ciscospark.com',
-          cisco: 'https://www.cisco.com'
+          cisco: 'https://www.cisco.com',
         });
       });
     });

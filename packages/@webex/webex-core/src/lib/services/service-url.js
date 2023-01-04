@@ -11,8 +11,8 @@ const ServiceUrl = AmpState.extend({
 
   props: {
     defaultUrl: ['string', true, undefined],
-    hosts: ['array', false, () => ([])],
-    name: ['string', true, undefined]
+    hosts: ['array', false, () => []],
+    name: ['string', true, undefined],
   },
 
   /**
@@ -39,7 +39,7 @@ const ServiceUrl = AmpState.extend({
   _getHostUrls() {
     return this.hosts.map((host) => ({
       url: this._generateHostUrl(host.host),
-      priority: host.priority
+      priority: host.priority,
     }));
   },
 
@@ -56,28 +56,29 @@ const ServiceUrl = AmpState.extend({
       return this.defaultUrl;
     }
 
-    let filteredHosts = clusterId ?
-      this.hosts.filter((host) => host.id === clusterId) :
-      this.hosts.filter((host) => host.homeCluster);
+    let filteredHosts = clusterId
+      ? this.hosts.filter((host) => host.id === clusterId)
+      : this.hosts.filter((host) => host.homeCluster);
 
-    const aliveHosts = filteredHosts.filter(
-      (host) => !host.failed
+    const aliveHosts = filteredHosts.filter((host) => !host.failed);
+
+    filteredHosts =
+      aliveHosts.length === 0
+        ? filteredHosts.map((host) => {
+            /* eslint-disable-next-line no-param-reassign */
+            host.failed = false;
+
+            return host;
+          })
+        : aliveHosts;
+
+    return this._generateHostUrl(
+      filteredHosts.reduce(
+        (previous, current) =>
+          previous.priority > current.priority || !previous.homeCluster ? current : previous,
+        {}
+      ).host
     );
-
-    filteredHosts = (aliveHosts.length === 0) ?
-      filteredHosts.map(
-        (host) => {
-          /* eslint-disable-next-line no-param-reassign */
-          host.failed = false;
-
-          return host;
-        }
-      ) : aliveHosts;
-
-    return this._generateHostUrl(filteredHosts.reduce((previous, current) => (
-      (previous.priority > current.priority || !previous.homeCluster) ?
-        current : previous
-    ), {}).host);
   },
 
   /**
@@ -99,7 +100,7 @@ const ServiceUrl = AmpState.extend({
       foundHost.failed = true;
     }
 
-    return (foundHost !== undefined);
+    return foundHost !== undefined;
   },
 
   /**
@@ -116,7 +117,7 @@ const ServiceUrl = AmpState.extend({
     }
 
     return this._getPriorityHostUrl(clusterId);
-  }
+  },
 });
 /* eslint-enable no-underscore-dangle */
 

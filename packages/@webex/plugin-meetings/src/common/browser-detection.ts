@@ -9,7 +9,7 @@ const mockDetectionObject = {
   /* eslint-enable global-require */
   getBrowserName: () => '',
   getBrowserVersion: () => '',
-  isBrowser: () => false
+  isBrowser: () => false,
 };
 
 const createDetectionObject = (results) => {
@@ -26,11 +26,12 @@ const createDetectionObject = (results) => {
     getOSVersion,
     getBrowserName,
     getBrowserVersion,
-    isBrowser
+    isBrowser,
   };
 };
 
-export default memoize((agent?: any) => (agent || window.navigator?.userAgent ?
-  createDetectionObject(bowser.getParser(agent || window.navigator.userAgent)) :
-  mockDetectionObject
-));
+export default memoize((agent?: any) =>
+  agent || window.navigator?.userAgent
+    ? createDetectionObject(bowser.getParser(agent || window.navigator.userAgent))
+    : mockDetectionObject
+);

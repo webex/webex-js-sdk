@@ -2,28 +2,29 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-
 const bodyParser = require('body-parser');
 const express = require('express');
 
 const createUser = require('./create-user');
 
 /* eslint new-cap: [0] */
-const router = module.exports = express.Router();
+const router = (module.exports = express.Router());
 
 // Enable JSON bodies
 // ------------------
 
-router.use(bodyParser.json({
-  strict: false
-}));
+router.use(
+  bodyParser.json({
+    strict: false,
+  })
+);
 
 router.post('/', (req, res, next) => {
   if (!req.body.displayName) {
     res
       .status(400)
       .json({
-        error: '`displayName` is a required body parameter'
+        error: '`displayName` is a required body parameter',
       })
       .end();
 

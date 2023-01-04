@@ -8,13 +8,15 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import {BNR_STATUS} from '../constants';
 
 const createEffectsState = (type: any) => {
-  LoggerProxy.logger.info(`Meeting:effectState#createEffectsState --> creating effectsState for effect ${type}`);
+  LoggerProxy.logger.info(
+    `Meeting:effectState#createEffectsState --> creating effectsState for effect ${type}`
+  );
 
   return new EffectsState(type);
 };
 
 /* The purpose of this class is to manage the effects state(for eg., BNR).
-*/
+ */
 class EffectsState {
   effectType: any;
   pendingPromiseReject: any;
@@ -25,9 +27,9 @@ class EffectsState {
     this.effectType = type;
     this.state = {
       bnr: {
-        enabled: BNR_STATUS.NOT_ENABLED
+        enabled: BNR_STATUS.NOT_ENABLED,
       },
-      callToWebrtcBNRInProgress: false
+      callToWebrtcBNRInProgress: false,
     };
     // these 2 hold the resolve, reject methods for the promise we returned to the client in last handleClientRequest() call
     this.pendingPromiseResolve = null;
@@ -98,7 +100,9 @@ class EffectsState {
     }
 
     if (this.state.callToWebrtcBNRInProgress) {
-      LoggerProxy.logger.warn('Meeting:effectState#enableBNR. Call to WebRTC in progress, we need to wait for it to complete');
+      LoggerProxy.logger.warn(
+        'Meeting:effectState#enableBNR. Call to WebRTC in progress, we need to wait for it to complete'
+      );
 
       return this.resolvePromise();
     }
@@ -110,32 +114,30 @@ class EffectsState {
       this.state.callToWebrtcBNRInProgress = true;
       const audioStream = MediaUtil.createMediaStream([meeting.mediaProperties.audioTrack]);
 
-      LoggerProxy.logger.info('Meeting:effectState#enableBNR. MediaStream created from meeting & sent to updateAudio');
+      LoggerProxy.logger.info(
+        'Meeting:effectState#enableBNR. MediaStream created from meeting & sent to updateAudio'
+      );
       await meeting.updateAudio({
         sendAudio: true,
         receiveAudio: meeting.mediaProperties.mediaDirection.receiveAudio,
-        stream: audioStream
+        stream: audioStream,
       });
 
-      LoggerProxy.logger.info('Meeting:effectState#enableBNR. Updated meeting audio with bnr enabled track');
+      LoggerProxy.logger.info(
+        'Meeting:effectState#enableBNR. Updated meeting audio with bnr enabled track'
+      );
       bnr.enabled = BNR_STATUS.ENABLED;
       this.state.callToWebrtcBNRInProgress = false;
-      Metrics.sendBehavioralMetric(
-        BEHAVIORAL_METRICS.ENABLE_BNR_SUCCESS,
-      );
-    }
-    catch (error) {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ENABLE_BNR_SUCCESS);
+    } catch (error) {
       bnr.enabled = BNR_STATUS.NOT_ENABLED;
       this.state.callToWebrtcBNRInProgress = false;
       LoggerProxy.logger.error('Meeting:index#enableBNR.', error);
 
-      Metrics.sendBehavioralMetric(
-        BEHAVIORAL_METRICS.ENABLE_BNR_FAILURE,
-        {
-          reason: error.message,
-          stack: error.stack
-        }
-      );
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ENABLE_BNR_FAILURE, {
+        reason: error.message,
+        stack: error.stack,
+      });
       this.rejectPromise(error);
 
       throw error;
@@ -158,7 +160,9 @@ class EffectsState {
 
     try {
       if (this.state.callToWebrtcBNRInProgress) {
-        LoggerProxy.logger.info('Meeting:effectState#disableBNR. Call to WebRTC in progress, we need to wait for it to complete');
+        LoggerProxy.logger.info(
+          'Meeting:effectState#disableBNR. Call to WebRTC in progress, we need to wait for it to complete'
+        );
 
         return this.resolvePromise();
       }
@@ -171,34 +175,30 @@ class EffectsState {
 
       const audioStream = MediaUtil.createMediaStream([audioTrack]);
 
-      LoggerProxy.logger.info('Meeting:effectState#disableBNR. Raw media track obtained from WebRTC & sent to updateAudio');
+      LoggerProxy.logger.info(
+        'Meeting:effectState#disableBNR. Raw media track obtained from WebRTC & sent to updateAudio'
+      );
 
       await meeting.updateAudio({
         sendAudio: true,
         receiveAudio: meeting.mediaProperties.mediaDirection.receiveAudio,
-        stream: audioStream
+        stream: audioStream,
       });
 
       bnr.enabled = BNR_STATUS.NOT_ENABLED;
 
       this.state.callToWebrtcBNRInProgress = false;
 
-      Metrics.sendBehavioralMetric(
-        BEHAVIORAL_METRICS.DISABLE_BNR_SUCCESS
-      );
-    }
-    catch (error) {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DISABLE_BNR_SUCCESS);
+    } catch (error) {
       bnr.enabled = BNR_STATUS.ENABLED;
       this.state.callToWebrtcBNRInProgress = false;
       LoggerProxy.logger.error(`Meeting:index#disableBNR. ${error}`);
 
-      Metrics.sendBehavioralMetric(
-        BEHAVIORAL_METRICS.DISABLE_BNR_FAILURE,
-        {
-          reason: error.message,
-          stack: error.stack
-        }
-      );
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DISABLE_BNR_FAILURE, {
+        reason: error.message,
+        stack: error.stack,
+      });
       this.rejectPromise(error);
 
       throw error;

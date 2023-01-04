@@ -24,8 +24,8 @@ const Authorization = WebexPlugin.extend({
       deps: ['isAuthorizing'],
       fn() {
         return this.isAuthorizing;
-      }
-    }
+      },
+    },
   },
 
   session: {
@@ -37,8 +37,8 @@ const Authorization = WebexPlugin.extend({
      */
     isAuthorizing: {
       default: false,
-      type: 'boolean'
-    }
+      type: 'boolean',
+    },
   },
 
   namespace: 'Credentials',
@@ -49,8 +49,8 @@ const Authorization = WebexPlugin.extend({
       uri: this.config.logoutUrl,
       body: {
         token: options.token,
-        cisService: this.config.service
-      }
+        cisService: this.config.service,
+      },
     });
   },
 
@@ -71,22 +71,23 @@ const Authorization = WebexPlugin.extend({
       return Promise.reject(new Error('`options.code` is required'));
     }
 
-    return this.webex.request({
-      method: 'POST',
-      uri: this.config.tokenUrl,
-      form: {
-        grant_type: 'authorization_code',
-        redirect_uri: this.config.redirect_uri,
-        code: options.code,
-        self_contained_token: true
-      },
-      auth: {
-        user: this.config.client_id,
-        pass: this.config.client_secret,
-        sendImmediately: true
-      },
-      shouldRefreshAccessToken: false
-    })
+    return this.webex
+      .request({
+        method: 'POST',
+        uri: this.config.tokenUrl,
+        form: {
+          grant_type: 'authorization_code',
+          redirect_uri: this.config.redirect_uri,
+          code: options.code,
+          self_contained_token: true,
+        },
+        auth: {
+          user: this.config.client_id,
+          pass: this.config.client_secret,
+          sendImmediately: true,
+        },
+        shouldRefreshAccessToken: false,
+      })
       .then((res) => {
         this.webex.credentials.set({supertoken: res.body});
       })
@@ -126,29 +127,28 @@ const Authorization = WebexPlugin.extend({
       hydraUri += '/';
     }
 
-    hydraUri = hydraUri ||
-      process.env.HYDRA_SERVICE_URL ||
-      'https://api.ciscospark.com/v1/';
+    hydraUri = hydraUri || process.env.HYDRA_SERVICE_URL || 'https://api.ciscospark.com/v1/';
 
-    return this.webex.request({
-      method: 'POST',
-      uri: `${hydraUri}jwt/login`,
-      headers: {
-        authorization: jwt
-      }
-    })
+    return this.webex
+      .request({
+        method: 'POST',
+        uri: `${hydraUri}jwt/login`,
+        headers: {
+          authorization: jwt,
+        },
+      })
       .then(({body}) => ({
         access_token: body.token,
         token_type: 'Bearer',
-        expires_in: body.expiresIn
+        expires_in: body.expiresIn,
       }))
       .then((token) => {
         this.webex.credentials.set({
-          supertoken: token
+          supertoken: token,
         });
       })
       .then(() => this.webex.internal.services.initServiceCatalogs());
-  }
+  },
 });
 
 export default Authorization;

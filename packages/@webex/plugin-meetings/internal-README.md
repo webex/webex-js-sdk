@@ -48,7 +48,7 @@ Install tooling dependencies.
 npm install
 ```
 
-*Build issues?* See [BUILD-ISSUES.md](https://github.com/webex/webex-js-sdk/blob/master/BUILD-ISSUES.md) for help.
+_Build issues?_ See [BUILD-ISSUES.md](https://github.com/webex/webex-js-sdk/blob/master/BUILD-ISSUES.md) for help.
 
 ## Contribute to the `plugin-meetings` branch
 
@@ -93,12 +93,14 @@ yarn run build
 ```
 
 > Individual packages containing samples can usually be run this way:
+>
 > ```
 > yarn run serve:package --env.package @webex/plugin-meetings
+> ```
 
 > ```
 > However, `webex` does not get compiled properly for `plugin-meetings` using this method, so do the following instead.
-
+> ```
 
 ```bash
 # Run the "sample app" sample.
@@ -107,8 +109,8 @@ yarn run samples:meetings
 ```
 
 - Visit https://localhost:8000/
-- Copy/paste **Your Personal Access Token** from [Cisco Webex for Developers](https://developer.webex.com/docs/api/getting-started) and click *connect*.
-- Use the **Dialer** to *create* a Meeting object, *join* it, and *addMedia*, like video and audio.
+- Copy/paste **Your Personal Access Token** from [Cisco Webex for Developers](https://developer.webex.com/docs/api/getting-started) and click _connect_.
+- Use the **Dialer** to _create_ a Meeting object, _join_ it, and _addMedia_, like video and audio.
 
 > This sample does not join a meeting in one click on purpose. It is meant to demonstrate the different commands available, and their sequence, to developers. Other samples will be created in the future.
 >
@@ -123,7 +125,6 @@ yarn run samples:meetings
 ### Run tests
 
 Use `yarn run distsrc` to point each package's `main` entry at the raw src and let `babel` compile on the fly.
-
 
 ```bash
 # Point all package.json files to the src directory instead of the dist directory.
@@ -156,7 +157,7 @@ yarn run srcdist
 
 The SDK enforces relatively strict commit messages to version its packages and keep language similar.
 
-Here is an example committing a new feature. Notice the *package name* in parentheses.
+Here is an example committing a new feature. Notice the _package name_ in parentheses.
 
 ```bash
 git commit -a -m 'feat(plugin-meetings): add ability to join a meeting'

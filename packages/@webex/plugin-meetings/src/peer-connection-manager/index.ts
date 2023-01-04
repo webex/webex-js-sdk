@@ -19,7 +19,7 @@ import {
   PEER_CONNECTION_STATE,
   OFFER,
   QUALITY_LEVELS,
-  REMOTE_VIDEO_CONSTRAINTS
+  REMOTE_VIDEO_CONSTRAINTS,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import {error, eventType} from '../metrics/config';
@@ -52,8 +52,7 @@ const insertBandwidthLimit = (sdpLines: any, index: number) => {
 
   if (sdpLines[index].search(AUDIO) !== -1) {
     limit = StaticConfig.meetings.bandwidth.audio;
-  }
-  else {
+  } else {
     limit = StaticConfig.meetings.bandwidth.video;
     periodicKeyFrame = SDP.PERIODIC_KEYFRAME;
     sdpLines.splice(index + 2, 0, periodicKeyFrame);
@@ -73,7 +72,9 @@ const setRemoteVideoConstraints = (sdp: string, level: string = QUALITY_LEVELS.H
   const maxFs = REMOTE_VIDEO_CONSTRAINTS.MAX_FS[level];
 
   if (!maxFs) {
-    throw new ParameterError(`setRemoteVideoConstraints: unable to set max framesize, value for level "${level}" is not defined`);
+    throw new ParameterError(
+      `setRemoteVideoConstraints: unable to set max framesize, value for level "${level}" is not defined`
+    );
   }
 
   const modifiedSdp = PeerConnectionUtils.adjustH264Profile(sdp, maxFs);
@@ -81,10 +82,12 @@ const setRemoteVideoConstraints = (sdp: string, level: string = QUALITY_LEVELS.H
   return modifiedSdp;
 };
 
-
 const setStartBitrateOnRemoteSdp = (sdp) => {
   if (StaticConfig.meetings.bandwidth.startBitrate) {
-    sdp = sdp.replace(/(\na=fmtp:(\d+).*profile-level-id=.*)/gi, `$1;x-google-start-bitrate=${StaticConfig.meetings.bandwidth.startBitrate}`);
+    sdp = sdp.replace(
+      /(\na=fmtp:(\d+).*profile-level-id=.*)/gi,
+      `$1;x-google-start-bitrate=${StaticConfig.meetings.bandwidth.startBitrate}`
+    );
   }
 
   return sdp;
@@ -118,18 +121,24 @@ const isSdpInvalid = (sdp: string) => {
 
   for (const mediaLine of parsedSdp.media) {
     if (!mediaLine.candidates || mediaLine.candidates?.length === 0) {
-      LoggerProxy.logger.error('PeerConnectionManager:index#isSdpInvalid --> iceCandidate: Ice candidate never completed');
+      LoggerProxy.logger.error(
+        'PeerConnectionManager:index#isSdpInvalid --> iceCandidate: Ice candidate never completed'
+      );
 
       return 'iceCandidate: Ice gathering never completed';
     }
 
     if (SDP.BAD_MEDIA_PORTS.includes(mediaLine.port)) {
-      LoggerProxy.logger.error('PeerConnectionManager:index#isSdpInvalid --> iceCandidate: Found invalid port number for the ice candidate');
+      LoggerProxy.logger.error(
+        'PeerConnectionManager:index#isSdpInvalid --> iceCandidate: Found invalid port number for the ice candidate'
+      );
 
       return 'iceCandidate: Found invalid port number for the ice candidate';
     }
     if (!mediaLine.icePwd || !mediaLine.iceUfrag) {
-      LoggerProxy.logger.error('PeerConnectionManager:index#isSdpInvalid --> iceCandidate: ice ufrag and password not found');
+      LoggerProxy.logger.error(
+        'PeerConnectionManager:index#isSdpInvalid --> iceCandidate: ice ufrag and password not found'
+      );
 
       return 'iceCandidate: ice ufrag and password not found';
     }
@@ -199,11 +208,14 @@ pc.iceCandidate = (
       const invalidSdpPresent = isSdpInvalid(peerConnection.sdp);
 
       if (invalidSdpPresent) {
-        LoggerProxy.logger.error('PeerConnectionManager:index#iceCandidate --> SDP not valid after waiting.');
+        LoggerProxy.logger.error(
+          'PeerConnectionManager:index#iceCandidate --> SDP not valid after waiting.'
+        );
         reject(new InvalidSdpError(invalidSdpPresent));
       }
-      LoggerProxy.logger.log(`PeerConnectionManager:index#iceCandidate --> Time to gather ice candidate ${miliseconds} miliseconds`);
-
+      LoggerProxy.logger.log(
+        `PeerConnectionManager:index#iceCandidate --> Time to gather ice candidate ${miliseconds} miliseconds`
+      );
 
       resolve();
     };
@@ -219,7 +231,9 @@ pc.iceCandidate = (
         doneGatheringIceCandidate(peerConnection);
       }
       if (peerConnection.iceGatheringState === GATHERING) {
-        LoggerProxy.logger.log('PeerConnectionManager:index#onIceGatheringStateChange --> Ice state changed to gathering');
+        LoggerProxy.logger.log(
+          'PeerConnectionManager:index#onIceGatheringStateChange --> Ice state changed to gathering'
+        );
       }
     };
 
@@ -227,16 +241,20 @@ pc.iceCandidate = (
       if (evt.candidate === null) {
         // @ts-ignore
         doneGatheringIceCandidate(peerConnection);
-      }
-      else {
-        LoggerProxy.logger.log(`PeerConnectionManager:index#onicecandidate --> Candidate ${evt.candidate?.type} ${evt.candidate?.protocol} ${evt.candidate?.address}:${evt.candidate?.port}`);
+      } else {
+        LoggerProxy.logger.log(
+          `PeerConnectionManager:index#onicecandidate --> Candidate ${evt.candidate?.type} ${evt.candidate?.protocol} ${evt.candidate?.address}:${evt.candidate?.port}`
+        );
       }
     };
 
     peerConnection.onicecandidateerror = (event) => {
       // we can often get ICE candidate errors (for example when failing to communicate with a TURN server)
       // they don't mean that the whole ICE connection will fail, so it's OK to ignore them
-      LoggerProxy.logger.error('PeerConnectionManager:index#onicecandidateerror --> ignoring ice error:', event);
+      LoggerProxy.logger.error(
+        'PeerConnectionManager:index#onicecandidateerror --> ignoring ice error:',
+        event
+      );
     };
   });
 
@@ -257,9 +275,10 @@ pc.replaceTrack = (peerConnection: any, track: any) => {
         }
       });
     }
-  }
-  catch (err) {
-    LoggerProxy.logger.error(`PeerConnectionManager:index#replaceTrack --> Error replacing track, ${err}`);
+  } catch (err) {
+    LoggerProxy.logger.error(
+      `PeerConnectionManager:index#replaceTrack --> Error replacing track, ${err}`
+    );
   }
 };
 
@@ -272,7 +291,9 @@ pc.replaceTrack = (peerConnection: any, track: any) => {
 pc.addStream = (peerConnection: any, stream: any) => {
   try {
     if (stream && !isBrowser('edge')) {
-      const tracksPresent = peerConnection.getSenders && peerConnection.getSenders().find((sender) => sender.track != null);
+      const tracksPresent =
+        peerConnection.getSenders &&
+        peerConnection.getSenders().find((sender) => sender.track != null);
 
       if (tracksPresent) {
         stream.getTracks().forEach((track) => {
@@ -288,13 +309,13 @@ pc.addStream = (peerConnection: any, stream: any) => {
       // // https://bugs.chromium.org/p/chromium/issues/detail?id=764414
       // // https://bugs.chromium.org/p/chromium/issues/detail?id=738918#c7
       //   peerConnection.addStream(stream);
-    }
-    else if (isBrowser('edge')) {
+    } else if (isBrowser('edge')) {
       peerConnection.addStream(stream);
     }
-  }
-  catch (err) {
-    LoggerProxy.logger.error(`PeerConnectionManager:index#addStream --> Error adding stream, error: ${error}`);
+  } catch (err) {
+    LoggerProxy.logger.error(
+      `PeerConnectionManager:index#addStream --> Error adding stream, error: ${error}`
+    );
   }
 };
 
@@ -306,8 +327,15 @@ pc.addStream = (peerConnection: any, stream: any) => {
  * @param {String} meetingId
  * @returns {undefined}
  */
-pc.setRemoteSessionDetails = (peerConnection: any, typeStr: string, remoteSdp: string, meetingId: string) => {
-  LoggerProxy.logger.log(`PeerConnectionManager:index#setRemoteSessionDetails --> Setting the remote description type: ${typeStr}State: ${peerConnection.signalingState}`);
+pc.setRemoteSessionDetails = (
+  peerConnection: any,
+  typeStr: string,
+  remoteSdp: string,
+  meetingId: string
+) => {
+  LoggerProxy.logger.log(
+    `PeerConnectionManager:index#setRemoteSessionDetails --> Setting the remote description type: ${typeStr}State: ${peerConnection.signalingState}`
+  );
   let sdp = remoteSdp;
 
   // making sure that the remoteDescription is only set when there is a answer for offer
@@ -319,12 +347,16 @@ pc.setRemoteSessionDetails = (peerConnection: any, typeStr: string, remoteSdp: s
       meetingId,
       data: {
         canProceed: false,
-        errors: [Metrics.generateErrorPayload(2001, true,
-          error.name.MEDIA_ENGINE, 'missing remoteSdp')]
-      }
+        errors: [
+          Metrics.generateErrorPayload(2001, true, error.name.MEDIA_ENGINE, 'missing remoteSdp'),
+        ],
+      },
     });
   }
-  if (peerConnection.signalingState === SDP.HAVE_LOCAL_OFFER || (peerConnection.signalingState === SDP.STABLE && typeStr === SDP.OFFER)) {
+  if (
+    peerConnection.signalingState === SDP.HAVE_LOCAL_OFFER ||
+    (peerConnection.signalingState === SDP.STABLE && typeStr === SDP.OFFER)
+  ) {
     sdp = setStartBitrateOnRemoteSdp(sdp);
 
     if (!peerConnection.enableExtmap) {
@@ -334,32 +366,34 @@ pc.setRemoteSessionDetails = (peerConnection: any, typeStr: string, remoteSdp: s
     // remove any xtls candidates
     sdp = sdp.replace(/^a=candidate:.*xTLS.*\r\n/gim, '');
 
-    return peerConnection.setRemoteDescription(
-      new window.RTCSessionDescription({
-        type: typeStr,
-        sdp
-      })
-    )
+    return peerConnection
+      .setRemoteDescription(
+        new window.RTCSessionDescription({
+          type: typeStr,
+          sdp,
+        })
+      )
       .then(() => {
         if (peerConnection.signalingState === SDP.STABLE) {
           Metrics.postEvent({
             event: eventType.REMOTE_SDP_RECEIVED,
-            meetingId
+            meetingId,
           });
         }
       })
       .catch((error) => {
-        LoggerProxy.logger.error(`Peer-connection-manager:index#setRemoteDescription --> ${error} missing remotesdp`);
-
+        LoggerProxy.logger.error(
+          `Peer-connection-manager:index#setRemoteDescription --> ${error} missing remotesdp`
+        );
 
         const metricName = BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE;
         const data = {
           correlation_id: meetingId,
           reason: error.message,
-          stack: error.stack
+          stack: error.stack,
         };
         const metadata = {
-          type: error.name
+          type: error.name,
         };
 
         Metrics.sendBehavioralMetric(metricName, data, metadata);
@@ -369,9 +403,15 @@ pc.setRemoteSessionDetails = (peerConnection: any, typeStr: string, remoteSdp: s
           meetingId,
           data: {
             canProceed: false,
-            errors: [Metrics.generateErrorPayload(2001, true,
-              error.name.MEDIA_ENGINE, 'missing remoteSdp')]
-          }
+            errors: [
+              Metrics.generateErrorPayload(
+                2001,
+                true,
+                error.name.MEDIA_ENGINE,
+                'missing remoteSdp'
+              ),
+            ],
+          },
         });
       });
   }
@@ -426,7 +466,9 @@ pc.createOffer = (
     .then(() => pc.iceCandidate(peerConnection, {remoteQualityLevel}))
     .then(() => {
       if (!checkH264Support(peerConnection.sdp)) {
-        throw new MediaError('openH264 is downloading please Wait. Upload logs if not working on second try');
+        throw new MediaError(
+          'openH264 is downloading please Wait. Upload logs if not working on second try'
+        );
       }
 
       if (!enableExtmap) {
@@ -437,7 +479,7 @@ pc.createOffer = (
 
       Metrics.postEvent({
         event: eventType.LOCAL_SDP_GENERATED,
-        meetingId
+        meetingId,
       });
 
       return peerConnection;
@@ -445,24 +487,20 @@ pc.createOffer = (
     .catch((error) => {
       LoggerProxy.logger.error(`Peer-connection-manager:index#createOffer --> ${error}`);
       if (error instanceof InvalidSdpError) {
-        Metrics.sendBehavioralMetric(
-          BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE,
-          {
-            correlation_id: meetingId,
-            code: error.code,
-            reason: error.message
-          }
-        );
-      }
-      else {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE, {
+          correlation_id: meetingId,
+          code: error.code,
+          reason: error.message,
+        });
+      } else {
         const metricName = BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE;
         const data = {
           correlation_id: meetingId,
           reason: error.message,
-          stack: error.stack
+          stack: error.stack,
         };
         const metadata = {
-          type: error.name
+          type: error.name,
         };
 
         Metrics.sendBehavioralMetric(metricName, data, metadata);
@@ -475,9 +513,9 @@ pc.createOffer = (
           canProceed: false,
           errors: [
             // @ts-ignore
-            Metrics.generateErrorPayload(2001, true,
-              error.name.MEDIA_ENGINE)]
-        }
+            Metrics.generateErrorPayload(2001, true, error.name.MEDIA_ENGINE),
+          ],
+        },
       });
       pc.close(peerConnection);
       throw error;
@@ -489,16 +527,17 @@ pc.createOffer = (
  * @param {Object} peerConnection
  * @returns {Promise.RTCPeerConnection}
  */
-pc.rollBackLocalDescription = (peerConnection: any) => peerConnection
-// @ts-ignore
-  .setLocalDescription(new RTCSessionDescription({type: SDP.ROLLBACK}))
-  .then(() => peerConnection)
-  .catch((err) => {
-    LoggerProxy.logger.error(`Peer-connection-manager:index#setLocalDescription --> ${err} `);
-
+pc.rollBackLocalDescription = (peerConnection: any) =>
+  peerConnection
     // @ts-ignore
-    return Promise.error(err);
-  });
+    .setLocalDescription(new RTCSessionDescription({type: SDP.ROLLBACK}))
+    .then(() => peerConnection)
+    .catch((err) => {
+      LoggerProxy.logger.error(`Peer-connection-manager:index#setLocalDescription --> ${err} `);
+
+      // @ts-ignore
+      return Promise.error(err);
+    });
 
 /**
  * @param {Object} params {
@@ -517,7 +556,7 @@ pc.updatePeerConnection = (
     offerToReceiveVideo: boolean;
     offerSdp: string;
     stream: MediaStream;
-    peerConnection: any
+    peerConnection: any;
   },
   {
     meetingId,
@@ -527,19 +566,26 @@ pc.updatePeerConnection = (
     remoteQualityLevel: string;
   }
 ) => {
-  LoggerProxy.logger.log(`PeerConnectionManager:index#updatePeerConnection --> updating the peerConnection with params: ${params}`);
+  LoggerProxy.logger.log(
+    `PeerConnectionManager:index#updatePeerConnection --> updating the peerConnection with params: ${params}`
+  );
 
   const {peerConnection, offerSdp} = params;
 
-  return pc.createAnswer({
-    peerConnection,
-    offerSdp: offerSdp[0]
-  }, {meetingId, remoteQualityLevel}).then((peerconnection) => {
-    // The content slides should also be set when we are sending inactive
-    pc.setContentSlides(peerconnection);
+  return pc
+    .createAnswer(
+      {
+        peerConnection,
+        offerSdp: offerSdp[0],
+      },
+      {meetingId, remoteQualityLevel}
+    )
+    .then((peerconnection) => {
+      // The content slides should also be set when we are sending inactive
+      pc.setContentSlides(peerconnection);
 
-    return Promise.resolve([peerconnection.sdp]);
-  });
+      return Promise.resolve([peerconnection.sdp]);
+    });
 };
 
 /**
@@ -573,11 +619,10 @@ pc.createAnswer = (
     return Promise.resolve(peerConnection);
   }
 
-  return pc.setRemoteSessionDetails(peerConnection, OFFER, params.offerSdp, meetingId)
+  return pc
+    .setRemoteSessionDetails(peerConnection, OFFER, params.offerSdp, meetingId)
     .then(() => peerConnection.createAnswer(params.sdpConstraints))
-    .then((answer) =>
-
-      peerConnection.setLocalDescription(answer))
+    .then((answer) => peerConnection.setLocalDescription(answer))
     .then(() => pc.iceCandidate(peerConnection, {remoteQualityLevel}))
     .then(() => {
       peerConnection.sdp = limitBandwidth(peerConnection.localDescription.sdp);
@@ -585,35 +630,35 @@ pc.createAnswer = (
       peerConnection.sdp = setRemoteVideoConstraints(peerConnection.sdp, remoteQualityLevel);
 
       if (!checkH264Support(peerConnection.sdp)) {
-        throw new MediaError('openH264 is downloading please Wait. Upload logs if not working on second try');
+        throw new MediaError(
+          'openH264 is downloading please Wait. Upload logs if not working on second try'
+        );
       }
 
       return peerConnection;
     })
     .catch((error) => {
       if (error instanceof InvalidSdpError) {
-        Metrics.sendBehavioralMetric(
-          BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE,
-          {
-            correlation_id: meetingId
-          }
-        );
-      }
-      else {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE, {
+          correlation_id: meetingId,
+        });
+      } else {
         const metricName = BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE;
         const data = {
           correlation_id: meetingId,
           reason: error.message,
-          stack: error.stack
+          stack: error.stack,
         };
         const metadata = {
-          type: error.name
+          type: error.name,
         };
 
         Metrics.sendBehavioralMetric(metricName, data, metadata);
       }
 
-      LoggerProxy.logger.error(`PeerConnectionManager:index#setRemoteSessionDetails --> Error creating remote session, error: ${error}`);
+      LoggerProxy.logger.error(
+        `PeerConnectionManager:index#setRemoteSessionDetails --> Error creating remote session, error: ${error}`
+      );
     });
 };
 
@@ -626,23 +671,27 @@ pc.close = (peerConnection: any) => {
   // peerConnection.close() fails on firefox on network changes and gives a Dom exception
   // To avoid this we have added a try catch block.
   // Please refer to https://bugzilla.mozilla.org/show_bug.cgi?id=1274407 for more information
-  LoggerProxy.logger.log('PeerConnectionManager:index#close --> pc: close() -> attempting to close the peer connection');
+  LoggerProxy.logger.log(
+    'PeerConnectionManager:index#close --> pc: close() -> attempting to close the peer connection'
+  );
 
   if (peerConnection && peerConnection.connectionState === PEER_CONNECTION_STATE.CLOSED) {
-    LoggerProxy.logger.log('PeerConnectionManager:index#close --> pc: close() -> connection already closed');
+    LoggerProxy.logger.log(
+      'PeerConnectionManager:index#close --> pc: close() -> connection already closed'
+    );
 
     return Promise.resolve();
   }
-  LoggerProxy.logger.log('PeerConnectionManager:index#close --> pc: close() -> closing the mediaPeerConnection');
+  LoggerProxy.logger.log(
+    'PeerConnectionManager:index#close --> pc: close() -> closing the mediaPeerConnection'
+  );
 
-  return Promise.resolve()
-    .then(() => {
-      if (peerConnection && peerConnection.close) {
-        peerConnection.close();
-      }
-    });
+  return Promise.resolve().then(() => {
+    if (peerConnection && peerConnection.close) {
+      peerConnection.close();
+    }
+  });
 };
-
 
 pc.setPeerConnectionEvents = (meeting) => {
   // In case ICE fail
@@ -663,66 +712,74 @@ pc.setPeerConnectionEvents = (meeting) => {
         canProceed: false,
         errors: [
           // @ts-ignore
-          Metrics.generateErrorPayload(
-            2004, false, error.name.MEDIA_ENGINE
-          )]
-      }
+          Metrics.generateErrorPayload(2004, false, error.name.MEDIA_ENGINE),
+        ],
+      },
     });
 
     meeting.uploadLogs({
       file: 'peer-connection-manager/index',
-      function: 'connectionFailed'
+      function: 'connectionFailed',
     });
 
-    Metrics.sendBehavioralMetric(
-      BEHAVIORAL_METRICS.CONNECTION_FAILURE,
-      {
-        correlation_id: meeting.correlationId,
-        locus_id: meeting.locusId
-      }
-    );
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.CONNECTION_FAILURE, {
+      correlation_id: meeting.correlationId,
+      locus_id: meeting.locusId,
+    });
   };
 
   peerConnection.oniceconnectionstatechange = () => {
-    LoggerProxy.logger.info('PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE CHANGE.');
+    LoggerProxy.logger.info(
+      'PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE CHANGE.'
+    );
     switch (peerConnection.iceConnectionState) {
       case ICE_STATE.CHECKING:
-        LoggerProxy.logger.info('PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE CHECKING.');
+        LoggerProxy.logger.info(
+          'PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE CHECKING.'
+        );
         Metrics.postEvent({event: eventType.ICE_START, meeting});
         break;
       case ICE_STATE.COMPLETED:
-        LoggerProxy.logger.info('PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE COMPLETED.');
+        LoggerProxy.logger.info(
+          'PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE COMPLETED.'
+        );
         break;
       case ICE_STATE.CONNECTED:
         // Ice connection state goes to connected when both client and server sends STUN packets and
         // Established connected between them. Firefox does not trigger COMPLETED and only trigger CONNECTED
         Metrics.postEvent({event: eventType.ICE_END, meeting});
-        Metrics.sendBehavioralMetric(
-          BEHAVIORAL_METRICS.CONNECTION_SUCCESS,
-          {
-            correlation_id: meeting.correlationId,
-            locus_id: meeting.locusId
-          }
-        );
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.CONNECTION_SUCCESS, {
+          correlation_id: meeting.correlationId,
+          locus_id: meeting.locusId,
+        });
         meeting.setNetworkStatus(NETWORK_STATUS.CONNECTED);
         meeting.reconnectionManager.iceReconnected();
-        LoggerProxy.logger.info('PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE CONNECTED.');
+        LoggerProxy.logger.info(
+          'PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE CONNECTED.'
+        );
         break;
       case ICE_STATE.CLOSED:
-        LoggerProxy.logger.info('PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE CLOSED.');
+        LoggerProxy.logger.info(
+          'PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE CLOSED.'
+        );
         break;
       case ICE_STATE.DISCONNECTED:
         meeting.setNetworkStatus(NETWORK_STATUS.DISCONNECTED);
-        meeting.reconnectionManager.waitForIceReconnect()
-          .catch(() => {
-            LoggerProxy.logger.info('PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE DISCONNECTED. Automatic Reconnection Timed Out.');
+        meeting.reconnectionManager.waitForIceReconnect().catch(() => {
+          LoggerProxy.logger.info(
+            'PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE DISCONNECTED. Automatic Reconnection Timed Out.'
+          );
 
-            connectionFailed();
-          });
-        LoggerProxy.logger.info('PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE DISCONNECTED.');
+          connectionFailed();
+        });
+        LoggerProxy.logger.info(
+          'PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE DISCONNECTED.'
+        );
         break;
       case ICE_STATE.FAILED:
-        LoggerProxy.logger.info('PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE FAILED.');
+        LoggerProxy.logger.info(
+          'PeerConnectionManager:index#setPeerConnectionEvents --> ICE STATE FAILED.'
+        );
         // notify of ice failure
         // Ice failure is the only indicator currently for identifying the actual connection drop
         // Firefox takes sometime 10-15 seconds to go to failed state
@@ -734,25 +791,39 @@ pc.setPeerConnectionEvents = (meeting) => {
   };
 
   peerConnection.onconnectionstatechange = () => {
-    LoggerProxy.logger.info('PeerConnectionManager:index#setPeerConnectionEvents --> CONNECTION STATE CHANGE.');
+    LoggerProxy.logger.info(
+      'PeerConnectionManager:index#setPeerConnectionEvents --> CONNECTION STATE CHANGE.'
+    );
     switch (peerConnection.connectionState) {
       case CONNECTION_STATE.NEW:
-        LoggerProxy.logger.info('PeerConnectionManager:index#setPeerConnectionEvents --> CONNECTION STATE NEW.');
+        LoggerProxy.logger.info(
+          'PeerConnectionManager:index#setPeerConnectionEvents --> CONNECTION STATE NEW.'
+        );
         break;
       case CONNECTION_STATE.CONNECTING:
-        LoggerProxy.logger.info('PeerConnectionManager:index#setPeerConnectionEvents --> CONNECTION STATE CONNECTING.');
+        LoggerProxy.logger.info(
+          'PeerConnectionManager:index#setPeerConnectionEvents --> CONNECTION STATE CONNECTING.'
+        );
         break;
       case CONNECTION_STATE.CONNECTED:
-        LoggerProxy.logger.info('PeerConnectionManager:index#setPeerConnectionEvents --> CONNECTION STATE CONNECTED.');
+        LoggerProxy.logger.info(
+          'PeerConnectionManager:index#setPeerConnectionEvents --> CONNECTION STATE CONNECTED.'
+        );
         break;
       case CONNECTION_STATE.CLOSED:
-        LoggerProxy.logger.info('PeerConnectionManager:index#setPeerConnectionEvents --> CONNECTION STATE CLOSED.');
+        LoggerProxy.logger.info(
+          'PeerConnectionManager:index#setPeerConnectionEvents --> CONNECTION STATE CLOSED.'
+        );
         break;
       case CONNECTION_STATE.DISCONNECTED:
-        LoggerProxy.logger.info('PeerConnectionManager:index#setPeerConnectionEvents --> CONNECTION STATE DISCONNECTED.');
+        LoggerProxy.logger.info(
+          'PeerConnectionManager:index#setPeerConnectionEvents --> CONNECTION STATE DISCONNECTED.'
+        );
         break;
       case CONNECTION_STATE.FAILED:
-        LoggerProxy.logger.info('PeerConnectionManager:index#setPeerConnectionEvents --> CONNECTION STATE FAILED.');
+        LoggerProxy.logger.info(
+          'PeerConnectionManager:index#setPeerConnectionEvents --> CONNECTION STATE FAILED.'
+        );
         // Special case happens only on chrome where there is no ICE FAILED event
         // only CONNECTION FAILED event gets triggered
 

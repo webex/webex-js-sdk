@@ -11,11 +11,11 @@ describe('RoapUtil', () => {
     beforeEach('stub PeerConnectionManager', () => {
       meeting = {
         mediaProperties: {
-          peerConnection: {name: 'peer-connection'}
+          peerConnection: {name: 'peer-connection'},
         },
         roap: {
-          lastRoapOffer: 'lastRoapOffer'
-        }
+          lastRoapOffer: 'lastRoapOffer',
+        },
       };
       session = {OFFER: {sdps: ['sdp1', 'sdp2']}};
 

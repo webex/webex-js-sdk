@@ -21,7 +21,7 @@ npm install --save @webex/test-users
 
 ## Usage
 
-*Note: This package is NODE only, not for browser usage*
+_Note: This package is NODE only, not for browser usage_
 
 With the test users library, you can create and remove Webex test users:
 
@@ -32,7 +32,7 @@ createTestUser({displayName: 'Test User'}).then((myTestUser) => {
   // Do something amazing with myTestUser
 
   // When done, remove the test user
-  removeTestUser(myTestUser)
+  removeTestUser(myTestUser);
 });
 ```
 
@@ -68,7 +68,7 @@ createTestUser({whistler: true}).then((myTestUser) => {
   // Do something amazing with myTestUser
 
   // When done, remove the test user
-  removeTestUser(myTestUser)
+  removeTestUser(myTestUser);
 });
 ```
 

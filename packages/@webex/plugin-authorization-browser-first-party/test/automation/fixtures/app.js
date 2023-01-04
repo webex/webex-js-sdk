@@ -11,22 +11,23 @@ import WebexCore from '@webex/webex-core';
 
 import pkg from '../../../package';
 
-const webex = window.webex = new WebexCore({
+const webex = (window.webex = new WebexCore({
   config: {
     storage: {
-      boundedAdapter: new StorageAdapterLocalStorage('webex')
-    }
-  }
-});
+      boundedAdapter: new StorageAdapterLocalStorage('webex'),
+    },
+  },
+}));
 
 webex.once('ready', () => {
   if (webex.canAuthorize) {
     document.getElementById('access-token').innerHTML = webex.credentials.supertoken.access_token;
     document.getElementById('refresh-token').innerHTML = webex.credentials.supertoken.refresh_token;
 
-    webex.request({
-      uri: 'https://locus-a.wbx2.com/locus/api/v1/ping'
-    })
+    webex
+      .request({
+        uri: 'https://locus-a.wbx2.com/locus/api/v1/ping',
+      })
       .then(() => {
         document.getElementById('ping-complete').innerHTML = 'success';
       });
@@ -41,18 +42,17 @@ document.getElementById('initiate-authorization-code-grant').addEventListener('c
   webex.authorization.initiateLogin({
     state: {
       exchange: false,
-      name: pkg.name
-    }
+      name: pkg.name,
+    },
   });
 });
 
 document.getElementById('token-refresh').addEventListener('click', () => {
   document.getElementById('access-token').innerHTML = '';
-  webex.refresh({force: true})
-    .then(() => {
-      document.getElementById('access-token').innerHTML = webex.credentials.supertoken.access_token;
-      document.getElementById('refresh-token').innerHTML = webex.credentials.supertoken.refresh_token;
-    });
+  webex.refresh({force: true}).then(() => {
+    document.getElementById('access-token').innerHTML = webex.credentials.supertoken.access_token;
+    document.getElementById('refresh-token').innerHTML = webex.credentials.supertoken.refresh_token;
+  });
 });
 
 document.getElementById('logout').addEventListener('click', () => {

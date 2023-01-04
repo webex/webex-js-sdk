@@ -9,17 +9,17 @@ export default class PasswordError extends Error {
   sdkMessage: any;
 
   /**
-  *
-  * @constructor
-  * @param {String} [message]
-  * @param {Object} [error]
-  */
+   *
+   * @constructor
+   * @param {String} [message]
+   * @param {Object} [error]
+   */
   constructor(message: string = ERROR_DICTIONARY.PASSWORD.MESSAGE, error: any = null) {
     super(message);
     this.name = ERROR_DICTIONARY.PASSWORD.NAME;
     this.sdkMessage = ERROR_DICTIONARY.PASSWORD.MESSAGE;
     this.error = error;
-    this.stack = error ? error.stack : (new Error()).stack;
+    this.stack = error ? error.stack : new Error().stack;
     this.code = ERROR_DICTIONARY.PASSWORD.CODE;
   }
 }

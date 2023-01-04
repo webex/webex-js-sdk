@@ -36,7 +36,7 @@ export default function makeStateDataType(Constructor, name) {
 
           return {
             val: newVal,
-            type: name
+            type: name,
           };
         }
 
@@ -46,7 +46,7 @@ export default function makeStateDataType(Constructor, name) {
         // instance.
         return {
           val: newVal ? new Constructor(newVal, {parent: this}) : undefined,
-          type: name
+          type: name,
         };
       },
       compare: function compare(currentValue, newVal) {
@@ -57,13 +57,17 @@ export default function makeStateDataType(Constructor, name) {
         // if this has changed we want to also handle
         // event propagation
         if (previousVal) {
-          this.stopListening(previousVal, 'all', this._getCachedEventBubblingHandler(attributeName));
+          this.stopListening(
+            previousVal,
+            'all',
+            this._getCachedEventBubblingHandler(attributeName)
+          );
         }
 
         if (newVal) {
           this.listenTo(newVal, 'all', this._getCachedEventBubblingHandler(attributeName));
         }
-      }
+      },
     },
     prop: {
       /**
@@ -81,7 +85,7 @@ export default function makeStateDataType(Constructor, name) {
 
         return false;
       },
-      type: name
-    }
+      type: name,
+    },
   };
 }

@@ -9,8 +9,7 @@
 const wd = require('wd');
 
 wd.addPromiseChainMethod('printLogs', function printLogs() {
-  return this
-    .log('browser')
+  return this.log('browser')
     .then((logs) => {
       logs.forEach((log) => {
         try {
@@ -18,8 +17,7 @@ wd.addPromiseChainMethod('printLogs', function printLogs() {
           const method = console[log.message.message.level] || console.log;
 
           console[method]('broser log:', log.message.message.text);
-        }
-        catch (err) {
+        } catch (err) {
           console.log('browser log:', log.message);
         }
       });

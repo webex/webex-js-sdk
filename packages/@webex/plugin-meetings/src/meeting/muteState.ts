@@ -5,11 +5,9 @@ import Media from '../media';
 import MeetingUtil from '../meeting/util';
 import {AUDIO, VIDEO} from '../constants';
 
-
 /* Certain aspects of server interaction for video muting are not implemented as we currently don't support remote muting of video.
    If we ever need to support it, search for REMOTE_MUTE_VIDEO_MISSING_IMPLEMENTATION string to find the places that need updating
 */
-
 
 const createMuteState = (type, meeting, mediaDirection) => {
   if (type === AUDIO && !mediaDirection.sendAudio) {
@@ -19,7 +17,9 @@ const createMuteState = (type, meeting, mediaDirection) => {
     return null;
   }
 
-  LoggerProxy.logger.info(`Meeting:muteState#createMuteState --> ${type}: creating MuteState for meeting id ${meeting?.id}`);
+  LoggerProxy.logger.info(
+    `Meeting:muteState#createMuteState --> ${type}: creating MuteState for meeting id ${meeting?.id}`
+  );
 
   return new MuteState(type, meeting);
 };
@@ -42,21 +42,21 @@ class MuteState {
    * @param {Object} meeting - the meeting object (used for reading current remote mute status)
    */
   constructor(type: string, meeting: any) {
-    if ((type !== AUDIO) && (type !== VIDEO)) {
+    if (type !== AUDIO && type !== VIDEO) {
       throw new ParameterError('Mute state is designed for handling audio or video only');
     }
     this.type = type;
     this.state = {
       client: {
-        localMute: false
+        localMute: false,
       },
       server: {
         localMute: false,
         // initial values available only for audio (REMOTE_MUTE_VIDEO_MISSING_IMPLEMENTATION)
         remoteMute: type === AUDIO ? meeting.remoteMuted : false,
-        unmuteAllowed: type === AUDIO ? meeting.unmuteAllowed : true
+        unmuteAllowed: type === AUDIO ? meeting.unmuteAllowed : true,
       },
-      syncToServerInProgress: false
+      syncToServerInProgress: false,
     };
     // these 2 hold the resolve, reject methods for the promise we returned to the client in last handleClientRequest() call
     this.pendingPromiseResolve = null;
@@ -78,10 +78,14 @@ class MuteState {
    * @returns {Promise}
    */
   public handleClientRequest(meeting?: object, mute?: boolean) {
-    LoggerProxy.logger.info(`Meeting:muteState#handleClientRequest --> ${this.type}: user requesting new mute state: ${mute}`);
+    LoggerProxy.logger.info(
+      `Meeting:muteState#handleClientRequest --> ${this.type}: user requesting new mute state: ${mute}`
+    );
 
     if (!mute && !this.state.server.unmuteAllowed) {
-      return Promise.reject(new PermissionError('User is not allowed to unmute self (hard mute feature is being used)'));
+      return Promise.reject(
+        new PermissionError('User is not allowed to unmute self (hard mute feature is being used)')
+      );
     }
 
     // we don't check if we're already in the same state, because even if we were, we would still have to apply the mute state locally,
@@ -111,7 +115,7 @@ class MuteState {
   public applyClientStateLocally(meeting?: any) {
     Media.setLocalTrack(
       !this.state.client.localMute,
-      (this.type === AUDIO) ? meeting.mediaProperties.audioTrack : meeting.mediaProperties.videoTrack
+      this.type === AUDIO ? meeting.mediaProperties.audioTrack : meeting.mediaProperties.videoTrack
     );
   }
 
@@ -125,19 +129,27 @@ class MuteState {
    */
   private applyClientStateToServer(meeting?: object) {
     if (this.state.syncToServerInProgress) {
-      LoggerProxy.logger.info(`Meeting:muteState#applyClientStateToServer --> ${this.type}: request to server in progress, we need to wait for it to complete`);
+      LoggerProxy.logger.info(
+        `Meeting:muteState#applyClientStateToServer --> ${this.type}: request to server in progress, we need to wait for it to complete`
+      );
 
       return;
     }
 
-    const localMuteRequiresSync = (this.state.client.localMute !== this.state.server.localMute);
-    const remoteMuteRequiresSync = (!this.state.client.localMute && this.state.server.remoteMute);
+    const localMuteRequiresSync = this.state.client.localMute !== this.state.server.localMute;
+    const remoteMuteRequiresSync = !this.state.client.localMute && this.state.server.remoteMute;
 
-    LoggerProxy.logger.info(`Meeting:muteState#applyClientStateToServer --> ${this.type}: localMuteRequiresSync: ${localMuteRequiresSync} (${this.state.client.localMute} ?= ${this.state.server.localMute})`);
-    LoggerProxy.logger.info(`Meeting:muteState#applyClientStateToServer --> ${this.type}: remoteMuteRequiresSync: ${remoteMuteRequiresSync}`);
+    LoggerProxy.logger.info(
+      `Meeting:muteState#applyClientStateToServer --> ${this.type}: localMuteRequiresSync: ${localMuteRequiresSync} (${this.state.client.localMute} ?= ${this.state.server.localMute})`
+    );
+    LoggerProxy.logger.info(
+      `Meeting:muteState#applyClientStateToServer --> ${this.type}: remoteMuteRequiresSync: ${remoteMuteRequiresSync}`
+    );
 
     if (!localMuteRequiresSync && !remoteMuteRequiresSync) {
-      LoggerProxy.logger.info(`Meeting:muteState#applyClientStateToServer --> ${this.type}: client state already matching server state, nothing to do`);
+      LoggerProxy.logger.info(
+        `Meeting:muteState#applyClientStateToServer --> ${this.type}: client state already matching server state, nothing to do`
+      );
 
       if (this.pendingPromiseResolve) {
         this.pendingPromiseResolve();
@@ -151,15 +163,20 @@ class MuteState {
     this.state.syncToServerInProgress = true;
 
     // first sync local mute with server
-    const localMuteSyncPromise = (localMuteRequiresSync) ? this.sendLocalMuteRequestToServer(meeting) : Promise.resolve();
+    const localMuteSyncPromise = localMuteRequiresSync
+      ? this.sendLocalMuteRequestToServer(meeting)
+      : Promise.resolve();
 
     localMuteSyncPromise
       .then(() =>
         // then follow it up with remote mute sync
-        ((remoteMuteRequiresSync) ? this.sendRemoteMuteRequestToServer(meeting) : Promise.resolve()))
+        remoteMuteRequiresSync ? this.sendRemoteMuteRequestToServer(meeting) : Promise.resolve()
+      )
       .then(() => {
         this.state.syncToServerInProgress = false;
-        LoggerProxy.logger.info(`Meeting:muteState#applyClientStateToServer --> ${this.type}: sync with server completed`);
+        LoggerProxy.logger.info(
+          `Meeting:muteState#applyClientStateToServer --> ${this.type}: sync with server completed`
+        );
 
         // need to check if a new sync is required, because this.state.client may have changed while we were doing the current sync
         this.applyClientStateToServer(meeting);
@@ -184,10 +201,14 @@ class MuteState {
    * @returns {Promise}
    */
   private sendLocalMuteRequestToServer(meeting?: any) {
-    const audioMuted = (this.type === AUDIO) ? this.state.client.localMute : meeting.audio?.state.client.localMute;
-    const videoMuted = (this.type === VIDEO) ? this.state.client.localMute : meeting.video?.state.client.localMute;
+    const audioMuted =
+      this.type === AUDIO ? this.state.client.localMute : meeting.audio?.state.client.localMute;
+    const videoMuted =
+      this.type === VIDEO ? this.state.client.localMute : meeting.video?.state.client.localMute;
 
-    LoggerProxy.logger.info(`Meeting:muteState#sendLocalMuteRequestToServer --> ${this.type}: sending local mute (audio=${audioMuted}, video=${videoMuted}) to server`);
+    LoggerProxy.logger.info(
+      `Meeting:muteState#sendLocalMuteRequestToServer --> ${this.type}: sending local mute (audio=${audioMuted}, video=${videoMuted}) to server`
+    );
 
     return MeetingUtil.remoteUpdateAudioVideo(audioMuted, videoMuted, meeting)
       .then((locus) => {
@@ -195,7 +216,7 @@ class MuteState {
           `Meeting:muteState#sendLocalMuteRequestToServer --> ${this.type}: local mute (audio=${audioMuted}, video=${videoMuted}) applied to server`
         );
 
-        this.state.server.localMute = (this.type === AUDIO) ? audioMuted : videoMuted;
+        this.state.server.localMute = this.type === AUDIO ? audioMuted : videoMuted;
 
         meeting.locusInfo.onFullLocus(locus);
 
@@ -210,7 +231,6 @@ class MuteState {
       });
   }
 
-
   /**
    * Sets the remote mute value in the server
    *
@@ -223,9 +243,12 @@ class MuteState {
     if (this.type === AUDIO) {
       const remoteMute = this.state.client.localMute;
 
-      LoggerProxy.logger.info(`Meeting:muteState#sendRemoteMuteRequestToServer --> ${this.type}: sending remote mute:${remoteMute} to server`);
+      LoggerProxy.logger.info(
+        `Meeting:muteState#sendRemoteMuteRequestToServer --> ${this.type}: sending remote mute:${remoteMute} to server`
+      );
 
-      return meeting.members.muteMember(meeting.members.selfId, remoteMute)
+      return meeting.members
+        .muteMember(meeting.members.selfId, remoteMute)
         .then(() => {
           LoggerProxy.logger.info(
             `Meeting:muteState#sendRemoteMuteRequestToServer --> ${this.type}: remote mute:${remoteMute} applied to server`
@@ -258,7 +281,9 @@ class MuteState {
    * @returns {undefined}
    */
   public handleServerRemoteMuteUpdate(muted?: boolean, unmuteAllowed?: boolean) {
-    LoggerProxy.logger.info(`Meeting:muteState#handleServerRemoteMuteUpdate --> ${this.type}: updating server remoteMute to (${muted})`);
+    LoggerProxy.logger.info(
+      `Meeting:muteState#handleServerRemoteMuteUpdate --> ${this.type}: updating server remoteMute to (${muted})`
+    );
     this.state.server.remoteMute = muted;
     this.state.server.unmuteAllowed = unmuteAllowed;
   }
@@ -272,13 +297,17 @@ class MuteState {
    * @returns {undefined}
    */
   public handleServerLocalUnmuteRequired(meeting?: object) {
-    LoggerProxy.logger.info(`Meeting:muteState#handleServerLocalUnmuteRequired --> ${this.type}: localAudioUnmuteRequired received -> doing local unmute`);
+    LoggerProxy.logger.info(
+      `Meeting:muteState#handleServerLocalUnmuteRequired --> ${this.type}: localAudioUnmuteRequired received -> doing local unmute`
+    );
 
     this.state.server.remoteMute = false;
     this.state.client.localMute = false;
 
     if (this.pendingPromiseReject) {
-      this.pendingPromiseReject(new Error('Server requested local unmute - this overrides any client request in progress'));
+      this.pendingPromiseReject(
+        new Error('Server requested local unmute - this overrides any client request in progress')
+      );
       this.pendingPromiseResolve = null;
       this.pendingPromiseReject = null;
     }
@@ -295,7 +324,9 @@ class MuteState {
    * @returns {Boolean}
    */
   public isMuted() {
-    return this.state.client.localMute || this.state.server.localMute || this.state.server.remoteMute;
+    return (
+      this.state.client.localMute || this.state.server.localMute || this.state.server.remoteMute
+    );
   }
 
   /**

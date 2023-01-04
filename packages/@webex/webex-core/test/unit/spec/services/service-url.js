@@ -26,38 +26,38 @@ describe('webex-core', () => {
             priority: 1,
             ttl: -1,
             id: '1',
-            homeCluster: false
+            homeCluster: false,
           },
           {
             host: 'example-host-p2.com',
             priority: 2,
             ttl: -1,
             id: '2',
-            homeCluster: false
+            homeCluster: false,
           },
           {
             host: 'example-host-p3.com',
             priority: 3,
             ttl: -1,
             id: '3',
-            homeCluster: true
+            homeCluster: true,
           },
           {
             host: 'example-host-p4.com',
             priority: 4,
             ttl: -1,
             id: '4',
-            homeCluster: true
+            homeCluster: true,
           },
           {
             host: 'example-host-p5.com',
             priority: 5,
             ttl: -1,
             id: '5',
-            homeCluster: true
-          }
+            homeCluster: true,
+          },
         ],
-        name: 'example'
+        name: 'example',
       };
       serviceUrl = new ServiceUrl({...template});
     });
@@ -103,8 +103,7 @@ describe('webex-core', () => {
 
       it('replaces the host of a pass in url', () => {
         serviceUrl.hosts.forEach(({host}) => {
-          assert.include(serviceUrl._generateHostUrl(host),
-            `https://${host}/api/v1`);
+          assert.include(serviceUrl._generateHostUrl(host), `https://${host}/api/v1`);
         });
       });
     });
@@ -120,8 +119,7 @@ describe('webex-core', () => {
         const hostUrls = serviceUrl._getHostUrls();
 
         hostUrls.forEach((hu, i) => {
-          assert.equal(hu.url,
-            serviceUrl._generateHostUrl(serviceUrl.hosts[i].host));
+          assert.equal(hu.url, serviceUrl._generateHostUrl(serviceUrl.hosts[i].host));
           assert.equal(hu.priority, serviceUrl.hosts[i].priority);
         });
       });
@@ -132,9 +130,8 @@ describe('webex-core', () => {
 
       beforeEach('get a high priority host manually', () => {
         highPriorityHost = serviceUrl._generateHostUrl(
-          serviceUrl.hosts.reduce((o, c) => (
-            o.priority > c.priority || !o.homeCluster ? c : o
-          )).host
+          serviceUrl.hosts.reduce((o, c) => (o.priority > c.priority || !o.homeCluster ? c : o))
+            .host
         );
       });
 
@@ -143,22 +140,16 @@ describe('webex-core', () => {
       });
 
       it('should reset the hosts when all have failed', () => {
-        serviceUrl.hosts.forEach(
-          (host) => {
-            /* eslint-disable-next-line no-param-reassign */
-            host.failed = true;
-          }
-        );
+        serviceUrl.hosts.forEach((host) => {
+          /* eslint-disable-next-line no-param-reassign */
+          host.failed = true;
+        });
 
         serviceUrl._getPriorityHostUrl();
 
-        const homeClusterUrls = serviceUrl.hosts.filter(
-          (host) => host.homeCluster
-        );
+        const homeClusterUrls = serviceUrl.hosts.filter((host) => host.homeCluster);
 
-        assert.isTrue(homeClusterUrls.every(
-          (host) => !host.failed
-        ));
+        assert.isTrue(homeClusterUrls.every((host) => !host.failed));
       });
     });
 
@@ -175,9 +166,7 @@ describe('webex-core', () => {
       it('marks a host as failed', () => {
         serviceUrl.failHost(hostUrl);
 
-        const removedHost = serviceUrl.hosts.find(
-          (currentHost) => currentHost.host === host
-        );
+        const removedHost = serviceUrl.hosts.find((currentHost) => currentHost.host === host);
 
         assert.isTrue(removedHost.failed);
       });
@@ -202,9 +191,7 @@ describe('webex-core', () => {
       });
 
       it('returns false if hostUrl was not found', () => {
-        const removedHostResult = serviceUrl.failHost(
-          'https://someurl.com/api/vq'
-        );
+        const removedHostResult = serviceUrl.failHost('https://someurl.com/api/vq');
 
         assert.isFalse(removedHostResult);
       });
@@ -225,9 +212,7 @@ describe('webex-core', () => {
         const hpUrl = serviceUrl.get(true);
 
         assert.equal(hpUrl, serviceUrl._getPriorityHostUrl());
-        assert.isDefined(serviceUrl.hosts.find(
-          (hostObj) => hpUrl.includes(hostObj.host)
-        ));
+        assert.isDefined(serviceUrl.hosts.find((hostObj) => hpUrl.includes(hostObj.host)));
       });
 
       describe('when a clusterId is provided', () => {
@@ -239,10 +224,8 @@ describe('webex-core', () => {
           beforeEach(() => {
             hosts = serviceUrl.hosts.filter((host) => host.homeCluster);
 
-            highPriorityHost = hosts.reduce(
-              (current, next) => (current.priority <= next.priority ?
-                current :
-                next)
+            highPriorityHost = hosts.reduce((current, next) =>
+              current.priority <= next.priority ? current : next
             ).host;
 
             url = serviceUrl.get(true, hosts[0].id);
@@ -257,10 +240,8 @@ describe('webex-core', () => {
           beforeEach(() => {
             hosts = serviceUrl.hosts.filter((host) => !host.homeCluster);
 
-            highPriorityHost = hosts.reduce(
-              (current, next) => (current.priority <= next.priority ?
-                current :
-                next)
+            highPriorityHost = hosts.reduce((current, next) =>
+              current.priority <= next.priority ? current : next
             ).host;
 
             url = serviceUrl.get(true, hosts[0].id);

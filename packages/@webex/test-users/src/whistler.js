@@ -20,47 +20,50 @@ const getClientCredentials = ({
   orgId,
   idbrokerUrl,
   machineAccount,
-  machinePassword
-}) => request({
-  method: 'POST',
-  uri: `${idbrokerUrl}/idb/token/${orgId}/v2/actions/GetBearerToken/invoke`,
-  json: true,
-  body: {
-    uid: machineAccount,
-    password: machinePassword
-  }
-})
-  .then((res) => request({
+  machinePassword,
+}) =>
+  request({
     method: 'POST',
-    uri: `${idbrokerUrl}/idb/oauth2/v1/access_token`,
+    uri: `${idbrokerUrl}/idb/token/${orgId}/v2/actions/GetBearerToken/invoke`,
     json: true,
-    form: {
-      assertion: res.body.BearerToken,
-      grant_type: 'urn:ietf:params:oauth:grant-type:saml2-bearer',
-      scope: 'webexsquare:get_conversation webexsquare:admin',
-      self_contained_token: true,
-      client_id: clientId,
-      client_secret: clientSecret
+    body: {
+      uid: machineAccount,
+      password: machinePassword,
     },
-    headers: {
-      // Note: we can't request's auth hash here because this endpoint expects
-      // us to send the auth header *without including "Basic "* before the
-      // token string
-      // authorization: `Basic + ${btoa(`${clientId}:${clientSecret}`)}`
-      authorization: btoa(`${clientId}:${clientSecret}`)
-    }
-  }))
-  .then((res) => `${res.body.token_type} ${res.body.access_token}`);
+  })
+    .then((res) =>
+      request({
+        method: 'POST',
+        uri: `${idbrokerUrl}/idb/oauth2/v1/access_token`,
+        json: true,
+        form: {
+          assertion: res.body.BearerToken,
+          grant_type: 'urn:ietf:params:oauth:grant-type:saml2-bearer',
+          scope: 'webexsquare:get_conversation webexsquare:admin',
+          self_contained_token: true,
+          client_id: clientId,
+          client_secret: clientSecret,
+        },
+        headers: {
+          // Note: we can't request's auth hash here because this endpoint expects
+          // us to send the auth header *without including "Basic "* before the
+          // token string
+          // authorization: `Basic + ${btoa(`${clientId}:${clientSecret}`)}`
+          authorization: btoa(`${clientId}:${clientSecret}`),
+        },
+      })
+    )
+    .then((res) => `${res.body.token_type} ${res.body.access_token}`);
 
 /**
-  * @typedef {Object} TestUserObject
-  * @property {string} password
-  * @property {string} emailAddress
-  * @property {string} displayName
-  * @property {string} token
-  * @property {string} reservationUrl
-  * @property {object} responseMetaData - whistler given properties
-  */
+ * @typedef {Object} TestUserObject
+ * @property {string} password
+ * @property {string} emailAddress
+ * @property {string} displayName
+ * @property {string} token
+ * @property {string} reservationUrl
+ * @property {object} responseMetaData - whistler given properties
+ */
 
 /**
  * @typedef {Object} CreateUserOptions
@@ -98,11 +101,15 @@ export default function createTestUser(options = {}) {
   }
 
   if (!machineAccount) {
-    throw new Error('options.machineAccount or process.env.WHISTLER_MACHINE_ACCOUNT must be defined');
+    throw new Error(
+      'options.machineAccount or process.env.WHISTLER_MACHINE_ACCOUNT must be defined'
+    );
   }
 
   if (!machinePassword) {
-    throw new Error('options.machinePassword or process.env.WHISTLER_MACHINE_PASSWORD must be defined');
+    throw new Error(
+      'options.machinePassword or process.env.WHISTLER_MACHINE_PASSWORD must be defined'
+    );
   }
   if (!idbrokerUrl) {
     throw new Error('options.idbrokerUrl or process.env.IDBROKER_BASE_URL must be defined');
@@ -113,7 +120,9 @@ export default function createTestUser(options = {}) {
   }
 
   if (!whistlerServiceUrl) {
-    throw new Error('options.whistlerServiceUrl or process.env.WHISTLER_API_SERVICE_URL must be defined');
+    throw new Error(
+      'options.whistlerServiceUrl or process.env.WHISTLER_API_SERVICE_URL must be defined'
+    );
   }
 
   // For reservation groups and user scopes
@@ -124,27 +133,34 @@ export default function createTestUser(options = {}) {
     machineAccount,
     machinePassword,
     idbrokerUrl,
-    orgId
+    orgId,
   })
-    .then((authorization) => request({
-      method: 'GET',
-      uri: `${whistlerServiceUrl}/reservations/testUser`,
-      qs: {
-        reservationGroup,
-        userScopes,
-        isAccessTokenRequired: true
-      },
-      headers: {
-        authorization
-      }
-    }))
-    .then((res) => Object.assign({
-      password: res.body.responseMetaData.ciPassword,
-      emailAddress: res.body.responseMetaData.name,
-      displayName: res.body.responseMetaData.webExUserName,
-      token: res.body.responseMetaData.ciAccessToken,
-      reservationUrl: res.body.reservationUrl
-    }, res.body.responseMetaData));
+    .then((authorization) =>
+      request({
+        method: 'GET',
+        uri: `${whistlerServiceUrl}/reservations/testUser`,
+        qs: {
+          reservationGroup,
+          userScopes,
+          isAccessTokenRequired: true,
+        },
+        headers: {
+          authorization,
+        },
+      })
+    )
+    .then((res) =>
+      Object.assign(
+        {
+          password: res.body.responseMetaData.ciPassword,
+          emailAddress: res.body.responseMetaData.name,
+          displayName: res.body.responseMetaData.webExUserName,
+          token: res.body.responseMetaData.ciAccessToken,
+          reservationUrl: res.body.reservationUrl,
+        },
+        res.body.responseMetaData
+      )
+    );
 }
 
 /**
@@ -156,8 +172,8 @@ export function removeTestUser(options = {}) {
   return request({
     method: 'DELETE',
     headers: {
-      authorization: `Bearer ${options.token}`
+      authorization: `Bearer ${options.token}`,
     },
-    uri: options.reservationUrl
+    uri: options.reservationUrl,
   });
 }

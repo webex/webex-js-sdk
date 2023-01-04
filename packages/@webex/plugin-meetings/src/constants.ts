@@ -1,5 +1,5 @@
 // @ts-ignore
-import { hydraTypes } from '@webex/common';
+import {hydraTypes} from '@webex/common';
 
 // *********** LOWERCASE / CAMELCASE STRINGS ************
 
@@ -136,14 +136,14 @@ export const _MOVE_MEDIA_ = 'MOVE_MEDIA';
 export const PARTICIPANT_DELTAS = {
   TARGETS: {
     AUDIO: 'audio',
-    VIDEO: 'video'
+    VIDEO: 'video',
   },
   STATES: {
     DISABLED: 'disabled',
     MUTED: 'muted',
     UNKNOWN: 'unknown',
-    UNMUTED: 'unmuted'
-  }
+    UNMUTED: 'unmuted',
+  },
 };
 
 // *********** STRING HELPERS ***********
@@ -201,21 +201,26 @@ export const DIALER_REGEX = {
   // modified from https://github.com/kirm/sip.js base
   // and with https://tools.ietf.org/html/rfc3261
   // requires the @ symbol
-  SIP_ADDRESS: /^(sips?)?:?(?:([^\s>:@]+)(?::([^\s@>]+))?@)([\w\-.]+)(?::(\d+))?((?:;[^\s=?>;]+(?:=[^\s?;]+)?)*)(?:\?(([^\s&=>]+=[^\s&=>]+)(&[^\s&=>]+=[^\s&=>]+)*))?$/,
+  SIP_ADDRESS:
+    /^(sips?)?:?(?:([^\s>:@]+)(?::([^\s@>]+))?@)([\w\-.]+)(?::(\d+))?((?:;[^\s=?>;]+(?:=[^\s?;]+)?)*)(?:\?(([^\s&=>]+=[^\s&=>]+)(&[^\s&=>]+=[^\s&=>]+)*))?$/,
   // standard telephony num regex
-  PHONE_NUMBER: /^(?:(?:\+?1\s*(?:[.-]\s*)?)?(?:\(\s*([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9])\s*\)|([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9]))\s*(?:[.-]\s*)?)?([2-9]1[02-9]|[2-9][02-9]1|[2-9][02-9]{2})\s*(?:[.-]\s*)?([0-9]{4})(?:\s*(?:#|x\.?|ext\.?|extension)\s*(\d+))?$/,
-  E164_FORMAT: /^\+[1-9]\d{1,14}$/
+  PHONE_NUMBER:
+    /^(?:(?:\+?1\s*(?:[.-]\s*)?)?(?:\(\s*([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9])\s*\)|([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9]))\s*(?:[.-]\s*)?)?([2-9]1[02-9]|[2-9][02-9]1|[2-9][02-9]{2})\s*(?:[.-]\s*)?([0-9]{4})(?:\s*(?:#|x\.?|ext\.?|extension)\s*(\d+))?$/,
+  E164_FORMAT: /^\+[1-9]\d{1,14}$/,
 };
 
 // eslint-disable-next-line max-len
 export const IPV4_REGEX = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}|.local/g;
 
-export const VALID_EMAIL_ADDRESS = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-export const VALID_PMR_ADDRESS = /([a-z0-9][-a-z0-9, '.']{0,62})@([a-z0-9][-a-z0-9, '.']{0,62})\.webex\.com/i;
-export const VALID_PMR_LINK = /(https:\/\/)?([a-z0-9][-a-z0-9, '.']{0,62})\.webex\.com\/(meet|join)\/([a-z0-9][-a-z0-9, '.']{0,62})\/?/i;
+export const VALID_EMAIL_ADDRESS =
+  /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+export const VALID_PMR_ADDRESS =
+  /([a-z0-9][-a-z0-9, '.']{0,62})@([a-z0-9][-a-z0-9, '.']{0,62})\.webex\.com/i;
+export const VALID_PMR_LINK =
+  /(https:\/\/)?([a-z0-9][-a-z0-9, '.']{0,62})\.webex\.com\/(meet|join)\/([a-z0-9][-a-z0-9, '.']{0,62})\/?/i;
 export const VALID_PIN = /([0-9]{4,6})/;
-export const UUID_REG = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
+export const UUID_REG =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 // ******************** OBJECTS ********************
 // Please alphabetize, and keep objects organized
@@ -223,7 +228,7 @@ export const UUID_REG = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f
 // TODO:  move all api params to API section
 export const API = {
   CALLIOPEDISCOVERY: 'calliopeDiscovery',
-  LOCUS: 'locus'
+  LOCUS: 'locus',
 };
 
 export const CALENDAR_EVENTS = {
@@ -231,26 +236,38 @@ export const CALENDAR_EVENTS = {
   UPDATE: 'event:calendar.meeting.update',
   CREATE_MINIMAL: 'event:calendar.meeting.create.minimal',
   UPDATE_MINIMAL: 'event:calendar.meeting.update.minimal',
-  DELETE: 'event:calendar.meeting.delete'
+  DELETE: 'event:calendar.meeting.delete',
 };
 
 export const DEFAULT_GET_STATS_FILTER = {
-  types: ['track', 'transport', 'candidate-pair', 'outbound-rtp', 'outboundrtp', 'inbound-rtp', 'inboundrtp', 'remote-inbound-rtp', 'remote-outbound-rtp', 'remote-candidate', 'local-candidate', 'media-source']
+  types: [
+    'track',
+    'transport',
+    'candidate-pair',
+    'outbound-rtp',
+    'outboundrtp',
+    'inbound-rtp',
+    'inboundrtp',
+    'remote-inbound-rtp',
+    'remote-outbound-rtp',
+    'remote-candidate',
+    'local-candidate',
+    'media-source',
+  ],
 };
-
 
 export const RECORDING_STATE = {
   RECORDING: 'recording',
   IDLE: 'idle',
   PAUSED: 'paused',
-  RESUMED: 'resumed'
+  RESUMED: 'resumed',
 };
 
 export const SHARE_STATUS = {
   NO_SHARE: 'no_share',
   REMOTE_SHARE_ACTIVE: 'remote_share_active',
   LOCAL_SHARE_ACTIVE: 'local_share_active',
-  WHITEBOARD_SHARE_ACTIVE: 'whiteboard_share_active'
+  WHITEBOARD_SHARE_ACTIVE: 'whiteboard_share_active',
 };
 
 // TODO: do we want to scope by meeting, members when they come off those objects themselves?
@@ -312,7 +329,7 @@ export const EVENT_TRIGGERS = {
   MEETINGS_NETWORK_CONNECTED: 'network:connected',
   MEETING_SELF_LEFT: 'meeting:self:left',
   NETWORK_QUALITY: 'network:quality',
-  MEDIA_NEGOTIATED: 'media:negotiated'
+  MEDIA_NEGOTIATED: 'media:negotiated',
 };
 
 export const EVENT_TYPES = {
@@ -324,7 +341,7 @@ export const EVENT_TYPES = {
   REMOTE_VIDEO: 'remoteVideo',
   REMOTE_SHARE: 'remoteShare',
   LOCAL_SHARE: 'localShare',
-  ERROR: 'error'
+  ERROR: 'error',
 };
 
 // Handles the reason when meeting gets destroyed
@@ -338,7 +355,7 @@ export const MEETING_REMOVED_REASON = {
   CLIENT_LEAVE_REQUEST: 'CLIENT_LEAVE_REQUEST', // You triggered leave meeting
   USER_ENDED_SHARE_STREAMS: 'USER_ENDED_SHARE_STREAMS', // user triggered stop share
   NO_MEETINGS_TO_SYNC: 'NO_MEETINGS_TO_SYNC', // After the syncMeeting no meeting exists
-  MEETING_CONNECTION_FAILED: 'MEETING_CONNECTION_FAILED' // meeting failed to connect due to ice failures or firewall issue
+  MEETING_CONNECTION_FAILED: 'MEETING_CONNECTION_FAILED', // meeting failed to connect due to ice failures or firewall issue
 };
 
 // One one one calls ends for the following reasons
@@ -347,12 +364,12 @@ export const MEETING_REMOVED_REASON = {
 export const CALL_REMOVED_REASON = {
   CALL_INACTIVE: 'CALL_INACTIVE', // partner and you leave the call
   PARTNER_LEFT: 'PARTNER_LEFT', // partner left the call
-  SELF_LEFT: 'SELF_LEFT'// you left/declined the call
+  SELF_LEFT: 'SELF_LEFT', // you left/declined the call
 };
 
 export const SHARE_STOPPED_REASON = {
   SELF_STOPPED: 'SELF_STOPPED',
-  MEETING_REJOIN: 'MEETING_REJOIN'
+  MEETING_REJOIN: 'MEETING_REJOIN',
 };
 
 export const EVENTS = {
@@ -372,66 +389,70 @@ export const EVENTS = {
   LOCUS_INFO_UPDATE_SELF: 'LOCUS_INFO_UPDATE_SELF',
   LOCUS_INFO_UPDATE_URL: 'LOCUS_INFO_UPDATE_URL',
   LOCUS_INFO_CAN_ASSIGN_HOST: 'LOCUS_INFO_CAN_ASSIGN_HOST',
-  DISCONNECT_DUE_TO_INACTIVITY: 'DISCONNECT_DUE_TO_INACTIVITY'
+  DISCONNECT_DUE_TO_INACTIVITY: 'DISCONNECT_DUE_TO_INACTIVITY',
 };
 
 export const MEDIA_STATE = {
   active: 'active',
-  inactive: 'inactive'
+  inactive: 'inactive',
 };
 
 export const ERROR_DICTIONARY = {
   PARAMETER: {
     NAME: 'ParameterError',
-    MESSAGE: 'The parameters passed to the function, or object properties needed in the function were null, missing where required, or otherwise incorrect.',
-    CODE: 0
+    MESSAGE:
+      'The parameters passed to the function, or object properties needed in the function were null, missing where required, or otherwise incorrect.',
+    CODE: 0,
   },
   INTENT_TO_JOIN: {
     NAME: 'IntentToJoinError',
-    MESSAGE: 'The meeting is locked. This is expected behavior. Call #join again with pin and/or moderator option',
-    CODE: 1
+    MESSAGE:
+      'The meeting is locked. This is expected behavior. Call #join again with pin and/or moderator option',
+    CODE: 1,
   },
   JOIN_MEETING: {
     NAME: 'JoinMeetingError',
     MESSAGE: 'There was an issue joining the meeting, meeting could be in a bad state.',
-    CODE: 2
+    CODE: 2,
   },
   RECONNECTION: {
     NAME: 'ReconnectionError',
-    MESSAGE: 'There was an error in the reconnection flow, the meeting may not reconnect, disconnect and dial again.',
-    CODE: 3
+    MESSAGE:
+      'There was an error in the reconnection flow, the meeting may not reconnect, disconnect and dial again.',
+    CODE: 3,
   },
   MEDIA: {
     NAME: 'MediaError',
     MESSAGE: 'There was an error with media, the meeting may not have live audio, video or share.',
-    CODE: 4
+    CODE: 4,
   },
   PERMISSION: {
     NAME: 'PermissionError',
-    MESSAGE: 'Not allowed to execute the function, some properties on server, or local client state do not allow you to complete this action.',
-    CODE: 5
+    MESSAGE:
+      'Not allowed to execute the function, some properties on server, or local client state do not allow you to complete this action.',
+    CODE: 5,
   },
   STATS: {
     NAME: 'StatsError',
     MESSAGE: 'An error occurred with getStats, stats may not continue for this data stream.',
-    CODE: 6
+    CODE: 6,
   },
   PASSWORD: {
     NAME: 'PasswordError',
     MESSAGE: 'Password is required, please use verifyPassword()',
-    CODE: 7
+    CODE: 7,
   },
   CAPTCHA: {
     NAME: 'CaptchaError',
     MESSAGE: 'Captcha is required.',
-    CODE: 8
-  }
+    CODE: 8,
+  },
 };
 
 export const FLOOR_ACTION = {
   GRANTED: 'GRANTED',
   RELEASED: 'RELEASED',
-  ACCEPTED: 'ACCEPTED'
+  ACCEPTED: 'ACCEPTED',
 };
 
 export const FULL_STATE = {
@@ -439,21 +460,21 @@ export const FULL_STATE = {
   INACTIVE: 'INACTIVE',
   ACTIVE: 'ACTIVE',
   TERMINATING: 'TERMINATING',
-  UNKNOWN: 'UNKNOWN'
+  UNKNOWN: 'UNKNOWN',
 };
 
 export const HTTP_VERBS = {
   PUT: 'PUT',
   POST: 'POST',
   GET: 'GET',
-  PATCH: 'PATCH'
+  PATCH: 'PATCH',
 };
 
 // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/iceGatheringState
 export const ICE_GATHERING_STATE = {
   NEW: 'new',
   GATHERING: 'gathering',
-  COMPLETE: 'complete'
+  COMPLETE: 'complete',
 };
 
 // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/iceConnectionState
@@ -463,7 +484,7 @@ export const ICE_STATE = {
   CLOSED: 'closed',
   COMPLETED: 'completed',
   FAILED: 'failed',
-  DISCONNECTED: 'disconnected'
+  DISCONNECTED: 'disconnected',
 };
 
 export const CONNECTION_STATE = {
@@ -472,14 +493,14 @@ export const CONNECTION_STATE = {
   CONNECTED: 'connected',
   CLOSED: 'closed',
   FAILED: 'failed',
-  DISCONNECTED: 'disconnected'
+  DISCONNECTED: 'disconnected',
 };
 
 export const LOCUS = {
   STATE: {
     INACTIVE: 'INACTIVE',
     ENDED: 'ENDED',
-    INITIALIZING: 'INITIALIZING'
+    INITIALIZING: 'INITIALIZING',
   },
   SEQUENCE: {
     UN_DEF: 'undef',
@@ -487,9 +508,9 @@ export const LOCUS = {
     DEF: 'def',
     NA: 'na',
     RANGE_START: 'rangeStart',
-    RANGE_END: 'rangeEnd'
+    RANGE_END: 'rangeEnd',
   },
-  SYNCDEBUG: 'sync_debug'
+  SYNCDEBUG: 'sync_debug',
 };
 
 export const LOCUSINFO = {
@@ -518,7 +539,7 @@ export const LOCUSINFO = {
     EMBEDDED_APPS_UPDATED: 'EMBEDDED_APPS_UPDATED',
     SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE: 'SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE',
     SELF_IS_SHARING_BLOCKED_CHANGE: 'SELF_IS_SHARING_BLOCKED_CHANGE',
-  }
+  },
 };
 
 export const LOCUSEVENT = {
@@ -553,7 +574,7 @@ export const LOCUSEVENT = {
   RECORDING_START_FAILED: 'locus.recording_start_failed',
   RECORDING_STOPPED: 'locus.recording_stopped',
 
-  SELF_CHANGED: 'locus.self_changed'
+  SELF_CHANGED: 'locus.self_changed',
 };
 
 export const MEDIA_TRACK_CONSTRAINT = {
@@ -563,8 +584,8 @@ export const MEDIA_TRACK_CONSTRAINT = {
     // The cursor should only be visible while moving, then removed.
     MOTION: 'motion',
     // The cursor should never be visible in the generated stream.
-    NEVER: 'never'
-  }
+    NEVER: 'never',
+  },
 };
 
 export const MEETING_ERRORS = {
@@ -587,7 +608,8 @@ export const MEETING_ERRORS = {
   INVALID_LOCUS_ID: 'INVALID_LOCUS_ID',
   EMPTY_SCHEDULED_MEETING_START_TIME: 'EMPTY_SCHEDULED_MEETING_START_TIME',
   INVALID_SCHEDULED_MEETING_DURATION_MINUTES: 'INVALID_SCHEDULED_MEETING_DURATION_MINUTES',
-  INVALID_SCHEDULED_MEETING_REMINDER_DURATION_MINUTES: 'INVALID_SCHEDULED_MEETING_REMINDER_DURATION_MINUTES',
+  INVALID_SCHEDULED_MEETING_REMINDER_DURATION_MINUTES:
+    'INVALID_SCHEDULED_MEETING_REMINDER_DURATION_MINUTES',
   EMPTY_SCHEDULED_MEETING_ORGANIZER: 'EMPTY_SCHEDULED_MEETING_ORGANIZER',
   INVALID_MEETING_ID_FORMAT: 'INVALID_MEETING_ID_FORMAT',
   INVALID_SIP_URL_FORMAT: 'INVALID_SIP_URL_FORMAT',
@@ -668,13 +690,12 @@ export const MEETING_ERRORS = {
   SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
 
   SOCKET_TIMEOUT: 'SOCKET_TIMEOUT',
-  NO_HTTP_RESPONSE: 'NO_HTTP_RESPONSE'
+  NO_HTTP_RESPONSE: 'NO_HTTP_RESPONSE',
 };
-
 
 export const MEETING_END_REASON = {
   INACTIVE: 'INACTIVE',
-  MEDIA_RELEASED: 'MEDIA_RELEASED'
+  MEDIA_RELEASED: 'MEDIA_RELEASED',
 };
 
 export const DISPLAY_HINTS = {
@@ -706,7 +727,7 @@ export const DISPLAY_HINTS = {
 
 export const SELF_ROLES = {
   COHOST: 'COHOST',
-  MODERATOR: 'MODERATOR'
+  MODERATOR: 'MODERATOR',
 };
 
 export const MEETING_STATE = {
@@ -721,8 +742,8 @@ export const MEETING_STATE = {
     TERMINATING: 'TERMINATING',
     LEFT: 'LEFT',
     ENDED: 'ENDED',
-    ERROR: 'ERROR'
-  }
+    ERROR: 'ERROR',
+  },
 };
 
 export const MEETING_STATE_MACHINE = {
@@ -734,7 +755,7 @@ export const MEETING_STATE_MACHINE = {
     DECLINE: 'decline',
     LEAVE: 'leave',
     END: 'end',
-    RESET: 'reset'
+    RESET: 'reset',
   },
   STATES: {
     ERROR: 'ERROR',
@@ -743,35 +764,35 @@ export const MEETING_STATE_MACHINE = {
     DECLINED: 'DECLINED',
     RINGING: 'RINGING',
     JOINED: 'JOINED',
-    ANSWERED: 'ANSWERED'
-  }
+    ANSWERED: 'ANSWERED',
+  },
 };
 
 export const MEETING_AUDIO_STATE_MACHINE = {
   TRANSITIONS: {
     TOGGLE: 'toggle',
-    INIT: 'init'
+    INIT: 'init',
   },
   STATES: {
     MUTE_SELF: 'SELF_AUDIO_OFF',
-    UNMUTE_SELF: 'SELF_AUDIO_ON'
-  }
+    UNMUTE_SELF: 'SELF_AUDIO_ON',
+  },
 };
 
 export const MEETING_VIDEO_STATE_MACHINE = {
   TRANSITIONS: {
     TOGGLE: 'toggle',
-    INIT: 'init'
+    INIT: 'init',
   },
   STATES: {
     MUTE_SELF: 'SELF_VIDEO_OFF',
-    UNMUTE_SELF: 'SELF_VIDEO_ON'
-  }
+    UNMUTE_SELF: 'SELF_VIDEO_ON',
+  },
 };
 
 export const PEER_CONNECTION_STATE = {
   CLOSED: 'closed',
-  FAILED: 'failed'
+  FAILED: 'failed',
 };
 
 export const RECONNECTION = {
@@ -780,23 +801,23 @@ export const RECONNECTION = {
     COMPLETE: 'COMPLETE',
     FAILURE: 'FAILURE',
     DEFAULT_TRY_COUNT: 0,
-    DEFAULT_STATUS: ''
-  }
+    DEFAULT_STATUS: '',
+  },
 };
 
 export const RESOURCE = {
   CLUSTERS: 'clusters',
   REACHABILITY: 'reachability',
-  LOCI: 'loci'
+  LOCI: 'loci',
 };
 
 export const REACHABILITY = {
-  localStorage: 'reachability.result'
+  localStorage: 'reachability.result',
 };
 
 export const ROAP = {
   ROAP_TRANSITIONS: {
-    STEP: 'step'
+    STEP: 'step',
   },
   ROAP_TYPES: {
     OFFER: 'OFFER',
@@ -819,7 +840,7 @@ export const ROAP = {
     IDLE_LOCAL_OFFER: 'IDLE_LOCAL_OFFER',
     IDLE_REMOTE_OFFER: 'IDLE_REMOTE_OFFER',
     GLARE: 'GLARE',
-    ERROR: 'ERROR'
+    ERROR: 'ERROR',
   },
   ROAP_SIGNAL: {
     RX_OFFER: 'RX_OFFER',
@@ -828,7 +849,7 @@ export const ROAP = {
     TX_ANSWER: 'TX_ANSWER',
     RX_OK: 'RX_OK',
     TX_OK: 'TX_OK',
-    GLARE_RESOLVED: 'GLARE_RESOLVED'
+    GLARE_RESOLVED: 'GLARE_RESOLVED',
   },
   RECEIVE_ROAP_MSG: 'RECEIVE_ROAP_MSG',
   SEND_ROAP_MSG: 'SEND_ROAP_MSG',
@@ -838,12 +859,12 @@ export const ROAP = {
   ROAP_MERCURY: 'event:locus.message.roap',
   ROAP_VERSION: '2',
   RX_: 'RX_',
-  TX_: 'TX_'
+  TX_: 'TX_',
 };
 
 export const MediaContent = {
   main: 'main',
-  slides: 'slides'
+  slides: 'slides',
 };
 
 export const SDP = {
@@ -859,20 +880,20 @@ export const SDP = {
   // Edonus repeated key frames request
   PERIODIC_KEYFRAME: 'a=periodic-keyframes:20',
   CARRIAGE_RETURN: '\r\n',
-  BAD_MEDIA_PORTS: [0]
+  BAD_MEDIA_PORTS: [0],
 };
 
 export const NETWORK_STATUS = {
   DISCONNECTED: 'DISCONNECTED',
   RECONNECTING: 'RECONNECTING',
-  CONNECTED: 'CONNECTED'
+  CONNECTED: 'CONNECTED',
 };
 
 export const NETWORK_TYPE = {
   VPN: 'vpn',
   UNKNOWN: 'unknown',
   WIFI: 'wifi',
-  ETHERNET: 'ethernet'
+  ETHERNET: 'ethernet',
 };
 
 export const STATS = {
@@ -896,7 +917,7 @@ export const MQA_STATS = {
         isMain: false, // always true for share sender
         mariFecEnabled: false, // unavailable
         mariQosEnabled: false, // unavailable
-        multistreamEnabled: false // unavailable
+        multistreamEnabled: false, // unavailable
       },
       availableBitrate: 0,
       dtlsBitrate: 0, // unavailable
@@ -915,7 +936,7 @@ export const MQA_STATS = {
       rtpPackets: 0,
       stunBitrate: 0, // unavailable
       stunPackets: 0, // unavailable
-      transportType: 'UDP' // TODO: parse the transport type from the SDP and save globally
+      transportType: 'UDP', // TODO: parse the transport type from the SDP and save globally
     },
     streams: [
       {
@@ -927,7 +948,7 @@ export const MQA_STATS = {
           rtpPackets: 0,
           ssci: 0, // unavailable
           transmittedBitrate: 0,
-          transmittedFrameRate: 0
+          transmittedFrameRate: 0,
         },
         h264CodecProfile: 'BP', // TODO: parse the profile level from h264 in the SDP and save globally
         localConfigurationChanges: 0, // unavailable
@@ -937,9 +958,9 @@ export const MQA_STATS = {
         transmittedFrameSize: 0, // unavailable
         transmittedHeight: 0,
         transmittedKeyFrames: 0,
-        transmittedWidth: 0
-      }
-    ]
+        transmittedWidth: 0,
+      },
+    ],
   },
   intervalMetadata: {
     memoryUsage: {
@@ -950,14 +971,14 @@ export const MQA_STATS = {
       processMaximumMemoryBytes: 0,
       processMaximumMemoryUsage: 0,
       systemAverageMemoryUsage: 0,
-      systemMaximumMemoryUsage: 0
+      systemMaximumMemoryUsage: 0,
     },
     peerReflexiveIP: 'NULL', // TODO: save after ice trickling completes and use as a global variable
     processAverageCPU: 0,
     processMaximumCPU: 0,
     systemAverageCPU: 0,
-    systemMaximumCPU: 0
-  }
+    systemMaximumCPU: 0,
+  },
 };
 
 // ****** MEDIA QUALITY CONSTANTS ****** //
@@ -972,56 +993,55 @@ export const QUALITY_LEVELS = {
   '1080p': '1080p',
 };
 
-
 export const AVAILABLE_RESOLUTIONS = {
   '360p': {
     video: {
       width: {
         max: 640,
-        ideal: 640
+        ideal: 640,
       },
       height: {
         max: 360,
-        ideal: 360
-      }
-    }
+        ideal: 360,
+      },
+    },
   },
   '480p': {
     video: {
       width: {
         max: 640,
-        ideal: 640
+        ideal: 640,
       },
       height: {
         max: 480,
-        ideal: 480
-      }
-    }
+        ideal: 480,
+      },
+    },
   },
   '720p': {
     video: {
       width: {
         max: 1280,
-        ideal: 1280
+        ideal: 1280,
       },
       height: {
         max: 720,
-        ideal: 720
-      }
-    }
+        ideal: 720,
+      },
+    },
   },
   '1080p': {
     video: {
       width: {
         max: 1920,
-        ideal: 1920
+        ideal: 1920,
       },
       height: {
         max: 1080,
-        ideal: 1080
-      }
-    }
-  }
+        ideal: 1080,
+      },
+    },
+  },
 };
 
 export const VIDEO_RESOLUTIONS = {
@@ -1042,21 +1062,20 @@ export const REMOTE_VIDEO_CONSTRAINTS = {
   MAX_FS: {
     [QUALITY_LEVELS.LOW]: 1620,
     [QUALITY_LEVELS.MEDIUM]: 3600,
-    [QUALITY_LEVELS.HIGH]: 8192
-  }
+    [QUALITY_LEVELS.HIGH]: 8192,
+  },
 };
 
 /*
-*  mqa Interval for sending stats metrics
-*/
+ *  mqa Interval for sending stats metrics
+ */
 
 export const MQA_INTEVAL = 60000; // mqa analyzer interval its fixed to 60000
-
 
 export const MEDIA_DEVICES = {
   MICROPHONE: 'microphone',
   SPEAKER: 'speaker',
-  CAMERA: 'camera'
+  CAMERA: 'camera',
 };
 
 export const METRICS_JOIN_TIMES_MAX_DURATION = 1200000;
@@ -1067,31 +1086,31 @@ export const PSTN_STATUS = {
   LEFT: 'LEFT', // user has disconnected from the pstn device
   TRANSFERRING: 'TRANSFERRING', // usually happens in dial-out after the CONNECTED state
   SUCCESS: 'SUCCESS', // happens after the transfer (TRANSFERRING) is successful
-  UNKNOWN: '' // placeholder if we haven't been told what the status is
+  UNKNOWN: '', // placeholder if we haven't been told what the status is
 };
 
 export const PASSWORD_STATUS = {
   NOT_REQUIRED: 'NOT_REQUIRED', // password is not required to join the meeting
   REQUIRED: 'REQUIRED', // client needs to provide the password by calling verifyPassword() before calling join()
   UNKNOWN: 'UNKNOWN', // we are waiting for information from the backend if password is required or not
-  VERIFIED: 'VERIFIED' // client has already provided the password and it has been verified, client can proceed to call join()
+  VERIFIED: 'VERIFIED', // client has already provided the password and it has been verified, client can proceed to call join()
 };
 
 export const MEETING_INFO_FAILURE_REASON = {
   NONE: 'NONE', // meeting info was retrieved succesfully
   WRONG_PASSWORD: 'WRONG_PASSWORD', // meeting requires password and no password or wrong one was provided
   WRONG_CAPTCHA: 'WRONG_CAPTCHA', // wbxappapi requires a captcha code or a wrong captcha code was provided
-  OTHER: 'OTHER' // any other error (network, etc)
+  OTHER: 'OTHER', // any other error (network, etc)
 };
 
 export const BNR_STATUS = {
   SHOULD_ENABLE: 'SHOULD_ENABLE',
   ENABLED: 'ENABLED',
   SHOULD_DISABLE: 'SHOULD_DISABLE',
-  NOT_ENABLED: 'NOT_ENABLED'
+  NOT_ENABLED: 'NOT_ENABLED',
 };
 
 export const EMBEDDED_APP_TYPES = {
   SLIDO: 'SLIDO',
-  OTHER: 'OTHER'
+  OTHER: 'OTHER',
 };

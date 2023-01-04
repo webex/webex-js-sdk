@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-
 const bodyParser = require(`body-parser`);
 const express = require(`express`);
 const fs = require(`fs`);
@@ -45,7 +44,7 @@ router.post(`/upload`, (req, res, next) => {
       return res
         .status(201)
         .json({
-          loc: getFrom
+          loc: getFrom,
         })
         .end();
     });
@@ -71,10 +70,7 @@ const upload = multer({storage});
 
 [`put`, `patch`, `post`].forEach((methodName) => {
   router[methodName](`/metadata`, upload.array(`files`), (req, res) => {
-    res
-      .status(200)
-      .json(req.files)
-      .end();
+    res.status(200).json(req.files).end();
   });
 });
 

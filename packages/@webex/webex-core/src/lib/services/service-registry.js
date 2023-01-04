@@ -1,7 +1,4 @@
-import {
-  SERVICE_CATALOGS,
-  SERVICE_CATALOGS_ENUM_TYPES
-} from './constants';
+import {SERVICE_CATALOGS, SERVICE_CATALOGS_ENUM_TYPES} from './constants';
 import ServiceHost from './service-host';
 
 /**
@@ -68,19 +65,17 @@ export default class ServiceRegistry {
     return this.find({
       active: true,
       local: true,
-      priority: true
-    }).reduce(
-      (map, host) => {
-        // Generate a new object to assign the existing map.
-        const hostReference = {};
+      priority: true,
+    }).reduce((map, host) => {
+      // Generate a new object to assign the existing map.
+      const hostReference = {};
 
-        // Assign the key:value pair for the service and url.
-        hostReference[host.service] = host.url;
+      // Assign the key:value pair for the service and url.
+      hostReference[host.service] = host.url;
 
-        // Assign the reference to the map and return.
-        return {...map, ...hostReference};
-      }, {}
-    );
+      // Assign the reference to the map and return.
+      return {...map, ...hostReference};
+    }, {});
   }
 
   /**
@@ -98,9 +93,7 @@ export default class ServiceRegistry {
     const removing = this.find(filter);
 
     // Remove the hosts from the array.
-    this.hosts = this.hosts.filter(
-      (host) => !removing.includes(host)
-    );
+    this.hosts = this.hosts.filter((host) => !removing.includes(host));
 
     // Return the removed hosts.
     return removing;
@@ -121,11 +114,9 @@ export default class ServiceRegistry {
     const failing = this.find(filter);
 
     // Mark the hosts from the array as failed.
-    failing.forEach(
-      (host) => {
-        host.setStatus({failed: true});
-      }
-    );
+    failing.forEach((host) => {
+      host.setStatus({failed: true});
+    });
 
     // Return the marked hosts.
     return failing;
@@ -141,9 +132,9 @@ export default class ServiceRegistry {
    */
   filterActive(active) {
     // Filter the host array if the active requirement is true.
-    return (typeof active === 'boolean') ?
-      this.hosts.filter((host) => host.active === active) :
-      [...this.hosts];
+    return typeof active === 'boolean'
+      ? this.hosts.filter((host) => host.active === active)
+      : [...this.hosts];
   }
 
   /**
@@ -157,16 +148,18 @@ export default class ServiceRegistry {
    */
   filterCatalog(catalog = []) {
     // Generate a catalog names array based on the provided catalog param.
-    const catalogs = (Array.isArray(catalog) ? catalog : [catalog])
-      .map((catalogId) => ServiceRegistry.mapCatalogName({
-        id: catalogId,
-        type: SERVICE_CATALOGS_ENUM_TYPES.STRING
-      }) || catalogId);
+    const catalogs = (Array.isArray(catalog) ? catalog : [catalog]).map(
+      (catalogId) =>
+        ServiceRegistry.mapCatalogName({
+          id: catalogId,
+          type: SERVICE_CATALOGS_ENUM_TYPES.STRING,
+        }) || catalogId
+    );
 
     // Filter the host array against the catalog names array.
-    return (catalogs.length > 0) ?
-      this.hosts.filter((host) => catalogs.includes(host.catalog)) :
-      [...this.hosts];
+    return catalogs.length > 0
+      ? this.hosts.filter((host) => catalogs.includes(host.catalog))
+      : [...this.hosts];
   }
 
   /**
@@ -180,12 +173,12 @@ export default class ServiceRegistry {
    */
   filterCluster(cluster = []) {
     // Generate an array of clusters regardless of parameter type.
-    const clusters = (Array.isArray(cluster) ? cluster : [cluster]);
+    const clusters = Array.isArray(cluster) ? cluster : [cluster];
 
     // Filter the host array against the provided clusters.
-    return (clusters.length > 0) ?
-      this.hosts.filter((host) => clusters.includes(host.id)) :
-      [...this.hosts];
+    return clusters.length > 0
+      ? this.hosts.filter((host) => clusters.includes(host.id))
+      : [...this.hosts];
   }
 
   /**
@@ -198,9 +191,9 @@ export default class ServiceRegistry {
    * @returns {Array<ServiceHost>} - The filtered host array.
    */
   filterLocal(local) {
-    return (typeof local === 'boolean') ?
-      this.hosts.filter((host) => host.local === local) :
-      [...this.hosts];
+    return typeof local === 'boolean'
+      ? this.hosts.filter((host) => host.local === local)
+      : [...this.hosts];
   }
 
   /**
@@ -213,9 +206,8 @@ export default class ServiceRegistry {
    * @returns {Array<ServiceHost>} - The filtered host array.
    */
   filterPriority(priority) {
-    return (priority) ?
-      this.hosts.reduce(
-        (filteredHosts, currentHost) => {
+    return priority
+      ? this.hosts.reduce((filteredHosts, currentHost) => {
           // Validate that the current host is not active.
           if (!currentHost.active) {
             return filteredHosts;
@@ -223,9 +215,7 @@ export default class ServiceRegistry {
 
           // Determine if the filtered hosts array contains a host from the same
           // host group.
-          const foundHost = filteredHosts.find(
-            (host) => host.hostGroup === currentHost.hostGroup
-          );
+          const foundHost = filteredHosts.find((host) => host.hostGroup === currentHost.hostGroup);
 
           // Validate if a host was found.
           if (!foundHost) {
@@ -237,13 +227,13 @@ export default class ServiceRegistry {
           // Map the found host's catalog to its priority value.
           const foundHostCatalogPriority = ServiceRegistry.mapCatalogName({
             id: foundHost.catalog,
-            type: SERVICE_CATALOGS_ENUM_TYPES.NUMBER
+            type: SERVICE_CATALOGS_ENUM_TYPES.NUMBER,
           });
 
           // Map the current host's catalog to its priority value.
           const currentHostCatalogPriority = ServiceRegistry.mapCatalogName({
             id: currentHost.catalog,
-            type: SERVICE_CATALOGS_ENUM_TYPES.NUMBER
+            type: SERVICE_CATALOGS_ENUM_TYPES.NUMBER,
           });
 
           // Validate if the found host has a lower priority than the current
@@ -257,8 +247,8 @@ export default class ServiceRegistry {
           }
 
           return filteredHosts;
-        }, []
-      ) : [...this.hosts];
+        }, [])
+      : [...this.hosts];
   }
 
   /**
@@ -272,12 +262,12 @@ export default class ServiceRegistry {
    */
   filterService(service = []) {
     // Generate an array of services regardless of parameter type.
-    const services = (Array.isArray(service) ? service : [service]);
+    const services = Array.isArray(service) ? service : [service];
 
     // Filter the host array against the provided services.
-    return (services.length > 0) ?
-      this.hosts.filter((host) => services.includes(host.service)) :
-      [...this.hosts];
+    return services.length > 0
+      ? this.hosts.filter((host) => services.includes(host.service))
+      : [...this.hosts];
   }
 
   /**
@@ -291,12 +281,10 @@ export default class ServiceRegistry {
    */
   filterUrl(url = []) {
     // Generate an array of URLs regardless of the parameter type.
-    const urls = (Array.isArray(url) ? url : [url]);
+    const urls = Array.isArray(url) ? url : [url];
 
     // Filter the host array against the provided URLs.
-    return (urls.length > 0) ?
-      this.hosts.filter((host) => urls.includes(host.url)) :
-      [...this.hosts];
+    return urls.length > 0 ? this.hosts.filter((host) => urls.includes(host.url)) : [...this.hosts];
   }
 
   /**
@@ -308,17 +296,9 @@ export default class ServiceRegistry {
    * @param {HostFilter} [filter] - The inclusive filter for hosts to find.
    * @returns {Array<ServiceHost>} - The filtered hosts.
    */
-  find({
-    active,
-    catalog,
-    cluster,
-    local,
-    priority,
-    service,
-    url
-  } = {}) {
+  find({active, catalog, cluster, local, priority, service, url} = {}) {
     return this.hosts.filter(
-      (host) => (
+      (host) =>
         this.filterActive(active).includes(host) &&
         this.filterCatalog(catalog).includes(host) &&
         this.filterCluster(cluster).includes(host) &&
@@ -326,7 +306,6 @@ export default class ServiceRegistry {
         this.filterPriority(priority).includes(host) &&
         this.filterService(service).includes(host) &&
         this.filterUrl(url).includes(host)
-      )
     );
   }
 
@@ -342,16 +321,16 @@ export default class ServiceRegistry {
    */
   load(hosts = []) {
     // Validate that the provided hosts are eligible to be loaded.
-    const validHosts = hosts.filter((host) => !!(
-      ServiceRegistry.mapCatalogName({
-        id: host.catalog,
-        type: SERVICE_CATALOGS_ENUM_TYPES.STRING
-      })));
+    const validHosts = hosts.filter(
+      (host) =>
+        !!ServiceRegistry.mapCatalogName({
+          id: host.catalog,
+          type: SERVICE_CATALOGS_ENUM_TYPES.STRING,
+        })
+    );
 
     // Load the eligible hosts.
-    this.hosts.push(
-      ...validHosts.map((loadableHost) => new ServiceHost(loadableHost))
-    );
+    this.hosts.push(...validHosts.map((loadableHost) => new ServiceHost(loadableHost)));
 
     return this;
   }
@@ -371,11 +350,9 @@ export default class ServiceRegistry {
     const replacing = this.find(filter);
 
     // Mark the hosts from the array as replaced.
-    replacing.forEach(
-      (host) => {
-        host.setStatus({replaced: true});
-      }
-    );
+    replacing.forEach((host) => {
+      host.setStatus({replaced: true});
+    });
 
     // Return the marked hosts.
     return replacing;
@@ -396,11 +373,9 @@ export default class ServiceRegistry {
     const resetting = this.find(filter);
 
     // Mark the hosts from the array as replaced.
-    resetting.forEach(
-      (host) => {
-        host.setStatus({failed: false});
-      }
-    );
+    resetting.forEach((host) => {
+      host.setStatus({failed: false});
+    });
 
     // Return the marked hosts.
     return resetting;
@@ -423,7 +398,7 @@ export default class ServiceRegistry {
     if (typeof id === 'number') {
       // Validate that the desired type is a number.
       if (type === SERVICE_CATALOGS_ENUM_TYPES.NUMBER) {
-        return (SERVICE_CATALOGS[id] !== undefined) ? id : undefined;
+        return SERVICE_CATALOGS[id] !== undefined ? id : undefined;
       }
 
       // Validate that the desired type is a string.
@@ -441,9 +416,7 @@ export default class ServiceRegistry {
 
       // Validate that the desired type is a number.
       if (type === SERVICE_CATALOGS_ENUM_TYPES.NUMBER) {
-        return (SERVICE_CATALOGS.includes(id)) ?
-          SERVICE_CATALOGS.indexOf(id) :
-          undefined;
+        return SERVICE_CATALOGS.includes(id) ? SERVICE_CATALOGS.indexOf(id) : undefined;
       }
     }
 
@@ -465,7 +438,7 @@ export default class ServiceRegistry {
     // Collect the service catalog name if needed.
     const catalogIndex = ServiceRegistry.mapCatalogName({
       id: catalog,
-      type: SERVICE_CATALOGS_ENUM_TYPES.STRING
+      type: SERVICE_CATALOGS_ENUM_TYPES.STRING,
     });
 
     // Validate that the target catalog exists.
@@ -482,7 +455,7 @@ export default class ServiceRegistry {
           hostGroup: key,
           id: host.id,
           priority: host.priority,
-          uri: host.host
+          uri: host.host,
         }))
       );
 

@@ -13,7 +13,7 @@ import {WebexPlugin, Page} from '@webex/webex-core';
  */
 
 /**
-* @class
+ * @class
  */
 const Teams = WebexPlugin.extend({
   /**
@@ -38,9 +38,8 @@ const Teams = WebexPlugin.extend({
       method: 'POST',
       service: 'hydra',
       resource: 'teams',
-      body: team
-    })
-      .then((res) => res.body);
+      body: team,
+    }).then((res) => res.body);
   },
 
   /**
@@ -70,9 +69,8 @@ const Teams = WebexPlugin.extend({
     return this.request({
       service: 'hydra',
       resource: `teams/${id}`,
-      qs: options
-    })
-      .then((res) => res.body.items || res.body);
+      qs: options,
+    }).then((res) => res.body.items || res.body);
   },
 
   /**
@@ -110,9 +108,8 @@ const Teams = WebexPlugin.extend({
     return this.request({
       service: 'hydra',
       resource: 'teams/',
-      qs: options
-    })
-      .then((res) => new Page(res, this.webex));
+      qs: options,
+    }).then((res) => new Page(res, this.webex));
   },
 
   /**
@@ -147,10 +144,9 @@ const Teams = WebexPlugin.extend({
       method: 'PUT',
       service: 'hydra',
       resource: `teams/${id}`,
-      body: team
-    })
-      .then((res) => res.body);
-  }
+      body: team,
+    }).then((res) => res.body);
+  },
 });
 
 export default Teams;

@@ -15,9 +15,12 @@ module.exports = {
 
     // enforce that class methods use "this"
     // https://eslint.org/docs/rules/class-methods-use-this
-    'class-methods-use-this': ['error', {
-      exceptMethods: []
-    }],
+    'class-methods-use-this': [
+      'error',
+      {
+        exceptMethods: [],
+      },
+    ],
 
     // require return statements to either always or never specify values
     'consistent-return': 'error',
@@ -62,13 +65,12 @@ module.exports = {
 
     // disallow empty functions, except for standalone funcs/arrows
     // https://eslint.org/docs/rules/no-empty-function
-    'no-empty-function': ['error', {
-      allow: [
-        'arrowFunctions',
-        'functions',
-        'methods'
-      ]
-    }],
+    'no-empty-function': [
+      'error',
+      {
+        allow: ['arrowFunctions', 'functions', 'methods'],
+      },
+    ],
 
     // disallow empty destructuring patterns
     // https://eslint.org/docs/rules/no-empty-pattern
@@ -104,12 +106,15 @@ module.exports = {
 
     // disallow implicit type conversions
     // https://eslint.org/docs/rules/no-implicit-coercion
-    'no-implicit-coercion': ['off', {
-      boolean: false,
-      number: true,
-      string: true,
-      allow: []
-    }],
+    'no-implicit-coercion': [
+      'off',
+      {
+        boolean: false,
+        number: true,
+        string: true,
+        allow: [],
+      },
+    ],
 
     // disallow var and named functions in global scope
     // https://eslint.org/docs/rules/no-implicit-globals
@@ -135,17 +140,23 @@ module.exports = {
 
     // disallow magic numbers
     // https://eslint.org/docs/rules/no-magic-numbers
-    'no-magic-numbers': ['off', {
-      ignore: [],
-      ignoreArrayIndexes: true,
-      enforceConst: true,
-      detectObjects: false
-    }],
+    'no-magic-numbers': [
+      'off',
+      {
+        ignore: [],
+        ignoreArrayIndexes: true,
+        enforceConst: true,
+        detectObjects: false,
+      },
+    ],
 
     // disallow use of multiple spaces
-    'no-multi-spaces': ['error', {
-      ignoreEOLComments: false
-    }],
+    'no-multi-spaces': [
+      'error',
+      {
+        ignoreEOLComments: false,
+      },
+    ],
 
     // disallow use of multiline strings
     'no-multi-str': 'error',
@@ -169,19 +180,22 @@ module.exports = {
     // disallow reassignment of function parameters
     // disallow parameter object manipulation except for specific exclusions
     // rule: https://eslint.org/docs/rules/no-param-reassign.html
-    'no-param-reassign': ['error', {
-      props: true,
-      ignorePropertyModificationsFor: [
-        'acc', // for reduce accumulators
-        'e', // for e.returnvalue
-        'ctx', // for Koa routing
-        'req', // for Express requests
-        'request', // for Express requests
-        'res', // for Express responses
-        'response', // for Express responses
-        '$scope' // for Angular 1 scopes
-      ]
-    }],
+    'no-param-reassign': [
+      'error',
+      {
+        props: true,
+        ignorePropertyModificationsFor: [
+          'acc', // for reduce accumulators
+          'e', // for e.returnvalue
+          'ctx', // for Koa routing
+          'req', // for Express requests
+          'request', // for Express requests
+          'res', // for Express responses
+          'response', // for Express responses
+          '$scope', // for Angular 1 scopes
+        ],
+      },
+    ],
 
     // disallow usage of __proto__ property
     'no-proto': 'error',
@@ -191,45 +205,57 @@ module.exports = {
 
     // disallow certain object properties
     // https://eslint.org/docs/rules/no-restricted-properties
-    'no-restricted-properties': ['error', {
-      object: 'arguments',
-      property: 'callee',
-      message: 'arguments.callee is deprecated'
-    }, {
-      object: 'global',
-      property: 'isFinite',
-      message: 'Please use Number.isFinite instead'
-    }, {
-      object: 'self',
-      property: 'isFinite',
-      message: 'Please use Number.isFinite instead'
-    }, {
-      object: 'window',
-      property: 'isFinite',
-      message: 'Please use Number.isFinite instead'
-    }, {
-      object: 'global',
-      property: 'isNaN',
-      message: 'Please use Number.isNaN instead'
-    }, {
-      object: 'self',
-      property: 'isNaN',
-      message: 'Please use Number.isNaN instead'
-    }, {
-      object: 'window',
-      property: 'isNaN',
-      message: 'Please use Number.isNaN instead'
-    }, {
-      property: '__defineGetter__',
-      message: 'Please use Object.defineProperty instead.'
-    }, {
-      property: '__defineSetter__',
-      message: 'Please use Object.defineProperty instead.'
-    }, {
-      object: 'Math',
-      property: 'pow',
-      message: 'Use the exponentiation operator (**) instead.'
-    }],
+    'no-restricted-properties': [
+      'error',
+      {
+        object: 'arguments',
+        property: 'callee',
+        message: 'arguments.callee is deprecated',
+      },
+      {
+        object: 'global',
+        property: 'isFinite',
+        message: 'Please use Number.isFinite instead',
+      },
+      {
+        object: 'self',
+        property: 'isFinite',
+        message: 'Please use Number.isFinite instead',
+      },
+      {
+        object: 'window',
+        property: 'isFinite',
+        message: 'Please use Number.isFinite instead',
+      },
+      {
+        object: 'global',
+        property: 'isNaN',
+        message: 'Please use Number.isNaN instead',
+      },
+      {
+        object: 'self',
+        property: 'isNaN',
+        message: 'Please use Number.isNaN instead',
+      },
+      {
+        object: 'window',
+        property: 'isNaN',
+        message: 'Please use Number.isNaN instead',
+      },
+      {
+        property: '__defineGetter__',
+        message: 'Please use Object.defineProperty instead.',
+      },
+      {
+        property: '__defineSetter__',
+        message: 'Please use Object.defineProperty instead.',
+      },
+      {
+        object: 'Math',
+        property: 'pow',
+        message: 'Use the exponentiation operator (**) instead.',
+      },
+    ],
 
     // disallow use of assignment in return statement
     'no-return-assign': ['error', 'always'],
@@ -258,11 +284,14 @@ module.exports = {
     'no-unmodified-loop-condition': 'off',
 
     // disallow usage of expressions in statement position
-    'no-unused-expressions': ['error', {
-      allowShortCircuit: false,
-      allowTernary: false,
-      allowTaggedTemplates: false
-    }],
+    'no-unused-expressions': [
+      'error',
+      {
+        allowShortCircuit: false,
+        allowTernary: false,
+        allowTaggedTemplates: false,
+      },
+    ],
 
     // disallow unused labels
     // https://eslint.org/docs/rules/no-unused-labels
@@ -312,6 +341,6 @@ module.exports = {
     'wrap-iife': ['error', 'outside', {functionPrototypeMethods: false}],
 
     // require or disallow Yoda conditions
-    yoda: 'error'
-  }
+    yoda: 'error',
+  },
 };

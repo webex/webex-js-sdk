@@ -23,20 +23,21 @@ const AbstractUserUUIDRequestBatcher = Batcher.extend({
    * @returns {Promise}
    */
   handleHttpSuccess(res) {
-    return Promise.all(Object.keys(res.body).map((email) => {
-      if (res.body[email] && res.body[email].id) {
-        return this.handleItemSuccess(email, res.body[email]);
-      }
+    return Promise.all(
+      Object.keys(res.body).map((email) => {
+        if (res.body[email] && res.body[email].id) {
+          return this.handleItemSuccess(email, res.body[email]);
+        }
 
-      return this.handleItemFailure(email, res.body[email]);
-    }));
+        return this.handleItemFailure(email, res.body[email]);
+      })
+    );
   },
 
   handleItemFailure(email, response) {
-    return this.getDeferredForResponse(email)
-      .then((defer) => {
-        defer.reject(response);
-      });
+    return this.getDeferredForResponse(email).then((defer) => {
+      defer.reject(response);
+    });
   },
 
   /**
@@ -45,10 +46,9 @@ const AbstractUserUUIDRequestBatcher = Batcher.extend({
    * @returns {Promise}
    */
   handleItemSuccess(email, response) {
-    return this.getDeferredForResponse(email)
-      .then((defer) => {
-        defer.resolve(response);
-      });
+    return this.getDeferredForResponse(email).then((defer) => {
+      defer.resolve(response);
+    });
   },
 
   /**
@@ -65,7 +65,7 @@ const AbstractUserUUIDRequestBatcher = Batcher.extend({
    */
   fingerprintResponse(email) {
     return Promise.resolve(email);
-  }
+  },
 });
 
 /**
@@ -81,9 +81,9 @@ const FakeUserUUIDRequestBatcher = AbstractUserUUIDRequestBatcher.extend({
       method: 'POST',
       service: 'conversation',
       resource: '/users',
-      body: payload
+      body: payload,
     });
-  }
+  },
 });
 
 /**
@@ -101,10 +101,10 @@ const RealUserUUIDRequestBatcher = AbstractUserUUIDRequestBatcher.extend({
       resource: '/users',
       body: payload,
       qs: {
-        shouldCreateUsers: true
-      }
+        shouldCreateUsers: true,
+      },
     });
-  }
+  },
 });
 
 /**
@@ -113,7 +113,7 @@ const RealUserUUIDRequestBatcher = AbstractUserUUIDRequestBatcher.extend({
 const UserUUIDBatcher = WebexPlugin.extend({
   children: {
     faker: FakeUserUUIDRequestBatcher,
-    creator: RealUserUUIDRequestBatcher
+    creator: RealUserUUIDRequestBatcher,
   },
 
   /**
@@ -122,7 +122,7 @@ const UserUUIDBatcher = WebexPlugin.extend({
    */
   request(payload) {
     return payload.create ? this.creator.request(payload.email) : this.faker.request(payload.email);
-  }
+  },
 });
 
 export default UserUUIDBatcher;

@@ -55,7 +55,7 @@ const Token = WebexPlugin.extend({
       deps: ['access_token', 'isExpired'],
       fn() {
         return !!this.access_token && !this.isExpired;
-      }
+      },
     },
 
     /**
@@ -76,7 +76,7 @@ const Token = WebexPlugin.extend({
       deps: ['canAuthorize'],
       fn() {
         return this.canAuthorize && !!this.config.client_id;
-      }
+      },
     },
 
     /**
@@ -101,7 +101,7 @@ const Token = WebexPlugin.extend({
         }
 
         return !!this.refresh_token && !!this.config.client_secret;
-      }
+      },
     },
 
     /**
@@ -118,7 +118,7 @@ const Token = WebexPlugin.extend({
         // in order to avoid setting `cache:false`, we'll use a private property
         // and a timer rather than comparing to `Date.now()`;
         return !!this.expires && this._isExpired;
-      }
+      },
     },
 
     /**
@@ -137,8 +137,8 @@ const Token = WebexPlugin.extend({
         }
 
         return `${this.token_type} ${this.access_token}`;
-      }
-    }
+      },
+    },
   },
 
   namespace: 'Credentials',
@@ -196,8 +196,8 @@ const Token = WebexPlugin.extend({
      */
     token_type: {
       default: 'Bearer',
-      type: 'string'
-    }
+      type: 'string',
+    },
   },
 
   session: {
@@ -210,7 +210,7 @@ const Token = WebexPlugin.extend({
      */
     _isExpired: {
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     /**
      * Handle to the previous token that we'll revoke when we refresh this
@@ -224,14 +224,14 @@ const Token = WebexPlugin.extend({
      * @type {Object}
      */
     previousToken: {
-      type: 'state'
-    }
+      type: 'state',
+    },
   },
 
   @oneFlight({
     keyFactory(scope) {
       return scope;
-    }
+    },
   })
   /**
    * Uses this token to request a new Token with a subset of this Token's scopes
@@ -252,8 +252,7 @@ const Token = WebexPlugin.extend({
     if (!this.canDownscope) {
       if (this.config.client_id) {
         this.logger.info('token: request received to downscope invalid access_token');
-      }
-      else {
+      } else {
         this.logger.trace('token: cannot downscope without client_id');
       }
 
@@ -273,18 +272,19 @@ const Token = WebexPlugin.extend({
       return Promise.reject(new Error('token: scope reduction requires a reduced scope'));
     }
 
-    return this.webex.request({
-      method: 'POST',
-      uri: this.config.tokenUrl,
-      addAuthHeader: false,
-      form: {
-        grant_type: 'urn:cisco:oauth:grant-type:scope-reduction',
-        token: this.access_token,
-        scope,
-        client_id: this.config.client_id,
-        self_contained_token: true
-      }
-    })
+    return this.webex
+      .request({
+        method: 'POST',
+        uri: this.config.tokenUrl,
+        addAuthHeader: false,
+        form: {
+          grant_type: 'urn:cisco:oauth:grant-type:scope-reduction',
+          token: this.access_token,
+          scope,
+          client_id: this.config.client_id,
+          self_contained_token: true,
+        },
+      })
       .then((res) => {
         this.logger.info(`token: downscoped token to ${scope}`);
 
@@ -317,8 +317,7 @@ const Token = WebexPlugin.extend({
     if (this.expires) {
       if (this.expires < Date.now()) {
         this._isExpired = true;
-      }
-      else {
+      } else {
         safeSetTimeout(() => {
           this._isExpired = true;
         }, this.expires - Date.now());
@@ -349,22 +348,26 @@ const Token = WebexPlugin.extend({
       promise = Promise.resolve(this.config.refreshCallback(this.webex, this));
     }
 
-    return (promise || this.webex.request({
-      method: 'POST',
-      uri: this.config.tokenUrl,
-      form: {
-        grant_type: 'refresh_token',
-        redirect_uri: this.config.redirect_uri,
-        refresh_token: this.refresh_token
-      },
-      auth: {
-        user: this.config.client_id,
-        pass: this.config.client_secret,
-        sendImmediately: true
-      },
-      shouldRefreshAccessToken: false
-    })
-      .then((res) => res.body))
+    return (
+      promise ||
+      this.webex
+        .request({
+          method: 'POST',
+          uri: this.config.tokenUrl,
+          form: {
+            grant_type: 'refresh_token',
+            redirect_uri: this.config.redirect_uri,
+            refresh_token: this.refresh_token,
+          },
+          auth: {
+            user: this.config.client_id,
+            pass: this.config.client_secret,
+            sendImmediately: true,
+          },
+          shouldRefreshAccessToken: false,
+        })
+        .then((res) => res.body)
+    )
       .then((obj) => {
         if (!obj) {
           throw new Error('token: refreshCallback() did not produce an object');
@@ -373,7 +376,10 @@ const Token = WebexPlugin.extend({
         // the current refresh token and related values to the response (note:
         // at time of implementation, CI never sends a new refresh token)
         if (!obj.refresh_token) {
-          Object.assign(obj, pick(this, 'refresh_token', 'refresh_token_expires', 'refresh_token_expires_in'));
+          Object.assign(
+            obj,
+            pick(this, 'refresh_token', 'refresh_token_expires', 'refresh_token_expires_in')
+          );
         }
 
         // If the new token is the same as the previous token, then we may have
@@ -436,27 +442,23 @@ const Token = WebexPlugin.extend({
 
     this.logger.info('token: revoking access token');
 
-    return this.webex.request({
-      method: 'POST',
-      uri: this.config.revokeUrl,
-      form: {
-        token: this.access_token,
-        token_type_hint: 'access_token'
-      },
-      auth: {
-        user: this.config.client_id,
-        pass: this.config.client_secret,
-        sendImmediately: true
-      },
-      shouldRefreshAccessToken: false
-    })
+    return this.webex
+      .request({
+        method: 'POST',
+        uri: this.config.revokeUrl,
+        form: {
+          token: this.access_token,
+          token_type_hint: 'access_token',
+        },
+        auth: {
+          user: this.config.client_id,
+          pass: this.config.client_secret,
+          sendImmediately: true,
+        },
+        shouldRefreshAccessToken: false,
+      })
       .then(() => {
-        this.unset([
-          'access_token',
-          'expires',
-          'expires_in',
-          'token_type'
-        ]);
+        this.unset(['access_token', 'expires', 'expires_in', 'token_type']);
         this.logger.info('token: access token revoked');
       })
       .catch(processGrantError);
@@ -516,38 +518,42 @@ const Token = WebexPlugin.extend({
       throw new Error('Token#validate() must not be used in production');
     }
 
-    return this.webex.request({
-      method: 'POST',
-      service: 'conversation',
-      resource: 'users/validateAuthToken',
-      body: {
-        token: this.access_token
-      }
-    })
+    return this.webex
+      .request({
+        method: 'POST',
+        service: 'conversation',
+        resource: 'users/validateAuthToken',
+        body: {
+          token: this.access_token,
+        },
+      })
       .catch((reason) => {
         if ('statusCode' in reason) {
           return Promise.reject(reason);
         }
-        this.logger.info('REMINDER: If you\'re investigating a network error here, it\'s normal');
+        this.logger.info("REMINDER: If you're investigating a network error here, it's normal");
 
         // If we got an error that isn't a WebexHttpError, assume the problem is
         // that we don't have the wdm plugin loaded and service/resource isn't
         // a valid means of identifying a request.
-        const convApi = process.env.CONVERSATION_SERVICE || process.env.CONVERSATION_SERVICE_URL || 'https://conv-a.wbx2.com/conversation/api/v1';
+        const convApi =
+          process.env.CONVERSATION_SERVICE ||
+          process.env.CONVERSATION_SERVICE_URL ||
+          'https://conv-a.wbx2.com/conversation/api/v1';
 
         return this.webex.request({
           method: 'POST',
           uri: `${convApi}/users/validateAuthToken`,
           body: {
-            token: this.access_token
+            token: this.access_token,
           },
           headers: {
-            authorization: `Bearer ${this.access_token}`
-          }
+            authorization: `Bearer ${this.access_token}`,
+          },
         });
       })
       .then((res) => res.body);
-  }
+  },
 });
 
 export default Token;

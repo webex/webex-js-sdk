@@ -9,7 +9,7 @@ export default {
               isMain: true,
               mariFecEnabled: false,
               mariQosEnabled: false,
-              multistreamEnabled: false
+              multistreamEnabled: false,
             },
             dtlsBitrate: 0,
             dtlsPackets: 0,
@@ -29,7 +29,7 @@ export default {
             srtpUnprotectErrors: 0,
             stunBitrate: 0,
             stunPackets: 0,
-            transportType: 'UDP'
+            transportType: 'UDP',
           },
           streams: [
             {
@@ -49,11 +49,11 @@ export default {
                 maxRtpJitter: 0,
                 meanRtpJitter: 0,
                 rtpPackets: 0,
-                ssci: 0
-              }
-            }
-          ]
-        }
+                ssci: 0,
+              },
+            },
+          ],
+        },
       ],
       audioTransmit: [
         {
@@ -64,7 +64,7 @@ export default {
               isMain: true,
               mariFecEnabled: false,
               mariQosEnabled: false,
-              multistreamEnabled: false
+              multistreamEnabled: false,
             },
             dtlsBitrate: 0,
             dtlsPackets: 0,
@@ -84,7 +84,7 @@ export default {
             rtxPackets: 0,
             stunBitrate: 0,
             stunPackets: 0,
-            transportType: 'UDP'
+            transportType: 'UDP',
           },
           streams: [
             {
@@ -95,11 +95,11 @@ export default {
                 rtpPackets: 0,
                 ssci: 0,
                 transmittedBitrate: 0,
-                transmittedFrameRate: 0
-              }
-            }
-          ]
-        }
+                transmittedFrameRate: 0,
+              },
+            },
+          ],
+        },
       ],
       intervalMetadata: {
         peerReflexiveIP: '0.0.0.0',
@@ -107,7 +107,7 @@ export default {
         processAverageCPU: 0,
         processMaximumCPU: 0,
         systemAverageCPU: 0,
-        systemMaximumCPU: 0
+        systemMaximumCPU: 0,
       },
       intervalNumber: 0,
       videoReceive: [
@@ -118,7 +118,7 @@ export default {
               isMain: true, // Not avaliable
               mariFecEnabled: true, // Not avaliable
               mariQosEnabled: true, // Not avaliable
-              multistreamEnabled: true// Not avaliable
+              multistreamEnabled: true, // Not avaliable
             },
             dtlsBitrate: 0, // Not avaliable
             dtlsPackets: 0, // Not avaliable
@@ -138,7 +138,7 @@ export default {
             srtpUnprotectErrors: 0, // Not avaliable
             stunBitrate: 0, // Not avaliable
             stunPackets: 0, // Not avaliable
-            transportType: 'UDP'
+            transportType: 'UDP',
           },
           streams: [
             {
@@ -157,7 +157,7 @@ export default {
                 rtpEndToEndLost: 0,
                 rtpJitter: 0,
                 rtpPackets: 0,
-                ssci: 0// Not avaliable
+                ssci: 0, // Not avaliable
               },
               h264CodecProfile: 'BP',
               isActiveSpeaker: true,
@@ -170,9 +170,9 @@ export default {
               receivedKeyFramesUnknown: 0,
               receivedWidth: 0,
               requestedFrameSize: 0,
-              requestedKeyFrames: 0
-            }
-          ]
+              requestedKeyFrames: 0,
+            },
+          ],
         },
         {
           common: {
@@ -181,7 +181,7 @@ export default {
               isMain: false, // Not avaliable
               mariFecEnabled: true, // Not avaliable
               mariQosEnabled: true, // Not avaliable
-              multistreamEnabled: true// Not avaliable
+              multistreamEnabled: true, // Not avaliable
             },
             dtlsBitrate: 0, // Not avaliable
             dtlsPackets: 0, // Not avaliable
@@ -201,7 +201,7 @@ export default {
             srtpUnprotectErrors: 0, // Not avaliable
             stunBitrate: 0, // Not avaliable
             stunPackets: 0, // Not avaliable
-            transportType: 'UDP'
+            transportType: 'UDP',
           },
           streams: [
             {
@@ -220,7 +220,7 @@ export default {
                 rtpEndToEndLost: 0,
                 rtpJitter: 0,
                 rtpPackets: 0,
-                ssci: 0// Not avaliable
+                ssci: 0, // Not avaliable
               },
               h264CodecProfile: 'BP',
               isActiveSpeaker: true,
@@ -233,10 +233,10 @@ export default {
               receivedKeyFramesUnknown: 0,
               receivedWidth: 0,
               requestedFrameSize: 0,
-              requestedKeyFrames: 0
-            }
-          ]
-        }
+              requestedKeyFrames: 0,
+            },
+          ],
+        },
       ],
       videoTransmit: [
         {
@@ -247,7 +247,7 @@ export default {
               isMain: true,
               mariFecEnabled: false, // Not avaliable
               mariQosEnabled: false, // Not avaliable
-              multistreamEnabled: false// Not avaliable
+              multistreamEnabled: false, // Not avaliable
             },
             dtlsBitrate: 0, // Not avaliable
             dtlsPackets: 0, // Not avaliable
@@ -267,7 +267,7 @@ export default {
             rtxPackets: 0, // Dont have access to it
             stunBitrate: 0, // Dont have access to it
             stunPackets: 0, // Dont have access to it
-            transportType: 'UDP' // TODO: need to calculate
+            transportType: 'UDP', // TODO: need to calculate
           },
           streams: [
             {
@@ -279,7 +279,7 @@ export default {
                 rtpPackets: 0, // same as rtp packets
                 ssci: 0,
                 transmittedBitrate: 0, // TODO: get in the candidate pair
-                transmittedFrameRate: 0 // TODO: from track info
+                transmittedFrameRate: 0, // TODO: from track info
               },
               h264CodecProfile: 'BP', // TODO: from localSDP
               isAvatar: false, // Not Avaliable
@@ -303,11 +303,12 @@ export default {
               transmittedKeyFramesSceneChange: 0, // Not Avaliable
               transmittedKeyFramesStartup: 0, // Not Avaliable
               transmittedKeyFramesUnknown: 0, // Not Avaliable
-              transmittedWidth: 0
-            }
-          ]
+              transmittedWidth: 0,
+            },
+          ],
         },
-        { // sceen sharing
+        {
+          // sceen sharing
           common: {
             availableBitrate: 0, // Not avaliable currently hardcoded
             common: {
@@ -315,7 +316,7 @@ export default {
               isMain: false,
               mariFecEnabled: false, // Not avaliable
               mariQosEnabled: false, // Not avaliable
-              multistreamEnabled: false// Not avaliable
+              multistreamEnabled: false, // Not avaliable
             },
             dtlsBitrate: 0, // Not avaliable
             dtlsPackets: 0, // Not avaliable
@@ -335,7 +336,7 @@ export default {
             rtxPackets: 0, // Dont have access to it
             stunBitrate: 0, // Dont have access to it
             stunPackets: 0, // Dont have access to it
-            transportType: 'UDP' // TODO: need to calculate
+            transportType: 'UDP', // TODO: need to calculate
           },
           streams: [
             {
@@ -347,7 +348,7 @@ export default {
                 rtpPackets: 0, // same as rtp packets
                 ssci: 0,
                 transmittedBitrate: 0, // TODO: get in the candidate pair
-                transmittedFrameRate: 0 // TODO: from track info
+                transmittedFrameRate: 0, // TODO: from track info
               },
               h264CodecProfile: 'BP', // TODO: from localSDP
               isAvatar: false, // Not Avaliable
@@ -371,12 +372,11 @@ export default {
               transmittedKeyFramesSceneChange: 0, // Not Avaliable
               transmittedKeyFramesStartup: 0, // Not Avaliable
               transmittedKeyFramesUnknown: 0, // Not Avaliable
-              transmittedWidth: 0
-            }
-          ]
-        }
-      ]
-    }
-  ]
+              transmittedWidth: 0,
+            },
+          ],
+        },
+      ],
+    },
+  ],
 };
-

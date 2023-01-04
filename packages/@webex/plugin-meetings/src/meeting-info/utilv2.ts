@@ -2,7 +2,7 @@ import url from 'url';
 
 import {
   // @ts-ignore
-  deconstructHydraId
+  deconstructHydraId,
 } from '@webex/common';
 
 import {
@@ -23,7 +23,7 @@ import {
   MEET_M,
   HTTPS_PROTOCOL,
   UUID_REG,
-  VALID_EMAIL_ADDRESS
+  VALID_EMAIL_ADDRESS,
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -43,9 +43,10 @@ MeetingInfoUtil.getParsedUrl = (link) => {
     }
 
     return parsedUrl;
-  }
-  catch (error) {
-    LoggerProxy.logger.warn(`Meeting-info:util#getParsedUrl --> unable to parse the URL, error: ${error}`);
+  } catch (error) {
+    LoggerProxy.logger.warn(
+      `Meeting-info:util#getParsedUrl --> unable to parse the URL, error: ${error}`
+    );
 
     return null;
   }
@@ -59,7 +60,11 @@ MeetingInfoUtil.getParsedUrl = (link) => {
 MeetingInfoUtil.isMeetingLink = (value: string) => {
   const parsedUrl = MeetingInfoUtil.getParsedUrl(value);
   const hostNameBool = parsedUrl.hostname && parsedUrl.hostname.includes(WEBEX_DOT_COM);
-  const pathNameBool = parsedUrl.pathname && (parsedUrl.pathname.includes(`/${MEET}`) || parsedUrl.pathname.includes(`/${MEET_M}`) || parsedUrl.pathname.includes(`/${JOIN}`));
+  const pathNameBool =
+    parsedUrl.pathname &&
+    (parsedUrl.pathname.includes(`/${MEET}`) ||
+      parsedUrl.pathname.includes(`/${MEET_M}`) ||
+      parsedUrl.pathname.includes(`/${JOIN}`));
 
   return hostNameBool && pathNameBool;
 };
@@ -73,7 +78,6 @@ MeetingInfoUtil.isConversationUrl = (value, webex) => {
 
   return false;
 };
-
 
 MeetingInfoUtil.isSipUri = (sipString) => {
   // TODO: lets remove regex from this equation and user URI matchers and such
@@ -106,30 +110,38 @@ MeetingInfoUtil.getHydraId = (destination) => {
   return {};
 };
 
-MeetingInfoUtil.getSipUriFromHydraPersonId = (destination, webex) => webex.people.get(destination).then((res) => {
-  if (res.emails && res.emails.length) {
-    return res.emails[0];
-  }
-  throw new ParameterError('Hydra Id Lookup was an invalid hydra person id.');
-}).catch((err) => {
-  LoggerProxy.logger.error(`Meeting-info:util#MeetingInfoUtil.getSipUriFromHydraPersonId --> getSipUriFromHydraPersonId ${err} `);
-  throw err;
-});
-
+MeetingInfoUtil.getSipUriFromHydraPersonId = (destination, webex) =>
+  webex.people
+    .get(destination)
+    .then((res) => {
+      if (res.emails && res.emails.length) {
+        return res.emails[0];
+      }
+      throw new ParameterError('Hydra Id Lookup was an invalid hydra person id.');
+    })
+    .catch((err) => {
+      LoggerProxy.logger.error(
+        `Meeting-info:util#MeetingInfoUtil.getSipUriFromHydraPersonId --> getSipUriFromHydraPersonId ${err} `
+      );
+      throw err;
+    });
 
 MeetingInfoUtil.getDestinationType = async (from) => {
   const {type, webex} = from;
   let {destination} = from;
 
-  if (type === _PERSONAL_ROOM_) { // this case checks if your type is personal room
-    if (!destination) { // if we are not getting anything in desination we fetch org and user ids from webex instance
+  if (type === _PERSONAL_ROOM_) {
+    // this case checks if your type is personal room
+    if (!destination) {
+      // if we are not getting anything in desination we fetch org and user ids from webex instance
       destination = {
         userId: webex.internal.device.userId,
-        orgId: webex.internal.device.orgId
+        orgId: webex.internal.device.orgId,
       };
-    }
-    else {
-      const options = VALID_EMAIL_ADDRESS.test(destination) ? {email: destination} : {id: destination};// we are assuming userId as default
+    } else {
+      const options = VALID_EMAIL_ADDRESS.test(destination)
+        ? {email: destination}
+        : {id: destination}; // we are assuming userId as default
       const res = await webex.people.list(options);
 
       let {orgId, id: userId} = res.items[0];
@@ -142,31 +154,29 @@ MeetingInfoUtil.getDestinationType = async (from) => {
   if (type) {
     return {
       destination,
-      type
+      type,
     };
   }
   const options: any = {};
   const hydraId = MeetingInfoUtil.getHydraId(destination);
 
   if (MeetingInfoUtil.isMeetingLink(destination)) {
-    LoggerProxy.logger.warn('Meeting-info:util#generateOptions --> WARN, use of Meeting Link is deprecated, please use a SIP URI instead');
+    LoggerProxy.logger.warn(
+      'Meeting-info:util#generateOptions --> WARN, use of Meeting Link is deprecated, please use a SIP URI instead'
+    );
 
     options.type = _MEETING_LINK_;
     options.destination = destination;
-  }
-  else if (MeetingInfoUtil.isSipUri(destination)) {
+  } else if (MeetingInfoUtil.isSipUri(destination)) {
     options.type = _SIP_URI_;
     options.destination = destination;
-  }
-  else if (MeetingInfoUtil.isPhoneNumber(destination)) {
+  } else if (MeetingInfoUtil.isPhoneNumber(destination)) {
     options.type = _SIP_URI_;
     options.destination = destination;
-  }
-  else if (MeetingInfoUtil.isConversationUrl(destination, webex)) {
+  } else if (MeetingInfoUtil.isConversationUrl(destination, webex)) {
     options.type = _CONVERSATION_URL_;
     options.destination = destination;
-  }
-  else if (hydraId.people) {
+  } else if (hydraId.people) {
     options.type = _SIP_URI_;
 
     return MeetingInfoUtil.getSipUriFromHydraPersonId(hydraId.destination, webex).then((res) => {
@@ -179,27 +189,28 @@ MeetingInfoUtil.getDestinationType = async (from) => {
 
       return Promise.resolve(options);
     });
-  }
-  else if (hydraId.room) {
+  } else if (hydraId.room) {
     options.type = _CONVERSATION_URL_;
     try {
       await webex.internal.services.waitForCatalog('postauth');
 
       const conversationUrl = webex.internal.conversation.getUrlFromClusterId({
         cluster: hydraId.cluster,
-        id: hydraId.destination
+        id: hydraId.destination,
       });
 
       options.destination = conversationUrl;
-    }
-    catch (e) {
+    } catch (e) {
       LoggerProxy.logger.error(`Meeting-info:util#getDestinationType --> ${e}`);
-      throw (e);
+      throw e;
     }
-  }
-  else {
-    LoggerProxy.logger.warn('Meeting-info:util#getDestinationType --> (\'MeetingInfo is fetched with meeting link, sip uri, phone number, hydra room id, hydra people id, or a conversation url.');
-    throw new ParameterError('MeetingInfo is fetched with meeting link, sip uri, phone number, hydra room id, hydra people id, or a conversation url.');
+  } else {
+    LoggerProxy.logger.warn(
+      "Meeting-info:util#getDestinationType --> ('MeetingInfo is fetched with meeting link, sip uri, phone number, hydra room id, hydra people id, or a conversation url."
+    );
+    throw new ParameterError(
+      'MeetingInfo is fetched with meeting link, sip uri, phone number, hydra room id, hydra people id, or a conversation url.'
+    );
   }
 
   return Promise.resolve(options);
@@ -212,10 +223,8 @@ MeetingInfoUtil.getDestinationType = async (from) => {
  * @param {Object} options.destination ?? value.value
  * @returns {Object} returns an object with {resource, method}
  */
-MeetingInfoUtil.getRequestBody = (options: { type: string; destination: object } | any) => {
-  const {
-    type, destination, password, captchaInfo
-  } = options;
+MeetingInfoUtil.getRequestBody = (options: {type: string; destination: object} | any) => {
+  const {type, destination, password, captchaInfo} = options;
   const body: any = {
     supportHostKey: true,
     supportCountryList: true,
@@ -239,8 +248,7 @@ MeetingInfoUtil.getRequestBody = (options: { type: string; destination: object }
       // use meetingID for the completer meeting info for the already started meeting
       if (destination.info?.webExMeetingId) {
         body.meetingKey = destination.info.webExMeetingId;
-      }
-      else if (destination.info?.sipUri) {
+      } else if (destination.info?.sipUri) {
         body.sipUrl = destination.info.sipUri;
       }
       break;
@@ -285,10 +293,8 @@ MeetingInfoUtil.getWebexSite = (uri: string) => {
  * @param {Object} options.destination ?? value.value
  * @returns {String} returns a URI string or null of there is no direct URI
  */
-MeetingInfoUtil.getDirectMeetingInfoURI = (options: { type: string; destination: any }) => {
-  const {
-    type, destination
-  } = options;
+MeetingInfoUtil.getDirectMeetingInfoURI = (options: {type: string; destination: any}) => {
+  const {type, destination} = options;
 
   let preferredWebexSite = null;
 

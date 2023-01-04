@@ -19,15 +19,19 @@ export default function whileInFlight(param) {
     descriptor.value = wrap(descriptor.value, function whileInFlightExecutor(fn, ...args) {
       return new Promise((resolve) => {
         this[param] = true;
-        resolve(Reflect.apply(fn, this, args)
-          .then(tap(() => {
-            this[param] = false;
-          }))
-          .catch((reason) => {
-            this[param] = false;
+        resolve(
+          Reflect.apply(fn, this, args)
+            .then(
+              tap(() => {
+                this[param] = false;
+              })
+            )
+            .catch((reason) => {
+              this[param] = false;
 
-            return Promise.reject(reason);
-          }));
+              return Promise.reject(reason);
+            })
+        );
       });
     });
   };

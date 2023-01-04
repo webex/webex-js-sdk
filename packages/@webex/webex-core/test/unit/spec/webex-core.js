@@ -4,11 +4,7 @@
 
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import WebexCore, {
-  MemoryStoreAdapter,
-  registerPlugin,
-  WebexPlugin
-} from '@webex/webex-core';
+import WebexCore, {MemoryStoreAdapter, registerPlugin, WebexPlugin} from '@webex/webex-core';
 import {set} from 'lodash';
 import {version} from '@webex/webex-core/package';
 
@@ -88,16 +84,26 @@ describe('Webex', () => {
       'data.credentials.authorization',
       'data.credentials.authorization.access_token',
       'data.credentials.authorization.supertoken',
-      'data.credentials.authorization.supertoken.access_token'
-    ].reduce((acc, path) => acc.concat(['ST', 'Bearer ST'].map((str) => {
-      const obj = {
-        msg: `accepts token string "${str}" at path "${path.split('.').slice(1).join('.')}"`
-      };
+      'data.credentials.authorization.supertoken.access_token',
+    ]
+      .reduce(
+        (acc, path) =>
+          acc.concat(
+            ['ST', 'Bearer ST'].map((str) => {
+              const obj = {
+                msg: `accepts token string "${str}" at path "${path
+                  .split('.')
+                  .slice(1)
+                  .join('.')}"`,
+              };
 
-      set(obj, path, str);
+              set(obj, path, str);
 
-      return obj;
-    })), [])
+              return obj;
+            })
+          ),
+        []
+      )
       .forEach(({msg, data}) => {
         it(msg, () => {
           const webex = new WebexCore(data);
@@ -110,21 +116,35 @@ describe('Webex', () => {
       });
   });
 
-
   describe('initializes with Bearer Token', () => {
     [
       ['initializes with a correctly formatted token', 'Bearer 1234'],
-      ['initializes and removes extra space from a token that has an extra space after Bearer', 'Bearer  1234'],
-      ['initializes and adds a space after Bearer from a token that has no spaces after Bearer', 'Bearer1234'],
-      ['initializes and trims whitespace from a token that has spaces before Bearer and after token', ' Bearer 1234 '],
-      ['initializes and removes extra space and trims whitespace from a token that has spaces before and after Bearer and after token', ' Bearer  1234 '],
-      ['initializes and trims whitspace and adds a space after Bearer from a token that has spaces before Bearer and after token and no spaces after Bearer', ' Bearer1234 ']
+      [
+        'initializes and removes extra space from a token that has an extra space after Bearer',
+        'Bearer  1234',
+      ],
+      [
+        'initializes and adds a space after Bearer from a token that has no spaces after Bearer',
+        'Bearer1234',
+      ],
+      [
+        'initializes and trims whitespace from a token that has spaces before Bearer and after token',
+        ' Bearer 1234 ',
+      ],
+      [
+        'initializes and removes extra space and trims whitespace from a token that has spaces before and after Bearer and after token',
+        ' Bearer  1234 ',
+      ],
+      [
+        'initializes and trims whitspace and adds a space after Bearer from a token that has spaces before Bearer and after token and no spaces after Bearer',
+        ' Bearer1234 ',
+      ],
     ].forEach(([msg, token]) => {
       it(msg, () => {
         const webex = new WebexCore({
           credentials: {
-            access_token: token
-          }
+            access_token: token,
+          },
         });
 
         assert.isTrue(webex.credentials.canAuthorize);
@@ -161,13 +181,13 @@ describe('Webex', () => {
               '@': {
                 supertoken: {
                   // eslint-disable-next-line camelcase
-                  access_token: 'AT'
-                }
-              }
-            }
-          })
-        }
-      }
+                  access_token: 'AT',
+                },
+              },
+            },
+          }),
+        },
+      },
     });
 
     assert.isFalse(webex.loaded);
@@ -175,12 +195,11 @@ describe('Webex', () => {
 
     return new Promise((resolve) => {
       webex.once('loaded', resolve);
-    })
-      .then(() => {
-        assert.isTrue(webex.loaded);
-        assert.equal(webex.credentials.supertoken.access_token, 'AT');
-        assert.isTrue(webex.canAuthorize);
-      });
+    }).then(() => {
+      assert.isTrue(webex.loaded);
+      assert.equal(webex.credentials.supertoken.access_token, 'AT');
+      assert.isTrue(webex.canAuthorize);
+    });
   });
 
   it('emits the ready event when the storage layer has loaded and all plugins signal ready', () => {
@@ -190,20 +209,23 @@ describe('Webex', () => {
 
     return new Promise((resolve) => {
       webex.once('ready', resolve);
-    })
-      .then(() => assert.isTrue(webex.ready));
+    }).then(() => assert.isTrue(webex.ready));
   });
 
   it('allows plugins to control ready status', () => {
-    registerPlugin('test', WebexPlugin.extend({
-      namespace: 'test',
-      session: {
-        ready: {
-          default: false,
-          type: 'boolean'
-        }
-      }
-    }), {replace: true});
+    registerPlugin(
+      'test',
+      WebexPlugin.extend({
+        namespace: 'test',
+        session: {
+          ready: {
+            default: false,
+            type: 'boolean',
+          },
+        },
+      }),
+      {replace: true}
+    );
 
     const webex = new WebexCore();
 
@@ -220,15 +242,14 @@ describe('Webex', () => {
     assert.isFalse(webex.test.ready);
     assert.isFalse(webex.ready);
 
-    return new Promise((resolve) => webex.once('loaded', resolve))
-      .then(() => {
-        assert.isFalse(webex.ready);
-        assert.isFalse(webex.test.ready);
-        webex.test.ready = true;
-        assert.isTrue(webex.test.ready);
-        assert.isTrue(webex.ready);
-        assert.called(changeSpy);
-        assert.called(readySpy);
-      });
+    return new Promise((resolve) => webex.once('loaded', resolve)).then(() => {
+      assert.isFalse(webex.ready);
+      assert.isFalse(webex.test.ready);
+      webex.test.ready = true;
+      assert.isTrue(webex.test.ready);
+      assert.isTrue(webex.ready);
+      assert.called(changeSpy);
+      assert.called(readySpy);
+    });
   });
 });

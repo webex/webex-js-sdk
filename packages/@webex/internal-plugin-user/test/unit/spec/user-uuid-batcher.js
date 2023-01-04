@@ -15,8 +15,8 @@ describe('plugin-user', () => {
     beforeEach(() => {
       webex = new MockWebex({
         children: {
-          user: User
-        }
+          user: User,
+        },
       });
       batcher = webex.internal.user.batcher.creator;
     });
@@ -24,10 +24,10 @@ describe('plugin-user', () => {
     describe('#fingerprints', () => {
       const email = 'test@example.com';
 
-      it('fingerprintRequest returns \'email\'', () => batcher.fingerprintRequest(email)
-        .then((res) => assert.deepEqual(res, email)));
-      it('fingerprintResponse returns \'email\'', () => batcher.fingerprintRequest({email})
-        .then((res) => assert.deepEqual(res, email)));
+      it("fingerprintRequest returns 'email'", () =>
+        batcher.fingerprintRequest(email).then((res) => assert.deepEqual(res, email)));
+      it("fingerprintResponse returns 'email'", () =>
+        batcher.fingerprintRequest({email}).then((res) => assert.deepEqual(res, email)));
     });
 
     describe('#submitHttpRequest()', () => {
@@ -38,8 +38,8 @@ describe('plugin-user', () => {
         resource: '/users',
         body: email,
         qs: {
-          shouldCreateUsers: true
-        }
+          shouldCreateUsers: true,
+        },
       };
 
       it('calls webex.request with expected params', () => {
@@ -47,7 +47,8 @@ describe('plugin-user', () => {
           return Promise.resolve(options);
         };
 
-        return batcher.submitHttpRequest(mockRequest.body)
+        return batcher
+          .submitHttpRequest(mockRequest.body)
           .then((req) => assert.deepEqual(req, mockRequest));
       });
     });
@@ -64,13 +65,14 @@ describe('plugin-user', () => {
       it('handles item success', () => {
         const mockResponse = {
           [email]: {
-            id: '11111'
-          }
+            id: '11111',
+          },
         };
 
-        return batcher.handleHttpSuccess({
-          body: mockResponse
-        })
+        return batcher
+          .handleHttpSuccess({
+            body: mockResponse,
+          })
           .then(() => {
             assert.calledWith(successSpy, email, mockResponse[email]);
           });
@@ -79,13 +81,14 @@ describe('plugin-user', () => {
       it('handles item failure', () => {
         const mockResponse = {
           [email]: {
-            errorCode: 11111
-          }
+            errorCode: 11111,
+          },
         };
 
-        return batcher.handleHttpSuccess({
-          body: mockResponse
-        })
+        return batcher
+          .handleHttpSuccess({
+            body: mockResponse,
+          })
           .then(() => {
             assert.calledWith(failureSpy, email, mockResponse[email]);
           });

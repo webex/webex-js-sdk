@@ -40,7 +40,9 @@ export default class UserUUIDStore {
     }
 
     if (!patterns.email.test(user.emailAddress)) {
-      return Promise.reject(new Error('`user.emailAddress` does not appear to be an email address'));
+      return Promise.reject(
+        new Error('`user.emailAddress` does not appear to be an email address')
+      );
     }
 
     const p1 = this.getById(user.id)
@@ -85,7 +87,6 @@ export default class UserUUIDStore {
 
     return Promise.reject(new Error('No user found by specified id'));
   }
-
 
   /**
    * Retrieves the specified user object by id from the store

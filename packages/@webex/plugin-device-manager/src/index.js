@@ -11,7 +11,7 @@ import DeviceManager from './device-manager';
 import config from './config';
 
 registerPlugin('devicemanager', DeviceManager, {
-  config
+  config,
 });
 
 export {default} from './device-manager';

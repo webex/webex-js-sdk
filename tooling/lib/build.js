@@ -10,11 +10,7 @@ const capitalize = require('lodash');
 const humanize = require('humanize-string');
 const {writeFile} = require('fs-extra');
 
-const {
-  mkdirp,
-  rimraf,
-  transformFile
-} = require('../lib/async');
+const {mkdirp, rimraf, transformFile} = require('../lib/async');
 const g = require('../lib/async').glob;
 const {glob} = require('../util/package');
 
@@ -23,7 +19,7 @@ exports.buildFile = async function buildFile({src, dest}) {
   /**
    * babel's transformFile returns an object
    * with code string and it's map file string
-  */
+   */
   const {code, map} = await transformFile(src);
 
   debug(`transformFileed ${src}`);
@@ -52,7 +48,7 @@ exports.buildPackage = async function buildPackage(packageName) {
     .map((filename) => path.join('packages', packageName, filename))
     .map((filename) => ({
       src: filename,
-      dest: filename.replace('src', 'dist').replace('.ts', '.js')
+      dest: filename.replace('src', 'dist').replace('.ts', '.js'),
     }));
 
   for (const file of mapped) {
@@ -68,11 +64,13 @@ exports.buildSamples = async function buildSamples() {
 
   // reminder: samples:build calls this script, not webpack
   // hence we must call webpack here
-  const [cmd, ...args] = `webpack --color ${(process.env.NODE_ENV === 'development') ? '--mode development' : '--mode production'}`.split(' ');
+  const [cmd, ...args] = `webpack --color ${
+    process.env.NODE_ENV === 'development' ? '--mode development' : '--mode production'
+  }`.split(' ');
   const webpack = spawn(cmd, args, {
     stdio: 'pipe',
     // Spawn fix for Windows
-    shell: process.platform === 'win32'
+    shell: process.platform === 'win32',
   });
 
   webpack.stdout.on('data', (d) => {
@@ -96,7 +94,7 @@ exports.buildSamples = async function buildSamples() {
   });
 
   const samples = await g('browser-*', {
-    cwd: path.resolve(process.cwd(), 'docs/samples')
+    cwd: path.resolve(process.cwd(), 'docs/samples'),
   });
 
   const out = `<!DOCTYPE html>
@@ -121,11 +119,13 @@ exports.buildUMDScript = async function buildUMDScript() {
 
   // reminder: samples:build calls this script, not webpack
   // hence we must call webpack here
-  const [cmd, ...args] = `webpack --color ${(process.env.NODE_ENV === 'development') ? '--mode development' : '--mode production'} --env umd`.split(' ');
+  const [cmd, ...args] = `webpack --color ${
+    process.env.NODE_ENV === 'development' ? '--mode development' : '--mode production'
+  } --env umd`.split(' ');
   const webpack = spawn(cmd, args, {
     stdio: 'pipe',
     // Spawn fix for Windows
-    shell: process.platform === 'win32'
+    shell: process.platform === 'win32',
   });
 
   webpack.stdout.on('data', (d) => {

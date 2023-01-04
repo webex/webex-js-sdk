@@ -14,18 +14,17 @@ describe('transcription index', () => {
             id: 'member',
             participant: {
               status: {
-                csis: [1, 2, 3]
-              }
-            }
-          }
-        }
-      }
+                csis: [1, 2, 3],
+              },
+            },
+          },
+        },
+      },
     };
     sessionId = 'sessionId';
     token = 'token';
     transcription = new Transcription(webSocketUrl, sessionId, members);
   });
-
 
   it('open websocket connection', async () => {
     await transcription.connect(token);

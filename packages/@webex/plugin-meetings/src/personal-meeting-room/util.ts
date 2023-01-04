@@ -6,7 +6,7 @@ import {
   CMR_MEETINGS,
   CLAIM,
   HECATE,
-  WEBEX_DOT_COM
+  WEBEX_DOT_COM,
 } from '../constants';
 
 const PersonalMeetingRoomUtil: any = {};
@@ -42,8 +42,8 @@ PersonalMeetingRoomUtil.getClaimedRequestParams = (link, pin, options) => ({
     userId: options.userId,
     passcode: pin,
     preferred: options.preferred,
-    meetingAddress: link
-  }
+    meetingAddress: link,
+  },
 });
 
 export default PersonalMeetingRoomUtil;

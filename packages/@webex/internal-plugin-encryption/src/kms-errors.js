@@ -9,7 +9,8 @@ import {WebexHttpError} from '@webex/webex-core';
  * Error class for KMS errors
  */
 export class KmsError extends Exception {
-  static defaultMessage = 'An unknown error occurred while communicating with the kms. This implies we received an error response without a body.';
+  static defaultMessage =
+    'An unknown error occurred while communicating with the kms. This implies we received an error response without a body.';
 
   /**
    * @param {HttpResponse} body
@@ -21,20 +22,20 @@ export class KmsError extends Exception {
     Object.defineProperties(this, {
       body: {
         enumerable: false,
-        value: body
+        value: body,
       },
       reason: {
         enumerable: false,
-        value: body.reason
+        value: body.reason,
       },
       requestId: {
         enumerable: false,
-        value: body.requestId
+        value: body.requestId,
       },
       status: {
         enumerable: false,
-        value: body.status
-      }
+        value: body.status,
+      },
     });
 
     let message = typeof body === 'string' ? body : body.reason;
@@ -63,7 +64,9 @@ export class KmsTimeoutError extends KmsError {
    * @returns {string}
    */
   parse({request = {}, timeout} = {}) {
-    let message = `The KMS did not respond within ${timeout ? `${timeout} milliseconds` : 'a timely fashion'}`;
+    let message = `The KMS did not respond within ${
+      timeout ? `${timeout} milliseconds` : 'a timely fashion'
+    }`;
 
     if (request) {
       if (request.method && request.uri) {
@@ -100,12 +103,12 @@ export class DryError extends WebexHttpError {
     }
     if (this.options.url) {
       message += `\n${this.options.method} ${this.options.url}`;
-    }
-    else if (this.options.uri) {
+    } else if (this.options.uri) {
       message += `\n${this.options.method} ${this.options.uri}`;
-    }
-    else {
-      message += `\n${this.options.method} ${this.options.service.toUpperCase()}/${this.options.resource}`;
+    } else {
+      message += `\n${this.options.method} ${this.options.service.toUpperCase()}/${
+        this.options.resource
+      }`;
     }
     message += `\nWEBEX_TRACKING_ID: ${this.options.headers.trackingid}`;
 
@@ -119,16 +122,16 @@ export class DryError extends WebexHttpError {
     Object.defineProperties(this, {
       reason: {
         enumerable: false,
-        value: body.reason
+        value: body.reason,
       },
       requestId: {
         enumerable: false,
-        value: body.requestId
+        value: body.requestId,
       },
       status: {
         enumerable: false,
-        value: body.status
-      }
+        value: body.status,
+      },
     });
 
     return message;

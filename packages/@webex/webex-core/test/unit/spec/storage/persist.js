@@ -6,10 +6,7 @@
 
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
-import {
-  persist,
-  WebexPlugin
-} from '@webex/webex-core';
+import {persist, WebexPlugin} from '@webex/webex-core';
 
 describe('webex-core', () => {
   describe('@persist', () => {
@@ -18,8 +15,8 @@ describe('webex-core', () => {
         props: {
           test: {
             default: false,
-            type: 'boolean'
-          }
+            type: 'boolean',
+          },
         },
 
         namespace: 'MockChild',
@@ -27,13 +24,13 @@ describe('webex-core', () => {
         @persist('@')
         initialize(...args) {
           return Reflect.apply(WebexPlugin.prototype.initialize, this, args);
-        }
+        },
       });
 
       const webex = new MockWebex({
         children: {
-          mockChild: MockChild
-        }
+          mockChild: MockChild,
+        },
       });
 
       webex.internal.mockChild.test = true;

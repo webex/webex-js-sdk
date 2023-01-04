@@ -20,7 +20,7 @@ export default class Interceptor {
 
         Reflect.defineProperty(this, key, {
           enumerable: true,
-          value
+          value,
         });
       });
     }
@@ -43,9 +43,7 @@ export default class Interceptor {
     // prepend a header for the interceptor
     logger.info('/***** Interceptor ****************************************************\\');
 
-    logger.info(
-      `${this.constructor.name} - ${JSON.stringify(options, null, 2)}`
-    );
+    logger.info(`${this.constructor.name} - ${JSON.stringify(options, null, 2)}`);
   }
 
   /**

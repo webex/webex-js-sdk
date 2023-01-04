@@ -16,34 +16,37 @@ describe('plugin-mercury', function () {
   describe('Mercury', () => {
     let webex;
 
-    beforeEach(() => testUsers.create({count: 1})
-      .then((users) => {
+    beforeEach(() =>
+      testUsers.create({count: 1}).then((users) => {
         webex = new WebexCore({
           credentials: {
-            supertoken: users[0].token
+            supertoken: users[0].token,
           },
           config: {
             credentials: {
-              refreshCallback
-            }
-          }
+              refreshCallback,
+            },
+          },
         });
-      }));
+      })
+    );
 
     afterEach(() => webex && webex.internal.mercury.disconnect());
 
     describe('#connect()', () => {
       it('connects to mercury', () => webex.internal.mercury.connect());
 
-      it('refreshes the access token when a 4401 is received', () => webex.internal.device.register()
-        .then(() => {
-          // eslint-disable-next-line camelcase
-          webex.credentials.supertoken.access_token = 'fake token';
+      it('refreshes the access token when a 4401 is received', () =>
+        webex.internal.device
+          .register()
+          .then(() => {
+            // eslint-disable-next-line camelcase
+            webex.credentials.supertoken.access_token = 'fake token';
 
-          return webex.internal.mercury.connect();
-        })
-        // eslint-disable-next-line camelcase
-        .then(() => assert.notEqual(webex.credentials.supertoken.access_token, 'fake token')));
+            return webex.internal.mercury.connect();
+          })
+          // eslint-disable-next-line camelcase
+          .then(() => assert.notEqual(webex.credentials.supertoken.access_token, 'fake token')));
 
       // This doesn't work as designed yet. The only way to get a 4404 is to try
       // to connect to someone else's valid registration; the intent was to get
@@ -70,26 +73,34 @@ describe('plugin-mercury', function () {
       });
 
       describe('when web-high-availability is enabled', () => {
-        flaky(it, process.env.SKIP_FLAKY_TESTS)('connects to mercury using service catalog url', () => {
-          let defaultWebSocketUrl;
+        flaky(it, process.env.SKIP_FLAKY_TESTS)(
+          'connects to mercury using service catalog url',
+          () => {
+            let defaultWebSocketUrl;
 
-          // we need to ensure the feature is set for user before "registering"
-          // the device
-          return webex.internal.device.register()
-            .then(() => webex.internal.feature.setFeature('developer', 'web-high-availability', true))
-            .then(() => webex.internal.device.unregister())
-            // start the test flow the device list
-            .then(() => webex.internal.device.register())
-            .then(() => {
-              defaultWebSocketUrl = webex.internal.device.webSocketUrl;
-            })
-            .then(() => webex.internal.mercury.connect())
-            .then(() => webex.internal.device.getWebSocketUrl())
-            .then((wsUrl) => {
-              assert.notEqual(defaultWebSocketUrl, webex.internal.mercury.socket.url);
-              assert.include(webex.internal.mercury.socket.url, wsUrl);
-            });
-        });
+            // we need to ensure the feature is set for user before "registering"
+            // the device
+            return (
+              webex.internal.device
+                .register()
+                .then(() =>
+                  webex.internal.feature.setFeature('developer', 'web-high-availability', true)
+                )
+                .then(() => webex.internal.device.unregister())
+                // start the test flow the device list
+                .then(() => webex.internal.device.register())
+                .then(() => {
+                  defaultWebSocketUrl = webex.internal.device.webSocketUrl;
+                })
+                .then(() => webex.internal.mercury.connect())
+                .then(() => webex.internal.device.getWebSocketUrl())
+                .then((wsUrl) => {
+                  assert.notEqual(defaultWebSocketUrl, webex.internal.mercury.socket.url);
+                  assert.include(webex.internal.mercury.socket.url, wsUrl);
+                })
+            );
+          }
+        );
       });
     });
 
@@ -98,10 +109,9 @@ describe('plugin-mercury', function () {
 
       webex.internal.mercury.on('event:mercury.buffer_state', spy);
 
-      return webex.internal.mercury.connect()
-        .then(() => {
-          assert.calledOnce(spy);
-        });
+      return webex.internal.mercury.connect().then(() => {
+        assert.calledOnce(spy);
+      });
     });
   });
 });

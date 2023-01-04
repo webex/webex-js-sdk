@@ -10,13 +10,13 @@ describe('plugin-device', () => {
     });
 
     describe('#mainIndex', () => {
-      it('should have its index set to \'key\'', () => {
+      it("should have its index set to 'key'", () => {
         assert.equal(featureCollection.mainIndex, 'key');
       });
     });
 
     describe('#model', () => {
-      it('should have its model set to the \'FeatureModel\' class', () => {
+      it("should have its model set to the 'FeatureModel' class", () => {
         assert.equal(featureCollection.model, FeatureModel);
       });
     });

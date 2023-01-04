@@ -2,16 +2,16 @@
 // here we're using tagged template literals to ensures that our SDP fixtures also have CRLF endings
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ensureCRLF = (strings: any, ...tags: string[]) => {
-    const stringsWithCRLF = strings.raw.map((str: string) => str.replace(/\n/g, '\r\n'));
+  const stringsWithCRLF = strings.raw.map((str: string) => str.replace(/\n/g, '\r\n'));
 
-    // now construct the output the same way as it's done by default for template literals
-    let output = stringsWithCRLF[0];
+  // now construct the output the same way as it's done by default for template literals
+  let output = stringsWithCRLF[0];
 
-    tags.forEach((tag, index) => {
-        output += tag + stringsWithCRLF[index + 1];
-    });
+  tags.forEach((tag, index) => {
+    output += tag + stringsWithCRLF[index + 1];
+  });
 
-    return output;
+  return output;
 };
 
 // example SDP that has an audio and 2 video m-lines, video contains multiple codecs
@@ -262,7 +262,6 @@ a=fmtp:109 apt=108
 a=rtcp-rsize
 a=rtcp:9 IN IP4 0.0.0.0
 `;
-
 
 // same as SDP_MULTIPLE_VIDEO_CODECS, but has max-fs appended to all H264 fmtp lines
 export const SDP_MULTIPLE_VIDEO_CODECS_WITH_MAX_FS = ensureCRLF`v=0

@@ -17,93 +17,133 @@ describe.skip('plugin-board', () => {
     let mccoy, spock;
     let uniqueRealtimeData;
 
-    before('create users', () => testUsers.create({count: 2})
-      .then((users) => {
+    before('create users', () =>
+      testUsers.create({count: 2}).then((users) => {
         participants = [spock, mccoy] = users;
 
-        return Promise.all(participants.map((participant) => {
-          participant.webex = new WebexCore({
-            credentials: {
-              authorization: participant.token
-            }
-          });
+        return Promise.all(
+          participants.map((participant) => {
+            participant.webex = new WebexCore({
+              credentials: {
+                authorization: participant.token,
+              },
+            });
 
-          return participant.webex.internal.device.register()
-            .then(() => participant.webex.internal.feature.setFeature('developer', 'web-shared-mercury', true));
-        }));
-      }));
+            return participant.webex.internal.device
+              .register()
+              .then(() =>
+                participant.webex.internal.feature.setFeature(
+                  'developer',
+                  'web-shared-mercury',
+                  true
+                )
+              );
+          })
+        );
+      })
+    );
 
-    before('create conversation', () => spock.webex.internal.conversation.create({
-      displayName: 'Test Board Mercury',
-      participants
-    })
-      .then((c) => {
-        conversation = c;
+    before('create conversation', () =>
+      spock.webex.internal.conversation
+        .create({
+          displayName: 'Test Board Mercury',
+          participants,
+        })
+        .then((c) => {
+          conversation = c;
 
-        return conversation;
-      }));
+          return conversation;
+        })
+    );
 
-    before('create channel (board)', () => spock.webex.internal.board.createChannel(conversation)
-      .then((channel) => {
+    before('create channel (board)', () =>
+      spock.webex.internal.board.createChannel(conversation).then((channel) => {
         board = channel;
 
         return channel;
-      }));
+      })
+    );
 
-    before('create second channel (board)', () => mccoy.webex.internal.board.createChannel(conversation)
-      .then((channel) => {
+    before('create second channel (board)', () =>
+      mccoy.webex.internal.board.createChannel(conversation).then((channel) => {
         secondBoard = channel;
 
         return channel;
-      }));
+      })
+    );
 
-    beforeEach('connect to mercury channel', () => Promise.all(participants.map((participant) => participant.webex.internal.mercury.connect())));
+    beforeEach('connect to mercury channel', () =>
+      Promise.all(participants.map((participant) => participant.webex.internal.mercury.connect()))
+    );
 
-    afterEach('disconnect mercury', () => Promise.all(participants.map((participant) => participant.webex.internal.mercury.disconnect())));
+    afterEach('disconnect mercury', () =>
+      Promise.all(
+        participants.map((participant) => participant.webex.internal.mercury.disconnect())
+      )
+    );
 
     describe('#publish()', () => {
       describe('string payload', () => {
         let spockRealtimeChannel;
         let mccoyRealtimeChannel;
 
-        before('open two connections', () => Promise.all([
-          spock.webex.internal.board.realtime.connectToSharedMercury(board),
-          mccoy.webex.internal.board.realtime.connectByOpenNewMercuryConnection(board)
-        ]));
+        before('open two connections', () =>
+          Promise.all([
+            spock.webex.internal.board.realtime.connectToSharedMercury(board),
+            mccoy.webex.internal.board.realtime.connectByOpenNewMercuryConnection(board),
+          ])
+        );
 
         before('get realtime channels', () => {
-          spockRealtimeChannel = spock.webex.internal.board.realtime.realtimeChannels.get(board.channelId);
-          mccoyRealtimeChannel = mccoy.webex.internal.board.realtime.realtimeChannels.get(board.channelId);
+          spockRealtimeChannel = spock.webex.internal.board.realtime.realtimeChannels.get(
+            board.channelId
+          );
+          mccoyRealtimeChannel = mccoy.webex.internal.board.realtime.realtimeChannels.get(
+            board.channelId
+          );
         });
 
-        after(() => Promise.all(participants.map((participant) => participant.webex.internal.board.realtime.disconnectFromSharedMercury(board))));
+        after(() =>
+          Promise.all(
+            participants.map((participant) =>
+              participant.webex.internal.board.realtime.disconnectFromSharedMercury(board)
+            )
+          )
+        );
 
         it('posts a message from shared connection to the specified board', () => {
           uniqueRealtimeData = uuid.v4();
           const data = {
             envelope: {
               channelId: board,
-              roomId: conversation.id
+              roomId: conversation.id,
             },
             payload: {
-              msg: uniqueRealtimeData
-            }
+              msg: uniqueRealtimeData,
+            },
           };
 
           // confirm that both are connected.
-          assert.isTrue(spockRealtimeChannel.isSharingMercury, 'spock is sharing mercury connection');
+          assert.isTrue(
+            spockRealtimeChannel.isSharingMercury,
+            'spock is sharing mercury connection'
+          );
           assert.isTrue(spock.webex.internal.mercury.connected, 'spock is connected');
-          assert.isFalse(mccoyRealtimeChannel.isSharingMercury, 'mccoy should not share mercury connection');
+          assert.isFalse(
+            mccoyRealtimeChannel.isSharingMercury,
+            'mccoy should not share mercury connection'
+          );
           assert.isTrue(mccoy.webex.internal.mercury.connected, 'mccoy is connected');
 
           spock.webex.internal.board.realtime.publish(board, data);
 
           // mccoy listens and verifies data received
-          return maxWaitForEvent(5000, 'event:board.activity', mccoyRealtimeChannel)
-            .then(({data}) => {
+          return maxWaitForEvent(5000, 'event:board.activity', mccoyRealtimeChannel).then(
+            ({data}) => {
               assert.equal(data.contentType, 'STRING');
               assert.equal(data.payload.msg, uniqueRealtimeData);
-            });
+            }
+          );
         });
 
         it('posts a message from separated socket connection to the specified board', () => {
@@ -111,25 +151,32 @@ describe.skip('plugin-board', () => {
           const data = {
             envelope: {
               channelId: board,
-              roomId: conversation.id
+              roomId: conversation.id,
             },
             payload: {
-              msg: uniqueRealtimeData
-            }
+              msg: uniqueRealtimeData,
+            },
           };
 
           assert.isTrue(spock.webex.internal.mercury.connected, 'spock is connected');
-          assert.isTrue(spockRealtimeChannel.isSharingMercury, 'spock is sharing mercury connection');
+          assert.isTrue(
+            spockRealtimeChannel.isSharingMercury,
+            'spock is sharing mercury connection'
+          );
           assert.isTrue(mccoy.webex.internal.mercury.connected, 'mccoy is connected');
-          assert.isFalse(mccoyRealtimeChannel.isSharingMercury, 'mccoy does not share mercury connection');
+          assert.isFalse(
+            mccoyRealtimeChannel.isSharingMercury,
+            'mccoy does not share mercury connection'
+          );
 
           mccoy.webex.internal.board.realtime.publish(board, data);
 
-          return maxWaitForEvent(5000, 'event:board.activity', spockRealtimeChannel)
-            .then(({data}) => {
+          return maxWaitForEvent(5000, 'event:board.activity', spockRealtimeChannel).then(
+            ({data}) => {
               assert.equal(data.contentType, 'STRING');
               assert.equal(data.payload.msg, uniqueRealtimeData);
-            });
+            }
+          );
         });
       });
     });
@@ -139,46 +186,77 @@ describe.skip('plugin-board', () => {
         uniqueRealtimeData = uuid.v4();
 
         return promiseSeries([
-          spock.webex.internal.board.realtime.connectToSharedMercury.bind(spock.webex.internal.board.realtime, board),
-          mccoy.webex.internal.board.realtime.connectToSharedMercury.bind(mccoy.webex.internal.board.realtime, board),
-          spock.webex.internal.board.realtime.connectToSharedMercury.bind(spock.webex.internal.board.realtime, secondBoard),
-          mccoy.webex.internal.board.realtime.connectToSharedMercury.bind(mccoy.webex.internal.board.realtime, secondBoard)
+          spock.webex.internal.board.realtime.connectToSharedMercury.bind(
+            spock.webex.internal.board.realtime,
+            board
+          ),
+          mccoy.webex.internal.board.realtime.connectToSharedMercury.bind(
+            mccoy.webex.internal.board.realtime,
+            board
+          ),
+          spock.webex.internal.board.realtime.connectToSharedMercury.bind(
+            spock.webex.internal.board.realtime,
+            secondBoard
+          ),
+          mccoy.webex.internal.board.realtime.connectToSharedMercury.bind(
+            mccoy.webex.internal.board.realtime,
+            secondBoard
+          ),
         ]);
       });
 
-      afterEach(() => Promise.all(participants.map((participant) => promiseSeries([
-        participant.webex.internal.board.realtime.disconnectFromSharedMercury.bind(participant.webex.internal.board.realtime, board),
-        participant.webex.internal.board.realtime.disconnectFromSharedMercury.bind(participant.webex.internal.board.realtime, secondBoard)
-      ]))));
+      afterEach(() =>
+        Promise.all(
+          participants.map((participant) =>
+            promiseSeries([
+              participant.webex.internal.board.realtime.disconnectFromSharedMercury.bind(
+                participant.webex.internal.board.realtime,
+                board
+              ),
+              participant.webex.internal.board.realtime.disconnectFromSharedMercury.bind(
+                participant.webex.internal.board.realtime,
+                secondBoard
+              ),
+            ])
+          )
+        )
+      );
 
       it('receives correct message for the corresponding board', (done) => {
         const data1 = {
           envelope: {
             channelId: board,
-            roomId: conversation.id
+            roomId: conversation.id,
           },
           payload: {
-            msg: `first message for ${board.channelId} ${uniqueRealtimeData}`
-          }
+            msg: `first message for ${board.channelId} ${uniqueRealtimeData}`,
+          },
         };
         const data2 = {
           envelope: {
             channelId: secondBoard,
-            roomId: conversation.id
+            roomId: conversation.id,
           },
           payload: {
-            msg: `second message for ${secondBoard.channelId} ${uniqueRealtimeData}`
-          }
+            msg: `second message for ${secondBoard.channelId} ${uniqueRealtimeData}`,
+          },
         };
 
         let receivedFirstMsg = false;
         let receivedSecondMsg = false;
-        const mccoyRealtimeChannel0 = mccoy.webex.internal.board.realtime.realtimeChannels.get(board.channelId);
-        const mccoyRealtimeChannel1 = mccoy.webex.internal.board.realtime.realtimeChannels.get(secondBoard.channelId);
+        const mccoyRealtimeChannel0 = mccoy.webex.internal.board.realtime.realtimeChannels.get(
+          board.channelId
+        );
+        const mccoyRealtimeChannel1 = mccoy.webex.internal.board.realtime.realtimeChannels.get(
+          secondBoard.channelId
+        );
 
         mccoyRealtimeChannel0.once('event:board.activity', ({data}) => {
           assert.equal(data.contentType, 'STRING');
-          assert.equal(data.payload.msg, `first message for ${board.channelId} ${uniqueRealtimeData}`);
+          assert.equal(
+            data.payload.msg,
+            `first message for ${board.channelId} ${uniqueRealtimeData}`
+          );
           receivedFirstMsg = true;
           if (receivedFirstMsg && receivedSecondMsg) {
             done();
@@ -187,7 +265,10 @@ describe.skip('plugin-board', () => {
 
         mccoyRealtimeChannel1.once('event:board.activity', ({data}) => {
           assert.equal(data.contentType, 'STRING');
-          assert.equal(data.payload.msg, `second message for ${secondBoard.channelId} ${uniqueRealtimeData}`);
+          assert.equal(
+            data.payload.msg,
+            `second message for ${secondBoard.channelId} ${uniqueRealtimeData}`
+          );
           receivedSecondMsg = true;
           if (receivedFirstMsg && receivedSecondMsg) {
             done();
@@ -196,7 +277,7 @@ describe.skip('plugin-board', () => {
 
         Promise.all([
           spock.webex.internal.board.realtime.publish(board, data1),
-          spock.webex.internal.board.realtime.publish(secondBoard, data2)
+          spock.webex.internal.board.realtime.publish(secondBoard, data2),
         ]);
       });
     });

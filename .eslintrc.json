@@ -10,15 +10,10 @@
     "PACKAGE_VERSION": false,
     "WebSocket": false
   },
-  "ignorePatterns": [
-    "node_modules/*"
-  ],
+  "ignorePatterns": ["node_modules/*"],
   "rules": {
     "import/no-extraneous-dependencies": "error",
-    "comma-dangle": [
-      "error",
-      "only-multiline"
-    ],
+    "comma-dangle": ["error", "only-multiline"],
     "quotes": [
       "error",
       "single",
@@ -57,7 +52,7 @@
       }
     ],
     "class-methods-use-this": "warn",
-    "max-len":  "off",
+    "max-len": "off",
     "no-multi-assign": "warn",
     "no-param-reassign": "warn",
     "no-shadow": "warn",
@@ -91,9 +86,7 @@
   },
   "overrides": [
     {
-      "files": [
-        "packages/**/*.js"
-      ],
+      "files": ["packages/**/*.js"],
       "rules": {
         "valid-jsdoc": [
           "error",
@@ -126,10 +119,7 @@
       }
     },
     {
-      "files": [
-        "packages/**/test/**/*.js",
-        "packages/**/*-spec/**/*.js"
-      ],
+      "files": ["packages/**/test/**/*.js", "packages/**/*-spec/**/*.js"],
       "env": {
         "mocha": true
       },
@@ -140,10 +130,7 @@
       }
     },
     {
-      "files": [
-        "wdio.helpers.d/**/*.js",
-        "docs/samples/**/test/wdio/**/*.js"
-      ],
+      "files": ["wdio.helpers.d/**/*.js", "docs/samples/**/test/wdio/**/*.js"],
       "globals": {
         "browser": false,
         "browserFirefox": false,
@@ -162,26 +149,20 @@
       }
     },
     {
-      "files": [
-        "packages/@webex/xunit-with-logs"
-      ],
+      "files": ["packages/@webex/xunit-with-logs"],
       "rules": {
         "func-names": 0,
         "no-console": 0
       }
     },
     {
-      "files": [
-        "packages/**/bin-*/**"
-      ],
+      "files": ["packages/**/bin-*/**"],
       "rules": {
         "no-sync": 0
       }
     },
     {
-      "files": [
-        "tooling/**"
-      ],
+      "files": ["tooling/**"],
       "rules": {
         "no-await-in-loop": 0
       }

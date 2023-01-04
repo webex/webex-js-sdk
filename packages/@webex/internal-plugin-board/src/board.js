@@ -14,7 +14,7 @@ const Board = WebexPlugin.extend({
   namespace: 'Board',
 
   children: {
-    realtime: Realtime
+    realtime: Realtime,
   },
 
   /**
@@ -48,17 +48,20 @@ const Board = WebexPlugin.extend({
    * @returns {Promise<Board~Content>}
    */
   addImage(channel, image, metadata) {
-    return this.webex.internal.board._uploadImage(channel, image)
-      .then((scr) => this.webex.internal.board.addContent(channel, [{
-        type: 'FILE',
-        metadata,
-        file: {
-          mimeType: image.type,
-          scr,
-          size: image.size,
-          url: scr.loc
-        }
-      }]));
+    return this.webex.internal.board._uploadImage(channel, image).then((scr) =>
+      this.webex.internal.board.addContent(channel, [
+        {
+          type: 'FILE',
+          metadata,
+          file: {
+            mimeType: image.type,
+            scr,
+            size: image.size,
+            url: scr.loc,
+          },
+        },
+      ])
+    );
   },
 
   /**
@@ -71,7 +74,8 @@ const Board = WebexPlugin.extend({
   setSnapshotImage(channel, image) {
     let imageScr;
 
-    return this.webex.internal.board._uploadImage(channel, image, {hiddenSpace: true})
+    return this.webex.internal.board
+      ._uploadImage(channel, image, {hiddenSpace: true})
       .then((scr) => {
         imageScr = scr;
 
@@ -91,14 +95,14 @@ const Board = WebexPlugin.extend({
             mimeType: image.type || 'image/png',
             scr: imageScr.encryptedScr,
             encryptionKeyUrl: channel.defaultEncryptionKeyUrl,
-            fileSize: image.size
-          }
+            fileSize: image.size,
+          },
         };
 
         return this.webex.request({
           method: 'PATCH',
           uri: channel.channelUrl,
-          body: imageBody
+          body: imageBody,
         });
       })
       .then((res) => res.body);
@@ -112,25 +116,29 @@ const Board = WebexPlugin.extend({
    * @returns {Promise<Board~Channel>}
    */
   createChannel(conversation, channel) {
-    return this.webex.request({
-      method: 'POST',
-      api: 'board',
-      resource: '/channels',
-      body: this._prepareChannel(conversation, channel)
-    })
+    return this.webex
+      .request({
+        method: 'POST',
+        api: 'board',
+        resource: '/channels',
+        body: this._prepareChannel(conversation, channel),
+      })
       .then((res) => res.body);
   },
 
   _prepareChannel(conversation, channel) {
-    return Object.assign({
-      aclUrlLink: conversation.aclUrl,
-      kmsMessage: {
-        method: 'create',
-        uri: '/resources',
-        userIds: [conversation.kmsResourceObjectUrl],
-        keyUris: []
-      }
-    }, channel);
+    return Object.assign(
+      {
+        aclUrlLink: conversation.aclUrl,
+        kmsMessage: {
+          method: 'create',
+          uri: '/resources',
+          userIds: [conversation.kmsResourceObjectUrl],
+          keyUris: [],
+        },
+      },
+      channel
+    );
   },
 
   /**
@@ -150,9 +158,11 @@ const Board = WebexPlugin.extend({
       linkedAcl: conversation.aclUrl,
       kmsMessage: {
         method: 'delete',
-        uri: `${channel.kmsResourceUrl}/authorizations?${querystring.stringify({authId: conversation.kmsResourceObjectUrl})}`
+        uri: `${channel.kmsResourceUrl}/authorizations?${querystring.stringify({
+          authId: conversation.kmsResourceObjectUrl,
+        })}`,
       },
-      aclLinkOperation: 'DELETE'
+      aclLinkOperation: 'DELETE',
     };
 
     let promise = Promise.resolve();
@@ -162,11 +172,13 @@ const Board = WebexPlugin.extend({
     }
 
     return promise
-      .then(() => this.webex.request({
-        method: 'PUT',
-        uri: `${channel.aclUrl}/links`,
-        body
-      }))
+      .then(() =>
+        this.webex.request({
+          method: 'PUT',
+          uri: `${channel.aclUrl}/links`,
+          body,
+        })
+      )
       .then((res) => res.body);
   },
 
@@ -178,13 +190,14 @@ const Board = WebexPlugin.extend({
    * @returns {Promise}
    */
   lockChannelForDeletion(channel) {
-    return this.webex.request({
-      method: 'POST',
-      uri: `${channel.channelUrl}/lock`,
-      qs: {
-        intent: 'delete'
-      }
-    })
+    return this.webex
+      .request({
+        method: 'POST',
+        uri: `${channel.channelUrl}/lock`,
+        qs: {
+          intent: 'delete',
+        },
+      })
       .then((res) => res.body);
   },
 
@@ -196,7 +209,7 @@ const Board = WebexPlugin.extend({
   keepActive(channel) {
     return this.webex.request({
       method: 'POST',
-      uri: `${channel.channelUrl}/keepAlive`
+      uri: `${channel.channelUrl}/keepAlive`,
     });
   },
 
@@ -208,24 +221,24 @@ const Board = WebexPlugin.extend({
    * @returns {Promise<Array>} Resolves with an array of {@link Board~Content} objects.
    */
   decryptContents(contents) {
-    return Promise.all(contents.items.map((content) => {
-      let decryptPromise;
+    return Promise.all(
+      contents.items.map((content) => {
+        let decryptPromise;
 
-      if (content.type === 'FILE') {
-        decryptPromise = this.decryptSingleFileContent(content.encryptionKeyUrl, content);
-      }
-      else {
-        decryptPromise = this.decryptSingleContent(content.encryptionKeyUrl, content.payload);
-      }
+        if (content.type === 'FILE') {
+          decryptPromise = this.decryptSingleFileContent(content.encryptionKeyUrl, content);
+        } else {
+          decryptPromise = this.decryptSingleContent(content.encryptionKeyUrl, content.payload);
+        }
 
-      return decryptPromise
-        .then((res) => {
+        return decryptPromise.then((res) => {
           Reflect.deleteProperty(content, 'payload');
           Reflect.deleteProperty(content, 'encryptionKeyUrl');
 
           return defaults(res, content);
         });
-    }));
+      })
+    );
   },
 
   /**
@@ -236,7 +249,8 @@ const Board = WebexPlugin.extend({
    * @returns {Promise<Board~Content>}
    */
   decryptSingleContent(encryptionKeyUrl, encryptedData) {
-    return this.webex.internal.encryption.decryptText(encryptionKeyUrl, encryptedData)
+    return this.webex.internal.encryption
+      .decryptText(encryptionKeyUrl, encryptedData)
       .then((res) => JSON.parse(res));
   },
 
@@ -254,7 +268,8 @@ const Board = WebexPlugin.extend({
       metadata = encryptedContent.payload;
     }
 
-    return this.webex.internal.encryption.decryptScr(encryptionKeyUrl, encryptedContent.file.scr)
+    return this.webex.internal.encryption
+      .decryptScr(encryptionKeyUrl, encryptedContent.file.scr)
       .then((scr) => {
         encryptedContent.file.scr = scr;
         if (metadata) {
@@ -269,8 +284,7 @@ const Board = WebexPlugin.extend({
           if (encryptedContent.metadata.displayName) {
             encryptedContent.displayName = encryptedContent.metadata.displayName;
           }
-        }
-        catch (error) {
+        } catch (error) {
           encryptedContent.metadata = {};
         }
 
@@ -285,10 +299,11 @@ const Board = WebexPlugin.extend({
    * @returns {Promise} Resolves with an content response
    */
   deleteAllContent(channel) {
-    return this.webex.request({
-      method: 'DELETE',
-      uri: `${channel.channelUrl}/contents`
-    })
+    return this.webex
+      .request({
+        method: 'DELETE',
+        uri: `${channel.channelUrl}/contents`,
+      })
       .then((res) => res.body);
   },
 
@@ -302,14 +317,15 @@ const Board = WebexPlugin.extend({
   deletePartialContent(channel, contentsToKeep) {
     const body = contentsToKeep.map((content) => pick(content, 'contentId'));
 
-    return this.webex.request({
-      method: 'POST',
-      uri: `${channel.channelUrl}/contents`,
-      body,
-      qs: {
-        clearBoard: true
-      }
-    })
+    return this.webex
+      .request({
+        method: 'POST',
+        uri: `${channel.channelUrl}/contents`,
+        body,
+        qs: {
+          clearBoard: true,
+        },
+      })
       .then((res) => res.body);
   },
 
@@ -321,27 +337,31 @@ const Board = WebexPlugin.extend({
    * @returns {Promise<Array>} Resolves with an array of encrypted {@link Board~Content} objects.
    */
   encryptContents(encryptionKeyUrl, contents) {
-    return Promise.all(contents.map((content) => {
-      let encryptionPromise;
-      let contentType = 'STRING';
+    return Promise.all(
+      contents.map((content) => {
+        let encryptionPromise;
+        let contentType = 'STRING';
 
-      // the existence of an scr will determine if the content is a FILE.
-      if (content.file) {
-        contentType = 'FILE';
-        encryptionPromise = this.encryptSingleFileContent(encryptionKeyUrl, content);
-      }
-      else {
-        encryptionPromise = this.encryptSingleContent(encryptionKeyUrl, content);
-      }
+        // the existence of an scr will determine if the content is a FILE.
+        if (content.file) {
+          contentType = 'FILE';
+          encryptionPromise = this.encryptSingleFileContent(encryptionKeyUrl, content);
+        } else {
+          encryptionPromise = this.encryptSingleContent(encryptionKeyUrl, content);
+        }
 
-      return encryptionPromise
-        .then((res) => assign({
-          device: this.webex.internal.device.deviceType,
-          type: contentType,
-          encryptionKeyUrl
-        },
-        pick(res, 'file', 'payload')));
-    }));
+        return encryptionPromise.then((res) =>
+          assign(
+            {
+              device: this.webex.internal.device.deviceType,
+              type: contentType,
+              encryptionKeyUrl,
+            },
+            pick(res, 'file', 'payload')
+          )
+        );
+      })
+    );
   },
 
   /**
@@ -352,10 +372,11 @@ const Board = WebexPlugin.extend({
    * @returns {Promise<Board~Content>}
    */
   encryptSingleContent(encryptionKeyUrl, content) {
-    return this.webex.internal.encryption.encryptText(encryptionKeyUrl, JSON.stringify(content))
+    return this.webex.internal.encryption
+      .encryptText(encryptionKeyUrl, JSON.stringify(content))
       .then((res) => ({
         payload: res,
-        encryptionKeyUrl
+        encryptionKeyUrl,
       }));
   },
 
@@ -367,14 +388,16 @@ const Board = WebexPlugin.extend({
    * @returns {Promise<Board~Content>}
    */
   encryptSingleFileContent(encryptionKeyUrl, content) {
-    return this.webex.internal.encryption.encryptScr(encryptionKeyUrl, content.file.scr)
+    return this.webex.internal.encryption
+      .encryptScr(encryptionKeyUrl, content.file.scr)
       .then((encryptedScr) => {
         content.file.scr = encryptedScr;
         if (content.displayName) {
           content.metadata = assign(content.metadata, {displayName: content.displayName});
         }
         if (content.metadata) {
-          return this.webex.internal.encryption.encryptText(encryptionKeyUrl, JSON.stringify(content.metadata))
+          return this.webex.internal.encryption
+            .encryptText(encryptionKeyUrl, JSON.stringify(content.metadata))
             .then((encryptedMetadata) => {
               content.metadata = encryptedMetadata;
             });
@@ -385,7 +408,7 @@ const Board = WebexPlugin.extend({
       .then(() => ({
         file: content.file,
         payload: content.metadata,
-        encryptionKeyUrl
+        encryptionKeyUrl,
       }));
   },
 
@@ -403,14 +426,13 @@ const Board = WebexPlugin.extend({
     const params = {
       uri: `${channel.channelUrl}/contents`,
       qs: {
-        contentsLimit: this.config.numberContentsPerPageForGet
-      }
+        contentsLimit: this.config.numberContentsPerPageForGet,
+      },
     };
 
     assign(params.qs, pick(options, 'contentsLimit'));
 
-    return this.request(params)
-      .then((res) => new Page(res, this.webex));
+    return this.request(params).then((res) => new Page(res, this.webex));
   },
 
   /**
@@ -420,10 +442,11 @@ const Board = WebexPlugin.extend({
    * @returns {Promise<Board~Channel>}
    */
   getChannel(channel) {
-    return this.webex.request({
-      method: 'GET',
-      uri: channel.channelUrl
-    })
+    return this.webex
+      .request({
+        method: 'GET',
+        uri: channel.channelUrl,
+      })
       .then((res) => res.body);
   },
 
@@ -447,14 +470,13 @@ const Board = WebexPlugin.extend({
       api: 'board',
       resource: '/channels',
       qs: {
-        aclUrlLink: conversation.aclUrl
-      }
+        aclUrlLink: conversation.aclUrl,
+      },
     };
 
     assign(params.qs, pick(options, 'channelsLimit', 'type'));
 
-    return this.request(params)
-      .then((res) => new Page(res, this.webex));
+    return this.request(params).then((res) => new Page(res, this.webex));
   },
 
   /**
@@ -463,11 +485,12 @@ const Board = WebexPlugin.extend({
    * @returns {Promise<Object>} ping response body
    */
   ping() {
-    return this.webex.request({
-      method: 'GET',
-      api: 'board',
-      resource: '/ping'
-    })
+    return this.webex
+      .request({
+        method: 'GET',
+        api: 'board',
+        resource: '/ping',
+      })
       .then((res) => res.body);
   },
 
@@ -475,19 +498,23 @@ const Board = WebexPlugin.extend({
     let decryptionPromise;
 
     if (message.contentType === 'FILE') {
-      decryptionPromise = this.decryptSingleFileContent(message.envelope.encryptionKeyUrl, message.payload);
-    }
-    else {
-      decryptionPromise = this.decryptSingleContent(message.envelope.encryptionKeyUrl, message.payload);
+      decryptionPromise = this.decryptSingleFileContent(
+        message.envelope.encryptionKeyUrl,
+        message.payload
+      );
+    } else {
+      decryptionPromise = this.decryptSingleContent(
+        message.envelope.encryptionKeyUrl,
+        message.payload
+      );
     }
 
-    return decryptionPromise
-      .then((decryptedData) => {
-        // call the event handlers
-        message.payload = decryptedData;
+    return decryptionPromise.then((decryptedData) => {
+      // call the event handlers
+      message.payload = decryptedData;
 
-        return message;
-      });
+      return message;
+    });
   },
 
   /**
@@ -497,12 +524,13 @@ const Board = WebexPlugin.extend({
    * @returns {Promise<Board~Registration>}
    */
   register(data) {
-    return this.webex.request({
-      method: 'POST',
-      api: 'board',
-      resource: '/registrations',
-      body: data
-    })
+    return this.webex
+      .request({
+        method: 'POST',
+        api: 'board',
+        resource: '/registrations',
+        body: data,
+      })
       .then((res) => res.body);
   },
 
@@ -513,28 +541,32 @@ const Board = WebexPlugin.extend({
    * @returns {Promise<Board~Registration>}
    */
   registerToShareMercury(channel) {
-    return this.webex.internal.feature.getFeature('developer', 'web-shared-mercury')
+    return this.webex.internal.feature
+      .getFeature('developer', 'web-shared-mercury')
       .then((isSharingMercuryFeatureEnabled) => {
         if (!this.webex.internal.mercury.localClusterServiceUrls) {
-          return Promise.reject(new Error('`localClusterServiceUrls` is not defined, make sure mercury is connected'));
+          return Promise.reject(
+            new Error('`localClusterServiceUrls` is not defined, make sure mercury is connected')
+          );
         }
         if (!isSharingMercuryFeatureEnabled) {
           return Promise.reject(new Error('`web-shared-mercury` is not enabled'));
         }
 
         const {webSocketUrl} = this.webex.internal.device;
-        const {mercuryConnectionServiceClusterUrl} = this.webex.internal.mercury.localClusterServiceUrls;
+        const {mercuryConnectionServiceClusterUrl} =
+          this.webex.internal.mercury.localClusterServiceUrls;
 
         const data = {
           mercuryConnectionServiceClusterUrl,
           webSocketUrl,
-          action: 'ADD'
+          action: 'ADD',
         };
 
         return this.webex.request({
           method: 'POST',
           uri: `${channel.channelUrl}/register`,
-          body: data
+          body: data,
         });
       })
       .then((res) => res.body);
@@ -552,24 +584,28 @@ const Board = WebexPlugin.extend({
     const data = {
       binding,
       webSocketUrl,
-      action: 'REMOVE'
+      action: 'REMOVE',
     };
 
-    return this.webex.request({
-      method: 'POST',
-      uri: `${channel.channelUrl}/register`,
-      body: data
-    })
+    return this.webex
+      .request({
+        method: 'POST',
+        uri: `${channel.channelUrl}/register`,
+        body: data,
+      })
       .then((res) => res.body);
   },
 
   _addContentChunk(channel, contentChunk) {
-    return this.webex.internal.board.encryptContents(channel.defaultEncryptionKeyUrl, contentChunk)
-      .then((res) => this.webex.request({
-        method: 'POST',
-        uri: `${channel.channelUrl}/contents`,
-        body: res
-      }))
+    return this.webex.internal.board
+      .encryptContents(channel.defaultEncryptionKeyUrl, contentChunk)
+      .then((res) =>
+        this.webex.request({
+          method: 'POST',
+          uri: `${channel.channelUrl}/contents`,
+          body: res,
+        })
+      )
       .then((res) => res.body);
   },
 
@@ -586,8 +622,11 @@ const Board = WebexPlugin.extend({
   _uploadImage(channel, file, options) {
     options = options || {};
 
-    return this.webex.internal.encryption.encryptBinary(file)
-      .then(({scr, cdata}) => Promise.all([scr, this._uploadImageToWebexFiles(channel, cdata, options.hiddenSpace)]))
+    return this.webex.internal.encryption
+      .encryptBinary(file)
+      .then(({scr, cdata}) =>
+        Promise.all([scr, this._uploadImageToWebexFiles(channel, cdata, options.hiddenSpace)])
+      )
       .then(([scr, res]) => assign(scr, {loc: res.downloadUrl}));
   },
 
@@ -598,38 +637,40 @@ const Board = WebexPlugin.extend({
       requestUri = `${channel.channelUrl}/spaces/hidden`;
     }
 
-    return this.webex.request({
-      method: 'PUT',
-      uri: requestUri
-    })
+    return this.webex
+      .request({
+        method: 'PUT',
+        uri: requestUri,
+      })
       .then((res) => res.body.spaceUrl);
   },
 
   _uploadImageToWebexFiles(channel, file, hiddenSpace) {
     const fileSize = file.length || file.size || file.byteLength;
 
-    return this._getSpaceUrl(channel, hiddenSpace)
-      .then((spaceUrl) => this.webex.upload({
+    return this._getSpaceUrl(channel, hiddenSpace).then((spaceUrl) =>
+      this.webex.upload({
         uri: `${spaceUrl}/upload_sessions`,
         file,
         qs: {
-          transcode: true
+          transcode: true,
         },
         phases: {
           initialize: {fileSize},
           upload: {
             $url(session) {
               return session.uploadUrl;
-            }
+            },
           },
           finalize: {
             $uri(session) {
               return session.finishUploadUrl;
             },
-            body: {fileSize}
-          }
-        }
-      }));
+            body: {fileSize},
+          },
+        },
+      })
+    );
   },
 
   /** Authorize transcoder (for sharing whiteboard to mobile)
@@ -640,22 +681,26 @@ const Board = WebexPlugin.extend({
    */
   authorizeMediaInjector(board) {
     if (!board) {
-      Promise.reject(new Error('#authorizeMediaInjector --> cannot authorize transcoder without board'));
+      Promise.reject(
+        new Error('#authorizeMediaInjector --> cannot authorize transcoder without board')
+      );
     }
 
-    return this.webex.internal.encryption.kms.prepareRequest({
-      method: 'create',
-      uri: '/authorizations',
-      resourceUri: board.kmsResourceUrl,
-      anonymous: 1
-    })
-      .then((request) => this.webex.request({
-        uri: `${board.channelUrl}/sharePolicies/transcoder`,
-        method: 'PUT',
-        body: {kmsMessage: request.wrapped}
-      }))
-      .then((res) =>
-        this.webex.internal.encryption.kms.decryptKmsMessage(res.body.kmsResponse))
+    return this.webex.internal.encryption.kms
+      .prepareRequest({
+        method: 'create',
+        uri: '/authorizations',
+        resourceUri: board.kmsResourceUrl,
+        anonymous: 1,
+      })
+      .then((request) =>
+        this.webex.request({
+          uri: `${board.channelUrl}/sharePolicies/transcoder`,
+          method: 'PUT',
+          body: {kmsMessage: request.wrapped},
+        })
+      )
+      .then((res) => this.webex.internal.encryption.kms.decryptKmsMessage(res.body.kmsResponse))
       .then((decryptedKmsMessage) => {
         if (decryptedKmsMessage?.authorizations.length > 0) {
           return decryptedKmsMessage.authorizations[0].bearer;
@@ -664,10 +709,11 @@ const Board = WebexPlugin.extend({
         return undefined;
       })
       .catch((err) =>
-      /* We want to resolve any errors so that whiteboard share will still work
-       * except mobile being able to receive the share
-       */
-        Promise.resolve(err));
+        /* We want to resolve any errors so that whiteboard share will still work
+         * except mobile being able to receive the share
+         */
+        Promise.resolve(err)
+      );
   },
 
   /** Unauthorize transcoder (for stopping whiteboard share to mobile)
@@ -678,37 +724,43 @@ const Board = WebexPlugin.extend({
    */
   unauthorizeMediaInjector(board) {
     if (!board) {
-      Promise.reject(new Error('#unauthorizeMediaInjector --> cannot unauthorize transcoder without board'));
+      Promise.reject(
+        new Error('#unauthorizeMediaInjector --> cannot unauthorize transcoder without board')
+      );
     }
 
-    return this.webex.internal.encryption.kms.listAuthorizations({
-      kroUri: board.kmsResourceUrl
-    }).then((authorizations) => {
-      /* Attempt to remove the authorization made from starting whiteboard share
-       * Also removing any previous authorizations that were not cleared
-       */
-      const promises = authorizations.map((auth) => {
-        const {authId} = auth;
+    return this.webex.internal.encryption.kms
+      .listAuthorizations({
+        kroUri: board.kmsResourceUrl,
+      })
+      .then((authorizations) => {
+        /* Attempt to remove the authorization made from starting whiteboard share
+         * Also removing any previous authorizations that were not cleared
+         */
+        const promises = authorizations.map((auth) => {
+          const {authId} = auth;
 
-        return this.webex.internal.encryption.kms.removeAuthorization({
-          authId,
-          kroUri: board.kmsResourceUrl
-        })
-          .then(() => Promise.resolve(authId))
-          .catch((err) =>
-          /* We don't want this to error out, otherwise the
-          * Promise.all will not process the rest of the request
-          */
-            Promise.resolve(err));
+          return this.webex.internal.encryption.kms
+            .removeAuthorization({
+              authId,
+              kroUri: board.kmsResourceUrl,
+            })
+            .then(() => Promise.resolve(authId))
+            .catch((err) =>
+              /* We don't want this to error out, otherwise the
+               * Promise.all will not process the rest of the request
+               */
+              Promise.resolve(err)
+            );
+        });
+
+        if (promises.length > 0) {
+          return Promise.all(promises).then((responses) => responses);
+        }
+
+        return Promise.resolve([]);
       });
-
-      if (promises.length > 0) {
-        return Promise.all(promises).then((responses) => responses);
-      }
-
-      return Promise.resolve([]);
-    });
-  }
+  },
 });
 
 export default Board;
