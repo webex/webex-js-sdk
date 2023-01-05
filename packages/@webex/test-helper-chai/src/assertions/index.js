@@ -107,7 +107,7 @@ module.exports = function registerAssertions(chai) {
     );
   };
 
-  /* eslint no-unused-expressions: [0] */
+  /* eslint chai-friendly/no-unused-expressions: [0] */
 
   Assertion.addMethod('statusCode', function expectStatusCode(statusCode) {
     this.assert(

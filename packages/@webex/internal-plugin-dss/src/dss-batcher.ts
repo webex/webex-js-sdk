@@ -1,9 +1,9 @@
 /*!
  * Copyright (c) 2015-2022 Cisco Systems, Inc. See LICENSE file.
  */
+/* eslint-disable no-underscore-dangle */
 
 import {Batcher} from '@webex/webex-core';
-import {get} from 'lodash';
 
 /**
  * @class
@@ -51,6 +51,7 @@ const DssBatcher = Batcher.extend({
   },
 
   /**
+   * Submits the DSS request
    * @param {Object} payload
    * @returns {Promise<Array>}
    */
@@ -72,18 +73,16 @@ const DssBatcher = Batcher.extend({
    * @returns {Promise<undefined>}
    */
   handleHttpSuccess(res) {
-    const successItems = res.foundArray.map((requestValue, index) => {
-      return {requestValue, entity: res.resultArray[index]};
-    });
-    const failureItems = res.notFoundArray.map((requestValue) => {
-      return {requestValue, entity: null};
-    });
+    const successItems = res.foundArray.map((requestValue, index) => ({requestValue, entity: res.resultArray[index]}));
+    const failureItems = res.notFoundArray.map((requestValue) => ({requestValue, entity: null}));
+
     return Promise.all(successItems.concat(failureItems).map((item) => this.acceptItem(item)));
   },
 
   /**
+   * Checks if the item was found
    * @param {Object} item
-   * @returns {Promise<boolean>}
+   * @returns {Promise<Boolean>}
    */
   didItemFail(item) {
     return Promise.resolve(item.entity === null);
@@ -116,6 +115,7 @@ const DssBatcher = Batcher.extend({
   },
 
   /**
+   * Returns a promise with the unique key for the item
    * @param {Object} item
    * @returns {Promise}
    */
@@ -124,6 +124,7 @@ const DssBatcher = Batcher.extend({
   },
 
   /**
+   * Returns a promise with the unique key for the item
    * @param {Object} item
    * @returns {Promise}
    */

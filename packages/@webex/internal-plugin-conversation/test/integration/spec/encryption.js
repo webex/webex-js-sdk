@@ -204,7 +204,6 @@ describe('plugin-conversation', () => {
                 )
                 .then((ci) => {
                   assert.property(c, 'defaultActivityEncryptionKeyUrl');
-                  /* eslint-disable no-unused-expressions */
                   expect(ci.activities.items[0].object.inputs).to.not.be.null;
                 });
             }));

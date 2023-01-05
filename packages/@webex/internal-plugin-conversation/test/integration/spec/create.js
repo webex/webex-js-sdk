@@ -43,7 +43,6 @@ describe('plugin-conversation', function () {
         },
       });
 
-      // eslint-disable-next-line no-unused-expressions
       await webex.internal.mercury.connect();
       await mccoy.webex.internal.mercury.connect();
 
@@ -51,9 +50,9 @@ describe('plugin-conversation', function () {
     });
 
     after(async () => {
-      // eslint-disable-next-line no-unused-expressions
+      // eslint-disable-next-line chai-friendly/no-unused-expressions
       webex && (await webex.internal.mercury.disconnect());
-      // eslint-disable-next-line no-unused-expressions
+      // eslint-disable-next-line chai-friendly/no-unused-expressions
       mccoy && (await mccoy.webex.internal.mercury.disconnect());
     });
 

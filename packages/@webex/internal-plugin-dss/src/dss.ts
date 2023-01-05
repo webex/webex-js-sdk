@@ -2,18 +2,18 @@
 /*!
  * Copyright (c) 2015-2022 Cisco Systems, Inc. See LICENSE file.
  */
+/* eslint-disable no-underscore-dangle */
 import uuid from 'uuid';
 import {WebexPlugin} from '@webex/webex-core';
 import '@webex/internal-plugin-mercury';
 import {range, isEqual, get} from 'lodash';
+
 import type {
   SearchOptions,
   LookupDetailOptions,
   LookupOptions,
   LookupByEmailOptions,
-  EntityProviderType,
 } from './types';
-
 import {
   DSS_REGISTERED,
   DSS_UNREGISTERED,
@@ -23,7 +23,6 @@ import {
   DSS_SEARCH_MERCURY_EVENT,
   DSS_RESULT,
 } from './constants';
-
 import DssBatcher from './dss-batcher';
 
 const DSS = WebexPlugin.extend({
@@ -48,7 +47,7 @@ const DSS = WebexPlugin.extend({
     Reflect.apply(WebexPlugin.prototype.initialize, this, args);
     this.batchers = {};
   },
-  
+
   /**
    * Explicitly sets up the DSS plugin by connecting to mercury, and listening for DSS events.
    * @returns {Promise}
@@ -128,6 +127,7 @@ const DSS = WebexPlugin.extend({
   },
 
   /**
+   * constructs the event name based on request id
    * @param {UUID} requestId the id of the request
    * @returns {string}
    */
@@ -136,6 +136,7 @@ const DSS = WebexPlugin.extend({
   },
 
   /**
+   * Takes incoming data and triggers correct events
    * @param {Object} data the event data
    * @returns {undefined}
    */
@@ -158,7 +159,9 @@ const DSS = WebexPlugin.extend({
    * @returns {Array} result.notFoundArray an array of the lookups of the not found entities (if notFoundPath provided)
    */
   _request(options) {
-    const {resource, params, dataPath, foundPath, notFoundPath} = options;
+    const {
+      resource, params, dataPath, foundPath, notFoundPath
+    } = options;
 
     const requestId = uuid.v4();
     const eventName = this._getResultEventName(requestId);
@@ -170,6 +173,7 @@ const DSS = WebexPlugin.extend({
       this.listenTo(this, eventName, (data) => {
         const resultData = get(data, dataPath);
         let found;
+
         if (foundPath) {
           found = get(data, foundPath);
         }
@@ -187,23 +191,26 @@ const DSS = WebexPlugin.extend({
         if (done) {
           const resultArray = [];
           const foundArray = [];
+
           expectedSeqNums.forEach((index) => {
             const seqResult = result[index];
+
             if (seqResult) {
               resultArray.push(...seqResult.resultData);
               if (foundPath) {
-                foundArray.push(...seqResult.found)
+                foundArray.push(...seqResult.found);
               }
             }
           });
-          const resolveValue = {resultArray}
+          const resolveValue = {resultArray};
+
           if (foundPath) {
-            resolveValue['foundArray'] = foundArray;
+            resolveValue.foundArray = foundArray;
           }
           if (notFoundPath) {
-            resolveValue['notFoundArray'] = notFoundArray;
+            resolveValue.notFoundArray = notFoundArray;
           }
-          resolve(resolveValue)
+          resolve(resolveValue);
           this.stopListening(this, eventName);
         }
       });
@@ -231,7 +238,8 @@ const DSS = WebexPlugin.extend({
     const entitiesFoundPath = 'entitiesFound';
     const entitiesNotFoundPath = 'entitiesNotFound';
     const requestKey = 'lookupValues';
-    const batcher = (this.batchers[resource] =
+
+    this.batchers[resource] =
       this.batchers[resource] ||
       new DssBatcher({
         resource,
@@ -241,8 +249,9 @@ const DSS = WebexPlugin.extend({
         entitiesNotFoundPath,
         requestKey,
         parent: this,
-      }));
-    return batcher.request(lookupValue);
+      });
+
+    return this.batchers[resource].request(lookupValue);
   },
 
   /**
@@ -265,9 +274,9 @@ const DSS = WebexPlugin.extend({
       // TODO: find out what is actually returned!
       if (foundArray[0] === id) {
         return resultArray[0];
-      } else {
-        return Promise.reject(new Error(`DSS entity with ${requestType} ${id} was not found`));
       }
+
+      return Promise.reject(new Error(`DSS entity with ${requestType} ${id} was not found`));
     });
   },
 
@@ -282,9 +291,9 @@ const DSS = WebexPlugin.extend({
   lookup(options: LookupOptions) {
     const {id, entityProviderType, shouldBatch = true} = options;
 
-    const resource = entityProviderType
-      ? `/lookup/orgid/${this.webex.internal.device.orgId}/entityprovidertype/${entityProviderType}`
-      : `/lookup/orgid/${this.webex.internal.device.orgId}/identities`;
+    const resource = entityProviderType ?
+      `/lookup/orgid/${this.webex.internal.device.orgId}/entityprovidertype/${entityProviderType}` :
+      `/lookup/orgid/${this.webex.internal.device.orgId}/identities`;
     const requestType = 'id';
 
     if (shouldBatch) {
@@ -294,6 +303,7 @@ const DSS = WebexPlugin.extend({
         lookupValue: id,
       });
     }
+
     return this._request({
       dataPath: 'lookupResult.entities',
       foundPath: 'entitiesFound',
@@ -304,9 +314,9 @@ const DSS = WebexPlugin.extend({
     }).then(({resultArray, foundArray}) => {
       if (foundArray[0] === id) {
         return resultArray[0];
-      } else {
-        return Promise.reject(new Error(`DSS entity with ${requestType} ${id} was not found`));
       }
+
+      return Promise.reject(new Error(`DSS entity with ${requestType} ${id} was not found`));
     });
   },
 
@@ -331,9 +341,9 @@ const DSS = WebexPlugin.extend({
     }).then(({resultArray, foundArray}) => {
       if (foundArray[0] === email) {
         return resultArray[0];
-      } else {
-        return Promise.reject(new Error(`DSS entity with ${requestType} ${email} was not found`));
       }
+
+      return Promise.reject(new Error(`DSS entity with ${requestType} ${email} was not found`));
     });
   },
 
@@ -356,9 +366,7 @@ const DSS = WebexPlugin.extend({
         resultSize,
         requestedTypes,
       },
-    }).then(({resultArray}) => {
-      return resultArray;
-    });
+    }).then(({resultArray}) => resultArray);
   },
 });
 

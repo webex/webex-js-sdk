@@ -1,6 +1,7 @@
 /*!
  * Copyright (c) 2015-2022 Cisco Systems, Inc. See LICENSE file.
  */
+/* eslint-disable no-underscore-dangle */
 
 import {assert, expect} from '@webex/test-helper-chai';
 import DSS from '@webex/internal-plugin-dss';
@@ -48,7 +49,7 @@ describe('plugin-dss', () => {
 
     afterEach(() => {
       uuidStub.restore();
-      clock.restore()
+      clock.restore();
     });
 
     describe('#register()', () => {
@@ -58,10 +59,12 @@ describe('plugin-dss', () => {
         assert.callCount(webex.internal.mercury.on, 2);
 
         const firstCallArgs = webex.internal.mercury.on.getCall(0).args;
+
         expect(firstCallArgs[0]).to.equal('event:directory.lookup');
         expect(firstCallArgs[1]).to.be.a('function');
 
         const secondCallArgs = webex.internal.mercury.on.getCall(1).args;
+
         expect(secondCallArgs[0]).to.equal('event:directory.search');
         expect(secondCallArgs[1]).to.be.a('function');
 
@@ -87,9 +90,11 @@ describe('plugin-dss', () => {
         assert.callCount(webex.internal.mercury.off, 2);
 
         const firstCallArgs = webex.internal.mercury.off.getCall(0).args;
+
         expect(firstCallArgs[0]).to.equal('event:directory.lookup');
 
         const secondCallArgs = webex.internal.mercury.off.getCall(1).args;
+
         expect(secondCallArgs[0]).to.equal('event:directory.search');
 
         assert.equal(webex.internal.dss.registered, false);
@@ -97,6 +102,7 @@ describe('plugin-dss', () => {
 
       it('handles unregister when it is not registered', async () => {
         const result = await webex.internal.dss.unregister();
+
         await expect(result).equal(undefined);
         assert.equal(webex.internal.dss.registered, false);
       });
@@ -108,20 +114,22 @@ describe('plugin-dss', () => {
         sequence,
         ...extraReturnData,
       };
+
       if (finished) {
         (data as any).finished = finished;
       }
       set(data, dataPath, results);
+
       return {data};
     };
 
-    const testMakeRequest = async({
+    const testMakeRequest = async ({
       method,
       resource,
       params,
       bodyParams
     }) => {
-      webex.request = sinon.stub(); 
+      webex.request = sinon.stub();
 
       await webex.internal.dss.register();
 
@@ -142,15 +150,15 @@ describe('plugin-dss', () => {
         },
       ]);
 
-      return {requestId, promise}
+      return {requestId, promise};
     };
 
-    const testMakeBatchedRequests = async({
+    const testMakeBatchedRequests = async ({
       requests,
       calls,
     }) => {
-      requests.forEach((request, index) => {uuidStub.onCall(index).returns(request.id)});
-      webex.request = sinon.stub(); 
+      requests.forEach((request, index) => { uuidStub.onCall(index).returns(request.id); });
+      webex.request = sinon.stub();
 
       await webex.internal.dss.register();
 
@@ -176,7 +184,7 @@ describe('plugin-dss', () => {
         ]);
       });
 
-      return {promises}
+      return {promises};
     };
 
     describe('#lookupDetail', () => {
@@ -190,6 +198,7 @@ describe('plugin-dss', () => {
         );
 
         const result = await webex.internal.dss.lookupDetail({id: 'test id'});
+
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {
             dataPath: 'lookupResult.entities',
@@ -206,11 +215,13 @@ describe('plugin-dss', () => {
           resource: '/lookup/orgid/userOrgId/identity/test id/detail',
           params: {id: 'test id'},
           bodyParams: {},
-        })
+        });
+
         mercuryCallbacks['event:directory.lookup'](
           createData(requestId, 0, true, 'lookupResult.entities', ['data0'], {entitiesFound: ['test id']})
         );
         const result = await promise;
+
         expect(result).to.deep.equal('data0');
       });
 
@@ -220,11 +231,12 @@ describe('plugin-dss', () => {
           resource: '/lookup/orgid/userOrgId/identity/test id/detail',
           params: {id: 'test id'},
           bodyParams: {},
-        })
+        });
+
         mercuryCallbacks['event:directory.lookup'](
           createData(requestId, 0, true, 'lookupResult.entities', [], {entitiesFound: []})
         );
-        await expect(promise).to.be.rejectedWith(Error, `DSS entity with id test id was not found`);
+        await expect(promise).to.be.rejectedWith(Error, 'DSS entity with id test id was not found');
       });
     });
 
@@ -239,6 +251,7 @@ describe('plugin-dss', () => {
         );
 
         const result = await webex.internal.dss.lookup({id: 'id1', shouldBatch: false});
+
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {
             dataPath: 'lookupResult.entities',
@@ -266,6 +279,7 @@ describe('plugin-dss', () => {
           entityProviderType: 'CI_USER',
           shouldBatch: false,
         });
+
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {
             dataPath: 'lookupResult.entities',
@@ -285,11 +299,13 @@ describe('plugin-dss', () => {
           resource: '/lookup/orgid/userOrgId/identities',
           params: {id: 'id1', shouldBatch: false},
           bodyParams: {lookupValues: ['id1']},
-        })
+        });
+
         mercuryCallbacks['event:directory.lookup'](
           createData(requestId, 0, true, 'lookupResult.entities', ['data0'], {entitiesFound: ['id1']})
         );
         const result = await promise;
+
         expect(result).to.deep.equal('data0');
       });
 
@@ -299,11 +315,12 @@ describe('plugin-dss', () => {
           resource: '/lookup/orgid/userOrgId/identities',
           params: {id: 'id1', shouldBatch: false},
           bodyParams: {lookupValues: ['id1']},
-        })
+        });
+
         mercuryCallbacks['event:directory.lookup'](
           createData(requestId, 0, true, 'lookupResult.entities', [], {entitiesFound: []})
         );
-        await expect(promise).to.be.rejectedWith(Error, `DSS entity with id id1 was not found`);
+        await expect(promise).to.be.rejectedWith(Error, 'DSS entity with id id1 was not found');
       });
 
       it('calls _batchedLookup correctly', async () => {
@@ -313,6 +330,7 @@ describe('plugin-dss', () => {
         );
 
         const result = await webex.internal.dss.lookup({id: 'id1'});
+
         expect(webex.internal.dss._batchedLookup.getCall(0).args).to.deep.equal([
           {
             resource: '/lookup/orgid/userOrgId/identities',
@@ -333,6 +351,7 @@ describe('plugin-dss', () => {
           id: 'id1',
           entityProviderType: 'CI_USER',
         });
+
         expect(webex.internal.dss._batchedLookup.getCall(0).args).to.deep.equal([
           {
             resource: '/lookup/orgid/userOrgId/entityprovidertype/CI_USER',
@@ -347,7 +366,7 @@ describe('plugin-dss', () => {
         const {promises} = await testMakeBatchedRequests({
           requests: [
             {
-              id: 'randomid1', 
+              id: 'randomid1',
               resource: '/lookup/orgid/userOrgId/identities',
               bodyParams: {lookupValues: ['id1']},
             }
@@ -361,10 +380,11 @@ describe('plugin-dss', () => {
         });
 
         mercuryCallbacks['event:directory.lookup'](
-          createData('randomid1', 0, true, 'lookupResult.entities', ['data0'], 
+          createData('randomid1', 0, true, 'lookupResult.entities', ['data0'],
             {entitiesFound: ['id1'], entitiesNotFound: []})
         );
         const result = await promises[0];
+
         expect(result).to.deep.equal('data0');
       });
 
@@ -372,7 +392,7 @@ describe('plugin-dss', () => {
         const {promises} = await testMakeBatchedRequests({
           requests: [
             {
-              id: 'randomid1', 
+              id: 'randomid1',
               resource: '/lookup/orgid/userOrgId/identities',
               bodyParams: {lookupValues: ['id1']},
             }
@@ -386,18 +406,18 @@ describe('plugin-dss', () => {
         });
 
         mercuryCallbacks['event:directory.lookup'](
-          createData('randomid1', 0, true, 'lookupResult.entities', [], 
+          createData('randomid1', 0, true, 'lookupResult.entities', [],
             {entitiesFound: [], entitiesNotFound: ['id1']})
         );
 
-        await expect(promises[0]).to.be.rejectedWith(Error, `DSS entity with id id1 was not found`);
+        await expect(promises[0]).to.be.rejectedWith(Error, 'DSS entity with id id1 was not found');
       });
 
       it('Batch of 2 lookups is made after 50 ms and works', async () => {
         const {promises} = await testMakeBatchedRequests({
           requests: [
             {
-              id: 'randomid1', 
+              id: 'randomid1',
               resource: '/lookup/orgid/userOrgId/identities',
               bodyParams: {lookupValues: ['id1', 'id2']},
             }
@@ -415,12 +435,14 @@ describe('plugin-dss', () => {
         });
 
         mercuryCallbacks['event:directory.lookup'](
-          createData('randomid1', 0, true, 'lookupResult.entities', ['data1', 'data2'], 
+          createData('randomid1', 0, true, 'lookupResult.entities', ['data1', 'data2'],
             {entitiesFound: ['id1', 'id2'], entitiesNotFound: []})
         );
         const result1 = await promises[0];
+
         expect(result1).to.equal('data1');
         const result2 = await promises[1];
+
         expect(result2).to.equal('data2');
       });
 
@@ -428,7 +450,7 @@ describe('plugin-dss', () => {
         const {promises} = await testMakeBatchedRequests({
           requests: [
             {
-              id: 'randomid1', 
+              id: 'randomid1',
               resource: '/lookup/orgid/userOrgId/identities',
               bodyParams: {lookupValues: ['id1', 'id2']},
             }
@@ -446,11 +468,12 @@ describe('plugin-dss', () => {
         });
 
         mercuryCallbacks['event:directory.lookup'](
-          createData('randomid1', 0, true, 'lookupResult.entities', ['data2'], 
+          createData('randomid1', 0, true, 'lookupResult.entities', ['data2'],
             {entitiesFound: ['id2'], entitiesNotFound: ['id1']})
         );
-        await expect(promises[0]).to.be.rejectedWith(Error, `DSS entity with id id1 was not found`);
+        await expect(promises[0]).to.be.rejectedWith(Error, 'DSS entity with id id1 was not found');
         const result2 = await promises[1];
+
         expect(result2).to.equal('data2');
       });
 
@@ -458,12 +481,12 @@ describe('plugin-dss', () => {
         const {promises} = await testMakeBatchedRequests({
           requests: [
             {
-              id: 'randomid1', 
+              id: 'randomid1',
               resource: '/lookup/orgid/userOrgId/entityprovidertype/CI_USER',
               bodyParams: {lookupValues: ['id1']},
             },
             {
-              id: 'randomid2', 
+              id: 'randomid2',
               resource: '/lookup/orgid/userOrgId/identities',
               bodyParams: {lookupValues: ['id2']},
             }
@@ -481,16 +504,18 @@ describe('plugin-dss', () => {
         });
 
         mercuryCallbacks['event:directory.lookup'](
-          createData('randomid1', 0, true, 'lookupResult.entities', ['data1'], 
+          createData('randomid1', 0, true, 'lookupResult.entities', ['data1'],
             {entitiesFound: ['id1'], entitiesNotFound: []})
         );
         mercuryCallbacks['event:directory.lookup'](
-          createData('randomid2', 0, true, 'lookupResult.entities', ['data2'], 
+          createData('randomid2', 0, true, 'lookupResult.entities', ['data2'],
             {entitiesFound: ['id2'], entitiesNotFound: []})
         );
         const result1 = await promises[0];
+
         expect(result1).to.equal('data1');
         const result2 = await promises[1];
+
         expect(result2).to.equal('data2');
       });
 
@@ -498,12 +523,12 @@ describe('plugin-dss', () => {
         const {promises} = await testMakeBatchedRequests({
           requests: [
             {
-              id: 'randomid1', 
+              id: 'randomid1',
               resource: '/lookup/orgid/userOrgId/entityprovidertype/CI_USER',
               bodyParams: {lookupValues: ['id1']},
             },
             {
-              id: 'randomid2', 
+              id: 'randomid2',
               resource: '/lookup/orgid/userOrgId/identities',
               bodyParams: {lookupValues: ['id2']},
             }
@@ -521,15 +546,16 @@ describe('plugin-dss', () => {
         });
 
         mercuryCallbacks['event:directory.lookup'](
-          createData('randomid1', 0, true, 'lookupResult.entities', [], 
+          createData('randomid1', 0, true, 'lookupResult.entities', [],
             {entitiesFound: [], entitiesNotFound: ['id1']})
         );
         mercuryCallbacks['event:directory.lookup'](
-          createData('randomid2', 0, true, 'lookupResult.entities', ['data2'], 
+          createData('randomid2', 0, true, 'lookupResult.entities', ['data2'],
             {entitiesFound: ['id2'], entitiesNotFound: []})
         );
-        await expect(promises[0]).to.be.rejectedWith(Error, `DSS entity with id id1 was not found`);
+        await expect(promises[0]).to.be.rejectedWith(Error, 'DSS entity with id id1 was not found');
         const result2 = await promises[1];
+
         expect(result2).to.equal('data2');
       });
     });
@@ -547,6 +573,7 @@ describe('plugin-dss', () => {
         const result = await webex.internal.dss.lookupByEmail({
           email: 'email1',
         });
+
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {
             dataPath: 'lookupResult.entities',
@@ -567,11 +594,13 @@ describe('plugin-dss', () => {
           resource: '/lookup/orgid/userOrgId/emails',
           params: {email: 'email1'},
           bodyParams: {lookupValues: ['email1']},
-        })
+        });
+
         mercuryCallbacks['event:directory.lookup'](
           createData(requestId, 0, true, 'lookupResult.entities', ['data0'], {entitiesFound: ['email1']})
         );
         const result = await promise;
+
         expect(result).to.deep.equal('data0');
       });
 
@@ -581,11 +610,12 @@ describe('plugin-dss', () => {
           resource: '/lookup/orgid/userOrgId/emails',
           params: {email: 'email1'},
           bodyParams: {lookupValues: ['email1']},
-        })
+        });
+
         mercuryCallbacks['event:directory.lookup'](
           createData(requestId, 0, true, 'lookupResult.entities', [], {entitiesFound: []})
         );
-        await expect(promise).to.be.rejectedWith(Error, `DSS entity with email email1 was not found`);
+        await expect(promise).to.be.rejectedWith(Error, 'DSS entity with email email1 was not found');
       });
     });
 
@@ -601,6 +631,7 @@ describe('plugin-dss', () => {
           resultSize: 100,
           queryString: 'query',
         });
+
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {
             dataPath: 'directoryEntities',
@@ -629,11 +660,13 @@ describe('plugin-dss', () => {
             resultSize: 100,
             queryString: 'query',
           },
-        })
+        });
+
         mercuryCallbacks['event:directory.search'](createData(requestId, 1, false, 'directoryEntities', ['data1']));
         mercuryCallbacks['event:directory.search'](createData(requestId, 2, true, 'directoryEntities', ['data2']));
         mercuryCallbacks['event:directory.search'](createData(requestId, 0, false, 'directoryEntities', ['data0']));
         const result = await promise;
+
         expect(result).to.deep.equal(['data0', 'data1', 'data2']);
       });
     });
@@ -663,19 +696,20 @@ describe('plugin-dss', () => {
 
         webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
           sequence: 1,
-          a: { b: { c: ['data1'], }, },
+          a: {b: {c: ['data1']}},
         });
         webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
           sequence: 2,
           finished: true,
-          a: { b: { c: ['data2'], }, },
+          a: {b: {c: ['data2']}},
         });
         webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
           sequence: 0,
-          a: { b: { c: ['data0'], }, },
+          a: {b: {c: ['data0']}},
         });
 
         const result = await promise;
+
         expect(result).to.deep.equal({
           resultArray: ['data0', 'data1', 'data2'],
         });
@@ -706,22 +740,23 @@ describe('plugin-dss', () => {
 
         webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
           sequence: 1,
-          a: { b: { c: ['data1'], }, },
+          a: {b: {c: ['data1']}},
           someFoundPath: ['id1'],
         });
         webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
           sequence: 2,
           finished: true,
-          a: { b: { c: ['data2'], }, },
+          a: {b: {c: ['data2']}},
           someFoundPath: ['id2'],
         });
         webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
           sequence: 0,
-          a: { b: { c: ['data0'], }, },
+          a: {b: {c: ['data0']}},
           someFoundPath: ['id0'],
         });
 
         const result = await promise;
+
         expect(result).to.deep.equal({
           resultArray: ['data0', 'data1', 'data2'],
           foundArray: ['id0', 'id1', 'id2'],
@@ -754,23 +789,24 @@ describe('plugin-dss', () => {
 
         webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
           sequence: 1,
-          a: { b: { c: ['data1'], }, },
+          a: {b: {c: ['data1']}},
           someFoundPath: ['id1'],
         });
         webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
           sequence: 2,
           finished: true,
-          a: { b: { c: ['data2'], }, },
+          a: {b: {c: ['data2']}},
           someFoundPath: ['id2'],
           someNotFoundPath: ['id3'],
         });
         webex.internal.dss.trigger(webex.internal.dss._getResultEventName('randomid'), {
           sequence: 0,
-          a: { b: { c: ['data0'], }, },
+          a: {b: {c: ['data0']}},
           someFoundPath: ['id0'],
         });
 
         const result = await promise;
+
         expect(result).to.deep.equal({
           resultArray: ['data0', 'data1', 'data2'],
           foundArray: ['id0', 'id1', 'id2'],
@@ -779,23 +815,25 @@ describe('plugin-dss', () => {
       });
     });
 
-    describe('#_batchedLookup', ()=>{
+    describe('#_batchedLookup', () => {
       const checkStandardProperties = (batcher) => {
         expect(batcher.dataPath).to.equal('lookupResult.entities');
         expect(batcher.entitiesFoundPath).to.equal('entitiesFound');
         expect(batcher.entitiesNotFoundPath).to.equal('entitiesNotFound');
         expect(batcher.requestKey).to.equal('lookupValues');
         expect(batcher.config).to.deep.equal({
-          batcherWait: 50, 
-          batcherMaxCalls: 50, 
+          batcherWait: 50,
+          batcherMaxCalls: 50,
           batcherMaxWait: 150
         });
-      }
+      };
+
       it('calls batcher.request on new batcher for first lookup', async () => {
         const resource = '/lookup/orgid/userOrgId/identities';
         const response = 'response1';
+
         Batcher.prototype.request = sinon.stub()
-        .returns(Promise.resolve(response));
+          .returns(Promise.resolve(response));
 
         expect(webex.internal.dss.batchers).to.deep.equal({});
 
@@ -806,6 +844,7 @@ describe('plugin-dss', () => {
         });
 
         const batcher = webex.internal.dss.batchers[resource];
+
         expect(batcher).to.exist;
         expect(batcher.resource).to.equal(resource);
         expect(batcher.requestType).to.equal('id');
@@ -820,9 +859,11 @@ describe('plugin-dss', () => {
         const resource2 = '/lookup/orgid/userOrgId/entityprovidertype/CI_USER';
         const response1 = 'response1';
         const response2 = 'response2';
+
         Batcher.prototype.request = sinon.stub()
-        .onFirstCall().returns(Promise.resolve(response1))
-        .onSecondCall().returns(Promise.resolve(response2))
+          .onFirstCall().returns(Promise.resolve(response1))
+          .onSecondCall()
+          .returns(Promise.resolve(response2));
 
         expect(webex.internal.dss.batchers).to.deep.equal({});
 
@@ -840,6 +881,7 @@ describe('plugin-dss', () => {
 
         expect(webex.internal.dss.batchers[resource1]).to.exist;
         const batcher = webex.internal.dss.batchers[resource2];
+
         expect(batcher).to.exist;
         expect(batcher.resource).to.equal(resource2);
         expect(batcher.requestType).to.equal('idtype2');
@@ -853,9 +895,11 @@ describe('plugin-dss', () => {
         const resource1 = '/lookup/orgid/userOrgId/identities';
         const response1 = 'response1';
         const response2 = 'response2';
+
         Batcher.prototype.request = sinon.stub()
-        .onFirstCall().returns(Promise.resolve(response1))
-        .onSecondCall().returns(Promise.resolve(response2))
+          .onFirstCall().returns(Promise.resolve(response1))
+          .onSecondCall()
+          .returns(Promise.resolve(response2));
 
         expect(webex.internal.dss.batchers).to.deep.equal({});
 
@@ -872,8 +916,9 @@ describe('plugin-dss', () => {
           requestType: 'idtype2',
           lookupValue: 'id2',
         });
-        
+
         const batcher = webex.internal.dss.batchers[resource1];
+
         expect(batcher).to.equal(initialBatcher);
         expect(batcher.resource).to.equal(resource1);
         expect(batcher.requestType).to.equal('idtype1');

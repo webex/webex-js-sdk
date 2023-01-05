@@ -27,8 +27,10 @@
     "uuid": "^3.3.2"
   },
   "devDependencies": {
+    "@webex/common": "workspace:^",
     "@webex/internal-plugin-dss": "workspace:^",
     "@webex/test-helper-chai": "workspace:^",
-    "@webex/test-helper-mock-webex": "workspace:^"
+    "@webex/test-helper-mock-webex": "workspace:^",
+    "sinon": "^9.2.4"
   }
 }

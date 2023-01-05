@@ -1,6 +1,7 @@
 /*!
  * Copyright (c) 2015-2022 Cisco Systems, Inc. See LICENSE file.
  */
+/* eslint-disable no-underscore-dangle */
 
 import {expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
@@ -21,16 +22,16 @@ describe('plugin-dss', () => {
           dss: DSS,
         },
       });
-      batcher = (webex.internal.dss.batchers['fakeResource'] =
-        new DssBatcher({
-          resource: 'fakeResource',
-          requestType: 'fakeRequestType',
-          dataPath: 'fakeDataPath',
-          entitiesFoundPath: 'fakeEntitiesFoundPath',
-          entitiesNotFoundPath: 'fakeEntitiesNotFoundPath',
-          requestKey: 'fakeRequestKey',
-          parent: webex.internal.dss,
-        }));
+      batcher = new DssBatcher({
+        resource: 'fakeResource',
+        requestType: 'fakeRequestType',
+        dataPath: 'fakeDataPath',
+        entitiesFoundPath: 'fakeEntitiesFoundPath',
+        entitiesNotFoundPath: 'fakeEntitiesNotFoundPath',
+        requestKey: 'fakeRequestKey',
+        parent: webex.internal.dss,
+      });
+      webex.internal.dss.batchers.fakeResource = batcher;
     });
 
     describe('#submitHttpRequest', () => {
@@ -40,6 +41,7 @@ describe('plugin-dss', () => {
         );
 
         const result = await batcher.submitHttpRequest(['id1']);
+
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {
             dataPath: 'fakeDataPath',
@@ -73,7 +75,8 @@ describe('plugin-dss', () => {
           ],
         };
         const result = await batcher.handleHttpSuccess(res);
-        expect(batcher.acceptItem.getCalls().map(call => call.args)).to.deep.equal([
+
+        expect(batcher.acceptItem.getCalls().map((call) => call.args)).to.deep.equal([
           [{requestValue: 'id1', entity: 'item1'}],
           [{requestValue: 'id2', entity: 'item2'}],
           [{requestValue: 'id3', entity: null}],
@@ -86,11 +89,13 @@ describe('plugin-dss', () => {
     describe('#didItemFail', () => {
       it('returns true if item.entity is null', async () => {
         const result = await batcher.didItemFail({entity: null});
+
         expect(result).to.be.true;
       });
 
       it('returns true if item.entity is not null', async () => {
         const result = await batcher.didItemFail({entity: 'something'});
+
         expect(result).to.be.false;
       });
     });
@@ -98,8 +103,10 @@ describe('plugin-dss', () => {
     describe('#handleItemFailure', () => {
       it('rejects defer for item', async () => {
         const defer = new Defer();
+
         batcher.getDeferredForResponse = sinon.stub().returns(Promise.resolve(defer));
         const result = await batcher.handleItemFailure({requestValue: 'some request'});
+
         expect(batcher.getDeferredForResponse.getCall(0).args).to.deep.equal([{requestValue: 'some request'}]);
         expect(result).to.be.undefined;
         await expect(defer.promise).to.be.rejectedWith(Error, 'DSS entity with fakeRequestType some request was not found');
@@ -109,9 +116,11 @@ describe('plugin-dss', () => {
     describe('#handleItemSuccess', () => {
       it('resolves defer for item with item.entity', async () => {
         const defer = new Defer();
+
         batcher.getDeferredForResponse = sinon.stub().returns(Promise.resolve(defer));
         const result = await batcher.handleItemSuccess({entity: 'some entity'});
         const deferValue = await defer.promise;
+
         expect(batcher.getDeferredForResponse.getCall(0).args).to.deep.equal([{entity: 'some entity'}]);
         expect(result).to.be.undefined;
         expect(deferValue).to.equal('some entity');
@@ -121,14 +130,16 @@ describe('plugin-dss', () => {
     describe('#fingerprintRequest', () => {
       it('returns request', async () => {
         const result = await batcher.fingerprintRequest('some request');
-        expect(result).to.equal('some request')
+
+        expect(result).to.equal('some request');
       });
     });
 
     describe('#fingerprintResponse', () => {
       it('returns response requestValue', async () => {
         const result = await batcher.fingerprintResponse({requestValue: 'some request'});
-        expect(result).to.equal('some request')
+
+        expect(result).to.equal('some request');
       });
     });
   });
