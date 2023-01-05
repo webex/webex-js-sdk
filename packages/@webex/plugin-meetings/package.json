@@ -45,6 +45,7 @@
     "@webex/internal-media-core": "^0.0.17-beta",
     "@webex/internal-plugin-conversation": "workspace:^",
     "@webex/internal-plugin-device": "workspace:^",
+    "@webex/internal-plugin-llm": "workspace:^",
     "@webex/internal-plugin-mercury": "workspace:^",
     "@webex/internal-plugin-metrics": "workspace:^",
     "@webex/internal-plugin-support": "workspace:^",

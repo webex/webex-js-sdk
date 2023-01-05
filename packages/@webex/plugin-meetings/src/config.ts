@@ -88,6 +88,7 @@ export default {
     enableRtx: true,
     receiveTranscription: false,
     enableExtmap: false,
+    enableAutomaticLLM: false,
     experimental: {
       enableMediaNegotiatedEvent: false,
       enableUnifiedMeetings: false,
