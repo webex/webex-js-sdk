@@ -1502,7 +1502,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       // If user moved to a JOINED state and there is a pending floor grant trigger it
       if (this.floorGrantPending && payload.newSelf.state === MEETING_STATE.STATES.JOINED) {
-        this.share()
+        this.requestScreenShareFloor()
           .then(() => { this.floorGrantPending = false; });
       }
     });
@@ -1792,7 +1792,7 @@ export default class Meeting extends StatelessWebexPlugin {
               this,
               {
                 file: 'meeting/index',
-                function: 'stopFloorRequest'
+                function: 'localShare'
               },
               EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
               {
@@ -3999,7 +3999,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       try {
         if (this.isSharing) {
-          await this.stopFloorRequest();
+          await this.releaseScreenShareFloor();
         }
         const mediaSettings = {
           mediaDirection: {
@@ -4479,7 +4479,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
         if (mediaSettings && mediaSettings.sendShare && localShare) {
           if (this.state === MEETING_STATE.STATES.JOINED) {
-            return this.share();
+            return this.requestScreenShareFloor();
           }
 
           // When the self state changes to JOINED then request the floor
@@ -4712,7 +4712,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // we actually get a OFFER from the server and a GLAR condition happens
           if (startShare) {
             // We are assuming that the clients are connected when doing an update
-            return this.share();
+            return this.requestScreenShareFloor();
           }
 
           return Promise.resolve();
@@ -4861,7 +4861,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (!sendShare && previousShareStatus) {
       // When user stops sharing
-      return this.stopFloorRequest()
+      return this.releaseScreenShareFloor()
         .then(() => Promise.resolve(false));
     }
 
@@ -4913,7 +4913,7 @@ export default class Meeting extends StatelessWebexPlugin {
       })
         .then(() => {
           if (startShare) {
-            return this.share();
+            return this.requestScreenShareFloor();
           }
 
           return Promise.resolve();
@@ -5199,12 +5199,12 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Start sharing content with server
+   * Sends a request to Locus to obtain the screen share floor
    * @returns {Promise} see #meetingRequest.changeMeetingFloor
    * @private
    * @memberof Meeting
    */
-  private share() {
+  private requestScreenShareFloor() {
     const content = this.locusInfo.mediaShares.find((element) => element.name === CONTENT);
 
     if (content && (this.shareStatus !== SHARE_STATUS.LOCAL_SHARE_ACTIVE)) {
@@ -5259,12 +5259,12 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * sends stops floor request
+   * Sends a request to Locus to release the screen share floor.
    * @returns {Promise} see #meetingRequest.changeMeetingFloor
    * @private
    * @memberof Meeting
    */
-  private stopFloorRequest() {
+  private releaseScreenShareFloor() {
     const content = this.locusInfo.mediaShares.find((element) => element.name === CONTENT);
 
     if (content && (this.mediaProperties.mediaDirection.sendShare)) {
@@ -5286,7 +5286,7 @@ export default class Meeting extends StatelessWebexPlugin {
         resourceUrl: this.resourceUrl
       })
         .catch((error) => {
-          LoggerProxy.logger.error('Meeting:index#stopFloorRequest --> Error ', error);
+          LoggerProxy.logger.error('Meeting:index#releaseScreenShareFloor --> Error ', error);
 
           Metrics.sendBehavioralMetric(
             BEHAVIORAL_METRICS.STOP_FLOOR_REQUEST_FAILURE,
