@@ -105,6 +105,7 @@ MeetingUtil.joinMeeting = (meeting, options) => {
       moveToResource: options.moveToResource,
       preferTranscoding: !meeting.isMultistream,
       asResourceOccupant: options.asResourceOccupant,
+      breakoutsSupported: options.breakoutsSupported,
     })
     .then((res) => {
       Metrics.postEvent({
@@ -123,6 +124,8 @@ MeetingUtil.joinMeeting = (meeting, options) => {
 };
 
 MeetingUtil.cleanUp = (meeting) => {
+  meeting.breakouts.cleanUp();
+
   // make sure we send last metrics before we close the peerconnection
   const stopStatsAnalyzer = meeting.statsAnalyzer
     ? meeting.statsAnalyzer.stopAnalyzer()

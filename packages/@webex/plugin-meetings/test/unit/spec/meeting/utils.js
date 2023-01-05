@@ -38,6 +38,7 @@ describe('plugin-meetings', () => {
       meeting.reconnectionManager = {cleanUp: sinon.stub()};
       meeting.stopKeepAlive = sinon.stub();
       meeting.updateLLMConnection = sinon.stub();
+      meeting.breakouts = {cleanUp: sinon.stub()};
     });
 
     afterEach(() => {
@@ -60,6 +61,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.reconnectionManager.cleanUp);
         assert.calledOnce(meeting.stopKeepAlive);
         assert.calledOnce(meeting.updateLLMConnection);
+        assert.calledOnce(meeting.breakouts.cleanUp);
       });
     });
 
@@ -195,6 +197,23 @@ describe('plugin-meetings', () => {
         assert.equal(parameter.inviteeAddress, 'meetingJoinUrl');
         assert.equal(parameter.preferTranscoding, true);
       });
+
+      it('#Should call meetingRequest.joinMeeting with breakoutsSupported=true when passed in as true', async () => {
+        const meeting = {
+          meetingRequest: {joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}}))}
+        };
+
+        MeetingUtil.parseLocusJoin = sinon.stub();
+        await MeetingUtil.joinMeeting(meeting, {
+          breakoutsSupported: true
+        });
+
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+
+        assert.equal(parameter.breakoutsSupported, true);
+      });
+
 
       it('#Should call meetingRequest.joinMeeting with preferTranscoding=false when multistream is enabled', async () => {
         const meeting = {

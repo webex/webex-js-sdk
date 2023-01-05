@@ -9,6 +9,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import {
   ALERT,
   ALTERNATE_REDIRECT_TRUE,
+  BREAKOUTS,
   CALL,
   CONTROLS,
   DECLINE,
@@ -55,6 +56,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {boolean} options.pin
    * @param {boolean} options.moveToResource
    * @param {Object} options.roapMessage
+   * @param {boolean} options.breakoutsSupported
    * @returns {Promise}
    */
   async joinMeeting(options: {
@@ -73,6 +75,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     meetingNumber: any;
     permissionToken: any;
     preferTranscoding: any;
+    breakoutsSupported: boolean;
   }) {
     const {
       asResourceOccupant,
@@ -89,6 +92,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       moveToResource,
       roapMessage,
       preferTranscoding,
+      breakoutsSupported,
     } = options;
 
     LoggerProxy.logger.info('Meeting:request#joinMeeting --> Joining a meeting', correlationId);
@@ -113,6 +117,10 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         preferTranscoding: preferTranscoding ?? true,
       },
     };
+
+    if (breakoutsSupported) {
+      body.deviceCapabilities = [BREAKOUTS.BREAKOUTS_SUPPORTED];
+    }
 
     // @ts-ignore
     if (this.webex.meetings.clientRegion) {
