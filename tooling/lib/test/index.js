@@ -9,15 +9,10 @@ const dotenv = require('dotenv');
 dotenv.config();
 dotenv.config({path: '.env.default'});
 
-const {
-  collect,
-  combine
-} = require('../../util/coverage');
+const {collect, combine} = require('../../util/coverage');
 const {glob} = require('../../util/package');
 
-const {
-  gatherFiles
-} = require('./common');
+const {gatherFiles} = require('./common');
 const {test: mochaTest} = require('./mocha');
 const {test: karmaTest} = require('./karma');
 
@@ -92,8 +87,9 @@ async function runBrowserSuite(options, packageName) {
 
 async function runAutomationSuite(options, packageName) {
   debug(`Running automation suite for ${packageName}`);
-  const files = (await glob('test/automation/spec/**/*.js', {packageName}))
-    .map((f) => `packages/${packageName}/${f}`);
+  const files = (await glob('test/automation/spec/**/*.js', {packageName})).map(
+    (f) => `packages/${packageName}/${f}`
+  );
 
   if (files.length === 0) {
     debug(`no files found for ${packageName}`);

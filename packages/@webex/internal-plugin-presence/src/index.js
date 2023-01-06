@@ -22,8 +22,8 @@ registerInternalPlugin('presence', Presence, {
         },
         extract(response) {
           return Promise.resolve(response);
-        }
-      }
+        },
+      },
     ],
     transforms: [
       {
@@ -31,11 +31,11 @@ registerInternalPlugin('presence', Presence, {
         direction: 'inbound',
         fn(ctx, response) {
           response.body.status = response.body.eventType;
-        }
-      }
-    ]
+        },
+      },
+    ],
   },
-  config
+  config,
 });
 
 export {default} from './presence';

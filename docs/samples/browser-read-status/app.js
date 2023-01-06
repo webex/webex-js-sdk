@@ -14,9 +14,7 @@ let haveFetchedAll = false;
 
 // Save fields in localStorage so we don't have to retype them
 // every time we reload the page.
-[
-  'access-token'
-].forEach((id) => {
+['access-token'].forEach((id) => {
   const el = document.getElementById(id);
 
   el.value = localStorage.getItem(id);
@@ -28,12 +26,10 @@ let haveFetchedAll = false;
 // Connect to Webex and listen for message events.
 function authorize() {
   webex = Webex.init({
-    config: {
-
-    },
+    config: {},
     credentials: {
-      access_token: document.getElementById('access-token').value
-    }
+      access_token: document.getElementById('access-token').value,
+    },
   });
 
   if (webex.canAuthorize) {
@@ -53,7 +49,8 @@ document.getElementById('credentials').addEventListener('submit', (event) => {
     .then(() => {
       console.log('connected');
       // Fetch an initial set of 30 recent rooms for "fast" UI update
-      webex.rooms.listWithReadStatus(initialRoomFetch)
+      webex.rooms
+        .listWithReadStatus(initialRoomFetch)
         .then((rooms) => processInitialRoomStatus(rooms))
         .catch((e) => {
           console.error(`rooms.listWithReadStatus failed: ${e}`);
@@ -65,7 +62,8 @@ document.getElementById('credentials').addEventListener('submit', (event) => {
       });
 
       // Register for room events
-      webex.rooms.listen()
+      webex.rooms
+        .listen()
         .then(() => {
           console.log('listening to room events');
 
@@ -74,8 +72,7 @@ document.getElementById('credentials').addEventListener('submit', (event) => {
             console.log(room);
             if (userInfo.roomsInitialized) {
               processRoomUpdated(room);
-            }
-            else {
+            } else {
               cacheEvent(room);
             }
           });
@@ -86,7 +83,8 @@ document.getElementById('credentials').addEventListener('submit', (event) => {
         });
 
       // Register for message events
-      webex.messages.listen()
+      webex.messages
+        .listen()
         .then(() => {
           console.log('listening to message events');
           webex.messages.on('created', (message) => {
@@ -94,8 +92,7 @@ document.getElementById('credentials').addEventListener('submit', (event) => {
             console.log(message);
             if (userInfo.roomsInitialized) {
               processMessageCreated(message);
-            }
-            else {
+            } else {
               cacheEvent(message);
             }
           });
@@ -106,7 +103,8 @@ document.getElementById('credentials').addEventListener('submit', (event) => {
         });
 
       // Register for membership events
-      webex.memberships.listen()
+      webex.memberships
+        .listen()
         .then(() => {
           console.log('listening to membership events');
           webex.memberships.on('created', (membership) => {
@@ -114,8 +112,7 @@ document.getElementById('credentials').addEventListener('submit', (event) => {
             console.log(membership);
             if (userInfo.roomsInitialized) {
               processMembershipCreated(membership);
-            }
-            else {
+            } else {
               cacheEvent(membership);
             }
           });
@@ -124,8 +121,7 @@ document.getElementById('credentials').addEventListener('submit', (event) => {
             console.log(membership);
             if (userInfo.roomsInitialized) {
               processMembershipDeleted(membership);
-            }
-            else {
+            } else {
               cacheEvent(membership);
             }
           });
@@ -134,8 +130,7 @@ document.getElementById('credentials').addEventListener('submit', (event) => {
             console.log(membership);
             if (userInfo.roomsInitialized) {
               processMembershipSeen(membership);
-            }
-            else {
+            } else {
               cacheEvent(membership);
             }
           });
@@ -161,13 +156,13 @@ function updateStatus(authorized, me = {}) {
     status.classList.remove('label-error');
     status.classList.add('label-success');
     document.getElementById('connect').disabled = true;
-    const msg = ('displayName' in me) ?
-      `Looking up status of the ${initialRoomFetch} most recent spaces for ${me.displayName}.  This can take some time....` :
-      `Looking up status of the ${initialRoomFetch} most recent spaces.  This can take some time....`;
+    const msg =
+      'displayName' in me
+        ? `Looking up status of the ${initialRoomFetch} most recent spaces for ${me.displayName}.  This can take some time....`
+        : `Looking up status of the ${initialRoomFetch} most recent spaces.  This can take some time....`;
 
     document.getElementById('initializing-message').innerText = msg;
-  }
-  else {
+  } else {
     status.innerText = 'unauthorized';
     status.classList.remove('label-warning');
     status.classList.add('label-error');
@@ -181,7 +176,8 @@ document.getElementById('mark-as-read').addEventListener('submit', (event) => {
   // Don't reload the page when we submit the form.
   event.preventDefault();
   document.getElementById('mark-as-read-button').disabled = true;
-  webex.memberships.updateLastSeen(userInfo.lastMessage.data)
+  webex.memberships
+    .updateLastSeen(userInfo.lastMessage.data)
     .catch((e) => console.error(`Failed to mark message as read ${e}`));
 });
 
@@ -189,16 +185,13 @@ document.getElementById('mark-as-read').addEventListener('submit', (event) => {
 function updateSpaceTable(user) {
   // Setup the elements in the space info table
   document.getElementById('read-count').innerText = user.readSpacesCount;
-  document.getElementById('last-read-space-title').innerText =
-    user.lastRead.title;
+  document.getElementById('last-read-space-title').innerText = user.lastRead.title;
   document.getElementById('last-read-space-current-members').innerText =
     user.lastRead.caughtUpMembersMsg;
   document.getElementById('last-read-space-behind-members').innerText =
     user.lastRead.behindMembersMsg;
-  document.getElementById('unread-count').innerText =
-    user.unreadSpacesCount;
-  document.getElementById('last-unread-space-title').innerText =
-    user.lastUnread.title;
+  document.getElementById('unread-count').innerText = user.unreadSpacesCount;
+  document.getElementById('last-unread-space-title').innerText = user.lastUnread.title;
   document.getElementById('last-unread-space-current-members').innerText =
     user.lastUnread.caughtUpMembersMsg;
   document.getElementById('last-unread-space-behind-members').innerText =
@@ -218,14 +211,10 @@ function updateSpaceTable(user) {
 
   // Set up the elements in the last message table
   if ('data' in user.lastMessage) {
-    document.getElementById('message-sent-time').innerText =
-      user.lastMessage.created;
-    document.getElementById('message-author').innerText =
-      user.lastMessage.data.personEmail;
-    document.getElementById('message-space').innerText =
-      user.lastMessage.data.roomTitle;
-    document.getElementById('message').innerText =
-      user.lastMessage.data.text;
+    document.getElementById('message-sent-time').innerText = user.lastMessage.created;
+    document.getElementById('message-author').innerText = user.lastMessage.data.personEmail;
+    document.getElementById('message-space').innerText = user.lastMessage.data.roomTitle;
+    document.getElementById('message').innerText = user.lastMessage.data.text;
   }
 }
 
@@ -236,16 +225,17 @@ async function processInitialRoomStatus(roomStates) {
     return updateStatus(false);
   }
   // Parse the roomStates
-  if ((!('items' in roomStates)) || (!Array.isArray(roomStates.items))) {
+  if (!('items' in roomStates) || !Array.isArray(roomStates.items)) {
     console.error('No item array returned by the rooms.listWithReadStatus()!');
 
     return updateStatus(false);
   }
   // If we just did an initial "recent fetch", start the big one
   if (!userInfo.roomsInitialized) {
-    if ((roomStates.items.length === initialRoomFetch) && (!haveFetchedAll)) {
+    if (roomStates.items.length === initialRoomFetch && !haveFetchedAll) {
       haveFetchedAll = true;
-      webex.rooms.listWithReadStatus()
+      webex.rooms
+        .listWithReadStatus()
         .then((rooms) => {
           console.log(`Got full list of ${rooms.items.length} rooms...updating GUI`);
           // for simplicity, assume the initial processInitialRoomStatus completed
@@ -257,8 +247,7 @@ async function processInitialRoomStatus(roomStates) {
           updateStatus(false);
         });
     }
-  }
-  else {
+  } else {
     // cache events while we process the final list of rooms
     userInfo.roomsInitialized = false;
   }
@@ -285,18 +274,21 @@ async function processInitialRoomStatus(roomStates) {
     if (roomState.lastActivityDate > roomState.lastSeenActivityDate) {
       userInfo.unreadSpacesCount += 1;
       roomState.isUnreadByMe = true;
-      if ((!userInfo.lastUnread.id) ||
-        (userInfo.lastUnread.lastActivityDate < roomState.lastActivityDate)) {
+      if (
+        !userInfo.lastUnread.id ||
+        userInfo.lastUnread.lastActivityDate < roomState.lastActivityDate
+      ) {
         userInfo.lastUnread.id = roomState.id;
         userInfo.lastUnread.lastActivityDate = roomState.lastActivityDate;
         userInfo.lastUnread.title = roomState.title ? roomState.title : '';
       }
-    }
-    else {
+    } else {
       userInfo.readSpacesCount += 1;
       roomState.isUnreadByMe = false;
-      if ((!userInfo.lastRead.id) ||
-        (userInfo.lastRead.lastSeenActivityDate < roomState.lastSeenActivityDate)) {
+      if (
+        !userInfo.lastRead.id ||
+        userInfo.lastRead.lastSeenActivityDate < roomState.lastSeenActivityDate
+      ) {
         userInfo.lastRead.id = roomState.id;
         userInfo.lastRead.lastSeenActivityDate = roomState.lastSeenActivityDate;
         userInfo.lastRead.lastActivityDate = roomState.lastActivityDate;
@@ -314,8 +306,7 @@ async function processInitialRoomStatus(roomStates) {
     if ('id' in userInfo.lastRead) {
       userInfo.lastRead = await initMemberDetails(userInfo.lastRead);
     }
-  }
-  catch (e) {
+  } catch (e) {
     console.error('Failed to get details of most recent spaces');
 
     return updateStatus(false);
@@ -326,8 +317,9 @@ async function processInitialRoomStatus(roomStates) {
   // Now we are ready to process any real time events
   userInfo.roomsInitialized = true;
   // Switch from the login page to the room state table...
-  document.getElementById('header-one').innerText =
-    `<h1>Read Status for ${userInfo.me.displayName}:<h1>`;
+  document.getElementById(
+    'header-one'
+  ).innerText = `<h1>Read Status for ${userInfo.me.displayName}:<h1>`;
   document.getElementById('initial-login').style.display = 'none';
   document.getElementById('space-status').style.display = 'inline';
 
@@ -350,8 +342,7 @@ async function processRoomUpdated(room) {
     }
 
     return updateSpaceTable(userInfo);
-  }
-  catch (e) {
+  } catch (e) {
     console.error(`Failed processing message:created event: ${e}`);
 
     return false;
@@ -367,8 +358,9 @@ async function processMessageCreated(message) {
     }
     userInfo.lastMessage = message;
     if (message.data.files) {
-      userInfo.lastMessage.data.text = message.data.text ?
-        `${message.data.text} &lt;and file attachments&gt;` : '&lt;file attachments&gt;';
+      userInfo.lastMessage.data.text = message.data.text
+        ? `${message.data.text} &lt;and file attachments&gt;`
+        : '&lt;file attachments&gt;';
     }
     const {roomId} = message.data;
     const roomIdx = await getRoomIndex(roomId);
@@ -379,19 +371,18 @@ async function processMessageCreated(message) {
       userInfo.lastRead = await initMemberDetails({
         id: roomId,
         ...(userInfo.roomStates[roomIdx].title && {title: userInfo.roomStates[roomIdx].title}),
-        lastActivityDate: message.created
+        lastActivityDate: message.created,
       });
       userInfo.lastMessage.data.roomTitle = userInfo.lastRead.title;
       // Update the room status list
       userInfo.lastUnread = await updateRoomStatus(message, roomIdx, false);
-    }
-    else {
+    } else {
       document.getElementById('mark-as-read-button').disabled = false;
       // This is now the latest unread room
       userInfo.lastUnread = await initMemberDetails({
         id: message.data.roomId,
         ...(userInfo.roomStates[roomIdx].title && {title: userInfo.roomStates[roomIdx].title}),
-        lastActivityDate: message.created
+        lastActivityDate: message.created,
       });
       userInfo.lastMessage.data.roomTitle = userInfo.lastUnread.title;
 
@@ -406,8 +397,7 @@ async function processMessageCreated(message) {
     }
 
     return updateSpaceTable(userInfo);
-  }
-  catch (e) {
+  } catch (e) {
     console.error(`Failed processing message:created event: ${e}`);
 
     return false;
@@ -430,7 +420,7 @@ async function processMembershipCreated(membership) {
     const newRoom = {
       id: membership.data.roomId,
       isUnreadByMe: true,
-      lastActivityDate: membership.created
+      lastActivityDate: membership.created,
     };
 
     userInfo.lastUnread = await initMemberDetails(newRoom);
@@ -440,8 +430,7 @@ async function processMembershipCreated(membership) {
     userInfo.roomStates.unshift(newRoom);
 
     return updateSpaceTable(userInfo);
-  }
-  catch (e) {
+  } catch (e) {
     console.error(`Failed processing membership:created event: ${e}`);
 
     return false;
@@ -452,12 +441,10 @@ async function processMembershipDeleted(membership) {
   try {
     if (membership.data.personId !== userInfo.me.id) {
       if (membership.data.roomId === userInfo.lastRead.id) {
-        userInfo.lastRead =
-          removeMemberFromSpace(membership, userInfo.lastRead);
+        userInfo.lastRead = removeMemberFromSpace(membership, userInfo.lastRead);
       }
       if (membership.data.roomId === userInfo.lastUnread.id) {
-        userInfo.lastUnread =
-          removeMemberFromSpace(membership, userInfo.lastUnread);
+        userInfo.lastUnread = removeMemberFromSpace(membership, userInfo.lastUnread);
       }
 
       return updateSpaceTable(userInfo);
@@ -475,15 +462,13 @@ async function processMembershipDeleted(membership) {
     }
     if (userInfo.roomStates[roomIdx].isUnreadByMe) {
       userInfo.unreadSpacesCount -= 1;
-    }
-    else {
+    } else {
       userInfo.readSpacesCount -= 1;
     }
     userInfo.roomStates.splice(roomIdx, 1);
 
     return updateSpaceTable(userInfo);
-  }
-  catch (e) {
+  } catch (e) {
     console.error(`Failed processing membership:deleted event: ${e}`);
 
     return false;
@@ -502,12 +487,9 @@ async function processMembershipSeen(membership) {
     const roomIdx = await getRoomIndex(roomId);
 
     if ('title' in userInfo.roomStates[roomIdx]) {
-      userInfo.lastMembershipSeen.data.roomTitle =
-        userInfo.roomStates[roomIdx].title;
-    }
-    else {
-      const room =
-        await webex.rooms.get(userInfo.lastMembershipSeen.data.roomId);
+      userInfo.lastMembershipSeen.data.roomTitle = userInfo.roomStates[roomIdx].title;
+    } else {
+      const room = await webex.rooms.get(userInfo.lastMembershipSeen.data.roomId);
 
       userInfo.lastMembershipSeen.data.roomTitle = room.title;
     }
@@ -521,8 +503,7 @@ async function processMembershipSeen(membership) {
       }
       // and find the next most recent unread space for the table
       userInfo.lastUnread = await updateRoomStatus(membership, roomIdx, false);
-    }
-    else {
+    } else {
       // Update member read status if we are showing this space
       if (roomId === userInfo.lastUnread.id) {
         updateMemberDetails(membership, userInfo.lastUnread);
@@ -532,23 +513,19 @@ async function processMembershipSeen(membership) {
       }
     }
 
-
     return updateSpaceTable(userInfo);
-  }
-  catch (e) {
+  } catch (e) {
     console.error(`Failed processing membership:seen event: ${e}`);
 
     return false;
   }
 }
 
-
 // Calls the new memberships.listWithReadStatus ap
 // to get the read status of a spaces members
 async function initMemberDetails(roomToUpdate) {
   const roomInfo = roomToUpdate;
-  const membershipPromise =
-    webex.memberships.listWithReadStatus({roomId: roomInfo.id});
+  const membershipPromise = webex.memberships.listWithReadStatus({roomId: roomInfo.id});
 
   if (!roomInfo.title) {
     const room = await webex.rooms.get({id: roomInfo.id});
@@ -568,14 +545,12 @@ function updateMemberDetails(membership, roomToUpdate) {
     const roomInfo = roomToUpdate;
     // Get the member info
     const {personId} = membership.data;
-    const memberIdx =
-      roomInfo.memberList.findIndex((x) => x.personId === personId);
+    const memberIdx = roomInfo.memberList.findIndex((x) => x.personId === personId);
 
     roomInfo.memberList[memberIdx].lastSeenActivityDate = membership.created;
 
     return buildMemberReadMessages(roomInfo);
-  }
-  catch (e) {
+  } catch (e) {
     console.error(`Failed to update other member's read status: ${e}`);
 
     return roomToUpdate;
@@ -597,8 +572,7 @@ function removeMemberFromSpace(membership, roomToUpdate) {
   const roomInfo = roomToUpdate;
   // Get the member info
   const {personId} = membership.data;
-  const memberIdx =
-    roomInfo.memberList.findIndex((x) => x.personId === personId);
+  const memberIdx = roomInfo.memberList.findIndex((x) => x.personId === personId);
 
   roomInfo.memberList.splice(memberIdx, 1);
 
@@ -614,8 +588,7 @@ function buildMemberReadMessages(roomToUpdate) {
   roomInfo.caughtUpMembersMsg = '';
   for (const membership of roomInfo.memberList) {
     if (membership.personId !== userInfo.me.id) {
-      if (!('lastSeenDate' in membership) ||
-      (membership.lastSeenDate < roomInfo.lastActivityDate)) {
+      if (!('lastSeenDate' in membership) || membership.lastSeenDate < roomInfo.lastActivityDate) {
         if (!roomInfo.countBehindMembers) {
           roomInfo.behindMembersMsg = membership.personDisplayName;
         }
@@ -623,8 +596,7 @@ function buildMemberReadMessages(roomToUpdate) {
           roomInfo.behindMembersMsg += `, ${membership.personDisplayName}`;
         }
         roomInfo.countBehindMembers += 1;
-      }
-      else {
+      } else {
         if (!roomInfo.countCaughtUpMembers) {
           roomInfo.caughtUpMembersMsg = membership.personDisplayName;
         }
@@ -636,12 +608,10 @@ function buildMemberReadMessages(roomToUpdate) {
     }
   }
   if (roomInfo.countBehindMembers > 2) {
-    roomInfo.behindMembersMsg +=
-      `, and ${roomInfo.countBehindMembers - 2} more`;
+    roomInfo.behindMembersMsg += `, and ${roomInfo.countBehindMembers - 2} more`;
   }
   if (roomInfo.countCaughtUpMembers > 2) {
-    roomInfo.caughtUpMembersMsg +=
-      `, and ${roomInfo.countCaughtUpMembers - 2} more`;
+    roomInfo.caughtUpMembersMsg += `, and ${roomInfo.countCaughtUpMembers - 2} more`;
   }
 
   return roomInfo;
@@ -653,7 +623,7 @@ async function updateRoomStatus(event, roomIdx, isUnreadByMe) {
   let newLatestRoom = {
     title: '',
     behindMembers: '',
-    caughtUpMembers: ''
+    caughtUpMembers: '',
   };
 
   if (userInfo.roomStates[roomIdx].isUnreadByMe !== isUnreadByMe) {
@@ -662,28 +632,27 @@ async function updateRoomStatus(event, roomIdx, isUnreadByMe) {
     if (isUnreadByMe === false) {
       userInfo.readSpacesCount += 1;
       userInfo.unreadSpacesCount -= 1;
-    }
-    else {
+    } else {
       userInfo.readSpacesCount -= 1;
       userInfo.unreadSpacesCount += 1;
     }
-    if (((!isUnreadByMe) && (userInfo.unreadSpacesCount > 0)) ||
-    ((isUnreadByMe) && (userInfo.readSpacesCount > 0))) {
-      const newIdx =
-        userInfo.roomStates.findIndex((x) => x.isUnreadByMe !== isUnreadByMe);
+    if (
+      (!isUnreadByMe && userInfo.unreadSpacesCount > 0) ||
+      (isUnreadByMe && userInfo.readSpacesCount > 0)
+    ) {
+      const newIdx = userInfo.roomStates.findIndex((x) => x.isUnreadByMe !== isUnreadByMe);
 
       newLatestRoom = await initMemberDetails({
         id: userInfo.roomStates[newIdx].id,
         ...(userInfo.roomStates[newIdx].title && {title: userInfo.roomStates[newIdx].title}),
-        lastActivityDate: userInfo.roomStates[newIdx].lastActivityDate
+        lastActivityDate: userInfo.roomStates[newIdx].lastActivityDate,
       });
     }
   }
   // The room state has not changed so we return the existing "latest"
   else if (!isUnreadByMe) {
     newLatestRoom = userInfo.lastUnread;
-  }
-  else {
+  } else {
     newLatestRoom = userInfo.lastRead;
   }
 
@@ -697,8 +666,7 @@ function cacheEvent(event) {
 // Helper function to find index for a room with activity
 async function getRoomIndex(id) {
   try {
-    let roomIdx =
-    userInfo.roomStates.findIndex((x) => x.id === id);
+    let roomIdx = userInfo.roomStates.findIndex((x) => x.id === id);
 
     if (roomIdx === -1) {
       // It is possible that we have missed a room
@@ -710,8 +678,7 @@ async function getRoomIndex(id) {
       if (roomState.lastActivityDate > roomState.lastSeenActivityDate) {
         userInfo.unreadSpacesCount += 1;
         roomState.isUnreadByMe = true;
-      }
-      else {
+      } else {
         userInfo.readSpacesCount += 1;
         roomState.isUnreadByMe = false;
       }
@@ -720,8 +687,7 @@ async function getRoomIndex(id) {
     }
 
     return Promise.resolve(roomIdx);
-  }
-  catch (e) {
+  } catch (e) {
     console.error(`Failed to find room with ID${id}: ${e}`);
 
     return Promise.resolve(-1);
@@ -735,23 +701,22 @@ async function processInitialEventsCache() {
   try {
     for (const event of initialEventsCache) {
       switch (event.resource) {
-        case ('rooms'):
+        case 'rooms':
           if (event.event === 'updated') {
             processRoomUpdated(event);
           }
           break;
 
-        case ('messages'):
+        case 'messages':
           if (event.event === 'created') {
             processMessageCreated(event);
           }
           break;
 
-        case ('memberships'):
+        case 'memberships':
           if (event.event === 'seen') {
             processMembershipSeen(event);
-          }
-          else {
+          } else {
             const {roomId} = event.data;
             // eslint-disable-next-line no-await-in-loop
             const roomIdx = await getRoomIndex(roomId);
@@ -773,8 +738,7 @@ async function processInitialEventsCache() {
           console.error(`Unexpected cached event ${event.resource}:${event.event}`);
       }
     }
-  }
-  catch (e) {
+  } catch (e) {
     console.error(`Failed to process cached Events: ${e}`);
   }
 

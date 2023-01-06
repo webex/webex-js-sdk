@@ -10,17 +10,21 @@ const AvatarUrlBatcher = Batcher.extend({
 
   handleHttpSuccess(res) {
     // eslint-disable-next-line arrow-body-style
-    return Promise.all(res.options.body.map((req) => {
-      return Promise.all(req.sizes.map((size) => {
-        const response = res.body[req.uuid] && res.body[req.uuid][size] || undefined;
+    return Promise.all(
+      res.options.body.map((req) => {
+        return Promise.all(
+          req.sizes.map((size) => {
+            const response = (res.body[req.uuid] && res.body[req.uuid][size]) || undefined;
 
-        return this.acceptItem({
-          response,
-          uuid: req.uuid,
-          size
-        });
-      }));
-    }));
+            return this.acceptItem({
+              response,
+              uuid: req.uuid,
+              size,
+            });
+          })
+        );
+      })
+    );
   },
 
   handleHttpError(reason) {
@@ -28,15 +32,21 @@ const AvatarUrlBatcher = Batcher.extend({
 
     // avoid multiple => on same line
     // eslint-disable-next-line arrow-body-style
-    return Promise.all(reason.options.body.map((item) => {
-      return Promise.all(item.sizes.map((size) => this.getDeferredForRequest({
-        uuid: item.uuid,
-        size
+    return Promise.all(
+      reason.options.body.map((item) => {
+        return Promise.all(
+          item.sizes.map((size) =>
+            this.getDeferredForRequest({
+              uuid: item.uuid,
+              size,
+            })
+              // I don't see a better way to do this than with an additional nesting
+              // eslint-disable-next-line max-nested-callbacks
+              .then((defer) => defer.reject(msg instanceof Error ? msg : new Error(msg)))
+          )
+        );
       })
-        // I don't see a better way to do this than with an additional nesting
-        // eslint-disable-next-line max-nested-callbacks
-        .then((defer) => defer.reject(msg instanceof Error ? msg : new Error(msg)))));
-    }));
+    );
   },
 
   didItemFail(item) {
@@ -52,20 +62,20 @@ const AvatarUrlBatcher = Batcher.extend({
   },
 
   handleItemFailure(item) {
-    return this.getDeferredForRequest(item)
-      .then((defer) => {
-        defer.reject(new Error(item.response || 'Failed to retrieve avatar'));
-      });
+    return this.getDeferredForRequest(item).then((defer) => {
+      defer.reject(new Error(item.response || 'Failed to retrieve avatar'));
+    });
   },
 
   handleItemSuccess(item) {
-    return this.getDeferredForResponse(item)
-      .then((defer) => defer.resolve({
+    return this.getDeferredForResponse(item).then((defer) =>
+      defer.resolve({
         hasDefaultAvatar: item.response.defaultAvatar,
         uuid: item.uuid,
         size: item.size,
-        url: item.response.url
-      }));
+        url: item.response.url,
+      })
+    );
   },
 
   fingerprintRequest(item) {
@@ -94,7 +104,7 @@ const AvatarUrlBatcher = Batcher.extend({
     map.forEach((value, key) => {
       payload.push({
         uuid: key,
-        sizes: uniq(value)
+        sizes: uniq(value),
       });
     });
 
@@ -106,10 +116,9 @@ const AvatarUrlBatcher = Batcher.extend({
       method: 'POST',
       api: 'avatar',
       resource: 'profiles/urls',
-      body: payload
+      body: payload,
     });
-  }
-
+  },
 });
 
 export default AvatarUrlBatcher;

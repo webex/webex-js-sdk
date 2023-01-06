@@ -12,7 +12,7 @@ const RealtimeChannelCollection = AmpCollection.extend({
   mainIndex: 'channelId',
   model: RealtimeChannel,
 
-  namespace: 'Board'
+  namespace: 'Board',
 });
 
 export default RealtimeChannelCollection;

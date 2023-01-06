@@ -14,23 +14,30 @@ describe('plugin-presence', () => {
     beforeEach(() => {
       webex = new MockWebex({
         children: {
-          presence: Presence
-        }
+          presence: Presence,
+        },
       });
     });
 
     describe('#get()', () => {
-      it('requires a person id parameter', () => assert.isRejected(webex.internal.presence.get(), /A person id is required/));
+      it('requires a person id parameter', () =>
+        assert.isRejected(webex.internal.presence.get(), /A person id is required/));
     });
 
     describe('#list()', () => {
-      it('requires a parameter', () => assert.isRejected(webex.internal.presence.list(), /An array of person ids is required/));
+      it('requires a parameter', () =>
+        assert.isRejected(webex.internal.presence.list(), /An array of person ids is required/));
 
-      it('requires a person array parameter', () => assert.isRejected(webex.internal.presence.list('abc'), /An array of person ids is required/));
+      it('requires a person array parameter', () =>
+        assert.isRejected(
+          webex.internal.presence.list('abc'),
+          /An array of person ids is required/
+        ));
     });
 
     describe('#subscribe()', () => {
-      it('requires a person parameter', () => assert.isRejected(webex.internal.presence.subscribe(), /A person id is required/));
+      it('requires a person parameter', () =>
+        assert.isRejected(webex.internal.presence.subscribe(), /A person id is required/));
       it('subscription request called twice with batch of 100 ids', () => {
         const ids = [...Array(100).keys()];
 
@@ -38,7 +45,7 @@ describe('plugin-presence', () => {
           return Promise.resolve({
             statusCode: 204,
             body: [],
-            options
+            options,
           });
         };
         sinon.spy(webex, 'request');
@@ -49,11 +56,13 @@ describe('plugin-presence', () => {
     });
 
     describe('#unsubscribe()', () => {
-      it('requires a person parameter', () => assert.isRejected(webex.internal.presence.unsubscribe(), /A person id is required/));
+      it('requires a person parameter', () =>
+        assert.isRejected(webex.internal.presence.unsubscribe(), /A person id is required/));
     });
 
     describe('#setStatus()', () => {
-      it('requires a status', () => assert.isRejected(webex.internal.presence.setStatus(), /A status is required/));
+      it('requires a status', () =>
+        assert.isRejected(webex.internal.presence.setStatus(), /A status is required/));
     });
   });
 });

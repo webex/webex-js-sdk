@@ -4,7 +4,6 @@
 
 // eslint-disable-next-line strict
 
-
 /* eslint camelcase: [0] */
 module.exports = function createBrowsers() {
   if (process.env.SC_TUNNEL_IDENTIFIER || process.env.SAUCE) {
@@ -19,14 +18,14 @@ module.exports = function createBrowsers() {
           args: [
             '--disable-features=WebRtcHideLocalIpsWithMdns',
             '--use-fake-device-for-media-stream',
-            '--use-fake-ui-for-media-stream'
-          ]
+            '--use-fake-ui-for-media-stream',
+          ],
         },
         flags: [
           '--disable-features=WebRtcHideLocalIpsWithMdns',
           '--use-fake-device-for-media-stream',
-          '--use-fake-ui-for-media-stream'
-        ]
+          '--use-fake-ui-for-media-stream',
+        ],
       },
       sl_edge_latest_Win_10: {
         base: 'SauceLabs',
@@ -38,9 +37,9 @@ module.exports = function createBrowsers() {
           args: [
             '--disable-features=WebRtcHideLocalIpsWithMdns',
             '--use-fake-device-for-media-stream',
-            '--use-fake-ui-for-media-stream'
-          ]
-        }
+            '--use-fake-ui-for-media-stream',
+          ],
+        },
       },
       // sl_firefox_latest_linux: {
       //   base: 'SauceLabs',
@@ -54,8 +53,8 @@ module.exports = function createBrowsers() {
         browserName: 'Safari',
         version: 'latest',
         'webkit:WebRTC': {
-          DisableInsecureMediaCapture: true
-        }
+          DisableInsecureMediaCapture: true,
+        },
       },
       sl_firefox_macOS_Catalina: {
         base: 'SauceLabs',
@@ -63,10 +62,7 @@ module.exports = function createBrowsers() {
         browserName: 'Firefox',
         extendedDebugging: true,
         'moz:firefoxOptions': {
-          args: [
-            '-start-debugger-server',
-            '9222'
-          ],
+          args: ['-start-debugger-server', '9222'],
           prefs: {
             'devtools.chrome.enabled': true,
             'devtools.debugger.prompt-connection': false,
@@ -76,10 +72,10 @@ module.exports = function createBrowsers() {
             'media.getusermedia.screensharing.enabled': true,
             'media.navigator.permission.disabled': true,
             'media.navigator.streams.fake': true,
-            'media.peerconnection.video.h264_enabled': true
-          }
-        }
-      }
+            'media.peerconnection.video.h264_enabled': true,
+          },
+        },
+      },
       // sl_firefox_latest_win7: {
       //   base: `SauceLabs`,
       //   platform: `Windows 7`,
@@ -97,17 +93,16 @@ module.exports = function createBrowsers() {
         'media.getusermedia.screensharing.enabled': true,
         'media.navigator.permission.disabled': true,
         'media.navigator.streams.fake': true,
-        'media.peerconnection.video.h264_enabled': true
-      }
+        'media.peerconnection.video.h264_enabled': true,
+      },
     },
     ChromeH264: {
       base: 'ChromeHeadless',
       flags: [
         '--disable-features=WebRtcHideLocalIpsWithMdns',
         '--use-fake-device-for-media-stream',
-        '--use-fake-ui-for-media-stream'
-      ]
-    }
+        '--use-fake-ui-for-media-stream',
+      ],
+    },
   };
 };
-

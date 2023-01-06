@@ -20,10 +20,10 @@ export default function toArray(direction, obj) {
       return {
         name,
         direction,
-        fn: entry
+        fn: entry,
       };
     }
 
-    return Object.assign({name}, entry);
+    return {name, ...entry};
   });
 }

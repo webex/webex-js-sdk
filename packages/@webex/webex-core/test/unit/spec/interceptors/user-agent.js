@@ -14,9 +14,13 @@ describe('webex-core', () => {
       // Do not set custom headers for browsers
       skipInBrowser(describe)('#onRequest', () => {
         it('default user-agent header', () => {
-          const interceptor = Reflect.apply(UserAgentInterceptor.create, {
-            version: pkg.version
-          }, []);
+          const interceptor = Reflect.apply(
+            UserAgentInterceptor.create,
+            {
+              version: pkg.version,
+            },
+            []
+          );
           const options = {headers: {}};
 
           interceptor.onRequest(options);
@@ -27,13 +31,17 @@ describe('webex-core', () => {
         });
 
         it('custom user-agent header', () => {
-          const interceptor = Reflect.apply(UserAgentInterceptor.create, {
-            version: pkg.version,
-            config: {
-              appName: 'sample',
-              appVersion: '1.0.0'
-            }
-          }, []);
+          const interceptor = Reflect.apply(
+            UserAgentInterceptor.create,
+            {
+              version: pkg.version,
+              config: {
+                appName: 'sample',
+                appVersion: '1.0.0',
+              },
+            },
+            []
+          );
           const options = {headers: {}};
 
           interceptor.onRequest(options);
@@ -44,12 +52,16 @@ describe('webex-core', () => {
         });
 
         it('custom user-agent header when there is no appVersion', () => {
-          const interceptor = Reflect.apply(UserAgentInterceptor.create, {
-            version: pkg.version,
-            config: {
-              appName: 'sample'
-            }
-          }, []);
+          const interceptor = Reflect.apply(
+            UserAgentInterceptor.create,
+            {
+              version: pkg.version,
+              config: {
+                appName: 'sample',
+              },
+            },
+            []
+          );
           const options = {headers: {}};
 
           interceptor.onRequest(options);

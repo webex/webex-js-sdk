@@ -3,7 +3,7 @@ import url from 'url';
 import btoa from 'btoa';
 import {
   // @ts-ignore
-  deconstructHydraId
+  deconstructHydraId,
 } from '@webex/common';
 
 import ParameterError from '../common/errors/parameter';
@@ -31,7 +31,7 @@ import {
   MEET,
   MEET_M,
   HTTPS_PROTOCOL,
-  UUID_REG
+  UUID_REG,
 } from '../constants';
 
 const MeetingInfoUtil: any = {};
@@ -62,9 +62,10 @@ MeetingInfoUtil.getParsedUrl = (link) => {
     }
 
     return parsedUrl;
-  }
-  catch (error) {
-    LoggerProxy.logger.warn(`Meeting-info:util#getParsedUrl --> unable to parse the URL, error: ${error}`);
+  } catch (error) {
+    LoggerProxy.logger.warn(
+      `Meeting-info:util#getParsedUrl --> unable to parse the URL, error: ${error}`
+    );
 
     return null;
   }
@@ -78,7 +79,11 @@ MeetingInfoUtil.getParsedUrl = (link) => {
 MeetingInfoUtil.isMeetingLink = (value: string) => {
   const parsedUrl = MeetingInfoUtil.getParsedUrl(value);
   const hostNameBool = parsedUrl.hostname && parsedUrl.hostname.includes(WEBEX_DOT_COM);
-  const pathNameBool = parsedUrl.pathname && (parsedUrl.pathname.includes(`/${MEET}`) || parsedUrl.pathname.includes(`/${MEET_M}`) || parsedUrl.pathname.includes(`/${JOIN}`));
+  const pathNameBool =
+    parsedUrl.pathname &&
+    (parsedUrl.pathname.includes(`/${MEET}`) ||
+      parsedUrl.pathname.includes(`/${MEET_M}`) ||
+      parsedUrl.pathname.includes(`/${JOIN}`));
 
   return hostNameBool && pathNameBool;
 };
@@ -123,7 +128,6 @@ MeetingInfoUtil.convertLinkToSip = (value) => {
   return `${user}@${company}.${WEBEX_DOT_COM}`;
 };
 
-
 MeetingInfoUtil.isSipUri = (sipString) => {
   // TODO: lets remove regex from this equation and user URI matchers and such
   // have not found a great sip uri parser library as of now
@@ -155,15 +159,21 @@ MeetingInfoUtil.getHydraId = (destination) => {
   return {};
 };
 
-MeetingInfoUtil.getSipUriFromHydraPersonId = (destination, webex) => webex.people.get(destination).then((res) => {
-  if (res.emails && res.emails.length) {
-    return res.emails[0];
-  }
-  throw new ParameterError('Hydra Id Lookup was an invalid hydra person id.');
-}).catch((err) => {
-  LoggerProxy.logger.error(`Meeting-info:util#MeetingInfoUtil.getSipUriFromHydraPersonId --> getSipUriFromHydraPersonId ${err} `);
-  throw err;
-});
+MeetingInfoUtil.getSipUriFromHydraPersonId = (destination, webex) =>
+  webex.people
+    .get(destination)
+    .then((res) => {
+      if (res.emails && res.emails.length) {
+        return res.emails[0];
+      }
+      throw new ParameterError('Hydra Id Lookup was an invalid hydra person id.');
+    })
+    .catch((err) => {
+      LoggerProxy.logger.error(
+        `Meeting-info:util#MeetingInfoUtil.getSipUriFromHydraPersonId --> getSipUriFromHydraPersonId ${err} `
+      );
+      throw err;
+    });
 
 MeetingInfoUtil.generateOptions = async (from) => {
   const {destination, type, webex} = from;
@@ -171,31 +181,29 @@ MeetingInfoUtil.generateOptions = async (from) => {
   if (type) {
     return {
       destination,
-      type
+      type,
     };
   }
   const options: any = {};
   const hydraId = MeetingInfoUtil.getHydraId(destination);
 
   if (MeetingInfoUtil.isMeetingLink(destination)) {
-    LoggerProxy.logger.warn('Meeting-info:util#generateOptions --> WARN, use of Meeting Link is deprecated, please use a SIP URI instead');
+    LoggerProxy.logger.warn(
+      'Meeting-info:util#generateOptions --> WARN, use of Meeting Link is deprecated, please use a SIP URI instead'
+    );
 
     options.type = _MEETING_LINK_;
     options.destination = destination;
-  }
-  else if (MeetingInfoUtil.isSipUri(destination)) {
+  } else if (MeetingInfoUtil.isSipUri(destination)) {
     options.type = _SIP_URI_;
     options.destination = destination;
-  }
-  else if (MeetingInfoUtil.isPhoneNumber(destination)) {
+  } else if (MeetingInfoUtil.isPhoneNumber(destination)) {
     options.type = _SIP_URI_;
     options.destination = destination;
-  }
-  else if (MeetingInfoUtil.isConversationUrl(destination, webex)) {
+  } else if (MeetingInfoUtil.isConversationUrl(destination, webex)) {
     options.type = _CONVERSATION_URL_;
     options.destination = destination;
-  }
-  else if (hydraId.people) {
+  } else if (hydraId.people) {
     options.type = _SIP_URI_;
 
     return MeetingInfoUtil.getSipUriFromHydraPersonId(hydraId.destination, webex).then((res) => {
@@ -208,26 +216,25 @@ MeetingInfoUtil.generateOptions = async (from) => {
 
       return Promise.resolve(options);
     });
-  }
-  else if (hydraId.room) {
+  } else if (hydraId.room) {
     options.type = _CONVERSATION_URL_;
     try {
       await webex.internal.services.waitForCatalog('postauth');
 
       const conversationUrl = webex.internal.conversation.getUrlFromClusterId({
         cluster: hydraId.cluster,
-        id: hydraId.destination
+        id: hydraId.destination,
       });
 
       options.destination = conversationUrl;
-    }
-    catch (e) {
+    } catch (e) {
       LoggerProxy.logger.error(`Meeting-info:util#generateOptions --> ${e}`);
-      throw (e);
+      throw e;
     }
-  }
-  else {
-    throw new ParameterError('MeetingInfo is fetched with meeting link, sip uri, phone number, hydra room id, hydra people id, or a conversation url.');
+  } else {
+    throw new ParameterError(
+      'MeetingInfo is fetched with meeting link, sip uri, phone number, hydra room id, hydra people id, or a conversation url.'
+    );
   }
 
   return Promise.resolve(options);
@@ -248,7 +255,9 @@ MeetingInfoUtil.getResourceUrl = (type: string, value: any) => {
     case _SIP_URI_:
     case _PERSONAL_ROOM_:
     case _MEETING_ID_:
-      resource = `/${LOCI}/${MEETINGINFO}/${encodeURIComponent(value)}?${TYPE}=${type}&${USE_URI_LOOKUP_FALSE}`;
+      resource = `/${LOCI}/${MEETINGINFO}/${encodeURIComponent(
+        value
+      )}?${TYPE}=${type}&${USE_URI_LOOKUP_FALSE}`;
       break;
     case _CONVERSATION_URL_:
       method = HTTP_VERBS.PUT;
@@ -258,7 +267,9 @@ MeetingInfoUtil.getResourceUrl = (type: string, value: any) => {
       method = HTTP_VERBS.PUT;
       break;
     case _MEETING_LINK_:
-      resource = `$/${LOCI}/${MEETINGINFO}/${btoa(value)}?${TYPE}=${_MEETING_LINK_}&${USE_URI_LOOKUP_FALSE}`;
+      resource = `$/${LOCI}/${MEETINGINFO}/${btoa(
+        value
+      )}?${TYPE}=${_MEETING_LINK_}&${USE_URI_LOOKUP_FALSE}`;
       break;
     default:
   }
@@ -266,7 +277,7 @@ MeetingInfoUtil.getResourceUrl = (type: string, value: any) => {
   return {
     uri,
     resource,
-    method
+    method,
   };
 };
 
@@ -274,26 +285,23 @@ MeetingInfoUtil.getRequestParams = (resourceOptions, type, value, api) => {
   let requestParams: any = {
     method: resourceOptions.method,
     api,
-    resource: resourceOptions.resource
+    resource: resourceOptions.resource,
   };
 
   if (resourceOptions.method === HTTP_VERBS.GET) {
     // for handling URL redirections
     requestParams.resource = requestParams.resource.concat(`&${ALTERNATE_REDIRECT_TRUE}`);
-  }
-  else
-  if (type !== _LOCUS_ID_) {
+  } else if (type !== _LOCUS_ID_) {
     // locus id check is a PUT not sure why
     requestParams.resource = requestParams.resource.concat(`?${ALTERNATE_REDIRECT_TRUE}`);
     requestParams.body = {
       value,
-      lookupType: type
+      lookupType: type,
     };
-  }
-  else if (type === _LOCUS_ID_) {
+  } else if (type === _LOCUS_ID_) {
     requestParams = {
       method: resourceOptions.method,
-      uri: resourceOptions.uri
+      uri: resourceOptions.uri,
     };
   }
 

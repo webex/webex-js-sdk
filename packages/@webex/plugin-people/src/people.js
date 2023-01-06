@@ -22,7 +22,7 @@ const People = WebexPlugin.extend({
   namespace: 'People',
 
   children: {
-    batcher: PeopleBatcher
+    batcher: PeopleBatcher,
   },
   /**
    * Returns a single person by ID
@@ -155,9 +155,8 @@ const People = WebexPlugin.extend({
     return this.request({
       service: 'hydra',
       resource: 'people',
-      qs: options
-    })
-      .then((res) => new Page(res, this.webex));
+      qs: options,
+    }).then((res) => new Page(res, this.webex));
   },
 
   /**
@@ -173,8 +172,7 @@ const People = WebexPlugin.extend({
       if (base64.decode(id).includes('ciscospark://')) {
         return id;
       }
-    }
-    catch (err) {
+    } catch (err) {
       // ignore
     }
 
@@ -190,12 +188,13 @@ const People = WebexPlugin.extend({
    */
   @oneFlight
   _getMe() {
-    return this.webex.request({
-      service: 'hydra',
-      resource: 'people/me'
-    })
+    return this.webex
+      .request({
+        service: 'hydra',
+        resource: 'people/me',
+      })
       .then((res) => res.body);
-  }
+  },
 });
 
 export default People;

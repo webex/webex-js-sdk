@@ -3,5 +3,5 @@
  */
 
 export default {
-  credentials: {}
+  credentials: {},
 };

@@ -9,196 +9,255 @@ import testUsers from '@webex/test-helper-test-users';
 describe('plugin-conversation', () => {
   let checkov, mccoy, participants, webex, spock;
 
-  before(() => testUsers.create({count: 3})
-    .then((users) => {
+  before(() =>
+    testUsers.create({count: 3}).then((users) => {
       participants = [spock, mccoy, checkov] = users;
 
       webex = new WebexCore({
         credentials: {
-          authorization: spock.token
-        }
+          authorization: spock.token,
+        },
       });
 
       return webex.internal.mercury.connect();
-    }));
+    })
+  );
 
   after(() => webex && webex.internal.mercury.disconnect());
 
   describe('when not supplying enough encryption data', () => {
     let conversation;
 
-    before(() => webex.internal.conversation.create({participants, comment: 'first'})
-      .then((c) => {
+    before(() =>
+      webex.internal.conversation.create({participants, comment: 'first'}).then((c) => {
         conversation = c;
-      }));
+      })
+    );
 
-    it('fetches the conversation and does not alter its key', () => webex.internal.conversation.post({url: conversation.url}, {displayName: 'second'})
-      .then(() => webex.internal.conversation.get(conversation))
-      .then((c) => assert.equal(c.defaultActivityEncryptionKeyUrl, conversation.defaultActivityEncryptionKeyUrl)));
+    it('fetches the conversation and does not alter its key', () =>
+      webex.internal.conversation
+        .post({url: conversation.url}, {displayName: 'second'})
+        .then(() => webex.internal.conversation.get(conversation))
+        .then((c) =>
+          assert.equal(
+            c.defaultActivityEncryptionKeyUrl,
+            conversation.defaultActivityEncryptionKeyUrl
+          )
+        ));
   });
 
   describe('when interacting with a non-encrypted conversation', () => {
     before(() => {
       mccoy.webex = new WebexCore({
         credentials: {
-          authorization: mccoy.token
-        }
+          authorization: mccoy.token,
+        },
       });
 
       checkov.webex = new WebexCore({
         credentials: {
-          authorization: checkov.token
-        }
+          authorization: checkov.token,
+        },
       });
 
       return Promise.all([
         checkov.webex.internal.mercury.connect(),
-        mccoy.webex.internal.mercury.connect()
+        mccoy.webex.internal.mercury.connect(),
       ]);
     });
 
-    after(() => Promise.all([
-      checkov && checkov.webex && checkov.webex.internal.mercury.disconnect(),
-      mccoy && mccoy.webex && mccoy.webex.internal.mercury.disconnect()
-    ]));
+    after(() =>
+      Promise.all([
+        checkov && checkov.webex && checkov.webex.internal.mercury.disconnect(),
+        mccoy && mccoy.webex && mccoy.webex.internal.mercury.disconnect(),
+      ])
+    );
 
     let conversation;
 
-    beforeEach(() => webex.request({
-      method: 'POST',
-      service: 'conversation',
-      resource: '/conversations',
-      noTransform: true,
-      body: {
-        objectType: 'conversation',
-        activities: {
-          items: [
-            {
-              verb: 'create',
-              actor: {
-                id: spock.id,
-                objectType: 'person'
-              }
+    beforeEach(() =>
+      webex
+        .request({
+          method: 'POST',
+          service: 'conversation',
+          resource: '/conversations',
+          noTransform: true,
+          body: {
+            objectType: 'conversation',
+            activities: {
+              items: [
+                {
+                  verb: 'create',
+                  actor: {
+                    id: spock.id,
+                    objectType: 'person',
+                  },
+                },
+                {
+                  verb: 'add',
+                  actor: {
+                    id: spock.id,
+                    objectType: 'person',
+                  },
+                  object: {
+                    id: spock.id,
+                    objectType: 'person',
+                  },
+                },
+                {
+                  verb: 'add',
+                  actor: {
+                    id: spock.id,
+                    objectType: 'person',
+                  },
+                  object: {
+                    id: checkov.id,
+                    objectType: 'person',
+                  },
+                },
+              ],
             },
-            {
-              verb: 'add',
-              actor: {
-                id: spock.id,
-                objectType: 'person'
-              },
-              object: {
-                id: spock.id,
-                objectType: 'person'
-              }
-            },
-            {
-              verb: 'add',
-              actor: {
-                id: spock.id,
-                objectType: 'person'
-              },
-              object: {
-                id: checkov.id,
-                objectType: 'person'
-              }
-            }
-          ]
-        }
-      }
-    })
-      .then((res) => res.body)
-      .then((c) => {
-        conversation = c;
-        assert.notProperty(conversation, 'defaultActivityEncryptionKeyUrl');
-      }));
+          },
+        })
+        .then((res) => res.body)
+        .then((c) => {
+          conversation = c;
+          assert.notProperty(conversation, 'defaultActivityEncryptionKeyUrl');
+        })
+    );
 
     describe('when the conversation is a grouped conversation', () => {
       describe('#add()', () => {
-        it('adds the specified user', () => webex.internal.conversation.add(conversation, mccoy)
-          .then(() => mccoy.webex.internal.conversation.get(conversation))
-          .then((c) => assert.property(c, 'defaultActivityEncryptionKeyUrl', 'The conversation was encrypted as a side effect of the add activity')));
+        it('adds the specified user', () =>
+          webex.internal.conversation
+            .add(conversation, mccoy)
+            .then(() => mccoy.webex.internal.conversation.get(conversation))
+            .then((c) =>
+              assert.property(
+                c,
+                'defaultActivityEncryptionKeyUrl',
+                'The conversation was encrypted as a side effect of the add activity'
+              )
+            ));
       });
 
       describe('#leave()', () => {
-        it('removes the current user', () => webex.internal.conversation.leave(conversation)
-          .then(() => assert.isRejected(webex.internal.conversation.get(conversation)))
-          .then((reason) => assert.instanceOf(reason, WebexHttpError.NotFound))
-          .then(() => checkov.webex.internal.conversation.get(conversation))
-          .then((c) => assert.notProperty(c, 'defaultActivityEncryptionKeyUrl', 'The conversation was not encrypted as a side effect of the leave activity')));
+        it('removes the current user', () =>
+          webex.internal.conversation
+            .leave(conversation)
+            .then(() => assert.isRejected(webex.internal.conversation.get(conversation)))
+            .then((reason) => assert.instanceOf(reason, WebexHttpError.NotFound))
+            .then(() => checkov.webex.internal.conversation.get(conversation))
+            .then((c) =>
+              assert.notProperty(
+                c,
+                'defaultActivityEncryptionKeyUrl',
+                'The conversation was not encrypted as a side effect of the leave activity'
+              )
+            ));
 
-        it('removes the specified user', () => webex.internal.conversation.leave(conversation, checkov)
-          .then(() => assert.isRejected(checkov.webex.internal.conversation.get(conversation)))
-          .then((reason) => assert.instanceOf(reason, WebexHttpError.NotFound))
-          .then(() => webex.internal.conversation.get(conversation))
-          .then((c) => assert.notProperty(c, 'defaultActivityEncryptionKeyUrl', 'The conversation was not encrypted as a side effect of the leave activity')));
+        it('removes the specified user', () =>
+          webex.internal.conversation
+            .leave(conversation, checkov)
+            .then(() => assert.isRejected(checkov.webex.internal.conversation.get(conversation)))
+            .then((reason) => assert.instanceOf(reason, WebexHttpError.NotFound))
+            .then(() => webex.internal.conversation.get(conversation))
+            .then((c) =>
+              assert.notProperty(
+                c,
+                'defaultActivityEncryptionKeyUrl',
+                'The conversation was not encrypted as a side effect of the leave activity'
+              )
+            ));
       });
 
       describe('#post()', () => {
-        it('posts a message', () => webex.internal.conversation.post(conversation, {displayName: 'Ahoy'})
-          .then(() => checkov.webex.internal.conversation.get(conversation, {activitiesLimit: 1}))
-          .then((c) => {
-            assert.property(c, 'defaultActivityEncryptionKeyUrl');
-            assert.equal(c.activities.items[0].object.displayName, 'Ahoy');
-          }));
-      });
-
-      describe('#cardAction()', () => {
-        it('creates a cardAction Activity', () => webex.internal.conversation.post(conversation, {displayName: 'First Message', cards: ['test']})
-          .then(() => checkov.webex.internal.conversation.get(conversation, {activitiesLimit: 1}))
-          .then((c) => {
-            assert.property(c, 'defaultActivityEncryptionKeyUrl');
-            assert.equal(c.activities.items[0].object.displayName, 'First Message');
-            webex.internal.conversation.cardAction(conversation, {
-              objectType: 'submit',
-              inputs: {key: 'value'}
-            }, c.activities.items[0])
-              .then(() => checkov.webex.internal.conversation.get(conversation, {activitiesLimit: 1}))
-              .then((ci) => {
-                assert.property(c, 'defaultActivityEncryptionKeyUrl');
-                /* eslint-disable no-unused-expressions */
-                expect(ci.activities.items[0].object.inputs).to.not.be.null;
-              });
-          }));
-      });
-
-      describe('#update()', () => {
-        it('sets the conversation\'s title', () => webex.internal.conversation.update(conversation, {
-          displayName: 'New Name!',
-          objectType: 'conversation'
-        })
-          .then(() => checkov.webex.internal.conversation.get(conversation))
-          .then((c) => {
-            assert.property(c, 'defaultActivityEncryptionKeyUrl');
-            assert.property(c, 'encryptionKeyUrl');
-            assert.equal(c.displayName, 'New Name!');
-          }));
-      });
-
-      describe('#updateKey()', () => {
-        it('sets the conversation\'s defaultActivityEncryptionKeyUrl', () => webex.internal.conversation.updateKey(conversation)
-          .then(() => webex.internal.conversation.get(conversation))
-          .then((c) => {
-            assert.property(c, 'defaultActivityEncryptionKeyUrl');
-          })
-          .then(() => checkov.webex.internal.conversation.get(conversation))
-          .then((c) => {
-            assert.property(c, 'defaultActivityEncryptionKeyUrl');
-          }));
-
-        it('unsets the conversations\'s defaultActivityEncryptionKeyUrl', () => webex.internal.conversation.updateKey(conversation, {uri: null})
-          .then(() => checkov.webex.internal.conversation.get(conversation))
-          .then((c) => {
-            assert.isUndefined(c.defaultActivityEncryptionKeyUrl);
-          }));
-
-        describe('when the KMS key has been unset', () => {
-          it('rotates the key and sends the post', () => webex.internal.conversation.updateKey(conversation, {uri: null})
-            .then(() => webex.internal.conversation.post(conversation, {displayName: 'Ahoy'}))
+        it('posts a message', () =>
+          webex.internal.conversation
+            .post(conversation, {displayName: 'Ahoy'})
             .then(() => checkov.webex.internal.conversation.get(conversation, {activitiesLimit: 1}))
             .then((c) => {
               assert.property(c, 'defaultActivityEncryptionKeyUrl');
               assert.equal(c.activities.items[0].object.displayName, 'Ahoy');
             }));
+      });
+
+      describe('#cardAction()', () => {
+        it('creates a cardAction Activity', () =>
+          webex.internal.conversation
+            .post(conversation, {displayName: 'First Message', cards: ['test']})
+            .then(() => checkov.webex.internal.conversation.get(conversation, {activitiesLimit: 1}))
+            .then((c) => {
+              assert.property(c, 'defaultActivityEncryptionKeyUrl');
+              assert.equal(c.activities.items[0].object.displayName, 'First Message');
+              webex.internal.conversation
+                .cardAction(
+                  conversation,
+                  {
+                    objectType: 'submit',
+                    inputs: {key: 'value'},
+                  },
+                  c.activities.items[0]
+                )
+                .then(() =>
+                  checkov.webex.internal.conversation.get(conversation, {activitiesLimit: 1})
+                )
+                .then((ci) => {
+                  assert.property(c, 'defaultActivityEncryptionKeyUrl');
+                  /* eslint-disable no-unused-expressions */
+                  expect(ci.activities.items[0].object.inputs).to.not.be.null;
+                });
+            }));
+      });
+
+      describe('#update()', () => {
+        it("sets the conversation's title", () =>
+          webex.internal.conversation
+            .update(conversation, {
+              displayName: 'New Name!',
+              objectType: 'conversation',
+            })
+            .then(() => checkov.webex.internal.conversation.get(conversation))
+            .then((c) => {
+              assert.property(c, 'defaultActivityEncryptionKeyUrl');
+              assert.property(c, 'encryptionKeyUrl');
+              assert.equal(c.displayName, 'New Name!');
+            }));
+      });
+
+      describe('#updateKey()', () => {
+        it("sets the conversation's defaultActivityEncryptionKeyUrl", () =>
+          webex.internal.conversation
+            .updateKey(conversation)
+            .then(() => webex.internal.conversation.get(conversation))
+            .then((c) => {
+              assert.property(c, 'defaultActivityEncryptionKeyUrl');
+            })
+            .then(() => checkov.webex.internal.conversation.get(conversation))
+            .then((c) => {
+              assert.property(c, 'defaultActivityEncryptionKeyUrl');
+            }));
+
+        it("unsets the conversations's defaultActivityEncryptionKeyUrl", () =>
+          webex.internal.conversation
+            .updateKey(conversation, {uri: null})
+            .then(() => checkov.webex.internal.conversation.get(conversation))
+            .then((c) => {
+              assert.isUndefined(c.defaultActivityEncryptionKeyUrl);
+            }));
+
+        describe('when the KMS key has been unset', () => {
+          it('rotates the key and sends the post', () =>
+            webex.internal.conversation
+              .updateKey(conversation, {uri: null})
+              .then(() => webex.internal.conversation.post(conversation, {displayName: 'Ahoy'}))
+              .then(() =>
+                checkov.webex.internal.conversation.get(conversation, {activitiesLimit: 1})
+              )
+              .then((c) => {
+                assert.property(c, 'defaultActivityEncryptionKeyUrl');
+                assert.equal(c.activities.items[0].object.displayName, 'Ahoy');
+              }));
         });
       });
     });
@@ -206,63 +265,68 @@ describe('plugin-conversation', () => {
     describe('when the conversation is a 1:1 conversation', () => {
       let conversation;
 
-      beforeEach(() => webex.request({
-        method: 'POST',
-        service: 'conversation',
-        resource: '/conversations',
-        noTransform: true,
-        body: {
-          objectType: 'conversation',
-          activities: {
-            items: [
-              {
-                verb: 'create',
-                actor: {
-                  id: spock.id,
-                  objectType: 'person'
-                }
+      beforeEach(() =>
+        webex
+          .request({
+            method: 'POST',
+            service: 'conversation',
+            resource: '/conversations',
+            noTransform: true,
+            body: {
+              objectType: 'conversation',
+              activities: {
+                items: [
+                  {
+                    verb: 'create',
+                    actor: {
+                      id: spock.id,
+                      objectType: 'person',
+                    },
+                  },
+                  {
+                    verb: 'add',
+                    actor: {
+                      id: spock.id,
+                      objectType: 'person',
+                    },
+                    object: {
+                      id: spock.id,
+                      objectType: 'person',
+                    },
+                  },
+                  {
+                    verb: 'add',
+                    actor: {
+                      id: spock.id,
+                      objectType: 'person',
+                    },
+                    object: {
+                      id: mccoy.id,
+                      objectType: 'person',
+                    },
+                  },
+                ],
               },
-              {
-                verb: 'add',
-                actor: {
-                  id: spock.id,
-                  objectType: 'person'
-                },
-                object: {
-                  id: spock.id,
-                  objectType: 'person'
-                }
-              },
-              {
-                verb: 'add',
-                actor: {
-                  id: spock.id,
-                  objectType: 'person'
-                },
-                object: {
-                  id: mccoy.id,
-                  objectType: 'person'
-                }
-              }
-            ]
-          },
-          tags: ['ONE_ON_ONE']
-        }
-      })
-        .then((res) => res.body)
-        .then((c) => {
-          conversation = c;
-          assert.notProperty(conversation, 'defaultActivityEncryptionKeyUrl');
-          assert.include(c.tags, 'ONE_ON_ONE');
-        }));
+              tags: ['ONE_ON_ONE'],
+            },
+          })
+          .then((res) => res.body)
+          .then((c) => {
+            conversation = c;
+            assert.notProperty(conversation, 'defaultActivityEncryptionKeyUrl');
+            assert.include(c.tags, 'ONE_ON_ONE');
+          })
+      );
 
       describe('#post()', () => {
-        it('posts a message', () => webex.internal.conversation.post(conversation, {displayName: 'First Message'})
-          .then(() => mccoy.webex.internal.conversation.get(conversation, {activitiesLimit: 1}))
-          .then((c) => {
-            assert.property(c, 'defaultActivityEncryptionKeyUrl');
-            assert.equal(c.activities.items[0].object.displayName, 'First Message');
-          }));
+        it('posts a message', () =>
+          webex.internal.conversation
+            .post(conversation, {displayName: 'First Message'})
+            .then(() => mccoy.webex.internal.conversation.get(conversation, {activitiesLimit: 1}))
+            .then((c) => {
+              assert.property(c, 'defaultActivityEncryptionKeyUrl');
+              assert.equal(c.activities.items[0].object.displayName, 'First Message');
+            }));
       });
     });
   });

@@ -3,6 +3,5 @@
  */
 
 export default {
-  flag: {
-  }
+  flag: {},
 };

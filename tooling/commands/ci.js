@@ -15,38 +15,40 @@ module.exports = {
     coverage: {
       description: 'Generate code coverage',
       default: true,
-      type: 'boolean'
+      type: 'boolean',
     },
     coverageReport: {
       description: 'Internal; when false, no report is generated',
       default: true,
-      type: 'boolean'
+      type: 'boolean',
     },
     github: {
       description: 'Run tests on modified packages for github check',
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     node: {
       description: 'Run tests in node (defaults to true if --browser is not specified)',
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     unit: {
-      description: 'Run unit tests (defaults to true if --integration and --automation are not specified)',
+      description:
+        'Run unit tests (defaults to true if --integration and --automation are not specified)',
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     integration: {
-      description: 'Run integration tests (defaults to true if --unit and --automation are not specified)',
+      description:
+        'Run integration tests (defaults to true if --unit and --automation are not specified)',
       default: false,
-      type: 'boolean'
-    }
+      type: 'boolean',
+    },
   },
   handler: wrapHandler(async (argv) => {
-    let packages = argv.integration ?
-      await updated({dependents: true, npm: !!process.env.CI}) :
-      await updated({npm: !!process.env.CI});
+    let packages = argv.integration
+      ? await updated({dependents: true, npm: !!process.env.CI})
+      : await updated({npm: !!process.env.CI});
 
     packages = packages
       .filter((packageName) => !packageName.includes('samples'))
@@ -60,9 +62,7 @@ module.exports = {
     console.log(`Testing packages:\n${packages.join('\n')}`);
 
     const [cmd, ...args] = `yarn run test --silent --packages ${packages.join(' ')} ${
-      argv.github ?
-        '--unit --os mac --browsers chrome firefox' :
-        '--browsers defaults'
+      argv.github ? '--unit --os mac --browsers chrome firefox' : '--browsers defaults'
     }`.split(' ');
 
     await spawn(cmd, args);
@@ -78,5 +78,5 @@ module.exports = {
       // unref any outstanding timers/sockets/streams/processes.
       handle.unref();
     }
-  })
+  }),
 };

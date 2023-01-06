@@ -33,8 +33,8 @@ const Authorization = WebexPlugin.extend({
       deps: ['isAuthorizing'],
       fn() {
         return this.isAuthorizing;
-      }
-    }
+      },
+    },
   },
 
   session: {
@@ -46,12 +46,12 @@ const Authorization = WebexPlugin.extend({
      */
     isAuthorizing: {
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     ready: {
       default: false,
-      type: 'boolean'
-    }
+      type: 'boolean',
+    },
   },
 
   namespace: 'Credentials',
@@ -143,7 +143,9 @@ const Authorization = WebexPlugin.extend({
    */
   initiateImplicitGrant(options) {
     this.logger.info('authorization: initiating implicit grant flow');
-    this.webex.getWindow().location = this.webex.credentials.buildLoginUrl(Object.assign({response_type: 'token'}, options));
+    this.webex.getWindow().location = this.webex.credentials.buildLoginUrl(
+      Object.assign({response_type: 'token'}, options)
+    );
 
     return Promise.resolve();
   },
@@ -159,7 +161,9 @@ const Authorization = WebexPlugin.extend({
    */
   initiateAuthorizationCodeGrant(options) {
     this.logger.info('authorization: initiating authorization code grant flow');
-    this.webex.getWindow().location = this.webex.credentials.buildLoginUrl(Object.assign({response_type: 'code'}, options));
+    this.webex.getWindow().location = this.webex.credentials.buildLoginUrl(
+      Object.assign({response_type: 'code'}, options)
+    );
 
     return Promise.resolve();
   },
@@ -189,25 +193,24 @@ const Authorization = WebexPlugin.extend({
       hydraUri += '/';
     }
 
-    hydraUri = hydraUri ||
-      process.env.HYDRA_SERVICE_URL ||
-      'https://api.ciscospark.com/v1/';
+    hydraUri = hydraUri || process.env.HYDRA_SERVICE_URL || 'https://api.ciscospark.com/v1/';
 
-    return this.webex.request({
-      method: 'POST',
-      uri: `${hydraUri}jwt/login`,
-      headers: {
-        authorization: jwt
-      }
-    })
+    return this.webex
+      .request({
+        method: 'POST',
+        uri: `${hydraUri}jwt/login`,
+        headers: {
+          authorization: jwt,
+        },
+      })
       .then(({body}) => ({
         access_token: body.token,
         token_type: 'Bearer',
-        expires_in: body.expiresIn
+        expires_in: body.expiresIn,
       }))
       .then((token) => {
         this.webex.credentials.set({
-          supertoken: token
+          supertoken: token,
         });
       })
       .then(() => this.webex.internal.services.initServiceCatalogs());
@@ -261,15 +264,16 @@ const Authorization = WebexPlugin.extend({
         'token_type',
         'expires_in',
         'refresh_token',
-        'refresh_token_expires_in'
+        'refresh_token_expires_in',
       ].forEach((key) => Reflect.deleteProperty(location.hash, key));
       if (!isEmpty(location.hash.state)) {
-        location.hash.state = base64.encode(JSON.stringify(omit(location.hash.state, 'csrf_token')));
+        location.hash.state = base64.encode(
+          JSON.stringify(omit(location.hash.state, 'csrf_token'))
+        );
         if (location.hash.state === EMPTY_OBJECT_STRING) {
           Reflect.deleteProperty(location.hash, 'state');
         }
-      }
-      else {
+      } else {
         Reflect.deleteProperty(location.hash, 'state');
       }
       location.hash = querystring.stringify(location.hash);
@@ -353,7 +357,7 @@ const Authorization = WebexPlugin.extend({
     if (token !== sessionToken) {
       throw new Error(`CSRF token ${token} does not match stored token ${sessionToken}`);
     }
-  }
+  },
 });
 
 export default Authorization;

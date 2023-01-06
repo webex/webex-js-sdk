@@ -21,14 +21,12 @@ npm install --save @webex/internal-plugin-avatar
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-avatar';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
-webex.internal.avatar.WHATEVER
-
+webex.internal.avatar.WHATEVER;
 ```
 
 ## Maintainers

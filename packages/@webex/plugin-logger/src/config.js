@@ -18,6 +18,6 @@
 export default {
   logger: {
     level: process.env.WEBEX_LOG_LEVEL,
-    historyLength: 1000
-  }
+    historyLength: 1000,
+  },
 };

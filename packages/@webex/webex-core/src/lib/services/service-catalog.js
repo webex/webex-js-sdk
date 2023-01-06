@@ -12,37 +12,45 @@ const ServiceCatalog = AmpState.extend({
   namespace: 'ServiceCatalog',
 
   props: {
-    serviceGroups: ['object', true, (() => ({
-      discovery: [],
-      override: [],
-      preauth: [],
-      postauth: [],
-      signin: []
-    }))],
-    status: ['object', true, (() => ({
-      discovery: {
-        ready: false,
-        collecting: false
-      },
-      override: {
-        ready: false,
-        collecting: false
-      },
-      preauth: {
-        ready: false,
-        collecting: false
-      },
-      postauth: {
-        ready: false,
-        collecting: false
-      },
-      signin: {
-        ready: false,
-        collecting: false
-      }
-    }))],
+    serviceGroups: [
+      'object',
+      true,
+      () => ({
+        discovery: [],
+        override: [],
+        preauth: [],
+        postauth: [],
+        signin: [],
+      }),
+    ],
+    status: [
+      'object',
+      true,
+      () => ({
+        discovery: {
+          ready: false,
+          collecting: false,
+        },
+        override: {
+          ready: false,
+          collecting: false,
+        },
+        preauth: {
+          ready: false,
+          collecting: false,
+        },
+        postauth: {
+          ready: false,
+          collecting: false,
+        },
+        signin: {
+          ready: false,
+          collecting: false,
+        },
+      }),
+    ],
     isReady: ['boolean', false, false],
-    allowedDomains: ['array', false, (() => [])]
+    allowedDomains: ['array', false, () => []],
   },
 
   /**
@@ -54,15 +62,16 @@ const ServiceCatalog = AmpState.extend({
    * @returns {ServiceUrl}
    */
   _getUrl(name, serviceGroup) {
-    const serviceUrls = (typeof serviceGroup === 'string') ?
-      this.serviceGroups[serviceGroup] || [] :
-      [
-        ...this.serviceGroups.override,
-        ...this.serviceGroups.postauth,
-        ...this.serviceGroups.signin,
-        ...this.serviceGroups.preauth,
-        ...this.serviceGroups.discovery
-      ];
+    const serviceUrls =
+      typeof serviceGroup === 'string'
+        ? this.serviceGroups[serviceGroup] || []
+        : [
+            ...this.serviceGroups.override,
+            ...this.serviceGroups.postauth,
+            ...this.serviceGroups.signin,
+            ...this.serviceGroups.preauth,
+            ...this.serviceGroups.discovery,
+          ];
 
     return serviceUrls.find((serviceUrl) => serviceUrl.name === name);
   },
@@ -79,7 +88,7 @@ const ServiceCatalog = AmpState.extend({
       ...this.serviceGroups.postauth,
       ...this.serviceGroups.signin,
       ...this.serviceGroups.preauth,
-      ...this.serviceGroups.discovery
+      ...this.serviceGroups.discovery,
     ];
   },
 
@@ -121,7 +130,8 @@ const ServiceCatalog = AmpState.extend({
 
       if (existingService) {
         this.serviceGroups[serviceGroup].splice(
-          this.serviceGroups[serviceGroup].indexOf(existingService), 1
+          this.serviceGroups[serviceGroup].indexOf(existingService),
+          1
         );
       }
     });
@@ -163,8 +173,7 @@ const ServiceCatalog = AmpState.extend({
           }
         }
 
-        if (serviceUrlObj.hostname === incomingUrlObj.hostname &&
-          service.hosts.length > 0) {
+        if (serviceUrlObj.hostname === incomingUrlObj.hostname && service.hosts.length > 0) {
           // no exact match, so try to grab the first home cluster
           for (const host of service.hosts) {
             if (host.homeCluster) {
@@ -196,25 +205,25 @@ const ServiceCatalog = AmpState.extend({
    * @returns {string} service.url
    */
   findServiceFromClusterId({clusterId, priorityHost = true, serviceGroup} = {}) {
-    const serviceUrls = (typeof serviceGroup === 'string') ?
-      this.serviceGroups[serviceGroup] || [] : [
-        ...this.serviceGroups.override,
-        ...this.serviceGroups.postauth,
-        ...this.serviceGroups.signin,
-        ...this.serviceGroups.preauth,
-        ...this.serviceGroups.discovery
-      ];
+    const serviceUrls =
+      typeof serviceGroup === 'string'
+        ? this.serviceGroups[serviceGroup] || []
+        : [
+            ...this.serviceGroups.override,
+            ...this.serviceGroups.postauth,
+            ...this.serviceGroups.signin,
+            ...this.serviceGroups.preauth,
+            ...this.serviceGroups.discovery,
+          ];
 
-    const identifiedServiceUrl = serviceUrls.find(
-      (serviceUrl) => serviceUrl.hosts.find(
-        (host) => host.id === clusterId
-      )
+    const identifiedServiceUrl = serviceUrls.find((serviceUrl) =>
+      serviceUrl.hosts.find((host) => host.id === clusterId)
     );
 
     if (identifiedServiceUrl) {
       return {
         name: identifiedServiceUrl.name,
-        url: identifiedServiceUrl.get(priorityHost, clusterId)
+        url: identifiedServiceUrl.get(priorityHost, clusterId),
       };
     }
 
@@ -233,23 +242,20 @@ const ServiceCatalog = AmpState.extend({
       ...this.serviceGroups.preauth,
       ...this.serviceGroups.signin,
       ...this.serviceGroups.postauth,
-      ...this.serviceGroups.override
+      ...this.serviceGroups.override,
     ];
 
-    return serviceUrls.find(
-      (serviceUrl) => {
-        if (incomingUrlObj.hostname ===
-          Url.parse(serviceUrl.defaultUrl).hostname) {
-          return true;
-        }
-
-        if (serviceUrl.hosts.find((host) => host.host === incomingUrlObj.hostname)) {
-          return true;
-        }
-
-        return false;
+    return serviceUrls.find((serviceUrl) => {
+      if (incomingUrlObj.hostname === Url.parse(serviceUrl.defaultUrl).hostname) {
+        return true;
       }
-    );
+
+      if (serviceUrl.hosts.find((host) => host.host === incomingUrlObj.hostname)) {
+        return true;
+      }
+
+      return false;
+    });
   },
 
   /**
@@ -265,9 +271,7 @@ const ServiceCatalog = AmpState.extend({
       return undefined;
     }
 
-    return this.allowedDomains.find(
-      (allowedDomain) => urlObj.host.includes(allowedDomain)
-    );
+    return this.allowedDomains.find((allowedDomain) => urlObj.host.includes(allowedDomain));
   },
 
   /**
@@ -280,7 +284,7 @@ const ServiceCatalog = AmpState.extend({
   get(name, priorityHost, serviceGroup) {
     const serviceUrl = this._getUrl(name, serviceGroup);
 
-    return (serviceUrl) ? serviceUrl.get(priorityHost) : undefined;
+    return serviceUrl ? serviceUrl.get(priorityHost) : undefined;
   },
 
   /**
@@ -302,15 +306,16 @@ const ServiceCatalog = AmpState.extend({
   list(priorityHost, serviceGroup) {
     const output = {};
 
-    const serviceUrls = (typeof serviceGroup === 'string') ?
-      this.serviceGroups[serviceGroup] || [] :
-      [
-        ...this.serviceGroups.discovery,
-        ...this.serviceGroups.preauth,
-        ...this.serviceGroups.signin,
-        ...this.serviceGroups.postauth,
-        ...this.serviceGroups.override
-      ];
+    const serviceUrls =
+      typeof serviceGroup === 'string'
+        ? this.serviceGroups[serviceGroup] || []
+        : [
+            ...this.serviceGroups.discovery,
+            ...this.serviceGroups.preauth,
+            ...this.serviceGroups.signin,
+            ...this.serviceGroups.postauth,
+            ...this.serviceGroups.override,
+          ];
 
     if (serviceUrls) {
       serviceUrls.forEach((serviceUrl) => {
@@ -335,15 +340,15 @@ const ServiceCatalog = AmpState.extend({
    * @returns {string}
    */
   markFailedUrl(url, noPriorityHosts) {
-    const serviceUrl = this._getUrl(Object.keys(this.list()).find(
-      (key) => this._getUrl(key).failHost(url)
-    ));
+    const serviceUrl = this._getUrl(
+      Object.keys(this.list()).find((key) => this._getUrl(key).failHost(url))
+    );
 
     if (!serviceUrl) {
       return undefined;
     }
 
-    return (noPriorityHosts) ? serviceUrl.get(false) : serviceUrl.get(true);
+    return noPriorityHosts ? serviceUrl.get(false) : serviceUrl.get(true);
   },
 
   /**
@@ -368,10 +373,8 @@ const ServiceCatalog = AmpState.extend({
   updateServiceUrls(serviceGroup, serviceHostmap) {
     const currentServiceUrls = this.serviceGroups[serviceGroup];
 
-    const unusedUrls = currentServiceUrls.filter(
-      (serviceUrl) => serviceHostmap.every(
-        (item) => item.name !== serviceUrl.name
-      )
+    const unusedUrls = currentServiceUrls.filter((serviceUrl) =>
+      serviceHostmap.every((item) => item.name !== serviceUrl.name)
     );
 
     this._unloadServiceUrls(serviceGroup, unusedUrls);
@@ -382,11 +385,12 @@ const ServiceCatalog = AmpState.extend({
       if (service) {
         service.defaultUrl = serviceObj.defaultUrl;
         service.hosts = serviceObj.hosts || [];
-      }
-      else {
-        this._loadServiceUrls(serviceGroup, [new ServiceUrl({
-          ...serviceObj
-        })]);
+      } else {
+        this._loadServiceUrls(serviceGroup, [
+          new ServiceUrl({
+            ...serviceObj,
+          }),
+        ]);
       }
     });
 
@@ -409,16 +413,22 @@ const ServiceCatalog = AmpState.extend({
         resolve();
       }
 
-      const timeoutTimer = setTimeout(() => reject(
-        new Error(`services: timeout occured while waiting for '${serviceGroup}' catalog to populate`)
-      ), (timeout) ? timeout * 1000 : 60000);
+      const timeoutTimer = setTimeout(
+        () =>
+          reject(
+            new Error(
+              `services: timeout occured while waiting for '${serviceGroup}' catalog to populate`
+            )
+          ),
+        timeout ? timeout * 1000 : 60000
+      );
 
       this.once(serviceGroup, () => {
         clearTimeout(timeoutTimer);
         resolve();
       });
     });
-  }
+  },
 });
 /* eslint-enable no-underscore-dangle */
 

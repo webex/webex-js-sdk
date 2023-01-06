@@ -37,7 +37,7 @@ export default {
        *
        * @type {string}
        */
-      u2c: process.env.U2C_SERVICE_URL || 'https://u2c.wbx2.com/u2c/api/v1'
+      u2c: process.env.U2C_SERVICE_URL || 'https://u2c.wbx2.com/u2c/api/v1',
     },
 
     /**
@@ -51,9 +51,7 @@ export default {
      * services that don't need auth validation
      */
 
-    servicesNotNeedValidation: [
-      'webex-appapi-service'
-    ],
+    servicesNotNeedValidation: ['webex-appapi-service'],
 
     /**
      * Contains a list of allowed domain host addresses.
@@ -68,25 +66,25 @@ export default {
       'broadcloudpbx.com',
       'broadcloud.eu',
       'broadcloud.com.au',
-      'broadcloudpbx.net'
-    ]
+      'broadcloudpbx.net',
+    ],
   },
   device: {
     preDiscoveryServices: {
       hydra: process.env.HYDRA_SERVICE_URL || 'https://api.ciscospark.com/v1',
-      hydraServiceUrl: process.env.HYDRA_SERVICE_URL || 'https://api.ciscospark.com/v1'
+      hydraServiceUrl: process.env.HYDRA_SERVICE_URL || 'https://api.ciscospark.com/v1',
     },
     validateDomains: true,
   },
   metrics: {
-    type: ['behavioral', 'operational']
+    type: ['behavioral', 'operational'],
   },
   payloadTransformer: {
     predicates: [],
-    transforms: []
+    transforms: [],
   },
   storage: {
     boundedAdapter: MemoryStoreAdapter,
-    unboundedAdapter: MemoryStoreAdapter
-  }
+    unboundedAdapter: MemoryStoreAdapter,
+  },
 };

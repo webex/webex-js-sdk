@@ -15,25 +15,29 @@ describe('people-batcher', () => {
     beforeEach(() => {
       webex = new MockWebex({
         children: {
-          people: People
+          people: People,
         },
         config: {
-          people: {showAllTypes: false}
-        }
+          people: {showAllTypes: false},
+        },
       });
       batcher = webex.people.batcher;
     });
 
     describe('#fingerprints', () => {
-      it('fingerprintRequest returns encrypted \'hydraId\'', () => batcher.fingerprintRequest('hydraId')
-        .then((result) => assert.deepEqual(result, webex.people.inferPersonIdFromUuid('hydraId'))));
+      it("fingerprintRequest returns encrypted 'hydraId'", () =>
+        batcher
+          .fingerprintRequest('hydraId')
+          .then((result) =>
+            assert.deepEqual(result, webex.people.inferPersonIdFromUuid('hydraId'))
+          ));
     });
 
     describe('#submitHttpRequest()', () => {
       const ids = ['id1'];
       const mockRequest = {
         service: 'hydra',
-        resource: `people/?id=${ids}&showAllTypes=false`
+        resource: `people/?id=${ids}&showAllTypes=false`,
       };
 
       it('calls webex.request with expected params', () => {
@@ -41,8 +45,7 @@ describe('people-batcher', () => {
           return Promise.resolve(options);
         };
 
-        return batcher.submitHttpRequest(ids)
-          .then((req) => assert.deepEqual(req, mockRequest));
+        return batcher.submitHttpRequest(ids).then((req) => assert.deepEqual(req, mockRequest));
       });
     });
 
@@ -56,15 +59,18 @@ describe('people-batcher', () => {
 
       it('handles item success', () => {
         const mockResponse = {
-          items: [{
-            id: 'hydra1',
-            displayName: 'name1'
-          }]
+          items: [
+            {
+              id: 'hydra1',
+              displayName: 'name1',
+            },
+          ],
         };
 
-        return batcher.handleHttpSuccess({
-          body: mockResponse
-        })
+        return batcher
+          .handleHttpSuccess({
+            body: mockResponse,
+          })
           .then(() => {
             assert.calledWith(successSpy, 'hydra1', mockResponse.items[0]);
             assert.notCalled(failureSpy);
@@ -73,19 +79,23 @@ describe('people-batcher', () => {
 
       it('handles item failure', () => {
         const mockResponse = {
-          items: [{
-            id: 'hydra1',
-            displayName: 'name1'
-          }, {
-            id: 'hydra2',
-            displayName: 'name2'
-          }],
-          notFoundIds: ['hydra3']
+          items: [
+            {
+              id: 'hydra1',
+              displayName: 'name1',
+            },
+            {
+              id: 'hydra2',
+              displayName: 'name2',
+            },
+          ],
+          notFoundIds: ['hydra3'],
         };
 
-        return batcher.handleHttpSuccess({
-          body: mockResponse
-        })
+        return batcher
+          .handleHttpSuccess({
+            body: mockResponse,
+          })
           .then(() => {
             assert.calledTwice(successSpy);
             assert.calledWith(failureSpy, 'hydra3');

@@ -1,11 +1,9 @@
 module.exports = {
   env: {
-    node: true
+    node: true,
   },
-  plugins: [
-    'mocha'
-  ],
+  plugins: ['mocha'],
   rules: {
-    'mocha/no-exclusive-tests': 'error'
-  }
+    'mocha/no-exclusive-tests': 'error',
+  },
 };

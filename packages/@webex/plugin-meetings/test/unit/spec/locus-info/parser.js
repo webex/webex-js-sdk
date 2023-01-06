@@ -9,7 +9,6 @@ import LocusDeltaParser from '@webex/plugin-meetings/src/locus-info/parser';
 import basicSequenceComparisons from './lib/BasicSeqCmp.json';
 import sequenceComparisons from './lib/SeqCmp';
 
-
 describe('locus-info/parser', () => {
   describe('Locus Sequence Comparison Algorithm', () => {
     describe('basic sequence comparisons', () => {
@@ -73,11 +72,11 @@ describe('locus-info/parser', () => {
         const {description, result} = sequenceComparisons.update_actions[key];
 
         const current = {
-          sequence: sequenceComparisons.sequences[currentKey]
+          sequence: sequenceComparisons.sequences[currentKey],
         };
         const incoming = {
           sequence: sequenceComparisons.sequences[incomingKey],
-          baseSequence: sequenceComparisons.sequences[baseKey]
+          baseSequence: sequenceComparisons.sequences[baseKey],
         };
         const comparison = LocusDeltaParser.compare(current, incoming);
         const action = extract(comparison);
@@ -161,7 +160,6 @@ describe('locus-info/parser', () => {
       assert.calledOnce(parser.pause);
     });
 
-
     it('should update working copy on USE_INCOMING', () => {
       const {USE_INCOMING} = LocusDeltaParser.loci;
 
@@ -172,7 +170,6 @@ describe('locus-info/parser', () => {
 
       assert.equal(parser.workingCopy, NEW_LOCI);
     });
-
 
     it('calls onDeltaAction() when a comparison result is available', () => {
       const {USE_INCOMING} = LocusDeltaParser.loci;
@@ -186,7 +183,6 @@ describe('locus-info/parser', () => {
       assert.calledWith(parser.onDeltaAction, lociComparison, NEW_LOCI);
     });
 
-
     it('should call nextEvent()', () => {
       const {USE_INCOMING} = LocusDeltaParser.loci;
 
@@ -197,7 +193,6 @@ describe('locus-info/parser', () => {
 
       assert.calledOnce(parser.nextEvent);
     });
-
 
     it('should not call compare() if locus is invalid', () => {
       const {USE_INCOMING} = LocusDeltaParser.loci;
@@ -211,7 +206,6 @@ describe('locus-info/parser', () => {
 
       assert.notCalled(LocusDeltaParser.compare);
     });
-
 
     it('processDeltaEvent() should take next item in queue', () => {
       // restore the original method
@@ -254,7 +248,7 @@ describe('locus-info/parser', () => {
       parser = new LocusDeltaParser();
       loci = {
         rangeStart: 0,
-        rangeEnd: 0
+        rangeEnd: 0,
       };
     });
 

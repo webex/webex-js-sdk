@@ -22,14 +22,13 @@ npm install --save @webex/internal-plugin-llm
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-llm';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
 // locusUrl is got from meeting.locusInfo.url;
-// datachannelUrl is got from meeting.locusInfo.info.datachannelUrl; 
+// datachannelUrl is got from meeting.locusInfo.info.datachannelUrl;
 webex.internal.llm.registerAndConnect(locusUrl, datachannelUrl);
 
 // Checks if LLM is connected

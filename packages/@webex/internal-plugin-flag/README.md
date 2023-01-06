@@ -21,14 +21,12 @@ npm install --save @webex/internal-plugin-flag
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-flag';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
-webex.internal.flag.WHATEVER
-
+webex.internal.flag.WHATEVER;
 ```
 
 ## Maintainers

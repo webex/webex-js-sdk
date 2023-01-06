@@ -109,7 +109,7 @@ export class RemoteMedia extends EventsScope {
    * @param {boolean} commit - whether to commit the cancellation of the media request
    * @internal
    */
-  public stop(commit: boolean = true) {
+  public stop(commit = true) {
     this.cancelMediaRequest(commit);
     this.receiveSlot?.removeAllListeners();
     this.receiveSlot = undefined;

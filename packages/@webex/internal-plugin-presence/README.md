@@ -21,14 +21,12 @@ npm install --save @webex/internal-plugin-presence
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-presence';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
-webex.internal.presence.WHATEVER
-
+webex.internal.presence.WHATEVER;
 ```
 
 ## Maintainers

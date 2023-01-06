@@ -48,7 +48,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @type {Boolean}
    * @public
    */
-  private registered: boolean = false;
+  private registered = false;
 
   private webSocketUrl?: string;
 

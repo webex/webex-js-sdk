@@ -2,11 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {
-  _MEETING_LINK_,
-  _SIP_URI_,
-  _PERSONAL_ROOM_
-} from '../constants';
+import {_MEETING_LINK_, _SIP_URI_, _PERSONAL_ROOM_} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import MeetingInfoCollection from './collection';
@@ -34,7 +30,7 @@ export default class MeetingInfo {
      * @type {Object}
      * @private
      * @memberof MeetingInfo
-    */
+     */
     this.meetingInfoRequest = new MeetingInfoRequest(this.webex);
     /**
      * The meeting information collection interface
@@ -42,7 +38,7 @@ export default class MeetingInfo {
      * @type {Object}
      * @private
      * @memberof MeetingInfo
-    */
+     */
     this.meetingInfoCollection = new MeetingInfoCollection();
   }
 
@@ -75,17 +71,22 @@ export default class MeetingInfo {
    * @memberof MeetingInfo
    */
   private requestFetchInfo(options: object) {
-    return this.meetingInfoRequest.fetchMeetingInfo(options).then((info) => {
-      if (info && info.body) {
-        this.setMeetingInfo(info.body.sipMeetingUri || info.body.meetingLink, info.body);
-      }
+    return this.meetingInfoRequest
+      .fetchMeetingInfo(options)
+      .then((info) => {
+        if (info && info.body) {
+          this.setMeetingInfo(info.body.sipMeetingUri || info.body.meetingLink, info.body);
+        }
 
-      return info;
-    }).catch((error) => {
-      LoggerProxy.logger.error(`Meeting-info:index#requestFetchInfo -->  ${error} fetch meetingInfo`);
+        return info;
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error(
+          `Meeting-info:index#requestFetchInfo -->  ${error} fetch meetingInfo`
+        );
 
-      return Promise.reject(error);
-    });
+        return Promise.reject(error);
+      });
   }
 
   /**
@@ -100,7 +101,7 @@ export default class MeetingInfo {
     return MeetingInfoUtil.generateOptions({
       destination,
       type,
-      webex: this.webex
+      webex: this.webex,
     });
   }
 
@@ -117,19 +118,20 @@ export default class MeetingInfo {
       destination = this.webex.internal.device.userId;
     }
 
-    return this.fetchInfoOptions(
-      MeetingInfoUtil.extractDestination(destination, type),
-      type
-    ).then((options) =>
-    // fetch meeting info
-      this.requestFetchInfo(options).catch((error) => {
-      // if it failed the first time as meeting link
-        if (options.type === _MEETING_LINK_) {
-        // convert the meeting link to sip URI and retry
-          return this.requestFetchInfo(this.fetchInfoOptions(MeetingInfoUtil.convertLinkToSip(destination), _SIP_URI_));
-        }
+    return this.fetchInfoOptions(MeetingInfoUtil.extractDestination(destination, type), type).then(
+      (options) =>
+        // fetch meeting info
+        this.requestFetchInfo(options).catch((error) => {
+          // if it failed the first time as meeting link
+          if (options.type === _MEETING_LINK_) {
+            // convert the meeting link to sip URI and retry
+            return this.requestFetchInfo(
+              this.fetchInfoOptions(MeetingInfoUtil.convertLinkToSip(destination), _SIP_URI_)
+            );
+          }
 
-        return Promise.reject(error);
-      }));
+          return Promise.reject(error);
+        })
+    );
   }
 }

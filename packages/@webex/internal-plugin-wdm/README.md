@@ -26,14 +26,12 @@ npm install --save @webex/internal-plugin-wdm
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-wdm';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
-webex.internal.wdm.WHATEVER
-
+webex.internal.wdm.WHATEVER;
 ```
 
 ## Maintainers

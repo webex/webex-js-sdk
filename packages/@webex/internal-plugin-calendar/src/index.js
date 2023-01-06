@@ -24,7 +24,7 @@ registerInternalPlugin('calendar', Calendar, {
         },
         extract(response) {
           return Promise.resolve(response.body);
-        }
+        },
       },
       {
         name: 'transformMeetingParticipants',
@@ -34,7 +34,7 @@ registerInternalPlugin('calendar', Calendar, {
         },
         extract(response) {
           return Promise.resolve(response.body);
-        }
+        },
       },
       {
         name: 'transformMeetingArray',
@@ -44,7 +44,7 @@ registerInternalPlugin('calendar', Calendar, {
         },
         extract(response) {
           return Promise.resolve(response.body.items);
-        }
+        },
       },
       {
         name: 'transformMeeting',
@@ -54,7 +54,7 @@ registerInternalPlugin('calendar', Calendar, {
         },
         extract(response) {
           return Promise.resolve(response.body);
-        }
+        },
       },
       {
         name: 'transformMeeting',
@@ -64,15 +64,15 @@ registerInternalPlugin('calendar', Calendar, {
         },
         extract(response) {
           return Promise.resolve(response.calendarMeetingExternal);
-        }
-      }
+        },
+      },
     ],
     transforms: [
       {
         name: 'transformMeetingArray',
         fn(ctx, array) {
           return Promise.all(array.map((item) => ctx.transform('transformMeeting', item)));
-        }
+        },
       },
       {
         name: 'transformMeeting',
@@ -87,33 +87,78 @@ registerInternalPlugin('calendar', Calendar, {
           }
 
           // Decrypt participant properties if meeting object contains participants
-          const decryptedParticipants = object.encryptedParticipants ? object.encryptedParticipants.map((participant) => Promise.all([
-            ctx.transform('decryptTextProp', 'encryptedEmailAddress', object.encryptionKeyUrl, participant),
-            ctx.transform('decryptTextProp', 'encryptedName', object.encryptionKeyUrl, participant)
-          ])) : [];
+          const decryptedParticipants = object.encryptedParticipants
+            ? object.encryptedParticipants.map((participant) =>
+                Promise.all([
+                  ctx.transform(
+                    'decryptTextProp',
+                    'encryptedEmailAddress',
+                    object.encryptionKeyUrl,
+                    participant
+                  ),
+                  ctx.transform(
+                    'decryptTextProp',
+                    'encryptedName',
+                    object.encryptionKeyUrl,
+                    participant
+                  ),
+                ])
+              )
+            : [];
 
           // Decrypt meetingJoinInfo properties if meeting object contains meetingJoinInfo
-          const decryptedMeetingJoinInfo = object.meetingJoinInfo ? Promise.all([
-            ctx.transform('decryptTextProp', 'meetingJoinURI', object.encryptionKeyUrl, object.meetingJoinInfo),
-            ctx.transform('decryptTextProp', 'meetingJoinURL', object.encryptionKeyUrl, object.meetingJoinInfo)
-          ]) : [];
+          const decryptedMeetingJoinInfo = object.meetingJoinInfo
+            ? Promise.all([
+                ctx.transform(
+                  'decryptTextProp',
+                  'meetingJoinURI',
+                  object.encryptionKeyUrl,
+                  object.meetingJoinInfo
+                ),
+                ctx.transform(
+                  'decryptTextProp',
+                  'meetingJoinURL',
+                  object.encryptionKeyUrl,
+                  object.meetingJoinInfo
+                ),
+              ])
+            : [];
 
-          const decryptedOrganizer = object.encryptedOrganizer ? Promise.all([
-            ctx.transform('decryptTextProp', 'encryptedEmailAddress', object.encryptionKeyUrl, object.encryptedOrganizer),
-            ctx.transform('decryptTextProp', 'encryptedName', object.encryptionKeyUrl, object.encryptedOrganizer)
-          ]) : [];
+          const decryptedOrganizer = object.encryptedOrganizer
+            ? Promise.all([
+                ctx.transform(
+                  'decryptTextProp',
+                  'encryptedEmailAddress',
+                  object.encryptionKeyUrl,
+                  object.encryptedOrganizer
+                ),
+                ctx.transform(
+                  'decryptTextProp',
+                  'encryptedName',
+                  object.encryptionKeyUrl,
+                  object.encryptedOrganizer
+                ),
+              ])
+            : [];
 
-          return Promise.all([
-            ctx.transform('decryptTextProp', 'encryptedSubject', object.encryptionKeyUrl, object),
-            ctx.transform('decryptTextProp', 'encryptedLocation', object.encryptionKeyUrl, object),
-            ctx.transform('decryptTextProp', 'encryptedNotes', object.encryptionKeyUrl, object),
-            ctx.transform('decryptTextProp', 'webexURI', object.encryptionKeyUrl, object),
-            ctx.transform('decryptTextProp', 'webexURL', object.encryptionKeyUrl, object),
-            ctx.transform('decryptTextProp', 'spaceMeetURL', object.encryptionKeyUrl, object),
-            ctx.transform('decryptTextProp', 'spaceURI', object.encryptionKeyUrl, object),
-            ctx.transform('decryptTextProp', 'spaceURL', object.encryptionKeyUrl, object)
-          ].concat(decryptedOrganizer, decryptedParticipants, decryptedMeetingJoinInfo));
-        }
+          return Promise.all(
+            [
+              ctx.transform('decryptTextProp', 'encryptedSubject', object.encryptionKeyUrl, object),
+              ctx.transform(
+                'decryptTextProp',
+                'encryptedLocation',
+                object.encryptionKeyUrl,
+                object
+              ),
+              ctx.transform('decryptTextProp', 'encryptedNotes', object.encryptionKeyUrl, object),
+              ctx.transform('decryptTextProp', 'webexURI', object.encryptionKeyUrl, object),
+              ctx.transform('decryptTextProp', 'webexURL', object.encryptionKeyUrl, object),
+              ctx.transform('decryptTextProp', 'spaceMeetURL', object.encryptionKeyUrl, object),
+              ctx.transform('decryptTextProp', 'spaceURI', object.encryptionKeyUrl, object),
+              ctx.transform('decryptTextProp', 'spaceURL', object.encryptionKeyUrl, object),
+            ].concat(decryptedOrganizer, decryptedParticipants, decryptedMeetingJoinInfo)
+          );
+        },
       },
       {
         name: 'transformMeetingNotes',
@@ -128,9 +173,9 @@ registerInternalPlugin('calendar', Calendar, {
           }
 
           return Promise.all([
-            ctx.transform('decryptTextProp', 'encryptedNotes', object.encryptionKeyUrl, object)
+            ctx.transform('decryptTextProp', 'encryptedNotes', object.encryptionKeyUrl, object),
           ]);
-        }
+        },
       },
       {
         name: 'transformMeetingParticipants',
@@ -145,16 +190,28 @@ registerInternalPlugin('calendar', Calendar, {
           }
 
           // Decrypt participant properties
-          const decryptedParticipants = object.encryptedParticipants.map((participant) => Promise.all([
-            ctx.transform('decryptTextProp', 'encryptedEmailAddress', object.encryptionKeyUrl, participant),
-            ctx.transform('decryptTextProp', 'encryptedName', object.encryptionKeyUrl, participant)
-          ]));
+          const decryptedParticipants = object.encryptedParticipants.map((participant) =>
+            Promise.all([
+              ctx.transform(
+                'decryptTextProp',
+                'encryptedEmailAddress',
+                object.encryptionKeyUrl,
+                participant
+              ),
+              ctx.transform(
+                'decryptTextProp',
+                'encryptedName',
+                object.encryptionKeyUrl,
+                participant
+              ),
+            ])
+          );
 
           return Promise.all(decryptedParticipants);
-        }
-      }
-    ]
-  }
+        },
+      },
+    ],
+  },
 });
 
 export {default} from './calendar';

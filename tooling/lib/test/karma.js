@@ -3,7 +3,10 @@
  */
 
 const debug = require('debug')('tooling:test:karma');
-const {Server, config: {parseConfig}} = require('karma');
+const {
+  Server,
+  config: {parseConfig},
+} = require('karma');
 
 const {makeConfig} = require('../../../karma-ng.conf');
 
@@ -12,26 +15,25 @@ const {makeConfig} = require('../../../karma-ng.conf');
  * @param {Object} karmaConfig
  * @returns {boolean}
  */
-const run = (karmaConfig) => parseConfig(
-  null,
-  karmaConfig,
-  {
+const run = (karmaConfig) =>
+  parseConfig(null, karmaConfig, {
     promiseConfig: true,
-    throwErrors: true
-  }
-).then(async (config) => {
-  const result = await new Promise((resolve) => {
-    const server = new Server(config, (exitCode) => resolve(exitCode));
+    throwErrors: true,
+  }).then(
+    async (config) => {
+      const result = await new Promise((resolve) => {
+        const server = new Server(config, (exitCode) => resolve(exitCode));
 
-    server.on('browser_error', debugBrowserError);
-    server.start();
-  });
+        server.on('browser_error', debugBrowserError);
+        server.start();
+      });
 
-  return result === 0;
-},
-(err) => {
-  throw new Error(err);
-});
+      return result === 0;
+    },
+    (err) => {
+      throw new Error(err);
+    }
+  );
 
 // Splitting this function to reduce complexity would not aid in readability
 // eslint-disable-next-line complexity
@@ -40,12 +42,10 @@ exports.test = async function test(options, packageName, files) {
 
   const karmaConfig = makeConfig(packageName, options);
 
-
-  return run(karmaConfig)
-    .catch(() => {
-      debug(`${files} failed`);
-      throw new Error('Karma suite failed');
-    });
+  return run(karmaConfig).catch(() => {
+    debug(`${files} failed`);
+    throw new Error('Karma suite failed');
+  });
 };
 
 /**

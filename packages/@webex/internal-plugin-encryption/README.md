@@ -21,14 +21,12 @@ npm install --save @webex/internal-plugin-encryption
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-encryption';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
-webex.internal.encryption.WHATEVER
-
+webex.internal.encryption.WHATEVER;
 ```
 
 ## Maintainers

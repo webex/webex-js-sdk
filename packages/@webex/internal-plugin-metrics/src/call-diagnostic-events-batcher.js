@@ -10,7 +10,7 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
   /**
    * @param {string} webClientDomain
    * @returns {string}
-  */
+   */
   getBuildType(webClientDomain) {
     if (
       webClientDomain?.includes('teams.webex.com') ||
@@ -29,7 +29,7 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
     // Browsers cannot provide such information right now. However, it is a required field.
     const origin = {
       buildType: this.getBuildType(item.event?.eventData?.webClientDomain),
-      networkType: 'unknown'
+      networkType: 'unknown',
     };
 
     item.eventPayload.origin = Object.assign(origin, item.eventPayload.origin);
@@ -53,10 +53,10 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
       service: 'metrics',
       resource: 'clientmetrics',
       body: {
-        metrics: payload
-      }
+        metrics: payload,
+      },
     });
-  }
+  },
 });
 
 export default CallDiagnosticEventsBatcher;

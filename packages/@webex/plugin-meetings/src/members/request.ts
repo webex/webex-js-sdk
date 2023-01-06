@@ -6,11 +6,10 @@ import ParameterError from '../common/errors/parameter';
 
 import MembersUtil from './util';
 
-
 /**
  * @class MembersRequest
  */
-export default class MembersRequest extends StatelessWebexPlugin {  
+export default class MembersRequest extends StatelessWebexPlugin {
   namespace = MEETINGS;
 
   /**
@@ -21,8 +20,19 @@ export default class MembersRequest extends StatelessWebexPlugin {
    * @memberof MembersRequest
    */
   addMembers(options: any) {
-    if (!(!options || !options.invitee || (!options.invitee.emailAddress || !options.invitee.email || !options.invitee.phoneNumber) || !options.locusUrl)) {
-      throw new ParameterError('invitee must be passed and the associated locus url for this meeting object must be defined.');
+    if (
+      !(
+        !options ||
+        !options.invitee ||
+        !options.invitee.emailAddress ||
+        !options.invitee.email ||
+        !options.invitee.phoneNumber ||
+        !options.locusUrl
+      )
+    ) {
+      throw new ParameterError(
+        'invitee must be passed and the associated locus url for this meeting object must be defined.'
+      );
     }
     const requestParams = MembersUtil.getAddMemberRequestParams(options);
 
@@ -39,7 +49,9 @@ export default class MembersRequest extends StatelessWebexPlugin {
    */
   admitMember(options: any) {
     if (!options || !options.locusUrl || !options.memberIds) {
-      throw new ParameterError('memberIds must be an array passed and the associated locus url for this meeting object must be defined.');
+      throw new ParameterError(
+        'memberIds must be an array passed and the associated locus url for this meeting object must be defined.'
+      );
     }
     const requestParams = MembersUtil.getAdmitMemberRequestParams(options);
 
@@ -49,7 +61,9 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
   removeMember(options) {
     if (!options || !options.locusUrl || !options.memberId) {
-      throw new ParameterError('memberId must be defined, and the associated locus url for this meeting object must be defined.');
+      throw new ParameterError(
+        'memberId must be defined, and the associated locus url for this meeting object must be defined.'
+      );
     }
 
     const requestParams = MembersUtil.getRemoveMemberRequestParams(options);
@@ -60,7 +74,9 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
   muteMember(options) {
     if (!options || !options.locusUrl || !options.memberId) {
-      throw new ParameterError('memberId must be defined, and the associated locus url for this meeting object must be defined.');
+      throw new ParameterError(
+        'memberId must be defined, and the associated locus url for this meeting object must be defined.'
+      );
     }
 
     const requestParams = MembersUtil.getMuteMemberRequestParams(options);
@@ -71,7 +87,9 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
   raiseOrLowerHandMember(options) {
     if (!options || !options.locusUrl || !options.memberId) {
-      throw new ParameterError('memberId must be defined, and the associated locus url for this meeting object must be defined.');
+      throw new ParameterError(
+        'memberId must be defined, and the associated locus url for this meeting object must be defined.'
+      );
     }
 
     const requestParams = MembersUtil.getRaiseHandMemberRequestParams(options);
@@ -82,7 +100,9 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
   lowerAllHandsMember(options) {
     if (!options || !options.locusUrl || !options.requestingParticipantId) {
-      throw new ParameterError('requestingParticipantId must be defined, and the associated locus url for this meeting object must be defined.');
+      throw new ParameterError(
+        'requestingParticipantId must be defined, and the associated locus url for this meeting object must be defined.'
+      );
     }
 
     const requestParams = MembersUtil.getLowerAllHandsMemberRequestParams(options);
@@ -93,7 +113,9 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
   transferHostToMember(options) {
     if (!options || !options.locusUrl || !options.memberId || !options.moderator) {
-      throw new ParameterError('memberId must be defined, the associated locus url, and the moderator for this meeting object must be defined.');
+      throw new ParameterError(
+        'memberId must be defined, the associated locus url, and the moderator for this meeting object must be defined.'
+      );
     }
 
     const requestParams = MembersUtil.getTransferHostToMemberRequestParams(options);
@@ -111,10 +133,18 @@ export default class MembersRequest extends StatelessWebexPlugin {
    * @param {String} options.memberId ID of PSTN user
    * @returns {Promise}
    */
-  sendDialPadKey(options: { locusUrl: string; url: string; tones: string; memberId: string }) {
+  sendDialPadKey(options: {locusUrl: string; url: string; tones: string; memberId: string}) {
     // @ts-ignore
-    if (!options || !options.locusUrl || !options.memberId || !options.url || !options.tones && options.tones !== 0) {
-      throw new ParameterError('memberId must be defined, the associated locus url, the device url and DTMF tones for this meeting object must be defined.');
+    if (
+      !options ||
+      !options.locusUrl ||
+      !options.memberId ||
+      !options.url ||
+      (!options.tones && options.tones !== 0)
+    ) {
+      throw new ParameterError(
+        'memberId must be defined, the associated locus url, the device url and DTMF tones for this meeting object must be defined.'
+      );
     }
 
     const requestParams = MembersUtil.generateSendDTMFRequestParams(options);
@@ -131,7 +161,9 @@ export default class MembersRequest extends StatelessWebexPlugin {
    */
   cancelPhoneInvite(options: any) {
     if (!(options?.invitee?.phoneNumber || options?.locusUrl)) {
-      throw new ParameterError('invitee must be passed and the associated locus url for this meeting object must be defined.');
+      throw new ParameterError(
+        'invitee must be passed and the associated locus url for this meeting object must be defined.'
+      );
     }
 
     const requestParams = MembersUtil.generateCancelInviteRequestParams(options);

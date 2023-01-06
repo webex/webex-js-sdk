@@ -29,11 +29,7 @@
       "request": "launch",
       "name": "Test all packages",
       "autoAttachChildProcesses": true,
-      "runtimeArgs": [
-        "./tooling/index.js",
-        "test",
-        "${input:flags}"
-      ]
+      "runtimeArgs": ["./tooling/index.js", "test", "${input:flags}"]
     }
   ],
   "inputs": [

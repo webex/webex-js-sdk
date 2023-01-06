@@ -7,7 +7,7 @@ export default {
     joseOptions: {
       compact: true,
       contentAlg: 'A256GCM',
-      protect: '*'
+      protect: '*',
     },
 
     /**
@@ -45,6 +45,6 @@ export default {
      * Debounce max wait before sending a kms metric
      * @type {Number}
      */
-    batcherMaxWait: 150
-  }
+    batcherMaxWait: 150,
+  },
 };

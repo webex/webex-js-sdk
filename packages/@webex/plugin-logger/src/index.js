@@ -9,10 +9,7 @@ import config from './config';
 
 registerPlugin('logger', Logger, {
   config,
-  replace: true
+  replace: true,
 });
 
-export {
-  default,
-  levels
-} from './logger';
+export {default, levels} from './logger';

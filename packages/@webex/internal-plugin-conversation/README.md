@@ -21,14 +21,12 @@ npm install --save @webex/internal-plugin-conversation
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-conversation';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
-webex.internal.conversation.WHATEVER
-
+webex.internal.conversation.WHATEVER;
 ```
 
 This is the list of environment variable used by this plugin:

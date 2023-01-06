@@ -13,7 +13,7 @@ import Lyra from './lyra';
 import config from './config';
 
 registerInternalPlugin('lyra', Lyra, {
-  config
+  config,
 });
 
 export {default} from './lyra';

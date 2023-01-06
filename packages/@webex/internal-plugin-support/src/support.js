@@ -20,21 +20,21 @@ const Support = WebexPlugin.extend({
         appVersion: this.config.appVersion,
         appType: this.config.appType,
         feedbackId: options.feedbackId || uuid.v4(),
-        languageCode: this.config.languageCode
-      })
-    })
-      .then((res) => res.body.url);
+        languageCode: this.config.languageCode,
+      }),
+    }).then((res) => res.body.url);
   },
 
   getSupportUrl() {
-    return this.webex.request({
-      method: 'GET',
-      api: 'conversation',
-      resource: 'users/deskSupportUrl',
-      qs: {
-        languageCode: this.config.languageCode
-      }
-    })
+    return this.webex
+      .request({
+        method: 'GET',
+        api: 'conversation',
+        resource: 'users/deskSupportUrl',
+        qs: {
+          languageCode: this.config.languageCode,
+        },
+      })
       .then((res) => res.body.url);
   },
 
@@ -42,7 +42,12 @@ const Support = WebexPlugin.extend({
     const metadataArray = this._constructFileMetadata(metadata);
 
     // this is really testing that Ampersand is fully ready.  once it's ready, these exist
-    if (!logs && this.webex.logger.sdkBuffer && this.webex.logger.clientBuffer && this.webex.logger.buffer) {
+    if (
+      !logs &&
+      this.webex.logger.sdkBuffer &&
+      this.webex.logger.clientBuffer &&
+      this.webex.logger.buffer
+    ) {
       logs = this.webex.logger.formatLogs();
     }
 
@@ -50,26 +55,26 @@ const Support = WebexPlugin.extend({
 
     if (metadata.locusId && metadata.callStart) {
       filename = `${metadata.locusId}_${metadata.callStart}.txt`;
-    }
-    else {
+    } else {
       filename = `${this.webex.sessionId}.txt`;
     }
 
     let userId;
 
-    return this.webex.credentials.getUserToken()
+    return this.webex.credentials
+      .getUserToken()
       .catch(() => this.webex.credentials.getClientToken())
       .then(async (token) => {
         const headers = {authorization: token.toString()};
 
         const initalOpts = {
           service: 'clientLogs',
-          resource: 'logs/urls'
+          resource: 'logs/urls',
         };
 
         const finalOpts = {
           service: 'clientLogs',
-          resource: 'logs/meta'
+          resource: 'logs/meta',
         };
 
         const options = defaults(initalOpts, {
@@ -79,11 +84,11 @@ const Support = WebexPlugin.extend({
           phases: {
             initialize: {
               body: {
-                file: filename
-              }
+                file: filename,
+              },
             },
             upload: {
-              $uri: (session) => session.tempURL
+              $uri: (session) => session.tempURL,
             },
             finalize: defaults(finalOpts, {
               $body: (session) => {
@@ -92,11 +97,11 @@ const Support = WebexPlugin.extend({
                 return {
                   filename: session.logFilename,
                   data: metadataArray,
-                  userId: this.webex.internal.device.userId || session.userId
+                  userId: this.webex.internal.device.userId || session.userId,
                 };
-              }
-            })
-          }
+              },
+            }),
+          },
         });
 
         return this.webex.upload(options);
@@ -111,47 +116,42 @@ const Support = WebexPlugin.extend({
   },
 
   _constructFileMetadata(metadata) {
-    const metadataArray = [
-      'locusId',
-      'callStart',
-      'feedbackId',
-      'correlationId',
-      'meetingId'
-    ].map((key) => {
-      if (metadata[key]) {
-        return {
-          key,
-          value: metadata[key]
-        };
-      }
+    const metadataArray = ['locusId', 'callStart', 'feedbackId', 'correlationId', 'meetingId']
+      .map((key) => {
+        if (metadata[key]) {
+          return {
+            key,
+            value: metadata[key],
+          };
+        }
 
-      return null;
-    })
+        return null;
+      })
       .filter((entry) => Boolean(entry));
 
     if (this.webex.sessionId) {
       metadataArray.push({
         key: 'trackingId',
-        value: this.webex.sessionId
+        value: this.webex.sessionId,
       });
     }
 
     if (this.webex.internal.device.userId) {
       metadataArray.push({
         key: 'userId',
-        value: this.webex.internal.device.userId
+        value: this.webex.internal.device.userId,
       });
     }
 
     if (this.webex.internal.device.orgId) {
       metadataArray.push({
         key: 'orgId',
-        value: this.webex.internal.device.orgId
+        value: this.webex.internal.device.orgId,
       });
     }
 
     return metadataArray;
-  }
+  },
 });
 
 export default Support;

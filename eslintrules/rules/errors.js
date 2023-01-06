@@ -55,13 +55,17 @@ module.exports = {
 
     // disallow unnecessary parentheses
     // https://eslint.org/docs/rules/no-extra-parens
-    'no-extra-parens': ['off', 'all', {
-      conditionalAssign: true,
-      nestedBinaryExpressions: false,
-      returnAssign: false,
-      ignoreJSX: 'all', // delegate to eslint-plugin-react
-      enforceForArrowConditionals: false
-    }],
+    'no-extra-parens': [
+      'off',
+      'all',
+      {
+        conditionalAssign: true,
+        nestedBinaryExpressions: false,
+        returnAssign: false,
+        ignoreJSX: 'all', // delegate to eslint-plugin-react
+        enforceForArrowConditionals: false,
+      },
+    ],
 
     // disallow unnecessary semicolons
     'no-extra-semi': 'error',
@@ -118,24 +122,25 @@ module.exports = {
 
     // ensure JSDoc comments are valid
     // https://eslint.org/docs/rules/valid-jsdoc
-    'valid-jsdoc': ['error',
+    'valid-jsdoc': [
+      'error',
       {
         prefer: {
           arg: 'param',
           argument: 'param',
           return: 'returns',
           virtual: 'abstract',
-          fires: 'emits'
+          fires: 'emits',
         },
         requireParamDescription: false,
         requireReturn: false,
         requireReturnType: true,
-        requireReturnDescription: false
-      }
+        requireReturnDescription: false,
+      },
     ],
 
     // ensure that the results of typeof are compared against a valid string
     // https://eslint.org/docs/rules/valid-typeof
-    'valid-typeof': ['error', {requireStringLiterals: true}]
-  }
+    'valid-typeof': ['error', {requireStringLiterals: true}],
+  },
 };

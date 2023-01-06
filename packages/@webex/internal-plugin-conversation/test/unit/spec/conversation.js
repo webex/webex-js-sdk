@@ -8,7 +8,13 @@ import sinon from 'sinon';
 
 import Conversation from '@webex/internal-plugin-conversation';
 
-import {rootActivityManager, getLoopCounterFailsafe, noMoreActivitiesManager, bookendManager, activityManager} from '../../../src/activity-thread-ordering';
+import {
+  rootActivityManager,
+  getLoopCounterFailsafe,
+  noMoreActivitiesManager,
+  bookendManager,
+  activityManager,
+} from '../../../src/activity-thread-ordering';
 import {ACTIVITY_TYPES, getActivityType, OLDER, NEWER} from '../../../src/activities';
 
 describe('plugin-conversation', () => {
@@ -20,8 +26,8 @@ describe('plugin-conversation', () => {
     beforeEach(() => {
       webex = new MockWebex({
         children: {
-          conversation: Conversation
-        }
+          conversation: Conversation,
+        },
       });
 
       webex.internal.services = {};
@@ -53,8 +59,8 @@ describe('plugin-conversation', () => {
     describe('#_inferConversationUrl', () => {
       const testConvo = {test: 'convo'};
 
-      it('Returns given convo if no id', () => webex.internal.conversation._inferConversationUrl(testConvo)
-        .then((convo) => {
+      it('Returns given convo if no id', () =>
+        webex.internal.conversation._inferConversationUrl(testConvo).then((convo) => {
           assert.notCalled(webex.internal.feature.getFeature);
           assert.notCalled(webex.internal.services.get);
           assert.equal(convo.test, 'convo');
@@ -68,22 +74,20 @@ describe('plugin-conversation', () => {
         it('returns unmodified convo if URL is defined', () => {
           testConvo.url = 'http://example.com';
 
-          return webex.internal.conversation._inferConversationUrl(testConvo)
-            .then((convo) => {
-              assert.called(webex.internal.feature.getFeature);
-              assert.notCalled(webex.internal.services.get);
-              assert.equal(convo.url, 'http://example.com');
-            });
+          return webex.internal.conversation._inferConversationUrl(testConvo).then((convo) => {
+            assert.called(webex.internal.feature.getFeature);
+            assert.notCalled(webex.internal.services.get);
+            assert.equal(convo.url, 'http://example.com');
+          });
         });
         it('builds URL if not defined', () => {
           delete testConvo.url;
 
-          return webex.internal.conversation._inferConversationUrl(testConvo)
-            .then((convo) => {
-              assert.called(webex.internal.feature.getFeature);
-              assert.called(webex.internal.services.get);
-              assert.equal(convo.url, `${convoUrl}/conversations/id1`);
-            });
+          return webex.internal.conversation._inferConversationUrl(testConvo).then((convo) => {
+            assert.called(webex.internal.feature.getFeature);
+            assert.called(webex.internal.services.get);
+            assert.equal(convo.url, `${convoUrl}/conversations/id1`);
+          });
         });
       });
       describe('HA is enabled', () => {
@@ -94,22 +98,20 @@ describe('plugin-conversation', () => {
         it('builds URL if already defined', () => {
           testConvo.url = 'https://example.com';
 
-          return webex.internal.conversation._inferConversationUrl(testConvo)
-            .then((convo) => {
-              assert.called(webex.internal.feature.getFeature);
-              assert.called(webex.internal.services.get);
-              assert.equal(convo.url, `${convoUrl}/conversations/id1`);
-            });
+          return webex.internal.conversation._inferConversationUrl(testConvo).then((convo) => {
+            assert.called(webex.internal.feature.getFeature);
+            assert.called(webex.internal.services.get);
+            assert.equal(convo.url, `${convoUrl}/conversations/id1`);
+          });
         });
         it('builds URL if not defined', () => {
           delete testConvo.url;
 
-          return webex.internal.conversation._inferConversationUrl(testConvo)
-            .then((convo) => {
-              assert.called(webex.internal.feature.getFeature);
-              assert.called(webex.internal.services.get);
-              assert.equal(convo.url, `${convoUrl}/conversations/id1`);
-            });
+          return webex.internal.conversation._inferConversationUrl(testConvo).then((convo) => {
+            assert.called(webex.internal.feature.getFeature);
+            assert.called(webex.internal.services.get);
+            assert.equal(convo.url, `${convoUrl}/conversations/id1`);
+          });
         });
       });
     });
@@ -118,9 +120,11 @@ describe('plugin-conversation', () => {
       it('should not return a promise', () => {
         try {
           webex.internal.conversation.getConvoUrl({url: 'convoUrl'}).then();
-        }
-        catch (error) {
-          assert.equal(error.message, 'webex.internal.conversation.getConvoUrl(...).then is not a function');
+        } catch (error) {
+          assert.equal(
+            error.message,
+            'webex.internal.conversation.getConvoUrl(...).then is not a function'
+          );
         }
       });
 
@@ -135,13 +139,17 @@ describe('plugin-conversation', () => {
       it('should convert a "us" cluster to WEBEX_CONVERSATION_DEFAULT_CLUSTER cluster', async () => {
         await webex.internal.conversation.getUrlFromClusterId({cluster: 'us'});
 
-        sinon.assert.calledWith(webex.internal.services.getServiceFromClusterId, {clusterId: process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER});
+        sinon.assert.calledWith(webex.internal.services.getServiceFromClusterId, {
+          clusterId: process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER,
+        });
       });
 
       it('should add the cluster service when missing', async () => {
         await webex.internal.conversation.getUrlFromClusterId({cluster: 'urn:TEAM:us-west-2_r'});
 
-        sinon.assert.calledWith(webex.internal.services.getServiceFromClusterId, {clusterId: 'urn:TEAM:us-west-2_r:identityLookup'});
+        sinon.assert.calledWith(webex.internal.services.getServiceFromClusterId, {
+          clusterId: 'urn:TEAM:us-west-2_r:identityLookup',
+        });
       });
     });
 
@@ -149,8 +157,7 @@ describe('plugin-conversation', () => {
       it('should throw an error if a page is passed with no links', () => {
         try {
           webex.internal.conversation.paginate({page: {}});
-        }
-        catch (error) {
+        } catch (error) {
           assert.equal(error.message, 'No link to follow for the provided page');
         }
       });
@@ -158,32 +165,40 @@ describe('plugin-conversation', () => {
 
     describe('#getReactionSummaryByParentId()', () => {
       beforeEach(() => {
-        webex.request = sinon.stub().returns(Promise.resolve({
-          body: {
-            children: [
-              {type: 'reactionSelfSummary'},
-              {type: 'reactionSelfSummary'},
-              {type: 'reactionSummary'},
-              {type: 'notAReaction'}
-            ]
-          }
-        }));
+        webex.request = sinon.stub().returns(
+          Promise.resolve({
+            body: {
+              children: [
+                {type: 'reactionSelfSummary'},
+                {type: 'reactionSelfSummary'},
+                {type: 'reactionSummary'},
+                {type: 'notAReaction'},
+              ],
+            },
+          })
+        );
       });
 
-      it('should call request', () => webex.internal.conversation.getReactionSummaryByParentId(convoUrl, 'test-id')
-        .then(() => {
+      it('should call request', () =>
+        webex.internal.conversation.getReactionSummaryByParentId(convoUrl, 'test-id').then(() => {
           assert.called(webex.request);
         }));
 
-      it('should not retrieve non reaction summary objects', () => webex.internal.conversation.getReactionSummaryByParentId(convoUrl, 'test-id')
-        .then((result) => {
-          assert.equal(result.length, 3);
-          assert.notInclude(result, {type: 'notAReaction'});
-        }));
+      it('should not retrieve non reaction summary objects', () =>
+        webex.internal.conversation
+          .getReactionSummaryByParentId(convoUrl, 'test-id')
+          .then((result) => {
+            assert.equal(result.length, 3);
+            assert.notInclude(result, {type: 'notAReaction'});
+          }));
     });
 
     describe('#listAllChildActivitiesByParentId()', () => {
-      const options = {conversationUrl: convoUrl, activityParentId: '123-abc', query: {activityType: 'reply'}};
+      const options = {
+        conversationUrl: convoUrl,
+        activityParentId: '123-abc',
+        query: {activityType: 'reply'},
+      };
       let dayCount = 0;
       const createActivityItemBatch = (itemCount) => {
         const counter = [...Array(itemCount).keys()];
@@ -191,54 +206,58 @@ describe('plugin-conversation', () => {
         dayCount += 1;
 
         return counter.map((n) => ({
-          published: new Date(2020, 0, 1, dayCount, n)
+          published: new Date(2020, 0, 1, dayCount, n),
         }));
       };
 
       const createMockChildResponse = (itemsToReturn = 10) => {
         const response = {
           body: {
-            items: createActivityItemBatch(itemsToReturn)
+            items: createActivityItemBatch(itemsToReturn),
           },
           headers: {
-            link: '<https://www.cisco.com>; rel=next'
-          }
+            link: '<https://www.cisco.com>; rel=next',
+          },
         };
 
         return response;
       };
 
       beforeEach(() => {
-        webex.request = sinon.stub()
+        webex.request = sinon
+          .stub()
           .onCall(0)
           .returns(Promise.resolve(createMockChildResponse()))
           .onCall(1)
           .returns(Promise.resolve(createMockChildResponse()))
           .onCall(2)
           .returns(Promise.resolve(createMockChildResponse(3)))
-          .returns(Promise.resolve(Promise.resolve({
-            body: {
-              items: []
-            },
-            headers: {}
-          })));
+          .returns(
+            Promise.resolve(
+              Promise.resolve({
+                body: {
+                  items: [],
+                },
+                headers: {},
+              })
+            )
+          );
       });
-      it('retrieves correct children count', () => webex.internal.conversation.listAllChildActivitiesByParentId(options)
-        .then((res) => {
+      it('retrieves correct children count', () =>
+        webex.internal.conversation.listAllChildActivitiesByParentId(options).then((res) => {
           assert.equal(res.length, 23);
         }));
 
       it('calls #listChildActivitiesByParentId() to initiate the request', () => {
         const spy = sinon.spy(webex.internal.conversation, 'listChildActivitiesByParentId');
 
-        return webex.internal.conversation.listAllChildActivitiesByParentId(options)
-          .then(() => {
-            assert(spy.calledOnce);
-          });
+        return webex.internal.conversation.listAllChildActivitiesByParentId(options).then(() => {
+          assert(spy.calledOnce);
+        });
       });
 
-      it('returns children in ascending published order', () => webex.internal.conversation.listAllChildActivitiesByParentId(options)
-        .then((res) => {
+      it('returns children in ascending published order', () =>
+        webex.internal.conversation.listAllChildActivitiesByParentId(options).then((res) => {
           const firstMessageOlderThanLastMessage = res[0].published < res[res.length - 1].published;
 
           assert.isTrue(firstMessageOlderThanLastMessage, 'activities out of order');
@@ -249,8 +268,7 @@ describe('plugin-conversation', () => {
       it('should throw an error when called without a conversationUrl option', (done) => {
         try {
           webex.internal.conversation.listActivitiesThreadOrdered({});
-        }
-        catch (e) {
+        } catch (e) {
           assert.equal(e.message, 'must provide a conversation URL or conversation ID');
           done();
         }
@@ -259,12 +277,17 @@ describe('plugin-conversation', () => {
       it('calls #_listActivitiesThreadOrdered()', () => {
         const spy = sinon.spy(webex.internal.conversation, '_listActivitiesThreadOrdered');
 
-        webex.internal.conversation.listActivitiesThreadOrdered({conversationUrl: convoUrl, includeChildren: true});
+        webex.internal.conversation.listActivitiesThreadOrdered({
+          conversationUrl: convoUrl,
+          includeChildren: true,
+        });
         sinon.assert.calledWith(spy, {url: convoUrl, includeChildren: true});
       });
 
       it('returns expected wrapped functions', () => {
-        const functions = webex.internal.conversation.listActivitiesThreadOrdered({conversationUrl: convoUrl});
+        const functions = webex.internal.conversation.listActivitiesThreadOrdered({
+          conversationUrl: convoUrl,
+        });
 
         assert.hasAllKeys(functions, ['jumpToActivity', 'getOlder', 'getNewer']);
       });
@@ -275,16 +298,20 @@ describe('plugin-conversation', () => {
         beforeEach(() => {
           webex.internal.conversation._listActivitiesThreadOrdered = sinon.stub().returns({
             next() {
-              return new Promise((resolve) => resolve({
-                value: returnedVal,
-                next() {}
-              }));
-            }
+              return new Promise((resolve) =>
+                resolve({
+                  value: returnedVal,
+                  next() {},
+                })
+              );
+            },
           });
         });
 
         it('getOlder() should implement the iterator protocol', () => {
-          const {getOlder} = webex.internal.conversation.listActivitiesThreadOrdered({conversationUrl: convoUrl});
+          const {getOlder} = webex.internal.conversation.listActivitiesThreadOrdered({
+            conversationUrl: convoUrl,
+          });
 
           return getOlder().then((result) => {
             assert.hasAllKeys(result, ['done', 'value']);
@@ -292,7 +319,9 @@ describe('plugin-conversation', () => {
         });
 
         it('getNewer() should implement the iterator protocol', () => {
-          const {getNewer} = webex.internal.conversation.listActivitiesThreadOrdered({conversationUrl: convoUrl});
+          const {getNewer} = webex.internal.conversation.listActivitiesThreadOrdered({
+            conversationUrl: convoUrl,
+          });
 
           return getNewer().then((result) => {
             assert.hasAllKeys(result, ['done', 'value']);
@@ -301,29 +330,36 @@ describe('plugin-conversation', () => {
 
         describe('jumpToActivity()', () => {
           it('should throw an error if search object is missing', () => {
-            const {jumpToActivity} = webex.internal.conversation.listActivitiesThreadOrdered({conversationUrl: convoUrl});
+            const {jumpToActivity} = webex.internal.conversation.listActivitiesThreadOrdered({
+              conversationUrl: convoUrl,
+            });
 
             try {
               jumpToActivity();
-            }
-            catch (e) {
-              assert.equal(e.message, 'Search must be an activity object from conversation service');
+            } catch (e) {
+              assert.equal(
+                e.message,
+                'Search must be an activity object from conversation service'
+              );
             }
           });
 
           it('should throw an error if activity.target.url is missing', () => {
-            const {jumpToActivity} = webex.internal.conversation.listActivitiesThreadOrdered({conversationUrl: convoUrl});
+            const {jumpToActivity} = webex.internal.conversation.listActivitiesThreadOrdered({
+              conversationUrl: convoUrl,
+            });
 
             try {
               assert.throws(jumpToActivity({target: null}));
-            }
-            catch (e) {
+            } catch (e) {
               //
             }
           });
 
           it('should implement the iterator protocol', () => {
-            const {jumpToActivity} = webex.internal.conversation.listActivitiesThreadOrdered({conversationUrl: convoUrl});
+            const {jumpToActivity} = webex.internal.conversation.listActivitiesThreadOrdered({
+              conversationUrl: convoUrl,
+            });
 
             return jumpToActivity({target: {url: 'newUrl'}}).then((result) => {
               assert.hasAllKeys(result, ['done', 'value']);
@@ -336,8 +372,8 @@ describe('plugin-conversation', () => {
     describe('activity-thread-ordering helpers', () => {
       const createSimpleActivityByType = (type) => ({
         parent: {
-          type
-        }
+          type,
+        },
       });
 
       describe('getActivityType', () => {
@@ -384,8 +420,7 @@ describe('plugin-conversation', () => {
               externalCount += 1;
               incrementLoop();
             }
-          }
-          catch (e) {
+          } catch (e) {
             assert.equal(e.message, 'max fetches reached');
           }
         });
@@ -404,11 +439,15 @@ describe('plugin-conversation', () => {
           checkAndSetNoOlderActs = funcs.checkAndSetNoOlderActs;
         });
 
-
         it('should return expected exposed functions', () => {
           const functions = noMoreActivitiesManager();
 
-          assert.hasAllKeys(functions, ['getNoMoreActs', 'checkAndSetNoMoreActs', 'checkAndSetNoNewerActs', 'checkAndSetNoOlderActs']);
+          assert.hasAllKeys(functions, [
+            'getNoMoreActs',
+            'checkAndSetNoMoreActs',
+            'checkAndSetNoNewerActs',
+            'checkAndSetNoOlderActs',
+          ]);
         });
 
         it('should set no more activities when no newer activities exist', () => {
@@ -465,7 +504,7 @@ describe('plugin-conversation', () => {
         it('should set the oldest and newest activity in a batch', () => {
           const acts = [
             {published: createDateISO(1), order: 0},
-            {published: createDateISO(2), order: 1}
+            {published: createDateISO(2), order: 1},
           ];
 
           setBookends(acts);
@@ -476,14 +515,14 @@ describe('plugin-conversation', () => {
         it('should bookends when newer and older activities exists', () => {
           const acts = [
             {published: createDateISO(5), order: 2},
-            {published: createDateISO(6), order: 3}
+            {published: createDateISO(6), order: 3},
           ];
 
           setBookends(acts);
 
           const nextActs = [
             {published: createDateISO(1), order: 1},
-            {published: createDateISO(9), order: 4}
+            {published: createDateISO(9), order: 4},
           ];
 
           setBookends(nextActs);
@@ -495,14 +534,14 @@ describe('plugin-conversation', () => {
         it('should not update oldest activity when only newer activities exist', () => {
           const acts = [
             {published: createDateISO(1), order: 1},
-            {published: createDateISO(5), order: 2}
+            {published: createDateISO(5), order: 2},
           ];
 
           setBookends(acts);
 
           const nextActs = [
             {published: createDateISO(6), order: 3},
-            {published: createDateISO(9), order: 4}
+            {published: createDateISO(9), order: 4},
           ];
 
           setBookends(nextActs);
@@ -535,8 +574,8 @@ describe('plugin-conversation', () => {
             id: '1',
             activityType: 'reply',
             parent: {
-              id: parentId
-            }
+              id: parentId,
+            },
           };
           const replyHandler = getActivityHandlerByKey(ACTIVITY_TYPES.REPLY);
 
@@ -550,8 +589,8 @@ describe('plugin-conversation', () => {
             id: '2',
             activityType: 'reply',
             parent: {
-              id: parentId
-            }
+              id: parentId,
+            },
           };
 
           replyHandler(secondReplyAct);
@@ -562,8 +601,8 @@ describe('plugin-conversation', () => {
             id: '3',
             activityType: 'reply',
             parent: {
-              id: parentId2
-            }
+              id: parentId2,
+            },
           };
 
           replyHandler(thirdReply);
@@ -580,17 +619,17 @@ describe('plugin-conversation', () => {
             id: 'editId1',
             parent: {
               id: parentId,
-              type: 'edit'
+              type: 'edit',
             },
-            published: new Date(1, 1, 1, 1, 1).toISOString()
+            published: new Date(1, 1, 1, 1, 1).toISOString(),
           };
           const tombstoneEdit = {
             ...editAct,
-            verb: ACTIVITY_TYPES.TOMBSTONE
+            verb: ACTIVITY_TYPES.TOMBSTONE,
           };
           const newerEdit = {
             ...editAct,
-            published: new Date(1, 1, 1, 1, 3).toISOString()
+            published: new Date(1, 1, 1, 1, 3).toISOString(),
           };
 
           editHandler(editAct);
@@ -613,13 +652,13 @@ describe('plugin-conversation', () => {
             published: new Date(1, 1, 1, 1, 1).toISOString(),
             type: 'reactionSummary',
             parent: {
-              id: parentId
-            }
+              id: parentId,
+            },
           };
 
           const newerReaction = {
             ...reaction,
-            published: new Date(1, 1, 1, 1, 3).toISOString()
+            published: new Date(1, 1, 1, 1, 3).toISOString(),
           };
 
           reactionHandler(reaction);
@@ -628,7 +667,10 @@ describe('plugin-conversation', () => {
 
           reactionHandler(newerReaction);
 
-          assert.equal(getActivityByTypeAndParentId(ACTIVITY_TYPES.REACTION, parentId), newerReaction);
+          assert.equal(
+            getActivityByTypeAndParentId(ACTIVITY_TYPES.REACTION, parentId),
+            newerReaction
+          );
         });
       });
     });
@@ -636,16 +678,16 @@ describe('plugin-conversation', () => {
     describe('#_createParsedServerActivity()', () => {
       const activities = {
         root1: {
-          id: 'root1'
+          id: 'root1',
         },
         reply1: {
           id: 'reply1',
           activityType: 'reply',
           parent: {
             id: 1,
-            type: 'reply'
-          }
-        }
+            type: 'reply',
+          },
+        },
       };
 
       it('should add editParent field to valid edit activity', () => {
@@ -653,11 +695,14 @@ describe('plugin-conversation', () => {
           id: 'edit1',
           parent: {
             id: 'root1',
-            type: 'edit'
-          }
+            type: 'edit',
+          },
         };
 
-        const parsedActivity = webex.internal.conversation._createParsedServerActivity(activity, activities);
+        const parsedActivity = webex.internal.conversation._createParsedServerActivity(
+          activity,
+          activities
+        );
 
         assert.containsAllKeys(parsedActivity, ['editParent']);
       });
@@ -668,11 +713,14 @@ describe('plugin-conversation', () => {
           activityType: 'reply',
           parent: {
             id: 'root1',
-            type: 'reply'
-          }
+            type: 'reply',
+          },
         };
 
-        const parsedActivity = webex.internal.conversation._createParsedServerActivity(activity, activities);
+        const parsedActivity = webex.internal.conversation._createParsedServerActivity(
+          activity,
+          activities
+        );
 
         assert.containsAllKeys(parsedActivity, ['replyParent']);
       });
@@ -682,11 +730,14 @@ describe('plugin-conversation', () => {
           id: 'replyEdit1',
           parent: {
             id: 'reply1',
-            type: 'edit'
-          }
+            type: 'edit',
+          },
         };
 
-        const parsedActivity = webex.internal.conversation._createParsedServerActivity(activity, activities);
+        const parsedActivity = webex.internal.conversation._createParsedServerActivity(
+          activity,
+          activities
+        );
 
         assert.containsAllKeys(parsedActivity, ['replyParent', 'editParent']);
       });
@@ -695,14 +746,15 @@ describe('plugin-conversation', () => {
         const activity = {
           id: 'throwAct1',
           parent: {
-            id: 'root2'
-          }
+            id: 'root2',
+          },
         };
 
         try {
-          assert.throws(webex.internal.conversation._createParsedServerActivity(activity, activities));
-        }
-        catch (e) {
+          assert.throws(
+            webex.internal.conversation._createParsedServerActivity(activity, activities)
+          );
+        } catch (e) {
           // swallow error
         }
       });
@@ -717,50 +769,59 @@ describe('plugin-conversation', () => {
       it('should reject if provided param is not an object', () => {
         const request = webex.internal.conversation.delete(testConvo, 'hello');
 
-        return request.then(() => {
-          assert.equal(true, false, 'should have rejected');
-        })
+        return request
+          .then(() => {
+            assert.equal(true, false, 'should have rejected');
+          })
           .catch(() => {
             assert.equal(true, true, 'object is not type object, rejects as expected');
           });
       });
       it('deletes a non-meeting container activity', () => {
-        webex.internal.conversation.prepare = sinon.stub().callsFake((activity, request) => Promise.resolve({activity, request}));
+        webex.internal.conversation.prepare = sinon
+          .stub()
+          .callsFake((activity, request) => Promise.resolve({activity, request}));
         webex.internal.conversation.submit = sinon.stub().callsFake((p) => Promise.resolve(p));
 
         // fix this to look like below
-        const request = webex.internal.conversation.delete(testConvo, {
-          id: 'activity-id-1',
-          url: 'https://example.com/activity1',
-          object: {objectType: 'activity'}
-        },
-        {
-          object:
-          {objectType: 'activity'}
-        });
+        const request = webex.internal.conversation.delete(
+          testConvo,
+          {
+            id: 'activity-id-1',
+            url: 'https://example.com/activity1',
+            object: {objectType: 'activity'},
+          },
+          {
+            object: {objectType: 'activity'},
+          }
+        );
 
         return request.then(({request}) => {
           assert.isUndefined(request.kmsMessage);
         });
       });
       it('deletes a meeting container activity', () => {
-        webex.internal.conversation.prepare = sinon.stub().callsFake((activity, request) => Promise.resolve({activity, request}));
+        webex.internal.conversation.prepare = sinon
+          .stub()
+          .callsFake((activity, request) => Promise.resolve({activity, request}));
         webex.internal.conversation.submit = sinon.stub().callsFake((p) => Promise.resolve(p));
 
-        const request = webex.internal.conversation.delete(testConvo, {
-          id: 'activity-id-2',
-          url: 'https://example.com/activity2',
-          object: {
-            kmsResourceObjectUrl: 'kms://example',
-            objectType: 'meetingContainer'
+        const request = webex.internal.conversation.delete(
+          testConvo,
+          {
+            id: 'activity-id-2',
+            url: 'https://example.com/activity2',
+            object: {
+              kmsResourceObjectUrl: 'kms://example',
+              objectType: 'meetingContainer',
+            },
+          },
+          {
+            object: {
+              objectType: 'meetingContainer',
+            },
           }
-        },
-        {
-          object: {
-            objectType: 'meetingContainer'
-          }
-        });
-
+        );
 
         return request.then(({request}) => {
           assert.equal(request.kmsMessage.method, 'delete');

@@ -8,29 +8,29 @@ const SCOPE = [
   'spark:memberships_read',
   'spark:memberships_write',
   'spark:messages_read',
-  'spark:messages_write'
+  'spark:messages_write',
 ].join(' ');
 
 const Config = {
-  version: (() => process.env.BUILD_VERSION || -1),
-  appType: (() => {
+  version: () => process.env.BUILD_VERSION || -1,
+  appType: () => {
     const type = 'Web';
 
     return type;
-  }),
+  },
   clientId: process.env.WEBEX_CLIENT_ID,
-  clientSecret: process.env.WEBEX_CLIENT_SECRET
+  clientSecret: process.env.WEBEX_CLIENT_SECRET,
 };
 
 Config.allowedOutboundTags = {
-  'webex-mention': ['data-object-type', 'data-object-id', 'data-group-type', 'data-object-url']
+  'webex-mention': ['data-object-type', 'data-object-id', 'data-group-type', 'data-object-url'],
 };
 
 Config.webex = {
   maxReconnectAttempts: 5,
   conversation: {
     allowedInboundTags: Config.allowedInboundTags,
-    allowedOutboundTags: Config.allowedOutboundTags
+    allowedOutboundTags: Config.allowedOutboundTags,
   },
   credentials: {
     clientType: 'confidential',
@@ -39,39 +39,39 @@ Config.webex = {
       client_id: Config.clientId,
       client_secret: Config.clientSecret,
       redirect_uri: process.env.LAUNCH_URL,
-      scope: SCOPE
-    }
+      scope: SCOPE,
+    },
   },
   encryption: {
-    decryptionFailureMessage: 'This message cannot be decrypted'
+    decryptionFailureMessage: 'This message cannot be decrypted',
   },
   logger: {
-    level: process.env.NODE_ENV === 'test' ? 'error' : 'error'
+    level: process.env.NODE_ENV === 'test' ? 'error' : 'error',
   },
   meetings: {
     metrics: {
-      autoSendMQA: true
+      autoSendMQA: true,
     },
     autoUploadLogs: false,
     reconnection: {
-      enabled: true
+      enabled: true,
     },
-    enableRtx: true
+    enableRtx: true,
   },
   people: {
-    showAllTypes: true
+    showAllTypes: true,
   },
   metrics: {
     appVersion: Config.version,
-    appType: Config.appType
+    appType: Config.appType,
   },
   support: {
     appVersion: Config.version,
     appType: Config.appType,
-    languageCode: 'en'
+    languageCode: 'en',
   },
   trackingIdPrefix: 'ITCLIENT',
-  trackingIdSuffix: 'imu:false_imi:true'
+  trackingIdSuffix: 'imu:false_imi:true',
 };
 
 module.exports = Config;

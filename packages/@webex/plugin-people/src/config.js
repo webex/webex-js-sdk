@@ -12,6 +12,6 @@ export default {
      * even if the type is not "person" (e.g.: SX10, webhook_integration, etc.)
      * @private
      */
-    showAllTypes: false
-  }
+    showAllTypes: false,
+  },
 };

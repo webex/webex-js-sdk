@@ -1,4 +1,3 @@
-
 // Metrics constants ----------------------------------------------------------
 
 const BEHAVIORAL_METRICS = {
@@ -58,6 +57,5 @@ const BEHAVIORAL_METRICS = {
   MOVE_FROM_FAILURE: 'js_sdk_move_from_failure',
   TURN_DISCOVERY_FAILURE: 'js_sdk_turn_discovery_failure',
 };
-
 
 export {BEHAVIORAL_METRICS as default};

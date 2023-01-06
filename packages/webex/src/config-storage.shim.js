@@ -7,5 +7,5 @@ import LocalStorageStoreAdapter from '@webex/storage-adapter-local-storage';
 
 export default {
   boundedAdapter: new LocalStorageStoreAdapter('webex'),
-  unboundedAdapter: MemoryStoreAdapter
+  unboundedAdapter: MemoryStoreAdapter,
 };

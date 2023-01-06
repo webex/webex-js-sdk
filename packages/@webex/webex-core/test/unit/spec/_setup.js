@@ -8,23 +8,31 @@ import {registerInternalPlugin, registerPlugin, WebexPlugin} from '@webex/webex-
 // plugins are always register to do nothing
 
 beforeEach(() => {
-  registerPlugin('test', WebexPlugin.extend({
-    namespace: 'test',
-    session: {
-      ready: {
-        default: true,
-        type: 'boolean'
-      }
-    }
-  }), {replace: true});
+  registerPlugin(
+    'test',
+    WebexPlugin.extend({
+      namespace: 'test',
+      session: {
+        ready: {
+          default: true,
+          type: 'boolean',
+        },
+      },
+    }),
+    {replace: true}
+  );
 
-  registerInternalPlugin('test', WebexPlugin.extend({
-    namespace: 'test',
-    session: {
-      ready: {
-        default: true,
-        type: 'boolean'
-      }
-    }
-  }), {replace: true});
+  registerInternalPlugin(
+    'test',
+    WebexPlugin.extend({
+      namespace: 'test',
+      session: {
+        ready: {
+          default: true,
+          type: 'boolean',
+        },
+      },
+    }),
+    {replace: true}
+  );
 });

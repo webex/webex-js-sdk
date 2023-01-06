@@ -66,6 +66,6 @@ module.exports = function (chai) {
     hydraId: 'isHydraID',
     uuid: 'isUUID',
     email: 'isEmail',
-    isoDate: 'isISODate'
+    isoDate: 'isISODate',
   });
 };

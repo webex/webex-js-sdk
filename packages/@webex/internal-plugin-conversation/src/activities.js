@@ -14,7 +14,7 @@ export const ACTIVITY_TYPES = {
   CREATE: 'CREATE',
   TOMBSTONE: 'TOMBSTONE',
   DELETE: 'DELETE',
-  REPLY_EDIT: 'REPLY_EDIT'
+  REPLY_EDIT: 'REPLY_EDIT',
 };
 
 const REPLY = 'reply';
@@ -59,9 +59,11 @@ export const getPublishedDate = (activity = {}) => new Date(activity.published).
  * @param {Object} activity2
  * @returns {boolean} true if first activity is newer than second
  */
-export const isNewer = (activity1, activity2) => getPublishedDate(activity1) > getPublishedDate(activity2);
+export const isNewer = (activity1, activity2) =>
+  getPublishedDate(activity1) > getPublishedDate(activity2);
 
-export const sortActivitiesByPublishedDate = (activities) => sortBy(activities, (activity) => getPublishedDate(activity));
+export const sortActivitiesByPublishedDate = (activities) =>
+  sortBy(activities, (activity) => getPublishedDate(activity));
 
 export const getParentId = (activity) => activity?.parent?.id;
 
@@ -83,7 +85,8 @@ export const sanitizeActivity = (activity) => {
   return final;
 };
 
-export const getIsActivityOrphaned = (activity, activities) => activity.parent && activity.parent.id && !activities[activity.parent.id];
+export const getIsActivityOrphaned = (activity, activities) =>
+  activity.parent && activity.parent.id && !activities[activity.parent.id];
 
 const getIsReplyEditActivity = (activity, activities) => {
   const parentId = activity.parent.id;
@@ -111,7 +114,7 @@ export const createRootActivity = (activity) => activity;
 export const createReplyActivity = (activity) => {
   const replyAct = {
     ...activity,
-    replyParent: activity.parent
+    replyParent: activity.parent,
   };
 
   return replyAct;
@@ -128,7 +131,7 @@ export const createEditActivity = (editActivity, activities) => {
     parent: editActParentObj,
     editParent: editActParentObj,
     object: editActivity.object,
-    published: editActivity.published
+    published: editActivity.published,
   };
 
   return joinedEditAct;
@@ -147,7 +150,7 @@ export const createReplyEditActivity = (editActivity, activities) => {
     editParent: editActParentObj,
     replyParent: parentReplyAct.parent,
     object: editActivity.object,
-    published: editActivity.published
+    published: editActivity.published,
   };
 
   return joinedReplyEditActivity;

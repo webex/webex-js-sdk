@@ -14,9 +14,7 @@ describe('common', () => {
           static defaultMessage = 'no parser';
         }
 
-        class DerivedNoParserException extends NoParserException {
-
-        }
+        class DerivedNoParserException extends NoParserException {}
 
         class StaticBadParserException extends DerivedNoParserException {
           static parse() {

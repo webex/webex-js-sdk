@@ -63,5 +63,5 @@ export default {
   toBase64Url,
   encode,
   decode,
-  validate
+  validate,
 };

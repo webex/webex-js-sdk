@@ -8,9 +8,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import Device from '@webex/internal-plugin-device';
 import Mercury from '@webex/internal-plugin-mercury';
 import Meetings from '@webex/plugin-meetings/src/meetings';
-import {
-  _LOCUS_ID_
-} from '@webex/plugin-meetings/src/constants';
+import {_LOCUS_ID_} from '@webex/plugin-meetings/src/constants';
 
 import MeetingInfoRequest from '../../../../src/meeting-info/request';
 
@@ -24,22 +22,22 @@ describe('plugin-meetings', () => {
         children: {
           device: Device,
           mercury: Mercury,
-          meetings: Meetings
-        }
+          meetings: Meetings,
+        },
       });
 
       Object.assign(webex.internal, {
         device: {
           deviceType: 'FAKE_DEVICE',
           register: sinon.stub().returns(Promise.resolve()),
-          unregister: sinon.stub().returns(Promise.resolve())
+          unregister: sinon.stub().returns(Promise.resolve()),
         },
         mercury: {
           connect: sinon.stub().returns(Promise.resolve()),
           disconnect: sinon.stub().returns(Promise.resolve()),
           on: () => {},
-          off: () => {}
-        }
+          off: () => {},
+        },
       });
 
       meetingInfoRequest = new MeetingInfoRequest(webex);
@@ -56,7 +54,7 @@ describe('plugin-meetings', () => {
       it('Should call request with valid parameter', () => {
         meetingInfoRequest.fetchMeetingInfo({
           type: _LOCUS_ID_,
-          destination: 'locus_url'
+          destination: 'locus_url',
         });
 
         assert.calledWith(webex.request, {method: 'PUT', uri: 'locus_url/meetingInfo'});

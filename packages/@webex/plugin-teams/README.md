@@ -29,15 +29,12 @@ npm install --save @webex/plugin-teams
 ## Usage
 
 ```js
-
 const Webex = require('webex');
 
 const webex = Webex.init();
-webex.teams.get(id)
-  .then((team) => {
-    console.log(team);
-  })
-
+webex.teams.get(id).then((team) => {
+  console.log(team);
+});
 ```
 
 ## Maintainers

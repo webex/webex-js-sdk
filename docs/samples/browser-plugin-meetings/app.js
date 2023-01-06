@@ -46,20 +46,18 @@ const currentMeetingInfoStatus = document.getElementById('current-meeting-info-s
 // Store and Grab `access-token` from localstorage
 if (localStorage.getItem('date') > new Date().getTime()) {
   tokenElm.value = localStorage.getItem('access-token');
-}
-else {
+} else {
   localStorage.removeItem('access-token');
 }
 
 tokenElm.addEventListener('change', (event) => {
   localStorage.setItem('access-token', event.target.value);
-  localStorage.setItem('date', new Date().getTime() + (12 * 60 * 60 * 1000));
+  localStorage.setItem('date', new Date().getTime() + 12 * 60 * 60 * 1000);
 });
 
 if (isSafari || isiOS) {
   document.getElementById('sendShareToggle').disabled = true;
 }
-
 
 const fedRampInput = document.querySelector('#enable-fedramp');
 
@@ -87,19 +85,19 @@ function generateWebexConfig({credentials}) {
     appPlatform: 'testClient',
     fedramp: fedRampInput.checked,
     logger: {
-      level: 'debug'
+      level: 'debug',
     },
     ...(integrationEnv.checked && {
       services: {
         discovery: {
           u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
-          hydra: 'https://apialpha.ciscospark.com/v1/'
-        }
-      }
+          hydra: 'https://apialpha.ciscospark.com/v1/',
+        },
+      },
     }),
     meetings: {
       reconnection: {
-        enabled: true
+        enabled: true,
       },
       enableRtx: true,
       experimental: {
@@ -107,7 +105,7 @@ function generateWebexConfig({credentials}) {
         enableUnifiedMeetings: true,
         enableAdhocMeetings: true,
         enableTurnDiscovery: turnDiscoveryCheckbox.checked,
-      }
+      },
     },
     credentials,
     // Any other sdk config we need
@@ -126,9 +124,9 @@ function initOauth() {
       credentials: {
         client_id: 'C7c3f1143a552d88d40b2afff87600c366c830850231597fb6c1c1e28a5110a4f',
         redirect_uri: redirectUri,
-        scope: 'spark:all spark:kms'
-      }
-    })
+        scope: 'spark:all spark:kms',
+      },
+    }),
   });
 
   webex.once('ready', () => {
@@ -156,15 +154,17 @@ function initWebex(e) {
   webex = window.webex = Webex.init({
     config: generateWebexConfig({}),
     credentials: {
-      access_token: tokenElm.value
-    }
+      access_token: tokenElm.value,
+    },
   });
 
   webex.once('ready', () => {
     console.log('Authentication#initWebex() :: Webex Ready');
     registerElm.disabled = false;
     authStatusElm.innerText = 'Saved access token!';
-    currentMeetingInfoStatus.innerText = webex.meetings.config.experimental.enableUnifiedMeetings ? 'V2' : 'V1';
+    currentMeetingInfoStatus.innerText = webex.meetings.config.experimental.enableUnifiedMeetings
+      ? 'V2'
+      : 'V1';
     registerElm.classList.add('btn--green');
   });
 
@@ -172,14 +172,14 @@ function initWebex(e) {
 }
 credentialsFormElm.addEventListener('submit', initWebex);
 
-
 function register() {
   console.log('Authentication#register()');
   registerElm.disabled = true;
   unregisterElm.disabled = true;
   registrationStatusElm.innerText = 'Registering...';
 
-  webex.meetings.register()
+  webex.meetings
+    .register()
     .then(() => {
       console.log('Authentication#register() :: successfully registered');
       toggleUnifiedMeetings.removeAttribute('disabled');
@@ -192,9 +192,7 @@ function register() {
       registerElm.disabled = false;
     })
     .finally(() => {
-      registrationStatusElm.innerText = webex.meetings.registered ?
-        'Registered' :
-        'Not Registered';
+      registrationStatusElm.innerText = webex.meetings.registered ? 'Registered' : 'Not Registered';
     });
 
   webex.meetings.on('meeting:added', (m) => {
@@ -215,7 +213,8 @@ function unregister() {
   unregisterElm.disabled = true;
   registrationStatusElm.innerText = 'Unregistering...';
 
-  webex.meetings.unregister()
+  webex.meetings
+    .unregister()
     .then(() => {
       console.log('Authentication#register() :: successfully unregistered');
       registerElm.disabled = false;
@@ -225,9 +224,7 @@ function unregister() {
       unregisterElm.disabled = false;
     })
     .finally(() => {
-      registrationStatusElm.innerText = webex.meetings.regisered ?
-        'Registered' :
-        'Not Registered';
+      registrationStatusElm.innerText = webex.meetings.regisered ? 'Registered' : 'Not Registered';
     });
 }
 
@@ -287,31 +284,29 @@ function refreshMeetings() {
   console.log('MeetingsManagement#refreshMeetings', meetings);
   meetingsListElm.innerHTML = '';
 
-  Object.keys(meetings).forEach(
-    (key) => {
-      meetingsListElm.appendChild(
-        generateMeetingsListItem(meetings[key])
-      );
-    }
-  );
+  Object.keys(meetings).forEach((key) => {
+    meetingsListElm.appendChild(generateMeetingsListItem(meetings[key]));
+  });
 
   if (meetingsListElm.childElementCount > 0) {
     meetingsListMsgElm.hidden = true;
-  }
-  else {
+  } else {
     meetingsListMsgElm.hidden = false;
   }
 }
 
-
 function collectMeetings() {
   console.log('MeetingsManagement#collectMeetings()');
 
-  webex.meetings.syncMeetings()
-    .then(() => new Promise((resolve) => {
-      generalStartReceivingTranscription.disabled = false; // eslint-disable-line no-use-before-define
-      setTimeout(() => resolve(), 200);
-    }))
+  webex.meetings
+    .syncMeetings()
+    .then(
+      () =>
+        new Promise((resolve) => {
+          generalStartReceivingTranscription.disabled = false; // eslint-disable-line no-use-before-define
+          setTimeout(() => resolve(), 200);
+        })
+    )
     .then(() => {
       console.log('MeetingsManagement#collectMeetings() :: successfully collected meetings');
       refreshMeetings();
@@ -321,8 +316,7 @@ function collectMeetings() {
 createMeetingSelectElm.addEventListener('change', (event) => {
   if (event.target.value === 'CONVERSATION_URL') {
     createMeetingActionElm.innerText = 'Create Adhoc Meeting';
-  }
-  else {
+  } else {
     createMeetingActionElm.innerText = 'Create Meeting';
   }
 });
@@ -338,12 +332,11 @@ function createMeeting(e) {
 
   console.log('MeetingsManagement#createMeeting', value);
 
-  webex.meetings.create(value, type)
-    .then((meeting) => {
-      createMeetingDestinationElm.value = '';
-      generalStartReceivingTranscription.disabled = false; // eslint-disable-line no-use-before-define
-      refreshMeetings();
-    });
+  webex.meetings.create(value, type).then((meeting) => {
+    createMeetingDestinationElm.value = '';
+    generalStartReceivingTranscription.disabled = false; // eslint-disable-line no-use-before-define
+    refreshMeetings();
+  });
 
   return false;
 }
@@ -351,7 +344,8 @@ function createMeeting(e) {
 function refreshCaptcha() {
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
 
-  meeting.refreshCaptcha()
+  meeting
+    .refreshCaptcha()
     .then(() => {
       console.log('MeetingsManagement#refreshCaptcha() :: successfully refreshed captcha');
       meetingsJoinCaptchaImgElm.src = meeting.requiredCaptcha.verificationImageURL;
@@ -362,7 +356,7 @@ function refreshCaptcha() {
     })
     .catch((error) => {
       console.error('MeetingsManagement#refreshCaptcha() :: error refreshing captcha', error);
-      throw (error);
+      throw error;
     });
 }
 
@@ -375,14 +369,12 @@ meetingsListElm.onclick = (e) => {
     verifyPasswordElm.disabled = false;
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
-  }
-  else if (meeting && meeting.passwordStatus === 'UNKNOWN') {
+  } else if (meeting && meeting.passwordStatus === 'UNKNOWN') {
     meetingsJoinPinElm.disabled = true;
     verifyPasswordElm.disabled = true;
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
-  }
-  else {
+  } else {
     meetingsJoinPinElm.disabled = true;
     verifyPasswordElm.disabled = true;
     document.getElementById('btn-join').disabled = false;
@@ -399,7 +391,7 @@ function verifyPassword() {
 
   const joinOptions = {
     pin: meetingsJoinPinElm.value,
-    captcha: meetingsJoinCaptchaElm.value
+    captcha: meetingsJoinCaptchaElm.value,
   };
 
   if (meeting && meeting.passwordStatus === 'REQUIRED') {
@@ -413,23 +405,21 @@ function verifyPassword() {
           verifyPasswordElm.disabled = true;
           document.getElementById('btn-join').disabled = false;
           document.getElementById('btn-join-media').disabled = false;
-        }
-        else if (res.requiredCaptcha) {
+        } else if (res.requiredCaptcha) {
           passwordCaptchaStatusElm.innerText = 'Password & Captcha is required';
           passwordCaptchaStatusElm.style.backgroundColor = '#fa6e6e';
           meetingsJoinCaptchaImgElm.src = res.requiredCaptcha.verificationImageURL;
           meetingsJoinCaptchaImgElm.hidden = false;
           meetingsJoinCaptchaElm.type = 'text';
           refreshCaptchaElm.hidden = false;
-        }
-        else {
+        } else {
           passwordCaptchaStatusElm.innerText = 'Password is required';
           passwordCaptchaStatusElm.style.backgroundColor = '#fa6e6e';
         }
       })
       .catch((err) => {
         console.log('error', err);
-        throw (err);
+        throw err;
       });
   }
 }
@@ -443,9 +433,9 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
   }
 
   if (withDevice) {
-    resourceId = webex.devicemanager._pairedDevice ?
-      webex.devicemanager._pairedDevice.identity.id :
-      undefined;
+    resourceId = webex.devicemanager._pairedDevice
+      ? webex.devicemanager._pairedDevice.identity.id
+      : undefined;
 
     clearMediaDeviceList();
     getMediaDevices();
@@ -462,13 +452,15 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
     moderator: meetingsJoinModeratorElm.checked,
     moveToResource: false,
     resourceId,
-    receiveTranscription: receiveTranscriptionOption
+    receiveTranscription: receiveTranscriptionOption,
   };
 
   const joinMeetingNow = () => {
-    meeting.join(joinOptions)
-    .then(() => { // eslint-disable-line
-      // For meeting controls button onclick handlers
+    meeting
+      .join(joinOptions)
+      .then(() => {
+        // eslint-disable-line
+        // For meeting controls button onclick handlers
         window.meeting = meeting;
 
         updateMeetingInfoSection(meeting);
@@ -513,24 +505,23 @@ function leaveMeeting(meetingId) {
     throw new Error(`meeting ${meetingId} is invalid or no longer exists`);
   }
 
-  meeting.leave()
-    .then(() => {
-      meetingsLeaveElm.classList.remove('btn--red');
-      toggleDisplay('meeting-info-section', false);
-      clearAllMultistreamVideoElements();
-      // eslint-disable-next-line no-use-before-define
-      cleanUpMedia(htmlMediaElements);
-      emptyParticipants();
-      meetingsJoinCaptchaImgElm.hidden = true;
-      meetingsJoinCaptchaElm.type = 'hidden';
-      refreshCaptchaElm.hidden = true;
-      passwordCaptchaStatusElm.innerText = 'Click verifyPassword for details';
-      passwordCaptchaStatusElm.style.backgroundColor = 'white';
-      meetingsJoinPinElm.value = '';
-      meetingsJoinCaptchaElm.value = '';
-      meetingsJoinMultistreamElm.disabled = false;
-      enableMultistreamControls(false);
-    });
+  meeting.leave().then(() => {
+    meetingsLeaveElm.classList.remove('btn--red');
+    toggleDisplay('meeting-info-section', false);
+    clearAllMultistreamVideoElements();
+    // eslint-disable-next-line no-use-before-define
+    cleanUpMedia(htmlMediaElements);
+    emptyParticipants();
+    meetingsJoinCaptchaImgElm.hidden = true;
+    meetingsJoinCaptchaElm.type = 'hidden';
+    refreshCaptchaElm.hidden = true;
+    passwordCaptchaStatusElm.innerText = 'Click verifyPassword for details';
+    passwordCaptchaStatusElm.style.backgroundColor = 'white';
+    meetingsJoinPinElm.value = '';
+    meetingsJoinCaptchaElm.value = '';
+    meetingsJoinMultistreamElm.disabled = false;
+    enableMultistreamControls(false);
+  });
 }
 
 function updatePublishedEvents(event) {
@@ -562,7 +553,7 @@ function toggleMeetingInfo() {
   const changeState = !webex.meetings.config.experimental.enableUnifiedMeetings;
 
   webex.meetings._toggleUnifiedMeetings(changeState);
-  currentMeetingInfoStatus.innerText = (changeState === true) ? 'V2' : 'V1';
+  currentMeetingInfoStatus.innerText = changeState === true ? 'V2' : 'V1';
 }
 // Listen for submit on create meeting
 createMeetingForm.addEventListener('submit', createMeeting);
@@ -571,7 +562,9 @@ function updateMeetingInfoSection(meeting) {
   const titleElm = document.getElementById('meeting-info-title');
   const subtitleElm = document.getElementById('meeting-info-subtitle');
 
-  titleElm.innerText = meeting.destination.info ? meeting.destination?.info?.webExMeetingName : meeting.destination;
+  titleElm.innerText = meeting.destination.info
+    ? meeting.destination?.info?.webExMeetingName
+    : meeting.destination;
   subtitleElm.innerText = `${meeting.sipUri} (${meeting.id})`;
 
   meetingsLeaveElm.onclick = () => leaveMeeting(getCurrentMeeting().id);
@@ -590,8 +583,12 @@ const generalControlsMeetingsList = document.querySelector('#gc-meetings-list');
 const generalControlsRecStatus = document.querySelector('#gc-recording-status');
 const generalControlsDtmfTones = document.querySelector('#gc-dtmf-tones');
 const generalControlsDtmfStatus = document.querySelector('#gc-dtmf-status');
-const generalStartReceivingTranscription = document.querySelector('#gc-start-receiving-transcription');
-const generalStopReceivingTranscription = document.querySelector('#gc-stop-receiving-transcription');
+const generalStartReceivingTranscription = document.querySelector(
+  '#gc-start-receiving-transcription'
+);
+const generalStopReceivingTranscription = document.querySelector(
+  '#gc-stop-receiving-transcription'
+);
 const generalTranscriptionContent = document.querySelector('#gc-transcription-content');
 
 const sourceDevicesGetMedia = document.querySelector('#sd-get-media-devices');
@@ -616,7 +613,6 @@ const localResolutionInp = document.getElementById('local-resolution');
 const remoteResolutionInp = document.getElementById('remote-resolution');
 const localVideoResElm = document.getElementById('local-video-resolution');
 const remoteVideoResElm = document.getElementById('remote-video-resolution');
-
 
 const toggleSourcesMediaDirection = document.querySelectorAll('[name=ts-media-direction]');
 const toggleSourcesQualityStatus = document.querySelector('#ts-sending-quality-status');
@@ -646,8 +642,7 @@ function updateMultistreamUI() {
     document.getElementById('remote-transcoded-screenshare-wrapper').classList.add('hidden');
 
     document.getElementById('multistream-remote-streams').classList.remove('hidden');
-  }
-  else {
+  } else {
     document.getElementById('remote-transcoded-video-wrapper').classList.remove('hidden');
     document.getElementById('remote-transcoded-screenshare-wrapper').classList.remove('hidden');
 
@@ -666,13 +661,14 @@ function getMediaSettings() {
       // causes Safari to loose track of it's user gesture event due to getUserMedia & getDisplayMedia being called at the same time (through our internal setup)
       // It is recommended to join a meeting with A/V streams first and then call `meeting.shareScreen()` after joining the meeting successfully (on all browsers)
       settings[options.value] = false;
-      console.warn('MeetingControsl#getMediaSettings() :: Please call `meeting.shareScreen()` after joining the meeting');
+      console.warn(
+        'MeetingControsl#getMediaSettings() :: Please call `meeting.shareScreen()` after joining the meeting'
+      );
     }
   });
 
   return settings;
 }
-
 
 const htmlMediaElements = [
   meetingStreamsLocalVideo,
@@ -680,9 +676,8 @@ const htmlMediaElements = [
   meetingStreamsLocalShare,
   meetingStreamsRemoteVideo,
   meetingStreamsRemoteShare,
-  meetingStreamsRemoteAudio
+  meetingStreamsRemoteAudio,
 ];
-
 
 function cleanUpMedia(mediaElements) {
   mediaElements.forEach((elem) => {
@@ -723,7 +718,8 @@ function lockMeeting() {
   console.log('MeetingControls#lockMeeting()');
   if (meeting) {
     generalControlsLockStatus.innerText = 'Locking meeting...';
-    meeting.lockMeeting()
+    meeting
+      .lockMeeting()
       .then(() => {
         generalControlsLockStatus.innerText = 'Meeting locked!';
         console.log('MeetingControls#lockMeeting() :: successfully locked meeting');
@@ -733,8 +729,7 @@ function lockMeeting() {
         console.log('MeetingControls#lockMeeting() :: unable to lock meeting');
         console.error(error);
       });
-  }
-  else {
+  } else {
     console.log('MeetingControls#lockMeeting() :: no valid meeting object!');
   }
 }
@@ -745,7 +740,8 @@ function unlockMeeting() {
   if (meeting) {
     console.log('MeetingControls#unlockMeeting()');
     generalControlsLockStatus.innerText = 'Unlocking meeting...';
-    meeting.unlockMeeting()
+    meeting
+      .unlockMeeting()
       .then(() => {
         generalControlsLockStatus.innerText = 'Meeting unlocked!';
         console.log('MeetingControls#unlockMeeting() :: successfully unlocked meeting');
@@ -755,8 +751,7 @@ function unlockMeeting() {
         console.log('MeetingControls#unlockMeeting() :: unable to unlock meeting.');
         console.error(error);
       });
-  }
-  else {
+  } else {
     console.log('MeetingControls#unlockMeeting() :: no valid meeting object!');
   }
 }
@@ -767,7 +762,8 @@ function startRecording() {
   if (meeting) {
     console.log('MeetingControls#startRecording()');
     generalControlsRecStatus.innerText = 'Recording meeting...';
-    meeting.startRecording()
+    meeting
+      .startRecording()
       .then(() => {
         generalControlsRecStatus.innerText = 'Meeting is being recorded!';
         console.log('MeetingControls#startRecording() :: meeting recording started!');
@@ -777,8 +773,7 @@ function startRecording() {
         console.log('MeetingControls#startRecording() :: unable to record meeting.');
         console.error(error);
       });
-  }
-  else {
+  } else {
     console.log('MeetingControls#startRecording() :: no valid meeting object!');
   }
 }
@@ -805,11 +800,12 @@ function startReceivingTranscription() {
     });
 
     meeting.on('meeting:receiveTranscription:stopped', () => {
-      generalStartReceivingTranscription.innerHTML = 'start receiving transcription (click me before joining)';
-      generalTranscriptionContent.innerHTML = 'Transcription Content: Webex Assistant must be enabled, check the console!';
+      generalStartReceivingTranscription.innerHTML =
+        'start receiving transcription (click me before joining)';
+      generalTranscriptionContent.innerHTML =
+        'Transcription Content: Webex Assistant must be enabled, check the console!';
     });
-  }
-  else {
+  } else {
     console.log('MeetingControls#startRecording() :: no valid meeting object!');
   }
 }
@@ -820,7 +816,8 @@ function pauseRecording() {
   if (meeting) {
     console.log('MeetingControls#pauseRecording()');
     generalControlsRecStatus.innerText = 'Pause recording...';
-    meeting.pauseRecording()
+    meeting
+      .pauseRecording()
       .then(() => {
         generalControlsRecStatus.innerText = 'Recording is paused!';
         console.log('MeetingControls#pauseRecording() :: meeting recording paused!');
@@ -830,8 +827,7 @@ function pauseRecording() {
         console.log('MeetingControls#pauseRecording() :: unable to pause recording.');
         console.error(error);
       });
-  }
-  else {
+  } else {
     console.log('MeetingControls#pauseRecording() :: no valid meeting object!');
   }
 }
@@ -842,7 +838,8 @@ function resumeRecording() {
   if (meeting) {
     console.log('MeetingControls#resumeRecording()');
     generalControlsRecStatus.innerText = 'Resume recording...';
-    meeting.resumeRecording()
+    meeting
+      .resumeRecording()
       .then(() => {
         generalControlsRecStatus.innerText = 'Recording is resumed!';
         console.log('MeetingControls#resumeRecording() :: meeting recording resumed!');
@@ -852,8 +849,7 @@ function resumeRecording() {
         console.log('MeetingControls#resumeRecording() :: unable to resume recording.');
         console.error(error);
       });
-  }
-  else {
+  } else {
     console.log('MeetingControls#resumeRecording() :: no valid meeting object!');
   }
 }
@@ -864,7 +860,8 @@ function stopRecording() {
   if (meeting) {
     console.log('MeetingControls#stopRecording()');
     generalControlsRecStatus.innerText = 'Stop recording meeting...';
-    meeting.stopRecording()
+    meeting
+      .stopRecording()
       .then(() => {
         generalControlsRecStatus.innerText = 'Recording stopped successfully!';
         console.log('MeetingControls#stopRecording() :: meeting recording stopped!');
@@ -874,8 +871,7 @@ function stopRecording() {
         console.log('MeetingControls#stopRecording() :: unable to stop recording!');
         console.error(error);
       });
-  }
-  else {
+  } else {
     console.log('MeetingControls#stopRecording() :: no valid meeting object!');
   }
 }
@@ -893,7 +889,8 @@ function sendDtmfTones() {
 
   if (meeting) {
     console.log('MeetingControls#sendDtmfTones()');
-    meeting.sendDTMF(tones)
+    meeting
+      .sendDTMF(tones)
       .then(() => {
         generalControlsDtmfStatus.innerText = 'DTMF tones sent successfully!';
         console.log('MeetingControls#sendDtmfTones() :: DTMF tones sent!');
@@ -903,8 +900,7 @@ function sendDtmfTones() {
         console.log('MeetingControls#sendDtmfTones() :: unable to send DTMF tones!');
         console.error(error);
       });
-  }
-  else {
+  } else {
     console.log('MeetingControls#sendDtmfTones() :: no valid meeting object!');
   }
 }
@@ -921,9 +917,14 @@ function getMediaStreams(mediaSettings = getMediaSettings(), audioVideoInputDevi
   }
 
   // Get local media streams
-  return meeting.getMediaStreams(mediaSettings, audioVideoInputDevices)
+  return meeting
+    .getMediaStreams(mediaSettings, audioVideoInputDevices)
     .then(([localStream, localShare]) => {
-      console.log('MeetingControls#getMediaStreams() :: Successfully got following streams', localStream, localShare);
+      console.log(
+        'MeetingControls#getMediaStreams() :: Successfully got following streams',
+        localStream,
+        localShare
+      );
       // Keep track of current stream in order to addMedia later.
       const [currLocalStream, currLocalShare] = currentMediaStreams;
 
@@ -977,14 +978,12 @@ function getMediaDevices() {
 
   if (meeting) {
     console.log('MeetingControls#getMediaDevices()');
-    meeting.getDevices()
-      .then((devices) => {
-        devices.forEach((device) => {
-          populateSourceDevices(device);
-        });
+    meeting.getDevices().then((devices) => {
+      devices.forEach((device) => {
+        populateSourceDevices(device);
       });
-  }
-  else {
+    });
+  } else {
     console.log('MeetingControls#getMediaDevices() :: no valid meeting object!');
   }
 }
@@ -1008,8 +1007,7 @@ async function publishTracks(meeting) {
       console.log('MeetingStreams#publishTracks() :: publishing local video');
       await meeting.media.publishTrack(localVideoTracks[0]);
     }
-  }
-  else {
+  } else {
     console.error('cannot publish tracks - local stream missing');
   }
 }
@@ -1028,18 +1026,20 @@ async function updateMedia() {
 
   if (isMultistream) {
     publishTracks(meeting);
-  }
-  else {
-    meeting.updateMedia({
-      localShare,
-      localStream,
-      mediaSettings: getMediaSettings()
-    }).then(() => {
-      console.log('MeetingStreams#updateMedia() :: successfully updating media!');
-    }).catch((error) => {
-      console.log('MeetingStreams#updateMedia() :: Error updating media!');
-      console.error(error);
-    });
+  } else {
+    meeting
+      .updateMedia({
+        localShare,
+        localStream,
+        mediaSettings: getMediaSettings(),
+      })
+      .then(() => {
+        console.log('MeetingStreams#updateMedia() :: successfully updating media!');
+      })
+      .catch((error) => {
+        console.log('MeetingStreams#updateMedia() :: Error updating media!');
+        console.error(error);
+      });
   }
 }
 
@@ -1085,15 +1085,14 @@ function setVideoInputDevice() {
         meeting.updateVideo({
           sendVideo,
           receiveVideo,
-          stream: localStream
+          stream: localStream,
         });
       })
       .catch((error) => {
         console.log('MeetingControls#setVideoInputDevice :: Unable to set video input device');
         console.error(error);
       });
-  }
-  else {
+  } else {
     console.log('MeetingControls#getMediaDevices() :: no valid meeting object!');
   }
 }
@@ -1114,15 +1113,14 @@ function setAudioInputDevice() {
         meeting.updateAudio({
           sendAudio,
           receiveAudio,
-          stream: localStream
+          stream: localStream,
         });
       })
       .catch((error) => {
         console.log('MeetingControls#setAudioInputDevice :: Unable to set audio input device');
         console.error(error);
       });
-  }
-  else {
+  } else {
     console.log('MeetingControls#getMediaDevices() :: no valid meeting object!');
   }
 }
@@ -1130,9 +1128,12 @@ function setAudioInputDevice() {
 function setAudioOutputDevice() {
   const audioOutputDevice = getOptionValue(sourceDevicesAudioOutput) || 'default';
 
-  meetingStreamsRemoteAudio.setSinkId(audioOutputDevice)
+  meetingStreamsRemoteAudio
+    .setSinkId(audioOutputDevice)
     .then(() => {
-      console.log(`MeetingControls#setAudioOutput() :: successfully set audio output to: ${audioOutputDevice}`);
+      console.log(
+        `MeetingControls#setAudioOutput() :: successfully set audio output to: ${audioOutputDevice}`
+      );
     })
     .catch((error) => {
       console.log('MeetingControls#setAudioOutput() :: Error setting audio output!');
@@ -1156,14 +1157,15 @@ function toggleSendAudio() {
   }
 
   if (meeting.isAudioMuted()) {
-    meeting.unmuteAudio()
+    meeting
+      .unmuteAudio()
       .then(() => {
         console.log('MeetingControls#toggleSendAudio() :: Successfully unmuted audio!');
       })
       .catch(handleError);
-  }
-  else {
-    meeting.muteAudio()
+  } else {
+    meeting
+      .muteAudio()
       .then(() => {
         console.log('MeetingControls#toggleSendAudio() :: Successfully muted audio!');
       })
@@ -1187,14 +1189,15 @@ function toggleSendVideo() {
   }
 
   if (meeting.isVideoMuted()) {
-    meeting.unmuteVideo()
+    meeting
+      .unmuteVideo()
       .then(() => {
         console.log('MeetingControls#toggleSendVideo() :: Successfully unmuted video!');
       })
       .catch(handleError);
-  }
-  else {
-    meeting.muteVideo()
+  } else {
+    meeting
+      .muteVideo()
       .then(() => {
         console.log('MeetingControls#toggleSendVideo() :: Successfully muted video!');
       })
@@ -1216,8 +1219,7 @@ function toggleBNR() {
         toggleBnrBtn.innerText = 'Enable BNR';
       }
     });
-  }
-  else {
+  } else {
     meeting.enableBNR().then((success) => {
       if (success) {
         bnrEnabled = true;
@@ -1235,8 +1237,7 @@ async function startScreenShare() {
   try {
     await meeting.shareScreen();
     console.log('MeetingControls#startScreenShare() :: Successfully started sharing!');
-  }
-  catch (error) {
+  } catch (error) {
     console.log('MeetingControls#startScreenShare() :: Error starting screen share!');
     console.error(error);
   }
@@ -1249,8 +1250,7 @@ async function stopScreenShare() {
   try {
     await meeting.stopShare();
     console.log('MeetingControls#stopScreenShare() :: Successfully stopped sharing!');
-  }
-  catch (error) {
+  } catch (error) {
     console.log('MeetingControls#stopScreenShare() :: Error stopping screen share!');
     console.error(error);
   }
@@ -1269,15 +1269,19 @@ function setLocalMeetingQuality() {
   const meeting = getCurrentMeeting();
   const level = localResolutionInp.value;
 
-  meeting.setLocalVideoQuality(level)
+  meeting
+    .setLocalVideoQuality(level)
     .then((localStream) => {
       toggleSourcesQualityStatus.innerText = `Local meeting quality level set to ${level}!`;
       updateLocalVideoStream(localStream);
-      console.log('MeetingControls#setLocalMeetingQuality() :: Meeting quality level set successfully!');
+      console.log(
+        'MeetingControls#setLocalMeetingQuality() :: Meeting quality level set successfully!'
+      );
       getLocalMediaSettings();
     })
     .catch((error) => {
-      toggleSourcesQualityStatus.innerText = 'MeetingControls#setLocalMeetingQuality() :: Error setting quality level!';
+      toggleSourcesQualityStatus.innerText =
+        'MeetingControls#setLocalMeetingQuality() :: Error setting quality level!';
       console.log('MeetingControls#setLocalMeetingQuality() :: Error meeting quality!');
       console.error(error);
     });
@@ -1287,15 +1291,19 @@ function setRemoteMeetingQuality() {
   const meeting = getCurrentMeeting();
   const level = remoteResolutionInp.value;
 
-  meeting.setRemoteQualityLevel(level)
+  meeting
+    .setRemoteQualityLevel(level)
     .then(() => {
       toggleSourcesQualityStatus.innerText = `Remote meeting quality level set to ${level}!`;
-      console.log('MeetingControls#setRemoteMeetingQuality :: Meeting quality level set successfully!');
+      console.log(
+        'MeetingControls#setRemoteMeetingQuality :: Meeting quality level set successfully!'
+      );
 
       getRemoteMediaSettings();
     })
     .catch((error) => {
-      toggleSourcesQualityStatus.innerText = 'MeetingControls#setRemoteMeetingQuality :: Error setting quality level!';
+      toggleSourcesQualityStatus.innerText =
+        'MeetingControls#setRemoteMeetingQuality :: Error setting quality level!';
       console.log('MeetingControls#setRemoteMeetingQuality :: Error meeting quality!');
       console.error(error);
     });
@@ -1376,7 +1384,7 @@ const remoteSourcesCount = {
   video: {
     total: 0,
     live: 0,
-  }
+  },
 };
 
 const stageElements = {
@@ -1392,12 +1400,13 @@ const STAGE_SIZE = 4;
 
 const multistreamStage = {
   lastAddedIndex: -1,
-  stagedMemberIds: Array(STAGE_SIZE).fill(undefined)
+  stagedMemberIds: Array(STAGE_SIZE).fill(undefined),
 };
 
 function updateRemoteSourcesInfo() {
-  document.getElementById('remote-sources-info').innerText =
-    `Remote live sources: audio=${remoteSourcesCount.audio.live}/${remoteSourcesCount.audio.total} video=${remoteSourcesCount.video.live}/${remoteSourcesCount.video.total}`;
+  document.getElementById(
+    'remote-sources-info'
+  ).innerText = `Remote live sources: audio=${remoteSourcesCount.audio.live}/${remoteSourcesCount.audio.total} video=${remoteSourcesCount.video.live}/${remoteSourcesCount.video.total}`;
 }
 
 let allVideoPanes = {}; // a map of video pane groups, each group is just an array of panes
@@ -1407,11 +1416,11 @@ function updateVideoPanesForActiveSpeaker() {
     Object.values(paneGroup).forEach((videoPane) => {
       if (videoPane.memberId && currentActiveSpeakersMemberIds.includes(videoPane.memberId)) {
         videoPane.nameLabelEl.classList.add('speaking');
-      }
-      else {
+      } else {
         videoPane.nameLabelEl.classList.remove('speaking');
       }
-    }));
+    })
+  );
 }
 
 function clearAllMultistreamVideoElements() {
@@ -1439,11 +1448,18 @@ function addElement(parent, tag, props = {}) {
 }
 function addVideoPane(parent, className) {
   const containerEl = addElement(null, 'div', {className: `video-container hidden ${className}`});
-  const videoEl = addElement(containerEl, 'video', {className: 'multistream-remote-video', autoplay: true, playsInline: true});
+  const videoEl = addElement(containerEl, 'video', {
+    className: 'multistream-remote-video',
+    autoplay: true,
+    playsInline: true,
+  });
   const nameLabelEl = addElement(containerEl, 'div', {className: 'video-label', innerText: ''});
 
   const overlayEl = addElement(containerEl, 'div', {className: 'video-overlay hidden'});
-  const overlayTextEl = addElement(overlayEl, 'p', {className: 'video-overlay-text', innerText: ''});
+  const overlayTextEl = addElement(overlayEl, 'p', {
+    className: 'video-overlay-text',
+    innerText: '',
+  });
 
   parent.appendChild(containerEl);
 
@@ -1464,8 +1480,7 @@ function addVideoPane(parent, className) {
   containerEl.onclick = (event) => {
     if (event.ctrlKey) {
       videoPane.onCtrlClick(event);
-    }
-    else {
+    } else {
       videoPane.onclick(event);
     }
   };
@@ -1480,11 +1495,10 @@ function createSingleVideo() {
 }
 
 function createContainer(parent, id) {
-  return addElement(
-    (parent) || document.getElementById('multistream-videos-container'),
-    'div',
-    {className: 'video-grid-row', id}
-  );
+  return addElement(parent || document.getElementById('multistream-videos-container'), 'div', {
+    className: 'video-grid-row',
+    id,
+  });
 }
 
 function createOnePlusFiveVideos() {
@@ -1513,7 +1527,14 @@ function createStageVideoPane(stageContainer, paneId, remoteMedia) {
     if (videoPane.isActive) {
       console.log(`removing from stage ${videoPane.remoteMedia.id}`);
       meeting.remoteMediaManager.removeMemberVideoPane(paneId);
-      updateVideoPane(videoPane, meeting, 'no source', undefined, `stage.${paneId} ${videoPane.remoteMedia.id}`, 'removed from stage');
+      updateVideoPane(
+        videoPane,
+        meeting,
+        'no source',
+        undefined,
+        `stage.${paneId} ${videoPane.remoteMedia.id}`,
+        'removed from stage'
+      );
       delete allVideoPanes.stage[paneId];
     }
 
@@ -1531,7 +1552,9 @@ function createStageLayoutVideos() {
 
   // create the stage - a 2x2 grid
   const stageFieldset = addElement(null, 'fieldset', {className: 'stage'});
-  const legendEl = addElement(stageFieldset, 'legend', {innerText: `Stage (for maximum of ${STAGE_SIZE} participants)`});
+  const legendEl = addElement(stageFieldset, 'legend', {
+    innerText: `Stage (for maximum of ${STAGE_SIZE} participants)`,
+  });
   const stageContainer = createContainer(stageFieldset, 'stageContainer');
 
   createStageVideoPane(stageContainer, 'stage-1');
@@ -1543,7 +1566,9 @@ function createStageLayoutVideos() {
 
   // create 6 small ones
   const thumbnailsFieldset = addElement(null, 'fieldset', {className: 'stageThumbnails'});
-  const thumbnailsLegendEl = addElement(thumbnailsFieldset, 'legend', {innerText: 'Active speakers'});
+  const thumbnailsLegendEl = addElement(thumbnailsFieldset, 'legend', {
+    innerText: 'Active speakers',
+  });
 
   const thumbnailsContainer = createContainer(thumbnailsFieldset);
 
@@ -1559,20 +1584,15 @@ function setGridVideoPaneMaxWidth(numOfActiveVideoPanes) {
 
   if (numOfActiveVideoPanes === 0) {
     maxWidth = '0px';
-  }
-  else if (numOfActiveVideoPanes === 1) {
+  } else if (numOfActiveVideoPanes === 1) {
     maxWidth = '100%';
-  }
-  else if (numOfActiveVideoPanes <= 4) {
+  } else if (numOfActiveVideoPanes <= 4) {
     maxWidth = '47%'; // we want 50% but because of the gaps between the panes, we have to use a bit less
-  }
-  else if (numOfActiveVideoPanes <= 9) {
+  } else if (numOfActiveVideoPanes <= 9) {
     maxWidth = '30%'; // we want 33% but because of the gaps between the panes, we have to use a bit less
-  }
-  else if (numOfActiveVideoPanes <= 16) {
+  } else if (numOfActiveVideoPanes <= 16) {
     maxWidth = '23%'; // we want 25% but because of the gaps between the panes, we have to use a bit less
-  }
-  else {
+  } else {
     maxWidth = '18%'; // we want 20% but because of the gaps between the panes, we have to use a bit less
   }
 
@@ -1594,9 +1614,10 @@ function createVideoGrid(rows, columns) {
       if (meeting.remoteMediaManager.isPinned(videoPane.remoteMedia)) {
         console.log(`unpinning remoteMedia ${videoPane.remoteMedia.id}`);
         meeting.remoteMediaManager.unpinActiveSpeakerVideoPane(videoPane.remoteMedia);
-      }
-      else {
-        console.log(`pinning remoteMedia ${videoPane.remoteMedia.id} to CSI=${videoPane.remoteMedia.csi}`);
+      } else {
+        console.log(
+          `pinning remoteMedia ${videoPane.remoteMedia.id} to CSI=${videoPane.remoteMedia.csi}`
+        );
         meeting.remoteMediaManager.pinActiveSpeakerVideoPane(videoPane.remoteMedia);
       }
       updateVideoPaneTooltip(videoPane, meeting);
@@ -1672,7 +1693,9 @@ function updateVideoGridPaneSizes() {
     setGridVideoPaneMaxWidth(numOfActiveVideoPanes);
   }
   if (currentLayoutId === 'Stage') {
-    const numOfActiveVideoPanes = Object.values(allVideoPanes.stage).filter((pane) => pane.isActive).length;
+    const numOfActiveVideoPanes = Object.values(allVideoPanes.stage).filter(
+      (pane) => pane.isActive
+    ).length;
 
     setGridVideoPaneMaxWidth(numOfActiveVideoPanes);
   }
@@ -1693,8 +1716,7 @@ function updateVideoPane(videoPane, meeting, sourceState, memberId, title, debug
     // eslint-disable-next-line no-param-reassign
     videoPane.memberId = undefined;
     console.log(`MeetingStreams#updateVideoPane() :: ${debugString} ${sourceState} ${title}`);
-  }
-  else {
+  } else {
     // eslint-disable-next-line no-param-reassign
     videoPane.isActive = true;
 
@@ -1715,14 +1737,15 @@ function updateVideoPane(videoPane, meeting, sourceState, memberId, title, debug
       // eslint-disable-next-line no-param-reassign
       videoPane.overlayTextEl.innerText = '';
       videoPane.overlayEl.classList.add('hidden');
-    }
-    else {
+    } else {
       // eslint-disable-next-line no-param-reassign
       videoPane.overlayTextEl.innerText = sourceState;
       videoPane.overlayEl.classList.remove('hidden');
     }
 
-    console.log(`MeetingStreams#updateVideoPane() :: ${debugString} ${sourceState} "${newName}" ${title} `);
+    console.log(
+      `MeetingStreams#updateVideoPane() :: ${debugString} ${sourceState} "${newName}" ${title} `
+    );
   }
 
   updateVideoGridPaneSizes();
@@ -1743,7 +1766,7 @@ async function addToStage() {
 
   if (csi) {
     // find the index for the next stage video pane that we want to use
-    const index = (multistreamStage.lastAddedIndex + 1);
+    const index = multistreamStage.lastAddedIndex + 1;
 
     const stagePaneId = `stage-${index + 1}`; // this has to match the pane ids from Stage2x2With6ThumbnailsLayout
 
@@ -1754,12 +1777,15 @@ async function addToStage() {
       const {remoteMedia} = allVideoPanes.stage[stagePaneId];
 
       meeting.remoteMediaManager.setRemoteVideoCsi(remoteMedia, csi);
-    }
-    else {
+    } else {
       // we need to add a new member video pane to the current layout
       console.log(`adding to stage at index ${index}: ${memberId} csi=${csi} (new video pane)`);
 
-      const remoteMedia = await meeting.remoteMediaManager.addMemberVideoPane({id: stagePaneId, size: 'medium', csi});
+      const remoteMedia = await meeting.remoteMediaManager.addMemberVideoPane({
+        id: stagePaneId,
+        size: 'medium',
+        csi,
+      });
 
       createStageVideoPane(document.getElementById('stageContainer'), stagePaneId, remoteMedia);
 
@@ -1768,8 +1794,7 @@ async function addToStage() {
 
     multistreamStage.stagedMemberIds[index] = memberId;
     multistreamStage.lastAddedIndex = index;
-  }
-  else {
+  } else {
     console.warn('selected person is not sending any main video, so cannot be added to the stage');
   }
 }
@@ -1821,12 +1846,13 @@ function updateMultistreamVideoLayout() {
     return;
   }
 
-  console.log(`MeetingStreams#updateMultistreamVideoLayout() :: changing layout from ${oldLayoutId} to ${newLayoutId}`);
+  console.log(
+    `MeetingStreams#updateMultistreamVideoLayout() :: changing layout from ${oldLayoutId} to ${newLayoutId}`
+  );
 
   if (newLayoutId === 'Stage') {
     showStageSelector();
-  }
-  else if (oldLayoutId === 'Stage') {
+  } else if (oldLayoutId === 'Stage') {
     hideStageSelector();
 
     // we also undo all of the staging of members when we switch to a non-staged layout
@@ -1846,7 +1872,9 @@ async function getStatsForVideoPane(meeting, videoPane) {
   // there is no public API in WCME to get the transceiver of a receive slot, but
   // this is javascript so we can access private fields to get it anyway until we have some API for this
   // todo: 'VIDEO-MAIN' will need to change when we support screen sharing (SPARK-377812)
-  const transceiver = multistreamConnection.recvTransceivers.get('VIDEO-MAIN')?.find((t) => t.receiveSlot === wcmeReceiveSlot);
+  const transceiver = multistreamConnection.recvTransceivers
+    .get('VIDEO-MAIN')
+    ?.find((t) => t.receiveSlot === wcmeReceiveSlot);
 
   let result = {};
 
@@ -1883,10 +1911,24 @@ function processNewVideoPane(meeting, paneGroupId, paneId, remoteMedia) {
   };
 
   // update our UI with the current state of the new remote media instance we got and setup listeners for any changes
-  updateVideoPane(videoPane, meeting, remoteMedia.sourceState, remoteMedia.memberId, `${paneGroupId}.${paneId} ${remoteMedia.id}`, 'initialization');
+  updateVideoPane(
+    videoPane,
+    meeting,
+    remoteMedia.sourceState,
+    remoteMedia.memberId,
+    `${paneGroupId}.${paneId} ${remoteMedia.id}`,
+    'initialization'
+  );
 
   remoteMedia.on('sourceUpdate', (data) => {
-    updateVideoPane(videoPane, meeting, data.state, data.memberId, `${paneGroupId}.${paneId} ${remoteMedia.id}`, 'update');
+    updateVideoPane(
+      videoPane,
+      meeting,
+      data.state,
+      data.memberId,
+      `${paneGroupId}.${paneId} ${remoteMedia.id}`,
+      'update'
+    );
   });
 }
 
@@ -1915,31 +1957,42 @@ function setupMultistreamEventListeners(meeting) {
   }
 
   meeting.on('media:remoteAudio:created', (audioMediaGroup) => {
-    console.log('MeetingStreams#setupMultistreamEventListeners :: got AUDIO remote media group created');
+    console.log(
+      'MeetingStreams#setupMultistreamEventListeners :: got AUDIO remote media group created'
+    );
     audioMediaGroup.getRemoteMedia().forEach((media, index) => {
       document.getElementsByClassName('multistream-remote-audio')[index].srcObject = media.stream;
     });
   });
 
-  meeting.on('media:remoteVideo:layoutChanged', ({layoutId, activeSpeakerVideoPanes, memberVideoPanes}) => {
-    console.log(`MeetingStreams#VideoLayoutChanged :: got video layout changed: layoutId=${layoutId}`);
+  meeting.on(
+    'media:remoteVideo:layoutChanged',
+    ({layoutId, activeSpeakerVideoPanes, memberVideoPanes}) => {
+      console.log(
+        `MeetingStreams#VideoLayoutChanged :: got video layout changed: layoutId=${layoutId}`
+      );
 
-    console.log('activeSpeakerVideoPanes:', activeSpeakerVideoPanes);
-    console.log('memberVideoPanes:', memberVideoPanes);
+      console.log('activeSpeakerVideoPanes:', activeSpeakerVideoPanes);
+      console.log('memberVideoPanes:', memberVideoPanes);
 
-    currentVideoPaneList.length = 0;
-    clearAllMultistreamVideoElements();
-    createVideoElementsForLayout(layoutId);
+      currentVideoPaneList.length = 0;
+      clearAllMultistreamVideoElements();
+      createVideoElementsForLayout(layoutId);
 
-    for (const [groupId, group] of Object.entries(activeSpeakerVideoPanes)) {
-      group.getRemoteMedia().forEach((remoteMedia, index) => processNewVideoPane(meeting, groupId, index, remoteMedia));
+      for (const [groupId, group] of Object.entries(activeSpeakerVideoPanes)) {
+        group
+          .getRemoteMedia()
+          .forEach((remoteMedia, index) =>
+            processNewVideoPane(meeting, groupId, index, remoteMedia)
+          );
+      }
+
+      for (const [paneId, remoteMedia] of Object.entries(memberVideoPanes)) {
+        // staged layout is the only one we use that has memberVideoPanes defined
+        processNewVideoPane(meeting, 'stage', paneId, remoteMedia);
+      }
     }
-
-    for (const [paneId, remoteMedia] of Object.entries(memberVideoPanes)) {
-      // staged layout is the only one we use that has memberVideoPanes defined
-      processNewVideoPane(meeting, 'stage', paneId, remoteMedia);
-    }
-  });
+  );
 
   meeting.on('media:remoteVideoSourceCountChanged', (data) => {
     remoteSourcesCount.video.total = data.numTotalSources;
@@ -1970,7 +2023,9 @@ function addMediaOptionsLocal(elementId) {
   const mediaOptions = ['360p', '480p', '720p', '1080p'];
   const element = document.getElementById(elementId);
   const optionElements = mediaOptions.reduce((acc, resolution) => {
-    acc += `<option value="${resolution}" ${resolution === '720p' && 'selected'}>${resolution}</option>`;
+    acc += `<option value="${resolution}" ${
+      resolution === '720p' && 'selected'
+    }>${resolution}</option>`;
 
     return acc;
   }, '');
@@ -1982,7 +2037,9 @@ function addMediaOptionsRemote(elementId) {
   const mediaOptions = ['LOW', 'MEDIUM', 'HIGH'];
   const element = document.getElementById(elementId);
   const optionElements = mediaOptions.reduce((acc, resolution) => {
-    acc += `<option value="${resolution}" ${resolution === 'HIGH' && 'selected'}>${resolution}</option>`;
+    acc += `<option value="${resolution}" ${
+      resolution === 'HIGH' && 'selected'
+    }>${resolution}</option>`;
 
     return acc;
   }, '');
@@ -2013,33 +2070,39 @@ function addMedia() {
     multistreamLayoutElm.value = 'AllEqual';
 
     // addMedia using the default RemoteMediaManagerConfig
-    meeting.addMedia().then(() => {
-      publishTracks(meeting);
-      console.log('MeetingStreams#addMedia() :: successfully added media!');
-    }).catch((error) => {
-      console.log('MeetingStreams#addMedia() :: Error adding media!');
-      console.error(error);
-    });
-  }
-  else {
-    meeting.addMedia({
-      localShare,
-      localStream,
-      mediaSettings: getMediaSettings(),
-    }).then(() => {
-      console.log('MeetingStreams#addMedia() :: successfully added media!');
-    }).catch((error) => {
-      console.log('MeetingStreams#addMedia() :: Error adding media!');
-      console.error(error);
-    });
+    meeting
+      .addMedia()
+      .then(() => {
+        publishTracks(meeting);
+        console.log('MeetingStreams#addMedia() :: successfully added media!');
+      })
+      .catch((error) => {
+        console.log('MeetingStreams#addMedia() :: Error adding media!');
+        console.error(error);
+      });
+  } else {
+    meeting
+      .addMedia({
+        localShare,
+        localStream,
+        mediaSettings: getMediaSettings(),
+      })
+      .then(() => {
+        console.log('MeetingStreams#addMedia() :: successfully added media!');
+      })
+      .catch((error) => {
+        console.log('MeetingStreams#addMedia() :: Error adding media!');
+        console.error(error);
+      });
   }
 
   if (isMultistream) {
     updateRemoteSourcesInfo();
     enableMultistreamControls(true);
-  }
-  else {
-    console.log('MeetingStreams#addMedia() :: registering for media:ready and media:stopped events');
+  } else {
+    console.log(
+      'MeetingStreams#addMedia() :: registering for media:ready and media:stopped events'
+    );
 
     // Wait for media in order to show video/share
     meeting.on('media:ready', (media) => {
@@ -2095,7 +2158,8 @@ function changeLayout() {
   const width = layoutWidthInp.value;
   const currentMeeting = getCurrentMeeting();
 
-  currentMeeting.changeVideoLayout(layoutVal, {main: {height, width}})
+  currentMeeting
+    .changeVideoLayout(layoutVal, {main: {height, width}})
     .then(() => {
       console.log('Remote Video Layout changed successfully');
     })
@@ -2125,8 +2189,7 @@ function toggleWebexDeviceSection() {
   if (webexSec.classList.contains('hidden')) {
     sourceDevicesPairWebexDevice.innerText = 'Hide Pairing Section';
     webexSec.classList.remove('hidden');
-  }
-  else {
+  } else {
     sourceDevicesPairWebexDevice.innerText = 'Pair';
     webexSec.classList.add('hidden');
   }
@@ -2146,13 +2209,13 @@ function deviceRequestUnpair() {
 
   currentDevicePairState.innerText = 'Unpairing...';
 
-  webex.devicemanager.unpair()
+  webex.devicemanager
+    .unpair()
     .then(() => {
       currentDevicePairState.innerText = 'Not Paired';
 
       // disable join with device button
       document.getElementById('btn-join-device').disabled = true;
-
 
       document.querySelector('#p-paired-device-id').innerText = '';
     })
@@ -2168,9 +2231,10 @@ function deviceRequestPair() {
 
   currentDevicePairState.innerText = 'Pairing...';
 
-  webex.devicemanager.pair({
-    pin: currentDevicePinQueryElm.value
-  })
+  webex.devicemanager
+    .pair({
+      pin: currentDevicePinQueryElm.value,
+    })
     .then(() => {
       currentDevicePairState.innerText = `Paired to ${currentDevice.deviceInfo.description} [${currentDevice.id}]`;
 
@@ -2178,7 +2242,9 @@ function deviceRequestPair() {
       document.getElementById('btn-join-device').disabled = false;
 
       // display device ID
-      document.querySelector('#p-paired-device-id').innerText = `Paired Device: ${currentDevice.deviceInfo.description} [${currentDevice.id}]`;
+      document.querySelector(
+        '#p-paired-device-id'
+      ).innerText = `Paired Device: ${currentDevice.deviceInfo.description} [${currentDevice.id}]`;
     })
     .catch((error) => {
       currentDevicePairState.innerText = error.message;
@@ -2241,10 +2307,9 @@ function generateMeetingsDevicesSearchItem(device) {
 function deviceGetAudioState() {
   console.log('MeetingsDevices#refreshDevicesList()');
 
-  webex.devicemanager.getAudioState()
-    .then((state) => {
-      currentDeviceAudioStateElm.innerText = JSON.stringify(state, null, 2);
-    });
+  webex.devicemanager.getAudioState().then((state) => {
+    currentDeviceAudioStateElm.innerText = JSON.stringify(state, null, 2);
+  });
 }
 
 function refreshDevicesList() {
@@ -2252,21 +2317,17 @@ function refreshDevicesList() {
 
   devicesListItemsElm.innerText = '';
 
-  webex.devicemanager.refresh()
-    .then((devices) => {
-      if (devices.length === 0) {
-        devicesListItemsElm.innerText =
-          'There are currently no meetings devices to display';
+  webex.devicemanager.refresh().then((devices) => {
+    if (devices.length === 0) {
+      devicesListItemsElm.innerText = 'There are currently no meetings devices to display';
 
-        return;
-      }
+      return;
+    }
 
-      devices.forEach(
-        (device) => devicesListItemsElm.appendChild(
-          generateMeetingsDevicesListItem(device)
-        )
-      );
-    });
+    devices.forEach((device) =>
+      devicesListItemsElm.appendChild(generateMeetingsDevicesListItem(device))
+    );
+  });
 }
 
 function searchForDevices() {
@@ -2284,12 +2345,11 @@ function searchForDevices() {
     throw new Error(msg);
   }
 
-  webex.devicemanager.search({searchQuery})
+  webex.devicemanager
+    .search({searchQuery})
     .then((results) => {
-      results.forEach(
-        (device) => findDevicesListElm.appendChild(
-          generateMeetingsDevicesSearchItem(device)
-        )
+      results.forEach((device) =>
+        findDevicesListElm.appendChild(generateMeetingsDevicesSearchItem(device))
       );
 
       findDevicesStatusElm.innerText = '';
@@ -2300,15 +2360,16 @@ function searchForDevices() {
 }
 
 function changeAudioState(command) {
-  webex.devicemanager[command]()
-    .then((res) => {
-      console.log(res);
-      // currentDeviceAudioStateElm.innerText = JSON.stringify(audio, null, 2);
-    });
+  webex.devicemanager[command]().then((res) => {
+    console.log(res);
+    // currentDeviceAudioStateElm.innerText = JSON.stringify(audio, null, 2);
+  });
 }
 
 function moveToDevice() {
-  const deviceId = webex.devicemanager._pairedDevice ? webex.devicemanager._pairedDevice.identity.id : undefined;
+  const deviceId = webex.devicemanager._pairedDevice
+    ? webex.devicemanager._pairedDevice.identity.id
+    : undefined;
 
   if (!deviceId) {
     console.error('Pair a device first');
@@ -2324,15 +2385,20 @@ function moveToDevice() {
     return;
   }
 
-  currentMeeting.moveTo(deviceId).then(() => {
-    console.log('Meeting moved to Device');
-  }).catch((err) => {
-    console.error(err);
-  });
+  currentMeeting
+    .moveTo(deviceId)
+    .then(() => {
+      console.log('Meeting moved to Device');
+    })
+    .catch((err) => {
+      console.error(err);
+    });
 }
 
 function moveFromDevice() {
-  const deviceId = webex.devicemanager._pairedDevice ? webex.devicemanager._pairedDevice.identity.id : undefined;
+  const deviceId = webex.devicemanager._pairedDevice
+    ? webex.devicemanager._pairedDevice.identity.id
+    : undefined;
 
   if (!deviceId) {
     console.error('Pair a device first');
@@ -2348,11 +2414,14 @@ function moveFromDevice() {
     return;
   }
 
-  currentMeeting.moveFrom(deviceId).then(() => {
-    console.log('Meeting moved to computer');
-  }).catch((err) => {
-    console.error(err);
-  });
+  currentMeeting
+    .moveFrom(deviceId)
+    .then(() => {
+      console.log('Meeting moved to computer');
+    })
+    .catch((err) => {
+      console.error(err);
+    });
 }
 
 function claimPersonalMeetingRoom() {
@@ -2371,13 +2440,12 @@ function claimPersonalMeetingRoom() {
     throw new Error(msg);
   }
 
-  webex.meetings.personalMeetingRoom.claim(pmrId, pmrPin)
+  webex.meetings.personalMeetingRoom
+    .claim(pmrId, pmrPin)
     .then((pmr) => {
       console.log('pmr claimed', pmr);
 
-      pmrDetailsElm.innerText = JSON.stringify(
-        webex.meetings.personalMeetingRoom, null, 2
-      );
+      pmrDetailsElm.innerText = JSON.stringify(webex.meetings.personalMeetingRoom, null, 2);
     })
     .catch((error) => {
       pmrDetailsElm.innerText = error.message;
@@ -2394,27 +2462,28 @@ function inviteMember(addButton) {
   const emailVal = addButton.previousElementSibling.value.trim();
 
   if (meeting) {
-    meeting.invite({emailAddress: emailVal}).then((res) => {
-      console.log(res.body.locus);
-      const participantsArr = res.body.locus.participants;
-      let mostRecentParticipantId;
-      let mostRecentparticipantName;
-      let mostRecentparticipantStatusObj;
+    meeting
+      .invite({emailAddress: emailVal})
+      .then((res) => {
+        console.log(res.body.locus);
+        const participantsArr = res.body.locus.participants;
+        let mostRecentParticipantId;
+        let mostRecentparticipantName;
+        let mostRecentparticipantStatusObj;
 
-      participantsArr.forEach((obj) => {
-        if (obj.person.email === emailVal ||
-          obj.person.primaryDisplayString === emailVal) {
-          mostRecentParticipantId = obj.id;
-          mostRecentparticipantName = obj.person.name ||
-          obj.person.primaryDisplayString;
-          mostRecentparticipantStatusObj = obj.state;
-        }
+        participantsArr.forEach((obj) => {
+          if (obj.person.email === emailVal || obj.person.primaryDisplayString === emailVal) {
+            mostRecentParticipantId = obj.id;
+            mostRecentparticipantName = obj.person.name || obj.person.primaryDisplayString;
+            mostRecentparticipantStatusObj = obj.state;
+          }
+        });
+
+        viewParticipants();
+      })
+      .catch((err) => {
+        console.log('unable to invite participant', err);
       });
-
-      viewParticipants();
-    }).catch((err) => {
-      console.log('unable to invite participant', err);
-    });
   }
 }
 
@@ -2423,11 +2492,14 @@ function admitMember(admitButton) {
   const participantID = getRadioValue('participant-select');
 
   if (meeting) {
-    meeting.admit([participantID]).then((res) => {
-      console.log(res, 'participant has been admitted');
-    }).catch((err) => {
-      console.log('unable to admit participant', err);
-    });
+    meeting
+      .admit([participantID])
+      .then((res) => {
+        console.log(res, 'participant has been admitted');
+      })
+      .catch((err) => {
+        console.log('unable to admit participant', err);
+      });
   }
 }
 
@@ -2436,11 +2508,14 @@ function removeMember(removeButton) {
   const participantID = getRadioValue('participant-select');
 
   if (meeting) {
-    meeting.remove(participantID).then((res) => {
-      console.log(res, 'participant has been removed');
-    }).catch((err) => {
-      console.log('unable to remove participant', err);
-    });
+    meeting
+      .remove(participantID)
+      .then((res) => {
+        console.log(res, 'participant has been removed');
+      })
+      .catch((err) => {
+        console.log('unable to remove participant', err);
+      });
   }
 }
 
@@ -2452,17 +2527,19 @@ function muteMember(muteButton) {
   const participantID = getRadioValue('participant-select');
 
   if (meeting) {
-    meeting.mute(participantID, mute).then((res) => {
-      console.log(res, `participant is ${mute ? 'mute' : 'unmute'}`);
-      if (mute) {
-        muteButton.setAttribute('data-unmute', 'true');
-      }
-      else {
-        muteButton.removeAttribute('data-unmute');
-      }
-    }).catch((err) => {
-      console.log('error', err);
-    });
+    meeting
+      .mute(participantID, mute)
+      .then((res) => {
+        console.log(res, `participant is ${mute ? 'mute' : 'unmute'}`);
+        if (mute) {
+          muteButton.setAttribute('data-unmute', 'true');
+        } else {
+          muteButton.removeAttribute('data-unmute');
+        }
+      })
+      .catch((err) => {
+        console.log('error', err);
+      });
   }
 }
 
@@ -2471,11 +2548,14 @@ function transferHostToMember(transferButton) {
   const participantID = getRadioValue('participant-select');
 
   if (meeting) {
-    meeting.transfer(participantID).then((res) => {
-      console.log(res, `succesful tranfer to ${participantID}`);
-    }).catch((err) => {
-      console.log('error', err);
-    });
+    meeting
+      .transfer(participantID)
+      .then((res) => {
+        console.log(res, `succesful tranfer to ${participantID}`);
+      })
+      .catch((err) => {
+        console.log('error', err);
+      });
   }
 }
 
@@ -2622,8 +2702,7 @@ function toggleDisplay(elementId, status) {
 
   if (status) {
     element.classList.remove('hidden');
-  }
-  else {
+  } else {
     element.classList.add('hidden');
   }
 }

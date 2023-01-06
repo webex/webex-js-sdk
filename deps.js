@@ -31,26 +31,30 @@ const util = require('util');
 const FILTERED_TRANSFORMS = ['babelify'];
 const DEFAULT_TRANSFORMS = ['envify'];
 
-const depsToVersions = _.curry((rootPkg, deps) => deps.reduce((acc, dep) => {
-  if (builtins.includes(dep)) {
+const depsToVersions = _.curry((rootPkg, deps) =>
+  deps.reduce((acc, dep) => {
+    if (builtins.includes(dep)) {
+      return acc;
+    }
+
+    acc[dep] =
+      _.get(rootPkg, `dependencies[${dep}]`) ||
+      _.get(rootPkg, `devDependencies[${dep}]`) ||
+      _.get(rootPkg, `optionalDependencies[${dep}]`);
+
+    if (!acc[dep]) {
+      try {
+        acc[dep] = require(`./packages/${dep}/package.json`).version;
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn(err);
+        throw new Error(`Failed to determine version for ${dep}, Is it missing from package.json?`);
+      }
+    }
+
     return acc;
-  }
-
-  acc[dep] = _.get(rootPkg, `dependencies[${dep}]`) || _.get(rootPkg, `devDependencies[${dep}]`) || _.get(rootPkg, `optionalDependencies[${dep}]`);
-
-  if (!acc[dep]) {
-    try {
-      acc[dep] = require(`./packages/${dep}/package.json`).version;
-    }
-    catch (err) {
-      // eslint-disable-next-line no-console
-      console.warn(err);
-      throw new Error(`Failed to determine version for ${dep}, Is it missing from package.json?`);
-    }
-  }
-
-  return acc;
-}, {}));
+  }, {})
+);
 
 const assignDeps = _.curry((pkg, versionedDeps) => {
   pkg.dependencies = versionedDeps;
@@ -76,8 +80,7 @@ const findEntryPoints = _.curry((pkg, pkgPath) => {
         const p = path.resolve(path.dirname(pkgPath), 'index.js');
 
         fs.statSync(p);
-      }
-      catch (err) {
+      } catch (err) {
         if (err.code !== 'ENOENT') {
           throw err;
         }
@@ -93,8 +96,7 @@ const findEntryPoints = _.curry((pkg, pkgPath) => {
     }
 
     return paths;
-  }
-  catch (err) {
+  } catch (err) {
     if (err.code === 'EISDIR') {
       return findEntryPoints(pkg, path.join(pkgPath, 'package.json'));
     }
@@ -125,16 +127,14 @@ const findRequires = _.curry(function findRequires(filePath) {
       if (dep.startsWith('.')) {
         debug(`descending into ${dep}`);
         acc = acc.concat(findRequires(path.resolve(path.dirname(filePath), dep)));
-      }
-      else {
+      } else {
         debug(`${dep} is a dependency for ${filePath}`);
         acc.push(dep);
       }
 
       return acc;
     }, []);
-  }
-  catch (err) {
+  } catch (err) {
     if (err.code === 'EISDIR') {
       return findRequires(path.resolve(filePath, 'index.js'));
     }
@@ -145,39 +145,47 @@ const findRequires = _.curry(function findRequires(filePath) {
   }
 });
 
-const entryPointsToRequires = _.curry((pkgPath, entryPoints) => entryPoints.reduce((acc, entryPoint) => acc.concat(findRequires(path.resolve(path.dirname(pkgPath), entryPoint))), []));
+const entryPointsToRequires = _.curry((pkgPath, entryPoints) =>
+  entryPoints.reduce(
+    (acc, entryPoint) => acc.concat(findRequires(path.resolve(path.dirname(pkgPath), entryPoint))),
+    []
+  )
+);
 
 /**
  * Turns requires into package names and filters out non-unique entries
  * @param {Array<string>} requires
  * @returns {Array<string>}
  */
-const requiresToDeps = _.curry((requires) => _.uniq(requires.map((d) => {
-  // The following block makes sure the dep is a package name and not a file
-  // reference. Given a require of `@scope/foo/bar/baz`, the following will
-  // return `@scope/foo`. Given a require of `foo/bar/baz`, the folling will
-  // return `foo`.
-  d = d.split('/');
-  if (d[0].startsWith('@')) {
-    return d.slice(0, 2).join('/');
-  }
+const requiresToDeps = _.curry((requires) =>
+  _.uniq(
+    requires.map((d) => {
+      // The following block makes sure the dep is a package name and not a file
+      // reference. Given a require of `@scope/foo/bar/baz`, the following will
+      // return `@scope/foo`. Given a require of `foo/bar/baz`, the folling will
+      // return `foo`.
+      d = d.split('/');
+      if (d[0].startsWith('@')) {
+        return d.slice(0, 2).join('/');
+      }
 
-  return d[0];
-})));
+      return d[0];
+    })
+  )
+);
 
 const filterBrowserifyTransforms = _.curry((defaults, filtered, pkg) => {
-  const transforms = _.get(pkg, 'browserify.transform', [])
-    .reduce((acc, tx) => {
-      if (_.isArray(tx)) {
-        tx = tx[0];
-      }
+  const transforms = _.get(pkg, 'browserify.transform', []).reduce((acc, tx) => {
+    if (_.isArray(tx)) {
+      tx = tx[0];
+    }
 
-      if (!filtered.includes(tx)) {
-        acc.push(tx);
-      }
+    if (!filtered.includes(tx)) {
+      acc.push(tx);
+    }
 
-      return acc;
-    }, []);
+    return acc;
+  }, []);
 
   _.set(pkg, 'browserify.transform', _.uniq(transforms.concat(defaults)));
 
@@ -191,16 +199,19 @@ const filterBrowserifyTransforms = _.curry((defaults, filtered, pkg) => {
  * @param {Array<string>} requires
  * @returns {Array<string>}
  */
-const appendBrowserifyTransforms = _.curry((pkg, requires) => requires.concat(pkg.browserify.transform.reduce((acc, tx) => {
-  if (_.isArray(tx)) {
-    tx = tx[0];
-  }
+const appendBrowserifyTransforms = _.curry((pkg, requires) =>
+  requires.concat(
+    pkg.browserify.transform.reduce((acc, tx) => {
+      if (_.isArray(tx)) {
+        tx = tx[0];
+      }
 
-  acc.push(tx);
+      acc.push(tx);
 
-  return acc;
-}, [])));
-
+      return acc;
+    }, [])
+  )
+);
 
 const writeFile = _.curry((pkgPath, pkg) => {
   if (!pkg) {
@@ -221,8 +232,7 @@ function findPkgPath(pkgPath) {
     fs.statSync(filePath);
 
     return filePath;
-  }
-  catch (err) {
+  } catch (err) {
     const dirPath = path.resolve(pkgPath, 'package.json');
 
     fs.statSync(dirPath);
@@ -272,8 +282,7 @@ function findPackages(packagesPath) {
       try {
         fs.statSync(path.resolve(fullpath, 'package.json'));
         acc.push(fullpath);
-      }
-      catch (err) {
+      } catch (err) {
         if (err.code === 'ENOENT') {
           return acc.concat(findPackages(fullpath));
         }
@@ -294,7 +303,10 @@ function findPackages(packagesPath) {
 function updateAllPackages(rootPkgPath, packagesPath) {
   const paths = findPackages(packagesPath);
 
-  return paths.reduce((promise, pkgPath) => promise.then(() => updateSinglePackage(rootPkgPath, pkgPath)), Promise.resolve());
+  return paths.reduce(
+    (promise, pkgPath) => promise.then(() => updateSinglePackage(rootPkgPath, pkgPath)),
+    Promise.resolve()
+  );
 }
 
 if (require.main === module) {
@@ -326,8 +338,7 @@ if (require.main === module) {
 
   if (process.argv[2]) {
     p = updateSinglePackage(rootPkgPath, process.argv[2]);
-  }
-  else {
+  } else {
     p = updateAllPackages(rootPkgPath, path.resolve(process.cwd(), './packages'));
   }
   p.catch((err) => {
@@ -338,8 +349,7 @@ if (require.main === module) {
     // eslint-disable-next-line no-process-exit
     process.exit(64);
   });
-}
-else {
+} else {
   module.exports = {
     depsToVersions,
     assignDeps,
@@ -350,6 +360,6 @@ else {
     appendBrowserifyTransforms,
     writeFile,
     updateSinglePackage,
-    updateAllPackages
+    updateAllPackages,
   };
 }

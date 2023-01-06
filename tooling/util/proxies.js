@@ -24,26 +24,26 @@ const services = [
     defaultUrl: 'https://atlas-a.wbx2.com/admin/api/v1',
     env: 'ATLAS_SERVICE_URL',
     name: 'atlas',
-    port: 3010
+    port: 3010,
   },
   {
     defaultUrl: 'https://conv-a.wbx2.com/conversation/api/v1',
     env: 'CONVERSATION_SERVICE',
     name: 'conversation',
-    port: 3020
+    port: 3020,
   },
   {
     defaultUrl: 'https://api.ciscospark.com/v1',
     env: 'HYDRA_SERVICE_URL',
     name: 'hydra',
-    port: 3030
+    port: 3030,
   },
   {
     defaultUrl: 'https://wdm-a.wbx2.com/wdm/api/v1',
     env: 'WDM_SERVICE_URL',
     name: 'wdm',
-    port: 3040
-  }
+    port: 3040,
+  },
 ];
 
 let proxies;
@@ -96,10 +96,12 @@ async function start(service) {
     const snapshotsDir = path.join(__dirname, '../../test/services/', service.name, 'snapshots');
     const app = yakbak(service.defaultUrl, {
       dirname: snapshotsDir,
-      hash: customHash
+      hash: customHash,
     });
     const proxy = http.createServer(app).listen(service.port, () => {
-      console.log(`Yakbak server listening on port ${service.port}. Proxy for ${service.defaultUrl}`);
+      console.log(
+        `Yakbak server listening on port ${service.port}. Proxy for ${service.defaultUrl}`
+      );
     });
 
     resolve(proxy);
@@ -175,14 +177,16 @@ function pruneHeaders(requestHeaders) {
 function sort(obj) {
   const ret = {};
 
-  Object.keys(obj).sort().forEach((key) => {
-    ret[key] = obj[key];
-  });
+  Object.keys(obj)
+    .sort()
+    .forEach((key) => {
+      ret[key] = obj[key];
+    });
 
   return ret;
 }
 
 module.exports = {
   startProxies,
-  stopProxies
+  stopProxies,
 };

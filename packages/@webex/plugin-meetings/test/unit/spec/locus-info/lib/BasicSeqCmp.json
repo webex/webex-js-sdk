@@ -532,784 +532,442 @@
   "version": "1.0",
   "sequences": {
     "test_ne2_09_b": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 5,
       "rangeStart": 4
     },
     "test_desync15_b": {
-      "entries": [
-        4,
-        5,
-        6,
-        7,
-        8,
-        9
-      ],
+      "entries": [4, 5, 6, 7, 8, 9],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_desync15_a": {
-      "entries": [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "entries": [1, 2, 3, 4, 5, 6],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_ne2_03_b": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 20,
       "rangeStart": 10
     },
     "test_ne2_03_a": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 24,
       "rangeStart": 10
     },
     "test_ne3_06_a": {
-      "entries": [
-        32,
-        33,
-        34
-      ],
+      "entries": [32, 33, 34],
       "rangeEnd": 30,
       "rangeStart": 5
     },
     "test_ne2_01_a": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 20,
       "rangeStart": 10
     },
     "test_ne2_01_b": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 20,
       "rangeStart": 14
     },
     "test_desync01_b": {
-      "entries": [
-        32,
-        33,
-        34
-      ],
+      "entries": [32, 33, 34],
       "rangeEnd": 20,
       "rangeStart": 5
     },
     "test_desync11_b": {
-      "entries": [
-        22,
-        23,
-        24
-      ],
+      "entries": [22, 23, 24],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_desync11_a": {
-      "entries": [
-        52,
-        53,
-        54
-      ],
+      "entries": [52, 53, 54],
       "rangeEnd": 10,
       "rangeStart": 1
     },
     "test_ne4_02_a": {
-      "entries": [
-        32,
-        33,
-        34
-      ],
+      "entries": [32, 33, 34],
       "rangeEnd": 30,
       "rangeStart": 20
     },
     "test_ne4_02_b": {
-      "entries": [
-        12,
-        13,
-        27
-      ],
+      "entries": [12, 13, 27],
       "rangeEnd": 7,
       "rangeStart": 2
     },
     "test_equals04_b": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 20,
       "rangeStart": 15
     },
     "test_equals04_a": {
-      "entries": [
-        16,
-        52,
-        53,
-        64
-      ],
+      "entries": [16, 52, 53, 64],
       "rangeEnd": 10,
       "rangeStart": 5
     },
     "test_ne2_11_b": {
-      "entries": [
-        12,
-        21,
-        50
-      ],
+      "entries": [12, 21, 50],
       "rangeEnd": 10,
       "rangeStart": 1
     },
     "test_ne2_11_a": {
-      "entries": [
-        12,
-        21,
-        50
-      ],
+      "entries": [12, 21, 50],
       "rangeEnd": 15,
       "rangeStart": 1
     },
     "test_equals02_a": {
-      "entries": [
-        1,
-        2
-      ],
+      "entries": [1, 2],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_equals02_b": {
-      "entries": [
-        1,
-        2
-      ],
+      "entries": [1, 2],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_ne2_07_a": {
-      "entries": [
-        57
-      ],
+      "entries": [57],
       "rangeEnd": 57,
       "rangeStart": 38
     },
     "test_desync07_b": {
-      "entries": [
-        22,
-        23,
-        34
-      ],
+      "entries": [22, 23, 34],
       "rangeEnd": 20,
       "rangeStart": 5
     },
     "test_desync13_a": {
-      "entries": [
-        55,
-        58,
-        64
-      ],
+      "entries": [55, 58, 64],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_desync09_a": {
-      "entries": [
-        55,
-        58,
-        64
-      ],
+      "entries": [55, 58, 64],
       "rangeEnd": 20,
       "rangeStart": 10
     },
     "test_desync09_b": {
-      "entries": [
-        2,
-        3,
-        21
-      ],
+      "entries": [2, 3, 21],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_desync13_b": {
-      "entries": [
-        2,
-        3,
-        56
-      ],
+      "entries": [2, 3, 56],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_ne3_07_b": {
-      "entries": [
-        22,
-        23,
-        30
-      ],
+      "entries": [22, 23, 30],
       "rangeEnd": 10,
       "rangeStart": 1
     },
     "test_ne2_06_b": {
-      "entries": [
-        50,
-        57,
-        60,
-        61
-      ],
+      "entries": [50, 57, 60, 61],
       "rangeEnd": 38,
       "rangeStart": 38
     },
     "test_ne2_06_a": {
-      "entries": [
-        50,
-        57,
-        60,
-        61
-      ],
+      "entries": [50, 57, 60, 61],
       "rangeEnd": 47,
       "rangeStart": 38
     },
     "test_desync10_b": {
-      "entries": [
-        11,
-        12,
-        21
-      ],
+      "entries": [11, 12, 21],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_desync10_a": {
-      "entries": [
-        55,
-        58,
-        64
-      ],
+      "entries": [55, 58, 64],
       "rangeEnd": 20,
       "rangeStart": 10
     },
     "test_ne2_10_b": {
-      "entries": [
-        64
-      ],
+      "entries": [64],
       "rangeEnd": 5,
       "rangeStart": 1
     },
     "test_ne2_10_a": {
-      "entries": [
-        64
-      ],
+      "entries": [64],
       "rangeEnd": 20,
       "rangeStart": 1
     },
     "test_ne3_07_a": {
-      "entries": [
-        32,
-        33,
-        34
-      ],
+      "entries": [32, 33, 34],
       "rangeEnd": 30,
       "rangeStart": 5
     },
     "test_desync07_a": {
-      "entries": [
-        52,
-        53,
-        54
-      ],
+      "entries": [52, 53, 54],
       "rangeEnd": 30,
       "rangeStart": 1
     },
     "test_equals03_a": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 10,
       "rangeStart": 5
     },
     "test_equals03_b": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 20,
       "rangeStart": 15
     },
     "test_equals01_b": {
-      "entries": [
-        12,
-        13,
-        14
-      ],
+      "entries": [12, 13, 14],
       "rangeEnd": 10,
       "rangeStart": 1
     },
     "test_ne3_09_a": {
-      "entries": [
-        52,
-        53,
-        54
-      ],
+      "entries": [52, 53, 54],
       "rangeEnd": 30,
       "rangeStart": 1
     },
     "test_desync03_b": {
-      "entries": [
-        52
-      ],
+      "entries": [52],
       "rangeEnd": 20,
       "rangeStart": 3
     },
     "test_desync03_a": {
-      "entries": [
-        64
-      ],
+      "entries": [64],
       "rangeEnd": 5,
       "rangeStart": 4
     },
     "test_equals01_a": {
-      "entries": [
-        12,
-        13,
-        14
-      ],
+      "entries": [12, 13, 14],
       "rangeEnd": 10,
       "rangeStart": 1
     },
     "test_desync05_a": {
-      "entries": [
-        12,
-        21,
-        50
-      ],
+      "entries": [12, 21, 50],
       "rangeEnd": 10,
       "rangeStart": 1
     },
     "test_desync05_b": {
-      "entries": [
-        21,
-        45,
-        48
-      ],
+      "entries": [21, 45, 48],
       "rangeEnd": 20,
       "rangeStart": 1
     },
     "test_desync14_b": {
-      "entries": [
-        2,
-        3,
-        76
-      ],
+      "entries": [2, 3, 76],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_desync08_a": {
-      "entries": [
-        34,
-        35,
-        45
-      ],
+      "entries": [34, 35, 45],
       "rangeEnd": 20,
       "rangeStart": 10
     },
     "test_desync08_b": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 40,
       "rangeStart": 30
     },
     "test_ne2_07_b": {
-      "entries": [
-        48,
-        50,
-        52,
-        54,
-        57
-      ],
+      "entries": [48, 50, 52, 54, 57],
       "rangeEnd": 42,
       "rangeStart": 38
     },
     "test_desync14_a": {
-      "entries": [
-        55,
-        58,
-        64
-      ],
+      "entries": [55, 58, 64],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_desync12_a": {
-      "entries": [
-        55,
-        58,
-        64
-      ],
+      "entries": [55, 58, 64],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_desync12_b": {
-      "entries": [
-        2,
-        3,
-        55
-      ],
+      "entries": [2, 3, 55],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_ne3_08_b": {
-      "entries": [
-        22,
-        23,
-        24
-      ],
+      "entries": [22, 23, 24],
       "rangeEnd": 20,
       "rangeStart": 5
     },
     "test_ne3_08_a": {
-      "entries": [
-        52,
-        53,
-        54
-      ],
+      "entries": [52, 53, 54],
       "rangeEnd": 30,
       "rangeStart": 1
     },
     "test_ne1_04_a": {
-      "entries": [
-        2
-      ],
+      "entries": [2],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_ne1_04_b": {
-      "entries": [
-        1
-      ],
+      "entries": [1],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_ne3_02_a": {
-      "entries": [
-        64
-      ],
+      "entries": [64],
       "rangeEnd": 20,
       "rangeStart": 1
     },
     "test_ne3_02_b": {
-      "entries": [
-        14
-      ],
+      "entries": [14],
       "rangeEnd": 5,
       "rangeStart": 1
     },
     "test_ne1_02_b": {
-      "entries": [
-        22,
-        23,
-        24
-      ],
+      "entries": [22, 23, 24],
       "rangeEnd": 10,
       "rangeStart": 1
     },
     "test_ne1_02_a": {
-      "entries": [
-        52,
-        53,
-        54
-      ],
+      "entries": [52, 53, 54],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_ne3_04_b": {
-      "entries": [
-        12,
-        21
-      ],
+      "entries": [12, 21],
       "rangeEnd": 10,
       "rangeStart": 1
     },
     "test_ne3_04_a": {
-      "entries": [
-        21,
-        45,
-        48
-      ],
+      "entries": [21, 45, 48],
       "rangeEnd": 20,
       "rangeStart": 1
     },
     "test_ne2_08_a": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 20,
       "rangeStart": 3
     },
     "test_desync01_a": {
-      "entries": [
-        22,
-        23,
-        24
-      ],
+      "entries": [22, 23, 24],
       "rangeEnd": 10,
       "rangeStart": 1
     },
     "test_ne3_06_b": {
-      "entries": [
-        22,
-        23,
-        24
-      ],
+      "entries": [22, 23, 24],
       "rangeEnd": 10,
       "rangeStart": 1
     },
     "test_ne2_08_b": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 5,
       "rangeStart": 1
     },
     "test_ne2_04_a": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 20,
       "rangeStart": 10
     },
     "test_ne2_04_b": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_desync02_b": {
-      "entries": [
-        22,
-        23,
-        24
-      ],
+      "entries": [22, 23, 24],
       "rangeEnd": 20,
       "rangeStart": 5
     },
     "test_desync02_a": {
-      "entries": [
-        32,
-        33,
-        34
-      ],
+      "entries": [32, 33, 34],
       "rangeEnd": 10,
       "rangeStart": 1
     },
     "test_ne2_02_b": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 20,
       "rangeStart": 14
     },
     "test_ne2_02_a": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 22,
       "rangeStart": 10
     },
     "test_ne3_09_b": {
-      "entries": [
-        22,
-        23,
-        24
-      ],
+      "entries": [22, 23, 24],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_desync04_a": {
-      "entries": [
-        52
-      ],
+      "entries": [52],
       "rangeEnd": 5,
       "rangeStart": 1
     },
     "test_desync04_b": {
-      "entries": [
-        64
-      ],
+      "entries": [64],
       "rangeEnd": 20,
       "rangeStart": 1
     },
     "test_ne3_03_a": {
-      "entries": [
-        50,
-        52,
-        53,
-        64,
-        68
-      ],
+      "entries": [50, 52, 53, 64, 68],
       "rangeEnd": 20,
       "rangeStart": 15
     },
     "test_ne3_03_b": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 10,
       "rangeStart": 5
     },
     "test_ne4_01_b": {
-      "entries": [
-        2,
-        3,
-        17
-      ],
+      "entries": [2, 3, 17],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_ne3_05_b": {
-      "entries": [
-        12,
-        21,
-        50
-      ],
+      "entries": [12, 21, 50],
       "rangeEnd": 15,
       "rangeStart": 1
     },
     "test_ne3_05_a": {
-      "entries": [
-        12,
-        21,
-        50,
-        90,
-        91
-      ],
+      "entries": [12, 21, 50, 90, 91],
       "rangeEnd": 10,
       "rangeStart": 1
     },
     "test_ne4_01_a": {
-      "entries": [
-        22,
-        23,
-        24
-      ],
+      "entries": [22, 23, 24],
       "rangeEnd": 20,
       "rangeStart": 10
     },
     "test_ne1_05_a": {
-      "entries": [
-        55,
-        58,
-        64
-      ],
+      "entries": [55, 58, 64],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_ne1_05_b": {
-      "entries": [
-        2,
-        3,
-        7
-      ],
+      "entries": [2, 3, 7],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_ne3_01_b": {
-      "entries": [
-        22,
-        23,
-        24
-      ],
+      "entries": [22, 23, 24],
       "rangeEnd": 10,
       "rangeStart": 1
     },
     "test_ne3_01_a": {
-      "entries": [
-        32,
-        33,
-        34
-      ],
+      "entries": [32, 33, 34],
       "rangeEnd": 30,
       "rangeStart": 20
     },
     "test_ne1_01_a": {
-      "entries": [
-        120,
-        130,
-        140
-      ],
+      "entries": [120, 130, 140],
       "rangeEnd": 100,
       "rangeStart": 20
     },
     "test_ne1_01_b": {
-      "entries": [
-        12,
-        13,
-        14
-      ],
+      "entries": [12, 13, 14],
       "rangeEnd": 10,
       "rangeStart": 1
     },
     "test_ne2_09_a": {
-      "entries": [
-        52,
-        53,
-        64
-      ],
+      "entries": [52, 53, 64],
       "rangeEnd": 20,
       "rangeStart": 3
     },
     "test_ne1_03_b": {
-      "entries": [
-        2,
-        3,
-        7
-      ],
+      "entries": [2, 3, 7],
       "rangeEnd": 0,
       "rangeStart": 0
     },
     "test_ne1_03_a": {
-      "entries": [
-        22,
-        23,
-        24
-      ],
+      "entries": [22, 23, 24],
       "rangeEnd": 20,
       "rangeStart": 10
     }

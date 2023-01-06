@@ -5,7 +5,6 @@
 /* eslint max-nested-callbacks: [2, 3] */
 /* eslint no-console: [0] */
 
-
 const btoa = require(`btoa`);
 const bodyParser = require(`body-parser`);
 const browserify = require(`browserify-middleware`);
@@ -28,20 +27,24 @@ const app = express();
 // -----------------
 
 if (process.env.DEBUG) {
-  app.use(morgan(`short`, {
-    immediate: true
-  }));
+  app.use(
+    morgan(`short`, {
+      immediate: true,
+    })
+  );
 }
 
 // Configure CORS
 // --------------
 
-app.use(cors({
-  credentials: true,
-  origin(o, callback) {
-    callback(null, true);
-  }
-}));
+app.use(
+  cors({
+    credentials: true,
+    origin(o, callback) {
+      callback(null, true);
+    },
+  })
+);
 
 // Configure body processing
 // -------------------------
@@ -75,13 +78,13 @@ glob.sync(appPattern).forEach((appjs) => {
 
   // eslint-disable-next-line no-sync
   fs.statSync(appjs);
-  app.use(`/${packageName}/app.js`, browserify(appjs, {
-    debug: true,
-    transform: [
-      `babelify`,
-      `envify`
-    ]
-  }));
+  app.use(
+    `/${packageName}/app.js`,
+    browserify(appjs, {
+      debug: true,
+      transform: [`babelify`, `envify`],
+    })
+  );
 });
 
 // Enable active routes
@@ -120,8 +123,7 @@ app.use(`/jwt`, require(`@webex/test-helper-appid`).router);
 app.get(`/requires-basic-auth`, (req, res) => {
   if (req.headers.authorization === `Basic ${btoa(`basicuser:basicpass`)}`) {
     res.status(200).send().end();
-  }
-  else {
+  } else {
     res.status(403).send().end();
   }
 });
@@ -129,8 +131,7 @@ app.get(`/requires-basic-auth`, (req, res) => {
 app.get(`/requires-bearer-auth`, (req, res) => {
   if (req.headers.authorization === `Bearer bearertoken`) {
     res.status(200).send().end();
-  }
-  else {
+  } else {
     res.status(403).send().end();
   }
 });
@@ -148,11 +149,8 @@ app.get(`/embargoed`, (req, res) => {
 
 const fixturePattern = `packages/{*,*/*}/test/automation/fixtures`;
 
-
 glob.sync(fixturePattern).forEach((fixturePath) => {
-  const packageName = fixturePath
-    .replace(`packages/`, ``)
-    .replace(`/test/automation/fixtures`, ``);
+  const packageName = fixturePath.replace(`packages/`, ``).replace(`/test/automation/fixtures`, ``);
 
   app.get(`/${packageName}`, (req, res, next) => {
     if (!req.query.code) {
@@ -169,23 +167,79 @@ glob.sync(fixturePattern).forEach((fixturePath) => {
       return;
     }
 
-    request({
+    request(
+      {
+        /* eslint-disable camelcase */
+        method: `POST`,
+        uri: `${
+          process.env.IDBROKER_BASE_URL || `https://idbroker.webex.com`
+        }/idb/oauth2/v1/access_token`,
+        form: {
+          grant_type: `authorization_code`,
+          redirect_uri: process.env.WEBEX_REDIRECT_URI,
+          code: req.query.code,
+          self_contained_token: true,
+        },
+        auth: {
+          user: process.env.WEBEX_CLIENT_ID,
+          pass: process.env.WEBEX_CLIENT_SECRET,
+          sendImmediately: true,
+        },
+        /* eslint-enable camelcase */
+      },
+      (err, response) => {
+        if (err) {
+          console.warn(`Request to CI failed with non-HTTP error`);
+          next(err);
+
+          return;
+        }
+        if (response.statusCode >= 400) {
+          console.warn(`Got unexpected response from CI`);
+          next(new Error(response.body));
+
+          return;
+        }
+        let redirect = url.parse(req.url, true);
+        const qs = querystring.stringify({state: req.query.state, ...JSON.parse(response.body)});
+
+        redirect = `${redirect.pathname}#${qs}`;
+
+        console.info(`redirecting to ${redirect}`);
+        res.redirect(redirect);
+      }
+    );
+  });
+  app.use(`/${packageName}`, express.static(fixturePath));
+});
+
+app.post(`/refresh`, bodyParser.json(), (req, res, next) => {
+  if (!req.body.refresh_token) {
+    next(new Error(`\`refresh_token\` is required`));
+
+    return;
+  }
+  console.info(`Refreshing access token`);
+  request(
+    {
       /* eslint-disable camelcase */
       method: `POST`,
-      uri: `${process.env.IDBROKER_BASE_URL || `https://idbroker.webex.com`}/idb/oauth2/v1/access_token`,
+      uri: `${
+        process.env.IDBROKER_BASE_URL || `https://idbroker.webex.com`
+      }/idb/oauth2/v1/access_token`,
       form: {
-        grant_type: `authorization_code`,
+        grant_type: `refresh_token`,
         redirect_uri: process.env.WEBEX_REDIRECT_URI,
-        code: req.query.code,
-        self_contained_token: true
+        refresh_token: req.body.refresh_token,
       },
       auth: {
         user: process.env.WEBEX_CLIENT_ID,
         pass: process.env.WEBEX_CLIENT_SECRET,
-        sendImmediately: true
-      }
+        sendImmediately: true,
+      },
       /* eslint-enable camelcase */
-    }, (err, response) => {
+    },
+    (err, response) => {
       if (err) {
         console.warn(`Request to CI failed with non-HTTP error`);
         next(err);
@@ -198,57 +252,11 @@ glob.sync(fixturePattern).forEach((fixturePath) => {
 
         return;
       }
-      let redirect = url.parse(req.url, true);
-      const qs = querystring.stringify(Object.assign({state: req.query.state}, JSON.parse(response.body)));
 
-      redirect = `${redirect.pathname}#${qs}`;
-
-      console.info(`redirecting to ${redirect}`);
-      res.redirect(redirect);
-    });
-  });
-  app.use(`/${packageName}`, express.static(fixturePath));
-});
-
-app.post(`/refresh`, bodyParser.json(), (req, res, next) => {
-  if (!req.body.refresh_token) {
-    next(new Error(`\`refresh_token\` is required`));
-
-    return;
-  }
-  console.info(`Refreshing access token`);
-  request({
-    /* eslint-disable camelcase */
-    method: `POST`,
-    uri: `${process.env.IDBROKER_BASE_URL || `https://idbroker.webex.com`}/idb/oauth2/v1/access_token`,
-    form: {
-      grant_type: `refresh_token`,
-      redirect_uri: process.env.WEBEX_REDIRECT_URI,
-      refresh_token: req.body.refresh_token
-    },
-    auth: {
-      user: process.env.WEBEX_CLIENT_ID,
-      pass: process.env.WEBEX_CLIENT_SECRET,
-      sendImmediately: true
+      console.info(`Returning new access token`);
+      res.status(200).json(JSON.parse(response.body)).end();
     }
-    /* eslint-enable camelcase */
-  }, (err, response) => {
-    if (err) {
-      console.warn(`Request to CI failed with non-HTTP error`);
-      next(err);
-
-      return;
-    }
-    if (response.statusCode >= 400) {
-      console.warn(`Got unexpected response from CI`);
-      next(new Error(response.body));
-
-      return;
-    }
-
-    console.info(`Returning new access token`);
-    res.status(200).json(JSON.parse(response.body)).end();
-  });
+  );
 });
 
 app.use(express.static(path.resolve(__dirname, '..', `static`)));

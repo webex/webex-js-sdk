@@ -44,80 +44,87 @@ module.exports = {
     coverage: {
       description: 'Generate code coverage',
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     coverageReport: {
       description: 'Internal; when false, no report is generated',
       default: true,
-      type: 'boolean'
+      type: 'boolean',
     },
     xunit: {
-      description: 'Generate xunit xml reports. Note: exit code will always be zero of reports are generated successfully, even if tests fail',
+      description:
+        'Generate xunit xml reports. Note: exit code will always be zero of reports are generated successfully, even if tests fail',
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     browser: {
       description: 'Run tests in browser( defaults to true if --node is not specified)',
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     browsers: {
-      description: 'Run tests in specific browsers (defaults to ChromeHeadless and FirefoxHeadless)',
-      type: 'array'
+      description:
+        'Run tests in specific browsers (defaults to ChromeHeadless and FirefoxHeadless)',
+      type: 'array',
     },
     os: {
       description: 'Which OS you want tests to run on SauceLabs',
-      type: 'array'
+      type: 'array',
     },
     node: {
       description: 'Run tests in node (defaults to true if --browser is not specified)',
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     unit: {
-      description: 'Run unit tests (defaults to true if --integration and --automation are not specified)',
+      description:
+        'Run unit tests (defaults to true if --integration and --automation are not specified)',
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     integration: {
-      description: 'Run integration tests (defaults to true if --unit and --automation are not specified)',
+      description:
+        'Run integration tests (defaults to true if --unit and --automation are not specified)',
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     documentation: {
       description: 'Check source code for examples and run any containing assertions',
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     automation: {
-      description: 'Run automation tests (defaults to true if --unit and --integration are not specified)',
+      description:
+        'Run automation tests (defaults to true if --unit and --integration are not specified)',
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     grep: {
       description: 'Run a subset of tests',
       default: [],
-      type: 'array'
+      type: 'array',
     },
     packages: {
       description: 'Run a set of packages',
-      type: 'array'
+      type: 'array',
     },
     karmaDebug: {
       description: 'Start karma in watch mode',
       default: false,
-      type: 'boolean'
+      type: 'boolean',
     },
     serve: {
-      description: 'Start the fixture server. Since this defaults to true, you find --no-serve useful',
+      description:
+        'Start the fixture server. Since this defaults to true, you find --no-serve useful',
       default: true,
-      type: 'boolean'
+      type: 'boolean',
     },
     tests: {
-      description: 'Set to false to skip tests but do the other work that happens during a test run (e.g. generate the coverage report)',
+      description:
+        'Set to false to skip tests but do the other work that happens during a test run (e.g. generate the coverage report)',
       default: true,
-      type: 'boolean'
-    }
+      type: 'boolean',
+    },
   },
   handler: wrapHandler(async (argv) => {
     // Run unit and integration if both are not set in command line
@@ -140,9 +147,14 @@ module.exports = {
          * Below code separates comma separated packages into an array
          */
         argv.packages = flatten(
-          argv.packages.map((packageName) => (packageName.includes(',') ? packageName.toLowerCase().split(',') : packageName.toLowerCase()))
+          argv.packages.map((packageName) =>
+            packageName.includes(',')
+              ? packageName.toLowerCase().split(',')
+              : packageName.toLowerCase()
+          )
         );
-        if (argv.serve) { // defaults to true. see builder
+        if (argv.serve) {
+          // defaults to true. see builder
           debug('starting test server');
           // starts test server under packages/node_modules/@webex/test-helper-server
           await start();
@@ -166,8 +178,7 @@ module.exports = {
           await stop();
           debug('stopped test server');
         }
-      }
-      else {
+      } else {
         /**
          * When pacakges aren't listed, list util method gives list of all packages
          * Each package is run through a silent test command with package name
@@ -186,7 +197,10 @@ module.exports = {
         }, '');
 
         for (const packageName of packages) {
-          const [cmd, ...args] = `yarn run test --silent --no-coverage-report --packages ${packageName}${argString}`.split(' ');
+          const [cmd, ...args] =
+            `yarn run test --silent --no-coverage-report --packages ${packageName}${argString}`.split(
+              ' '
+            );
 
           await spawn(cmd, args);
         }
@@ -204,5 +218,5 @@ module.exports = {
       // unref any outstanding timers/sockets/streams/processes.
       handle.unref();
     }
-  })
+  }),
 };

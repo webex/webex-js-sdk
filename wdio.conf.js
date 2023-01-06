@@ -39,12 +39,7 @@ require('@babel/register')({
 const webpackConfig = require('./webpack.config')();
 
 const PORT = process.env.PORT || 8000;
-const CI = !!(
-  process.env.JENKINS ||
-  process.env.CIRCLECI ||
-  process.env.CI ||
-  process.env.SAUCE
-);
+const CI = !!(process.env.JENKINS || process.env.CIRCLECI || process.env.CI || process.env.SAUCE);
 
 exports.config = {
   //
@@ -120,132 +115,132 @@ exports.config = {
   // If CI && Safari run Safari + Edge
   // If just Safari run Safari + Chrome
   // If not Safari run Firefox + Chrome
-  capabilities: process.env.SAFARI ?
-    {
-      browserFirefox: {
-        capabilities: {
-          browserName: 'safari',
-          'webkit:WebRTC': {
-            DisableInsecureMediaCapture: true,
-          },
-          ...(!CI && {
-            'safari.options': {
-              technologyPreview: !!CI,
+  capabilities: process.env.SAFARI
+    ? {
+        browserFirefox: {
+          capabilities: {
+            browserName: 'safari',
+            'webkit:WebRTC': {
+              DisableInsecureMediaCapture: true,
             },
-          }),
-          ...(CI && {
-            'sauce:options': {
-              screenResolution: '1600x1200',
-              extendedDebugging: true,
-            },
-          }),
-        },
-      },
-      ...(CI ?
-        {
-          browserChrome: {
-            capabilities: {
-              browserName: 'MicrosoftEdge',
-              'ms:edgeOptions': {
-                args: [
-                  '--disable-features=WebRtcHideLocalIpsWithMdns',
-                  '--use-fake-device-for-media-stream',
-                  '--use-fake-ui-for-media-stream',
-                ],
+            ...(!CI && {
+              'safari.options': {
+                technologyPreview: !!CI,
               },
-              ...(CI && {
-                platformName: 'Windows 10',
-                'sauce:options': {
-                  screenResolution: '1600x1200',
-                  extendedDebugging: true,
-                },
-              }),
-            },
-          },
-        } :
-        {
-          browserChrome: {
-            capabilities: {
-              browserName: 'chrome',
-              'goog:chromeOptions': {
-                args: [
-                  '--disable-features=WebRtcHideLocalIpsWithMdns',
-                  '--use-fake-device-for-media-stream',
-                  '--use-fake-ui-for-media-stream',
-                ],
+            }),
+            ...(CI && {
+              'sauce:options': {
+                screenResolution: '1600x1200',
+                extendedDebugging: true,
               },
-              ...(CI && {
-                'sauce:options': {
-                  screenResolution: '1600x1200',
-                  extendedDebugging: true,
-                  capturePerformance: true,
-                  crmuxdriverVersion: 'beta',
-                },
-              }),
-            },
+            }),
           },
-        }),
-    } :
-    {
-      browserFirefox: {
-        capabilities: {
-          browserName: 'firefox',
-          'moz:firefoxOptions': {
-            ...(CI ?
-              {
-                args: ['-start-debugger-server', '9222'],
-                prefs: {
-                  'devtools.chrome.enabled': true,
-                  'devtools.debugger.prompt-connection': false,
-                  'devtools.debugger.remote-enabled': true,
-                  'dom.webnotifications.enabled': false,
-                  'media.webrtc.hw.h264.enabled': true,
-                  'media.getusermedia.screensharing.enabled': true,
-                  'media.navigator.permission.disabled': true,
-                  'media.navigator.streams.fake': true,
-                  'media.peerconnection.video.h264_enabled': true,
+        },
+        ...(CI
+          ? {
+              browserChrome: {
+                capabilities: {
+                  browserName: 'MicrosoftEdge',
+                  'ms:edgeOptions': {
+                    args: [
+                      '--disable-features=WebRtcHideLocalIpsWithMdns',
+                      '--use-fake-device-for-media-stream',
+                      '--use-fake-ui-for-media-stream',
+                    ],
+                  },
+                  ...(CI && {
+                    platformName: 'Windows 10',
+                    'sauce:options': {
+                      screenResolution: '1600x1200',
+                      extendedDebugging: true,
+                    },
+                  }),
                 },
-              } :
-              {
-                prefs: {
-                  'dom.webnotifications.enabled': false,
-                  'media.webrtc.hw.h264.enabled': true,
-                  'media.getusermedia.screensharing.enabled': true,
-                  'media.navigator.permission.disabled': true,
-                  'media.navigator.streams.fake': true,
-                  'media.peerconnection.video.h264_enabled': true,
+              },
+            }
+          : {
+              browserChrome: {
+                capabilities: {
+                  browserName: 'chrome',
+                  'goog:chromeOptions': {
+                    args: [
+                      '--disable-features=WebRtcHideLocalIpsWithMdns',
+                      '--use-fake-device-for-media-stream',
+                      '--use-fake-ui-for-media-stream',
+                    ],
+                  },
+                  ...(CI && {
+                    'sauce:options': {
+                      screenResolution: '1600x1200',
+                      extendedDebugging: true,
+                      capturePerformance: true,
+                      crmuxdriverVersion: 'beta',
+                    },
+                  }),
                 },
-              }),
-          },
-          ...(CI && {
-            'sauce:options': {
-              screenResolution: '1600x1200',
-              extendedDebugging: true,
+              },
+            }),
+      }
+    : {
+        browserFirefox: {
+          capabilities: {
+            browserName: 'firefox',
+            'moz:firefoxOptions': {
+              ...(CI
+                ? {
+                    args: ['-start-debugger-server', '9222'],
+                    prefs: {
+                      'devtools.chrome.enabled': true,
+                      'devtools.debugger.prompt-connection': false,
+                      'devtools.debugger.remote-enabled': true,
+                      'dom.webnotifications.enabled': false,
+                      'media.webrtc.hw.h264.enabled': true,
+                      'media.getusermedia.screensharing.enabled': true,
+                      'media.navigator.permission.disabled': true,
+                      'media.navigator.streams.fake': true,
+                      'media.peerconnection.video.h264_enabled': true,
+                    },
+                  }
+                : {
+                    prefs: {
+                      'dom.webnotifications.enabled': false,
+                      'media.webrtc.hw.h264.enabled': true,
+                      'media.getusermedia.screensharing.enabled': true,
+                      'media.navigator.permission.disabled': true,
+                      'media.navigator.streams.fake': true,
+                      'media.peerconnection.video.h264_enabled': true,
+                    },
+                  }),
             },
-          }),
+            ...(CI && {
+              'sauce:options': {
+                screenResolution: '1600x1200',
+                extendedDebugging: true,
+              },
+            }),
+          },
+        },
+        browserChrome: {
+          capabilities: {
+            browserName: 'chrome',
+            'goog:chromeOptions': {
+              args: [
+                '--disable-features=WebRtcHideLocalIpsWithMdns',
+                '--use-fake-device-for-media-stream',
+                '--use-fake-ui-for-media-stream',
+              ],
+            },
+            ...(CI && {
+              'sauce:options': {
+                screenResolution: '1600x1200',
+                extendedDebugging: true,
+                capturePerformance: true,
+                crmuxdriverVersion: 'beta',
+              },
+            }),
+          },
         },
       },
-      browserChrome: {
-        capabilities: {
-          browserName: 'chrome',
-          'goog:chromeOptions': {
-            args: [
-              '--disable-features=WebRtcHideLocalIpsWithMdns',
-              '--use-fake-device-for-media-stream',
-              '--use-fake-ui-for-media-stream',
-            ],
-          },
-          ...(CI && {
-            'sauce:options': {
-              screenResolution: '1600x1200',
-              extendedDebugging: true,
-              capturePerformance: true,
-              crmuxdriverVersion: 'beta',
-            },
-          }),
-        },
-      },
-    },
 
   //
   // ===================
@@ -326,42 +321,42 @@ exports.config = {
   // Services take over a specific job you don't want to take care of. They enhance
   // your test setup with almost no effort. Unlike plugins, they don't add new
   // commands. Instead, they hook themselves up into the test process.
-  services: CI ?
-    [
-      [
-        'sauce',
-        {
-          sauceConnect: true,
-          sauceConnectOpts: {
-            noSslBumpDomains: [
-              'idbroker.webex.com',
-              'idbrokerbts.webex.com',
-              '127.0.0.1',
-              'localhost',
-              '*.wbx2.com',
-              '*.ciscospark.com',
-            ],
-            tunnelDomains: ['127.0.0.1', 'localhost'],
-            logfile: './sauce.log',
-            tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuid.v4(),
-          },
-        },
-      ],
-    ] :
-    [
-      [
-        'chromedriver',
-        'geckodriver',
-        'firefox-profile',
+  services: CI
+    ? [
         [
-          'static-server',
+          'sauce',
           {
-            port: PORT,
-            folders: [{mount: '/', path: './docs'}],
+            sauceConnect: true,
+            sauceConnectOpts: {
+              noSslBumpDomains: [
+                'idbroker.webex.com',
+                'idbrokerbts.webex.com',
+                '127.0.0.1',
+                'localhost',
+                '*.wbx2.com',
+                '*.ciscospark.com',
+              ],
+              tunnelDomains: ['127.0.0.1', 'localhost'],
+              logfile: './sauce.log',
+              tunnelIdentifier: process.env.SC_TUNNEL_IDENTIFIER || uuid.v4(),
+            },
           },
         ],
+      ]
+    : [
+        [
+          'chromedriver',
+          'geckodriver',
+          'firefox-profile',
+          [
+            'static-server',
+            {
+              port: PORT,
+              folders: [{mount: '/', path: './docs'}],
+            },
+          ],
+        ],
       ],
-    ],
 
   requireModule: [],
 
@@ -433,7 +428,8 @@ exports.config = {
             public: './docs',
             cleanUrls: true,
             trailingSlash: true,
-          })).listen(PORT, () => {
+          })
+        ).listen(PORT, () => {
           console.info(`Static Sever running at http://localhost:${PORT}\n`);
 
           const defs = [
@@ -441,9 +437,7 @@ exports.config = {
             capabilities.browserChrome.capabilities,
           ];
 
-          const build =
-            process.env.BUILD_NUMBER ||
-            `local-${process.env.USER}-wdio-${Date.now()}`;
+          const build = process.env.BUILD_NUMBER || `local-${process.env.USER}-wdio-${Date.now()}`;
 
           defs.forEach((d) => {
             if (CI) {
@@ -452,8 +446,7 @@ exports.config = {
               d.browserVersion = d.browserVersion || 'latest';
               d.platformName = d.platformName || 'macOS 10.15';
               d['sauce:options'].seleniumVersion = '4.1.4';
-            }
-            else {
+            } else {
               d.platformName = () => {
                 switch (os.type()) {
                   case 'Darwin':
@@ -487,10 +480,10 @@ exports.config = {
       browser.maximizeWindow();
     }
     browser.url(this.baseUrl);
-  }, /** * Hook that gets executed before the suite starts
+  },
+  /** * Hook that gets executed before the suite starts
    * @param {Object} suite suite details
-   */
-  /**
+   */ /**
    * Hook that gets executed _before_ a hook within the suite starts (e.g. runs before calling
    * beforeEach in Mocha)
    */

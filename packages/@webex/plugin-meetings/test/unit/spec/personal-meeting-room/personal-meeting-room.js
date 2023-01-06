@@ -5,9 +5,7 @@
 import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import {
-  _PERSONAL_ROOM_
-} from '@webex/plugin-meetings/src/constants';
+import {_PERSONAL_ROOM_} from '@webex/plugin-meetings/src/constants';
 import PersonalMeetingRoom from '@webex/plugin-meetings/src/personal-meeting-room';
 
 describe('personal-meeting-room', () => {
@@ -16,13 +14,10 @@ describe('personal-meeting-room', () => {
 
   beforeEach(() => {
     meetingInfo = {
-      fetchMeetingInfo: sinon.stub().returns(Promise.resolve(
-        {body: {isPmr: true}}
-      ))
+      fetchMeetingInfo: sinon.stub().returns(Promise.resolve({body: {isPmr: true}})),
     };
     pmr = new PersonalMeetingRoom({meetingInfo}, {parent: {}});
   });
-
 
   describe('#get()', () => {
     it('returns personal meeting room info', async () => {

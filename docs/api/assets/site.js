@@ -116,16 +116,16 @@ split_left.style.overflow = '';
 Split(['#split-left', '#split-right'], {
   elementStyle: function (dimension, size, gutterSize) {
     return {
-      'flex-basis': 'calc(' + size + '% - ' + gutterSize + 'px)'
+      'flex-basis': 'calc(' + size + '% - ' + gutterSize + 'px)',
     };
   },
   gutterStyle: function (dimension, gutterSize) {
     return {
-      'flex-basis': gutterSize + 'px'
+      'flex-basis': gutterSize + 'px',
     };
   },
   gutterSize: 20,
-  sizes: [33, 67]
+  sizes: [33, 67],
 });
 
 // Chrome doesn't remember scroll position properly so do it ourselves.
@@ -135,7 +135,7 @@ function updateState() {
   history.replaceState(
     {
       left_top: split_left.scrollTop,
-      right_top: split_right.scrollTop
+      right_top: split_right.scrollTop,
     },
     document.title
   );

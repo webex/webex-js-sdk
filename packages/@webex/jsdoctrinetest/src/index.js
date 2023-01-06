@@ -19,7 +19,7 @@ function isNodeModule(filename) {
 function inject(module, filename) {
   const {code} = generate(extract(transform, filename), {
     compact: false,
-    quotes: 'single'
+    quotes: 'single',
   });
 
   if (process.env.JSDOCTRINETEST_VERBOSE) {

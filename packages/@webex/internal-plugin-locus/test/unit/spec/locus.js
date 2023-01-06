@@ -18,8 +18,8 @@ describe('plugin-locus', () => {
     beforeEach(() => {
       webex = new MockWebex({
         children: {
-          locus: Locus
-        }
+          locus: Locus,
+        },
       });
     });
 
@@ -80,11 +80,11 @@ describe('plugin-locus', () => {
           const {description, result} = sequenceComparisons.update_actions[key];
 
           const current = {
-            sequence: sequenceComparisons.sequences[currentKey]
+            sequence: sequenceComparisons.sequences[currentKey],
           };
           const incoming = {
             sequence: sequenceComparisons.sequences[incomingKey],
-            baseSequence: sequenceComparisons.sequences[baseKey]
+            baseSequence: sequenceComparisons.sequences[baseKey],
           };
 
           describe(description, () => {

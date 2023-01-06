@@ -16,82 +16,92 @@ describe('plugin-team', () => {
   describe('Team', () => {
     let kirk, spock;
 
-    before('create users', () => testUsers.create({count: 2})
-      .then((users) => {
+    before('create users', () =>
+      testUsers.create({count: 2}).then((users) => {
         [kirk, spock] = users;
 
         kirk.webex = new WebexCore({
           credentials: {
-            authorization: kirk.token
+            authorization: kirk.token,
           },
           config: {
             conversation: {
-              keepEncryptedProperties: true
-            }
-          }
+              keepEncryptedProperties: true,
+            },
+          },
         });
 
         spock.webex = new WebexCore({
           credentials: {
-            authorization: spock.token
+            authorization: spock.token,
           },
           config: {
             conversation: {
-              keepEncryptedProperties: true
-            }
-          }
+              keepEncryptedProperties: true,
+            },
+          },
         });
 
         return Promise.all([
           kirk.webex.internal.mercury.connect(),
-          spock.webex.internal.mercury.connect()
+          spock.webex.internal.mercury.connect(),
         ]);
-      }));
+      })
+    );
 
-    after(() => Promise.all([
-      kirk && kirk.webex.internal.mercury.disconnect(),
-      spock && spock.webex.internal.mercury.disconnect()
-    ]));
+    after(() =>
+      Promise.all([
+        kirk && kirk.webex.internal.mercury.disconnect(),
+        spock && spock.webex.internal.mercury.disconnect(),
+      ])
+    );
 
     describe('when mercury event is received', () => {
       let teamConvo, team;
 
-      before('create team', () => kirk.webex.internal.team.create({
-        displayName: `team-${uuid.v4()}`,
-        participants: [
-          kirk,
-          spock
-        ]
-      })
-        .then((t) => {
-          team = t;
-        }));
+      before('create team', () =>
+        kirk.webex.internal.team
+          .create({
+            displayName: `team-${uuid.v4()}`,
+            participants: [kirk, spock],
+          })
+          .then((t) => {
+            team = t;
+          })
+      );
 
-      before('create team conversation', () => kirk.webex.internal.team.createConversation(team, {
-        displayName: `team-conversation-${uuid.v4()}`,
-        participants: [
-          kirk
-        ]
-      })
-        .then((c) => {
-          teamConvo = c;
-        }));
+      before('create team conversation', () =>
+        kirk.webex.internal.team
+          .createConversation(team, {
+            displayName: `team-conversation-${uuid.v4()}`,
+            participants: [kirk],
+          })
+          .then((c) => {
+            teamConvo = c;
+          })
+      );
 
       it('updates the displayName of an unjoined team convo', () => {
         const update = {
           displayName: `updated-team-convo--${uuid.v4()}`,
-          objectType: 'conversation'
+          objectType: 'conversation',
         };
 
-        const activityChecker = (activity) => activity.verb === 'update' && get(activity, 'object.objectType') === 'teamRoomStatus';
+        const activityChecker = (activity) =>
+          activity.verb === 'update' && get(activity, 'object.objectType') === 'teamRoomStatus';
 
         return Promise.all([
-          expectActivity(20000, 'event:conversation.activity', spock.webex.internal.mercury, activityChecker, 'teamRoomStatus update expected'),
-          kirk.webex.internal.team.update(teamConvo, update)
-        ])
-          .then(([activity]) => {
-            assert.equal(activity.object.activityEvent.object.displayName, update.displayName);
-          });
+          expectActivity(
+            20000,
+            'event:conversation.activity',
+            spock.webex.internal.mercury,
+            activityChecker,
+            'teamRoomStatus update expected'
+          ),
+          kirk.webex.internal.team.update(teamConvo, update),
+        ]).then(([activity]) => {
+          assert.equal(activity.object.activityEvent.object.displayName, update.displayName);
+        });
       });
     });
   });

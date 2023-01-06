@@ -6,8 +6,8 @@ export default {
   device: {
     preDiscoveryServices: {
       atlasServiceUrl: process.env.ATLAS_SERVICE_URL || 'https://atlas-a.wbx2.com/admin/api/v1',
-      atlas: process.env.ATLAS_SERVICE_URL || 'https://atlas-a.wbx2.com/admin/api/v1'
-    }
+      atlas: process.env.ATLAS_SERVICE_URL || 'https://atlas-a.wbx2.com/admin/api/v1',
+    },
   },
 
   user: {
@@ -15,7 +15,7 @@ export default {
     batcherMaxCalls: 100,
     batcherMaxWait: 1500,
     verifyDefaults: {
-      reqId: 'WEBCLIENT'
-    }
-  }
+      reqId: 'WEBCLIENT',
+    },
+  },
 };

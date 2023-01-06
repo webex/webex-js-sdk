@@ -19,28 +19,28 @@ import Authorization from '@webex/plugin-authorization-browser-first-party';
 // Necessary to require lodash this way in order to stub the method
 const lodash = require('lodash');
 
-
 browserOnly(describe)('plugin-authorization-browser-first-party', () => {
   describe('Authorization', () => {
-    function makeWebex(href = 'https://example.com', csrfToken = undefined, pkceVerifier = undefined, config = {}) {
+    function makeWebex(
+      href = 'https://example.com',
+      csrfToken = undefined,
+      pkceVerifier = undefined,
+      config = {}
+    ) {
       const mockWindow = {
         history: {
           replaceState(a, b, location) {
             mockWindow.location.href = location;
-          }
+          },
         },
         location: {
-          href
+          href,
         },
         sessionStorage: {
-          getItem: sinon.stub()
-            .onCall(0)
-            .returns(pkceVerifier)
-            .onCall(1)
-            .returns(csrfToken),
+          getItem: sinon.stub().onCall(0).returns(pkceVerifier).onCall(1).returns(csrfToken),
           removeItem: sinon.spy(),
-          setItem: sinon.spy()
-        }
+          setItem: sinon.spy(),
+        },
       };
 
       sinon.spy(mockWindow.history, 'replaceState');
@@ -49,37 +49,52 @@ browserOnly(describe)('plugin-authorization-browser-first-party', () => {
         children: {
           authorization: Authorization,
           credentials: Credentials,
-          services: Services
+          services: Services,
         },
-        request: sinon.stub().returns(Promise.resolve({body: {access_token: 'AT', token_type: 'Fake', refresh_token: 'RT'}})),
-        config: merge({
-          credentials: {
-            idbroker: {
-              url: process.env.IDBROKER_BASE_URL,
-              defaultUrl: process.env.IDBROKER_BASE_URL
+        request: sinon
+          .stub()
+          .returns(
+            Promise.resolve({body: {access_token: 'AT', token_type: 'Fake', refresh_token: 'RT'}})
+          ),
+        config: merge(
+          {
+            credentials: {
+              idbroker: {
+                url: process.env.IDBROKER_BASE_URL,
+                defaultUrl: process.env.IDBROKER_BASE_URL,
+              },
+              identity: {
+                url: process.env.IDENTITY_BASE_URL,
+                defaultUrl: process.env.IDENTITY_BASE_URL,
+              },
+              activationUrl: `${
+                process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'
+              }/idb/token/v1/actions/UserActivation/invoke`,
+              authorizeUrl: `${
+                process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'
+              }/idb/oauth2/v1/authorize`,
+              setPasswordUrl: `${
+                process.env.IDBROKER_BASE_URL || 'https://identity.webex.com'
+              }/identity/scim/v1/Users`,
+              logoutUrl: `${
+                process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'
+              }/idb/oauth2/v1/logout`,
+              // eslint-disable-next-line camelcase
+              client_id: 'fake',
+              // eslint-disable-next-line camelcase
+              client_secret: 'fake',
+              // eslint-disable-next-line camelcase
+              redirect_uri: 'http://example.com',
+              // eslint-disable-next-line camelcase
+              scope: 'scope:one',
+              refreshCallback: () => Promise.resolve(),
             },
-            identity: {
-              url: process.env.IDENTITY_BASE_URL,
-              defaultUrl: process.env.IDENTITY_BASE_URL
-            },
-            activationUrl: `${process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'}/idb/token/v1/actions/UserActivation/invoke`,
-            authorizeUrl: `${process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'}/idb/oauth2/v1/authorize`,
-            setPasswordUrl: `${process.env.IDBROKER_BASE_URL || 'https://identity.webex.com'}/identity/scim/v1/Users`,
-            logoutUrl: `${process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'}/idb/oauth2/v1/logout`,
-            // eslint-disable-next-line camelcase
-            client_id: 'fake',
-            // eslint-disable-next-line camelcase
-            client_secret: 'fake',
-            // eslint-disable-next-line camelcase
-            redirect_uri: 'http://example.com',
-            // eslint-disable-next-line camelcase
-            scope: 'scope:one',
-            refreshCallback: () => Promise.resolve()
-          }
-        }, config),
+          },
+          config
+        ),
         getWindow() {
           return mockWindow;
-        }
+        },
       });
 
       return webex;
@@ -93,15 +108,14 @@ browserOnly(describe)('plugin-authorization-browser-first-party', () => {
           assert.isFalse(webex.authorization.ready);
           assert.isFalse(webex.credentials.canAuthorize);
 
-          return webex.authorization.when('change:ready')
-            .then(() => {
-              // Webex request gets called twice:
-              // once for the pre-auth catalog
-              // once for auth token exchange
-              assert.calledTwice(webex.request);
-              assert.isTrue(webex.authorization.ready);
-              assert.isTrue(webex.credentials.canAuthorize);
-            });
+          return webex.authorization.when('change:ready').then(() => {
+            // Webex request gets called twice:
+            // once for the pre-auth catalog
+            // once for auth token exchange
+            assert.calledTwice(webex.request);
+            assert.isTrue(webex.authorization.ready);
+            assert.isTrue(webex.credentials.canAuthorize);
+          });
         });
 
         it('validates the csrf token', () => {
@@ -109,12 +123,20 @@ browserOnly(describe)('plugin-authorization-browser-first-party', () => {
 
           assert.throws(() => {
             // eslint-disable-next-line no-unused-vars
-            const webex = makeWebex(`http://example.com/?code=5&state=${base64.encode(JSON.stringify({csrf_token: 'someothertoken'}))}`, csrfToken);
+            const webex = makeWebex(
+              `http://example.com/?code=5&state=${base64.encode(
+                JSON.stringify({csrf_token: 'someothertoken'})
+              )}`,
+              csrfToken
+            );
           }, /CSRF token someothertoken does not match stored token abcd/);
 
           assert.throws(() => {
             // eslint-disable-next-line no-unused-vars
-            const webex = makeWebex(`http://example.com/?code=5&state=${base64.encode(JSON.stringify({}))}`, csrfToken);
+            const webex = makeWebex(
+              `http://example.com/?code=5&state=${base64.encode(JSON.stringify({}))}`,
+              csrfToken
+            );
           }, /Expected CSRF token abcd, but not found in redirect query/);
 
           assert.throws(() => {
@@ -122,33 +144,46 @@ browserOnly(describe)('plugin-authorization-browser-first-party', () => {
             const webex = makeWebex('http://example.com/?code=5', csrfToken);
           }, /Expected CSRF token abcd, but not found in redirect query/);
 
-          const webex = makeWebex(`http://example.com/?code=5&state=${base64.encode(JSON.stringify({csrf_token: csrfToken}))}`, csrfToken);
+          const webex = makeWebex(
+            `http://example.com/?code=5&state=${base64.encode(
+              JSON.stringify({csrf_token: csrfToken})
+            )}`,
+            csrfToken
+          );
 
-          return webex.authorization.when('change:ready')
-            .then(() => {
-              assert.isTrue(webex.credentials.canAuthorize);
-              assert.called(webex.getWindow().sessionStorage.removeItem);
-            });
+          return webex.authorization.when('change:ready').then(() => {
+            assert.isTrue(webex.credentials.canAuthorize);
+            assert.called(webex.getWindow().sessionStorage.removeItem);
+          });
         });
 
         it('removes the oauth parameters from the url', () => {
           const csrfToken = 'abcd';
 
-          const webex = makeWebex(`http://example.com/?code=5&state=${base64.encode(JSON.stringify({csrf_token: csrfToken, something: true}))}`, csrfToken);
+          const webex = makeWebex(
+            `http://example.com/?code=5&state=${base64.encode(
+              JSON.stringify({csrf_token: csrfToken, something: true})
+            )}`,
+            csrfToken
+          );
 
-          return webex.authorization.when('change:ready')
-            .then(() => {
-              assert.isTrue(webex.credentials.canAuthorize);
-              assert.called(webex.getWindow().sessionStorage.removeItem);
-              assert.called(webex.getWindow().history.replaceState);
-              assert.equal(webex.getWindow().location.href, `http://example.com/?state=${base64.encode(JSON.stringify({something: true}))}`);
-            });
+          return webex.authorization.when('change:ready').then(() => {
+            assert.isTrue(webex.credentials.canAuthorize);
+            assert.called(webex.getWindow().sessionStorage.removeItem);
+            assert.called(webex.getWindow().history.replaceState);
+            assert.equal(
+              webex.getWindow().location.href,
+              `http://example.com/?state=${base64.encode(JSON.stringify({something: true}))}`
+            );
+          });
         });
       });
       describe('when the url contains an error', () => {
         it('throws a grant error', () => {
           assert.throws(() => {
-            makeWebex('http://127.0.0.1:8000/?error=invalid_scope&error_description=The%20requested%20scope%20is%20invalid.');
+            makeWebex(
+              'http://127.0.0.1:8000/?error=invalid_scope&error_description=The%20requested%20scope%20is%20invalid.'
+            );
           }, /The requested scope is invalid./);
         });
       });
@@ -166,28 +201,14 @@ browserOnly(describe)('plugin-authorization-browser-first-party', () => {
         it('passes codeVerifier to requestAuthorizationCodeGrant', () => {
           const expectedVerifier = 'test verifier';
 
-          const webex = makeWebex(
-            'http://example.com?code=5',
-            undefined,
-            expectedVerifier
-          );
+          const webex = makeWebex('http://example.com?code=5', undefined, expectedVerifier);
 
-          return webex.authorization.when('change:ready')
-            .then(() => {
-              assert.calledTwice(webex.request);
-              assert.calledWith(
-                webex.getWindow().sessionStorage.getItem,
-                'oauth2-code-verifier'
-              );
-              assert.calledWith(
-                webex.getWindow().sessionStorage.removeItem,
-                'oauth2-code-verifier'
-              );
-              assert.equal(
-                webex.request.getCall(1).args[0].form.code_verifier,
-                expectedVerifier
-              );
-            });
+          return webex.authorization.when('change:ready').then(() => {
+            assert.calledTwice(webex.request);
+            assert.calledWith(webex.getWindow().sessionStorage.getItem, 'oauth2-code-verifier');
+            assert.calledWith(webex.getWindow().sessionStorage.removeItem, 'oauth2-code-verifier');
+            assert.equal(webex.request.getCall(1).args[0].form.code_verifier, expectedVerifier);
+          });
         });
       });
     });
@@ -196,95 +217,97 @@ browserOnly(describe)('plugin-authorization-browser-first-party', () => {
       it('calls #initiateAuthorizationCodeGrant()', () => {
         const webex = makeWebex(undefined, undefined, {
           credentials: {
-            clientType: 'confidential'
-          }
+            clientType: 'confidential',
+          },
         });
 
         sinon.spy(webex.authorization, 'initiateAuthorizationCodeGrant');
 
-        return webex.authorization.initiateLogin()
-          .then(() => {
-            assert.called(webex.authorization.initiateAuthorizationCodeGrant);
-            assert.include(webex.getWindow().location, 'response_type=code');
-          });
+        return webex.authorization.initiateLogin().then(() => {
+          assert.called(webex.authorization.initiateAuthorizationCodeGrant);
+          assert.include(webex.getWindow().location, 'response_type=code');
+        });
       });
 
       it('adds a csrf_token to the login url and sessionStorage', () => {
         const webex = makeWebex(undefined, undefined, {
           credentials: {
-            clientType: 'confidential'
-          }
+            clientType: 'confidential',
+          },
         });
 
         sinon.spy(webex.authorization, 'initiateAuthorizationCodeGrant');
 
-        return webex.authorization.initiateLogin()
-          .then(() => {
-            assert.called(webex.authorization.initiateAuthorizationCodeGrant);
-            assert.include(webex.getWindow().location, 'response_type=code');
-            const {query} = url.parse(webex.getWindow().location, true);
-            let {state} = query;
+        return webex.authorization.initiateLogin().then(() => {
+          assert.called(webex.authorization.initiateAuthorizationCodeGrant);
+          assert.include(webex.getWindow().location, 'response_type=code');
+          const {query} = url.parse(webex.getWindow().location, true);
+          let {state} = query;
 
-            state = JSON.parse(base64.decode(state));
-            assert.property(state, 'csrf_token');
-            assert.isDefined(state.csrf_token);
-            assert.match(state.csrf_token, patterns.uuid);
-            assert.called(webex.getWindow().sessionStorage.setItem);
-            assert.calledWith(webex.getWindow().sessionStorage.setItem, 'oauth2-csrf-token', state.csrf_token);
-          });
+          state = JSON.parse(base64.decode(state));
+          assert.property(state, 'csrf_token');
+          assert.isDefined(state.csrf_token);
+          assert.match(state.csrf_token, patterns.uuid);
+          assert.called(webex.getWindow().sessionStorage.setItem);
+          assert.calledWith(
+            webex.getWindow().sessionStorage.setItem,
+            'oauth2-csrf-token',
+            state.csrf_token
+          );
+        });
       });
 
       it('adds a pkce code challenge', () => {
         const webex = makeWebex(undefined, undefined, {
           credentials: {
-            clientType: 'confidential'
-          }
+            clientType: 'confidential',
+          },
         });
 
         const expectedCodeChallenge = 'test challenge';
 
         sinon.spy(webex.authorization, 'initiateAuthorizationCodeGrant');
-        sinon.stub(webex.authorization, '_generateCodeChallenge')
-          .returns(expectedCodeChallenge);
+        sinon.stub(webex.authorization, '_generateCodeChallenge').returns(expectedCodeChallenge);
 
-        return webex.authorization.initiateLogin()
-          .then(() => {
-            assert.called(webex.authorization.initiateAuthorizationCodeGrant);
-            const grantOptions = webex.authorization.initiateAuthorizationCodeGrant.getCall(0).args[0];
+        return webex.authorization.initiateLogin().then(() => {
+          assert.called(webex.authorization.initiateAuthorizationCodeGrant);
+          const grantOptions =
+            webex.authorization.initiateAuthorizationCodeGrant.getCall(0).args[0];
 
-            assert.equal(grantOptions.code_challenge, expectedCodeChallenge);
-            assert.equal(grantOptions.code_challenge_method, 'S256');
-            // eslint-disable-next-line no-underscore-dangle
-            assert.calledWith(webex.authorization._generateCodeChallenge);
-          });
+          assert.equal(grantOptions.code_challenge, expectedCodeChallenge);
+          assert.equal(grantOptions.code_challenge_method, 'S256');
+          // eslint-disable-next-line no-underscore-dangle
+          assert.calledWith(webex.authorization._generateCodeChallenge);
+        });
       });
 
       it('adds emailHash', () => {
         const webex = makeWebex(undefined, undefined, {
           credentials: {
-            clientType: 'confidential'
-          }
+            clientType: 'confidential',
+          },
         });
 
-        const expectedEmailHash = '73062d872926c2a556f17b36f50e328ddf9bff9d403939bd14b6c3b7f5a33fc2';
+        const expectedEmailHash =
+          '73062d872926c2a556f17b36f50e328ddf9bff9d403939bd14b6c3b7f5a33fc2';
 
         sinon.spy(webex.authorization, 'initiateAuthorizationCodeGrant');
 
-        return webex.authorization.initiateLogin({email: 'test@email.com'})
-          .then(() => {
-            assert.called(webex.authorization.initiateAuthorizationCodeGrant);
-            const grantOptions = webex.authorization.initiateAuthorizationCodeGrant.getCall(0).args[0];
+        return webex.authorization.initiateLogin({email: 'test@email.com'}).then(() => {
+          assert.called(webex.authorization.initiateAuthorizationCodeGrant);
+          const grantOptions =
+            webex.authorization.initiateAuthorizationCodeGrant.getCall(0).args[0];
 
-            assert.equal(grantOptions.emailHash, expectedEmailHash);
-            assert.isUndefined(grantOptions.email);
-          });
+          assert.equal(grantOptions.emailHash, expectedEmailHash);
+          assert.isUndefined(grantOptions.email);
+        });
       });
 
       it('sets #isAuthorizing', () => {
         const webex = makeWebex(undefined, undefined, {
           credentials: {
-            clientType: 'confidential'
-          }
+            clientType: 'confidential',
+          },
         });
 
         assert.isFalse(webex.authorization.isAuthorizing);
@@ -298,8 +321,8 @@ browserOnly(describe)('plugin-authorization-browser-first-party', () => {
       it('sets #isAuthenticating', () => {
         const webex = makeWebex(undefined, undefined, {
           credentials: {
-            clientType: 'confidential'
-          }
+            clientType: 'confidential',
+          },
         });
 
         assert.isFalse(webex.authorization.isAuthenticating);
@@ -315,17 +338,16 @@ browserOnly(describe)('plugin-authorization-browser-first-party', () => {
       it('redirects to the login page with response_type=code', () => {
         const webex = makeWebex(undefined, undefined, {
           credentials: {
-            clientType: 'confidential'
-          }
+            clientType: 'confidential',
+          },
         });
 
         sinon.spy(webex.authorization, 'initiateAuthorizationCodeGrant');
 
-        return webex.authorization.initiateLogin()
-          .then(() => {
-            assert.called(webex.authorization.initiateAuthorizationCodeGrant);
-            assert.include(webex.getWindow().location, 'response_type=code');
-          });
+        return webex.authorization.initiateLogin().then(() => {
+          assert.called(webex.authorization.initiateAuthorizationCodeGrant);
+          assert.include(webex.getWindow().location, 'response_type=code');
+        });
       });
     });
 
@@ -342,7 +364,7 @@ browserOnly(describe)('plugin-authorization-browser-first-party', () => {
         const toStringStub = sinon.stub().returns(expectedCodeChallenge);
         const randomStub = sinon.stub(lodash, 'random').returns(0);
         const sha256Stub = sinon.stub(CryptoJS, 'SHA256').returns({
-          toString: toStringStub
+          toString: toStringStub,
         });
 
         // eslint-disable-next-line no-underscore-dangle
@@ -365,16 +387,16 @@ browserOnly(describe)('plugin-authorization-browser-first-party', () => {
       it('removes the state parameter when it has no keys', () => {
         const webex = makeWebex(undefined, undefined, {
           credentials: {
-            clientType: 'confidential'
-          }
+            clientType: 'confidential',
+          },
         });
         const location = {
           query: {
             code: 'code',
             state: {
-              csrf_token: 'token'
-            }
-          }
+              csrf_token: 'token',
+            },
+          },
         };
 
         sinon.spy(webex.authorization, '_cleanUrl');
@@ -386,17 +408,17 @@ browserOnly(describe)('plugin-authorization-browser-first-party', () => {
       it('keeps the parameter when it has keys', () => {
         const webex = makeWebex(undefined, undefined, {
           credentials: {
-            clientType: 'confidential'
-          }
+            clientType: 'confidential',
+          },
         });
         const location = {
           query: {
             code: 'code',
             state: {
               csrf_token: 'token',
-              key: 'value'
-            }
-          }
+              key: 'value',
+            },
+          },
         };
 
         sinon.spy(webex.authorization, '_cleanUrl');

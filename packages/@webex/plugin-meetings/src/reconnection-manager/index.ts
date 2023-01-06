@@ -13,7 +13,7 @@ import {
   SHARE_STOPPED_REASON,
   _CALL_,
   _LEFT_,
-  _ID_
+  _ID_,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ReconnectionError from '../common/errors/reconnection';
@@ -64,7 +64,7 @@ class NeedsRejoinError extends Error {
 /**
  * @export
  * @class ReconnectionManager
-*/
+ */
 export default class ReconnectionManager {
   autoRejoinEnabled: any;
   iceState: any;
@@ -92,7 +92,7 @@ export default class ReconnectionManager {
       resolve: () => {},
       timer: undefined,
       // @ts-ignore
-      timeoutDuration: meeting.config.reconnection.iceReconnectionTimeout
+      timeoutDuration: meeting.config.reconnection.iceReconnectionTimeout,
     };
 
     /**
@@ -100,21 +100,21 @@ export default class ReconnectionManager {
      * @type {String}
      * @private
      * @memberof ReconnectionManager
-    */
+     */
     this.status = RECONNECTION.STATE.DEFAULT_STATUS;
     /**
      * @instance
      * @type {Number}
      * @private
      * @memberof ReconnectionManager
-    */
+     */
     this.tryCount = RECONNECTION.STATE.DEFAULT_TRY_COUNT;
     /**
      * @instance
      * @type {Object}
      * @private
      * @memberof ReconnectionManager
-    */
+     */
     // TODO : change this logic to not save the meeting instance
     // It gets complicated when meeting ends on remote side , We have a old meeting instance which is not up to date
     // @ts-ignore
@@ -134,7 +134,6 @@ export default class ReconnectionManager {
     this.rejoinAttempts = RECONNECTION.STATE.DEFAULT_TRY_COUNT;
     // @ts-ignore
     this.autoRejoinEnabled = meeting.config.reconnection.autoRejoin;
-
 
     // Make sure reconnection state is in default
     this.reset();
@@ -185,7 +184,9 @@ export default class ReconnectionManager {
    */
   public waitForIceReconnect() {
     if (!this.iceState.disconnected) {
-      LoggerProxy.logger.log('ReconnectionManager:index#waitForIceReconnect --> waiting for ice reconnect');
+      LoggerProxy.logger.log(
+        'ReconnectionManager:index#waitForIceReconnect --> waiting for ice reconnect'
+      );
 
       this.iceState.disconnected = true;
 
@@ -193,10 +194,11 @@ export default class ReconnectionManager {
         this.iceState.timer = setTimeout(() => {
           if (this.iceState.disconnected === false) {
             resolve();
-          }
-          else {
+          } else {
             this.iceState.disconnected = false;
-            reject(new Error(`ice reconnection did not occur in ${this.iceState.timeoutDuration}ms`));
+            reject(
+              new Error(`ice reconnection did not occur in ${this.iceState.timeoutDuration}ms`)
+            );
           }
         }, this.iceState.timeoutDuration);
 
@@ -229,14 +231,13 @@ export default class ReconnectionManager {
     this.meeting = null;
   }
 
-
   /**
    * @public
    * @memberof ReconnectionManager
    * @returns {Boolean} true if reconnection operation is in progress
    */
   isReconnectInProgress() {
-    return (this.status === RECONNECTION.STATE.IN_PROGRESS);
+    return this.status === RECONNECTION.STATE.IN_PROGRESS;
   }
 
   /**
@@ -254,7 +255,9 @@ export default class ReconnectionManager {
         return true;
       }
 
-      LoggerProxy.logger.info('ReconnectionManager:index#validate --> Reconnection already in progress.');
+      LoggerProxy.logger.info(
+        'ReconnectionManager:index#validate --> Reconnection already in progress.'
+      );
 
       throw new ReconnectInProgress('Reconnection already in progress.');
     }
@@ -280,38 +283,48 @@ export default class ReconnectionManager {
     networkDisconnect?: boolean;
     networkRetry?: boolean;
   } = {}) {
-    LoggerProxy.logger.info(`ReconnectionManager:index#reconnect --> Reconnection start for meeting ${this.meeting.id}.`);
+    LoggerProxy.logger.info(
+      `ReconnectionManager:index#reconnect --> Reconnection start for meeting ${this.meeting.id}.`
+    );
     // First, validate that we can reconnect, if not, it will throw an error
     try {
       this.validate();
-    }
-    catch (error) {
-      LoggerProxy.logger.info('ReconnectionManager:index#reconnect --> Reconnection unable to begin.', error);
+    } catch (error) {
+      LoggerProxy.logger.info(
+        'ReconnectionManager:index#reconnect --> Reconnection unable to begin.',
+        error
+      );
       throw error;
     }
 
     if (!networkRetry) {
       // Only log START metrics on the initial reconnect
-      LoggerProxy.logger.info('ReconnectionManager:index#reconnect --> Sending reconnect start metric.');
+      LoggerProxy.logger.info(
+        'ReconnectionManager:index#reconnect --> Sending reconnect start metric.'
+      );
       Metrics.postEvent({
         event: eventType.MEDIA_RECONNECTING,
-        meeting: this.meeting
+        meeting: this.meeting,
       });
     }
 
     return this.executeReconnection({networkDisconnect})
       .then(() => {
         LoggerProxy.logger.info('ReconnectionManager:index#reconnect --> Reconnection successful.');
-        LoggerProxy.logger.info('ReconnectionManager:index#reconnect --> Sending reconnect success metric.');
+        LoggerProxy.logger.info(
+          'ReconnectionManager:index#reconnect --> Sending reconnect success metric.'
+        );
         Metrics.postEvent({
           event: eventType.MEDIA_RECOVERED,
           meeting: this.meeting,
-          data: {recoveredBy: reconnection.RECOVERED_BY_NEW}
+          data: {recoveredBy: reconnection.RECOVERED_BY_NEW},
         });
       })
       .catch((reconnectError) => {
         if (reconnectError instanceof NeedsRetryError) {
-          LoggerProxy.logger.info('ReconnectionManager:index#reconnect --> Reconnection not successful, retrying.');
+          LoggerProxy.logger.info(
+            'ReconnectionManager:index#reconnect --> Reconnection not successful, retrying.'
+          );
           // Reset our reconnect status since we are looping back to the beginning
           this.status = RECONNECTION.STATE.DEFAULT_STATUS;
 
@@ -320,8 +333,13 @@ export default class ReconnectionManager {
         }
 
         // Reconnect has failed
-        LoggerProxy.logger.error('ReconnectionManager:index#reconnect --> Reconnection failed.', reconnectError.message);
-        LoggerProxy.logger.info('ReconnectionManager:index#reconnect --> Sending reconnect abort metric.');
+        LoggerProxy.logger.error(
+          'ReconnectionManager:index#reconnect --> Reconnection failed.',
+          reconnectError.message
+        );
+        LoggerProxy.logger.info(
+          'ReconnectionManager:index#reconnect --> Sending reconnect abort metric.'
+        );
 
         const reconnectMetric = {
           event: eventType.CALL_ABORTED,
@@ -333,10 +351,10 @@ export default class ReconnectionManager {
                 errorCode: 2008,
                 fatal: true,
                 name: errorObjects.name.mediaEngine,
-                shownToUser: false
-              }
-            ]
-          }
+                shownToUser: false,
+              },
+            ],
+          },
         };
 
         Metrics.postEvent(reconnectMetric);
@@ -347,7 +365,6 @@ export default class ReconnectionManager {
             return this.rejoinMeeting(reconnectError.wasSharing);
           }
         }
-
 
         throw reconnectError;
       });
@@ -361,43 +378,57 @@ export default class ReconnectionManager {
    * @private
    * @memberof ReconnectionManager
    */
-  private async executeReconnection({ networkDisconnect = false }: { networkDisconnect?: boolean }) {
+  private async executeReconnection({networkDisconnect = false}: {networkDisconnect?: boolean}) {
     this.status = RECONNECTION.STATE.IN_PROGRESS;
 
-    LoggerProxy.logger.info('ReconnectionManager:index#executeReconnection --> Attempting to reconnect to meeting.');
+    LoggerProxy.logger.info(
+      'ReconnectionManager:index#executeReconnection --> Attempting to reconnect to meeting.'
+    );
 
     if (networkDisconnect) {
       try {
         await this.reconnectMercuryWebSocket();
-        LoggerProxy.logger.error('ReconnectionManager:index#executeReconnection --> Websocket reconnected.', this.webex.internal.device.url);
-      }
-      catch (error) {
-        LoggerProxy.logger.error('ReconnectionManager:index#executeReconnection --> Unable to reconnect to websocket, giving up.');
+        LoggerProxy.logger.error(
+          'ReconnectionManager:index#executeReconnection --> Websocket reconnected.',
+          this.webex.internal.device.url
+        );
+      } catch (error) {
+        LoggerProxy.logger.error(
+          'ReconnectionManager:index#executeReconnection --> Unable to reconnect to websocket, giving up.'
+        );
         this.status = RECONNECTION.STATE.FAILURE;
-        throw (error);
+        throw error;
       }
     }
 
     const wasSharing = this.meeting.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE;
 
     try {
-      LoggerProxy.logger.info('ReconnectionManager:index#executeReconnection --> Updating meeting data from server.');
+      LoggerProxy.logger.info(
+        'ReconnectionManager:index#executeReconnection --> Updating meeting data from server.'
+      );
       await this.webex.meetings.syncMeetings();
-    }
-    catch (syncError) {
-      LoggerProxy.logger.info('ReconnectionManager:index#executeReconnection --> Unable to sync meetings, reconnecting.', syncError);
-      throw (new NeedsRetryError(syncError));
+    } catch (syncError) {
+      LoggerProxy.logger.info(
+        'ReconnectionManager:index#executeReconnection --> Unable to sync meetings, reconnecting.',
+        syncError
+      );
+      throw new NeedsRetryError(syncError);
     }
 
     // TODO: try to improve this logic as the reconnection manager saves the instance of deleted meeting object
     // So that on rejoin it known what parametrs it was using
     if (!this.meeting || !this.webex.meetings.getMeetingByType(_ID_, this.meeting.id)) {
-      LoggerProxy.logger.info('ReconnectionManager:index#executeReconnection --> Meeting got deleted due to inactivity or ended remotely ');
+      LoggerProxy.logger.info(
+        'ReconnectionManager:index#executeReconnection --> Meeting got deleted due to inactivity or ended remotely '
+      );
 
       throw new Error('Unable to rejoin a meeting already ended or inactive .');
     }
 
-    LoggerProxy.logger.info(`ReconnectionManager:index#executeReconnection --> Current state of meeting is ${this.meeting.state}`);
+    LoggerProxy.logger.info(
+      `ReconnectionManager:index#executeReconnection --> Current state of meeting is ${this.meeting.state}`
+    );
 
     // If the meeting state was left, no longer reconnect media
     if (this.meeting.state === _LEFT_) {
@@ -405,22 +436,25 @@ export default class ReconnectionManager {
         throw new Error('Unable to rejoin a call in LEFT state.');
       }
 
-      throw (new NeedsRejoinError({wasSharing}));
+      throw new NeedsRejoinError({wasSharing});
     }
 
     try {
       const media = await this.reconnectMedia();
 
-      LoggerProxy.logger.log('ReconnectionManager:index#executeReconnection --> Media reestablished');
+      LoggerProxy.logger.log(
+        'ReconnectionManager:index#executeReconnection --> Media reestablished'
+      );
       this.status = RECONNECTION.STATE.COMPLETE;
 
       return media;
-    }
-    catch (error) {
-      LoggerProxy.logger.error('ReconnectionManager:index#executeReconnection --> Media reestablishment failed');
+    } catch (error) {
+      LoggerProxy.logger.error(
+        'ReconnectionManager:index#executeReconnection --> Media reestablishment failed'
+      );
       this.status = RECONNECTION.STATE.FAILURE;
 
-      throw (error);
+      throw error;
     }
   }
 
@@ -431,9 +465,11 @@ export default class ReconnectionManager {
    * @param {boolean} wasSharing
    * @returns {Promise}
    */
-  async rejoinMeeting(wasSharing: boolean = false) {
+  async rejoinMeeting(wasSharing = false) {
     try {
-      LoggerProxy.logger.info('ReconnectionManager:index#rejoinMeeting --> attemping meeting rejoin');
+      LoggerProxy.logger.info(
+        'ReconnectionManager:index#rejoinMeeting --> attemping meeting rejoin'
+      );
 
       await this.meeting.join({rejoin: true});
       LoggerProxy.logger.info('ReconnectionManager:index#rejoinMeeting --> meeting rejoined');
@@ -450,31 +486,32 @@ export default class ReconnectionManager {
           this.meeting,
           {
             file: 'reconnection-manager/index',
-            function: 'rejoinMeeting'
+            function: 'rejoinMeeting',
           },
           EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
           {
-            reason: SHARE_STOPPED_REASON.MEETING_REJOIN
+            reason: SHARE_STOPPED_REASON.MEETING_REJOIN,
           }
         );
       }
-    }
-    catch (joinError) {
+    } catch (joinError) {
       this.rejoinAttempts += 1;
       if (this.rejoinAttempts <= this.maxRejoinAttempts) {
-        LoggerProxy.logger.info(`ReconnectionManager:index#rejoinMeeting --> Unable to rejoin meeting, attempt #${this.rejoinAttempts}, retrying.`, joinError);
-        this.rejoinMeeting();
-      }
-      else {
-        LoggerProxy.logger.error('ReconnectionManager:index#rejoinMeeting --> Unable to rejoin meeting after max attempts.', joinError);
-        Metrics.sendBehavioralMetric(
-          BEHAVIORAL_METRICS.MEETING_MAX_REJOIN_FAILURE,
-          {
-            locus_id: this.meeting.locusUrl.split('/').pop(),
-            reason: joinError.message,
-            stack: joinError.stack
-          }
+        LoggerProxy.logger.info(
+          `ReconnectionManager:index#rejoinMeeting --> Unable to rejoin meeting, attempt #${this.rejoinAttempts}, retrying.`,
+          joinError
         );
+        this.rejoinMeeting();
+      } else {
+        LoggerProxy.logger.error(
+          'ReconnectionManager:index#rejoinMeeting --> Unable to rejoin meeting after max attempts.',
+          joinError
+        );
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_MAX_REJOIN_FAILURE, {
+          locus_id: this.meeting.locusUrl.split('/').pop(),
+          reason: joinError.message,
+          stack: joinError.stack,
+        });
         this.status = RECONNECTION.STATE.FAILURE;
         throw joinError;
       }
@@ -482,9 +519,11 @@ export default class ReconnectionManager {
 
     try {
       await this.reconnectMedia();
-    }
-    catch (mediaError) {
-      LoggerProxy.logger.error('ReconnectionManager:index#rejoinMeeting --> Unable to reestablish media after rejoining.', mediaError);
+    } catch (mediaError) {
+      LoggerProxy.logger.error(
+        'ReconnectionManager:index#rejoinMeeting --> Unable to reestablish media after rejoining.',
+        mediaError
+      );
       throw mediaError;
     }
   }
@@ -495,7 +534,9 @@ export default class ReconnectionManager {
    * @memberof ReconnectionManager
    */
   async reconnectMedia() {
-    LoggerProxy.logger.log('ReconnectionManager:index#reconnectMedia --> Begin reestablishment of media');
+    LoggerProxy.logger.log(
+      'ReconnectionManager:index#reconnectMedia --> Begin reestablishment of media'
+    );
 
     // we are not simply calling this.meeting.mediaProperties.webrtcMediaConnection.reconnect(),
     // but instead manually closing and creating new media connection, because we need to do the TURN discovery again
@@ -519,30 +560,44 @@ export default class ReconnectionManager {
    * @memberof ReconnectionManager
    */
   private async reconnectMercuryWebSocket() {
-    LoggerProxy.logger.info('ReconnectionManager:index#reconnectMercuryWebSocket --> Reconnecting websocket.');
+    LoggerProxy.logger.info(
+      'ReconnectionManager:index#reconnectMercuryWebSocket --> Reconnecting websocket.'
+    );
     // First, attempt to disconnect if we think we are already connected.
     if (this.webex.internal.mercury.connected) {
-      LoggerProxy.logger.info('ReconnectionManager:index#reconnectMercuryWebSocket --> Disconnecting existing websocket.');
+      LoggerProxy.logger.info(
+        'ReconnectionManager:index#reconnectMercuryWebSocket --> Disconnecting existing websocket.'
+      );
       try {
         await this.webex.internal.mercury.disconnect();
-        LoggerProxy.logger.info('ReconnectionManager:index#reconnectMercuryWebSocket --> Websocket disconnected successfully.');
-      }
-      catch (disconnectError) {
+        LoggerProxy.logger.info(
+          'ReconnectionManager:index#reconnectMercuryWebSocket --> Websocket disconnected successfully.'
+        );
+      } catch (disconnectError) {
         // If we can't disconnect, the sdk is in such a bad state that reconnecting is not going to happen.
-        LoggerProxy.logger.error('ReconnectionManager:index#reconnectMercuryWebSocket --> Unable to disconnect from websocket, giving up.', disconnectError);
+        LoggerProxy.logger.error(
+          'ReconnectionManager:index#reconnectMercuryWebSocket --> Unable to disconnect from websocket, giving up.',
+          disconnectError
+        );
         throw disconnectError;
       }
     }
 
     try {
-      LoggerProxy.logger.info('ReconnectionManager:index#reconnectMercuryWebSocket --> Connecting websocket.');
+      LoggerProxy.logger.info(
+        'ReconnectionManager:index#reconnectMercuryWebSocket --> Connecting websocket.'
+      );
       await this.webex.internal.mercury.connect();
-      LoggerProxy.logger.info('ReconnectionManager:index#reconnectMercuryWebSocket --> Websocket connected successfully.');
-    }
-    catch (connectError) {
-      LoggerProxy.logger.error('ReconnectionManager:index#reconnectMercuryWebSocket --> Unable to connect to websocket, giving up.', connectError);
+      LoggerProxy.logger.info(
+        'ReconnectionManager:index#reconnectMercuryWebSocket --> Websocket connected successfully.'
+      );
+    } catch (connectError) {
+      LoggerProxy.logger.error(
+        'ReconnectionManager:index#reconnectMercuryWebSocket --> Unable to connect to websocket, giving up.',
+        connectError
+      );
 
-      throw (connectError);
+      throw connectError;
     }
   }
 }

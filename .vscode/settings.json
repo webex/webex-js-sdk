@@ -10,11 +10,11 @@
   },
   "files.watcherExclude": {
     "**/.git/objects/**": true,
-    "**/.git/subtree-cache/**": true,
+    "**/.git/subtree-cache/**": true
   },
   "search.exclude": {
     "**/bower_components": true,
-    "**/dist": true,
+    "**/dist": true
   },
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true,
@@ -26,5 +26,5 @@
   "editor.formatOnSave": true,
   "breadcrumbs.enabled": false,
   "prettier.bracketSameLine": true,
-  "prettier.configPath": ".prettierrc",
+  "prettier.configPath": ".prettierrc"
 }

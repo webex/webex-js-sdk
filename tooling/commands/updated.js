@@ -27,23 +27,23 @@ module.exports = {
     dependents: {
       default: false,
       description: 'include dependent packages',
-      type: 'boolean'
+      type: 'boolean',
     },
     npm: {
       default: false,
-      description: 'Compare to version at \'latest\' tag on npm',
-      type: 'boolean'
+      description: "Compare to version at 'latest' tag on npm",
+      type: 'boolean',
     },
     upstream: {
       default: true,
       description: 'Compare to upstream/master',
-      type: 'boolean'
-    }
+      type: 'boolean',
+    },
   },
   handler: wrapHandler(async ({dependents, npm = !!process.env.CI, upstream}) => {
     if (upstream) {
       npm = false;
     }
     console.log(await updated({dependents, npm}));
-  })
+  }),
 };

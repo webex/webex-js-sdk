@@ -23,7 +23,7 @@ import {
   PROVISIONAL_TYPE_DIAL_IN,
   PROVISIONAL_TYPE_DIAL_OUT,
   SEND_DTMF_ENDPOINT,
-  _SLIDES_
+  _SLIDES_,
 } from '../constants';
 
 /**
@@ -34,7 +34,10 @@ export default class MeetingRequest extends StatelessWebexPlugin {
 
   constructor(attrs: any, options: any) {
     super(attrs, options);
-    this.changeVideoLayoutDebounced = debounce(this.changeVideoLayout, 2000, {leading: true, trailing: true});
+    this.changeVideoLayoutDebounced = debounce(this.changeVideoLayout, 2000, {
+      leading: true,
+      trailing: true,
+    });
   }
 
   /**
@@ -83,13 +86,10 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       pin,
       moveToResource,
       roapMessage,
-      preferTranscoding
+      preferTranscoding,
     } = options;
 
-    LoggerProxy.logger.info(
-      'Meeting:request#joinMeeting --> Joining a meeting',
-      correlationId
-    );
+    LoggerProxy.logger.info('Meeting:request#joinMeeting --> Joining a meeting', correlationId);
 
     let url = '';
 
@@ -98,18 +98,18 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       device: {
         url: deviceUrl,
         // @ts-ignore - config comes from registerPlugin
-        deviceType: this.config.meetings.deviceType
+        deviceType: this.config.meetings.deviceType,
       },
       usingResource: resourceId || null,
-      moveMediaToResource: resourceId && moveToResource || false,
+      moveMediaToResource: (resourceId && moveToResource) || false,
       correlationId,
       respOnlySdp: true,
       allowMultiDevice: true,
       ensureConversation: ensureConversation || false,
       supportsNativeLobby: 1,
       clientMediaPreferences: {
-        preferTranscoding: preferTranscoding ?? true
-      }
+        preferTranscoding: preferTranscoding ?? true,
+      },
     };
 
     // @ts-ignore
@@ -134,30 +134,29 @@ export default class MeetingRequest extends StatelessWebexPlugin {
 
     if (locusUrl) {
       url = `${locusUrl}/${PARTICIPANT}`;
-    }
-    else if (inviteeAddress || meetingNumber) {
+    } else if (inviteeAddress || meetingNumber) {
       try {
         // @ts-ignore
         await this.webex.internal.services.waitForCatalog('postauth');
         // @ts-ignore
         url = `${this.webex.internal.services.get('locus')}/${LOCI}/${CALL}`;
         body.invitee = {
-          address: inviteeAddress || `wbxmn:${meetingNumber}`
+          address: inviteeAddress || `wbxmn:${meetingNumber}`,
         };
-      }
-      catch (e) {
-        LoggerProxy.logger.error(`Meeting:request#joinMeeting Error Joining ${inviteeAddress || meetingNumber} --> ${e}`);
-        throw (e);
+      } catch (e) {
+        LoggerProxy.logger.error(
+          `Meeting:request#joinMeeting Error Joining ${inviteeAddress || meetingNumber} --> ${e}`
+        );
+        throw e;
       }
     }
-
 
     // TODO: -- this will be resolved in SDK request
     url = url.concat(`?${ALTERNATE_REDIRECT_TRUE}`);
 
     if (resourceId === inviteeAddress) {
       body.callPreferences = {
-        requestedMedia: [_SLIDES_]
+        requestedMedia: [_SLIDES_],
       };
     }
 
@@ -169,7 +168,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     return this.request({
       method: HTTP_VERBS.POST,
       uri: url,
-      body
+      body,
     });
   }
 
@@ -181,16 +180,22 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @returns {Promise}
    * @private
    */
-  private refreshCaptcha({ captchaRefreshUrl, captchaId }: { captchaRefreshUrl: string; captchaId: string }) {
+  private refreshCaptcha({
+    captchaRefreshUrl,
+    captchaId,
+  }: {
+    captchaRefreshUrl: string;
+    captchaId: string;
+  }) {
     const body = {
-      captchaId
+      captchaId,
     };
 
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.POST,
       uri: captchaRefreshUrl,
-      body
+      body,
     }).catch((err) => {
       LoggerProxy.logger.error(`Meeting:request#refreshCaptcha --> Error: ${err}`);
 
@@ -230,18 +235,20 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         deviceType: deviceType.PROVISIONAL,
         provisionalType: PROVISIONAL_TYPE_DIAL_IN,
         url: dialInUrl,
-        clientUrl
+        clientUrl,
       },
-      correlationId
+      correlationId,
     };
 
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.POST,
       uri,
-      body
+      body,
     }).catch((err) => {
-      LoggerProxy.logger.error(`Meeting:request#dialIn --> Error provisioning a dial in device, error ${err}`);
+      LoggerProxy.logger.error(
+        `Meeting:request#dialIn --> Error provisioning a dial in device, error ${err}`
+      );
 
       throw err;
     });
@@ -283,18 +290,20 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         provisionalType: PROVISIONAL_TYPE_DIAL_OUT,
         url: dialOutUrl,
         dialoutAddress: phoneNumber,
-        clientUrl
+        clientUrl,
       },
-      correlationId
+      correlationId,
     };
 
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.POST,
       uri,
-      body
+      body,
     }).catch((err) => {
-      LoggerProxy.logger.error(`Meeting:request#dialOut --> Error provisioning a dial out device, error ${err}`);
+      LoggerProxy.logger.error(
+        `Meeting:request#dialOut --> Error provisioning a dial out device, error ${err}`
+      );
 
       throw err;
     });
@@ -307,7 +316,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {String} options.syncUrl sync url to get ht elatest locus delta
    * @returns {Promise}
    */
-  syncMeeting(options: { desync: boolean; syncUrl: string }) {
+  syncMeeting(options: {desync: boolean; syncUrl: string}) {
     /* eslint-disable no-else-return */
     const {desync} = options;
     let {syncUrl} = options;
@@ -315,16 +324,20 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     /* istanbul ignore else */
     if (desync) {
       // check for existing URL parameters
-      syncUrl = syncUrl.concat(syncUrl.split('?')[1] ? '&' : '?').concat(`${LOCUS.SYNCDEBUG}=${desync}`);
+      syncUrl = syncUrl
+        .concat(syncUrl.split('?')[1] ? '&' : '?')
+        .concat(`${LOCUS.SYNCDEBUG}=${desync}`);
     }
 
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.GET,
-      uri: syncUrl
+      uri: syncUrl,
     }) // TODO: Handle if delta sync failed . Get the full locus object
       .catch((err) => {
-        LoggerProxy.logger.error(`Meeting:request#syncMeeting --> Error syncing meeting, error ${err}`);
+        LoggerProxy.logger.error(
+          `Meeting:request#syncMeeting --> Error syncing meeting, error ${err}`
+        );
 
         return err;
       });
@@ -337,7 +350,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {String} options.locusUrl sync url to get ht elatest locus delta
    * @returns {Promise}
    */
-  getFullLocus(options: { desync: boolean; locusUrl: string }) {
+  getFullLocus(options: {desync: boolean; locusUrl: string}) {
     let {locusUrl} = options;
     const {desync} = options;
 
@@ -349,9 +362,11 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       // @ts-ignore
       return this.request({
         method: HTTP_VERBS.GET,
-        uri: locusUrl
+        uri: locusUrl,
       }).catch((err) => {
-        LoggerProxy.logger.error(`Meeting:request#getFullLocus --> Error getting full locus, error ${err}`);
+        LoggerProxy.logger.error(
+          `Meeting:request#getFullLocus --> Error getting full locus, error ${err}`
+        );
 
         return err;
       });
@@ -390,16 +405,16 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     const body = {
       device: {
         deviceType: deviceType.PROVISIONAL,
-        url: phoneUrl
+        url: phoneUrl,
       },
-      correlationId
+      correlationId,
     };
 
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
       uri,
-      body
+      body,
     }).catch((err) => {
       LoggerProxy.logger.error(
         `Meeting:request#disconnectPhoneAudio --> Error when requesting phone ${phoneUrl} to leave, error ${err}`
@@ -432,27 +447,24 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     resourceId: string;
     correlationId: string;
   }) {
-    LoggerProxy.logger.info(
-      'Meeting:request#leaveMeeting --> Leaving a meeting',
-      correlationId
-    );
+    LoggerProxy.logger.info('Meeting:request#leaveMeeting --> Leaving a meeting', correlationId);
 
     const uri = `${locusUrl}/${PARTICIPANT}/${selfId}/${LEAVE}`;
     const body = {
       device: {
         // @ts-ignore
         deviceType: this.config.meetings.deviceType,
-        url
+        url,
       },
       usingResource: resourceId || null,
-      correlationId
+      correlationId,
     };
 
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
       uri,
-      body
+      body,
     });
   }
 
@@ -464,22 +476,22 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {String} options.correlationId
    * @returns {Promise}
    */
-  acknowledgeMeeting(options: { locusUrl: string; deviceUrl: string; correlationId: string }) {
+  acknowledgeMeeting(options: {locusUrl: string; deviceUrl: string; correlationId: string}) {
     const uri = `${options.locusUrl}/${PARTICIPANT}/${ALERT}`;
     const body = {
       device: {
         // @ts-ignore
         deviceType: this.config.meetings.deviceType,
-        url: options.deviceUrl
+        url: options.deviceUrl,
       },
-      correlationId: options.correlationId
+      correlationId: options.correlationId,
     };
 
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
       uri,
-      body
+      body,
     });
   }
 
@@ -491,20 +503,26 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {String} options.id
    * @returns {Promise}
    */
-  recordMeeting(options: { locusUrl: string; deviceUrl: string; id: string, recording: any, paused: any }) {
+  recordMeeting(options: {
+    locusUrl: string;
+    deviceUrl: string;
+    id: string;
+    recording: any;
+    paused: any;
+  }) {
     const uri = `${options.locusUrl}/${CONTROLS}`;
     const body = {
       record: {
         recording: options.recording,
-        paused: options.paused
-      }
+        paused: options.paused,
+      },
     };
 
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PATCH,
       uri,
-      body
+      body,
     });
   }
 
@@ -512,15 +530,15 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     const uri = `${options.locusUrl}/${CONTROLS}`;
     const body = {
       lock: {
-        locked: options.lock
-      }
+        locked: options.lock,
+      },
     };
 
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PATCH,
       uri,
-      body
+      body,
     });
   }
 
@@ -532,13 +550,13 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {String} options.reason
    * @returns {Promise}
    */
-  declineMeeting(options: { locusUrl: string; deviceUrl: string; reason: string }) {
+  declineMeeting(options: {locusUrl: string; deviceUrl: string; reason: string}) {
     const uri = `${options.locusUrl}/${PARTICIPANT}/${DECLINE}`;
     const body = {
       device: {
         // @ts-ignore
         deviceType: this.config.meetings.deviceType,
-        url: options.deviceUrl
+        url: options.deviceUrl,
       },
       ...(options.reason && {reason: options.reason}),
     };
@@ -547,7 +565,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     return this.request({
       method: HTTP_VERBS.PUT,
       uri,
-      body
+      body,
     });
   }
 
@@ -562,34 +580,38 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {Boolean} options.preferTranscoding false for multistream (Homer), true for transcoded media (Edonus)
    * @returns {Promise}
    */
-  remoteAudioVideoToggle(options: {
-    selfId: string;
-    locusUrl: string;
-    deviceUrl: string;
-    resourceId: string;
-    localMedias: string;
-  } | any) {
+  remoteAudioVideoToggle(
+    options:
+      | {
+          selfId: string;
+          locusUrl: string;
+          deviceUrl: string;
+          resourceId: string;
+          localMedias: string;
+        }
+      | any
+  ) {
     const uri = `${options.locusUrl}/${PARTICIPANT}/${options.selfId}/${MEDIA}`;
     const body = {
       device: {
         // @ts-ignore
         deviceType: this.config.meetings.deviceType,
-        url: options.deviceUrl
+        url: options.deviceUrl,
       },
       usingResource: options.resourceId || null,
       correlationId: options.correlationId,
       respOnlySdp: true,
       localMedias: options.localMedias,
       clientMediaPreferences: {
-        preferTranscoding: options.preferTranscoding ?? true
-      }
+        preferTranscoding: options.preferTranscoding ?? true,
+      },
     };
 
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
       uri,
-      body
+      body,
     });
   }
 
@@ -603,13 +625,17 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {String} options.uri floor grant uri
    * @returns {Promise}
    */
-  changeMeetingFloor(options: {
-    disposition: string;
-    personUrl: string;
-    deviceUrl: string;
-    resourceId: string;
-    uri: string;
-  } | any) {
+  changeMeetingFloor(
+    options:
+      | {
+          disposition: string;
+          personUrl: string;
+          deviceUrl: string;
+          resourceId: string;
+          uri: string;
+        }
+      | any
+  ) {
     let floorReq: any = {disposition: options.disposition};
 
     /* istanbul ignore else */
@@ -621,20 +647,20 @@ export default class MeetingRequest extends StatelessWebexPlugin {
             {
               // @ts-ignore
               deviceType: this.config.meetings.deviceType,
-              url: options.deviceUrl
-            }
-          ]
+              url: options.deviceUrl,
+            },
+          ],
         },
         disposition: options.disposition,
         requester: {
-          url: options.personUrl
-        }
+          url: options.personUrl,
+        },
       };
     }
 
     const body: any = {
       floor: floorReq,
-      resourceUrl: options.resourceUrl
+      resourceUrl: options.resourceUrl,
     };
 
     if (options?.resourceToken) {
@@ -645,7 +671,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     return this.request({
       uri: options.uri,
       method: HTTP_VERBS.PUT,
-      body
+      body,
     });
   }
 
@@ -657,7 +683,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {String} options.tones a string of one or more DTMF tones to send
    * @returns {Promise}
    */
-  sendDTMF({ locusUrl, deviceUrl, tones }: { locusUrl: string; deviceUrl: string; tones: string }) {
+  sendDTMF({locusUrl, deviceUrl, tones}: {locusUrl: string; deviceUrl: string; tones: string}) {
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.POST,
@@ -666,9 +692,9 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         deviceUrl,
         dtmf: {
           correlationId: uuid.v4(),
-          tones
-        }
-      }
+          tones,
+        },
+      },
     });
   }
 
@@ -707,24 +733,37 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   }) {
     // send main/content renderInfo only if both width and height are specified
     if (main && (!main.width || !main.height)) {
-      return Promise.reject(new Error(`Both width and height must be specified. One of them is missing for main: ${JSON.stringify(main)}`));
+      return Promise.reject(
+        new Error(
+          `Both width and height must be specified. One of them is missing for main: ${JSON.stringify(
+            main
+          )}`
+        )
+      );
     }
 
     if (content && (!content.width || !content.height)) {
-      return Promise.reject(new Error(`Both width and height must be specified. One of them is missing for content: ${JSON.stringify(content)}`));
+      return Promise.reject(
+        new Error(
+          `Both width and height must be specified. One of them is missing for content: ${JSON.stringify(
+            content
+          )}`
+        )
+      );
     }
 
-    const renderInfoMain = (main) ? {width: main.width, height: main.height} : undefined;
-    const renderInfoContent = (content) ? {width: content.width, height: content.height} : undefined;
+    const renderInfoMain = main ? {width: main.width, height: main.height} : undefined;
+    const renderInfoContent = content ? {width: content.width, height: content.height} : undefined;
 
-    const layoutParams = (renderInfoMain || renderInfoContent) ?
-      {
-        renderInfo:
-        {
-          main: renderInfoMain,
-          content: renderInfoContent
-        }
-      } : undefined;
+    const layoutParams =
+      renderInfoMain || renderInfoContent
+        ? {
+            renderInfo: {
+              main: renderInfoMain,
+              content: renderInfoContent,
+            },
+          }
+        : undefined;
 
     // @ts-ignore
     return this.request({
@@ -734,9 +773,9 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         layout: {
           deviceUrl,
           type: layoutType,
-          layoutParams
-        }
-      }
+          layoutParams,
+        },
+      },
     });
   }
 
@@ -746,13 +785,13 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {Url} options.locusUrl
    * @returns {Promise}
    */
-  endMeetingForAll({ locusUrl }: { locusUrl: string }) {
+  endMeetingForAll({locusUrl}: {locusUrl: string}) {
     const uri = `${locusUrl}/${END}`;
 
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.POST,
-      uri
+      uri,
     });
   }
 
@@ -762,11 +801,11 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {Url} options.keepAliveUrl
    * @returns {Promise}
    */
-  keepAlive({ keepAliveUrl }: { keepAliveUrl: string }) {
+  keepAlive({keepAliveUrl}: {keepAliveUrl: string}) {
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.GET,
-      uri: keepAliveUrl
+      uri: keepAliveUrl,
     });
   }
 }

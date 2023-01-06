@@ -14,7 +14,7 @@ describe('plugin-meetings', () => {
     error: () => {},
     warn: () => {},
     trace: () => {},
-    debug: () => {}
+    debug: () => {},
   };
 
   beforeEach(() => {

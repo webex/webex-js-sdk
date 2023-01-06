@@ -8,15 +8,14 @@ const DeviceCollection = {
   },
 
   set(device) {
-    const deviceId = device.id || device.identity && device.identity.id;
+    const deviceId = device.id || (device.identity && device.identity.id);
     // check if the device is already existing, if so then merge else add
     const existingDevice = this.devices[deviceId];
 
     if (existingDevice) {
       // already existing, merge for any new binding information
       merge(existingDevice, device);
-    }
-    else {
+    } else {
       this.devices[deviceId] = device;
     }
   },
@@ -27,8 +26,7 @@ const DeviceCollection = {
 
   getAll() {
     return Object.values(this.devices);
-  }
-
+  },
 };
 
 export default DeviceCollection;

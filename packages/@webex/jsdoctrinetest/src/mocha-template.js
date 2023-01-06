@@ -35,8 +35,8 @@ export default function generateSpec(a) {
     DESCRIBED_THING: stringLiteral(a.filename),
     IT_BLOCK: makeItBlock({
       DOES_A_THING: stringLiteral(itLine),
-      STATEMENTS: a.testCase
-    })
+      STATEMENTS: a.testCase,
+    }),
   });
 
   return d;

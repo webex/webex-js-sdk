@@ -8,7 +8,7 @@ const HostUtils: any = {};
 HostUtils.parse = (host: object) => {
   if (host) {
     return {
-      hostId: HostUtils.getId(host)
+      hostId: HostUtils.getId(host),
     };
   }
 
@@ -30,8 +30,9 @@ HostUtils.getHosts = (oldHost: object, newHost: object) => {
     previous,
     current,
     updates: {
-      isNewHost: previous && current ? HostUtils.isDifferentHosts(previous.hostId, current.hostId) : true
-    }
+      isNewHost:
+        previous && current ? HostUtils.isDifferentHosts(previous.hostId, current.hostId) : true,
+    },
   };
 };
 

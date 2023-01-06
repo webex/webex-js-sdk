@@ -5,6 +5,6 @@
 export default {
   calendar: {
     fromDate: new Date(new Date().setDate(new Date().getDate() - 1)),
-    toDate: new Date(new Date().setDate(new Date().getDate() + 7))
-  }
+    toDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+  },
 };

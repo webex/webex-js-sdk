@@ -3,17 +3,8 @@
  */
 
 import {inBrowser, patterns} from '@webex/common';
-import {
-  WebexHttpError,
-  WebexPlugin
-} from '@webex/webex-core';
-import {
-  cloneDeep,
-  has,
-  isArray,
-  isObject,
-  isString
-} from 'lodash';
+import {WebexHttpError, WebexPlugin} from '@webex/webex-core';
+import {cloneDeep, has, isArray, isObject, isString} from 'lodash';
 
 const precedence = {
   silent: 0,
@@ -24,7 +15,7 @@ const precedence = {
   log: 5,
   info: 6,
   debug: 7,
-  trace: 8
+  trace: 8,
 };
 
 export const levels = Object.keys(precedence).filter((level) => level !== 'silent');
@@ -34,12 +25,12 @@ const fallbacks = {
   warn: ['error', 'log'],
   info: ['log'],
   debug: ['info', 'log'],
-  trace: ['debug', 'info', 'log']
+  trace: ['debug', 'info', 'log'],
 };
 
 const LOG_TYPES = {
   SDK: 'sdk',
-  CLIENT: 'client'
+  CLIENT: 'client',
 };
 
 const SDK_LOG_TYPE_NAME = 'wx-js-sdk';
@@ -77,8 +68,7 @@ function walkAndFilter(object, visited = []) {
   for (const [key, value] of Object.entries(object)) {
     if (authTokenKeyPattern.test(key)) {
       Reflect.deleteProperty(object, key);
-    }
-    else {
+    } else {
       object[key] = walkAndFilter(value, visited);
     }
   }
@@ -97,14 +87,14 @@ const Logger = WebexPlugin.extend({
       cache: false,
       fn() {
         return this.getCurrentLevel();
-      }
+      },
     },
     client_level: {
       cache: false,
       fn() {
         return this.getCurrentClientLevel();
-      }
-    }
+      },
+    },
   },
   session: {
     // for when configured to use single buffer
@@ -112,27 +102,27 @@ const Logger = WebexPlugin.extend({
       type: 'array',
       default() {
         return [];
-      }
+      },
     },
     groupLevel: {
       type: 'number',
       default() {
         return 0;
-      }
+      },
     },
     // for when configured to use separate buffers
     sdkBuffer: {
       type: 'array',
       default() {
         return [];
-      }
+      },
     },
     clientBuffer: {
       type: 'array',
       default() {
         return [];
-      }
-    }
+      },
+    },
   },
 
   /**
@@ -178,7 +168,10 @@ const Logger = WebexPlugin.extend({
    * @returns {boolean}
    */
   shouldPrint(level, type = LOG_TYPES.SDK) {
-    return precedence[level] <= precedence[type === LOG_TYPES.SDK ? this.getCurrentLevel() : this.getCurrentClientLevel()];
+    return (
+      precedence[level] <=
+      precedence[type === LOG_TYPES.SDK ? this.getCurrentLevel() : this.getCurrentClientLevel()]
+    );
   },
 
   /**
@@ -194,7 +187,10 @@ const Logger = WebexPlugin.extend({
    * @returns {boolean}
    */
   shouldBuffer(level) {
-    return precedence[level] <= (this.config.bufferLogLevel ? precedence[this.config.bufferLogLevel] : precedence.info);
+    return (
+      precedence[level] <=
+      (this.config.bufferLogLevel ? precedence[this.config.bufferLogLevel] : precedence.info)
+    );
   },
 
   /**
@@ -223,7 +219,8 @@ const Logger = WebexPlugin.extend({
     }
 
     // Use server-side-feature toggles to configure log levels
-    const level = this.webex.internal.device && this.webex.internal.device.features.developer.get('log-level');
+    const level =
+      this.webex.internal.device && this.webex.internal.device.features.developer.get('log-level');
 
     if (level) {
       if (levels.includes(level)) {
@@ -275,11 +272,14 @@ const Logger = WebexPlugin.extend({
       // merge the client and sdk buffers
       // while we have entries in either buffer
       while (clientIndex < this.clientBuffer.length || sdkIndex < this.sdkBuffer.length) {
-      // if we have remaining entries in the SDK buffer
-        if (sdkIndex < this.sdkBuffer.length &&
+        // if we have remaining entries in the SDK buffer
+        if (
+          sdkIndex < this.sdkBuffer.length &&
           // and we haven't exhausted all the client buffer entries, or SDK date is before client date
           (clientIndex >= this.clientBuffer.length ||
-            (new Date(getDate(this.sdkBuffer[sdkIndex])) <= new Date(getDate(this.clientBuffer[clientIndex]))))) {
+            new Date(getDate(this.sdkBuffer[sdkIndex])) <=
+              new Date(getDate(this.clientBuffer[clientIndex])))
+        ) {
           // then add to the SDK buffer
           buffer.push(this.sdkBuffer[sdkIndex]);
           sdkIndex += 1;
@@ -291,13 +291,12 @@ const Logger = WebexPlugin.extend({
           clientIndex += 1;
         }
       }
-    }
-    else {
+    } else {
       buffer = this.buffer;
     }
 
     return buffer.join('\n');
-  }
+  },
 });
 
 /**
@@ -323,16 +322,18 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
     // in Ampersand, even if the initialize method is used to set this up.  so we keep the type to achieve
     // a sort of late binding to allow retrieving a name from config.
     const logType = type;
-    const clientName = logType === LOG_TYPES.SDK ? SDK_LOG_TYPE_NAME : (this.config.clientName || logType);
+    const clientName =
+      logType === LOG_TYPES.SDK ? SDK_LOG_TYPE_NAME : this.config.clientName || logType;
 
     let buffer;
     let historyLength;
 
     if (this.config.separateLogBuffers) {
-      historyLength = this.config.clientHistoryLength ? this.config.clientHistoryLength : this.config.historyLength;
+      historyLength = this.config.clientHistoryLength
+        ? this.config.clientHistoryLength
+        : this.config.historyLength;
       buffer = logType === LOG_TYPES.SDK ? this.sdkBuffer : this.clientBuffer;
-    }
-    else {
+    } else {
       buffer = this.buffer;
       historyLength = this.config.historyLength;
     }
@@ -381,8 +382,7 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
         if (level === 'group') this.groupLevel += 1;
         if (level === 'groupEnd' && this.groupLevel > 0) this.groupLevel -= 1;
       }
-    }
-    catch (reason) {
+    } catch (reason) {
       if (!neverPrint) {
         /* istanbul ignore next */
         // eslint-disable-next-line no-console
@@ -404,14 +404,24 @@ levels.forEach((level) => {
     }
   }
 
-
   // eslint-disable-next-line complexity
   Logger.prototype[`client_${level}`] = makeLoggerMethod(level, impl, LOG_TYPES.CLIENT);
   Logger.prototype[level] = makeLoggerMethod(level, impl, LOG_TYPES.SDK);
 });
 
-Logger.prototype.client_logToBuffer =
-  makeLoggerMethod(levels.info, levels.info, LOG_TYPES.CLIENT, true, true);
-Logger.prototype.logToBuffer = makeLoggerMethod(levels.info, levels.info, LOG_TYPES.SDK, true, true);
+Logger.prototype.client_logToBuffer = makeLoggerMethod(
+  levels.info,
+  levels.info,
+  LOG_TYPES.CLIENT,
+  true,
+  true
+);
+Logger.prototype.logToBuffer = makeLoggerMethod(
+  levels.info,
+  levels.info,
+  LOG_TYPES.SDK,
+  true,
+  true
+);
 
 export default Logger;

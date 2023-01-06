@@ -29,15 +29,12 @@ npm install --save @webex/plugin-people
 ## Usage
 
 ```js
-
 const Webex = require('webex');
 
 const webex = Webex.init();
-webex.people.get(id)
-  .then((people) => {
-    console.log(people);
-  })
-
+webex.people.get(id).then((people) => {
+  console.log(people);
+});
 ```
 
 ## Maintainers
