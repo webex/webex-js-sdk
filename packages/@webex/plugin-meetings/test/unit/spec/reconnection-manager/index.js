@@ -10,6 +10,7 @@ const {assert} = chai;
 chai.use(chaiAsPromised);
 sinon.assert.expose(chai.assert, {prefix: ''});
 
+
 describe('plugin-meetings', () => {
   describe('ReconnectionManager.reconnect', () => {
     it('uses correct TURN TLS information on the new connection', async () => {

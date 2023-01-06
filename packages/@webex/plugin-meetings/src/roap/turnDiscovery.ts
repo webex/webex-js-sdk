@@ -1,3 +1,4 @@
+// @ts-ignore - Types not available for @webex/common
 import {Defer} from '@webex/common';
 
 import Metrics from '../metrics';
@@ -6,6 +7,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import {ROAP} from '../constants';
 
 import RoapRequest from './request';
+import Meeting from '../meeting';
 
 const TURN_DISCOVERY_TIMEOUT = 10; // in seconds
 
@@ -54,7 +56,7 @@ export default class TurnDiscovery {
    * @private
    * @memberof Roap
    */
-  waitForTurnDiscoveryResponse() {
+  private waitForTurnDiscoveryResponse() {
     if (!this.defer) {
       LoggerProxy.logger.warn('Roap:turnDiscovery#waitForTurnDiscoveryResponse --> TURN discovery is not in progress');
 
@@ -82,7 +84,8 @@ export default class TurnDiscovery {
    * @public
    * @memberof Roap
    */
-  handleTurnDiscoveryResponse(roapMessage) {
+  public handleTurnDiscoveryResponse(roapMessage: object) {
+    // @ts-ignore - Fix missing type
     const {headers} = roapMessage;
 
     if (!this.defer) {
@@ -131,7 +134,7 @@ export default class TurnDiscovery {
    * @private
    * @memberof Roap
    */
-  sendRoapTurnDiscoveryRequest(meeting, isReconnecting) {
+  sendRoapTurnDiscoveryRequest(meeting: Meeting, isReconnecting: boolean) {
     if (this.defer) {
       LoggerProxy.logger.warn('Roap:turnDiscovery#sendRoapTurnDiscoveryRequest --> already in progress');
 
@@ -152,7 +155,9 @@ export default class TurnDiscovery {
       .sendRoap({
         roapMessage,
         correlationId: meeting.correlationId,
+       // @ts-ignore - Fix missing type
         locusSelfUrl: meeting.selfUrl,
+        // @ts-ignore - Fix missing type
         mediaId: isReconnecting ? '' : meeting.mediaId,
         audioMuted: meeting.isAudioMuted(),
         videoMuted: meeting.isVideoMuted(),
@@ -172,7 +177,7 @@ export default class TurnDiscovery {
    * @param {Meeting} meeting
    * @returns {Promise}
    */
-  sendRoapOK(meeting) {
+  sendRoapOK(meeting: Meeting) {
     LoggerProxy.logger.info('Roap:turnDiscovery#sendRoapOK --> sending OK');
 
     return this.roapRequest.sendRoap({
@@ -181,7 +186,9 @@ export default class TurnDiscovery {
         version: ROAP.ROAP_VERSION,
         seq: TURN_DISCOVERY_SEQ,
       },
+      // @ts-ignore - fix type
       locusSelfUrl: meeting.selfUrl,
+      // @ts-ignore - fix type
       mediaId: meeting.mediaId,
       correlationId: meeting.correlationId,
       audioMuted: meeting.isAudioMuted(),
@@ -207,7 +214,8 @@ export default class TurnDiscovery {
    *                                 media connection just after a reconnection
    * @returns {Promise}
    */
-  doTurnDiscovery(meeting, isReconnecting) {
+  doTurnDiscovery(meeting: Meeting, isReconnecting: boolean) {
+    // @ts-ignore - fix type
     const isAnyClusterReachable = meeting.webex.meetings.reachability.isAnyClusterReachable();
 
     if (isAnyClusterReachable) {
@@ -215,6 +223,7 @@ export default class TurnDiscovery {
       return Promise.resolve({turnServerInfo: undefined, turnDiscoverySkippedReason: 'reachability'});
     }
 
+    // @ts-ignore - fix type
     if (!meeting.config.experimental.enableTurnDiscovery) {
       LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> TURN discovery disabled in config, skipping it');
 

@@ -1432,9 +1432,9 @@ describe('plugin-meetings', () => {
           });
         });
       });
-      describe('#share', () => {
-        it('should have #share', () => {
-          assert.exists(meeting.share);
+      describe('#requestScreenShareFloor', () => {
+        it('should have #requestScreenShareFloor', () => {
+          assert.exists(meeting.requestScreenShareFloor);
         });
         beforeEach(() => {
           meeting.locusInfo.mediaShares = [{name: 'content', url: url1}];
@@ -1442,7 +1442,7 @@ describe('plugin-meetings', () => {
           meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
         });
         it('should send the share', async () => {
-          const share = meeting.share();
+          const share = meeting.requestScreenShareFloor();
 
           assert.exists(share.then);
           await share;
@@ -3656,21 +3656,33 @@ describe('plugin-meetings', () => {
         sandbox = null;
       });
 
-      describe('#stopFloorRequest', () => {
-        it('should have #stopFloorRequest', () => {
-          assert.exists(meeting.stopFloorRequest);
+      describe('#releaseScreenShareFloor', () => {
+        it('should have #releaseScreenShareFloor', () => {
+          assert.exists(meeting.releaseScreenShareFloor);
         });
         beforeEach(() => {
-          meeting.locusInfo.mediaShares = [{name: 'content', url: url1}];
+          meeting.selfId = 'some self id';
+          meeting.locusInfo.mediaShares = [{name: 'content', url: url1, floor: {beneficiary: {id: meeting.selfId}}}];
           meeting.locusInfo.self = {url: url2};
+          meeting.mediaProperties = {mediaDirection: {sendShare: true}};
           meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
         });
-        it('should call change meeting floor', async () => {
-          const share = meeting.share();
+        it('should call changeMeetingFloor()', async () => {
+          const share = meeting.releaseScreenShareFloor();
 
           assert.exists(share.then);
           await share;
           assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
+        });
+        it('should not call changeMeetingFloor() if someone else already has the floor', async () => {
+          // change selfId so that it doesn't match the beneficiary id from meeting.locusInfo.mediaShares
+          meeting.selfId = 'new self id';
+
+          const share = meeting.releaseScreenShareFloor();
+
+          assert.exists(share.then);
+          await share;
+          assert.notCalled(meeting.meetingRequest.changeMeetingFloor);
         });
       });
 
@@ -4195,7 +4207,7 @@ describe('plugin-meetings', () => {
                       if (newPayload.previous.content.beneficiaryId === USER_IDS.ME) {
                         eventTrigger.share.push({
                           eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-                          functionName: 'stopFloorRequest'
+                          functionName: 'localShare'
                         });
                       }
                       else if (newPayload.current.content.beneficiaryId === USER_IDS.ME) {
@@ -4246,7 +4258,7 @@ describe('plugin-meetings', () => {
                     if (newPayload.current.content.beneficiaryId === USER_IDS.ME) {
                       eventTrigger.share.push({
                         eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-                        functionName: 'stopFloorRequest'
+                        functionName: 'localShare'
                       });
                     }
                     else {
@@ -4265,7 +4277,7 @@ describe('plugin-meetings', () => {
                     if (newPayload.previous.content.beneficiaryId === USER_IDS.ME) {
                       eventTrigger.share.push({
                         eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-                        functionName: 'stopFloorRequest'
+                        functionName: 'localShare'
                       });
                     }
                     else if (newPayload.current.content.beneficiaryId === USER_IDS.ME) {
@@ -4308,7 +4320,7 @@ describe('plugin-meetings', () => {
                 if (beneficiaryId === USER_IDS.ME) {
                   eventTrigger.share.push({
                     eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-                    functionName: 'stopFloorRequest'
+                    functionName: 'localShare'
                   });
                 }
                 else {
