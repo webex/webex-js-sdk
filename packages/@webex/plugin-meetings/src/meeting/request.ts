@@ -25,6 +25,7 @@ import {
   SEND_DTMF_ENDPOINT,
   _SLIDES_
 } from '../constants';
+import {Reaction} from '../reactions/reactions.type';
 
 /**
  * @class MeetingRequest
@@ -766,6 +767,28 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     return this.request({
       method: HTTP_VERBS.GET,
       uri: keepAliveUrl
+    });
+  }
+
+  /**
+   * Make a network request to send a reaction.
+   * @param {Object} options
+   * @param {Url} options.reactionChannelUrl
+   * @param {Reaction} options.reaction
+   * @param {string} options.senderID
+   * @returns {Promise}
+   */
+  sendReaction({ reactionChannelUrl, reaction, participantId }: { reactionChannelUrl: string, reaction: Reaction, participantId: string }) {
+    const uri = `${reactionChannelUrl}`;
+
+    // @ts-ignore
+    return this.request({
+      method: HTTP_VERBS.POST,
+      uri,
+      body: {
+        sender: {participantId},
+        reaction,
+      }
     });
   }
 }
