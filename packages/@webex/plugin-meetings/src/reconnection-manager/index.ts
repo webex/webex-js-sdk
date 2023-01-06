@@ -449,7 +449,7 @@ export default class ReconnectionManager {
    * @param {boolean} wasSharing
    * @returns {Promise}
    */
-  async rejoinMeeting(wasSharing: boolean = false) {
+  async rejoinMeeting(wasSharing = false) {
     try {
       LoggerProxy.logger.info(
         'ReconnectionManager:index#rejoinMeeting --> attemping meeting rejoin'

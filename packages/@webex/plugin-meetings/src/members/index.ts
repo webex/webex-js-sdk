@@ -755,7 +755,7 @@ export default class Members extends StatelessWebexPlugin {
    * @public
    * @memberof Members
    */
-  public muteMember(memberId: string, mute: boolean = true) {
+  public muteMember(memberId: string, mute = true) {
     if (!this.locusUrl) {
       return Promise.reject(
         new ParameterError(
@@ -781,7 +781,7 @@ export default class Members extends StatelessWebexPlugin {
    * @public
    * @memberof Members
    */
-  public raiseOrLowerHand(memberId: string, raise: boolean = true) {
+  public raiseOrLowerHand(memberId: string, raise = true) {
     if (!this.locusUrl) {
       return Promise.reject(
         new ParameterError(
@@ -837,7 +837,7 @@ export default class Members extends StatelessWebexPlugin {
    * @public
    * @memberof Members
    */
-  public transferHostToMember(memberId: string, moderator: boolean = true) {
+  public transferHostToMember(memberId: string, moderator = true) {
     if (!this.locusUrl) {
       return Promise.reject(
         new ParameterError(
@@ -867,7 +867,7 @@ export default class Members extends StatelessWebexPlugin {
    * @public
    * @memberof Members
    */
-  public sendDialPadKey(tones: string = '', memberId: string = '') {
+  public sendDialPadKey(tones = '', memberId = '') {
     // @ts-ignore
     if (!tones && tones !== 0) {
       return Promise.reject(new ParameterError('DMTF tones must be passed in'));

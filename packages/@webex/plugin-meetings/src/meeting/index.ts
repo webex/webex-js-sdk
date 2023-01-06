@@ -19,17 +19,17 @@ import Trigger from '../common/events/trigger-proxy';
 import Roap from '../roap/index';
 import Media from '../media';
 import MediaProperties from '../media/properties';
-import MeetingStateMachine from '../meeting/state';
-import createMuteState from '../meeting/muteState';
-import createEffectsState from '../meeting/effectsState';
+import MeetingStateMachine from './state';
+import createMuteState from './muteState';
+import createEffectsState from './effectsState';
 import LocusInfo from '../locus-info';
 import PeerConnectionManager from '../peer-connection-manager';
 import Metrics from '../metrics';
 import {trigger, mediaType, eventType} from '../metrics/config';
 import ReconnectionManager from '../reconnection-manager';
-import MeetingRequest from '../meeting/request';
+import MeetingRequest from './request';
 import Members from '../members/index';
-import MeetingUtil from '../meeting/util';
+import MeetingUtil from './util';
 import MediaUtil from '../media/util';
 import Transcription from '../transcription';
 import PasswordError from '../common/errors/password-error';
@@ -2391,7 +2391,7 @@ export default class Meeting extends StatelessWebexPlugin {
       email: string;
       phoneNumber: string;
     },
-    alertIfActive: boolean = true
+    alertIfActive = true
   ) {
     return this.members.addMember(invitee, alertIfActive);
   }
@@ -2438,7 +2438,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @public
    * @memberof Meeting
    */
-  public mute(memberId: string, mute: boolean = true) {
+  public mute(memberId: string, mute = true) {
     return this.members.muteMember(memberId, mute);
   }
 
@@ -2450,7 +2450,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @public
    * @memberof Meeting
    */
-  public transfer(memberId: string, moderator: boolean = true) {
+  public transfer(memberId: string, moderator = true) {
     return this.members.transferHostToMember(memberId, moderator);
   }
 
@@ -2919,7 +2919,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @memberof Meeting
    */
-  private setLocalAudioTrack(audioTrack: MediaStreamTrack, emitEvent: boolean = true) {
+  private setLocalAudioTrack(audioTrack: MediaStreamTrack, emitEvent = true) {
     if (audioTrack) {
       const settings = audioTrack.getSettings();
 
@@ -2949,7 +2949,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @memberof Meeting
    */
-  private setLocalVideoTrack(videoTrack: MediaStreamTrack, emitEvent: boolean = true) {
+  private setLocalVideoTrack(videoTrack: MediaStreamTrack, emitEvent = true) {
     if (videoTrack) {
       const {aspectRatio, frameRate, height, width, deviceId} = videoTrack.getSettings();
 

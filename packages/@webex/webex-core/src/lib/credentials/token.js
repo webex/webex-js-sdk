@@ -471,7 +471,7 @@ const Token = WebexPlugin.extend({
     if (!attrs.token_type && attrs.access_token && attrs.access_token.includes(' ')) {
       const [token_type, access_token] = attrs.access_token.split(' ');
 
-      attrs = Object.assign({}, attrs, {access_token, token_type});
+      attrs = {...attrs, access_token, token_type};
     }
     const now = Date.now();
 

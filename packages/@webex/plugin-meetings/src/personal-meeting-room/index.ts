@@ -97,7 +97,7 @@ export default class PersonalMeetingRoom extends StatelessWebexPlugin {
    * @public
    * @memberof PersonalMeetingRoom
    */
-  public claim(link: string, pin: string, preferred: boolean = true) {
+  public claim(link: string, pin: string, preferred = true) {
     const options = {
       // @ts-ignore
       userId: this.webex.internal.device.userId,

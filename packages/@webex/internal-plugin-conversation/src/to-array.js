@@ -24,6 +24,6 @@ export default function toArray(direction, obj) {
       };
     }
 
-    return Object.assign({name}, entry);
+    return {name, ...entry};
   });
 }

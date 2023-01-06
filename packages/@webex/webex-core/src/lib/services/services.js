@@ -172,7 +172,8 @@ const Services = WebexPlugin.extend({
    */
   updateServices({from, query, token, forceRefresh} = {}) {
     const catalog = this._getCatalog();
-    let formattedQuery, serviceGroup;
+    let formattedQuery;
+    let serviceGroup;
 
     // map catalog name to service group name.
     switch (from) {
@@ -438,7 +439,8 @@ const Services = WebexPlugin.extend({
    */
   sendUserActivation({email, reqId, token, activationOptions, preloginUserId}) {
     this.logger.info('services: sending user activation request');
-    let countryCode, timezone;
+    let countryCode;
+    let timezone;
 
     // try to fetch client region info first
     return (

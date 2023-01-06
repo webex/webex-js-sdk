@@ -17,12 +17,11 @@
     "**/dist": true
   },
   "editor.codeActionsOnSave": {
+    "source.fixAll": true,
     "source.fixAll.eslint": true,
     "source.organizeImports": false
   },
   "eslint.format.enable": true,
-  "eslint.eslint.debug": true,
-  "eslint.eslint.alwaysShowStatus": true,
   "editor.formatOnSave": true,
   "breadcrumbs.enabled": false,
   "prettier.bracketSameLine": true,

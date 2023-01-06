@@ -480,11 +480,10 @@ exports.config = {
       browser.maximizeWindow();
     }
     browser.url(this.baseUrl);
-  }
+  },
   /** * Hook that gets executed before the suite starts
    * @param {Object} suite suite details
-   */,
-  /**
+   */ /**
    * Hook that gets executed _before_ a hook within the suite starts (e.g. runs before calling
    * beforeEach in Mocha)
    */

@@ -64,12 +64,10 @@ const Space = WebexPlugin.extend({
    * @returns {Promise}
    */
   join(space, options) {
-    options = Object.assign(
-      {
-        passType: 'MANUAL',
-      },
-      options
-    );
+    options = {
+      passType: 'MANUAL',
+      ...options,
+    };
 
     const body = {
       pass: {

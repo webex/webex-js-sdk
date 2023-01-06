@@ -206,17 +206,13 @@ export function createTestUser(options = {}) {
     uri: `${cigServiceUrl}${BASE_PATH_SECURE}`,
     json: true,
     body,
-  }).then((res) =>
-    Object.assign(
-      {
-        password: body.password,
-        emailAddress: res.body.user.email,
-        displayName: res.body.user.name,
-      },
-      res.body.user,
-      {token: fixToken(res.body.token)}
-    )
-  );
+  }).then((res) => ({
+    password: body.password,
+    emailAddress: res.body.user.email,
+    displayName: res.body.user.name,
+    ...res.body.user,
+    token: fixToken(res.body.token),
+  }));
 }
 
 /**

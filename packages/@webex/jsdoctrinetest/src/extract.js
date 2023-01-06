@@ -109,7 +109,7 @@ function isJSDocComment(comment) {
 
   // eslint-disable-next-line
   return (
-    (comment.type === `CommentBlock` || // estree
+    (comment.type === 'CommentBlock' || // estree
       // eslint-disable-next-line
       comment.type === `Block`) && // get-comments / traditional
     // eslint-disable-next-line

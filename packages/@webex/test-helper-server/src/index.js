@@ -201,9 +201,7 @@ glob.sync(fixturePattern).forEach((fixturePath) => {
           return;
         }
         let redirect = url.parse(req.url, true);
-        const qs = querystring.stringify(
-          Object.assign({state: req.query.state}, JSON.parse(response.body))
-        );
+        const qs = querystring.stringify({state: req.query.state, ...JSON.parse(response.body)});
 
         redirect = `${redirect.pathname}#${qs}`;
 

@@ -41,7 +41,8 @@ export default function processImage({
     });
   });
 
-  let thumbnail, thumbnailDimensions;
+  let thumbnail;
+  let thumbnailDimensions;
 
   if (enableThumbnails) {
     thumbnail = new Promise((resolve, reject) => {

@@ -149,18 +149,14 @@ export default function createTestUser(options = {}) {
         },
       })
     )
-    .then((res) =>
-      Object.assign(
-        {
-          password: res.body.responseMetaData.ciPassword,
-          emailAddress: res.body.responseMetaData.name,
-          displayName: res.body.responseMetaData.webExUserName,
-          token: res.body.responseMetaData.ciAccessToken,
-          reservationUrl: res.body.reservationUrl,
-        },
-        res.body.responseMetaData
-      )
-    );
+    .then((res) => ({
+      password: res.body.responseMetaData.ciPassword,
+      emailAddress: res.body.responseMetaData.name,
+      displayName: res.body.responseMetaData.webExUserName,
+      token: res.body.responseMetaData.ciAccessToken,
+      reservationUrl: res.body.reservationUrl,
+      ...res.body.responseMetaData,
+    }));
 }
 
 /**

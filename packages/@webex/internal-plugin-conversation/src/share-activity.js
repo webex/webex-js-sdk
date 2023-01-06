@@ -109,24 +109,22 @@ const ShareActivity = WebexPlugin.extend({
       return Promise.resolve();
     }
 
-    gifToAdd = Object.assign(
-      {
-        displayName: gif.name,
-        fileSize: gif.size || gif.byteLength || gif.length,
-        mimeType: gif.type,
+    gifToAdd = {
+      displayName: gif.name,
+      fileSize: gif.size || gif.byteLength || gif.length,
+      mimeType: gif.type,
+      url: 'https://giphy.com',
+      objectType: 'file',
+      height: gif.height,
+      width: gif.width,
+      image: {
+        height: gif.image.height,
+        width: gif.image.width,
         url: 'https://giphy.com',
-        objectType: 'file',
-        height: gif.height,
-        width: gif.width,
-        image: {
-          height: gif.image.height,
-          width: gif.image.width,
-          url: 'https://giphy.com',
-        },
-        [FILE_SYMBOL]: gif,
       },
-      pick(options, 'actions')
-    );
+      [FILE_SYMBOL]: gif,
+      ...pick(options, 'actions'),
+    };
 
     this.uploads.set(gif, gifToAdd);
 
@@ -166,17 +164,15 @@ const ShareActivity = WebexPlugin.extend({
     }
     const emitter = new EventEmitter();
 
-    upload = Object.assign(
-      {
-        displayName: file.name,
-        fileSize: file.size || file.byteLength || file.length,
-        mimeType: file.type,
-        objectType: 'file',
-        [EMITTER_SYMBOL]: emitter,
-        [FILE_SYMBOL]: file,
-      },
-      pick(options, 'actions')
-    );
+    upload = {
+      displayName: file.name,
+      fileSize: file.size || file.byteLength || file.length,
+      mimeType: file.type,
+      objectType: 'file',
+      [EMITTER_SYMBOL]: emitter,
+      [FILE_SYMBOL]: file,
+      ...pick(options, 'actions'),
+    };
 
     this.uploads.set(file, upload);
     const promise = detectFileType(file, this.logger)
@@ -269,7 +265,7 @@ const ShareActivity = WebexPlugin.extend({
     const fileSize = file.length || file.size || file.byteLength;
     const fileHash = sha256(file).toString();
     const {role, claimedFileType} = uploadOptions ?? {};
-    const initializeBody = Object.assign({fileSize}, {claimedFileType}, role && {role});
+    const initializeBody = {fileSize, claimedFileType, ...(role && {role})};
 
     return this.webex.upload({
       uri,
@@ -420,12 +416,10 @@ ShareActivity.create = function create(conversation, object, webex) {
   }
 
   const share = new ShareActivity(
-    Object.assign(
-      {
-        conversation,
-      },
-      object
-    ),
+    {
+      conversation,
+      ...object,
+    },
     {
       parent: webex,
     }
