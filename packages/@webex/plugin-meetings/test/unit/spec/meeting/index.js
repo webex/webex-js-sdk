@@ -2469,7 +2469,7 @@ describe('plugin-meetings', () => {
           conversationUrl: 'some_convo_url',
           locusUrl: 'some_locus_url',
           sipUrl: 'some_sip_url', // or sipMeetingUri
-          meetingNumber: '123456', // `this.`config.experimental.enableUnifiedMeetings
+          meetingNumber: '123456', // this.config.experimental.enableUnifiedMeetings
           hostId: 'some_host_id' // this.owner;
         };
         const FAKE_SDK_CAPTCHA_INFO = {

@@ -470,7 +470,6 @@ export default class Meeting extends StatelessWebexPlugin {
   resourceUrl: string;
   selfId: string;
   state: any;
-
   namespace = MEETINGS;
 
   /**
@@ -1610,7 +1609,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @memberof Meeting
    */
-  private setupLocusControlsListener() {
+   private setupLocusControlsListener() {
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
       ({state, modifiedBy, lastModified}) => {
         let event;
@@ -1706,7 +1705,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @memberof Meeting
    */
-  private setUpLocusMediaSharesListener() {
+   private setUpLocusMediaSharesListener() {
     // Will get triggered on local and remote share
     this.locusInfo.on(EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES, (payload) => {
       const {content: contentShare, whiteboard: whiteboardShare} = payload.current;
@@ -5853,7 +5852,7 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @returns {undefined}
    */
-  setStartLocalSDPGenRemoteSDPRecvDelay() {
+   setStartLocalSDPGenRemoteSDPRecvDelay() {
     if (!this.startLocalSDPGenRemoteSDPRecvDelay) {
       this.startLocalSDPGenRemoteSDPRecvDelay = performance.now();
       this.endLocalSDPGenRemoteSDPRecvDelay = undefined;
