@@ -3,7 +3,7 @@
  */
 
 /* eslint no-unused-vars: ["error", { "vars": "local" }] */
-/* global FileReader */
+// eslint-disable-next-line no-redeclare
 
 const {Buffer} = require('safe-buffer');
 const {parse} = require('exifr/dist/lite.umd');

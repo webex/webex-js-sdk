@@ -3,7 +3,8 @@
  */
 
 export {persist, waitForValue} from './decorators';
-export {default as makeWebexStore} from './make-webex-store.js';
-export {default as makeWebexPluginStore} from './make-webex-plugin-store.js';
+export {default as makeWebexStore} from './make-webex-store';
+export {default as makeWebexPluginStore} from './make-webex-plugin-store';
+
 export {default as MemoryStoreAdapter} from './memory-store-adapter';
 export {StorageError, NotFoundError} from './errors';

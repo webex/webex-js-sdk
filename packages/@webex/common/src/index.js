@@ -10,7 +10,8 @@ export {default as Defer} from './defer';
 export {default as makeStateDataType} from './make-state-datatype';
 export {default as make} from './template-container';
 export {default as oneFlight} from './one-flight';
-export {default as patterns} from './patterns.js';
+export {default as patterns} from './patterns';
+
 export {proxyEvents, transferEvents} from './events';
 export {createEventEnvelope, ensureMyIdIsAvailable} from './event-envelope';
 export {default as resolveWith} from './resolve-with';

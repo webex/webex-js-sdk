@@ -1,3 +1,5 @@
+/* eslint-disable default-param-last */
+
 import {
   _IDLE_,
   _JOINED_,

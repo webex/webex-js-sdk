@@ -6,7 +6,7 @@ import uuid from 'uuid';
 import {tap} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 
-import RealtimeChannelCollection from './realtime-channel-collection.js';
+import RealtimeChannelCollection from './realtime-channel-collection';
 
 /**
  * @class

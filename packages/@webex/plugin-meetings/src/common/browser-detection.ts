@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
+
 import bowser from 'bowser';
 import {memoize} from 'lodash';
 import window from 'global/window';

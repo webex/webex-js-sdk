@@ -1,3 +1,5 @@
+/* eslint-disable default-param-last */
+
 import uuid from 'uuid';
 import {cloneDeep, isEqual, pick, isString} from 'lodash';
 // @ts-ignore - Fix this

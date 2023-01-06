@@ -1,3 +1,5 @@
+/* eslint-disable prefer-destructuring */
+
 import {mean, max} from 'lodash';
 
 import {STATS} from '../constants';

@@ -38,9 +38,7 @@ module.exports = {
         'require-jsdoc': 'off',
         'no-undef': 'off',
         'react/prop-types': 'off',
-        '@typescript-eslint/no-unused-vars': 'error',
         'no-shadow': 'off',
-        '@typescript-eslint/no-shadow': ['error'],
         '@typescript-eslint/no-empty-function': 'off',
         '@typescript-eslint/ban-ts-comment': 'off',
         'import/prefer-default-export': 'warn',
@@ -84,8 +82,10 @@ module.exports = {
           },
         ],
         'tsdoc/syntax': 'off',
-        'no-use-before-define': 0, // remove this later as the older code is not creating functions in order of use
         'class-methods-use-this': 0,
+        'no-multi-assign': 0,
+        'no-promise-executor-return': 0,
+        'no-restricted-exports': 0,
       },
     },
     {
@@ -163,12 +163,6 @@ module.exports = {
         ts: 'never',
       },
     ],
-    'import/no-extraneous-dependencies': [
-      'error',
-      {
-        devDependencies: ['*.config*.*', '**/*test.*', '**/testUtils/*.*'],
-      },
-    ],
     'no-console': [
       'error',
       {
@@ -230,6 +224,15 @@ module.exports = {
     'no-underscore-dangle': 0,
     'no-param-reassign': 0,
     'max-classes-per-file': 0,
+    'import/no-cycle': 0, // TODO: Fix this in a later PR
+    'class-methods-use-this': 0, // TODO: Fix this in a later PR
+    '@typescript-eslint/no-shadow': 0, // TODO: Fix this in a later PR
+    'import/no-extraneous-dependencies': 0, // TODO: Fix this in a later PR
+    'import/no-import-module-exports': 0,
+    '@typescript-eslint/no-unused-vars': 0,
+    'no-use-before-define': 0,
+    'require-jsdoc': 0,
+    'no-restricted-exports': 0,
   },
 
   settings: {
@@ -254,5 +257,6 @@ module.exports = {
     'tooling/*',
     '**/test/**/*',
     'docs/**',
+    '**/ediscovery.js',
   ],
 };

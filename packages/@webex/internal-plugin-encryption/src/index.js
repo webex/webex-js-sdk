@@ -8,14 +8,17 @@
 // by using Promise.race to resolve replays (as more requests get enqueue for a
 // specific action, accept whichever one completes first).
 
+import '@webex/internal-plugin-device';
+
+import '@webex/internal-plugin-mercury';
+
 import {registerInternalPlugin} from '@webex/webex-core';
 import {has, isObject, isString} from 'lodash';
 
 import Encryption from './encryption';
 import config from './config';
 import {DryError} from './kms-errors';
-import '@webex/internal-plugin-device';
-import '@webex/internal-plugin-mercury';
+
 import KmsDryErrorInterceptor from './kms-dry-error-interceptor';
 
 let interceptors;

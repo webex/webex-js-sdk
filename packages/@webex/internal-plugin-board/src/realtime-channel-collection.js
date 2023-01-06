@@ -6,7 +6,7 @@
 
 import AmpCollection from 'ampersand-collection';
 
-import RealtimeChannel from './realtime-channel.js';
+import RealtimeChannel from './realtime-channel';
 
 const RealtimeChannelCollection = AmpCollection.extend({
   mainIndex: 'channelId',
