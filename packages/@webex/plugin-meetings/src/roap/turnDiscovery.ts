@@ -238,6 +238,7 @@ export default class TurnDiscovery {
       LoggerProxy.logger.info(
         'Roap:turnDiscovery#doTurnDiscovery --> reachability has not failed, skipping TURN discovery'
       );
+
       return Promise.resolve({
         turnServerInfo: undefined,
         turnDiscoverySkippedReason: 'reachability',

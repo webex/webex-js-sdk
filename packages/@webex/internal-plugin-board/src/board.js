@@ -127,18 +127,16 @@ const Board = WebexPlugin.extend({
   },
 
   _prepareChannel(conversation, channel) {
-    return Object.assign(
-      {
-        aclUrlLink: conversation.aclUrl,
-        kmsMessage: {
-          method: 'create',
-          uri: '/resources',
-          userIds: [conversation.kmsResourceObjectUrl],
-          keyUris: [],
-        },
+    return {
+      aclUrlLink: conversation.aclUrl,
+      kmsMessage: {
+        method: 'create',
+        uri: '/resources',
+        userIds: [conversation.kmsResourceObjectUrl],
+        keyUris: [],
       },
-      channel
-    );
+      ...channel,
+    };
   },
 
   /**

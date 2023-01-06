@@ -198,15 +198,11 @@ const Credentials = WebexPlugin.extend({
    * @returns {[type]}
    */
   buildLogoutUrl(options = {}) {
-    return `${this.config.logoutUrl}?${querystring.stringify(
-      Object.assign(
-        {
-          cisService: this.config.service,
-          goto: this.config.redirect_uri,
-        },
-        options
-      )
-    )}`;
+    return `${this.config.logoutUrl}?${querystring.stringify({
+      cisService: this.config.service,
+      goto: this.config.redirect_uri,
+      ...options,
+    })}`;
   },
 
   /**
@@ -247,7 +243,7 @@ const Credentials = WebexPlugin.extend({
       this.logger.trace(`credentials: failed to downscope supertoken to ${scope}`, reason);
       this.logger.trace(`credentials: falling back to supertoken for ${scope}`);
 
-      return Promise.resolve(new Token(Object.assign({scope}, this.supertoken.serialize())), {
+      return Promise.resolve(new Token({scope, ...this.supertoken.serialize()}), {
         parent: this,
       });
     });

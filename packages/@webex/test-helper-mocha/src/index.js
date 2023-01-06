@@ -299,7 +299,8 @@ module.exports = {
    * @returns {Promise}
    */
   expectExactlyNEvents: function expectExactlyNEvents(max, count, event, emitter) {
-    let lastResult, timer;
+    let lastResult;
+    let timer;
 
     let currentCount = 0;
 

@@ -120,7 +120,7 @@ const Conversation = WebexPlugin.extend({
    */
   acknowledge(conversation, object, activity) {
     const url = this.getConvoUrl(conversation);
-    const convoWithUrl = Object.assign({}, conversation, {url});
+    const convoWithUrl = {...conversation, url};
 
     if (!isObject(object)) {
       return Promise.reject(new Error('`object` must be an object'));
@@ -148,7 +148,7 @@ const Conversation = WebexPlugin.extend({
    */
   add(conversation, participant, activity) {
     const url = this.getConvoUrl(conversation);
-    const convoWithUrl = Object.assign({}, conversation, {url});
+    const convoWithUrl = {...conversation, url};
 
     return this.webex.internal.user.asUUID(participant, {create: true}).then((id) =>
       this.prepare(activity, {
@@ -294,7 +294,7 @@ const Conversation = WebexPlugin.extend({
    */
   sendReaction(conversation, reactionPayload) {
     const url = this.getConvoUrl(conversation);
-    const convoWithUrl = Object.assign({}, conversation, {url});
+    const convoWithUrl = {...conversation, url};
 
     if (!isObject(reactionPayload)) {
       return Promise.reject(new Error('`object` must be an object'));
@@ -371,7 +371,7 @@ const Conversation = WebexPlugin.extend({
    */
   delete(conversation, object, activity) {
     const url = this.getConvoUrl(conversation);
-    const convoWithUrl = Object.assign({}, conversation, {url});
+    const convoWithUrl = {...conversation, url};
 
     if (!isObject(object)) {
       return Promise.reject(new Error('`object` must be an object'));
@@ -515,7 +515,8 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise<Object>} Resolves with the activities
    */
   bulkActivitiesFetch(activityUrls, options = {}) {
-    let cluster, url;
+    let cluster;
+    let url;
 
     if (typeof options === 'string') {
       cluster = options;
@@ -585,16 +586,14 @@ const Conversation = WebexPlugin.extend({
     }
 
     const params = {
-      qs: Object.assign(
-        {
-          uuidEntryFormat: true,
-          personRefresh: true,
-          activitiesLimit: 0,
-          includeConvWithDeletedUserUUID: false,
-          includeParticipants: false,
-        },
-        omit(options, 'id', 'user', 'url')
-      ),
+      qs: {
+        uuidEntryFormat: true,
+        personRefresh: true,
+        activitiesLimit: 0,
+        includeConvWithDeletedUserUUID: false,
+        includeParticipants: false,
+        ...omit(options, 'id', 'user', 'url'),
+      },
       disableTransform: options.disableTransform,
     };
 
@@ -642,7 +641,7 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise<Activity>}
    */
   leave(conversation, participant, activity) {
-    const convoWithUrl = Object.assign({}, conversation, {url: this.getConvoUrl(conversation)});
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return Promise.resolve()
       .then(() => {
@@ -722,16 +721,14 @@ const Conversation = WebexPlugin.extend({
     }
 
     // No page - so this is the first request to kick off the pagination process
-    const queryOptions = Object.assign(
-      {
-        personRefresh: true,
-        uuidEntryFormat: true,
-        activitiesLimit: 0,
-        participantsLimit: 0,
-        paginate: true,
-      },
-      omit(options, ['deferDecrypt', 'url'])
-    );
+    const queryOptions = {
+      personRefresh: true,
+      uuidEntryFormat: true,
+      activitiesLimit: 0,
+      participantsLimit: 0,
+      paginate: true,
+      ...omit(options, ['deferDecrypt', 'url']),
+    };
 
     const reqOptions = {
       qs: queryOptions,
@@ -976,7 +973,7 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise}
    */
   cardAction(conversation, inputs, parentActivity, activity = {}) {
-    const convoWithUrl = Object.assign({}, conversation, {url: this.getConvoUrl(conversation)});
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     activity.parent = {
       id: parentActivity.id,
@@ -986,7 +983,7 @@ const Conversation = WebexPlugin.extend({
     return this.prepare(activity, {
       verb: 'cardAction',
       target: this.prepareConversation(convoWithUrl),
-      object: Object.assign({objectType: 'submit'}, inputs),
+      object: {objectType: 'submit', ...inputs},
     }).then((a) => this.submit(a));
   },
 
@@ -1001,7 +998,7 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise<Activity>}
    */
   post(conversation, message, activity) {
-    const convoWithUrl = Object.assign({}, conversation, {url: this.getConvoUrl(conversation)});
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     if (isString(message)) {
       message = {
@@ -1012,7 +1009,7 @@ const Conversation = WebexPlugin.extend({
     return this.prepare(activity, {
       verb: 'post',
       target: this.prepareConversation(convoWithUrl),
-      object: Object.assign({objectType: 'comment'}, message),
+      object: {objectType: 'comment', ...message},
     }).then((a) => this.submit(a));
   },
 
@@ -1187,7 +1184,7 @@ const Conversation = WebexPlugin.extend({
       return Promise.reject(new Error('Room avatars must be less than 1MB'));
     }
 
-    const convoWithUrl = Object.assign({}, conversation, {url: this.getConvoUrl(conversation)});
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return Promise.resolve()
       .then(() => {
@@ -1306,7 +1303,7 @@ const Conversation = WebexPlugin.extend({
       };
     }
 
-    const convoWithUrl = Object.assign({}, conversation, {url: this.getConvoUrl(conversation)});
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     if (!(activity instanceof ShareActivity)) {
       activity = ShareActivity.create(convoWithUrl, activity, this.webex);
@@ -1405,7 +1402,7 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise}
    */
   unassign(conversation, activity) {
-    const convoWithUrl = Object.assign({}, conversation, {url: this.getConvoUrl(conversation)});
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return this.prepare(activity, {
       verb: 'unassign',
@@ -1479,7 +1476,7 @@ const Conversation = WebexPlugin.extend({
       return Promise.reject(new Error('`object` must be an object'));
     }
 
-    const convoWithUrl = Object.assign({}, conversation, {url: this.getConvoUrl(conversation)});
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return this.prepare(activity, {
       verb: 'update',
@@ -1498,7 +1495,7 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise<Activity>}
    */
   updateKey(conversation, key, activity) {
-    const convoWithUrl = Object.assign({}, conversation, {url: this.getConvoUrl(conversation)});
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return this.get(convoWithUrl, {
       activitiesLimit: 0,
@@ -1517,7 +1514,7 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise<Activity>}
    */
   _updateKey(conversation, key, activity) {
-    const convoWithUrl = Object.assign({}, conversation, {url: this.getConvoUrl(conversation)});
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return Promise.resolve(
       key || this.webex.internal.encryption.kms.createUnboundKeys({count: 1})
@@ -2263,15 +2260,13 @@ const Conversation = WebexPlugin.extend({
    * @returns {Promise<Array<Conversation>>}
    */
   async _list(options) {
-    options.qs = Object.assign(
-      {
-        personRefresh: true,
-        uuidEntryFormat: true,
-        activitiesLimit: 0,
-        participantsLimit: 0,
-      },
-      options.qs
-    );
+    options.qs = {
+      personRefresh: true,
+      uuidEntryFormat: true,
+      activitiesLimit: 0,
+      participantsLimit: 0,
+      ...options.qs,
+    };
 
     const res = await this.request(options);
 
@@ -2307,7 +2302,7 @@ const Conversation = WebexPlugin.extend({
         const results = await Promise.all(
           res.body.additionalUrls.map((host) => {
             const url = `${host}/${options.resource}`;
-            const newOptions = Object.assign({}, options, {uri: url, url});
+            const newOptions = {...options, uri: url, url};
 
             if (options.limit) {
               newOptions.qs[newOptions.limit.name] = limit;
@@ -2467,9 +2462,10 @@ const Conversation = WebexPlugin.extend({
 
 ['favorite', 'hide', 'lock', 'mute', 'unfavorite', 'unhide', 'unlock', 'unmute'].forEach((verb) => {
   Conversation.prototype[verb] = function submitSimpleActivity(conversation, activity) {
-    const convoWithUrl = this.prepareConversation(
-      Object.assign({}, conversation, {url: this.getConvoUrl(conversation)})
-    );
+    const convoWithUrl = this.prepareConversation({
+      ...conversation,
+      url: this.getConvoUrl(conversation),
+    });
 
     return this.prepare(activity, {
       verb,
@@ -2485,7 +2481,7 @@ const Conversation = WebexPlugin.extend({
     moderator,
     activity
   ) {
-    const convoWithUrl = Object.assign({}, conversation, {url: this.getConvoUrl(conversation)});
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return Promise.all([
       convoWithUrl,
@@ -2524,7 +2520,7 @@ const Conversation = WebexPlugin.extend({
       return Promise.reject(new Error('`tag` must be a string'));
     }
 
-    const convoWithUrl = Object.assign({}, conversation, {url: this.getConvoUrl(conversation)});
+    const convoWithUrl = {...conversation, url: this.getConvoUrl(conversation)};
 
     return this.prepare(activity, {
       verb,
@@ -2543,9 +2539,7 @@ const Conversation = WebexPlugin.extend({
       return Promise.reject(new Error('`object` must be an object'));
     }
 
-    const c = this.prepareConversation(
-      Object.assign({}, conversation, {url: this.getConvoUrl(conversation)})
-    );
+    const c = this.prepareConversation({...conversation, url: this.getConvoUrl(conversation)});
 
     return this.prepare(activity, {
       verb,

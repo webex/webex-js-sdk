@@ -2,7 +2,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import ParameterError from '../common/errors/parameter';
 import PermissionError from '../common/errors/permission';
 import Media from '../media';
-import MeetingUtil from '../meeting/util';
+import MeetingUtil from './util';
 import {AUDIO, VIDEO} from '../constants';
 
 /* Certain aspects of server interaction for video muting are not implemented as we currently don't support remote muting of video.

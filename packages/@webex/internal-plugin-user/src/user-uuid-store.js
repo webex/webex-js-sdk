@@ -46,12 +46,12 @@ export default class UserUUIDStore {
     }
 
     const p1 = this.getById(user.id)
-      .then((u) => usersById.get(this).set(user.id, Object.assign({}, u, user)))
-      .catch(() => usersById.get(this).set(user.id, Object.assign({}, user)));
+      .then((u) => usersById.get(this).set(user.id, {...u, ...user}))
+      .catch(() => usersById.get(this).set(user.id, {...user}));
 
     const p2 = this.getByEmail(user.emailAddress)
-      .then((u) => usersByEmail.get(this).set(user.emailAddress, Object.assign({}, u, user)))
-      .catch(() => usersByEmail.get(this).set(user.emailAddress, Object.assign({}, user)));
+      .then((u) => usersByEmail.get(this).set(user.emailAddress, {...u, ...user}))
+      .catch(() => usersByEmail.get(this).set(user.emailAddress, {...user}));
 
     return Promise.all([p1, p2]);
   }

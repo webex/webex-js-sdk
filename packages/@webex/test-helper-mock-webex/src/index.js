@@ -57,12 +57,10 @@ function makeWebex(options) {
 
   // This weird assignment is to make sure "internal" is the first property.
   // Because it turns out we're relying on ordering
-  options.children = Object.assign(
-    {
-      internal: State.extend(internalOptions),
-    },
-    options.children
-  );
+  options.children = {
+    internal: State.extend(internalOptions),
+    ...options.children,
+  };
 
   requestPromise.on = uploadPromise.on = function on() {
     return requestPromise;

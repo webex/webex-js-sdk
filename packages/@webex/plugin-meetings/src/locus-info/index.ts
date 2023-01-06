@@ -19,14 +19,14 @@ import {
 } from '../constants';
 import Metrics from '../metrics';
 import {eventType} from '../metrics/config';
-import InfoUtils from '../locus-info/infoUtils';
-import FullState from '../locus-info/fullState';
-import SelfUtils from '../locus-info/selfUtils';
-import HostUtils from '../locus-info/hostUtils';
-import ControlsUtils from '../locus-info/controlsUtils';
-import EmbeddedAppsUtils from '../locus-info/embeddedAppsUtils';
-import MediaSharesUtils from '../locus-info/mediaSharesUtils';
-import LocusDeltaParser from '../locus-info/parser';
+import InfoUtils from './infoUtils';
+import FullState from './fullState';
+import SelfUtils from './selfUtils';
+import HostUtils from './hostUtils';
+import ControlsUtils from './controlsUtils';
+import EmbeddedAppsUtils from './embeddedAppsUtils';
+import MediaSharesUtils from './mediaSharesUtils';
+import LocusDeltaParser from './parser';
 
 /**
  * @description LocusInfo extends ChildEmitter to convert locusInfo info a private emitter to parent object

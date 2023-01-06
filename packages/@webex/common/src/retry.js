@@ -24,7 +24,7 @@ import backoff from 'backoff';
 export default function retry(...params) {
   let options = params[0] || {};
 
-  options = Object.assign({}, options);
+  options = {...options};
   defaults(options, {
     backoff: true,
     delay: 1,

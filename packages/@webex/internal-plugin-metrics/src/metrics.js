@@ -38,7 +38,7 @@ const Metrics = WebexPlugin.extend({
   namespace: 'Metrics',
 
   submit(key, value) {
-    return this.batcher.request(Object.assign({key}, value));
+    return this.batcher.request({key, ...value});
   },
 
   /**

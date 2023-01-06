@@ -1,3 +1,5 @@
+/* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
+
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 // @ts-ignore
@@ -44,12 +46,13 @@ import MeetingInfoV2 from '../meeting-info/meeting-info-v2';
 import Meeting from '../meeting';
 import PersonalMeetingRoom from '../personal-meeting-room';
 import Reachability from '../reachability';
-import Request from '../meetings/request';
+import Request from './request';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
 
 import MeetingCollection from './collection';
 import MeetingsUtil from './util';
+import loggerProxy from '../../dist/common/logs/logger-proxy';
 
 /**
  * Meetings Ready Event
@@ -208,10 +211,7 @@ export default class Meetings extends WebexPlugin {
    * @private
    * @memberof Meetings
    */
-  private handleLocusEvent(
-    data: {locusUrl: string; locus: any},
-    useRandomDelayForInfo: boolean = false
-  ) {
+  private handleLocusEvent(data: {locusUrl: string; locus: any}, useRandomDelayForInfo = false) {
     let meeting = null;
 
     // getting meeting by correlationId. This will happen for the new event
@@ -303,7 +303,7 @@ export default class Meetings extends WebexPlugin {
           meeting.locusInfo.initialSetup(data.locus);
         })
         .catch((e) => {
-          console.log(e);
+          LoggerProxy.logger.error(e);
         })
         .finally(() => {
           // There will be cases where locus event comes in gets created and deleted because its a 1:1 and meeting gets deleted
@@ -809,7 +809,7 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-  public create(destination: string, type: string = null, useRandomDelayForInfo: boolean = false) {
+  public create(destination: string, type: string = null, useRandomDelayForInfo = false) {
     // TODO: type should be from a dictionary
 
     // Validate meeting information based on the provided destination and
@@ -915,7 +915,7 @@ export default class Meetings extends WebexPlugin {
   private async createMeeting(
     destination: any,
     type: string = null,
-    useRandomDelayForInfo: boolean = false
+    useRandomDelayForInfo = false
   ) {
     const meeting = new Meeting(
       {

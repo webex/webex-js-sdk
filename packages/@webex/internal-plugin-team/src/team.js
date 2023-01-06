@@ -151,13 +151,11 @@ const Team = WebexPlugin.extend({
     if (!url) {
       return Promise.reject(new Error('`team.url` is required'));
     }
-    const params = Object.assign(
-      {
-        includeTeamConversations: false,
-        includeTeamMembers: false,
-      },
-      options
-    );
+    const params = {
+      includeTeamConversations: false,
+      includeTeamMembers: false,
+      ...options,
+    };
 
     return this.webex
       .request({
@@ -208,13 +206,11 @@ const Team = WebexPlugin.extend({
    * @returns {Promise} Resolves with the requested teams
    */
   async list(options = {}) {
-    const params = Object.assign(
-      {
-        includeTeamConversations: false,
-        includeTeamMembers: false,
-      },
-      options
-    );
+    const params = {
+      includeTeamConversations: false,
+      includeTeamMembers: false,
+      ...options,
+    };
     const resource = 'teams';
 
     const res = await this.webex.request({

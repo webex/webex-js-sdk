@@ -1,4 +1,4 @@
-import RoapStateMachine from '../roap/state';
+import RoapStateMachine from './state';
 
 /* eslint-disable */
 const RoapCollection = {

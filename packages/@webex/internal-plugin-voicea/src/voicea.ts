@@ -24,7 +24,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private areCaptionsEnabled: boolean;
 
-  private hasSubscribedToEvents: boolean = false;
+  private hasSubscribedToEvents = false;
 
   private vmcDeviceId?: string;
 
@@ -47,6 +47,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         break;
     }
   };
+
   /**
    * Listen to websocket messages
    */

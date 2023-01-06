@@ -67,7 +67,7 @@ const User = WebexPlugin.extend({
     // if we have options.email and options.verificationToken
     // and Federation flag is enabled, flag that we need to
     // lookup user's CI.
-    const activateOptions = Object.assign({}, options);
+    const activateOptions = {...options};
 
     delete activateOptions.email;
 
@@ -134,9 +134,7 @@ const User = WebexPlugin.extend({
         email,
         create: options && options.create,
       })
-      .then((user) =>
-        this.recordUUID(Object.assign({emailAddress: email}, user)).then(() => user.id)
-      );
+      .then((user) => this.recordUUID({emailAddress: email, ...user}).then(() => user.id));
   },
   /**
    * Generates One Time Password.
@@ -382,7 +380,7 @@ const User = WebexPlugin.extend({
    * @returns {Promise<Object>}
    */
   verify(options) {
-    options = Object.assign({}, this.config.verifyDefaults, options);
+    options = {...this.config.verifyDefaults, ...options};
     const {email} = options;
 
     if (!email) {

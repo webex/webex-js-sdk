@@ -42,7 +42,8 @@ export function build(value) {
 function literal(l) {
   /* eslint complexity: [0] */
   // eslint-disable-next-line prefer-const
-  let f, i;
+  let f;
+  let i;
 
   switch (typeof l) {
     case 'boolean':

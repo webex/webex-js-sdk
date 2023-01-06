@@ -119,7 +119,10 @@ export default class Transcription {
    * @returns {void}
    */
   subscribe(callback: Function) {
-    let data, csis, speaker, transcription;
+    let data;
+    let csis;
+    let speaker;
+    let transcription;
 
     this.webSocket.onmessage = (event) => {
       data = JSON.parse(event.data);

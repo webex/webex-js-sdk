@@ -54,14 +54,11 @@ app.use(
 );
 
 app.get('/ping', (req, res) => {
-  res.send(
-    Object.assign(
-      {name: '@webex/webex-server', version: PACKAGE_VERSION},
-      {
-        'sdk-version': Webex.version,
-      }
-    )
-  );
+  res.send({
+    name: '@webex/webex-server',
+    version: PACKAGE_VERSION,
+    'sdk-version': Webex.version,
+  });
 });
 
 app.use('/api/v1', sessionRouter);
