@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+
 /* eslint-disable require-jsdoc */
 /* global browser: false */
 const os = require('os');

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable prefer-destructuring */
 
 /* eslint-disable complexity */
 /* eslint-disable global-require */

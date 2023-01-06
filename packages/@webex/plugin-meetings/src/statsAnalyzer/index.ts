@@ -1,3 +1,5 @@
+/* eslint-disable prefer-destructuring */
+
 import {cloneDeep} from 'lodash';
 
 import EventsScope from '../common/events/events-scope';
@@ -280,7 +282,6 @@ export class StatsAnalyzer extends EventsScope {
       lastMqaDataSent: this.lastMqaDataSent,
       isShareStream: true,
     });
-
     mqaData.intervals[0].intervalMetadata.peerReflexiveIP =
       this.statsResults.connectionType.local.ipAddress[0];
 

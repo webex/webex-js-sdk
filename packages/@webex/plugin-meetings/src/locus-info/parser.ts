@@ -554,7 +554,7 @@ export default class Parser {
       LoggerProxy.logger.info(
         `Locus-info:parser#processDeltaEvent --> Locus Delta Action: ${lociComparison}`
       );
-      this.onDeltaAction.call(this, lociComparison, newLoci);
+      this.onDeltaAction(this, lociComparison, newLoci);
     }
 
     this.nextEvent();
