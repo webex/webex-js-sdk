@@ -9,7 +9,7 @@ import {
   VALID_EMAIL_ADDRESS,
   DIALER_REGEX,
   SEND_DTMF_ENDPOINT,
-  _REMOVE_
+  _REMOVE_,
 } from '../constants';
 
 const MembersUtil: any = {};
@@ -20,10 +20,14 @@ const MembersUtil: any = {};
  * @param {Boolean} alertIfActive
  * @returns {Object} the format object
  */
-MembersUtil.generateAddMemberOptions = (invitee: object, locusUrl: string, alertIfActive: boolean) => ({
+MembersUtil.generateAddMemberOptions = (
+  invitee: object,
+  locusUrl: string,
+  alertIfActive: boolean
+) => ({
   invitee,
   locusUrl,
-  alertIfActive
+  alertIfActive,
 });
 
 /**
@@ -33,7 +37,7 @@ MembersUtil.generateAddMemberOptions = (invitee: object, locusUrl: string, alert
  */
 MembersUtil.generateAdmitMemberOptions = (memberIds: Array<any>, locusUrl: string) => ({
   locusUrl,
-  memberIds
+  memberIds,
 });
 
 /**
@@ -43,10 +47,10 @@ MembersUtil.generateAdmitMemberOptions = (memberIds: Array<any>, locusUrl: strin
 MembersUtil.getAddMemberBody = (options: any) => ({
   invitees: [
     {
-      address: options.invitee.emailAddress || options.invitee.email || options.invitee.phoneNumber
-    }
+      address: options.invitee.emailAddress || options.invitee.email || options.invitee.phoneNumber,
+    },
   ],
-  alertIfActive: options.alertIfActive
+  alertIfActive: options.alertIfActive,
 });
 
 /**
@@ -54,7 +58,7 @@ MembersUtil.getAddMemberBody = (options: any) => ({
  * @returns {Object} admit with {memberIds}
  */
 MembersUtil.getAdmitMemberRequestBody = (options: any) => ({
-  admit: {participantIds: options.memberIds}
+  admit: {participantIds: options.memberIds},
 });
 
 /**
@@ -68,7 +72,7 @@ MembersUtil.getAdmitMemberRequestParams = (format: any) => {
   return {
     method: HTTP_VERBS.PUT,
     uri,
-    body
+    body,
   };
 };
 
@@ -81,7 +85,7 @@ MembersUtil.getAddMemberRequestParams = (format: any) => {
   const requestParams = {
     method: HTTP_VERBS.PUT,
     uri: format.locusUrl,
-    body
+    body,
   };
 
   return requestParams;
@@ -101,104 +105,104 @@ MembersUtil.isInvalidInvitee = (invitee) => {
 
 MembersUtil.getRemoveMemberRequestParams = (options) => {
   const body = {
-    reason: options.reason
+    reason: options.reason,
   };
   const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${LEAVE}`;
 
   return {
     method: HTTP_VERBS.PUT,
     uri,
-    body
+    body,
   };
 };
 
 MembersUtil.generateTransferHostMemberOptions = (transfer, moderator, locusUrl) => ({
   moderator,
   locusUrl,
-  memberId: transfer
+  memberId: transfer,
 });
 
 MembersUtil.generateRemoveMemberOptions = (removal, locusUrl) => ({
   reason: _FORCED_,
   memberId: removal,
-  locusUrl
+  locusUrl,
 });
 
 MembersUtil.generateMuteMemberOptions = (memberId, status, locusUrl) => ({
   memberId,
   muted: status,
-  locusUrl
+  locusUrl,
 });
 
 MembersUtil.generateRaiseHandMemberOptions = (memberId, status, locusUrl) => ({
   memberId,
   raised: status,
-  locusUrl
+  locusUrl,
 });
 
 MembersUtil.generateLowerAllHandsMemberOptions = (requestingParticipantId, locusUrl) => ({
   requestingParticipantId,
-  locusUrl
+  locusUrl,
 });
 
 MembersUtil.getMuteMemberRequestParams = (options) => {
   const body = {
     audio: {
-      muted: options.muted
-    }
+      muted: options.muted,
+    },
   };
   const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${CONTROLS}`;
 
   return {
     method: HTTP_VERBS.PATCH,
     uri,
-    body
+    body,
   };
 };
 
 MembersUtil.getRaiseHandMemberRequestParams = (options) => {
   const body = {
     hand: {
-      raised: options.raised
-    }
+      raised: options.raised,
+    },
   };
   const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${CONTROLS}`;
 
   return {
     method: HTTP_VERBS.PATCH,
     uri,
-    body
+    body,
   };
 };
 
 MembersUtil.getLowerAllHandsMemberRequestParams = (options) => {
   const body = {
     hand: {
-      raised: false
+      raised: false,
     },
-    requestingParticipantId: options.requestingParticipantId
+    requestingParticipantId: options.requestingParticipantId,
   };
   const uri = `${options.locusUrl}/${CONTROLS}`;
 
   return {
     method: HTTP_VERBS.PATCH,
     uri,
-    body
+    body,
   };
 };
 
 MembersUtil.getTransferHostToMemberRequestParams = (options) => {
   const body = {
     role: {
-      moderator: options.moderator
-    }
+      moderator: options.moderator,
+    },
   };
   const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${CONTROLS}`;
 
   return {
     method: HTTP_VERBS.PATCH,
     uri,
-    body
+    body,
   };
 };
 
@@ -206,35 +210,33 @@ MembersUtil.genderateSendDTMFOptions = (url, tones, memberId, locusUrl) => ({
   url,
   tones,
   memberId,
-  locusUrl
+  locusUrl,
 });
 
-MembersUtil.generateSendDTMFRequestParams = ({
-  url, tones, memberId, locusUrl
-}) => {
+MembersUtil.generateSendDTMFRequestParams = ({url, tones, memberId, locusUrl}) => {
   const body = {
     device: {
-      url
+      url,
     },
     memberId,
     dtmf: {
       correlationId: uuid.v4(),
       tones,
-      direction: 'transmit'
-    }
+      direction: 'transmit',
+    },
   };
   const uri = `${locusUrl}/${PARTICIPANT}/${memberId}/${SEND_DTMF_ENDPOINT}`;
 
   return {
     method: HTTP_VERBS.POST,
     uri,
-    body
+    body,
   };
 };
 
 MembersUtil.cancelPhoneInviteOptions = (invitee, locusUrl) => ({
   invitee,
-  locusUrl
+  locusUrl,
 });
 
 MembersUtil.generateCancelInviteRequestParams = (options) => {
@@ -242,14 +244,14 @@ MembersUtil.generateCancelInviteRequestParams = (options) => {
     actionType: _REMOVE_,
     invitees: [
       {
-        address: options.invitee.phoneNumber
-      }
-    ]
+        address: options.invitee.phoneNumber,
+      },
+    ],
   };
   const requestParams = {
     method: HTTP_VERBS.PUT,
     uri: options.locusUrl,
-    body
+    body,
   };
 
   return requestParams;

@@ -21,14 +21,12 @@ npm install --save @webex/internal-plugin-locus
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-locus';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
-webex.internal.locus.WHATEVER
-
+webex.internal.locus.WHATEVER;
 ```
 
 ## Maintainers

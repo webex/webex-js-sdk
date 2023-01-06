@@ -1,14 +1,13 @@
-
 export type EmoticonData = {
   type: string;
   codepoints?: string;
   shortcodes?: string;
-}
+};
 
 export type SkinTone = EmoticonData;
 export type Reaction = EmoticonData & {
   tone?: SkinTone;
-}
+};
 
 export enum ReactionType {
   smile = 'smile',

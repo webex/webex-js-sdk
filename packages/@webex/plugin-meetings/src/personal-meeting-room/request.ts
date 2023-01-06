@@ -6,7 +6,6 @@ import ParameterError from '../common/errors/parameter';
 
 import PersonalMeetingRoomUtil from './util';
 
-
 /**
  * @class MeetingInfoRequest
  */
@@ -20,8 +19,16 @@ export default class PersonalMeetingRoomRequest extends StatelessWebexPlugin {
    * @memberof PersonalMeetingRoomRequest
    */
   claimPmr(options: any) {
-    if (!options || !options.userId || !options.passcode || !options.meetingAddress || !options.preferred) {
-      throw new ParameterError('Claiming a PMR should be done with userId, passcode, preferred, and meetingAddress in options.');
+    if (
+      !options ||
+      !options.userId ||
+      !options.passcode ||
+      !options.meetingAddress ||
+      !options.preferred
+    ) {
+      throw new ParameterError(
+        'Claiming a PMR should be done with userId, passcode, preferred, and meetingAddress in options.'
+      );
     }
     const validPin = PersonalMeetingRoomUtil.getClaimPmrPin(options.passcode);
 

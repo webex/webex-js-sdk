@@ -21,14 +21,12 @@ npm install --save @webex/internal-plugin-lyra
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-lyra';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
-webex.internal.lyra.WHATEVER
-
+webex.internal.lyra.WHATEVER;
 ```
 
 ## Maintainers

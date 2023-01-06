@@ -21,20 +21,20 @@ export class OAuthError extends Exception {
     Object.defineProperties(this, {
       error: {
         enumerable: true,
-        value: body.error
+        value: body.error,
       },
       errorDescription: {
         enumerable: true,
-        value: body.error_description
+        value: body.error_description,
       },
       errorUri: {
         enumerable: true,
-        value: body.error_uri
+        value: body.error_uri,
       },
       res: {
         enumerable: false,
-        value: res
-      }
+        value: res,
+      },
     });
 
     return this.errorDescription;
@@ -70,7 +70,6 @@ class UnsupportGrantTypeError extends OAuthError {}
  */
 class InvalidScopeError extends OAuthError {}
 
-
 const errors = {
   OAuthError,
   InvalidRequestError,
@@ -87,7 +86,7 @@ const errors = {
   invalid_scope: InvalidScopeError,
   select(errorString) {
     return errors[errorString] || OAuthError;
-  }
+  },
 };
 
 export default errors;

@@ -7,14 +7,11 @@ import {registerPlugin} from '@webex/webex-core';
 import Authorization from './authorization';
 import config from './config';
 
-const proxies = [
-  'isAuthorizing',
-  'isAuthenticating'
-];
+const proxies = ['isAuthorizing', 'isAuthenticating'];
 
 registerPlugin('authorization', Authorization, {
   config,
-  proxies
+  proxies,
 });
 
 export {default} from './authorization';

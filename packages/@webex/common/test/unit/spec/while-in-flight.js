@@ -12,24 +12,24 @@ describe('common', () => {
       session: {
         isSucceeding: {
           default: false,
-          type: 'boolean'
+          type: 'boolean',
         },
         isFailing: {
           default: false,
-          type: 'boolean'
+          type: 'boolean',
         },
         success: {
           default() {
             return new Defer();
           },
-          type: 'any'
+          type: 'any',
         },
         failure: {
           default() {
             return new Defer();
           },
-          type: 'any'
-        }
+          type: 'any',
+        },
       },
 
       @whileInFlight('isSucceeding')
@@ -40,7 +40,7 @@ describe('common', () => {
       @whileInFlight('isFailing')
       willFail() {
         return this.failure.promise;
-      }
+      },
     });
 
     it('sets the specified param to true while the decorated function is in flight', () => {
@@ -52,8 +52,7 @@ describe('common', () => {
       assert.isTrue(s.isSucceeding);
       s.success.resolve();
 
-      return ps
-        .then(() => assert.isFalse(s.isSucceeding));
+      return ps.then(() => assert.isFalse(s.isSucceeding));
     });
 
     it('sets the specified param back to false even when the decorated function fails', () => {
@@ -65,8 +64,7 @@ describe('common', () => {
       assert.isTrue(s.isFailing);
       s.failure.reject(new Error('fail'));
 
-      return assert.isRejected(ps)
-        .then(() => assert.isFalse(s.isFailing));
+      return assert.isRejected(ps).then(() => assert.isFalse(s.isFailing));
     });
   });
 });

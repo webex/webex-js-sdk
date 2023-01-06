@@ -9,15 +9,11 @@ const wd = require('wd');
 wd.addPromiseChainMethod('acceptGrant', function acceptGrant() {
   const selector = 'input[value="Accept"]';
 
-  return this
-    .hasElementByCssSelector(selector)
-    .then((has) => {
-      if (has) {
-        return this
-          .waitForElementByCssSelector(selector)
-          .click();
-      }
+  return this.hasElementByCssSelector(selector).then((has) => {
+    if (has) {
+      return this.waitForElementByCssSelector(selector).click();
+    }
 
-      return this;
-    });
+    return this;
+  });
 });

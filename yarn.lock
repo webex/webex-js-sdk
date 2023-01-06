@@ -10111,6 +10111,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"eslint-plugin-chai-friendly@npm:^0.7.2":
+  version: 0.7.2
+  resolution: "eslint-plugin-chai-friendly@npm:0.7.2"
+  peerDependencies:
+    eslint: ">=3.0.0"
+  checksum: 95b79935836b21ccd667625898a54e3e1a41ffea765b16e961e49f148a365790c45fb6dd023df886a321ef325fc451dc8cc3f912413be2156139f2681e20dce1
+  languageName: node
+  linkType: hard
+
 "eslint-plugin-import@npm:^2.26.0":
   version: 2.26.0
   resolution: "eslint-plugin-import@npm:2.26.0"
@@ -22494,6 +22503,7 @@ __metadata:
     eslint-config-airbnb-base: "npm:^15.0.0"
     eslint-config-prettier: "npm:^8.5.0"
     eslint-import-resolver-typescript: "npm:^2.4.0"
+    eslint-plugin-chai-friendly: "npm:^0.7.2"
     eslint-plugin-import: "npm:^2.26.0"
     eslint-plugin-jest: "npm:^26.1.1"
     eslint-plugin-json: "npm:^3.1.0"

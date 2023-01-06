@@ -71,7 +71,7 @@ describe('http-core', () => {
 
     it('falls back to a default error message', () => {
       const res = {
-        statusCode: 400
+        statusCode: 400,
       };
 
       const error = new HttpError(res);
@@ -83,7 +83,7 @@ describe('http-core', () => {
       const message = 'an error occurred';
       const res = {
         statusCode: 400,
-        body: message
+        body: message,
       };
 
       const error = new HttpError(res);
@@ -93,12 +93,12 @@ describe('http-core', () => {
 
     it('parses JSON responses', () => {
       const message = {
-        data: 'an error'
+        data: 'an error',
       };
 
       const res = {
         statusCode: 400,
-        body: message
+        body: message,
       };
 
       const error = new HttpError(res);
@@ -108,12 +108,12 @@ describe('http-core', () => {
 
     it('parses stringified JSON responses', () => {
       const message = JSON.stringify({
-        data: 'an error'
+        data: 'an error',
       });
 
       const res = {
         statusCode: 400,
-        body: message
+        body: message,
       };
 
       const error = new HttpError(res);
@@ -126,8 +126,8 @@ describe('http-core', () => {
       const res = {
         statusCode: 400,
         body: {
-          error: message
-        }
+          error: message,
+        },
       };
 
       const error = new HttpError(res);
@@ -141,9 +141,9 @@ describe('http-core', () => {
         statusCode: 400,
         body: {
           error: {
-            errorString: message
-          }
-        }
+            errorString: message,
+          },
+        },
       };
 
       const error = new HttpError(res);

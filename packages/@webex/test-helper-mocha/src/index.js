@@ -28,8 +28,7 @@ function inBrowser() {
  * @returns {boolean}
  */
 function inSpecificBrowser(name) {
-  return window &&
-    bowser.getParser(window.navigator.userAgent).isBrowser(name);
+  return window && bowser.getParser(window.navigator.userAgent).isBrowser(name);
 }
 
 /**
@@ -125,8 +124,7 @@ module.exports = {
     function unbind() {
       try {
         emitter.off('error', r);
-      }
-      catch (err) {
+      } catch (err) {
         // ignore
       }
     }
@@ -261,8 +259,7 @@ module.exports = {
       try {
         clearTimeout(timer);
         emitter.off(event);
-      }
-      catch (err) {
+      } catch (err) {
         // ignore
       }
     }
@@ -275,19 +272,20 @@ module.exports = {
       }),
       new Promise((resolve) => {
         emitter.on(event, (result) => {
-          const {data: {activity}} = result;
+          const {
+            data: {activity},
+          } = result;
 
           if (activityChecker(activity)) {
             unbind();
             resolve(activity);
           }
         });
-      })
-    ])
-      .catch((reason) => {
-        unbind();
-        throw reason;
-      });
+      }),
+    ]).catch((reason) => {
+      unbind();
+      throw reason;
+    });
   },
 
   /**
@@ -301,7 +299,8 @@ module.exports = {
    * @returns {Promise}
    */
   expectExactlyNEvents: function expectExactlyNEvents(max, count, event, emitter) {
-    let lastResult, timer;
+    let lastResult;
+    let timer;
 
     let currentCount = 0;
 
@@ -310,9 +309,12 @@ module.exports = {
         timer = setTimeout(() => {
           if (currentCount === count) {
             resolve(lastResult);
-          }
-          else {
-            reject(new Error(`${event} fired only ${currentCount} times within ${max}ms. expected ${count} times`));
+          } else {
+            reject(
+              new Error(
+                `${event} fired only ${currentCount} times within ${max}ms. expected ${count} times`
+              )
+            );
           }
         }, max);
       }),
@@ -331,10 +333,14 @@ module.exports = {
           if (currentCount > count) {
             emitter.off(event, fn);
             clearTimeout(timer);
-            reject(new Error(`${event} fired ${currentCount} times within ${max}ms. expected ${count} times`));
+            reject(
+              new Error(
+                `${event} fired ${currentCount} times within ${max}ms. expected ${count} times`
+              )
+            );
           }
         }
-      })
+      }),
     ]);
   },
 
@@ -355,7 +361,11 @@ module.exports = {
     return Promise.race([
       new Promise((resolve, reject) => {
         timer = setTimeout(() => {
-          reject(new Error(`${event} fired only ${currentCount} times within ${max}ms. expected ${count} times`));
+          reject(
+            new Error(
+              `${event} fired only ${currentCount} times within ${max}ms. expected ${count} times`
+            )
+          );
         }, max);
       }),
       new Promise((resolve) => {
@@ -374,7 +384,7 @@ module.exports = {
             resolve();
           }
         }
-      })
+      }),
     ]);
   },
 
@@ -399,7 +409,7 @@ module.exports = {
           clearTimeout(timer);
           resolve(result);
         });
-      })
+      }),
     ]);
   },
 
@@ -426,7 +436,7 @@ module.exports = {
       }),
       new Promise((resolve) => {
         emitter.once(event, resolve);
-      })
+      }),
     ]);
   },
 
@@ -444,7 +454,7 @@ module.exports = {
         setTimeout(() => {
           reject(new Error(`Timeout of ${timeout} expired before promise completed`));
         }, timeout);
-      })
+      }),
     ]);
   },
 
@@ -477,5 +487,5 @@ module.exports = {
 
       return mochaMethod;
     };
-  }
+  },
 };

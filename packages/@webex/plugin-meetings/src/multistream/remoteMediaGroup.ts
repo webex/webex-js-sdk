@@ -62,6 +62,7 @@ export class RemoteMediaGroup {
       // return a shallow copy so that the client cannot modify this.pinnedRemoteMedia array
       return [...this.pinnedRemoteMedia];
     }
+
     return [...this.unpinnedRemoteMedia, ...this.pinnedRemoteMedia];
   }
 
@@ -189,7 +190,7 @@ export class RemoteMediaGroup {
    * @param{boolean} commit whether to commit the cancellation of media requests
    * @internal
    */
-  public stop(commit: boolean = true) {
+  public stop(commit = true) {
     this.unpinnedRemoteMedia.forEach((remoteMedia) => remoteMedia.stop(false));
     this.pinnedRemoteMedia.forEach((remoteMedia) => remoteMedia.stop(false));
     this.cancelActiveSpeakerMediaRequest(false);

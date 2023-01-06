@@ -19,21 +19,20 @@ const PersonUUIDRequestBatcher = Batcher.extend({
    */
   handleHttpSuccess(res) {
     const promises = res.body.items.map((personResponse) =>
-      this.handleItemSuccess(personResponse.id, personResponse));
+      this.handleItemSuccess(personResponse.id, personResponse)
+    );
 
     if (res.body.notFoundIds) {
-      promises.concat(res.body.notFoundIds.map((id) =>
-        this.handleItemFailure(id)));
+      promises.concat(res.body.notFoundIds.map((id) => this.handleItemFailure(id)));
     }
 
     return Promise.all(promises);
   },
 
   handleItemFailure(id) {
-    return this.getDeferredForResponse(id)
-      .then((defer) => {
-        defer.reject(id);
-      });
+    return this.getDeferredForResponse(id).then((defer) => {
+      defer.reject(id);
+    });
   },
 
   /**
@@ -44,10 +43,9 @@ const PersonUUIDRequestBatcher = Batcher.extend({
    * @returns {Promise}
    */
   handleItemSuccess(email, response) {
-    return this.getDeferredForResponse(email)
-      .then((defer) => {
-        defer.resolve(response);
-      });
+    return this.getDeferredForResponse(email).then((defer) => {
+      defer.resolve(response);
+    });
   },
 
   /**
@@ -85,9 +83,9 @@ const PersonUUIDRequestBatcher = Batcher.extend({
   submitHttpRequest(ids) {
     return this.webex.request({
       service: 'hydra',
-      resource: `people/?id=${ids}&showAllTypes=${this.config.showAllTypes}`
+      resource: `people/?id=${ids}&showAllTypes=${this.config.showAllTypes}`,
     });
-  }
+  },
 });
 
 export default PersonUUIDRequestBatcher;

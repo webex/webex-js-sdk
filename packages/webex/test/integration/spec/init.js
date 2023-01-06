@@ -16,26 +16,26 @@ describe('webex', function () {
             credentials: {
               /* eslint-disable camelcase */
               client_id: 'id',
-              client_secret: 'secret'
-            }
-          }
+              client_secret: 'secret',
+            },
+          },
         });
 
         assert.equal(webex.config.credentials.client_id, 'id');
         assert.equal(webex.config.credentials.client_secret, 'secret');
       });
 
-      it('produces an authorized sdk instance', () => testUsers.create({count: 1})
-        .then(([user]) => {
+      it('produces an authorized sdk instance', () =>
+        testUsers.create({count: 1}).then(([user]) => {
           const webex = Webex.init({
-            credentials: user.token
+            credentials: user.token,
           });
 
           assert.isTrue(webex.canAuthorize);
 
           return webex.request({
             service: 'hydra',
-            resource: '/build_info'
+            resource: '/build_info',
           });
         }));
     });

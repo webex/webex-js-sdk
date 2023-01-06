@@ -16,18 +16,21 @@ class Transforms {
     }
     const reportRequest = object.body;
 
-    return ctx.webex.internal.encryption.kms.createUnboundKeys({count: 1})
+    return ctx.webex.internal.encryption.kms
+      .createUnboundKeys({count: 1})
       .then((keys) => {
         if (keys && keys.length > 0 && keys[0]) {
           reportRequest.encryptionKeyUrl = keys[0].uri;
 
-          return ctx.webex.internal.encryption.kms.createResource({userIds: [keys[0].userId], keys})
+          return ctx.webex.internal.encryption.kms
+            .createResource({userIds: [keys[0].userId], keys})
             .then(() => {
               const promises = [];
 
               if (reportRequest.name) {
                 promises.push(
-                  ctx.webex.internal.encryption.encryptText(keys[0], reportRequest.name)
+                  ctx.webex.internal.encryption
+                    .encryptText(keys[0], reportRequest.name)
                     .then((encryptedName) => {
                       reportRequest.name = encryptedName;
                     })
@@ -36,7 +39,8 @@ class Transforms {
 
               if (reportRequest.description) {
                 promises.push(
-                  ctx.webex.internal.encryption.encryptText(keys[0], reportRequest.description)
+                  ctx.webex.internal.encryption
+                    .encryptText(keys[0], reportRequest.description)
                     .then((encryptedDescription) => {
                       reportRequest.description = encryptedDescription;
                     })
@@ -45,19 +49,25 @@ class Transforms {
 
               if (reportRequest.spaceNames) {
                 promises.push(
-                  Promise.all(reportRequest.spaceNames.map((spaceName) => ctx.webex.internal.encryption.encryptText(keys[0], spaceName)))
-                    .then((encryptedSpaceNames) => {
-                      reportRequest.spaceNames = encryptedSpaceNames;
-                    })
+                  Promise.all(
+                    reportRequest.spaceNames.map((spaceName) =>
+                      ctx.webex.internal.encryption.encryptText(keys[0], spaceName)
+                    )
+                  ).then((encryptedSpaceNames) => {
+                    reportRequest.spaceNames = encryptedSpaceNames;
+                  })
                 );
               }
 
               if (reportRequest.keywords) {
                 promises.push(
-                  Promise.all(reportRequest.keywords.map((keyword) => ctx.webex.internal.encryption.encryptText(keys[0], keyword)))
-                    .then((encryptedKeywords) => {
-                      reportRequest.keywords = encryptedKeywords;
-                    })
+                  Promise.all(
+                    reportRequest.keywords.map((keyword) =>
+                      ctx.webex.internal.encryption.encryptText(keys[0], keyword)
+                    )
+                  ).then((encryptedKeywords) => {
+                    reportRequest.keywords = encryptedKeywords;
+                  })
                 );
               }
 
@@ -65,10 +75,13 @@ class Transforms {
                 // store unencrypted emails for ediscovery service to convert to user ids
                 reportRequest.unencryptedEmails = reportRequest.emails;
                 promises.push(
-                  Promise.all(reportRequest.emails.map((email) => ctx.webex.internal.encryption.encryptText(keys[0], email)))
-                    .then((encryptedEmails) => {
-                      reportRequest.emails = encryptedEmails;
-                    })
+                  Promise.all(
+                    reportRequest.emails.map((email) =>
+                      ctx.webex.internal.encryption.encryptText(keys[0], email)
+                    )
+                  ).then((encryptedEmails) => {
+                    reportRequest.emails = encryptedEmails;
+                  })
                 );
               }
 
@@ -79,7 +92,9 @@ class Transforms {
         return Promise.resolve(object);
       })
       .catch((reason) => {
-        ctx.webex.logger.error(`Error while encrypting report request: ${reportRequest} : ${reason}`);
+        ctx.webex.logger.error(
+          `Error while encrypting report request: ${reportRequest} : ${reason}`
+        );
 
         return Promise.reject(reason);
       });
@@ -92,7 +107,12 @@ class Transforms {
    * @returns {Promise} - Returns a transform promise
    */
   static decryptReportRequest(ctx, object) {
-    if (!object || !object.body || !object.body.reportRequest || !object.body.reportRequest.encryptionKeyUrl) {
+    if (
+      !object ||
+      !object.body ||
+      !object.body.reportRequest ||
+      !object.body.reportRequest.encryptionKeyUrl
+    ) {
       return Promise.resolve(object);
     }
     const {reportRequest} = object.body;
@@ -100,55 +120,77 @@ class Transforms {
     let reportNamePromise;
 
     if (reportRequest.name) {
-      reportNamePromise = ctx.webex.internal.encryption.decryptText(reportRequest.encryptionKeyUrl, reportRequest.name)
+      reportNamePromise = ctx.webex.internal.encryption
+        .decryptText(reportRequest.encryptionKeyUrl, reportRequest.name)
         .then((decryptedName) => {
           reportRequest.name = decryptedName;
         })
         .catch((reason) => {
-          ctx.webex.logger.error(`Error decrypting report name for report ${object.body.id}: ${reason}`);
+          ctx.webex.logger.error(
+            `Error decrypting report name for report ${object.body.id}: ${reason}`
+          );
         });
     }
 
     let reportDescriptionPromise;
 
     if (reportRequest.description) {
-      reportDescriptionPromise = ctx.webex.internal.encryption.decryptText(reportRequest.encryptionKeyUrl, reportRequest.description)
+      reportDescriptionPromise = ctx.webex.internal.encryption
+        .decryptText(reportRequest.encryptionKeyUrl, reportRequest.description)
         .then((decryptedDescription) => {
           reportRequest.description = decryptedDescription;
         })
         .catch((reason) => {
-          ctx.webex.logger.error(`Error decrypting description for report ${object.body.id}: ${reason}`);
+          ctx.webex.logger.error(
+            `Error decrypting description for report ${object.body.id}: ${reason}`
+          );
         });
     }
 
     let spaceNamePromises = [];
 
     if (reportRequest.spaceNames) {
-      spaceNamePromises = Promise.all(reportRequest.spaceNames.map((spaceName) => ctx.webex.internal.encryption.decryptText(reportRequest.encryptionKeyUrl, spaceName)))
+      spaceNamePromises = Promise.all(
+        reportRequest.spaceNames.map((spaceName) =>
+          ctx.webex.internal.encryption.decryptText(reportRequest.encryptionKeyUrl, spaceName)
+        )
+      )
         .then((decryptedSpaceNames) => {
           reportRequest.spaceNames = decryptedSpaceNames;
         })
         .catch((reason) => {
-          ctx.webex.logger.error(`Error decrypting space name for report ${object.body.id}: ${reason}`);
+          ctx.webex.logger.error(
+            `Error decrypting space name for report ${object.body.id}: ${reason}`
+          );
         });
     }
 
     let keywordPromises = [];
 
     if (reportRequest.keywords) {
-      keywordPromises = Promise.all(reportRequest.keywords.map((keyword) => ctx.webex.internal.encryption.decryptText(reportRequest.encryptionKeyUrl, keyword)))
+      keywordPromises = Promise.all(
+        reportRequest.keywords.map((keyword) =>
+          ctx.webex.internal.encryption.decryptText(reportRequest.encryptionKeyUrl, keyword)
+        )
+      )
         .then((decryptedKeywords) => {
           reportRequest.keywords = decryptedKeywords;
         })
         .catch((reason) => {
-          ctx.webex.logger.error(`Error decrypting keywords for report ${object.body.id}: ${reason}`);
+          ctx.webex.logger.error(
+            `Error decrypting keywords for report ${object.body.id}: ${reason}`
+          );
         });
     }
 
     let emailPromises = [];
 
     if (reportRequest.emails) {
-      emailPromises = Promise.all(reportRequest.emails.map((email) => ctx.webex.internal.encryption.decryptText(reportRequest.encryptionKeyUrl, email)))
+      emailPromises = Promise.all(
+        reportRequest.emails.map((email) =>
+          ctx.webex.internal.encryption.decryptText(reportRequest.encryptionKeyUrl, email)
+        )
+      )
         .then((decryptedEmails) => {
           reportRequest.emails = decryptedEmails;
         })
@@ -157,7 +199,13 @@ class Transforms {
         });
     }
 
-    return Promise.all([reportNamePromise, reportDescriptionPromise].concat(spaceNamePromises, keywordPromises, emailPromises));
+    return Promise.all(
+      [reportNamePromise, reportDescriptionPromise].concat(
+        spaceNamePromises,
+        keywordPromises,
+        emailPromises
+      )
+    );
   }
 
   /**
@@ -175,7 +223,8 @@ class Transforms {
 
     const promises = [];
 
-    return ctx.webex.internal.ediscovery.getContentContainerByContainerId(reportId, activity.targetId)
+    return ctx.webex.internal.ediscovery
+      .getContentContainerByContainerId(reportId, activity.targetId)
       .then((res) => {
         const container = res.body;
 
@@ -198,29 +247,38 @@ class Transforms {
         if (container.containerName) {
           activity.spaceName = container.containerName; // Remove this property once all clients are using the content container model
           activity.containerName = container.containerName;
-        }
-        else if (container.isOneOnOne) {
-          const displayNames = (container.participants || []).concat(container.formerParticipants || []).map((p) => p.displayName).join(' & ');
+        } else if (container.isOneOnOne) {
+          const displayNames = (container.participants || [])
+            .concat(container.formerParticipants || [])
+            .map((p) => p.displayName)
+            .join(' & ');
 
           // One to One spaces have no space name, use participant names as 'Subject' instead
           activity.spaceName = displayNames; // Remove this property once all clients are using the content container model
           activity.containerName = displayNames;
-        }
-        else {
+        } else {
           activity.spaceName = ''; // Remove this property once all clients are using the content container model
           activity.containerName = '';
         }
 
         // post and share activities have content which needs to be decrypted
         // as do meeting, recording activities, customApp extensions, and space information updates
-        if (!['post', 'share'].includes(activity.verb) && !activity.meeting && !activity.recording && !(activity.extension && activity.extension.extensionType === 'customApp') &&
-          !activity.spaceInfo?.name && !activity.spaceInfo?.description) {
+        if (
+          !['post', 'share'].includes(activity.verb) &&
+          !activity.meeting &&
+          !activity.recording &&
+          !(activity.extension && activity.extension.extensionType === 'customApp') &&
+          !activity.spaceInfo?.name &&
+          !activity.spaceInfo?.description
+        ) {
           return Promise.resolve(object);
         }
 
         if (!activity.encryptionKeyUrl) {
           // If the encryptionKeyUrl is empty we assume the activity is unencrypted
-          ctx.webex.logger.info(`Activity ${activity.activityId} cannot be decrypted due to a missing encryption key url`);
+          ctx.webex.logger.info(
+            `Activity ${activity.activityId} cannot be decrypted due to a missing encryption key url`
+          );
 
           return Promise.resolve(object);
         }
@@ -236,159 +294,284 @@ class Transforms {
 
         // Decrypt activity message if present
         if (activity.objectDisplayName) {
-          promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-            [activity.encryptionKeyUrl, activity.objectDisplayName, {onBehalfOf: container.onBehalfOfUser}])
-            .then((decryptedMessage) => {
-              activity.objectDisplayName = decryptedMessage;
-            })
-            .catch((reason) => {
-              ctx.webex.logger.error(`Decrypt message error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`);
-              // add error property to activity - this error will be recorded in the downloader and the activity omitted from the report
-              activity.error = reason;
+          promises.push(
+            requestWithRetries(
+              ctx.webex.internal.encryption,
+              ctx.webex.internal.encryption.decryptText,
+              [
+                activity.encryptionKeyUrl,
+                activity.objectDisplayName,
+                {onBehalfOf: container.onBehalfOfUser},
+              ]
+            )
+              .then((decryptedMessage) => {
+                activity.objectDisplayName = decryptedMessage;
+              })
+              .catch((reason) => {
+                ctx.webex.logger.error(
+                  `Decrypt message error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`
+                );
+                // add error property to activity - this error will be recorded in the downloader and the activity omitted from the report
+                activity.error = reason;
 
-              return Promise.resolve(object);
-            }));
+                return Promise.resolve(object);
+              })
+          );
         }
 
         // If the activity is a space information update, decrypt the name and description if present
         if (activity.spaceInfo?.name) {
-          promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-            [activity.encryptionKeyUrl, activity.spaceInfo.name, {onBehalfOf: container.onBehalfOfUser}])
-            .then((decryptedMessage) => {
-              activity.spaceInfo.name = decryptedMessage;
-            })
-            .catch((reason) => {
-              ctx.webex.logger.error(`Decrypt activity.spaceInfo.name error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`);
-              activity.error = reason;
-
-              return Promise.resolve(object);
-            }));
-        }
-        if (activity.spaceInfo?.description) {
-          promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-            [activity.encryptionKeyUrl, activity.spaceInfo.description, {onBehalfOf: container.onBehalfOfUser}])
-            .then((decryptedMessage) => {
-              activity.spaceInfo.description = decryptedMessage;
-            })
-            .catch((reason) => {
-              ctx.webex.logger.error(`Decrypt activity.spaceInfo.description error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`);
-              activity.error = reason;
-
-              return Promise.resolve(object);
-            }));
-        }
-        if (activity.spaceInfo?.previousName && activity.spaceInfo.previousEncryptionKeyUrl) {
-          promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-            [activity.spaceInfo.previousEncryptionKeyUrl, activity.spaceInfo.previousName, {onBehalfOf: container.onBehalfOfUser}])
-            .then((decryptedMessage) => {
-              activity.spaceInfo.previousName = decryptedMessage;
-            })
-            .catch((reason) => {
-              ctx.webex.logger.error(`Decrypt activity.spaceInfo.previousName error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`);
-              activity.error = reason;
-
-              return Promise.resolve(object);
-            }));
-        }
-
-        // Decrypt content url and display name if extension is present
-        if (activity.extension && activity.extension.objectType === 'extension' && activity.extension.extensionType === 'customApp') {
-          promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-            [activity.encryptionKeyUrl, activity.extension.contentUrl, {onBehalfOf: container.onBehalfOfUser}])
-            .then((decryptedContentUrl) => {
-              activity.extension.contentUrl = decryptedContentUrl;
-            })
-            .catch((reason) => {
-              ctx.webex.logger.error(`Decrypt activity.extension.contentUrl error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`);
-              activity.error = reason;
-
-              return Promise.resolve(object);
-            }));
-
-          promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-            [activity.encryptionKeyUrl, activity.extension.displayName, {onBehalfOf: container.onBehalfOfUser}])
-            .then((decryptedDisplayName) => {
-              activity.extension.displayName = decryptedDisplayName;
-            })
-            .catch((reason) => {
-              ctx.webex.logger.error(`Decrypt activity.extension.displayName error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`);
-              activity.error = reason;
-
-              return Promise.resolve(object);
-            }));
-
-          //  Decrypt webUrl.
-          if (activity.extension.webUrl) {
-            promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-              [activity.encryptionKeyUrl, activity.extension.webUrl, {onBehalfOf: container.onBehalfOfUser}])
-              .then((decryptedWebUrl) => {
-                activity.extension.webUrl = decryptedWebUrl;
+          promises.push(
+            requestWithRetries(
+              ctx.webex.internal.encryption,
+              ctx.webex.internal.encryption.decryptText,
+              [
+                activity.encryptionKeyUrl,
+                activity.spaceInfo.name,
+                {onBehalfOf: container.onBehalfOfUser},
+              ]
+            )
+              .then((decryptedMessage) => {
+                activity.spaceInfo.name = decryptedMessage;
               })
               .catch((reason) => {
-                ctx.webex.logger.error(`Decrypt activity.extension.webUrl error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`);
+                ctx.webex.logger.error(
+                  `Decrypt activity.spaceInfo.name error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`
+                );
                 activity.error = reason;
 
                 return Promise.resolve(object);
-              }));
+              })
+          );
+        }
+        if (activity.spaceInfo?.description) {
+          promises.push(
+            requestWithRetries(
+              ctx.webex.internal.encryption,
+              ctx.webex.internal.encryption.decryptText,
+              [
+                activity.encryptionKeyUrl,
+                activity.spaceInfo.description,
+                {onBehalfOf: container.onBehalfOfUser},
+              ]
+            )
+              .then((decryptedMessage) => {
+                activity.spaceInfo.description = decryptedMessage;
+              })
+              .catch((reason) => {
+                ctx.webex.logger.error(
+                  `Decrypt activity.spaceInfo.description error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`
+                );
+                activity.error = reason;
+
+                return Promise.resolve(object);
+              })
+          );
+        }
+        if (activity.spaceInfo?.previousName && activity.spaceInfo.previousEncryptionKeyUrl) {
+          promises.push(
+            requestWithRetries(
+              ctx.webex.internal.encryption,
+              ctx.webex.internal.encryption.decryptText,
+              [
+                activity.spaceInfo.previousEncryptionKeyUrl,
+                activity.spaceInfo.previousName,
+                {onBehalfOf: container.onBehalfOfUser},
+              ]
+            )
+              .then((decryptedMessage) => {
+                activity.spaceInfo.previousName = decryptedMessage;
+              })
+              .catch((reason) => {
+                ctx.webex.logger.error(
+                  `Decrypt activity.spaceInfo.previousName error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`
+                );
+                activity.error = reason;
+
+                return Promise.resolve(object);
+              })
+          );
+        }
+
+        // Decrypt content url and display name if extension is present
+        if (
+          activity.extension &&
+          activity.extension.objectType === 'extension' &&
+          activity.extension.extensionType === 'customApp'
+        ) {
+          promises.push(
+            requestWithRetries(
+              ctx.webex.internal.encryption,
+              ctx.webex.internal.encryption.decryptText,
+              [
+                activity.encryptionKeyUrl,
+                activity.extension.contentUrl,
+                {onBehalfOf: container.onBehalfOfUser},
+              ]
+            )
+              .then((decryptedContentUrl) => {
+                activity.extension.contentUrl = decryptedContentUrl;
+              })
+              .catch((reason) => {
+                ctx.webex.logger.error(
+                  `Decrypt activity.extension.contentUrl error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`
+                );
+                activity.error = reason;
+
+                return Promise.resolve(object);
+              })
+          );
+
+          promises.push(
+            requestWithRetries(
+              ctx.webex.internal.encryption,
+              ctx.webex.internal.encryption.decryptText,
+              [
+                activity.encryptionKeyUrl,
+                activity.extension.displayName,
+                {onBehalfOf: container.onBehalfOfUser},
+              ]
+            )
+              .then((decryptedDisplayName) => {
+                activity.extension.displayName = decryptedDisplayName;
+              })
+              .catch((reason) => {
+                ctx.webex.logger.error(
+                  `Decrypt activity.extension.displayName error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`
+                );
+                activity.error = reason;
+
+                return Promise.resolve(object);
+              })
+          );
+
+          //  Decrypt webUrl.
+          if (activity.extension.webUrl) {
+            promises.push(
+              requestWithRetries(
+                ctx.webex.internal.encryption,
+                ctx.webex.internal.encryption.decryptText,
+                [
+                  activity.encryptionKeyUrl,
+                  activity.extension.webUrl,
+                  {onBehalfOf: container.onBehalfOfUser},
+                ]
+              )
+                .then((decryptedWebUrl) => {
+                  activity.extension.webUrl = decryptedWebUrl;
+                })
+                .catch((reason) => {
+                  ctx.webex.logger.error(
+                    `Decrypt activity.extension.webUrl error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`
+                  );
+                  activity.error = reason;
+
+                  return Promise.resolve(object);
+                })
+            );
           }
           if (activity.verb === 'update' && activity.extension.previous) {
             if (activity.extension.previous.contentUrl) {
-              promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-                [activity.encryptionKeyUrl, activity.extension.previous.contentUrl, {onBehalfOf: container.onBehalfOfUser}])
-                .then((decryptedPreviousContentUrl) => {
-                  activity.extension.previous.contentUrl = decryptedPreviousContentUrl;
-                })
-                .catch((reason) => {
-                  ctx.webex.logger.error(`Decrypt activity.extension.previous.contentUrl error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`);
-                  activity.error = reason;
+              promises.push(
+                requestWithRetries(
+                  ctx.webex.internal.encryption,
+                  ctx.webex.internal.encryption.decryptText,
+                  [
+                    activity.encryptionKeyUrl,
+                    activity.extension.previous.contentUrl,
+                    {onBehalfOf: container.onBehalfOfUser},
+                  ]
+                )
+                  .then((decryptedPreviousContentUrl) => {
+                    activity.extension.previous.contentUrl = decryptedPreviousContentUrl;
+                  })
+                  .catch((reason) => {
+                    ctx.webex.logger.error(
+                      `Decrypt activity.extension.previous.contentUrl error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`
+                    );
+                    activity.error = reason;
 
-                  return Promise.resolve(object);
-                }));
+                    return Promise.resolve(object);
+                  })
+              );
             }
             if (activity.extension.previous.displayName) {
-              promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-                [activity.encryptionKeyUrl, activity.extension.previous.displayName, {onBehalfOf: container.onBehalfOfUser}])
-                .then((decryptedPreviousDisplayName) => {
-                  activity.extension.previous.displayName = decryptedPreviousDisplayName;
-                })
-                .catch((reason) => {
-                  ctx.webex.logger.error(`Decrypt activity.extension.previous.displayName error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`);
-                  activity.error = reason;
+              promises.push(
+                requestWithRetries(
+                  ctx.webex.internal.encryption,
+                  ctx.webex.internal.encryption.decryptText,
+                  [
+                    activity.encryptionKeyUrl,
+                    activity.extension.previous.displayName,
+                    {onBehalfOf: container.onBehalfOfUser},
+                  ]
+                )
+                  .then((decryptedPreviousDisplayName) => {
+                    activity.extension.previous.displayName = decryptedPreviousDisplayName;
+                  })
+                  .catch((reason) => {
+                    ctx.webex.logger.error(
+                      `Decrypt activity.extension.previous.displayName error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`
+                    );
+                    activity.error = reason;
 
-                  return Promise.resolve(object);
-                }));
+                    return Promise.resolve(object);
+                  })
+              );
             }
           }
         }
 
         // Decrypt meeting title if present
         if (activity?.meeting?.title) {
-          promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-            [activity.encryptionKeyUrl, activity.meeting.title, {onBehalfOf: container.onBehalfOfUser}])
-            .then((decryptedMessage) => {
-              activity.meeting.title = decryptedMessage;
-            })
-            .catch((reason) => {
-              ctx.webex.logger.error(`Decrypt activity.meeting.title error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`);
-              activity.error = reason;
+          promises.push(
+            requestWithRetries(
+              ctx.webex.internal.encryption,
+              ctx.webex.internal.encryption.decryptText,
+              [
+                activity.encryptionKeyUrl,
+                activity.meeting.title,
+                {onBehalfOf: container.onBehalfOfUser},
+              ]
+            )
+              .then((decryptedMessage) => {
+                activity.meeting.title = decryptedMessage;
+              })
+              .catch((reason) => {
+                ctx.webex.logger.error(
+                  `Decrypt activity.meeting.title error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`
+                );
+                activity.error = reason;
 
-              return Promise.resolve(object);
-            }));
+                return Promise.resolve(object);
+              })
+          );
         }
 
         // Decrypt meeting recording topic if present
         if (activity?.recording?.topic) {
-          promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-            [activity.encryptionKeyUrl, activity.recording.topic, {onBehalfOf: container.onBehalfOfUser}])
-            .then((decryptedMessage) => {
-              activity.recording.topic = decryptedMessage;
-            })
-            .catch((reason) => {
-              ctx.webex.logger.error(`Decrypt activity.recording.topic error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`);
-              activity.error = reason;
+          promises.push(
+            requestWithRetries(
+              ctx.webex.internal.encryption,
+              ctx.webex.internal.encryption.decryptText,
+              [
+                activity.encryptionKeyUrl,
+                activity.recording.topic,
+                {onBehalfOf: container.onBehalfOfUser},
+              ]
+            )
+              .then((decryptedMessage) => {
+                activity.recording.topic = decryptedMessage;
+              })
+              .catch((reason) => {
+                ctx.webex.logger.error(
+                  `Decrypt activity.recording.topic error for activity ${activity.activityId} in container ${activity.targetId}: ${reason}`
+                );
+                activity.error = reason;
 
-              return Promise.resolve(object);
-            }));
+                return Promise.resolve(object);
+              })
+          );
         }
 
         // Decrypt shares (files, whiteboards, shared links)
@@ -402,49 +585,85 @@ class Transforms {
 
           // Decrypt the share's display name
           // Ignore display names for whiteboards which are unencrypted
-          if (share.displayName && (!activity.whiteboards || !activity.whiteboards.includes(share))) {
-            promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-              [activity.encryptionKeyUrl, share.displayName, {onBehalfOf: container.onBehalfOfUser}])
-              .then((decryptedDisplayName) => {
-                share.displayName = decryptedDisplayName;
-              })
-              .catch((reason) => {
-                ctx.webex.logger.warn(`Decrypt DisplayName error for activity ${activity.activityId} in container ${activity.targetId} for share type: ${share.mimeType}, size: ${share.fileSize}, and url: ${share.url} due to error: ${reason}`);
-                // add warning property to activity - this will present an indication that there was data loss on the downloader
-                activity.warning = reason;
-              }));
+          if (
+            share.displayName &&
+            (!activity.whiteboards || !activity.whiteboards.includes(share))
+          ) {
+            promises.push(
+              requestWithRetries(
+                ctx.webex.internal.encryption,
+                ctx.webex.internal.encryption.decryptText,
+                [
+                  activity.encryptionKeyUrl,
+                  share.displayName,
+                  {onBehalfOf: container.onBehalfOfUser},
+                ]
+              )
+                .then((decryptedDisplayName) => {
+                  share.displayName = decryptedDisplayName;
+                })
+                .catch((reason) => {
+                  ctx.webex.logger.warn(
+                    `Decrypt DisplayName error for activity ${activity.activityId} in container ${activity.targetId} for share type: ${share.mimeType}, size: ${share.fileSize}, and url: ${share.url} due to error: ${reason}`
+                  );
+                  // add warning property to activity - this will present an indication that there was data loss on the downloader
+                  activity.warning = reason;
+                })
+            );
           }
 
           // Shared Links can have additional decryption fields
           if (share.microsoftSharedLinkInfo) {
             if (share.microsoftSharedLinkInfo.driveId) {
-              promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-                [activity.encryptionKeyUrl, share.microsoftSharedLinkInfo.driveId, {onBehalfOf: container.onBehalfOfUser}])
-                .then((decryptedDriveId) => {
-                  share.microsoftSharedLinkInfo.driveId = decryptedDriveId;
-                })
-                .catch((reason) => {
-                  ctx.webex.logger.error(`Decrypt share.microsoftSharedLinkInfo.driveId error for activity ${activity.activityId} in container ${activity.targetId} for share type: ${share.mimeType}, size: ${share.fileSize}, and url: ${share.url} due to error: ${reason}`);
-                  // add error property to activity - this error will be recorded in the downloader and the activity omitted from the report
-                  activity.error = reason;
+              promises.push(
+                requestWithRetries(
+                  ctx.webex.internal.encryption,
+                  ctx.webex.internal.encryption.decryptText,
+                  [
+                    activity.encryptionKeyUrl,
+                    share.microsoftSharedLinkInfo.driveId,
+                    {onBehalfOf: container.onBehalfOfUser},
+                  ]
+                )
+                  .then((decryptedDriveId) => {
+                    share.microsoftSharedLinkInfo.driveId = decryptedDriveId;
+                  })
+                  .catch((reason) => {
+                    ctx.webex.logger.error(
+                      `Decrypt share.microsoftSharedLinkInfo.driveId error for activity ${activity.activityId} in container ${activity.targetId} for share type: ${share.mimeType}, size: ${share.fileSize}, and url: ${share.url} due to error: ${reason}`
+                    );
+                    // add error property to activity - this error will be recorded in the downloader and the activity omitted from the report
+                    activity.error = reason;
 
-                  return Promise.resolve(object);
-                }));
+                    return Promise.resolve(object);
+                  })
+              );
             }
 
             if (share.microsoftSharedLinkInfo.itemId) {
-              promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-                [activity.encryptionKeyUrl, share.microsoftSharedLinkInfo.itemId, {onBehalfOf: container.onBehalfOfUser}])
-                .then((decryptedItemId) => {
-                  share.microsoftSharedLinkInfo.itemId = decryptedItemId;
-                })
-                .catch((reason) => {
-                  ctx.webex.logger.error(`Decrypt share.microsoftSharedLinkInfo.itemId error for activity ${activity.activityId} in container ${activity.targetId} for share type: ${share.mimeType}, size: ${share.fileSize}, and url: ${share.url} due to error: ${reason}`);
-                  // add error property to activity - this error will be recorded in the downloader and the activity omitted from the report
-                  activity.error = reason;
+              promises.push(
+                requestWithRetries(
+                  ctx.webex.internal.encryption,
+                  ctx.webex.internal.encryption.decryptText,
+                  [
+                    activity.encryptionKeyUrl,
+                    share.microsoftSharedLinkInfo.itemId,
+                    {onBehalfOf: container.onBehalfOfUser},
+                  ]
+                )
+                  .then((decryptedItemId) => {
+                    share.microsoftSharedLinkInfo.itemId = decryptedItemId;
+                  })
+                  .catch((reason) => {
+                    ctx.webex.logger.error(
+                      `Decrypt share.microsoftSharedLinkInfo.itemId error for activity ${activity.activityId} in container ${activity.targetId} for share type: ${share.mimeType}, size: ${share.fileSize}, and url: ${share.url} due to error: ${reason}`
+                    );
+                    // add error property to activity - this error will be recorded in the downloader and the activity omitted from the report
+                    activity.error = reason;
 
-                  return Promise.resolve(object);
-                }));
+                    return Promise.resolve(object);
+                  })
+              );
             }
           }
 
@@ -452,32 +671,44 @@ class Transforms {
           // Unlike a scr the sslr contains only a loc. But decryptScr(...) is flexible and
           // leaves the tag, auth, IV, etc fields on the SCR object as undefined.
           if (share.scr || share.sslr) {
-            promises.push(requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptScr,
-              // A share will have an encryptionKeyUrl when it's activity uses a different encryptionKeyUrl. This can happen when old activities are edited
-              // and key rotation is turn on.
-              [share.encryptionKeyUrl || activity.encryptionKeyUrl, share.scr || share.sslr, {onBehalfOf: container.onBehalfOfUser}])
-              .then((decryptedSCR) => {
-                if (share.scr) {
-                  share.scr = decryptedSCR;
-                }
-                else {
-                  share.sslr = decryptedSCR.loc;
-                }
-              })
-              .catch((reason) => {
-                ctx.webex.logger.error(`Decrypt file scr or sslr error for activity ${activity.activityId} in container ${activity.targetId} for share type: ${share.mimeType}, size: ${share.fileSize}, and url: ${share.url} due to error: ${reason}`);
-                // add error property to activity - this error will be recorded in the downloader and the activity omitted from the report
-                activity.error = reason;
+            promises.push(
+              requestWithRetries(
+                ctx.webex.internal.encryption,
+                ctx.webex.internal.encryption.decryptScr,
+                // A share will have an encryptionKeyUrl when it's activity uses a different encryptionKeyUrl. This can happen when old activities are edited
+                // and key rotation is turn on.
+                [
+                  share.encryptionKeyUrl || activity.encryptionKeyUrl,
+                  share.scr || share.sslr,
+                  {onBehalfOf: container.onBehalfOfUser},
+                ]
+              )
+                .then((decryptedSCR) => {
+                  if (share.scr) {
+                    share.scr = decryptedSCR;
+                  } else {
+                    share.sslr = decryptedSCR.loc;
+                  }
+                })
+                .catch((reason) => {
+                  ctx.webex.logger.error(
+                    `Decrypt file scr or sslr error for activity ${activity.activityId} in container ${activity.targetId} for share type: ${share.mimeType}, size: ${share.fileSize}, and url: ${share.url} due to error: ${reason}`
+                  );
+                  // add error property to activity - this error will be recorded in the downloader and the activity omitted from the report
+                  activity.error = reason;
 
-                return Promise.resolve(object);
-              }));
+                  return Promise.resolve(object);
+                })
+            );
           }
         }
 
         return Promise.all(promises);
       })
       .catch((reason) => {
-        ctx.webex.logger.error(`Error retrieving content container for: ${activity.activityId} in container ${activity.targetId}: ${reason}`);
+        ctx.webex.logger.error(
+          `Error retrieving content container for: ${activity.activityId} in container ${activity.targetId}: ${reason}`
+        );
         // add error property to activity - this error will be recorded in the downloader and the activity omitted from the report
         activity.error = reason;
 
@@ -503,7 +734,9 @@ class Transforms {
 
     if (!container.encryptionKeyUrl) {
       // If the encryptionKeyUrl is empty we assume the container name is unencrypted
-      ctx.webex.logger.info(`${container.containerType} container ${container.containerId} cannot be decrypted due to a missing encryption key url`);
+      ctx.webex.logger.info(
+        `${container.containerType} container ${container.containerId} cannot be decrypted due to a missing encryption key url`
+      );
 
       return Promise.resolve(object);
     }
@@ -519,26 +752,36 @@ class Transforms {
 
     // decrypt description if present with a descriptionEncryptionKeyUrl
     if (container.description && container.descriptionEncryptionKeyUrl) {
-      requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-        [container.descriptionEncryptionKeyUrl, container.description, {onBehalfOf: container.onBehalfOfUser}])
+      requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText, [
+        container.descriptionEncryptionKeyUrl,
+        container.description,
+        {onBehalfOf: container.onBehalfOfUser},
+      ])
         .then((decryptedContainerDescription) => {
           container.description = decryptedContainerDescription;
         })
         .catch((reason) => {
-          ctx.webex.logger.error(`Decrypt container description error for ${container.containerType} container ${container.containerId}: ${reason}`);
+          ctx.webex.logger.error(
+            `Decrypt container description error for ${container.containerType} container ${container.containerId}: ${reason}`
+          );
           // add warn property to container info - this warning will be recorded in the downloader
           container.warning = reason;
           // don't return, attempt to decrypt the name first
         });
     }
 
-    return requestWithRetries(ctx.webex.internal.encryption, ctx.webex.internal.encryption.decryptText,
-      [container.encryptionKeyUrl, container.containerName, {onBehalfOf: container.onBehalfOfUser}])
+    return requestWithRetries(
+      ctx.webex.internal.encryption,
+      ctx.webex.internal.encryption.decryptText,
+      [container.encryptionKeyUrl, container.containerName, {onBehalfOf: container.onBehalfOfUser}]
+    )
       .then((decryptedContainerName) => {
         container.containerName = decryptedContainerName;
       })
       .catch((reason) => {
-        ctx.webex.logger.error(`Decrypt container name error for ${container.containerType} container ${container.containerId}: ${reason}`);
+        ctx.webex.logger.error(
+          `Decrypt container name error for ${container.containerType} container ${container.containerId}: ${reason}`
+        );
         // add warn property to container info - this warning will be recorded in the downloader
         container.warning = reason;
 

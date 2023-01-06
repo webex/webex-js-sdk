@@ -16,7 +16,7 @@ describe('webex-core', () => {
 
     /* eslint require-jsdoc: [0] */
     const MockPlugin = WebexPlugin.extend({
-      namespace: 'mock'
+      namespace: 'mock',
     });
 
     describe('#config', () => {

@@ -13,8 +13,13 @@ import {MEETING_ERRORS} from '../constants';
 import BrowserDetection from '../common/browser-detection';
 
 import {
-  error, eventType, errorCodes as ERROR_CODE, OS_NAME, UNKNOWN, CLIENT_NAME,
-  mediaType
+  error,
+  eventType,
+  errorCodes as ERROR_CODE,
+  OS_NAME,
+  UNKNOWN,
+  CLIENT_NAME,
+  mediaType,
 } from './config';
 
 const OSMap = {
@@ -24,15 +29,10 @@ const OSMap = {
   Windows: OS_NAME.WINDOWS,
   iOS: OS_NAME.IOS,
   Android: OS_NAME.ANDROID,
-  Linux: OS_NAME.LINUX
+  Linux: OS_NAME.LINUX,
 };
 
-const {
-  getOSName,
-  getOSVersion,
-  getBrowserName,
-  getBrowserVersion
-} = BrowserDetection();
+const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
 // Apply a CIDR /28 format to the IPV4 and /96 to the IPV6 addresses
 // For reference : https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing
@@ -85,33 +85,33 @@ class Metrics {
   webex: any;
 
   /**
-     * Create Metrics Object
-     * @constructor
-     * @public
-     * @memberof Meetings
-     */
+   * Create Metrics Object
+   * @constructor
+   * @public
+   * @memberof Meetings
+   */
   constructor() {
     if (!Metrics.instance) {
-    /**
-     * @instance
-     * @type {Array}
-     * @private
-     * @memberof Metrics
-     */
+      /**
+       * @instance
+       * @type {Array}
+       * @private
+       * @memberof Metrics
+       */
       this._events = [];
       /**
-     * @instance
-     * @type {MeetingCollection}
-     * @private
-     * @memberof Metrics
-     */
+       * @instance
+       * @type {MeetingCollection}
+       * @private
+       * @memberof Metrics
+       */
       this.meetingCollection = null;
       /**
-     * @instance
-     * @type {MeetingCollection}
-     * @private
-     * @memberof Metrics
-     */
+       * @instance
+       * @type {MeetingCollection}
+       * @private
+       * @memberof Metrics
+       */
       this.keys = Object.values(eventType);
       /**
        * @instance
@@ -147,12 +147,14 @@ class Metrics {
    * @param {object} options.event
    * @returns {object} null
    */
-  postEvent(options: { meeting?: any; meetingId?: string; data?: object; event?: any } | any) {
+  postEvent(options: {meeting?: any; meetingId?: string; data?: object; event?: any} | any) {
     const {meetingId, data = {}, event} = options;
     let {meeting} = options;
 
     if (this.keys.indexOf(event) === -1) {
-      LoggerProxy.logger.error(`Metrics:index#postEvent --> Event ${event} doesn't exist in dictionary`);
+      LoggerProxy.logger.error(
+        `Metrics:index#postEvent --> Event ${event} doesn't exist in dictionary`
+      );
     }
 
     if (!meeting && meetingId) {
@@ -169,24 +171,23 @@ class Metrics {
       if (event === eventType.MEDIA_QUALITY) {
         data.event = event;
         meeting.sendMediaQualityAnalyzerMetrics(data);
-      }
-      else {
+      } else {
         meeting.callEvents.push(event);
         data.event = event;
         meeting.sendCallAnalyzerMetrics(data);
       }
-    }
-
-    else {
-      LoggerProxy.logger.info(`Metrics:index#postEvent --> Event received for meetingId:${meetingId}, but meeting not found in collection.`);
+    } else {
+      LoggerProxy.logger.info(
+        `Metrics:index#postEvent --> Event received for meetingId:${meetingId}, but meeting not found in collection.`
+      );
     }
   }
 
   /**
    *  Docs for Call analyzer metrics
-  *   https://sqbu-github.cisco.com/WebExSquared/call-analyzer/wiki
-  *   https://sqbu-github.cisco.com/WebExSquared/event-dictionary/blob/master/diagnostic-events.raml
- */
+   *   https://sqbu-github.cisco.com/WebExSquared/call-analyzer/wiki
+   *   https://sqbu-github.cisco.com/WebExSquared/event-dictionary/blob/master/diagnostic-events.raml
+   */
 
   initPayload(eventType, identifiers, options) {
     const payload: any = {
@@ -204,19 +205,19 @@ class Metrics {
           subClientType: options.subClientType,
           os: this.getOsName(),
           browser: getBrowserName(),
-          browserVersion: getBrowserVersion()
-        }
+          browserVersion: getBrowserVersion(),
+        },
       },
       originTime: {
-        triggered: new Date().toISOString()
+        triggered: new Date().toISOString(),
       },
       senderCountryCode: this.webex.meetings.geoHintInfo?.countryCode,
       event: {
         name: eventType,
         canProceed: true,
         identifiers,
-        eventData: {webClientDomain: window.location.hostname}
-      }
+        eventData: {webClientDomain: window.location.hostname},
+      },
     };
 
     // TODO: more options should be checked and some of them should be mandatory in certain conditions
@@ -285,10 +286,12 @@ class Metrics {
       locusUrl: string;
       locusId: string;
     },
-    options: {
-      intervalData: object;
-      clientType: string;
-    } | any = {}
+    options:
+      | {
+          intervalData: object;
+          clientType: string;
+        }
+      | any = {}
   ) {
     const {audioSetupDelay, videoSetupDelay, joinTimes} = options;
 
@@ -309,11 +312,11 @@ class Metrics {
           osVersion: getOSVersion() || UNKNOWN,
           subClientType: options.subClientType,
           browser: getBrowserName(),
-          browserVersion: getBrowserVersion()
-        }
+          browserVersion: getBrowserVersion(),
+        },
       },
       originTime: {
-        triggered: new Date().toISOString()
+        triggered: new Date().toISOString(),
       },
       senderCountryCode: this.webex.meetings.geoHintInfo?.countryCode,
       event: {
@@ -323,16 +326,16 @@ class Metrics {
         intervals: [options.intervalData],
         joinTimes,
         eventData: {
-          webClientDomain: window.location.hostname
+          webClientDomain: window.location.hostname,
         },
         sourceMetadata: {
           applicationSoftwareType: CLIENT_NAME,
           applicationSoftwareVersion: this.webex.version,
           mediaEngineSoftwareType: getBrowserName() || 'browser',
           mediaEngineSoftwareVersion: getOSVersion() || UNKNOWN,
-          startTime: new Date().toISOString()
-        }
-      }
+          startTime: new Date().toISOString(),
+        },
+      },
     };
 
     return payload;
@@ -353,8 +356,7 @@ class Metrics {
 
     if (err && err.statusCode && err.statusCode >= 500) {
       errorCode = 1003;
-    }
-    else if (err && err.body && err.body.errorCode) {
+    } else if (err && err.body && err.body.errorCode) {
       // locus error codes: https://sqbu-github.cisco.com/WebExSquared/locus/blob/master/server/src/main/resources/locus-error-codes.properties
       switch (ERROR_CODE[err.body.errorCode]) {
         case MEETING_ERRORS.FREE_USER_MAX_PARTICIPANTS_EXCEEDED:
@@ -453,16 +455,12 @@ class Metrics {
         default:
           errorCode = 4008;
       }
-    }
-    else {
+    } else {
       errorCode = 4008;
     }
 
-    return this.generateErrorPayload(
-      errorCode, showToUser, error.name.LOCUS_RESPONSE, err
-    );
+    return this.generateErrorPayload(errorCode, showToUser, error.name.LOCUS_RESPONSE, err);
   }
-
 
   generateErrorPayload(errorCode, shownToUser, name, err) {
     if (error.errors[errorCode]) {
@@ -472,7 +470,7 @@ class Metrics {
         errorDescription: error.errors[errorCode][0],
         errorCode,
         fatal: !includes(error.notFatalErrorList, errorCode),
-        name: name || error.name.OTHER
+        name: name || error.name.OTHER,
       };
 
       if (err && err.body) {
@@ -499,8 +497,14 @@ class Metrics {
     let browserInfo;
     const clientInfo = util.format('client=%s', `${this.webex.meetings?.metrics?.clientName}`);
 
-    if (['chrome', 'firefox', 'msie', 'msedge', 'safari'].indexOf(getBrowserName().toLowerCase()) !== -1) {
-      browserInfo = util.format('browser=%s', `${getBrowserName().toLowerCase()}/${getBrowserVersion().split('.')[0]}`);
+    if (
+      ['chrome', 'firefox', 'msie', 'msedge', 'safari'].indexOf(getBrowserName().toLowerCase()) !==
+      -1
+    ) {
+      browserInfo = util.format(
+        'browser=%s',
+        `${getBrowserName().toLowerCase()}/${getBrowserVersion().split('.')[0]}`
+      );
     }
     const osInfo = util.format('os=%s', `${getOSName()}/${getOSVersion().split('.')[0]}`);
 
@@ -508,12 +512,18 @@ class Metrics {
       userAgentOption = `(${browserInfo}`;
     }
     if (osInfo) {
-      userAgentOption = userAgentOption ? `${userAgentOption}; ${clientInfo}; ${osInfo}` : `${clientInfo}; (${osInfo}`;
+      userAgentOption = userAgentOption
+        ? `${userAgentOption}; ${clientInfo}; ${osInfo}`
+        : `${clientInfo}; (${osInfo}`;
     }
     if (userAgentOption) {
       userAgentOption += ')';
 
-      return util.format('webex-js-sdk/%s %s', `${process.env.NODE_ENV}-${this.webex.version}`, userAgentOption);
+      return util.format(
+        'webex-js-sdk/%s %s',
+        `${process.env.NODE_ENV}-${this.webex.version}`,
+        userAgentOption
+      );
     }
 
     return util.format('webex-js-sdk/%s', `${process.env.NODE_ENV}-${this.webex.version}`);
@@ -538,7 +548,7 @@ class Metrics {
     this.webex.internal.metrics.submitClientMetrics(metricName, {
       type: this.webex.config.metrics.type,
       fields: metricFields,
-      tags: metricTags
+      tags: metricTags,
     });
   }
 }

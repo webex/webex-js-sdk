@@ -20,34 +20,45 @@ import sessionRouter from './session';
 const app = express();
 
 app.use(responseTime());
-app.use(requestId({
-  generator() {
-    // TODO get sequence from session data
-    const sequence = 0;
+app.use(
+  requestId({
+    generator() {
+      // TODO get sequence from session data
+      const sequence = 0;
 
-    return `webex-server_${uuid.v4()}_${sequence}`;
-  },
-  reqHeader: 'TrackingID',
-  resHeader: 'TrackingID'
-}));
+      return `webex-server_${uuid.v4()}_${sequence}`;
+    },
+    reqHeader: 'TrackingID',
+    resHeader: 'TrackingID',
+  })
+);
 app.use(morgan('dev'));
 app.use((req, res, next) => {
   onFinished(res, () => {
-    console.info(req.method.toUpperCase(), req.path, res.statusCode, res.getHeader('X-Response-Time'));
+    console.info(
+      req.method.toUpperCase(),
+      req.path,
+      res.statusCode,
+      res.getHeader('X-Response-Time')
+    );
   });
   next();
 });
 app.use(compression());
-app.use(cors({
-  origin: true,
-  credentials: true,
-  maxAge: 24 * 60 * 60
-}));
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+    maxAge: 24 * 60 * 60,
+  })
+);
 
 app.get('/ping', (req, res) => {
-  res.send(Object.assign({name: '@webex/webex-server', version: PACKAGE_VERSION}, {
-    'sdk-version': Webex.version
-  }));
+  res.send({
+    name: '@webex/webex-server',
+    version: PACKAGE_VERSION,
+    'sdk-version': Webex.version,
+  });
 });
 
 app.use('/api/v1', sessionRouter);

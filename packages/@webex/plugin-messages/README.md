@@ -29,15 +29,12 @@ npm install --save @webex/plugin-messages
 ## Usage
 
 ```js
-
 const Webex = require('webex');
 
 const webex = Webex.init();
-webex.messages.get(id)
-  .then((message) => {
-    console.log(message);
-  })
-
+webex.messages.get(id).then((message) => {
+  console.log(message);
+});
 ```
 
 ## Maintainers

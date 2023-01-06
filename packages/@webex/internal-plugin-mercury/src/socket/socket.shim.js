@@ -12,18 +12,14 @@ Socket.getWebSocketConstructor = function getWebSocketConstructor() {
 
   if (typeof WebSocket !== 'undefined') {
     ws = WebSocket;
-  }
-  else if (typeof MozWebSocket !== 'undefined') {
+  } else if (typeof MozWebSocket !== 'undefined') {
     // eslint-disable-next-line no-undef
     ws = MozWebSocket;
-  }
-  else if (typeof global !== 'undefined') {
+  } else if (typeof global !== 'undefined') {
     ws = global.WebSocket || global.MozWebSocket;
-  }
-  else if (typeof window !== 'undefined') {
+  } else if (typeof window !== 'undefined') {
     ws = window.WebSocket || window.MozWebSocket;
-  }
-  else if (typeof self !== 'undefined') {
+  } else if (typeof self !== 'undefined') {
     ws = self.WebSocket || self.MozWebSocket;
   }
 

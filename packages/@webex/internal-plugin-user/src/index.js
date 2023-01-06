@@ -10,7 +10,7 @@ import config from './config';
 import '@webex/internal-plugin-device';
 
 registerInternalPlugin('user', User, {
-  config
+  config,
 });
 
 export {default} from './user';

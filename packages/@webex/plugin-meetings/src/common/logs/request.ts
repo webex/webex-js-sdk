@@ -14,7 +14,7 @@ export default class LogsRequest {
    * @param {Object} options.webex Webex SDK instance
    * @param {ClientMetrics} metrics
    */
-  constructor(options: { webex: object }) {
+  constructor(options: {webex: object}) {
     this.webex = options.webex;
   }
 
@@ -40,18 +40,21 @@ export default class LogsRequest {
     } = {}
   ) {
     const id = options.feedbackId || uuid.v4();
-    const {
-      locusId, correlationId, meetingId, callStart
-    } = options;
+    const {locusId, correlationId, meetingId, callStart} = options;
 
-    LoggerProxy.logger.info(`Logs:request#uploadLogs --> uploading user logs for feedbackId: ${id}`);
+    LoggerProxy.logger.info(
+      `Logs:request#uploadLogs --> uploading user logs for feedbackId: ${id}`
+    );
 
     try {
       await this.webex.internal.support.submitLogs({
-        feedbackId: id, locusId, correlationId, meetingId, callStart
+        feedbackId: id,
+        locusId,
+        correlationId,
+        meetingId,
+        callStart,
       });
-    }
-    catch (error) {
+    } catch (error) {
       LoggerProxy.logger.error('Logs:request#uploadLogs --> uploading user logs failed', error);
 
       return Promise.reject(error);

@@ -6,7 +6,12 @@ import uuid from 'uuid';
 import {WebexPlugin} from '@webex/webex-core';
 import '@webex/internal-plugin-mercury';
 import {range, isEqual, get} from 'lodash';
-import type {SearchOptions, LookupDetailOptions, LookupOptions, LookupByEmailOptions} from './types';
+import type {
+  SearchOptions,
+  LookupDetailOptions,
+  LookupOptions,
+  LookupByEmailOptions,
+} from './types';
 
 import {
   DSS_REGISTERED,
@@ -48,7 +53,8 @@ const DSS = WebexPlugin.extend({
       return Promise.resolve();
     }
 
-    return this.webex.internal.mercury.connect()
+    return this.webex.internal.mercury
+      .connect()
       .then(() => {
         this.listenForEvents();
         this.trigger(DSS_REGISTERED);
@@ -76,11 +82,10 @@ const DSS = WebexPlugin.extend({
 
     this.stopListeningForEvents();
 
-    return this.webex.internal.mercury.disconnect()
-      .then(() => {
-        this.trigger(DSS_UNREGISTERED);
-        this.registered = false;
-      });
+    return this.webex.internal.mercury.disconnect().then(() => {
+      this.trigger(DSS_UNREGISTERED);
+      this.registered = false;
+    });
   },
 
   /**
@@ -125,13 +130,13 @@ const DSS = WebexPlugin.extend({
   },
 
   /**
-    * Makes the request to the directory service
-    * @param {Object} options
-    * @param {string} options.resource the URL to query
-    * @param {string} options.params additional params for the body of the request
-    * @param {string} options.dataPath to path to get the data in the result object
-    * @returns {Promise} Resolves with an array of entities found
-  */
+   * Makes the request to the directory service
+   * @param {Object} options
+   * @param {string} options.resource the URL to query
+   * @param {string} options.params additional params for the body of the request
+   * @param {string} options.dataPath to path to get the data in the result object
+   * @returns {Promise} Resolves with an array of entities found
+   */
   _request(options) {
     const {resource, params, dataPath} = options;
 
@@ -159,7 +164,7 @@ const DSS = WebexPlugin.extend({
             if (seqResult) {
               resultArray.push(...seqResult);
             }
-          })
+          });
 
           resolve(resultArray);
           this.stopListening(this, eventName);
@@ -170,7 +175,7 @@ const DSS = WebexPlugin.extend({
         resource,
         method: 'POST',
         contentType: 'application/json',
-        body: {requestId, ...params}
+        body: {requestId, ...params},
       });
     });
   },
@@ -186,7 +191,7 @@ const DSS = WebexPlugin.extend({
 
     return this._request({
       dataPath: 'lookupResult.entities',
-      resource: `/lookup/orgid/${this.webex.internal.device.orgId}/identity/${id}/detail`
+      resource: `/lookup/orgid/${this.webex.internal.device.orgId}/identity/${id}/detail`,
     });
   },
 
@@ -200,14 +205,16 @@ const DSS = WebexPlugin.extend({
   lookup(options: LookupOptions) {
     const {ids, entityProviderType} = options;
 
-    const resource = entityProviderType ? `/lookup/orgid/${this.webex.internal.device.orgId}/entityprovidertype/${entityProviderType}` : `/lookup/orgid/${this.webex.internal.device.orgId}/identities`;
+    const resource = entityProviderType
+      ? `/lookup/orgid/${this.webex.internal.device.orgId}/entityprovidertype/${entityProviderType}`
+      : `/lookup/orgid/${this.webex.internal.device.orgId}/identities`;
 
     return this._request({
       dataPath: 'lookupResult.entities',
       resource,
       params: {
         lookupValues: ids,
-      }
+      },
     });
   },
 
@@ -225,7 +232,7 @@ const DSS = WebexPlugin.extend({
       resource: `/lookup/orgid/${this.webex.internal.device.orgId}/emails`,
       params: {
         lookupValues: emails,
-      }
+      },
     });
   },
 
@@ -238,9 +245,7 @@ const DSS = WebexPlugin.extend({
    * @returns {Promise} Resolves with an array of entities found
    */
   search(options: SearchOptions) {
-    const {
-      requestedTypes, resultSize, queryString
-    } = options;
+    const {requestedTypes, resultSize, queryString} = options;
 
     return this._request({
       dataPath: 'directoryEntities',
@@ -248,11 +253,10 @@ const DSS = WebexPlugin.extend({
       params: {
         queryString,
         resultSize,
-        requestedTypes
-      }
+        requestedTypes,
+      },
     });
-  }
-
+  },
 });
 
 export default DSS;

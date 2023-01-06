@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-
 require('whatwg-fetch');
 const makeLocalUrl = require('@webex/test-helper-make-local-url');
 
@@ -12,9 +11,9 @@ module.exports = function createUser(options) {
   return fetch(makeLocalUrl('/jwt'), {
     method: 'POST',
     headers: new Headers({
-      'content-type': 'application/json'
+      'content-type': 'application/json',
     }),
-    body: JSON.stringify(options)
+    body: JSON.stringify(options),
   })
     .then((res) => res.json())
     .then((body) => body.jwt);

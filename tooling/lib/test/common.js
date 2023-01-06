@@ -22,8 +22,7 @@ exports.expectReports = async function expectReports(reports) {
       debug(`checking for ${reportFile}`);
       await stat(reportFile);
       debug(`found ${reportFile}`);
-    }
-    catch (err) {
+    } catch (err) {
       throw new Error(`Could not find report ${reportFile}`);
     }
   }

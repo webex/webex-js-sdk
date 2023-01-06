@@ -29,15 +29,12 @@ npm install --save @webex/plugin-authorization
 ## Usage
 
 ```js
-
 const Webex = require('webex');
 
 const webex = Webex.init();
-webex.authorization.get(id)
-  .then((authorization) => {
-    console.log(authorization);
-  })
-
+webex.authorization.get(id).then((authorization) => {
+  console.log(authorization);
+});
 ```
 
 ## Maintainers

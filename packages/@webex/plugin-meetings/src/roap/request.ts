@@ -3,11 +3,7 @@
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
-import {
-  MEDIA,
-  HTTP_VERBS,
-  REACHABILITY
-} from '../constants';
+import {MEDIA, HTTP_VERBS, REACHABILITY} from '../constants';
 import Metrics from '../metrics';
 import {eventType} from '../metrics/config';
 
@@ -21,7 +17,6 @@ export default class RoapRequest extends StatelessWebexPlugin {
    * @returns {Promise} returns a promise that resolves/rejects whatever the request does
    */
 
-
   attachRechabilityData(localSdp) {
     const reachabilityData = window.localStorage.getItem(REACHABILITY.localStorage);
 
@@ -33,9 +28,10 @@ export default class RoapRequest extends StatelessWebexPlugin {
         if (reachabilityResult && Object.keys(reachabilityResult).length) {
           localSdp.reachability = reachabilityResult;
         }
-      }
-      catch (e) {
-        LoggerProxy.logger.error(`Roap:request#attachReachabilityData --> Error in parsing reachability data: ${e}`);
+      } catch (e) {
+        LoggerProxy.logger.error(
+          `Roap:request#attachReachabilityData --> Error in parsing reachability data: ${e}`
+        );
       }
     }
 
@@ -64,9 +60,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
     meetingId: string;
     preferTranscoding?: boolean;
   }) {
-    const {
-      roapMessage, locusSelfUrl, mediaId, correlationId, meetingId
-    } = options;
+    const {roapMessage, locusSelfUrl, mediaId, correlationId, meetingId} = options;
 
     if (!mediaId) {
       LoggerProxy.logger.info('Roap:request#sendRoap --> Race Condition /call mediaID not present');
@@ -76,7 +70,9 @@ export default class RoapRequest extends StatelessWebexPlugin {
     // @ts-ignore
     const deviceUrl = this.webex.internal.device.url;
 
-    LoggerProxy.logger.info(`Roap:request#sendRoap --> ${mediaUrl} \n ${roapMessage.messageType} \n seq:${roapMessage.seq}`);
+    LoggerProxy.logger.info(
+      `Roap:request#sendRoap --> ${mediaUrl} \n ${roapMessage.messageType} \n seq:${roapMessage.seq}`
+    );
 
     Metrics.postEvent({event: eventType.MEDIA_REQUEST, meetingId});
 
@@ -89,34 +85,43 @@ export default class RoapRequest extends StatelessWebexPlugin {
           device: {
             url: deviceUrl,
             // @ts-ignore
-            deviceType: this.config.meetings.deviceType
+            deviceType: this.config.meetings.deviceType,
           },
           correlationId,
           localMedias: [
             {
-              localSdp: JSON.stringify(this.attachRechabilityData({
-                roapMessage,
-                // eslint-disable-next-line no-warning-comments
-                // TODO: check whats the need for video and audiomute
-                audioMuted: !!options.audioMuted,
-                videoMuted: !!options.videoMuted
-              })),
-              mediaId: options.mediaId
-            }
+              localSdp: JSON.stringify(
+                this.attachRechabilityData({
+                  roapMessage,
+                  // eslint-disable-next-line no-warning-comments
+                  // TODO: check whats the need for video and audiomute
+                  audioMuted: !!options.audioMuted,
+                  videoMuted: !!options.videoMuted,
+                })
+              ),
+              mediaId: options.mediaId,
+            },
           ],
           clientMediaPreferences: {
-            preferTranscoding: options.preferTranscoding ?? true
-          }
-        }
+            preferTranscoding: options.preferTranscoding ?? true,
+          },
+        },
       })
       .then((res) => {
         Metrics.postEvent({event: eventType.MEDIA_RESPONSE, meetingId});
 
         // always it will be the first mediaConnection Object
-        const mediaConnections = res.body.mediaConnections && res.body.mediaConnections.length > 0 && res.body.mediaConnections[0];
+        const mediaConnections =
+          res.body.mediaConnections &&
+          res.body.mediaConnections.length > 0 &&
+          res.body.mediaConnections[0];
 
         LoggerProxy.logger.info(
-          `Roap:request#sendRoap --> response:${JSON.stringify(mediaConnections, null, 2)}'\n StatusCode:'${res.statusCode}`
+          `Roap:request#sendRoap --> response:${JSON.stringify(
+            mediaConnections,
+            null,
+            2
+          )}'\n StatusCode:'${res.statusCode}`
         );
         const {locus} = res.body;
 
@@ -124,14 +129,22 @@ export default class RoapRequest extends StatelessWebexPlugin {
 
         return {
           locus,
-          ...(mediaConnections && {mediaConnections: res.body.mediaConnections})
+          ...(mediaConnections && {mediaConnections: res.body.mediaConnections}),
         };
       })
       .catch((err) => {
-        Metrics.postEvent({event: eventType.MEDIA_RESPONSE, meetingId, data: {error: Metrics.parseLocusError(err, true)}});
+        Metrics.postEvent({
+          event: eventType.MEDIA_RESPONSE,
+          meetingId,
+          data: {error: Metrics.parseLocusError(err, true)},
+        });
         LoggerProxy.logger.error(`Roap:request#sendRoap --> Error:${JSON.stringify(err, null, 2)}`);
         LoggerProxy.logger.error(
-          `Roap:request#sendRoapRequest --> errorBody:${JSON.stringify(roapMessage, null, 2)} + '\\n mediaId:'${options.mediaId}`
+          `Roap:request#sendRoapRequest --> errorBody:${JSON.stringify(
+            roapMessage,
+            null,
+            2
+          )} + '\\n mediaId:'${options.mediaId}`
         );
         throw err;
       });

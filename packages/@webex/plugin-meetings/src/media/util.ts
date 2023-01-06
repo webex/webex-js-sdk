@@ -6,7 +6,7 @@ const MediaUtil: any = {};
 
 MediaUtil.createMediaStream = (tracks) => {
   if (!tracks) {
-    LoggerProxy.logger.error('Media:util#createMediaStream --> Tracks don\'t exist');
+    LoggerProxy.logger.error("Media:util#createMediaStream --> Tracks don't exist");
   }
   const filtredTracks = tracks.filter((element) => !!element);
 

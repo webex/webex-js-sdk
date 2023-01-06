@@ -4,9 +4,9 @@ export interface LookupDetailOptions {
 
 export enum EntityProviderType {
   CI_USER = 'CI_USER',
-  CI_MACHINE ='CI_MACHINE',
+  CI_MACHINE = 'CI_MACHINE',
   CONTACTS = 'CONTACTS',
-  CSDM = 'CSDM'
+  CSDM = 'CSDM',
 }
 
 export interface LookupOptions {
@@ -19,15 +19,15 @@ export interface LookupByEmailOptions {
 }
 
 export enum SearchType {
-  PERSON = 'PERSON', 
+  PERSON = 'PERSON',
   CALLING_SERVICE = 'CALLING_SERVICE',
   EXTERNAL_CALLING = 'EXTERNAL_CALLING',
   ROOM = 'ROOM',
-  ROBOT = 'ROBOT'
+  ROBOT = 'ROBOT',
 }
 
 export interface SearchOptions {
-  requestedTypes: SearchType[],
-  resultSize: number,
-  queryString: string,
+  requestedTypes: SearchType[];
+  resultSize: number;
+  queryString: string;
 }

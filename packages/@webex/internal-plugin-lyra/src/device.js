@@ -19,10 +19,11 @@ const Device = WebexPlugin.extend({
    * @returns {Promise<LyraAudioState>} {volume, microphones, url}
    */
   getAudioState(space) {
-    return this.webex.request({
-      method: 'GET',
-      uri: `${space.url}/audio`
-    })
+    return this.webex
+      .request({
+        method: 'GET',
+        uri: `${space.url}/audio`,
+      })
       .then((res) => res.body);
   },
 
@@ -44,11 +45,12 @@ const Device = WebexPlugin.extend({
       return Promise.reject(new Error('audioState.deviceUrl is required'));
     }
 
-    return this.webex.request({
-      method: 'PUT',
-      uri: `${space.url}/audio`,
-      body: audioState
-    })
+    return this.webex
+      .request({
+        method: 'PUT',
+        uri: `${space.url}/audio`,
+        body: audioState,
+      })
       .then((res) => res.body);
   },
 
@@ -61,7 +63,7 @@ const Device = WebexPlugin.extend({
   mute(space) {
     return this.webex.request({
       method: 'POST',
-      uri: `${space.url}/audio/microphones/actions/mute/invoke`
+      uri: `${space.url}/audio/microphones/actions/mute/invoke`,
     });
   },
 
@@ -74,7 +76,7 @@ const Device = WebexPlugin.extend({
   unmute(space) {
     return this.webex.request({
       method: 'POST',
-      uri: `${space.url}/audio/microphones/actions/un-mute/invoke`
+      uri: `${space.url}/audio/microphones/actions/un-mute/invoke`,
     });
   },
 
@@ -87,7 +89,7 @@ const Device = WebexPlugin.extend({
   increaseVolume(space) {
     return this.webex.request({
       method: 'POST',
-      uri: `${space.url}/audio/volume/actions/increase/invoke`
+      uri: `${space.url}/audio/volume/actions/increase/invoke`,
     });
   },
 
@@ -100,7 +102,7 @@ const Device = WebexPlugin.extend({
   decreaseVolume(space) {
     return this.webex.request({
       method: 'POST',
-      uri: `${space.url}/audio/volume/actions/decrease/invoke`
+      uri: `${space.url}/audio/volume/actions/decrease/invoke`,
     });
   },
 
@@ -116,11 +118,10 @@ const Device = WebexPlugin.extend({
       method: 'POST',
       uri: `${space.url}/audio/volume/actions/set/invoke`,
       body: {
-        level
-      }
+        level,
+      },
     });
-  }
-
+  },
 });
 
 export default Device;

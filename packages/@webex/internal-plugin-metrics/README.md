@@ -21,14 +21,12 @@ npm install --save @webex/internal-plugin-metrics
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-metrics';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
-webex.internal.metrics.WHATEVER
-
+webex.internal.metrics.WHATEVER;
 ```
 
 ## Maintainers

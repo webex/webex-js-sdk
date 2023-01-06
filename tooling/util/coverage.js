@@ -17,7 +17,6 @@ const rimraf = promisify(require('rimraf'));
 const makeCoverageVariable = (packageName) =>
   `__coverage${packageName.replace(/@/g, '_').replace(/./g, '_').replace(/\//g, '_')}__`;
 
-
 async function deinstrument(packageName) {
   await rimraf(path.join('packages', packageName, '.coverage'));
 }
@@ -54,7 +53,7 @@ async function combine(packageName) {
   // Combine the mocha and karma reports into a single JSON file. We'll use this
   // file for generating the cobertura, lcov, and html reports later.
   Report.create('json', {
-    file: `reports/coverage/${packageName}.json`
+    file: `reports/coverage/${packageName}.json`,
   }).writeReport(collector, true);
 
   debug(`removing intermediate report "reports/coverage/intermediate/${packageName}"`);
@@ -74,19 +73,18 @@ async function report() {
   Report.create('text-summary').writeReport(collector, true);
 
   Report.create('lcovonly', {
-    file: 'reports/coverage/lcov.info'
+    file: 'reports/coverage/lcov.info',
   }).writeReport(collector, true);
 
   Report.create('cobertura', {
-    file: 'reports/cobertura.xml'
+    file: 'reports/cobertura.xml',
   }).writeReport(collector, true);
 
   // The html report struggles with (I think) source maps, so let's make sure we
   // don't fail the build as a result
   try {
     Report.create('html').writeReport(collector, true);
-  }
-  catch (err) {
+  } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('Failed to generate HTML report');
     // eslint-disable-next-line no-console
@@ -99,5 +97,5 @@ module.exports = {
   combine,
   deinstrument,
   makeCoverageVariable,
-  report
+  report,
 };

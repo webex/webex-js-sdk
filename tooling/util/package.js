@@ -25,9 +25,12 @@ exports.glob = function glob(pattern, options = {}) {
    * glob method is to fetch absolute file path for a said pattern
    * the current working directory for glob is set to the package path
    */
-  return g(pattern, Object.assign({}, options, {
-    cwd: path.join(cwd, options.packageName)
-  }));
+  return g(
+    pattern,
+    Object.assign({}, options, {
+      cwd: path.join(cwd, options.packageName),
+    })
+  );
 };
 
 /**
@@ -70,7 +73,14 @@ exports.setMain = async function setMain(packageName, main) {
 };
 
 exports.spawn = async function spawn(packageName, cmd, args, options = {}) {
-  return _spawn(cmd, args, Object.assign({
-    cwd: path.join(cwd, packageName)
-  }, options));
+  return _spawn(
+    cmd,
+    args,
+    Object.assign(
+      {
+        cwd: path.join(cwd, packageName),
+      },
+      options
+    )
+  );
 };

@@ -10,19 +10,10 @@ import Batcher from './batcher';
 import ClientMetricsBatcher from './client-metrics-batcher';
 import CallDiagnosticEventsBatcher from './call-diagnostic-events-batcher';
 
-const {
-  getOSName,
-  getOSVersion,
-  getBrowserName,
-  getBrowserVersion
-} = BrowserDetection();
+const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
 function getSparkUserAgent(webex) {
-  const {
-    appName,
-    appVersion,
-    appPlatform
-  } = webex?.config ?? {};
+  const {appName, appVersion, appPlatform} = webex?.config ?? {};
 
   let sparkUserAgent = CLIENT_NAME;
 
@@ -37,20 +28,18 @@ function getSparkUserAgent(webex) {
   return sparkUserAgent;
 }
 
-
 const Metrics = WebexPlugin.extend({
   children: {
     batcher: Batcher,
     clientMetricsBatcher: ClientMetricsBatcher,
-    callDiagnosticEventsBatcher: CallDiagnosticEventsBatcher
+    callDiagnosticEventsBatcher: CallDiagnosticEventsBatcher,
   },
 
   namespace: 'Metrics',
 
   submit(key, value) {
-    return this.batcher.request(Object.assign({key}, value));
+    return this.batcher.request({key, ...value});
   },
-
 
   /**
    * This corresponds to #sendSemiStructured() in the deprecated metrics handler
@@ -72,18 +61,17 @@ const Metrics = WebexPlugin.extend({
 
       // Node does not like this so we need to check if it exists or not
       // eslint-disable-next-line no-undef
-      domain: typeof window !== 'undefined' ? window.location.hostname || 'non-browser' : 'non-browser', // Check what else we could measure
+      domain:
+        typeof window !== 'undefined' ? window.location.hostname || 'non-browser' : 'non-browser', // Check what else we could measure
       client_id: this.webex.credentials.config.client_id,
-      user_id: this.webex.internal.device.userId
+      user_id: this.webex.internal.device.userId,
     };
 
     try {
       payload.tags.org_id = this.webex.credentials.getOrgId();
-    }
-    catch {
+    } catch {
       this.logger.info('metrics: unable to get orgId');
     }
-
 
     payload.fields = {
       ...props.fields,
@@ -91,25 +79,22 @@ const Metrics = WebexPlugin.extend({
       os_version: getOSVersion(),
       sdk_version: this.webex.version,
       platform: 'Web',
-      spark_user_agent: getSparkUserAgent(this.webex)
+      spark_user_agent: getSparkUserAgent(this.webex),
     };
 
-
     payload.type = props.type || this.webex.config.metrics.type;
-
 
     payload.context = {
       ...props.context,
       app: {
-        version: this.webex.version
+        version: this.webex.version,
       },
       locale: 'en-US',
       os: {
         name: getOSName(),
-        version: getOSVersion()
-      }
+        version: getOSVersion(),
+      },
     };
-
 
     if (props.eventPayload) {
       payload.eventPayload = props.eventPayload;
@@ -121,7 +106,7 @@ const Metrics = WebexPlugin.extend({
 
     if (preLoginId) {
       const _payload = {
-        metrics: [payload]
+        metrics: [payload],
       };
 
       // Do not batch these because pre-login events occur during onboarding, so we will be partially blind
@@ -144,12 +129,12 @@ const Metrics = WebexPlugin.extend({
       api: 'metrics',
       resource: 'clientmetrics',
       headers: {
-        'x-prelogin-userid': preLoginId
+        'x-prelogin-userid': preLoginId,
       },
       body: {},
       qs: {
-        alias: true
-      }
+        alias: true,
+      },
     });
   },
 
@@ -161,20 +146,21 @@ const Metrics = WebexPlugin.extend({
         resource: 'clientmetrics-prelogin',
         headers: {
           authorization: token.toString(),
-          'x-prelogin-userid': preLoginId
+          'x-prelogin-userid': preLoginId,
         },
-        body: payload
-      }));
+        body: payload,
+      })
+    );
   },
 
   submitCallDiagnosticEvents(payload) {
     const event = {
       type: 'diagnostic-event',
-      eventPayload: payload
+      eventPayload: payload,
     };
 
     return this.callDiagnosticEventsBatcher.request(event);
-  }
+  },
 });
 
 export default Metrics;

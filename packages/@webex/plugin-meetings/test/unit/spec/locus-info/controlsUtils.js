@@ -5,7 +5,7 @@ const defaultControls = {
   entryExitTone: {
     enabled: true,
     mode: 'foo',
-  }
+  },
 };
 
 describe('plugin-meetings', () => {
@@ -22,7 +22,7 @@ describe('plugin-meetings', () => {
           entryExitTone: {
             enabled: false,
             mode: 'foo',
-          }
+          },
         });
 
         assert.equal(parsedControls.entryExitTone, null);
@@ -48,7 +48,7 @@ describe('plugin-meetings', () => {
         entryExitTone: {
           enabled: true,
           mode: 'bar',
-        }
+        },
       };
       const {updates} = ControlsUtils.getControls(defaultControls, newControls);
 
@@ -60,7 +60,7 @@ describe('plugin-meetings', () => {
         entryExitTone: {
           enabled: false,
           mode: 'foo',
-        }
+        },
       };
       const {updates} = ControlsUtils.getControls(defaultControls, newControls);
 
@@ -72,7 +72,7 @@ describe('plugin-meetings', () => {
         entryExitTone: {
           enabled: true,
           mode: 'foo',
-        }
+        },
       };
       const {updates} = ControlsUtils.getControls(defaultControls, newControls);
 

@@ -5,10 +5,10 @@
 export default {
   conversation: {
     allowedInboundTags: {
-      'webex-mention': ['data-object-type', 'data-object-id', 'data-object-url']
+      'webex-mention': ['data-object-type', 'data-object-id', 'data-object-url'],
     },
     allowedOutboundTags: {
-      'webex-mention': ['data-object-type', 'data-object-id', 'data-object-url']
+      'webex-mention': ['data-object-type', 'data-object-id', 'data-object-url'],
     },
     // eslint-disable-next-line no-empty-function
     inboundProcessFunc: () => {},
@@ -27,11 +27,11 @@ export default {
      */
     thumbnailMaxWidth: 640,
     /**
-      * Primarily for testing. When true, decrypting an activity will create a
+     * Primarily for testing. When true, decrypting an activity will create a
      * sister property with the original encrypted string
      * @type {Boolean}
      */
     keepEncryptedProperties: false,
-    decryptionFailureMessage: 'This message cannot be decrypted'
-  }
+    decryptionFailureMessage: 'This message cannot be decrypted',
+  },
 };

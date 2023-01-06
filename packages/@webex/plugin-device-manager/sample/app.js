@@ -14,7 +14,7 @@ let webex;
 // retype things everytime we reload the page.
 
 [
-  'access-token'
+  'access-token',
   // 'invitee'
 ].forEach((id) => {
   const el = document.getElementById(id);
@@ -32,8 +32,8 @@ function connect() {
         // Any other sdk config we need
       },
       credentials: {
-        access_token: document.getElementById('access-token').value
-      }
+        access_token: document.getElementById('access-token').value,
+      },
     });
   }
 
@@ -61,26 +61,23 @@ function connect() {
 }
 
 function requestPinChallenge(deviceId) {
-  return webex.devicemanager.requestPin({id: deviceId})
-    .then(() => {
-      toggleDisplay('enterPinDiv', true);
-      toggleDisplay('requestPairingBtnDiv', true);
-      notify('Enter the PIN');
-    });
+  return webex.devicemanager.requestPin({id: deviceId}).then(() => {
+    toggleDisplay('enterPinDiv', true);
+    toggleDisplay('requestPairingBtnDiv', true);
+    notify('Enter the PIN');
+  });
 }
-
 
 document.getElementById('deviceControls').refresh.addEventListener('click', () => {
   if (webex.devicemanager) {
     notify('Listing devices...');
 
-    return webex.devicemanager.refresh()
-      .then((devices) => {
-        populateDeviceDropdown(devices);
-        notify('');
-        toggleDisplay('requestPinDiv', true);
-        toggleDisplay('removeBtnDiv', true);
-      });
+    return webex.devicemanager.refresh().then((devices) => {
+      populateDeviceDropdown(devices);
+      notify('');
+      toggleDisplay('requestPinDiv', true);
+      toggleDisplay('removeBtnDiv', true);
+    });
   }
 
   return false;
@@ -108,7 +105,8 @@ document.getElementById('requestPairing').addEventListener('click', () => {
     notify('Pairing...');
     const pin = document.getElementById('pin').value;
 
-    return webex.devicemanager.pair({pin})
+    return webex.devicemanager
+      .pair({pin})
       .then(() => {
         notify('Paired');
         toggleDisplay('requestUnPairingBtnDiv', true);
@@ -139,23 +137,22 @@ document.getElementById('requestUnPairing').addEventListener('click', () => {
   if (webex.devicemanager) {
     notify('UnPairing...');
 
-    return webex.devicemanager.unpair()
-      .then(() => {
-        notify('UnPaired');
-        toggleDisplay('requestUnPairingBtnDiv', false);
-        toggleDisplay('requestPairingBtnDiv', false);
-        toggleDisplay('enterPinDiv', false);
-        toggleDisplay('getAudioStateBtnDiv', false);
-        toggleDisplay('hideAudioStateBtnDiv', false);
-        toggleDisplay('getAudioStateContentsDiv', false);
-        toggleDisplay('volumeUpBtnDiv', false);
-        toggleDisplay('volumeDownBtnDiv', false);
-        toggleDisplay('muteBtnDiv', false);
-        toggleDisplay('unmuteBtnDiv', false);
-        toggleDisplay('enterConvoIdDiv', false);
-        toggleDisplay('bindSpaceBtnDiv', false);
-        toggleDisplay('unbindSpaceBtnDiv', false);
-      });
+    return webex.devicemanager.unpair().then(() => {
+      notify('UnPaired');
+      toggleDisplay('requestUnPairingBtnDiv', false);
+      toggleDisplay('requestPairingBtnDiv', false);
+      toggleDisplay('enterPinDiv', false);
+      toggleDisplay('getAudioStateBtnDiv', false);
+      toggleDisplay('hideAudioStateBtnDiv', false);
+      toggleDisplay('getAudioStateContentsDiv', false);
+      toggleDisplay('volumeUpBtnDiv', false);
+      toggleDisplay('volumeDownBtnDiv', false);
+      toggleDisplay('muteBtnDiv', false);
+      toggleDisplay('unmuteBtnDiv', false);
+      toggleDisplay('enterConvoIdDiv', false);
+      toggleDisplay('bindSpaceBtnDiv', false);
+      toggleDisplay('unbindSpaceBtnDiv', false);
+    });
   }
 
   return false;
@@ -166,11 +163,10 @@ document.getElementById('getAudioState').addEventListener('click', () => {
   if (webex.devicemanager) {
     notify('GettingAudioState...');
 
-    return webex.devicemanager.getAudioState()
-      .then((res) => {
-        populateDeviceAudioState(res);
-        notify('Audio State fetched');
-      });
+    return webex.devicemanager.getAudioState().then((res) => {
+      populateDeviceAudioState(res);
+      notify('Audio State fetched');
+    });
   }
 
   return false;
@@ -181,7 +177,8 @@ document.getElementById('volumeUp').addEventListener('click', () => {
   if (webex.devicemanager) {
     notify('Increasing Volume...');
 
-    return webex.devicemanager.increaseVolume()
+    return webex.devicemanager
+      .increaseVolume()
       .then(() => webex.devicemanager.getAudioState())
       .then((res) => {
         populateDeviceAudioState(res);
@@ -197,7 +194,8 @@ document.getElementById('volumeDown').addEventListener('click', () => {
   if (webex.devicemanager) {
     notify('Decreasing Volume...');
 
-    return webex.devicemanager.decreaseVolume()
+    return webex.devicemanager
+      .decreaseVolume()
       .then(() => webex.devicemanager.getAudioState())
       .then((res) => {
         populateDeviceAudioState(res);
@@ -213,7 +211,8 @@ document.getElementById('mute').addEventListener('click', () => {
   if (webex.devicemanager) {
     notify('Muting...');
 
-    return webex.devicemanager.mute()
+    return webex.devicemanager
+      .mute()
       .then(() => webex.devicemanager.getAudioState())
       .then((res) => {
         populateDeviceAudioState(res);
@@ -231,7 +230,8 @@ document.getElementById('unmute').addEventListener('click', () => {
   if (webex.devicemanager) {
     notify('UnMuting');
 
-    return webex.devicemanager.unmute()
+    return webex.devicemanager
+      .unmute()
       .then(() => webex.devicemanager.getAudioState())
       .then((res) => {
         populateDeviceAudioState(res);
@@ -251,23 +251,29 @@ document.getElementById('bindSpace').addEventListener('click', () => {
     const convoId = document.getElementById('convoId').value;
     let url;
 
-    return webex.internal.services.waitForCatalog('postauth')
+    return webex.internal.services
+      .waitForCatalog('postauth')
       .then(() => {
         url = `${webex.internal.services.get('conversation')}/conversations/${convoId}`;
 
-        return webex.internal.conversation.get({url}, {
-          url,
-          includeUxTimers: true,
-          ackFilter: 'noack',
-          includeParticipants: false,
-          lastViewableActivityOnly: true,
-          participantsLimit: 0
-        });
+        return webex.internal.conversation.get(
+          {url},
+          {
+            url,
+            includeUxTimers: true,
+            ackFilter: 'noack',
+            includeParticipants: false,
+            lastViewableActivityOnly: true,
+            participantsLimit: 0,
+          }
+        );
       })
-      .then((conversation) => webex.devicemanager.bindSpace({
-        url,
-        kmsResourceObjectUrl: conversation.kmsResourceObjectUrl
-      }))
+      .then((conversation) =>
+        webex.devicemanager.bindSpace({
+          url,
+          kmsResourceObjectUrl: conversation.kmsResourceObjectUrl,
+        })
+      )
       .then(() => {
         notify('Space is bound');
         toggleDisplay('bindSpaceBtnDiv', false);
@@ -286,7 +292,8 @@ document.getElementById('unbindSpace').addEventListener('click', () => {
   if (webex.devicemanager) {
     notify('UnBinding space...');
 
-    return webex.devicemanager.unbindSpace()
+    return webex.devicemanager
+      .unbindSpace()
       .then(() => {
         notify('Space is unbound');
         toggleDisplay('bindSpaceBtnDiv', true);
@@ -307,7 +314,8 @@ document.getElementById('remove').addEventListener('click', () => {
     const deviceId = dropdown.options[dropdown.selectedIndex].value;
 
     if (deviceId && deviceId !== 'Choose a Device') {
-      return webex.devicemanager.remove(deviceId)
+      return webex.devicemanager
+        .remove(deviceId)
         .then(() => {
           notify('Device removed');
 
@@ -333,9 +341,10 @@ document.getElementById('search').addEventListener('click', () => {
     const searchQuery = document.getElementById('searchQuery').value;
 
     if (searchQuery && searchQuery.length >= 3) {
-      return webex.devicemanager.search({
-        searchQuery
-      })
+      return webex.devicemanager
+        .search({
+          searchQuery,
+        })
         .then((res) => {
           populateDeviceSearchResults(res);
         })
@@ -431,8 +440,7 @@ function toggleDisplay(elementId, status) {
 
   if (status) {
     element.style.display = 'block';
-  }
-  else {
+  } else {
     element.style.display = 'none';
   }
 }
