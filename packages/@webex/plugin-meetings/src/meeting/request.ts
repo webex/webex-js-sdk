@@ -779,7 +779,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @returns {Promise}
    */
   sendReaction({ reactionChannelUrl, reaction, participantId }: { reactionChannelUrl: string, reaction: Reaction, participantId: string }) {
-    const uri = `${reactionChannelUrl}`;
+    const uri = reactionChannelUrl;
 
     // @ts-ignore
     return this.request({
