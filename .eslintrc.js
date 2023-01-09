@@ -35,18 +35,44 @@ module.exports = {
       plugins: ['@typescript-eslint'],
       rules: {
         'default-case': 0,
-        'require-jsdoc': 'off',
         'no-undef': 'off',
         'react/prop-types': 'off',
         'no-shadow': 'off',
         '@typescript-eslint/no-empty-function': 'off',
         '@typescript-eslint/ban-ts-comment': 'off',
         'import/prefer-default-export': 'warn',
-        'valid-jsdoc': 'off',
         'newline-after-var': 'off',
         '@typescript-eslint/no-explicit-any': 'off',
         'lines-between-class-members': ['error', 'always', {exceptAfterSingleLine: true}],
         'tsdoc/syntax': 'off', // Todo: remove this before merging pr
+        'valid-jsdoc': [
+          'error',
+          {
+            prefer: {
+              arg: 'param',
+              argument: 'param',
+              return: 'returns',
+              virtual: 'abstract',
+              fires: 'emits',
+            },
+            requireParamDescription: false,
+            requireReturn: true,
+            requireReturnType: true,
+            requireReturnDescription: false,
+          },
+        ],
+        'require-jsdoc': [
+          'warn',
+          {
+            require: {
+              FunctionDeclaration: true,
+              MethodDefinition: true,
+              ClassDeclaration: true,
+              ArrowFunctionExpression: false,
+              FunctionExpression: true,
+            },
+          },
+        ],
       },
     },
     {
@@ -89,7 +115,7 @@ module.exports = {
       },
     },
     {
-      files: ['packages/**/test/**/*.js', 'packages/**/*-spec/**/*.js'],
+      files: ['packages/**/test/**/*.[tj]s', 'packages/**/*-spec/**/*.[tj]s'],
       env: {
         mocha: true,
       },
@@ -145,6 +171,7 @@ module.exports = {
     'tsdoc/syntax': 'warn',
     'object-curly-spacing': 0,
     'no-shadow': 0,
+    '@typescript-eslint/no-shadow': 1, // TODO: Fix this in a later PR
     indent: 'off',
     'import/prefer-default-export': 0,
     'jest/no-hooks': [
@@ -224,15 +251,14 @@ module.exports = {
     'no-underscore-dangle': 0,
     'no-param-reassign': 0,
     'max-classes-per-file': 0,
-    'import/no-cycle': 0, // TODO: Fix this in a later PR
-    'class-methods-use-this': 0, // TODO: Fix this in a later PR
-    '@typescript-eslint/no-shadow': 0, // TODO: Fix this in a later PR
-    'import/no-extraneous-dependencies': 0, // TODO: Fix this in a later PR
     'import/no-import-module-exports': 0,
-    '@typescript-eslint/no-unused-vars': 0,
-    'no-use-before-define': 0,
-    'require-jsdoc': 0,
-    'no-restricted-exports': 0,
+    '@typescript-eslint/no-unused-vars': 1,
+    'no-use-before-define': 1,
+    'no-restricted-exports': 1,
+    'import/no-unresolved': 1, // fix this on a later PR
+    'import/no-cycle': 1, // TODO: Fix this in a later PR
+    'class-methods-use-this': 1, // TODO: Fix this in a later PR
+    'import/no-extraneous-dependencies': 1, // TODO: Fix this in a later PR
   },
 
   settings: {
@@ -259,6 +285,7 @@ module.exports = {
     'kms.js',
     'webex-core.js',
     'ediscovery.js',
+    'CHANGELOG.md',
     // end decorator
   ],
 };

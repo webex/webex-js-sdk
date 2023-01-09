@@ -297,13 +297,13 @@ describe('plugin-meetings', () => {
           type: 'thumb_down',
           codepoints: '1F44E',
           shortcodes: ':thumbsdown:',
-          tone: {type: 'normal_skin_tone', codepoints: '', shortcodes: ''}
+          tone: {type: 'normal_skin_tone', codepoints: '', shortcodes: ''},
         };
 
         await meetingsRequest.sendReaction({
           reactionChannelUrl,
           reaction,
-          participantId
+          participantId,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 

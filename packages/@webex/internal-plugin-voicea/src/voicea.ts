@@ -13,7 +13,9 @@ import {
 import {millisToMinutesAndSeconds} from './utils';
 
 /**
- * VoiceaChannel to hold single instance of LLM
+ * @description VoiceaChannel to hold single instance of LLM
+ * @export
+ * @class VoiceaChannel
  */
 export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   namespace = VOICEA;
@@ -27,6 +29,11 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   private hasSubscribedToEvents = false;
 
   private vmcDeviceId?: string;
+
+  /**
+   * @param {Object} e
+   * @returns {undefined}
+   */
 
   private eventProcessor = (e) => {
     this.seqNum = e.sequenceNumber + 1;
@@ -49,6 +56,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   /**
    * Listen to websocket messages
+   * @returns {undefined}
    */
   private listenToEvents() {
     if (!this.hasSubscribedToEvents) {

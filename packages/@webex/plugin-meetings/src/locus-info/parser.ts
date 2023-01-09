@@ -209,6 +209,7 @@ export default class Parser {
    */
   private static compareDelta(current, incoming) {
     const {LT, GT, EQ, DESYNC, USE_INCOMING} = Parser.loci;
+
     const {extractComparisonState: extract} = Parser;
     const {packComparisonResult: pack} = Parser;
 
@@ -364,6 +365,7 @@ export default class Parser {
    */
   static getUniqueSequences(baseLoci: any, otherLoci: any) {
     const diff: any = difference(baseLoci.entries, otherLoci.entries);
+
     const {start, end} = otherLoci;
 
     return Parser.getNumbersOutOfRange(diff, start, end);
@@ -554,7 +556,9 @@ export default class Parser {
       LoggerProxy.logger.info(
         `Locus-info:parser#processDeltaEvent --> Locus Delta Action: ${lociComparison}`
       );
-      this.onDeltaAction(this, lociComparison, newLoci);
+
+      // eslint-disable-next-line no-useless-call
+      this.onDeltaAction.call(this, lociComparison, newLoci);
     }
 
     this.nextEvent();

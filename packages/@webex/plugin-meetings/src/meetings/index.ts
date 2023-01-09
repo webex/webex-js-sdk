@@ -52,7 +52,6 @@ import CaptchaError from '../common/errors/captcha-error';
 
 import MeetingCollection from './collection';
 import MeetingsUtil from './util';
-import loggerProxy from '../../dist/common/logs/logger-proxy';
 
 /**
  * Meetings Ready Event

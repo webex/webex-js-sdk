@@ -1,5 +1,3 @@
-/* eslint-disable default-param-last */
-
 import uuid from 'uuid';
 import {cloneDeep, isEqual, pick, isString} from 'lodash';
 // @ts-ignore - Fix this
@@ -4219,6 +4217,7 @@ export default class Meeting extends StatelessWebexPlugin {
   getMediaStreams = (
     mediaDirection: any,
     // This return an OBJECT {video: {height, widght}}
+    // eslint-disable-next-line default-param-last
     audioVideo: any = VIDEO_RESOLUTIONS[this.mediaProperties.localQualityLevel],
     sharePreferences?: any
   ) => {
