@@ -36,7 +36,7 @@
     "@webex/internal-plugin-device": "workspace:^",
     "@webex/test-helper-test-users": "workspace:^",
     "@webex/webex-core": "workspace:^",
-    "file-type": "^16.0.1",
+    "file-type": "^18.0.0",
     "global": "^4.4.0",
     "is-function": "^1.0.1",
     "lodash": "^4.17.21",

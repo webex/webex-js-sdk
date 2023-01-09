@@ -3999,7 +3999,7 @@ __metadata:
     "@webex/test-helper-mocha": "workspace:^"
     "@webex/test-helper-test-users": "workspace:^"
     "@webex/webex-core": "workspace:^"
-    file-type: "npm:^16.0.1"
+    file-type: "npm:^18.0.0"
     global: "npm:^4.4.0"
     is-function: "npm:^1.0.1"
     lodash: "npm:^4.17.21"
@@ -4872,7 +4872,7 @@ __metadata:
     "@webex/common": "workspace:^"
     "@webex/test-helper-make-local-url": "workspace:^"
     es6-promise: "npm:^4.2.8"
-    file-type: "npm:^16.0.1"
+    file-type: "npm:^18.0.0"
     xhr: "npm:^2.5.0"
   languageName: unknown
   linkType: soft
@@ -10874,14 +10874,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"file-type@npm:^16.0.1":
-  version: 16.5.4
-  resolution: "file-type@npm:16.5.4"
+"file-type@npm:^18.0.0":
+  version: 18.0.0
+  resolution: "file-type@npm:18.0.0"
   dependencies:
-    readable-web-to-node-stream: "npm:^3.0.0"
-    strtok3: "npm:^6.2.4"
-    token-types: "npm:^4.1.1"
-  checksum: 1725dcafa382e31fba1021a560a81538199f6f67832e11d0e1b4b2b16a86ef550e01798a84cff3d6400ad9562f11bf656e10b116ddb8d48d3d8c09fa5ead2b8b
+    readable-web-to-node-stream: "npm:^3.0.2"
+    strtok3: "npm:^7.0.0"
+    token-types: "npm:^5.0.1"
+  checksum: 6e1ca6e73601d82b53ecbc116b2e677bb0752739017635a8975a76b18703d81149d42b914805ae04d21d209734efdb30d625aea4c3fe245fbc76f2519d00d302
   languageName: node
   linkType: hard
 
@@ -17450,10 +17450,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"peek-readable@npm:^4.1.0":
-  version: 4.1.0
-  resolution: "peek-readable@npm:4.1.0"
-  checksum: 959a969f07f92074995dd997000493270157fac464faba4abe4560f8878b94011d585bbf8bed0336fa233cacc776fd89a510f984c1b73375e6f89b6bee4775da
+"peek-readable@npm:^5.0.0":
+  version: 5.0.0
+  resolution: "peek-readable@npm:5.0.0"
+  checksum: 9350acc783b1b01c956e07f1e010d25b7e3f995719fe08d7deb5d2ac782550875ef57006304a566a0cac14e9c5d5ba95c1c09888a79ddf2d8e2682a51e833516
   languageName: node
   linkType: hard
 
@@ -18372,7 +18372,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"readable-web-to-node-stream@npm:^3.0.0":
+"readable-web-to-node-stream@npm:^3.0.2":
   version: 3.0.2
   resolution: "readable-web-to-node-stream@npm:3.0.2"
   dependencies:
@@ -20514,13 +20514,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"strtok3@npm:^6.2.4":
-  version: 6.3.0
-  resolution: "strtok3@npm:6.3.0"
+"strtok3@npm:^7.0.0":
+  version: 7.0.0
+  resolution: "strtok3@npm:7.0.0"
   dependencies:
     "@tokenizer/token": "npm:^0.3.0"
-    peek-readable: "npm:^4.1.0"
-  checksum: 6455c210e2b4ca02f1bcd940a206331e95c8b24ea17bddb9378b5c77dfce328a074a39bac7369e93b3dd1088c935078c3e192034e826975fce2f06d65eeb6318
+    peek-readable: "npm:^5.0.0"
+  checksum: 0d3b800599678de1dae6eb103a850080564c31d48222c155aafa51dff05431fdb9f1863b48c094ec39c5b63245f03427a4ab1ad783c8903df44eae4c9c7badf0
   languageName: node
   linkType: hard
 
@@ -21001,13 +21001,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"token-types@npm:^4.1.1":
-  version: 4.2.1
-  resolution: "token-types@npm:4.2.1"
+"token-types@npm:^5.0.1":
+  version: 5.0.1
+  resolution: "token-types@npm:5.0.1"
   dependencies:
     "@tokenizer/token": "npm:^0.3.0"
     ieee754: "npm:^1.2.1"
-  checksum: dfa2cfc841e428c5ce8c64452ac0cfdc134474614dae3fcb7538f81dae2fb29061b62ecd1841333934714613b6a6e479863b03fe67741702130caa420f5c71ff
+  checksum: 91655bb00b8675f61b3fac6c4281a8816fdb805ad6b742f401ea502822cfa809206e5d5f226c5c421dfaf4d52d7696813b37bb7fa3dc79105b2d3d9325054f32
   languageName: node
   linkType: hard
 
