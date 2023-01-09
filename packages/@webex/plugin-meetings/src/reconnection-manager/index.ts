@@ -497,19 +497,34 @@ export default class ReconnectionManager {
   async reconnectMedia() {
     LoggerProxy.logger.log('ReconnectionManager:index#reconnectMedia --> Begin reestablishment of media');
 
-    // we are not simply calling this.meeting.mediaProperties.webrtcMediaConnection.reconnect(),
-    // but instead manually closing and creating new media connection, because we need to do the TURN discovery again
+    if (this.meeting.isMultistream) {
+      // for multistream meetings, reconnect using the same media connection
+      await this.meeting.mediaProperties.webrtcMediaConnection.reconnect();
 
-    await this.meeting.closePeerConnections();
-    this.meeting.mediaProperties.unsetPeerConnection();
+      // resend media requests
+      Object.values(this.meeting.mediaRequestManagers).forEach((mediaRequestManager) => mediaRequestManager.commit());
 
-    const turnServerResult = await this.meeting.roap.doTurnDiscovery(this.meeting, true);
+      // republish media tracks
+      if (this.meeting.mediaProperties.audioTrack) {
+        this.meeting.media.publishTrack(this.meeting.mediaProperties.audioTrack);
+      }
+      if (this.meeting.mediaProperties.videoTrack) {
+        this.meeting.media.publishTrack(this.meeting.mediaProperties.videoTrack);
+      }
+    }
+    else {
+      // for transcoded meetings, manually close and recreate the media connection
+      await this.meeting.closePeerConnections();
+      this.meeting.mediaProperties.unsetPeerConnection();
 
-    const mc = this.meeting.createMediaConnection(turnServerResult.turnServerInfo);
+      const turnServerResult = await this.meeting.roap.doTurnDiscovery(this.meeting, true);
 
-    this.meeting.statsAnalyzer.updateMediaConnection(mc);
+      const mc = this.meeting.createMediaConnection(turnServerResult.turnServerInfo);
 
-    return mc.initiateOffer();
+      this.meeting.statsAnalyzer.updateMediaConnection(mc);
+
+      await mc.initiateOffer();
+    }
   }
 
   /**
