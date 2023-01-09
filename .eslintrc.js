@@ -250,13 +250,15 @@ module.exports = {
     '**/build/**/*.*',
     './packages/**/dist/**/*.*',
     'docs/^(?!examples)/*.*',
-    'authorization.js', // uses decorator which does not get parsed
-    'kms.js', // uses decorator which does not get parsed,
-    'webex-core.js', // uses decorator which does not get parsed,
     './packages/webex/umd/**',
     'tooling/*',
     '**/test/**/*',
     'docs/**',
-    '**/ediscovery.js',
+    // Files with decorator
+    'authorization.js',
+    'kms.js',
+    'webex-core.js',
+    'ediscovery.js',
+    // end decorator
   ],
 };

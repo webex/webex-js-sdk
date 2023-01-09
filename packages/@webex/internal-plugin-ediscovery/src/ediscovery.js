@@ -1,5 +1,5 @@
-/* eslint-disable */
-
+/* eslint-disable prefer-template */
+/* eslint-disable no-useless-escape */
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
@@ -45,19 +45,19 @@ const EDiscovery = WebexPlugin.extend({
       type: 'object',
       default() {
         return new Map();
-      },
-    },
+      }
+    }
   },
 
   @waitForValue('@')
-  async /**
+  /**
    * Creates a compliance report with a specific set of search parameters
    * @param {Object} reportRequest - A set of criteria for determining the focus of the search
    * @param {Object} options - optional parameters for this method
    * @param {number} options.timeoutMs - connection timeout in milliseconds, defaults to 30s
    * @returns {Promise<ResponseEntity>} Http response containing the new report record
    */
-  createReport(reportRequest, options) {
+  async createReport(reportRequest, options) {
     if (!reportRequest) {
       throw Error('Undefined parameter');
     }
@@ -73,9 +73,10 @@ const EDiscovery = WebexPlugin.extend({
         service: 'ediscovery',
         resource: 'reports',
         timeout: options.timeoutMs,
-        body,
+        body
       });
-    } catch (reason) {
+    }
+    catch (reason) {
       return this._handleReportRequestError(reason);
     }
   },
@@ -96,14 +97,11 @@ const EDiscovery = WebexPlugin.extend({
           return Promise.reject(invalidEmailAddressError);
         }
 
-        this.logger.warn(
-          'InvalidEmailAddress error received but the list could not be parsed to the correct format.'
-        );
-      } catch (error) {
+        this.logger.warn('InvalidEmailAddress error received but the list could not be parsed to the correct format.');
+      }
+      catch (error) {
         // assume syntax error and continue
-        this.logger.error(
-          'InvalidEmailAddress error received but an error occured while parsing the emails.'
-        );
+        this.logger.error('InvalidEmailAddress error received but an error occured while parsing the emails.');
       }
     }
 
@@ -111,14 +109,14 @@ const EDiscovery = WebexPlugin.extend({
   },
 
   @waitForValue('@')
-  async /**
+  /**
    * Retrieves information relating to a specified report
    * @param {UUID} reportId - Id of the report being requested
    * @param {Object} options - optional parameters for this method
    * @param {number} options.timeoutMs - connection timeout in milliseconds, defaults to 30s
    * @returns {Promise<ResponseEntity<ReportRecord>>} Http response containing the specified report record
    */
-  getReport(reportId, options) {
+  async getReport(reportId, options) {
     if (!reportId) {
       throw Error('Undefined parameter');
     }
@@ -130,12 +128,12 @@ const EDiscovery = WebexPlugin.extend({
       method: 'GET',
       service: 'ediscovery',
       resource: `reports/${reportId}`,
-      timeout: options.timeoutMs,
+      timeout: options.timeoutMs
     });
   },
 
   @waitForValue('@')
-  async /**
+  /**
    * Retrieves all the compliance officers reports
    * @param {Object} options - optional parameters for this method
    * @param {number} options.offset - start position from which to retrieve records
@@ -143,7 +141,7 @@ const EDiscovery = WebexPlugin.extend({
    * @param {number} options.timeoutMs - connection timeout in milliseconds, defaults to 30s
    * @returns {Promise<ResponseEntity<Array<ReportRecord>>>} Http Response containing a list of report records
    */
-  getReports(options) {
+  async getReports(options) {
     // use spread operator to set default options
     options = {...this.config.defaultOptions, ...options};
 
@@ -152,19 +150,19 @@ const EDiscovery = WebexPlugin.extend({
       service: 'ediscovery',
       resource: 'reports',
       qs: {offset: options.offset, size: options.size},
-      timeout: options.timeoutMs,
+      timeout: options.timeoutMs
     });
   },
 
   @waitForValue('@')
-  async /**
+  /**
    * Deletes a specified report
    * @param {UUID} reportId - Id of the report being requested for deletion
    * @param {Object} options - optional parameters for this method
    * @param {number} options.timeoutMs - connection timeout in milliseconds, defaults to 30s
    * @returns {Promise<ResponseEntity>} HttpResponse indicating if delete was successful
    */
-  deleteReport(reportId, options) {
+  async deleteReport(reportId, options) {
     if (!reportId) {
       throw Error('Undefined parameter');
     }
@@ -176,19 +174,19 @@ const EDiscovery = WebexPlugin.extend({
       method: 'DELETE',
       service: 'ediscovery',
       resource: `reports/${reportId}`,
-      timeout: options.timeoutMs,
+      timeout: options.timeoutMs
     });
   },
 
   @waitForValue('@')
-  async /**
+  /**
    * Restarts a completed or cancelled report so that it begins again from scratch
    * @param {UUID} reportId - Id of the report being requested
    * @param {Object} options - optional parameters for this method
    * @param {number} options.timeoutMs - connection timeout in milliseconds, defaults to 30s
    * @returns {Promise<ResponseEntity<ReportRecord>>} Http response containing the report record
    */
-  restartReport(reportId, options) {
+  async restartReport(reportId, options) {
     if (!reportId) {
       throw Error('Undefined parameter');
     }
@@ -200,13 +198,13 @@ const EDiscovery = WebexPlugin.extend({
       method: 'PUT',
       service: 'ediscovery',
       resource: `reports/${reportId}`,
-      timeout: options.timeoutMs,
+      timeout: options.timeoutMs
     });
   },
 
   @waitForValue('@')
   @oneFlight({keyFactory: (reportId, options) => createOneFlightKey(reportId, options)})
-  async /**
+  /**
    * Retrieves content associated with a report
    * @param {UUID|string} reportId - UUID or url of the report which contains the content
    * @param {Object} options - optional parameters for this method
@@ -215,7 +213,7 @@ const EDiscovery = WebexPlugin.extend({
    * @param {number} options.timeoutMs - connection timeout in milliseconds, defaults to 30s
    * @returns {Promise<ResponseEntity<[Activity]>>} Http response containing the activities
    */
-  getContent(reportId, options) {
+  async getContent(reportId, options) {
     if (!reportId) {
       throw Error('Undefined parameter');
     }
@@ -229,13 +227,13 @@ const EDiscovery = WebexPlugin.extend({
       method: 'GET',
       ...requestOptions,
       qs: {offset: options.offset, size: options.size},
-      timeout: options.timeoutMs,
+      timeout: options.timeoutMs
     });
   },
 
   @waitForValue('@')
   @oneFlight({keyFactory: (reportId, options) => createOneFlightKey(reportId, options)})
-  async /**
+  /**
    * Retrieves a list of content containers relevant to a specified report
    * @param {UUID|string} reportId - UUID or url of the report being requested
    * @param {Object} options - optional parameters for this method
@@ -245,7 +243,7 @@ const EDiscovery = WebexPlugin.extend({
    * @param {Set<Object>} options.types - Set of ContentContainerTypes to be retrieved
    * @returns {Promise<ResponseEntity<ContentContainer>>} Http response containing the content containers
    */
-  getContentContainer(reportId, options) {
+  async getContentContainer(reportId, options) {
     if (!reportId) {
       throw Error('Undefined parameter');
     }
@@ -253,17 +251,14 @@ const EDiscovery = WebexPlugin.extend({
     // use spread operator to set default options
     options = {...this.config.defaultOptions, ...options};
 
-    const [requestOptions, reportUUID] = this._createRequestOptions(
-      reportId,
-      '/contents/container'
-    );
+    const [requestOptions, reportUUID] = this._createRequestOptions(reportId, '/contents/container');
 
     const res = await this.request({
       method: 'GET',
       ...requestOptions,
       qs: {offset: options.offset, size: options.size},
       timeout: options.timeoutMs,
-      types: options.types,
+      types: options.types
     });
 
     await this._writeToContentContainerCache(reportUUID, res.body);
@@ -273,7 +268,7 @@ const EDiscovery = WebexPlugin.extend({
 
   @waitForValue('@')
   @oneFlight({keyFactory: (reportId, containerId) => String(reportId + containerId)})
-  async /**
+  /**
    * Retrieves information for a specific content container relevant to a specified report
    * @param {UUID|string} reportId - UUID or url of the report being requested
    * @param {UUID} containerId - Id of the contenyt container being requested
@@ -281,7 +276,7 @@ const EDiscovery = WebexPlugin.extend({
    * @param {number} options.timeoutMs - connection timeout in milliseconds, defaults to 30s
    * @returns {Promise<ResponseEntity<ContentContainer>>} Http response containing the specified content container
    */
-  getContentContainerByContainerId(reportId, containerId, options) {
+  async getContentContainerByContainerId(reportId, containerId, options) {
     if (!reportId || !containerId) {
       throw Error('Undefined parameter');
     }
@@ -289,16 +284,10 @@ const EDiscovery = WebexPlugin.extend({
     // use spread operator to set default options
     options = {...this.config.defaultOptions, ...options};
 
-    const [requestOptions, reportUUID] = this._createRequestOptions(
-      reportId,
-      `/contents/container/${containerId}`
-    );
+    const [requestOptions, reportUUID] = this._createRequestOptions(reportId, `/contents/container/${containerId}`);
 
     // If this content container has already been cached then it can be retrieved from there instead of making a network call to ediscovery
-    if (
-      this.contentContainerCache.has(reportUUID) &&
-      this.contentContainerCache.get(reportUUID).has(containerId)
-    ) {
+    if (this.contentContainerCache.has(reportUUID) && this.contentContainerCache.get(reportUUID).has(containerId)) {
       return {body: this.contentContainerCache.get(reportUUID).get(containerId), statusCode: 200};
     }
 
@@ -308,7 +297,7 @@ const EDiscovery = WebexPlugin.extend({
       method: 'GET',
       ...requestOptions,
       qs: {offset: options.offset, size: options.size},
-      timeout: options.timeoutMs,
+      timeout: options.timeoutMs
     });
 
     await this._writeToContentContainerCache(reportUUID, [res.body]);
@@ -336,12 +325,12 @@ const EDiscovery = WebexPlugin.extend({
       if (container && container.containerId) {
         try {
           this.contentContainerCache.get(reportId).set(container.containerId, container);
-        } catch (error) {
-          this.logger.error(
-            `Error adding ${container.containerId} to contentContainerCache: ${error}`
-          );
         }
-      } else {
+        catch (error) {
+          this.logger.error(`Error adding ${container.containerId} to contentContainerCache: ${error}`);
+        }
+      }
+      else {
         this.logger.error('Error adding undefined container to contentContainerCache');
       }
     }
@@ -364,9 +353,7 @@ const EDiscovery = WebexPlugin.extend({
    */
   _getReportIdFromUrl(reportUrl) {
     if (reportUrl) {
-      const uuids = reportUrl.match(
-        /[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}/
-      );
+      const uuids = reportUrl.match(/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}/);
 
       if (uuids && uuids.length > 0) {
         return uuids[0];
@@ -378,9 +365,7 @@ const EDiscovery = WebexPlugin.extend({
 
   _isUrl(string) {
     // Regex found from `https://ihateregex.io/expr/url`
-    return /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&\/\/=]*)/g.test(
-      string
-    );
+    return /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&\/\/=]*)/g.test(string);
   },
 
   /**
@@ -409,12 +394,13 @@ const EDiscovery = WebexPlugin.extend({
       const reportUrl = reportId.substring(0, reportId.lastIndexOf(reportUUID) + reportUUID.length);
 
       requestOptions = {
-        url: reportUrl + resource,
+        url: reportUrl + resource
       };
-    } else {
+    }
+    else {
       requestOptions = {
         service: 'ediscovery',
-        resource: `reports/${reportId}/${resource}`,
+        resource: `reports/${reportId}/${resource}`
       };
       reportUUID = reportId;
     }
@@ -423,13 +409,13 @@ const EDiscovery = WebexPlugin.extend({
   },
 
   @waitForValue('@')
-  async /**
+  /**
    * Retrieves a config object from the service which can be used by the client for optimal performance, e.g. content page size
    * @param {Object} options - optional parameters for this method
    * @param {number} options.timeoutMs - connection timeout in milliseconds, defaults to 30s
    * @returns {Promise<Config>} Http response containing the config object
    */
-  getClientConfig(options) {
+  async getClientConfig(options) {
     // use spread operator to set default options
     options = {...this.config.defaultOptions, ...options};
 
@@ -437,12 +423,12 @@ const EDiscovery = WebexPlugin.extend({
       method: 'GET',
       service: 'ediscovery',
       resource: 'reports/clientconfig',
-      timeout: options.timeoutMs,
+      timeout: options.timeoutMs
     });
   },
 
   @waitForValue('@')
-  async /**
+  /**
    * Submits an audit event to the eDiscovery service for admin use. Only expected to be used for
    * the getContentContainer API
    * @param {UUID} reportId - Id of the report to send an audit log for
@@ -450,7 +436,7 @@ const EDiscovery = WebexPlugin.extend({
    * @param {number} options.timeoutMs - connection timeout in milliseconds, defaults to 30s
    * @returns {Promise<Config>} Http response containing the config object
    */
-  postAuditLog(reportId, options) {
+  async postAuditLog(reportId, options) {
     if (!reportId) {
       throw Error('No report ID specified');
     }
@@ -462,9 +448,10 @@ const EDiscovery = WebexPlugin.extend({
       method: 'POST',
       service: 'ediscovery',
       resource: `reports/${reportId}/audit/summary-download`,
-      timeout: options.timeoutMs,
+      timeout: options.timeoutMs
     });
-  },
+  }
+
 });
 
 export default EDiscovery;
