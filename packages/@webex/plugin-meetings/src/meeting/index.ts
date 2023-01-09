@@ -4843,10 +4843,6 @@ export default class Meeting extends StatelessWebexPlugin {
         }
       }
 
-      // start stats here the stats are coming null if you dont receive streams
-
-      this.statsAnalyzer.startAnalyzer(this.mediaProperties.webrtcMediaConnection);
-
       if (eventType && mediaTrack) {
         Trigger.trigger(
           this,
@@ -4907,6 +4903,7 @@ export default class Meeting extends StatelessWebexPlugin {
           });
           this.setNetworkStatus(NETWORK_STATUS.CONNECTED);
           this.reconnectionManager.iceReconnected();
+          this.statsAnalyzer.startAnalyzer(this.mediaProperties.webrtcMediaConnection);
           break;
         case ConnectionState.Disconnected:
           this.setNetworkStatus(NETWORK_STATUS.DISCONNECTED);
