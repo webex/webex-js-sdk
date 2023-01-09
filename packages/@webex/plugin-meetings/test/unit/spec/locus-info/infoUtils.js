@@ -1,6 +1,5 @@
 import {assert} from '@webex/test-helper-chai';
 import Sinon from 'sinon';
-
 import InfoUtils from '@webex/plugin-meetings/src/locus-info/infoUtils';
 
 
@@ -73,6 +72,23 @@ describe('plugin-meetings', () => {
           moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
           coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
           userDisplayHints: ['HINT_3', 'HINT_1', 'HINT_2', 'LOWER_SOMEONE_ELSES_HAND']
+        });
+      });
+
+      it('only adds datachannel url when present', () => {
+        assert.deepEqual(InfoUtils.parse({datachannelUrl: 'some url'}, []), {
+          coHost: {LOWER_SOMEONE_ELSES_HAND: true},
+          moderator: {LOWER_SOMEONE_ELSES_HAND: true},
+          datachannelUrl: 'some url',
+          policy: {},
+          userDisplayHints: []
+        });
+
+        assert.deepEqual(InfoUtils.parse({}, []), {
+          coHost: {LOWER_SOMEONE_ELSES_HAND: true},
+          moderator: {LOWER_SOMEONE_ELSES_HAND: true},
+          policy: {},
+          userDisplayHints: []
         });
       });
     });

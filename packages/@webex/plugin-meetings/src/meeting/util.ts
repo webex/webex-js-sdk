@@ -131,7 +131,8 @@ MeetingUtil.cleanUp = (meeting) => {
       meeting.unsetPeerConnections();
       meeting.reconnectionManager.cleanUp();
     })
-    .then(() => meeting.stopKeepAlive());
+    .then(() => meeting.stopKeepAlive())
+    .then(() => meeting.updateLLMConnection());
 };
 
 MeetingUtil.disconnectPhoneAudio = (meeting, phoneUrl) => {

@@ -42,6 +42,7 @@ describe('plugin-meetings', () => {
       meeting.unsetPeerConnections = sinon.stub();
       meeting.reconnectionManager = {cleanUp: sinon.stub()};
       meeting.stopKeepAlive = sinon.stub();
+      meeting.updateLLMConnection = sinon.stub();
     });
 
     afterEach(() => {
@@ -63,6 +64,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.unsetPeerConnections);
         assert.calledOnce(meeting.reconnectionManager.cleanUp);
         assert.calledOnce(meeting.stopKeepAlive);
+        assert.calledOnce(meeting.updateLLMConnection);
       });
     });
 

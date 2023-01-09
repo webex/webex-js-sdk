@@ -1,5 +1,5 @@
 import uuid from 'uuid';
-import {cloneDeep, isEqual, pick, isString} from 'lodash';
+import {cloneDeep, isEqual, pick, isString, defer} from 'lodash';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {Media as WebRTCMedia, MediaConnection as MC} from '@webex/internal-media-core';
@@ -2047,8 +2047,25 @@ export default class Meeting extends StatelessWebexPlugin {
             this.inMeetingActions.get()
           );
         }
+
+        this.handleDataChannelUrlChange(payload.info.datachannelUrl);
       }
     });
+  }
+
+  /**
+   * Handles a data channel URL change
+   * @param {String} datachannelUrl
+   * @returns {void}
+   */
+  handleDataChannelUrlChange(datachannelUrl) {
+    if (datachannelUrl && this.config.enableAutomaticLLM) {
+      // Defer this as updateLLMConnection relies upon this.locusInfo.url which is only set
+      // after the MEETING_INFO_UPDATED callback finishes
+      defer(() => {
+        this.updateLLMConnection();
+      });
+    }
   }
 
   /**
@@ -3705,7 +3722,15 @@ export default class Meeting extends StatelessWebexPlugin {
         );
 
         return join;
-      }).then(async (join) => {
+      })
+      .then(async (join) => {
+        if (this.config.enableAutomaticLLM) {
+          await this.updateLLMConnection();
+        }
+
+        return join;
+      })
+      .then(async (join) => {
         if (isBrowser) {
           // @ts-ignore - config coming from registerPlugin
           if (this.config.receiveTranscription || options.receiveTranscription) {
@@ -3762,6 +3787,31 @@ export default class Meeting extends StatelessWebexPlugin {
 
         return Promise.reject(error);
       });
+  }
+
+  /**
+   * Connects to low latency mercury and reconnects if the address has changed
+   * It will also disconnect if called when the meeting has ended
+   * @param {String} datachannelUrl
+   * @returns {Promise}
+   */
+  async updateLLMConnection() {
+    const {url, info: {datachannelUrl} = {}} = this.locusInfo;
+
+    const isJoined = this.joinedWith && this.joinedWith.state === 'JOINED';
+
+    if (this.webex.internal.llm.isConnected()) {
+      if (url === this.webex.internal.llm.getLocusUrl() && isJoined) {
+        return undefined;
+      }
+      await this.webex.internal.llm.disconnectLLM();
+    }
+
+    if (!isJoined) {
+      return undefined;
+    }
+
+    return this.webex.internal.llm.registerAndConnect(url, datachannelUrl);
   }
 
   /**
