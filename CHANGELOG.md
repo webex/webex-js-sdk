@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.10](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.9...v3.0.0-beta.10) (2023-01-09)
+
+
+### Features
+
+* **plugin-meetings:** automatically connect llm ([#2550](https://github.com/webex/webex-js-sdk/issues/2550)) ([99e4e0f](https://github.com/webex/webex-js-sdk/commit/99e4e0fd718a07adeaae50ed01a5b87717589eba))
+
 ## [3.0.0-beta.9](https://github.com/webex/webex-js-sdk/compare/v2.35.4...v3.0.0-beta.9) (2023-01-06)
 
 ## [3.0.0-beta.8](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.7...v3.0.0-beta.8) (2022-12-21)

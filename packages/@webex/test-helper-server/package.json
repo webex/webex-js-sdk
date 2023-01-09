@@ -1,6 +1,6 @@
 {
   "name": "@webex/test-helper-server",
-  "version": "3.0.0-beta.9",
+  "version": "3.0.0-beta.10",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
