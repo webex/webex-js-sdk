@@ -4594,6 +4594,93 @@ describe('plugin-meetings', () => {
           meeting.stopKeepAlive();
         });
       });
+
+      describe('#sendReaction', () => {
+        it('should have #sendReaction', () => {
+          assert.exists(meeting.sendReaction);
+        });
+
+        beforeEach(() => {
+          meeting.meetingRequest.sendReaction = sinon.stub().returns(Promise.resolve());
+        });
+
+        it('should send reaction with the right data and return a promise', async () => {
+          meeting.locusInfo.controls = {reactions: {reactionChannelUrl: 'Fake URL'}};
+
+          const reactionPromise = meeting.sendReaction('thumbs_down', 'light');
+
+          assert.exists(reactionPromise.then);
+          await reactionPromise;
+          assert.calledOnceWithExactly(meeting.meetingRequest.sendReaction, {
+            reactionChannelUrl: 'Fake URL',
+            reaction: {
+              type: 'thumb_down',
+              codepoints: '1F44E',
+              shortcodes: ':thumbsdown:',
+              tone: {
+                type: 'light_skin_tone',
+                codepoints: '1F3FB',
+                shortcodes: ':skin-tone-2:'
+              }
+            },
+            participantId: meeting.members.selfId,
+          });
+        });
+
+        it('should fail sending a reaction if data channel is undefined', async () => {
+          meeting.locusInfo.controls = {reactions: {reactionChannelUrl: undefined}};
+
+          await assert.isRejected(meeting.sendReaction('thumbs_down', 'light'), Error, 'Error sending reaction, service url not found.');
+
+          assert.notCalled(meeting.meetingRequest.sendReaction);
+        });
+
+        it('should fail sending a reaction if reactionType is invalid ', async () => {
+          meeting.locusInfo.controls = {reactions: {reactionChannelUrl: 'Fake URL'}};
+
+          await assert.isRejected(meeting.sendReaction('invalid_reaction', 'light'), Error, 'invalid_reaction is not a valid reaction.');
+
+          assert.notCalled(meeting.meetingRequest.sendReaction);
+        });
+
+        it('should send a reaction with default skin tone if provided skinToneType is invalid ', async () => {
+          meeting.locusInfo.controls = {reactions: {reactionChannelUrl: 'Fake URL'}};
+
+          const reactionPromise = meeting.sendReaction('thumbs_down', 'invalid_skin_tone');
+
+          assert.exists(reactionPromise.then);
+          await reactionPromise;
+          assert.calledOnceWithExactly(meeting.meetingRequest.sendReaction, {
+            reactionChannelUrl: 'Fake URL',
+            reaction: {
+              type: 'thumb_down',
+              codepoints: '1F44E',
+              shortcodes: ':thumbsdown:',
+              tone: {type: 'normal_skin_tone', codepoints: '', shortcodes: ''}
+            },
+            participantId: meeting.members.selfId,
+          });
+        });
+
+        it('should send a reaction with default skin tone if none provided', async () => {
+          meeting.locusInfo.controls = {reactions: {reactionChannelUrl: 'Fake URL'}};
+
+          const reactionPromise = meeting.sendReaction('thumbs_down');
+
+          assert.exists(reactionPromise.then);
+          await reactionPromise;
+          assert.calledOnceWithExactly(meeting.meetingRequest.sendReaction, {
+            reactionChannelUrl: 'Fake URL',
+            reaction: {
+              type: 'thumb_down',
+              codepoints: '1F44E',
+              shortcodes: ':thumbsdown:',
+              tone: {type: 'normal_skin_tone', codepoints: '', shortcodes: ''}
+            },
+            participantId: meeting.members.selfId,
+          });
+        });
+      });
     });
   });
 });

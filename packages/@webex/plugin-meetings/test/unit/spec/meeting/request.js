@@ -1,7 +1,6 @@
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
-
 import Meetings from '@webex/plugin-meetings';
 import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
 
@@ -276,6 +275,31 @@ describe('plugin-meetings', () => {
 
         assert.equal(requestParams.method, 'GET');
         assert.equal(requestParams.uri, keepAliveUrl);
+      });
+    });
+
+    describe('#sendReaction', () => {
+      it('sends request to sendReaction', async () => {
+        const reactionChannelUrl = 'reactionChannelUrl';
+        const participantId = 'participantId';
+        const reaction = {
+          type: 'thumb_down',
+          codepoints: '1F44E',
+          shortcodes: ':thumbsdown:',
+          tone: {type: 'normal_skin_tone', codepoints: '', shortcodes: ''}
+        };
+
+        await meetingsRequest.sendReaction({
+          reactionChannelUrl,
+          reaction,
+          participantId
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.equal(requestParams.method, 'POST');
+        assert.equal(requestParams.uri, reactionChannelUrl);
+        assert.equal(requestParams.body.sender.participantId, participantId);
+        assert.equal(requestParams.body.reaction, reaction);
       });
     });
   });
