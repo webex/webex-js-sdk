@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.36.0](https://github.com/webex/webex-js-sdk/compare/v2.35.4...v2.36.0) (2023-01-09)
+
+
+### Features
+
+* **reactions:** add sendReaction on meeting plugin ([#2551](https://github.com/webex/webex-js-sdk/issues/2551)) ([d45dba7](https://github.com/webex/webex-js-sdk/commit/d45dba717a4867a57cf68f65c3406289f4c63fab))
+
 ### [2.35.4](https://github.com/webex/webex-js-sdk/compare/v2.35.3...v2.35.4) (2023-01-04)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "@webex/storage-adapter-session-storage",
-  "version": "2.35.4",
+  "version": "2.36.0",
   "description": "",
   "license": "MIT",
   "author": "Andrew Holsted <holsted@cisco.com>",
