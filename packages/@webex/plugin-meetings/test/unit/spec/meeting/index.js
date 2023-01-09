@@ -4630,7 +4630,7 @@ describe('plugin-meetings', () => {
         it('should fail sending a reaction if data channel is undefined', async () => {
           meeting.locusInfo.controls = {reactions: {reactionChannelUrl: undefined}};
 
-          await assert.isRejected(meeting.sendReaction('thumbs_down', 'light'), Error, 'Reaction Channel URL not found.');
+          await assert.isRejected(meeting.sendReaction('thumbs_down', 'light'), Error, 'Error sending reaction, service url not found.');
 
           assert.notCalled(meeting.meetingRequest.sendReaction);
         });

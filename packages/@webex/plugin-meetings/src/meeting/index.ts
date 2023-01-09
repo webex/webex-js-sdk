@@ -6242,6 +6242,6 @@ export default class Meeting extends StatelessWebexPlugin {
       return this.meetingRequest.sendReaction({reactionChannelUrl, reaction, participantId});
     }
 
-    return Promise.reject(new Error('Reaction Channel URL not found.'));
+    return Promise.reject(new Error('Error sending reaction, service url not found.'));
   }
 }
