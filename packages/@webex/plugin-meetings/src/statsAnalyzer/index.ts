@@ -12,7 +12,13 @@ import {
   MEDIA_DEVICES,
   _UNKNOWN_,
 } from '../constants';
-import mqaData from '../mediaQualityMetrics/config';
+import {
+  emptyAudioReceive,
+  emptyAudioTransmit,
+  emptyMqaInterval,
+  emptyVideoReceive,
+  emptyVideoTransmit,
+} from '../mediaQualityMetrics/config';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import defaultStats from './global';
@@ -76,54 +82,7 @@ export class StatsAnalyzer extends EventsScope {
     this.correlationId = config.correlationId;
     this.mqaSentCount = -1;
     this.lastMqaDataSent = {
-      resolutions: {
-        video: {send: {}, recv: {}},
-        audio: {send: {}, recv: {}},
-        share: {send: {}, recv: {}},
-      },
-      video: {send: {}, recv: {}},
-      audio: {send: {}, recv: {}},
-      share: {send: {}, recv: {}},
-    };
-    this.localMQEStats = {
-      audio: {
-        RX: {
-          packetsLost: [],
-          jitter: [],
-          latency: [],
-          bitRate: [],
-        },
-        TX: {
-          packetsLost: [],
-          jitter: [],
-          latency: [],
-          bitRate: [],
-        },
-      },
-      video: {
-        RX: {
-          packetsLost: [],
-          jitter: [],
-          latency: [],
-          bitRate: [],
-          frameRate: [],
-          resolutionWidth: [],
-          resolutionHeight: [],
-          requestedKeyFrame: [],
-          receivedKeyFrame: [],
-        },
-        TX: {
-          packetsLost: [],
-          jitter: [],
-          latency: [],
-          bitRate: [],
-          frameRate: [],
-          resolutionWidth: [],
-          resolutionHeight: [],
-          requestedKeyFrame: [],
-          receivedKeyFrame: [],
-        },
-      },
+      resolutions: {},
     };
     this.lastEmittedStartStopEvent = {
       audio: {
@@ -139,66 +98,6 @@ export class StatsAnalyzer extends EventsScope {
         remote: undefined,
       },
     };
-  }
-
-  populateResults(lastMqa) {
-    // Audio
-
-    this.localMQEStats.audio.RX.packetsLost.push(lastMqa.audioReceive[0].common.mediaHopByHopLost);
-    this.localMQEStats.audio.RX.jitter.push(lastMqa.audioReceive[0].streams[0].common.rtpJitter);
-    this.localMQEStats.audio.RX.latency.push(lastMqa.audioReceive[0].common.roundTripTime);
-    this.localMQEStats.audio.RX.bitRate.push(
-      lastMqa.audioReceive[0].streams[0].common.receivedBitrate
-    );
-
-    this.localMQEStats.audio.TX.packetsLost.push(lastMqa.audioTransmit[0].common.remoteLossRate);
-    this.localMQEStats.audio.TX.jitter.push(lastMqa.audioTransmit[0].common.remoteJitter);
-    this.localMQEStats.audio.TX.latency.push(lastMqa.audioTransmit[0].common.roundTripTime);
-    this.localMQEStats.audio.TX.bitRate.push(
-      lastMqa.audioTransmit[0].streams[0].common.transmittedBitrate
-    );
-
-    // Video
-
-    this.localMQEStats.video.RX.packetsLost.push(lastMqa.videoReceive[0].common.mediaHopByHopLost);
-    this.localMQEStats.video.RX.jitter.push(lastMqa.videoReceive[0].streams[0].common.rtpJitter);
-    this.localMQEStats.video.RX.latency.push(
-      lastMqa.videoReceive[0].streams[0].common.roundTripTime
-    );
-    this.localMQEStats.video.RX.bitRate.push(
-      lastMqa.videoReceive[0].streams[0].common.receivedBitrate
-    );
-    this.localMQEStats.video.RX.frameRate.push(
-      lastMqa.videoReceive[0].streams[0].common.receivedFrameRate
-    );
-    this.localMQEStats.video.RX.resolutionWidth.push(
-      lastMqa.videoReceive[0].streams[0].receivedWidth
-    );
-    this.localMQEStats.video.RX.resolutionHeight.push(
-      lastMqa.videoReceive[0].streams[0].receivedHeight
-    );
-    this.localMQEStats.video.RX.requestedKeyFrame.push();
-    this.localMQEStats.video.RX.receivedKeyFrame.push();
-
-    this.localMQEStats.video.TX.packetsLost.push(lastMqa.videoTransmit[0].common.remoteLossRate);
-    this.localMQEStats.video.TX.jitter.push(lastMqa.videoTransmit[0].common.remoteJitter);
-    this.localMQEStats.video.TX.latency.push(lastMqa.videoTransmit[0].common.roundTripTime);
-    this.localMQEStats.video.TX.bitRate.push(
-      lastMqa.videoTransmit[0].streams[0].common.transmittedBitrate
-    );
-    this.localMQEStats.video.TX.frameRate.push(
-      lastMqa.videoTransmit[0].streams[0].common.transmittedFrameRate
-    );
-    this.localMQEStats.video.TX.resolutionWidth.push(
-      lastMqa.videoTransmit[0].streams[0].transmittedWidth
-    );
-    this.localMQEStats.video.TX.resolutionHeight.push(
-      lastMqa.videoTransmit[0].streams[0].transmittedHeight
-    );
-    this.localMQEStats.video.TX.requestedKeyFrame.push(
-      lastMqa.videoTransmit[0].streams[0].requestedKeyFrames
-    );
-    this.localMQEStats.video.TX.receivedKeyFrame.push();
   }
 
   resetStatsResults() {
@@ -237,82 +136,97 @@ export class StatsAnalyzer extends EventsScope {
    * @memberof StatsAnalyzer
    * @returns {void}
    */
-  public sendMqaData() {
-    const audioReceiver = mqaData.intervals[0].audioReceive[0];
-    const audioSender = mqaData.intervals[0].audioTransmit[0];
-    const videoReceiver = mqaData.intervals[0].videoReceive[0];
-    const videoSender = mqaData.intervals[0].videoTransmit[0];
-    const shareSender = mqaData.intervals[0].videoTransmit[1];
-    const shareReceiver = mqaData.intervals[0].videoReceive[1];
+  sendMqaData() {
+    const newMqa = cloneDeep(emptyMqaInterval);
 
-    getAudioSenderMqa({
-      audioSender,
-      statsResults: this.statsResults,
-      lastMqaDataSent: this.lastMqaDataSent,
-    });
-    getAudioReceiverMqa({
-      audioReceiver,
-      statsResults: this.statsResults,
-      lastMqaDataSent: this.lastMqaDataSent,
+    Object.keys(this.statsResults).forEach((mediaType) => {
+      if (mediaType.includes('audio-send')) {
+        const audioSender = cloneDeep(emptyAudioTransmit);
+
+        getAudioSenderMqa({
+          audioSender,
+          statsResults: this.statsResults,
+          lastMqaDataSent: this.lastMqaDataSent,
+          mediaType,
+        });
+        newMqa.audioTransmit.push(audioSender);
+      } else if (mediaType.includes('audio-recv')) {
+        const audioReceiver = cloneDeep(emptyAudioReceive);
+
+        getAudioReceiverMqa({
+          audioReceiver,
+          statsResults: this.statsResults,
+          lastMqaDataSent: this.lastMqaDataSent,
+          mediaType,
+        });
+        newMqa.audioReceive.push(audioReceiver);
+      } else if (mediaType.includes('video-send')) {
+        const videoSender = cloneDeep(emptyVideoTransmit);
+
+        getVideoSenderMqa({
+          videoSender,
+          statsResults: this.statsResults,
+          lastMqaDataSent: this.lastMqaDataSent,
+          mediaType,
+        });
+        newMqa.videoTransmit.push(videoSender);
+      } else if (mediaType.includes('video-recv')) {
+        const videoReceiver = cloneDeep(emptyVideoReceive);
+
+        getVideoReceiverMqa({
+          videoReceiver,
+          statsResults: this.statsResults,
+          lastMqaDataSent: this.lastMqaDataSent,
+          mediaType,
+        });
+        newMqa.videoReceive.push(videoReceiver);
+      } else if (mediaType.includes('share-send')) {
+        const videoSender = cloneDeep(emptyVideoTransmit);
+
+        getVideoSenderMqa({
+          videoSender,
+          statsResults: this.statsResults,
+          lastMqaDataSent: this.lastMqaDataSent,
+          mediaType,
+        });
+        newMqa.videoTransmit.push(videoSender);
+      } else if (mediaType.includes('share-recv')) {
+        const videoReceiver = cloneDeep(emptyVideoReceive);
+
+        getVideoReceiverMqa({
+          videoReceiver,
+          statsResults: this.statsResults,
+          lastMqaDataSent: this.lastMqaDataSent,
+          mediaType,
+        });
+        newMqa.videoReceive.push(videoReceiver);
+      }
     });
 
-    getVideoReceiverMqa({
-      videoReceiver,
-      statsResults: this.statsResults,
-      lastMqaDataSent: this.lastMqaDataSent,
-    });
-    getVideoSenderMqa({
-      videoSender,
-      statsResults: this.statsResults,
-      lastMqaDataSent: this.lastMqaDataSent,
-    });
-
-    // Capture mqa for share scenario
-
-    getVideoSenderMqa({
-      videoSender: shareSender,
-      statsResults: this.statsResults,
-      lastMqaDataSent: this.lastMqaDataSent,
-      isShareStream: true,
-    });
-
-    getVideoReceiverMqa({
-      videoReceiver: shareReceiver,
-      statsResults: this.statsResults,
-      lastMqaDataSent: this.lastMqaDataSent,
-      isShareStream: true,
-    });
-    mqaData.intervals[0].intervalMetadata.peerReflexiveIP =
-      this.statsResults.connectionType.local.ipAddress[0];
+    newMqa.intervalMetadata.peerReflexiveIP = this.statsResults.connectionType.local.ipAddress[0];
 
     // Adding peripheral information
-    mqaData.intervals[0].intervalMetadata.peripherals = [];
-    mqaData.intervals[0].intervalMetadata.peripherals.push({
-      information: _UNKNOWN_,
-      name: MEDIA_DEVICES.SPEAKER,
-    });
-    mqaData.intervals[0].intervalMetadata.peripherals.push({
+    newMqa.intervalMetadata.peripherals = [];
+    newMqa.intervalMetadata.peripherals.push({information: _UNKNOWN_, name: MEDIA_DEVICES.SPEAKER});
+    newMqa.intervalMetadata.peripherals.push({
       information:
         this.statsResults[STATS.AUDIO_CORRELATE][STATS.SEND_DIRECTION].trackLabel || _UNKNOWN_,
       name: MEDIA_DEVICES.MICROPHONE,
     });
-    mqaData.intervals[0].intervalMetadata.peripherals.push({
+    newMqa.intervalMetadata.peripherals.push({
       information:
         this.statsResults[STATS.VIDEO_CORRELATE][STATS.SEND_DIRECTION].trackLabel || _UNKNOWN_,
       name: MEDIA_DEVICES.CAMERA,
     });
 
-    // @ts-ignore
-    mqaData.networkType = this.statsResults.connectionType.local.networkType;
+    newMqa.networkType = this.statsResults.connectionType.local.networkType;
 
     this.mqaSentCount += 1;
 
-    mqaData.intervals[0].intervalNumber = this.mqaSentCount;
+    newMqa.intervalNumber = this.mqaSentCount;
 
     // DO Deep copy, for some reason it takes the reference all the time rather then old value set
-    this.lastMqaDataSent = cloneDeep(this.statsResults);
-
-    this.populateResults(mqaData.intervals[0]);
+    this.lastnewMqaSent = cloneDeep(this.statsResults);
 
     this.resetStatsResults();
 
@@ -323,9 +237,8 @@ export class StatsAnalyzer extends EventsScope {
       },
       EVENTS.MEDIA_QUALITY,
       {
-        data: mqaData.intervals[0],
-        // @ts-ignore
-        networkType: mqaData.networkType,
+        data: newMqa,
+        networkType: newMqa.networkType,
       }
     );
   }
@@ -414,6 +327,73 @@ export class StatsAnalyzer extends EventsScope {
   private parseGetStatsResult(getStatsResult: any, type: string, isSender: boolean) {
     if (!getStatsResult) {
       return;
+    }
+
+    // Generate empty stats results
+    if (!this.statsResults[type]) {
+      this.statsResults[type] = {};
+    }
+
+    if (isSender && !this.statsResults[type].send) {
+      this.statsResults[type].send = {
+        trackLabel: '',
+        maxPacketLossRatio: 0,
+        availableBandwidth: 0,
+        bytesSent: 0,
+        meanRemoteJitter: [],
+        meanRoundTripTime: [],
+      };
+    } else if (!isSender && !this.statsResults[type].recv) {
+      this.statsResults[type].recv = {
+        availableBandwidth: 0,
+        bytesReceived: 0,
+        meanRtpJitter: [],
+        meanRoundTripTime: [],
+      };
+    }
+
+    if (!this.statsResults.resolutions[type]) {
+      this.statsResults.resolutions[type] = {};
+    }
+
+    if (isSender && !this.statsResults.resolutions[type].send) {
+      this.statsResults.resolutions[type].send = {
+        trackLabel: '',
+        maxPacketLossRatio: 0,
+        availableBandwidth: 0,
+        bytesSent: 0,
+        meanRemoteJitter: [],
+        meanRoundTripTime: [],
+      };
+    } else if (!isSender && !this.statsResults.resolutions[type].recv) {
+      this.statsResults.resolutions[type].recv = {
+        availableBandwidth: 0,
+        bytesReceived: 0,
+        meanRtpJitter: [],
+        meanRoundTripTime: [],
+      };
+    }
+
+    if (!this.statsResults.internal[type]) {
+      this.statsResults.internal[type] = {};
+    }
+
+    if (isSender && !this.statsResults.internal[type].send) {
+      this.statsResults.internal[type].send = {
+        trackLabel: '',
+        maxPacketLossRatio: 0,
+        availableBandwidth: 0,
+        bytesSent: 0,
+        meanRemoteJitter: [],
+        meanRoundTripTime: [],
+      };
+    } else if (!isSender && !this.statsResults.internal[type].recv) {
+      this.statsResults.internal[type].recv = {
+        availableBandwidth: 0,
+        bytesReceived: 0,
+        meanRtpJitter: [],
+        meanRoundTripTime: [],
+      };
     }
 
     switch (getStatsResult.type) {
@@ -832,35 +812,23 @@ export class StatsAnalyzer extends EventsScope {
     LoggerProxy.logger.trace('StatsAnalyzer:index#getStatsAndParse --> Collecting Stats');
 
     return this.mediaConnection.getTransceiverStats().then((transceiverStats) => {
-      this.filterAndParseGetStatsResults(
-        transceiverStats.video.sender,
-        STATS.VIDEO_CORRELATE,
-        true
+      transceiverStats.video.senders.forEach((sender, i) =>
+        this.filterAndParseGetStatsResults(sender, `video-send-${i}`, true)
       );
-      this.filterAndParseGetStatsResults(
-        transceiverStats.video.receiver,
-        STATS.VIDEO_CORRELATE,
-        false
+      transceiverStats.video.receivers.forEach((receiver, i) =>
+        this.filterAndParseGetStatsResults(receiver, `video-recv-${i}`, false)
       );
-      this.filterAndParseGetStatsResults(
-        transceiverStats.audio.sender,
-        STATS.AUDIO_CORRELATE,
-        true
+      transceiverStats.audio.senders.forEach((sender, i) =>
+        this.filterAndParseGetStatsResults(sender, `audio-send-${i}`, true)
       );
-      this.filterAndParseGetStatsResults(
-        transceiverStats.audio.receiver,
-        STATS.AUDIO_CORRELATE,
-        false
+      transceiverStats.audio.receivers.forEach((receiver, i) =>
+        this.filterAndParseGetStatsResults(receiver, `audio-recv-${i}`, false)
       );
-      this.filterAndParseGetStatsResults(
-        transceiverStats.screenShareVideo.sender,
-        STATS.SHARE_CORRELATE,
-        true
+      transceiverStats.screenShareVideo.senders.forEach((sender, i) =>
+        this.filterAndParseGetStatsResults(sender, `share-send-${i}`, true)
       );
-      this.filterAndParseGetStatsResults(
-        transceiverStats.screenShareVideo.receiver,
-        STATS.SHARE_CORRELATE,
-        false
+      transceiverStats.screenShareVideo.receivers.forEach((receiver, i) =>
+        this.filterAndParseGetStatsResults(receiver, `share-recv-${i}`, false)
       );
 
       // updates the current direction of media
@@ -1225,8 +1193,9 @@ export class StatsAnalyzer extends EventsScope {
    * @returns {void}
    * @memberof StatsAnalyzer
    */
-  private compareSentAndReceived(result: any, type: any) {
-    if (!type) {
+  compareSentAndReceived(result, type) {
+    // Don't compare on transceivers without a sender.
+    if (!type || !this.statsResults.internal[type].send) {
       return;
     }
 
@@ -1272,8 +1241,17 @@ export class StatsAnalyzer extends EventsScope {
     }
 
     if (result.type === 'remote-inbound-rtp') {
+      let simplifiedMediaType = STATS.AUDIO_CORRELATE;
+
+      if (mediaType.includes('video')) {
+        simplifiedMediaType = STATS.VIDEO_CORRELATE;
+      }
+      if (mediaType.includes('share')) {
+        simplifiedMediaType = STATS.SHARE_CORRELATE;
+      }
+
       this.networkQualityMonitor.determineUplinkNetworkQuality({
-        mediaType,
+        mediaType: simplifiedMediaType,
         remoteRtpResults: result,
         statsAnalyzerCurrentStats: this.statsResults,
       });
