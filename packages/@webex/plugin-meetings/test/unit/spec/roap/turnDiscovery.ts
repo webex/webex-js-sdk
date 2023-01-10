@@ -70,7 +70,8 @@ describe('TurnDiscovery', () => {
       mediaId: expectedMediaId,
       audioMuted: testMeeting.isAudioMuted(),
       videoMuted: testMeeting.isVideoMuted(),
-      meetingId: testMeeting.id
+      meetingId: testMeeting.id,
+      preferTranscoding: true
     });
 
     if (messageType === 'TURN_DISCOVERY_REQUEST') {

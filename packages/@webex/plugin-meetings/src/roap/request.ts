@@ -52,7 +52,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
    * @param {Boolean} options.audioMuted
    * @param {Boolean} options.videoMuted
    * @param {String} options.meetingId
-   * @param {boolean} options.preferTranscoding
+   * @param {Boolean} options.preferTranscoding
    * @returns {Promise} returns the response/failure of the request
    */
   sendRoap(options: {
