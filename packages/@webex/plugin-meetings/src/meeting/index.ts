@@ -27,6 +27,7 @@ import Members from '../members/index';
 import MeetingUtil from '../meeting/util';
 import MediaUtil from '../media/util';
 import Transcription from '../transcription';
+import Reactions from '../reaction';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
 import ReconnectionError from '../common/errors/reconnection';
@@ -458,6 +459,7 @@ export default class Meeting extends StatelessWebexPlugin {
   shareStatus: string;
   statsAnalyzer: StatsAnalyzer;
   transcription: Transcription;
+  reactions: Reactions;
   updateMediaConnections: (mediaConnections: any[]) => void;
   endCallInitiateJoinReq: any;
   endJoinReqResp: any;
@@ -956,6 +958,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.transcription = undefined;
+
+    /**
+     * Meeting transcription object
+     * @instance
+     * @type {Reaction}
+     * @private
+     * @memberof Meeting
+     */
+    this.reactions = undefined;
 
     /**
      * Password status. If it's PASSWORD_STATUS.REQUIRED then verifyPassword() needs to be called
@@ -3446,6 +3457,23 @@ export default class Meeting extends StatelessWebexPlugin {
     return false;
   }
 
+    /**
+   * Check if the meeting supports the Reactions
+   * @returns {boolean}
+   * @throws ReactionsNotSupportedError
+   */
+    isReactionsSupported() {
+      if (this.locusInfo?.controls?.reactions) {
+        return true;
+      }
+  
+      LoggerProxy.logger.error(
+        'Meeting:index#isReactionsSupported --> Reactions is not supported'
+      );
+  
+      return false;
+    }
+
   /**
    * Monitor the Low-Latency Mercury (LLM) web socket connection on `onError` and `onClose` states
    * @private
@@ -3523,6 +3551,53 @@ export default class Meeting extends StatelessWebexPlugin {
 
       // retrieve and pass the payload
       this.transcription.subscribe((payload) => {
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'join'
+          },
+          EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION,
+          payload
+        );
+      });
+
+      this.monitorTranscriptionSocketConnection();
+      // @ts-ignore - fix type
+      this.transcription.connect(this.webex.credentials.supertoken.access_token);
+    }
+    catch (error) {
+      LoggerProxy.logger.error(`Meeting:index#receiveTranscription --> ${error}`);
+      Metrics.sendBehavioralMetric(
+        BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_FAILURE,
+        {
+          correlation_id: this.correlationId,
+          reason: error.message,
+          stack: error.stack
+        }
+      );
+    }
+  }
+
+  /**
+   * Process reactions
+   * @private
+   * @returns {Promise<void>} a promise to process reactions
+   */
+  private async receiveReaction() {
+      this.reactions = new Reactions(
+        // webSocketUrl,
+        // @ts-ignore - fix type
+        // this.webex.sessionId,
+        this.members,
+        // @ts-ignore
+        this.webex.internal.llm,
+      );
+
+      // ----- 
+
+      // retrieve and pass the payload
+      this.reactions.subscribe((payload) => {
         Trigger.trigger(
           this,
           {
@@ -3739,9 +3814,16 @@ export default class Meeting extends StatelessWebexPlugin {
               LoggerProxy.logger.info('Meeting:index#join --> enabled to recieve transcription!');
             }
           }
+          // @ts-ignore - config coming from registerPlugin
+          if (this.config.receiveReaction || options.receiveReaction ) {
+            if (this.isReactionsSupported()) {
+              await this.receiveReaction();
+              LoggerProxy.logger.info('Meeting:index#join --> enabled to recieve reaction!');
+            }
+          }
         }
         else {
-          LoggerProxy.logger.error('Meeting:index#join --> Receving transcription is not supported on this platform');
+          LoggerProxy.logger.error('Meeting:index#join --> Receving transcription and meeting reactions are not supported on this platform');
         }
 
         return join;
