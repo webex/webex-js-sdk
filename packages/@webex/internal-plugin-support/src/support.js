@@ -110,13 +110,19 @@ const Support = WebexPlugin.extend({
       });
   },
 
+  /**
+   * Constructs an array of key-value pairs for log upload.
+   * @param {*} metadata
+   * @returns {array}
+   */
   _constructFileMetadata(metadata) {
     const metadataArray = [
       'locusId',
       'callStart',
       'feedbackId',
       'correlationId',
-      'meetingId'
+      'meetingId',
+      'surveySessionId',
     ].map((key) => {
       if (metadata[key]) {
         return {
