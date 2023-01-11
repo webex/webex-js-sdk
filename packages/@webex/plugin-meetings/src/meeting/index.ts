@@ -75,6 +75,8 @@ import {ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
 import {RemoteMediaManager, Event as RemoteMediaManagerEvent} from '../multistream/remoteMediaManager';
 import {MultistreamMedia} from '../multistream/multistreamMedia';
+import {SkinTones, Reactions} from '../reactions/reactions';
+import {Reaction, ReactionType, SkinToneType} from '../reactions/reactions.type';
 
 import InMeetingActions from './in-meeting-actions';
 
@@ -408,7 +410,7 @@ export default class Meeting extends StatelessWebexPlugin {
   mediaId?: string;
   meetingFiniteStateMachine: any;
   meetingInfo: object;
-  meetingRequest: any;
+  meetingRequest: MeetingRequest;
   members: Members;
   options: object;
   orgId: string;
@@ -477,7 +479,6 @@ export default class Meeting extends StatelessWebexPlugin {
   resourceUrl: string;
   selfId: string;
   state: any;
-
   namespace = MEETINGS;
 
   /**
@@ -6523,4 +6524,35 @@ export default class Meeting extends StatelessWebexPlugin {
     clearInterval(this.keepAliveTimerId);
     this.keepAliveTimerId = null;
   };
+
+  /**
+   * Send a reaction inside the meeting.
+   *
+   * @param {ReactionType} reactionType - type of reaction to be sent. Example: "thumbs_up"
+   * @param {SkinToneType} skinToneType - skin tone for the reaction. Example: "medium_dark"
+   * @returns {Promise}
+   * @public
+   * @memberof Meeting
+   */
+  public sendReaction(reactionType: ReactionType, skinToneType?: SkinToneType) {
+    const reactionChannelUrl = this.locusInfo?.controls?.reactions?.reactionChannelUrl as string;
+    const participantId = this.members.selfId;
+
+    const reactionData = Reactions[reactionType];
+
+    if (!reactionData) {
+      return Promise.reject(new Error(`${reactionType} is not a valid reaction.`));
+    }
+    const skinToneData = SkinTones[skinToneType] || SkinTones.normal;
+    const reaction: Reaction = {
+      ...reactionData,
+      tone: skinToneData
+    };
+
+    if (reactionChannelUrl) {
+      return this.meetingRequest.sendReaction({reactionChannelUrl, reaction, participantId});
+    }
+
+    return Promise.reject(new Error('Error sending reaction, service url not found.'));
+  }
 }
