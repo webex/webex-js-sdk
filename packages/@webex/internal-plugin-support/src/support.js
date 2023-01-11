@@ -122,7 +122,7 @@ const Support = WebexPlugin.extend({
       'feedbackId',
       'correlationId',
       'meetingId',
-      'surveySessionId',
+      'surveySessionId'
     ].map((key) => {
       if (metadata[key]) {
         return {
