@@ -792,4 +792,25 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       }
     });
   }
+
+  /**
+   * Make a network request to enable or disable reactions.
+   * @param {boolean} options.enable - determines if we need to enable or disable.
+   * @param {locusUrl} options.locusUrl
+   * @returns {Promise}
+   */
+  toggleReactions({enable, locusUrl, requestingParticipantId}: {enable: boolean, locusUrl: string, requestingParticipantId: string}) {
+    const uri = `${locusUrl}/${CONTROLS}`;
+
+    return this.request({
+      method: 'PUT',
+      uri,
+      body: {
+        reactions: {
+          enabled: enable
+        },
+        requestingParticipantId,
+      }
+    });
+  }
 }
