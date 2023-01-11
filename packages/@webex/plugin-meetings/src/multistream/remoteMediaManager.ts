@@ -403,10 +403,14 @@ export class RemoteMediaManager extends EventsScope {
     this.slots.audio.length = 0;
 
     // release screen share slots
-    this.receiveSlotManager.releaseSlot(this.slots.screenShare.audio);
-    this.receiveSlotManager.releaseSlot(this.slots.screenShare.video);
-    this.slots.screenShare.audio = undefined;
-    this.slots.screenShare.video = undefined;
+    if (this.slots.screenShare.audio) {
+      this.receiveSlotManager.releaseSlot(this.slots.screenShare.audio);
+      this.slots.screenShare.audio = undefined;
+    }
+    if (this.slots.screenShare.video) {
+      this.receiveSlotManager.releaseSlot(this.slots.screenShare.video);
+      this.slots.screenShare.video = undefined;
+    }
 
     // release video slots
     this.receiveSlotAllocations = {activeSpeaker: {}, receiverSelected: {}};
@@ -769,20 +773,14 @@ export class RemoteMediaManager extends EventsScope {
       this.media.screenShare.video = undefined;
 
       if (this.currentLayout?.screenShareVideo) {
-        if (this.config.screenShare.video) {
-          // we create a group of 1, because for screen share we need to use the "active speaker" policy
-          this.media.screenShare.video = new RemoteMediaGroup(
-            this.mediaRequestManagers.screenShareVideo,
-            [this.slots.screenShare.video],
-            255,
-            false,
-            {resolution: this.currentLayout.screenShareVideo.size}
-          );
-        } else {
-          LoggerProxy.logger.warn(
-            `a layout with screen share is used (${this.currentLayoutId}), but screen share video is disabled in config id`
-          );
-        }
+        // we create a group of 1, because for screen share we need to use the "active speaker" policy
+        this.media.screenShare.video = new RemoteMediaGroup(
+          this.mediaRequestManagers.screenShareVideo,
+          [this.slots.screenShare.video],
+          255,
+          false,
+          {resolution: this.currentLayout.screenShareVideo.size}
+        );
       }
 
       this.mediaRequestManagers.screenShareVideo.commit();

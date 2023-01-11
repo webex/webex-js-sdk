@@ -1559,9 +1559,12 @@ function createScreenshareView() {
   allVideoPanes.thumbnails = [];
 
   // create the thumbnails
+  // numOfThumbnails needs to be equal to DefaultConfiguration.video.layouts.ScreenShareView.activeSpeakerVideoPaneGroups[0].numPanes,
+  // but we can't import it, so using a hardcoded value
+  const numOfThumbnails = 8;
   const thumbnailsContainer = createContainer();
 
-  for (let i = 0; i < 8; i += 1) {
+  for (let i = 0; i < numOfThumbnails; i += 1) {
     allVideoPanes.thumbnails.push(addVideoPane(thumbnailsContainer, 'small-video'));
   }
 
