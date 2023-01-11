@@ -100,7 +100,11 @@ export const transforms = toArray('outbound', {
       .then(() => {
         key = key || activity[KEY];
       })
-      .then(() => ctx.transform('encryptObject', key, activity.object));
+      .then(() => ctx.transform('encryptObject', key, activity.object)).then(() => {
+        console.log('@@@: encryption activity.origin', key);
+
+        return ctx.transform('encryptObject', key, activity.origin);
+      });
   },
 
   maybeEncryptTarget(ctx, key, activity) {
