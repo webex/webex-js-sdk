@@ -28,6 +28,8 @@ describe('plugin-meetings', () => {
         isRealTimeTranslationEnabled: null,
         canSelectSpokenLanguages: null,
         waitingForOthersToJoin: null,
+        canEnableReactions: null,
+        canSendReactions: null,
         ...expected
       };
 
@@ -61,7 +63,9 @@ describe('plugin-meetings', () => {
       'canViewCaptionPanel',
       'isRealTimeTranslationEnabled',
       'canSelectSpokenLanguages',
-      'waitingForOthersToJoin'
+      'waitingForOthersToJoin',
+      'canEnableReactions',
+      'canSendReactions'
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();

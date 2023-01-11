@@ -2035,6 +2035,9 @@ export default class Meeting extends StatelessWebexPlugin {
           isRealTimeTranslationEnabled: MeetingUtil.isRealTimeTranslationEnabled(payload.info.userDisplayHints),
           canSelectSpokenLanguages: MeetingUtil.canSelectSpokenLanguages(payload.info.userDisplayHints),
           waitingForOthersToJoin: MeetingUtil.waitingForOthersToJoin(payload.info.userDisplayHints),
+          canEnableReactions: MeetingUtil.canEnableReactions(this.inMeetingActions.canEnableReactions, payload.info.userDisplayHints),
+          canSendReactions: MeetingUtil.canSendReactions(this.inMeetingActions.canSendReactions, payload.info.userDisplayHints),
+
         });
 
         if (changed) {

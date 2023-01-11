@@ -33,6 +33,8 @@ interface IInMeetingActions {
   isRealTimeTranslationEnabled?: boolean;
   canSelectSpokenLanguages?: boolean;
   waitingForOthersToJoin?: boolean;
+  canEnableReactions?: boolean;
+  canSendReactions?: boolean;
 }
 
 /**
@@ -85,6 +87,10 @@ export default class InMeetingActions implements IInMeetingActions {
 
   waitingForOthersToJoin = null;
 
+  canEnableReactions = null;
+
+  canSendReactions = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -112,6 +118,8 @@ export default class InMeetingActions implements IInMeetingActions {
     isRealTimeTranslationEnabled: this.isRealTimeTranslationEnabled,
     canSelectSpokenLanguages: this.canSelectSpokenLanguages,
     waitingForOthersToJoin: this.waitingForOthersToJoin,
+    canEnableReactions: this.canEnableReactions,
+    canSendReactions: this.canSendReactions,
   });
 
   set = (actions: Partial<IInMeetingActions>) => {
