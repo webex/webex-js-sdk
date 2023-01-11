@@ -100,21 +100,31 @@ export class StatsAnalyzer extends EventsScope {
     };
   }
 
+  /**
+   * Resets cumulative stats arrays.
+   *
+   * @public
+   * @memberof StatsAnalyzer
+   * @returns {void}
+   */
   resetStatsResults() {
-    this.statsResults.audio.send.meanRemoteJitter = [];
-    this.statsResults.video.send.meanRemoteJitter = [];
-    this.statsResults.share.send.meanRemoteJitter = [];
+    Object.keys(this.statsResults).forEach((mediaType) => {
+      if (mediaType.includes('recv')) {
+        this.statsResults[mediaType].recv.meanRtpJitter = [];
+        this.statsResults[mediaType].recv.meanRtpJitter = [];
+        this.statsResults[mediaType].recv.meanRtpJitter = [];
+      }
 
-    this.statsResults.audio.recv.meanRtpJitter = [];
+      if (mediaType.includes('send')) {
+        this.statsResults.audio.send.meanRemoteJitter = [];
+        this.statsResults.video.send.meanRemoteJitter = [];
+        this.statsResults.share.send.meanRemoteJitter = [];
 
-    // TODO: currently no values are present
-    this.statsResults.video.recv.meanRtpJitter = [];
-    this.statsResults.share.recv.meanRtpJitter = [];
-
-    // Reset the roundTripTime
-    this.statsResults.audio.send.meanRoundTripTime = [];
-    this.statsResults.video.send.meanRoundTripTime = [];
-    this.statsResults.share.send.meanRoundTripTime = [];
+        this.statsResults.audio.send.meanRoundTripTime = [];
+        this.statsResults.video.send.meanRoundTripTime = [];
+        this.statsResults.share.send.meanRoundTripTime = [];
+      }
+    });
   }
 
   /**
@@ -180,7 +190,27 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.videoReceive.push(videoReceiver);
-      } else if (mediaType.includes('share-send')) {
+      } else if (mediaType.includes('audio-share-send')) {
+        const audioSender = cloneDeep(emptyAudioTransmit);
+
+        getAudioSenderMqa({
+          audioSender,
+          statsResults: this.statsResults,
+          lastMqaDataSent: this.lastMqaDataSent,
+          mediaType,
+        });
+        newMqa.audioTransmit.push(audioSender);
+      } else if (mediaType.includes('audio-share-recv')) {
+        const audioReceiver = cloneDeep(emptyAudioReceive);
+
+        getAudioReceiverMqa({
+          audioReceiver,
+          statsResults: this.statsResults,
+          lastMqaDataSent: this.lastMqaDataSent,
+          mediaType,
+        });
+        newMqa.audioReceive.push(audioReceiver);
+      } else if (mediaType.includes('video-share-send')) {
         const videoSender = cloneDeep(emptyVideoTransmit);
 
         getVideoSenderMqa({
@@ -190,7 +220,7 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.videoTransmit.push(videoSender);
-      } else if (mediaType.includes('share-recv')) {
+      } else if (mediaType.includes('video-share-recv')) {
         const videoReceiver = cloneDeep(emptyVideoReceive);
 
         getVideoReceiverMqa({
@@ -207,15 +237,26 @@ export class StatsAnalyzer extends EventsScope {
 
     // Adding peripheral information
     newMqa.intervalMetadata.peripherals = [];
+
+    let audioTrackLabel = _UNKNOWN_;
+    let videoTrackLabel = _UNKNOWN_;
+
+    // Find track labels
+    Object.keys(this.statsResults).forEach((mediaType) => {
+      if (mediaType.includes('video-send') && this.statsResults[mediaType].trackLabel) {
+        videoTrackLabel = this.statsResults[mediaType].trackLabel;
+      } else if (mediaType.includes('audio-send') && this.statsResults[mediaType].trackLabel) {
+        audioTrackLabel = this.statsResults[mediaType].trackLabel;
+      }
+    });
+
     newMqa.intervalMetadata.peripherals.push({information: _UNKNOWN_, name: MEDIA_DEVICES.SPEAKER});
     newMqa.intervalMetadata.peripherals.push({
-      information:
-        this.statsResults[STATS.AUDIO_CORRELATE][STATS.SEND_DIRECTION].trackLabel || _UNKNOWN_,
+      information: audioTrackLabel,
       name: MEDIA_DEVICES.MICROPHONE,
     });
     newMqa.intervalMetadata.peripherals.push({
-      information:
-        this.statsResults[STATS.VIDEO_CORRELATE][STATS.SEND_DIRECTION].trackLabel || _UNKNOWN_,
+      information: videoTrackLabel,
       name: MEDIA_DEVICES.CAMERA,
     });
 
@@ -430,23 +471,24 @@ export class StatsAnalyzer extends EventsScope {
   /**
    * Filters the get stats results for types
    * @private
-   * @param {Array} getStatsResults
+   * @param {Array} statsItem
    * @param {String} type
    * @param {boolean} isSender
    * @returns {void}
    */
-  private filterAndParseGetStatsResults(
-    getStatsResults: Array<any>,
-    type: string,
-    isSender: boolean
-  ) {
+  filterAndParseGetStatsResults(statsItem, type, isSender) {
     const {types} = DEFAULT_GET_STATS_FILTER;
 
-    getStatsResults.forEach((result) => {
+    statsItem.report.forEach((result) => {
       if (types.includes(result.type)) {
         this.parseGetStatsResult(result, type, isSender);
       }
     });
+
+    if (this.statsResults[type]) {
+      this.statsResults[type].direction = statsItem.currentDirection;
+      this.statsResults[type].trackLabel = statsItem.localTrackLabel;
+    }
   }
 
   /**
@@ -825,22 +867,17 @@ export class StatsAnalyzer extends EventsScope {
         this.filterAndParseGetStatsResults(receiver, `audio-recv-${i}`, false)
       );
       transceiverStats.screenShareVideo.senders.forEach((sender, i) =>
-        this.filterAndParseGetStatsResults(sender, `share-send-${i}`, true)
+        this.filterAndParseGetStatsResults(sender, `video-share-send-${i}`, true)
       );
       transceiverStats.screenShareVideo.receivers.forEach((receiver, i) =>
-        this.filterAndParseGetStatsResults(receiver, `share-recv-${i}`, false)
+        this.filterAndParseGetStatsResults(receiver, `video-share-recv-${i}`, false)
       );
-
-      // updates the current direction of media
-      this.statsResults[STATS.AUDIO_CORRELATE].direction = transceiverStats.audio.currentDirection;
-      this.statsResults[STATS.VIDEO_CORRELATE].direction = transceiverStats.video.currentDirection;
-      this.statsResults[STATS.SHARE_CORRELATE].direction =
-        transceiverStats.screenShareVideo.currentDirection;
-
-      this.statsResults[STATS.AUDIO_CORRELATE][STATS.SEND_DIRECTION].trackLabel =
-        transceiverStats.audio.localTrackLabel;
-      this.statsResults[STATS.VIDEO_CORRELATE][STATS.SEND_DIRECTION].trackLabel =
-        transceiverStats.video.localTrackLabel;
+      transceiverStats.screenShareAudio.senders.forEach((sender, i) =>
+        this.filterAndParseGetStatsResults(sender, `audio-share-send-${i}`, true)
+      );
+      transceiverStats.screenShareAudio.receivers.forEach((receiver, i) =>
+        this.filterAndParseGetStatsResults(receiver, `audio-share-recv-${i}`, false)
+      );
 
       this.compareLastStatsResult();
 
