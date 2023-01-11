@@ -803,7 +803,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     const uri = `${locusUrl}/${CONTROLS}`;
 
     return this.request({
-      method: 'PUT',
+      method: HTTP_VERBS.PUT,
       uri,
       body: {
         reactions: {
