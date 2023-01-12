@@ -761,30 +761,28 @@ export class RemoteMediaManager extends EventsScope {
   }
 
   private updateScreenShareVideoRemoteMediaObject() {
-    if (this.config.screenShare.video) {
-      this.invalidateCurrentRemoteMedia({
-        audio: false,
-        video: false,
-        screenShareAudio: false,
-        screenShareVideo: true,
-        commit: false,
-      });
+    this.invalidateCurrentRemoteMedia({
+      audio: false,
+      video: false,
+      screenShareAudio: false,
+      screenShareVideo: true,
+      commit: false,
+    });
 
-      this.media.screenShare.video = undefined;
+    this.media.screenShare.video = undefined;
 
-      if (this.currentLayout?.screenShareVideo) {
-        // we create a group of 1, because for screen share we need to use the "active speaker" policy
-        this.media.screenShare.video = new RemoteMediaGroup(
-          this.mediaRequestManagers.screenShareVideo,
-          [this.slots.screenShare.video],
-          255,
-          false,
-          {resolution: this.currentLayout.screenShareVideo.size}
-        );
-      }
-
-      this.mediaRequestManagers.screenShareVideo.commit();
+    if (this.currentLayout?.screenShareVideo) {
+      // we create a group of 1, because for screen share we need to use the "active speaker" policy
+      this.media.screenShare.video = new RemoteMediaGroup(
+        this.mediaRequestManagers.screenShareVideo,
+        [this.slots.screenShare.video],
+        255,
+        false,
+        {resolution: this.currentLayout.screenShareVideo.size}
+      );
     }
+
+    this.mediaRequestManagers.screenShareVideo.commit();
   }
 
   /**
