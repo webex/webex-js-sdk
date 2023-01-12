@@ -12,7 +12,6 @@ describe('TurnDiscovery', () => {
   let clock;
   let mockRoapRequest: RoapRequest;
   let testMeeting: any;
-  let testMeetingWithMultistreamEnabled: any;
 
   const FAKE_TURN_URL = 'turns:fakeTurnServer.com:443?transport=tcp';
   const FAKE_TURN_USERNAME = 'someUsernameFromServer';
