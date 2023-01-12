@@ -37,7 +37,8 @@ module.exports = {
         'default-case': 0,
         'no-undef': 'off',
         'react/prop-types': 'off',
-        'no-shadow': 'off',
+        'no-shadow': 0, // should be disabled for ts files as typescript/no-shadow covers it
+        '@typescript-eslint/no-shadow': 2,
         '@typescript-eslint/no-empty-function': 'off',
         '@typescript-eslint/ban-ts-comment': 'off',
         'import/prefer-default-export': 'warn',
@@ -170,8 +171,6 @@ module.exports = {
     ],
     'tsdoc/syntax': 'warn',
     'object-curly-spacing': 0,
-    'no-shadow': 0,
-    '@typescript-eslint/no-shadow': 1, // TODO: Fix this in a later PR
     indent: 'off',
     'import/prefer-default-export': 0,
     'jest/no-hooks': [

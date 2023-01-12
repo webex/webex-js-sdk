@@ -2711,6 +2711,7 @@ export default class Meeting extends StatelessWebexPlugin {
         VIDEO_TRACK: '1',
         SHARE_TRACK: '2',
       };
+      // eslint-disable-next-line @typescript-eslint/no-shadow
       let eventType = null;
       const mediaTrack = event.track;
       let trackMediaID = null;
@@ -2843,6 +2844,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @returns {void}
      * @inner
      */
+    // eslint-disable-next-line @typescript-eslint/no-shadow
     const triggerMediaStoppedEvent = (mediaType: string) => {
       Trigger.trigger(
         this,

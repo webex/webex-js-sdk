@@ -463,9 +463,12 @@ const Credentials = WebexPlugin.extend({
     // while I like #2 from a code simplicity standpoint, the third-party DX
     // isn't great
     if (this.config.jwtRefreshCallback) {
-      return this.config
-        .jwtRefreshCallback(this.webex)
-        .then((jwt) => this.webex.authorization.requestAccessTokenFromJwt({jwt}));
+      return (
+        this.config
+          .jwtRefreshCallback(this.webex)
+          // eslint-disable-next-line no-shadow
+          .then((jwt) => this.webex.authorization.requestAccessTokenFromJwt({jwt}))
+      );
     }
 
     if (this.webex.internal.services) {

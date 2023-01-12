@@ -157,6 +157,7 @@ Media.getLocalMedia = (options: any, config: object) => {
  * @returns {Object} returns direction tracks to be added in transceiver
  */
 Media.checkTracks = (trackType: string, track: object, receiveTracks: boolean) => {
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   const getDirection = (sendTracks, receiveTracks) => {
     if (sendTracks && receiveTracks) {
       return 'sendrecv';

@@ -366,54 +366,57 @@ pc.setRemoteSessionDetails = (
     // remove any xtls candidates
     sdp = sdp.replace(/^a=candidate:.*xTLS.*\r\n/gim, '');
 
-    return peerConnection
-      .setRemoteDescription(
-        new window.RTCSessionDescription({
-          type: typeStr,
-          sdp,
+    return (
+      peerConnection
+        .setRemoteDescription(
+          new window.RTCSessionDescription({
+            type: typeStr,
+            sdp,
+          })
+        )
+        .then(() => {
+          if (peerConnection.signalingState === SDP.STABLE) {
+            Metrics.postEvent({
+              event: eventType.REMOTE_SDP_RECEIVED,
+              meetingId,
+            });
+          }
         })
-      )
-      .then(() => {
-        if (peerConnection.signalingState === SDP.STABLE) {
-          Metrics.postEvent({
+        // eslint-disable-next-line @typescript-eslint/no-shadow
+        .catch((error) => {
+          LoggerProxy.logger.error(
+            `Peer-connection-manager:index#setRemoteDescription --> ${error} missing remotesdp`
+          );
+
+          const metricName = BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE;
+          const data = {
+            correlation_id: meetingId,
+            reason: error.message,
+            stack: error.stack,
+          };
+          const metadata = {
+            type: error.name,
+          };
+
+          Metrics.sendBehavioralMetric(metricName, data, metadata);
+
+          return Metrics.postEvent({
             event: eventType.REMOTE_SDP_RECEIVED,
             meetingId,
+            data: {
+              canProceed: false,
+              errors: [
+                Metrics.generateErrorPayload(
+                  2001,
+                  true,
+                  error.name.MEDIA_ENGINE,
+                  'missing remoteSdp'
+                ),
+              ],
+            },
           });
-        }
-      })
-      .catch((error) => {
-        LoggerProxy.logger.error(
-          `Peer-connection-manager:index#setRemoteDescription --> ${error} missing remotesdp`
-        );
-
-        const metricName = BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE;
-        const data = {
-          correlation_id: meetingId,
-          reason: error.message,
-          stack: error.stack,
-        };
-        const metadata = {
-          type: error.name,
-        };
-
-        Metrics.sendBehavioralMetric(metricName, data, metadata);
-
-        return Metrics.postEvent({
-          event: eventType.REMOTE_SDP_RECEIVED,
-          meetingId,
-          data: {
-            canProceed: false,
-            errors: [
-              Metrics.generateErrorPayload(
-                2001,
-                true,
-                error.name.MEDIA_ENGINE,
-                'missing remoteSdp'
-              ),
-            ],
-          },
-        });
-      });
+        })
+    );
   }
 
   return Promise.reject(new MediaError('PeerConnection in wrong state'));
@@ -449,77 +452,80 @@ pc.createOffer = (
 
   peerConnection.enableExtmap = enableExtmap;
 
-  return peerConnection
-    .createOffer()
-    .then((description) => {
-      // bug https://bugs.chromium.org/p/chromium/issues/detail?id=1020642
-      // chrome currently generates RTX line irrespective of whether the server side supports it
-      // we are removing apt as well because its associated with rtx line
+  return (
+    peerConnection
+      .createOffer()
+      .then((description) => {
+        // bug https://bugs.chromium.org/p/chromium/issues/detail?id=1020642
+        // chrome currently generates RTX line irrespective of whether the server side supports it
+        // we are removing apt as well because its associated with rtx line
 
-      if (!enableRtx) {
-        description.sdp = description.sdp.replace(/\r\na=rtpmap:\d+ rtx\/\d+/g, '');
-        description.sdp = description.sdp.replace(/\r\na=fmtp:\d+ apt=\d+/g, '');
-      }
+        if (!enableRtx) {
+          description.sdp = description.sdp.replace(/\r\na=rtpmap:\d+ rtx\/\d+/g, '');
+          description.sdp = description.sdp.replace(/\r\na=fmtp:\d+ apt=\d+/g, '');
+        }
 
-      return peerConnection.setLocalDescription(description);
-    })
-    .then(() => pc.iceCandidate(peerConnection, {remoteQualityLevel}))
-    .then(() => {
-      if (!checkH264Support(peerConnection.sdp)) {
-        throw new MediaError(
-          'openH264 is downloading please Wait. Upload logs if not working on second try'
-        );
-      }
+        return peerConnection.setLocalDescription(description);
+      })
+      .then(() => pc.iceCandidate(peerConnection, {remoteQualityLevel}))
+      .then(() => {
+        if (!checkH264Support(peerConnection.sdp)) {
+          throw new MediaError(
+            'openH264 is downloading please Wait. Upload logs if not working on second try'
+          );
+        }
 
-      if (!enableExtmap) {
-        peerConnection.sdp = peerConnection.sdp.replace(/\na=extmap.*/g, '');
-      }
+        if (!enableExtmap) {
+          peerConnection.sdp = peerConnection.sdp.replace(/\na=extmap.*/g, '');
+        }
 
-      pc.setContentSlides(peerConnection);
+        pc.setContentSlides(peerConnection);
 
-      Metrics.postEvent({
-        event: eventType.LOCAL_SDP_GENERATED,
-        meetingId,
-      });
-
-      return peerConnection;
-    })
-    .catch((error) => {
-      LoggerProxy.logger.error(`Peer-connection-manager:index#createOffer --> ${error}`);
-      if (error instanceof InvalidSdpError) {
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE, {
-          correlation_id: meetingId,
-          code: error.code,
-          reason: error.message,
+        Metrics.postEvent({
+          event: eventType.LOCAL_SDP_GENERATED,
+          meetingId,
         });
-      } else {
-        const metricName = BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE;
-        const data = {
-          correlation_id: meetingId,
-          reason: error.message,
-          stack: error.stack,
-        };
-        const metadata = {
-          type: error.name,
-        };
 
-        Metrics.sendBehavioralMetric(metricName, data, metadata);
-      }
+        return peerConnection;
+      })
+      // eslint-disable-next-line @typescript-eslint/no-shadow
+      .catch((error) => {
+        LoggerProxy.logger.error(`Peer-connection-manager:index#createOffer --> ${error}`);
+        if (error instanceof InvalidSdpError) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE, {
+            correlation_id: meetingId,
+            code: error.code,
+            reason: error.message,
+          });
+        } else {
+          const metricName = BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE;
+          const data = {
+            correlation_id: meetingId,
+            reason: error.message,
+            stack: error.stack,
+          };
+          const metadata = {
+            type: error.name,
+          };
 
-      Metrics.postEvent({
-        event: eventType.LOCAL_SDP_GENERATED,
-        meetingId,
-        data: {
-          canProceed: false,
-          errors: [
-            // @ts-ignore
-            Metrics.generateErrorPayload(2001, true, error.name.MEDIA_ENGINE),
-          ],
-        },
-      });
-      pc.close(peerConnection);
-      throw error;
-    });
+          Metrics.sendBehavioralMetric(metricName, data, metadata);
+        }
+
+        Metrics.postEvent({
+          event: eventType.LOCAL_SDP_GENERATED,
+          meetingId,
+          data: {
+            canProceed: false,
+            errors: [
+              // @ts-ignore
+              Metrics.generateErrorPayload(2001, true, error.name.MEDIA_ENGINE),
+            ],
+          },
+        });
+        pc.close(peerConnection);
+        throw error;
+      })
+  );
 };
 
 /**
@@ -619,47 +625,50 @@ pc.createAnswer = (
     return Promise.resolve(peerConnection);
   }
 
-  return pc
-    .setRemoteSessionDetails(peerConnection, OFFER, params.offerSdp, meetingId)
-    .then(() => peerConnection.createAnswer(params.sdpConstraints))
-    .then((answer) => peerConnection.setLocalDescription(answer))
-    .then(() => pc.iceCandidate(peerConnection, {remoteQualityLevel}))
-    .then(() => {
-      peerConnection.sdp = limitBandwidth(peerConnection.localDescription.sdp);
-      peerConnection.sdp = PeerConnectionUtils.convertCLineToIpv4(peerConnection.sdp);
-      peerConnection.sdp = setRemoteVideoConstraints(peerConnection.sdp, remoteQualityLevel);
+  return (
+    pc
+      .setRemoteSessionDetails(peerConnection, OFFER, params.offerSdp, meetingId)
+      .then(() => peerConnection.createAnswer(params.sdpConstraints))
+      .then((answer) => peerConnection.setLocalDescription(answer))
+      .then(() => pc.iceCandidate(peerConnection, {remoteQualityLevel}))
+      .then(() => {
+        peerConnection.sdp = limitBandwidth(peerConnection.localDescription.sdp);
+        peerConnection.sdp = PeerConnectionUtils.convertCLineToIpv4(peerConnection.sdp);
+        peerConnection.sdp = setRemoteVideoConstraints(peerConnection.sdp, remoteQualityLevel);
 
-      if (!checkH264Support(peerConnection.sdp)) {
-        throw new MediaError(
-          'openH264 is downloading please Wait. Upload logs if not working on second try'
+        if (!checkH264Support(peerConnection.sdp)) {
+          throw new MediaError(
+            'openH264 is downloading please Wait. Upload logs if not working on second try'
+          );
+        }
+
+        return peerConnection;
+      })
+      // eslint-disable-next-line @typescript-eslint/no-shadow
+      .catch((error) => {
+        if (error instanceof InvalidSdpError) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE, {
+            correlation_id: meetingId,
+          });
+        } else {
+          const metricName = BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE;
+          const data = {
+            correlation_id: meetingId,
+            reason: error.message,
+            stack: error.stack,
+          };
+          const metadata = {
+            type: error.name,
+          };
+
+          Metrics.sendBehavioralMetric(metricName, data, metadata);
+        }
+
+        LoggerProxy.logger.error(
+          `PeerConnectionManager:index#setRemoteSessionDetails --> Error creating remote session, error: ${error}`
         );
-      }
-
-      return peerConnection;
-    })
-    .catch((error) => {
-      if (error instanceof InvalidSdpError) {
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE, {
-          correlation_id: meetingId,
-        });
-      } else {
-        const metricName = BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE;
-        const data = {
-          correlation_id: meetingId,
-          reason: error.message,
-          stack: error.stack,
-        };
-        const metadata = {
-          type: error.name,
-        };
-
-        Metrics.sendBehavioralMetric(metricName, data, metadata);
-      }
-
-      LoggerProxy.logger.error(
-        `PeerConnectionManager:index#setRemoteSessionDetails --> Error creating remote session, error: ${error}`
-      );
-    });
+      })
+  );
 };
 
 /**

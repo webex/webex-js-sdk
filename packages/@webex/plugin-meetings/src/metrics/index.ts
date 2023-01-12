@@ -1,5 +1,3 @@
-/* eslint-disable no-constructor-return */
-
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
@@ -124,6 +122,7 @@ class Metrics {
       Metrics.instance = this;
     }
 
+    // eslint-disable-next-line no-constructor-return
     return Metrics.instance;
   }
 
@@ -191,6 +190,7 @@ class Metrics {
    *   https://sqbu-github.cisco.com/WebExSquared/event-dictionary/blob/master/diagnostic-events.raml
    */
 
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   initPayload(eventType, identifiers, options) {
     const payload: any = {
       eventId: uuid.v4(),
@@ -282,6 +282,7 @@ class Metrics {
    * @memberof Metrics
    */
   public initMediaPayload(
+    // eslint-disable-next-line @typescript-eslint/no-shadow
     eventType: string,
     identifiers: {
       correlationId: string;
