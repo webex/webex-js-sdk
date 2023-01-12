@@ -1,6 +1,6 @@
 {
   "name": "@webex/internal-plugin-llm",
-  "version": "2.36.1",
+  "version": "2.37.0",
   "description": "",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "main": "dist/index.js",

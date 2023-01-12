@@ -1,6 +1,6 @@
 {
   "name": "@webex/test-users",
-  "version": "2.36.1",
+  "version": "2.37.0",
   "description": "Cisco Webex Test Users",
   "license": "MIT",
   "main": "dist/index.js",

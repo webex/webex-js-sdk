@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.37.0](https://github.com/webex/webex-js-sdk/compare/v2.36.1...v2.37.0) (2023-01-12)
+
+
+### Features
+
+* **post-meeting-survey:** allow survey session id in log metadata ([#2560](https://github.com/webex/webex-js-sdk/issues/2560)) ([96d4ccc](https://github.com/webex/webex-js-sdk/commit/96d4ccc477eb3c6d070864e3c5b9f74d0d82bf60))
+
 ### [2.36.1](https://github.com/webex/webex-js-sdk/compare/v2.36.0...v2.36.1) (2023-01-12)
 
 
