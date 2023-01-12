@@ -346,12 +346,16 @@ Media.getMedia = (audio: any | boolean, video: any | boolean, config: any) => {
         {
           deviceId: video.deviceId ? video.deviceId : undefined,
           width: 320,
-          height: 180
+          height: 180,
+          frameRate: video.frameRate ? video.frameRate : undefined,
+          facingMode: video.facingMode ? video.facingMode : undefined,
         } :
         {
           deviceId: video.deviceId ? video.deviceId : undefined,
           width: video.width ? video.width : defaultWidth,
-          height: video.height ? video.height : defaultHeight
+          height: video.height ? video.height : defaultHeight,
+          frameRate: video.frameRate ? video.frameRate : undefined,
+          facingMode: video.facingMode ? video.facingMode : undefined,
         } :
       false,
     fake: process.env.NODE_ENV === 'test' // Special case to get fake media for Firefox browser for testing
