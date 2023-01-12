@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.36.1](https://github.com/webex/webex-js-sdk/compare/v2.36.0...v2.36.1) (2023-01-12)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** facing mode in get media streams ([#2556](https://github.com/webex/webex-js-sdk/issues/2556)) ([7cbbdb7](https://github.com/webex/webex-js-sdk/commit/7cbbdb771c10571ae42dab1e8148b23229131af9))
+
 ## [2.36.0](https://github.com/webex/webex-js-sdk/compare/v2.35.4...v2.36.0) (2023-01-09)
 
 
