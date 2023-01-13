@@ -15,8 +15,8 @@ describe('plugin-device', () => {
     beforeEach('initialize webex with the device plugin', () => {
       webex = new MockWebex({
         children: {
-          device: Device
-        }
+          device: Device,
+        },
       });
 
       const clonedDTO = cloneDeep(dto);
@@ -35,20 +35,17 @@ describe('plugin-device', () => {
           spy = sinon.spy();
           modifiedDTOFeatures = {
             ...dto.features,
-            user: [
-              ...dto.features.user,
-              ...dto.features.developer
-            ]
+            user: [...dto.features.user, ...dto.features.developer],
           };
         });
 
-        it('should trigger a \'change\' event', () => {
+        it("should trigger a 'change' event", () => {
           device.on('change', spy);
           device.features.set(modifiedDTOFeatures);
           assert.called(spy);
         });
 
-        it('should trigger a \'change:features\' event', () => {
+        it("should trigger a 'change:features' event", () => {
           device.on('change:features', spy);
           device.features.set(modifiedDTOFeatures);
           assert.called(spy);
@@ -60,12 +57,12 @@ describe('plugin-device', () => {
           device.checkNetworkReachability = sinon.spy();
         });
 
-        describe('when the \'intranetInactivityCheckUrl\' changes', () => {
-          beforeEach('change \'intranetInactivityCheckUrl\'', () => {
+        describe("when the 'intranetInactivityCheckUrl' changes", () => {
+          beforeEach("change 'intranetInactivityCheckUrl'", () => {
             device.intranetInactivityCheckUrl = 'https://not-a-url.com';
           });
 
-          it('should call \'checkNetworkReachability()\'', () => {
+          it("should call 'checkNetworkReachability()'", () => {
             assert.called(device.checkNetworkReachability);
           });
 
@@ -74,12 +71,12 @@ describe('plugin-device', () => {
           });
         });
 
-        describe('when the \'intranetInactivityDuration\' changes', () => {
-          beforeEach('change \'intranetInactivityDuration\'', () => {
+        describe("when the 'intranetInactivityDuration' changes", () => {
+          beforeEach("change 'intranetInactivityDuration'", () => {
             device.intranetInactivityDuration = 1234;
           });
 
-          it('should call \'checkNetworkReachability()\'', () => {
+          it("should call 'checkNetworkReachability()'", () => {
             assert.called(device.checkNetworkReachability);
           });
 
@@ -88,12 +85,12 @@ describe('plugin-device', () => {
           });
         });
 
-        describe('when the \'inNetworkInactivityDuration\' changes', () => {
-          beforeEach('change \'inNetworkInactivityDuration\'', () => {
+        describe("when the 'inNetworkInactivityDuration' changes", () => {
+          beforeEach("change 'inNetworkInactivityDuration'", () => {
             device.inNetworkInactivityDuration = 1234;
           });
 
-          it('should call \'checkNetworkReachability()\'', () => {
+          it("should call 'checkNetworkReachability()'", () => {
             assert.called(device.checkNetworkReachability);
             assert.isTrue(device.isReachabilityChecked);
           });
@@ -104,7 +101,7 @@ describe('plugin-device', () => {
     describe('derived properties', () => {
       describe('#registered', () => {
         describe('when the device does not have a url', () => {
-          beforeEach('remove the device\'s url', () => {
+          beforeEach("remove the device's url", () => {
             device.url = undefined;
           });
 
@@ -114,7 +111,7 @@ describe('plugin-device', () => {
         });
 
         describe('when the device does have a url', () => {
-          beforeEach('set the device\'s url', () => {
+          beforeEach("set the device's url", () => {
             device.url = dto.url;
           });
 
@@ -149,7 +146,7 @@ describe('plugin-device', () => {
           device.resetLogoutTimer = sinon.spy();
         });
 
-        it('should create a \'change:lastUserActivityDate\' listener', () => {
+        it("should create a 'change:lastUserActivityDate' listener", () => {
           device.setLogoutTimer(60000);
           device.trigger('change:lastUserActivityDate');
           assert.called(device.resetLogoutTimer);
@@ -173,10 +170,7 @@ describe('plugin-device', () => {
       });
 
       it('should serialize user feature keys', () => {
-        assert.hasAllKeys(
-          device.serialize().features.user,
-          Object.keys(dto.features.user)
-        );
+        assert.hasAllKeys(device.serialize().features.user, Object.keys(dto.features.user));
       });
     });
 
@@ -201,7 +195,7 @@ describe('plugin-device', () => {
         await result;
 
         assert.deepEqual(requestSpy.args[0][0].headers, {
-          'If-None-Match': 'etag-value'
+          'If-None-Match': 'etag-value',
         });
       });
 
@@ -228,7 +222,7 @@ describe('plugin-device', () => {
               val: 'true',
               value: true,
               mutable: true,
-              lastModified: '2015-06-29T20:02:48.033Z'
+              lastModified: '2015-06-29T20:02:48.033Z',
             },
           ],
           entitlement: [
@@ -236,18 +230,18 @@ describe('plugin-device', () => {
               key: '2',
               val: 'true',
               value: true,
-              mutable: false
-            }
+              mutable: false,
+            },
           ],
           user: [
             {
               key: '3',
               val: 'true',
               value: true,
-              mutable: true
-            }
+              mutable: true,
+            },
           ],
-          ...overrides
+          ...overrides,
         };
 
         return clonedDTO;
@@ -267,11 +261,9 @@ describe('plugin-device', () => {
 
         const response = {
           body: {
-            ...clonedDTO
+            ...clonedDTO,
           },
-          headers: {
-
-          }
+          headers: {},
         };
 
         checkFeatureNotPresent('developer', '1');
@@ -292,11 +284,11 @@ describe('plugin-device', () => {
 
         const response = {
           body: {
-            ...clonedDTO
+            ...clonedDTO,
           },
           headers: {
-            etag: 'etag-value'
-          }
+            etag: 'etag-value',
+          },
         };
 
         checkFeatureNotPresent('developer', '1');
@@ -320,11 +312,11 @@ describe('plugin-device', () => {
 
         const response = {
           body: {
-            ...clonedDTO
+            ...clonedDTO,
           },
           headers: {
-            etag: 'etag-value'
-          }
+            etag: 'etag-value',
+          },
         };
 
         checkFeatureNotPresent('developer', '1');
@@ -348,11 +340,11 @@ describe('plugin-device', () => {
 
         const response = {
           body: {
-            ...clonedDTO
+            ...clonedDTO,
           },
           headers: {
-            etag: 'different-etag-value'
-          }
+            etag: 'different-etag-value',
+          },
         };
 
         checkFeatureNotPresent('developer', '1');
@@ -376,7 +368,7 @@ describe('plugin-device', () => {
               val: 'false',
               value: false,
               mutable: true,
-              lastModified: '2015-06-29T20:02:48.033Z'
+              lastModified: '2015-06-29T20:02:48.033Z',
             },
           ],
           entitlement: [
@@ -384,27 +376,26 @@ describe('plugin-device', () => {
               key: '2',
               val: 'false',
               value: false,
-              mutable: false
-            }
+              mutable: false,
+            },
           ],
           user: [
             {
               key: '3',
               val: 'false',
               value: false,
-              mutable: true
-            }
+              mutable: true,
+            },
           ],
         });
 
-
         const newResponse = {
           body: {
-            ...newClonedDTO
+            ...newClonedDTO,
           },
           headers: {
-            etag: 'different-etag-value'
-          }
+            etag: 'different-etag-value',
+          },
         };
 
         device.processRegistrationSuccess(newResponse);

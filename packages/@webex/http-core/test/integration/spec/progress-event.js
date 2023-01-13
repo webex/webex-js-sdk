@@ -47,35 +47,35 @@ describe('http-core', () => {
           {
             loaded: undefined,
             total: undefined,
-            result: false
+            result: false,
           },
           {
             loaded: 10,
             total: undefined,
-            result: false
+            result: false,
           },
           {
             loaded: undefined,
             total: 10,
-            result: false
+            result: false,
           },
           {
             loaded: 10,
             total: 10,
-            result: true
+            result: true,
           },
           {
             loaded: 10,
             total: 0,
-            result: false
+            result: false,
           },
           {
             loaded: 0,
             total: 0,
-            result: false
-          }
+            result: false,
+          },
         ].forEach((item) => {
-          assert.equal((new ProgressEvent(item.loaded, item.total)).lengthComputable, item.result);
+          assert.equal(new ProgressEvent(item.loaded, item.total).lengthComputable, item.result);
         });
       });
     });

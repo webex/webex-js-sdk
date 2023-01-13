@@ -13,8 +13,8 @@ registerInternalPlugin('flag', Flag, {
   config,
   payloadTransformer: {
     predicates: [],
-    transforms: []
-  }
+    transforms: [],
+  },
 });
 
 export {default} from './flag';

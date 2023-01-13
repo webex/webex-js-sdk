@@ -27,8 +27,8 @@ describe('plugin-metrics', () => {
     beforeEach(() => {
       webex = new MockWebex({
         children: {
-          metrics: Metrics
-        }
+          metrics: Metrics,
+        },
       });
 
       webex.config.metrics = config.metrics;
@@ -37,7 +37,7 @@ describe('plugin-metrics', () => {
         return Promise.resolve({
           statusCode: 204,
           body: undefined,
-          options
+          options,
         });
       };
       sinon.spy(webex, 'request');
@@ -58,14 +58,15 @@ describe('plugin-metrics', () => {
         it('clears the queue', () => {
           clock.uninstall();
 
-          return webex.internal.metrics.callDiagnosticEventsBatcher.request({
-            type: 'diagnostic-event',
-            eventPayload: {
-              originTime: {
-                triggered: 'mock triggered timestamp'
-              }
-            }
-          })
+          return webex.internal.metrics.callDiagnosticEventsBatcher
+            .request({
+              type: 'diagnostic-event',
+              eventPayload: {
+                originTime: {
+                  triggered: 'mock triggered timestamp',
+                },
+              },
+            })
             .then(() => {
               assert.calledOnce(webex.request);
               assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
@@ -85,21 +86,23 @@ describe('plugin-metrics', () => {
 
           sinon.stub(webex, 'request').callsFake((options) => {
             options.headers = {
-              trackingid: count
+              trackingid: count,
             };
 
             count += 1;
             if (count < 9) {
-              return Promise.reject(new WebexHttpError.NetworkOrCORSError({
-                statusCode: 0,
-                options
-              }));
+              return Promise.reject(
+                new WebexHttpError.NetworkOrCORSError({
+                  statusCode: 0,
+                  options,
+                })
+              );
             }
 
             return Promise.resolve({
               statusCode: 204,
               body: undefined,
-              options
+              options,
             });
           });
 
@@ -107,13 +110,15 @@ describe('plugin-metrics', () => {
             type: 'diagnostic-event',
             eventPayload: {
               originTime: {
-                triggered: 'mock triggered timestamp'
-              }
-            }
+                triggered: 'mock triggered timestamp',
+              },
+            },
           });
 
           return promiseTick(50)
-            .then(() => assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 1))
+            .then(() =>
+              assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 1)
+            )
             .then(() => clock.tick(config.metrics.batcherWait))
             .then(() => assert.calledOnce(webex.request))
 
@@ -166,11 +171,21 @@ describe('plugin-metrics', () => {
             .then(() => assert.callCount(webex.request, 9))
 
             .then(() => promiseTick(50))
-            .then(() => assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0))
+            .then(() =>
+              assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0)
+            )
             .then(() => promise)
             .then(() => {
-              assert.lengthOf(webex.request.args[1][0].body.metrics, 1, 'Reenqueuing the metric once did not increase the number of metrics to be submitted');
-              assert.lengthOf(webex.request.args[2][0].body.metrics, 1, 'Reenqueuing the metric twice did not increase the number of metrics to be submitted');
+              assert.lengthOf(
+                webex.request.args[1][0].body.metrics,
+                1,
+                'Reenqueuing the metric once did not increase the number of metrics to be submitted'
+              );
+              assert.lengthOf(
+                webex.request.args[2][0].body.metrics,
+                1,
+                'Reenqueuing the metric twice did not increase the number of metrics to be submitted'
+              );
               assert.lengthOf(webex.internal.metrics.callDiagnosticEventsBatcher.queue, 0);
             });
         });

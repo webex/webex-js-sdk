@@ -23,7 +23,10 @@ module.exports = {
 
     // Merge commits tend to have previous commit messages in them, so we want
     // to ignore them for when checking for commands
-    if (!log.startsWith('Merge branch') && (log.includes('[ci skip]') || log.includes('[ci-skip]'))) {
+    if (
+      !log.startsWith('Merge branch') &&
+      (log.includes('[ci skip]') || log.includes('[ci-skip]'))
+    ) {
       console.log('skip');
 
       return;
@@ -35,8 +38,7 @@ module.exports = {
 
     if (!ignoreTooling && changed.includes('tooling')) {
       packages = await list();
-    }
-    else {
+    } else {
       packages = await updated({dependents: true});
     }
 
@@ -55,5 +57,5 @@ module.exports = {
     }
 
     console.log('run');
-  })
+  }),
 };

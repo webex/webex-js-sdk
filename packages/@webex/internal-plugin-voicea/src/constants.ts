@@ -8,7 +8,7 @@ export const EVENT_TRIGGERS = {
 
   NEW_CAPTION: 'voicea:newCaption',
   EVA_COMMAND: 'voicea:wxa',
-  HIGHLIGHT_CREATED: 'voicea:highlightCreated'
+  HIGHLIGHT_CREATED: 'voicea:highlightCreated',
 };
 
 export const VOICEA_RELAY_TYPES = {
@@ -16,7 +16,7 @@ export const VOICEA_RELAY_TYPES = {
   CLIENT_ANNOUNCEMENT: 'client.annc',
   TRANSLATION_REQUEST: 'voicea.transl.req',
   TRANSLATION_RESPONSE: 'voicea.transl.rsp',
-  TRANSCRIPTION: 'voicea.transcription'
+  TRANSCRIPTION: 'voicea.transcription',
 };
 
 export const TRANSCRIPTION_TYPE = {
@@ -26,7 +26,7 @@ export const TRANSCRIPTION_TYPE = {
   EVA_CANCEL: 'eva_cancel',
   HIGHLIGHT_CREATED: 'highlight_created',
   TRANSCRIPT_INTERIM_RESULTS: 'transcript_interim_results',
-  TRANSCRIPT_FINAL_RESULT: 'transcript_final_result'
+  TRANSCRIPT_FINAL_RESULT: 'transcript_final_result',
 };
 
 export const VOICEA = 'voicea';

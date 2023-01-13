@@ -29,15 +29,12 @@ npm install --save @webex/plugin-webhooks
 ## Usage
 
 ```js
-
 const Webex = require('webex');
 
 const webex = Webex.init();
-webex.webhooks.get(id)
-  .then((webhook) => {
-    console.log(webhook);
-  })
-
+webex.webhooks.get(id).then((webhook) => {
+  console.log(webhook);
+});
 ```
 
 ## Maintainers

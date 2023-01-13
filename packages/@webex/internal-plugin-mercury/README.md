@@ -21,14 +21,12 @@ npm install --save @webex/internal-plugin-mercury
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-mercury';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
-webex.internal.mercury.WHATEVER
-
+webex.internal.mercury.WHATEVER;
 ```
 
 ## Using A Proxy Agent To Open A Websocket Connection

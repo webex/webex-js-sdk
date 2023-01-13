@@ -1,5 +1,4 @@
 const CalendarUtil = {
-
   // calculate the end time for the meeting based on the duration so it's stored on
   // the scheduled meeting item, that way client can display start and end without
   // calculation on their side
@@ -13,8 +12,11 @@ const CalendarUtil = {
    * @memberof CalendarUtil
    */
   calculateEndTime(item) {
-    return {...item, endTime: new Date(new Date(item.start).getTime() + item.durationMinutes * 60000)};
-  }
+    return {
+      ...item,
+      endTime: new Date(new Date(item.start).getTime() + item.durationMinutes * 60000),
+    };
+  },
 };
 
 export default CalendarUtil;

@@ -17,20 +17,20 @@ const WebexCore = require('@webex/webex-core').default;
 const config = {
   hydraServiceUrl: process.env.HYDRA_SERVICE_URL || 'https://api.ciscospark.com/v1',
   credentials: {
-    clientType: 'confidential'
+    clientType: 'confidential',
   },
   device: {
-    ephemeral: true
+    ephemeral: true,
   },
   storage: {
     boundedAdapter: MemoryStoreAdapter,
-    unboundedAdapter: MemoryStoreAdapter
-  }
+    unboundedAdapter: MemoryStoreAdapter,
+  },
 };
 
 const Webex = WebexCore.extend({
   webex: true,
-  version: PACKAGE_VERSION
+  version: PACKAGE_VERSION,
 });
 
 Webex.init = function init(attrs = {}) {

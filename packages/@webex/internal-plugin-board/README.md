@@ -21,14 +21,12 @@ npm install --save @webex/internal-plugin-board
 ## Usage
 
 ```js
-
 import '@webex/internal-plugin-board';
 
 import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
-webex.internal.board.WHATEVER
-
+webex.internal.board.WHATEVER;
 ```
 
 ## Maintainers

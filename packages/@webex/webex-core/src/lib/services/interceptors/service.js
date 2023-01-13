@@ -39,16 +39,17 @@ export default class ServiceInterceptor extends Interceptor {
     const {service, resource} = options;
 
     // Attempt to collect the service url.
-    return services.waitForService({name: service})
+    return services
+      .waitForService({name: service})
       .then((serviceUrl) => {
         // Generate the combined service url and resource.
         options.uri = this.generateUri(serviceUrl, resource);
 
         return options;
       })
-      .catch(() => Promise.reject(new Error(
-        `service-interceptor: '${service}' is not a known service`
-      )));
+      .catch(() =>
+        Promise.reject(new Error(`service-interceptor: '${service}' is not a known service`))
+      );
   }
 
   /* eslint-disable class-methods-use-this */
@@ -93,7 +94,7 @@ export default class ServiceInterceptor extends Interceptor {
     }
 
     if (!options.service) {
-      throw new Error('a valid \'service\' parameter is required');
+      throw new Error("a valid 'service' parameter is required");
     }
   }
   /* eslint-enable class-methods-use-this, no-param-reassign */

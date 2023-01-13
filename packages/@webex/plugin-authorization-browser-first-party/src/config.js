@@ -15,23 +15,24 @@ export default {
 
     refreshCallback(webex, token) {
       /* eslint-disable camelcase */
-      return webex.request({
-        method: 'POST',
-        uri: token.config.tokenUrl,
-        form: {
-          grant_type: 'refresh_token',
-          redirect_uri: token.config.redirect_uri,
-          refresh_token: token.refresh_token
-        },
-        auth: {
-          user: token.config.client_id,
-          pass: token.config.client_secret,
-          sendImmediately: true
-        },
-        shouldRefreshAccessToken: false
-      })
+      return webex
+        .request({
+          method: 'POST',
+          uri: token.config.tokenUrl,
+          form: {
+            grant_type: 'refresh_token',
+            redirect_uri: token.config.redirect_uri,
+            refresh_token: token.refresh_token,
+          },
+          auth: {
+            user: token.config.client_id,
+            pass: token.config.client_secret,
+            sendImmediately: true,
+          },
+          shouldRefreshAccessToken: false,
+        })
         .then((res) => res.body);
       /* eslint-enable camelcase */
-    }
-  }
+    },
+  },
 };

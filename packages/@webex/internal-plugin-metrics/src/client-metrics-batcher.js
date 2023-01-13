@@ -22,11 +22,10 @@ const ClientMetricsBatcher = Batcher.extend({
       service: 'metrics',
       resource: 'clientmetrics',
       body: {
-        metrics: payload
-      }
+        metrics: payload,
+      },
     });
-  }
-
+  },
 });
 
 export default ClientMetricsBatcher;

@@ -8,15 +8,8 @@ import Device, {
   DeviceUrlInterceptor,
   FeatureCollection,
   FeatureModel,
-  FeaturesModel
+  FeaturesModel,
 } from '@webex/internal-plugin-device';
 
 export default Device;
-export {
-  config,
-  constants,
-  DeviceUrlInterceptor,
-  FeatureCollection,
-  FeatureModel,
-  FeaturesModel
-};
+export {config, constants, DeviceUrlInterceptor, FeatureCollection, FeatureModel, FeaturesModel};

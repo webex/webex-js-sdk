@@ -11,9 +11,13 @@ describe('webex-core', () => {
       let interceptor;
 
       beforeEach(() => {
-        interceptor = Reflect.apply(WebexTrackingIdInterceptor.create, {
-          sessionId: 'mock-webex_uuid'
-        }, []);
+        interceptor = Reflect.apply(
+          WebexTrackingIdInterceptor.create,
+          {
+            sessionId: 'mock-webex_uuid',
+          },
+          []
+        );
       });
 
       describe('#sequence', () => {
@@ -36,11 +40,13 @@ describe('webex-core', () => {
         });
 
         it('does not add a trackingid if one has already been added', () => {
-          assert.isFalse(interceptor.requiresTrackingId({
-            headers: {
-              trackingid: 'some id'
-            }
-          }));
+          assert.isFalse(
+            interceptor.requiresTrackingId({
+              headers: {
+                trackingid: 'some id',
+              },
+            })
+          );
         });
       });
 

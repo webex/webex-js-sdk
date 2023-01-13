@@ -1,4 +1,4 @@
-import RoapStateMachine from '../roap/state';
+import RoapStateMachine from './state';
 
 /* eslint-disable */
 const RoapCollection = {
@@ -27,7 +27,6 @@ const RoapCollection = {
         finished: false,
       };
       session.activeSequences += 1;
-
     }
     return session[seqId];
   },
@@ -57,8 +56,7 @@ const RoapCollection = {
       seq.finished = true;
       session.activeSequences -= 1;
     }
-  }
-
+  },
 };
 
 export default RoapCollection;

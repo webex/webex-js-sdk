@@ -11,15 +11,7 @@
     "checkRedundantAccess": true,
     "leadingUnderscoreAccess": "private"
   },
-  "requireCurlyBraces": [
-    "if",
-    "else",
-    "for",
-    "while",
-    "do",
-    "try",
-    "catch"
-  ],
+  "requireCurlyBraces": ["if", "else", "for", "while", "do", "try", "catch"],
   "requireSpaceAfterKeywords": [
     "if",
     "else",
@@ -31,9 +23,7 @@
     "try",
     "catch"
   ],
-  "disallowSpaceAfterKeywords": [
-    "it"
-  ],
+  "disallowSpaceAfterKeywords": ["it"],
   "requireParenthesesAroundIIFE": true,
   "requireSpacesInFunctionExpression": {
     "beforeOpeningCurlyBrace": true
@@ -66,22 +56,9 @@
     "||",
     "&&"
   ],
-  "disallowSpaceAfterPrefixUnaryOperators": [
-    "++",
-    "--",
-    "+",
-    "-",
-    "~",
-    "!"
-  ],
-  "disallowSpaceBeforePostfixUnaryOperators": [
-    "++",
-    "--"
-  ],
-  "disallowSpaceBeforeBinaryOperators": [
-    "/",
-    "*"
-  ],
+  "disallowSpaceAfterPrefixUnaryOperators": ["++", "--", "+", "-", "~", "!"],
+  "disallowSpaceBeforePostfixUnaryOperators": ["++", "--"],
+  "disallowSpaceBeforeBinaryOperators": ["/", "*"],
   "requireSpaceBeforeBinaryOperators": [
     "+",
     "-",
@@ -97,12 +74,8 @@
     "<=",
     "||",
     "&&"
-
   ],
-  "disallowSpaceAfterBinaryOperators": [
-    "/",
-    "*"
-  ],
+  "disallowSpaceAfterBinaryOperators": ["/", "*"],
   "requireSpaceAfterBinaryOperators": [
     "+",
     "-",
@@ -123,10 +96,7 @@
   "validateIndentation": 2,
   "disallowMixedSpacesAndTabs": true,
   "disallowTrailingWhitespace": true,
-  "requireKeywordsOnNewLine": [
-    "else",
-    "catch"
-  ],
+  "requireKeywordsOnNewLine": ["else", "catch"],
   "requireLineFeedAtFileEnd": true,
   "requireCapitalizedConstructors": true,
   "safeContextKeyword": "self",

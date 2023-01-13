@@ -22,32 +22,39 @@ nodeOnly(describe)('plugin-authorization-node', () => {
       webex = new MockWebex({
         children: {
           authorization: Authorization,
-          credentials: Credentials
-        }
+          credentials: Credentials,
+        },
       });
 
-      webex.request.returns(Promise.resolve({
-        statusCode: 200,
-        body: {
-          access_token: 'AT3',
-          token_type: 'Fake'
-        }
-      }));
+      webex.request.returns(
+        Promise.resolve({
+          statusCode: 200,
+          body: {
+            access_token: 'AT3',
+            token_type: 'Fake',
+          },
+        })
+      );
     });
 
     describe('#requestAuthorizationCodeGrant', () => {
-      it('requires a `code`', () => assert.isRejected(webex.authorization.requestAuthorizationCodeGrant(), /`options.code` is required/));
+      it('requires a `code`', () =>
+        assert.isRejected(
+          webex.authorization.requestAuthorizationCodeGrant(),
+          /`options.code` is required/
+        ));
 
-      it('exchanges an authorization code for an access token', () => webex.authorization.requestAuthorizationCodeGrant({code: 1})
-        .then(() => assert.equal(webex.credentials.supertoken.access_token, 'AT3')));
+      it('exchanges an authorization code for an access token', () =>
+        webex.authorization
+          .requestAuthorizationCodeGrant({code: 1})
+          .then(() => assert.equal(webex.credentials.supertoken.access_token, 'AT3')));
 
       it('sets #isAuthenticating', () => {
         const promise = webex.authorization.requestAuthorizationCodeGrant({code: 5});
 
         assert.isTrue(webex.authorization.isAuthenticating);
 
-        return promise
-          .then(() => assert.isFalse(webex.authorization.isAuthenticating));
+        return promise.then(() => assert.isFalse(webex.authorization.isAuthenticating));
       });
 
       it('sets #isAuthorizing', () => {
@@ -55,8 +62,7 @@ nodeOnly(describe)('plugin-authorization-node', () => {
 
         assert.isTrue(webex.authorization.isAuthorizing);
 
-        return promise
-          .then(() => assert.isFalse(webex.authorization.isAuthorizing));
+        return promise.then(() => assert.isFalse(webex.authorization.isAuthorizing));
       });
     });
   });

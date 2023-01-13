@@ -12,7 +12,11 @@ import EventsUtil from './util';
  */
 class Events extends EventEmitter {
   emit(scope, eventName, args) {
-    LoggerProxy.logger.debug(`${EventsUtil.getScopeLog(scope)}event#${eventName}${LoggerConfig.verboseEvents ? ` -- ${EventsUtil.getEventLog(args)}` : ''}`);
+    LoggerProxy.logger.debug(
+      `${EventsUtil.getScopeLog(scope)}event#${eventName}${
+        LoggerConfig.verboseEvents ? ` -- ${EventsUtil.getEventLog(args)}` : ''
+      }`
+    );
 
     return super.emit(eventName, args);
   }

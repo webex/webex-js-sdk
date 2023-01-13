@@ -31,7 +31,10 @@ exports.updated = async function updated({dependents, npm = !!process.env.CI}) {
     let transitive = new Set([...changedPackages]);
 
     for (const packageName of changedPackages) {
-      transitive = new Set([...transitive, ...await listDependents(packageName, {includeTransitive: true})]);
+      transitive = new Set([
+        ...transitive,
+        ...(await listDependents(packageName, {includeTransitive: true})),
+      ]);
     }
 
     return Array.from(transitive);
@@ -59,7 +62,12 @@ function fileToPackage(d) {
     return d[0];
   }
 
-  if (d.startsWith('docs') || d.startsWith('documentation') || d.startsWith('.github') || d.endsWith('.md')) {
+  if (
+    d.startsWith('docs') ||
+    d.startsWith('documentation') ||
+    d.startsWith('.github') ||
+    d.endsWith('.md')
+  ) {
     return 'docs';
   }
 

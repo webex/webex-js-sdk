@@ -15,19 +15,14 @@ const {Buffer} = require('safe-buffer');
  * @param {String} options.userId *no spaces*
  * @returns {Promise<object>}
  */
-module.exports = function createUser({
-  displayName,
-  expiresInSeconds,
-  issuer,
-  userId
-}) {
+module.exports = function createUser({displayName, expiresInSeconds, issuer, userId}) {
   const payload = {
-    name: displayName
+    name: displayName,
   };
   const options = {
     expiresIn: expiresInSeconds || 90 * 60,
     issuer: issuer || process.env.WEBEX_APPID_ORGID,
-    subject: userId || uuid.v4()
+    subject: userId || uuid.v4(),
   };
   const secret = Buffer.from(process.env.WEBEX_APPID_SECRET, 'base64');
 
@@ -36,10 +31,9 @@ module.exports = function createUser({
 
     return Promise.resolve({
       jwt: jwtToken,
-      secret: process.env.WEBEX_APPID_SECRET
+      secret: process.env.WEBEX_APPID_SECRET,
     });
-  }
-  catch (e) {
+  } catch (e) {
     return Promise.reject(e);
   }
 };

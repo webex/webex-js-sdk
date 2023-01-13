@@ -25,7 +25,7 @@ describe('webex-core', () => {
         resource: '/example/resource/',
         service: 'example',
         serviceUrl: 'https://www.example-service.com/',
-        uri: 'https://www.example-uri.com/'
+        uri: 'https://www.example-uri.com/',
       };
 
       options = {};
@@ -35,13 +35,9 @@ describe('webex-core', () => {
       let uri;
 
       beforeEach('generate uri', () => {
-        uri = interceptor.generateUri(
-          fixture.serviceUrl,
-          fixture.resource
-        );
+        uri = interceptor.generateUri(fixture.serviceUrl, fixture.resource);
       });
-      it('should remove all trailing slashes', () =>
-        assert.equal(uri.split('//').length, 2));
+      it('should remove all trailing slashes', () => assert.equal(uri.split('//').length, 2));
 
       it('should combine the service url and the resource', () => {
         assert.isTrue(uri.includes(fixture.serviceUrl));
@@ -101,9 +97,9 @@ describe('webex-core', () => {
           interceptor.webex = {
             internal: {
               services: {
-                waitForService: sinon.stub()
-              }
-            }
+                waitForService: sinon.stub(),
+              },
+            },
           };
 
           waitForService = interceptor.webex.internal.services.waitForService;
@@ -114,32 +110,25 @@ describe('webex-core', () => {
         });
 
         it('should normalize the options', () =>
-          interceptor.onRequest(options)
-            .then(() => assert.called(interceptor.normalizeOptions)));
+          interceptor.onRequest(options).then(() => assert.called(interceptor.normalizeOptions)));
 
         it('should validate the options', () =>
-          interceptor.onRequest(options)
-            .then(() => assert.called(interceptor.validateOptions)));
+          interceptor.onRequest(options).then(() => assert.called(interceptor.validateOptions)));
 
         it('should attempt to collect the service url', () =>
-          interceptor.onRequest(options)
-            .then(() => assert.calledWith(
-              waitForService,
-              {name: options.service}
-            )));
+          interceptor
+            .onRequest(options)
+            .then(() => assert.calledWith(waitForService, {name: options.service})));
 
         describe('when the service url was collected successfully', () => {
-          beforeEach('generate additional mocks', () => {
-
-          });
+          beforeEach('generate additional mocks', () => {});
 
           it('should attempt to generate the full uri', () =>
-            interceptor.onRequest(options)
-              .then(() => assert.calledWith(
-                interceptor.generateUri,
-                fixture.serviceUrl,
-                fixture.resource
-              )));
+            interceptor
+              .onRequest(options)
+              .then(() =>
+                assert.calledWith(interceptor.generateUri, fixture.serviceUrl, fixture.resource)
+              ));
 
           it('should return a resolved promise', () => {
             const promise = interceptor.onRequest(options);

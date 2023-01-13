@@ -23,14 +23,7 @@ export default class HttpError extends Exception {
    *
    * @type {Array}
    */
-  static errorKeys = [
-    'error',
-    'errorString',
-    'response',
-    'errorResponse',
-    'message',
-    'msg'
-  ];
+  static errorKeys = ['error', 'errorString', 'response', 'errorResponse', 'message', 'msg'];
 
   /**
    * Default error string if no error can be extracted from the http response
@@ -55,8 +48,7 @@ export default class HttpError extends Exception {
         try {
           body = JSON.parse(body);
           message = this.parseObject(body);
-        }
-        catch (err) {
+        } catch (err) {
           message = body;
         }
         break;
@@ -73,52 +65,52 @@ export default class HttpError extends Exception {
     Object.defineProperties(this, {
       body: {
         enumerable: false,
-        value: body
+        value: body,
       },
       httpVersion: {
         enumerable: false,
-        value: res.httpVersion
+        value: res.httpVersion,
       },
       headers: {
         enumerable: false,
-        value: res.headers || {}
+        value: res.headers || {},
       },
       rawHeaders: {
         enumerable: false,
-        value: res.rawHeaders || []
+        value: res.rawHeaders || [],
       },
       trailers: {
         enumerable: false,
-        value: res.trailers || {}
+        value: res.trailers || {},
       },
       rawTrailers: {
         enumerable: false,
-        value: res.rawTrailers || []
+        value: res.rawTrailers || [],
       },
       method: {
         enumerable: false,
-        value: res.method
+        value: res.method,
       },
       url: {
         enumerable: false,
-        value: res.url
+        value: res.url,
       },
       statusCode: {
         enumerable: false,
-        value: res.statusCode
+        value: res.statusCode,
       },
       statusMessage: {
         enumerable: false,
-        value: res.statusMessage
+        value: res.statusMessage,
       },
       socket: {
         enumerable: false,
-        value: res.socket
+        value: res.socket,
       },
       _res: {
         enumerable: false,
-        value: res
-      }
+        value: res,
+      },
     });
 
     return message;

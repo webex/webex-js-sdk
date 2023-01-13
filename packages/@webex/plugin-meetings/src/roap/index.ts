@@ -21,11 +21,11 @@ import Meeting from '../meeting';
  */
 
 /**
-  * @typedef {Object} SeqOptions
-  * @property {String} correlationId
-  * @property {String} mediaId
-  * @property {Number} seq
-  */
+ * @typedef {Object} SeqOptions
+ * @property {String} correlationId
+ * @property {String} mediaId
+ * @property {Number} seq
+ */
 
 /**
  * @class Roap
@@ -68,7 +68,13 @@ export default class Roap extends StatelessWebexPlugin {
      * @private
      * @memberof Roap
      */
-    this.roapHandler = new RoapHandler(this.attrs, this.options, this.sendRoapOK.bind(this), this.sendRoapAnswer.bind(this), this.roapFinished.bind(this));
+    this.roapHandler = new RoapHandler(
+      this.attrs,
+      this.options,
+      this.sendRoapOK.bind(this),
+      this.sendRoapAnswer.bind(this),
+      this.roapFinished.bind(this)
+    );
     /**
      * The Roap Request Server Proxy Object
      * @instance
@@ -101,18 +107,19 @@ export default class Roap extends StatelessWebexPlugin {
     const msg = data.message;
     const {correlationId} = data;
 
-    LoggerProxy.logger.log(`Roap:index#roapEvent --> Received Roap Message [${JSON.stringify(msg, null, 2)}]`);
+    LoggerProxy.logger.log(
+      `Roap:index#roapEvent --> Received Roap Message [${JSON.stringify(msg, null, 2)}]`
+    );
 
     if (msg.messageType === ROAP.ROAP_TYPES.TURN_DISCOVERY_RESPONSE) {
       // turn discovery is not part of normal roap protocol and so we are not handling it
       // through the usual roap state machine
       this.turnDiscovery.handleTurnDiscoveryResponse(msg);
-    }
-    else {
+    } else {
       this.roapHandler.submit({
         type: ROAP.RECEIVE_ROAP_MSG,
         msg,
-        correlationId
+        correlationId,
       });
     }
   }
@@ -129,7 +136,7 @@ export default class Roap extends StatelessWebexPlugin {
     this.roapHandler.submit({
       type: ROAP.RECEIVE_CALL_LEAVE,
       seq,
-      correlationId
+      correlationId,
     });
 
     return Promise.resolve();
@@ -145,11 +152,14 @@ export default class Roap extends StatelessWebexPlugin {
   private sendRoapOK(options: any) {
     return Promise.resolve().then(() => {
       // @ts-ignore
-      const meeting = this.webex.meetings.meetingCollection.getByKey('correlationId', options.correlationId);
+      const meeting = this.webex.meetings.meetingCollection.getByKey(
+        'correlationId',
+        options.correlationId
+      );
       const roapMessage = {
         messageType: ROAP.ROAP_TYPES.OK,
         version: ROAP.ROAP_VERSION,
-        seq: options.seq
+        seq: options.seq,
       };
 
       LoggerProxy.logger.log(`Roap:index#sendRoapOK --> ROAP OK sending with seq ${options.seq}`);
@@ -162,13 +172,13 @@ export default class Roap extends StatelessWebexPlugin {
           correlationId: options.correlationId,
           audioMuted: meeting.isAudioMuted(),
           videoMuted: meeting.isVideoMuted(),
-          meetingId: meeting.id
+          meetingId: meeting.id,
         })
         .then(() => {
           this.roapHandler.submit({
             type: ROAP.SEND_ROAP_MSG,
             msg: roapMessage,
-            correlationId: options.correlationId
+            correlationId: options.correlationId,
           });
           LoggerProxy.logger.log(`Roap:index#sendRoapOK --> ROAP OK sent with seq ${options.seq}`);
           meeting.setRoapSeq(options.seq);
@@ -189,18 +199,21 @@ export default class Roap extends StatelessWebexPlugin {
    */
   private sendRoapAnswer(options: any) {
     // @ts-ignore
-    const meeting = this.webex.meetings.meetingCollection.getByKey('correlationId', options.correlationId);
+    const meeting = this.webex.meetings.meetingCollection.getByKey(
+      'correlationId',
+      options.correlationId
+    );
     const roapMessage = {
       messageType: ROAP.ROAP_TYPES.ANSWER,
       sdps: options.sdps,
       version: ROAP.ROAP_VERSION,
-      seq: options.seq
+      seq: options.seq,
     };
 
     this.roapHandler.submit({
       type: ROAP.SEND_ROAP_MSG,
       msg: roapMessage,
-      correlationId: options.correlationId
+      correlationId: options.correlationId,
     });
 
     return this.roapRequest
@@ -211,7 +224,7 @@ export default class Roap extends StatelessWebexPlugin {
         correlationId: options.correlationId,
         audioMuted: options.audioMuted,
         videoMuted: options.videoMuted,
-        meetingId: meeting.id
+        meetingId: meeting.id,
       })
       .then(() => {
         meeting.setRoapSeq(options.seq);
@@ -219,7 +232,7 @@ export default class Roap extends StatelessWebexPlugin {
         this.roapHandler.submit({
           type: ROAP.SEND_ROAP_MSG_SUCCESS,
           seq: roapMessage.seq,
-          correlationId: meeting.correlationId
+          correlationId: meeting.correlationId,
         });
       });
   }
@@ -238,7 +251,7 @@ export default class Roap extends StatelessWebexPlugin {
       messageType: ROAP.ROAP_TYPES.ERROR,
       version: ROAP.ROAP_VERSION,
       errorType,
-      seq: session.OFFER.seq
+      seq: session.OFFER.seq,
     };
 
     return this.roapRequest.sendRoap(msg, locus);
@@ -258,14 +271,17 @@ export default class Roap extends StatelessWebexPlugin {
       sdps: [options.sdp],
       // sdps: [options.sdp],
       version: ROAP.ROAP_VERSION,
-      seq: typeof options.roapSeq !== 'number' && Number.isNaN(parseFloat(options.roapSeq)) ? 0 : options.roapSeq + 1,
-      tieBreaker: 4294967294 // Math.floor(Math.random() * (2 ** 32) - 1) // TODO: Handle the roap  conflict scenario
+      seq:
+        typeof options.roapSeq !== 'number' && Number.isNaN(parseFloat(options.roapSeq))
+          ? 0
+          : options.roapSeq + 1,
+      tieBreaker: 4294967294, // Math.floor(Math.random() * (2 ** 32) - 1) // TODO: Handle the roap  conflict scenario
     };
 
     this.roapHandler.submit({
       type: ROAP.SEND_ROAP_MSG,
       msg: roapMessage,
-      correlationId: meeting.correlationId
+      correlationId: meeting.correlationId,
     });
 
     // When reconnecting, it's important that the first roap message being sent out has empty media id.
@@ -281,13 +297,13 @@ export default class Roap extends StatelessWebexPlugin {
         mediaId: sendEmptyMediaId ? '' : meeting.mediaId,
         audioMuted: meeting.isAudioMuted(),
         videoMuted: meeting.isVideoMuted(),
-        meetingId: meeting.id
+        meetingId: meeting.id,
       })
       .then(({locus, mediaConnections}) => {
         this.roapHandler.submit({
           type: ROAP.SEND_ROAP_MSG_SUCCESS,
           seq: roapMessage.seq,
-          correlationId: meeting.correlationId
+          correlationId: meeting.correlationId,
         });
         meeting.setRoapSeq(roapMessage.seq);
 
@@ -316,56 +332,60 @@ export default class Roap extends StatelessWebexPlugin {
       messageType: ROAP.ROAP_TYPES.OFFER,
       sdps: [options.sdp],
       version: ROAP.ROAP_VERSION,
-      seq: typeof options.roapSeq !== 'number' && Number.isNaN(parseFloat(options.roapSeq)) ? 0 : options.roapSeq + 1,
-      tieBreaker: 4294967294 // Math.floor(Math.random() * (2 ** 32) - 1) // TODO: Handle the roap  conflict scenario
+      seq:
+        typeof options.roapSeq !== 'number' && Number.isNaN(parseFloat(options.roapSeq))
+          ? 0
+          : options.roapSeq + 1,
+      tieBreaker: 4294967294, // Math.floor(Math.random() * (2 ** 32) - 1) // TODO: Handle the roap  conflict scenario
     };
 
     this.roapHandler.submit({
       type: ROAP.SEND_ROAP_MSG,
       msg: roapMessage,
-      correlationId: meeting.correlationId
+      correlationId: meeting.correlationId,
     });
 
     const roapBody = {
       localMedias: [
         {
-          localSdp: JSON.stringify(this.roapRequest.attachRechabilityData({
-            roapMessage,
-            // eslint-disable-next-line no-warning-comments
-            // TODO: check whats the need for video and audiomute
-            audioMuted: !!meeting.isAudioMuted(),
-            videoMuted: !!meeting.isVideoMuted()
-          }))
-        // mediaId: meeting.mediaId
-        }
-      ]
+          localSdp: JSON.stringify(
+            this.roapRequest.attachRechabilityData({
+              roapMessage,
+              // eslint-disable-next-line no-warning-comments
+              // TODO: check whats the need for video and audiomute
+              audioMuted: !!meeting.isAudioMuted(),
+              videoMuted: !!meeting.isVideoMuted(),
+            })
+          ),
+          // mediaId: meeting.mediaId
+        },
+      ],
     };
 
-    return MeetingUtil.joinMeetingOptions(meeting, {roapMessage: roapBody})
-      .then((locus) => {
-        this.roapHandler.submit({
-          type: ROAP.SEND_ROAP_MSG_SUCCESS,
-          seq: roapMessage.seq,
-          correlationId: meeting.correlationId
-        });
-        meeting.setRoapSeq(roapMessage.seq);
+    return MeetingUtil.joinMeetingOptions(meeting, {roapMessage: roapBody}).then((locus) => {
+      this.roapHandler.submit({
+        type: ROAP.SEND_ROAP_MSG_SUCCESS,
+        seq: roapMessage.seq,
+        correlationId: meeting.correlationId,
+      });
+      meeting.setRoapSeq(roapMessage.seq);
 
-        // eslint-disable-next-line no-warning-comments
-        // TODO: we need to attach peerconenction to locus not sure if we need to pass everything here
-        return locus;
+      // eslint-disable-next-line no-warning-comments
+      // TODO: we need to attach peerconenction to locus not sure if we need to pass everything here
+      return locus;
       // eslint-disable-next-line no-warning-comments
       // TODO: check where to update the sequence number
-      });
+    });
   };
 
   /**
- * Called when the roap sequence is finished (completed successfully or failed)
- * @param {String} correlationId id of the meeting affected
- * @param {String} sequenceId the id of the finished sequence
- * @returns {undefined}
- * @private
- * @memberof Roap
- */
+   * Called when the roap sequence is finished (completed successfully or failed)
+   * @param {String} correlationId id of the meeting affected
+   * @param {String} sequenceId the id of the finished sequence
+   * @returns {undefined}
+   * @private
+   * @memberof Roap
+   */
   private roapFinished(correlationId: string, sequenceId: string) {
     RoapCollection.onSessionSequenceFinish(correlationId, sequenceId);
     // @ts-ignore

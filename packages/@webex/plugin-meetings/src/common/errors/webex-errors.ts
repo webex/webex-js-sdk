@@ -23,7 +23,9 @@ export function createMeetingsError(code?: number, message?: string) {
   code = typeof code === 'number' ? code : 0;
   message = typeof message === 'string' && message ? message : 'Unknown error';
 
-  return WebExMeetingsErrors[code] ? new WebExMeetingsErrors[code]() : new WebexMeetingsError(code, message);
+  return WebExMeetingsErrors[code]
+    ? new WebExMeetingsErrors[code]()
+    : new WebexMeetingsError(code, message);
 }
 
 /**
@@ -55,13 +57,15 @@ class UserNotJoinedError extends WebexMeetingsError {
   static CODE = 30102;
 
   constructor() {
-    super(UserNotJoinedError.CODE, 'User currently not in meeting. Please join a meeting before adding media.');
+    super(
+      UserNotJoinedError.CODE,
+      'User currently not in meeting. Please join a meeting before adding media.'
+    );
   }
 }
 
 export {UserNotJoinedError};
 WebExMeetingsErrors[UserNotJoinedError.CODE] = UserNotJoinedError;
-
 
 /**
  * @class NoMediaEstablishedYetError
@@ -80,7 +84,6 @@ class NoMediaEstablishedYetError extends WebexMeetingsError {
 
 export {NoMediaEstablishedYetError};
 WebExMeetingsErrors[NoMediaEstablishedYetError.CODE] = NoMediaEstablishedYetError;
-
 
 /**
  * @class UserInLobbyError
@@ -117,7 +120,6 @@ class InvalidSdpError extends WebexMeetingsError {
 
 export {InvalidSdpError};
 WebExMeetingsErrors[InvalidSdpError.CODE] = InvalidSdpError;
-
 
 /**
  * @class IceGatheringFailed

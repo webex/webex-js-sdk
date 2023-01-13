@@ -10,26 +10,28 @@ describe('plugin-meetings', () => {
   beforeEach(() => {
     const webex = new MockWebex({
       children: {
-        meetings: Meetings
-      }
+        meetings: Meetings,
+      },
     });
 
     webex.meetings.clientRegion = {
       countryCode: 'US',
-      regionCode: 'WEST-COAST'
+      regionCode: 'WEST-COAST',
     };
 
     webex.internal = {
       services: {
         get: sinon.mock().returns('locusUrl'),
-        waitForCatalog: sinon.mock().returns(Promise.resolve({}))
-      }
+        waitForCatalog: sinon.mock().returns(Promise.resolve({})),
+      },
     };
 
-    meetingsRequest = new MeetingRequest({}, {
-      parent: webex
-    });
-
+    meetingsRequest = new MeetingRequest(
+      {},
+      {
+        parent: webex,
+      }
+    );
 
     meetingsRequest.request = sinon.mock().returns(Promise.resolve({}));
   });
@@ -44,7 +46,7 @@ describe('plugin-meetings', () => {
         await meetingsRequest.sendDTMF({
           locusUrl,
           deviceUrl,
-          tones
+          tones,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
@@ -66,7 +68,7 @@ describe('plugin-meetings', () => {
           deviceUrl,
           layoutType,
           main: {width: 640, height: 480},
-          content: {width: 1280, height: 720}
+          content: {width: 1280, height: 720},
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
@@ -74,43 +76,53 @@ describe('plugin-meetings', () => {
         assert.equal(requestParams.uri, `${locusUrl}/controls`);
         assert.equal(requestParams.body.layout.type, layoutType);
         assert.equal(requestParams.body.layout.deviceUrl, deviceUrl);
-        assert.deepEqual(requestParams.body.layout.layoutParams, {renderInfo: {main: {width: 640, height: 480}, content: {width: 1280, height: 720}}});
+        assert.deepEqual(requestParams.body.layout.layoutParams, {
+          renderInfo: {main: {width: 640, height: 480}, content: {width: 1280, height: 720}},
+        });
       });
 
       it('throws if width is missing for main', async () => {
-        await assert.isRejected(meetingsRequest.changeVideoLayout({
-          locusUrl,
-          deviceUrl,
-          layoutType,
-          main: {height: 100}
-        }));
+        await assert.isRejected(
+          meetingsRequest.changeVideoLayout({
+            locusUrl,
+            deviceUrl,
+            layoutType,
+            main: {height: 100},
+          })
+        );
       });
 
       it('throws if height is missing for main', async () => {
-        await assert.isRejected(meetingsRequest.changeVideoLayout({
-          locusUrl,
-          deviceUrl,
-          layoutType,
-          main: {width: 100}
-        }));
+        await assert.isRejected(
+          meetingsRequest.changeVideoLayout({
+            locusUrl,
+            deviceUrl,
+            layoutType,
+            main: {width: 100},
+          })
+        );
       });
 
       it('throws if width is missing for content', async () => {
-        await assert.isRejected(meetingsRequest.changeVideoLayout({
-          locusUrl,
-          deviceUrl,
-          layoutType,
-          content: {height: 100}
-        }));
+        await assert.isRejected(
+          meetingsRequest.changeVideoLayout({
+            locusUrl,
+            deviceUrl,
+            layoutType,
+            content: {height: 100},
+          })
+        );
       });
 
       it('throws if height is missing for content', async () => {
-        await assert.isRejected(meetingsRequest.changeVideoLayout({
-          locusUrl,
-          deviceUrl,
-          layoutType,
-          content: {width: 100}
-        }));
+        await assert.isRejected(
+          meetingsRequest.changeVideoLayout({
+            locusUrl,
+            deviceUrl,
+            layoutType,
+            content: {width: 100},
+          })
+        );
       });
     });
 
@@ -127,8 +139,7 @@ describe('plugin-meetings', () => {
           deviceUrl,
           correlationId,
           roapMessage,
-          permissionToken
-
+          permissionToken,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
@@ -150,7 +161,7 @@ describe('plugin-meetings', () => {
           deviceUrl,
           correlationId,
           roapMessage,
-          meetingNumber
+          meetingNumber,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
@@ -171,7 +182,7 @@ describe('plugin-meetings', () => {
           correlationId,
           roapMessage,
           meetingNumber,
-          inviteeAddress
+          inviteeAddress,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
@@ -192,7 +203,7 @@ describe('plugin-meetings', () => {
           locusUrl,
           clientUrl,
           correlationId,
-          dialInUrl
+          dialInUrl,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
@@ -216,7 +227,7 @@ describe('plugin-meetings', () => {
           clientUrl,
           correlationId,
           dialOutUrl,
-          phoneNumber
+          phoneNumber,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
@@ -239,7 +250,7 @@ describe('plugin-meetings', () => {
           locusUrl,
           selfId,
           correlationId,
-          phoneUrl
+          phoneUrl,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
@@ -286,13 +297,13 @@ describe('plugin-meetings', () => {
           type: 'thumb_down',
           codepoints: '1F44E',
           shortcodes: ':thumbsdown:',
-          tone: {type: 'normal_skin_tone', codepoints: '', shortcodes: ''}
+          tone: {type: 'normal_skin_tone', codepoints: '', shortcodes: ''},
         };
 
         await meetingsRequest.sendReaction({
           reactionChannelUrl,
           reaction,
-          participantId
+          participantId,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 

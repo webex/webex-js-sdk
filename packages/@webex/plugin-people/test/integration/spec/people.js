@@ -15,56 +15,58 @@ describe('plugin-people', function () {
   describe('People', () => {
     let bones, mccoy, spock;
 
-    beforeEach('create users', () => testUsers.create({count: 3})
-      .then((users) => {
+    beforeEach('create users', () =>
+      testUsers.create({count: 3}).then((users) => {
         [spock, mccoy, bones] = users;
         spock.webex = new WebexCore({
           credentials: {
-            authorization: users[0].token
-          }
+            authorization: users[0].token,
+          },
         });
         mccoy.webex = new WebexCore({
           credentials: {
-            authorization: users[1].token
-          }
+            authorization: users[1].token,
+          },
         });
-      }));
+      })
+    );
 
     describe('#get()', () => {
-      it('gets a person by id', () => spock.webex.people.get(mccoy.id)
-        .then((peopleResponse) => {
+      it('gets a person by id', () =>
+        spock.webex.people.get(mccoy.id).then((peopleResponse) => {
           assert.isPerson(peopleResponse);
           assert.equal(peopleResponse.emails[0], mccoy.email);
         }));
 
-      it('gets the current user with "get(\'me\')"', () => spock.webex.people.get('me')
-        .then((peopleResponse) => {
+      it('gets the current user with "get(\'me\')"', () =>
+        spock.webex.people.get('me').then((peopleResponse) => {
           assert.isPerson(peopleResponse);
           assert.equal(peopleResponse.emails[0], spock.email);
         }));
 
-      it('gets a user by hydra id', () => spock.webex.people.get('me')
-        .then((person) => spock.webex.people.get(person.id))
-        .then((person) => {
-          assert.isPerson(person);
-          assert.equal(person.emails[0], spock.email);
-        }));
+      it('gets a user by hydra id', () =>
+        spock.webex.people
+          .get('me')
+          .then((person) => spock.webex.people.get(person.id))
+          .then((person) => {
+            assert.isPerson(person);
+            assert.equal(person.emails[0], spock.email);
+          }));
 
-      it('gets multiple users at a time', () => Promise.all([
-        spock.webex.people.get(mccoy.id),
-        spock.webex.people.get('me')
-      ])
-        .then((peopleResponse) => {
-          assert.isPerson(peopleResponse[0]);
-          assert.isPerson(peopleResponse[1]);
-          assert.equal(peopleResponse[0].emails[0], mccoy.email);
-          assert.equal(peopleResponse[1].emails[0], spock.email);
-        }));
+      it('gets multiple users at a time', () =>
+        Promise.all([spock.webex.people.get(mccoy.id), spock.webex.people.get('me')]).then(
+          (peopleResponse) => {
+            assert.isPerson(peopleResponse[0]);
+            assert.isPerson(peopleResponse[1]);
+            assert.equal(peopleResponse[0].emails[0], mccoy.email);
+            assert.equal(peopleResponse[1].emails[0], spock.email);
+          }
+        ));
     });
 
     describe('#list()', () => {
-      it('gets a group of people by ids', () => spock.webex.people.list([mccoy.id, spock.id, bones.id])
-        .then((peopleResponse) => {
+      it('gets a group of people by ids', () =>
+        spock.webex.people.list([mccoy.id, spock.id, bones.id]).then((peopleResponse) => {
           assert.equal(peopleResponse.length, 3);
           assert.isPerson(peopleResponse[0]);
           assert.isPerson(peopleResponse[1]);
@@ -73,18 +75,21 @@ describe('plugin-people', function () {
           assert.equal(peopleResponse[1].emails[0], spock.email);
         }));
 
-      it('defaults to false showAllTypes', () => spock.webex.people.list([mccoy.id, spock.id, bones.id])
-        .then(assert.isFalse(spock.webex.people.batcher.config.showAllTypes)));
+      it('defaults to false showAllTypes', () =>
+        spock.webex.people
+          .list([mccoy.id, spock.id, bones.id])
+          .then(assert.isFalse(spock.webex.people.batcher.config.showAllTypes)));
 
       it('sets showAllTypes to true', () => {
         spock.webex.people.batcher.config.showAllTypes = true;
 
-        return spock.webex.people.list([mccoy.id, spock.id, bones.id])
+        return spock.webex.people
+          .list([mccoy.id, spock.id, bones.id])
           .then(assert.isTrue(spock.webex.people.batcher.config.showAllTypes));
       });
 
-      it('returns a list of people matching email address', () => spock.webex.people.list({email: mccoy.email})
-        .then((peopleResponse) => {
+      it('returns a list of people matching email address', () =>
+        spock.webex.people.list({email: mccoy.email}).then((peopleResponse) => {
           assert.isAbove(peopleResponse.items.length, 0);
           const person = peopleResponse.items[0];
 
@@ -92,8 +97,8 @@ describe('plugin-people', function () {
           assert.equal(person.emails[0], mccoy.email);
         }));
 
-      it('returns a list of people matching name', () => spock.webex.people.list({displayName: mccoy.name})
-        .then((peopleResponse) => {
+      it('returns a list of people matching name', () =>
+        spock.webex.people.list({displayName: mccoy.name}).then((peopleResponse) => {
           assert.isAbove(peopleResponse.items.length, 0);
           let isMccoyFound = false;
 
@@ -109,40 +114,43 @@ describe('plugin-people', function () {
       describe('batching of people requests', () => {
         let batchTestUsers;
 
-        beforeEach('create more users', () => testUsers.create({count: 6})
-          .then((users) => {
+        beforeEach('create more users', () =>
+          testUsers.create({count: 6}).then((users) => {
             batchTestUsers = users;
-          }));
+          })
+        );
 
         it('batches uuid get requests into one', () => {
           sinon.spy(spock.webex.people.batcher, 'submitHttpRequest');
 
-          return Promise.all(batchTestUsers.map((user) => spock.webex.people.get(user.id)))
-            .then((peopleResponse) => {
+          return Promise.all(batchTestUsers.map((user) => spock.webex.people.get(user.id))).then(
+            (peopleResponse) => {
               assert.equal(peopleResponse.length, 6);
               assert.calledOnce(spock.webex.people.batcher.submitHttpRequest);
               spock.webex.people.batcher.submitHttpRequest.restore();
-            });
+            }
+          );
         });
 
         it('batches people get requests into one', () => {
           sinon.spy(spock.webex.people.batcher, 'submitHttpRequest');
 
-          return Promise.all(batchTestUsers.map((user) => spock.webex.people.get(user)))
-            .then((peopleResponse) => {
+          return Promise.all(batchTestUsers.map((user) => spock.webex.people.get(user))).then(
+            (peopleResponse) => {
               assert.equal(peopleResponse.length, 6);
               peopleResponse.map((personResponse) => assert.isPerson(personResponse));
               assert.calledOnce(spock.webex.people.batcher.submitHttpRequest);
               spock.webex.people.batcher.submitHttpRequest.restore();
-            });
+            }
+          );
         });
-
 
         it('executes network requests for max limit', () => {
           spock.webex.people.config.batcherMaxCalls = 2;
           sinon.spy(spock.webex.people.batcher, 'submitHttpRequest');
 
-          return spock.webex.people.list(batchTestUsers.map((user) => user.id))
+          return spock.webex.people
+            .list(batchTestUsers.map((user) => user.id))
             .then((peopleResponse) => {
               assert.equal(peopleResponse.length, 6);
               assert.calledThrice(spock.webex.people.batcher.submitHttpRequest);
@@ -153,8 +161,10 @@ describe('plugin-people', function () {
     });
 
     describe('#inferPersonId', () => {
-      it('infers a person id without a network dip', () => spock.webex.people.get(spock.id)
-        .then((me) => assert.equal(spock.webex.people.inferPersonIdFromUuid(spock.id), me.id)));
+      it('infers a person id without a network dip', () =>
+        spock.webex.people
+          .get(spock.id)
+          .then((me) => assert.equal(spock.webex.people.inferPersonIdFromUuid(spock.id), me.id)));
     });
   });
 });

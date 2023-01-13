@@ -10,7 +10,6 @@ import {fromBuffer} from 'file-type';
  * @returns {Promise<string>}
  */
 export default async function detect(buffer) {
-  /* global Blob */
   if (
     !(buffer instanceof Blob) &&
     !(buffer instanceof ArrayBuffer) &&

@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-
 import fs from 'fs';
 
 import traverse from '@babel/traverse';
@@ -39,29 +38,29 @@ export default function extract(transform, filename) {
   traverse(ast, {
     enter(path) {
       if (path.node.leadingComments) {
-        path.node.leadingComments
-          .filter(isJSDocComment)
-          .forEach((comment) => {
-            const result = doctrine.parse(comment.value, {
-              unwrap: true,
-              sloppy: true,
-              recoverable: true,
-              lineNumbers: true
-            });
+        path.node.leadingComments.filter(isJSDocComment).forEach((comment) => {
+          const result = doctrine.parse(comment.value, {
+            unwrap: true,
+            sloppy: true,
+            recoverable: true,
+            lineNumbers: true,
+          });
 
-            if (result.tags) {
-              result.tags.forEach((tag) => {
-                if (tag.title === 'example') {
-                  results.push(transform({
+          if (result.tags) {
+            result.tags.forEach((tag) => {
+              if (tag.title === 'example') {
+                results.push(
+                  transform({
                     comment: tag.description,
                     name: getNodeName(path.node),
                     filename: path.node.loc.filename,
-                    type: path.node.type
-                  }));
-                }
-              });
-            }
-          });
+                    type: path.node.type,
+                  })
+                );
+              }
+            });
+          }
+        });
       }
     },
     Program: {
@@ -73,8 +72,8 @@ export default function extract(transform, filename) {
           path.pushContainer('body', results);
           done = true;
         }
-      }
-    }
+      },
+    },
   });
 
   return ast;
@@ -109,9 +108,12 @@ function isJSDocComment(comment) {
   }
 
   // eslint-disable-next-line
-  return (comment.type === `CommentBlock` || // estree
+  return (
+    (comment.type === 'CommentBlock' || // estree
+      // eslint-disable-next-line
+      comment.type === `Block`) && // get-comments / traditional
     // eslint-disable-next-line
-    comment.type === `Block`) // get-comments / traditional
-    // eslint-disable-next-line
-    && asterisks && asterisks[ 1 ].length === 1;
+    asterisks &&
+    asterisks[1].length === 1
+  );
 }

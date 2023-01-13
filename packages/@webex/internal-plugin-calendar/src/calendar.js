@@ -3,28 +3,28 @@
  */
 
 /**
-   * Calendar Item Create Event
-   * Emitted when a calendar item has been added
-   * @event calendar:meeting:create
-   * @instance
-   * @memberof Calendar
-   */
+ * Calendar Item Create Event
+ * Emitted when a calendar item has been added
+ * @event calendar:meeting:create
+ * @instance
+ * @memberof Calendar
+ */
 
 /**
-   * Calendar Item Update Event
-   * Emitted when a calendar item has been updated
-   * @event calendar:meeting:update
-   * @instance
-   * @memberof Calendar
-   */
+ * Calendar Item Update Event
+ * Emitted when a calendar item has been updated
+ * @event calendar:meeting:update
+ * @instance
+ * @memberof Calendar
+ */
 
 /**
-   * Calendar Item Update Event
-   * Emitted when a calendar item has been deleted
-   * @event calendar:meeting:delete
-   * @instance
-   * @memberof Calendar
-   */
+ * Calendar Item Update Event
+ * Emitted when a calendar item has been deleted
+ * @event calendar:meeting:delete
+ * @instance
+ * @memberof Calendar
+ */
 
 /**
  * Calendar Registered Event
@@ -46,7 +46,13 @@ import btoa from 'btoa';
 import {WebexPlugin} from '@webex/webex-core';
 
 import CalendarCollection from './collection';
-import {CALENDAR_REGISTERED, CALENDAR_UNREGISTERED, CALENDAR_DELETE, CALENDAR_CREATE, CALENDAR_UPDATED} from './constants';
+import {
+  CALENDAR_REGISTERED,
+  CALENDAR_UNREGISTERED,
+  CALENDAR_DELETE,
+  CALENDAR_CREATE,
+  CALENDAR_UPDATED,
+} from './constants';
 
 const Calendar = WebexPlugin.extend({
   namespace: 'Calendar',
@@ -79,7 +85,8 @@ const Calendar = WebexPlugin.extend({
       return Promise.resolve();
     }
 
-    return this.webex.internal.device.register()
+    return this.webex.internal.device
+      .register()
       .then(() => this.webex.internal.mercury.connect())
       .then(() => {
         this.listenForEvents();
@@ -110,7 +117,8 @@ const Calendar = WebexPlugin.extend({
 
     this.stopListeningForEvents();
 
-    return this.webex.internal.mercury.disconnect()
+    return this.webex.internal.mercury
+      .disconnect()
       .then(() => this.webex.internal.device.unregister())
       .then(() => {
         this.trigger(CALENDAR_UNREGISTERED);
@@ -233,8 +241,7 @@ const Calendar = WebexPlugin.extend({
    * @returns {Promise} Resolves with a decrypted calendar event
    */
   processMeetingEvent(event) {
-    return this.webex.transform('inbound', event)
-      .then(() => event);
+    return this.webex.transform('inbound', event).then(() => event);
   },
 
   /**
@@ -246,7 +253,7 @@ const Calendar = WebexPlugin.extend({
     return this.request({
       method: 'GET',
       service: 'calendar',
-      resource: `calendarEvents/${btoa(id)}/participants`
+      resource: `calendarEvents/${btoa(id)}/participants`,
     });
   },
 
@@ -259,7 +266,7 @@ const Calendar = WebexPlugin.extend({
     return this.request({
       method: 'GET',
       service: 'calendar',
-      resource: `calendarEvents/${btoa(id)}/notes`
+      resource: `calendarEvents/${btoa(id)}/notes`,
     });
   },
 
@@ -273,12 +280,13 @@ const Calendar = WebexPlugin.extend({
   list(options) {
     options = options || {};
 
-    return this.webex.request({
-      method: 'GET',
-      service: 'calendar',
-      resource: 'calendarEvents',
-      qs: options
-    })
+    return this.webex
+      .request({
+        method: 'GET',
+        service: 'calendar',
+        resource: 'calendarEvents',
+        qs: options,
+      })
       .then((res) => {
         const meetingObjects = res.body.items;
         const promises = [];
@@ -286,27 +294,24 @@ const Calendar = WebexPlugin.extend({
         meetingObjects.forEach((meeting) => {
           if (!meeting.encryptedNotes) {
             promises.push(
-              this.getNotes(meeting.id)
-                .then((notesResponse) => {
-                  meeting.encryptedNotes = notesResponse.body && notesResponse.body.encryptedNotes;
-                })
+              this.getNotes(meeting.id).then((notesResponse) => {
+                meeting.encryptedNotes = notesResponse.body && notesResponse.body.encryptedNotes;
+              })
             );
           }
 
           if (!meeting.encryptedParticipants) {
             promises.push(
-              this.getParticipants(meeting.id)
-                .then((notesResponse) => {
-                  meeting.encryptedParticipants = notesResponse.body.encryptedParticipants;
-                })
+              this.getParticipants(meeting.id).then((notesResponse) => {
+                meeting.encryptedParticipants = notesResponse.body.encryptedParticipants;
+              })
             );
           }
         });
 
-        return Promise.all(promises)
-          .then(() => meetingObjects);
+        return Promise.all(promises).then(() => meetingObjects);
       });
-  }
+  },
 });
 
 export default Calendar;

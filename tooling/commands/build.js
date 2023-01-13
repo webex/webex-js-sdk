@@ -28,46 +28,44 @@ module.exports = {
     onlySamples: {
       default: false,
       description: 'Only build samples',
-      type: 'boolean'
+      type: 'boolean',
     },
     skipSamples: {
       default: false,
       description: 'Do not build samples',
-      type: 'boolean'
+      type: 'boolean',
     },
     umd: {
       default: false,
       description: 'build UMD script',
-      type: 'boolean'
-    }
+      type: 'boolean',
+    },
   },
-  handler: wrapHandler(async ({
-    packageName,
-    onlySamples,
-    skipSamples,
-    umd
-  }) => {
+  handler: wrapHandler(async ({packageName, onlySamples, skipSamples, umd}) => {
     if (umd) {
       await buildUMDScript();
-    }
-    else {
-      if (!onlySamples) { // All packages to be built
-        if (packageName) { // If package name mentioned
+    } else {
+      if (!onlySamples) {
+        // All packages to be built
+        if (packageName) {
+          // If package name mentioned
           await buildPackage(packageName);
-        }
-        else { // All packages build if package name not mentioned
-          for (const pName of await list()) { // list method will return path to all packages
+        } else {
+          // All packages build if package name not mentioned
+          for (const pName of await list()) {
+            // list method will return path to all packages
             await buildPackage(pName);
           }
         }
       }
 
-      if (!skipSamples) { // If samples aren't skipped, buildSamples is called
+      if (!skipSamples) {
+        // If samples aren't skipped, buildSamples is called
         if (!packageName) {
           // buildSamples method in turn uses webpack to build samples
           await buildSamples();
         }
       }
     }
-  })
+  }),
 };
