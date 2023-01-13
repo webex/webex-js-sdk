@@ -497,33 +497,24 @@ export default class ReconnectionManager {
   async reconnectMedia() {
     LoggerProxy.logger.log('ReconnectionManager:index#reconnectMedia --> Begin reestablishment of media');
 
-    if (this.meeting.isMultistream) {
-      // for multistream meetings, reconnect using the same media connection
-      await this.meeting.mediaProperties.webrtcMediaConnection.reconnect();
+    // do the TURN server discovery again and since the TURN server might change
+    const turnServerResult = await this.meeting.roap.doTurnDiscovery(this.meeting, true);
 
-      // resend media requests
-      Object.values(this.meeting.mediaRequestManagers).forEach((mediaRequestManager) => mediaRequestManager.commit());
+    const iceServers = [];
 
-      // republish media tracks
-      if (this.meeting.mediaProperties.audioTrack) {
-        this.meeting.media.publishTrack(this.meeting.mediaProperties.audioTrack);
-      }
-      if (this.meeting.mediaProperties.videoTrack) {
-        this.meeting.media.publishTrack(this.meeting.mediaProperties.videoTrack);
-      }
+    if (turnServerResult.turnServerInfo) {
+      iceServers.push({
+        urls: turnServerResult.turnServerInfo.url,
+        username: turnServerResult.turnServerInfo.username || '',
+        credential: turnServerResult.turnServerInfo.password || ''
+      });
     }
-    else {
-      // for transcoded meetings, manually close and recreate the media connection
-      await this.meeting.closePeerConnections();
-      this.meeting.mediaProperties.unsetPeerConnection();
 
-      const turnServerResult = await this.meeting.roap.doTurnDiscovery(this.meeting, true);
+    await this.meeting.mediaProperties.webrtcMediaConnection.reconnect(iceServers);
 
-      const mc = this.meeting.createMediaConnection(turnServerResult.turnServerInfo);
-
-      this.meeting.statsAnalyzer.updateMediaConnection(mc);
-
-      await mc.initiateOffer();
+    // resend media requests
+    if (this.meeting.isMultistream) {
+      Object.values(this.meeting.mediaRequestManagers).forEach((mediaRequestManager) => mediaRequestManager.commit());
     }
   }
 
