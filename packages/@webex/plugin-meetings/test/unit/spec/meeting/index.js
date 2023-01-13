@@ -714,6 +714,13 @@ describe('plugin-meetings', () => {
               height: {
                 max: 200,
                 ideal: 200
+              },
+              frameRate: {
+                ideal: 15,
+                max: 30
+              },
+              facingMode: {
+                ideal: 'user'
               }
             }
           };
