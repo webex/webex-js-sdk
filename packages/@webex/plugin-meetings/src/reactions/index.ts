@@ -1,4 +1,3 @@
-// import { ILLMChannel } from '@webex/internal-plugin-llm';
 import { REACTION_RELAY_TYPES } from './constants';
 import { Reaction, Sender } from './reactions.type';
 import Members from '../members/index';
@@ -11,8 +10,8 @@ import Members from '../members/index';
 
 export default class Reactions {
   members: Members;
-  // llm: ILLMChannel;
   llm: any;
+  processEvent: any;
 
   /**
    * @param {Members} members
@@ -49,12 +48,25 @@ export default class Reactions {
    * @returns {void}
    */
   subscribe(callback: Function) {
-    this.llm.on('event:relay.event', (e) => {
+    this.processEvent = (e: any) => {
       if (e.data.relayType == REACTION_RELAY_TYPES.REACTION) {
         const processedReaction = this.processReaction(e.data.reaction, e.data.sender);
         callback(processedReaction);
       }
-    })
+    };
+    this.llm.on('event:relay.event', this.processEvent);
+  }
+  // subscribe(callback: Function) {
+  //   this.llm.on('event:relay.event', (e: any) => {
+  //     if (e.data.relayType == REACTION_RELAY_TYPES.REACTION) {
+  //       const processedReaction = this.processReaction(e.data.reaction, e.data.sender);
+  //       callback(processedReaction);
+  //     }
+  //   })
+  // }
+
+  unsubscribe() {
+    this.llm.off('event:relay.event', this.processEvent);
   }
 }
 

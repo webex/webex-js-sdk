@@ -780,6 +780,36 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.transcription.closeSocket);
         });
       });
+      describe('#isReactionsSupported', () => {
+        it('should return false if the feature is not supported for the meeting', () => {
+          meeting.locusInfo.controls = {reactions: false};
+
+          assert.equal(meeting.isReactionsSupported(), false);
+        });
+        it('should return true if webex assitant is enabled', () => {
+          meeting.locusInfo.controls = {reactions: true};
+
+          assert.equal(meeting.isReactionsSupported(), true);
+        });
+      });
+      describe('#receiveReaction', () => {
+        it('should invoke subscribe method to invoke the callback', () => {
+          meeting.receiveReaction().then(() => {
+            assert.calledOnce(meeting.reactions.subscribe);
+          });
+        });
+
+        it('should throw error', async () => {
+          meeting.request = sinon.stub().returns(Promise.reject());
+
+          try {
+            await meeting.receiveReaction();
+          }
+          catch (err) {
+            assert(err, {});
+          }
+        });
+      });
       describe('#join', () => {
         let sandbox = null;
         const joinMeetingResult = 'JOIN_MEETINGS_OPTION_RESULT';
@@ -839,6 +869,14 @@ describe('plugin-meetings', () => {
 
             await meeting.join({receiveTranscription: true});
             assert.calledOnce(meeting.receiveTranscription);
+          });
+
+          it('should invoke `receiveReaction()` if receiveReaction is set to true', async () => {
+            meeting.isReactionsSupported = sinon.stub().returns(true);
+            meeting.receiveReaction = sinon.stub().returns(Promise.resolve());
+
+            await meeting.join({receiveReaction: true});
+            assert.calledOnce(meeting.receiveReaction);
           });
 
           it('should not create new correlation ID on join immediately after create', async () => {

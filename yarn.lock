@@ -22568,6 +22568,7 @@ __metadata:
     "@webex/common": "workspace:^"
     "@webex/internal-plugin-calendar": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
+    "@webex/internal-plugin-llm": "workspace:^"
     "@webex/internal-plugin-presence": "workspace:^"
     "@webex/internal-plugin-support": "workspace:^"
     "@webex/plugin-attachment-actions": "workspace:^"

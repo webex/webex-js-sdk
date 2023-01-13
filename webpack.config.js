@@ -62,11 +62,11 @@ module.exports = (
         // we don't need to manually rebuild after changing code.
         alias[`./packages/${packageName}`] = path.resolve(
           __dirname,
-          `./packages/${packageName}/src/index.js`
+          `./packages/${packageName}/src/index`
         );
         alias[`${packageName}`] = path.resolve(
           __dirname,
-          `./packages/${packageName}/src/index.js`
+          `./packages/${packageName}/src/index`
         );
 
         return alias;
