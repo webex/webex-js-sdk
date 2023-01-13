@@ -192,6 +192,10 @@ const Team = WebexPlugin.extend({
    * @returns {Promise} Resolves with the conversation
    */
   joinConversation(team, conversation, userId) {
+    if (!userId) {
+      return Promise.reject(new Error('`userId` is required'));
+    }
+
     const body = {
       kmsMessage: {
         client: {
@@ -209,11 +213,12 @@ const Team = WebexPlugin.extend({
       },
     };
 
-    return this.webex.request({
-      method: 'POST',
-      uri: `${team.url}/conversations/${conversation.id}/participants`,
-      body
-    })
+    return this.webex
+      .request({
+        method: 'POST',
+        uri: `${team.url}/conversations/${conversation.id}/participants`,
+        body,
+      })
       .then((res) => res.body);
   },
 
