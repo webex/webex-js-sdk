@@ -714,6 +714,13 @@ describe('plugin-meetings', () => {
               height: {
                 max: 200,
                 ideal: 200
+              },
+              frameRate: {
+                ideal: 15,
+                max: 30
+              },
+              facingMode: {
+                ideal: 'user'
               }
             }
           };
@@ -5062,6 +5069,21 @@ describe('plugin-meetings', () => {
 
           assert.equal(response, 'Reactions are already disabled.');
           assert.notCalled(meeting.meetingRequest.toggleReactions);
+        });
+
+        it('should toggle reactions on if controls is undefined and enable = true', async () => {
+          meeting.locusUrl = 'locusUrl';
+          meeting.locusInfo.controls = undefined;
+
+          const togglePromise = meeting.toggleReactions(true);
+
+          assert.exists(togglePromise.then);
+          await togglePromise;
+          assert.calledOnceWithExactly(meeting.meetingRequest.toggleReactions, {
+            locusUrl: 'locusUrl',
+            enable: true,
+            requestingParticipantId: meeting.members.selfId,
+          });
         });
       });
     });
