@@ -1919,7 +1919,7 @@ export default class Meeting extends StatelessWebexPlugin {
                 memberId: whiteboardShare.beneficiaryId
               }
             );
-            Metrics.postEvent({ event: eventType.WHITEBOARD_SHARE_FLOOR_GRANTED, meeting: this });
+            Metrics.postEvent({event: eventType.WHITEBOARD_SHARE_FLOOR_GRANTED, meeting: this});
             break;
 
           case SHARE_STATUS.NO_SHARE:
@@ -2916,8 +2916,8 @@ export default class Meeting extends StatelessWebexPlugin {
               function: 'closeLocalStream'
             },
             EVENT_TRIGGERS.MEDIA_STOPPED, {
-             type: EVENT_TYPES.LOCAL
-           }
+              type: EVENT_TYPES.LOCAL
+            }
           );
         }
         else if (audioTrack || videoTrack) {
@@ -2945,8 +2945,8 @@ export default class Meeting extends StatelessWebexPlugin {
             function: 'closeLocalShare'
           },
           EVENT_TRIGGERS.MEDIA_STOPPED, {
-          type: EVENT_TYPES.LOCAL_SHARE
-        }
+            type: EVENT_TYPES.LOCAL_SHARE
+          }
         );
       }
       else if (track) {
@@ -3220,11 +3220,11 @@ export default class Meeting extends StatelessWebexPlugin {
 
         throw error;
       }),
-      {
-        header: `${LOG_HEADER} muting video`,
-        success: `${LOG_HEADER} muted video successfully`,
-        failure: `${LOG_HEADER} muting video failed, `
-      });
+    {
+      header: `${LOG_HEADER} muting video`,
+      success: `${LOG_HEADER} muted video successfully`,
+      failure: `${LOG_HEADER} muting video failed, `
+    });
   }
 
   /**
@@ -3256,7 +3256,7 @@ export default class Meeting extends StatelessWebexPlugin {
         Metrics.postEvent({
           event: eventType.UNMUTED,
           meeting: this,
-          data: { trigger: trigger.USER_INTERACTION, mediaType: mediaType.VIDEO }
+          data: {trigger: trigger.USER_INTERACTION, mediaType: mediaType.VIDEO}
         });
       }).catch((error) => {
         Metrics.sendBehavioralMetric(
@@ -3740,7 +3740,7 @@ export default class Meeting extends StatelessWebexPlugin {
         ) {
           const errorMessage = `Meeting:index#join --> ${
             options.meetingQuality.local || options.meetingQuality.remote
-            } not defined`;
+          } not defined`;
 
           LoggerProxy.logger.error(errorMessage);
 
@@ -3916,7 +3916,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private dialInPstn() {
     if (this.isPhoneProvisioned(this.dialInDeviceStatus)) return Promise.resolve(); // prevent multiple dial in devices from being provisioned
 
-    const { correlationId, locusUrl } = this;
+    const {correlationId, locusUrl} = this;
 
     if (!this.dialInUrl) this.dialInUrl = `dialin:///${uuid.v4()}`;
 
@@ -4092,7 +4092,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     LoggerProxy.logger.info('Meeting:index#moveTo --> Initated moved to using resourceId', resourceId);
 
-    return MeetingUtil.joinMeetingOptions(this, { resourceId, moveToResource: true }).then(() => {
+    return MeetingUtil.joinMeetingOptions(this, {resourceId, moveToResource: true}).then(() => {
       this.meetingFiniteStateMachine.join();
     }).catch((error) => {
       this.meetingFiniteStateMachine.fail(error);
@@ -5170,7 +5170,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return MeetingUtil.validateOptions({sendAudio, localStream: stream})
       .then(() => this.mediaProperties.webrtcMediaConnection.updateSendReceiveOptions({
-        send: {audio: trac},
+        send: {audio: track},
         receive: {
           audio: options.receiveAudio,
           video: this.mediaProperties.mediaDirection.receiveVideo,
@@ -5560,7 +5560,7 @@ export default class Meeting extends StatelessWebexPlugin {
               locus_id: this.locusUrl.split('/').pop(),
               reason: error.message,
               stack: error.stack,
-              board: { channelUrl }
+              board: {channelUrl}
             }
           );
 
@@ -5643,7 +5643,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const content = this.locusInfo.mediaShares.find((element) => element.name === CONTENT);
 
     if (content && (this.mediaProperties.mediaDirection.sendShare)) {
-      Metrics.postEvent({ event: eventType.SHARE_STOPPED, meeting: this });
+      Metrics.postEvent({event: eventType.SHARE_STOPPED, meeting: this});
       Media.stopTracks(this.mediaProperties.shareTrack);
 
       if (content.floor.beneficiary.id !== this.selfId) {
@@ -6009,9 +6009,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return (sendVideo ? this.setLocalVideoQuality(level) : Promise.resolve())
       .then(() =>
-    ((receiveAudio || receiveVideo) ?
-      this.setRemoteQualityLevel(level) :
-      Promise.resolve()))
+        ((receiveAudio || receiveVideo) ?
+          this.setRemoteQualityLevel(level) :
+          Promise.resolve()))
       .catch((error) => {
         // From troubleshooting it seems that the stream itself doesn't change the max-fs if the peer connection isn't stable
         this.mediaProperties.setLocalQualityLevel(previousLevel.local);
@@ -6356,7 +6356,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   public endMeetingForAll() {
-    Metrics.postEvent({event: eventType.LEAVE, meeting: this, data: { trigger: trigger.USER_INTERACTION, canProceed: false}});
+    Metrics.postEvent({event: eventType.LEAVE, meeting: this, data: {trigger: trigger.USER_INTERACTION, canProceed: false}});
 
     LoggerProxy.logger.log('Meeting:index#endMeetingForAll --> End meeting for All');
     Metrics.sendBehavioralMetric(
