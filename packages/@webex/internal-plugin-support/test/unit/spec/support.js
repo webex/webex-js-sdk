@@ -66,6 +66,14 @@ describe('plugin-support', function () {
 
       assert.isTrue(result.filter((r) => r.key === 'orgId').length === 0);
     });
+
+    it('sends surveySessionId if specified in metadata', () => {
+      const surveySessionId = 'survey-session-id';
+      const result = webex.internal.support._constructFileMetadata({surveySessionId});
+      const found = result.find((attr) => attr.key === 'surveySessionId');
+
+      assert.equal(found?.value, surveySessionId);
+    });
   });
 
   describe('#submitLogs()', () => {
