@@ -6555,4 +6555,22 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return Promise.reject(new Error('Error sending reaction, service url not found.'));
   }
+
+  /**
+   * Method to enable or disable reactions inside the meeting.
+   *
+   * @param  {boolean} enable - enable or disable reactions
+   * @returns {Promise}
+   * @public
+   * @memberof Meeting
+   */
+  public toggleReactions(enable: boolean) {
+    const isEnabled = this.locusInfo?.controls?.reactions?.enabled;
+
+    if ((isEnabled && enable) || (!isEnabled && !enable)) {
+      return Promise.resolve(`Reactions are already ${isEnabled ? 'enabled' : 'disabled'}.`);
+    }
+
+    return this.meetingRequest.toggleReactions({enable, locusUrl: this.locusUrl, requestingParticipantId: this.members.selfId});
+  }
 }
