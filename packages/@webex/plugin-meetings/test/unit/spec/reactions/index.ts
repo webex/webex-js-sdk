@@ -13,12 +13,11 @@ import Members from '@webex/plugin-meetings/src/members';
 import Reactions from '@webex/plugin-meetings/src/reactions';
 import {REACTION_RELAY_TYPES} from '@webex/plugin-meetings/src/reactions/constants';
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   let webex = null;
   let reactions = null;
   let members = null;
   let llm = null;
-  let sandbox = null;
 
   const fakeCallbackFunction = sinon.stub();
   const fakeSendersName = 'Fake reactors name';
@@ -45,7 +44,6 @@ describe.only('plugin-meetings', () => {
 
   describe('Reactions', () => {
     beforeEach(() => {
-      sandbox = sinon.createSandbox();
       webex = new MockWebex({
         children: {
           meetings: Meetings,
@@ -61,7 +59,6 @@ describe.only('plugin-meetings', () => {
 
     afterEach(() => {
       sinon.reset();
-      sandbox = null;
     });
 
     describe('#subscribe', () => {

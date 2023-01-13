@@ -56,14 +56,6 @@ export default class Reactions {
     };
     this.llm.on('event:relay.event', this.processEvent);
   }
-  // subscribe(callback: Function) {
-  //   this.llm.on('event:relay.event', (e: any) => {
-  //     if (e.data.relayType == REACTION_RELAY_TYPES.REACTION) {
-  //       const processedReaction = this.processReaction(e.data.reaction, e.data.sender);
-  //       callback(processedReaction);
-  //     }
-  //   })
-  // }
 
   unsubscribe() {
     this.llm.off('event:relay.event', this.processEvent);
