@@ -76,7 +76,7 @@ import {ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
 import {RemoteMediaManager, Event as RemoteMediaManagerEvent} from '../multistream/remoteMediaManager';
 import {MultistreamMedia} from '../multistream/multistreamMedia';
-import {SkinTones, Reactions} from '../reactions/reactions';
+import {SkinTones} from '../reactions/reactions';
 import {Reaction, ReactionType, SkinToneType} from '../reactions/reactions.type';
 
 import InMeetingActions from './in-meeting-actions';
