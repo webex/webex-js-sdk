@@ -14772,13 +14772,13 @@ __metadata:
   linkType: hard
 
 "loader-utils@npm:^2.0.0":
-  version: 2.0.2
-  resolution: "loader-utils@npm:2.0.2"
+  version: 2.0.4
+  resolution: "loader-utils@npm:2.0.4"
   dependencies:
     big.js: "npm:^5.2.2"
     emojis-list: "npm:^3.0.0"
     json5: "npm:^2.1.2"
-  checksum: ccb4bf2d75ed9689688b93934e6659c2846b2de5e2c9a6e7e71b2b6863e54ba5c7e285a5c9936ad93b87a7a3323dc46380266858cbff3ae757f3a20611092304
+  checksum: 84384affee014c6b404124509f5550ce2bae3ae111df239e485e737ab3246c95fc84cd8918764471a4be4c64c3ca5bf3bf30e7e40baa5a5f363a043aec3aefa5
   languageName: node
   linkType: hard
 
