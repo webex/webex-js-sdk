@@ -723,16 +723,16 @@ describe('plugin-meetings', () => {
               },
               height: {
                 max: 200,
-                ideal: 200
+                ideal: 200,
               },
               frameRate: {
                 ideal: 15,
-                max: 30
+                max: 30,
               },
               facingMode: {
-                ideal: 'user'
-              }
-            }
+                ideal: 'user',
+              },
+            },
           };
 
           sinon.stub(meeting.mediaProperties, 'localQualityLevel').value('200p');
@@ -4369,12 +4369,8 @@ describe('plugin-meetings', () => {
           const payload = {
             info: {
               userDisplayHints: ['LOCK_CONTROL_UNLOCK'],
-<<<<<<< HEAD
-              datachannelUrl: 'some url'
-            }
-=======
+              datachannelUrl: 'some url',
             },
->>>>>>> c11a8e6d7 (chore: just apply prettier)
           };
 
           callback(payload);
@@ -4427,8 +4423,7 @@ describe('plugin-meetings', () => {
 
           if (expectedCalled) {
             assert.calledWith(updateLLMConnectionSpy);
-          }
-          else {
+          } else {
             assert.notCalled(updateLLMConnectionSpy);
           }
         };
@@ -4452,7 +4447,9 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           webex.internal.llm.isConnected = sinon.stub().returns(false);
           webex.internal.llm.getLocusUrl = sinon.stub();
-          webex.internal.llm.registerAndConnect = sinon.stub().returns(Promise.resolve('something'));
+          webex.internal.llm.registerAndConnect = sinon
+            .stub()
+            .returns(Promise.resolve('something'));
           webex.internal.llm.disconnectLLM = sinon.stub().returns(Promise.resolve());
         });
 
@@ -4504,7 +4501,11 @@ describe('plugin-meetings', () => {
           const result = await meeting.updateLLMConnection();
 
           assert.calledWith(webex.internal.llm.disconnectLLM);
-          assert.calledWith(webex.internal.llm.registerAndConnect, 'a different url', 'a datachannel url');
+          assert.calledWith(
+            webex.internal.llm.registerAndConnect,
+            'a different url',
+            'a datachannel url'
+          );
           assert.equal(result, 'something');
         });
 
@@ -5541,8 +5542,8 @@ describe('plugin-meetings', () => {
               tone: {
                 type: 'light_skin_tone',
                 codepoints: '1F3FB',
-                shortcodes: ':skin-tone-2:'
-              }
+                shortcodes: ':skin-tone-2:',
+              },
             },
             participantId: meeting.members.selfId,
           });
@@ -5551,7 +5552,11 @@ describe('plugin-meetings', () => {
         it('should fail sending a reaction if data channel is undefined', async () => {
           meeting.locusInfo.controls = {reactions: {reactionChannelUrl: undefined}};
 
-          await assert.isRejected(meeting.sendReaction('thumbs_down', 'light'), Error, 'Error sending reaction, service url not found.');
+          await assert.isRejected(
+            meeting.sendReaction('thumbs_down', 'light'),
+            Error,
+            'Error sending reaction, service url not found.'
+          );
 
           assert.notCalled(meeting.meetingRequest.sendReaction);
         });
@@ -5559,7 +5564,11 @@ describe('plugin-meetings', () => {
         it('should fail sending a reaction if reactionType is invalid ', async () => {
           meeting.locusInfo.controls = {reactions: {reactionChannelUrl: 'Fake URL'}};
 
-          await assert.isRejected(meeting.sendReaction('invalid_reaction', 'light'), Error, 'invalid_reaction is not a valid reaction.');
+          await assert.isRejected(
+            meeting.sendReaction('invalid_reaction', 'light'),
+            Error,
+            'invalid_reaction is not a valid reaction.'
+          );
 
           assert.notCalled(meeting.meetingRequest.sendReaction);
         });
@@ -5577,7 +5586,7 @@ describe('plugin-meetings', () => {
               type: 'thumb_down',
               codepoints: '1F44E',
               shortcodes: ':thumbsdown:',
-              tone: {type: 'normal_skin_tone', codepoints: '', shortcodes: ''}
+              tone: {type: 'normal_skin_tone', codepoints: '', shortcodes: ''},
             },
             participantId: meeting.members.selfId,
           });
@@ -5596,7 +5605,7 @@ describe('plugin-meetings', () => {
               type: 'thumb_down',
               codepoints: '1F44E',
               shortcodes: ':thumbsdown:',
-              tone: {type: 'normal_skin_tone', codepoints: '', shortcodes: ''}
+              tone: {type: 'normal_skin_tone', codepoints: '', shortcodes: ''},
             },
             participantId: meeting.members.selfId,
           });
@@ -5614,7 +5623,6 @@ describe('plugin-meetings', () => {
         it('should toggle the reactions with the right data and return a promise', async () => {
           meeting.locusUrl = 'locusUrl';
           meeting.locusInfo.controls = {reactions: {enabled: false}};
-
 
           const togglePromise = meeting.toggleReactions(true);
 
