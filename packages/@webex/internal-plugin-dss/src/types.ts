@@ -2,6 +2,7 @@ export interface LookupDetailOptions {
   id: string;
 }
 
+// eslint-disable-next-line no-shadow
 export enum EntityProviderType {
   CI_USER = 'CI_USER',
   CI_MACHINE = 'CI_MACHINE',
@@ -18,6 +19,7 @@ export interface LookupByEmailOptions {
   emails: string[];
 }
 
+// eslint-disable-next-line no-shadow
 export enum SearchType {
   PERSON = 'PERSON',
   CALLING_SERVICE = 'CALLING_SERVICE',

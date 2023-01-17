@@ -206,6 +206,7 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   parse(meeting: any, data: any) {
+    // eslint-disable-next-line @typescript-eslint/no-shadow
     const {eventType} = data;
 
     LoggerProxy.logger.info(`Locus-info:index#parse --> received locus data: ${eventType}`);
@@ -256,6 +257,7 @@ export default class LocusInfo extends EventsScope {
    * @returns {object} null
    * @memberof LocusInfo
    */
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   onFullLocus(locus: any, eventType?: string) {
     if (!locus) {
       LoggerProxy.logger.error(
@@ -280,6 +282,7 @@ export default class LocusInfo extends EventsScope {
    * @returns {undefined}
    * @memberof LocusInfo
    */
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   handleOneOnOneEvent(eventType: string) {
     if (
       this.parsedLocus.fullState.type === _CALL_ ||

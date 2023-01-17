@@ -77,14 +77,14 @@ describe('plugin-meetings', () => {
           moderator: {LOWER_SOMEONE_ELSES_HAND: true},
           datachannelUrl: 'some url',
           policy: {},
-          userDisplayHints: []
+          userDisplayHints: [],
         });
 
         assert.deepEqual(InfoUtils.parse({}, []), {
           coHost: {LOWER_SOMEONE_ELSES_HAND: true},
           moderator: {LOWER_SOMEONE_ELSES_HAND: true},
           policy: {},
-          userDisplayHints: []
+          userDisplayHints: [],
         });
       });
     });

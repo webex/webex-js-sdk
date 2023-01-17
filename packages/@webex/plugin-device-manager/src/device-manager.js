@@ -127,27 +127,30 @@ const DeviceManager = WebexPlugin.extend({
     }
 
     // new device requested, add to wdm for subsequent retreivals
-    return this.webex
-      .request({
-        api: 'wdm',
-        method: 'PUT',
-        resource: `devices/auxiliary/Room/${deviceId}`,
-      })
-      .then((res) => {
-        const auxDevice = res.body;
+    return (
+      this.webex
+        .request({
+          api: 'wdm',
+          method: 'PUT',
+          resource: `devices/auxiliary/Room/${deviceId}`,
+        })
+        .then((res) => {
+          const auxDevice = res.body;
 
-        return this._decryptDeviceName(auxDevice);
-      })
-      .then((device) => {
-        DeviceCollection.set(device);
+          return this._decryptDeviceName(auxDevice);
+        })
+        // eslint-disable-next-line no-shadow
+        .then((device) => {
+          DeviceCollection.set(device);
 
-        return Promise.resolve(DeviceCollection.get(deviceId));
-      })
-      .catch((err) => {
-        this.logger.error('DeviceManager#upsert: failed to add/update a device', err);
+          return Promise.resolve(DeviceCollection.get(deviceId));
+        })
+        .catch((err) => {
+          this.logger.error('DeviceManager#upsert: failed to add/update a device', err);
 
-        return Promise.reject(err);
-      });
+          return Promise.reject(err);
+        })
+    );
   },
 
   /**
@@ -590,6 +593,7 @@ const DeviceManager = WebexPlugin.extend({
         return this.webex.internal.lyra.space
           .get({id: deviceId})
           .then((space) => {
+            // eslint-disable-next-line no-shadow
             const device = DeviceCollection.get(deviceId);
 
             if (

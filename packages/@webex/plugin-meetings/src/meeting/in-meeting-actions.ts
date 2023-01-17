@@ -112,6 +112,12 @@ export default class InMeetingActions implements IInMeetingActions {
     waitingForOthersToJoin: this.waitingForOthersToJoin,
   });
 
+  /**
+   *
+   * @param actions
+   * @returns
+   */
+
   set = (actions: Partial<IInMeetingActions>) => {
     const old = this.get();
 

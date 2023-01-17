@@ -375,6 +375,7 @@ export default class Meetings extends WebexPlugin {
    */
   private handleLocusMercury(envelope: {data: any}) {
     const {data} = envelope;
+    // eslint-disable-next-line @typescript-eslint/no-shadow
     const {eventType} = data;
 
     if (eventType && eventType !== LOCUSEVENT.MESSAGE_ROAP) {

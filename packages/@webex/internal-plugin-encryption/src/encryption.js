@@ -81,6 +81,7 @@ const Encryption = WebexPlugin.extend({
     const shunt = new EventEmitter();
     const promise = this._fetchDownloadUrl(scr, options)
       .then((uri) => {
+        // eslint-disable-next-line no-shadow
         const options = {
           method: 'GET',
           uri,
@@ -137,6 +138,7 @@ const Encryption = WebexPlugin.extend({
           }
         : inputBody,
     }).then((res) => {
+      // eslint-disable-next-line no-shadow
       const url = res.body.endpoints[scr.loc];
 
       if (!url) {

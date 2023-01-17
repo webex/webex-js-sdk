@@ -1,3 +1,5 @@
+/* eslint-disable consistent-return */
+
 import Mercury from '@webex/internal-plugin-mercury';
 import {LoggerProxy} from '@webex/plugin-meetings';
 

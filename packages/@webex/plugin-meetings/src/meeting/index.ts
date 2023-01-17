@@ -2795,6 +2795,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @returns {void}
      * @inner
      */
+    // eslint-disable-next-line @typescript-eslint/no-shadow
     const triggerMediaStoppedEvent = (mediaType: string) => {
       Trigger.trigger(
         this,
@@ -4220,6 +4221,7 @@ export default class Meeting extends StatelessWebexPlugin {
   getMediaStreams = (
     mediaDirection: any,
     // This return an OBJECT {video: {height, widght}}
+    // eslint-disable-next-line default-param-last
     audioVideo: any = VIDEO_RESOLUTIONS[this.mediaProperties.localQualityLevel],
     sharePreferences?: any
   ) => {

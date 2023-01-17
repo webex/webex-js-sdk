@@ -13,6 +13,7 @@ async function requestWithRetries(
   return func.apply(ctx, args).catch((reason) => {
     if (retryErrors.includes(reason.statusCode) && retryCount < maxRetries) {
       retryCount += 1;
+      // eslint-disable-next-line no-shadow
       let retryIntervalInSeconds = (retryCount + 1) ** 2; // 4, 9 and 16 second delays as default
 
       if (reason.headers && reason.headers['retry-after']) {

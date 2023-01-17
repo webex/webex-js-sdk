@@ -9,6 +9,7 @@ export type Reaction = EmoticonData & {
   tone?: SkinTone;
 };
 
+// eslint-disable-next-line no-shadow
 export enum ReactionType {
   smile = 'smile',
   sad = 'sad',
@@ -25,6 +26,7 @@ export enum ReactionType {
   slow_down = 'slow_down',
 }
 
+// eslint-disable-next-line no-shadow
 export enum SkinToneType {
   normal = 'normal',
   light = 'light',

@@ -25,6 +25,93 @@ let webex;
   });
 });
 
+function notify(message) {
+  document.getElementById('notifications').innerHTML = message;
+  setTimeout(() => {
+    document.getElementById('notifications').innerHTML = '';
+  }, 5000);
+}
+
+function populateDeviceDropdown(devices) {
+  const deviceListDropdown = document.getElementById('device-list-dropdown');
+
+  deviceListDropdown.length = 0;
+
+  const defaultOption = document.createElement('option');
+
+  defaultOption.text = 'Choose a Device';
+  deviceListDropdown.add(defaultOption);
+  deviceListDropdown.selectedIndex = 0;
+
+  let option;
+
+  devices.forEach((device) => {
+    option = document.createElement('option');
+    option.text = device.deviceInfo.description || device.deviceInfo.name;
+    option.value = device.id;
+    deviceListDropdown.add(option);
+  });
+}
+
+function toggleDisplay(elementId, status) {
+  const element = document.getElementById(elementId);
+
+  if (status) {
+    element.style.display = 'block';
+  } else {
+    element.style.display = 'none';
+  }
+}
+
+function populateDeviceAudioState(audioState) {
+  document.getElementById('getAudioStateContentsDiv').innerHTML = `<div>
+    <ul>
+      <li>Muted: ${audioState.microphones.muted}</li>
+      <li>volume current level: ${audioState.volume.level}</li>
+      <li>volume max level: ${audioState.volume.max}</li>
+      <li>volume min level: ${audioState.volume.min}</li>
+      <li>volume step level: ${audioState.volume.step}</li>
+    </ul>
+    <div id='hideAudioStateBtnDiv' style=muted"display:none;">
+      <button id="hideAudioState" title="hideAudioState" type="button">hideAudioState</button>
+    </div>
+  </div>`;
+  toggleDisplay('getAudioStateContentsDiv', true);
+  toggleDisplay('hideAudioStateBtnDiv', true);
+  // hideAudioState of the paired device
+  document.getElementById('hideAudioState').addEventListener('click', () => {
+    toggleDisplay('getAudioStateContentsDiv', false);
+    toggleDisplay('hideAudioStateBtnDiv', false);
+  });
+}
+
+function populateDeviceSearchResults(response) {
+  let devices = '';
+
+  response.forEach((device) => {
+    devices += `
+      <li style='list-style-type: none'>
+        <input type='radio' name='deviceRadio' onclick='requestPinChallenge("${device.id}")'/>
+        <label>${device.description || device.name}</label>
+      </li>`;
+  });
+  document.getElementById('getDeviceSearchResultsDiv').innerHTML = `<div>
+    <ul>
+      ${devices}
+    </ul>
+    <div id='hideDeviceSearchResultsBtnDiv' style=muted"display:none;">
+      <button id="hideDeviceSearchResults" title="hideDeviceSearchResults" type="button">hideDeviceSearchResults</button>
+    </div>
+  </div>`;
+  toggleDisplay('getDeviceSearchResultsDiv', true);
+  toggleDisplay('hideDeviceSearchResults', true);
+  // hideAudioState of the paired device
+  document.getElementById('hideDeviceSearchResults').addEventListener('click', () => {
+    toggleDisplay('getDeviceSearchResultsDiv', false);
+    toggleDisplay('hideDeviceSearchResults', false);
+  });
+}
+
 function connect() {
   if (!webex) {
     webex = Webex.init({
@@ -249,6 +336,7 @@ document.getElementById('bindSpace').addEventListener('click', () => {
   if (webex.devicemanager) {
     notify('Binding space...');
     const convoId = document.getElementById('convoId').value;
+
     let url;
 
     return webex.internal.services
@@ -357,93 +445,6 @@ document.getElementById('search').addEventListener('click', () => {
 
   return false;
 });
-
-function notify(message) {
-  document.getElementById('notifications').innerHTML = message;
-  setTimeout(() => {
-    document.getElementById('notifications').innerHTML = '';
-  }, 5000);
-}
-
-function populateDeviceDropdown(devices) {
-  const deviceListDropdown = document.getElementById('device-list-dropdown');
-
-  deviceListDropdown.length = 0;
-
-  const defaultOption = document.createElement('option');
-
-  defaultOption.text = 'Choose a Device';
-  deviceListDropdown.add(defaultOption);
-  deviceListDropdown.selectedIndex = 0;
-
-  let option;
-
-  devices.forEach((device) => {
-    option = document.createElement('option');
-    option.text = device.deviceInfo.description || device.deviceInfo.name;
-    option.value = device.id;
-    deviceListDropdown.add(option);
-  });
-}
-
-function populateDeviceAudioState(audioState) {
-  document.getElementById('getAudioStateContentsDiv').innerHTML = `<div>
-    <ul>
-      <li>Muted: ${audioState.microphones.muted}</li>
-      <li>volume current level: ${audioState.volume.level}</li>
-      <li>volume max level: ${audioState.volume.max}</li>
-      <li>volume min level: ${audioState.volume.min}</li>
-      <li>volume step level: ${audioState.volume.step}</li>
-    </ul>
-    <div id='hideAudioStateBtnDiv' style=muted"display:none;">
-      <button id="hideAudioState" title="hideAudioState" type="button">hideAudioState</button>
-    </div>
-  </div>`;
-  toggleDisplay('getAudioStateContentsDiv', true);
-  toggleDisplay('hideAudioStateBtnDiv', true);
-  // hideAudioState of the paired device
-  document.getElementById('hideAudioState').addEventListener('click', () => {
-    toggleDisplay('getAudioStateContentsDiv', false);
-    toggleDisplay('hideAudioStateBtnDiv', false);
-  });
-}
-
-function populateDeviceSearchResults(response) {
-  let devices = '';
-
-  response.forEach((device) => {
-    devices += `
-      <li style='list-style-type: none'>
-        <input type='radio' name='deviceRadio' onclick='requestPinChallenge("${device.id}")'/>
-        <label>${device.description || device.name}</label>
-      </li>`;
-  });
-  document.getElementById('getDeviceSearchResultsDiv').innerHTML = `<div>
-    <ul>
-      ${devices}
-    </ul>
-    <div id='hideDeviceSearchResultsBtnDiv' style=muted"display:none;">
-      <button id="hideDeviceSearchResults" title="hideDeviceSearchResults" type="button">hideDeviceSearchResults</button>
-    </div>
-  </div>`;
-  toggleDisplay('getDeviceSearchResultsDiv', true);
-  toggleDisplay('hideDeviceSearchResults', true);
-  // hideAudioState of the paired device
-  document.getElementById('hideDeviceSearchResults').addEventListener('click', () => {
-    toggleDisplay('getDeviceSearchResultsDiv', false);
-    toggleDisplay('hideDeviceSearchResults', false);
-  });
-}
-
-function toggleDisplay(elementId, status) {
-  const element = document.getElementById(elementId);
-
-  if (status) {
-    element.style.display = 'block';
-  } else {
-    element.style.display = 'none';
-  }
-}
 
 document.getElementById('credentials').addEventListener('submit', (event) => {
   // let's make sure we don't reload the page when we submit the form
