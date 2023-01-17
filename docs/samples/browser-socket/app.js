@@ -10,7 +10,9 @@ let webex;
 
 // Save fields in localStorage so we don't have to retype them
 // every time we reload the page.
-['access-token'].forEach((id) => {
+[
+  'access-token'
+].forEach((id) => {
   const el = document.getElementById(id);
 
   el.value = localStorage.getItem(id);
@@ -23,10 +25,12 @@ let webex;
 function authorize() {
   // eslint-disable-next-line no-multi-assign
   webex = window.webex = Webex.init({
-    config: {},
-    credentials: {
-      access_token: document.getElementById('access-token').value,
+    config: {
+
     },
+    credentials: {
+      access_token: document.getElementById('access-token').value
+    }
   });
 
   if (webex.canAuthorize) {
@@ -46,7 +50,8 @@ function updateStatus(authorized) {
     status.classList.remove('label-error');
     status.classList.add('label-success');
     document.getElementById('connect').disabled = true;
-  } else {
+  }
+  else {
     status.innerText = 'unauthorized';
     status.classList.remove('label-warning');
     status.classList.add('label-error');
@@ -60,8 +65,7 @@ document.getElementById('credentials').addEventListener('submit', (event) => {
   authorize()
     .then(() => {
       console.log('connected');
-      webex.messages
-        .listen()
+      webex.messages.listen()
         .then(() => {
           console.log('listening to message events');
           updateStatus(true);
@@ -79,8 +83,7 @@ document.getElementById('credentials').addEventListener('submit', (event) => {
           updateStatus(false);
         });
 
-      webex.attachmentActions
-        .listen()
+      webex.attachmentActions.listen()
         .then(() => {
           console.log('listening to attachmentAction events');
           updateStatus(true);
@@ -94,8 +97,7 @@ document.getElementById('credentials').addEventListener('submit', (event) => {
           updateStatus(false);
         });
 
-      webex.memberships
-        .listen()
+      webex.memberships.listen()
         .then(() => {
           console.log('listening to membership events');
           updateStatus(true);
@@ -121,8 +123,7 @@ document.getElementById('credentials').addEventListener('submit', (event) => {
           updateStatus(false);
         });
 
-      webex.rooms
-        .listen()
+      webex.rooms.listen()
         .then(() => {
           console.log('listening to room events');
           updateStatus(true);

@@ -1,37 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css"
-      integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
-      crossorigin="anonymous" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Browser Authentication Flow</title>
   </head>
   <body class="p-3">
     <form>
       <fieldset id="auth-type">
         <h1>Pick Authentication Method</h1>
-        <div class="form-check pl-0">
-          <input
-            type="radio"
-            id="implicit-radio"
-            name="typeCredentials"
-            onchange="handleAuthTypeChange()"
-            value="implicit"
-            checked />
-          <label for="implicit-radio">Implicit Authentication</label>
-        </div>
-        <div class="form-check pl-0">
-          <input
-            type="radio"
-            id="jwt-radio"
-            name="typeCredentials"
-            onchange="handleAuthTypeChange()"
-            value="jwt" />
-          <label for="jwt-radio">Guest User Authentication</label>
-        </div>
+          <div class="form-check pl-0">
+            <input type="radio" id="implicit-radio" name="typeCredentials" onchange="handleAuthTypeChange()" value="implicit" checked>
+            <label for="implicit-radio">Implicit Authentication</label>
+          </div>
+          <div class="form-check pl-0">
+            <input type="radio" id="jwt-radio" name="typeCredentials" onchange="handleAuthTypeChange()" value="jwt">
+            <label for="jwt-radio">Guest User Authentication</label>
+          </div>
       </fieldset>
     </form>
 
@@ -39,74 +24,54 @@
 
     <div id="implicit-authentication-section">
       <h2>Implicit Grant Flow Authentication</h2>
-      <p>
-        This sample demonstrates authenticating users in the browser with the Implicit Grant Flow
-      </p>
-
+      <p>This sample demonstrates authenticating users in the browser with the Implicit Grant Flow</p>
+      
       <form id="fedramp" class="form-check pl-0">
-        <input type="checkbox" id="enable-fedramp" />
+        <input type="checkbox" id="enable-fedramp">
         <label for="enable-fedramp">Enable Fedramp</label>
       </form>
-
+      
       <div class="d-flex">
         <form id="implicit-authorization">
-          <input
-            id="implicit-authenticate-button"
-            title="Click here to authenticate"
-            type="submit"
-            value="Authenticate"
-            class="btn btn-primary my-3 mr-3" />
+          <input id="implicit-authenticate-button" title="Click here to authenticate" type="submit" value="Authenticate" class="btn btn-primary my-3 mr-3">
         </form>
-
+        
         <form id="logout">
-          <input
-            id="logout-button"
-            title="Click here to logout"
-            type="submit"
-            value="Logout"
-            class="btn btn-light my-3" />
+          <input id="logout-button" title="Click here to logout" type="submit" value="Logout" class="btn btn-light my-3">
         </form>
       </div>
-
-      <div style="max-width: 80vw; display: flex; flex-direction: row; font-size: 1.5rem">
-        <h3>Authentication Status:</h3>
-        <h3 style="color: red" id="implicit-authentication-status" class="ml-2">
-          Not Authenticated
-        </h3>
+      
+      <div style="max-width: 80vw; display: flex; flex-direction: row; font-size: 1.5rem;">
+        <h3>Authentication Status: </h3>
+        <h3 style="color:red" id="implicit-authentication-status" 
+        class="ml-2">Not Authenticated</h3>
       </div>
     </div>
-
+      
     <div id="jwt-authentication-section">
       <h2>Guest User Authentication</h2>
-      <p>
-        This sample demonstrates authenticating guest users in the browser with a JSON Web Token
-        (jwt)
-      </p>
-
+      <p>This sample demonstrates authenticating guest users in the browser with a JSON Web Token (jwt)</p>
+      
       <form id="credentials">
         <fieldset>
           <legend>Credentials</legend>
           <input
-            id="jwt"
-            name="jwt"
-            placeholder="JSON Web Token"
-            type="text"
-            class="form-control w-50" />
+          id="jwt"
+          name="jwt"
+          placeholder="JSON Web Token"
+          type="text"
+          class="form-control w-50">
         </fieldset>
       </form>
-
+      
       <form id="jwt-authorization">
-        <input
-          id="jwt-authenticate-button"
-          title="Authenticate"
-          type="submit"
-          value="Authenticate"
-          class="btn btn-primary my-3" />
+        <input id="jwt-authenticate-button" title="Authenticate" type="submit" value="Authenticate" class="btn btn-primary my-3">
       </form>
-
-      <div style="max-width: 80vw; display: flex; flex-direction: row; font-size: 1.5rem">
-        <h3>Authentication Status:</h3>
-        <h3 style="color: red" id="jwt-authentication-status" class="ml-2">Not Authenticated</h3>
+      
+      <div style="max-width: 80vw; display: flex; flex-direction: row; font-size: 1.5rem;">
+        <h3>Authentication Status: </h3>
+        <h3 style="color:red;" id="jwt-authentication-status"
+         class="ml-2">Not Authenticated</h3>
       </div>
     </div>
     <script src="../webex.min.js"></script>

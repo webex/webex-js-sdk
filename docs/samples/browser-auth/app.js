@@ -5,6 +5,7 @@
 /* eslint-disable require-jsdoc */
 /* eslint-disable max-len */
 
+
 let webex;
 
 function initializeImplicitAuth() {
@@ -36,9 +37,9 @@ function initializeImplicitAuth() {
       credentials: {
         client_id: 'C7c3f1143a552d88d40b2afff87600c366c830850231597fb6c1c1e28a5110a4f',
         redirect_uri,
-        scope: 'spark:all spark:kms',
-      },
-    },
+        scope: 'spark:all spark:kms'
+      }
+    }
   });
 
   webex.once('ready', () => {
@@ -59,7 +60,8 @@ function initializeImplicitAuth() {
       if (webex.canAuthorize) {
         // if already authenticated, logout on click
         webex.logout();
-      } else {
+      }
+      else {
         // No user is authenticated
         console.log('cannot logout when no user is authenticated');
       }
@@ -83,6 +85,7 @@ function initializeJwtAuth() {
   // eslint-disable-next-line no-multi-assign
   webex = window.webex = Webex.init();
 
+
   webex.once('ready', () => {
     const jwtAuthenticateButton = document.getElementById('jwt-authenticate-button');
 
@@ -95,23 +98,21 @@ function initializeJwtAuth() {
 
       jwtAuthenticateButton.disabled = true;
       // initiate the login sequence if not authenticated.
-      webex.authorization
-        .requestAccessTokenFromJwt({jwt})
-        .then(() => {
-          if (webex.canAuthorize) {
-            // Authorization is successful
+      webex.authorization.requestAccessTokenFromJwt({jwt}).then(() => {
+        if (webex.canAuthorize) {
+          // Authorization is successful
 
-            // your app logic goes here
+          // your app logic goes here
 
-            // Change Authentication status to `Authenticated`
-            const authStatus = document.getElementById('jwt-authentication-status');
+          // Change Authentication status to `Authenticated`
+          const authStatus = document.getElementById('jwt-authentication-status');
 
-            authStatus.innerText = 'Authenticated';
-            authStatus.style = 'color: green';
-          }
-        })
+          authStatus.innerText = 'Authenticated';
+          authStatus.style = 'color: green';
+        }
+      })
         .catch((e) => {
-          // Do something with the auth error here
+        // Do something with the auth error here
           console.error(e);
           jwtAuthenticateButton.disabled = false;
         });
