@@ -314,7 +314,7 @@ describe('plugin-team', () => {
 
       it('adds the user to an open team conversation', () =>
         spock.webex.internal.team
-          .joinConversation(team, conversation)
+          .joinConversation(team, conversation, spock.id)
           .then((c) => assert.notInclude(c.tags, 'NOT_JOINED')));
     });
 
