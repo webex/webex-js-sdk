@@ -57,7 +57,7 @@ export default class Transcription {
    * @param {Function} callback
    * @returns {void}
    */
-  onCloseSocket(callback: Function) {
+  onCloseSocket(callback: any) {
     if (callback) {
       this.webSocket.onclose = (event) => {
         callback(event);
@@ -72,7 +72,7 @@ export default class Transcription {
    * @param {Function} callback
    * @returns {void}
    */
-  onErrorSocket(callback: Function) {
+  onErrorSocket(callback: any) {
     if (callback) {
       this.webSocket.onerror = (event) => {
         callback(event);
@@ -118,7 +118,7 @@ export default class Transcription {
    * @param {Function} callback
    * @returns {void}
    */
-  subscribe(callback: Function) {
+  subscribe(callback: any) {
     let data;
     let csis;
     let speaker;

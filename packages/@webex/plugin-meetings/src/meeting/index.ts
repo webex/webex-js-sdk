@@ -4371,6 +4371,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {void}
    */
   handleRoapFailure = (error) => {
+    // eslint-disable-next-line @typescript-eslint/no-shadow
     const sendBehavioralMetric = (metricName, error, correlationId) => {
       const data = {
         code: error.code,
@@ -4568,6 +4569,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       const mediaTrack = event.track;
 
+      // eslint-disable-next-line @typescript-eslint/no-shadow
       let eventType;
 
       switch (event.type) {

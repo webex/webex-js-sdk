@@ -328,6 +328,7 @@ export default class Meetings extends WebexPlugin {
           meeting.locusInfo.initialSetup(data.locus);
         })
         .catch((e) => {
+          // eslint-disable-next-line no-console
           console.log(e);
         })
         .finally(() => {
